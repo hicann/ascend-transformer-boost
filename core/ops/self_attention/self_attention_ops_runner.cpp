@@ -1,3 +1,5 @@
+
+
 /*
  * Copyright(C) 2023. Huawei Technologies Co.,Ltd. All rights reserved.
  *
@@ -13,11 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
-#endif
+#include "self_attention_ops_runner.h"
+#include <asdops/utils/log/log.h>
+#include <asdops/params/params.h>
+
+namespace AclTransformer {
+SelfAttentionOpsRunner::SelfAttentionOpsRunner(const SelfAttentionParam &param)
+    : OpsRunner("SelfAttentionOpsRunner"), param_(param)
+{
+    ASD_LOG(INFO) << "SelfAttentionOperation::SelfAttentionOperation called";
+}
+
+SelfAttentionOpsRunner::~SelfAttentionOpsRunner() {}
+} // namespace AclTransformer

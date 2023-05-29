@@ -13,11 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
+#ifndef ACLTRANSFORMER_ADDNORM_OPERATION_H
+#define ACLTRANSFORMER_ADDNORM_OPERATION_H
+#include "acltransformer/operation.h"
 #include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
+
+namespace AclTransformer {
+// gelu(A*B+Bias)
+class AddNormOperation : public Operation {
+public:
+    AddNormOperation(const AddNormParam &param);
+    virtual ~AddNormOperation();
+    AsdOps::Status InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+                              std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
+
+protected:
+    RunnerBuilder *FindBestRunnerBuilder(const VariantPack &variantPack) override;
+
+private:
+    AddNormParam param_;
+};
+} // namespace AclTransformer
 #endif
