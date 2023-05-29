@@ -13,11 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
+#ifndef FFN_OPS_RUNNER_BUILDER_H
+#define FFN_OPS_RUNNER_BUILDER_H
+#include "acltransformer/runner_builder.h"
 #include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
+#include "ffn_ops_runner.h"
+
+namespace AclTransformer {
+class FfnOpsRunnerBuilder : public RunnerBuilder {
+public:
+    FfnOpsRunnerBuilder(const FfnParam &param) : param_(param) {}
+    virtual ~FfnOpsRunnerBuilder() = default;
+    Runner *Build() override { return new FfnOpsRunner(param_); }
+
+private:
+    FfnParam param_;
+};
+
+} // namespace AclTransformer
 #endif
