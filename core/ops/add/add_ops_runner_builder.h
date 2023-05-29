@@ -1,0 +1,34 @@
+/*
+ * Copyright(C) 2023. Huawei Technologies Co.,Ltd. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#ifndef ADD_OPS_RUNNER_BUILDER_H
+#define ADD_OPS_RUNNER_BUILDER_H
+#include "acltransformer/runner_builder.h"
+#include "acltransformer/params/add.h"
+#include "add_ops_runner.h"
+
+namespace AclTransformer {
+class AddOpsRunnerBuilder : public RunnerBuilder {
+public:
+    AddOpsRunnerBuilder(const AddParam &param) : param_(param) {}
+    virtual ~AddOpsRunnerBuilder() = default;
+    Runner *Build() override { return new AddOpsRunner(param_); }
+
+private:
+    AddParam param_;
+};
+
+} // namespace AclTransformer
+#endif
