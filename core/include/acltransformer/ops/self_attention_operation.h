@@ -13,20 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ADD_OPS_RUNNER_H
-#define ADD_OPS_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
-#include "acltransformer/params/add.h"
+#ifndef ACLTRANSFORMER_SELFATTENTION_OPERATION_H
+#define ACLTRANSFORMER_SELFATTENTION_OPERATION_H
+#include "acltransformer/operation.h"
+#include "acltransformer/params/self_attention.h"
 
 namespace AclTransformer {
-class AddOpsRunner : public OpsRunner {
+// gelu(A*B+Bias)
+class SelfAttentionOperation : public Operation {
 public:
-    AddOpsRunner(const AddParam &param);
-    virtual ~AddOpsRunner();
+    SelfAttentionOperation(const SelfAttentionParam &param);
+    virtual ~SelfAttentionOperation();
+    AsdOps::Status InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+                              std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
+
+protected:
+    RunnerBuilder *FindBestRunnerBuilder(const VariantPack &variantPack) override;
 
 private:
-    AddParam param_;
+    SelfAttentionParam param_;
+    Runner *runner_ = nullptr;
 };
-
 } // namespace AclTransformer
 #endif
