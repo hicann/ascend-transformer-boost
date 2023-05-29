@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
+#ifndef ACLTRANSFOERM_PARAMS_ADDNORM_H
+#define ACLTRANSFOERM_PARAMS_ADDNORM_H
+namespace AclTransformer {
+struct AddNormParam {};
+} // namespace AclTransformer
 #endif

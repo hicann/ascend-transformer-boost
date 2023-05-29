@@ -20,7 +20,7 @@
 #include <asdops/params/params.h>
 
 namespace AclTransformer {
-AddOpsRunner::AddOpsRunner(AddParam &param) : OpsRunner("AddOpsRunner"), param_(param)
+AddOpsRunner::AddOpsRunner(const AddParam &param) : OpsRunner("AddOpsRunner"), param_(param)
 {
     ASD_LOG(INFO) << "AddOperation::AddOperation called";
     kernelGraph_.inTensors.resize(2);
