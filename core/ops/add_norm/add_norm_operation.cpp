@@ -13,23 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "acltransformer/ops/add_operation.h"
-#include "add_ops_runner_builder.h"
-#include "add_torch_runner_builder.h"
+#include "acltransformer/ops/add_norm_operation.h"
+#include "add_norm_ops_runner_builder.h"
+#include "add_norm_torch_runner_builder.h"
 
 namespace AclTransformer {
-AddOperation::AddOperation(const AddParam &param) : Operation("AddOperation"), param_(param)
+AddNormOperation::AddNormOperation(const AddNormParam &param) : Operation("AddNormOperation"), param_(param)
 {
-    runnerBuilders_ = {new AddOpsRunnerBuilder(param_), new AddTorchRunnerBuilder(param_)};
+    runnerBuilders_ = {new AddNormOpsRunnerBuilder(param_), new AddNormTorchRunnerBuilder(param_)};
 }
 
-AddOperation::~AddOperation() {}
+AddNormOperation::~AddNormOperation() {}
 
-AsdOps::Status AddOperation::InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
-                                        std::vector<AsdOps::TensorDesc> &outTensorDescs)
+AsdOps::Status AddNormOperation::InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+                                            std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
-    if (inTensorDescs.size() != 2) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 2");
+    if (inTensorDescs.size() != 4) {
+        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 4");
     }
 
     outTensorDescs.resize(1);
@@ -37,5 +37,5 @@ AsdOps::Status AddOperation::InferShape(const std::vector<AsdOps::TensorDesc> &i
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *AddOperation::FindBestRunnerBuilder(const VariantPack &variantPack) { return runnerBuilders_.at(1); }
+RunnerBuilder *AddNormOperation::FindBestRunnerBuilder(const VariantPack &variantPack) { return runnerBuilders_.at(1); }
 } // namespace AclTransformer

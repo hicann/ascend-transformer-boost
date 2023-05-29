@@ -13,11 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
+#ifndef FFN_TORCH_RUNNER_H
+#define FFN_TORCH_RUNNER_H
+#include "acltransformer/runner.h"
 #include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
+
+namespace AclTransformer {
+class FfnTorchRunner : public Runner {
+public:
+    FfnTorchRunner(const FfnParam &param);
+    AsdOps::Status Init() override;
+    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
+    uint64_t GetWorkspaceSize() override;
+    AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
+
+private:
+    FfnParam param_;
+};
+
+} // namespace AclTransformer
 #endif

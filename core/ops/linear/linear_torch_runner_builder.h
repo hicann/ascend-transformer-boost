@@ -13,11 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
+#ifndef LINERA_TORCH_RUNNER_BUILDER_H
+#define LINERA_TORCH_RUNNER_BUILDER_H
+#include "acltransformer/runner_builder.h"
 #include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
+#include "linear_torch_runner.h"
+
+namespace AclTransformer {
+class LinearTorchRunnerBuilder : public RunnerBuilder {
+public:
+    LinearTorchRunnerBuilder(const LinearParam &param) : param_(param) {}
+    virtual ~LinearTorchRunnerBuilder() = default;
+    Runner *Build() override { return new LinearTorchRunner(param_); }
+
+private:
+    LinearParam param_;
+};
+
+} // namespace AclTransformer
 #endif
