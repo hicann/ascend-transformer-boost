@@ -44,8 +44,11 @@ AsdOps::Status Operation::Setup(Handle &handle, VariantPack &variantPack)
         if (runner_) {
             AsdOps::Status ret = runner_->Init();
             if (!ret.Ok()) {
+                ASD_LOG(ERROR) << runner_->GetName() << " init fail";
                 return ret;
             }
+        } else {
+            ASD_LOG(ERROR) << GetName() << " CreateBestRunner fail";
         }
     }
 
@@ -59,17 +62,31 @@ uint64_t Operation::GetWorkspaceSize() { return runner_ ? runner_->GetWorkspaceS
 
 AsdOps::Status Operation::Execute(Handle &handle, VariantPack &variantPack)
 {
-    if (runner_) {
-        AsdOps::Status st = runner_->Execute(handle, variantPack);
-        if (handle.stream != nullptr) {
-            ASD_LOG(INFO) << "AsdRtStreamSynchronize stream:" << handle.stream;
-            AsdRtStreamSynchronize(handle.stream);
-        } else {
-            ASD_LOG(ERROR) << "handle.stream is null";
-        }
+    if (handle.stream == nullptr) {
+        ASD_LOG(ERROR) << "handle.stream is null";
+        return AsdOps::Status::FailStatus(1, "handle.stream is null");
+    }
+    if (!runner_) {
+        ASD_LOG(ERROR) << "runner is null";
+        return AsdOps::Status::FailStatus(1, "runner is null");
+    }
+
+    ASD_LOG(INFO) << runner_->GetName() << " execute start";
+    AsdOps::Status st = runner_->Execute(handle, variantPack);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << runner_->GetName() << " execute fail, error:" << st.Message();
         return st;
     }
-    return AsdOps::Status::FailStatus(1, "runner is null");
+
+    ASD_LOG(INFO) << runner_->GetName() << " execute success";
+    ASD_LOG(INFO) << "AsdRtStreamSynchronize stream:" << handle.stream;
+    int ret = AsdRtStreamSynchronize(handle.stream);
+    if (ret != 0) {
+        ASD_LOG(ERROR) << "AsdRtStreamSynchronize fail";
+        return AsdOps::Status::FailStatus(1, "AsdRtStreamSynchronize fail");
+    }
+
+    return AsdOps::Status::OkStatus();
 }
 
 Runner *Operation::CreateBestRunner(const VariantPack &variantPack)
