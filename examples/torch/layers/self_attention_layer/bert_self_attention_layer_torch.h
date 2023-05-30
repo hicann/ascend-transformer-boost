@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ADD_TORCH_RUNNER_H
-#define ADD_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
-#include "acltransformer/params/add_norm.h"
+#ifndef BERT_OUTPUT_LAYER_TORCH_H
+#define BERT_OUTPUT_LAYER_TORCH_H
+#include <torch/script.h>
+#include <torch/custom_class.h>
 
-namespace AclTransformer {
-class AddNormTorchRunner : public Runner {
+class SelfAttentionLayerTorch : public torch::CustomClassHolder {
 public:
-    AddNormTorchRunner(const AddNormParam &param);
-    AsdOps::Status Init() override;
-    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
-    uint64_t GetWorkspaceSize() override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
+    SelfAttentionLayerTorch();
+    ~SelfAttentionLayerTorch();
+    void Test();
+    void Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
+    c10::intrusive_ptr<SelfAttentionLayerTorch> clone() const { return c10::make_intrusive<SelfAttentionLayerTorch>(); }
 
 private:
-    AddNormParam param_;
+    int64_t executeCount_ = 0;
 };
 
-} // namespace AclTransformer
 #endif

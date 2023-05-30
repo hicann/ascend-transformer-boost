@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ADD_TORCH_RUNNER_H
-#define ADD_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
-#include "acltransformer/params/add_norm.h"
+#ifndef FFN_OPERATION_TORCH_H
+#define FFN_OPERATION_TORCH_H
+#include <torch/script.h>
+#include <torch/custom_class.h>
+#include <acltransformer/ops/ffn_operation.h>
 
-namespace AclTransformer {
-class AddNormTorchRunner : public Runner {
+class FfnOperationTorch : public torch::CustomClassHolder {
 public:
-    AddNormTorchRunner(const AddNormParam &param);
-    AsdOps::Status Init() override;
-    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
-    uint64_t GetWorkspaceSize() override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
+    FfnOperationTorch();
+    ~FfnOperationTorch();
+    void Test();
+    torch::Tensor Execute(torch::Tensor a, torch::Tensor b, torch::Tensor c);
+    c10::intrusive_ptr<FfnOperationTorch> clone() const { return c10::make_intrusive<FfnOperationTorch>(); }
 
 private:
-    AddNormParam param_;
+    AclTransformer::FfnOperation *operation_ = nullptr;
 };
 
-} // namespace AclTransformer
 #endif
