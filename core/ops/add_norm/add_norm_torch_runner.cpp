@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "add_norm_torch_runner.h"
 #include <ATen/ATen.h>
 #include <asdops/utils/log/log.h>
-#include "add_norm_torch_runner.h"
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
 

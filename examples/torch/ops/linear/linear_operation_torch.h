@@ -13,23 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ADD_TORCH_RUNNER_H
-#define ADD_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
-#include "acltransformer/params/add_norm.h"
+#ifndef LINEAR_OPERATION_TORCH_H
+#define LINEAR_OPERATION_TORCH_H
+#include <torch/script.h>
+#include <torch/custom_class.h>
+#include <acltransformer/ops/linear_operation.h>
 
-namespace AclTransformer {
-class AddNormTorchRunner : public Runner {
+class LinearOperationTorch : public torch::CustomClassHolder {
 public:
-    AddNormTorchRunner(const AddNormParam &param);
-    AsdOps::Status Init() override;
-    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
-    uint64_t GetWorkspaceSize() override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
+    LinearOperationTorch(std::string param);
+    ~LinearOperationTorch();
+    void Test();
+    torch::Tensor Execute(torch::Tensor a, torch::Tensor b, torch::Tensor c);
+    c10::intrusive_ptr<LinearOperationTorch> clone() const { return c10::make_intrusive<LinearOperationTorch>(param_); }
 
 private:
-    AddNormParam param_;
+    AclTransformer::LinearOperation *operation_ = nullptr;
+    std::string param_;
 };
 
-} // namespace AclTransformer
 #endif

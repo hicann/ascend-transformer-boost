@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ADD_TORCH_RUNNER_H
-#define ADD_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
-#include "acltransformer/params/add_norm.h"
+#ifndef MULTI_ADD_LAYER_TORCH_H
+#define MULTI_ADD_LAYER_TORCH_H
+#include <torch/script.h>
+#include <torch/custom_class.h>
 
-namespace AclTransformer {
-class AddNormTorchRunner : public Runner {
+// a + b + c + d
+class MultiAddLayerTorch : public torch::CustomClassHolder {
 public:
-    AddNormTorchRunner(const AddNormParam &param);
-    AsdOps::Status Init() override;
-    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
-    uint64_t GetWorkspaceSize() override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
+    MultiAddLayerTorch();
+    ~MultiAddLayerTorch();
+    void Test();
+    void Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
+    c10::intrusive_ptr<MultiAddLayerTorch> clone() const { return c10::make_intrusive<MultiAddLayerTorch>(); }
 
 private:
-    AddNormParam param_;
 };
 
-} // namespace AclTransformer
 #endif
