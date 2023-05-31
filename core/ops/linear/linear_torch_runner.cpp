@@ -25,11 +25,7 @@ LinearTorchRunner::LinearTorchRunner(LinearParam &param) : Runner("LinearTorchRu
     ASD_LOG(INFO) << "LinearTorchRunner::LinearTorchRunner";
 }
 
-AsdOps::Status LinearTorchRunner::Init() { return AsdOps::Status::OkStatus(); }
-
-AsdOps::Status LinearTorchRunner::Setup(Handle &handle, VariantPack &runInfo) { return AsdOps::Status::OkStatus(); }
-
-uint64_t LinearTorchRunner::GetWorkspaceSize() { return 0; }
+LinearTorchRunner::~LinearTorchRunner() {}
 
 AsdOps::Status LinearTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
 {

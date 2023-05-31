@@ -23,9 +23,6 @@ class SelfAttentionTorchRunner : public Runner {
 public:
     SelfAttentionTorchRunner(const SelfAttentionParam &param);
     virtual ~SelfAttentionTorchRunner();
-    AsdOps::Status Init() override;
-    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
-    uint64_t GetWorkspaceSize() override;
     AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
 
 private:
