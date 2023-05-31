@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ADD_TORCH_RUNNER_H
-#define ADD_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
-#include "acltransformer/params/add_norm.h"
+#include "acltransformer/variant_pack.h"
+#include <sstream>
+#include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-class AddNormTorchRunner : public Runner {
-public:
-    AddNormTorchRunner(const AddNormParam &param);
-    virtual ~AddNormTorchRunner();
-    AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
+std::string VariantPack::ToString() const
+{
+    std::stringstream ss;
+    ss << "workspace:" << workspace << ", workspaceSize:" << workspaceSize << std::endl;
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        ss << "inTensors[" << i << "]:" << AsdOpsTensorToString(inTensors.at(i)) << std::endl;
+    }
+    for (size_t i = 0; i < outTensors.size(); ++i) {
+        ss << "outTensors[" << i << "]:" << AsdOpsTensorToString(outTensors.at(i)) << std::endl;
+    }
 
-private:
-    AddNormParam param_;
-};
-
+    return ss.str();
+}
 } // namespace AclTransformer
-#endif

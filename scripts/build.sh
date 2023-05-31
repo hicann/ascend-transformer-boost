@@ -104,7 +104,7 @@ function fn_build_asdops()
     else
         bash scripts/build.sh release --output=$THIRD_PARTY_DIR --build_config=$CODE_ROOT/scripts/asdops_build_config.json 
     fi
-    cd 3rdparty
+    cd $THIRD_PARTY_DIR
     tar -xvf asdops.tar.gz
     cd ..
 }
@@ -257,10 +257,7 @@ function fn_main()
         echo "env ASCEND_HOME_PATH not exists, build fail"
         exit -1
     fi
-    if [ -z $BISHENG_CPP_HOME ];then
-        echo "env BISHENG_CPP_HOME not exists, build fail"
-        exit -1
-    fi
+
     PYTORCH_VERSION="$(python3 -c 'import torch; print(torch.__version__)')"
     if [ ${PYTORCH_VERSION:0:5} == "1.8.0" ];then
         COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_18=ON"

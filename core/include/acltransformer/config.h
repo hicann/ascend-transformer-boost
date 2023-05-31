@@ -19,6 +19,8 @@ namespace AclTransformer {
 class Config {
 public:
     static bool IsSaveTensor();
+    static bool IsAddOpsRunnerEnable();
+    static bool IsAddNormOpsRunnerEnable();
 };
 } // namespace AclTransformer
 #endif

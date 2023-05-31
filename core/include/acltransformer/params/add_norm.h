@@ -16,6 +16,8 @@
 #ifndef ACLTRANSFOERM_PARAMS_ADDNORM_H
 #define ACLTRANSFOERM_PARAMS_ADDNORM_H
 namespace AclTransformer {
-struct AddNormParam {};
+struct AddNormParam {
+    double layerNormEps = 1e-12; // a value added to the denominator for numerical stability
+};
 } // namespace AclTransformer
 #endif
