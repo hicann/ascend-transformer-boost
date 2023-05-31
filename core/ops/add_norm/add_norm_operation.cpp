@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/add_norm_operation.h"
+#include "acltransformer/config.h"
 #include "add_norm_ops_runner_builder.h"
 #include "add_norm_torch_runner_builder.h"
 
@@ -37,5 +38,9 @@ AsdOps::Status AddNormOperation::InferShape(const std::vector<AsdOps::TensorDesc
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *AddNormOperation::FindBestRunnerBuilder(const VariantPack &variantPack) { return runnerBuilders_.at(1); }
+RunnerBuilder *AddNormOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+{
+    size_t index = Config::IsAddNormOpsRunnerEnable() ? 0 : 1;
+    return runnerBuilders_.at(index);
+}
 } // namespace AclTransformer

@@ -37,6 +37,7 @@ struct KernelGraph {
     std::vector<AsdOps::Tensor> outTensors;
     std::vector<AsdOps::Tensor> internalTensors;
     std::vector<KernelGraphNode> nodes;
+    std::string ToString() const;
 };
 
 class MemAllocationSolver;
@@ -45,21 +46,18 @@ class OpsRunner : public Runner {
 public:
     OpsRunner(const std::string &name);
     virtual ~OpsRunner();
-    AsdOps::Status Init() override;
     AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
     uint64_t GetWorkspaceSize() override;
     AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
 
 private:
     void Reset();
-    int Plan(Handle &handle, const VariantPack &variantPack);
+    bool PlanKernel(Handle &handle, const VariantPack &variantPack);
     void FillTilingData(const VariantPack &variantPack);
     void InitTensorMaxNodeMap();
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
     int64_t GetInTensorId(const AsdOps::Tensor *tensor);
     int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
-    void LogRunInfo(const AsdOps::RunInfo &kernelRunInfo);
-    void LogKernelGraph();
 
 protected:
     KernelGraph kernelGraph_;

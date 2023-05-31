@@ -114,20 +114,22 @@ void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInT
 void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor> atInTensors,
                       std::vector<at::Tensor> atOutTensors)
 {
-    AclTransformer::Handle handle;
-    handle.stream = GetCurrentStream();
-
+    AclTransformer::Handle handle = {GetCurrentStream()};
     AclTransformer::VariantPack variantPack;
-
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         variantPack.inTensors.push_back(AtTensor2AsdTensor(atInTensors.at(i)));
     }
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
         variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
     }
-    AsdOps::Status st = operation->Setup(handle, variantPack);
-    variantPack.workspaceSize = operation->GetWorkspaceSize();
 
+    AsdOps::Status st = operation->Setup(handle, variantPack);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << operation->GetName() << " Setup fail, not call execute";
+        return;
+    }
+
+    variantPack.workspaceSize = operation->GetWorkspaceSize();
     if (variantPack.workspaceSize > 0) {
         int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
         if (st != ASDRT_SUCCESS) {

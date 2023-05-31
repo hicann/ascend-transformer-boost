@@ -24,11 +24,7 @@
 namespace AclTransformer {
 AddNormTorchRunner::AddNormTorchRunner(const AddNormParam &param) : Runner("AddNormTorchRunner"), param_(param) {}
 
-AsdOps::Status AddNormTorchRunner::Init() { return AsdOps::Status::OkStatus(); }
-
-AsdOps::Status AddNormTorchRunner::Setup(Handle &handle, VariantPack &runInfo) { return AsdOps::Status::OkStatus(); }
-
-uint64_t AddNormTorchRunner::GetWorkspaceSize() { return 0; }
+AddNormTorchRunner::~AddNormTorchRunner() {}
 
 AsdOps::Status AddNormTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
 {

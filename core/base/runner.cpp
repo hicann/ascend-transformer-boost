@@ -18,5 +18,11 @@
 namespace AclTransformer {
 Runner::Runner(const std::string &name) : name_(name) {}
 
+Runner::~Runner() {}
+
 std::string Runner::GetName() const { return name_; }
+
+AsdOps::Status Runner::Setup(Handle &handle, VariantPack &runInfo) { return AsdOps::Status::OkStatus(); }
+
+uint64_t Runner::GetWorkspaceSize() { return 0; }
 } // namespace AclTransformer
