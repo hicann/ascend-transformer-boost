@@ -22,9 +22,7 @@ namespace AclTransformer {
 class LinearTorchRunner : public Runner {
 public:
     LinearTorchRunner(LinearParam &param);
-    AsdOps::Status Init() override;
-    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
-    uint64_t GetWorkspaceSize() override;
+    virtual ~LinearTorchRunner();
     AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
 
 private:

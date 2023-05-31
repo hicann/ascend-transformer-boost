@@ -16,6 +16,7 @@
 #ifndef ACLTRANSFORMER_VARIANT_PACK_H
 #define ACLTRANSFORMER_VARIANT_PACK_H
 #include <vector>
+#include <string>
 #include <asdops/tensor.h>
 
 namespace AclTransformer {
@@ -24,6 +25,7 @@ struct VariantPack {
     std::vector<AsdOps::Tensor> outTensors;
     void *workspace = nullptr;
     uint64_t workspaceSize = 0;
+    std::string ToString() const;
 };
 } // namespace AclTransformer
 #endif

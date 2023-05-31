@@ -29,15 +29,6 @@ SelfAttentionTorchRunner::SelfAttentionTorchRunner(const SelfAttentionParam &par
 
 SelfAttentionTorchRunner::~SelfAttentionTorchRunner() {}
 
-AsdOps::Status SelfAttentionTorchRunner::Init() { return AsdOps::Status::OkStatus(); }
-
-AsdOps::Status SelfAttentionTorchRunner::Setup(Handle &handle, VariantPack &runInfo)
-{
-    return AsdOps::Status::OkStatus();
-}
-
-uint64_t SelfAttentionTorchRunner::GetWorkspaceSize() { return 0; }
-
 AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
 {
     // 384, 32, 1024 -> 384, 32, 1024

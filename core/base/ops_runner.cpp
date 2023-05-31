@@ -24,11 +24,41 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-static std::string TensorToString(const AsdOps::Tensor &tensor)
+std::string KernelGraph::ToString() const
 {
-    std::ostringstream ss;
-    ss << "dtype:" << tensor.desc.dtype << ", format:" << tensor.desc.format << ", numel:" << tensor.Numel()
-       << ", dataSize:" << tensor.dataSize << ", data:" << tensor.data;
+    std::stringstream ss;
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        ss << "inTensors[" << i << "]: " << &inTensors[i] << std::endl;
+    }
+    for (size_t i = 0; i < outTensors.size(); ++i) {
+        ss << "outTensors[" << i << "]: " << &outTensors[i] << std::endl;
+    }
+    for (size_t i = 0; i < internalTensors.size(); ++i) {
+        ss << "internalTensors[" << i << "]: " << &internalTensors[i] << std::endl;
+    }
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        for (size_t j = 0; j < nodes[i].inTensors.size(); ++j) {
+            ss << "node[" << i << "] inTensors[" << j << "]: " << nodes[i].inTensors[j] << std::endl;
+        }
+        for (size_t j = 0; j < nodes[i].outTensors.size(); ++j) {
+            ss << "node[" << i << "] outTensors[" << j << "]: " << nodes[i].outTensors[j] << std::endl;
+        }
+    }
+    return ss.str();
+}
+
+std::string AsdOpsRunInfoToString(const AsdOps::RunInfo &kernelRunInfo)
+{
+    std::stringstream ss;
+    ss << "opdesc.opName:" << kernelRunInfo.GetOpDesc().opName << ", stream:" << kernelRunInfo.GetStream() << std::endl;
+
+    for (size_t i = 0; i < kernelRunInfo.GetInTensorCount(); ++i) {
+        ss << "intensors[" << i << "]: " << AsdOpsTensorToString(kernelRunInfo.GetInTensor(i)) << std::endl;
+    }
+    for (size_t i = 0; i < kernelRunInfo.GetOutTensorCount(); ++i) {
+        ss << "outtensors[" << i << "]: " << AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i)) << std::endl;
+    }
+
     return ss.str();
 }
 
@@ -42,21 +72,15 @@ OpsRunner::~OpsRunner()
     }
 }
 
-AsdOps::Status OpsRunner::Init()
-{
-    InitTensorMaxNodeMap();
-    LogKernelGraph();
-    return AsdOps::Status::OkStatus();
-}
-
 AsdOps::Status OpsRunner::Setup(Handle &handle, VariantPack &variantPack)
 {
+    InitTensorMaxNodeMap();
+    ASD_LOG(INFO) << GetName() << " Setup start, kernel graph:" << kernelGraph_.ToString();
     Reset();
 
-    int ret = Plan(handle, variantPack);
-    if (ret != 0) {
-        ASD_LOG(ERROR) << "Plan fail";
-        return AsdOps::Status::FailStatus(1, "plan fail");
+    if (!PlanKernel(handle, variantPack)) {
+        ASD_LOG(ERROR) << GetName() << " PlanKernel fail";
+        return AsdOps::Status::FailStatus(1, "PlanKernel fail");
     }
 
     FillTilingData(variantPack);
@@ -132,8 +156,7 @@ AsdOps::Status OpsRunner::Execute(Handle &handle, VariantPack &variantPack)
         auto &node = kernelGraph_.nodes.at(i);
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.runInfo;
-        ASD_LOG(INFO) << kernel->GetName() << " run start";
-        LogRunInfo(kernelRunInfo);
+        ASD_LOG(INFO) << kernel->GetName() << " run start, runinfo:" << AsdOpsRunInfoToString(kernelRunInfo);
         kernel->Run(kernelRunInfo);
         ASD_LOG(INFO) << kernel->GetName() << " run start";
     }
@@ -151,7 +174,7 @@ void OpsRunner::Reset()
     memAllocatinSolver_->Reset();
 }
 
-int OpsRunner::Plan(Handle &handle, const VariantPack &variantPack)
+bool OpsRunner::PlanKernel(Handle &handle, const VariantPack &variantPack)
 {
     kernelGraph_.inTensors = variantPack.inTensors;
     kernelGraph_.outTensors = variantPack.outTensors;
@@ -161,8 +184,8 @@ int OpsRunner::Plan(Handle &handle, const VariantPack &variantPack)
         const AsdOps::OpDesc &opDesc = node.opDesc;
         AsdOps::Operation *op = AsdOps::Ops::Instance().GetOperationByName(opDesc.opName);
         if (op == nullptr) {
-            ASD_LOG(ERROR) << "get operation by name fail, opName:" << opDesc.opName;
-            return 1;
+            ASD_LOG(ERROR) << GetName() << " get operation by name fail, opName:" << opDesc.opName;
+            return false;
         }
 
         node.runInfo.SetStream(handle.stream);
@@ -175,14 +198,14 @@ int OpsRunner::Plan(Handle &handle, const VariantPack &variantPack)
             AsdOps::Tensor tensor;
             node.runInfo.AddOutTensor(tensor);
         }
-        ASD_LOG(INFO) << opDesc.opName << " infer shape start";
-        LogRunInfo(node.runInfo);
+        ASD_LOG(INFO) << GetName() << " " << opDesc.opName
+                      << " infer shape start, runinfo:" << AsdOpsRunInfoToString(node.runInfo);
         AsdOps::Status st = op->InferShape(node.runInfo);
         if (!st.Ok()) {
             ASD_LOG(ERROR) << opDesc.opName << " infer shape fail, error:" << st.Message();
-            return 1;
+            return false;
         }
-        ASD_LOG(INFO) << opDesc.opName << " infer shape success";
+        ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " infer shape success";
 
         for (size_t i = 0; i < node.outTensors.size(); ++i) {
             AsdOps::Tensor *outTensor = node.outTensors.at(i);
@@ -194,20 +217,22 @@ int OpsRunner::Plan(Handle &handle, const VariantPack &variantPack)
             }
             runInfoOutTensor = *outTensor;
         }
-        LogRunInfo(node.runInfo);
+
+        ASD_LOG(INFO) << GetName() << " runinfo:" << AsdOpsRunInfoToString(node.runInfo);
 
         AsdOps::Tactic *tactic = op->GetBestTactic(node.runInfo);
         if (tactic == nullptr) {
-            ASD_LOG(ERROR) << opDesc.opName << " get best tactic fail";
-            return 1;
+            ASD_LOG(ERROR) << GetName() << " " << opDesc.opName << " get best tactic fail";
+            return false;
         }
 
         node.kernel = tactic->GetBestKernel(node.runInfo);
         if (node.kernel == nullptr) {
-            ASD_LOG(ERROR) << tactic->GetName() << " get best kernel fail, kernel count:" << tactic->GetKernelCount();
-            return 1;
+            ASD_LOG(ERROR) << GetName() << " " << tactic->GetName()
+                           << " get best kernel fail, kernel count:" << tactic->GetKernelCount();
+            return false;
         }
-        ASD_LOG(INFO) << opDesc.opName << " best tactic:" << tactic->GetName()
+        ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " best tactic:" << tactic->GetName()
                       << ", best kernel:" << node.kernel->GetName();
 
         auto it = maxNodeIdTensorMap_.find(nodeId);
@@ -219,10 +244,11 @@ int OpsRunner::Plan(Handle &handle, const VariantPack &variantPack)
     }
 
     intermediateSize_ = memAllocatinSolver_->GetSize();
-    ASD_LOG(INFO) << "MemAllocationSolver malloc size:" << memAllocatinSolver_->GetMallocSize()
+    ASD_LOG(INFO) << GetName() << " "
+                  << " MemAllocationSolver malloc size:" << memAllocatinSolver_->GetMallocSize()
                   << ", real size:" << intermediateSize_;
 
-    return 0;
+    return true;
 }
 
 void OpsRunner::FillTilingData(const VariantPack &variantPack)
@@ -303,38 +329,5 @@ int64_t OpsRunner::GetOutTensorId(const AsdOps::Tensor *tensor)
         }
     }
     return -1;
-}
-
-void OpsRunner::LogRunInfo(const AsdOps::RunInfo &kernelRunInfo)
-{
-    ASD_LOG(INFO) << "runinfo.opdesc.opName:" << kernelRunInfo.GetOpDesc().opName;
-    ASD_LOG(INFO) << "runinfo.stream:" << kernelRunInfo.GetStream();
-    for (size_t i = 0; i < kernelRunInfo.GetInTensorCount(); ++i) {
-        ASD_LOG(INFO) << "runinfo.intensor[" << i << "]: " << TensorToString(kernelRunInfo.GetInTensor(i));
-    }
-    for (size_t i = 0; i < kernelRunInfo.GetOutTensorCount(); ++i) {
-        ASD_LOG(INFO) << "runinfo.outtensor[" << i << "]: " << TensorToString(kernelRunInfo.GetOutTensor(i));
-    }
-}
-
-void OpsRunner::LogKernelGraph()
-{
-    for (size_t i = 0; i < kernelGraph_.inTensors.size(); ++i) {
-        ASD_LOG(INFO) << "graph inTensors[" << i << "]: " << &kernelGraph_.inTensors[i];
-    }
-    for (size_t i = 0; i < kernelGraph_.outTensors.size(); ++i) {
-        ASD_LOG(INFO) << "graph outTensors[" << i << "]: " << &kernelGraph_.outTensors[i];
-    }
-    for (size_t i = 0; i < kernelGraph_.internalTensors.size(); ++i) {
-        ASD_LOG(INFO) << "graph internalTensors[" << i << "]: " << &kernelGraph_.internalTensors[i];
-    }
-    for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
-        for (size_t j = 0; j < kernelGraph_.nodes[i].inTensors.size(); ++j) {
-            ASD_LOG(INFO) << "graph node[" << i << "] inTensors[" << j << "]: " << kernelGraph_.nodes[i].inTensors[j];
-        }
-        for (size_t j = 0; j < kernelGraph_.nodes[i].outTensors.size(); ++j) {
-            ASD_LOG(INFO) << "graph node[" << i << "] outTensors[" << j << "]: " << kernelGraph_.nodes[i].outTensors[j];
-        }
-    }
 }
 } // namespace AclTransformer

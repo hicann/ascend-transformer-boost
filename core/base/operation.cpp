@@ -39,53 +39,57 @@ std::string Operation::GetName() const { return name_; }
 
 AsdOps::Status Operation::Setup(Handle &handle, VariantPack &variantPack)
 {
+    ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString();
     if (runner_ == nullptr) {
         runner_ = CreateBestRunner(variantPack);
-        if (runner_) {
-            AsdOps::Status ret = runner_->Init();
-            if (!ret.Ok()) {
-                ASD_LOG(ERROR) << runner_->GetName() << " init fail";
-                return ret;
-            }
-        } else {
-            ASD_LOG(ERROR) << GetName() << " CreateBestRunner fail";
-        }
+        ASD_LOG_IF(runner_ == nullptr, ERROR) << GetName() << " CreateBestRunner fail";
+    }
+    if (!runner_) {
+        return AsdOps::Status::FailStatus(1, "create best runner fail");
     }
 
-    if (runner_) {
-        return runner_->Setup(handle, variantPack);
+    ASD_LOG(INFO) << runner_->GetName() << " Execute start";
+    AsdOps::Status st = runner_->Setup(handle, variantPack);
+    ASD_LOG(INFO) << runner_->GetName() << " Execute end, result:" << st.Message();
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << GetName() << " Setup fail, error:" << st.Message();
+        return st;
     }
-    return AsdOps::Status::FailStatus(1, "runner is null");
+
+    ASD_LOG(INFO) << GetName() << " Setup success";
+    return AsdOps::Status::OkStatus();
 }
 
 uint64_t Operation::GetWorkspaceSize() { return runner_ ? runner_->GetWorkspaceSize() : 0; }
 
 AsdOps::Status Operation::Execute(Handle &handle, VariantPack &variantPack)
 {
+    ASD_LOG(INFO) << GetName() << " Execute variantPack:" << variantPack.ToString();
     if (handle.stream == nullptr) {
-        ASD_LOG(ERROR) << "handle.stream is null";
+        ASD_LOG(ERROR) << GetName() << " handle.stream is null";
         return AsdOps::Status::FailStatus(1, "handle.stream is null");
     }
     if (!runner_) {
-        ASD_LOG(ERROR) << "runner is null";
+        ASD_LOG(ERROR) << GetName() << " runner is null";
         return AsdOps::Status::FailStatus(1, "runner is null");
     }
 
-    ASD_LOG(INFO) << runner_->GetName() << " execute start";
+    ASD_LOG(INFO) << runner_->GetName() << " Execute start";
     AsdOps::Status st = runner_->Execute(handle, variantPack);
+    ASD_LOG(INFO) << runner_->GetName() << " Execute end, result:" << st.Message();
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << runner_->GetName() << " execute fail, error:" << st.Message();
+        ASD_LOG(ERROR) << GetName() << " execute fail, error:" << st.Message();
         return st;
     }
 
-    ASD_LOG(INFO) << runner_->GetName() << " execute success";
-    ASD_LOG(INFO) << "AsdRtStreamSynchronize stream:" << handle.stream;
+    ASD_LOG(INFO) << GetName() << " AsdRtStreamSynchronize stream:" << handle.stream;
     int ret = AsdRtStreamSynchronize(handle.stream);
     if (ret != 0) {
-        ASD_LOG(ERROR) << "AsdRtStreamSynchronize fail";
+        ASD_LOG(ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
         return AsdOps::Status::FailStatus(1, "AsdRtStreamSynchronize fail");
     }
 
+    ASD_LOG(INFO) << GetName() << " Execute success";
     return AsdOps::Status::OkStatus();
 }
 
@@ -95,7 +99,7 @@ Runner *Operation::CreateBestRunner(const VariantPack &variantPack)
     if (runnerBuilder) {
         return runnerBuilder->Build();
     } else {
-        ASD_LOG(ERROR) << "not find best runner builder";
+        ASD_LOG(ERROR) << GetName() << " not find best runner builder";
         return nullptr;
     }
 }

@@ -23,6 +23,12 @@ class AddNormOpsRunner : public OpsRunner {
 public:
     AddNormOpsRunner(const AddNormParam &param);
     virtual ~AddNormOpsRunner();
+    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
+    // uint64_t GetWorkspaceSize() override;
+    // AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
+
+private:
+    bool CalcLayerNormTensor(VariantPack &variantPack, int64_t &beginDim);
 
 private:
     AddNormParam param_;

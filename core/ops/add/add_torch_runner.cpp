@@ -22,11 +22,7 @@
 namespace AclTransformer {
 AddTorchRunner::AddTorchRunner(const AddParam &param) : Runner("AddTorchRunner"), param_(param) {}
 
-AsdOps::Status AddTorchRunner::Init() { return AsdOps::Status::OkStatus(); }
-
-AsdOps::Status AddTorchRunner::Setup(Handle &handle, VariantPack &runInfo) { return AsdOps::Status::OkStatus(); }
-
-uint64_t AddTorchRunner::GetWorkspaceSize() { return 0; }
+AddTorchRunner::~AddTorchRunner() {}
 
 AsdOps::Status AddTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
 {
