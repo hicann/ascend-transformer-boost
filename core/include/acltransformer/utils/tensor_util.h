@@ -30,5 +30,6 @@ at::Tensor AsdOpsTensor2AtCpuTensor(const AsdOps::Tensor &asdTensor);
 std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor);
 std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
 void SaveVariantPack(const VariantPack &variantPack, const std::string &dirPath);
+bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
 } // namespace AclTransformer
 #endif

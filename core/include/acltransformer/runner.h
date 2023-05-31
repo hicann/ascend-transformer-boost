@@ -16,20 +16,19 @@
 #ifndef ACLTRANSFORMER_RUNNER_H
 #define ACLTRANSFORMER_RUNNER_H
 #include <string>
+#include <asdops/utils/status/status.h>
 #include "acltransformer/handle.h"
 #include "acltransformer/variant_pack.h"
-#include "asdops/utils/status/status.h"
 
 namespace AclTransformer {
 class Runner {
 public:
     Runner(const std::string &name);
-    virtual ~Runner() = default;
-    virtual AsdOps::Status Init() = 0;
-    virtual AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) = 0;
-    virtual uint64_t GetWorkspaceSize() = 0;
-    virtual AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) = 0;
+    virtual ~Runner();
     std::string GetName() const;
+    virtual AsdOps::Status Setup(Handle &handle, VariantPack &runInfo);
+    virtual uint64_t GetWorkspaceSize();
+    virtual AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) = 0;
 
 private:
     std::string name_;

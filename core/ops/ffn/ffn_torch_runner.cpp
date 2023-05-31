@@ -26,11 +26,7 @@ FfnTorchRunner::FfnTorchRunner(const FfnParam &param) : Runner("FfnTorchRunner")
     ASD_LOG(INFO) << "FfnTorchRunner::FfnTorchRunner";
 }
 
-AsdOps::Status FfnTorchRunner::Init() { return AsdOps::Status::OkStatus(); }
-
-AsdOps::Status FfnTorchRunner::Setup(Handle &handle, VariantPack &runInfo) { return AsdOps::Status::OkStatus(); }
-
-uint64_t FfnTorchRunner::GetWorkspaceSize() { return 0; }
+FfnTorchRunner::~FfnTorchRunner() {}
 
 AsdOps::Status FfnTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
 {

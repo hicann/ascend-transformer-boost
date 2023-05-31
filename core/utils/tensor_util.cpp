@@ -153,4 +153,9 @@ std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc)
 
     return ss.str();
 }
+
+bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB)
+{
+    return tensorDescA.dims == tensorDescB.dims && tensorDescA.dtype == tensorDescB.dtype;
+}
 } // namespace AclTransformer
