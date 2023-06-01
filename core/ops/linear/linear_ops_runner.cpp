@@ -23,6 +23,12 @@ namespace AclTransformer {
 LinearOpsRunner::LinearOpsRunner(LinearParam &param) : OpsRunner("LinearOpsRunner"), param_(param)
 {
     ASD_LOG(INFO) << "LinearOperation::LinearOperation called";
+}
+
+LinearOpsRunner::~LinearOpsRunner() {}
+
+AsdOps::Status LinearOpsRunner::Setup(VariantPack &variantPack)
+{
     kernelGraph_.inTensors.resize(3);
     AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[0];
     AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[1];
@@ -64,7 +70,7 @@ LinearOpsRunner::LinearOpsRunner(LinearParam &param) : OpsRunner("LinearOpsRunne
     addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
     addNode.inTensors = {&transdata2ResultTensor, &biasTensor};
     addNode.outTensors = {&resultTensor};
-}
 
-LinearOpsRunner::~LinearOpsRunner() {}
+    return OpsRunner::Setup(variantPack);
+}
 } // namespace AclTransformer

@@ -33,5 +33,7 @@ void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tens
                       std::vector<at::Tensor> atOutTensors);
 void ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransformer::VariantPack &variantPack);
 std::string TensorToString(const AsdOps::Tensor &tensor);
+void BuildVariantPack(const std::vector<torch::Tensor> &inTensors, const std::vector<torch::Tensor> &outTensors,
+                      AclTransformer::VariantPack &variantPack);
 
 #endif

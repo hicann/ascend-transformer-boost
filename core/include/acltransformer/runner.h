@@ -26,9 +26,9 @@ public:
     Runner(const std::string &name);
     virtual ~Runner();
     std::string GetName() const;
-    virtual AsdOps::Status Setup(Handle &handle, VariantPack &runInfo);
+    virtual AsdOps::Status Setup(VariantPack &variantPack);
     virtual uint64_t GetWorkspaceSize();
-    virtual AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) = 0;
+    virtual AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
 
 private:
     std::string name_;

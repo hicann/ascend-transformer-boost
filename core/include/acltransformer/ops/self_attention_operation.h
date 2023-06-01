@@ -24,7 +24,7 @@ class SelfAttentionOperation : public Operation {
 public:
     SelfAttentionOperation(const SelfAttentionParam &param);
     virtual ~SelfAttentionOperation();
-    AsdOps::Status InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
 
 protected:

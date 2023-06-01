@@ -26,17 +26,17 @@
 namespace AclTransformer {
 struct KernelGraphNode {
     AsdOps::OpDesc opDesc;
-    std::vector<AsdOps::Tensor *> inTensors;
-    std::vector<AsdOps::Tensor *> outTensors;
+    AsdOps::SVector<AsdOps::Tensor *> inTensors;
+    AsdOps::SVector<AsdOps::Tensor *> outTensors;
     AsdOps::Kernel *kernel = nullptr;
-    AsdOps::RunInfo runInfo;
+    AsdOps::RunInfo kernelRunInfo;
 };
 
 struct KernelGraph {
-    std::vector<AsdOps::Tensor> inTensors;
-    std::vector<AsdOps::Tensor> outTensors;
-    std::vector<AsdOps::Tensor> internalTensors;
-    std::vector<KernelGraphNode> nodes;
+    AsdOps::SVector<AsdOps::Tensor> inTensors;
+    AsdOps::SVector<AsdOps::Tensor> outTensors;
+    AsdOps::SVector<AsdOps::Tensor> internalTensors;
+    AsdOps::SVector<KernelGraphNode> nodes;
     std::string ToString() const;
 };
 
@@ -46,13 +46,13 @@ class OpsRunner : public Runner {
 public:
     OpsRunner(const std::string &name);
     virtual ~OpsRunner();
-    AsdOps::Status Setup(Handle &handle, VariantPack &runInfo) override;
+    AsdOps::Status Setup(VariantPack &variantPack) override;
     uint64_t GetWorkspaceSize() override;
     AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
 
 private:
     void Reset();
-    bool PlanKernel(Handle &handle, const VariantPack &variantPack);
+    bool PlanKernel(const VariantPack &variantPack);
     void FillTilingData(const VariantPack &variantPack);
     void InitTensorMaxNodeMap();
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
@@ -65,7 +65,6 @@ protected:
     std::vector<char> tilingData_;
     std::vector<uint64_t> kernelTilingSizes_;
     uint64_t workspaceSize_ = 0;
-
     std::map<AsdOps::Tensor *, uint64_t> tensorMaxNodeIdMap_;
     std::map<uint64_t, std::set<AsdOps::Tensor *>> maxNodeIdTensorMap_;
     MemAllocationSolver *memAllocatinSolver_ = nullptr;

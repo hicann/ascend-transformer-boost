@@ -27,19 +27,19 @@ LinearTorchRunner::LinearTorchRunner(LinearParam &param) : Runner("LinearTorchRu
 
 LinearTorchRunner::~LinearTorchRunner() {}
 
-AsdOps::Status LinearTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
+AsdOps::Status LinearTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
 {
-    if (runInfo.inTensors.size() != 3) {
+    if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "LinearTorchRunner inTensor num error!");
     }
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(runInfo.inTensors[0]);
-    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensorCache(runInfo.inTensors[1]);
-    at::Tensor atInTensorWeightias = AsdOpsTensor2AtTensorCache(runInfo.inTensors[2]);
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensorCache(variantPack.inTensors[1]);
+    at::Tensor atInTensorWeightias = AsdOpsTensor2AtTensorCache(variantPack.inTensors[2]);
     at::Tensor outputTensor = at::linear(atInTensorA, atInTensorWeight, atInTensorWeightias).contiguous();
-    int ret = AsdRtMemCopyAsync(runInfo.outTensors[0].data, runInfo.outTensors[0].dataSize,
-                                outputTensor.storage().data_ptr().get(), runInfo.outTensors[0].dataSize,
+    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
+                                outputTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
                                 ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail";
+    ASD_LOG_IF(ret != 0, ERROR) << GetName() << " AsdRtMemCopy fail";
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

@@ -15,6 +15,7 @@
  */
 #ifndef ACLTRANSFORMER_PLANBUILDER_H
 #define ACLTRANSFORMER_PLANBUILDER_H
+#include <asdops/utils/status/status.h>
 #include "acltransformer/handle.h"
 #include "acltransformer/variant_pack.h"
 #include "acltransformer/operation_graph.h"
@@ -23,10 +24,10 @@
 namespace AclTransformer {
 class PlanBuilder {
 public:
-    Plan *Build(const VariantPack &runInfo, const OperationGraph &opGraph);
+    AsdOps::Status Build(const VariantPack &variantPack, const OperationGraph &opGraph, Plan &plan);
 
 private:
-    Plan *BuildImpl(const VariantPack &runInfo, const OperationGraph &opGraph);
+    AsdOps::Status BuildImpl(const VariantPack &variantPack, const OperationGraph &opGraph, Plan &plan);
     void LogOperationGraph(const OperationGraph &opGraph);
     void LogRunnerGraph(const RunnerGraph &runnerGraph);
 };
