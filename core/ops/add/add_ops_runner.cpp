@@ -31,19 +31,40 @@ AsdOps::Status AddOpsRunner::Setup(VariantPack &variantPack)
 {
     if (param_.scale == 1) {
         kernelGraph_.inTensors.resize(2);
-        AsdOps::Tensor &aTensor = kernelGraph_.inTensors[0];
-        AsdOps::Tensor &bTensor = kernelGraph_.inTensors[1];
+        AsdOps::Tensor &aTensor = kernelGraph_.inTensors.at(0);
+        AsdOps::Tensor &bTensor = kernelGraph_.inTensors.at(1);
         kernelGraph_.outTensors.resize(1);
-        AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[0];
+        AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors.at(0);
 
         kernelGraph_.nodes.resize(1);
-        auto &addNode = kernelGraph_.nodes[0];
+        auto &addNode = kernelGraph_.nodes.at(0);
 
         addNode.opDesc = {0, "BroadcastOperation",
                           AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
         addNode.inTensors = {&aTensor, &bTensor};
         addNode.outTensors = {&operationOutTensor};
     } else {
+        kernelGraph_.inTensors.resize(2);
+        AsdOps::Tensor &aTensor = kernelGraph_.inTensors.at(0);
+        AsdOps::Tensor &bTensor = kernelGraph_.inTensors.at(1);
+        kernelGraph_.outTensors.resize(1);
+        AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors.at(0);
+        kernelGraph_.internalTensors.resize(1);
+        AsdOps::Tensor &mulsOutTensor = kernelGraph_.internalTensors.at(0);
+
+        kernelGraph_.nodes.resize(2);
+        auto &mulsNode = kernelGraph_.nodes.at(0);
+        auto &addNode = kernelGraph_.nodes.at(1);
+
+        mulsNode.opDesc = {0, "ElewiseOperation",
+                           AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.scale})};
+        mulsNode.inTensors = {&aTensor};
+        mulsNode.outTensors = {&mulsOutTensor};
+
+        addNode.opDesc = {0, "BroadcastOperation",
+                          AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
+        addNode.inTensors = {&mulsOutTensor, &bTensor};
+        addNode.outTensors = {&operationOutTensor};
     }
     return AsdOps::Status::OkStatus();
 }
