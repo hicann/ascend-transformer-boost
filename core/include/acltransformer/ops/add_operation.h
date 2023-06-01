@@ -23,7 +23,7 @@ class AddOperation : public Operation {
 public:
     AddOperation(const AddParam &param);
     ~AddOperation();
-    AsdOps::Status InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
 
 protected:

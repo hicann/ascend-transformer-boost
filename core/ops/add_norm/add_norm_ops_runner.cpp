@@ -28,7 +28,7 @@ AddNormOpsRunner::AddNormOpsRunner(const AddNormParam &param) : OpsRunner("AddNo
 
 AddNormOpsRunner::~AddNormOpsRunner() {}
 
-AsdOps::Status AddNormOpsRunner::Setup(Handle &handle, VariantPack &variantPack)
+AsdOps::Status AddNormOpsRunner::Setup(VariantPack &variantPack)
 {
     kernelGraph_.inTensors.resize(4);
     AsdOps::Tensor &xTensor = kernelGraph_.inTensors.at(0);
@@ -64,7 +64,7 @@ AsdOps::Status AddNormOpsRunner::Setup(Handle &handle, VariantPack &variantPack)
     layerNormNode.inTensors = {&addNodeResultTensor, &weightTensor, &biasTensor};
     layerNormNode.outTensors = {&resultTensor, &layerNormMeanTensor, &layerNormVarianceTensor};
 
-    return OpsRunner::Setup(handle, variantPack);
+    return OpsRunner::Setup(variantPack);
 }
 
 // uint64_t AddNormOpsRunner::GetWorkspaceSize()

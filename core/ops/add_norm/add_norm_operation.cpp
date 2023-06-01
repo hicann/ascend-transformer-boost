@@ -26,15 +26,15 @@ AddNormOperation::AddNormOperation(const AddNormParam &param) : Operation("AddNo
 
 AddNormOperation::~AddNormOperation() {}
 
-AsdOps::Status AddNormOperation::InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+AsdOps::Status AddNormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                             std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
-    if (inTensorDescs.size() != 4) {
+    if (inTensors.size() != 4) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 4");
     }
 
     outTensorDescs.resize(1);
-    outTensorDescs.at(0) = inTensorDescs.at(0);
+    outTensorDescs.at(0) = inTensors.at(0).desc;
     return AsdOps::Status::OkStatus();
 }
 

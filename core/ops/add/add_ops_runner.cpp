@@ -23,19 +23,28 @@ namespace AclTransformer {
 AddOpsRunner::AddOpsRunner(const AddParam &param) : OpsRunner("AddOpsRunner"), param_(param)
 {
     ASD_LOG(INFO) << "AddOperation::AddOperation called";
-    kernelGraph_.inTensors.resize(2);
-    AsdOps::Tensor &aTensor = kernelGraph_.inTensors[0];
-    AsdOps::Tensor &bTensor = kernelGraph_.inTensors[1];
-    kernelGraph_.outTensors.resize(1);
-    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[0];
-
-    kernelGraph_.nodes.resize(1);
-    auto &addNode = kernelGraph_.nodes[0];
-
-    addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
-    addNode.inTensors = {&aTensor, &bTensor};
-    addNode.outTensors = {&operationOutTensor};
 }
 
 AddOpsRunner::~AddOpsRunner() {}
+
+AsdOps::Status AddOpsRunner::Setup(VariantPack &variantPack)
+{
+    if (param_.scale == 1) {
+        kernelGraph_.inTensors.resize(2);
+        AsdOps::Tensor &aTensor = kernelGraph_.inTensors[0];
+        AsdOps::Tensor &bTensor = kernelGraph_.inTensors[1];
+        kernelGraph_.outTensors.resize(1);
+        AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[0];
+
+        kernelGraph_.nodes.resize(1);
+        auto &addNode = kernelGraph_.nodes[0];
+
+        addNode.opDesc = {0, "BroadcastOperation",
+                          AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
+        addNode.inTensors = {&aTensor, &bTensor};
+        addNode.outTensors = {&operationOutTensor};
+    } else {
+    }
+    return AsdOps::Status::OkStatus();
+}
 } // namespace AclTransformer

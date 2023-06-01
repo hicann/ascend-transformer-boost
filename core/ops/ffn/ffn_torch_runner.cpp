@@ -28,17 +28,17 @@ FfnTorchRunner::FfnTorchRunner(const FfnParam &param) : Runner("FfnTorchRunner")
 
 FfnTorchRunner::~FfnTorchRunner() {}
 
-AsdOps::Status FfnTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
+AsdOps::Status FfnTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
 {
-    if (runInfo.inTensors.size() != 3) {
+    if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "FfnTorchRunner inTensor num error!");
     }
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(runInfo.inTensors[0]);
-    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensorCache(runInfo.inTensors[1]);
-    at::Tensor atInTensorBias = AsdOpsTensor2AtTensorCache(runInfo.inTensors[2]);
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensorCache(variantPack.inTensors[1]);
+    at::Tensor atInTensorBias = AsdOpsTensor2AtTensorCache(variantPack.inTensors[2]);
     at::Tensor outTensor = at::gelu(at::linear(atInTensorA, atInTensorWeight, atInTensorBias)).contiguous();
-    int ret = AsdRtMemCopyAsync(runInfo.outTensors[0].data, runInfo.outTensors[0].dataSize,
-                                outTensor.storage().data_ptr().get(), runInfo.outTensors[0].dataSize,
+    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
+                                outTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
                                 ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
 
     ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail";

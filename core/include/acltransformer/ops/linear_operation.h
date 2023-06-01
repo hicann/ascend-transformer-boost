@@ -24,7 +24,7 @@ class LinearOperation : public Operation {
 public:
     LinearOperation(const LinearParam &param);
     virtual ~LinearOperation();
-    AsdOps::Status InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
     bool IsConsistent(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
                       std::vector<AsdOps::TensorDesc> &outTensorDescs) const;
