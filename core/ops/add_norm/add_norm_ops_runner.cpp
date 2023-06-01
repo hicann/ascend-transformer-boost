@@ -67,27 +67,6 @@ AsdOps::Status AddNormOpsRunner::Setup(VariantPack &variantPack)
     return OpsRunner::Setup(variantPack);
 }
 
-// uint64_t AddNormOpsRunner::GetWorkspaceSize()
-// {
-//     const AsdOps::Tensor &layerNormMeanTensor = kernelGraph_.internalTensors.at(1);
-//     const AsdOps::Tensor &layerNormVarianceTensor = kernelGraph_.internalTensors.at(2);
-//     return layerNormMeanTensor.dataSize + layerNormVarianceTensor.dataSize + OpsRunner::GetWorkspaceSize();
-// }
-
-// AsdOps::Status AddNormOpsRunner::Execute(Handle &handle, VariantPack &variantPack)
-// {
-//     AsdOps::Tensor &layerNormMeanTensor = kernelGraph_.internalTensors.at(1);
-//     AsdOps::Tensor &layerNormVarianceTensor = kernelGraph_.internalTensors.at(2);
-//     layerNormMeanTensor.data = variantPack.workspace;
-//     layerNormVarianceTensor.data = variantPack.workspace + layerNormMeanTensor.dataSize;
-
-//     uint64_t ofset = layerNormMeanTensor.dataSize + layerNormVarianceTensor.dataSize;
-//     VariantPack internalVarPack = variantPack;
-//     internalVarPack.workspace += ofset;
-//     internalVarPack.workspaceSize -= ofset;
-//     return OpsRunner::Execute(handle, internalVarPack);
-// }
-
 bool AddNormOpsRunner::CalcLayerNormTensor(VariantPack &variantPack, int64_t &beginDim)
 {
     AsdOps::TensorDesc inputDesc;
@@ -111,8 +90,6 @@ bool AddNormOpsRunner::CalcLayerNormTensor(VariantPack &variantPack, int64_t &be
     const int axis = inputDesc.dims.size() - weightTensor.desc.dims.size();
     const int64_t M =
         std::accumulate(inputDesc.dims.begin(), inputDesc.dims.begin() + axis, 1LL, std::multiplies<int64_t>());
-    const int64_t N =
-        std::accumulate(inputDesc.dims.begin() + axis, inputDesc.dims.end(), 1LL, std::multiplies<int64_t>());
 
     ASD_LOG(INFO) << GetName() << " M:" << M;
     if (M < 0) {
