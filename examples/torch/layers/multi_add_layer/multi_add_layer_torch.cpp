@@ -37,12 +37,7 @@ void MultiAddLayerTorch::Test() { ASD_LOG(INFO) << "MultiAddLayerTorch::Test cal
 void MultiAddLayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors)
 {
     AclTransformer::VariantPack variantPack;
-    for (size_t i = 0; i < inTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(inTensors.at(i)));
-    }
-    for (size_t i = 0; i < outTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(outTensors.at(i)));
-    }
+    BuildVariantPack(inTensors, outTensors, variantPack);
 
     AclTransformer::AddParam addParam;
     AclTransformer::AddOperation add0Op(addParam);

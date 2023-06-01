@@ -87,7 +87,7 @@ void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInT
         variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
     }
 
-    runner->Setup(handle, variantPack);
+    runner->Setup(variantPack);
     variantPack.workspaceSize = runner->GetWorkspaceSize();
 
     if (variantPack.workspaceSize > 0) {
@@ -123,70 +123,77 @@ void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tens
         variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
     }
 
-    AsdOps::Status st = operation->Setup(handle, variantPack);
+    AsdOps::Status st = operation->Setup(variantPack);
     if (!st.Ok()) {
         ASD_LOG(ERROR) << operation->GetName() << " Setup fail, not call execute";
         return;
     }
 
     variantPack.workspaceSize = operation->GetWorkspaceSize();
+    ASD_LOG(ERROR) << operation->GetName() << " GetWorkspaceSize:" << variantPack.workspaceSize;
     if (variantPack.workspaceSize > 0) {
         int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
         if (st != ASDRT_SUCCESS) {
-            ASD_LOG(ERROR) << "malloc device memory fail";
+            ASD_LOG(ERROR) << operation->GetName() << " AsdRtMemMallocDevice fail";
             return;
         }
     }
 
     st = operation->Execute(handle, variantPack);
     ASD_LOG_IF(!st.Ok(), ERROR) << operation->GetName() << " execute fail, error:" << st.Message();
+
     static int64_t opId = 0;
     if (AclTransformer::Config::IsSaveTensor()) {
         std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName();
         SaveVariantPack(variantPack, dirPath);
-        ASD_LOG(INFO) << "Operation SaveVariantPack " << dirPath;
+        ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
 
     if (variantPack.workspace != nullptr) {
         AsdRtMemFreeDevice(variantPack.workspace);
-        ASD_LOG(INFO) << "AsdRtMemFreeDevice free:" << variantPack.workspace
-                      << ", variantPack.workspaceSize:" << variantPack.workspaceSize;
+        ASD_LOG(INFO) << operation->GetName() << " AsdRtMemFreeDevice free:" << variantPack.workspace;
         variantPack.workspace = nullptr;
         variantPack.workspaceSize = 0;
     }
-    ASD_LOG(INFO) << "runInfo.outTensors[0].data:" << variantPack.outTensors[0].data
-                  << ", atOutTensors.data:" << atOutTensors[0].data_ptr();
 }
 
 void ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransformer::VariantPack &variantPack)
 {
-    AclTransformer::Handle handle;
-    handle.stream = GetCurrentStream();
+    AclTransformer::Handle handle = {GetCurrentStream()};
 
     AclTransformer::PlanBuilder planBuilder;
-    AclTransformer::Plan *plan = planBuilder.Build(variantPack, opGraph);
-    if (plan == nullptr) {
-        ASD_LOG(ERROR) << "build plan fail";
+    AclTransformer::Plan plan;
+    AsdOps::Status st = planBuilder.Build(variantPack, opGraph, plan);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << opGraph.name << " PlanBuilder build plan fail, error:" << st.Message();
         return;
     }
 
-    plan->Setup(handle, variantPack);
-    variantPack.workspaceSize = plan->GetWorkspaceSize();
+    st = plan.Setup(handle, variantPack);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << opGraph.name << " Plan Setup fail error:" << st.Message();
+        return;
+    }
+
+    variantPack.workspaceSize = plan.GetWorkspaceSize();
+    ASD_LOG(INFO) << opGraph.name << " Plan GetWorkspaceSize:" << variantPack.workspaceSize;
+
     if (variantPack.workspaceSize > 0) {
-        ASD_LOG(INFO) << "AsdRtMemMallocDevice variantPack.workspaceSize:" << variantPack.workspaceSize;
+        ASD_LOG(INFO) << opGraph.name
+                      << " AsdRtMemMallocDevice variantPack.workspaceSize:" << variantPack.workspaceSize;
         int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
         if (st != ASDRT_SUCCESS) {
-            ASD_LOG(ERROR) << "malloc device memory fail";
+            ASD_LOG(ERROR) << opGraph.name << " AsdRtMemMallocDevice fail";
             return;
         }
     }
 
-    plan->Execute(handle, variantPack);
-    delete plan;
+    st = plan.Execute(handle, variantPack);
+    ASD_LOG_IF(!st.Ok(), ERROR) << opGraph.name << " Plan Execute fail, error:" << st.Message();
+
     if (variantPack.workspace != nullptr) {
         AsdRtMemFreeDevice(variantPack.workspace);
-        ASD_LOG(INFO) << "AsdRtMemFreeDevice free:" << variantPack.workspace
-                      << ", variantPack.workspaceSize:" << variantPack.workspaceSize;
+        ASD_LOG(INFO) << opGraph.name << " AsdRtMemFreeDevice free:" << variantPack.workspace;
         variantPack.workspace = nullptr;
         variantPack.workspaceSize = 0;
     }
@@ -225,4 +232,15 @@ std::string TensorToString(const AsdOps::Tensor &tensor)
 
     ss << "]";
     return ss.str();
+}
+
+void BuildVariantPack(const std::vector<torch::Tensor> &inTensors, const std::vector<torch::Tensor> &outTensors,
+                      AclTransformer::VariantPack &variantPack)
+{
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        variantPack.inTensors.push_back(AtTensor2AsdTensor(inTensors.at(i)));
+    }
+    for (size_t i = 0; i < outTensors.size(); ++i) {
+        variantPack.outTensors.push_back(AtTensor2AsdTensor(outTensors.at(i)));
+    }
 }

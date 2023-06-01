@@ -39,7 +39,7 @@ Plan::~Plan()
     }
 }
 
-AsdOps::Status Plan::Setup(Handle handle, const VariantPack &runInfo)
+AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 {
     ASD_LOG(INFO) << "Plan::Setup start";
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
@@ -51,17 +51,14 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &runInfo)
 
         node.variantPack.outTensors.resize(node.outTensors.size());
 
-        std::vector<AsdOps::TensorDesc> inTensorDescs;
-        GetTensorDescs(node.variantPack.inTensors, inTensorDescs);
-        std::vector<AsdOps::TensorDesc> outTensorDescs;
-
         ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " infer shape start";
-        for (size_t i = 0; i < inTensorDescs.size(); ++i) {
-            ASD_LOG(INFO) << "Plan intensor[" << i << "] " << AsdOpsTensorDescToString(inTensorDescs.at(i));
+        for (size_t i = 0; i < node.variantPack.inTensors.size(); ++i) {
+            ASD_LOG(INFO) << "Plan intensor[" << i << "] " << AsdOpsTensorToString(node.variantPack.inTensors.at(i));
         }
-        node.operation->InferShape(inTensorDescs, outTensorDescs);
+        std::vector<AsdOps::TensorDesc> outTensorDescs;
+        node.operation->InferShape(node.variantPack.inTensors, outTensorDescs);
         for (size_t i = 0; i < outTensorDescs.size(); ++i) {
-            ASD_LOG(INFO) << "Plan outTensor[" << i << "] " << AsdOpsTensorDescToString(outTensorDescs.at(i));
+            ASD_LOG(INFO) << "Plan outTensorDescs[" << i << "] " << AsdOpsTensorDescToString(outTensorDescs.at(i));
         }
         ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " infer shape end";
 
@@ -92,7 +89,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &runInfo)
 
     for (auto &node : runnerGraph_.nodes) {
         ASD_LOG(INFO) << "Plan call " << node.runner->GetName() << " setup ";
-        node.runner->Setup(handle, node.variantPack);
+        node.runner->Setup(node.variantPack);
         uint64_t runnerWorkspaceSize = node.runner->GetWorkspaceSize();
         ASD_LOG(INFO) << "Plan get " << node.runner->GetName() << " workspace size:" << runnerWorkspaceSize;
         workspaceSize_ = std::max(runnerWorkspaceSize, workspaceSize_);

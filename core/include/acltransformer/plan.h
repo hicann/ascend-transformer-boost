@@ -17,6 +17,7 @@
 #define ACLTRANSFORMER_PLAN_H
 #include <map>
 #include <set>
+#include <asdops/utils/svector/svector.h>
 #include "acltransformer/runner.h"
 #include "acltransformer/operation.h"
 
@@ -24,17 +25,17 @@ namespace AclTransformer {
 struct RunnerGraphNode {
     Operation *operation = nullptr;
     Runner *runner = nullptr;
-    std::vector<AsdOps::Tensor *> inTensors;
-    std::vector<AsdOps::Tensor *> outTensors;
+    AsdOps::SVector<AsdOps::Tensor *> inTensors;
+    AsdOps::SVector<AsdOps::Tensor *> outTensors;
     VariantPack variantPack;
 };
 
 struct RunnerGraph {
     std::string name;
-    std::vector<AsdOps::Tensor> inTensors;
-    std::vector<AsdOps::Tensor> outTensors;
-    std::vector<AsdOps::Tensor> internalTensors;
-    std::vector<RunnerGraphNode> nodes;
+    AsdOps::SVector<AsdOps::Tensor> inTensors;
+    AsdOps::SVector<AsdOps::Tensor> outTensors;
+    AsdOps::SVector<AsdOps::Tensor> internalTensors;
+    AsdOps::SVector<RunnerGraphNode> nodes;
     std::string ToString() const;
 };
 

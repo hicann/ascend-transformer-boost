@@ -16,6 +16,8 @@
 #ifndef ACLTRANSFOERM_PARAMS_ADD_H
 #define ACLTRANSFOERM_PARAMS_ADD_H
 namespace AclTransformer {
-struct AddParam {};
+struct AddParam {
+    float scale = 1;
+};
 } // namespace AclTransformer
 #endif

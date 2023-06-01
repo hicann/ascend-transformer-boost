@@ -24,7 +24,7 @@ class FfnOperation : public Operation {
 public:
     FfnOperation(const FfnParam &param);
     virtual ~FfnOperation();
-    AsdOps::Status InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
     bool IsConsistent(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
                       std::vector<AsdOps::TensorDesc> &outTensorDescs) const;

@@ -21,6 +21,12 @@ public:
     static bool IsSaveTensor();
     static bool IsAddOpsRunnerEnable();
     static bool IsAddNormOpsRunnerEnable();
+    static bool IsLinearOpsRunnerEnable();
+    static bool IsFfnOpsRunnerEnable();
+    static bool IsSelfAttentionEnable();
+
+private:
+    static bool IsEnable(const char *env);
 };
 } // namespace AclTransformer
 #endif
