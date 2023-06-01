@@ -26,22 +26,22 @@ AddNormTorchRunner::AddNormTorchRunner(const AddNormParam &param) : Runner("AddN
 
 AddNormTorchRunner::~AddNormTorchRunner() {}
 
-AsdOps::Status AddNormTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
+AsdOps::Status AddNormTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
 {
-    if (runInfo.inTensors.size() != 4) {
+    if (variantPack.inTensors.size() != 4) {
         return AsdOps::Status::FailStatus(1, "AddNormTorchRunner inTensor num error!");
     }
 
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(runInfo.inTensors[0]);
-    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(runInfo.inTensors[1]);
-    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensorCache(runInfo.inTensors[2]);
-    at::Tensor atInTensorBias = AsdOpsTensor2AtTensorCache(runInfo.inTensors[3]);
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
+    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(variantPack.inTensors[1]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensorCache(variantPack.inTensors[2]);
+    at::Tensor atInTensorBias = AsdOpsTensor2AtTensorCache(variantPack.inTensors[3]);
     at::Tensor addResultTensor = at::add(atInTensorA, atInTensorB);
     const double eps = 1e-12;
     at::Tensor outputTensor =
         at::layer_norm(addResultTensor, atInTensorWeight.sizes(), atInTensorWeight, atInTensorBias, eps).contiguous();
-    int ret = AsdRtMemCopyAsync(runInfo.outTensors[0].data, runInfo.outTensors[0].dataSize,
-                                outputTensor.storage().data_ptr().get(), runInfo.outTensors[0].dataSize,
+    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
+                                outputTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
                                 ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
     ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail";
     return AsdOps::Status::OkStatus();

@@ -29,16 +29,16 @@ SelfAttentionTorchRunner::SelfAttentionTorchRunner(const SelfAttentionParam &par
 
 SelfAttentionTorchRunner::~SelfAttentionTorchRunner() {}
 
-AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
+AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
 {
     // 384, 32, 1024 -> 384, 32, 1024
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk:" << this->param_.dk;
-    torch::Tensor mixedQuery = AsdOpsTensor2AtTensor(runInfo.inTensors[0]);
+    torch::Tensor mixedQuery = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
     mixedQuery = mixedQuery.view({mixedQuery.sizes()[0], mixedQuery.sizes()[1] * this->param_.headNum,
                                   mixedQuery.sizes()[2] / this->param_.headNum});
     mixedQuery = torch::transpose(mixedQuery, 0, 1);
-    torch::Tensor mixedKey = AsdOpsTensor2AtTensor(runInfo.inTensors[1]);
-    torch::Tensor mixedValue = AsdOpsTensor2AtTensor(runInfo.inTensors[2]);
+    torch::Tensor mixedKey = AsdOpsTensor2AtTensor(variantPack.inTensors[1]);
+    torch::Tensor mixedValue = AsdOpsTensor2AtTensor(variantPack.inTensors[2]);
     mixedValue = mixedValue.view({mixedValue.sizes()[0], mixedValue.sizes()[1] * this->param_.headNum,
                                   mixedValue.sizes()[2] / this->param_.headNum});
     mixedValue = torch::transpose(mixedValue, 0, 1);
@@ -46,7 +46,7 @@ AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &ru
         {mixedKey.sizes()[0], mixedKey.sizes()[1] * this->param_.headNum, mixedKey.sizes()[2] / this->param_.headNum});
     mixedKey = mixedKey.permute({1, 2, 0});
 
-    torch::Tensor attention_mask = AsdOpsTensor2AtTensor(runInfo.inTensors[3]);
+    torch::Tensor attention_mask = AsdOpsTensor2AtTensor(variantPack.inTensors[3]);
 
     double scal = 1 / sqrt(this->param_.dk);
     torch::Tensor attentionScores = torch::bmm(mixedQuery, mixedKey).contiguous();
@@ -65,8 +65,8 @@ AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &ru
                               contextLayer.sizes()[2] * this->param_.headNum})
                        .contiguous();
 
-    int ret = AsdRtMemCopyAsync(runInfo.outTensors[0].data, runInfo.outTensors[0].dataSize,
-                                contextLayer.storage().data_ptr().get(), runInfo.outTensors[0].dataSize,
+    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
+                                contextLayer.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
                                 ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
     ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail";
     return AsdOps::Status::OkStatus();

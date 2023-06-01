@@ -71,13 +71,7 @@ void BertOutputLayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::ve
     const uint64_t linearOutId = 7;
 
     AclTransformer::VariantPack variantPack;
-
-    for (size_t i = 0; i < inTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(inTensors.at(i)));
-    }
-    for (size_t i = 0; i < outTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(outTensors.at(i)));
-    }
+    BuildVariantPack(inTensors, outTensors, variantPack);
 
     AclTransformer::LinearParam linearParam;
     AclTransformer::AddNormParam addNormParam;

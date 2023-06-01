@@ -17,13 +17,14 @@
 #define ACLTRANSFORMER_OPERATIONGRAPH_H
 #include <vector>
 #include <cstdint>
+#include <asdops/utils/svector/svector.h>
 #include "acltransformer/operation.h"
 
 namespace AclTransformer {
 struct OperationGraphNode {
     Operation *operation = nullptr;
-    std::vector<uint64_t> inTensorIds;
-    std::vector<uint64_t> outTensorIds;
+    AsdOps::SVector<uint64_t> inTensorIds;
+    AsdOps::SVector<uint64_t> outTensorIds;
 };
 
 struct OperationGraph {
@@ -31,7 +32,7 @@ struct OperationGraph {
     uint64_t inTensorSize = 0;
     uint64_t outTensorSize = 0;
     uint64_t intermediateTensorSize = 0;
-    std::vector<OperationGraphNode> nodes;
+    AsdOps::SVector<OperationGraphNode, 64> nodes;
     std::string ToString() const;
 };
 } // namespace AclTransformer

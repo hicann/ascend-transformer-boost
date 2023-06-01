@@ -16,6 +16,7 @@
 #include "acltransformer/ops/linear_operation.h"
 #include "asdops/utils/log/log.h"
 #include "asdops/utils/svector/svector.h"
+#include "acltransformer/config.h"
 #include "linear_ops_runner_builder.h"
 #include "linear_torch_runner_builder.h"
 
@@ -32,19 +33,19 @@ LinearOperation::LinearOperation(const LinearParam &param) : Operation("LinearOp
 
 LinearOperation::~LinearOperation() {}
 
-AsdOps::Status LinearOperation::InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+AsdOps::Status LinearOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                            std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
     // in * weight + bias
     // in[0,1] + weight[1]
-    if (inTensorDescs.size() != 3) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 3");
+    if (inTensors.size() != 3) {
+        return AsdOps::Status::FailStatus(1, "inTensors size is not 3");
     }
     outTensorDescs.resize(1);
-    outTensorDescs.at(0).dtype = inTensorDescs.at(0).dtype;
-    outTensorDescs.at(0).format = inTensorDescs.at(0).format;
-    outTensorDescs.at(0).dims = {inTensorDescs.at(0).dims[0], inTensorDescs.at(0).dims[1],
-                                 inTensorDescs.at(1).dims[0]}; // to do shape
+    outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
+    outTensorDescs.at(0).format = inTensors.at(0).desc.format;
+    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
+                                 inTensors.at(1).desc.dims[0]}; // to do shape
 
     return AsdOps::Status::OkStatus();
 }
@@ -93,5 +94,10 @@ int64_t LinearOperation::GetTensorW(const AsdOps::TensorDesc &tensorDesc) const
     return tensorDesc.dims[DIM_2];
 }
 
-RunnerBuilder *LinearOperation::FindBestRunnerBuilder(const VariantPack &variantPack) { return runnerBuilders_.at(1); }
+RunnerBuilder *LinearOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+{
+    size_t index = Config::IsLinearOpsRunnerEnable() ? 0 : 1;
+    return runnerBuilders_.at(index);
+}
+
 } // namespace AclTransformer

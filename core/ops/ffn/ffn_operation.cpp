@@ -32,17 +32,17 @@ FfnOperation::FfnOperation(const FfnParam &param) : Operation("FfnOperation"), p
 
 FfnOperation::~FfnOperation() {}
 
-AsdOps::Status FfnOperation::InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+AsdOps::Status FfnOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                         std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
-    if (inTensorDescs.size() != 3) {
+    if (inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 3");
     }
     outTensorDescs.resize(1);
-    outTensorDescs.at(0).dtype = inTensorDescs.at(0).dtype;
-    outTensorDescs.at(0).format = inTensorDescs.at(0).format;
-    outTensorDescs.at(0).dims = {inTensorDescs.at(0).dims[0], inTensorDescs.at(0).dims[1],
-                                 inTensorDescs.at(1).dims[0]}; // to do shape
+    outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
+    outTensorDescs.at(0).format = inTensors.at(0).desc.format;
+    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
+                                 inTensors.at(1).desc.dims[0]};
 
     return AsdOps::Status::OkStatus();
 }

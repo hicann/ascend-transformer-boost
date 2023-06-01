@@ -23,6 +23,7 @@ class LinearOpsRunner : public OpsRunner {
 public:
     LinearOpsRunner(LinearParam &param);
     virtual ~LinearOpsRunner();
+    AsdOps::Status Setup(VariantPack &variantPack) override;
 
 private:
     LinearParam param_;
