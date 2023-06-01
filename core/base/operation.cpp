@@ -76,7 +76,7 @@ AsdOps::Status Operation::Execute(Handle &handle, VariantPack &variantPack)
 
     ASD_LOG(INFO) << runner_->GetName() << " Execute start";
     AsdOps::Status st = runner_->Execute(handle, variantPack);
-    ASD_LOG(INFO) << runner_->GetName() << " Execute end, result:" << st.Message();
+    ASD_LOG(INFO) << runner_->GetName() << " Execute end";
     if (!st.Ok()) {
         ASD_LOG(ERROR) << GetName() << " execute fail, error:" << st.Message();
         return st;
