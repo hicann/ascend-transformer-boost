@@ -17,7 +17,7 @@
 #include <sstream>
 
 namespace AclTransformer {
-static std::string Join(const std::vector<uint64_t> &ids)
+static std::string Join(const AsdOps::SVector<uint64_t> &ids)
 {
     std::string ret;
     for (size_t i = 0; i < ids.size(); ++i) {

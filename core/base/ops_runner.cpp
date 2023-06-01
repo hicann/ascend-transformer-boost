@@ -72,13 +72,13 @@ OpsRunner::~OpsRunner()
     }
 }
 
-AsdOps::Status OpsRunner::Setup(Handle &handle, VariantPack &variantPack)
+AsdOps::Status OpsRunner::Setup(VariantPack &variantPack)
 {
     InitTensorMaxNodeMap();
     ASD_LOG(INFO) << GetName() << " Setup start, kernel graph:" << kernelGraph_.ToString();
     Reset();
 
-    if (!PlanKernel(handle, variantPack)) {
+    if (!PlanKernel(variantPack)) {
         ASD_LOG(ERROR) << GetName() << " PlanKernel fail";
         return AsdOps::Status::FailStatus(1, "PlanKernel fail");
     }
@@ -97,8 +97,8 @@ AsdOps::Status OpsRunner::Execute(Handle &handle, VariantPack &variantPack)
     char *deviceIntermediateBuffer = static_cast<char *>(variantPack.workspace);
     for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
         auto &node = kernelGraph_.nodes.at(i);
-        for (uint64_t tensorId = 0; tensorId < node.runInfo.GetInTensorCount(); tensorId++) {
-            AsdOps::Tensor &tensor = node.runInfo.GetInTensor(tensorId);
+        for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetInTensorCount(); tensorId++) {
+            AsdOps::Tensor &tensor = node.kernelRunInfo.GetInTensor(tensorId);
             if (IsInternalTensor(node.inTensors.at(tensorId))) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)tensor.data;
             } else {
@@ -106,8 +106,8 @@ AsdOps::Status OpsRunner::Execute(Handle &handle, VariantPack &variantPack)
                 tensor.data = variantPack.inTensors.at(tensorIdInRuninfo).data;
             }
         }
-        for (uint64_t tensorId = 0; tensorId < node.runInfo.GetOutTensorCount(); tensorId++) {
-            AsdOps::Tensor &tensor = node.runInfo.GetOutTensor(tensorId);
+        for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetOutTensorCount(); tensorId++) {
+            AsdOps::Tensor &tensor = node.kernelRunInfo.GetOutTensor(tensorId);
             if (IsInternalTensor(node.outTensors.at(tensorId))) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)tensor.data;
             } else {
@@ -128,7 +128,7 @@ AsdOps::Status OpsRunner::Execute(Handle &handle, VariantPack &variantPack)
 
         uint64_t internalOffset = 0;
         for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
-            AsdOps::RunInfo &kernelRunInfo = kernelGraph_.nodes.at(i).runInfo;
+            AsdOps::RunInfo &kernelRunInfo = kernelGraph_.nodes.at(i).kernelRunInfo;
             uint64_t tilingBufferSize = kernelTilingSizes_.at(i);
             kernelRunInfo.SetDeviceLaunchBuffer(static_cast<char *>(deviceTilingBuffer) + internalOffset,
                                                 tilingBufferSize);
@@ -140,7 +140,7 @@ AsdOps::Status OpsRunner::Execute(Handle &handle, VariantPack &variantPack)
     if (workspaceSize_ > 0) {
         char *deviceWorkspaceBuffer = static_cast<char *>(variantPack.workspace) + offset;
         for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
-            AsdOps::RunInfo &kernelRunInfo = kernelGraph_.nodes.at(i).runInfo;
+            AsdOps::RunInfo &kernelRunInfo = kernelGraph_.nodes.at(i).kernelRunInfo;
             const AsdOps::SVector<int64_t> &workspaces = kernelRunInfo.GetWorkSpace();
             AsdOps::SVector<void *> deviceLaunchBufferWorkspace(workspaces.size());
             uint64_t internalOffset = 0;
@@ -155,7 +155,8 @@ AsdOps::Status OpsRunner::Execute(Handle &handle, VariantPack &variantPack)
     for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
         auto &node = kernelGraph_.nodes.at(i);
         AsdOps::Kernel *kernel = node.kernel;
-        AsdOps::RunInfo &kernelRunInfo = node.runInfo;
+        AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
+        kernelRunInfo.SetStream(handle.stream);
         ASD_LOG(INFO) << kernel->GetName() << " run start, runinfo:" << AsdOpsRunInfoToString(kernelRunInfo);
         kernel->Run(kernelRunInfo);
         ASD_LOG(INFO) << kernel->GetName() << " run start";
@@ -174,7 +175,7 @@ void OpsRunner::Reset()
     memAllocatinSolver_->Reset();
 }
 
-bool OpsRunner::PlanKernel(Handle &handle, const VariantPack &variantPack)
+bool OpsRunner::PlanKernel(const VariantPack &variantPack)
 {
     kernelGraph_.inTensors = variantPack.inTensors;
     kernelGraph_.outTensors = variantPack.outTensors;
@@ -188,19 +189,17 @@ bool OpsRunner::PlanKernel(Handle &handle, const VariantPack &variantPack)
             return false;
         }
 
-        node.runInfo.SetStream(handle.stream);
-        node.runInfo.SetOpDesc(opDesc);
-
+        node.kernelRunInfo.SetOpDesc(opDesc);
         for (const auto tensorIt : node.inTensors) {
-            node.runInfo.AddInTensor(*tensorIt);
+            node.kernelRunInfo.AddInTensor(*tensorIt);
         }
         for (size_t i = 0; i < node.outTensors.size(); ++i) {
             AsdOps::Tensor tensor;
-            node.runInfo.AddOutTensor(tensor);
+            node.kernelRunInfo.AddOutTensor(tensor);
         }
         ASD_LOG(INFO) << GetName() << " " << opDesc.opName
-                      << " infer shape start, runinfo:" << AsdOpsRunInfoToString(node.runInfo);
-        AsdOps::Status st = op->InferShape(node.runInfo);
+                      << " infer shape start, runinfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
+        AsdOps::Status st = op->InferShape(node.kernelRunInfo);
         if (!st.Ok()) {
             ASD_LOG(ERROR) << opDesc.opName << " infer shape fail, error:" << st.Message();
             return false;
@@ -209,7 +208,7 @@ bool OpsRunner::PlanKernel(Handle &handle, const VariantPack &variantPack)
 
         for (size_t i = 0; i < node.outTensors.size(); ++i) {
             AsdOps::Tensor *outTensor = node.outTensors.at(i);
-            AsdOps::Tensor &runInfoOutTensor = node.runInfo.GetOutTensor(i);
+            AsdOps::Tensor &runInfoOutTensor = node.kernelRunInfo.GetOutTensor(i);
             if (IsInternalTensor(outTensor)) {
                 outTensor->desc = runInfoOutTensor.desc;
                 outTensor->dataSize = CalcTensorDataSize(runInfoOutTensor);
@@ -218,15 +217,15 @@ bool OpsRunner::PlanKernel(Handle &handle, const VariantPack &variantPack)
             runInfoOutTensor = *outTensor;
         }
 
-        ASD_LOG(INFO) << GetName() << " runinfo:" << AsdOpsRunInfoToString(node.runInfo);
+        ASD_LOG(INFO) << GetName() << " runinfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
 
-        AsdOps::Tactic *tactic = op->GetBestTactic(node.runInfo);
+        AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
         if (tactic == nullptr) {
             ASD_LOG(ERROR) << GetName() << " " << opDesc.opName << " get best tactic fail";
             return false;
         }
 
-        node.kernel = tactic->GetBestKernel(node.runInfo);
+        node.kernel = tactic->GetBestKernel(node.kernelRunInfo);
         if (node.kernel == nullptr) {
             ASD_LOG(ERROR) << GetName() << " " << tactic->GetName()
                            << " get best kernel fail, kernel count:" << tactic->GetKernelCount();
@@ -258,7 +257,7 @@ void OpsRunner::FillTilingData(const VariantPack &variantPack)
     for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
         auto &node = kernelGraph_.nodes.at(i);
         AsdOps::Kernel *kernel = node.kernel;
-        AsdOps::RunInfo &kernelRunInfo = node.runInfo;
+        AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         uint64_t tilingSize = kernel->GetLaunchBufferSize(kernelRunInfo);
         kernelTilingSizes_.push_back(tilingSize);
         if (tilingSize > 0) {

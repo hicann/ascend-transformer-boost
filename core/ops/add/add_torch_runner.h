@@ -23,7 +23,7 @@ class AddTorchRunner : public Runner {
 public:
     AddTorchRunner(const AddParam &param);
     virtual ~AddTorchRunner();
-    AsdOps::Status Execute(Handle &handle, VariantPack &runInfo) override;
+    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
 
 private:
     AddParam param_;

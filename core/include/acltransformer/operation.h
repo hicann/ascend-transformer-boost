@@ -31,9 +31,9 @@ public:
     Operation(const std::string &name);
     virtual ~Operation();
     std::string GetName() const;
-    virtual AsdOps::Status InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+    virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                       std::vector<AsdOps::TensorDesc> &outTensorDescs) = 0;
-    AsdOps::Status Setup(Handle &handle, VariantPack &variantPack);
+    AsdOps::Status Setup(VariantPack &variantPack);
     uint64_t GetWorkspaceSize();
     AsdOps::Status Execute(Handle &handle, VariantPack &variantPack);
 

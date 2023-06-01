@@ -17,30 +17,20 @@
 #include <string>
 
 namespace AclTransformer {
-bool Config::IsSaveTensor()
+bool Config::IsEnable(const char *env)
 {
-    const char *saveTensor = std::getenv("ACLTRANSFORMER_SAVE_TENSOR");
+    const char *saveTensor = std::getenv(env);
     if (!saveTensor) {
         return false;
     }
     return std::string(saveTensor) == "1";
 }
 
-bool Config::IsAddOpsRunnerEnable()
-{
-    const char *enable = std::getenv("ACLTRANSFORMER_ADDOPSRUNNER_ENABLE");
-    if (!enable) {
-        return false;
-    }
-    return std::string(enable) == "1";
-}
+bool Config::IsSaveTensor() { return IsEnable("ACLTRANSFORMER_SAVE_TENSOR"); }
 
-bool Config::IsAddNormOpsRunnerEnable()
-{
-    const char *enable = std::getenv("ACLTRANSFORMER_ADDNORMOPSRUNNER_ENABLE");
-    if (!enable) {
-        return false;
-    }
-    return std::string(enable) == "1";
-}
+bool Config::IsAddOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE"); }
+
+bool Config::IsAddNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE"); }
+
+bool Config::IsLinearOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_LINEAR_OPSRUNNER_ENABLE"); }
 } // namespace AclTransformer

@@ -24,18 +24,17 @@ AddTorchRunner::AddTorchRunner(const AddParam &param) : Runner("AddTorchRunner")
 
 AddTorchRunner::~AddTorchRunner() {}
 
-AsdOps::Status AddTorchRunner::Execute(Handle &handle, VariantPack &runInfo)
+AsdOps::Status AddTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
 {
-    ASD_LOG(INFO) << "AddTorchRunner::Execute start";
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(runInfo.inTensors[0]);
-    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(runInfo.inTensors[1]);
-
+    ASD_LOG(INFO) << GetName() << " Execute start";
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
+    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(variantPack.inTensors[1]);
     at::Tensor addResultTensor = at::add(atInTensorA, atInTensorB).contiguous();
-    int ret = AsdRtMemCopyAsync(runInfo.outTensors[0].data, runInfo.outTensors[0].dataSize,
-                                addResultTensor.storage().data_ptr().get(), runInfo.outTensors[0].dataSize,
+    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
+                                addResultTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
                                 ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail";
-    ASD_LOG(INFO) << "AddTorchRunner::Execute end";
+    ASD_LOG_IF(ret != 0, ERROR) << GetName() << " AsdRtMemCopy fail";
+    ASD_LOG(INFO) << GetName() << " Execute end";
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

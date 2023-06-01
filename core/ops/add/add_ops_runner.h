@@ -23,6 +23,7 @@ class AddOpsRunner : public OpsRunner {
 public:
     AddOpsRunner(const AddParam &param);
     virtual ~AddOpsRunner();
+    AsdOps::Status Setup(VariantPack &variantPack) override;
 
 private:
     AddParam param_;

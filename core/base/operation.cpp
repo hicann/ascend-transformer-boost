@@ -37,7 +37,7 @@ Operation::~Operation()
 
 std::string Operation::GetName() const { return name_; }
 
-AsdOps::Status Operation::Setup(Handle &handle, VariantPack &variantPack)
+AsdOps::Status Operation::Setup(VariantPack &variantPack)
 {
     ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString();
     if (runner_ == nullptr) {
@@ -49,7 +49,7 @@ AsdOps::Status Operation::Setup(Handle &handle, VariantPack &variantPack)
     }
 
     ASD_LOG(INFO) << runner_->GetName() << " Execute start";
-    AsdOps::Status st = runner_->Setup(handle, variantPack);
+    AsdOps::Status st = runner_->Setup(variantPack);
     ASD_LOG(INFO) << runner_->GetName() << " Execute end, result:" << st.Message();
     if (!st.Ok()) {
         ASD_LOG(ERROR) << GetName() << " Setup fail, error:" << st.Message();

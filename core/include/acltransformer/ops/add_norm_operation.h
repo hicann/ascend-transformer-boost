@@ -24,7 +24,7 @@ class AddNormOperation : public Operation {
 public:
     AddNormOperation(const AddNormParam &param);
     virtual ~AddNormOperation();
-    AsdOps::Status InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
 
 protected:

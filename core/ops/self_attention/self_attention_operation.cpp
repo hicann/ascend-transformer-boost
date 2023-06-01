@@ -26,15 +26,15 @@ SelfAttentionOperation::SelfAttentionOperation(const SelfAttentionParam &param)
 
 SelfAttentionOperation::~SelfAttentionOperation() {}
 
-AsdOps::Status SelfAttentionOperation::InferShape(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
+AsdOps::Status SelfAttentionOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                   std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
-    if (inTensorDescs.size() != 4) {
+    if (inTensors.size() != 4) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 2");
     }
 
     outTensorDescs.resize(1);
-    outTensorDescs.at(0) = inTensorDescs.at(0);
+    outTensorDescs.at(0) = inTensors.at(0).desc;
     return AsdOps::Status::OkStatus();
 }
 
