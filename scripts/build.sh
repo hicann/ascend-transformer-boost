@@ -259,7 +259,7 @@ function fn_main()
     fi
 
     PYTORCH_VERSION="$(python3 -c 'import torch; print(torch.__version__)')"
-    if [ ${PYTORCH_VERSION:0:5} == "1.8.0" ] || [ ${PYTORCH_VERSION:0:5} == "1.11" ];then
+    if [ ${PYTORCH_VERSION:0:5} == "1.8.0" ] || [ ${PYTORCH_VERSION:0:4} == "1.11" ];then
         COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_18=ON"
     fi
 
