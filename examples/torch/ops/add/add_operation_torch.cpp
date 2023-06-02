@@ -39,7 +39,7 @@ torch::Tensor AddOperationTorch::Execute(torch::Tensor a, torch::Tensor b)
 {
     ASD_LOG(INFO) << "AddOperationTorch::Execute start";
     torch::Tensor resultTensor = at::zeros(a.sizes(), a.options());
-    ExecuteOperation(operation_, {a, b}, {resultTensor});
+    ExecuteOperation(operation_, {&a, &b}, {&resultTensor});
     ASD_LOG(INFO) << "AddOperationTorch::Execute end";
     return resultTensor;
 }

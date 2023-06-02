@@ -18,13 +18,15 @@
 #include "acltransformer/ops/ffn_operation.h"
 #include "examples/utils/example_utils.h"
 
-FfnOperationTorch::FfnOperationTorch() { 
+FfnOperationTorch::FfnOperationTorch()
+{
     AclTransformer::FfnParam param;
     operation_ = new AclTransformer::FfnOperation(param);
-    ASD_LOG(INFO) << "FfnOperationTorch::FfnOperationTorch"; 
+    ASD_LOG(INFO) << "FfnOperationTorch::FfnOperationTorch";
 }
 
-FfnOperationTorch::~FfnOperationTorch() {
+FfnOperationTorch::~FfnOperationTorch()
+{
     if (operation_) {
         delete operation_;
         operation_ = nullptr;
@@ -49,7 +51,7 @@ torch::Tensor FfnOperationTorch::Execute(torch::Tensor a, torch::Tensor b, torch
     // at::Tensor outputTensor = at::linear(a, b, c);
     // d = at::gelu(outputTensor);
 
-    ExecuteOperation(operation_, {a, b, c}, {resultTensor});
+    ExecuteOperation(operation_, {&a, &b, &c}, {&resultTensor});
     ASD_LOG(INFO) << "FfnOperationTorch::Execute end";
     return resultTensor;
 }

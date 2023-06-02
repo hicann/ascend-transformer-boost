@@ -22,6 +22,7 @@
 #include "acltransformer/plan_builder.h"
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
+#include "acltransformer/utils/tensor_cache.h"
 
 static std::map<at::ScalarType, AsdOps::TensorDType> DTYPE_MAP = {
     {at::ScalarType::Byte, AsdOps::TENSOR_DTYPE_UINT8},   {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_UINT8},
@@ -52,20 +53,22 @@ uint64_t CalcTensorDataSize(const AsdOps::Tensor &tensor)
 
 AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor)
 {
+    at::Tensor contiguousAtTensor = atTensor.contiguous();
+    ASD_LOG(INFO) << "contiguousAtTensor is contiguous:" << contiguousAtTensor.is_contiguous();
     AsdOps::Tensor asdTensor;
     asdTensor.desc.format = AsdOps::TENSOR_FORMAT_ND;
-    asdTensor.data = atTensor.storage().data_ptr().get();
+    asdTensor.data = contiguousAtTensor.storage().data_ptr().get();
 
-    asdTensor.desc.dims.resize(atTensor.sizes().size());
-    for (uint64_t i = 0; i < atTensor.sizes().size(); i++) {
-        asdTensor.desc.dims[i] = atTensor.sizes()[i];
+    asdTensor.desc.dims.resize(contiguousAtTensor.sizes().size());
+    for (uint64_t i = 0; i < contiguousAtTensor.sizes().size(); i++) {
+        asdTensor.desc.dims[i] = contiguousAtTensor.sizes()[i];
     }
 
-    auto it = DTYPE_MAP.find(atTensor.scalar_type());
+    auto it = DTYPE_MAP.find(contiguousAtTensor.scalar_type());
     if (it != DTYPE_MAP.end()) {
         asdTensor.desc.dtype = it->second;
     } else {
-        ASD_LOG(ERROR) << "not support dtype:" << atTensor.scalar_type();
+        ASD_LOG(ERROR) << "not support dtype:" << contiguousAtTensor.scalar_type();
     }
 
     asdTensor.dataSize = CalcTensorDataSize(asdTensor);
@@ -111,16 +114,26 @@ void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInT
     }
 }
 
-void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor> atInTensors,
-                      std::vector<at::Tensor> atOutTensors)
+void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor *> atInTensors,
+                      std::vector<at::Tensor *> atOutTensors)
 {
     AclTransformer::Handle handle = {GetCurrentStream()};
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(atInTensors.at(i)));
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atInTensors.at(i)->data_ptr(), atInTensors.at(i));
+        variantPack.inTensors.push_back(AtTensor2AsdTensor(*atInTensors.at(i)));
     }
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atOutTensors.at(i)->data_ptr(),
+                                                                      atOutTensors.at(i));
+        variantPack.outTensors.push_back(AtTensor2AsdTensor(*atOutTensors.at(i)));
+    }
+
+    static int64_t opId = 0;
+    if (AclTransformer::Config::IsSaveTensor()) {
+        std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName() + "_brefore";
+        SaveVariantPack(handle, variantPack, dirPath);
+        ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
 
     AsdOps::Status st = operation->Setup(variantPack);
@@ -142,10 +155,9 @@ void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tens
     st = operation->Execute(handle, variantPack);
     ASD_LOG_IF(!st.Ok(), ERROR) << operation->GetName() << " execute fail, error:" << st.Message();
 
-    static int64_t opId = 0;
     if (AclTransformer::Config::IsSaveTensor()) {
         std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName();
-        SaveVariantPack(variantPack, dirPath);
+        SaveVariantPack(handle, variantPack, dirPath);
         ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
 
@@ -154,6 +166,13 @@ void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tens
         ASD_LOG(INFO) << operation->GetName() << " AsdRtMemFreeDevice free:" << variantPack.workspace;
         variantPack.workspace = nullptr;
         variantPack.workspaceSize = 0;
+    }
+
+    for (size_t i = 0; i < atInTensors.size(); ++i) {
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(atInTensors.at(i)->data_ptr());
+    }
+    for (size_t i = 0; i < atOutTensors.size(); ++i) {
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(atOutTensors.at(i)->data_ptr());
     }
 }
 

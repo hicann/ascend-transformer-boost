@@ -33,12 +33,12 @@ AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &va
 {
     // 384, 32, 1024 -> 384, 32, 1024
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk:" << this->param_.dk;
-    torch::Tensor mixedQuery = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
+    torch::Tensor mixedQuery = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
     mixedQuery = mixedQuery.view({mixedQuery.sizes()[0], mixedQuery.sizes()[1] * this->param_.headNum,
                                   mixedQuery.sizes()[2] / this->param_.headNum});
     mixedQuery = torch::transpose(mixedQuery, 0, 1);
-    torch::Tensor mixedKey = AsdOpsTensor2AtTensor(variantPack.inTensors[1]);
-    torch::Tensor mixedValue = AsdOpsTensor2AtTensor(variantPack.inTensors[2]);
+    torch::Tensor mixedKey = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    torch::Tensor mixedValue = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
     mixedValue = mixedValue.view({mixedValue.sizes()[0], mixedValue.sizes()[1] * this->param_.headNum,
                                   mixedValue.sizes()[2] / this->param_.headNum});
     mixedValue = torch::transpose(mixedValue, 0, 1);
@@ -46,7 +46,7 @@ AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &va
         {mixedKey.sizes()[0], mixedKey.sizes()[1] * this->param_.headNum, mixedKey.sizes()[2] / this->param_.headNum});
     mixedKey = mixedKey.permute({1, 2, 0});
 
-    torch::Tensor attention_mask = AsdOpsTensor2AtTensor(variantPack.inTensors[3]);
+    torch::Tensor attention_mask = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
 
     double scal = 1 / sqrt(this->param_.dk);
     torch::Tensor attentionScores = torch::bmm(mixedQuery, mixedKey).contiguous();

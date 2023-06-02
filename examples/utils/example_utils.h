@@ -29,8 +29,8 @@ AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor);
 void *GetCurrentStream();
 void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
                    std::vector<at::Tensor> atOutTensors);
-void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor> atInTensors,
-                      std::vector<at::Tensor> atOutTensors);
+void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor *> atInTensors,
+                      std::vector<at::Tensor *> atOutTensors);
 void ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransformer::VariantPack &variantPack);
 std::string TensorToString(const AsdOps::Tensor &tensor);
 void BuildVariantPack(const std::vector<torch::Tensor> &inTensors, const std::vector<torch::Tensor> &outTensors,

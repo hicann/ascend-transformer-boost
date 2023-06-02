@@ -20,16 +20,17 @@
 #include <asdops/tensor.h>
 #include <torch/torch.h>
 #include "acltransformer/variant_pack.h"
+#include "acltransformer/handle.h"
 
 namespace AclTransformer {
 void GetTensorDescs(const std::vector<AsdOps::Tensor> &tensors, std::vector<AsdOps::TensorDesc> &tensorDescs);
 uint64_t CalcTensorDataSize(const AsdOps::Tensor &tensor);
-at::Tensor AsdOpsTensor2AtTensor(const AsdOps::Tensor &asdTensor);
-at::Tensor AsdOpsTensor2AtTensorCache(const AsdOps::Tensor &asdTensor);
-at::Tensor AsdOpsTensor2AtCpuTensor(const AsdOps::Tensor &asdTensor);
+at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor);
+at::Tensor AsdOpsTensor2AtTensorCache(Handle handle, const AsdOps::Tensor &asdTensor);
+at::Tensor AsdOpsTensor2AtCpuTensor(Handle handle, const AsdOps::Tensor &asdTensor);
 std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor);
 std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
-void SaveVariantPack(const VariantPack &variantPack, const std::string &dirPath);
+void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath);
 bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
 } // namespace AclTransformer
 #endif
