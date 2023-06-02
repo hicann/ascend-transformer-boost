@@ -13,25 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINEAR_OPS_RUNNER_H
-#define LINEAR_OPS_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
-#include "acltransformer/params/linear.h"
+#ifndef ACLTRANSFOERM_TENSOR_CACHE_H
+#define ACLTRANSFOERM_TENSOR_CACHE_H
+#include <map>
+#include <torch/torch.h>
+#include <asdops/utils/singleton/singleton.h>
 
 namespace AclTransformer {
-class LinearOpsRunner : public OpsRunner {
+class TensorCache {
 public:
-    LinearOpsRunner(LinearParam &param);
-    virtual ~LinearOpsRunner();
-    AsdOps::Status Setup(VariantPack &variantPack) override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+    void AddTensor(void *data, at::Tensor *tensor);
+    at::Tensor *GetTensor(void *data);
+    void DeleteTensor(void *data);
 
 private:
-    void ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack);
-
-private:
-    LinearParam param_;
+    std::map<void *, at::Tensor *> tensorMap_;
 };
-
 } // namespace AclTransformer
 #endif

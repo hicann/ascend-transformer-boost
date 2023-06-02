@@ -32,10 +32,10 @@ AsdOps::Status AddNormTorchRunner::Execute(Handle &handle, VariantPack &variantP
         return AsdOps::Status::FailStatus(1, "AddNormTorchRunner inTensor num error!");
     }
 
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
-    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(variantPack.inTensors[1]);
-    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensorCache(variantPack.inTensors[2]);
-    at::Tensor atInTensorBias = AsdOpsTensor2AtTensorCache(variantPack.inTensors[3]);
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
     at::Tensor addResultTensor = at::add(atInTensorA, atInTensorB);
     const double eps = 1e-12;
     at::Tensor outputTensor =

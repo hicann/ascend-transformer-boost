@@ -44,7 +44,7 @@ torch::Tensor AddNormOperationTorch::Execute(torch::Tensor a, torch::Tensor b, t
     normBias = normBias.contiguous();
     ASD_LOG(INFO) << "AddNormOperationTorch::Execute start, a.device.type:" << a.device().type();
     torch::Tensor resultTensor = at::zeros(a.sizes(), a.options()).contiguous();
-    ExecuteOperation(operation_, {a, b, normWeight, normBias}, {resultTensor});
+    ExecuteOperation(operation_, {&a, &b, &normWeight, &normBias}, {&resultTensor});
     ASD_LOG(INFO) << "AddNormOperationTorch::Execute end";
     return resultTensor;
     // at::Tensor addResultTensor = at::add(a, b);
