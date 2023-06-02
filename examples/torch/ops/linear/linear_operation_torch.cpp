@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 #include "linear_operation_torch.h"
+#include <torch/torch.h>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/linear_operation.h"
 #include "examples/utils/example_utils.h"
 #include <json/json.h>
+#include "acltransformer/utils/tensor_cache.h"
 
 LinearOperationTorch::LinearOperationTorch(std::string param) : param_(param)
 {
@@ -49,18 +51,19 @@ torch::Tensor LinearOperationTorch::Execute(torch::Tensor a, torch::Tensor b, to
     b = b.contiguous();
     c = c.contiguous();
     ASD_LOG(INFO) << "LinearOperationTorch::Execute start";
-    ASD_LOG(INFO) << "inTensors[a].options:" << a.options() << ", data:" << a.data_ptr();
-    ASD_LOG(INFO) << "inTensors[b].options:" << b.options() << ", data:" << b.data_ptr();
-    ASD_LOG(INFO) << "inTensors[c].options:" << c.options() << ", data:" << c.data_ptr();
+    ASD_LOG(INFO) << "LinearOperationTorch inTensors[a].options:" << a.options() << ", data:" << a.data_ptr();
+    ASD_LOG(INFO) << "LinearOperationTorch inTensors[b].options:" << b.options() << ", data:" << b.data_ptr();
+    ASD_LOG(INFO) << "LinearOperationTorch inTensors[c].options:" << c.options() << ", data:" << c.data_ptr();
 
+    torch::save(b.to(at::Device(at::kCPU)).contiguous(), "b.pth");
+    ASD_LOG(INFO) << "LinearOperationTorch save b.pth";
     torch::Tensor resultTensor;
     if (a.sizes().size() == 3) {
-        resultTensor = at::zeros({a.sizes()[0], a.sizes()[1], b.sizes()[0]}, a.options()); // to do shape
+        resultTensor = at::zeros({a.sizes()[0], a.sizes()[1], b.sizes()[0]}, a.options()).contiguous();
     } else {
-        resultTensor = at::zeros({a.sizes()[0], b.sizes()[0]}, a.options());
+        resultTensor = at::zeros({a.sizes()[0], b.sizes()[0]}, a.options()).contiguous();
     }
-    resultTensor.contiguous();
-    ExecuteOperation(operation_, {a, b, c}, {resultTensor});
+    ExecuteOperation(operation_, {&a, &b, &c}, {&resultTensor});
     ASD_LOG(INFO) << "LinearOperationTorch::Execute end";
     return resultTensor;
 

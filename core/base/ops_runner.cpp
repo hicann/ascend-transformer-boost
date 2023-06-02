@@ -156,7 +156,7 @@ AsdOps::Status OpsRunner::Execute(Handle &handle, VariantPack &variantPack)
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         kernelRunInfo.SetStream(handle.stream);
-        ASD_LOG(INFO) << kernel->GetName() << " run start, runinfo:" << AsdOpsRunInfoToString(kernelRunInfo);
+        ASD_LOG(INFO) << kernel->GetName() << " run start, runinfo:\n" << AsdOpsRunInfoToString(kernelRunInfo);
         kernel->Run(kernelRunInfo);
         ASD_LOG(INFO) << kernel->GetName() << " run start";
     }
@@ -196,14 +196,15 @@ bool OpsRunner::PlanKernel(const VariantPack &variantPack)
             AsdOps::Tensor tensor;
             node.kernelRunInfo.AddOutTensor(tensor);
         }
-        ASD_LOG(INFO) << GetName() << " " << opDesc.opName
-                      << " infer shape start, runinfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
+        ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " infer shape start, runinfo:\n"
+                      << AsdOpsRunInfoToString(node.kernelRunInfo);
         AsdOps::Status st = op->InferShape(node.kernelRunInfo);
         if (!st.Ok()) {
             ASD_LOG(ERROR) << opDesc.opName << " infer shape fail, error:" << st.Message();
             return false;
         }
-        ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " infer shape success";
+        ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " infer shape success, runinfo:\n"
+                      << AsdOpsRunInfoToString(node.kernelRunInfo);
 
         for (size_t i = 0; i < node.outTensors.size(); ++i) {
             AsdOps::Tensor *outTensor = node.outTensors.at(i);
@@ -216,11 +217,12 @@ bool OpsRunner::PlanKernel(const VariantPack &variantPack)
             runInfoOutTensor = *outTensor;
         }
 
-        ASD_LOG(INFO) << GetName() << " runinfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
+        ASD_LOG(INFO) << GetName() << " after mem allo solver, runinfo:\n" << AsdOpsRunInfoToString(node.kernelRunInfo);
 
         AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
         if (tactic == nullptr) {
-            ASD_LOG(ERROR) << GetName() << " " << opDesc.opName << " get best tactic fail";
+            ASD_LOG(ERROR) << GetName() << " " << opDesc.opName
+                           << " get best tactic fail, tactic count:" << op->GetTacticCount();
             return false;
         }
 
@@ -291,7 +293,7 @@ void OpsRunner::InitTensorMaxNodeMap()
             }
         }
         tensorMaxNodeIdMap_[&internalTensor] = maxNodeId;
-        ASD_LOG(INFO) << "internal tensor[" << i << "] maxNodeId:" << maxNodeId
+        ASD_LOG(INFO) << GetName() << " internal tensor[" << i << "] maxNodeId:" << maxNodeId
                       << ", dependNodeCount:" << dependNodeCount;
         ASD_LOG_IF(dependNodeCount == 0, ERROR) << "internal tensor[" << i << "] dependNodeCount is 0, graph wrong";
         maxNodeIdTensorMap_[maxNodeId].insert(&internalTensor);

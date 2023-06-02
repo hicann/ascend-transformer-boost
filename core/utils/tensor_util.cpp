@@ -19,6 +19,7 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/filesystem/filesystem.h>
+#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
 void GetTensorDescs(const std::vector<AsdOps::Tensor> &tensors, std::vector<AsdOps::TensorDesc> &tensorDescs)
@@ -46,34 +47,12 @@ static at::IntArrayRef IntArrayRef(const AsdOps::SVector<int64_t> &src)
     return at::IntArrayRef(src.data(), src.size());
 }
 
-at::Tensor AsdOpsTensor2AtCpuTensor(const AsdOps::Tensor &asdTensor)
+at::Tensor AsdOpsTensor2AtCpuTensor(Handle handle, const AsdOps::Tensor &asdTensor)
 {
-    at::TensorOptions options = at::TensorOptions().device(at::kCPU);
-    if (asdTensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
-        options = options.dtype(at::kFloat);
-    } else if (asdTensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
-        options = options.dtype(at::kHalf);
-    }
-
-    torch::Tensor resultTensor = at::zeros(IntArrayRef(asdTensor.desc.dims), options);
-
-#ifdef TORCH_18
-    resultTensor = resultTensor.to(at::Device(at::DeviceType::XLA));
-#else
-    resultTensor = resultTensor.to(at::Device(at::kPrivateUse1));
-#endif
-
-    ASD_LOG(INFO) << "resultTensor.options:" << resultTensor.options()
-                  << ", asdTensor.desc:" << AsdOpsTensorDescToString(asdTensor.desc);
-    int st = AsdRtMemCopy(resultTensor.data_ptr(), asdTensor.dataSize, asdTensor.data, asdTensor.dataSize,
-                          ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
-    ASD_LOG_IF(st != 0, ERROR) << "AsdRtMemCopy from device to host fail";
-
-    resultTensor = resultTensor.to(at::Device(at::kCPU));
-    return resultTensor;
+    return AsdOpsTensor2AtTensor(handle, asdTensor).to(at::Device(at::kCPU)).contiguous();
 }
 
-at::Tensor AsdOpsTensor2AtTensor(const AsdOps::Tensor &asdTensor)
+at::Tensor AsdOpsTensor2AtTensor1(Handle handle, const AsdOps::Tensor &asdTensor)
 {
     int32_t devId = 0;
     AsdRtDeviceGetCurrent(&devId);
@@ -98,7 +77,40 @@ at::Tensor AsdOpsTensor2AtTensor(const AsdOps::Tensor &asdTensor)
     return rt;
 }
 
-at::Tensor AsdOpsTensor2AtTensorCache(const AsdOps::Tensor &asdTensor)
+at::Tensor AsdOpsTensor2AtTensor2(Handle handle, const AsdOps::Tensor &asdTensor)
+{
+    at::TensorOptions options = at::TensorOptions();
+    if (asdTensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
+        options = options.dtype(at::kFloat);
+    } else if (asdTensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
+        options = options.dtype(at::kHalf);
+    }
+
+    at::Tensor newTensor = at::zeros(IntArrayRef(asdTensor.desc.dims), options);
+#ifdef TORCH_18
+    newTensor = newTensor.to(at::Device(at::DeviceType::XLA));
+#else
+    newTensor = newTensor.to(at::Device(at::kPrivateUse1));
+#endif
+
+    at::DataPtr dataPtr = at::DataPtr(asdTensor.data, newTensor.storage().device());
+    newTensor.storage().set_data_ptr(std::move(dataPtr));
+    ASD_LOG(INFO) << "set_data_ptr";
+    newTensor = newTensor.contiguous();
+
+    // ASD_LOG(INFO) << "AsdRtMemCopyAsync asdtensor to attensor";
+    // int ret = AsdRtMemCopyAsync(newTensor.data_ptr(), asdTensor.dataSize, asdTensor.data, asdTensor.dataSize,
+    //                             ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
+    // ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopyAsync fail";
+    return newTensor;
+}
+
+at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor)
+{
+    return AsdOpsTensor2AtTensor2(handle, asdTensor);
+}
+
+at::Tensor AsdOpsTensor2AtTensorCache(Handle handle, const AsdOps::Tensor &asdTensor)
 {
     static std::map<void *, at::Tensor> tensorCacheMap;
     auto it = tensorCacheMap.find(asdTensor.data);
@@ -106,7 +118,7 @@ at::Tensor AsdOpsTensor2AtTensorCache(const AsdOps::Tensor &asdTensor)
         ASD_LOG(INFO) << "use cache tensor, data:" << asdTensor.data;
         return it->second;
     }
-    at::Tensor atTensor = AsdOpsTensor2AtTensor(asdTensor);
+    at::Tensor atTensor = AsdOpsTensor2AtTensor(handle, asdTensor);
     tensorCacheMap.insert(std::make_pair(asdTensor.data, atTensor));
     ASD_LOG(INFO) << "cache tensor, data:" << asdTensor.data;
     return atTensor;
@@ -119,22 +131,36 @@ std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor)
     return ss.str();
 }
 
-void SaveVariantPack(const VariantPack &variantPack, const std::string &dirPath)
+void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath)
 {
     AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
         std::string fileName = "inTensor" + std::to_string(i) + ".pth";
         std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
-        at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(variantPack.inTensors.at(i));
-        torch::save(atTensor, filePath);
+        at::Tensor *cachedTensor =
+            AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors.at(i).data);
+        if (cachedTensor) {
+            torch::save(cachedTensor->to(at::Device(at::kCPU)).contiguous(), filePath);
+            ASD_LOG(INFO) << "save in tensor use cache";
+        } else {
+            at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(handle, variantPack.inTensors.at(i));
+            torch::save(atTensor, filePath);
+        }
     }
 
     for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
         std::string fileName = "outTensor" + std::to_string(i) + ".pth";
         std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
-        at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(variantPack.outTensors.at(i));
-        torch::save(atTensor, filePath);
+        at::Tensor *cachedTensor =
+            AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.outTensors.at(i).data);
+        if (cachedTensor) {
+            torch::save(cachedTensor->to(at::Device(at::kCPU)).contiguous(), filePath);
+            ASD_LOG(INFO) << "save out tensor use cache";
+        } else {
+            at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(handle, variantPack.outTensors.at(i));
+            torch::save(atTensor, filePath);
+        }
     }
 }
 
