@@ -27,8 +27,8 @@ AddTorchRunner::~AddTorchRunner() {}
 AsdOps::Status AddTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
 {
     ASD_LOG(INFO) << GetName() << " Execute start";
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
-    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(variantPack.inTensors[1]);
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
     at::Tensor addResultTensor = at::add(atInTensorA, atInTensorB).contiguous();
     int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
                                 addResultTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,

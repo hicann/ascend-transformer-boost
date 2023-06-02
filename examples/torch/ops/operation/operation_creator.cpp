@@ -19,6 +19,7 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
+#include "acltransformer/ops/linear_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const Json::Value &paramJson)>;
 
@@ -36,8 +37,17 @@ AclTransformer::Operation *AddNormOperationCreate(const Json::Value &paramJson)
     return new AclTransformer::AddNormOperation(param);
 }
 
+AclTransformer::Operation *LinearOperationCreate(const Json::Value &paramJson)
+{
+    AclTransformer::LinearParam linearParam;
+    linearParam.transposeA = paramJson["transposeA"].asBool();
+    linearParam.transposeB = paramJson["transposeB"].asBool();
+    return new AclTransformer::LinearOperation(linearParam);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {{"AddOperation", &AddOperationCreate},
-                                                        {"AddNormOperation", &AddNormOperationCreate}};
+                                                        {"AddNormOperation", &AddNormOperationCreate},
+                                                        {"LinearOperation", &LinearOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {

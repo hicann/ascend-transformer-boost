@@ -36,8 +36,7 @@ void OperationTorch::Execute(std::string opName, std::string param, std::vector<
         return;
     }
 
-    ExecuteOperation(operation, atInTensors, atOutTensors);
-    delete operation;
+        delete operation;
 }
 
 void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> atInTensors,
@@ -75,7 +74,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
     static int64_t opId = 0;
     if (AclTransformer::Config::IsSaveTensor()) {
         std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName();
-        SaveVariantPack(variantPack, dirPath);
+        SaveVariantPack(handle, variantPack, dirPath);
         ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
 

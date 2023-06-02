@@ -33,9 +33,9 @@ AsdOps::Status FfnTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
     if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "FfnTorchRunner inTensor num error!");
     }
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(variantPack.inTensors[0]);
-    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensorCache(variantPack.inTensors[1]);
-    at::Tensor atInTensorBias = AsdOpsTensor2AtTensorCache(variantPack.inTensors[2]);
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
     at::Tensor outTensor = at::gelu(at::linear(atInTensorA, atInTensorWeight, atInTensorBias)).contiguous();
     int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
                                 outTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
