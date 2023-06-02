@@ -13,12 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
+#ifndef ADD_TORCH_RUNNER_H
+#define ADD_TORCH_RUNNER_H
+#include "acltransformer/runner.h"
 #include "acltransformer/params/self_attention_kv_cache.h""
+
+namespace AclTransformer {
+class SelfAttentionKvCacheTorchRunner : public Runner {
+public:
+    SelfAttentionKvCacheTorchRunner(const SelfAttentionKvCacheParam &param);
+    virtual ~SelfAttentionKvCacheTorchRunner();
+    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+private:
+    SelfAttentionKvCacheParam param_;
+};
+
+} // namespace AclTransformer
 #endif
