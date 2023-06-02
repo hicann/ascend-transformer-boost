@@ -34,6 +34,9 @@ AclTransformer::Operation *AddNormOperationCreate(const Json::Value &paramJson)
 {
     AclTransformer::AddNormParam param;
     param.layerNormEps = paramJson["layerNormEps"].asDouble();
+    for (int i = 0; i < paramJson["dims"].size(); i++) {
+        param.dims.push_back(paramJson["dims"][i].asInt());
+    }
     return new AclTransformer::AddNormOperation(param);
 }
 

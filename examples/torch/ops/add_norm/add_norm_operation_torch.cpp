@@ -14,15 +14,25 @@
  * limitations under the License.
  */
 #include "add_norm_operation_torch.h"
+#include <json/json.h>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/add_norm_operation.h"
 #include "examples/utils/example_utils.h"
 
-AddNormOperationTorch::AddNormOperationTorch()
+AddNormOperationTorch::AddNormOperationTorch(std::string param) : param_(param)
 {
     ASD_LOG(INFO) << "AddNormOperationTorch::AddNormOperationTorch";
-    AclTransformer::AddNormParam param;
-    operation_ = new AclTransformer::AddNormOperation(param);
+    Json::Reader paramReader;
+    Json::Value paramJson;
+    if (!paramReader.parse(param, paramJson)) {
+        ASD_LOG(ERROR) << "json parse error";
+    }
+    AclTransformer::AddNormParam addNormParam;
+    addNormParam.layerNormEps = paramJson["layerNormEps"].asDouble();
+    for (int i = 0; i < paramJson["dims"].size(); i++) {
+        addNormParam.dims.push_back(paramJson["dims"][i].asInt());
+    }
+    operation_ = new AclTransformer::AddNormOperation(addNormParam);
 }
 
 AddNormOperationTorch::~AddNormOperationTorch()
@@ -54,7 +64,7 @@ torch::Tensor AddNormOperationTorch::Execute(torch::Tensor a, torch::Tensor b, t
 TORCH_LIBRARY(AddNormOperationTorch, m)
 {
     m.class_<AddNormOperationTorch>("AddNormOperationTorch")
-        .def(torch::init<>())
+        .def(torch::init<std::string>())
         .def("test", &AddNormOperationTorch::Test)
         .def("execute", &AddNormOperationTorch::Execute);
 }
