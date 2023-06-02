@@ -19,6 +19,7 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
+#include "acltransformer/ops/self_attention_kv_cache_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const Json::Value &paramJson)>;
 
@@ -36,7 +37,18 @@ AclTransformer::Operation *AddNormOperationCreate(const Json::Value &paramJson)
     return new AclTransformer::AddNormOperation(param);
 }
 
+AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const Json::Value &paramJson)
+{
+    AclTransformer::SelfAttentionKvCacheParam param;
+    param.transKey = paramJson["transKey"].asBool();
+    param.headNum = paramJson["headNum"].asInt64();
+    param.layerId = paramJson["layerId"].asInt64();
+    param.dk = paramJson["dk"].asInt64();
+    return new AclTransformer::SelfAttentionKvCacheOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {{"AddOperation", &AddOperationCreate},
+                                                        {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
                                                         {"AddNormOperation", &AddNormOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
