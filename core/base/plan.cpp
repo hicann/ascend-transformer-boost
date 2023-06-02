@@ -162,7 +162,7 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
         if (Config::IsSaveTensor()) {
             std::string dirPath =
                 "savetensor/" + runnerGraph_.name + "/" + std::to_string(nodeId) + "_" + node.runner->GetName();
-            SaveVariantPack(node.variantPack, dirPath);
+            SaveVariantPack(handle, node.variantPack, dirPath);
             ASD_LOG(INFO) << "Plan SaveVariantPack " << dirPath;
         }
         ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName()

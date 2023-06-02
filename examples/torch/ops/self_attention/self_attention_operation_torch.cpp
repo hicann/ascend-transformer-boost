@@ -54,7 +54,7 @@ torch::Tensor SelfAttentionOperationTorch::Execute(torch::Tensor query, torch::T
     value = value.contiguous();
     attentionMask = attentionMask.contiguous();
     torch::Tensor resultTensor = torch::zeros(query.sizes(), query.options()).contiguous();
-    ExecuteOperation(operation_, {query, key, value, attentionMask}, {resultTensor});
+    ExecuteOperation(operation_, {&query, &key, &value, &attentionMask}, {&resultTensor});
     ASD_LOG(INFO) << "SelfAttentionOperationTorch::Execute end";
     return resultTensor;
 }
