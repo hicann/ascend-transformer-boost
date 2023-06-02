@@ -37,9 +37,8 @@ AsdOps::Status AddNormTorchRunner::Execute(Handle &handle, VariantPack &variantP
     at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
     at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
     at::Tensor addResultTensor = at::add(atInTensorA, atInTensorB);
-    const double eps = 1e-12;
-    at::Tensor outputTensor =
-        at::layer_norm(addResultTensor, atInTensorWeight.sizes(), atInTensorWeight, atInTensorBias, eps).contiguous();
+    at::Tensor outputTensor =at::layer_norm(addResultTensor, param_.dims, atInTensorWeight,
+                                            atInTensorBias, param_.layerNormEps).contiguous();
     int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
                                 outputTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
                                 ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);

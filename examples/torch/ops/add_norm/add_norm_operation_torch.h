@@ -24,14 +24,18 @@ class AddNormOperation;
 
 class AddNormOperationTorch : public torch::CustomClassHolder {
 public:
-    AddNormOperationTorch();
+    AddNormOperationTorch(std::string param);
     ~AddNormOperationTorch();
     void Test();
     torch::Tensor Execute(torch::Tensor a, torch::Tensor b, torch::Tensor normWeight, torch::Tensor normBias);
-    c10::intrusive_ptr<AddNormOperationTorch> clone() const { return c10::make_intrusive<AddNormOperationTorch>(); }
+    c10::intrusive_ptr<AddNormOperationTorch> clone() const
+    {
+        return c10::make_intrusive<AddNormOperationTorch>(param_);
+    }
 
 private:
     AclTransformer::AddNormOperation *operation_ = nullptr;
+    std::string param_;
 };
 
 #endif
