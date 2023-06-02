@@ -25,7 +25,10 @@ public:
     ~LinearOperationTorch();
     void Test();
     torch::Tensor Execute(torch::Tensor a, torch::Tensor b, torch::Tensor c);
-    c10::intrusive_ptr<LinearOperationTorch> clone() const { return c10::make_intrusive<LinearOperationTorch>(param_); }
+    c10::intrusive_ptr<LinearOperationTorch> clone() const 
+    {
+        return c10::make_intrusive<LinearOperationTorch>(param_);
+    }
 
 private:
     AclTransformer::LinearOperation *operation_ = nullptr;
