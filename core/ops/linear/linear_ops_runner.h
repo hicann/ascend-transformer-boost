@@ -23,8 +23,10 @@ class LinearOpsRunner : public OpsRunner {
 public:
     LinearOpsRunner(LinearParam &param);
     virtual ~LinearOpsRunner();
-    AsdOps::Status Setup(VariantPack &variantPack) override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+protected:
+    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     void ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack);

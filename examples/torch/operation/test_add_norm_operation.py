@@ -28,20 +28,27 @@ LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
 torch.classes.load_library(LIB_PATH)
 
 
-class TestNormal(unittest.TestCase):
+class TestAddNormal(unittest.TestCase):
     def test_2d(self):
-        operation = torch.classes.AddOperationTorch.AddOperationTorch()
+        operation = torch.classes.OperationTorch.OperationTorch()
         operation.test()
-        a = torch.rand(2, 3).npu()
-        b = torch.rand(2, 3).npu()
-        print("a:" + str(a))
-        print("b:" + str(b))
-        c = operation.execute(a, b)
-        golden_c = a + b
-        print("c:" + str(c))
-        print("golden_c:" + str(golden_c))
+        a = torch.rand(2, 3).npu().half()
+        b = torch.rand(2, 3).npu().half()
+        normWeight = torch.rand(3).npu().half()
+        normBias = torch.rand(3).npu().half()
 
-        self.assertTrue(torch.allclose(c, golden_c, rtol=0.02, atol=0.02))
+        results = operation.execute("AddNormOperation", json.dumps(
+            {"layerNormEps": 1e-12}), [a, b, normWeight, normBias])
+
+        layer_norm = torch.nn.LayerNorm([3]).npu()
+        layer_norm.load_state_dict({"weight": normWeight, "bias": normBias})
+        golden_result = layer_norm(a + b)
+
+        print("result:" + str(results[0]))
+        print("golden_result:" + str(golden_result))
+
+        self.assertTrue(torch.allclose(
+            results[0], golden_result, rtol=0.02, atol=0.02))
 
 
 if __name__ == '__main__':

@@ -23,7 +23,9 @@ class AddNormTorchRunner : public Runner {
 public:
     AddNormTorchRunner(const AddNormParam &param);
     virtual ~AddNormTorchRunner();
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+protected:
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     AddNormParam param_;

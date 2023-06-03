@@ -19,6 +19,7 @@
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
 FfnTorchRunner::FfnTorchRunner(const FfnParam &param) : Runner("FfnTorchRunner"), param_(param)
@@ -28,20 +29,18 @@ FfnTorchRunner::FfnTorchRunner(const FfnParam &param) : Runner("FfnTorchRunner")
 
 FfnTorchRunner::~FfnTorchRunner() {}
 
-AsdOps::Status FfnTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
+AsdOps::Status FfnTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
     if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "FfnTorchRunner inTensor num error!");
     }
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-    at::Tensor outTensor = at::gelu(at::linear(atInTensorA, atInTensorWeight, atInTensorBias)).contiguous();
-    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
-                                outTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
-                                ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
+    at::Tensor *atInTensorA = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[0].data);
+    at::Tensor *atInTensorWeight = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[1].data);
+    at::Tensor *atInTensorBias = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[2].data);
+    at::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
 
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail";
+    *atOutTensor = at::gelu(at::linear(*atInTensorA, *atInTensorWeight, *atInTensorBias)).contiguous();
+
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

@@ -19,7 +19,9 @@
 #include <asdops/params/matmul.h>
 
 namespace AclTransformer {
-FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner"), param_(param)
+FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner"), param_(param) {}
+
+AsdOps::Status FfnOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
     kernelGraph_.inTensors.resize(3);
     AsdOps::Tensor &aTensor = kernelGraph_.inTensors[0];
@@ -63,9 +65,11 @@ FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner"), p
     addNode.outTensors = {&addOutTensor};
 
     geluNode.opDesc = {0, "ActivationOperation",
-                     AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
+                       AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
     geluNode.inTensors = {&addOutTensor};
     geluNode.outTensors = {&operationOutTensor};
+
+    return AsdOps::Status::OkStatus();
 }
 
 FfnOpsRunner::~FfnOpsRunner() {}
