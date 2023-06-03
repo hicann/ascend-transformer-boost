@@ -34,7 +34,7 @@ LinearOperation::LinearOperation(const LinearParam &param) : Operation("LinearOp
 LinearOperation::~LinearOperation() {}
 
 AsdOps::Status LinearOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                           std::vector<AsdOps::TensorDesc> &outTensorDescs)
+                                           AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     // in * weight + bias
     // in[0,1] + weight[1]
@@ -50,8 +50,8 @@ AsdOps::Status LinearOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor>
     return AsdOps::Status::OkStatus();
 }
 
-bool LinearOperation::IsConsistent(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
-                                   std::vector<AsdOps::TensorDesc> &outTensorDescs) const
+bool LinearOperation::IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
+                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     ASDOPS_CHECK_TRUE(inTensorDescs.size() == static_cast<size_t>(DIM_3), return false);
     ASDOPS_CHECK_TRUE(outTensorDescs.size() == static_cast<size_t>(DIM_1), return false);

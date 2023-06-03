@@ -22,7 +22,31 @@ Runner::~Runner() {}
 
 std::string Runner::GetName() const { return name_; }
 
-AsdOps::Status Runner::Setup(VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
+AsdOps::Status Runner::Setup(const VariantPack &variantPack)
+{
+    AsdOps::Status st = IsConsistent(variantPack);
+    if (!st.Ok()) {
+        return st;
+    }
+    return SetupImpl(variantPack);
+}
 
-uint64_t Runner::GetWorkspaceSize() { return 0; }
+uint64_t Runner::GetWorkspaceSize() { return GetWorkspaceSizeImpl(); }
+
+AsdOps::Status Runner::Execute(Handle &handle, VariantPack &variantPack)
+{
+    AsdOps::Status st = IsConsistent(variantPack);
+    if (!st.Ok()) {
+        return st;
+    }
+    return ExecuteImpl(handle, variantPack);
+}
+
+AsdOps::Status Runner::IsConsistent(const VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
+
+AsdOps::Status Runner::SetupImpl(const VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
+
+uint64_t Runner::GetWorkspaceSizeImpl() { return 0; }
+
+AsdOps::Status Runner::ExecuteImpl(Handle &handle, VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
 } // namespace AclTransformer

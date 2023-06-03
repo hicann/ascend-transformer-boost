@@ -46,13 +46,19 @@ class OpsRunner : public Runner {
 public:
     OpsRunner(const std::string &name);
     virtual ~OpsRunner();
-    AsdOps::Status Setup(VariantPack &variantPack) override;
-    uint64_t GetWorkspaceSize() override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+protected:
+    AsdOps::Status SetupImpl(const VariantPack &variantPack) override;
+    uint64_t GetWorkspaceSizeImpl() override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+
+protected:
+    virtual AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) = 0;
 
 private:
     void Reset();
-    bool PlanKernel(const VariantPack &variantPack);
+    bool PlanKernelGraph(const VariantPack &variantPack);
+    bool PlanOneKernel(size_t nodeId);
     void FillTilingData(const VariantPack &variantPack);
     void InitTensorMaxNodeMap();
     bool IsInternalTensor(const AsdOps::Tensor *tensor);

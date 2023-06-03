@@ -27,7 +27,7 @@ AddOpsRunner::AddOpsRunner(const AddParam &param) : OpsRunner("AddOpsRunner"), p
 
 AddOpsRunner::~AddOpsRunner() {}
 
-AsdOps::Status AddOpsRunner::Setup(VariantPack &variantPack)
+AsdOps::Status AddOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
     if (param_.scale == 1) {
         kernelGraph_.inTensors.resize(2);
