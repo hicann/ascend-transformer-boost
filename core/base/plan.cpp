@@ -55,7 +55,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
         for (size_t i = 0; i < node.variantPack.inTensors.size(); ++i) {
             ASD_LOG(INFO) << "Plan intensor[" << i << "] " << AsdOpsTensorToString(node.variantPack.inTensors.at(i));
         }
-        std::vector<AsdOps::TensorDesc> outTensorDescs;
+        AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
         node.operation->InferShape(node.variantPack.inTensors, outTensorDescs);
         for (size_t i = 0; i < outTensorDescs.size(); ++i) {
             ASD_LOG(INFO) << "Plan outTensorDescs[" << i << "] " << AsdOpsTensorDescToString(outTensorDescs.at(i));

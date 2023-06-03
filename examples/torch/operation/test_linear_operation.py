@@ -30,21 +30,19 @@ torch.classes.load_library(LIB_PATH)
 
 class TestNormal(unittest.TestCase):
     def test_2d(self):
-        param = '{"transposeA":false,"transposeB":true}'
-        operation = torch.classes.LinearOperationTorch.LinearOperationTorch(param)
+        operation = torch.classes.OperationTorch.OperationTorch()
         operation.test()
-        a = torch.rand(384, 32, 1024).npu()
-        b = torch.rand(1024, 1024).npu()
-        c = torch.rand(1024).npu()
+        a = torch.rand(384, 32, 1024).npu().half()
+        b = torch.rand(1024, 1024).npu().half()
+        c = torch.rand(1024).npu().half()
 
-        d = operation.execute(a, b, c)
+        results = operation.execute("LinearOperation", '{"transposeA":false, "transposeB":true}', [
+            a, b, c])
 
-        golden_d = torch.matmul(a, torch.transpose(b, 0, 1)) + c
+        golden_result = torch.matmul(a, torch.transpose(b, 0, 1)) + c
 
-        print("d:" + str(d.size()))
-        print("golden_d:" + str(golden_d.size()))
-
-        self.assertTrue(torch.allclose(d, golden_d, rtol=0.02, atol=0.02))
+        self.assertTrue(torch.allclose(
+            results[0], golden_result, rtol=0.02, atol=0.02))
 
 
 if __name__ == '__main__':

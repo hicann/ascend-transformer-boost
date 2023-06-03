@@ -23,8 +23,11 @@ class FfnTorchRunner : public Runner {
 public:
     FfnTorchRunner(const FfnParam &param);
     virtual ~FfnTorchRunner();
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
 
+protected:
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+
+private:
 private:
     FfnParam param_;
 };

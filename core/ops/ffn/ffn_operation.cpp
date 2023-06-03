@@ -33,7 +33,7 @@ FfnOperation::FfnOperation(const FfnParam &param) : Operation("FfnOperation"), p
 FfnOperation::~FfnOperation() {}
 
 AsdOps::Status FfnOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                        std::vector<AsdOps::TensorDesc> &outTensorDescs)
+                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 3");
@@ -47,8 +47,8 @@ AsdOps::Status FfnOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &i
     return AsdOps::Status::OkStatus();
 }
 
-bool FfnOperation::IsConsistent(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
-                                std::vector<AsdOps::TensorDesc> &outTensorDescs) const
+bool FfnOperation::IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
+                                AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     ASDOPS_CHECK_TRUE(inTensorDescs.size() == static_cast<size_t>(DIM_3), return false);
     ASDOPS_CHECK_TRUE(outTensorDescs.size() == static_cast<size_t>(DIM_1), return false);
