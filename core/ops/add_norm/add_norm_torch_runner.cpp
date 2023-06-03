@@ -20,30 +20,29 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
 AddNormTorchRunner::AddNormTorchRunner(const AddNormParam &param) : Runner("AddNormTorchRunner"), param_(param) {}
 
 AddNormTorchRunner::~AddNormTorchRunner() {}
 
-AsdOps::Status AddNormTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
+AsdOps::Status AddNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
     if (variantPack.inTensors.size() != 4) {
         return AsdOps::Status::FailStatus(1, "AddNormTorchRunner inTensor num error!");
     }
 
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-    at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
-    at::Tensor addResultTensor = at::add(atInTensorA, atInTensorB);
-    const double eps = 1e-12;
-    at::Tensor outputTensor =
-        at::layer_norm(addResultTensor, atInTensorWeight.sizes(), atInTensorWeight, atInTensorBias, eps).contiguous();
-    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
-                                outputTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
-                                ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail";
+    at::Tensor *atInTensorA = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[0].data);
+    at::Tensor *atInTensorB = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[1].data);
+    at::Tensor *atInTensorWeight = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[2].data);
+    at::Tensor *atInTensorBias = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[3].data);
+    at::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
+
+    *atOutTensor = at::layer_norm(at::add(*atInTensorA, *atInTensorB), atInTensorWeight->sizes(), *atInTensorWeight,
+                                  *atInTensorBias, param_.layerNormEps)
+                       .contiguous();
+
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

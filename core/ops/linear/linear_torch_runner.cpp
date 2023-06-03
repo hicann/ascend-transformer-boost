@@ -28,19 +28,11 @@ LinearTorchRunner::LinearTorchRunner(LinearParam &param) : Runner("LinearTorchRu
 
 LinearTorchRunner::~LinearTorchRunner() {}
 
-AsdOps::Status LinearTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
+AsdOps::Status LinearTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
     if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "LinearTorchRunner inTensor num error!");
     }
-
-    // at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    // at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    // at::Tensor atInTensorWeightias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-    // int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
-    //                             outputTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
-    //                             ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
-    // ASD_LOG_IF(ret != 0, ERROR) << GetName() << " AsdRtMemCopy fail";
 
     at::Tensor *atInTensorA =
         AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[0].data);
@@ -52,7 +44,6 @@ AsdOps::Status LinearTorchRunner::Execute(Handle &handle, VariantPack &variantPa
         AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.outTensors[0].data);
     at::Tensor outputTensor = at::linear(*atInTensorA, *atInTensorWeight, *atInTensorWeightias).contiguous();
     *atResult = outputTensor;
-    ASD_LOG(INFO) << GetName() << " use cache tensor";
 
     return AsdOps::Status::OkStatus();
 }

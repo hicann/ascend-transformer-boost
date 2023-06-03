@@ -23,9 +23,9 @@ TEST(TestAddOperation, InferShape)
 {
     AclTransformer::AddParam param;
     AclTransformer::AddOperation op(param);
-    std::vector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
                                                      {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
-    std::vector<AsdOps::TensorDesc> outTensorDescs;
+    AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
