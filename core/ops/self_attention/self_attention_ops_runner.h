@@ -24,6 +24,9 @@ public:
     SelfAttentionOpsRunner(const SelfAttentionParam &param);
     virtual ~SelfAttentionOpsRunner();
 
+protected:
+    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
+
 private:
     SelfAttentionParam param_;
 };

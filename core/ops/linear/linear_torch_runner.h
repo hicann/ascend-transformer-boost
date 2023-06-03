@@ -23,7 +23,9 @@ class LinearTorchRunner : public Runner {
 public:
     LinearTorchRunner(LinearParam &param);
     virtual ~LinearTorchRunner();
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+protected:
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     LinearParam param_;

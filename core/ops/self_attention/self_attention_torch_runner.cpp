@@ -19,6 +19,7 @@
 #include <asdops/utils/rt/rt.h>
 #include <ATen/ATen.h>
 #include <cmath>
+#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
 SelfAttentionTorchRunner::SelfAttentionTorchRunner(const SelfAttentionParam &param)
@@ -29,16 +30,16 @@ SelfAttentionTorchRunner::SelfAttentionTorchRunner(const SelfAttentionParam &par
 
 SelfAttentionTorchRunner::~SelfAttentionTorchRunner() {}
 
-AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
+AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
     // 384, 32, 1024 -> 384, 32, 1024
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk:" << this->param_.dk;
-    torch::Tensor mixedQuery = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    torch::Tensor mixedQuery = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[0].data);
     mixedQuery = mixedQuery.view({mixedQuery.sizes()[0], mixedQuery.sizes()[1] * this->param_.headNum,
                                   mixedQuery.sizes()[2] / this->param_.headNum});
     mixedQuery = torch::transpose(mixedQuery, 0, 1);
-    torch::Tensor mixedKey = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    torch::Tensor mixedValue = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    torch::Tensor mixedKey = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[1].data);
+    torch::Tensor mixedValue = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[2].data);
     mixedValue = mixedValue.view({mixedValue.sizes()[0], mixedValue.sizes()[1] * this->param_.headNum,
                                   mixedValue.sizes()[2] / this->param_.headNum});
     mixedValue = torch::transpose(mixedValue, 0, 1);
@@ -46,7 +47,7 @@ AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &va
         {mixedKey.sizes()[0], mixedKey.sizes()[1] * this->param_.headNum, mixedKey.sizes()[2] / this->param_.headNum});
     mixedKey = mixedKey.permute({1, 2, 0});
 
-    torch::Tensor attention_mask = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    torch::Tensor attention_mask = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[3].data);
 
     double scal = 1 / sqrt(this->param_.dk);
     torch::Tensor attentionScores = torch::bmm(mixedQuery, mixedKey).contiguous();
@@ -65,10 +66,9 @@ AsdOps::Status SelfAttentionTorchRunner::Execute(Handle &handle, VariantPack &va
                               contextLayer.sizes()[2] * this->param_.headNum})
                        .contiguous();
 
-    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
-                                contextLayer.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
-                                ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail";
+    torch::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
+    *atOutTensor = contextLayer;
+
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

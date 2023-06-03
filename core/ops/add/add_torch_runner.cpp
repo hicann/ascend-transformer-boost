@@ -18,23 +18,20 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
 AddTorchRunner::AddTorchRunner(const AddParam &param) : Runner("AddTorchRunner"), param_(param) {}
 
 AddTorchRunner::~AddTorchRunner() {}
 
-AsdOps::Status AddTorchRunner::Execute(Handle &handle, VariantPack &variantPack)
+AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
-    ASD_LOG(INFO) << GetName() << " Execute start";
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    at::Tensor addResultTensor = at::add(atInTensorA, atInTensorB).contiguous();
-    int ret = AsdRtMemCopyAsync(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize,
-                                addResultTensor.storage().data_ptr().get(), variantPack.outTensors[0].dataSize,
-                                ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
-    ASD_LOG_IF(ret != 0, ERROR) << GetName() << " AsdRtMemCopy fail";
-    ASD_LOG(INFO) << GetName() << " Execute end";
+    at::Tensor *atInTensorA = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors.at(0).data);
+    at::Tensor *atInTensorB = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors.at(1).data);
+    at::Tensor *addResultTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors.at(0).data);
+    *addResultTensor = torch::add(*atInTensorA, *atInTensorB);
+
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

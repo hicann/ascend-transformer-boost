@@ -26,9 +26,15 @@ public:
     Runner(const std::string &name);
     virtual ~Runner();
     std::string GetName() const;
-    virtual AsdOps::Status Setup(VariantPack &variantPack);
-    virtual uint64_t GetWorkspaceSize();
-    virtual AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
+    AsdOps::Status Setup(const VariantPack &variantPack);
+    uint64_t GetWorkspaceSize();
+    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack);
+
+private:
+    virtual AsdOps::Status IsConsistent(const VariantPack &variantPack);
+    virtual AsdOps::Status SetupImpl(const VariantPack &variantPack);
+    virtual uint64_t GetWorkspaceSizeImpl();
+    virtual AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack);
 
 private:
     std::string name_;
