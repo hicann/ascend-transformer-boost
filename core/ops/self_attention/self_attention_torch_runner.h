@@ -23,7 +23,9 @@ class SelfAttentionTorchRunner : public Runner {
 public:
     SelfAttentionTorchRunner(const SelfAttentionParam &param);
     virtual ~SelfAttentionTorchRunner();
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+protected:
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     SelfAttentionParam param_;

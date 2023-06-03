@@ -28,7 +28,7 @@ AddNormOpsRunner::AddNormOpsRunner(const AddNormParam &param) : OpsRunner("AddNo
 
 AddNormOpsRunner::~AddNormOpsRunner() {}
 
-AsdOps::Status AddNormOpsRunner::Setup(VariantPack &variantPack)
+AsdOps::Status AddNormOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
     kernelGraph_.inTensors.resize(4);
     AsdOps::Tensor &xTensor = kernelGraph_.inTensors.at(0);
@@ -64,10 +64,10 @@ AsdOps::Status AddNormOpsRunner::Setup(VariantPack &variantPack)
     layerNormNode.inTensors = {&addNodeResultTensor, &weightTensor, &biasTensor};
     layerNormNode.outTensors = {&resultTensor, &layerNormMeanTensor, &layerNormVarianceTensor};
 
-    return OpsRunner::Setup(variantPack);
+    return AsdOps::Status::OkStatus();
 }
 
-bool AddNormOpsRunner::CalcLayerNormTensor(VariantPack &variantPack, int64_t &beginDim)
+bool AddNormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim)
 {
     AsdOps::TensorDesc inputDesc;
     inputDesc.dtype = variantPack.inTensors.at(0).desc.dtype;
@@ -77,8 +77,8 @@ bool AddNormOpsRunner::CalcLayerNormTensor(VariantPack &variantPack, int64_t &be
         inputDesc.dims = variantPack.inTensors.at(1).desc.dims;
     }
 
-    AsdOps::Tensor &weightTensor = variantPack.inTensors.at(2);
-    AsdOps::Tensor &biasTensor = variantPack.inTensors.at(3);
+    const AsdOps::Tensor &weightTensor = variantPack.inTensors.at(2);
+    const AsdOps::Tensor &biasTensor = variantPack.inTensors.at(3);
 
     ASD_LOG(INFO) << GetName() << " layer norm input desc:" << AsdOpsTensorDescToString(inputDesc)
                   << ", weightTensor:" << AsdOpsTensorToString(weightTensor)
@@ -93,6 +93,7 @@ bool AddNormOpsRunner::CalcLayerNormTensor(VariantPack &variantPack, int64_t &be
 
     ASD_LOG(INFO) << GetName() << " M:" << M;
     if (M < 0) {
+        layerNormMeanTensor.desc.format = inputDesc.format;
         layerNormMeanTensor.desc.dtype = inputDesc.dtype;
         layerNormMeanTensor.desc.dims = {M};
         layerNormVarianceTensor.desc = layerNormMeanTensor.desc;
@@ -114,6 +115,7 @@ bool AddNormOpsRunner::CalcLayerNormTensor(VariantPack &variantPack, int64_t &be
             break;
         }
     }
+    layerNormMeanTensor.desc.format = weightTensor.desc.format;
     layerNormMeanTensor.desc.dtype = weightTensor.desc.dtype;
     layerNormMeanTensor.desc.dims = reduceDims;
     layerNormVarianceTensor.desc = layerNormMeanTensor.desc;

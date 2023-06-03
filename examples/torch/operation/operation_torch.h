@@ -25,13 +25,14 @@ public:
     OperationTorch();
     ~OperationTorch();
     void Test();
-    void Execute(std::string opName, std::string param, std::vector<torch::Tensor> inTensors,
-                 std::vector<torch::Tensor> outTensors);
+    std::vector<torch::Tensor> Execute(std::string opName, std::string param, std::vector<torch::Tensor> inTensors);
     c10::intrusive_ptr<OperationTorch> clone() const { return c10::make_intrusive<OperationTorch>(); }
 
 private:
-    void ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> atInTensors,
-                          std::vector<torch::Tensor> atOutTensors);
+    void ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> &atInTensors,
+                          std::vector<torch::Tensor> &atOutTensors);
+    void CreateAtOutTensors(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                            std::vector<torch::Tensor> &atOutTensors);
 };
 
 #endif

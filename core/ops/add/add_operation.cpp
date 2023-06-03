@@ -27,7 +27,7 @@ AddOperation::AddOperation(const AddParam &param) : Operation("AddOperation"), p
 AddOperation::~AddOperation() {}
 
 AsdOps::Status AddOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                        std::vector<AsdOps::TensorDesc> &outTensorDescs)
+                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (inTensors.size() != 2) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 2");

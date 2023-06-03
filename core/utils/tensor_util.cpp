@@ -22,7 +22,7 @@
 #include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
-void GetTensorDescs(const std::vector<AsdOps::Tensor> &tensors, std::vector<AsdOps::TensorDesc> &tensorDescs)
+void GetTensorDescs(const std::vector<AsdOps::Tensor> &tensors, AsdOps::SVector<AsdOps::TensorDesc> &tensorDescs)
 {
     tensorDescs.resize(tensors.size());
     for (size_t i = 0; i < tensors.size(); ++i) {
@@ -30,16 +30,27 @@ void GetTensorDescs(const std::vector<AsdOps::Tensor> &tensors, std::vector<AsdO
     }
 }
 
-uint64_t CalcTensorDataSize(const AsdOps::Tensor &tensor)
+uint64_t CalcTensorDataSize(const AsdOps::Tensor &tensor) { return CalcTensorDataSize(tensor.desc); }
+
+uint64_t CalcTensorDataSize(const AsdOps::TensorDesc &tensorDesc)
 {
-    uint64_t dataItemSize = 0;
-    switch (tensor.desc.dtype) {
-    case AsdOps::TENSOR_DTYPE_FLOAT: dataItemSize = sizeof(float); break;
-    case AsdOps::TENSOR_DTYPE_FLOAT16: dataItemSize = 2; break;
-    default: ASD_LOG(ERROR) << "not support dtype:" << tensor.desc.dtype;
+    if (tensorDesc.dims.size() == 0) {
+        return 0;
     }
 
-    return dataItemSize * tensor.Numel();
+    uint64_t dataItemSize = 0;
+    switch (tensorDesc.dtype) {
+    case AsdOps::TENSOR_DTYPE_FLOAT: dataItemSize = sizeof(float); break;
+    case AsdOps::TENSOR_DTYPE_FLOAT16: dataItemSize = 2; break;
+    default: ASD_LOG(ERROR) << "not support dtype:" << tensorDesc.dtype;
+    }
+
+    int64_t elementCount = 1;
+    for (auto i : tensorDesc.dims) {
+        elementCount *= i;
+    }
+
+    return dataItemSize * elementCount;
 }
 
 static at::IntArrayRef IntArrayRef(const AsdOps::SVector<int64_t> &src)

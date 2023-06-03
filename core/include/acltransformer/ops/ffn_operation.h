@@ -25,9 +25,9 @@ public:
     FfnOperation(const FfnParam &param);
     virtual ~FfnOperation();
     AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
-    bool IsConsistent(const std::vector<AsdOps::TensorDesc> &inTensorDescs,
-                      std::vector<AsdOps::TensorDesc> &outTensorDescs) const;
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    bool IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
+                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const;
     int64_t GetTensorBatch(const AsdOps::TensorDesc &tensorDesc) const;
     int64_t GetTensorH(const AsdOps::TensorDesc &tensorDesc) const;
     int64_t GetTensorW(const AsdOps::TensorDesc &tensorDesc) const;

@@ -28,7 +28,7 @@ LinearOpsRunner::LinearOpsRunner(LinearParam &param) : OpsRunner("LinearOpsRunne
 
 LinearOpsRunner::~LinearOpsRunner() {}
 
-AsdOps::Status LinearOpsRunner::Setup(VariantPack &variantPack)
+AsdOps::Status LinearOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
     VariantPack newVariantPack;
     ConvertNewVariantPack(variantPack, newVariantPack);
@@ -85,14 +85,14 @@ AsdOps::Status LinearOpsRunner::Setup(VariantPack &variantPack)
     addNode.inTensors = {&transdata2ResultTensor, &biasTensor};
     addNode.outTensors = {&resultTensor};
 
-    return OpsRunner::Setup(newVariantPack);
+    return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status LinearOpsRunner::Execute(Handle &handle, VariantPack &variantPack)
+AsdOps::Status LinearOpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
     VariantPack newVariantPack;
     ConvertNewVariantPack(variantPack, newVariantPack);
-    return OpsRunner::Execute(handle, newVariantPack);
+    return OpsRunner::ExecuteImpl(handle, newVariantPack);
 }
 
 void LinearOpsRunner::ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack)

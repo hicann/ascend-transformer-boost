@@ -17,6 +17,7 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/utils/tensor_cache.h"
 #include "acltransformer/config.h"
 #include "examples/utils/example_utils.h"
 #include "operation_creator.h"
@@ -27,29 +28,42 @@ OperationTorch::~OperationTorch() {}
 
 void OperationTorch::Test() { ASD_LOG(INFO) << "OperationTorch::Test called"; }
 
-void OperationTorch::Execute(std::string opName, std::string param, std::vector<torch::Tensor> atInTensors,
-                             std::vector<torch::Tensor> atOutTensors)
+std::vector<torch::Tensor> OperationTorch::Execute(std::string opName, std::string param,
+                                                   std::vector<torch::Tensor> atInTensors)
 {
+    for (auto &inTensor : atInTensors) {
+        inTensor = inTensor.contiguous();
+    }
+
+    std::vector<torch::Tensor> atOutTensors;
+
     AclTransformer::Operation *operation = CreateOperation(opName, param);
     if (operation == nullptr) {
         ASD_LOG(ERROR) << "create operation fail, json:" << param;
-        return;
+        return atOutTensors;
     }
 
-        delete operation;
+    ExecuteOperation(operation, atInTensors, atOutTensors);
+
+    delete operation;
+    return atOutTensors;
 }
 
-void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> atInTensors,
-                                      std::vector<torch::Tensor> atOutTensors)
+void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> &atInTensors,
+                                      std::vector<torch::Tensor> &atOutTensors)
 {
     AclTransformer::Handle handle = {GetCurrentStream()};
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        atInTensors.at(i) = atInTensors.at(i).contiguous();
         variantPack.inTensors.push_back(AtTensor2AsdTensor(atInTensors.at(i)));
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atInTensors.at(i).data_ptr(), &atInTensors.at(i));
     }
+
+    CreateAtOutTensors(operation, variantPack.inTensors, atOutTensors);
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
         variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atOutTensors.at(i).data_ptr(),
+                                                                      &atOutTensors.at(i));
     }
 
     AsdOps::Status st = operation->Setup(variantPack);
@@ -60,6 +74,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
 
     variantPack.workspaceSize = operation->GetWorkspaceSize();
     ASD_LOG(ERROR) << operation->GetName() << " GetWorkspaceSize:" << variantPack.workspaceSize;
+
     if (variantPack.workspaceSize > 0) {
         int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
         if (st != ASDRT_SUCCESS) {
@@ -83,6 +98,39 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
         ASD_LOG(INFO) << operation->GetName() << " AsdRtMemFreeDevice free:" << variantPack.workspace;
         variantPack.workspace = nullptr;
         variantPack.workspaceSize = 0;
+    }
+
+    for (size_t i = 0; i < atInTensors.size(); ++i) {
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(atInTensors.at(i).data_ptr());
+    }
+    for (size_t i = 0; i < atOutTensors.size(); ++i) {
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(atOutTensors.at(i).data_ptr());
+    }
+}
+
+void OperationTorch::CreateAtOutTensors(AclTransformer::Operation *operation,
+                                        const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                        std::vector<torch::Tensor> &atOutTensors)
+{
+    AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+    operation->InferShape(inTensors, outTensorDescs);
+
+    atOutTensors.resize(outTensorDescs.size());
+    for (size_t i = 0; i < outTensorDescs.size(); ++i) {
+        at::TensorOptions options = at::TensorOptions();
+        if (outTensorDescs.at(i).dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
+            options = options.dtype(at::kFloat);
+        } else if (outTensorDescs.at(i).dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
+            options = options.dtype(at::kHalf);
+        }
+        at::Tensor newTensor =
+            at::zeros(at::IntArrayRef(outTensorDescs.at(i).dims.data(), outTensorDescs.at(i).dims.size()), options);
+#ifdef TORCH_18
+        newTensor = newTensor.to(at::Device(at::DeviceType::XLA));
+#else
+        newTensor = newTensor.to(at::Device(at::kPrivateUse1));
+#endif
+        atOutTensors.at(i) = newTensor.contiguous();
     }
 }
 

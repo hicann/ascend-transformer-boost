@@ -20,13 +20,17 @@
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
+#include "acltransformer/ops/ffn_operation.h"
+#include "acltransformer/ops/self_attention_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const Json::Value &paramJson)>;
 
 AclTransformer::Operation *AddOperationCreate(const Json::Value &paramJson)
 {
     AclTransformer::AddParam param;
-    param.scale = paramJson["scale"].asFloat();
+    if (paramJson.isMember("scale")) {
+        param.scale = paramJson["scale"].asFloat();
+    }
     return new AclTransformer::AddOperation(param);
 }
 
@@ -34,23 +38,42 @@ AclTransformer::Operation *AddNormOperationCreate(const Json::Value &paramJson)
 {
     AclTransformer::AddNormParam param;
     param.layerNormEps = paramJson["layerNormEps"].asDouble();
-    for (int i = 0; i < paramJson["dims"].size(); i++) {
-        param.dims.push_back(paramJson["dims"][i].asInt());
+    if (paramJson.isMember("dims")) {
+        for (int i = 0; i < paramJson["dims"].size(); i++) {
+            param.dims.push_back(paramJson["dims"][i].asInt());
+        }
     }
     return new AclTransformer::AddNormOperation(param);
 }
 
 AclTransformer::Operation *LinearOperationCreate(const Json::Value &paramJson)
 {
-    AclTransformer::LinearParam linearParam;
-    linearParam.transposeA = paramJson["transposeA"].asBool();
-    linearParam.transposeB = paramJson["transposeB"].asBool();
-    return new AclTransformer::LinearOperation(linearParam);
+    AclTransformer::LinearParam param;
+    param.transposeA = paramJson["transposeA"].asBool();
+    param.transposeB = paramJson["transposeB"].asBool();
+    return new AclTransformer::LinearOperation(param);
+}
+
+AclTransformer::Operation *FfnOperationCreate(const Json::Value &paramJson)
+{
+    AclTransformer::FfnParam param;
+    return new AclTransformer::FfnOperation(param);
+}
+
+AclTransformer::Operation *SelfAttentionOperationCreate(const Json::Value &paramJson)
+{
+    AclTransformer::SelfAttentionParam param;
+    param.transKey = paramJson["transKey"].asBool();
+    param.dk = paramJson["dk"].asInt();
+    param.headNum = paramJson["headNum"].asInt();
+    return new AclTransformer::SelfAttentionOperation(param);
 }
 
 std::map<std::string, OperationCreateFunc> g_funcMap = {{"AddOperation", &AddOperationCreate},
                                                         {"AddNormOperation", &AddNormOperationCreate},
-                                                        {"LinearOperation", &LinearOperationCreate}};
+                                                        {"LinearOperation", &LinearOperationCreate},
+                                                        {"FfnOperation", &FfnOperationCreate},
+                                                        {"SelfAttentionOperation", &SelfAttentionOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
@@ -67,5 +90,10 @@ AclTransformer::Operation *CreateOperation(const std::string &opName, const std:
         return nullptr;
     }
 
-    return it->second(paramJson);
+    try {
+        return it->second(paramJson);
+    } catch (const std::exception &e) {
+        ASD_LOG(ERROR) << opName << " parse json fail, error:" << e.what();
+    }
+    return nullptr;
 }

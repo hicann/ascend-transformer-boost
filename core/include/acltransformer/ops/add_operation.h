@@ -24,7 +24,7 @@ public:
     AddOperation(const AddParam &param);
     ~AddOperation();
     AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
 
 protected:
     RunnerBuilder *FindBestRunnerBuilder(const VariantPack &variantPack) override;
