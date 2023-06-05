@@ -25,7 +25,6 @@
 #include "acltransformer/handle.h"
 #include "acltransformer/variant_pack.h"
 
-AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor);
 void *GetCurrentStream();
 void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
                    std::vector<at::Tensor> atOutTensors);

@@ -55,13 +55,13 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
     AclTransformer::Handle handle = {GetCurrentStream()};
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(atInTensors.at(i)));
+        variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(atInTensors.at(i)));
         AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atInTensors.at(i).data_ptr(), &atInTensors.at(i));
     }
 
     CreateAtOutTensors(operation, variantPack.inTensors, atOutTensors);
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
+        variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(atOutTensors.at(i)));
         AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atOutTensors.at(i).data_ptr(),
                                                                       &atOutTensors.at(i));
     }
