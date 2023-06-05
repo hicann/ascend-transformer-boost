@@ -22,6 +22,13 @@
 #include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
+static std::map<at::ScalarType, AsdOps::TensorDType> DTYPE_MAP = {
+    {at::ScalarType::Bool, AsdOps::TENSOR_DTYPE_BOOL},   {at::ScalarType::Byte, AsdOps::TENSOR_DTYPE_UINT8},
+    {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_UINT8},  {at::ScalarType::Half, AsdOps::TENSOR_DTYPE_FLOAT16},
+    {at::ScalarType::Float, AsdOps::TENSOR_DTYPE_FLOAT}, {at::ScalarType::Int, AsdOps::TENSOR_DTYPE_INT32},
+    {at::ScalarType::Long, AsdOps::TENSOR_DTYPE_INT64},
+};
+
 void GetTensorDescs(const std::vector<AsdOps::Tensor> &tensors, AsdOps::SVector<AsdOps::TensorDesc> &tensorDescs)
 {
     tensorDescs.resize(tensors.size());
@@ -40,8 +47,17 @@ uint64_t CalcTensorDataSize(const AsdOps::TensorDesc &tensorDesc)
 
     uint64_t dataItemSize = 0;
     switch (tensorDesc.dtype) {
+    case AsdOps::TENSOR_DTYPE_BOOL: dataItemSize = sizeof(bool); break;
     case AsdOps::TENSOR_DTYPE_FLOAT: dataItemSize = sizeof(float); break;
     case AsdOps::TENSOR_DTYPE_FLOAT16: dataItemSize = 2; break;
+    case AsdOps::TENSOR_DTYPE_INT8: dataItemSize = sizeof(int8_t); break;
+    case AsdOps::TENSOR_DTYPE_INT16: dataItemSize = sizeof(int16_t); break;
+    case AsdOps::TENSOR_DTYPE_INT32: dataItemSize = sizeof(int32_t); break;
+    case AsdOps::TENSOR_DTYPE_INT64: dataItemSize = sizeof(int64_t); break;
+    case AsdOps::TENSOR_DTYPE_UINT8: dataItemSize = sizeof(uint8_t); break;
+    case AsdOps::TENSOR_DTYPE_UINT16: dataItemSize = sizeof(uint16_t); break;
+    case AsdOps::TENSOR_DTYPE_UINT32: dataItemSize = sizeof(uint32_t); break;
+    case AsdOps::TENSOR_DTYPE_UINT64: dataItemSize = sizeof(uint64_t); break;
     default: ASD_LOG(ERROR) << "not support dtype:" << tensorDesc.dtype;
     }
 
@@ -114,6 +130,31 @@ at::Tensor AsdOpsTensor2AtTensor2(Handle handle, const AsdOps::Tensor &asdTensor
     //                             ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
     // ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopyAsync fail";
     return newTensor;
+}
+
+AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor)
+{
+    at::Tensor contiguousAtTensor = atTensor.contiguous();
+    ASD_LOG(INFO) << "contiguousAtTensor is contiguous:" << contiguousAtTensor.is_contiguous();
+    AsdOps::Tensor asdTensor;
+    asdTensor.desc.format = AsdOps::TENSOR_FORMAT_ND;
+    asdTensor.data = contiguousAtTensor.storage().data_ptr().get();
+
+    asdTensor.desc.dims.resize(contiguousAtTensor.sizes().size());
+    for (uint64_t i = 0; i < contiguousAtTensor.sizes().size(); i++) {
+        asdTensor.desc.dims[i] = contiguousAtTensor.sizes()[i];
+    }
+
+    auto it = DTYPE_MAP.find(contiguousAtTensor.scalar_type());
+    if (it != DTYPE_MAP.end()) {
+        asdTensor.desc.dtype = it->second;
+    } else {
+        ASD_LOG(ERROR) << "not support dtype:" << contiguousAtTensor.scalar_type();
+    }
+
+    asdTensor.dataSize = CalcTensorDataSize(asdTensor);
+
+    return asdTensor;
 }
 
 at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor)

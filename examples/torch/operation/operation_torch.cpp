@@ -22,14 +22,14 @@
 #include "examples/utils/example_utils.h"
 #include "operation_creator.h"
 
-OperationTorch::OperationTorch() { ASD_LOG(INFO) << "OperationTorch::OperationTorch"; }
+OperationTorch::OperationTorch(std::string opName) : opName_(opName)
+{
+    ASD_LOG(INFO) << "OperationTorch::OperationTorch";
+}
 
 OperationTorch::~OperationTorch() {}
 
-void OperationTorch::Test() { ASD_LOG(INFO) << "OperationTorch::Test called"; }
-
-std::vector<torch::Tensor> OperationTorch::Execute(std::string opName, std::string param,
-                                                   std::vector<torch::Tensor> atInTensors)
+std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> atInTensors)
 {
     for (auto &inTensor : atInTensors) {
         inTensor = inTensor.contiguous();
@@ -37,9 +37,9 @@ std::vector<torch::Tensor> OperationTorch::Execute(std::string opName, std::stri
 
     std::vector<torch::Tensor> atOutTensors;
 
-    AclTransformer::Operation *operation = CreateOperation(opName, param);
+    AclTransformer::Operation *operation = CreateOperation(opName_, param_);
     if (operation == nullptr) {
-        ASD_LOG(ERROR) << "create operation fail, json:" << param;
+        ASD_LOG(ERROR) << "create operation fail, json:" << param_;
         return atOutTensors;
     }
 
@@ -137,7 +137,7 @@ void OperationTorch::CreateAtOutTensors(AclTransformer::Operation *operation,
 TORCH_LIBRARY(OperationTorch, m)
 {
     m.class_<OperationTorch>("OperationTorch")
-        .def(torch::init<>())
-        .def("test", &OperationTorch::Test)
+        .def(torch::init<std::string>())
+        .def("set_param", &OperationTorch::SetParam)
         .def("execute", &OperationTorch::Execute);
 }

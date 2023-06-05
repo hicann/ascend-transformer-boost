@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "bert_layer_torch.h"
 #include <json/json.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
@@ -25,40 +24,10 @@
 #include "acltransformer/ops/add_norm_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
-#include "examples/utils/example_utils.h"
-#include "acltransformer/utils/tensor_cache.h"
 
-BertLayerTorch::BertLayerTorch(std::string bertLayerParam) : bertLayerParam_(bertLayerParam)
+
+void BertLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack)
 {
-    ASD_LOG(INFO) << "BertLayerTorch::BertLayerTorch";
-}
-
-BertLayerTorch::~BertLayerTorch() {}
-
-void BertLayerTorch::Test() { ASD_LOG(INFO) << "BertLayerTorch::Test called"; }
-
-void BertLayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors)
-{
-    Json::Reader paramReader;
-    Json::Value paramJson;
-    if (!paramReader.parse(this->bertLayerParam_, paramJson)) {
-        ASD_LOG(ERROR) << "bertLayerParam json parse error";
-    }
-    AsdOps::Timer timer;
-    ASD_LOG(INFO) << "BertLayerTorch::Execute start";
-    for (size_t i = 0; i < inTensors.size(); ++i) {
-        inTensors.at(i) = inTensors.at(i).contiguous();
-        ASD_LOG(INFO) << "inTensors[" << i << "].options:" << inTensors.at(i).options()
-                      << ", data:" << inTensors.at(i).data_ptr();
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(inTensors.at(i).data_ptr(), &inTensors.at(i));
-    }
-    for (size_t i = 0; i < outTensors.size(); ++i) {
-        outTensors.at(i) = outTensors.at(i).contiguous();
-        ASD_LOG(INFO) << "outTensors[" << i << "].options:" << outTensors.at(i).options()
-                      << ", data:" << outTensors.at(i).data_ptr();
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(outTensors.at(i).data_ptr(), &outTensors.at(i));
-    }
-
     const uint64_t hiddenStatesId = 0;
     const uint64_t qLinearWeightId = 1;
     const uint64_t qLinearBiasId = 2;
@@ -89,9 +58,6 @@ void BertLayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<t
     const uint64_t ffnOutId = 25;
     const uint64_t bertOutLinearOutId = 26;
 
-    AclTransformer::VariantPack variantPack;
-    BuildVariantPack(inTensors, outTensors, variantPack);
-
     AclTransformer::LinearParam qLinearParam;
     AclTransformer::LinearParam kLinearParam;
     AclTransformer::LinearParam vLinearParam;
@@ -115,8 +81,8 @@ void BertLayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<t
     AclTransformer::LinearOperation bertOutLinearOp(bertOutLinearParam);
     AclTransformer::AddNormOperation bertOutAddNormOp(bertOutAddNormParam);
 
-    AclTransformer::OperationGraph opGraph;
     static int64_t graphId = 0;
+    AclTransformer::OperationGraph opGraph;
     opGraph.name = "BertLayerGraph_" + std::to_string(graphId++);
     opGraph.inTensorSize = variantPack.inTensors.size();
     opGraph.outTensorSize = variantPack.outTensors.size();
@@ -170,19 +136,4 @@ void BertLayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<t
     bertOutAddNormNode.outTensorIds = {bertLayerOutId};
 
     ExecuteOperationGraph(opGraph, variantPack);
-    for (size_t i = 0; i < inTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(inTensors.at(i).data_ptr());
-    }
-    for (size_t i = 0; i < outTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(outTensors.at(i).data_ptr());
-    }
-    ASD_LOG(WARN) << "BertLayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond();
-}
-
-TORCH_LIBRARY(BertLayerTorch, m)
-{
-    m.class_<BertLayerTorch>("BertLayerTorch")
-        .def(torch::init<std::string>())
-        .def("test", &BertLayerTorch::Test)
-        .def("execute", &BertLayerTorch::Execute);
 }
