@@ -11,15 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from tensor_testcase import TensorTestCase
-import unittest
-import os
-import json
-import time
-import torch
-import torch_npu
 import sys
-sys.path.append('../..')
+import torch_npu
+import torch
+import time
+import json
+import os
+import unittest
+from tensor_testcase import TensorTestCase
+
+DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../"))
+print(DIR)
+sys.path.append(DIR)
+
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
