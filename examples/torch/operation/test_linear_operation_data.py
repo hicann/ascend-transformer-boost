@@ -54,7 +54,6 @@ class TestBert(unittest.TestCase):
         param = '{"transposeA":false,"transposeB":true}'
         operation = torch.classes.OperationTorch.OperationTorch(
             "LinearOperation", param)
-        operation.test()
         testcase = TensorTestCase(
             'FastUnpadBertSelfAttention', in_tensor_num=12, out_tensor_num=6)
         for i in range(1, 2):

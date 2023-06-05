@@ -32,9 +32,10 @@ torch.classes.load_library(LIB_PATH)
 
 class TestBert(unittest.TestCase):
     def test_2d(self):
-        operation = torch.classes.OperationTorch.OperationTorch("AddNormOperation", json.dumps(
+        operation = torch.classes.OperationTorch.OperationTorch(
+            "AddNormOperation")
+        operation.set_param(json.dumps(
             {"layerNormEps": 1e-12}))
-        operation.test()
         testcase = TensorTestCase('AddLayerNorm', in_tensor_num=4)
         for i in range(1, 2):
             testcase.read(i)
