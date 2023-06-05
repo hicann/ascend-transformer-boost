@@ -30,14 +30,14 @@ torch.classes.load_library(LIB_PATH)
 
 class TestNormal(unittest.TestCase):
     def test_2d(self):
-        operation = torch.classes.OperationTorch.OperationTorch()
+        operation = torch.classes.OperationTorch.OperationTorch(
+            "LinearOperation", '{"transposeA":false, "transposeB":true}')
         operation.test()
         a = torch.rand(384, 32, 1024).npu().half()
         b = torch.rand(1024, 1024).npu().half()
         c = torch.rand(1024).npu().half()
 
-        results = operation.execute("LinearOperation", '{"transposeA":false, "transposeB":true}', [
-            a, b, c])
+        results = operation.execute([a, b, c])
 
         golden_result = torch.matmul(a, torch.transpose(b, 0, 1)) + c
 

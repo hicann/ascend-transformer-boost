@@ -1,0 +1,70 @@
+/*
+ * Copyright(C) 2023. Huawei Technologies Co.,Ltd. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "layer_torch.h"
+#include <json/json.h>
+#include <asdops/utils/log/log.h>
+#include <asdops/utils/time/timer.h>
+#include "acltransformer/operation.h"
+#include "acltransformer/operation_graph.h"
+#include "examples/utils/example_utils.h"
+#include "acltransformer/plan_builder.h"
+#include "acltransformer/utils/tensor_cache.h"
+#include "layer.h"
+
+LayerTorch::LayerTorch(std::string layerName, std::string param) : layerName_(layerName), param_(param)
+{
+    ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName << ", param:" << param;
+}
+
+LayerTorch::~LayerTorch() {}
+
+void LayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors)
+{
+    AsdOps::Timer timer;
+    ASD_LOG(INFO) << "LayerTorch::Execute start";
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        inTensors.at(i) = inTensors.at(i).contiguous();
+        ASD_LOG(INFO) << "inTensors[" << i << "].options:" << inTensors.at(i).options()
+                      << ", data:" << inTensors.at(i).data_ptr();
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(inTensors.at(i).data_ptr(), &inTensors.at(i));
+    }
+    for (size_t i = 0; i < outTensors.size(); ++i) {
+        outTensors.at(i) = outTensors.at(i).contiguous();
+        ASD_LOG(INFO) << "outTensors[" << i << "].options:" << outTensors.at(i).options()
+                      << ", data:" << outTensors.at(i).data_ptr();
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(outTensors.at(i).data_ptr(), &outTensors.at(i));
+    }
+
+    AclTransformer::VariantPack variantPack;
+    BuildVariantPack(inTensors, outTensors, variantPack);
+
+    ExecuteLayer(layerName_, param_, variantPack);
+
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(inTensors.at(i).data_ptr());
+    }
+    for (size_t i = 0; i < outTensors.size(); ++i) {
+        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(outTensors.at(i).data_ptr());
+    }
+    ASD_LOG(WARN) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond();
+}
+
+TORCH_LIBRARY(LayerTorch, m)
+{
+    m.class_<LayerTorch>("LayerTorch")
+        .def(torch::init<std::string, std::string>())
+        .def("execute", &LayerTorch::Execute);
+}

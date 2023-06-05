@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from tensor_testcase import TensorTestCase
 import unittest
 import os
 import json
@@ -18,7 +19,6 @@ import torch
 import torch_npu
 import sys
 sys.path.append('../..')
-from tensor_testcase import TensorTestCase
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
@@ -52,9 +52,11 @@ torch.classes.load_library(LIB_PATH)
 class TestBert(unittest.TestCase):
     def test_2d(self):
         param = '{"transposeA":false,"transposeB":true}'
-        operation = torch.classes.LinearOperationTorch.LinearOperationTorch(param)
+        operation = torch.classes.OperationTorch.OperationTorch(
+            "LinearOperation", param)
         operation.test()
-        testcase = TensorTestCase('FastUnpadBertSelfAttention', in_tensor_num=12, out_tensor_num=6)
+        testcase = TensorTestCase(
+            'FastUnpadBertSelfAttention', in_tensor_num=12, out_tensor_num=6)
         for i in range(1, 2):
             testcase.read(i)
             in_tensors = testcase.get_in_tensors()
@@ -71,6 +73,7 @@ class TestBert(unittest.TestCase):
             print("golden_d:" + str(golden_d.size()))
 
             self.assertTrue(torch.allclose(d, golden_d, rtol=0.02, atol=0.02))
+
 
 if __name__ == '__main__':
     unittest.main()
