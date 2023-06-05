@@ -31,7 +31,6 @@ torch.classes.load_library(LIB_PATH)
 class TestNormal(unittest.TestCase):
     def test_2d(self):
         operation = torch.classes.MultiAddLayerTorch.MultiAddLayerTorch()
-        operation.test()
         a = torch.rand(200, 30000).npu()
         b = torch.rand(200, 30000).npu()
         c = torch.rand(200, 30000).npu()

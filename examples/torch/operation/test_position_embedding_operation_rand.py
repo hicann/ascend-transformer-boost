@@ -31,17 +31,16 @@ torch.classes.load_library(LIB_PATH)
 class TestAddNormal(unittest.TestCase):
     # [seq, batch, headNum, headSize] = [1, 1, 32, 128]
     def test_2d(self):
-        operation = torch.classes.OperationTorch.OperationTorch()
-        operation.test()
+        operation = torch.classes.OperationTorch.OperationTorch(
+            "PositionEmbeddingOperation")
+        operation.set_param(json.dumps({"headNum": 32}))
         # in
         query = torch.rand(1, 1, 4096).npu()
         position_ids = torch.rand(1, 2, 4).npu()
         cos_table = torch.rand(1, 1, 4).npu()
         sin_table = torch.rand(1, 1, 4).npu()
 
-        result = operation.execute("PositionEmbeddingOperation",
-                          json.dumps({"headNum": 32}),
-                          [query, position_ids, cos_table, sin_table])
+        result = operation.execute([query, position_ids, cos_table, sin_table])
         print("result:" + str(result.shape))
 
 

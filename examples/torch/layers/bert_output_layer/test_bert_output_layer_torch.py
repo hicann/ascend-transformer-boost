@@ -31,7 +31,6 @@ torch.classes.load_library(LIB_PATH)
 class TestNormal(unittest.TestCase):
     def test_2d(self):
         operation = torch.classes.BertOutputLayerTorch.BertOutputLayerTorch()
-        operation.test()
         input = torch.rand(2, 3).npu()
         linearWeight = torch.rand(3, 2).npu()
         linearBias = torch.rand(2, 2).npu()

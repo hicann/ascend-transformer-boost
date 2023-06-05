@@ -28,9 +28,7 @@ LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
 torch.classes.load_library(LIB_PATH)
 
 operation = torch.classes.BertOutputLayerTorch.BertOutputLayerTorch()
-operation.test()
 operation = torch.classes.BertLayerTorch.BertLayerTorch()
-operation.test()
 
 if __name__ == '__main__':
     unittest.main()
