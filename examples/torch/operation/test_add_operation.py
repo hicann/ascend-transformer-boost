@@ -31,8 +31,8 @@ torch.classes.load_library(LIB_PATH)
 class TestNormal(unittest.TestCase):
     def test_2d(self):
         operation = torch.classes.OperationTorch.OperationTorch(
-            "AddOperation", "{\"scale\": 1}")
-        operation.test()
+            "AddOperation")
+        operation.set_param("{\"scale\": 1}")
         a = torch.rand(2, 3).npu().half()
         b = torch.rand(2, 3).npu().half()
 

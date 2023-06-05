@@ -22,10 +22,11 @@
 
 class LayerTorch : public torch::CustomClassHolder {
 public:
-    LayerTorch(std::string layerName, std::string param);
+    LayerTorch(std::string layerName);
     ~LayerTorch();
+    void SetParam(std::string param) { param_ = param; }
     void Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
-    c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_, param_); }
+    c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_); }
 
 private:
     std::string layerName_;

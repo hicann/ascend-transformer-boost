@@ -32,7 +32,6 @@ class TestAddNormal(unittest.TestCase):
     def test_2d(self):
         operation = torch.classes.OperationTorch.OperationTorch("AddNormOperation", json.dumps(
             {"layerNormEps": 1e-12}))
-        operation.test()
         a = torch.rand(2, 3).npu().half()
         b = torch.rand(2, 3).npu().half()
         normWeight = torch.rand(3).npu().half()
