@@ -31,6 +31,8 @@ LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
 
 LayerTorch::~LayerTorch() {}
 
+void LayerTorch::SetParam(std::string param) { param_ = param; }
+
 void LayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors)
 {
     AsdOps::Timer timer;

@@ -157,6 +157,30 @@ AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor)
     return asdTensor;
 }
 
+at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc)
+{
+    at::TensorOptions options = at::TensorOptions();
+    if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
+        options = options.dtype(at::kFloat);
+    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
+        options = options.dtype(at::kHalf);
+    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_BOOL) {
+        options = options.dtype(at::kBool);
+    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_INT64) {
+        options = options.dtype(at::kLong);
+    } else {
+        ASD_LOG(ERROR) << "not support dtype:" << tensorDesc.dtype;
+    }
+    at::Tensor newTensor =
+        at::zeros(at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options);
+#ifdef TORCH_18
+    newTensor = newTensor.to(at::Device(at::DeviceType::XLA));
+#else
+    newTensor = newTensor.to(at::Device(at::kPrivateUse1));
+#endif
+    return newTensor;
+}
+
 at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor)
 {
     return AsdOpsTensor2AtTensor2(handle, asdTensor);

@@ -29,6 +29,8 @@ OperationTorch::OperationTorch(std::string opName) : opName_(opName)
 
 OperationTorch::~OperationTorch() {}
 
+void OperationTorch::SetParam(std::string param) { param_ = param; }
+
 std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> atInTensors)
 {
     for (auto &inTensor : atInTensors) {
@@ -117,19 +119,7 @@ void OperationTorch::CreateAtOutTensors(AclTransformer::Operation *operation,
 
     atOutTensors.resize(outTensorDescs.size());
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
-        at::TensorOptions options = at::TensorOptions();
-        if (outTensorDescs.at(i).dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
-            options = options.dtype(at::kFloat);
-        } else if (outTensorDescs.at(i).dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
-            options = options.dtype(at::kHalf);
-        }
-        at::Tensor newTensor =
-            at::zeros(at::IntArrayRef(outTensorDescs.at(i).dims.data(), outTensorDescs.at(i).dims.size()), options);
-#ifdef TORCH_18
-        newTensor = newTensor.to(at::Device(at::DeviceType::XLA));
-#else
-        newTensor = newTensor.to(at::Device(at::kPrivateUse1));
-#endif
+        at::Tensor newTensor = AclTransformer::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
         atOutTensors.at(i) = newTensor.contiguous();
     }
 }
