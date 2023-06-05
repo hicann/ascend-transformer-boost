@@ -34,7 +34,6 @@ torch.classes.load_library(LIB_PATH)
 #     def test_2d(self):
 #         param = '{"transposeA":false,"transposeB":true}'
 #         operation = torch.classes.LinearOperationTorch.LinearOperationTorch(param)
-#         operation.test()
 #         a = torch.rand(5584, 1024).npu()
 #         b = torch.rand(4096, 1024).npu()
 #         c = torch.rand(4096).npu()
@@ -53,7 +52,8 @@ class TestBert(unittest.TestCase):
     def test_2d(self):
         param = '{"transposeA":false,"transposeB":true}'
         operation = torch.classes.OperationTorch.OperationTorch(
-            "LinearOperation", param)
+            "LinearOperation")
+        operation.set_param(param)
         testcase = TensorTestCase(
             'FastUnpadBertSelfAttention', in_tensor_num=12, out_tensor_num=6)
         for i in range(1, 2):

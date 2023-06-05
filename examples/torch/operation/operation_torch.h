@@ -25,7 +25,7 @@ class OperationTorch : public torch::CustomClassHolder {
 public:
     OperationTorch(std::string opName);
     ~OperationTorch();
-    void SetParam(std::string param) { param_ = param; }
+    void SetParam(std::string param);
     std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
     c10::intrusive_ptr<OperationTorch> clone() const { return c10::make_intrusive<OperationTorch>(opName_); }
 

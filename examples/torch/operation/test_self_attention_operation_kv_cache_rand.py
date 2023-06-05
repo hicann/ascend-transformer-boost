@@ -31,8 +31,10 @@ torch.classes.load_library(LIB_PATH)
 class TestAddNormal(unittest.TestCase):
     # [seq, batch, headNum, headSize] = [1, 1, 32, 128]
     def test_2d(self):
-        operation = torch.classes.OperationTorch.OperationTorch()
-        operation.test()
+        operation = torch.classes.OperationTorch.OperationTorch(
+            "SelfAttentionKvCacheOperation")
+        operation.set_param(json.dumps({"transKey": True, "dk": 128,
+                                        "headNum": 32, "layerId": 13}))
         # in
         query = torch.rand(1, 1, 32, 128).npu()
         key = torch.rand(1, 1, 32, 128).npu()
@@ -41,10 +43,8 @@ class TestAddNormal(unittest.TestCase):
         past_key = torch.rand(11, 1, 32, 128).npu()
         past_value = torch.rand(11, 1, 32, 128).npu()
 
-        result, present_key, present_value = operation.execute("SelfAttentionKvCacheOperation",
-                          json.dumps({"transKey": True, "dk": 128,
-                                     "headNum": 32, "layerId": 13}),
-                          [query, key, value, attention_mask, past_key, past_value])
+        result, present_key, present_value = operation.execute(
+            [query, key, value, attention_mask, past_key, past_value])
         print("result:" + str(result.shape))
         print("present_key:" + str(present_key.shape))
         print("present_value:" + str(present_value.shape))
