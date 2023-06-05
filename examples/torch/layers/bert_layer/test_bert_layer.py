@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from tensor_testcase import TensorTestCase
 import unittest
 import os
 import json
@@ -19,7 +20,6 @@ import torch
 import torch_npu
 import sys
 sys.path.append('../..')
-from tensor_testcase import TensorTestCase
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
@@ -70,8 +70,8 @@ torch.classes.load_library(LIB_PATH)
 
 class TestBert(unittest.TestCase):
     def test_2d(self):
-        operation = torch.classes.BertLayerTorch.BertLayerTorch('{"transKey":true,"dk":64,"headNum":16}')
-        operation.test()
+        operation = torch.classes.BertLayerTorch.BertLayerTorch(
+            '{"transKey":true,"dk":64,"headNum":16}')
         testcase = TensorTestCase('BertLayer', in_tensor_num=18)
         testcase.read(1)
         in_tensors = testcase.get_in_tensors()
@@ -99,17 +99,18 @@ class TestBert(unittest.TestCase):
 
         bertLayerOutId = torch.empty(384, 32, 1024).half().npu()
         operation.execute(
-                [hiddenStatesId, qLinearWeightId, qLinearBiasId, kLinearWeightId, kLinearBiasId, vLinearWeightId, vLinearBiasId,
-                 selfOutLinearWeightId, selfOutLinearBiasId, selfOutNormWeightId, selfOutNormBiasId,
-                 ffnLinearWeightId, ffnLinearBiasId, bertOutLinearWeightId, bertOutLinearBiasId, bertOutNormWeightId, bertOutNormBiasId, attentionMaskId], [bertLayerOutId])
-        
+            [hiddenStatesId, qLinearWeightId, qLinearBiasId, kLinearWeightId, kLinearBiasId, vLinearWeightId, vLinearBiasId,
+             selfOutLinearWeightId, selfOutLinearBiasId, selfOutNormWeightId, selfOutNormBiasId,
+             ffnLinearWeightId, ffnLinearBiasId, bertOutLinearWeightId, bertOutLinearBiasId, bertOutNormWeightId, bertOutNormBiasId, attentionMaskId], [bertLayerOutId])
+
         ground_bertLayerOutId = out_tensors[0].npu()
         print("bertLayerOutId:" + str(bertLayerOutId.size()))
         print("ground_bertLayerOutId:" + str(ground_bertLayerOutId.size()))
         print("bertLayerOutId:" + str(bertLayerOutId))
         print("ground_bertLayerOutId:" + str(ground_bertLayerOutId))
 
-        self.assertTrue(torch.allclose(bertLayerOutId, ground_bertLayerOutId, rtol=0.05, atol=0.05))
+        self.assertTrue(torch.allclose(
+            bertLayerOutId, ground_bertLayerOutId, rtol=0.05, atol=0.05))
 
 
 if __name__ == '__main__':
