@@ -24,12 +24,6 @@
 #include "acltransformer/config.h"
 #include "acltransformer/utils/tensor_cache.h"
 
-static std::map<at::ScalarType, AsdOps::TensorDType> DTYPE_MAP = {
-    {at::ScalarType::Byte, AsdOps::TENSOR_DTYPE_UINT8},   {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_UINT8},
-    {at::ScalarType::Half, AsdOps::TENSOR_DTYPE_FLOAT16}, {at::ScalarType::Float, AsdOps::TENSOR_DTYPE_FLOAT},
-    {at::ScalarType::Int, AsdOps::TENSOR_DTYPE_INT32},    {at::ScalarType::Long, AsdOps::TENSOR_DTYPE_INT64},
-};
-
 void *GetCurrentStream()
 {
     int32_t devId = 0;
@@ -37,43 +31,6 @@ void *GetCurrentStream()
     void *stream = c10_npu::getCurrentNPUStream(devId).stream();
     ASD_LOG_IF(stream == nullptr, ERROR) << "get current stream fail";
     return stream;
-}
-
-uint64_t CalcTensorDataSize(const AsdOps::Tensor &tensor)
-{
-    uint64_t dataItemSize = 0;
-    switch (tensor.desc.dtype) {
-    case AsdOps::TENSOR_DTYPE_FLOAT: dataItemSize = sizeof(float); break;
-    case AsdOps::TENSOR_DTYPE_FLOAT16: dataItemSize = 2; break;
-    default: ASD_LOG(ERROR) << "not support dtype:" << tensor.desc.dtype;
-    }
-
-    return dataItemSize * tensor.Numel();
-}
-
-AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor)
-{
-    at::Tensor contiguousAtTensor = atTensor.contiguous();
-    ASD_LOG(INFO) << "contiguousAtTensor is contiguous:" << contiguousAtTensor.is_contiguous();
-    AsdOps::Tensor asdTensor;
-    asdTensor.desc.format = AsdOps::TENSOR_FORMAT_ND;
-    asdTensor.data = contiguousAtTensor.storage().data_ptr().get();
-
-    asdTensor.desc.dims.resize(contiguousAtTensor.sizes().size());
-    for (uint64_t i = 0; i < contiguousAtTensor.sizes().size(); i++) {
-        asdTensor.desc.dims[i] = contiguousAtTensor.sizes()[i];
-    }
-
-    auto it = DTYPE_MAP.find(contiguousAtTensor.scalar_type());
-    if (it != DTYPE_MAP.end()) {
-        asdTensor.desc.dtype = it->second;
-    } else {
-        ASD_LOG(ERROR) << "not support dtype:" << contiguousAtTensor.scalar_type();
-    }
-
-    asdTensor.dataSize = CalcTensorDataSize(asdTensor);
-
-    return asdTensor;
 }
 
 void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,

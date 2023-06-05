@@ -30,12 +30,13 @@ torch.classes.load_library(LIB_PATH)
 
 class TestNormal(unittest.TestCase):
     def test_2d(self):
-        operation = torch.classes.OperationTorch.OperationTorch()
+        operation = torch.classes.OperationTorch.OperationTorch(
+            "AddOperation", "{\"scale\": 1}")
         operation.test()
         a = torch.rand(2, 3).npu().half()
         b = torch.rand(2, 3).npu().half()
 
-        results = operation.execute("AddOperation", "{\"scale\": 1}", [a, b])
+        results = operation.execute([a, b])
 
         golden_result = a + b
 

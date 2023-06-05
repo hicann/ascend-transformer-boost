@@ -30,15 +30,15 @@ torch.classes.load_library(LIB_PATH)
 
 class TestAddNormal(unittest.TestCase):
     def test_2d(self):
-        operation = torch.classes.OperationTorch.OperationTorch()
+        operation = torch.classes.OperationTorch.OperationTorch("AddNormOperation", json.dumps(
+            {"layerNormEps": 1e-12}))
         operation.test()
         a = torch.rand(2, 3).npu().half()
         b = torch.rand(2, 3).npu().half()
         normWeight = torch.rand(3).npu().half()
         normBias = torch.rand(3).npu().half()
 
-        results = operation.execute("AddNormOperation", json.dumps(
-            {"layerNormEps": 1e-12}), [a, b, normWeight, normBias])
+        results = operation.execute([a, b, normWeight, normBias])
 
         layer_norm = torch.nn.LayerNorm([3]).npu()
         layer_norm.load_state_dict({"weight": normWeight, "bias": normBias})

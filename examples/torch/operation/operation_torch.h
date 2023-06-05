@@ -15,6 +15,7 @@
  */
 #ifndef OPERATION_TORCH_H
 #define OPERATION_TORCH_H
+#include <string>
 #include <vector>
 #include <torch/script.h>
 #include <torch/custom_class.h>
@@ -22,17 +23,21 @@
 
 class OperationTorch : public torch::CustomClassHolder {
 public:
-    OperationTorch();
+    OperationTorch(std::string opName);
     ~OperationTorch();
-    void Test();
-    std::vector<torch::Tensor> Execute(std::string opName, std::string param, std::vector<torch::Tensor> inTensors);
-    c10::intrusive_ptr<OperationTorch> clone() const { return c10::make_intrusive<OperationTorch>(); }
+    void SetParam(std::string param) { param_ = param; }
+    std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
+    c10::intrusive_ptr<OperationTorch> clone() const { return c10::make_intrusive<OperationTorch>(opName_); }
 
 private:
     void ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> &atInTensors,
                           std::vector<torch::Tensor> &atOutTensors);
     void CreateAtOutTensors(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                             std::vector<torch::Tensor> &atOutTensors);
+
+private:
+    std::string opName_;
+    std::string param_;
 };
 
 #endif
