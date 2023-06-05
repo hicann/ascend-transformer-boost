@@ -32,7 +32,8 @@ torch.classes.load_library(LIB_PATH)
 
 class TestBert(unittest.TestCase):
     def test_2d(self):
-        operation = torch.classes.AddNormOperationTorch.AddNormOperationTorch()
+        operation = torch.classes.OperationTorch.OperationTorch("AddNormOperation", json.dumps(
+            {"layerNormEps": 1e-12}))
         operation.test()
         testcase = TensorTestCase('AddLayerNorm', in_tensor_num=4)
         for i in range(1, 2):
@@ -47,12 +48,14 @@ class TestBert(unittest.TestCase):
             print(b.size())
             print(weight.size())
             print(bias.size())
-            d = operation.execute(a, b, weight, bias)
-            golden_d = out_tensors[0].npu()
-            print("d:" + str(d.size()))
-            print("golden_d:" + str(golden_d.size()))
 
-            self.assertTrue(torch.allclose(d, golden_d, rtol=0.02, atol=0.02))
+            results = operation.execute([a, b, weight, bias])
+            golden_result = out_tensors[0].npu()
+            print("d:" + str(results[0].size()))
+            print("golden_d:" + str(golden_result.size()))
+
+            self.assertTrue(torch.allclose(
+                results[0], golden_result, rtol=0.02, atol=0.02))
 
 
 if __name__ == '__main__':
