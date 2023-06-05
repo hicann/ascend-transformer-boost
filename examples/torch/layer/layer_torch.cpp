@@ -24,9 +24,9 @@
 #include "acltransformer/utils/tensor_cache.h"
 #include "layer.h"
 
-LayerTorch::LayerTorch(std::string layerName, std::string param) : layerName_(layerName), param_(param)
+LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
 {
-    ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName << ", param:" << param;
+    ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName;
 }
 
 LayerTorch::~LayerTorch() {}
@@ -65,6 +65,7 @@ void LayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<torch
 TORCH_LIBRARY(LayerTorch, m)
 {
     m.class_<LayerTorch>("LayerTorch")
-        .def(torch::init<std::string, std::string>())
-        .def("execute", &LayerTorch::Execute);
+        .def(torch::init<std::string>())
+        .def("execute", &LayerTorch::Execute)
+        .def("set_param", &LayerTorch::SetParam);
 }

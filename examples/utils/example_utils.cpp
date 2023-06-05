@@ -41,10 +41,10 @@ void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInT
 
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(atInTensors.at(i)));
+        variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(atInTensors.at(i)));
     }
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
+        variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(atOutTensors.at(i)));
     }
 
     runner->Setup(variantPack);
@@ -78,12 +78,12 @@ void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tens
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atInTensors.at(i)->data_ptr(), atInTensors.at(i));
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(*atInTensors.at(i)));
+        variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(*atInTensors.at(i)));
     }
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
         AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atOutTensors.at(i)->data_ptr(),
                                                                       atOutTensors.at(i));
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(*atOutTensors.at(i)));
+        variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(*atOutTensors.at(i)));
     }
 
     static int64_t opId = 0;
@@ -214,9 +214,9 @@ void BuildVariantPack(const std::vector<torch::Tensor> &inTensors, const std::ve
                       AclTransformer::VariantPack &variantPack)
 {
     for (size_t i = 0; i < inTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(inTensors.at(i)));
+        variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(inTensors.at(i)));
     }
     for (size_t i = 0; i < outTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(outTensors.at(i)));
+        variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(outTensors.at(i)));
     }
 }
