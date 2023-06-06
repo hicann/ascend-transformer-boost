@@ -15,6 +15,7 @@
  */
 #include "ffn_torch_runner.h"
 #include <ATen/ATen.h>
+#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include <torch/script.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/log/log.h>
@@ -34,13 +35,14 @@ AsdOps::Status FfnTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantP
     if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "FfnTorchRunner inTensor num error!");
     }
-    at::Tensor *atInTensorA = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[0].data);
-    at::Tensor *atInTensorWeight = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[1].data);
-    at::Tensor *atInTensorBias = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[2].data);
-    at::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
 
-    *atOutTensor = at::gelu(at::linear(*atInTensorA, *atInTensorWeight, *atInTensorBias)).contiguous();
-
+    at::Tensor atOutTensor = at::gelu(at::linear(atInTensorA, atInTensorWeight, atInTensorBias)).contiguous();
+    int ret = AsdRtMemCopy(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize, atOutTensor.data_ptr(),
+                           variantPack.outTensors[0].dataSize, ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
+    ASD_LOG_IF(ret != 0, ERROR) << "FfnTorchRunner AsdRtMemCopy fail";
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

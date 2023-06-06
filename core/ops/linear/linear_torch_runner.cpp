@@ -19,6 +19,7 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/utils/tensor_cache.h"
+#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 
 namespace AclTransformer {
 LinearTorchRunner::LinearTorchRunner(LinearParam &param) : Runner("LinearTorchRunner"), param_(param)
@@ -34,16 +35,16 @@ AsdOps::Status LinearTorchRunner::ExecuteImpl(Handle &handle, VariantPack &varia
         return AsdOps::Status::FailStatus(1, "LinearTorchRunner inTensor num error!");
     }
 
-    at::Tensor *atInTensorA =
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[0].data);
-    at::Tensor *atInTensorWeight =
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[1].data);
-    at::Tensor *atInTensorWeightias =
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[2].data);
-    at::Tensor *atResult =
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.outTensors[0].data);
-    at::Tensor outputTensor = at::linear(*atInTensorA, *atInTensorWeight, *atInTensorWeightias).contiguous();
-    *atResult = outputTensor;
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor atInTensorWeightias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor resultTensor = at::linear(atInTensorA, atInTensorWeight, atInTensorWeightias).contiguous();
+    ASD_LOG(INFO) << "LinearTorchRunner resultTensor.format:"
+                  << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(resultTensor);
+
+    int ret = AsdRtMemCopy(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize, resultTensor.data_ptr(),
+                           variantPack.outTensors[0].dataSize, ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
+    ASD_LOG_IF(ret != 0, ERROR) << "LinearTorchRunner AsdRtMemCopy fail";
 
     return AsdOps::Status::OkStatus();
 }

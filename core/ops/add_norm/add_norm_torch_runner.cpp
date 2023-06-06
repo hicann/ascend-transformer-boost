@@ -17,6 +17,7 @@
  */
 #include "add_norm_torch_runner.h"
 #include <ATen/ATen.h>
+#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
@@ -33,15 +34,18 @@ AsdOps::Status AddNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &vari
         return AsdOps::Status::FailStatus(1, "AddNormTorchRunner inTensor num error!");
     }
 
-    at::Tensor *atInTensorA = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[0].data);
-    at::Tensor *atInTensorB = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[1].data);
-    at::Tensor *atInTensorWeight = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[2].data);
-    at::Tensor *atInTensorBias = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[3].data);
-    at::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
-    *atOutTensor = at::layer_norm(at::add(*atInTensorA, *atInTensorB), param_.dims, *atInTensorWeight, *atInTensorBias,
-                                  param_.layerNormEps)
-                       .contiguous();
-
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    at::Tensor atOutTensor = at::layer_norm(at::add(atInTensorA, atInTensorB), param_.dims, atInTensorWeight,
+                                            atInTensorBias, param_.layerNormEps)
+                                 .contiguous();
+    ASD_LOG(INFO) << "AddNormTorchRunner atOutTensor.format:"
+                  << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensor);
+    int ret = AsdRtMemCopy(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize, atOutTensor.data_ptr(),
+                           variantPack.outTensors[0].dataSize, ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
+    ASD_LOG_IF(ret != 0, ERROR) << "AddNormTorchRunner AsdRtMemCopy fail";
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
