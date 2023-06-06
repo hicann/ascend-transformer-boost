@@ -28,15 +28,18 @@ SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() {}
 AsdOps::Status SelfAttentionKvCacheOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
-    // in : Q K V attention_mast pastK pastV
-    // out : out presentK presentV
-    // Q K V pastK pastV : [seq_len, batch, head_num, head_size]
+    // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
+    // out : out presentK presentV [seq_len, batch, head_num * head_size]
     if (inTensors.size() != 6) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 6");
     }
 
     outTensorDescs.resize(3);
     outTensorDescs.at(0) = inTensors.at(0).desc;
+    outTensorDescs.at(0).dims.clear();
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
     outTensorDescs.at(1) = inTensors.at(4).desc;
     outTensorDescs.at(1).dims.at(0) = outTensorDescs.at(1).dims.at(0) + 1;
     outTensorDescs.at(2) = inTensors.at(5).desc;

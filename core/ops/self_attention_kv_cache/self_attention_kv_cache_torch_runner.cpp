@@ -43,6 +43,9 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
     torch::Tensor attention_mask = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[3].data);
     torch::Tensor pastKey = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[4].data);
     torch::Tensor pastValue = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[5].data);
+    torch::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
+    torch::Tensor *presentKeyout = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[1].data);
+    torch::Tensor *presentValueOut = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[2].data);
     ASD_LOG(INFO) << "start";
     ASD_LOG(INFO) << "mixedQuery" << mixedQuery.sizes();
     ASD_LOG(INFO) << "mixedKey" << mixedKey.sizes();
@@ -52,43 +55,77 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
     ASD_LOG(INFO) << "pastValue" << pastValue.sizes();
 
     torch::Tensor presentKey = torch::cat({pastKey, mixedKey}, 0);
-    torch::Tensor *presentKeyout = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[1].data);
+    // torch::save(presentKey.to(at::Device(at::kCPU)), "cat_presentKey.pth");
     *presentKeyout = presentKey;
-    ASD_LOG(INFO) << "cat K end";
+    ASD_LOG(INFO) << "cat K end" << presentKey.sizes();
+    // [seq_len, batch*head_num, head_size]
     mixedQuery =
         mixedQuery.view({mixedQuery.sizes()[0], mixedQuery.sizes()[1] * mixedQuery.sizes()[2], mixedQuery.sizes()[3]});
+    // [batch*head_num, seq_len, head_size]
     mixedQuery = torch::transpose(mixedQuery, 0, 1);
 
     torch::Tensor presentValue = torch::cat({pastValue, mixedValue}, 0);
-    torch::Tensor *presentValueOut = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[2].data);
     *presentValueOut = presentValue;
-    ASD_LOG(INFO) << "cat V end";
+    ASD_LOG(INFO) << "cat V end" << presentValue.sizes();
+    // [seq_len, batch*head_num, head_size]
     presentValue = presentValue.view(
         {presentValue.sizes()[0], presentValue.sizes()[1] * presentValue.sizes()[2], presentValue.sizes()[3]});
+    // [batch*head_num, seq_len, head_size]
     presentValue = torch::transpose(presentValue, 0, 1);
-
+    // [seq_len, batch*head_num, head_size]
     presentKey =
         presentKey.view({presentKey.sizes()[0], presentKey.sizes()[1] * presentKey.sizes()[2], presentKey.sizes()[3]});
+    // [batch*head_num, head_size, seq_len]
     presentKey = presentKey.permute({1, 2, 0});
 
     double scal = 1 / (sqrt(this->param_.dk) * (this->param_.layerId + 1));
     mixedQuery = torch::mul(mixedQuery, scal);
-    // [b, head_num, sq, sk]
+    // [batch*head_num, seq_len_q, seq_len_k]
+    // torch::save(mixedQuery.to(at::Device(at::kCPU)), "mixedQuery.pth");
+    // torch::save(presentKey.to(at::Device(at::kCPU)), "presentKey.pth");
     torch::Tensor attentionScores = torch::bmm(mixedQuery, presentKey).contiguous();
-    if (attention_mask.sum().item<bool>() > 0) {
-        attentionScores.masked_fill_(attention_mask, -10000.0);
-    }
+
+    // [b, head_num, sq, sk]
+    attentionScores = attentionScores.view({attentionScores.sizes()[0] / this->param_.headNum, 
+        this->param_.headNum, attentionScores.sizes()[1], attentionScores.sizes()[2]});
+    // torch::save(attentionScores.to(at::Device(at::kCPU)), "bmm1.pth");
+    ASD_LOG(INFO) << "attentionScores:" << attentionScores.sizes();
+    // // if (attention_mask.sum().item<bool>() > 0) {
+    //     torch::save(attentionScores.to(at::Device(at::kCPU)), "before_mask_fill.pth");
+    //     torch::save(attention_mask.to(at::Device(at::kCPU)), "attention_mask.pth");
+    //     attentionScores.masked_fill_(attention_mask, -10000.0);
+    //     torch::save(attentionScores.to(at::Device(at::kCPU)), "mask_fill.pth");
+    // // }
     ASD_LOG(INFO) << "bmm1 end";
     // to float?
+    // torch::save(attentionScores.to(at::Device(at::kCPU)), "before_mul2.pth");
     attentionScores = torch::mul(attentionScores, this->param_.layerId + 1.0);
+    // torch::save(attentionScores.to(at::Device(at::kCPU)), "mul2.pth");
     torch::Tensor attention_probs = torch::softmax(attentionScores, -1);
+    // torch::save(attention_probs.to(at::Device(at::kCPU)), "softmax.pth");
     ASD_LOG(INFO) << "softmax end";
+    // [batch*head_num, seq_len_q, seq_len_k]
+    attention_probs = attention_probs.view({attentionScores.sizes()[0] * attentionScores.sizes()[1], 
+        attentionScores.sizes()[2], attentionScores.sizes()[3]});
+    // [batch*head_num, seq_len_q, head_size]
+    // torch::save(attention_probs.to(at::Device(at::kCPU)), "m_before_bmm2.pth");
+    // torch::save(presentValue.to(at::Device(at::kCPU)), "n_before_bmm2.pth");
     torch::Tensor contextLayer = torch::bmm(attention_probs, presentValue);
+    // torch::save(contextLayer.to(at::Device(at::kCPU)), "bmm2.pth");
     ASD_LOG(INFO) << "bmm2 end";
-    contextLayer = torch::transpose(contextLayer, 0, 1).contiguous();
-
-    torch::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
+    ASD_LOG(INFO) << "contextLayer" << contextLayer.sizes();
+    // [seq_len_q, batch*head_num, head_size]
+    contextLayer = torch::transpose(contextLayer, 0, 1);
+    ASD_LOG(INFO) << "contextLayer" << contextLayer.sizes();
+    contextLayer = contextLayer.view({contextLayer.sizes()[0], contextLayer.sizes()[1] / this->param_.headNum, this->param_.headNum, contextLayer.sizes()[2]}).contiguous();
+    ASD_LOG(INFO) << "contextLayer" << contextLayer.sizes();
+    contextLayer = contextLayer.view({contextLayer.sizes()[0], contextLayer.sizes()[1], contextLayer.sizes()[2] * contextLayer.sizes()[3]});
+    ASD_LOG(INFO) << "contextLayer" << contextLayer.sizes();
+    if (contextLayer.sizes() != (*atOutTensor).sizes()) {
+        ASD_LOG(ERROR) << "infer shape error" << (*atOutTensor).sizes();
+    }
     *atOutTensor = contextLayer;
+    // torch::save((*atOutTensor).to(at::Device(at::kCPU)), "final.pth");
 
     return AsdOps::Status::OkStatus();
 }
