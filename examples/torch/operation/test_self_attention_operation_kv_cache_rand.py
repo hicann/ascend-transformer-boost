@@ -36,10 +36,10 @@ class TestAddNormal(unittest.TestCase):
         operation.set_param(json.dumps({"transKey": True, "dk": 128,
                                         "headNum": 32, "layerId": 13}))
         # in
-        query = torch.rand(1, 1, 32, 128).npu()
-        key = torch.rand(1, 1, 32, 128).npu()
-        value = torch.rand(1, 1, 4096).npu()
-        attention_mask = torch.ones(1, 1, dtype=torch.bool).npu()
+        query = torch.rand(4, 1, 32, 128).npu()
+        key = torch.rand(4, 1, 32, 128).npu()
+        value = torch.rand(4, 1, 32, 128).npu()
+        attention_mask = torch.ones(1, 1, 4, 15, dtype=torch.bool).npu()
         past_key = torch.rand(11, 1, 32, 128).npu()
         past_value = torch.rand(11, 1, 32, 128).npu()
 
