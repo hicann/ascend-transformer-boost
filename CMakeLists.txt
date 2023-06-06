@@ -37,7 +37,8 @@ include_directories(
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{PYTHON_INCLUDE_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/include
-    $ENV{PYTORCH_INSTALL_PATH}/include/torch/csrc/api/include)
+    $ENV{PYTORCH_INSTALL_PATH}/include/torch/csrc/api/include
+    $ENV{PYTORCH_NPU_INSTALL_PATH}/include)
 
 link_directories(
     ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib
