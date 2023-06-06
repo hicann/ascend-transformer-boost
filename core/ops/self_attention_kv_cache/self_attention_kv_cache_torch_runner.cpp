@@ -78,8 +78,7 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
     // [batch*head_num, head_size, seq_len]
     presentKey = presentKey.permute({1, 2, 0});
 
-    double scal = 1 / (sqrt(this->param_.dk) * (this->param_.layerId + 1));
-    mixedQuery = torch::mul(mixedQuery, scal);
+    mixedQuery = mixedQuery / (sqrt(presentValue.sizes()[2]) * (float)(this->param_.layerId + 1));
     // [batch*head_num, seq_len_q, seq_len_k]
     // torch::save(mixedQuery.to(at::Device(at::kCPU)), "mixedQuery.pth");
     // torch::save(presentKey.to(at::Device(at::kCPU)), "presentKey.pth");
@@ -90,18 +89,19 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
         this->param_.headNum, attentionScores.sizes()[1], attentionScores.sizes()[2]});
     // torch::save(attentionScores.to(at::Device(at::kCPU)), "bmm1.pth");
     ASD_LOG(INFO) << "attentionScores:" << attentionScores.sizes();
-    // // if (attention_mask.sum().item<bool>() > 0) {
-    //     torch::save(attentionScores.to(at::Device(at::kCPU)), "before_mask_fill.pth");
-    //     torch::save(attention_mask.to(at::Device(at::kCPU)), "attention_mask.pth");
-    //     attentionScores.masked_fill_(attention_mask, -10000.0);
-    //     torch::save(attentionScores.to(at::Device(at::kCPU)), "mask_fill.pth");
-    // // }
+    if (attention_mask.sum().item<int64_t>() > 0) {
+        // torch::save(attentionScores.to(at::Device(at::kCPU)), "before_mask_fill.pth");
+        // torch::save(attention_mask.to(at::Device(at::kCPU)), "attention_mask.pth");
+        attentionScores.masked_fill_(attention_mask, -10000.0);
+        // torch::save(attentionScores.to(at::Device(at::kCPU)), "mask_fill.pth");
+    }
     ASD_LOG(INFO) << "bmm1 end";
-    // to float?
+    attentionScores = attentionScores.to(torch::kFloat32);
     // torch::save(attentionScores.to(at::Device(at::kCPU)), "before_mul2.pth");
     attentionScores = torch::mul(attentionScores, this->param_.layerId + 1.0);
     // torch::save(attentionScores.to(at::Device(at::kCPU)), "mul2.pth");
     torch::Tensor attention_probs = torch::softmax(attentionScores, -1);
+    attention_probs = attention_probs.to(torch::kHalf);
     // torch::save(attention_probs.to(at::Device(at::kCPU)), "softmax.pth");
     ASD_LOG(INFO) << "softmax end";
     // [batch*head_num, seq_len_q, seq_len_k]
