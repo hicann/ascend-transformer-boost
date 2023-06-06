@@ -46,30 +46,47 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
     ASD_LOG(INFO) << "sinTable" << sinTable.sizes();
 
     mixed = mixed.view({mixed.sizes()[0], mixed.sizes()[1], this->param_.headNum, mixed.sizes()[2] / this->param_.headNum});
-    std::vector<torch::Tensor> chunks = mixed.chunk(2, -1);
-    ASD_LOG(INFO) << "split mixed" << chunks.at(0).sizes() << " " << chunks.at(1).sizes();
+    torch::save(mixed.to(at::Device(at::kCPU)), "mixed.pth");
+    std::vector<torch::Tensor> qkvLayer = mixed.chunk(3, -1);
+    std::vector<torch::Tensor> qChunks = qkvLayer[0].chunk(2, -1);
+    std::vector<torch::Tensor> kChunks = qkvLayer[1].chunk(2, -1);
 
     torch::Tensor positionIds1 = positionIds.slice(1, 0, 1).squeeze(1).transpose(0, 1).contiguous();
     torch::Tensor positionIds2 = positionIds.slice(1, 1, 2).squeeze(1).transpose(0, 1).contiguous();
     ASD_LOG(INFO) << "split positionIds" << positionIds1.sizes() << " " << positionIds2.sizes();
 
-    torch::Tensor cos = torch::nn::functional::embedding(positionIds1, cosTable.squeeze(1)).unsqueeze(2);
-    torch::Tensor sin = torch::nn::functional::embedding(positionIds2, sinTable.squeeze(1)).unsqueeze(2);
-    ASD_LOG(INFO) << "cos, sin " << cos.sizes() << " " << sin.sizes();
+    torch::Tensor cos1 = torch::nn::functional::embedding(positionIds1, cosTable.squeeze(1)).unsqueeze(2);
+    torch::Tensor sin1 = torch::nn::functional::embedding(positionIds1, sinTable.squeeze(1)).unsqueeze(2);
+    torch::Tensor cos2 = torch::nn::functional::embedding(positionIds2, cosTable.squeeze(1)).unsqueeze(2);
+    torch::Tensor sin2 = torch::nn::functional::embedding(positionIds2, sinTable.squeeze(1)).unsqueeze(2);
+    ASD_LOG(INFO) << "cos, sin " << cos1.sizes() << " " << sin1.sizes();
 
-    torch::Tensor rotate1 = torch::cat({chunks[0].slice(-1, chunks[0].sizes()[-1] / 2, chunks[0].sizes()[-1]).neg(), 
-                                      chunks[0].slice(-1, 0, chunks[0].sizes()[-1] / 2)}, - 1);
-    torch::Tensor rotate2 = torch::cat({chunks[1].slice(-1, chunks[1].sizes()[-1] / 2, chunks[1].sizes()[-1]).neg(), 
-                                      chunks[1].slice(-1, 0, chunks[1].sizes()[-1] / 2)}, - 1);
+    int chunksLastDim = qChunks[0].sizes().size() - 1;
+    int chunksLastDimSize = qChunks[0].sizes()[chunksLastDim];
+    ASD_LOG(INFO) << "chunksLastDim: " << chunksLastDim;
+    ASD_LOG(INFO) << "chunksLastDimSize: " << chunksLastDimSize;
+    torch::Tensor qRotate1 = torch::cat({qChunks[0].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(), 
+                                         qChunks[0].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
+    torch::Tensor qRotate2 = torch::cat({qChunks[1].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(), 
+                                         qChunks[1].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
+    torch::Tensor kRotate1 = torch::cat({kChunks[0].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(), 
+                                         kChunks[0].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
+    torch::Tensor kRotate2 = torch::cat({kChunks[1].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(), 
+                                         kChunks[1].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
+    ASD_LOG(INFO) << "qRotate1: " << qRotate1.sizes();
+    torch::Tensor qEmbedded1 = torch::add(torch::mul(qChunks[0], cos1), torch::mul(qRotate1, sin1));
+    torch::Tensor qEmbedded2 = torch::add(torch::mul(qChunks[1], cos2), torch::mul(qRotate2, sin2));
+    torch::Tensor kEmbedded1 = torch::add(torch::mul(kChunks[0], cos1), torch::mul(kRotate1, sin1));
+    torch::Tensor kEmbedded2 = torch::add(torch::mul(kChunks[1], cos2), torch::mul(kRotate2, sin2));
 
-    torch::Tensor embedded1 = torch::add(torch::mul(chunks[0], cos), torch::mul(rotate1, sin));
-    torch::Tensor embedded2 = torch::add(torch::mul(chunks[1], cos), torch::mul(rotate2, sin));
+    torch::Tensor qEmbedded = torch::cat({qEmbedded1, qEmbedded2}, chunksLastDim);
+    torch::Tensor kEmbedded = torch::cat({kEmbedded1, kEmbedded2}, chunksLastDim);
+    ASD_LOG(INFO) << "qEmbedded: " << qEmbedded.sizes();
 
-    torch::Tensor embedded = torch::cat({embedded1, embedded2}, -1);
-    
-
-    torch::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
-    *atOutTensor = embedded;
+    torch::Tensor *atOutTensor1 = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
+    torch::Tensor *atOutTensor2 = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[1].data);
+    *atOutTensor1 = qEmbedded;
+    *atOutTensor2 = kEmbedded;
 
     return AsdOps::Status::OkStatus();
 }

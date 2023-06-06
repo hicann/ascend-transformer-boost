@@ -35,13 +35,14 @@ class TestAddNormal(unittest.TestCase):
             "PositionEmbeddingOperation")
         operation.set_param(json.dumps({"headNum": 32}))
         # in
-        query = torch.rand(1, 1, 4096).npu()
-        position_ids = torch.rand(1, 2, 4).npu()
-        cos_table = torch.rand(1, 1, 4).npu()
-        sin_table = torch.rand(1, 1, 4).npu()
+        mix = torch.rand(4, 1, 12288).npu()
+        position_ids = torch.randint(4, (1, 2, 4)).npu()
+        cos_table = torch.rand(4, 1, 64).npu()
+        sin_table = torch.rand(4, 1, 64).npu()
 
-        result = operation.execute([query, position_ids, cos_table, sin_table])
-        print("result:" + str(result.shape))
+        resultlist = operation.execute([mix, position_ids, cos_table, sin_table])
+        print("qemb:" + str(resultlist[0].size()))
+        print("kemb:" + str(resultlist[1].size()))
 
 
 if __name__ == '__main__':
