@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "self_attention_torch_runner.h"
+#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include "acltransformer/utils/tensor_util.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
@@ -34,12 +35,12 @@ AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack
 {
     // 384, 32, 1024 -> 384, 32, 1024
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk:" << this->param_.dk;
-    torch::Tensor mixedQuery = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[0].data);
+    torch::Tensor mixedQuery = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
     mixedQuery = mixedQuery.view({mixedQuery.sizes()[0], mixedQuery.sizes()[1] * this->param_.headNum,
                                   mixedQuery.sizes()[2] / this->param_.headNum});
     mixedQuery = torch::transpose(mixedQuery, 0, 1);
-    torch::Tensor mixedKey = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[1].data);
-    torch::Tensor mixedValue = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[2].data);
+    torch::Tensor mixedKey = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    torch::Tensor mixedValue = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
     mixedValue = mixedValue.view({mixedValue.sizes()[0], mixedValue.sizes()[1] * this->param_.headNum,
                                   mixedValue.sizes()[2] / this->param_.headNum});
     mixedValue = torch::transpose(mixedValue, 0, 1);
@@ -47,7 +48,7 @@ AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack
         {mixedKey.sizes()[0], mixedKey.sizes()[1] * this->param_.headNum, mixedKey.sizes()[2] / this->param_.headNum});
     mixedKey = mixedKey.permute({1, 2, 0});
 
-    torch::Tensor attention_mask = *AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors[3].data);
+    torch::Tensor attention_mask = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
 
     double scal = 1 / sqrt(this->param_.dk);
     torch::Tensor attentionScores = torch::bmm(mixedQuery, mixedKey).contiguous();
@@ -66,8 +67,11 @@ AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack
                               contextLayer.sizes()[2] * this->param_.headNum})
                        .contiguous();
 
-    torch::Tensor *atOutTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
-    *atOutTensor = contextLayer;
+    ASD_LOG(INFO) << "SelfAttentionTorchRunner contextLayer.format:"
+                  << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(contextLayer);
+    int ret = AsdRtMemCopy(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize, contextLayer.data_ptr(),
+                           variantPack.outTensors[0].dataSize, ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
+    ASD_LOG_IF(ret != 0, ERROR) << "SelfAttentionTorchRunner AsdRtMemCopy fail";
 
     return AsdOps::Status::OkStatus();
 }
