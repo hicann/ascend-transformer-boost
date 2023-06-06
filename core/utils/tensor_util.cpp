@@ -20,6 +20,7 @@
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/filesystem/filesystem.h>
 #include "acltransformer/utils/tensor_cache.h"
+#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 
 namespace AclTransformer {
 static std::map<at::ScalarType, AsdOps::TensorDType> DTYPE_MAP = {
@@ -79,65 +80,13 @@ at::Tensor AsdOpsTensor2AtCpuTensor(Handle handle, const AsdOps::Tensor &asdTens
     return AsdOpsTensor2AtTensor(handle, asdTensor).to(at::Device(at::kCPU)).contiguous();
 }
 
-at::Tensor AsdOpsTensor2AtTensor1(Handle handle, const AsdOps::Tensor &asdTensor)
-{
-    int32_t devId = 0;
-    AsdRtDeviceGetCurrent(&devId);
-    ASD_LOG(DEBUG) << "AsdRtDeviceGetCurrent devId:" << devId;
-    at::TensorOptions options = at::TensorOptions().layout(torch::kStrided);
-    if (asdTensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
-        options = options.dtype(at::kFloat);
-    } else if (asdTensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
-        options = options.dtype(at::kHalf);
-    }
-
-    at::Tensor rt;
-    ASD_LOG(DEBUG) << "rt address before: " << asdTensor.data;
-    rt = at::from_blob(asdTensor.data, IntArrayRef(asdTensor.desc.dims), options);
-    ASD_LOG(DEBUG) << "rt address after: " << rt.data_ptr();
-#ifdef TORCH_18
-    rt = rt.to(at::Device(at::DeviceType::XLA, devId));
-#else
-    rt = rt.to(at::Device(at::kPrivateUse1, devId));
-#endif
-    ASD_LOG(DEBUG) << "rt address after to: " << rt.data_ptr();
-    return rt;
-}
-
-at::Tensor AsdOpsTensor2AtTensor2(Handle handle, const AsdOps::Tensor &asdTensor)
-{
-    at::TensorOptions options = at::TensorOptions();
-    if (asdTensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
-        options = options.dtype(at::kFloat);
-    } else if (asdTensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
-        options = options.dtype(at::kHalf);
-    }
-
-    at::Tensor newTensor = at::zeros(IntArrayRef(asdTensor.desc.dims), options);
-#ifdef TORCH_18
-    newTensor = newTensor.to(at::Device(at::DeviceType::XLA));
-#else
-    newTensor = newTensor.to(at::Device(at::kPrivateUse1));
-#endif
-
-    at::DataPtr dataPtr = at::DataPtr(asdTensor.data, newTensor.storage().device());
-    newTensor.storage().set_data_ptr(std::move(dataPtr));
-    ASD_LOG(INFO) << "set_data_ptr";
-    newTensor = newTensor.contiguous();
-
-    // ASD_LOG(INFO) << "AsdRtMemCopyAsync asdtensor to attensor";
-    // int ret = AsdRtMemCopyAsync(newTensor.data_ptr(), asdTensor.dataSize, asdTensor.data, asdTensor.dataSize,
-    //                             ASDRT_MEMCOPY_DEVICE_TO_DEVICE, handle.stream);
-    // ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopyAsync fail";
-    return newTensor;
-}
-
 AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor)
 {
     at::Tensor contiguousAtTensor = atTensor.contiguous();
     ASD_LOG(INFO) << "contiguousAtTensor is contiguous:" << contiguousAtTensor.is_contiguous();
     AsdOps::Tensor asdTensor;
-    asdTensor.desc.format = AsdOps::TENSOR_FORMAT_ND;
+    asdTensor.desc.format =
+        static_cast<AsdOps::TensorFormat>(at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atTensor));
     asdTensor.data = contiguousAtTensor.storage().data_ptr().get();
 
     asdTensor.desc.dims.resize(contiguousAtTensor.sizes().size());
@@ -171,19 +120,32 @@ at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDe
     } else {
         ASD_LOG(ERROR) << "not support dtype:" << tensorDesc.dtype;
     }
-    at::Tensor newTensor =
-        at::zeros(at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options);
+
 #ifdef TORCH_18
-    newTensor = newTensor.to(at::Device(at::DeviceType::XLA));
+    options = options.layout(torch::kStrided).requires_grad(false).device(at::DeviceType::XLA);
 #else
-    newTensor = newTensor.to(at::Device(at::kPrivateUse1));
+    options = options.layout(torch::kStrided).requires_grad(false).device(at::kPrivateUse1);
 #endif
+
+    ASD_LOG(INFO) << "ApplyTensorWithFormat stat, format:" << tensorDesc.format;
+    at::Tensor newTensor =
+        at_npu::native::OpPreparation::ApplyTensorWithFormat(
+            at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options, tensorDesc.format)
+            .contiguous();
+    ASD_LOG(INFO) << "ApplyTensorWithFormat success, newTensor.options:" << newTensor.options()
+                  << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(newTensor)
+                  << ", is_contiguous:" << newTensor.is_contiguous();
+
     return newTensor;
 }
 
 at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor)
 {
-    return AsdOpsTensor2AtTensor2(handle, asdTensor);
+    at::Tensor newTensor = CreateAtTensorFromAsdOpsTensorDesc(asdTensor.desc);
+    int ret = AsdRtMemCopy(newTensor.data_ptr(), asdTensor.dataSize, asdTensor.data, asdTensor.dataSize,
+                           ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
+    ASD_LOG_IF(ret != 0, ERROR) << "AsdOpsTensor2AtTensor AsdRtMemCopy fail";
+    return newTensor;
 }
 
 at::Tensor AsdOpsTensor2AtTensorCache(Handle handle, const AsdOps::Tensor &asdTensor)
