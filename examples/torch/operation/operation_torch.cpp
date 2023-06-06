@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "operation_torch.h"
+#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
@@ -57,12 +58,21 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
     AclTransformer::Handle handle = {GetCurrentStream()};
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
+        ASD_LOG(INFO) << "inTensors[" << i << "].options:" << atInTensors.at(i).options()
+                      << ", data:" << atInTensors.at(i).data_ptr()
+                      << ", storage_offset:" << atInTensors.at(i).storage_offset()
+                      << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atInTensors.at(i));
         variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(atInTensors.at(i)));
         AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atInTensors.at(i).data_ptr(), &atInTensors.at(i));
     }
 
     CreateAtOutTensors(operation, variantPack.inTensors, atOutTensors);
+
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
+        ASD_LOG(INFO) << "atOutTensors[" << i << "].options:" << atOutTensors.at(i).options()
+                      << ", data:" << atOutTensors.at(i).data_ptr()
+                      << ", storage_offset:" << atOutTensors.at(i).storage_offset()
+                      << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensors.at(i));
         variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(atOutTensors.at(i)));
         AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atOutTensors.at(i).data_ptr(),
                                                                       &atOutTensors.at(i));
@@ -75,7 +85,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
     }
 
     variantPack.workspaceSize = operation->GetWorkspaceSize();
-    ASD_LOG(ERROR) << operation->GetName() << " GetWorkspaceSize:" << variantPack.workspaceSize;
+    ASD_LOG(INFO) << operation->GetName() << " GetWorkspaceSize:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
         int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
@@ -119,7 +129,7 @@ void OperationTorch::CreateAtOutTensors(AclTransformer::Operation *operation,
 
     atOutTensors.resize(outTensorDescs.size());
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
-        at::Tensor newTensor = AclTransformer::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
+        at::Tensor newTensor = AclTransformer::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i)).contiguous();
         atOutTensors.at(i) = newTensor.contiguous();
     }
 }
