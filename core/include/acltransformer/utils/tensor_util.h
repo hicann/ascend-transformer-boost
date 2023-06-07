@@ -29,6 +29,7 @@ uint64_t CalcTensorDataSize(const AsdOps::TensorDesc &tensorDesc);
 at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc);
 at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor);
 at::Tensor AsdOpsTensor2AtTensorCache(Handle handle, const AsdOps::Tensor &asdTensor);
+void CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &tensor, AsdOps::Tensor &asdTensor);
 at::Tensor AsdOpsTensor2AtCpuTensor(Handle handle, const AsdOps::Tensor &asdTensor);
 std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor);
 std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
