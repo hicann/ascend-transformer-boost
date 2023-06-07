@@ -157,6 +157,8 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
         torch::Tensor presentKey = torch::cat({pastKey, mixedKey}, 0).contiguous();
         // torch::save(presentKey.to(at::Device(at::kCPU)), "cat_presentKey.pth");
         //*presentKeyout = presentKey;
+        ASD_LOG(INFO) << "presentKey.sizes:" << presentKey.sizes() << ", variantPack.outTensors[1].desc:"
+                      << AsdOpsTensorDescToString(variantPack.outTensors[1].desc);
         CopyAtTensor2AsdOpsTensor(handle.stream, presentKey, variantPack.outTensors[1]);
         ASD_LOG(INFO) << "cat K end" << presentKey.sizes();
         // [seq_len, batch*head_num, head_size]
@@ -167,6 +169,8 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
 
         torch::Tensor presentValue = torch::cat({pastValue, mixedValue}, 0).contiguous();
         //*presentValueOut = presentValue;
+        ASD_LOG(INFO) << "presentValue.sizes:" << presentValue.sizes() << ", variantPack.outTensors[2].desc:"
+                      << AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
         CopyAtTensor2AsdOpsTensor(handle.stream, presentValue, variantPack.outTensors[2]);
         ASD_LOG(INFO) << "cat V end" << presentValue.sizes();
         // [seq_len, batch*head_num, head_size]
@@ -228,7 +232,8 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
                            .view({contextLayer.sizes()[0], contextLayer.sizes()[1],
                                   contextLayer.sizes()[2] * contextLayer.sizes()[3]})
                            .contiguous();
-        ASD_LOG(INFO) << "contextLayer" << contextLayer.sizes();
+        ASD_LOG(INFO) << "contextLayer" << contextLayer.sizes() << ", variantPack.outTensors[0].desc:"
+                      << AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
         // if (contextLayer.sizes() != (*atOutTensor).sizes()) {
         //     ASD_LOG(ERROR) << "infer shape error" << (*atOutTensor).sizes();
         // }
