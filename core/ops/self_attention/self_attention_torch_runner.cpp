@@ -62,16 +62,14 @@ AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack
     torch::Tensor attention_probs = torch::softmax(attentionScores, -1);
     torch::Tensor contextLayer = torch::bmm(attention_probs, mixedValue);
     contextLayer = torch::transpose(contextLayer, 0, 1).contiguous();
-    contextLayer = contextLayer
-                       .view({contextLayer.sizes()[0], contextLayer.sizes()[1] / this->param_.headNum,
-                              contextLayer.sizes()[2] * this->param_.headNum})
-                       .contiguous();
+    torch::Tensor atOutTensor = contextLayer
+                                    .view({contextLayer.sizes()[0], contextLayer.sizes()[1] / this->param_.headNum,
+                                           contextLayer.sizes()[2] * this->param_.headNum})
+                                    .contiguous();
 
-    ASD_LOG(INFO) << "SelfAttentionTorchRunner contextLayer.format:"
-                  << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(contextLayer);
-    int ret = AsdRtMemCopy(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize, contextLayer.data_ptr(),
-                           variantPack.outTensors[0].dataSize, ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
-    ASD_LOG_IF(ret != 0, ERROR) << "SelfAttentionTorchRunner AsdRtMemCopy fail";
+    ASD_LOG(INFO) << "SelfAttentionTorchRunner atOutTensor.format:"
+                  << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensor);
+    CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
 
     return AsdOps::Status::OkStatus();
 }

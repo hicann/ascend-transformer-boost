@@ -27,11 +27,11 @@ AddTorchRunner::~AddTorchRunner() {}
 
 AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
-    at::Tensor *atInTensorA = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors.at(0).data);
-    at::Tensor *atInTensorB = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.inTensors.at(1).data);
-    at::Tensor *addResultTensor = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors.at(0).data);
-    *addResultTensor = torch::add(*atInTensorA, *atInTensorB);
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
+    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
 
+    at::Tensor atOutTensor = torch::add(atInTensorA, atInTensorB);
+    CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
