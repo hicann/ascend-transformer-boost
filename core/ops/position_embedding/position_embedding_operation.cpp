@@ -17,7 +17,7 @@
 #include "position_embedding_torch_runner_builder.h"
 
 namespace AclTransformer {
-PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingParam  &param)
+PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingParam &param)
     : Operation("PositionEmbeddingOperation"), param_(param)
 {
     runnerBuilders_ = {new PositionEmbeddingTorchRunnerBuilder(param_)};
@@ -26,7 +26,7 @@ PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingPa
 PositionEmbeddingOperation::~PositionEmbeddingOperation() {}
 
 AsdOps::Status PositionEmbeddingOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+                                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     // in : Q,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
     // out : Q ,[seq_len, batch, head_num, head_size]
@@ -41,7 +41,7 @@ AsdOps::Status PositionEmbeddingOperation::InferShape(const AsdOps::SVector<AsdO
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
     outTensorDescs.at(0).dims.push_back(param_.headNum);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum);
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3); // 3=qkv
     outTensorDescs.at(1) = outTensorDescs.at(0);
 
     return AsdOps::Status::OkStatus();
