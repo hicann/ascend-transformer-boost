@@ -48,7 +48,6 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
 
         mixed = mixed.view(
             {mixed.sizes()[0], mixed.sizes()[1], this->param_.headNum, mixed.sizes()[2] / this->param_.headNum});
-        torch::save(mixed.to(at::Device(at::kCPU)), "mixed.pth");
         std::vector<torch::Tensor> qkvLayer = mixed.chunk(3, -1);
         std::vector<torch::Tensor> qChunks = qkvLayer[0].chunk(2, -1);
         std::vector<torch::Tensor> kChunks = qkvLayer[1].chunk(2, -1);
@@ -68,17 +67,13 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
         ASD_LOG(INFO) << "chunksLastDim: " << chunksLastDim;
         ASD_LOG(INFO) << "chunksLastDimSize: " << chunksLastDimSize;
         torch::Tensor qRotate1 = torch::cat({qChunks[0].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                             qChunks[0].slice(-1, 0, chunksLastDimSize / 2)},
-                                            chunksLastDim);
+                                             qChunks[0].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
         torch::Tensor qRotate2 = torch::cat({qChunks[1].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                             qChunks[1].slice(-1, 0, chunksLastDimSize / 2)},
-                                            chunksLastDim);
+                                             qChunks[1].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
         torch::Tensor kRotate1 = torch::cat({kChunks[0].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                             kChunks[0].slice(-1, 0, chunksLastDimSize / 2)},
-                                            chunksLastDim);
+                                             kChunks[0].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
         torch::Tensor kRotate2 = torch::cat({kChunks[1].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                             kChunks[1].slice(-1, 0, chunksLastDimSize / 2)},
-                                            chunksLastDim);
+                                             kChunks[1].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
         ASD_LOG(INFO) << "qRotate1: " << qRotate1.sizes();
         torch::Tensor qEmbedded1 = torch::add(torch::mul(qChunks[0], cos1), torch::mul(qRotate1, sin1));
         torch::Tensor qEmbedded2 = torch::add(torch::mul(qChunks[1], cos2), torch::mul(qRotate2, sin2));
@@ -91,8 +86,10 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
 
         torch::Tensor *atOutTensor1 = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[0].data);
         torch::Tensor *atOutTensor2 = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[1].data);
+        torch::Tensor *atOutTensor3 = AsdOps::GetSingleton<TensorCache>().GetTensor(variantPack.outTensors[2].data);
         *atOutTensor1 = qEmbedded;
         *atOutTensor2 = kEmbedded;
+        *atOutTensor3 = qkvLayer[2];
     } else {
         // in : mixed,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
         // out : mixed ,[seq_len, batch, head_num, head_size]
@@ -111,6 +108,7 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
             {mixed.sizes()[0], mixed.sizes()[1], this->param_.headNum, mixed.sizes()[2] / this->param_.headNum});
         torch::save(mixed.to(at::Device(at::kCPU)), "mixed.pth");
         std::vector<torch::Tensor> qkvLayer = mixed.chunk(3, -1);
+        torch::save(qkvLayer[2].to(at::Device(at::kCPU)), "vlayer.pth");
         std::vector<torch::Tensor> qChunks = qkvLayer[0].chunk(2, -1);
         std::vector<torch::Tensor> kChunks = qkvLayer[1].chunk(2, -1);
 
@@ -129,17 +127,13 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
         ASD_LOG(INFO) << "chunksLastDim: " << chunksLastDim;
         ASD_LOG(INFO) << "chunksLastDimSize: " << chunksLastDimSize;
         torch::Tensor qRotate1 = torch::cat({qChunks[0].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                             qChunks[0].slice(-1, 0, chunksLastDimSize / 2)},
-                                            chunksLastDim);
+                                             qChunks[0].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
         torch::Tensor qRotate2 = torch::cat({qChunks[1].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                             qChunks[1].slice(-1, 0, chunksLastDimSize / 2)},
-                                            chunksLastDim);
+                                             qChunks[1].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
         torch::Tensor kRotate1 = torch::cat({kChunks[0].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                             kChunks[0].slice(-1, 0, chunksLastDimSize / 2)},
-                                            chunksLastDim);
+                                             kChunks[0].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
         torch::Tensor kRotate2 = torch::cat({kChunks[1].slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                             kChunks[1].slice(-1, 0, chunksLastDimSize / 2)},
-                                            chunksLastDim);
+                                             kChunks[1].slice(-1, 0, chunksLastDimSize / 2)}, chunksLastDim);
         ASD_LOG(INFO) << "qRotate1: " << qRotate1.sizes();
         torch::Tensor qEmbedded1 = torch::add(torch::mul(qChunks[0], cos1), torch::mul(qRotate1, sin1));
         torch::Tensor qEmbedded2 = torch::add(torch::mul(qChunks[1], cos2), torch::mul(qRotate2, sin2));
@@ -153,8 +147,9 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
         ASD_LOG(INFO) << "kEmbedded: " << kEmbedded.sizes() << ", variantPack.outTensors[0].desc:"
                       << AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
 
-        CopyAtTensor2AsdOpsTensor(handle.stream, qEmbedded, variantPack.outTensors[0]);
-        CopyAtTensor2AsdOpsTensor(handle.stream, kEmbedded, variantPack.outTensors[1]);
+        CopyAtTensor2AsdOpsTensor(handle.stream, qEmbedded.contiguous(), variantPack.outTensors[0]);
+        CopyAtTensor2AsdOpsTensor(handle.stream, kEmbedded.contiguous(), variantPack.outTensors[1]);
+        CopyAtTensor2AsdOpsTensor(handle.stream, qkvLayer[2].contiguous(), variantPack.outTensors[2]);
     }
 
     return AsdOps::Status::OkStatus();
