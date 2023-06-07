@@ -157,8 +157,10 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
         torch::Tensor presentKey = torch::cat({pastKey, mixedKey}, 0).contiguous();
         // torch::save(presentKey.to(at::Device(at::kCPU)), "cat_presentKey.pth");
         //*presentKeyout = presentKey;
-        ASD_LOG(INFO) << "presentKey.sizes:" << presentKey.sizes() << ", variantPack.outTensors[1].desc:"
-                      << AsdOpsTensorDescToString(variantPack.outTensors[1].desc);
+        if (!IsTensorDimEqual(presentKey.sizes(), variantPack.outTensors[1].desc.dims)) {
+            ASD_LOG(ERROR) << "presentKey.sizes:" << presentKey.sizes() << ", variantPack.outTensors[1].desc:"
+                           << AsdOpsTensorDescToString(variantPack.outTensors[1].desc);
+        }
         CopyAtTensor2AsdOpsTensor(handle.stream, presentKey, variantPack.outTensors[1]);
         ASD_LOG(INFO) << "cat K end" << presentKey.sizes();
         // [seq_len, batch*head_num, head_size]
@@ -169,8 +171,11 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
 
         torch::Tensor presentValue = torch::cat({pastValue, mixedValue}, 0).contiguous();
         //*presentValueOut = presentValue;
-        ASD_LOG(INFO) << "presentValue.sizes:" << presentValue.sizes() << ", variantPack.outTensors[2].desc:"
-                      << AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
+        if (!IsTensorDimEqual(presentValue.sizes(), variantPack.outTensors[2].desc.dims)) {
+            ASD_LOG(ERROR) << "presentValue.sizes:" << presentValue.sizes() << ", variantPack.outTensors[2].desc:"
+                           << AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
+        }
+
         CopyAtTensor2AsdOpsTensor(handle.stream, presentValue, variantPack.outTensors[2]);
         ASD_LOG(INFO) << "cat V end" << presentValue.sizes();
         // [seq_len, batch*head_num, head_size]
@@ -232,13 +237,12 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
                            .view({contextLayer.sizes()[0], contextLayer.sizes()[1],
                                   contextLayer.sizes()[2] * contextLayer.sizes()[3]})
                            .contiguous();
-        ASD_LOG(INFO) << "contextLayer" << contextLayer.sizes() << ", variantPack.outTensors[0].desc:"
-                      << AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
-        // if (contextLayer.sizes() != (*atOutTensor).sizes()) {
-        //     ASD_LOG(ERROR) << "infer shape error" << (*atOutTensor).sizes();
-        // }
-        //*atOutTensor = contextLayer;
-        // torch::save((*atOutTensor).to(at::Device(at::kCPU)), "final.pth");
+
+        if (!IsTensorDimEqual(contextLayer.sizes(), variantPack.outTensors[0].desc.dims)) {
+            ASD_LOG(ERROR) << "contextLayer.sizes:" << contextLayer.sizes() << ", variantPack.outTensors[0].desc:"
+                           << AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
+        }
+
         CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
     }
 

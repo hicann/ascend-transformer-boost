@@ -232,4 +232,17 @@ bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::
 {
     return tensorDescA.dims == tensorDescB.dims && tensorDescA.dtype == tensorDescB.dtype;
 }
+
+bool IsTensorDimEqual(const at::ArrayRef<long> &dims1, const AsdOps::SVector<int64_t> &dims2)
+{
+    if (dims1.size() != dims2.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < dims1.size(); ++i) {
+        if (dims1.at(i) != dims2.at(i)) {
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace AclTransformer

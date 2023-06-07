@@ -36,5 +36,6 @@ std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
 AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor);
 void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath);
 bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
+bool IsTensorDimEqual(const at::ArrayRef<long> &dims1, const AsdOps::SVector<int64_t> &dims2);
 } // namespace AclTransformer
 #endif
