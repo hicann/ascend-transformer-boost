@@ -34,7 +34,7 @@ AsdOps::Status PositionEmbeddingOperation::InferShape(const AsdOps::SVector<AsdO
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 4 ");
     }
 
-    outTensorDescs.resize(2);
+    outTensorDescs.resize(3);
 
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(0).dims.clear();
@@ -43,6 +43,7 @@ AsdOps::Status PositionEmbeddingOperation::InferShape(const AsdOps::SVector<AsdO
     outTensorDescs.at(0).dims.push_back(param_.headNum);
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3); // 3=qkv
     outTensorDescs.at(1) = outTensorDescs.at(0);
+    outTensorDescs.at(2) = outTensorDescs.at(0);
 
     return AsdOps::Status::OkStatus();
 }

@@ -38,9 +38,8 @@ AsdOps::Status AddNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &vari
     at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
     at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
     at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
-    at::Tensor atOutTensor = at::layer_norm(at::add(atInTensorA, atInTensorB), param_.dims, atInTensorWeight,
-                                            atInTensorBias, param_.layerNormEps)
-                                 .contiguous();
+    at::Tensor atOutTensor = at::layer_norm(at::add(atInTensorA, atInTensorB), atInTensorWeight.sizes(),
+                                            atInTensorWeight, atInTensorBias, param_.layerNormEps).contiguous();
     ASD_LOG(INFO) << "AddNormTorchRunner atOutTensor.format:"
                   << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensor);
     CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
