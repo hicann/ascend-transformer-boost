@@ -19,6 +19,7 @@
 #include <string>
 #include <asdops/tensor.h>
 #include <torch/torch.h>
+#include <asdops/run_info.h>
 #include "acltransformer/variant_pack.h"
 #include "acltransformer/handle.h"
 
@@ -35,6 +36,8 @@ std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor);
 std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
 AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor);
 void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath);
+void SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath);
 bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
+bool IsTensorDimEqual(const at::ArrayRef<long> &dims1, const AsdOps::SVector<int64_t> &dims2);
 } // namespace AclTransformer
 #endif

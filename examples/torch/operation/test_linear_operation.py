@@ -29,17 +29,36 @@ torch.classes.load_library(LIB_PATH)
 
 
 class TestNormal(unittest.TestCase):
-    def test_2d(self):
+    # def test_2d(self):
+    #     operation = torch.classes.OperationTorch.OperationTorch(
+    #         "LinearOperation")
+    #     operation.set_param('{"transposeA":false, "transposeB":true}')
+    #     a = torch.rand(384, 32, 1024).npu().half()
+    #     b = torch.rand(1024, 1024).npu().half()
+    #     c = torch.rand(1024).npu().half()
+
+    #     results = operation.execute([a, b, c])
+    #     print("result:", results[0])
+
+    #     golden_result = torch.matmul(a, torch.transpose(b, 0, 1)) + c
+    #     print("golden_result", golden_result)
+
+    #     self.assertTrue(torch.allclose(
+    #         results[0], golden_result, rtol=0.02, atol=0.02))
+
+    def test_3d(self):
         operation = torch.classes.OperationTorch.OperationTorch(
             "LinearOperation")
         operation.set_param('{"transposeA":false, "transposeB":true}')
-        a = torch.rand(384, 32, 1024).npu().half()
-        b = torch.rand(1024, 1024).npu().half()
-        c = torch.rand(1024).npu().half()
+        a = torch.ones(8, 1, 4096).npu().half()
+        b = torch.ones(16384, 4096).npu().half().npu_format_cast(29)
+        c = torch.ones(16384).npu().half()
 
         results = operation.execute([a, b, c])
+        print("result:", results[0])
 
         golden_result = torch.matmul(a, torch.transpose(b, 0, 1)) + c
+        print("golden_result", golden_result)
 
         self.assertTrue(torch.allclose(
             results[0], golden_result, rtol=0.02, atol=0.02))

@@ -30,12 +30,12 @@ AddNormOpsRunner::~AddNormOpsRunner() {}
 
 AsdOps::Status AddNormOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
-    kernelGraph_.inTensors.resize(4);
+    kernelGraph_.inTensors = variantPack.inTensors;
     AsdOps::Tensor &xTensor = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &yTensor = kernelGraph_.inTensors.at(1);
     AsdOps::Tensor &weightTensor = kernelGraph_.inTensors.at(2);
     AsdOps::Tensor &biasTensor = kernelGraph_.inTensors.at(3);
-    kernelGraph_.outTensors.resize(1);
+    kernelGraph_.outTensors = variantPack.outTensors;
     AsdOps::Tensor &resultTensor = kernelGraph_.outTensors.at(0);
     kernelGraph_.internalTensors.resize(3);
     AsdOps::Tensor &addNodeResultTensor = kernelGraph_.internalTensors.at(0);
