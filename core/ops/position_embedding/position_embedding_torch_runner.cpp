@@ -148,7 +148,10 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
 
         torch::Tensor qEmbedded = torch::cat({qEmbedded1, qEmbedded2}, chunksLastDim).contiguous();
         torch::Tensor kEmbedded = torch::cat({kEmbedded1, kEmbedded2}, chunksLastDim).contiguous();
-        ASD_LOG(INFO) << "qEmbedded: " << qEmbedded.sizes();
+        ASD_LOG(INFO) << "qEmbedded: " << qEmbedded.sizes() << ", variantPack.outTensors[0].desc:"
+                      << AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
+        ASD_LOG(INFO) << "kEmbedded: " << kEmbedded.sizes() << ", variantPack.outTensors[0].desc:"
+                      << AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
 
         CopyAtTensor2AsdOpsTensor(handle.stream, qEmbedded, variantPack.outTensors[0]);
         CopyAtTensor2AsdOpsTensor(handle.stream, kEmbedded, variantPack.outTensors[1]);
