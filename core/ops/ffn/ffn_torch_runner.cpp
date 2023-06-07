@@ -40,9 +40,7 @@ AsdOps::Status FfnTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantP
     at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
 
     at::Tensor atOutTensor = at::gelu(at::linear(atInTensorA, atInTensorWeight, atInTensorBias)).contiguous();
-    int ret = AsdRtMemCopy(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize, atOutTensor.data_ptr(),
-                           variantPack.outTensors[0].dataSize, ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
-    ASD_LOG_IF(ret != 0, ERROR) << "FfnTorchRunner AsdRtMemCopy fail";
+    CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

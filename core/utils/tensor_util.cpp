@@ -82,23 +82,22 @@ at::Tensor AsdOpsTensor2AtCpuTensor(Handle handle, const AsdOps::Tensor &asdTens
 
 AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor)
 {
-    at::Tensor contiguousAtTensor = atTensor.contiguous();
-    ASD_LOG(INFO) << "contiguousAtTensor is contiguous:" << contiguousAtTensor.is_contiguous();
+    ASD_LOG_IF(!atTensor.is_contiguous(), ERROR) << "atTensor is not contiguous";
     AsdOps::Tensor asdTensor;
     asdTensor.desc.format =
         static_cast<AsdOps::TensorFormat>(at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atTensor));
-    asdTensor.data = contiguousAtTensor.storage().data_ptr().get();
+    asdTensor.data = atTensor.data_ptr();
 
-    asdTensor.desc.dims.resize(contiguousAtTensor.sizes().size());
-    for (uint64_t i = 0; i < contiguousAtTensor.sizes().size(); i++) {
-        asdTensor.desc.dims[i] = contiguousAtTensor.sizes()[i];
+    asdTensor.desc.dims.resize(atTensor.sizes().size());
+    for (uint64_t i = 0; i < atTensor.sizes().size(); i++) {
+        asdTensor.desc.dims[i] = atTensor.sizes()[i];
     }
 
-    auto it = DTYPE_MAP.find(contiguousAtTensor.scalar_type());
+    auto it = DTYPE_MAP.find(atTensor.scalar_type());
     if (it != DTYPE_MAP.end()) {
         asdTensor.desc.dtype = it->second;
     } else {
-        ASD_LOG(ERROR) << "not support dtype:" << contiguousAtTensor.scalar_type();
+        ASD_LOG(ERROR) << "not support dtype:" << atTensor.scalar_type();
     }
 
     asdTensor.dataSize = CalcTensorDataSize(asdTensor);
@@ -160,6 +159,17 @@ at::Tensor AsdOpsTensor2AtTensorCache(Handle handle, const AsdOps::Tensor &asdTe
     tensorCacheMap.insert(std::make_pair(asdTensor.data, atTensor));
     ASD_LOG(INFO) << "cache tensor, data:" << asdTensor.data;
     return atTensor;
+}
+
+void CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &atTensor, AsdOps::Tensor &asdTensor)
+{
+    int ret = AsdRtStreamSynchronize(stream);
+    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtStreamSynchronize AsdRtMemCopy fail";
+
+    ret = AsdRtMemCopy(asdTensor.data, asdTensor.dataSize, atTensor.data_ptr(), asdTensor.dataSize,
+                       ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
+    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail, atTensor.data:" << atTensor.data_ptr() << ", asdTensor.data"
+                                << asdTensor.data;
 }
 
 std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor)

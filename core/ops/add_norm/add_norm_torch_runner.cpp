@@ -43,9 +43,7 @@ AsdOps::Status AddNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &vari
                                  .contiguous();
     ASD_LOG(INFO) << "AddNormTorchRunner atOutTensor.format:"
                   << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensor);
-    int ret = AsdRtMemCopy(variantPack.outTensors[0].data, variantPack.outTensors[0].dataSize, atOutTensor.data_ptr(),
-                           variantPack.outTensors[0].dataSize, ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
-    ASD_LOG_IF(ret != 0, ERROR) << "AddNormTorchRunner AsdRtMemCopy fail";
+    CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

@@ -22,3 +22,4 @@ export PYTORCH_INSTALL_PATH="$(python3 -c 'import torch, os; print(os.path.dirna
 export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 export PYTORCH_NPU_INSTALL_PATH="$(python3 -c 'import torch, torch_npu, os; print(os.path.dirname(os.path.abspath(torch_npu.__file__)))')"
 export LD_LIBRARY_PATH=$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+export TASK_QUEUE_ENABLE=0 #Torch npu
