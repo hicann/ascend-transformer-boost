@@ -20,7 +20,6 @@
 namespace AclTransformer {
 struct AddNormParam {
     double layerNormEps = 1e-12; // a value added to the denominator for numerical stability
-    std::vector<int64_t> dims;
 };
 } // namespace AclTransformer
 #endif
