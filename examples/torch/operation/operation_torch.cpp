@@ -129,8 +129,8 @@ void OperationTorch::CreateAtOutTensors(AclTransformer::Operation *operation,
 
     atOutTensors.resize(outTensorDescs.size());
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
-        at::Tensor newTensor = AclTransformer::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i)).contiguous();
-        atOutTensors.at(i) = newTensor.contiguous();
+        at::Tensor newTensor = AclTransformer::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
+        atOutTensors.at(i) = newTensor;
     }
 }
 
