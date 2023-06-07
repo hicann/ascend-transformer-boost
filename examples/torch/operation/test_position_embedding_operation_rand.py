@@ -43,6 +43,7 @@ class TestAddNormal(unittest.TestCase):
         resultlist = operation.execute([mix, position_ids, cos_table, sin_table])
         print("qemb:" + str(resultlist[0].size()))
         print("kemb:" + str(resultlist[1].size()))
+        print("vlayer:" + str(resultlist[2].size()))
 
 
 if __name__ == '__main__':
