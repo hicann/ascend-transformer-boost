@@ -61,7 +61,7 @@ void LayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<torch
     for (size_t i = 0; i < outTensors.size(); ++i) {
         AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(outTensors.at(i).data_ptr());
     }
-    ASD_LOG(WARN) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond();
+    ASD_LOG(WARN) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
 }
 
 TORCH_LIBRARY(LayerTorch, m)
