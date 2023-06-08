@@ -1,4 +1,4 @@
-# Copyright(C) 2023. Huawei Technologies Co.,Ltd. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,7 +40,8 @@ class TestAddNormal(unittest.TestCase):
         cos_table = torch.rand(4, 1, 64).npu()
         sin_table = torch.rand(4, 1, 64).npu()
 
-        resultlist = operation.execute([mix, position_ids, cos_table, sin_table])
+        resultlist = operation.execute(
+            [mix, position_ids, cos_table, sin_table])
         print("qemb:" + str(resultlist[0].size()))
         print("kemb:" + str(resultlist[1].size()))
         print("vlayer:" + str(resultlist[2].size()))

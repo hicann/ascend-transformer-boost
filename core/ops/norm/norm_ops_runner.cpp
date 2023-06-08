@@ -1,5 +1,5 @@
 /*
- * Copyright(C) 2023. Huawei Technologies Co.,Ltd. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ AsdOps::Status NormOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
         ASD_LOG(ERROR) << GetName() << " CalcLayerNormTensor fail";
         return AsdOps::Status::FailStatus(1, "CalcLayerNormTensor fail");
     }
-    ASD_LOG(INFO) << GetName() << " beginDim:" << beginDim;
 
     AsdOps::OpParam::Norm normParam = {AsdOps::OpParam::Norm::NORM_LAYERNORM};
     normParam.begin_norm_axis = beginDim;

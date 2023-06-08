@@ -1,4 +1,4 @@
-# Copyright(C) 2023. Huawei Technologies Co.,Ltd. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ class TestNormal(unittest.TestCase):
         context = torch.rand(32, 1, 1, 384).npu()
         operation.execute(
             [input, qLinearWeight, qLinearBias, kLinearWeight, kLinearBias, vLinearWeight, vLinearBias, attentionMask], [context])
-
 
 
 if __name__ == '__main__':
