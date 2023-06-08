@@ -33,8 +33,8 @@ class TestNormal(unittest.TestCase):
         operation = torch.classes.OperationTorch.OperationTorch(
             "AddOperation")
         operation.set_param("{\"scale\": 1}")
-        a = torch.rand(2, 3).npu().half()
-        b = torch.rand(2, 3).npu().half()
+        a = torch.ones(1024, 1024).npu().half()
+        b = torch.ones(1024, 1024).npu().half()
 
         results = operation.execute([a, b])
 

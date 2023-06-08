@@ -29,7 +29,8 @@ protected:
     AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
-    void ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack);
+    void ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack,
+                               AsdOps::SVector<int64_t> &matmulOrgShape, AsdOps::SVector<int64_t> &transdataOrgShape);
 
 private:
     LinearParam param_;
