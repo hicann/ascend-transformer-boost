@@ -19,7 +19,6 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/utils/tensor_cache.h"
-#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 
 namespace AclTransformer {
 LinearTorchRunner::LinearTorchRunner(LinearParam &param) : Runner("LinearTorchRunner"), param_(param)
@@ -44,16 +43,12 @@ AsdOps::Status LinearTorchRunner::ExecuteImpl(Handle &handle, VariantPack &varia
         at::Tensor *atInTensorWeightias =
             AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[2].data);
         at::Tensor atOutTensor = at::linear(*atInTensorA, *atInTensorWeight, *atInTensorWeightias).contiguous();
-        ASD_LOG(INFO) << "LinearTorchRunner atOutTensor.format:"
-                      << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensor);
         CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     } else {
         at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
         at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
         at::Tensor atInTensorWeightias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
         at::Tensor atOutTensor = at::linear(atInTensorA, atInTensorWeight, atInTensorWeightias).contiguous();
-        ASD_LOG(INFO) << "LinearTorchRunner atOutTensor.format:"
-                      << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensor);
         CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     }
 
