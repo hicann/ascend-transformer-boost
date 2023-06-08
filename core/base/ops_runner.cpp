@@ -106,8 +106,7 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
                   << ", tilingSize:" << tilingData_.size() << ", workspaceSize:" << workspaceSize_;
 
     char *deviceIntermediateBuffer = static_cast<char *>(variantPack.workspace);
-    for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
-        auto &node = kernelGraph_.nodes.at(i);
+    for (auto &node : kernelGraph_.nodes) {
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetInTensorCount(); tensorId++) {
             AsdOps::Tensor &tensor = node.kernelRunInfo.GetInTensor(tensorId);
             if (IsInternalTensor(node.inTensors.at(tensorId))) {
@@ -128,6 +127,7 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
         }
     }
 
+    ASD_LOG(INFO) << GetName() << " update kernel runinfo launch buffer";
     uint64_t offset = intermediateSize_;
     if (tilingData_.size() > 0) {
         char *deviceTilingBuffer = static_cast<char *>(variantPack.workspace) + offset;
@@ -148,21 +148,27 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
         offset += tilingData_.size();
     }
 
+    ASD_LOG(INFO) << GetName() << " update kernel runinfo workspace";
     if (workspaceSize_ > 0) {
         char *deviceWorkspaceBuffer = static_cast<char *>(variantPack.workspace) + offset;
-        for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
-            AsdOps::RunInfo &kernelRunInfo = kernelGraph_.nodes.at(i).kernelRunInfo;
+        for (auto &node : kernelGraph_.nodes) {
+            AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
             const AsdOps::SVector<int64_t> &workspaces = kernelRunInfo.GetWorkSpace();
+            ASD_LOG(INFO) << GetName() << " " << node.kernel->GetName() << " workspaces.size:" << workspaces.size();
             AsdOps::SVector<void *> deviceLaunchBufferWorkspace(workspaces.size());
             uint64_t internalOffset = 0;
-            for (size_t i = 0; workspaces.size(); ++i) {
+            for (size_t i = 0; i < workspaces.size(); ++i) {
                 deviceLaunchBufferWorkspace[i] = deviceWorkspaceBuffer + internalOffset;
+                ASD_LOG(INFO) << GetName() << " " << node.kernel->GetName() << " deviceLaunchBufferWorkspace[" << i
+                              << "]:" << deviceLaunchBufferWorkspace[i];
                 internalOffset += workspaces[i];
             }
+
             kernelRunInfo.SetDeviceLaunchBufferWorkspace(deviceLaunchBufferWorkspace);
         }
     }
 
+    ASD_LOG(INFO) << GetName() << " start run all kernel";
     for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
         auto &node = kernelGraph_.nodes.at(i);
         AsdOps::Kernel *kernel = node.kernel;
@@ -295,8 +301,7 @@ void OpsRunner::FillTilingData(const VariantPack &variantPack)
 {
     uint64_t maxKernelWorkspaceSize = 0;
     uint64_t offset = 0;
-    for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
-        auto &node = kernelGraph_.nodes.at(i);
+    for (auto &node : kernelGraph_.nodes) {
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         uint64_t tilingSize = kernel->GetLaunchBufferSize(kernelRunInfo);
@@ -307,17 +312,18 @@ void OpsRunner::FillTilingData(const VariantPack &variantPack)
             offset += tilingSize;
 
             const AsdOps::SVector<int64_t> &workspaces = kernelRunInfo.GetWorkSpace();
+            ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " workspaces.size:" << workspaces.size();
             uint64_t kernelWorkspaceSize = 0;
-            for (size_t j = 0; j < workspaces.size(); ++j) {
-                kernelWorkspaceSize += workspaces[i];
+            for (size_t i = 0; i < workspaces.size(); ++i) {
+                kernelWorkspaceSize += workspaces.at(i);
+                ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " workspaces[" << i
+                              << "]:" << workspaces.at(i);
             }
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << ", kernelWorkspaceSize:" << kernelWorkspaceSize
                           << ", maxKernelWorkspaceSize:" << maxKernelWorkspaceSize;
-            if (kernelWorkspaceSize < 100000) {
-                maxKernelWorkspaceSize = std::max(maxKernelWorkspaceSize, kernelWorkspaceSize);
-            } else {
-                ASD_LOG(ERROR) << GetName() << " " << kernel->GetName() << " kernelWorkspaceSize too large, discard";
-            }
+            ASD_LOG_IF(kernelWorkspaceSize > 1024 * 1024, ERROR)
+                << GetName() << " " << kernel->GetName() << " kernelWorkspaceSize too large, discard";
+            maxKernelWorkspaceSize = std::max(maxKernelWorkspaceSize, kernelWorkspaceSize);
         }
     }
     workspaceSize_ = maxKernelWorkspaceSize;
