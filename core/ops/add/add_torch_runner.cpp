@@ -27,19 +27,17 @@ AddTorchRunner::~AddTorchRunner() {}
 
 AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
-    if (param_.scale == 1) {
-        at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
-        at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
-        at::Tensor atOutTensor = torch::add(atInTensorA, atInTensorB).contiguous();
-        CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
-    } else {
-        at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
-        at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
-        at::Tensor atScaleA = atInTensorA * param_.scale;
-        atScaleA = atScaleA.to(torch::kHalf);
-        at::Tensor atOutTensor = torch::add(atScaleA, atInTensorB).contiguous();
-        CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
-    }
+    ASD_LOG(INFO) << "scale : " << this->param_.scale;
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
+    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
+
+    atInTensorA = atInTensorA.to(torch::kFloat);
+    at::Tensor atOutTensor = atInTensorA * this->param_.scale;
+    atOutTensor = atOutTensor.to(torch::kHalf);
+
+    atOutTensor = atOutTensor + atInTensorB;
+    atOutTensor = atOutTensor.contiguous();
+    CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
