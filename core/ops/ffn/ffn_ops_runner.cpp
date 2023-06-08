@@ -23,11 +23,11 @@ FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner"), p
 
 AsdOps::Status FfnOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
-    kernelGraph_.inTensors.resize(3);
+    kernelGraph_.inTensors = variantPack.inTensors;
     AsdOps::Tensor &aTensor = kernelGraph_.inTensors[0];
     AsdOps::Tensor &bTensor = kernelGraph_.inTensors[1];
     AsdOps::Tensor &cTensor = kernelGraph_.inTensors[2];
-    kernelGraph_.outTensors.resize(1);
+    kernelGraph_.outTensors = variantPack.outTensors;
     AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[0];
 
     kernelGraph_.internalTensors.resize(5);
