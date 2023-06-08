@@ -46,11 +46,15 @@ AsdOps::Status NormOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
         ASD_LOG(ERROR) << GetName() << " CalcLayerNormTensor fail";
         return AsdOps::Status::FailStatus(1, "CalcLayerNormTensor fail");
     }
+    ASD_LOG(INFO) << GetName() << " beginDim:" << beginDim;
 
     AsdOps::OpParam::Norm normParam = {AsdOps::OpParam::Norm::NORM_LAYERNORM};
     normParam.begin_norm_axis = beginDim;
     normParam.begin_params_axis = beginDim;
     normParam.epsilon = param_.layerNormEps;
+    ASD_LOG(INFO) << GetName() << " NormOperation opDesc normParam.begin_norm_axis:" << normParam.begin_norm_axis
+                  << ", normParam.begin_params_axis:" << normParam.begin_params_axis
+                  << ", normParam.epsilon:" << normParam.epsilon;
     layerNormNode.opDesc = {0, "NormOperation", normParam};
     layerNormNode.inTensors = {&xTensor, &weightTensor, &biasTensor};
     layerNormNode.outTensors = {&resultTensor, &layerNormMeanTensor, &layerNormVarianceTensor};
@@ -74,19 +78,12 @@ bool NormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t 
                   << ", weightTensor:" << AsdOpsTensorToString(weightTensor)
                   << ", biasTensor:" << AsdOpsTensorToString(biasTensor);
 
-    AsdOps::Tensor &layerNormMeanTensor = kernelGraph_.internalTensors.at(1);
-    AsdOps::Tensor &layerNormVarianceTensor = kernelGraph_.internalTensors.at(2);
-
     const int axis = inputDesc.dims.size() - weightTensor.desc.dims.size();
     const int64_t M =
         std::accumulate(inputDesc.dims.begin(), inputDesc.dims.begin() + axis, 1LL, std::multiplies<int64_t>());
 
     ASD_LOG(INFO) << GetName() << " M:" << M;
     if (M < 0) {
-        layerNormMeanTensor.desc.format = inputDesc.format;
-        layerNormMeanTensor.desc.dtype = inputDesc.dtype;
-        layerNormMeanTensor.desc.dims = {M};
-        layerNormVarianceTensor.desc = layerNormMeanTensor.desc;
         return false;
     }
 
@@ -105,10 +102,7 @@ bool NormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t 
             break;
         }
     }
-    layerNormMeanTensor.desc.format = weightTensor.desc.format;
-    layerNormMeanTensor.desc.dtype = weightTensor.desc.dtype;
-    layerNormMeanTensor.desc.dims = reduceDims;
-    layerNormVarianceTensor.desc = layerNormMeanTensor.desc;
+
     return true;
 }
 } // namespace AclTransformer
