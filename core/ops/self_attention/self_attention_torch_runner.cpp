@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include "self_attention_torch_runner.h"
-#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include "acltransformer/utils/tensor_util.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
@@ -67,8 +66,6 @@ AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack
                                            contextLayer.sizes()[2] * this->param_.headNum})
                                     .contiguous();
 
-    ASD_LOG(INFO) << "SelfAttentionTorchRunner atOutTensor.format:"
-                  << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensor);
     CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
 
     return AsdOps::Status::OkStatus();

@@ -15,7 +15,6 @@
  */
 #include "ffn_torch_runner.h"
 #include <ATen/ATen.h>
-#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include <torch/script.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/log/log.h>

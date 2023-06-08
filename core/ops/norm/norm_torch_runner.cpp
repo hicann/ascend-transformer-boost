@@ -17,7 +17,6 @@
  */
 #include "norm_torch_runner.h"
 #include <ATen/ATen.h>
-#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
@@ -40,8 +39,6 @@ AsdOps::Status NormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variant
     at::Tensor atOutTensor =
         at::layer_norm(atInTensorA, atInTensorWeight.sizes(), atInTensorWeight, atInTensorBias, param_.layerNormEps)
             .contiguous();
-    ASD_LOG(INFO) << "NormTorchRunner atOutTensor.format:"
-                  << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensor);
     CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 }

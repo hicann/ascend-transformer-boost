@@ -27,8 +27,7 @@
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 
-
-void GlmBlock(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack)
+void ChatGlm6BLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack)
 {
     // in
     const uint64_t hiddenStates = 0;
@@ -56,7 +55,7 @@ void GlmBlock(const Json::Value &paramJson, AclTransformer::VariantPack &variant
     const uint64_t presentValue = 21;
     // intermiate
     const uint64_t inputNormOut = 22;
-    const uint64_t mixedLinearOutQkv= 23;
+    const uint64_t mixedLinearOutQkv = 23;
     const uint64_t positionEmbedQ = 24;
     const uint64_t positionEmbedK = 25;
     const uint64_t value = 26;
@@ -66,7 +65,6 @@ void GlmBlock(const Json::Value &paramJson, AclTransformer::VariantPack &variant
     const uint64_t selfNormOut = 30;
     const uint64_t ffnOut = 31;
     const uint64_t ffnLinearOut = 32;
-    const uint64_t ffnResidualAddOut = 33;
 
     AclTransformer::NormParam inputNormParam;
     inputNormParam.layerNormEps = paramJson["layerNormEps"].asDouble();
@@ -104,7 +102,7 @@ void GlmBlock(const Json::Value &paramJson, AclTransformer::VariantPack &variant
     opGraph.name = "GlmBlockGraph_" + std::to_string(graphId++);
     opGraph.inTensorSize = variantPack.inTensors.size();
     opGraph.outTensorSize = variantPack.outTensors.size();
-    opGraph.intermediateTensorSize = 12;
+    opGraph.intermediateTensorSize = 11;
     opGraph.nodes.resize(10);
 
     AclTransformer::OperationGraphNode &inputNormNode = opGraph.nodes.at(0);
