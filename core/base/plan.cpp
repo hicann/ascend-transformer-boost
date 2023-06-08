@@ -160,7 +160,6 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
         AsdOps::Timer timer;
         node.runner->Execute(handle, node.variantPack);
         if (Config::IsSaveTensor()) {
-            ASD_LOG(INFO) << "Plan AsdRtStreamSynchronize stream:" << handle.stream;
             AsdRtStreamSynchronize(handle.stream);
             std::string dirPath =
                 "savetensor/" + runnerGraph_.name + "/" + std::to_string(nodeId) + "_" + node.runner->GetName();

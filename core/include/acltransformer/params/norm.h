@@ -19,7 +19,7 @@
 #include <vector>
 namespace AclTransformer {
 struct NormParam {
-    double layerNormEps = 1e-12; 
+    double layerNormEps = 1e-5; 
 };
 } // namespace AclTransformer
 #endif

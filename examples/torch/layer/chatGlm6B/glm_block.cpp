@@ -80,7 +80,7 @@ void GlmBlock(const Json::Value &paramJson, AclTransformer::VariantPack &variant
     selfAttentionKvCacheParam.layerId = paramJson["layerId"].asInt();
     AclTransformer::LinearParam selfOutLinearParam;
     AclTransformer::AddParam selfResidualAddParam;
-    selfResidualAddParam.scale = paramJson["ResidualAddScale"].asInt();
+    selfResidualAddParam.scale = paramJson["ResidualAddScale"].asFloat();
     AclTransformer::NormParam selfNormParam;
     selfNormParam.layerNormEps = inputNormParam.layerNormEps;
     AclTransformer::FfnParam ffnParam;
@@ -132,14 +132,14 @@ void GlmBlock(const Json::Value &paramJson, AclTransformer::VariantPack &variant
 
     selfAttentionKvCacheNode.operation = &selfAttentionKvCacheOp;
     selfAttentionKvCacheNode.inTensorIds = {positionEmbedQ, positionEmbedK, value, attentionMask, pastKey, pastValue};
-    selfAttentionKvCacheNode.outTensorIds = {selfOut, presentKey, pastValue};
+    selfAttentionKvCacheNode.outTensorIds = {selfOut, presentKey, presentValue};
 
     selfOutLinearNode.operation = &selfOutLinearOp;
     selfOutLinearNode.inTensorIds = {selfOut, selfOutLinearWeight, selfOutLinearBias};
     selfOutLinearNode.outTensorIds = {selfLinearOut};
 
     selfResidualAddNode.operation = &selfResidualAddOp;
-    selfResidualAddNode.inTensorIds = {selfLinearOut, hiddenStates};
+    selfResidualAddNode.inTensorIds = {inputNormOut, selfLinearOut};
     selfResidualAddNode.outTensorIds = {selfResidualAddOut};
 
     selfNormNode.operation = &selfNormOp;
@@ -155,7 +155,7 @@ void GlmBlock(const Json::Value &paramJson, AclTransformer::VariantPack &variant
     ffnLinearNode.outTensorIds = {ffnLinearOut};
 
     ffnResidualAddNode.operation = &ffnResidualAddOp;
-    ffnResidualAddNode.inTensorIds = {ffnLinearOut, selfNormOut};
+    ffnResidualAddNode.inTensorIds = {selfNormOut, ffnLinearOut};
     ffnResidualAddNode.outTensorIds = {glmBlockOut};
 
     ExecuteOperationGraph(opGraph, variantPack);
