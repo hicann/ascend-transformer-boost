@@ -30,6 +30,8 @@ bool Config::IsSaveTensor() { return IsEnable("ACLTRANSFORMER_SAVE_TENSOR"); }
 
 bool Config::IsAddOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE"); }
 
+bool Config::IsNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_NORM_OPSRUNNER_ENABLE"); }
+
 bool Config::IsAddNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE"); }
 
 bool Config::IsLinearOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_LINEAR_OPSRUNNER_ENABLE"); }
