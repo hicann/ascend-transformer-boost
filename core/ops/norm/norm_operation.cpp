@@ -16,17 +16,18 @@
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/config.h"
 #include "norm_torch_runner_builder.h"
+#include "norm_ops_runner_builder.h"
 
 namespace AclTransformer {
 NormOperation::NormOperation(const NormParam &param) : Operation("NormOperation"), param_(param)
 {
-    runnerBuilders_ = {new NormTorchRunnerBuilder(param_)};
+    runnerBuilders_ = {new NormOpsRunnerBuilder(param_), new NormTorchRunnerBuilder(param_)};
 }
 
 NormOperation::~NormOperation() {}
 
 AsdOps::Status NormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+                                         AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 3");
@@ -39,6 +40,7 @@ AsdOps::Status NormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &
 
 RunnerBuilder *NormOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
-    return runnerBuilders_.at(0);
+    size_t index = Config::IsAddNormOpsRunnerEnable() ? 0 : 1;
+    return runnerBuilders_.at(index);
 }
 } // namespace AclTransformer

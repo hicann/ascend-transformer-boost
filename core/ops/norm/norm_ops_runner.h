@@ -13,21 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_CONFIG_H
-#define ACLTRANSFORMER_CONFIG_H
+#ifndef NORM_OPS_RUNNER_H
+#define NORM_OPS_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/norm.h"
+
 namespace AclTransformer {
-class Config {
+class NormOpsRunner : public OpsRunner {
 public:
-    static bool IsSaveTensor();
-    static bool IsAddOpsRunnerEnable();
-    static bool IsNormOpsRunnerEnable();
-    static bool IsAddNormOpsRunnerEnable();
-    static bool IsLinearOpsRunnerEnable();
-    static bool IsFfnOpsRunnerEnable();
-    static bool IsSelfAttentionEnable();
+    NormOpsRunner(const NormParam &param);
+    virtual ~NormOpsRunner();
+
+protected:
+    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
 
 private:
-    static bool IsEnable(const char *env);
+    bool CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim);
+
+private:
+    NormParam param_;
 };
+
 } // namespace AclTransformer
 #endif
