@@ -46,6 +46,23 @@ class TestNormal(unittest.TestCase):
         self.assertTrue(torch.allclose(
             results[0], golden_result, rtol=0.02, atol=0.02))
 
+    def test_2d(self):
+        operation = torch.classes.OperationTorch.OperationTorch(
+            "AddOperation")
+        operation.set_param("{\"scale\": 2}")
+        a = torch.ones(1024, 1024).npu().half()
+        b = torch.ones(1024, 1024).npu().half()
+
+        results = operation.execute([a, b])
+
+        golden_result = a * 2 + b
+
+        print("results:", results[0])
+        print("golden_result:", str(golden_result))
+
+        self.assertTrue(torch.allclose(
+            results[0], golden_result, rtol=0.02, atol=0.02))
+
 
 if __name__ == '__main__':
     unittest.main()
