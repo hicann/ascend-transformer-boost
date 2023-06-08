@@ -16,11 +16,12 @@
 #include "acltransformer/utils/tensor_util.h"
 #include <sstream>
 #include <sys/stat.h>
+#include <torch_npu/csrc/framework/utils/OpPreparation.h>
+#include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/filesystem/filesystem.h>
 #include "acltransformer/utils/tensor_cache.h"
-#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 
 namespace AclTransformer {
 static std::map<at::ScalarType, AsdOps::TensorDType> DTYPE_MAP = {

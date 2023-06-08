@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include "operation_torch.h"
-#include <torch_npu/csrc/framework/utils/OpPreparation.h>
+#include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"

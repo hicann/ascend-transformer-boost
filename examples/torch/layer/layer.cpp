@@ -23,13 +23,13 @@ using LayerFunc = std::function<void(const Json::Value &paramJson, AclTransforme
 void BertLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack);
 void BertSelfAttentionLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack);
 void BertOutputAttentionLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack);
-void GlmBlock(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack);
+void ChatGlm6BLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack);
 
 std::map<std::string, LayerFunc> g_layerMap = {
     {"BertLayer", &BertLayer},
     {"BertSelfAttentionLayer", &BertSelfAttentionLayer},
     {"BertOutputAttentionLayer", &BertOutputAttentionLayer},
-    {"GlmBlock", &GlmBlock},
+    {"ChatGlm6BLayer", &ChatGlm6BLayer},
 };
 
 bool ExecuteLayer(const std::string &layerName, const std::string &param, AclTransformer::VariantPack &variantPack)
