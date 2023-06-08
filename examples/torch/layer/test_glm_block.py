@@ -1,4 +1,4 @@
-# Copyright(C) 2023. Huawei Technologies Co.,Ltd. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,14 +56,12 @@ class TestNormal(unittest.TestCase):
         # pastKey = torch.rand(384,  32, 1024).npu()
         # pastValue = torch.rand(384,  32, 1024).npu()
 
-
-
         # start_time = time.time()
         # for i in range(1):
         #     operation.execute(
         #         [hiddenStates, normWeight, normBias, qkvMixdWeight, qkvMixdBias, selfOutLinearWeight,
         #          selfOutLinearBias, selfOutNormWeight, selfOutNormBias, ffnLinearWeight,
-        #          ffnLinearBias, ffnOutLinearWeight, ffnOutLinearBias, positionIds, cosTable, sinTable, 
+        #          ffnLinearBias, ffnOutLinearWeight, ffnOutLinearBias, positionIds, cosTable, sinTable,
         #          attentionMask, pastKey, pastValue], [])
         # end_time = time.time()
         # print("use time:", (end_time - start_time))
