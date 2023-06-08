@@ -212,6 +212,25 @@ void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::
     }
 }
 
+void SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath)
+{
+    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    for (size_t i = 0; i < runInfo.GetInTensorCount(); ++i) {
+        std::string fileName = "inTensor" + std::to_string(i) + ".pth";
+        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
+        at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(handle, runInfo.GetInTensor(i));
+        torch::save(atTensor, filePath);
+    }
+
+    for (size_t i = 0; i < runInfo.GetOutTensorCount(); ++i) {
+        std::string fileName = "outTensor" + std::to_string(i) + ".pth";
+        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
+        at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(handle, runInfo.GetOutTensor(i));
+        torch::save(atTensor, filePath);
+    }
+}
+
 std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc)
 {
     std::stringstream ss;

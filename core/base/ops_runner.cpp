@@ -21,26 +21,30 @@
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/mem_allocation_solver/best_mem_allocation_solver.h"
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/config.h"
 
 namespace AclTransformer {
 std::string KernelGraph::ToString() const
 {
     std::stringstream ss;
     for (size_t i = 0; i < inTensors.size(); ++i) {
-        ss << "inTensors[" << i << "]: " << &inTensors[i] << std::endl;
+        ss << "inTensors[" << i << "]: " << &inTensors[i] << " " << AsdOpsTensorToString(inTensors[i]) << std::endl;
     }
     for (size_t i = 0; i < outTensors.size(); ++i) {
-        ss << "outTensors[" << i << "]: " << &outTensors[i] << std::endl;
+        ss << "outTensors[" << i << "]: " << &outTensors[i] << " " << AsdOpsTensorToString(outTensors[i]) << std::endl;
     }
     for (size_t i = 0; i < internalTensors.size(); ++i) {
-        ss << "internalTensors[" << i << "]: " << &internalTensors[i] << std::endl;
+        ss << "internalTensors[" << i << "]: " << &internalTensors[i] << " " << AsdOpsTensorToString(internalTensors[i])
+           << std::endl;
     }
     for (size_t i = 0; i < nodes.size(); ++i) {
         for (size_t j = 0; j < nodes[i].inTensors.size(); ++j) {
-            ss << "node[" << i << "] inTensors[" << j << "]: " << nodes[i].inTensors[j] << std::endl;
+            ss << "node[" << i << "] inTensors[" << j << "]: " << nodes[i].inTensors[j] << " "
+               << AsdOpsTensorToString(*nodes[i].inTensors[j]) << std::endl;
         }
         for (size_t j = 0; j < nodes[i].outTensors.size(); ++j) {
-            ss << "node[" << i << "] outTensors[" << j << "]: " << nodes[i].outTensors[j] << std::endl;
+            ss << "node[" << i << "] outTensors[" << j << "]: " << nodes[i].outTensors[j] << " "
+               << AsdOpsTensorToString(*nodes[i].outTensors[j]) << std::endl;
         }
     }
     return ss.str();
@@ -55,7 +59,10 @@ std::string AsdOpsRunInfoToString(const AsdOps::RunInfo &kernelRunInfo)
         ss << "intensors[" << i << "]: " << AsdOpsTensorToString(kernelRunInfo.GetInTensor(i)) << std::endl;
     }
     for (size_t i = 0; i < kernelRunInfo.GetOutTensorCount(); ++i) {
-        ss << "outtensors[" << i << "]: " << AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i)) << std::endl;
+        ss << "outtensors[" << i << "]: " << AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i));
+        if (i != kernelRunInfo.GetOutTensorCount() - 1) {
+            ss << std::endl;
+        }
     }
 
     return ss.str();
@@ -161,9 +168,19 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         kernelRunInfo.SetStream(handle.stream);
-        ASD_LOG(INFO) << kernel->GetName() << " run start, runinfo:\n" << AsdOpsRunInfoToString(kernelRunInfo);
+        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run start, runinfo:\n"
+                      << AsdOpsRunInfoToString(kernelRunInfo);
+
         kernel->Run(kernelRunInfo);
-        ASD_LOG(INFO) << kernel->GetName() << " run start";
+
+        if (Config::IsSaveTensor()) {
+            int ret = AsdRtStreamSynchronize(handle.stream);
+            ASD_LOG_IF(ret != 0, ERROR) << GetName() << " " << kernel->GetName() << " AsdRtStreamSynchronize fail";
+            std::string dirPath = "savetensor/" + GetName() + "/" + std::to_string(i) + "_" + kernel->GetName();
+            SaveRunInfo(handle, kernelRunInfo, dirPath);
+            ASD_LOG(INFO) << GetName() << " SaveRunInfo " << dirPath;
+        }
+        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run start";
     }
     ASD_LOG(INFO) << GetName() << " execute end";
 
@@ -181,9 +198,6 @@ void OpsRunner::Reset()
 
 bool OpsRunner::PlanKernelGraph(const VariantPack &variantPack)
 {
-    kernelGraph_.inTensors = variantPack.inTensors;
-    kernelGraph_.outTensors = variantPack.outTensors;
-
     for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
         if (!PlanOneKernel(nodeId)) {
             return false;
@@ -217,15 +231,15 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
         node.kernelRunInfo.AddOutTensor(tensor);
     }
 
-    ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " infer shape start, runinfo:\n"
-                  << AsdOpsRunInfoToString(node.kernelRunInfo);
+    ASD_LOG(INFO) << GetName() << " " << opDesc.opName
+                  << " infer shape start, runInfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
     AsdOps::Status st = op->InferShape(node.kernelRunInfo);
     if (!st.Ok()) {
         ASD_LOG(ERROR) << opDesc.opName << " infer shape fail, error:" << st.Message();
         return false;
     }
-    ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " infer shape success, runinfo:\n"
-                  << AsdOpsRunInfoToString(node.kernelRunInfo);
+    ASD_LOG(INFO) << GetName() << " " << opDesc.opName
+                  << " infer shape success, runInfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
 
     for (size_t i = 0; i < node.outTensors.size(); ++i) {
         AsdOps::Tensor *outTensor = node.outTensors.at(i);
@@ -247,7 +261,7 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
         runInfoOutTensor = *outTensor;
     }
 
-    ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " after mem allo solver, runinfo:\n"
+    ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " after mem solve, runinfo:\n"
                   << AsdOpsRunInfoToString(node.kernelRunInfo);
 
     AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
