@@ -31,11 +31,12 @@ LinearTorchRunner::~LinearTorchRunner() {}
 
 AsdOps::Status LinearTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
+    ASD_LOG(INFO) << "LinearTorchRunner start!";
     if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "LinearTorchRunner inTensor num error!");
     }
 
-    if (1) {
+    if (0) {
         at::Tensor *atInTensorA =
             AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[0].data);
         at::Tensor *atInTensorWeight =
