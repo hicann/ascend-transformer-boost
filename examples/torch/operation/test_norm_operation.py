@@ -28,37 +28,23 @@ LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
 torch.classes.load_library(LIB_PATH)
 
 
-class TestNormal(unittest.TestCase):
-    # def test_2d(self):
-    #     operation = torch.classes.OperationTorch.OperationTorch(
-    #         "LinearOperation")
-    #     operation.set_param('{"transposeA":false, "transposeB":true}')
-    #     a = torch.rand(384, 32, 1024).npu().half()
-    #     b = torch.rand(1024, 1024).npu().half()
-    #     c = torch.rand(1024).npu().half()
-
-    #     results = operation.execute([a, b, c])
-    #     print("result:", results[0])
-
-    #     golden_result = torch.matmul(a, torch.transpose(b, 0, 1)) + c
-    #     print("golden_result", golden_result)
-
-    #     self.assertTrue(torch.allclose(
-    #         results[0], golden_result, rtol=0.02, atol=0.02))
-
-    def test_3d(self):
+class TestAddNormal(unittest.TestCase):
+    def test_2d(self):
         operation = torch.classes.OperationTorch.OperationTorch(
-            "LinearOperation")
-        operation.set_param('{"transposeA":false, "transposeB":true}')
-        a = torch.rand(8, 1, 4096).npu().half()
-        b = torch.rand(16384, 4096).npu().half().npu_format_cast(29)
-        c = torch.rand(16384).npu().half()
+            "NormOperation")
+        operation.set_param(json.dumps({"layerNormEps": 1e-12}))
+        a = torch.rand(2, 3).npu().half()
+        normWeight = torch.rand(3).npu().half()
+        normBias = torch.rand(3).npu().half()
 
-        results = operation.execute([a, b, c])
-        print("result:", results[0])
+        results = operation.execute([a, normWeight, normBias])
 
-        golden_result = torch.matmul(a, torch.transpose(b, 0, 1)) + c
-        print("golden_result", golden_result)
+        layer_norm = torch.nn.LayerNorm([3]).npu()
+        layer_norm.load_state_dict({"weight": normWeight, "bias": normBias})
+        golden_result = layer_norm(a)
+
+        print("result:" + str(results[0]))
+        print("golden_result:" + str(golden_result))
 
         self.assertTrue(torch.allclose(
             results[0], golden_result, rtol=0.02, atol=0.02))

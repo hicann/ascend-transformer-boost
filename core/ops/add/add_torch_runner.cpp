@@ -30,14 +30,14 @@ AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantP
     if (param_.scale == 1) {
         at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
         at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
-
-        at::Tensor atOutTensor = torch::add(atInTensorA, atInTensorB);
+        at::Tensor atOutTensor = torch::add(atInTensorA, atInTensorB).contiguous();
         CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     } else {
         at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
         at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
         at::Tensor atScaleA = atInTensorA * param_.scale;
-        at::Tensor atOutTensor = torch::add(atScaleA, atInTensorB);
+        atScaleA = atScaleA.to(torch::kHalf);
+        at::Tensor atOutTensor = torch::add(atScaleA, atInTensorB).contiguous();
         CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     }
     return AsdOps::Status::OkStatus();

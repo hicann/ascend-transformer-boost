@@ -163,6 +163,18 @@ at::Tensor AsdOpsTensor2AtTensorCache(Handle handle, const AsdOps::Tensor &asdTe
 
 void CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &atTensor, AsdOps::Tensor &asdTensor)
 {
+    AsdOps::TensorDType dtype = AsdOps::TENSOR_DTYPE_UNDEFINED;
+    auto it = DTYPE_MAP.find(atTensor.scalar_type());
+    if (it != DTYPE_MAP.end()) {
+        dtype = it->second;
+    } else {
+        ASD_LOG(ERROR) << "not support dtype:" << atTensor.scalar_type();
+    }
+    ASD_LOG_IF(dtype != asdTensor.desc.dtype, ERROR)
+        << "atTensor dtype:" << dtype << " != asdTensor.dtype:" << asdTensor.desc.dtype;
+
+    ASD_LOG_IF(!atTensor.is_contiguous(), ERROR) << "atTensor is not is_contiguous, can't copy to asdTensor";
+
     int ret = AsdRtStreamSynchronize(stream);
     ASD_LOG_IF(ret != 0, ERROR) << "AsdRtStreamSynchronize AsdRtMemCopy fail";
 
