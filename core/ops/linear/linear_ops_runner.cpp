@@ -38,8 +38,8 @@ AsdOps::Status LinearOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
         ConvertNewVariantPack(variantPack, newVariantPack, matmulOrgShape, transdataOrgShape);
         auto &bTensor = newVariantPack.inTensors.at(1);
         int64_t bLastDim = bTensor.desc.dims.at(bTensor.desc.dims.size() - 1);
-        if (bLastDim != 16) {
-            AsdOps::SVector<int64_t> bTensorNewDims = {1, bLastDim / 16, bTensor.desc.dims.at(0), 16};
+        if (bLastDim != 16 || bTensor.desc.dims.size() < 4) {
+            AsdOps::SVector<int64_t> bTensorNewDims = {1, bLastDim / 16, bTensor.desc.dims.at(1), 16};
             bTensor.View(bTensorNewDims);
             ASD_LOG(INFO) << GetName()
                           << " bTensor last dim is not 16, view:" << AsdOpsTensorDescToString(bTensor.desc);
@@ -80,8 +80,9 @@ AsdOps::Status LinearOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 
         ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << transdataOrgShape.at(0) << ", "
                       << transdataOrgShape.at(1) << "]";
-        transdata2Node.opDesc = {0, "TransdataOperation",
-                                 AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
+        transdata2Node.opDesc = {
+            0, "TransdataOperation",
+            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transdataOrgShape})};
         transdata2Node.inTensors = {&matmulResultTensor};
         transdata2Node.outTensors = {&transdata2ResultTensor};
 

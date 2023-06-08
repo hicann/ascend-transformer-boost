@@ -20,11 +20,13 @@ class Config {
 public:
     static bool IsSaveTensor();
     static bool IsAddOpsRunnerEnable();
-    static bool IsNormOpsRunnerEnable();
     static bool IsAddNormOpsRunnerEnable();
-    static bool IsLinearOpsRunnerEnable();
     static bool IsFfnOpsRunnerEnable();
-    static bool IsSelfAttentionEnable();
+    static bool IsLinearOpsRunnerEnable();
+    static bool IsNormOpsRunnerEnable();
+    static bool IsPositionEmbeddingOpsRunnerEnable();
+    static bool IsSelfAttentionKVCacheOpsRunnerEnable();
+    static bool IsSelfAttentionOpsRunnerEnable();
 
 private:
     static bool IsEnable(const char *env);

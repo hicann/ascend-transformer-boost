@@ -40,7 +40,7 @@ AsdOps::Status NormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &
 
 RunnerBuilder *NormOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
-    size_t index = Config::IsAddNormOpsRunnerEnable() ? 0 : 1;
+    size_t index = Config::IsNormOpsRunnerEnable() ? 0 : 1;
     return runnerBuilders_.at(index);
 }
 } // namespace AclTransformer
