@@ -1,4 +1,4 @@
-# Copyright(C) 2023. Huawei Technologies Co.,Ltd. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,8 @@ torch.classes.load_library(LIB_PATH)
 
 class TestAddNormal(unittest.TestCase):
     def test_2d(self):
-        operation = torch.classes.OperationTorch.OperationTorch("AddNormOperation"))
+        operation = torch.classes.OperationTorch.OperationTorch(
+            "AddNormOperation")
         operation.set_param(json.dumps({"layerNormEps": 1e-12}))
         a = torch.rand(2, 3).npu().half()
         b = torch.rand(2, 3).npu().half()
