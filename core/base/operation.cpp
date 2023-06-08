@@ -48,9 +48,9 @@ AsdOps::Status Operation::Setup(VariantPack &variantPack)
         return AsdOps::Status::FailStatus(1, "create best runner fail");
     }
 
-    ASD_LOG(INFO) << runner_->GetName() << " Execute start";
+    ASD_LOG(INFO) << runner_->GetName() << " Setup start";
     AsdOps::Status st = runner_->Setup(variantPack);
-    ASD_LOG(INFO) << runner_->GetName() << " Execute end, result:" << st.Message();
+    ASD_LOG(INFO) << runner_->GetName() << " Setup end, result:" << st.Message();
     if (!st.Ok()) {
         ASD_LOG(ERROR) << GetName() << " Setup fail, error:" << st.Message();
         return st;
