@@ -38,7 +38,7 @@ class TestNormal(unittest.TestCase):
 
         results = operation.execute([a, b])
 
-        golden_result = a + b
+        golden_result = a * 7.48331 + b
 
         print("results:", results[0])
         print("golden_result:", str(golden_result))
