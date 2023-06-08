@@ -30,9 +30,24 @@ bool Config::IsSaveTensor() { return IsEnable("ACLTRANSFORMER_SAVE_TENSOR"); }
 
 bool Config::IsAddOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE"); }
 
-bool Config::IsNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_NORM_OPSRUNNER_ENABLE"); }
-
 bool Config::IsAddNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE"); }
 
+bool Config::IsFfnOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_Ffn_OPSRUNNER_ENABLE"); }
+
 bool Config::IsLinearOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_LINEAR_OPSRUNNER_ENABLE"); }
+
+bool Config::IsNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_NORM_OPSRUNNER_ENABLE"); }
+
+bool Config::IsPositionEmbeddingOpsRunnerEnable()
+{
+    return IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_OPSRUNNER_ENABLE");
+}
+
+bool Config::IsSelfAttentionKVCacheOpsRunnerEnable()
+{
+    return IsEnable("ACLTRANSFORMER_SELFATTENTIONKVCACHE_OPSRUNNER_ENABLE");
+}
+
+bool Config::IsSelfAttentionOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_SELFATTENTION_OPSRUNNER_ENABLE"); }
+
 } // namespace AclTransformer

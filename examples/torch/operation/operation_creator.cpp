@@ -19,6 +19,7 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
+#include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
@@ -41,6 +42,13 @@ AclTransformer::Operation *AddNormOperationCreate(const Json::Value &paramJson)
     AclTransformer::AddNormParam param;
     param.layerNormEps = paramJson["layerNormEps"].asDouble();
     return new AclTransformer::AddNormOperation(param);
+}
+
+AclTransformer::Operation *NormOperationCreate(const Json::Value &paramJson)
+{
+    AclTransformer::NormParam param;
+    param.layerNormEps = paramJson["layerNormEps"].asDouble();
+    return new AclTransformer::NormOperation(param);
 }
 
 AclTransformer::Operation *LinearOperationCreate(const Json::Value &paramJson)
@@ -83,13 +91,15 @@ AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const Json::Value
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }
 
-std::map<std::string, OperationCreateFunc> g_funcMap = {{"AddOperation", &AddOperationCreate},
-                                                        {"AddNormOperation", &AddNormOperationCreate},
-                                                        {"LinearOperation", &LinearOperationCreate},
-                                                        {"FfnOperation", &FfnOperationCreate},
-                                                        {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
-                                                        {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
-                                                        {"SelfAttentionOperation", &SelfAttentionOperationCreate}};
+std::map<std::string, OperationCreateFunc> g_funcMap = {
+    {"AddOperation", &AddOperationCreate},
+    {"AddNormOperation", &AddNormOperationCreate},
+    {"NormOperation", &NormOperationCreate},
+    {"LinearOperation", &LinearOperationCreate},
+    {"FfnOperation", &FfnOperationCreate},
+    {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
+    {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
+    {"SelfAttentionOperation", &SelfAttentionOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
