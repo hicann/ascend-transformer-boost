@@ -145,7 +145,7 @@ void ChatGlm6BLayer(const Json::Value &paramJson, AclTransformer::VariantPack &v
     selfNormNode.outTensorIds = {selfNormOut};
 
     ffnNode.operation = &ffnOp;
-    ffnNode.inTensorIds = {selfResidualAddOut, ffnLinearWeight, ffnLinearBias};
+    ffnNode.inTensorIds = {selfNormOut, ffnLinearWeight, ffnLinearBias};
     ffnNode.outTensorIds = {ffnOut};
 
     ffnLinearNode.operation = &ffnLinearOp;
