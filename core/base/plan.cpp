@@ -54,13 +54,13 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
         ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " infer shape start";
         for (size_t i = 0; i < node.variantPack.inTensors.size(); ++i) {
             ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " intensor[" << i << "] "
-                          << AsdOpsTensorToString(node.variantPack.inTensors.at(i));
+                          << TensorUtil::AsdOpsTensorToString(node.variantPack.inTensors.at(i));
         }
         AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
         node.operation->InferShape(node.variantPack.inTensors, outTensorDescs);
         for (size_t i = 0; i < outTensorDescs.size(); ++i) {
             ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " outTensorDescs[" << i << "] "
-                          << AsdOpsTensorDescToString(outTensorDescs.at(i));
+                          << TensorUtil::AsdOpsTensorDescToString(outTensorDescs.at(i));
         }
         ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " infer shape end";
 
@@ -68,7 +68,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
             AsdOps::Tensor *outTensor = node.outTensors.at(i);
             if (outTensor->data == nullptr) {
                 outTensor->desc = outTensorDescs.at(i);
-                outTensor->dataSize = CalcTensorDataSize(*outTensor);
+                outTensor->dataSize = TensorUtil::CalcTensorDataSize(*outTensor);
                 outTensor->data = memAllocatinSolver_->Malloc(outTensor->dataSize);
                 ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName()
                               << " MemAllocationSolver Malloc dataSize:" << outTensor->dataSize
@@ -76,7 +76,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
             }
             node.variantPack.outTensors.at(i) = *outTensor;
             ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " mem solve, outTensors[" << i
-                          << "] " << AsdOpsTensorToString(*outTensor);
+                          << "] " << TensorUtil::AsdOpsTensorToString(*outTensor);
         }
 
         auto it = maxNodeIdTensorMap_.find(nodeId);
@@ -167,7 +167,7 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
             AsdRtStreamSynchronize(handle.stream);
             std::string dirPath =
                 "savetensor/" + runnerGraph_.name + "/" + std::to_string(nodeId) + "_" + node.runner->GetName();
-            SaveVariantPack(handle, node.variantPack, dirPath);
+            TensorUtil::SaveVariantPack(handle, node.variantPack, dirPath);
             ASD_LOG(INFO) << "Plan SaveVariantPack " << dirPath;
         }
         ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName()
@@ -252,10 +252,12 @@ void Plan::InitTensorMaxNodeMap()
 void Plan::LogVariantPack(const VariantPack &variantPack)
 {
     for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
-        ASD_LOG(INFO) << "variantPack.inTensors[" << i << "] " << AsdOpsTensorToString(variantPack.inTensors[i]);
+        ASD_LOG(INFO) << "variantPack.inTensors[" << i << "] "
+                      << TensorUtil::AsdOpsTensorToString(variantPack.inTensors[i]);
     }
     for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
-        ASD_LOG(INFO) << "variantPack.outTensors[" << i << "] " << AsdOpsTensorToString(variantPack.outTensors[i]);
+        ASD_LOG(INFO) << "variantPack.outTensors[" << i << "] "
+                      << TensorUtil::AsdOpsTensorToString(variantPack.outTensors[i]);
     }
 }
 

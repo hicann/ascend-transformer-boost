@@ -42,7 +42,7 @@ AsdOps::Status LinearOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
             AsdOps::SVector<int64_t> bTensorNewDims = {1, bLastDim / 16, bTensor.desc.dims.at(1), 16};
             bTensor.View(bTensorNewDims);
             ASD_LOG(INFO) << GetName()
-                          << " bTensor last dim is not 16, view:" << AsdOpsTensorDescToString(bTensor.desc);
+                          << " bTensor last dim is not 16, view:" << TensorUtil::AsdOpsTensorDescToString(bTensor.desc);
         }
 
         ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString()
@@ -177,11 +177,11 @@ void LinearOpsRunner::ConvertNewVariantPack(const VariantPack &variantPack, Vari
     }
     AsdOps::SVector<int64_t> newDims = {dimZero, aTensor.desc.dims.at(aTensor.desc.dims.size() - 1)};
 
-    ASD_LOG(INFO) << GetName() << " old aTensor:" << AsdOpsTensorToString(aTensor)
-                  << ", bTensor:" << AsdOpsTensorToString(bTensor);
+    ASD_LOG(INFO) << GetName() << " old aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor)
+                  << ", bTensor:" << TensorUtil::AsdOpsTensorToString(bTensor);
 
     aTensor.View(newDims);
-    ASD_LOG(INFO) << GetName() << " after view, new aTensor:" << AsdOpsTensorToString(aTensor);
+    ASD_LOG(INFO) << GetName() << " after view, new aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor);
 
     if (param_.transposeB) {
         matmulOrgShape = {aTensor.desc.dims.at(0), aTensor.desc.dims.at(1), bTensor.desc.dims.at(0)};
@@ -192,9 +192,9 @@ void LinearOpsRunner::ConvertNewVariantPack(const VariantPack &variantPack, Vari
     }
 
     aTensor.AddDimOne();
-    ASD_LOG(INFO) << GetName() << " after add one, new aTensor:" << AsdOpsTensorToString(aTensor);
+    ASD_LOG(INFO) << GetName() << " after add one, new aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor);
 
     bTensor.AddDimOne();
-    ASD_LOG(INFO) << GetName() << " after add one, new bTensor:" << AsdOpsTensorToString(bTensor);
+    ASD_LOG(INFO) << GetName() << " after add one, new bTensor:" << TensorUtil::AsdOpsTensorToString(bTensor);
 }
 } // namespace AclTransformer

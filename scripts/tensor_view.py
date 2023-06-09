@@ -9,7 +9,6 @@ def main():
         tensor1 = torch.load(sys.argv[1])
 
     print("tensor1:" + str(tensor1))
-    print(tensor1.shape)
 
 
 if __name__ == "__main__":

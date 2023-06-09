@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef BERT_OUTPUT_LAYER_TORCH_H
-#define BERT_OUTPUT_LAYER_TORCH_H
-#include <torch/script.h>
-#include <torch/custom_class.h>
+#ifndef SELFATTENTIONKVCACHE_OPS_RUNNER_BUILDER_H
+#define SELFATTENTIONKVCACHE_OPS_RUNNER_BUILDER_H
+#include "acltransformer/runner_builder.h"
+#include "acltransformer/params/self_attention_kv_cache.h"
+#include "self_attention_kv_cache_ops_runner.h"
 
-class BertOutputLayerTorch : public torch::CustomClassHolder {
+namespace AclTransformer {
+class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
 public:
-    BertOutputLayerTorch();
-    ~BertOutputLayerTorch();
-    void Test();
-    void Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
-    c10::intrusive_ptr<BertOutputLayerTorch> clone() const { return c10::make_intrusive<BertOutputLayerTorch>(); }
+    SelfAttentionKvCacheOpsRunnerBuilder(const SelfAttentionKvCacheParam &param) : param_(param) {}
+    virtual ~SelfAttentionKvCacheOpsRunnerBuilder() = default;
+    Runner *Build() override { return new SelfAttentionKvCacheOpsRunner(param_); }
 
 private:
-    int64_t executeCount_ = 0;
+    SelfAttentionKvCacheParam param_;
 };
 
+} // namespace AclTransformer
 #endif

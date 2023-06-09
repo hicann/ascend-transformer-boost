@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "norm_ops_runner.h"
+#include <numeric>
 #include <asdops/utils/log/log.h>
 #include <asdops/params/params.h>
 #include "acltransformer/utils/tensor_util.h"
@@ -73,9 +74,9 @@ bool NormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t 
     const AsdOps::Tensor &weightTensor = variantPack.inTensors.at(2);
     const AsdOps::Tensor &biasTensor = variantPack.inTensors.at(3);
 
-    ASD_LOG(INFO) << GetName() << " layer norm input desc:" << AsdOpsTensorDescToString(inputDesc)
-                  << ", weightTensor:" << AsdOpsTensorToString(weightTensor)
-                  << ", biasTensor:" << AsdOpsTensorToString(biasTensor);
+    ASD_LOG(INFO) << GetName() << " layer norm input desc:" << TensorUtil::AsdOpsTensorDescToString(inputDesc)
+                  << ", weightTensor:" << TensorUtil::AsdOpsTensorToString(weightTensor)
+                  << ", biasTensor:" << TensorUtil::AsdOpsTensorToString(biasTensor);
 
     const int axis = inputDesc.dims.size() - weightTensor.desc.dims.size();
     const int64_t M =
