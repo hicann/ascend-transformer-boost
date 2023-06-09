@@ -14,19 +14,25 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
+#include "self_attention_kv_cache_ops_runner_builder.h"
 #include "self_attention_kv_cache_torch_runner_builder.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation(const SelfAttentionKvCacheParam  &param)
+SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation(const SelfAttentionKvCacheParam &param)
     : Operation("SelfAttentionKvCacheOperation"), param_(param)
 {
-    runnerBuilders_ = {new SelfAttentionKvCacheTorchRunnerBuilder(param_)};
+#ifdef USE_TORCH_RUNNER
+    runnerBuilders_ = {new SelfAttentionKvCacheOpsRunnerBuilder(param_),
+                       new SelfAttentionKvCacheTorchRunnerBuilder(param_)};
+#else
+    runnerBuilders_ = {new SelfAttentionKvCacheOpsRunnerBuilder(param_)};
+#endif
 }
 
 SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() {}
 
 AsdOps::Status SelfAttentionKvCacheOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+                                                         AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
     // out : out presentK presentV [seq_len, batch, head_num * head_size]
@@ -49,6 +55,11 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShape(const AsdOps::SVector<A
 
 RunnerBuilder *SelfAttentionKvCacheOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
-    return runnerBuilders_.at(0);
+#ifdef USE_TORCH_RUNNER
+    size_t index = Config::IsSelfAttentionKVCacheOpsRunnerEnable() ? 0 : 1;
+#else
+    size_t index = 0;
+#endif
+    return runnerBuilders_.at(index);
 }
 } // namespace AclTransformer

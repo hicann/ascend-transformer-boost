@@ -18,7 +18,7 @@
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
 #include "acltransformer/operation_graph.h"
-#include "examples/utils/example_utils.h"
+#include "examples/utils/example_util.h"
 #include "acltransformer/plan_builder.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
@@ -79,5 +79,5 @@ void BertSelfAttentionLayer(const Json::Value &paramJson, AclTransformer::Varian
     selfAttentionNode.inTensorIds = {queryId, keyId, valueId, attentionMaskId};
     selfAttentionNode.outTensorIds = {contextId};
 
-    ExecuteOperationGraph(opGraph, variantPack);
+    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
 }

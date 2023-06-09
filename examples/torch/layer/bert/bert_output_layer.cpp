@@ -18,7 +18,7 @@
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
 #include "acltransformer/operation_graph.h"
-#include "examples/utils/example_utils.h"
+#include "examples/utils/example_util.h"
 #include "acltransformer/plan_builder.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
@@ -58,5 +58,5 @@ void BertOutputAttentionLayer(const Json::Value &paramJson, AclTransformer::Vari
     addNormNode.inTensorIds = {linearOutId, residualAddInId, normWeightId, normBiasId};
     addNormNode.outTensorIds = {bertOutId};
 
-    ExecuteOperationGraph(opGraph, variantPack);
+    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
 }

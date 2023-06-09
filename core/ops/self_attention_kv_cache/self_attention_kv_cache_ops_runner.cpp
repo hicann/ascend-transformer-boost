@@ -13,25 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "acltransformer/utils/tensor_cache.h"
+#include "self_attention_kv_cache_ops_runner.h"
+#include <numeric>
+#include <asdops/utils/log/log.h>
+#include <asdops/params/params.h>
+#include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-void TensorCache::AddTensor(void *data, at::Tensor *tensor) { tensorMap_[data] = tensor; }
-
-at::Tensor *TensorCache::GetTensor(void *data)
+SelfAttentionKvCacheOpsRunner::SelfAttentionKvCacheOpsRunner(const SelfAttentionKvCacheParam &param)
+    : OpsRunner("SelfAttentionKvCacheOpsRunner"), param_(param)
 {
-    auto it = tensorMap_.find(data);
-    if (it == tensorMap_.end()) {
-        return nullptr;
-    }
-    return it->second;
+    ASD_LOG(INFO) << "SelfAttentionKVCacheOperation::SelfAttentionKVCacheOperation called";
 }
 
-void TensorCache::DeleteTensor(void *data)
+SelfAttentionKvCacheOpsRunner::~SelfAttentionKvCacheOpsRunner() {}
+
+AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
-    auto it = tensorMap_.find(data);
-    if (it != tensorMap_.end()) {
-        tensorMap_.erase(it);
-    }
+
+    return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

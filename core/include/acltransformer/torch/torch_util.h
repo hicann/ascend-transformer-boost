@@ -13,24 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_PLANBUILDER_H
-#define ACLTRANSFORMER_PLANBUILDER_H
-#include <asdops/utils/status/status.h>
-#include "acltransformer/params/params.h"
+#ifndef ACLTRANSFORMER_TORCH_UTIL_H
+#define ACLTRANSFORMER_TORCH_UTIL_H
+#include <torch/torch.h>
+#include <asdops/tensor.h>
 #include "acltransformer/handle.h"
-#include "acltransformer/variant_pack.h"
-#include "acltransformer/operation_graph.h"
-#include "acltransformer/plan.h"
 
 namespace AclTransformer {
-class PlanBuilder {
+class TorchUtil {
 public:
-    AsdOps::Status Build(const VariantPack &variantPack, const OperationGraph &opGraph, Plan &plan);
-
-private:
-    AsdOps::Status BuildImpl(const VariantPack &variantPack, const OperationGraph &opGraph, Plan &plan);
-    void LogOperationGraph(const OperationGraph &opGraph);
-    void LogRunnerGraph(const RunnerGraph &runnerGraph);
+    static int64_t GetTensorNpuFormat(const at::Tensor &tensor);
+    static at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc);
+    static at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor);
+    static void CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &tensor, AsdOps::Tensor &asdTensor);
+    static at::Tensor AsdOpsTensor2AtCpuTensor(Handle handle, const AsdOps::Tensor &asdTensor);
+    static bool IsTensorDimEqual(const at::ArrayRef<long> &dims1, const AsdOps::SVector<int64_t> &dims2);
 };
 } // namespace AclTransformer
 #endif

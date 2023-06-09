@@ -18,26 +18,22 @@
 #include <vector>
 #include <string>
 #include <asdops/tensor.h>
-#include <torch/torch.h>
 #include <asdops/run_info.h>
 #include "acltransformer/variant_pack.h"
 #include "acltransformer/handle.h"
 
 namespace AclTransformer {
-void GetTensorDescs(const std::vector<AsdOps::Tensor> &tensors, AsdOps::SVector<AsdOps::TensorDesc> &tensorDescs);
-uint64_t CalcTensorDataSize(const AsdOps::Tensor &tensor);
-uint64_t CalcTensorDataSize(const AsdOps::TensorDesc &tensorDesc);
-at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc);
-at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor);
-at::Tensor AsdOpsTensor2AtTensorCache(Handle handle, const AsdOps::Tensor &asdTensor);
-void CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &tensor, AsdOps::Tensor &asdTensor);
-at::Tensor AsdOpsTensor2AtCpuTensor(Handle handle, const AsdOps::Tensor &asdTensor);
-std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor);
-std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
-AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor);
-void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath);
-void SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath);
-bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
-bool IsTensorDimEqual(const at::ArrayRef<long> &dims1, const AsdOps::SVector<int64_t> &dims2);
+class TensorUtil {
+public:
+    static uint64_t CalcTensorDataSize(const AsdOps::Tensor &tensor);
+    static uint64_t CalcTensorDataSize(const AsdOps::TensorDesc &tensorDesc);
+    static std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor);
+    static std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
+    static void SaveTensor(const AsdOps::Tensor &tensor, const std::string &filePath);
+    static void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath);
+    static void SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath);
+    static bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
+    static std::string AsdOpsDimsToString(const AsdOps::SVector<int64_t> &dims);
+};
 } // namespace AclTransformer
 #endif

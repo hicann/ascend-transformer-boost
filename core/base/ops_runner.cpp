@@ -28,23 +28,25 @@ std::string KernelGraph::ToString() const
 {
     std::stringstream ss;
     for (size_t i = 0; i < inTensors.size(); ++i) {
-        ss << "inTensors[" << i << "]: " << &inTensors[i] << " " << AsdOpsTensorToString(inTensors[i]) << std::endl;
+        ss << "inTensors[" << i << "]: " << &inTensors[i] << " " << TensorUtil::AsdOpsTensorToString(inTensors[i])
+           << std::endl;
     }
     for (size_t i = 0; i < outTensors.size(); ++i) {
-        ss << "outTensors[" << i << "]: " << &outTensors[i] << " " << AsdOpsTensorToString(outTensors[i]) << std::endl;
+        ss << "outTensors[" << i << "]: " << &outTensors[i] << " " << TensorUtil::AsdOpsTensorToString(outTensors[i])
+           << std::endl;
     }
     for (size_t i = 0; i < internalTensors.size(); ++i) {
-        ss << "internalTensors[" << i << "]: " << &internalTensors[i] << " " << AsdOpsTensorToString(internalTensors[i])
-           << std::endl;
+        ss << "internalTensors[" << i << "]: " << &internalTensors[i] << " "
+           << TensorUtil::AsdOpsTensorToString(internalTensors[i]) << std::endl;
     }
     for (size_t i = 0; i < nodes.size(); ++i) {
         for (size_t j = 0; j < nodes[i].inTensors.size(); ++j) {
             ss << "node[" << i << "] inTensors[" << j << "]: " << nodes[i].inTensors[j] << " "
-               << AsdOpsTensorToString(*nodes[i].inTensors[j]) << std::endl;
+               << TensorUtil::AsdOpsTensorToString(*nodes[i].inTensors[j]) << std::endl;
         }
         for (size_t j = 0; j < nodes[i].outTensors.size(); ++j) {
             ss << "node[" << i << "] outTensors[" << j << "]: " << nodes[i].outTensors[j] << " "
-               << AsdOpsTensorToString(*nodes[i].outTensors[j]) << std::endl;
+               << TensorUtil::AsdOpsTensorToString(*nodes[i].outTensors[j]) << std::endl;
         }
     }
     return ss.str();
@@ -56,10 +58,10 @@ std::string AsdOpsRunInfoToString(const AsdOps::RunInfo &kernelRunInfo)
     ss << "opdesc.opName:" << kernelRunInfo.GetOpDesc().opName << ", stream:" << kernelRunInfo.GetStream() << std::endl;
 
     for (size_t i = 0; i < kernelRunInfo.GetInTensorCount(); ++i) {
-        ss << "intensors[" << i << "]: " << AsdOpsTensorToString(kernelRunInfo.GetInTensor(i)) << std::endl;
+        ss << "intensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetInTensor(i)) << std::endl;
     }
     for (size_t i = 0; i < kernelRunInfo.GetOutTensorCount(); ++i) {
-        ss << "outtensors[" << i << "]: " << AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i));
+        ss << "outtensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i));
         if (i != kernelRunInfo.GetOutTensorCount() - 1) {
             ss << std::endl;
         }
@@ -183,7 +185,7 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
             int ret = AsdRtStreamSynchronize(handle.stream);
             ASD_LOG_IF(ret != 0, ERROR) << GetName() << " " << kernel->GetName() << " AsdRtStreamSynchronize fail";
             std::string dirPath = "savetensor/" + GetName() + "/" + std::to_string(i) + "_" + kernel->GetName();
-            SaveRunInfo(handle, kernelRunInfo, dirPath);
+            TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath);
             ASD_LOG(INFO) << GetName() << " SaveRunInfo " << dirPath;
         }
         ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run start";
@@ -257,7 +259,7 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
                 ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " outTensors[" << i
                               << "] is internal tensor, infer shape wrong, not use infer shape desc";
             }
-            outTensor->dataSize = CalcTensorDataSize(outTensor->desc);
+            outTensor->dataSize = TensorUtil::CalcTensorDataSize(outTensor->desc);
             outTensor->data = memAllocatinSolver_->Malloc(outTensor->dataSize);
             ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " outTensors[" << i
                           << "] is internal tensor, mem solve:" << outTensor->data;
