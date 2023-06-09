@@ -360,7 +360,7 @@ function fn_main()
             fi
             ;;
          "--use_torch_runner")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TORCH_RUNNER=1"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TORCH_RUNNER=ON"
             ;;
         esac
         shift

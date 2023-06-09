@@ -16,6 +16,7 @@
 #include "acltransformer/ops/ffn_operation.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/svector/svector.h>
+#include "acltransformer/config.h"
 #include "ffn_torch_runner_builder.h"
 #include "ffn_ops_runner_builder.h"
 
