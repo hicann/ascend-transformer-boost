@@ -14,17 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "example_utils.h"
+#include "example_util.h"
 #include <asdops/utils/rt/rt.h>
 #include <iostream>
 #include <asdops/utils/log/log.h>
 #include <torch_npu/csrc/core/npu/NPUStream.h>
+#include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
+#include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include "acltransformer/plan_builder.h"
-#include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
-#include "acltransformer/utils/tensor_cache.h"
+#include "acltransformer/utils/tensor_util.h"
 
-void *GetCurrentStream()
+void *ExampleUtil::GetCurrentStream()
 {
     int32_t devId = 0;
     AsdRtDeviceGetCurrent(&devId);
@@ -33,18 +34,27 @@ void *GetCurrentStream()
     return stream;
 }
 
-void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
-                   std::vector<at::Tensor> atOutTensors)
+int64_t ExampleUtil::GetTensorNpuFormat(const at::Tensor &tensor)
+{
+#ifdef TORCH_GET_TENSOR_NPU_FORMAT_OLD
+    return at_npu::native::CalcuOpUtil::get_tensor_npu_format(tensor);
+#else
+    return at_npu::native::CalcuOpUtil::GetTensorNpuFormat(tensor);
+#endif
+}
+
+void ExampleUtil::ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
+                                std::vector<at::Tensor> atOutTensors)
 {
     AclTransformer::Handle handle;
     handle.stream = GetCurrentStream();
 
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(atInTensors.at(i)));
+        variantPack.inTensors.push_back(AtTensor2AsdTensor(atInTensors.at(i)));
     }
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(atOutTensors.at(i)));
+        variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
     }
 
     runner->Setup(variantPack);
@@ -71,25 +81,22 @@ void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInT
     }
 }
 
-void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor *> atInTensors,
-                      std::vector<at::Tensor *> atOutTensors)
+void ExampleUtil::ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor *> atInTensors,
+                                   std::vector<at::Tensor *> atOutTensors)
 {
     AclTransformer::Handle handle = {GetCurrentStream()};
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atInTensors.at(i)->data_ptr(), atInTensors.at(i));
-        variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(*atInTensors.at(i)));
+        variantPack.inTensors.push_back(AtTensor2AsdTensor(*atInTensors.at(i)));
     }
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atOutTensors.at(i)->data_ptr(),
-                                                                      atOutTensors.at(i));
-        variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(*atOutTensors.at(i)));
+        variantPack.outTensors.push_back(AtTensor2AsdTensor(*atOutTensors.at(i)));
     }
 
     static int64_t opId = 0;
     if (AclTransformer::Config::IsSaveTensor()) {
         std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName() + "_brefore";
-        SaveVariantPack(handle, variantPack, dirPath);
+        AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
         ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
 
@@ -114,7 +121,7 @@ void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tens
 
     if (AclTransformer::Config::IsSaveTensor()) {
         std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName();
-        SaveVariantPack(handle, variantPack, dirPath);
+        AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
         ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
 
@@ -124,16 +131,10 @@ void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tens
         variantPack.workspace = nullptr;
         variantPack.workspaceSize = 0;
     }
-
-    for (size_t i = 0; i < atInTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(atInTensors.at(i)->data_ptr());
-    }
-    for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(atOutTensors.at(i)->data_ptr());
-    }
 }
 
-void ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransformer::VariantPack &variantPack)
+void ExampleUtil::ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph,
+                                        AclTransformer::VariantPack &variantPack)
 {
     AclTransformer::Handle handle = {GetCurrentStream()};
 
@@ -175,48 +176,77 @@ void ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransform
     }
 }
 
-std::string TensorToString(const AsdOps::Tensor &tensor)
-{
-    const int64_t printMaxCount = 10;
-    std::ostringstream ss;
-    ss << "dtype:" << tensor.desc.dtype << ", format:" << tensor.desc.format << ", numel:" << tensor.Numel()
-       << ", dataSize:" << tensor.dataSize << ", data:[";
-
-    if (tensor.data) {
-        for (int64_t i = 0; i < tensor.Numel(); ++i) {
-            if (i == printMaxCount) {
-                ss << "...";
-                break;
-            }
-
-            if (tensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
-                // half_float::half *tensorData = static_cast<half_float::half *>(tensor.data);
-                // ss << tensorData[i] << ",";
-            } else if (tensor.desc.dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
-                float *tensorData = static_cast<float *>(tensor.data);
-                ss << tensorData[i] << ",";
-            } else if (tensor.desc.dtype == AsdOps::TENSOR_DTYPE_INT32) {
-                int32_t *tensorData = static_cast<int32_t *>(tensor.data);
-                ss << tensorData[i] << ",";
-            } else {
-                ss << "N,";
-            }
-        }
-    } else {
-        ss << "null";
-    }
-
-    ss << "]";
-    return ss.str();
-}
-
-void BuildVariantPack(const std::vector<torch::Tensor> &inTensors, const std::vector<torch::Tensor> &outTensors,
-                      AclTransformer::VariantPack &variantPack)
+void ExampleUtil::BuildVariantPack(const std::vector<torch::Tensor> &inTensors,
+                                   const std::vector<torch::Tensor> &outTensors,
+                                   AclTransformer::VariantPack &variantPack)
 {
     for (size_t i = 0; i < inTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(inTensors.at(i)));
+        variantPack.inTensors.push_back(AtTensor2AsdTensor(inTensors.at(i)));
     }
     for (size_t i = 0; i < outTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(outTensors.at(i)));
+        variantPack.outTensors.push_back(AtTensor2AsdTensor(outTensors.at(i)));
     }
+}
+
+AsdOps::Tensor ExampleUtil::AtTensor2AsdTensor(const at::Tensor &atTensor)
+{
+    static std::map<at::ScalarType, AsdOps::TensorDType> dtypeMap = {
+        {at::ScalarType::Bool, AsdOps::TENSOR_DTYPE_BOOL},   {at::ScalarType::Byte, AsdOps::TENSOR_DTYPE_UINT8},
+        {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_UINT8},  {at::ScalarType::Half, AsdOps::TENSOR_DTYPE_FLOAT16},
+        {at::ScalarType::Float, AsdOps::TENSOR_DTYPE_FLOAT}, {at::ScalarType::Int, AsdOps::TENSOR_DTYPE_INT32},
+        {at::ScalarType::Long, AsdOps::TENSOR_DTYPE_INT64},
+    };
+
+    ASD_LOG_IF(!atTensor.is_contiguous(), ERROR) << "atTensor is not contiguous";
+    AsdOps::Tensor asdTensor;
+    asdTensor.desc.format = static_cast<AsdOps::TensorFormat>(GetTensorNpuFormat(atTensor));
+    asdTensor.data = atTensor.data_ptr();
+
+    asdTensor.desc.dims.resize(atTensor.sizes().size());
+    for (uint64_t i = 0; i < atTensor.sizes().size(); i++) {
+        asdTensor.desc.dims[i] = atTensor.sizes()[i];
+    }
+
+    auto it = dtypeMap.find(atTensor.scalar_type());
+    if (it != dtypeMap.end()) {
+        asdTensor.desc.dtype = it->second;
+    } else {
+        ASD_LOG(ERROR) << "not support dtype:" << atTensor.scalar_type();
+    }
+
+    asdTensor.dataSize = AclTransformer::TensorUtil::CalcTensorDataSize(asdTensor);
+
+    return asdTensor;
+}
+
+at::Tensor ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc)
+{
+    at::TensorOptions options = at::TensorOptions();
+    if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
+        options = options.dtype(at::kFloat);
+    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
+        options = options.dtype(at::kHalf);
+    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_BOOL) {
+        options = options.dtype(at::kBool);
+    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_INT64) {
+        options = options.dtype(at::kLong);
+    } else {
+        ASD_LOG(ERROR) << "not support dtype:" << tensorDesc.dtype;
+    }
+
+#ifdef TORCH_18
+    options = options.layout(torch::kStrided).requires_grad(false).device(at::DeviceType::XLA);
+#else
+    options = options.layout(torch::kStrided).requires_grad(false).device(at::kPrivateUse1);
+#endif
+
+    ASD_LOG(INFO) << "ApplyTensorWithFormat stat, format:" << tensorDesc.format;
+    at::Tensor newTensor =
+        at_npu::native::OpPreparation::ApplyTensorWithFormat(
+            at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options, tensorDesc.format)
+            .contiguous();
+    ASD_LOG(INFO) << "ApplyTensorWithFormat success, newTensor.options:" << newTensor.options()
+                  << ", format:" << GetTensorNpuFormat(newTensor) << ", is_contiguous:" << newTensor.is_contiguous();
+
+    return newTensor;
 }

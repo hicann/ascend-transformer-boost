@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 #include "self_attention_torch_runner.h"
-#include "acltransformer/utils/tensor_util.h"
+#include <cmath>
+#ifdef USE_TORCH_RUNNER
+#include <ATen/ATen.h>
+#endif
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
-#include <ATen/ATen.h>
-#include <cmath>
-#include "acltransformer/utils/tensor_cache.h"
+#include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
 SelfAttentionTorchRunner::SelfAttentionTorchRunner(const SelfAttentionParam &param)
@@ -32,6 +33,7 @@ SelfAttentionTorchRunner::~SelfAttentionTorchRunner() {}
 
 AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
+#ifdef USE_TORCH_RUNNER
     // 384, 32, 1024 -> 384, 32, 1024
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk:" << this->param_.dk;
     torch::Tensor mixedQuery = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
@@ -69,5 +71,8 @@ AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack
     CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
 
     return AsdOps::Status::OkStatus();
+#else
+    return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");
+#endif
 }
 } // namespace AclTransformer

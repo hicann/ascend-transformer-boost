@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef BERT_LAYER_TORCH_H
-#define BERT_LAYER_TORCH_H
-#include <torch/script.h>
-#include <torch/custom_class.h>
+#ifndef POSITIONEMBEDDING_OPS_RUNNER_BUILDER_H
+#define POSITIONEMBEDDING_OPS_RUNNER_BUILDER_H
+#include "acltransformer/runner_builder.h"
+#include "acltransformer/params/position_embedding.h"
+#include "position_embedding_ops_runner.h"
 
-class BertLayerTorch : public torch::CustomClassHolder {
+namespace AclTransformer {
+class PositionEmbeddingOpsRunnerBuilder : public RunnerBuilder {
 public:
-    BertLayerTorch(std::string bertLayerParam);
-    ~BertLayerTorch();
-    void Test();
-    void Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
-    c10::intrusive_ptr<BertLayerTorch> clone() const { return c10::make_intrusive<BertLayerTorch>(bertLayerParam_); }
+    PositionEmbeddingOpsRunnerBuilder(const PositionEmbeddingParam &param) : param_(param) {}
+    virtual ~PositionEmbeddingOpsRunnerBuilder() = default;
+    Runner *Build() override { return new PositionEmbeddingOpsRunner(param_); }
 
 private:
-    std::string bertLayerParam_;
+    PositionEmbeddingParam param_;
 };
 
+} // namespace AclTransformer
 #endif

@@ -21,7 +21,11 @@
 namespace AclTransformer {
 AddNormOperation::AddNormOperation(const AddNormParam &param) : Operation("AddNormOperation"), param_(param)
 {
+#ifdef USE_TORCH_RUNNER
     runnerBuilders_ = {new AddNormOpsRunnerBuilder(param_), new AddNormTorchRunnerBuilder(param_)};
+#else
+    runnerBuilders_ = {new AddNormOpsRunnerBuilder(param_)};
+#endif
 }
 
 AddNormOperation::~AddNormOperation() {}
@@ -40,7 +44,11 @@ AsdOps::Status AddNormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor
 
 RunnerBuilder *AddNormOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
+#ifdef USE_TORCH_RUNNER
     size_t index = Config::IsAddNormOpsRunnerEnable() ? 0 : 1;
+#else
+    size_t index = 0;
+#endif
     return runnerBuilders_.at(index);
 }
 } // namespace AclTransformer

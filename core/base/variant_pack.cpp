@@ -23,10 +23,10 @@ std::string VariantPack::ToString() const
     std::stringstream ss;
     ss << "workspace:" << workspace << ", workspaceSize:" << workspaceSize << std::endl;
     for (size_t i = 0; i < inTensors.size(); ++i) {
-        ss << "inTensors[" << i << "]:" << AsdOpsTensorToString(inTensors.at(i)) << std::endl;
+        ss << "inTensors[" << i << "]:" << TensorUtil::AsdOpsTensorToString(inTensors.at(i)) << std::endl;
     }
     for (size_t i = 0; i < outTensors.size(); ++i) {
-        ss << "outTensors[" << i << "]:" << AsdOpsTensorToString(outTensors.at(i)) << std::endl;
+        ss << "outTensors[" << i << "]:" << TensorUtil::AsdOpsTensorToString(outTensors.at(i)) << std::endl;
     }
 
     return ss.str();

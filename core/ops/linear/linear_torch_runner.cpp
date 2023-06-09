@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 #include "linear_torch_runner.h"
+#ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
+#endif
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/utils/tensor_util.h"
-#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
 LinearTorchRunner::LinearTorchRunner(LinearParam &param) : Runner("LinearTorchRunner"), param_(param)
@@ -30,28 +31,20 @@ LinearTorchRunner::~LinearTorchRunner() {}
 
 AsdOps::Status LinearTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
-    ASD_LOG(INFO) << "LinearTorchRunner start!";
+    ASD_LOG(INFO) << "LinearTorchRunner start";
     if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "LinearTorchRunner inTensor num error!");
     }
 
-    if (0) {
-        at::Tensor *atInTensorA =
-            AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[0].data);
-        at::Tensor *atInTensorWeight =
-            AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[1].data);
-        at::Tensor *atInTensorWeightias =
-            AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors[2].data);
-        at::Tensor atOutTensor = at::linear(*atInTensorA, *atInTensorWeight, *atInTensorWeightias).contiguous();
-        CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
-    } else {
-        at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-        at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-        at::Tensor atInTensorWeightias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-        at::Tensor atOutTensor = at::linear(atInTensorA, atInTensorWeight, atInTensorWeightias).contiguous();
-        CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
-    }
-
+#ifdef USE_TORCH_RUNNER
+    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor atInTensorWeightias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor atOutTensor = at::linear(atInTensorA, atInTensorWeight, atInTensorWeightias).contiguous();
+    CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
+#else
+    return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");
+#endif
 }
 } // namespace AclTransformer

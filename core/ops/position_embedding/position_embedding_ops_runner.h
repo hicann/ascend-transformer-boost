@@ -13,21 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_TENSOR_CACHE_H
-#define ACLTRANSFOERM_TENSOR_CACHE_H
-#include <map>
-#include <torch/torch.h>
-#include <asdops/utils/singleton/singleton.h>
+#ifndef POSITIONEMBEDDING_OPS_RUNNER_H
+#define POSITIONEMBEDDING_OPS_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/position_embedding.h"
 
 namespace AclTransformer {
-class TensorCache {
+class PositionEmbeddingOpsRunner : public OpsRunner {
 public:
-    void AddTensor(void *data, at::Tensor *tensor);
-    at::Tensor *GetTensor(void *data);
-    void DeleteTensor(void *data);
+    PositionEmbeddingOpsRunner(const PositionEmbeddingParam &param);
+    virtual ~PositionEmbeddingOpsRunner();
+
+protected:
+    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
 
 private:
-    std::map<void *, at::Tensor *> tensorMap_;
+    PositionEmbeddingParam param_;
 };
+
 } // namespace AclTransformer
 #endif

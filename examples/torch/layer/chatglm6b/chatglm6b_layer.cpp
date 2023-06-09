@@ -18,7 +18,7 @@
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
 #include "acltransformer/operation_graph.h"
-#include "examples/utils/example_utils.h"
+#include "examples/utils/example_util.h"
 #include "acltransformer/plan_builder.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
@@ -156,5 +156,5 @@ void ChatGlm6BLayer(const Json::Value &paramJson, AclTransformer::VariantPack &v
     ffnResidualAddNode.inTensorIds = {selfNormOut, ffnLinearOut};
     ffnResidualAddNode.outTensorIds = {glmBlockOut};
 
-    ExecuteOperationGraph(opGraph, variantPack);
+    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
 }
