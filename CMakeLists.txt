@@ -28,6 +28,9 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LD_FLAGS_GLOBAL} -pie -f
 if(TORCH_18)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTORCH_18")
 endif()
+if(USE_TORCH_RUNNER)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_TORCH_RUNNER")
+endif()
 include_directories(
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/core/include
@@ -61,6 +64,7 @@ add_subdirectory(tools)
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/bin DESTINATION .)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so DESTINATION lib)
+install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib/libjsoncpp.so.25 DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib/libjsoncpp.so.1.9.5 DESTINATION lib)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/host DESTINATION .)
