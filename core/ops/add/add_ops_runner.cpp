@@ -29,6 +29,7 @@ AddOpsRunner::~AddOpsRunner() {}
 
 AsdOps::Status AddOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
+    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start param_.scale:" << param_.scale;
     if (param_.scale == 1) {
         kernelGraph_.inTensors = variantPack.inTensors;
         AsdOps::Tensor &aTensor = kernelGraph_.inTensors.at(0);
