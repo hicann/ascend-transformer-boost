@@ -40,15 +40,15 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
     // Q K V pastK pastV : [seq_len, batch, head_num, head_size]
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk: " << this->param_.dk
                   << "  layer id: " << this->param_.layerId;
-    torch::Tensor mixedQuery = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    torch::Tensor mixedKey = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    torch::Tensor mixedValue = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-    torch::Tensor attention_mask = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
-    torch::Tensor pastKey = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[4]);
-    torch::Tensor pastValue = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[5]);
-    // torch::Tensor *atOutTensor = AsdOpsTensor2AtTensor(handle, variantPack.outTensors[0]);
-    // torch::Tensor *presentKeyout = AsdOpsTensor2AtTensor(handle, variantPack.outTensors[1]);
-    // torch::Tensor *presentValueOut = AsdOpsTensor2AtTensor(handle, variantPack.outTensors[2]);
+    torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    torch::Tensor pastKey = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[4]);
+    torch::Tensor pastValue = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[5]);
+    // torch::Tensor *atOutTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[0]);
+    // torch::Tensor *presentKeyout = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[1]);
+    // torch::Tensor *presentValueOut = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[2]);
     ASD_LOG(INFO) << "start";
     ASD_LOG(INFO) << "mixedQuery" << mixedQuery.sizes();
     ASD_LOG(INFO) << "mixedKey" << mixedKey.sizes();
@@ -64,7 +64,7 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
         ASD_LOG(ERROR) << "presentKey.sizes:" << presentKey.sizes() << ", variantPack.outTensors[1].desc:"
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[1].desc);
     }
-    CopyAtTensor2AsdOpsTensor(handle.stream, presentKey, variantPack.outTensors[1]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentKey, variantPack.outTensors[1]);
     ASD_LOG(INFO) << "cat K end" << presentKey.sizes();
     // [seq_len, batch*head_num, head_size]
     mixedQuery =
@@ -79,7 +79,7 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
     }
 
-    CopyAtTensor2AsdOpsTensor(handle.stream, presentValue, variantPack.outTensors[2]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentValue, variantPack.outTensors[2]);
     ASD_LOG(INFO) << "cat V end" << presentValue.sizes();
     // [seq_len, batch*head_num, head_size]
     presentValue = presentValue.view(
@@ -146,7 +146,7 @@ AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, Vari
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
 
-    CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
 
     return AsdOps::Status::OkStatus();
 #else

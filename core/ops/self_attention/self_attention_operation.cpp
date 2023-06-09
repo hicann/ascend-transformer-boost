@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/self_attention_operation.h"
+#include "acltransformer/config.h"
 #include "self_attention_torch_runner_builder.h"
 #include "self_attention_ops_runner_builder.h"
 
