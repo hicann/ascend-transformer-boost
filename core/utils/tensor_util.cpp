@@ -15,33 +15,19 @@
  */
 #include "acltransformer/utils/tensor_util.h"
 #include <sstream>
+#include <fstream>
 #include <sys/stat.h>
-#include <torch_npu/csrc/framework/utils/OpPreparation.h>
-#include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
+#include <asdops/utils/binfile/binfile.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/filesystem/filesystem.h>
-#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
-static std::map<at::ScalarType, AsdOps::TensorDType> DTYPE_MAP = {
-    {at::ScalarType::Bool, AsdOps::TENSOR_DTYPE_BOOL},   {at::ScalarType::Byte, AsdOps::TENSOR_DTYPE_UINT8},
-    {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_UINT8},  {at::ScalarType::Half, AsdOps::TENSOR_DTYPE_FLOAT16},
-    {at::ScalarType::Float, AsdOps::TENSOR_DTYPE_FLOAT}, {at::ScalarType::Int, AsdOps::TENSOR_DTYPE_INT32},
-    {at::ScalarType::Long, AsdOps::TENSOR_DTYPE_INT64},
-};
+const char *TENSOR_FILE_NAME_EXT = ".bin";
 
-void GetTensorDescs(const std::vector<AsdOps::Tensor> &tensors, AsdOps::SVector<AsdOps::TensorDesc> &tensorDescs)
-{
-    tensorDescs.resize(tensors.size());
-    for (size_t i = 0; i < tensors.size(); ++i) {
-        tensorDescs.at(i) = tensors.at(i).desc;
-    }
-}
+uint64_t TensorUtil::CalcTensorDataSize(const AsdOps::Tensor &tensor) { return CalcTensorDataSize(tensor.desc); }
 
-uint64_t CalcTensorDataSize(const AsdOps::Tensor &tensor) { return CalcTensorDataSize(tensor.desc); }
-
-uint64_t CalcTensorDataSize(const AsdOps::TensorDesc &tensorDesc)
+uint64_t TensorUtil::CalcTensorDataSize(const AsdOps::TensorDesc &tensorDesc)
 {
     if (tensorDesc.dims.size() == 0) {
         return 0;
@@ -71,180 +57,14 @@ uint64_t CalcTensorDataSize(const AsdOps::TensorDesc &tensorDesc)
     return dataItemSize * elementCount;
 }
 
-static at::IntArrayRef IntArrayRef(const AsdOps::SVector<int64_t> &src)
-{
-    return at::IntArrayRef(src.data(), src.size());
-}
-
-at::Tensor AsdOpsTensor2AtCpuTensor(Handle handle, const AsdOps::Tensor &asdTensor)
-{
-    return AsdOpsTensor2AtTensor(handle, asdTensor).to(at::Device(at::kCPU)).contiguous();
-}
-
-AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor)
-{
-    ASD_LOG_IF(!atTensor.is_contiguous(), ERROR) << "atTensor is not contiguous";
-    AsdOps::Tensor asdTensor;
-    asdTensor.desc.format =
-        static_cast<AsdOps::TensorFormat>(at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atTensor));
-    asdTensor.data = atTensor.data_ptr();
-
-    asdTensor.desc.dims.resize(atTensor.sizes().size());
-    for (uint64_t i = 0; i < atTensor.sizes().size(); i++) {
-        asdTensor.desc.dims[i] = atTensor.sizes()[i];
-    }
-
-    auto it = DTYPE_MAP.find(atTensor.scalar_type());
-    if (it != DTYPE_MAP.end()) {
-        asdTensor.desc.dtype = it->second;
-    } else {
-        ASD_LOG(ERROR) << "not support dtype:" << atTensor.scalar_type();
-    }
-
-    asdTensor.dataSize = CalcTensorDataSize(asdTensor);
-
-    return asdTensor;
-}
-
-at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc)
-{
-    at::TensorOptions options = at::TensorOptions();
-    if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_FLOAT) {
-        options = options.dtype(at::kFloat);
-    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_FLOAT16) {
-        options = options.dtype(at::kHalf);
-    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_BOOL) {
-        options = options.dtype(at::kBool);
-    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_INT64) {
-        options = options.dtype(at::kLong);
-    } else {
-        ASD_LOG(ERROR) << "not support dtype:" << tensorDesc.dtype;
-    }
-
-#ifdef TORCH_18
-    options = options.layout(torch::kStrided).requires_grad(false).device(at::DeviceType::XLA);
-#else
-    options = options.layout(torch::kStrided).requires_grad(false).device(at::kPrivateUse1);
-#endif
-
-    ASD_LOG(INFO) << "ApplyTensorWithFormat stat, format:" << tensorDesc.format;
-    at::Tensor newTensor =
-        at_npu::native::OpPreparation::ApplyTensorWithFormat(
-            at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options, tensorDesc.format)
-            .contiguous();
-    ASD_LOG(INFO) << "ApplyTensorWithFormat success, newTensor.options:" << newTensor.options()
-                  << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(newTensor)
-                  << ", is_contiguous:" << newTensor.is_contiguous();
-
-    return newTensor;
-}
-
-at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor)
-{
-    at::Tensor newTensor = CreateAtTensorFromAsdOpsTensorDesc(asdTensor.desc);
-    int ret = AsdRtMemCopy(newTensor.data_ptr(), asdTensor.dataSize, asdTensor.data, asdTensor.dataSize,
-                           ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdOpsTensor2AtTensor AsdRtMemCopy fail";
-    return newTensor;
-}
-
-at::Tensor AsdOpsTensor2AtTensorCache(Handle handle, const AsdOps::Tensor &asdTensor)
-{
-    static std::map<void *, at::Tensor> tensorCacheMap;
-    auto it = tensorCacheMap.find(asdTensor.data);
-    if (it != tensorCacheMap.end()) {
-        ASD_LOG(INFO) << "use cache tensor, data:" << asdTensor.data;
-        return it->second;
-    }
-    at::Tensor atTensor = AsdOpsTensor2AtTensor(handle, asdTensor);
-    tensorCacheMap.insert(std::make_pair(asdTensor.data, atTensor));
-    ASD_LOG(INFO) << "cache tensor, data:" << asdTensor.data;
-    return atTensor;
-}
-
-void CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &atTensor, AsdOps::Tensor &asdTensor)
-{
-    AsdOps::TensorDType dtype = AsdOps::TENSOR_DTYPE_UNDEFINED;
-    auto it = DTYPE_MAP.find(atTensor.scalar_type());
-    if (it != DTYPE_MAP.end()) {
-        dtype = it->second;
-    } else {
-        ASD_LOG(ERROR) << "not support dtype:" << atTensor.scalar_type();
-    }
-    ASD_LOG_IF(dtype != asdTensor.desc.dtype, ERROR)
-        << "atTensor dtype:" << dtype << " != asdTensor.dtype:" << asdTensor.desc.dtype;
-
-    ASD_LOG_IF(!atTensor.is_contiguous(), ERROR) << "atTensor is not is_contiguous, can't copy to asdTensor";
-
-    int ret = AsdRtStreamSynchronize(stream);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtStreamSynchronize AsdRtMemCopy fail";
-
-    ret = AsdRtMemCopy(asdTensor.data, asdTensor.dataSize, atTensor.data_ptr(), asdTensor.dataSize,
-                       ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail, atTensor.data:" << atTensor.data_ptr() << ", asdTensor.data"
-                                << asdTensor.data;
-}
-
-std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor)
+std::string TensorUtil::AsdOpsTensorToString(const AsdOps::Tensor &tensor)
 {
     std::stringstream ss;
     ss << AsdOpsTensorDescToString(tensor.desc) << ", data:" << tensor.data << ", dataSize:" << tensor.dataSize;
     return ss.str();
 }
 
-void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath)
-{
-    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
-        std::string fileName = "inTensor" + std::to_string(i) + ".pth";
-        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
-        at::Tensor *cachedTensor =
-            AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.inTensors.at(i).data);
-        if (cachedTensor) {
-            torch::save(cachedTensor->to(at::Device(at::kCPU)).contiguous(), filePath);
-            ASD_LOG(INFO) << "save in tensor use cache";
-        } else {
-            at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(handle, variantPack.inTensors.at(i));
-            torch::save(atTensor, filePath);
-        }
-    }
-
-    for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
-        std::string fileName = "outTensor" + std::to_string(i) + ".pth";
-        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
-        at::Tensor *cachedTensor =
-            AsdOps::GetSingleton<AclTransformer::TensorCache>().GetTensor(variantPack.outTensors.at(i).data);
-        if (cachedTensor) {
-            torch::save(cachedTensor->to(at::Device(at::kCPU)).contiguous(), filePath);
-            ASD_LOG(INFO) << "save out tensor use cache";
-        } else {
-            at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(handle, variantPack.outTensors.at(i));
-            torch::save(atTensor, filePath);
-        }
-    }
-}
-
-void SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath)
-{
-    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    for (size_t i = 0; i < runInfo.GetInTensorCount(); ++i) {
-        std::string fileName = "inTensor" + std::to_string(i) + ".pth";
-        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
-        at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(handle, runInfo.GetInTensor(i));
-        torch::save(atTensor, filePath);
-    }
-
-    for (size_t i = 0; i < runInfo.GetOutTensorCount(); ++i) {
-        std::string fileName = "outTensor" + std::to_string(i) + ".pth";
-        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
-        at::Tensor atTensor = AsdOpsTensor2AtCpuTensor(handle, runInfo.GetOutTensor(i));
-        torch::save(atTensor, filePath);
-    }
-}
-
-std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc)
+std::string TensorUtil::AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc)
 {
     std::stringstream ss;
     ss << "dtype:" << tensorDesc.dtype << ", format:" << tensorDesc.format << ", dims:[";
@@ -260,21 +80,78 @@ std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc)
     return ss.str();
 }
 
-bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB)
+bool TensorUtil::AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB)
 {
     return tensorDescA.dims == tensorDescB.dims && tensorDescA.dtype == tensorDescB.dtype;
 }
 
-bool IsTensorDimEqual(const at::ArrayRef<long> &dims1, const AsdOps::SVector<int64_t> &dims2)
+void TensorUtil::SaveTensor(const AsdOps::Tensor &tensor, const std::string &filePath)
 {
-    if (dims1.size() != dims2.size()) {
-        return false;
+    ASD_LOG(INFO) << "save asdtensor start, tensor:" << AsdOpsTensorToString(tensor) << ", filePath:" << filePath;
+    AsdOps::BinFile binFile;
+    binFile.AddAttr("format", std::to_string(tensor.desc.format));
+    binFile.AddAttr("dtype", std::to_string(tensor.desc.dtype));
+    binFile.AddAttr("dims", AsdOpsDimsToString(tensor.desc.dims));
+    if (tensor.data) {
+        std::vector<char> hostData(tensor.dataSize);
+        int st =
+            AsdRtMemCopy(hostData.data(), tensor.dataSize, tensor.data, tensor.dataSize, ASDRT_MEMCOPY_DEVICE_TO_HOST);
+        ASD_LOG_IF(st != 0, ERROR) << "AsdRtMemCopy device to host fail for save tensor";
+        binFile.AddObject("data", hostData.data(), tensor.dataSize);
+    } else {
+        ASD_LOG(INFO) << "save asdtensor " << filePath << " data is empty";
     }
-    for (size_t i = 0; i < dims1.size(); ++i) {
-        if (dims1.at(i) != dims2.at(i)) {
-            return false;
+    AsdOps::Status st = binFile.Write(filePath);
+    if (st.Ok()) {
+        ASD_LOG(INFO) << "save asdtensor " << filePath;
+    } else {
+        ASD_LOG(ERROR) << "save asdtensor " << filePath << " fail, error:" << st.Message();
+    }
+}
+
+void TensorUtil::SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath)
+{
+    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
+        std::string fileName = "inTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
+        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
+        SaveTensor(variantPack.inTensors.at(i), filePath);
+    }
+
+    for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
+        std::string fileName = "outTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
+        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
+        SaveTensor(variantPack.outTensors.at(i), filePath);
+    }
+}
+
+void TensorUtil::SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath)
+{
+    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    for (size_t i = 0; i < runInfo.GetInTensorCount(); ++i) {
+        std::string fileName = "inTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
+        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
+        SaveTensor(runInfo.GetInTensor(i), filePath);
+    }
+
+    for (size_t i = 0; i < runInfo.GetOutTensorCount(); ++i) {
+        std::string fileName = "outTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
+        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
+        SaveTensor(runInfo.GetOutTensor(i), filePath);
+    }
+}
+
+std::string TensorUtil::AsdOpsDimsToString(const AsdOps::SVector<int64_t> &dims)
+{
+    std::string str;
+    for (size_t i = 0; i < dims.size(); ++i) {
+        str.append(std::to_string(dims.at(i)));
+        if (i != dims.size() - 1) {
+            str.append(",");
         }
     }
-    return true;
+    return str;
 }
 } // namespace AclTransformer

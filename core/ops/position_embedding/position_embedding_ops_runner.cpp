@@ -13,24 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_PLANBUILDER_H
-#define ACLTRANSFORMER_PLANBUILDER_H
-#include <asdops/utils/status/status.h>
-#include "acltransformer/params/params.h"
-#include "acltransformer/handle.h"
-#include "acltransformer/variant_pack.h"
-#include "acltransformer/operation_graph.h"
-#include "acltransformer/plan.h"
+#include "position_embedding_ops_runner.h"
+#include <numeric>
+#include <asdops/utils/log/log.h>
+#include <asdops/params/params.h>
+#include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-class PlanBuilder {
-public:
-    AsdOps::Status Build(const VariantPack &variantPack, const OperationGraph &opGraph, Plan &plan);
+PositionEmbeddingOpsRunner::PositionEmbeddingOpsRunner(const PositionEmbeddingParam &param)
+    : OpsRunner("PositionEmbeddingOpsRunner"), param_(param)
+{
+    ASD_LOG(INFO) << "PositionEmbeddingOperation::PositionEmbeddingOperation called";
+}
 
-private:
-    AsdOps::Status BuildImpl(const VariantPack &variantPack, const OperationGraph &opGraph, Plan &plan);
-    void LogOperationGraph(const OperationGraph &opGraph);
-    void LogRunnerGraph(const RunnerGraph &runnerGraph);
-};
+PositionEmbeddingOpsRunner::~PositionEmbeddingOpsRunner() {}
+
+AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
+{
+    return AsdOps::Status::OkStatus();
+}
 } // namespace AclTransformer
-#endif
