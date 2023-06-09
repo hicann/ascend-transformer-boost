@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
+#include "acltransformer/config.h"
 #include "self_attention_kv_cache_ops_runner_builder.h"
 #include "self_attention_kv_cache_torch_runner_builder.h"
 

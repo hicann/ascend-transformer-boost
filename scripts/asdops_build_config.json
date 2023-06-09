@@ -2,7 +2,8 @@
     "targets": {
         "ascend310": false,
         "ascend310p": false,
-        "ascend910": false
+        "ascend910": true,
+        "ascend910b": false
     },
     "operations": {
         "activation": {
@@ -11,12 +12,17 @@
         },
         "broadcast": {
             "AddF32Tactic": true,
+            "AddF16Tactic": true,
             "RealDivF32Tactic": true
         },
         "elewise": {
             "CastF16toF32Tactic": true,
             "CastF32toF16Tactic": true,
-            "MulsF32Tactic": true
+            "MulsF32Tactic": true,
+            "CosF32Tactic": true,
+            "CosF16Tactic": true,
+            "SinF16Tactic": true,
+            "SinF32Tactic": true
         },
         "matmul": {
             "MatMulNzF16Tactic": true,
@@ -34,16 +40,12 @@
             "SoftmaxF16Tactic": true,
             "SoftmaxF32Tactic": true
         },
-        "pool": {
-            "AvgPoolTactic": true,
-            "MaxPool3DTactic": true
-        },
-        "resize": {
-            "ResizeTactic": true
-        },
         "transdata": {
             "TransdataNzToNdTactic": true,
             "TransdataNdToNzTactic": true
+        },
+        "asstrided": {
+            "AsStridedF16Int64Tactic": true
         }
     }
 }

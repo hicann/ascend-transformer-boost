@@ -21,7 +21,7 @@
 namespace AclTransformer {
 AddOperation::AddOperation(const AddParam &param) : Operation("AddOperation"), param_(param)
 {
-#ifndef USE_TORCH_RUNNER
+#ifdef USE_TORCH_RUNNER
     runnerBuilders_ = {new AddOpsRunnerBuilder(param_), new AddTorchRunnerBuilder(param_)};
 #else
     runnerBuilders_ = {new AddOpsRunnerBuilder(param_)};
@@ -44,7 +44,7 @@ AsdOps::Status AddOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &i
 
 RunnerBuilder *AddOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
-#ifndef USE_TORCH_RUNNER
+#ifdef USE_TORCH_RUNNER
     size_t index = Config::IsAddOpsRunnerEnable() ? 0 : 1;
 #else
     size_t index = 0;
