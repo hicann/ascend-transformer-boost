@@ -52,9 +52,8 @@ AsdOps::Status NormOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
     normParam.begin_norm_axis = beginDim;
     normParam.begin_params_axis = beginDim;
     normParam.epsilon = param_.layerNormEps;
-    ASD_LOG(INFO) << GetName() << " NormOperation opDesc normParam.begin_norm_axis:" << normParam.begin_norm_axis
-                  << ", normParam.begin_params_axis:" << normParam.begin_params_axis
-                  << ", normParam.epsilon:" << normParam.epsilon;
+    ASD_LOG(INFO) << GetName() << " NormOperation opDesc normParam begin_norm_axis:" << normParam.begin_norm_axis
+                  << ", begin_params_axis:" << normParam.begin_params_axis << ", epsilon:" << normParam.epsilon;
     layerNormNode.opDesc = {0, "NormOperation", normParam};
     layerNormNode.inTensors = {&xTensor, &weightTensor, &biasTensor};
     layerNormNode.outTensors = {&resultTensor, &layerNormMeanTensor, &layerNormVarianceTensor};
