@@ -16,6 +16,7 @@
 #include "add_torch_runner.h"
 #ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
+#include "acltransformer/torch/torch_util.h"
 #endif
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
@@ -30,8 +31,8 @@ AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantP
 {
     ASD_LOG(INFO) << "scale : " << this->param_.scale;
 #ifdef USE_TORCH_RUNNER
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
-    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
+    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
+    at::Tensor atInTensorB = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
 
     atInTensorA = atInTensorA.to(torch::kFloat);
     at::Tensor atOutTensor = atInTensorA * this->param_.scale;
@@ -39,7 +40,7 @@ AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantP
 
     atOutTensor = atOutTensor + atInTensorB;
     atOutTensor = atOutTensor.contiguous();
-    CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");

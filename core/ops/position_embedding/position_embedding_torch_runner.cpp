@@ -17,6 +17,7 @@
 #include <cmath>
 #ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
+#include "acltransformer/torch/torch_util.h"
 #endif
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
@@ -37,10 +38,10 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
     // in : mixed,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
     // out : mixed ,[seq_len, batch, head_num, head_size]
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum;
-    torch::Tensor mixed = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    torch::Tensor positionIds = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    torch::Tensor cosTable = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-    torch::Tensor sinTable = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    torch::Tensor mixed = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    torch::Tensor positionIds = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    torch::Tensor cosTable = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    torch::Tensor sinTable = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
     ASD_LOG(INFO) << "start";
     ASD_LOG(INFO) << "mixed" << mixed.sizes();
     ASD_LOG(INFO) << "positionIds" << positionIds.sizes();
@@ -94,9 +95,9 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
     ASD_LOG(INFO) << "kEmbedded: " << kEmbedded.sizes() << ", variantPack.outTensors[0].desc:"
                   << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
 
-    CopyAtTensor2AsdOpsTensor(handle.stream, qEmbedded.contiguous(), variantPack.outTensors[0]);
-    CopyAtTensor2AsdOpsTensor(handle.stream, kEmbedded.contiguous(), variantPack.outTensors[1]);
-    CopyAtTensor2AsdOpsTensor(handle.stream, qkvLayer[2].contiguous(), variantPack.outTensors[2]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, qEmbedded.contiguous(), variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, kEmbedded.contiguous(), variantPack.outTensors[1]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, qkvLayer[2].contiguous(), variantPack.outTensors[2]);
 
     return AsdOps::Status::OkStatus();
 #else

@@ -18,6 +18,7 @@
 #include "add_norm_torch_runner.h"
 #ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
+#include "acltransformer/torch/torch_util.h"
 #endif
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
@@ -34,14 +35,14 @@ AsdOps::Status AddNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &vari
         return AsdOps::Status::FailStatus(1, "AddNormTorchRunner inTensor num error!");
     }
 #ifdef USE_TORCH_RUNNER
-    at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-    at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor atInTensorB = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor atInTensorBias = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
     at::Tensor atOutTensor = at::layer_norm(at::add(atInTensorA, atInTensorB), atInTensorWeight.sizes(),
                                             atInTensorWeight, atInTensorBias, param_.layerNormEps)
                                  .contiguous();
-    CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");
