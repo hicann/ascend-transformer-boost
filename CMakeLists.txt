@@ -56,7 +56,7 @@ endif()
 if(USE_UT_TEST)
     add_subdirectory(tests)
 endif()
-
+add_subdirectory(tools)
 
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/bin DESTINATION .)

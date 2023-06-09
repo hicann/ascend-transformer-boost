@@ -19,9 +19,8 @@
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
 #include "acltransformer/operation_graph.h"
-#include "examples/utils/example_utils.h"
+#include "examples/utils/example_util.h"
 #include "acltransformer/plan_builder.h"
-#include "acltransformer/utils/tensor_cache.h"
 #include "layer.h"
 
 LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
@@ -41,26 +40,18 @@ void LayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<torch
         inTensors.at(i) = inTensors.at(i).contiguous();
         ASD_LOG(INFO) << "inTensors[" << i << "].options:" << inTensors.at(i).options()
                       << ", data:" << inTensors.at(i).data_ptr();
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(inTensors.at(i).data_ptr(), &inTensors.at(i));
     }
     for (size_t i = 0; i < outTensors.size(); ++i) {
         outTensors.at(i) = outTensors.at(i).contiguous();
         ASD_LOG(INFO) << "outTensors[" << i << "].options:" << outTensors.at(i).options()
                       << ", data:" << outTensors.at(i).data_ptr();
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(outTensors.at(i).data_ptr(), &outTensors.at(i));
     }
 
     AclTransformer::VariantPack variantPack;
-    BuildVariantPack(inTensors, outTensors, variantPack);
+    ExampleUtil::BuildVariantPack(inTensors, outTensors, variantPack);
 
     ExecuteLayer(layerName_, param_, variantPack);
 
-    for (size_t i = 0; i < inTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(inTensors.at(i).data_ptr());
-    }
-    for (size_t i = 0; i < outTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(outTensors.at(i).data_ptr());
-    }
     ASD_LOG(WARN) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
 }
 

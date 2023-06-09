@@ -16,11 +16,12 @@
  * limitations under the License.
  */
 #include "norm_torch_runner.h"
+#ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
+#endif
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
-#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
 NormTorchRunner::NormTorchRunner(const NormParam &param) : Runner("NormTorchRunner"), param_(param) {}
@@ -32,7 +33,7 @@ AsdOps::Status NormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variant
     if (variantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "NormTorchRunner inTensor num error!");
     }
-
+#ifdef USE_TORCH_RUNNER
     at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
     at::Tensor atInTensorWeight = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
     at::Tensor atInTensorBias = AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
@@ -41,5 +42,8 @@ AsdOps::Status NormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variant
             .contiguous();
     CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
+#else
+    return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");
+#endif
 }
 } // namespace AclTransformer

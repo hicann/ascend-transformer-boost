@@ -28,7 +28,11 @@ constexpr int64_t DIM_3 = 3;
 namespace AclTransformer {
 LinearOperation::LinearOperation(const LinearParam &param) : Operation("LinearOperation"), param_(param)
 {
+#ifdef USE_TORCH_RUNNER
     runnerBuilders_ = {new LinearOpsRunnerBuilder(param_), new LinearTorchRunnerBuilder(param_)};
+#else
+    runnerBuilders_ = {new LinearOpsRunnerBuilder(param_)};
+#endif
 }
 
 LinearOperation::~LinearOperation() {}
@@ -96,7 +100,11 @@ int64_t LinearOperation::GetTensorW(const AsdOps::TensorDesc &tensorDesc) const
 
 RunnerBuilder *LinearOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
+#ifdef USE_TORCH_RUNNER
     size_t index = Config::IsLinearOpsRunnerEnable() ? 0 : 1;
+#else
+    size_t index = 0;
+#endif
     return runnerBuilders_.at(index);
 }
 

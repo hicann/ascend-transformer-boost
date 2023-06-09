@@ -18,9 +18,8 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
-#include "acltransformer/utils/tensor_cache.h"
 #include "acltransformer/config.h"
-#include "examples/utils/example_utils.h"
+#include "examples/utils/example_util.h"
 #include "operation_creator.h"
 
 OperationTorch::OperationTorch(std::string opName) : opName_(opName)
@@ -55,15 +54,14 @@ std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> at
 void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> &atInTensors,
                                       std::vector<torch::Tensor> &atOutTensors)
 {
-    AclTransformer::Handle handle = {GetCurrentStream()};
+    AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         ASD_LOG(INFO) << "inTensors[" << i << "].options:" << atInTensors.at(i).options()
                       << ", data:" << atInTensors.at(i).data_ptr()
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
                       << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atInTensors.at(i));
-        variantPack.inTensors.push_back(AclTransformer::AtTensor2AsdTensor(atInTensors.at(i)));
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atInTensors.at(i).data_ptr(), &atInTensors.at(i));
+        variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i)));
     }
 
     CreateAtOutTensors(operation, variantPack.inTensors, atOutTensors);
@@ -73,9 +71,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
                       << ", data:" << atOutTensors.at(i).data_ptr()
                       << ", storage_offset:" << atOutTensors.at(i).storage_offset()
                       << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensors.at(i));
-        variantPack.outTensors.push_back(AclTransformer::AtTensor2AsdTensor(atOutTensors.at(i)));
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().AddTensor(atOutTensors.at(i).data_ptr(),
-                                                                      &atOutTensors.at(i));
+        variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atOutTensors.at(i)));
     }
 
     AsdOps::Status st = operation->Setup(variantPack);
@@ -101,7 +97,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
     static int64_t opId = 0;
     if (AclTransformer::Config::IsSaveTensor()) {
         std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName();
-        SaveVariantPack(handle, variantPack, dirPath);
+        AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
         ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
 
@@ -110,13 +106,6 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
         ASD_LOG(INFO) << operation->GetName() << " AsdRtMemFreeDevice free:" << variantPack.workspace;
         variantPack.workspace = nullptr;
         variantPack.workspaceSize = 0;
-    }
-
-    for (size_t i = 0; i < atInTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(atInTensors.at(i).data_ptr());
-    }
-    for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        AsdOps::GetSingleton<AclTransformer::TensorCache>().DeleteTensor(atOutTensors.at(i).data_ptr());
     }
 }
 
@@ -129,7 +118,7 @@ void OperationTorch::CreateAtOutTensors(AclTransformer::Operation *operation,
 
     atOutTensors.resize(outTensorDescs.size());
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
-        at::Tensor newTensor = AclTransformer::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
+        at::Tensor newTensor = ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
         atOutTensors.at(i) = newTensor;
     }
 }

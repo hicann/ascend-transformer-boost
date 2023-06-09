@@ -13,21 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef MULTI_ADD_LAYER_TORCH_H
-#define MULTI_ADD_LAYER_TORCH_H
-#include <torch/script.h>
-#include <torch/custom_class.h>
+#include <iostream>
+#include "acltransformer/operation.h"
+#include "acltransformer/ops/add_operation.h"
 
-// a + b + c + d
-class MultiAddLayerTorch : public torch::CustomClassHolder {
-public:
-    MultiAddLayerTorch();
-    ~MultiAddLayerTorch();
-    void Test();
-    void Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
-    c10::intrusive_ptr<MultiAddLayerTorch> clone() const { return c10::make_intrusive<MultiAddLayerTorch>(); }
-
-private:
-};
-
-#endif
+int main(int argc, const char *argv[])
+{
+    AclTransformer::AddParam param;
+    AclTransformer::AddOperation operation(param);
+    std::cout << "work ok" << std::endl;
+    return 0;
+}

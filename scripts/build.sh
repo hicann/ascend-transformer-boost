@@ -49,6 +49,7 @@ function fn_build_googltest()
     cd ../../
 }
 
+
 function fn_build_half()
 {
     cd $CACHE_DIR
@@ -138,6 +139,11 @@ function fn_init_pytorch_env()
     echo "PYTHON_LIB_PATH=$PYTHON_LIB_PATH"
     echo "PYTORCH_INSTALL_PATH=$PYTORCH_INSTALL_PATH"
     echo "PYTORCH_NPU_INSTALL_PATH=$PYTORCH_NPU_INSTALL_PATH"
+
+    COUNT=`grep get_tensor_npu_format ${PYTORCH_NPU_INSTALL_PATH}/include/torch_npu/csrc/framework/utils/CalcuOpUtil.h | wc -l`
+    if [ "$COUNT" == "1" ];then
+        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_GET_TENSOR_NPU_FORMAT_OLD=1"
+    fi
 }
 
 function fn_build()
@@ -352,6 +358,9 @@ function fn_main()
                     export BUILD_CONFIG_FILE=$CURRENT_DIR"/"$arg2
                 fi
             fi
+            ;;
+         "--use_torch_runner")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TORCH_RUNNER=1"
             ;;
         esac
         shift

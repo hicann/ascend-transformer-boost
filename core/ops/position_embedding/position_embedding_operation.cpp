@@ -14,13 +14,18 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/position_embedding_operation.h"
+#include "position_embedding_ops_runner_builder.h"
 #include "position_embedding_torch_runner_builder.h"
 
 namespace AclTransformer {
 PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingParam &param)
     : Operation("PositionEmbeddingOperation"), param_(param)
 {
+#ifndef USE_TORCH_RUNNER
+    runnerBuilders_ = {new PositionEmbeddingOpsRunnerBuilder(param_), new PositionEmbeddingTorchRunnerBuilder(param_)};
+#else
     runnerBuilders_ = {new PositionEmbeddingTorchRunnerBuilder(param_)};
+#endif
 }
 
 PositionEmbeddingOperation::~PositionEmbeddingOperation() {}
@@ -50,6 +55,11 @@ AsdOps::Status PositionEmbeddingOperation::InferShape(const AsdOps::SVector<AsdO
 
 RunnerBuilder *PositionEmbeddingOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
-    return runnerBuilders_.at(0);
+#ifdef USE_TORCH_RUNNER
+    size_t index = Config::IsPositionEmbeddingOpsRunnerEnable() ? 0 : 1;
+#else
+    size_t index = 0;
+#endif
+    return runnerBuilders_.at(index);
 }
 } // namespace AclTransformer

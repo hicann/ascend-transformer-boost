@@ -21,7 +21,11 @@ namespace AclTransformer {
 SelfAttentionOperation::SelfAttentionOperation(const SelfAttentionParam &param)
     : Operation("SelfAttentionOperation"), param_(param)
 {
+#ifdef USE_TORCH_RUNNER
     runnerBuilders_ = {new SelfAttentionOpsRunnerBuilder(param_), new SelfAttentionTorchRunnerBuilder(param_)};
+#else
+    runnerBuilders_ = {new SelfAttentionOpsRunnerBuilder(param_)};
+#endif
 }
 
 SelfAttentionOperation::~SelfAttentionOperation() {}
@@ -40,6 +44,11 @@ AsdOps::Status SelfAttentionOperation::InferShape(const AsdOps::SVector<AsdOps::
 
 RunnerBuilder *SelfAttentionOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
-    return runnerBuilders_.at(1);
+#ifdef USE_TORCH_RUNNER
+    size_t index = Config::IsSelfAttentionOpsRunnerEnable() ? 0 : 1;
+#else
+    size_t index = 0;
+#endif
+    return runnerBuilders_.at(index);
 }
 } // namespace AclTransformer

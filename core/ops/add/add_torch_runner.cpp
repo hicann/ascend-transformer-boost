@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 #include "add_torch_runner.h"
+#ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
+#endif
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
-#include "acltransformer/utils/tensor_cache.h"
 
 namespace AclTransformer {
 AddTorchRunner::AddTorchRunner(const AddParam &param) : Runner("AddTorchRunner"), param_(param) {}
@@ -28,6 +29,7 @@ AddTorchRunner::~AddTorchRunner() {}
 AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
     ASD_LOG(INFO) << "scale : " << this->param_.scale;
+#ifdef USE_TORCH_RUNNER
     at::Tensor atInTensorA = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
     at::Tensor atInTensorB = AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
 
@@ -39,5 +41,8 @@ AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantP
     atOutTensor = atOutTensor.contiguous();
     CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
+#else
+    return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");
+#endif
 }
 } // namespace AclTransformer

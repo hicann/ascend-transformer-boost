@@ -27,7 +27,11 @@ constexpr int64_t DIM_3 = 3;
 namespace AclTransformer {
 FfnOperation::FfnOperation(const FfnParam &param) : Operation("FfnOperation"), param_(param)
 {
+#ifdef USE_TORCH_RUNNER
     runnerBuilders_ = {new FfnOpsRunnerBuilder(param_), new FfnTorchRunnerBuilder(param_)};
+#else
+    runnerBuilders_ = {new FfnOpsRunnerBuilder(param_)};
+#endif
 }
 
 FfnOperation::~FfnOperation() {}
@@ -91,5 +95,13 @@ int64_t FfnOperation::GetTensorW(const AsdOps::TensorDesc &tensorDesc) const
     return tensorDesc.dims[DIM_2];
 }
 
-RunnerBuilder *FfnOperation::FindBestRunnerBuilder(const VariantPack &variantPack) { return runnerBuilders_.at(1); }
+RunnerBuilder *FfnOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+{
+#ifdef USE_TORCH_RUNNER
+    size_t index = Config::IsFfnOpsRunnerEnable() ? 0 : 1;
+#else
+    size_t index = 0;
+#endif
+    return runnerBuilders_.at(index);
+}
 } // namespace AclTransformer

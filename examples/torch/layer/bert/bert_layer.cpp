@@ -18,13 +18,12 @@
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
 #include "acltransformer/operation_graph.h"
-#include "examples/utils/example_utils.h"
+#include "examples/utils/example_util.h"
 #include "acltransformer/plan_builder.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
-
 
 void BertLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack)
 {
@@ -135,5 +134,5 @@ void BertLayer(const Json::Value &paramJson, AclTransformer::VariantPack &varian
     bertOutAddNormNode.inTensorIds = {bertOutLinearOutId, selfAddNormOutId, bertOutNormWeightId, bertOutNormBiasId};
     bertOutAddNormNode.outTensorIds = {bertLayerOutId};
 
-    ExecuteOperationGraph(opGraph, variantPack);
+    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
 }
