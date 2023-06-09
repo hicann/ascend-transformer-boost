@@ -13,30 +13,26 @@
 # limitations under the License.
 import unittest
 import os
+import sys
 import json
 import time
 import torch
 import torch_npu
-import sys
 
 
-ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
-if ACLTRANSFORMER_HOME_PATH is None:
-    raise RuntimeError(
-        "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
-
-LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
-                        "examples/libacltransformer_torch.so")
-torch.classes.load_library(LIB_PATH)
+sys.path.append(os.path.dirname(__file__))
+import layer_test  # NOQA: E402
 
 
-class TestNormal(unittest.TestCase):
-    def test_2d(self):
-        operation = torch.classes.BertLayerTorch.BertLayerTorch(
-            '{"transKey":true,"dk":3,"headNum":16}')
+LAYER_NAME = "BertLayer"
 
+
+class TestNormal(layer_test.LayerTest):
+    def golden_calc(self, in_tensors):
+        return [in_tensors[0]]
+
+    def test_2d_float(self):
         hiddenStatesId = torch.rand(384,  32, 1024).npu()
-
         qLinearWeightId = torch.rand(1024, 1024).npu()
         qLinearBiasId = torch.rand(1024).npu()
         kLinearWeightId = torch.rand(1024, 1024).npu()
@@ -53,19 +49,12 @@ class TestNormal(unittest.TestCase):
         bertOutLinearBiasId = torch.rand(1024).npu()
         bertOutNormWeightId = torch.rand(1024).npu()
         bertOutNormBiasId = torch.rand(1024).npu()
-
         attentionMaskId = torch.rand(32, 1, 1, 384).npu()
-
         bertLayerOutId = torch.empty(384, 32, 1024).npu()
 
-        start_time = time.time()
-        for i in range(1):
-            operation.execute(
-                [hiddenStatesId, qLinearWeightId, qLinearBiasId, kLinearWeightId, kLinearBiasId, vLinearWeightId, vLinearBiasId,
-                 selfOutLinearWeightId, selfOutLinearBiasId, selfOutNormWeightId, selfOutNormBiasId,
-                 ffnLinearWeightId, ffnLinearBiasId, bertOutLinearWeightId, bertOutLinearBiasId, bertOutNormWeightId, bertOutNormBiasId, attentionMaskId], [bertLayerOutId])
-        end_time = time.time()
-        print("use time:", (end_time - start_time))
+        self.execute(LAYER_NAME, '{"transKey":true,"dk":3,"headNum":16}', [hiddenStatesId, qLinearWeightId, qLinearBiasId, kLinearWeightId, kLinearBiasId, vLinearWeightId, vLinearBiasId,
+                                                                           selfOutLinearWeightId, selfOutLinearBiasId, selfOutNormWeightId, selfOutNormBiasId,
+                                                                           ffnLinearWeightId, ffnLinearBiasId, bertOutLinearWeightId, bertOutLinearBiasId, bertOutNormWeightId, bertOutNormBiasId, attentionMaskId], [bertLayerOutId])
 
 
 if __name__ == '__main__':
