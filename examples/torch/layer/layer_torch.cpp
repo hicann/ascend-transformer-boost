@@ -21,38 +21,90 @@
 #include "acltransformer/operation_graph.h"
 #include "examples/utils/example_util.h"
 #include "acltransformer/plan_builder.h"
-#include "layer.h"
+#include "examples/layers/chatglm6b_layer.h"
+#include "examples/layers/bert_layer.h"
 
 LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
 {
     ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName;
+    if (layerName == "ChatGlm6BLayer") {
+        layer_ = new AclTransformer::ChatGlm6BLayer();
+    }
+    if (layerName == "BertLayer") {
+        layer_ = new AclTransformer::BertLayer();
+    } else {
+        ASD_LOG(ERROR) << "not support layerName:" << layerName;
+    }
 }
 
-LayerTorch::~LayerTorch() {}
-
-void LayerTorch::SetParam(std::string param) { param_ = param; }
-
-void LayerTorch::Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors)
+LayerTorch::~LayerTorch()
 {
-    AsdOps::Timer timer;
+    if (layer_) {
+        delete layer_;
+        layer_ = nullptr;
+    }
+}
+
+void LayerTorch::SetParam(std::string param)
+{
+    if (!layer_) {
+        ASD_LOG(ERROR) << "layer is null";
+        return;
+    }
+    Json::Reader reader;
+    Json::Value paramJson;
+    if (!reader.parse(param, paramJson)) {
+        ASD_LOG(ERROR) << "invalid json:" << param;
+    }
+    layer_->SetParam(paramJson);
+}
+
+std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTensors)
+{
     ASD_LOG(INFO) << "LayerTorch::Execute start";
+    std::vector<torch::Tensor> outTensors;
+    if (!layer_) {
+        ASD_LOG(ERROR) << "layer is null";
+        return outTensors;
+    }
+
+    AclTransformer::VariantPack variantPack;
+
     for (size_t i = 0; i < inTensors.size(); ++i) {
         inTensors.at(i) = inTensors.at(i).contiguous();
         ASD_LOG(INFO) << "inTensors[" << i << "].options:" << inTensors.at(i).options()
                       << ", data:" << inTensors.at(i).data_ptr();
+        variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(inTensors.at(i)));
     }
+
+    CreateAtOutTensors(variantPack.inTensors, outTensors);
+
     for (size_t i = 0; i < outTensors.size(); ++i) {
         outTensors.at(i) = outTensors.at(i).contiguous();
         ASD_LOG(INFO) << "outTensors[" << i << "].options:" << outTensors.at(i).options()
                       << ", data:" << outTensors.at(i).data_ptr();
+        variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(outTensors.at(i)));
     }
 
-    AclTransformer::VariantPack variantPack;
-    ExampleUtil::BuildVariantPack(inTensors, outTensors, variantPack);
+    AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
+    layer_->Execute(handle, variantPack);
 
-    ExecuteLayer(layerName_, param_, variantPack);
+    ASD_LOG(WARN) << "LayerTorch::Execute end";
+    return outTensors;
+}
 
-    ASD_LOG(WARN) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
+void LayerTorch::CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                    std::vector<torch::Tensor> &atOutTensors)
+{
+    AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+    AsdOps::Status st = layer_->InferShape(inTensors, outTensorDescs);
+    ASD_LOG_IF(!st.Ok(), ERROR) << "infer shape fail, error:" << st.Message();
+
+    atOutTensors.resize(outTensorDescs.size());
+    for (size_t i = 0; i < outTensorDescs.size(); ++i) {
+        at::Tensor newTensor = ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
+        atOutTensors.at(i) = newTensor;
+    }
 }
 
 TORCH_LIBRARY(LayerTorch, m)

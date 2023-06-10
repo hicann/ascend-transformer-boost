@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "chatglm6b_layer.h"
 #include <json/json.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
@@ -27,7 +28,18 @@
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 
-void ChatGlm6BLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack)
+namespace AclTransformer {
+ChatGlm6BLayer::ChatGlm6BLayer() : Layer("ChatGlm6BLayer") {}
+
+ChatGlm6BLayer::~ChatGlm6BLayer() {}
+
+AsdOps::Status ChatGlm6BLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                          AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+{
+    return AsdOps::Status::OkStatus();
+}
+
+AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
 {
     // in
     const uint64_t hiddenStates = 0;
@@ -67,18 +79,18 @@ void ChatGlm6BLayer(const Json::Value &paramJson, AclTransformer::VariantPack &v
     const uint64_t ffnLinearOut = 32;
 
     AclTransformer::NormParam inputNormParam;
-    inputNormParam.layerNormEps = paramJson["layerNormEps"].asDouble();
+    inputNormParam.layerNormEps = paramJson_["layerNormEps"].asDouble();
     AclTransformer::LinearParam mixdQkvLinearParam;
     AclTransformer::PositionEmbeddingParam positionEmbeddingParam;
-    positionEmbeddingParam.headNum = paramJson["headNum"].asInt();
+    positionEmbeddingParam.headNum = paramJson_["headNum"].asInt();
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
-    selfAttentionKvCacheParam.transKey = paramJson["transKey"].asBool();
-    selfAttentionKvCacheParam.dk = paramJson["dk"].asInt();
+    selfAttentionKvCacheParam.transKey = paramJson_["transKey"].asBool();
+    selfAttentionKvCacheParam.dk = paramJson_["dk"].asInt();
     selfAttentionKvCacheParam.headNum = positionEmbeddingParam.headNum;
-    selfAttentionKvCacheParam.layerId = paramJson["layerId"].asInt();
+    selfAttentionKvCacheParam.layerId = paramJson_["layerId"].asInt();
     AclTransformer::LinearParam selfOutLinearParam;
     AclTransformer::AddParam selfResidualAddParam;
-    selfResidualAddParam.scale = paramJson["ResidualAddScale"].asFloat();
+    selfResidualAddParam.scale = paramJson_["ResidualAddScale"].asFloat();
     AclTransformer::NormParam selfNormParam;
     selfNormParam.layerNormEps = inputNormParam.layerNormEps;
     AclTransformer::FfnParam ffnParam;
@@ -156,5 +168,6 @@ void ChatGlm6BLayer(const Json::Value &paramJson, AclTransformer::VariantPack &v
     ffnResidualAddNode.inTensorIds = {selfNormOut, ffnLinearOut};
     ffnResidualAddNode.outTensorIds = {glmBlockOut};
 
-    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
+    return ExecuteOperationGraph(opGraph, variantPack);
 }
+} // namespace AclTransformer

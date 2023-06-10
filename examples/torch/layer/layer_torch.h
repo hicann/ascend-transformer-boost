@@ -19,18 +19,22 @@
 #include <torch/script.h>
 #include <torch/custom_class.h>
 #include "acltransformer/operation_graph.h"
+#include "examples/layers/layer.h"
 
 class LayerTorch : public torch::CustomClassHolder {
 public:
     LayerTorch(std::string layerName);
     ~LayerTorch();
     void SetParam(std::string param);
-    void Execute(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
+    std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
     c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_); }
 
 private:
+    void CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTensors, std::vector<torch::Tensor> &atOutTensors);
+
+private:
     std::string layerName_;
-    std::string param_;
+    AclTransformer::Layer *layer_ = nullptr;
 };
 
 #endif
