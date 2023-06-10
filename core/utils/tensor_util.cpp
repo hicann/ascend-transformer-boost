@@ -131,13 +131,13 @@ void TensorUtil::SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, con
     AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     for (size_t i = 0; i < runInfo.GetInTensorCount(); ++i) {
-        std::string fileName = "inTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
+        std::string fileName = "intensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
         std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
         SaveTensor(runInfo.GetInTensor(i), filePath);
     }
 
     for (size_t i = 0; i < runInfo.GetOutTensorCount(); ++i) {
-        std::string fileName = "outTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
+        std::string fileName = "outtensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
         std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
         SaveTensor(runInfo.GetOutTensor(i), filePath);
     }

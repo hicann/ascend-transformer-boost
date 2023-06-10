@@ -13,26 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_CONFIG_H
-#define ACLTRANSFORMER_CONFIG_H
+#ifndef LAYER_EXECUTER_H
+#define LAYER_EXECUTER_H
 #include <string>
+#include "acltransformer/operation_graph.h"
+#include "acltransformer/variant_pack.h"
 
 namespace AclTransformer {
-class Config {
+class Layer {
 public:
-    static std::string GetSaveTensorDir();
-    static bool IsSaveTensor();
-    static bool IsAddOpsRunnerEnable();
-    static bool IsAddNormOpsRunnerEnable();
-    static bool IsFfnOpsRunnerEnable();
-    static bool IsLinearOpsRunnerEnable();
-    static bool IsNormOpsRunnerEnable();
-    static bool IsPositionEmbeddingOpsRunnerEnable();
-    static bool IsSelfAttentionKVCacheOpsRunnerEnable();
-    static bool IsSelfAttentionOpsRunnerEnable();
-
-private:
-    static bool IsEnable(const char *env);
-};
+    Layer(const std::string &layerName);
+    virtual ~Layer();
+    std::string GetName() const;
+    virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) = 0;
+    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
+}
 } // namespace AclTransformer
 #endif

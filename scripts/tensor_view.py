@@ -1,14 +1,14 @@
 import sys
+import os
 import torch
+sys.path.append(os.path.dirname(__file__))
+from tensor_file import read_tensor  # NOQA: E402
 
 
 def main():
-    try:
-        tensor1 = list(torch.load(sys.argv[1]).state_dict().values())[0]
-    except:
-        tensor1 = torch.load(sys.argv[1])
-
-    print("tensor1:" + str(tensor1))
+    tensor = read_tensor(sys.argv[1])
+    print("tensor:" + str(tensor))
+    print("tensor.shape", tensor.shape, ", dtype:", tensor.dtype)
 
 
 if __name__ == "__main__":

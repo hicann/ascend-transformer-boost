@@ -17,6 +17,8 @@
 #include <string>
 
 namespace AclTransformer {
+std::string Config::GetSaveTensorDir() { return "tensors"; }
+
 bool Config::IsEnable(const char *env)
 {
     const char *saveTensor = std::getenv(env);

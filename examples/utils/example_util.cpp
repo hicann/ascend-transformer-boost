@@ -15,12 +15,14 @@
  * limitations under the License.
  */
 #include "example_util.h"
-#include <asdops/utils/rt/rt.h>
 #include <iostream>
-#include <asdops/utils/log/log.h>
+#include <sys/stat.h>
 #include <torch_npu/csrc/core/npu/NPUStream.h>
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
 #include <torch_npu/csrc/framework/utils/OpPreparation.h>
+#include <asdops/utils/rt/rt.h>
+#include <asdops/utils/filesystem/filesystem.h>
+#include <asdops/utils/log/log.h>
 #include "acltransformer/plan_builder.h"
 #include "acltransformer/config.h"
 #include "acltransformer/utils/tensor_util.h"
@@ -95,7 +97,8 @@ void ExampleUtil::ExecuteOperation(AclTransformer::Operation *operation, std::ve
 
     static int64_t opId = 0;
     if (AclTransformer::Config::IsSaveTensor()) {
-        std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName() + "_brefore";
+        std::string dirPath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(opId++) + "_" +
+                              operation->GetName() + "_brefore";
         AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
         ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
@@ -120,7 +123,8 @@ void ExampleUtil::ExecuteOperation(AclTransformer::Operation *operation, std::ve
     ASD_LOG_IF(!st.Ok(), ERROR) << operation->GetName() << " execute fail, error:" << st.Message();
 
     if (AclTransformer::Config::IsSaveTensor()) {
-        std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName();
+        std::string dirPath =
+            AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(opId++) + "_" + operation->GetName();
         AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
         ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
     }
@@ -249,4 +253,14 @@ at::Tensor ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorD
                   << ", format:" << GetTensorNpuFormat(newTensor) << ", is_contiguous:" << newTensor.is_contiguous();
 
     return newTensor;
+}
+
+void ExampleUtil::SaveTensor(const at::Tensor &tensor, const std::string &filePath)
+{
+    std::string dirPath = AsdOps::FileSystem::DirName(filePath);
+    if (!AsdOps::FileSystem::Exists(dirPath)) {
+        ASD_LOG(INFO) << "create dir:" << dirPath;
+        AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    }
+    torch::save(tensor.to(at::Device(at::kCPU)), filePath);
 }
