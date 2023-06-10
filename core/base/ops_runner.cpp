@@ -184,7 +184,8 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
         if (Config::IsSaveTensor()) {
             int ret = AsdRtStreamSynchronize(handle.stream);
             ASD_LOG_IF(ret != 0, ERROR) << GetName() << " " << kernel->GetName() << " AsdRtStreamSynchronize fail";
-            std::string dirPath = "savetensor/" + GetName() + "/" + std::to_string(i) + "_" + kernel->GetName();
+            std::string dirPath =
+                Config::GetSaveTensorDir() + "/" + GetName() + "/" + std::to_string(i) + "_" + kernel->GetName();
             TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath);
             ASD_LOG(INFO) << GetName() << " SaveRunInfo " << dirPath;
         }
