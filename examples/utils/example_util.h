@@ -18,7 +18,7 @@
 #include <vector>
 #include <string>
 #include <asdops/tensor.h>
-#include <torch/script.h>
+#include <torch/torch.h>
 #include "acltransformer/runner.h"
 #include "acltransformer/operation.h"
 #include "acltransformer/operation_graph.h"
@@ -40,6 +40,7 @@ public:
                                  AclTransformer::VariantPack &variantPack);
     static AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor);
     static at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc);
+    static void SaveTensor(const at::Tensor &tensor, const std::string &filePath);
 };
 
 #endif
