@@ -30,7 +30,6 @@ from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaL
 
 from .configuration_chatglm import ChatGLMConfig
 
-from tensor_testcase import TensorTestCase
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
@@ -859,7 +858,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             input_ids: Optional[torch.LongTensor] = None,
             position_ids: Optional[torch.LongTensor] = None,
             attention_mask: Optional[torch.Tensor] = None,
-            past_key_values: Optional[Tuple[Tuple[torch.Tensor, torch.Tensor], ...]] = None,
+            past_key_values: Optional[Tuple[Tuple[torch.Tensor,
+                                                  torch.Tensor], ...]] = None,
             inputs_embeds: Optional[torch.LongTensor] = None,
             use_cache: Optional[bool] = None,
             output_attentions: Optional[bool] = None,
@@ -1225,7 +1225,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             generation_config: Optional[GenerationConfig] = None,
             logits_processor: Optional[LogitsProcessorList] = None,
             stopping_criteria: Optional[StoppingCriteriaList] = None,
-            prefix_allowed_tokens_fn: Optional[Callable[[int, torch.Tensor], List[int]]] = None,
+            prefix_allowed_tokens_fn: Optional[Callable[[
+                int, torch.Tensor], List[int]]] = None,
             **kwargs,
     ):
         batch_size, input_ids_seq_length = input_ids.shape[0], input_ids.shape[-1]
