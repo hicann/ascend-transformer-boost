@@ -54,6 +54,7 @@ std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> at
 void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> &atInTensors,
                                       std::vector<torch::Tensor> &atOutTensors)
 {
+    static int64_t execCount = 0;
     AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
     AclTransformer::VariantPack variantPack;
     for (size_t i = 0; i < atInTensors.size(); ++i) {
@@ -62,6 +63,12 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
                       << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atInTensors.at(i));
         variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i)));
+        if (AclTransformer::Config::IsSaveTensor()) {
+            std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +
+                                   opName_ + "/intensor" + std::to_string(i) + ".pth";
+            ExampleUtil::SaveTensor(atInTensors.at(i), filePath);
+            ASD_LOG(INFO) << operation->GetName() << " save tensor:" << filePath;
+        }
     }
 
     CreateAtOutTensors(operation, variantPack.inTensors, atOutTensors);
@@ -94,11 +101,13 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
     st = operation->Execute(handle, variantPack);
     ASD_LOG_IF(!st.Ok(), ERROR) << operation->GetName() << " execute fail, error:" << st.Message();
 
-    static int64_t opId = 0;
-    if (AclTransformer::Config::IsSaveTensor()) {
-        std::string dirPath = "savetensor/" + std::to_string(opId++) + "_" + operation->GetName();
-        AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
-        ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
+    for (size_t i = 0; i < atOutTensors.size(); ++i) {
+        if (AclTransformer::Config::IsSaveTensor()) {
+            std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +
+                                   opName_ + "/outtensor" + std::to_string(i) + ".pth";
+            ExampleUtil::SaveTensor(atOutTensors.at(i), filePath);
+            ASD_LOG(INFO) << operation->GetName() << " save tensor:" << filePath;
+        }
     }
 
     if (variantPack.workspace != nullptr) {
@@ -107,6 +116,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
         variantPack.workspace = nullptr;
         variantPack.workspaceSize = 0;
     }
+    execCount++;
 }
 
 void OperationTorch::CreateAtOutTensors(AclTransformer::Operation *operation,
