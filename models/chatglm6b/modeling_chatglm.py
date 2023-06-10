@@ -4,7 +4,6 @@ import math
 import copy
 import os
 import warnings
-import json
 
 import torch
 import torch.utils.checkpoint
@@ -30,17 +29,6 @@ from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaList, GenerationConfig
 
 from .configuration_chatglm import ChatGLMConfig
-
-ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
-if ACLTRANSFORMER_HOME_PATH is None:
-    raise RuntimeError(
-        "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
-
-LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
-                        "examples/libacltransformer_torch.so")
-torch.classes.load_library(LIB_PATH)
-
-# operation = torch.classes.OperationTorch.OperationTorch("SelfAttentionKvCacheOperation")
 
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
@@ -97,7 +85,8 @@ def load_tf_weights_in_chatglm_6b(model, config, tf_checkpoint_path):
         # adam_v and adam_m are variables used in AdamWeightDecayOptimizer to calculated m and v
         # which are not required for using pretrained model
         if any(
-                n in ["adam_v", "adam_m", "AdamWeightDecayOptimizer", "AdamWeightDecayOptimizer_1", "global_step"]
+                n in ["adam_v", "adam_m", "AdamWeightDecayOptimizer",
+                      "AdamWeightDecayOptimizer_1", "global_step"]
                 for n in name
         ):
             logger.info(f"Skipping {'/'.join(name)}")
@@ -131,7 +120,7 @@ def load_tf_weights_in_chatglm_6b(model, config, tf_checkpoint_path):
             array = np.transpose(array)
         try:
             assert (
-                    pointer.shape == array.shape
+                pointer.shape == array.shape
             ), f"Pointer shape {pointer.shape} and array shape {array.shape} mismatched"
         except AssertionError as e:
             e.args += (pointer.shape, array.shape)
@@ -149,6 +138,7 @@ def load_tf_weights_in_chatglm_6b(model, config, tf_checkpoint_path):
 def gelu_impl(x):
     """OpenAI's gelu implementation."""
     return torch.fast_gelu(x)
+
 
 def gelu(x):
     return gelu_impl(x)
@@ -200,16 +190,11 @@ class RotaryEmbedding(torch.nn.Module):
             self.cos_cached, self.sin_cached = cos_cached, sin_cached
         return self.cos_cached[:seq_len, ...], self.sin_cached[:seq_len, ...]
 
-inv_freq_global = 1. / (10000 ** (torch.arange(0, 64, 2).float() / 64)).npu().half()
-temp_global = torch.arange(2049, device='cpu').npu().half()
-freqs_global = torch.einsum('i,j->ij', temp_global, inv_freq_global)
-emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
-cosTable = emb_global.cos().unsqueeze(1)
-sinTable = emb_global.sin().unsqueeze(1)
 
 def rotate_half(x):
     x1, x2 = x[..., :x.shape[-1] // 2], x[..., x.shape[-1] // 2:]
-    return torch.cat((-x2, x1), dim=x1.ndim - 1)  # dim=-1 triggers a bug in earlier torch versions
+    # dim=-1 triggers a bug in earlier torch versions
+    return torch.cat((-x2, x1), dim=x1.ndim - 1)
 
 
 @torch.jit.script
@@ -217,7 +202,8 @@ def apply_rotary_pos_emb_index(q, k, cos, sin, position_id):
     # position_id: [sq, b], q, k: [sq, b, np, hn], cos: [sq, 1, hn] -> [sq, b, 1, hn]
     cos, sin = F.embedding(position_id, cos.squeeze(1)).unsqueeze(2), \
         F.embedding(position_id, sin.squeeze(1)).unsqueeze(2)
-    q, k = (q * cos) + (rotate_half(q) * sin), (k * cos) + (rotate_half(k) * sin)
+    q, k = (q * cos) + (rotate_half(q) * sin), (k * cos) + \
+        (rotate_half(k) * sin)
     return q, k
 
 
@@ -235,12 +221,6 @@ def attention_fn(
 ):
     if layer_past is not None:
         past_key, past_value = layer_past
-        idScal = layer_id.item()
-        # global operation
-        # operation.set_param(json.dumps({"transKey": True, "dk": 128,
-        #                     "headNum": 32, "layerId": idScal}))
-        # result, present_key, present_value = operation.execute(
-        #         [query_layer, key_layer, value_layer, attention_mask, past_key, past_value])
         key_layer = torch.cat((past_key, key_layer), dim=0)
         value_layer = torch.cat((past_value, value_layer), dim=0)
 
@@ -254,19 +234,23 @@ def attention_fn(
 
     query_key_layer_scaling_coeff = float(layer_id + 1)
     if scaling_attention_score:
-        query_layer = query_layer / (math.sqrt(hidden_size) * query_key_layer_scaling_coeff)
+        query_layer = query_layer / \
+            (math.sqrt(hidden_size) * query_key_layer_scaling_coeff)
 
     # ===================================
     # Raw attention scores. [b, np, s, s]
     # ===================================
 
     # [b, np, sq, sk]
-    output_size = (query_layer.size(1), query_layer.size(2), query_layer.size(0), key_layer.size(0))
+    output_size = (query_layer.size(1), query_layer.size(2),
+                   query_layer.size(0), key_layer.size(0))
 
     # [sq, b, np, hn] -> [sq, b * np, hn]
-    query_layer = query_layer.view(output_size[2], output_size[0] * output_size[1], -1)
+    query_layer = query_layer.view(
+        output_size[2], output_size[0] * output_size[1], -1)
     # [sk, b, np, hn] -> [sk, b * np, hn]
-    key_layer = key_layer.view(output_size[3], output_size[0] * output_size[1], -1)
+    key_layer = key_layer.view(
+        output_size[3], output_size[0] * output_size[1], -1)
 
     matmul_result = torch.empty(
         output_size[0] * output_size[1],
@@ -283,16 +267,15 @@ def attention_fn(
     #     beta=0.0,
     #     alpha=1.0,
     # )
-    matmul_result = torch.bmm(query_layer.transpose(0, 1), key_layer.permute(1, 2, 0))
+    matmul_result = torch.bmm(query_layer.transpose(
+        0, 1), key_layer.permute(1, 2, 0))
     # change view to [b, np, sq, sk]
     attention_scores = matmul_result.view(*output_size)
-    # if layer_past is not None:
-    #     torch.save(attention_scores.cpu(), 'bmm1_golden.path')
-    #     print("layer_id===>:" + str(layer_id))
 
     if self.scale_mask_softmax:
         self.scale_mask_softmax.scale = query_key_layer_scaling_coeff
-        attention_probs = self.scale_mask_softmax(attention_scores, attention_mask.contiguous())
+        attention_probs = self.scale_mask_softmax(
+            attention_scores, attention_mask.contiguous())
     else:
         if not (attention_mask == 0).all():
             # if auto-regressive, skip
@@ -319,13 +302,16 @@ def attention_fn(
     # [sk, b, np, hn] --> [b, np, sq, hn]
 
     # context layer shape: [b, np, sq, hn]
-    output_size = (value_layer.size(1), value_layer.size(2), query_layer.size(0), value_layer.size(3))
+    output_size = (value_layer.size(1), value_layer.size(2),
+                   query_layer.size(0), value_layer.size(3))
 
     # change view [sk, b * np, hn]
-    value_layer = value_layer.view(value_layer.size(0), output_size[0] * output_size[1], -1)
+    value_layer = value_layer.view(value_layer.size(
+        0), output_size[0] * output_size[1], -1)
 
     # change view [b * np, sq, sk]
-    attention_probs = attention_probs.view(output_size[0] * output_size[1], output_size[2], -1)
+    attention_probs = attention_probs.view(
+        output_size[0] * output_size[1], output_size[2], -1)
 
     # matmul: [b * np, sq, hn]
     context_layer = torch.bmm(attention_probs, value_layer.transpose(0, 1))
@@ -337,14 +323,9 @@ def attention_fn(
     context_layer = context_layer.permute(2, 0, 1, 3).contiguous()
 
     # [sq, b, np, hn] --> [sq, b, hp]
-    new_context_layer_shape = context_layer.size()[:-2] + (hidden_size_per_partition,)
+    new_context_layer_shape = context_layer.size(
+    )[:-2] + (hidden_size_per_partition,)
     context_layer = context_layer.view(*new_context_layer_shape)
-    # if layer_past is not None:
-    #         torch.save(context_layer.cpu(), '6.path')
-    # if layer_past is not None:
-    #     assert torch.allclose(context_layer, result, rtol=1e-5, atol=1e-5) , 'test_not_equal'
-    #     print('test_success')
-    #     outputs = (result, (present_key, present_value), attention_probs)
 
     outputs = (context_layer, present, attention_probs)
 
@@ -379,7 +360,8 @@ class SelfAttention(torch.nn.Module):
         else:
             self.hidden_size_per_attention_head = hidden_size_per_attention_head
 
-        self.inner_hidden_size = num_attention_heads * self.hidden_size_per_attention_head
+        self.inner_hidden_size = num_attention_heads * \
+            self.hidden_size_per_attention_head
 
         # Strided linear layer.
         self.query_key_value = skip_init(
@@ -440,8 +422,6 @@ class SelfAttention(torch.nn.Module):
 
         # [seq_len, batch, 3 * hidden_size]
         mixed_raw_layer = self.query_key_value(hidden_states)
-        # if layer_past is not None:
-        #     torch.save(mixed_raw_layer.cpu(), '2.path')
 
         # [seq_len, batch, 3 * hidden_size] --> [seq_len, batch, num_attention_heads, 3 * hidden_size_per_attention_head]
         new_tensor_shape = mixed_raw_layer.size()[:-1] + (
@@ -451,7 +431,8 @@ class SelfAttention(torch.nn.Module):
         mixed_raw_layer = mixed_raw_layer.view(*new_tensor_shape)
 
         # [seq_len, batch, num_attention_heads, hidden_size_per_attention_head]
-        (query_layer, key_layer, value_layer) = self.split_tensor_along_last_dim(mixed_raw_layer, 3)
+        (query_layer, key_layer, value_layer) = self.split_tensor_along_last_dim(
+            mixed_raw_layer, 3)
 
         if self.position_encoding_2d:
             q1, q2 = query_layer.chunk(2, dim=(query_layer.ndim - 1))
@@ -460,19 +441,18 @@ class SelfAttention(torch.nn.Module):
             position_ids, block_position_ids = position_ids[:, 0, :].transpose(0, 1).contiguous(), \
                 position_ids[:, 1, :].transpose(0, 1).contiguous()
             q1, k1 = apply_rotary_pos_emb_index(q1, k1, cos, sin, position_ids)
-            q2, k2 = apply_rotary_pos_emb_index(q2, k2, cos, sin, block_position_ids)
+            q2, k2 = apply_rotary_pos_emb_index(
+                q2, k2, cos, sin, block_position_ids)
             query_layer = torch.concat([q1, q2], dim=(q1.ndim - 1))
             key_layer = torch.concat([k1, k2], dim=(k1.ndim - 1))
         else:
             position_ids = position_ids.transpose(0, 1)
-            cos, sin = self.rotary_emb(value_layer, seq_len=position_ids.max() + 1)
+            cos, sin = self.rotary_emb(
+                value_layer, seq_len=position_ids.max() + 1)
             # [seq_len, batch, num_attention_heads, hidden_size_per_attention_head]
-            query_layer, key_layer = apply_rotary_pos_emb_index(query_layer, key_layer, cos, sin, position_ids)
+            query_layer, key_layer = apply_rotary_pos_emb_index(
+                query_layer, key_layer, cos, sin, position_ids)
 
-        # if layer_past is not None:
-        #     torch.save(query_layer.cpu(), '3.path')
-        #     torch.save(key_layer.cpu(), '4.path')
-        #     torch.save(value_layer.cpu(), '5.path')
         # [seq_len, batch, hidden_size]
         context_layer, present, attention_probs = attention_fn(
             self=self,
@@ -487,9 +467,6 @@ class SelfAttention(torch.nn.Module):
         )
 
         output = self.dense(context_layer)
-        
-        # if layer_past is not None:
-        #     torch.save(output.cpu(), '7.path')
 
         outputs = (output, present)
 
@@ -547,13 +524,12 @@ class GLU(torch.nn.Module):
         intermediate_parallel = self.dense_h_to_4h(hidden_states)
 
         intermediate_parallel = self.activation_func(intermediate_parallel)
-        # torch.save(intermediate_parallel.cpu(), '10.path')
 
         output = self.dense_4h_to_h(intermediate_parallel)
 
         return output
 
-glm_block = True
+
 class GLMBlock(torch.nn.Module):
     def __init__(
             self,
@@ -591,7 +567,8 @@ class GLMBlock(torch.nn.Module):
         )
 
         # Layernorm on the input data.
-        self.post_attention_layernorm = layernorm(hidden_size, eps=layernorm_epsilon)
+        self.post_attention_layernorm = layernorm(
+            hidden_size, eps=layernorm_epsilon)
 
         self.num_layers = num_layers
 
@@ -603,12 +580,6 @@ class GLMBlock(torch.nn.Module):
             layer_id=layer_id,
             params_dtype=params_dtype,
         )
-        
-        self.test_operation = torch.classes.LayerTorch.LayerTorch("GlmBlock")
-        self.test_operation.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": layer_id,
-                        "layerNormEps":layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * num_layers)}))
-        self.add_test_operation = torch.classes.OperationTorch.OperationTorch("AddOperation")
-        self.add_test_operation.set_param(json.dumps({"scale":math.sqrt(2 * num_layers)}))
 
     def forward(
             self,
@@ -625,27 +596,10 @@ class GLMBlock(torch.nn.Module):
         attention_mask: [(1, 1), seq_len, seq_len]
         """
 
-        # global glm_block
-        # if glm_block:
-        #     glm_block = False
-        #     for tensor in list(self.state_dict().values()):
-        #         print(tensor.size())
-        test_glmBlockOut = None
-        test_presentKey = None
-        test_presentValue = None
-        test_in = None
-
-            
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
-        if layer_past is not None:
-            test_in = hidden_states
-        #     torch.save(hidden_states.cpu(), '1a.path')
-        #     torch.save(self.input_layernorm.weight.cpu(), '1w.path')
-        #     torch.save(self.input_layernorm.bias.cpu(), '1b.path')
         attention_input = self.input_layernorm(hidden_states)
-        # if layer_past is not None:
-        #     torch.save(attention_input.cpu(), '1.path')
+
         # Self attention.
         attention_outputs = self.attention(
             attention_input,
@@ -664,69 +618,14 @@ class GLMBlock(torch.nn.Module):
         # Residual connection.
         alpha = (2 * self.num_layers) ** 0.5
         hidden_states = attention_input * alpha + attention_output
-        # if layer_past is not None:
-        #     test_add = self.add_test_operation.execute([attention_input, attention_output])
-        #     assert torch.allclose(hidden_states, test_add[0], rtol=0.02, atol=0.02), 'add fail'
-        
-        # if layer_past is not None:
-        #     print("residual add scale:" + str(alpha))
-        #     torch.save(hidden_states.cpu(), '8.path')
 
         mlp_input = self.post_attention_layernorm(hidden_states)
-        # if layer_past is not None:
-        #     torch.save(mlp_input.cpu(), '9.path')
 
         # MLP.
         mlp_output = self.mlp(mlp_input)
-        # if layer_past is not None:
-        #     torch.save(mlp_output.cpu(), '11.path')
 
         # Second residual connection.
         output = mlp_input * alpha + mlp_output
-        
-
-        
-        if layer_past is not None:
-            print(outputs[0][0].shape)
-            print(outputs[0][1].shape)
-            test_glmBlockOut = torch.zeros(test_in.shape).half().npu()
-            test_presentKey = torch.zeros(layer_past[0].shape[0]+1, 
-                                        layer_past[0].shape[1],
-                                        layer_past[0].shape[2],
-                                        layer_past[0].shape[3]
-                                        ).half().npu()
-            test_presentValue = torch.zeros(layer_past[1].shape[0]+1, 
-                                        layer_past[1].shape[1],
-                                        layer_past[1].shape[2],
-                                        layer_past[1].shape[3]
-                                        ).half().npu()
-            global cosTable
-            global sinTable
-            pastKey, pastValue = layer_past
-            inputs = [test_in]
-            weights = list(self.state_dict().values())
-            del weights[2]
-            inputs.extend(weights)
-            inputs.append(position_ids)
-            inputs.append(cosTable)
-            inputs.append(sinTable)
-            inputs.append(attention_mask)
-            inputs.append(pastKey)
-            inputs.append(pastValue)
-            global glm_block
-            # if glm_block:
-            #     # print("inputs sizes here:")
-            #     glm_block = False
-                # for tensor in inputs:
-                    # print(tensor.size())
-                    # print(tensor.dtype)
-            self.test_operation.execute(inputs, [test_glmBlockOut, test_presentKey, test_presentValue])
-            # print(test_glmBlockOut.dtype)
-            # print(output.dtype)
-            # torch.save(output.cpu(), 'golden.path')
-            assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
-            print("success!")
-            output = test_glmBlockOut
 
         if use_cache:
             outputs = (output,) + outputs
@@ -875,9 +774,10 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         self.layers = torch.nn.ModuleList(
             [get_layer(layer_id) for layer_id in range(self.num_layers)]
         )
-        
+
         # Final layer norm before output.
-        self.final_layernorm = LayerNorm(self.hidden_size, eps=self.layernorm_epsilon)
+        self.final_layernorm = LayerNorm(
+            self.hidden_size, eps=self.layernorm_epsilon)
 
     def get_input_embeddings(self):
         return self.word_embeddings
@@ -900,16 +800,20 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         context_length = seq.index(self.config.bos_token_id) + 1
         if self.position_encoding_2d:
             seq_length = seq.index(self.config.bos_token_id)
-            position_ids = torch.arange(context_length, dtype=torch.long, device=device)
+            position_ids = torch.arange(
+                context_length, dtype=torch.long, device=device)
             if not gmask:
                 position_ids[seq_length:] = mask_position
             block_position_ids = torch.cat((
                 torch.zeros(seq_length, dtype=torch.long, device=device),
-                torch.arange(context_length - seq_length, dtype=torch.long, device=device) + 1
+                torch.arange(context_length - seq_length,
+                             dtype=torch.long, device=device) + 1
             ))
-            position_ids = torch.stack((position_ids, block_position_ids), dim=0)
+            position_ids = torch.stack(
+                (position_ids, block_position_ids), dim=0)
         else:
-            position_ids = torch.arange(context_length, dtype=torch.long, device=device)
+            position_ids = torch.arange(
+                context_length, dtype=torch.long, device=device)
             if not gmask:
                 position_ids[context_length - 1:] = mask_position
 
@@ -928,7 +832,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             input_ids: Optional[torch.LongTensor] = None,
             position_ids: Optional[torch.LongTensor] = None,
             attention_mask: Optional[torch.Tensor] = None,
-            past_key_values: Optional[Tuple[Tuple[torch.Tensor, torch.Tensor], ...]] = None,
+            past_key_values: Optional[Tuple[Tuple[torch.Tensor,
+                                                  torch.Tensor], ...]] = None,
             inputs_embeds: Optional[torch.LongTensor] = None,
             use_cache: Optional[bool] = None,
             output_attentions: Optional[bool] = None,
@@ -944,13 +849,15 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         if input_ids is not None and inputs_embeds is not None:
-            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+            raise ValueError(
+                "You cannot specify both input_ids and inputs_embeds at the same time")
         elif input_ids is not None:
             batch_size, seq_length = input_ids.shape[:2]
         elif inputs_embeds is not None:
             batch_size, seq_length, _ = inputs_embeds.shape[:2]
         else:
-            raise ValueError("You have to specify either input_ids or inputs_embeds")
+            raise ValueError(
+                "You have to specify either input_ids or inputs_embeds")
 
         if past_key_values is None:
             past_key_values = tuple([None] * len(self.layers))
@@ -1017,7 +924,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
                 presents = presents + (layer_ret[1],)
 
             if output_attentions:
-                all_self_attentions = all_self_attentions + (layer_ret[2 if use_cache else 1],)
+                all_self_attentions = all_self_attentions + \
+                    (layer_ret[2 if use_cache else 1],)
 
         # Final layer norm.
         hidden_states = self.final_layernorm(hidden_states)
@@ -1064,7 +972,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         self.lm_head = new_embeddings
 
     def get_masks_and_position_ids(self, seq, mask_position, context_length, device, gmask=False):
-        attention_mask = torch.ones((1, context_length, context_length), device=device)
+        attention_mask = torch.ones(
+            (1, context_length, context_length), device=device)
         attention_mask.tril_()
         attention_mask[..., :context_length - 1] = 1
         attention_mask.unsqueeze_(1)
@@ -1072,16 +981,20 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         if self.position_encoding_2d:
             seq_length = seq.index(self.config.bos_token_id)
-            position_ids = torch.arange(context_length, dtype=torch.long, device=device)
+            position_ids = torch.arange(
+                context_length, dtype=torch.long, device=device)
             if not gmask:
                 position_ids[seq_length:] = mask_position
             block_position_ids = torch.cat((
                 torch.zeros(seq_length, dtype=torch.long, device=device),
-                torch.arange(context_length - seq_length, dtype=torch.long, device=device) + 1
+                torch.arange(context_length - seq_length,
+                             dtype=torch.long, device=device) + 1
             ))
-            position_ids = torch.stack((position_ids, block_position_ids), dim=0)
+            position_ids = torch.stack(
+                (position_ids, block_position_ids), dim=0)
         else:
-            position_ids = torch.arange(context_length, dtype=torch.long, device=device)
+            position_ids = torch.arange(
+                context_length, dtype=torch.long, device=device)
             if not gmask:
                 position_ids[context_length - 1:] = mask_position
 
@@ -1105,7 +1018,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         mask_position = seq.index(mask_token)
 
         if mask_token not in seq:
-            raise ValueError("You have to add either [MASK] or [gMASK] in your input")
+            raise ValueError(
+                "You have to add either [MASK] or [gMASK] in your input")
 
         # only last token for input_ids if past is not None
         if past is not None or past_key_values is not None:
@@ -1115,7 +1029,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 position_ids = torch.tensor([[[mask_position], [len(seq) - context_length]]], dtype=torch.long,
                                             device=input_ids.device)
             else:
-                position_ids = torch.tensor([[mask_position]], dtype=torch.long, device=input_ids.device)
+                position_ids = torch.tensor(
+                    [[mask_position]], dtype=torch.long, device=input_ids.device)
 
             if past is None:
                 past = past_key_values
@@ -1181,7 +1096,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             shift_labels = labels[..., 1:].contiguous()
             # Flatten the tokens
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            loss = loss_fct(
+                shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
             lm_logits = lm_logits.to(hidden_states.dtype)
             loss = loss.to(hidden_states.dtype)
@@ -1211,8 +1127,10 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         """
         return tuple(
             (
-                layer_past[0].index_select(1, beam_idx.to(layer_past[0].device)),
-                layer_past[1].index_select(1, beam_idx.to(layer_past[1].device)),
+                layer_past[0].index_select(
+                    1, beam_idx.to(layer_past[0].device)),
+                layer_past[1].index_select(
+                    1, beam_idx.to(layer_past[1].device)),
             )
             for layer_past in past
         )
@@ -1232,7 +1150,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         else:
             prompt = ""
             for i, (old_query, response) in enumerate(history):
-                prompt += "[Round {}]\n问：{}\n答：{}\n".format(i, old_query, response)
+                prompt += "[Round {}]\n问：{}\n答：{}\n".format(
+                    i, old_query, response)
             prompt += "[Round {}]\n问：{}\n答：".format(len(history), query)
         input_ids = tokenizer([prompt], return_tensors="pt", padding=True)
         # print(input_ids)
@@ -1280,7 +1199,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             generation_config: Optional[GenerationConfig] = None,
             logits_processor: Optional[LogitsProcessorList] = None,
             stopping_criteria: Optional[StoppingCriteriaList] = None,
-            prefix_allowed_tokens_fn: Optional[Callable[[int, torch.Tensor], List[int]]] = None,
+            prefix_allowed_tokens_fn: Optional[Callable[[
+                int, torch.Tensor], List[int]]] = None,
             **kwargs,
     ):
         batch_size, input_ids_seq_length = input_ids.shape[0], input_ids.shape[-1]
@@ -1294,7 +1214,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         if isinstance(eos_token_id, int):
             eos_token_id = [eos_token_id]
 
-        has_default_max_length = kwargs.get("max_length") is None and generation_config.max_length is not None
+        has_default_max_length = kwargs.get(
+            "max_length") is None and generation_config.max_length is not None
         if has_default_max_length and generation_config.max_new_tokens is None:
             warnings.warn(
                 f"Using `max_length`'s default ({generation_config.max_length}) to control the generation length. "
@@ -1341,7 +1262,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
         while True:
-            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
+            model_inputs = self.prepare_inputs_for_generation(
+                input_ids, **model_kwargs)
             # forward pass to get next token
             outputs = self(
                 **model_inputs,
@@ -1359,7 +1281,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             # sample
             probs = nn.functional.softmax(next_token_scores, dim=-1)
             if generation_config.do_sample:
-                next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+                next_tokens = torch.multinomial(
+                    probs, num_samples=1).squeeze(1)
             else:
                 next_tokens = torch.argmax(probs, dim=-1)
 
@@ -1368,7 +1291,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
-            unfinished_sequences = unfinished_sequences.mul((sum(next_tokens != i for i in eos_token_id)).long())
+            unfinished_sequences = unfinished_sequences.mul(
+                (sum(next_tokens != i for i in eos_token_id)).long())
 
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
