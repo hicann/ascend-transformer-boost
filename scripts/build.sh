@@ -127,6 +127,12 @@ function fn_build_3rdparty()
     cd ..
 }
 
+function fn_download_testdata()
+{
+    #todo
+    echo "fn_download_testdata"
+}
+
 function fn_init_pytorch_env()
 {
     export PYTHON_INCLUDE_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
@@ -371,6 +377,9 @@ function fn_main()
     case "${arg1}" in
         "3rdparty")
             fn_build_3rdparty
+            ;;
+        "download_testdata")
+            fn_download_testdata
             ;;
         "examples")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
