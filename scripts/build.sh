@@ -26,6 +26,7 @@ COMPILE_OPTIONS=""
 INCREMENTAL_SWITCH=OFF
 HOST_CODE_PACK_SWITCH=ON
 DEVICE_CODE_PACK_SWITCH=ON
+USE_CXX11_ABI=ON
 BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples"
 BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" "--use_cxx11_abi=1" "--build_config=.*")
 
@@ -97,22 +98,45 @@ function fn_build_jsoncpp()
 
 function fn_build_asdops()
 {
+    if [ -d "$THIRD_PARTY_DIR/asdops/include" ];then
+        echo "$THIRD_PARTY_DIR/asdops/include already exist, not build asdops"
+        return
+    fi
+
     git clone https://gitee.com/ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
     ASD_OPP_PATH=/usr/local/Ascend/ascend-toolkit/6.0.2/opp
+     
     if [ -d "$ASD_OPP_PATH/built_in/op_impl/ai_core/tbe/kernel" ]; then
-        bash scripts/build.sh release --ascend_opp_path=$ASD_OPP_PATH/6.0.2/opp --output=$THIRD_PARTY_DIR --build_config=$CODE_ROOT/scripts/asdops_build_config.json 
-    else
-        bash scripts/build.sh release --output=$THIRD_PARTY_DIR --build_config=$CODE_ROOT/scripts/asdops_build_config.json 
+        build_options="--ascend_opp_path=$ASD_OPP_PATH/6.0.2/opp"
     fi
+    if [ $USE_CXX11_ABI == "ON" ];then
+        build_options="$build_options --use_cxx11_abi=1"
+    else
+        build_options="$build_options --use_cxx11_abi=0"
+    fi
+
+    build_options="$build_options --output=$THIRD_PARTY_DIR --build_config=$CODE_ROOT/scripts/asdops_build_config.json"
+    echo "bash scripts/build.sh release $build_options"
+    bash scripts/build.sh release $build_options
     cd $THIRD_PARTY_DIR
     tar -xvf asdops.tar.gz
     cd ..
 }
 
-function fn_build_hacl()
+function fn_build_nlohmann_json()
 {
-    echo "dd"
+    NLOHMANN_DIR=$THIRD_PARTY_DIR/nlohmannJson/include
+    if [ ! -d "$NLOHMANN_DIR" ];then
+        cd $CACHE_DIR
+        rm -rf nlohmann
+        mkdir nlohmann
+        cd nlohmann
+        wget --no-check-certificate https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/include.zip
+        unzip include.zip
+        mkdir -p $THIRD_PARTY_DIR/nlohmannJson
+        cp -r ./include $THIRD_PARTY_DIR/nlohmannJson
+    fi
 }
 
 function fn_build_3rdparty()
@@ -121,10 +145,19 @@ function fn_build_3rdparty()
     mkdir $CACHE_DIR
     cd $CACHE_DIR
     fn_build_googltest
-    fn_build_jsoncpp
+    fn_build_nlohmann_json
     fn_build_asdops
-    fn_build_hacl
+    fn_build_jsoncpp
     cd ..
+}
+
+function fn_build_release_3rdparty()
+{
+    rm -rf $CACHE_DIR
+    mkdir $CACHE_DIR
+    cd $CACHE_DIR
+    fn_build_asdops
+    cd $CODE_ROOT
 }
 
 function fn_download_testdata()
@@ -156,6 +189,7 @@ function fn_init_pytorch_env()
 
 function fn_build()
 {
+    fn_build_release_3rdparty
     if [ ! -d "$OUTPUT_DIR" ];then
         mkdir -p $OUTPUT_DIR
     fi
@@ -172,7 +206,7 @@ function fn_build()
     if [ "$INCREMENTAL_SWITCH" == "OFF" ];then
         make clean
     fi
-    make -j VERBOS=1
+    VERBOSE=1 make -j
     make install
     chmod +x $OUTPUT_DIR/acltransformer/bin/*
     fn_generate_doxygen
@@ -329,10 +363,12 @@ function fn_main()
             fi
             ;;
         "--use_cxx11_abi=1")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -D_GLIBCXX_USE_CXX11_ABI=1"
+            USE_CXX11_ABI=ON
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=ON"
             ;;
         "--use_cxx11_abi=0")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -D_GLIBCXX_USE_CXX11_ABI=0"
+            USE_CXX11_ABI=OFF
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=OFF"
             ;;
         "--gcov")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
