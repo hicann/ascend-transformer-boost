@@ -26,7 +26,7 @@ COMPILE_OPTIONS=""
 INCREMENTAL_SWITCH=OFF
 HOST_CODE_PACK_SWITCH=ON
 DEVICE_CODE_PACK_SWITCH=ON
-BUILD_OPTION_LIST="3rdparty unittest unittest_and_run pythontest pythontest_and_run debug release help examples"
+BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples"
 BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" "--use_cxx11_abi=1" "--build_config=.*")
 
 function fn_build_googltest()
@@ -129,8 +129,10 @@ function fn_build_3rdparty()
 
 function fn_download_testdata()
 {
-    #todo
-    echo "fn_download_testdata"
+    echo "git clone -b testdata https://gitee.com/ascend/ascend-transformer-acceleration.git $CODE_ROOT/testdata"
+    git clone -b testdata https://gitee.com/ascend/ascend-transformer-acceleration.git $CODE_ROOT/testdata
+    mv $CODE_ROOT/testdata/testdatas/* $CODE_ROOT/testdata/
+    rm -rf $CODE_ROOT/testdata/testdatas
 }
 
 function fn_init_pytorch_env()
