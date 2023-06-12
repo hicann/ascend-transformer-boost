@@ -25,7 +25,7 @@ import operation_test  # NOQA: E402
 OP_NAME = "LinearOperation"
 
 
-class TestAddOperation(operation_test.OperationTest):
+class TestLinearOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         golden_result = torch.matmul(in_tensors[0], torch.transpose(
             in_tensors[1], 0, 1)) + in_tensors[2]
@@ -33,7 +33,9 @@ class TestAddOperation(operation_test.OperationTest):
 
     def test_2d_half(self):
         self.execute(OP_NAME, '{"transposeA":false,"transposeB":true}',
-                     [torch.rand(5584, 1024).npu().half(), torch.rand(4096, 1024).npu().half(), torch.rand(4096).npu().half()])
+                     [torch.rand(5584, 1024).npu().half(),
+                      torch.rand(4096, 1024).npu().half(),
+                      torch.rand(4096).npu().half()])
 
 
 if __name__ == '__main__':
