@@ -18,6 +18,7 @@
 # export LD_LIBRARY_PATH=$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
+CODE_ROOT_DIR=$(cd $(dirname $0); cd ..; cd..; pwd)
 echo $SCRIPT_DIR
-
+export ACLTRANSFORMER_TESTDATA=$CODE_ROOT_DIR
 python3 -m unittest discover -s $SCRIPT_DIR -p "*.py"
