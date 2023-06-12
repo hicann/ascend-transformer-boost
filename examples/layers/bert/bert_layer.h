@@ -13,27 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LAYER_H
-#define LAYER_H
-#include <string>
-#include <json/json.h>
-#include "acltransformer/operation_graph.h"
-#include "acltransformer/variant_pack.h"
+#ifndef BERTLAYER_H
+#define BERTLAYER_H
+#include "examples/layers/layer.h"
 
 namespace AclTransformer {
-class Layer {
+class BertLayer : public Layer {
 public:
-    Layer(const std::string &layerName);
-    virtual ~Layer();
-    std::string GetName() const;
-    void SetParam(const Json::Value &paramJson);
-    virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) = 0;
-    virtual AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
-
-protected:
-    std::string layerName_;
-    Json::Value paramJson_;
+    BertLayer();
+    virtual ~BertLayer();
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
 };
 } // namespace AclTransformer
 #endif
