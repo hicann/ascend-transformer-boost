@@ -43,6 +43,12 @@ class OperationTest(unittest.TestCase):
     def golden_compare(self, out_tensor, golden_out_tensor):
         return torch.allclose(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02)
 
+    def get_tensor(self, file_path):
+        try:
+            return list(torch.load(file_path).state_dict().values())[0]
+        except:
+            return torch.load(file_path)
+
     def __golden_compare_all(self, out_tensors, golden_out_tensors):
         self.assertEqual(len(out_tensors), len(golden_out_tensors))
         tensor_count = len(out_tensors)

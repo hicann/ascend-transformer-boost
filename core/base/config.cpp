@@ -34,7 +34,7 @@ bool Config::IsAddOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADD_OPSRUN
 
 bool Config::IsAddNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE"); }
 
-bool Config::IsFfnOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_Ffn_OPSRUNNER_ENABLE"); }
+bool Config::IsFfnOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_FFN_OPSRUNNER_ENABLE"); }
 
 bool Config::IsLinearOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_LINEAR_OPSRUNNER_ENABLE"); }
 
