@@ -34,6 +34,7 @@ AclTransformer::Operation *AddOperationCreate(const Json::Value &paramJson)
     if (paramJson.isMember("scale")) {
         param.scale = paramJson["scale"].asFloat();
     }
+    ASD_LOG(INFO) << "AddParam scale:" << param.scale;
     return new AclTransformer::AddOperation(param);
 }
 
@@ -41,6 +42,7 @@ AclTransformer::Operation *AddNormOperationCreate(const Json::Value &paramJson)
 {
     AclTransformer::AddNormParam param;
     param.layerNormEps = paramJson["layerNormEps"].asDouble();
+    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps;
     return new AclTransformer::AddNormOperation(param);
 }
 
@@ -48,6 +50,7 @@ AclTransformer::Operation *NormOperationCreate(const Json::Value &paramJson)
 {
     AclTransformer::NormParam param;
     param.layerNormEps = paramJson["layerNormEps"].asDouble();
+    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps;
     return new AclTransformer::NormOperation(param);
 }
 
@@ -56,12 +59,16 @@ AclTransformer::Operation *LinearOperationCreate(const Json::Value &paramJson)
     AclTransformer::LinearParam param;
     param.transposeA = paramJson["transposeA"].asBool();
     param.transposeB = paramJson["transposeB"].asBool();
+    ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
     return new AclTransformer::LinearOperation(param);
 }
 
 AclTransformer::Operation *FfnOperationCreate(const Json::Value &paramJson)
 {
     AclTransformer::FfnParam param;
+    param.transposeA = paramJson["transposeA"].asBool();
+    param.transposeB = paramJson["transposeB"].asBool();
+    ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
     return new AclTransformer::FfnOperation(param);
 }
 
@@ -71,6 +78,8 @@ AclTransformer::Operation *SelfAttentionOperationCreate(const Json::Value &param
     param.transKey = paramJson["transKey"].asBool();
     param.dk = paramJson["dk"].asInt();
     param.headNum = paramJson["headNum"].asInt();
+    ASD_LOG(INFO) << "PositionEmbeddingParam transKey:" << param.transKey << ", dk:" << param.dk
+                  << ", headNum:" << param.headNum;
     return new AclTransformer::SelfAttentionOperation(param);
 }
 
@@ -78,6 +87,7 @@ AclTransformer::Operation *PositionEmbeddingOperationCreate(const Json::Value &p
 {
     AclTransformer::PositionEmbeddingParam param;
     param.headNum = paramJson["headNum"].asInt();
+    ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
     return new AclTransformer::PositionEmbeddingOperation(param);
 }
 
@@ -88,6 +98,8 @@ AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const Json::Value
     param.headNum = paramJson["headNum"].asInt64();
     param.layerId = paramJson["layerId"].asInt64();
     param.dk = paramJson["dk"].asInt64();
+    ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
+                  << ", layerId:" << param.layerId << ", dk:" << param.dk;
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }
 
