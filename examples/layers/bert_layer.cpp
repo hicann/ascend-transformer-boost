@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "bert_layer.h"
 #include <json/json.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
@@ -20,12 +21,25 @@
 #include "acltransformer/operation_graph.h"
 #include "examples/utils/example_util.h"
 #include "acltransformer/plan_builder.h"
-#include "acltransformer/ops/linear_operation.h"
+#include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
+#include "acltransformer/ops/norm_operation.h"
+#include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 
-void BertLayer(const Json::Value &paramJson, AclTransformer::VariantPack &variantPack)
+namespace AclTransformer {
+BertLayer::BertLayer() : Layer("BertLayer") {}
+
+BertLayer::~BertLayer() {}
+
+AsdOps::Status BertLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                     AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+{
+    return AsdOps::Status::OkStatus();
+}
+
+AsdOps::Status BertLayer::Execute(Handle &handle, VariantPack &variantPack)
 {
     const uint64_t hiddenStatesId = 0;
     const uint64_t qLinearWeightId = 1;
@@ -61,9 +75,9 @@ void BertLayer(const Json::Value &paramJson, AclTransformer::VariantPack &varian
     AclTransformer::LinearParam kLinearParam;
     AclTransformer::LinearParam vLinearParam;
     AclTransformer::SelfAttentionParam selfAttentionParam;
-    selfAttentionParam.transKey = paramJson["transKey"].asBool();
-    selfAttentionParam.dk = paramJson["dk"].asInt();
-    selfAttentionParam.headNum = paramJson["headNum"].asInt();
+    selfAttentionParam.transKey = paramJson_["transKey"].asBool();
+    selfAttentionParam.dk = paramJson_["dk"].asInt();
+    selfAttentionParam.headNum = paramJson_["headNum"].asInt();
     AclTransformer::LinearParam selfOutLinearParam;
     AclTransformer::AddNormParam selfOutAddNormParam;
     AclTransformer::FfnParam ffnParam;
@@ -134,5 +148,6 @@ void BertLayer(const Json::Value &paramJson, AclTransformer::VariantPack &varian
     bertOutAddNormNode.inTensorIds = {bertOutLinearOutId, selfAddNormOutId, bertOutNormWeightId, bertOutNormBiasId};
     bertOutAddNormNode.outTensorIds = {bertLayerOutId};
 
-    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
+    return ExecuteOperationGraph(opGraph, variantPack);
 }
+} // namespace AclTransformer

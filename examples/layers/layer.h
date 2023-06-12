@@ -16,6 +16,7 @@
 #ifndef LAYER_EXECUTER_H
 #define LAYER_EXECUTER_H
 #include <string>
+#include <json/json.h>
 #include "acltransformer/operation_graph.h"
 #include "acltransformer/variant_pack.h"
 
@@ -25,9 +26,18 @@ public:
     Layer(const std::string &layerName);
     virtual ~Layer();
     std::string GetName() const;
+    void SetParam(const Json::Value &paramJson);
     virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) = 0;
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
-}
+    virtual AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
+
+protected:
+    AsdOps::Status ExecuteOperationGraph(const AclTransformer::OperationGraph &opGraph,
+                                         AclTransformer::VariantPack &variantPack);
+
+protected:
+    std::string layerName_;
+    Json::Value paramJson_;
+};
 } // namespace AclTransformer
 #endif

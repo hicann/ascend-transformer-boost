@@ -13,11 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LAYER_EXECUTER_H
-#define LAYER_EXECUTER_H
-#include <string>
-#include "acltransformer/operation_graph.h"
-#include "acltransformer/variant_pack.h"
-
-bool ExecuteLayer(const std::string &opName, const std::string &param, AclTransformer::VariantPack &variantPack);
+#ifndef BERTLAYER_H
+#define BERTLAYER_H
+#include "layer.h"
+namespace AclTransformer {
+class BertLayer : public Layer {
+public:
+    BertLayer();
+    virtual ~BertLayer();
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+};
+} // namespace AclTransformer
 #endif
