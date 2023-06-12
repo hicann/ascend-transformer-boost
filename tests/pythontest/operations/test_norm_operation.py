@@ -25,7 +25,7 @@ import operation_test  # NOQA: E402
 OP_NAME = "NormOperation"
 
 
-class TestAddOperation(operation_test.OperationTest):
+class TestNormOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         layer_norm = torch.nn.LayerNorm([32]).npu()
         layer_norm.load_state_dict(
