@@ -4,7 +4,10 @@ project("acltransformer")
 #options, these can be pass in by cmake argument
 option(USE_UT_TEST "USE_UT_TEST" OFF)
 option(USE_GCOV "USE_GCOV" OFF)
+option(USE_CXX11_ABI "USE_CXX11_ABI" ON)
+
 message(STATUS "USE_UT_TEST:${USE_UT_TEST}")
+
 
 # compile flag
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -30,6 +33,11 @@ if(TORCH_18)
 endif()
 if(USE_TORCH_RUNNER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_TORCH_RUNNER")
+endif()
+if(USE_CXX11_ABI)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 include_directories(
     ${PROJECT_SOURCE_DIR}
@@ -65,8 +73,10 @@ install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/bin DESTINATION .)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib/libjsoncpp.so.25 DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib/libjsoncpp.so.1.9.5 DESTINATION lib)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/host DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/device DESTINATION .)
+if(USE_EXAMPLES OR USE_UT_TEST)
+    install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib/libjsoncpp.so.25 DESTINATION lib)
+    install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib/libjsoncpp.so.1.9.5 DESTINATION lib)
+endif()
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/core/include/acltransformer DESTINATION include)
