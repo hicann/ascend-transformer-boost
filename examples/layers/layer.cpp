@@ -21,5 +21,5 @@ Layer::~Layer() {}
 
 std::string Layer::GetName() const { return layerName_; }
 
-void Layer::SetParam(const Json::Value &paramJson) { paramJson_ = paramJson; }
+void Layer::SetParam(const nlohmann::json &paramJson) { paramJson_ = paramJson; }
 } // namespace AclTransformer
