@@ -284,7 +284,8 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
         } else {
             ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " outTensors[" << i << "] is not internal tensor";
         }
-        runInfoOutTensor = *outTensor;
+        runInfoOutTensor.data = outTensor->data;
+        runInfoOutTensor.dataSize = outTensor->dataSize;
     }
 
     ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " after mem solve, runinfo:\n"
