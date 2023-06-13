@@ -153,7 +153,10 @@ function fn_init_pytorch_env()
 
     COUNT=`grep get_tensor_npu_format ${PYTORCH_NPU_INSTALL_PATH}/include/torch_npu/csrc/framework/utils/CalcuOpUtil.h | wc -l`
     if [ "$COUNT" == "1" ];then
-        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_GET_TENSOR_NPU_FORMAT_OLD=1"
+        echo "use get_tensor_npu_format"
+        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_GET_TENSOR_NPU_FORMAT_OLD=ON"
+    else
+        echo "use GetTensorNpuFormat"
     fi
 }
 
