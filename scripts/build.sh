@@ -27,8 +27,9 @@ INCREMENTAL_SWITCH=OFF
 HOST_CODE_PACK_SWITCH=ON
 DEVICE_CODE_PACK_SWITCH=ON
 USE_CXX11_ABI=ON
+USE_VERBOSE=OFF
 BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples"
-BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" "--use_cxx11_abi=1" "--build_config=.*")
+BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" "--use_cxx11_abi=1" "--build_config=.*")
 
 function fn_build_googltest()
 {
@@ -66,48 +67,17 @@ function fn_build_half()
     cp include/half.hpp $THIRD_PARTY_DIR/half/include
 }
 
-function fn_build_jsoncpp()
-{
-    cd $CACHE_DIR
-    rm -rf jsoncpp*
-    if [ -f "$CODE_ROOT/3rdparty/jsoncpp-1.9.5.tar.gz" ];then
-        cp $CODE_ROOT/3rdparty/jsoncpp-1.9.5.tar.gz ./
-        tar -xvf jsoncpp-1.9.5.tar.gz
-    else
-        wget --no-check-certificate https://codeload.github.com/open-source-parsers/jsoncpp/tar.gz/refs/tags/1.9.5
-        tar -xvf 1.9.5
-    fi
-    cd jsoncpp-1.9.5
-    mkdir build
-    cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/jsoncpp ../
-    make -j
-    make install
-    cd ../../
-    if [ -d "$THIRD_PARTY_DIR/jsoncpp/lib64" ]; then
-        if [ -d "$THIRD_PARTY_DIR/jsoncpp/lib" ]; then
-            rm -rf $THIRD_PARTY_DIR/jsoncpp/lib64
-        else
-            mv $THIRD_PARTY_DIR/jsoncpp/lib64 $THIRD_PARTY_DIR/jsoncpp/lib
-        fi
-    fi
-    if [ -f "$THIRD_PARTY_DIR/jsoncpp/lib/libjsoncpp.a" ]; then
-        mv $THIRD_PARTY_DIR/jsoncpp/lib/libjsoncpp.a $THIRD_PARTY_DIR/jsoncpp/lib/libjsoncpp_static.a
-    fi
-}
-
 function fn_build_asdops()
 {
     if [ -d "$THIRD_PARTY_DIR/asdops/include" ];then
-        echo "$THIRD_PARTY_DIR/asdops/include already exist, not build asdops"
+        echo "asdops exist in $THIRD_PARTY_DIR, not build it"
         return
     fi
-
     git clone https://gitee.com/ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
     ASD_OPP_PATH=/usr/local/Ascend/ascend-toolkit/6.0.2/opp
      
-    if [ -d "$ASD_OPP_PATH/built_in/op_impl/ai_core/tbe/kernel" ]; then
+    if [ -d "$ASD_OPP_PATH/built-in/op_impl/ai_core/tbe/kernel" ]; then
         build_options="--ascend_opp_path=$ASD_OPP_PATH/6.0.2/opp"
     fi
     if [ $USE_CXX11_ABI == "ON" ];then
@@ -147,7 +117,6 @@ function fn_build_3rdparty()
     fn_build_googltest
     fn_build_nlohmann_json
     fn_build_asdops
-    fn_build_jsoncpp
     cd ..
 }
 
@@ -156,6 +125,7 @@ function fn_build_release_3rdparty()
     rm -rf $CACHE_DIR
     mkdir $CACHE_DIR
     cd $CACHE_DIR
+    fn_build_nlohmann_json
     fn_build_asdops
     cd $CODE_ROOT
 }
@@ -206,7 +176,11 @@ function fn_build()
     if [ "$INCREMENTAL_SWITCH" == "OFF" ];then
         make clean
     fi
-    VERBOSE=1 make -j
+    if [ "$USE_VERBOSE" == "ON" ];then
+        VERBOSE=1 make -j
+    else
+        make -j
+    fi
     make install
     chmod +x $OUTPUT_DIR/acltransformer/bin/*
     fn_generate_doxygen
@@ -266,21 +240,6 @@ function fn_generate_doxygen()
         sed -i 's|OUTPUT_DIRECTORY       =.\/output\/acltransformer\/doc|OUTPUT_DIRECTORY       ='"$OUTPUT_DIR"'\/acltransformer\/doc|g' $CODE_ROOT/Doxyfile
     fi
     /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile >/dev/null 2>&1
-}
-
-function fn_build_torch_extension()
-{
-    cd $CODE_ROOT/torch_extension
-    rm -rf cache
-    rm -rf dist
-    rm -rf build
-    rm -rf *egg*
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CODE_ROOT/3rdparty/jsoncpp/lib
-    cd $OUTPUT_DIR/acltransformer
-    source set_env.sh
-    cd $CODE_ROOT/torch_extension
-    python3 op_desc_json_auto.py
-    python3 setup.py install
 }
 
 function fn_run_pythontest()
@@ -373,6 +332,9 @@ function fn_main()
         "--gcov")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
             ;;
+        "--verbose")
+            USE_VERBOSE=ON
+            ;;
         "--incremental")
             INCREMENTAL_SWITCH=ON
             ;;
@@ -435,11 +397,9 @@ function fn_main()
             ;;
         "pythontest")
             fn_build
-            fn_build_torch_extension
             ;;
         "pythontest_and_run")
             fn_build
-            fn_build_torch_extension
             fn_run_pythontest
             ;;
         "debug")

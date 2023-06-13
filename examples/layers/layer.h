@@ -16,7 +16,7 @@
 #ifndef LAYER_H
 #define LAYER_H
 #include <string>
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 #include "acltransformer/operation_graph.h"
 #include "acltransformer/variant_pack.h"
 
@@ -26,14 +26,14 @@ public:
     Layer(const std::string &layerName);
     virtual ~Layer();
     std::string GetName() const;
-    void SetParam(const Json::Value &paramJson);
+    void SetParam(const nlohmann::json &paramJson);
     virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) = 0;
     virtual AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
 
 protected:
     std::string layerName_;
-    Json::Value paramJson_;
+    nlohmann::json paramJson_;
 };
 } // namespace AclTransformer
 #endif
