@@ -17,6 +17,7 @@
 #define ACLTRANSFORMER_OPSRUNNER_H
 #include "acltransformer/runner.h"
 #include <vector>
+#include <functional>
 #include <map>
 #include <set>
 #include <asdops/kernel.h>
@@ -24,10 +25,13 @@
 #include <asdops/run_info.h>
 
 namespace AclTransformer {
+using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
+
 struct KernelGraphNode {
     AsdOps::OpDesc opDesc;
     AsdOps::SVector<AsdOps::Tensor *> inTensors;
     AsdOps::SVector<AsdOps::Tensor *> outTensors;
+    AsdOps::SVector<ViewFunc> inTensorViewFuncs;
     AsdOps::Kernel *kernel = nullptr;
     AsdOps::RunInfo kernelRunInfo;
 };

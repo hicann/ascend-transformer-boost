@@ -232,8 +232,25 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
     }
 
     node.kernelRunInfo.SetOpDesc(opDesc);
-    for (const auto tensorIt : node.inTensors) {
-        node.kernelRunInfo.AddInTensor(*tensorIt);
+    for (size_t i = 0; i < node.inTensors.size(); ++i) {
+        AsdOps::Tensor *tensor = node.inTensors.at(i);
+        if (i < node.inTensors.size() && node.inTensorViewFuncs.at(i)) {
+            AsdOps::Tensor viewTensor = *tensor;
+            viewTensor.desc.dims.clear();
+            node.inTensorViewFuncs.at(i)(tensor->desc.dims, viewTensor.desc.dims);
+            if (viewTensor.Numel() != tensor->Numel()) {
+                ASD_LOG(ERROR) << GetName() << " node[" << nodeId
+                               << "] invalid view func, viewTensor.Numel:" << viewTensor.Numel()
+                               << ", tensor.Numel:" << tensor->Numel();
+                return false;
+            }
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << " view inTensor[" << i
+                          << "], old:" << TensorUtil::AsdOpsDimsToString(tensor->desc.dims)
+                          << ", new:" << TensorUtil::AsdOpsDimsToString(viewTensor.desc.dims);
+            node.kernelRunInfo.AddInTensor(viewTensor);
+        } else {
+            node.kernelRunInfo.AddInTensor(*tensor);
+        }
     }
     for (size_t i = 0; i < node.outTensors.size(); ++i) {
         AsdOps::Tensor tensor;
