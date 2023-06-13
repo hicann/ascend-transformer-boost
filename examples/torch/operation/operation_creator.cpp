@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include "operation_creator.h"
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 #include <functional>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/add_operation.h"
@@ -26,78 +26,78 @@
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
 
-using OperationCreateFunc = std::function<AclTransformer::Operation *(const Json::Value &paramJson)>;
+using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
-AclTransformer::Operation *AddOperationCreate(const Json::Value &paramJson)
+AclTransformer::Operation *AddOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddParam param;
-    if (paramJson.isMember("scale")) {
-        param.scale = paramJson["scale"].asFloat();
+    if (paramJson.find("scale") != paramJson.end()) {
+        param.scale = paramJson["scale"].get<float>();
     }
     ASD_LOG(INFO) << "AddParam scale:" << param.scale;
     return new AclTransformer::AddOperation(param);
 }
 
-AclTransformer::Operation *AddNormOperationCreate(const Json::Value &paramJson)
+AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddNormParam param;
-    param.layerNormEps = paramJson["layerNormEps"].asDouble();
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
     ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps;
     return new AclTransformer::AddNormOperation(param);
 }
 
-AclTransformer::Operation *NormOperationCreate(const Json::Value &paramJson)
+AclTransformer::Operation *NormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::NormParam param;
-    param.layerNormEps = paramJson["layerNormEps"].asDouble();
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
     ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps;
     return new AclTransformer::NormOperation(param);
 }
 
-AclTransformer::Operation *LinearOperationCreate(const Json::Value &paramJson)
+AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::LinearParam param;
-    param.transposeA = paramJson["transposeA"].asBool();
-    param.transposeB = paramJson["transposeB"].asBool();
+    param.transposeA = paramJson["transposeA"].get<bool>();
+    param.transposeB = paramJson["transposeB"].get<bool>();
     ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
     return new AclTransformer::LinearOperation(param);
 }
 
-AclTransformer::Operation *FfnOperationCreate(const Json::Value &paramJson)
+AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::FfnParam param;
-    param.transposeA = paramJson["transposeA"].asBool();
-    param.transposeB = paramJson["transposeB"].asBool();
+    param.transposeA = paramJson["transposeA"].get<bool>();
+    param.transposeB = paramJson["transposeB"].get<bool>();
     ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
     return new AclTransformer::FfnOperation(param);
 }
 
-AclTransformer::Operation *SelfAttentionOperationCreate(const Json::Value &paramJson)
+AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionParam param;
-    param.transKey = paramJson["transKey"].asBool();
-    param.dk = paramJson["dk"].asInt();
-    param.headNum = paramJson["headNum"].asInt();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.headNum = paramJson["headNum"].get<int>();
     ASD_LOG(INFO) << "PositionEmbeddingParam transKey:" << param.transKey << ", dk:" << param.dk
                   << ", headNum:" << param.headNum;
     return new AclTransformer::SelfAttentionOperation(param);
 }
 
-AclTransformer::Operation *PositionEmbeddingOperationCreate(const Json::Value &paramJson)
+AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingParam param;
-    param.headNum = paramJson["headNum"].asInt();
+    param.headNum = paramJson["headNum"].get<int>();
     ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
     return new AclTransformer::PositionEmbeddingOperation(param);
 }
 
-AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const Json::Value &paramJson)
+AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionKvCacheParam param;
-    param.transKey = paramJson["transKey"].asBool();
-    param.headNum = paramJson["headNum"].asInt64();
-    param.layerId = paramJson["layerId"].asInt64();
-    param.dk = paramJson["dk"].asInt64();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
                   << ", layerId:" << param.layerId << ", dk:" << param.dk;
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
@@ -115,12 +115,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
-    Json::Reader reader;
-    Json::Value paramJson;
-    if (!reader.parse(param, paramJson)) {
-        ASD_LOG(ERROR) << "json parse error, CallOp fail";
-        return nullptr;
-    }
+    nlohmann::json paramJson = nlohmann::json::parse(param);
 
     auto it = g_funcMap.find(opName);
     if (it == g_funcMap.end()) {

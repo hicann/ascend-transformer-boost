@@ -44,7 +44,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/core/include
     ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include
     ${PROJECT_SOURCE_DIR}/3rdparty/googletest/include
-    ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/include
+    ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{PYTHON_INCLUDE_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/include
@@ -54,7 +54,6 @@ include_directories(
 link_directories(
     ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib
     ${PROJECT_SOURCE_DIR}/3rdparty/googletest/lib
-    ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib
     $ENV{ASCEND_HOME_PATH}/lib64
     $ENV{PYTHON_LIB_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/lib
@@ -75,8 +74,4 @@ install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so DESTINATION
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so DESTINATION lib)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/host DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/device DESTINATION .)
-if(USE_EXAMPLES OR USE_UT_TEST)
-    install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib/libjsoncpp.so.25 DESTINATION lib)
-    install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/jsoncpp/lib/libjsoncpp.so.1.9.5 DESTINATION lib)
-endif()
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/core/include/acltransformer DESTINATION include)
