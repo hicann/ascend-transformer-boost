@@ -1,0 +1,7 @@
+einops
+sympy
+regex
+decorator
+scipy
+setuptools_scm
+prompt_toolkit
