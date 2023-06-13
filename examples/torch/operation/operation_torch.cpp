@@ -61,7 +61,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
         ASD_LOG(INFO) << "inTensors[" << i << "].options:" << atInTensors.at(i).options()
                       << ", data:" << atInTensors.at(i).data_ptr()
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
-                      << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atInTensors.at(i));
+                      << ", format:" << ExampleUtil::GetTensorNpuFormat(atInTensors.at(i));
         variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i)));
         if (AclTransformer::Config::IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +
@@ -77,7 +77,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
         ASD_LOG(INFO) << "atOutTensors[" << i << "].options:" << atOutTensors.at(i).options()
                       << ", data:" << atOutTensors.at(i).data_ptr()
                       << ", storage_offset:" << atOutTensors.at(i).storage_offset()
-                      << ", format:" << at_npu::native::CalcuOpUtil::GetTensorNpuFormat(atOutTensors.at(i));
+                      << ", format:" << ExampleUtil::GetTensorNpuFormat(atOutTensors.at(i));
         variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atOutTensors.at(i)));
     }
 
