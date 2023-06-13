@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include "chatglm6b_layer.h"
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
@@ -90,18 +90,18 @@ AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
     const uint64_t ffnLinearOut = 32;
 
     AclTransformer::NormParam inputNormParam;
-    inputNormParam.layerNormEps = paramJson_["layerNormEps"].asDouble();
+    inputNormParam.layerNormEps = paramJson_["layerNormEps"].get<double>();
     AclTransformer::LinearParam mixdQkvLinearParam;
     AclTransformer::PositionEmbeddingParam positionEmbeddingParam;
-    positionEmbeddingParam.headNum = paramJson_["headNum"].asInt();
+    positionEmbeddingParam.headNum = paramJson_["headNum"].get<int>();
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
-    selfAttentionKvCacheParam.transKey = paramJson_["transKey"].asBool();
-    selfAttentionKvCacheParam.dk = paramJson_["dk"].asInt();
+    selfAttentionKvCacheParam.transKey = paramJson_["transKey"].get<bool>();
+    selfAttentionKvCacheParam.dk = paramJson_["dk"].get<int>();
     selfAttentionKvCacheParam.headNum = positionEmbeddingParam.headNum;
-    selfAttentionKvCacheParam.layerId = paramJson_["layerId"].asInt();
+    selfAttentionKvCacheParam.layerId = paramJson_["layerId"].get<int>();
     AclTransformer::LinearParam selfOutLinearParam;
     AclTransformer::AddParam selfResidualAddParam;
-    selfResidualAddParam.scale = paramJson_["ResidualAddScale"].asFloat();
+    selfResidualAddParam.scale = paramJson_["ResidualAddScale"].get<float>();
     AclTransformer::NormParam selfNormParam;
     selfNormParam.layerNormEps = inputNormParam.layerNormEps;
     AclTransformer::FfnParam ffnParam;

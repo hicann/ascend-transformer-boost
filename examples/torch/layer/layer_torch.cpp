@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include "layer_torch.h"
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
@@ -49,12 +49,7 @@ void LayerTorch::SetParam(std::string param)
         return;
     }
 
-    Json::Reader reader;
-    Json::Value paramJson;
-    if (!reader.parse(param, paramJson)) {
-        ASD_LOG(ERROR) << " invalid json:" << param;
-        return;
-    }
+    nlohmann::json paramJson = nlohmann::json::parse(param);
     layer_->SetParam(paramJson);
 }
 
