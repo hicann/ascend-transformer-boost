@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include "bert_layer.h"
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
@@ -74,9 +74,9 @@ AsdOps::Status BertLayer::Execute(Handle &handle, VariantPack &variantPack)
     AclTransformer::LinearParam kLinearParam;
     AclTransformer::LinearParam vLinearParam;
     AclTransformer::SelfAttentionParam selfAttentionParam;
-    selfAttentionParam.transKey = paramJson_["transKey"].asBool();
-    selfAttentionParam.dk = paramJson_["dk"].asInt();
-    selfAttentionParam.headNum = paramJson_["headNum"].asInt();
+    selfAttentionParam.transKey = paramJson_["transKey"].get<bool>();
+    selfAttentionParam.dk = paramJson_["dk"].get<int>();
+    selfAttentionParam.headNum = paramJson_["headNum"].get<int>();
     AclTransformer::LinearParam selfOutLinearParam;
     AclTransformer::AddNormParam selfOutAddNormParam;
     AclTransformer::FfnParam ffnParam;
