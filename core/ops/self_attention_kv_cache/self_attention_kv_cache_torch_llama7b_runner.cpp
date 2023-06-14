@@ -90,12 +90,13 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     ASD_LOG(INFO) << "div ok";
 
     // [batch*head_num, seq_len, k_seq_len]
-    attention_mask =
-        attention_mask.view({attention_mask.sizes()[0] * attention_mask.sizes()[1], attention_mask.sizes()[2], attention_mask.sizes()[3]});
+    attention_mask = attention_mask.view(
+        {attention_mask.sizes()[0] * attention_mask.sizes()[1], attention_mask.sizes()[2], attention_mask.sizes()[3]});
     attentionScores = attentionScores + attention_mask;
     ASD_LOG(INFO) << "add attention mask ok";
 
-    //TODO: attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min, device=attn_weights.device)
+    // TODO: attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min,
+    // device=attn_weights.device)
 
     // [batch, head_num, seq_len, k_seq_len]
     // torch::Dtype attentionScoresType = attentionScores.dtype();
@@ -107,8 +108,8 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     attention_probs = attention_probs.to(torch::kHalf);
     // [batch*head_num, seq_len, head_size]
     torch::Tensor presentValueOut = presentValue;
-    presentValue =
-        presentValue.view({presentValue.sizes()[0] * presentValue.sizes()[1], presentValue.sizes()[2], presentValue.sizes()[3]});
+    presentValue = presentValue.view(
+        {presentValue.sizes()[0] * presentValue.sizes()[1], presentValue.sizes()[2], presentValue.sizes()[3]});
     ASD_LOG(INFO) << "attention_probs before bmm2" << attention_probs.sizes() << " dtype:" << attention_probs.dtype();
     ASD_LOG(INFO) << "presentValue before bmm2" << presentValue.sizes() << " dtype:" << presentValue.dtype();
     // [batch*head_num, seq_len, head_size]
@@ -116,14 +117,13 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     torch::save(contextLayer.to(at::Device(at::kCPU)), "bmm2_out.path");
     ASD_LOG(INFO) << "bmm2 ok";
     // [batch, head_num, seq_len, head_size]
-    contextLayer =
-        contextLayer.view({contextLayer.sizes()[0] / param_.headNum, param_.headNum, contextLayer.sizes()[1], contextLayer.sizes()[2]});
+    contextLayer = contextLayer.view(
+        {contextLayer.sizes()[0] / param_.headNum, param_.headNum, contextLayer.sizes()[1], contextLayer.sizes()[2]});
     // [batch, seq_len, head_num, head_size]
     contextLayer = torch::transpose(contextLayer, 1, 2);
     // [batch, seq_len, head_num*head_size]
-    contextLayer =
-        contextLayer
-            .view({contextLayer.sizes()[0], contextLayer.sizes()[1], contextLayer.sizes()[2] * contextLayer.sizes()[3]});
+    contextLayer = contextLayer.view(
+        {contextLayer.sizes()[0], contextLayer.sizes()[1], contextLayer.sizes()[2] * contextLayer.sizes()[3]});
 
     // [seq_len, batch, head_num*head_size]
     contextLayer = torch::transpose(contextLayer, 0, 1).contiguous();
@@ -131,6 +131,7 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
         ASD_LOG(ERROR) << "contextLayer.sizes:" << contextLayer.sizes() << ", variantPack.outTensors[0].desc:"
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
+    torch::save(contextLayer.to(at::Device(at::kCPU)), "tensors/contextLayer.pth");
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
 
     // [seq_len, batch, head_num, head_size]

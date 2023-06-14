@@ -16,6 +16,7 @@
 #ifndef SELF_ATTETION_KV_CACHE_TORCH_RUNNER_BUILDER_H
 #define SELF_ATTETION_KV_CACHE_TORCH_RUNNER_BUILDER_H
 #include "acltransformer/runner_builder.h"
+#include <asdops/utils/log/log.h>
 #include "acltransformer/params/self_attention_kv_cache.h"
 #include "self_attention_kv_cache_torch_chatglm6b_runner.h"
 #include "self_attention_kv_cache_torch_llama7b_runner.h"
@@ -25,11 +26,15 @@ class SelfAttentionKvCacheTorchRunnerBuilder : public RunnerBuilder {
 public:
     SelfAttentionKvCacheTorchRunnerBuilder(const SelfAttentionKvCacheParam &param) : param_(param) {}
     virtual ~SelfAttentionKvCacheTorchRunnerBuilder() = default;
-    Runner *Build() override {
+    Runner *Build() override
+    {
         if (param_.model == "chatglm6b") {
             return new SelfAttentionKvCacheTorchChatGlm6bRunner(param_);
         } else if (param_.model == "llama7b") {
             return new SelfAttentionKvCacheTorchLlama7bRunner(param_);
+        } else {
+            ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
+            return nullptr;
         }
     };
 

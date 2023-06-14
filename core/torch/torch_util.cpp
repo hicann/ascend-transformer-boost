@@ -73,6 +73,7 @@ at::Tensor TorchUtil::AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor 
 
 void TorchUtil::CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &atTensor, AsdOps::Tensor &asdTensor)
 {
+    ASD_LOG(INFO) << "---------------------------CopyAtTensor2AsdOpsTensor, asdTensor.dataSize:" << asdTensor.dataSize;
     static std::map<at::ScalarType, AsdOps::TensorDType> dtypeMap = {
         {at::ScalarType::Bool, AsdOps::TENSOR_DTYPE_BOOL},   {at::ScalarType::Byte, AsdOps::TENSOR_DTYPE_UINT8},
         {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_UINT8},  {at::ScalarType::Half, AsdOps::TENSOR_DTYPE_FLOAT16},
