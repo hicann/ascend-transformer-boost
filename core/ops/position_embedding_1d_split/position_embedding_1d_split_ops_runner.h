@@ -13,27 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_CONFIG_H
-#define ACLTRANSFORMER_CONFIG_H
-#include <string>
+#ifndef POSITIONEMBEDDING_1D_SPLIT_OPS_RUNNER_H
+#define POSITIONEMBEDDING_1D_SPLIT_OPS_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/position_embedding_1d_split.h"
 
 namespace AclTransformer {
-class Config {
+class PositionEmbedding1dSplitOpsRunner : public OpsRunner {
 public:
-    static std::string GetSaveTensorDir();
-    static bool IsSaveTensor();
-    static bool IsAddOpsRunnerEnable();
-    static bool IsAddNormOpsRunnerEnable();
-    static bool IsFfnOpsRunnerEnable();
-    static bool IsLinearOpsRunnerEnable();
-    static bool IsNormOpsRunnerEnable();
-    static bool IsPositionEmbeddingOpsRunnerEnable();
-    static bool IsSelfAttentionKVCacheOpsRunnerEnable();
-    static bool IsSelfAttentionOpsRunnerEnable();
-    static bool IsPositionEmbedding1dSplitOpsRunnerEnable();
+    PositionEmbedding1dSplitOpsRunner(const PositionEmbedding1dSplitParam &param);
+    virtual ~PositionEmbedding1dSplitOpsRunner();
+
+protected:
+    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
 
 private:
-    static bool IsEnable(const char *env);
+    PositionEmbedding1dSplitParam param_;
 };
+
 } // namespace AclTransformer
 #endif

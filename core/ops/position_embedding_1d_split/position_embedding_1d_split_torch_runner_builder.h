@@ -13,27 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_CONFIG_H
-#define ACLTRANSFORMER_CONFIG_H
-#include <string>
+#ifndef POSITION_EMBEDDING_1D_SPLIT_TORCH_RUNNER_BUILDER_H
+#define POSITION_EMBEDDING_1D_SPLIT_TORCH_RUNNER_BUILDER_H
+#include "acltransformer/runner_builder.h"
+#include "acltransformer/params/position_embedding_1d_split.h"
+#include "position_embedding_1d_split_torch_runner.h"
 
 namespace AclTransformer {
-class Config {
+class PositionEmbedding1dSplitTorchRunnerBuilder : public RunnerBuilder {
 public:
-    static std::string GetSaveTensorDir();
-    static bool IsSaveTensor();
-    static bool IsAddOpsRunnerEnable();
-    static bool IsAddNormOpsRunnerEnable();
-    static bool IsFfnOpsRunnerEnable();
-    static bool IsLinearOpsRunnerEnable();
-    static bool IsNormOpsRunnerEnable();
-    static bool IsPositionEmbeddingOpsRunnerEnable();
-    static bool IsSelfAttentionKVCacheOpsRunnerEnable();
-    static bool IsSelfAttentionOpsRunnerEnable();
-    static bool IsPositionEmbedding1dSplitOpsRunnerEnable();
+    PositionEmbedding1dSplitTorchRunnerBuilder(const PositionEmbedding1dSplitParam &param) : param_(param) {}
+    virtual ~PositionEmbedding1dSplitTorchRunnerBuilder() = default;
+    Runner *Build() override { return new PositionEmbedding1dSplitTorchRunner(param_); }
 
 private:
-    static bool IsEnable(const char *env);
+    PositionEmbedding1dSplitParam param_;
 };
+
 } // namespace AclTransformer
 #endif
