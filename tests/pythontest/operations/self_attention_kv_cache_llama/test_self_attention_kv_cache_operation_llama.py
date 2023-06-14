@@ -23,25 +23,26 @@ import operation_test  # NOQA: E402
 
 
 OP_NAME = "SelfAttentionKvCacheOperation"
-PARAM = '{"transKey": true, "headNum": 32, "layerId": 0, "dk": 128}'
+PARAM = '{"transKey": true, "headNum": 32, "layerId": 0, "dk": 128, "model": "llama7b"}'
+
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention_kv_cache", "intensor0.pth")
+                         "tensors/operations/self_attention_kv_cache_llama", "intensor0.pth")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention_kv_cache", "intensor1.pth")
+                         "tensors/operations/self_attention_kv_cache_llama", "intensor1.pth")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention_kv_cache", "intensor2.pth")
+                         "tensors/operations/self_attention_kv_cache_llama", "intensor2.pth")
 INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention_kv_cache", "intensor3.pth")
+                         "tensors/operations/self_attention_kv_cache_llama", "intensor3.pth")
 INTENSOR4 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention_kv_cache", "intensor4.pth")
+                         "tensors/operations/self_attention_kv_cache_llama", "intensor4.pth")
 INTENSOR5 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention_kv_cache", "intensor5.pth")
+                         "tensors/operations/self_attention_kv_cache_llama", "intensor5.pth")
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                          "tensors/operations/self_attention_kv_cache", "outtensor0.pth")
+                          "tensors/operations/self_attention_kv_cache_llama", "outtensor0.pth")
 OUTTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                          "tensors/operations/self_attention_kv_cache", "outtensor1.pth")
+                          "tensors/operations/self_attention_kv_cache_llama", "outtensor1.pth")
 OUTTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                          "tensors/operations/self_attention_kv_cache", "outtensor2.pth")
+                          "tensors/operations/self_attention_kv_cache_llama", "outtensor2.pth")
 
 
 class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):

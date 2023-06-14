@@ -29,49 +29,49 @@ LAYER_NAME = "ChatGlm6BLayer"
 PARAM = {"transKey": True, "dk": 128, "headNum": 32, "layerId": 0,
          "layerNormEps": 1e-5, "ResidualAddScale": math.sqrt(2 * 28)}
 INTENSOR0 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor0.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor0.pth")
 INTENSOR1 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor1.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor1.pth")
 INTENSOR2 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor2.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor2.pth")
 INTENSOR3 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor3.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor3.pth")
 INTENSOR4 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor4.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor4.pth")
 INTENSOR5 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor5.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor5.pth")
 INTENSOR6 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor6.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor6.pth")
 INTENSOR7 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor7.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor7.pth")
 INTENSOR8 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor8.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor8.pth")
 INTENSOR9 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor9.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor9.pth")
 INTENSOR10 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor10.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor10.pth")
 INTENSOR11 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor11.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor11.pth")
 INTENSOR12 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor12.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor12.pth")
 INTENSOR13 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor13.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor13.pth")
 INTENSOR14 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor14.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor14.pth")
 INTENSOR15 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor15.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor15.pth")
 INTENSOR16 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor16.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor16.pth")
 INTENSOR17 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor17.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor17.pth")
 INTENSOR18 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "intensor18.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "intensor18.pth")
 OUTTENSOR0 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "outtensor0.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "outtensor0.pth")
 OUTTENSOR1 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "outtensor1.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "outtensor1.pth")
 OUTTENSOR2 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "layers/chatglm6b", "outtensor2.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/layers/chatglm6b", "outtensor2.pth")
 
 
 class TestChatGlm6BLayer(layer_test.LayerTest):

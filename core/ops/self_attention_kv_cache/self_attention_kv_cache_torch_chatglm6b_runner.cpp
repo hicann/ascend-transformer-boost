@@ -18,13 +18,15 @@
 #ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
 #include "acltransformer/torch/torch_util.h"
+#include <torch_npu/csrc/core/npu/NPUStream.h>
 #endif
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheTorchChatGlm6bRunner::SelfAttentionKvCacheTorchChatGlm6bRunner(const SelfAttentionKvCacheParam &param)
+SelfAttentionKvCacheTorchChatGlm6bRunner::SelfAttentionKvCacheTorchChatGlm6bRunner(
+    const SelfAttentionKvCacheParam &param)
     : Runner("SelfAttentionKvCacheTorchChatGlm6bRunner"), param_(param)
 {
     ASD_LOG(INFO) << "SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation called";
@@ -146,7 +148,18 @@ AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &han
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
 
+    torch::save(contextLayer.to(at::Device(at::kCPU)), "tensors/contextLayer.pth");
+    AsdOps::Tensor tmpTensor = variantPack.outTensors[0];
+    ASD_LOG(INFO) << GetName() << " AsdRtStreamSynchronize stream:" << handle.stream;
+    int ret = AsdRtStreamSynchronize(handle.stream);
+    if (ret != 0) {
+        ASD_LOG(ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
+        return AsdOps::Status::FailStatus(1, "AsdRtStreamSynchronize fail");
+    }
+    tmpTensor.data = TorchUtil::GetTensorDataPtr(contextLayer);
+    TensorUtil::SaveTensor(tmpTensor, "tensors/contextLayer0.bin");
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
+    TensorUtil::SaveTensor(variantPack.outTensors[0], "tensors/contextLayer1.bin");
 
     return AsdOps::Status::OkStatus();
 #else

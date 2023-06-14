@@ -15,6 +15,7 @@
  */
 #include "operation_torch.h"
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
+#include <torch_npu/csrc/core/npu/register/OptionsManager.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
@@ -24,7 +25,8 @@
 
 OperationTorch::OperationTorch(std::string opName) : opName_(opName)
 {
-    ASD_LOG(INFO) << "OperationTorch::OperationTorch";
+    ASD_LOG(INFO) << "OperationTorch::OperationTorch, TASK_QUEUE_ENABLE:"
+                  << c10_npu::option::OptionsManager::CheckQueueEnable();
 }
 
 OperationTorch::~OperationTorch() {}

@@ -25,13 +25,13 @@ import operation_test  # NOQA: E402
 OP_NAME = "FfnOperation"
 PARAM = {}
 INTENSOR0 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "operations/ffn", "intensor0.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "intensor0.pth")
 INTENSOR1 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "operations/ffn", "intensor1.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "intensor1.pth")
 INTENSOR2 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "operations/ffn", "intensor2.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "intensor2.pth")
 OUTTENSOR0 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "operations/ffn", "outtensor0.pth")
+    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "outtensor0.pth")
 
 
 class TetFfn(operation_test.OperationTest):

@@ -18,6 +18,8 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/runner.h"
 #include "acltransformer/runner_builder.h"
+#include "acltransformer/config.h"
+#include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
 Operation::Operation(const std::string &name) : name_(name) {}
@@ -87,6 +89,12 @@ AsdOps::Status Operation::Execute(Handle &handle, VariantPack &variantPack)
     if (ret != 0) {
         ASD_LOG(ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
         return AsdOps::Status::FailStatus(1, "AsdRtStreamSynchronize fail");
+    }
+
+    if (Config::IsSaveTensor()) {
+        std::string dirPath = Config::GetSaveTensorDir() + "/" + runner_->GetName();
+        TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
+        ASD_LOG(INFO) << GetName() << " SaveVariantPack " << dirPath;
     }
 
     ASD_LOG(INFO) << GetName() << " Execute success";

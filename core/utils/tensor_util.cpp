@@ -96,14 +96,14 @@ void TensorUtil::SaveTensor(const AsdOps::Tensor &tensor, const std::string &fil
         std::vector<char> hostData(tensor.dataSize);
         int st =
             AsdRtMemCopy(hostData.data(), tensor.dataSize, tensor.data, tensor.dataSize, ASDRT_MEMCOPY_DEVICE_TO_HOST);
-        ASD_LOG_IF(st != 0, ERROR) << "AsdRtMemCopy device to host fail for save tensor, ret:" << ret;
+        ASD_LOG_IF(st != 0, ERROR) << "AsdRtMemCopy device to host fail for save tensor, ret:" << st;
         binFile.AddObject("data", hostData.data(), tensor.dataSize);
     } else {
         ASD_LOG(INFO) << "save asdtensor " << filePath << " data is empty";
     }
     AsdOps::Status st = binFile.Write(filePath);
     if (st.Ok()) {
-        ASD_LOG(INFO) << "save asdtensor " << filePath;
+        ASD_LOG(INFO) << "save asdtensor " << filePath << " success";
     } else {
         ASD_LOG(ERROR) << "save asdtensor " << filePath << " fail, error:" << st.Message();
     }

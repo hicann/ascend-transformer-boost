@@ -15,6 +15,7 @@
  */
 #include "layer_torch.h"
 #include <nlohmann/json.hpp>
+#include <torch_npu/csrc/core/npu/register/OptionsManager.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
@@ -26,7 +27,8 @@
 
 LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
 {
-    ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName;
+    ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName
+                  << ", TASK_QUEUE_ENABLE:" << c10_npu::option::OptionsManager::CheckQueueEnable();
     if (layerName == "BertLayer") {
         layer_ = new AclTransformer::BertLayer();
     } else if (layerName == "ChatGlm6BLayer") {
