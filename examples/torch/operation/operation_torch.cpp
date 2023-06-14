@@ -33,6 +33,7 @@ void OperationTorch::SetParam(std::string param) { param_ = param; }
 
 std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> atInTensors)
 {
+    ASD_LOG(INFO) << "OperationTorch::Execute";
     for (auto &inTensor : atInTensors) {
         inTensor = inTensor.contiguous();
     }
@@ -54,6 +55,7 @@ std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> at
 void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> &atInTensors,
                                       std::vector<torch::Tensor> &atOutTensors)
 {
+    ASD_LOG(INFO) << "OperationTorch::ExecuteOperation";
     static int64_t execCount = 0;
     AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
     AclTransformer::VariantPack variantPack;

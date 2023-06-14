@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_kv_cache_torch_runner.h"
+#include "self_attention_kv_cache_torch_chatglm6b_runner.h"
 #include <cmath>
 #ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
@@ -24,15 +24,15 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheTorchRunner::SelfAttentionKvCacheTorchRunner(const SelfAttentionKvCacheParam &param)
-    : Runner("SelfAttentionKvCacheTorchRunner"), param_(param)
+SelfAttentionKvCacheTorchChatGlm6bRunner::SelfAttentionKvCacheTorchChatGlm6bRunner(const SelfAttentionKvCacheParam &param)
+    : Runner("SelfAttentionKvCacheTorchChatGlm6bRunner"), param_(param)
 {
     ASD_LOG(INFO) << "SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation called";
 }
 
-SelfAttentionKvCacheTorchRunner::~SelfAttentionKvCacheTorchRunner() {}
+SelfAttentionKvCacheTorchChatGlm6bRunner::~SelfAttentionKvCacheTorchChatGlm6bRunner() {}
 
-AsdOps::Status SelfAttentionKvCacheTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
     // in : Q K V attention_mast pastK pastV
