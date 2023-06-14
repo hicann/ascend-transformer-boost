@@ -67,7 +67,7 @@ at::Tensor TorchUtil::AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor 
     at::Tensor newTensor = CreateAtTensorFromAsdOpsTensorDesc(asdTensor.desc);
     int ret = AsdRtMemCopy(newTensor.data_ptr(), asdTensor.dataSize, asdTensor.data, asdTensor.dataSize,
                            ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdOpsTensor2AtTensor AsdRtMemCopy fail";
+    ASD_LOG_IF(ret != 0, ERROR) << "AsdOpsTensor2AtTensor AsdRtMemCopy fail, ret:" << ret;
     return newTensor;
 }
 
