@@ -83,6 +83,14 @@ AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &pa
     return new AclTransformer::SelfAttentionOperation(param);
 }
 
+AclTransformer::Operation *PositionEmbedding1dSplitOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::PositionEmbeddingParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
+    return new AclTransformer::PositionEmbeddingOperation(param);
+}
+
 AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingParam param;
@@ -120,6 +128,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"NormOperation", &NormOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
+    {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
     {"SelfAttentionOperation", &SelfAttentionOperationCreate}};

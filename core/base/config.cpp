@@ -45,6 +45,11 @@ bool Config::IsPositionEmbeddingOpsRunnerEnable()
     return IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_OPSRUNNER_ENABLE");
 }
 
+bool Config::IsPositionEmbedding1dSplitOpsRunnerEnable()
+{
+    return IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_1D_SPLIT_OPSRUNNER_ENABLE");
+}
+
 bool Config::IsSelfAttentionKVCacheOpsRunnerEnable()
 {
     return IsEnable("ACLTRANSFORMER_SELFATTENTIONKVCACHE_OPSRUNNER_ENABLE");

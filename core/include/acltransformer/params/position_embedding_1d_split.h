@@ -13,27 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_CONFIG_H
-#define ACLTRANSFORMER_CONFIG_H
-#include <string>
-
+#ifndef ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_1D_SPLIT_H
+#define ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_1D_SPLIT_H
 namespace AclTransformer {
-class Config {
-public:
-    static std::string GetSaveTensorDir();
-    static bool IsSaveTensor();
-    static bool IsAddOpsRunnerEnable();
-    static bool IsAddNormOpsRunnerEnable();
-    static bool IsFfnOpsRunnerEnable();
-    static bool IsLinearOpsRunnerEnable();
-    static bool IsNormOpsRunnerEnable();
-    static bool IsPositionEmbeddingOpsRunnerEnable();
-    static bool IsSelfAttentionKVCacheOpsRunnerEnable();
-    static bool IsSelfAttentionOpsRunnerEnable();
-    static bool IsPositionEmbedding1dSplitOpsRunnerEnable();
-
-private:
-    static bool IsEnable(const char *env);
+struct PositionEmbedding1dSplitParam {
+    int64_t headNum = 0;
 };
 } // namespace AclTransformer
 #endif
