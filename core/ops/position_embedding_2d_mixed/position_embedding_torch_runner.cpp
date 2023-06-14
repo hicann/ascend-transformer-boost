@@ -35,8 +35,8 @@ PositionEmbeddingTorchRunner::~PositionEmbeddingTorchRunner() {}
 AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
-    // in : mixed,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
-    // out : mixed ,[seq_len, batch, head_num, head_size]
+    // in : [seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
+    // out : [seq_len, batch, head_num, head_size]
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum;
     torch::Tensor mixed = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
     torch::Tensor positionIds = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);

@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "position_embedding_ops_runner.h"
-#include <numeric>
-#include <asdops/utils/log/log.h>
-#include <asdops/params/params.h>
-#include "acltransformer/utils/tensor_util.h"
+#ifndef POSITIONEMBEDDING_1D_SPLIT_OPS_RUNNER_BUILDER_H
+#define POSITIONEMBEDDING_1D_SPLIT_OPS_RUNNER_BUILDER_H
+#include "acltransformer/runner_builder.h"
+#include "acltransformer/params/position_embedding_1d_split.h"
+#include "position_embedding_1d_split_ops_runner.h"
 
 namespace AclTransformer {
-PositionEmbeddingOpsRunner::PositionEmbeddingOpsRunner(const PositionEmbeddingParam &param)
-    : OpsRunner("PositionEmbeddingOpsRunner"), param_(param)
-{
-    ASD_LOG(INFO) << "PositionEmbeddingOperation::PositionEmbeddingOperation called";
-}
+class PositionEmbedding1dSplitOpsRunnerBuilder : public RunnerBuilder {
+public:
+    PositionEmbedding1dSplitOpsRunnerBuilder(const PositionEmbedding1dSplitParam &param) : param_(param) {}
+    virtual ~PositionEmbedding1dSplitOpsRunnerBuilder() = default;
+    Runner *Build() override { return new PositionEmbedding1dSplitOpsRunner(param_); }
 
-PositionEmbeddingOpsRunner::~PositionEmbeddingOpsRunner() {}
+private:
+    PositionEmbedding1dSplitParam param_;
+};
 
-AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    return AsdOps::Status::OkStatus();
-}
 } // namespace AclTransformer
+#endif
