@@ -25,19 +25,19 @@ import operation_test  # NOQA: E402
 OP_NAME = "PositionEmbeddingOperation"
 PARAM = {"headNum": 32}
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "operations/position_embedding", "intensor0.pth")
+                         "tensors/operations/position_embedding", "intensor0.pth")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "operations/position_embedding", "intensor1.pth")
+                         "tensors/operations/position_embedding", "intensor1.pth")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "operations/position_embedding", "intensor2.pth")
+                         "tensors/operations/position_embedding", "intensor2.pth")
 INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "operations/position_embedding", "intensor3.pth")
+                         "tensors/operations/position_embedding", "intensor3.pth")
 OUTTENSOR0 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "operations/position_embedding", "outtensor0.pth")
+    "ACLTRANSFORMER_TESTDATA"), "tensors/operations/position_embedding", "outtensor0.pth")
 OUTTENSOR1 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "operations/position_embedding", "outtensor1.pth")
+    "ACLTRANSFORMER_TESTDATA"), "tensors/operations/position_embedding", "outtensor1.pth")
 OUTTENSOR2 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "operations/position_embedding", "outtensor2.pth")
+    "ACLTRANSFORMER_TESTDATA"), "tensors/operations/position_embedding", "outtensor2.pth")
 
 
 class TestPositionEmbeddingOperation(operation_test.OperationTest):

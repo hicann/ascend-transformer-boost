@@ -24,7 +24,8 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheTorchChatGlm6bRunner::SelfAttentionKvCacheTorchChatGlm6bRunner(const SelfAttentionKvCacheParam &param)
+SelfAttentionKvCacheTorchChatGlm6bRunner::SelfAttentionKvCacheTorchChatGlm6bRunner(
+    const SelfAttentionKvCacheParam &param)
     : Runner("SelfAttentionKvCacheTorchChatGlm6bRunner"), param_(param)
 {
     ASD_LOG(INFO) << "SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation called";
@@ -146,7 +147,9 @@ AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &han
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
 
+    torch::save(contextLayer.to(at::Device(at::kCPU)), "tensors/contextLayer.pth");
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
+    TensorUtil::SaveTensor(variantPack.outTensors[0], "tensors/contextLayer.bin");
 
     return AsdOps::Status::OkStatus();
 #else
