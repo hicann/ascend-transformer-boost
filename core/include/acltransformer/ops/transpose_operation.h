@@ -13,14 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
-#include "acltransformer/params/self_attention_kv_cache.h"
-#include "acltransformer/params/position_embedding.h"
+#ifndef TRANSPOSE_OPERATION_H
+#define TRANSPOSE_OPERATION_H
+#include "acltransformer/operation.h"
 #include "acltransformer/params/transpose.h"
+
+namespace AclTransformer {
+class TransposeOperation : public Operation {
+public:
+    TransposeOperation(const TransposeParam &param);
+    virtual ~TransposeOperation();
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+
+protected:
+    RunnerBuilder *FindBestRunnerBuilder(const VariantPack &variantPack) override;
+
+private:
+    TransposeParam param_;
+    Runner *runner_ = nullptr;
+};
+} // namespace AclTransformer
 #endif

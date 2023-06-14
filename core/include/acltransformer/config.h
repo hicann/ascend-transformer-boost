@@ -31,6 +31,7 @@ public:
     static bool IsSelfAttentionKVCacheOpsRunnerEnable();
     static bool IsSelfAttentionOpsRunnerEnable();
     static bool IsPositionEmbedding1dSplitOpsRunnerEnable();
+    static bool IsTransposeOpsRunnerEnable();
 
 private:
     static bool IsEnable(const char *env);
