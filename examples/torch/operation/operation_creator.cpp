@@ -25,6 +25,8 @@
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
+#include "acltransformer/ops/position_embedding_1d_split_operation.h"
+#include "acltransformer/ops/transpose_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -122,10 +124,20 @@ AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nlohmann::j
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }
 
+AclTransformer::Operation *TransposeOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::TransposeParam param;
+    param.dimA = paramJson["dimA"].get<int>();
+    param.dimB = paramJson["dimB"].get<int>();
+    ASD_LOG(INFO) << "transpose(" << param.dimA << "," << param.dimB << ")";
+    return new AclTransformer::TransposeOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"AddNormOperation", &AddNormOperationCreate},
     {"NormOperation", &NormOperationCreate},
+    {"TransposeOperation", &TransposeOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
