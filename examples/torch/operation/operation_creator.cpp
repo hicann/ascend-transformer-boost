@@ -94,10 +94,21 @@ AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json
 AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionKvCacheParam param;
-    param.transKey = paramJson["transKey"].get<bool>();
-    param.headNum = paramJson["headNum"].get<int>();
-    param.layerId = paramJson["layerId"].get<int>();
-    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.contains("transKey")) {
+        param.transKey = paramJson["transKey"].get<bool>();
+    }
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("layerId")) {
+        param.layerId = paramJson["layerId"].get<int>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+    }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
                   << ", layerId:" << param.layerId << ", dk:" << param.dk;
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
