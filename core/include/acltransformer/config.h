@@ -24,9 +24,11 @@ public:
     static bool IsSaveTensor();
     static bool IsAddOpsRunnerEnable();
     static bool IsAddNormOpsRunnerEnable();
+    static bool IsRmsNormOpsRunnerEnable();
     static bool IsFfnOpsRunnerEnable();
     static bool IsLinearOpsRunnerEnable();
     static bool IsNormOpsRunnerEnable();
+    static bool IsMlpOpsRunnerEnable();
     static bool IsPositionEmbeddingOpsRunnerEnable();
     static bool IsSelfAttentionKVCacheOpsRunnerEnable();
     static bool IsSelfAttentionOpsRunnerEnable();

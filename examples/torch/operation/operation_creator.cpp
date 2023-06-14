@@ -19,9 +19,11 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
+#include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
+#include "acltransformer/ops/mlp_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
@@ -48,6 +50,13 @@ AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJso
     return new AclTransformer::AddNormOperation(param);
 }
 
+AclTransformer::Operation *RmsNormOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::RmsNormParam param;
+    param.rmsNormEps = paramJson["rmsNormEps"].get<double>();
+    return new AclTransformer::RmsNormOperation(param);
+}
+
 AclTransformer::Operation *NormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::NormParam param;
@@ -72,6 +81,12 @@ AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &paramJson)
     param.transposeB = paramJson["transposeB"].get<bool>();
     ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
     return new AclTransformer::FfnOperation(param);
+}
+
+AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::MlpParam param;
+    return new AclTransformer::MlpOperation(param);
 }
 
 AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &paramJson)
@@ -135,11 +150,13 @@ AclTransformer::Operation *TransposeOperationCreate(const nlohmann::json &paramJ
 
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
-    {"AddNormOperation", &AddNormOperationCreate},
     {"NormOperation", &NormOperationCreate},
+    {"AddNormOperation", &AddNormOperationCreate},
+    {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
+    {"MlpOperation", &MlpOperationCreate},
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
