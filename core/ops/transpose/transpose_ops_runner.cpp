@@ -1,3 +1,5 @@
+
+
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
@@ -13,14 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
-#include "acltransformer/params/self_attention_kv_cache.h"
-#include "acltransformer/params/position_embedding.h"
-#include "acltransformer/params/transpose.h"
-#endif
+#include "transpose_ops_runner.h"
+#include <asdops/utils/log/log.h>
+#include <asdops/params/params.h>
+
+namespace AclTransformer {
+TransposeOpsRunner::TransposeOpsRunner(const TransposeParam &param) : OpsRunner("TransposeOpsRunner"), param_(param)
+{
+    ASD_LOG(INFO) << "TransposeOperation::TransposeOperation called";
+}
+
+TransposeOpsRunner::~TransposeOpsRunner() {}
+
+AsdOps::Status TransposeOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
+{
+    return AsdOps::Status::OkStatus();
+}
+} // namespace AclTransformer

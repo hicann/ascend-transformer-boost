@@ -13,14 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
-#include "acltransformer/params/self_attention_kv_cache.h"
-#include "acltransformer/params/position_embedding.h"
+#ifndef TRANSPOSE_OPS_RUNNER_BUILDER_H
+#define TRANSPOSE_OPS_RUNNER_BUILDER_H
+#include "acltransformer/runner_builder.h"
 #include "acltransformer/params/transpose.h"
+#include "transpose_ops_runner.h"
+
+namespace AclTransformer {
+class TransposeOpsRunnerBuilder : public RunnerBuilder {
+public:
+    TransposeOpsRunnerBuilder(const TransposeParam &param) : param_(param) {}
+    virtual ~TransposeOpsRunnerBuilder() = default;
+    Runner *Build() override { return new TransposeOpsRunner(param_); }
+
+private:
+    TransposeParam param_;
+};
+
+} // namespace AclTransformer
 #endif

@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_PARAMS_H
-#define ACLTRANSFOERM_PARAMS_PARAMS_H
-#include "acltransformer/params/add.h"
-#include "acltransformer/params/add_norm.h"
-#include "acltransformer/params/ffn.h"
-#include "acltransformer/params/linear.h"
-#include "acltransformer/params/self_attention.h"
-#include "acltransformer/params/self_attention_kv_cache.h"
-#include "acltransformer/params/position_embedding.h"
-#include "acltransformer/params/transpose.h"
+#ifndef ACLTRANSFOERM_PARAMS_TRANSPOSE_H
+#define ACLTRANSFOERM_PARAMS_TRANSPOSE_H
+namespace AclTransformer {
+struct TransposeParam {
+    int64_t dimA = 0;
+    int64_t dimB = 0;
+};
+} // namespace AclTransformer
 #endif
