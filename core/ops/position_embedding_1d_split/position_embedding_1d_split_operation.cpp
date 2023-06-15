@@ -43,6 +43,11 @@ AsdOps::Status PositionEmbedding1dSplitOperation::InferShape(const AsdOps::SVect
     outTensorDescs.resize(1);
 
     outTensorDescs.at(0) = inTensors.at(0).desc;
+    outTensorDescs.at(0).dims.clear();
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
+    outTensorDescs.at(0).dims.push_back(param_.headNum);
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[2] / param_.headNum);
 
     return AsdOps::Status::OkStatus();
 }
