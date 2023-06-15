@@ -28,7 +28,7 @@ LinearOpsRunner::LinearOpsRunner(LinearParam &param) : OpsRunner("LinearOpsRunne
     const int versionLen = 32;
     char version[versionLen] = {0};
     AsdRtDeviceGetSocVersion(version, versionLen);
-    ASD_LOG(INFO) << "SocVersion:" << version;
+    ASD_LOG(INFO) << "SocVersion:" << std::string(version);
     is910B_ = std::string(version) == "Ascend910B4";
 }
 
