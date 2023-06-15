@@ -245,10 +245,18 @@ at::Tensor ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorD
 #endif
 
     ASD_LOG(INFO) << "ApplyTensorWithFormat stat, format:" << tensorDesc.format;
-    at::Tensor newTensor =
-        at_npu::native::OpPreparation::ApplyTensorWithFormat(
-            at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options, tensorDesc.format)
-            .contiguous();
+    at::Tensor newTensor = at_npu::native::OpPreparation::ApplyTensorWithFormat(
+        at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options, tensorDesc.format);
+    ASD_LOG(INFO) << "ApplyTensorWithFormat end, newTensor.format:" << GetTensorNpuFormat(newTensor)
+                  << ", is_contiguous:" << newTensor.is_contiguous();
+    if (GetTensorNpuFormat(newTensor) != tensorDesc.format) {
+        ASD_LOG(WARN) << "ApplyTensorWithFormat newTensor.format:" << GetTensorNpuFormat(newTensor)
+                      << " != " << tensorDesc.format;
+    }
+    if (!newTensor.is_contiguous()) {
+        newTensor = newTensor.contiguous();
+    }
+
     ASD_LOG(INFO) << "ApplyTensorWithFormat success, newTensor.options:" << newTensor.options()
                   << ", format:" << GetTensorNpuFormat(newTensor) << ", is_contiguous:" << newTensor.is_contiguous();
 
