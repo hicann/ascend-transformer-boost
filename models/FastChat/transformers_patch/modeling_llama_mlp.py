@@ -183,28 +183,27 @@ class LlamaMLP(nn.Module):
         self.mlp_fn.set_param(json.dumps({}))
 
     def forward(self, x):
-        torch.save(x.cpu(), 'intensor0.pth')
-        torch.save(self.gate_proj.weight.cpu(), 'intensor1.pth')
-        torch.save(self.down_proj.weight.cpu(), 'intensor2.pth')
-        torch.save(self.up_proj.weight.cpu(), 'intensor3.pth')
-        gate_linear_mul_x = self.gate_proj(x)
-        torch.save(gate_linear_mul_x.cpu(), 'gate_linear_mul_x.pth')
-        silu_result = self.act_fn(gate_linear_mul_x)
-        torch.save(silu_result.cpu(), 'silu_result.pth')
-        up_linear_mul_x = self.up_proj(x)
-        torch.save(up_linear_mul_x.cpu(), 'up_linear_mul_x.pth')
-        mul = silu_result * up_linear_mul_x
-        torch.save(mul.cpu(), 'mul.pth')
-        output = self.down_proj(mul)
-        # output = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
-        torch.save(output.cpu(), 'outtensor0.pth')
+        # torch.save(x.cpu(), 'intensor0.pth')
+        # torch.save(self.gate_proj.weight.cpu(), 'intensor1.pth')
+        # torch.save(self.down_proj.weight.cpu(), 'intensor2.pth')
+        # torch.save(self.up_proj.weight.cpu(), 'intensor3.pth')
+        # gate_linear_mul_x = self.gate_proj(x)
+        # torch.save(gate_linear_mul_x.cpu(), 'gate_linear_mul_x.pth')
+        # silu_result = self.act_fn(gate_linear_mul_x)
+        # torch.save(silu_result.cpu(), 'silu_result.pth')
+        # up_linear_mul_x = self.up_proj(x)
+        # torch.save(up_linear_mul_x.cpu(), 'up_linear_mul_x.pth')
+        # mul = silu_result * up_linear_mul_x
+        # torch.save(mul.cpu(), 'mul.pth')
+        # output = self.down_proj(mul)
+        # torch.save(output.cpu(), 'outtensor0.pth')
+        output = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
         output_exec = self.mlp_fn.execute([x,
                                            self.gate_proj.weight,
                                            self.down_proj.weight,
                                            self.up_proj.weight])
         assert torch.allclose(output, output_exec,
                               rtol=0.02, atol=0.02), "Not equal"
-        # exit()
         return output
 
 
