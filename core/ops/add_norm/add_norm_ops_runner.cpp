@@ -70,16 +70,9 @@ AsdOps::Status AddNormOpsRunner::SetupKernelGraph(const VariantPack &variantPack
 
 bool AddNormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim)
 {
-    AsdOps::TensorDesc inputDesc;
-    inputDesc.dtype = variantPack.inTensors.at(0).desc.dtype;
-    if (variantPack.inTensors.at(0).desc.dims.size() > variantPack.inTensors.at(1).desc.dims.size()) {
-        inputDesc.dims = variantPack.inTensors.at(0).desc.dims;
-    } else {
-        inputDesc.dims = variantPack.inTensors.at(1).desc.dims;
-    }
-
-    const AsdOps::Tensor &weightTensor = variantPack.inTensors.at(2);
-    const AsdOps::Tensor &biasTensor = variantPack.inTensors.at(3);
+    const AsdOps::TensorDesc &inputDesc = variantPack.inTensors.at(0).desc;
+    const AsdOps::Tensor &weightTensor = variantPack.inTensors.at(1);
+    const AsdOps::Tensor &biasTensor = variantPack.inTensors.at(2);
 
     ASD_LOG(INFO) << GetName() << " layer norm input desc:" << TensorUtil::AsdOpsTensorDescToString(inputDesc)
                   << ", weightTensor:" << TensorUtil::AsdOpsTensorToString(weightTensor)
