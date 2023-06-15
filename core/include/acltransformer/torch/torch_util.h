@@ -23,6 +23,7 @@ namespace AclTransformer {
 class TorchUtil {
 public:
     static int64_t GetTensorNpuFormat(const at::Tensor &tensor);
+    static at::Tensor NpuFormatCast(const at::Tensor &tensor);
     static void *GetTensorDataPtr(const at::Tensor &tensor);
     static at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc);
     static at::Tensor AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor &asdTensor);

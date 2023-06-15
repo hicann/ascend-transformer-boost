@@ -45,6 +45,11 @@ int64_t ExampleUtil::GetTensorNpuFormat(const at::Tensor &tensor)
 #endif
 }
 
+at::Tensor ExampleUtil::NpuFormatCast(const at::Tensor &tensor)
+{
+    return at_npu::native::NPUNativeFunctions::npu_format_cast(tensor, GetTensorNpuFormat(tensor));
+}
+
 void ExampleUtil::ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
                                 std::vector<at::Tensor> atOutTensors)
 {
