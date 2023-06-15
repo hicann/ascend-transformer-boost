@@ -24,18 +24,17 @@
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
-#include "acltransformer/ops/position_embedding_operation.h"
+#include "acltransformer/ops/position_embedding_1d_split_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
-#include "acltransformer/ops/ffn_operation.h"
-#include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
+#include "acltransformer/ops/transpose_operation.h"
 
 namespace AclTransformer {
-ChatGlm6BLayer::ChatGlm6BLayer() : Layer("ChatGlm6BLayer") {}
+Llama7BLayer::Llama7BLayer() : Layer("Llama7BLayer") {}
 
-ChatGlm6BLayer::~ChatGlm6BLayer() {}
+Llama7BLayer::~Llama7BLayer() {}
 
-AsdOps::Status ChatGlm6BLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+AsdOps::Status Llama7BLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                           AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (inTensors.size() != 20) {
@@ -53,7 +52,7 @@ AsdOps::Status ChatGlm6BLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> 
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
+AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
 { // in
     const uint64_t hiddenStates = 0;
     const uint64_t normWeight = 1;
@@ -94,23 +93,23 @@ AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
     const uint64_t mlpOut = 34;
 
     AclTransformer::RmsNormParam inputNormParam;
-    inputNormParam.layerNormEps = paramJson_["rmsNormEps"].get<double>();
+    inputNormParam.rmsNormEps = paramJson_["rmsNormEps"].get<double>();
     AclTransformer::LinearParam mixdQLinearParam;
     AclTransformer::LinearParam mixdKLinearParam;
     AclTransformer::LinearParam mixdVLinearParam;
-    AclTransformer::PositionEmbeddingParam qPositionEmbeddingParam;
+    AclTransformer::PositionEmbedding1dSplitParam qPositionEmbeddingParam;
     qPositionEmbeddingParam.headNum = paramJson_["headNum"].get<int>();
-    AclTransformer::PositionEmbeddingParam kPositionEmbeddingParam;
+    AclTransformer::PositionEmbedding1dSplitParam kPositionEmbeddingParam;
     kPositionEmbeddingParam.headNum = qPositionEmbeddingParam.headNum;
     AclTransformer::TransposeParam vTransposeParam = {0, 1};
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
     selfAttentionKvCacheParam.dk = paramJson_["dk"].get<int>();
-    selfAttentionKvCacheParam.headNum = positionEmbeddingParam.headNum;
+    selfAttentionKvCacheParam.headNum = kPositionEmbeddingParam.headNum;
     selfAttentionKvCacheParam.model = paramJson_["model"].get<std::string>();
     AclTransformer::LinearParam selfOutLinearParam;
     AclTransformer::AddParam selfResidualAddParam;
     AclTransformer::RmsNormParam selfNormParam;
-    selfNormParam.layerNormEps = inputNormParam.layerNormEps;
+    selfNormParam.rmsNormEps = inputNormParam.rmsNormEps;
     AclTransformer::MlpParam mlpParam;
     AclTransformer::AddParam mlpResidualAddParam;
 
@@ -118,8 +117,8 @@ AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
     AclTransformer::LinearOperation mixdQLinearOp(mixdQLinearParam);
     AclTransformer::LinearOperation mixdKLinearOp(mixdKLinearParam);
     AclTransformer::LinearOperation mixdVLinearOp(mixdVLinearParam);
-    AclTransformer::PositionEmbeddingOperation qPositionEmbeddingOp(qPositionEmbeddingParam);
-    AclTransformer::PositionEmbeddingOperation kPositionEmbeddingOp(kPositionEmbeddingParam);
+    AclTransformer::PositionEmbedding1dSplitOperation qPositionEmbeddingOp(qPositionEmbeddingParam);
+    AclTransformer::PositionEmbedding1dSplitOperation kPositionEmbeddingOp(kPositionEmbeddingParam);
     AclTransformer::TransposeOperation vTransposeOp(vTransposeParam);
     AclTransformer::SelfAttentionKvCacheOperation selfAttentionKvCacheOp(selfAttentionKvCacheParam);
     AclTransformer::LinearOperation selfOutLinearOp(selfOutLinearParam);
@@ -181,6 +180,12 @@ AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
     selfAttentionKvCacheNode.operation = &selfAttentionKvCacheOp;
     selfAttentionKvCacheNode.inTensorIds = {positionEmbedQ, positionEmbedK, transposeVout, attentionMask, pastKey, pastValue};
     selfAttentionKvCacheNode.outTensorIds = {selfOut, presentKey, presentValue};
+    selfAttentionKvCacheNode.inTensorViewFuncs.resize(selfAttentionKvCacheNode.inTensorIds.size());
+    selfAttentionKvCacheNode.inTensorViewFuncs.at(2) = 
+    [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)
+    {
+        newDims = {oldDims.at(0), oldDims.at(1), qPositionEmbeddingParam.headNum, oldDims.at(2) / qPositionEmbeddingParam.headNum};
+    };
 
     selfOutLinearNode.operation = &selfOutLinearOp;
     selfOutLinearNode.inTensorIds = {selfOut, selfOutLinearWeight, selfOutLinearBias};
