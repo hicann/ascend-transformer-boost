@@ -234,7 +234,7 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
     node.kernelRunInfo.SetOpDesc(opDesc);
     for (size_t i = 0; i < node.inTensors.size(); ++i) {
         AsdOps::Tensor *tensor = node.inTensors.at(i);
-        if (i < node.inTensors.size() && node.inTensorViewFuncs.at(i)) {
+        if (i < node.inTensorViewFuncs.size() && node.inTensorViewFuncs.at(i)) {
             AsdOps::Tensor viewTensor = *tensor;
             viewTensor.desc.dims.clear();
             node.inTensorViewFuncs.at(i)(tensor->desc.dims, viewTensor.desc.dims);
