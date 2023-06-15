@@ -31,7 +31,9 @@ AsdOps::Status TransposeTorchRunner::ExecuteImpl(Handle &handle, VariantPack &va
 {
 #ifdef USE_TORCH_RUNNER
     at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
-    at::Tensor atOutTensor = atOutTensor.transpose(param_.dimA, param_.dimB).contiguous();
+    ASD_LOG(INFO) << "in: " << atInTensorA.sizes();
+    at::Tensor atOutTensor = torch::transpose(atInTensorA, param_.dimA, param_.dimB).contiguous();
+    ASD_LOG(INFO) << "out: " << atOutTensor.sizes();
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
