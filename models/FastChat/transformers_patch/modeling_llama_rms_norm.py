@@ -94,8 +94,15 @@ class LlamaRMSNorm(nn.Module):
         super().__init__()
         self.weight = nn.Parameter(torch.ones(hidden_size))
         self.variance_epsilon = eps
+        self.rms_norm_operation = torch.classes.OperationTorch.OperationTorch("RmsNormOperation")
+        self.rms_norm_operation.set_param(json.dumps({"rmsNormEps": eps}))
 
     def forward(self, hidden_states):
+        torch.save(hidden_states.cpu(), 'intensor0.pth')
+        torch.save(self.weight.to(torch.float16).cpu(), 'intensor1.pth')
+        print(hidden_states.to(torch.float16).dtype)
+        print(self.weight.to(torch.float16).dtype)
+        output_exec = self.rms_norm_operation.execute([hidden_states, self.weight])
         variance = hidden_states.to(torch.float32).pow(
             2).mean(-1, keepdim=True)
         hidden_states = hidden_states * \
@@ -105,7 +112,12 @@ class LlamaRMSNorm(nn.Module):
         if self.weight.dtype in [torch.float16, torch.bfloat16]:
             hidden_states = hidden_states.to(self.weight.dtype)
 
-        return self.weight * hidden_states
+        output = self.weight * hidden_states
+        torch.save(hidden_states.cpu(), 'outtensor0.pth')
+        assert torch.allclose(output, output_exec[0],
+                              rtol=0.02, atol=0.02), "Not equal"
+        exit()
+        return output
 
 
 class LlamaRotaryEmbedding(torch.nn.Module):
@@ -179,32 +191,9 @@ class LlamaMLP(nn.Module):
         self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False)
         self.up_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
         self.act_fn = ACT2FN[hidden_act]
-        self.mlp_fn = torch.classes.OperationTorch.OperationTorch("MlpOperation")
-        self.mlp_fn.set_param(json.dumps({}))
 
     def forward(self, x):
-        # torch.save(x.cpu(), 'intensor0.pth')
-        # torch.save(self.gate_proj.weight.cpu(), 'intensor1.pth')
-        # torch.save(self.down_proj.weight.cpu(), 'intensor2.pth')
-        # torch.save(self.up_proj.weight.cpu(), 'intensor3.pth')
-        # gate_linear_mul_x = self.gate_proj(x)
-        # torch.save(gate_linear_mul_x.cpu(), 'gate_linear_mul_x.pth')
-        # silu_result = self.act_fn(gate_linear_mul_x)
-        # torch.save(silu_result.cpu(), 'silu_result.pth')
-        # up_linear_mul_x = self.up_proj(x)
-        # torch.save(up_linear_mul_x.cpu(), 'up_linear_mul_x.pth')
-        # mul = silu_result * up_linear_mul_x
-        # torch.save(mul.cpu(), 'mul.pth')
-        # output = self.down_proj(mul)
-        # torch.save(output.cpu(), 'outtensor0.pth')
-        output = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
-        output_exec = self.mlp_fn.execute([x,
-                                           self.gate_proj.weight,
-                                           self.down_proj.weight,
-                                           self.up_proj.weight])
-        assert torch.allclose(output, output_exec[0],
-                              rtol=0.02, atol=0.02), "Not equal"
-        return output
+        return self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
 
 
 class LlamaAttention(nn.Module):
