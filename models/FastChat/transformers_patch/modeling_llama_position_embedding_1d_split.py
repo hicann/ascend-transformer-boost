@@ -242,11 +242,11 @@ class LlamaAttention(nn.Module):
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
         cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
-        # [batch, seqlen, headNum, headDim]
+        # [batch, headNum, seqlen, headDim]
         query_states, key_states = apply_rotary_pos_emb(
             query_states, key_states, cos, sin, position_ids)
         if past_key_value is not None:
-            # [batch, headNum, seqlen, headDim]
+            # [seqlen, batch, headNum, headDim]
             acl_output = self.acl_position_embedding_1d_split_operation.execute([acl_input, position_ids, cos, sin])
             assert torch.allclose(query_states.permute(0, 2, 1, 3), acl_output[0], rtol=0.02, atol=0.02), "Not equal"
             print("equal")
