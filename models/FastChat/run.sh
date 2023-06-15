@@ -8,4 +8,4 @@ if [ ! -d "vicuna-7b" ];then
     exit
 fi
 
-python3 -m fastchat.serve.cli --model-path ./vicuna-7b --num-gpus 1
+python3 -m fastchat.serve.cli --model-path $ACLTRANSFORMER_TESTDATA/weights/llama/vicuna-7b --num-gpus 1
