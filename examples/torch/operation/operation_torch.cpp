@@ -129,10 +129,16 @@ void OperationTorch::CreateAtOutTensors(AclTransformer::Operation *operation,
                                         std::vector<torch::Tensor> &atOutTensors)
 {
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        ASD_LOG(INFO) << "infer shape inTensors[" << i
+                      << "]:" << AclTransformer::TensorUtil::AsdOpsTensorToString(inTensors.at(i));
+    }
     operation->InferShape(inTensors, outTensorDescs);
 
     atOutTensors.resize(outTensorDescs.size());
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
+        ASD_LOG(INFO) << "infer shape outTensorDescs[" << i
+                      << "]:" << AclTransformer::TensorUtil::AsdOpsTensorDescToString(outTensorDescs.at(i));
         at::Tensor newTensor = ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
         atOutTensors.at(i) = newTensor;
     }
