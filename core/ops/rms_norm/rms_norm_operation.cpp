@@ -34,7 +34,7 @@ AsdOps::Status RmsNormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor
                                             AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (inTensors.size() != 2) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 4");
+        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 2");
     }
 
     outTensorDescs.resize(1);
