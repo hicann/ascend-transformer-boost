@@ -25,17 +25,9 @@ import operation_test  # NOQA: E402
 OP_NAME = "AddOperation"
 
 
-class TestAddOperation(operation_test.OperationTest):
+class TestAddOperationScale(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        return [in_tensors[0] + in_tensors[1]]
-
-    def test_2d_float(self):
-        self.execute(OP_NAME, {"scale": 1}, [torch.randn(
-            1024, 1024).npu(), torch.randn(1024, 1024).npu()])
-
-    def test_2d_half(self):
-        self.execute(OP_NAME, {"scale": 1}, [torch.randn(
-            1024, 1024).npu().half(), torch.randn(1024, 1024).npu().half()])
+        return [in_tensors[0] * 2 + in_tensors[1]]
 
     def test_2d_float_scale(self):
         self.execute(OP_NAME, {"scale": 2}, [torch.randn(
