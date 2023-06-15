@@ -16,9 +16,12 @@
 #include "acltransformer/base/ops_runner.h"
 #include <algorithm>
 #include <sstream>
+#include <fstream>
+#include <sys/stat.h>
 #include <asdops/ops.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
+#include <asdops/utils/filesystem/filesystem.h>
 #include "acltransformer/utils/mem_allocation_solver/best_mem_allocation_solver.h"
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
@@ -82,6 +85,8 @@ OpsRunner::~OpsRunner()
 
 AsdOps::Status OpsRunner::SetupImpl(const VariantPack &variantPack)
 {
+    Reset();
+
     AsdOps::Status st = SetupKernelGraph(variantPack);
     if (!st.Ok()) {
         return st;
@@ -89,7 +94,6 @@ AsdOps::Status OpsRunner::SetupImpl(const VariantPack &variantPack)
 
     InitTensorMaxNodeMap();
     ASD_LOG(INFO) << GetName() << " Setup start, kernel graph:" << kernelGraph_.ToString();
-    Reset();
 
     if (!PlanKernelGraph(variantPack)) {
         ASD_LOG(ERROR) << GetName() << " PlanKernelGraph fail";
@@ -182,14 +186,17 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
         kernel->Run(kernelRunInfo);
 
         if (Config::IsSaveTensor()) {
+            ASD_LOG(INFO) << GetName() << " " << kernel->GetName()
+                          << " AsdRtStreamSynchronize, stream:" << handle.stream;
             int ret = AsdRtStreamSynchronize(handle.stream);
-            ASD_LOG_IF(ret != 0, ERROR) << GetName() << " " << kernel->GetName() << " AsdRtStreamSynchronize fail";
+            ASD_LOG_IF(ret != 0, ERROR) << GetName() << " " << kernel->GetName()
+                                        << " AsdRtStreamSynchronize fail, ret:" << ret;
             std::string dirPath =
                 Config::GetSaveTensorDir() + "/" + GetName() + "/" + std::to_string(i) + "_" + kernel->GetName();
             TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath);
-            ASD_LOG(INFO) << GetName() << " SaveRunInfo " << dirPath;
+            ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " SaveRunInfo " << dirPath;
         }
-        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run start";
+        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run end";
     }
     ASD_LOG(INFO) << GetName() << " execute end";
 
@@ -320,18 +327,43 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
 
 void OpsRunner::FillTilingData(const VariantPack &variantPack)
 {
-    uint64_t maxKernelWorkspaceSize = 0;
-    uint64_t offset = 0;
-    for (auto &node : kernelGraph_.nodes) {
+    kernelTilingSizes_.resize(kernelGraph_.nodes.size());
+    uint64_t totalTilingSize = 0;
+    for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
+        KernelGraphNode &node = kernelGraph_.nodes.at(i);
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         uint64_t tilingSize = kernel->GetLaunchBufferSize(kernelRunInfo);
-        kernelTilingSizes_.push_back(tilingSize);
-        if (tilingSize > 0) {
-            tilingData_.resize(tilingData_.size() + tilingSize);
-            kernel->InitHostLaunchBuffer(kernelRunInfo, static_cast<char *>(tilingData_.data()) + offset, tilingSize);
-            offset += tilingSize;
+        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " tilingSize:" << tilingSize;
+        kernelTilingSizes_.at(i) = tilingSize;
+        totalTilingSize += tilingSize;
+    }
 
+    tilingData_.resize(totalTilingSize);
+    uint64_t offset = 0;
+    for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
+        KernelGraphNode &node = kernelGraph_.nodes.at(i);
+        AsdOps::Kernel *kernel = node.kernel;
+        AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
+        uint64_t tilingSize = kernelTilingSizes_.at(i);
+        if (tilingSize > 0) {
+            kernel->InitHostLaunchBuffer(kernelRunInfo, static_cast<char *>(tilingData_.data()) + offset, tilingSize);
+            if (Config::IsSaveTensor()) {
+                std::string fileDir =
+                    Config::GetSaveTensorDir() + "/" + GetName() + "/" + std::to_string(i) + "_" + kernel->GetName();
+                WriteTilingData(static_cast<char *>(tilingData_.data()) + offset, tilingSize, fileDir);
+            }
+            offset += tilingSize;
+        }
+    }
+
+    uint64_t maxKernelWorkspaceSize = 0;
+    for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
+        KernelGraphNode &node = kernelGraph_.nodes.at(i);
+        AsdOps::Kernel *kernel = node.kernel;
+        AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
+        uint64_t tilingSize = kernelTilingSizes_.at(i);
+        if (tilingSize > 0) {
             const AsdOps::SVector<int64_t> &workspaces = kernelRunInfo.GetWorkSpace();
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " workspaces.size:" << workspaces.size();
             uint64_t kernelWorkspaceSize = 0;
@@ -348,6 +380,22 @@ void OpsRunner::FillTilingData(const VariantPack &variantPack)
         }
     }
     workspaceSize_ = maxKernelWorkspaceSize;
+}
+
+void OpsRunner::WriteTilingData(const char *tilingData, size_t len, const std::string &dirPath)
+{
+    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    std::string filePath = dirPath + "/" + "tilingdata.bin";
+
+    std::ofstream fd(filePath.c_str(), std::ios::binary);
+    if (!fd.is_open()) {
+        ASD_LOG(ERROR) << "write tiling file fail, path:" << filePath;
+        return;
+    }
+    fd.write(tilingData, len);
+    fd.close();
+    ASD_LOG(INFO) << "write tiling success";
 }
 
 void OpsRunner::InitTensorMaxNodeMap()

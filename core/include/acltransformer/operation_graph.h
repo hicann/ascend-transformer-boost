@@ -22,13 +22,14 @@
 #include "acltransformer/operation.h"
 
 namespace AclTransformer {
-using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
+using OperationGraphNodeViewFunc =
+    std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
 
 struct OperationGraphNode {
     Operation *operation = nullptr;
     AsdOps::SVector<uint64_t> inTensorIds;
     AsdOps::SVector<uint64_t> outTensorIds;
-    AsdOps::SVector<ViewFunc> inTensorViewFuncs;
+    AsdOps::SVector<OperationGraphNodeViewFunc> inTensorViewFuncs;
 };
 
 struct OperationGraph {

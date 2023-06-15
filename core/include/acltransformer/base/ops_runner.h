@@ -68,6 +68,7 @@ private:
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
     int64_t GetInTensorId(const AsdOps::Tensor *tensor);
     int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
+    void WriteTilingData(const char *tilingData, size_t len, const std::string &filePath);
 
 protected:
     KernelGraph kernelGraph_;
