@@ -102,10 +102,10 @@ AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &pa
 
 AclTransformer::Operation *PositionEmbedding1dSplitOperationCreate(const nlohmann::json &paramJson)
 {
-    AclTransformer::PositionEmbeddingParam param;
+    AclTransformer::PositionEmbedding1dSplitParam param;
     param.headNum = paramJson["headNum"].get<int>();
     ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
-    return new AclTransformer::PositionEmbeddingOperation(param);
+    return new AclTransformer::PositionEmbedding1dSplitOperation(param);
 }
 
 AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json &paramJson)
