@@ -16,6 +16,7 @@
 #include "acltransformer/torch/torch_util.h"
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
 #include <torch_npu/csrc/framework/utils/OpPreparation.h>
+#include <torch_npu/csrc/core/npu/NPUStream.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 
@@ -27,6 +28,15 @@ int64_t TorchUtil::GetTensorNpuFormat(const at::Tensor &tensor)
 #else
     return at_npu::native::CalcuOpUtil::GetTensorNpuFormat(tensor);
 #endif
+}
+
+void *TorchUtil::GetTensorDataPtr(const at::Tensor &tensor)
+{
+    ASD_LOG(INFO) << "tensor.storage().unsafeGetStorageImpl()->data():"
+                  << tensor.storage().unsafeGetStorageImpl()->data()
+                  << ", tensor.storage_offset():" << tensor.storage_offset()
+                  << ", tensor.itemsize():" << tensor.itemsize() << ", tensor.data_ptr():" << tensor.data_ptr();
+    return tensor.storage().unsafeGetStorageImpl()->data() + tensor.storage_offset() * tensor.itemsize();
 }
 
 at::Tensor TorchUtil::CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc)
@@ -73,7 +83,7 @@ at::Tensor TorchUtil::AsdOpsTensor2AtTensor(Handle handle, const AsdOps::Tensor 
 
 void TorchUtil::CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &atTensor, AsdOps::Tensor &asdTensor)
 {
-    ASD_LOG(INFO) << "---------------------------CopyAtTensor2AsdOpsTensor, asdTensor.dataSize:" << asdTensor.dataSize;
+    ASD_LOG(INFO) << "CopyAtTensor2AsdOpsTensor, asdTensor.dataSize:" << asdTensor.dataSize;
     static std::map<at::ScalarType, AsdOps::TensorDType> dtypeMap = {
         {at::ScalarType::Bool, AsdOps::TENSOR_DTYPE_BOOL},   {at::ScalarType::Byte, AsdOps::TENSOR_DTYPE_UINT8},
         {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_UINT8},  {at::ScalarType::Half, AsdOps::TENSOR_DTYPE_FLOAT16},
@@ -92,13 +102,23 @@ void TorchUtil::CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &atTens
         << "atTensor dtype:" << dtype << " != asdTensor.dtype:" << asdTensor.desc.dtype;
 
     ASD_LOG_IF(!atTensor.is_contiguous(), ERROR) << "atTensor is not is_contiguous, can't copy to asdTensor";
+    c10_npu::NPUStream npuStream = c10_npu::getCurrentNPUStream();
 
-    int ret = AsdRtStreamSynchronize(stream);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtStreamSynchronize AsdRtMemCopy fail";
+    ASD_LOG_IF(atTensor.numel() * atTensor.element_size() != asdTensor.dataSize, ERROR)
+        << " not atTensor.numel() * atTensor.element_size():" << atTensor.numel() * atTensor.element_size()
+        << ", asdTensor.dataSize:" << asdTensor.dataSize;
 
-    ret = AsdRtMemCopy(asdTensor.data, asdTensor.dataSize, atTensor.data_ptr(), asdTensor.dataSize,
-                       ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
-    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail, atTensor.data:" << atTensor.data_ptr() << ", asdTensor.data"
+    at::Tensor newTensor =
+        at_npu::native::NPUNativeFunctions::npu_format_cast(atTensor, TorchUtil::GetTensorNpuFormat(atTensor));
+
+    ASD_LOG(INFO) << "npuStream.synchronize";
+    npuStream.synchronize();
+
+    ASD_LOG_IF(GetTensorDataPtr(newTensor) != newTensor.data_ptr(), ERROR) << " newTensor.data_ptr() is not equal";
+
+    int ret = AsdRtMemCopy(asdTensor.data, asdTensor.dataSize, newTensor.data_ptr(), asdTensor.dataSize,
+                           ASDRT_MEMCOPY_DEVICE_TO_DEVICE);
+    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtMemCopy fail, newTensor.data:" << newTensor.data_ptr() << ", asdTensor.data"
                                 << asdTensor.data;
 }
 
