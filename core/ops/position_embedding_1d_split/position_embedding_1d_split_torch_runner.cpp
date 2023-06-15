@@ -61,6 +61,7 @@ AsdOps::Status PositionEmbedding1dSplitTorchRunner::ExecuteImpl(Handle &handle, 
     torch::Tensor inputEmbedded = torch::add(torch::mul(input, cos), torch::mul(inputRotate, sin));
     // [seqlen, batch, headNum, headDim]
     inputEmbedded = inputEmbedded.permute({2, 0, 1, 3});
+    ASD_LOG(INFO) << "inputEmbedded: " << inputEmbedded.sizes();
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, inputEmbedded.contiguous(), variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
