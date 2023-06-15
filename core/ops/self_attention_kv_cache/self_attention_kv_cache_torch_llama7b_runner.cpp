@@ -72,12 +72,31 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     // torch::save(presentKey.to(at::Device(at::kCPU)), "cat_presentKey.pth");
     //*presentKeyout = presentKey;
 
+    torch::Tensor presentKeyOut = presentKey;
+    // [seq_len, batch, head_num, head_size]
+    presentKeyOut = presentKeyOut.permute({2, 0, 1, 3}).contiguous();
+    if (!TorchUtil::IsTensorDimEqual(presentKeyOut.sizes(), variantPack.outTensors[1].desc.dims)) {
+        ASD_LOG(ERROR) << "presentKeyOut.sizes:" << presentKeyOut.sizes() << ", variantPack.outTensors[2].desc:"
+                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[1].desc);
+    }
+    torch::save(presentKeyOut.to(at::Device(at::kCPU)), "presentKeyOut_example.path");
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentKeyOut, variantPack.outTensors[1]);
+
+    torch::Tensor presentValueOut = presentValue;
+    // [seq_len, batch, head_num, head_size]
+    presentValueOut = presentValueOut.permute({2, 0, 1, 3}).contiguous();
+    if (!TorchUtil::IsTensorDimEqual(presentValueOut.sizes(), variantPack.outTensors[2].desc.dims)) {
+        ASD_LOG(ERROR) << "presentValueOut.sizes:" << presentValueOut.sizes() << ", variantPack.outTensors[2].desc:"
+                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
+    }
+    torch::save(presentValueOut.to(at::Device(at::kCPU)), "presentValueOut_example.path");
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentValueOut, variantPack.outTensors[2]);
+
     // [batch, head_num, head_size, kv_seq_len]
     presentKey = torch::transpose(presentKey, 2, 3);
     // [batch*head_num, seq_len, k_seq_len]
     mixedQuery =
         mixedQuery.view({mixedQuery.sizes()[0] * mixedQuery.sizes()[1], mixedQuery.sizes()[2], mixedQuery.sizes()[3]});
-    torch::Tensor presentKeyOut = presentKey;
     presentKey =
         presentKey.view({presentKey.sizes()[0] * presentKey.sizes()[1], presentKey.sizes()[2], presentKey.sizes()[3]});
     ASD_LOG(INFO) << "mixedQuery before bmm1" << mixedQuery.sizes() << " dtype:" << mixedQuery.dtype();
@@ -86,7 +105,7 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     torch::Tensor attentionScores = torch::bmm(mixedQuery, presentKey);
     ASD_LOG(INFO) << "bmm1 ok";
     attentionScores = attentionScores / sqrt(this->param_.dk);
-    torch::save(attentionScores.to(at::Device(at::kCPU)), "bmm1_div_out.path");
+    torch::save(attentionScores.to(at::Device(at::kCPU)), "bmm1_div_out_example.path");
     ASD_LOG(INFO) << "div ok";
 
     // [batch*head_num, seq_len, k_seq_len]
@@ -99,22 +118,22 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     // device=attn_weights.device)
 
     // [batch, head_num, seq_len, k_seq_len]
-    // torch::Dtype attentionScoresType = attentionScores.dtype();
+    // caffe2::TypeMeta attentionScoresType = attentionScores.dtype();
     attentionScores = attentionScores.to(torch::kFloat32);
     torch::Tensor attention_probs = torch::softmax(attentionScores, -1);
-    torch::save(attention_probs.to(at::Device(at::kCPU)), "softmax_out.path");
+    torch::save(attention_probs.to(at::Device(at::kCPU)), "softmax_out_example.path");
     ASD_LOG(INFO) << "softmax ok";
     // attention_probs = attention_probs.to(attentionScoresType);
     attention_probs = attention_probs.to(torch::kHalf);
     // [batch*head_num, seq_len, head_size]
-    torch::Tensor presentValueOut = presentValue;
-    presentValue = presentValue.view(
-        {presentValue.sizes()[0] * presentValue.sizes()[1], presentValue.sizes()[2], presentValue.sizes()[3]});
+
+    presentValue =
+        presentValue.view({presentValue.sizes()[0] * presentValue.sizes()[1], presentValue.sizes()[2], presentValue.sizes()[3]});
     ASD_LOG(INFO) << "attention_probs before bmm2" << attention_probs.sizes() << " dtype:" << attention_probs.dtype();
     ASD_LOG(INFO) << "presentValue before bmm2" << presentValue.sizes() << " dtype:" << presentValue.dtype();
     // [batch*head_num, seq_len, head_size]
     torch::Tensor contextLayer = torch::bmm(attention_probs, presentValue);
-    torch::save(contextLayer.to(at::Device(at::kCPU)), "bmm2_out.path");
+    torch::save(contextLayer.to(at::Device(at::kCPU)), "bmm2_out_example.path");
     ASD_LOG(INFO) << "bmm2 ok";
     // [batch, head_num, seq_len, head_size]
     contextLayer = contextLayer.view(
@@ -131,24 +150,8 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
         ASD_LOG(ERROR) << "contextLayer.sizes:" << contextLayer.sizes() << ", variantPack.outTensors[0].desc:"
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
-    torch::save(contextLayer.to(at::Device(at::kCPU)), "tensors/contextLayer.pth");
+    torch::save(contextLayer.to(at::Device(at::kCPU)), "context_layer_example.path");
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
-
-    // [seq_len, batch, head_num, head_size]
-    presentKeyOut = presentKeyOut.permute({2, 0, 1, 3}).contiguous();
-    if (!TorchUtil::IsTensorDimEqual(presentKeyOut.sizes(), variantPack.outTensors[1].desc.dims)) {
-        ASD_LOG(ERROR) << "presentKeyOut.sizes:" << presentKeyOut.sizes() << ", variantPack.outTensors[2].desc:"
-                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[1].desc);
-    }
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentKeyOut, variantPack.outTensors[1]);
-
-    // [seq_len, batch, head_num, head_size]
-    presentValueOut = presentValueOut.permute({2, 0, 1, 3}).contiguous();
-    if (!TorchUtil::IsTensorDimEqual(presentValueOut.sizes(), variantPack.outTensors[2].desc.dims)) {
-        ASD_LOG(ERROR) << "presentValueOut.sizes:" << presentValueOut.sizes() << ", variantPack.outTensors[2].desc:"
-                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
-    }
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentValueOut, variantPack.outTensors[2]);
 
     return AsdOps::Status::OkStatus();
 #else
