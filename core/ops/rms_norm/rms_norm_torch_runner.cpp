@@ -35,6 +35,7 @@ AsdOps::Status RmsNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &vari
         return AsdOps::Status::FailStatus(1, "RmsNormTorchRunner inTensor num error!");
     }
 #ifdef USE_TORCH_RUNNER
+    ASD_LOG(INFO) << "RmsNormTorchRunner start";
     at::Tensor atInTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
     at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
 
