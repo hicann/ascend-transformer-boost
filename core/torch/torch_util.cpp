@@ -30,6 +30,11 @@ int64_t TorchUtil::GetTensorNpuFormat(const at::Tensor &tensor)
 #endif
 }
 
+at::Tensor TorchUtil::NpuFormatCast(const at::Tensor &tensor)
+{
+    return at_npu::native::NPUNativeFunctions::npu_format_cast(tensor, TorchUtil::GetTensorNpuFormat(tensor));
+}
+
 void *TorchUtil::GetTensorDataPtr(const at::Tensor &tensor)
 {
     ASD_LOG(INFO) << "tensor.storage().unsafeGetStorageImpl()->data():"

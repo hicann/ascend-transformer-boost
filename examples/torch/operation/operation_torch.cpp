@@ -26,7 +26,7 @@
 OperationTorch::OperationTorch(std::string opName) : opName_(opName)
 {
     ASD_LOG(INFO) << "OperationTorch::OperationTorch, TASK_QUEUE_ENABLE:"
-                  << c10_npu::option::OptionsManager().CheckQueueEnable();
+                  << c10_npu::option::OptionsManager().CheckQueueEnable() << ", opName:" << opName;
 }
 
 OperationTorch::~OperationTorch() {}
@@ -66,6 +66,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
                       << ", data:" << atInTensors.at(i).data_ptr()
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
                       << ", format:" << ExampleUtil::GetTensorNpuFormat(atInTensors.at(i));
+        atInTensors.at(i) = ExampleUtil::NpuFormatCast(atInTensors.at(i));
         variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i)));
         if (AclTransformer::Config::IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +

@@ -29,6 +29,7 @@ class ExampleUtil {
 public:
     static void *GetCurrentStream();
     static int64_t GetTensorNpuFormat(const at::Tensor &tensor);
+    static at::Tensor NpuFormatCast(const at::Tensor &tensor);
     static void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
                               std::vector<at::Tensor> atOutTensors);
     static void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor *> atInTensors,
