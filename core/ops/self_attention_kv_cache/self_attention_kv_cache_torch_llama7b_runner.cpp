@@ -89,7 +89,7 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
         ASD_LOG(ERROR) << "presentValueOut.sizes:" << presentValueOut.sizes() << ", variantPack.outTensors[2].desc:"
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
     }
-    torch::save(presentValueOut.to(at::Device(at::kCPU)), "presentValueOut_example.path");
+    // torch::save(presentValueOut.to(at::Device(at::kCPU)), "presentValueOut_example.path");
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentValueOut, variantPack.outTensors[2]);
 
     // [batch, head_num, head_size, kv_seq_len]
@@ -105,7 +105,7 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     torch::Tensor attentionScores = torch::bmm(mixedQuery, presentKey);
     ASD_LOG(INFO) << "bmm1 ok";
     attentionScores = attentionScores / sqrt(this->param_.dk);
-    torch::save(attentionScores.to(at::Device(at::kCPU)), "bmm1_div_out_example.path");
+    // torch::save(attentionScores.to(at::Device(at::kCPU)), "bmm1_div_out_example.path");
     ASD_LOG(INFO) << "div ok";
 
     // [batch*head_num, seq_len, k_seq_len]
@@ -121,7 +121,7 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     // caffe2::TypeMeta attentionScoresType = attentionScores.dtype();
     attentionScores = attentionScores.to(torch::kFloat32);
     torch::Tensor attention_probs = torch::softmax(attentionScores, -1);
-    torch::save(attention_probs.to(at::Device(at::kCPU)), "softmax_out_example.path");
+    // torch::save(attention_probs.to(at::Device(at::kCPU)), "softmax_out_example.path");
     ASD_LOG(INFO) << "softmax ok";
     // attention_probs = attention_probs.to(attentionScoresType);
     attention_probs = attention_probs.to(torch::kHalf);
@@ -133,24 +133,31 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     ASD_LOG(INFO) << "presentValue before bmm2" << presentValue.sizes() << " dtype:" << presentValue.dtype();
     // [batch*head_num, seq_len, head_size]
     torch::Tensor contextLayer = torch::bmm(attention_probs, presentValue);
-    torch::save(contextLayer.to(at::Device(at::kCPU)), "bmm2_out_example.path");
-    ASD_LOG(INFO) << "bmm2 ok";
+    // torch::save(contextLayer.to(at::Device(at::kCPU)), "bmm2_out_example.path");
+    ASD_LOG(INFO) << "bmm2 is ok";
     // [batch, head_num, seq_len, head_size]
+    ASD_LOG(INFO) << "contextLayer shape:" << contextLayer.sizes();
+    ASD_LOG(INFO) << "param_.headNum:" << param_.headNum;
     contextLayer = contextLayer.view(
         {contextLayer.sizes()[0] / param_.headNum, param_.headNum, contextLayer.sizes()[1], contextLayer.sizes()[2]});
+    ASD_LOG(INFO) << "contextLayer view1 ok";
     // [batch, seq_len, head_num, head_size]
     contextLayer = torch::transpose(contextLayer, 1, 2);
+    ASD_LOG(INFO) << "contextLayer transpose12 ok";
     // [batch, seq_len, head_num*head_size]
     contextLayer = contextLayer.view(
         {contextLayer.sizes()[0], contextLayer.sizes()[1], contextLayer.sizes()[2] * contextLayer.sizes()[3]});
+    ASD_LOG(INFO) << "contextLayer view2 ok";
 
     // [seq_len, batch, head_num*head_size]
     contextLayer = torch::transpose(contextLayer, 0, 1).contiguous();
+    ASD_LOG(INFO) << "contextLayer transpose01 ok";
     if (!TorchUtil::IsTensorDimEqual(contextLayer.sizes(), variantPack.outTensors[0].desc.dims)) {
         ASD_LOG(ERROR) << "contextLayer.sizes:" << contextLayer.sizes() << ", variantPack.outTensors[0].desc:"
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
-    torch::save(contextLayer.to(at::Device(at::kCPU)), "context_layer_example.path");
+    // torch::save(contextLayer.to(at::Device(at::kCPU)), "context_layer_example.path");
+    ASD_LOG(INFO) << "contextLayer shape:" << contextLayer.sizes();
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
 
     return AsdOps::Status::OkStatus();
