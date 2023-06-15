@@ -31,6 +31,8 @@ LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
         layer_ = new AclTransformer::BertLayer();
     } else if (layerName == "ChatGlm6BLayer") {
         layer_ = new AclTransformer::ChatGlm6BLayer();
+    } else if (layerName == "Llama7BLayer") {
+        layer_ = new AclTransformer::ChatGlm6BLayer();
     }
 }
 
