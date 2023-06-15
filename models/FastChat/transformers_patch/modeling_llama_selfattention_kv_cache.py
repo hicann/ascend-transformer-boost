@@ -238,9 +238,16 @@ class LlamaAttention(nn.Module):
 
         kv_seq_len = key_states.shape[-2]
 
-        context_layer = None
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
+            
+        cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
+        query_states, key_states = apply_rotary_pos_emb(
+            query_states, key_states, cos, sin, position_ids)
+        
+        # [bsz, nh, t, hd]
+        context_layer = None
+        if past_key_value is not None:
             context_layer, present_key, present_value = self.acl_attention_operation.execute([query_states.permute(2, 0, 1, 3),
                                                                                        key_states.permute(
                                                                                            2, 0, 1, 3),
@@ -254,10 +261,6 @@ class LlamaAttention(nn.Module):
             context_layer = context_layer.transpose(0, 1)
             present_key = present_key.permute(1, 2, 0, 3)
             present_value = present_value.permute(1, 2, 0, 3)
-        cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
-        query_states, key_states = apply_rotary_pos_emb(
-            query_states, key_states, cos, sin, position_ids)
-        # [bsz, nh, t, hd]
 
         if past_key_value is not None:
             # reuse k, v, self_attention
