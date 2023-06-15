@@ -18,17 +18,80 @@
 #include "linear_ops_runner.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/params/params.h>
+#include <asdops/utils/rt/rt.h>
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
 LinearOpsRunner::LinearOpsRunner(LinearParam &param) : OpsRunner("LinearOpsRunner"), param_(param)
 {
     ASD_LOG(INFO) << "LinearOperation::LinearOperation called";
+    const int versionLen = 32;
+    char version[versionLen] = {0};
+    AsdRtDeviceGetSocVersion(version, versionLen);
+    ASD_LOG(INFO) << "SocVersion:" << version;
+    is910B_ = std::string(version) == "Ascend910B4";
 }
 
 LinearOpsRunner::~LinearOpsRunner() {}
 
 AsdOps::Status LinearOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
+{
+    if (is910B_) {
+        return SetupKernelGraph910B(variantPack);
+    } else {
+        return SetupKernelGraph910A(variantPack);
+    }
+    return AsdOps::Status::OkStatus();
+}
+
+AsdOps::Status LinearOpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+{
+    VariantPack newVariantPack;
+    AsdOps::SVector<int64_t> matmulOrgShape;
+    AsdOps::SVector<int64_t> transdataOrgShape;
+    ConvertNewVariantPack(variantPack, newVariantPack, matmulOrgShape, transdataOrgShape);
+    return OpsRunner::ExecuteImpl(handle, newVariantPack);
+}
+
+void LinearOpsRunner::ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack,
+                                            AsdOps::SVector<int64_t> &matmulOrgShape,
+                                            AsdOps::SVector<int64_t> &transdataOrgShape)
+{
+    newVariantPack = variantPack;
+    AsdOps::Tensor &aTensor = newVariantPack.inTensors.at(0);
+    AsdOps::Tensor &bTensor = newVariantPack.inTensors.at(1);
+    if (aTensor.desc.dims.size() == 1 || aTensor.desc.dims.size() == 2) {
+        return;
+    }
+
+    int64_t dimZero = 1;
+    for (size_t i = 0; i < aTensor.desc.dims.size() - 1; ++i) {
+        dimZero *= aTensor.desc.dims.at(i);
+    }
+    AsdOps::SVector<int64_t> newDims = {dimZero, aTensor.desc.dims.at(aTensor.desc.dims.size() - 1)};
+
+    ASD_LOG(INFO) << GetName() << " old aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor)
+                  << ", bTensor:" << TensorUtil::AsdOpsTensorToString(bTensor);
+
+    aTensor.View(newDims);
+    ASD_LOG(INFO) << GetName() << " after view, new aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor);
+
+    if (param_.transposeB) {
+        matmulOrgShape = {aTensor.desc.dims.at(0), aTensor.desc.dims.at(1), bTensor.desc.dims.at(0)};
+        transdataOrgShape = {aTensor.desc.dims.at(0), bTensor.desc.dims.at(0)};
+    } else {
+        matmulOrgShape = {aTensor.desc.dims.at(0), aTensor.desc.dims.at(1), bTensor.desc.dims.at(1)};
+        transdataOrgShape = {aTensor.desc.dims.at(0), bTensor.desc.dims.at(1)};
+    }
+
+    aTensor.AddDimOne();
+    ASD_LOG(INFO) << GetName() << " after add one, new aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor);
+
+    bTensor.AddDimOne();
+    ASD_LOG(INFO) << GetName() << " after add one, new bTensor:" << TensorUtil::AsdOpsTensorToString(bTensor);
+}
+
+AsdOps::Status LinearOpsRunner::SetupKernelGraph910A(const VariantPack &variantPack)
 {
     if (variantPack.inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ) {
         ASD_LOG(INFO) << GetName() << " SetupKernelGraph b format is nz";
@@ -147,54 +210,41 @@ AsdOps::Status LinearOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
         addNode.inTensors = {&transdata2ResultTensor, &biasTensor};
         addNode.outTensors = {&resultTensor};
     }
-
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status LinearOpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status LinearOpsRunner::SetupKernelGraph910B(const VariantPack &variantPack)
 {
-    VariantPack newVariantPack;
     AsdOps::SVector<int64_t> matmulOrgShape;
     AsdOps::SVector<int64_t> transdataOrgShape;
+    VariantPack newVariantPack;
     ConvertNewVariantPack(variantPack, newVariantPack, matmulOrgShape, transdataOrgShape);
-    return OpsRunner::ExecuteImpl(handle, newVariantPack);
-}
+    ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString()
+                  << ", newVariantPack:" << newVariantPack.ToString();
 
-void LinearOpsRunner::ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack,
-                                            AsdOps::SVector<int64_t> &matmulOrgShape,
-                                            AsdOps::SVector<int64_t> &transdataOrgShape)
-{
-    newVariantPack = variantPack;
-    AsdOps::Tensor &aTensor = newVariantPack.inTensors.at(0);
-    AsdOps::Tensor &bTensor = newVariantPack.inTensors.at(1);
-    if (aTensor.desc.dims.size() == 1 || aTensor.desc.dims.size() == 2) {
-        return;
-    }
+    kernelGraph_.inTensors = newVariantPack.inTensors;
+    AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[0];
+    AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[1];
+    AsdOps::Tensor &biasTensor = kernelGraph_.inTensors[2];
 
-    int64_t dimZero = 1;
-    for (size_t i = 0; i < aTensor.desc.dims.size() - 1; ++i) {
-        dimZero *= aTensor.desc.dims.at(i);
-    }
-    AsdOps::SVector<int64_t> newDims = {dimZero, aTensor.desc.dims.at(aTensor.desc.dims.size() - 1)};
+    kernelGraph_.outTensors = newVariantPack.outTensors;
+    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[0];
+    kernelGraph_.internalTensors.resize(1);
+    AsdOps::Tensor &matmulResultTensor = kernelGraph_.internalTensors[0];
 
-    ASD_LOG(INFO) << GetName() << " old aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor)
-                  << ", bTensor:" << TensorUtil::AsdOpsTensorToString(bTensor);
+    kernelGraph_.nodes.resize(2);
+    auto &matmulNode = kernelGraph_.nodes[0];
+    auto &addNode = kernelGraph_.nodes[1];
 
-    aTensor.View(newDims);
-    ASD_LOG(INFO) << GetName() << " after view, new aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor);
+    ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << matmulOrgShape.at(0) << ", " << matmulOrgShape.at(1)
+                  << ", " << matmulOrgShape.at(2) << "]";
+    matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true, matmulOrgShape})};
+    matmulNode.inTensors = {&inputTensor, &weightTensor};
+    matmulNode.outTensors = {&matmulResultTensor};
 
-    if (param_.transposeB) {
-        matmulOrgShape = {aTensor.desc.dims.at(0), aTensor.desc.dims.at(1), bTensor.desc.dims.at(0)};
-        transdataOrgShape = {aTensor.desc.dims.at(0), bTensor.desc.dims.at(0)};
-    } else {
-        matmulOrgShape = {aTensor.desc.dims.at(0), aTensor.desc.dims.at(1), bTensor.desc.dims.at(1)};
-        transdataOrgShape = {aTensor.desc.dims.at(0), bTensor.desc.dims.at(1)};
-    }
-
-    aTensor.AddDimOne();
-    ASD_LOG(INFO) << GetName() << " after add one, new aTensor:" << TensorUtil::AsdOpsTensorToString(aTensor);
-
-    bTensor.AddDimOne();
-    ASD_LOG(INFO) << GetName() << " after add one, new bTensor:" << TensorUtil::AsdOpsTensorToString(bTensor);
+    addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
+    addNode.inTensors = {&matmulResultTensor, &biasTensor};
+    addNode.outTensors = {&resultTensor};
+    return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
