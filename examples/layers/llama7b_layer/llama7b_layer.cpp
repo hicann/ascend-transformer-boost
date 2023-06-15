@@ -93,6 +93,7 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
     const uint64_t mlpOut = 34;
 
     AclTransformer::RmsNormParam inputNormParam;
+<<<<<<< HEAD
     inputNormParam.rmsNormEps = paramJson_["rmsNormEps"].get<double>();
     AclTransformer::LinearParam mixdQLinearParam;
     AclTransformer::LinearParam mixdKLinearParam;
@@ -100,16 +101,33 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
     AclTransformer::PositionEmbedding1dSplitParam qPositionEmbeddingParam;
     qPositionEmbeddingParam.headNum = paramJson_["headNum"].get<int>();
     AclTransformer::PositionEmbedding1dSplitParam kPositionEmbeddingParam;
+=======
+    inputNormParam.layerNormEps = paramJson_["rmsNormEps"].get<double>();
+    AclTransformer::LinearParam mixdQLinearParam;
+    AclTransformer::LinearParam mixdKLinearParam;
+    AclTransformer::LinearParam mixdVLinearParam;
+    AclTransformer::PositionEmbeddingParam qPositionEmbeddingParam;
+    qPositionEmbeddingParam.headNum = paramJson_["headNum"].get<int>();
+    AclTransformer::PositionEmbeddingParam kPositionEmbeddingParam;
+>>>>>>> fix llama layer
     kPositionEmbeddingParam.headNum = qPositionEmbeddingParam.headNum;
     AclTransformer::TransposeParam vTransposeParam = {0, 1};
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
     selfAttentionKvCacheParam.dk = paramJson_["dk"].get<int>();
+<<<<<<< HEAD
     selfAttentionKvCacheParam.headNum = kPositionEmbeddingParam.headNum;
+=======
+    selfAttentionKvCacheParam.headNum = positionEmbeddingParam.headNum;
+>>>>>>> fix llama layer
     selfAttentionKvCacheParam.model = paramJson_["model"].get<std::string>();
     AclTransformer::LinearParam selfOutLinearParam;
     AclTransformer::AddParam selfResidualAddParam;
     AclTransformer::RmsNormParam selfNormParam;
+<<<<<<< HEAD
     selfNormParam.rmsNormEps = inputNormParam.rmsNormEps;
+=======
+    selfNormParam.layerNormEps = inputNormParam.layerNormEps;
+>>>>>>> fix llama layer
     AclTransformer::MlpParam mlpParam;
     AclTransformer::AddParam mlpResidualAddParam;
 
@@ -117,8 +135,13 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
     AclTransformer::LinearOperation mixdQLinearOp(mixdQLinearParam);
     AclTransformer::LinearOperation mixdKLinearOp(mixdKLinearParam);
     AclTransformer::LinearOperation mixdVLinearOp(mixdVLinearParam);
+<<<<<<< HEAD
     AclTransformer::PositionEmbedding1dSplitOperation qPositionEmbeddingOp(qPositionEmbeddingParam);
     AclTransformer::PositionEmbedding1dSplitOperation kPositionEmbeddingOp(kPositionEmbeddingParam);
+=======
+    AclTransformer::PositionEmbeddingOperation qPositionEmbeddingOp(qPositionEmbeddingParam);
+    AclTransformer::PositionEmbeddingOperation kPositionEmbeddingOp(kPositionEmbeddingParam);
+>>>>>>> fix llama layer
     AclTransformer::TransposeOperation vTransposeOp(vTransposeParam);
     AclTransformer::SelfAttentionKvCacheOperation selfAttentionKvCacheOp(selfAttentionKvCacheParam);
     AclTransformer::LinearOperation selfOutLinearOp(selfOutLinearParam);
@@ -180,12 +203,15 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
     selfAttentionKvCacheNode.operation = &selfAttentionKvCacheOp;
     selfAttentionKvCacheNode.inTensorIds = {positionEmbedQ, positionEmbedK, transposeVout, attentionMask, pastKey, pastValue};
     selfAttentionKvCacheNode.outTensorIds = {selfOut, presentKey, presentValue};
+<<<<<<< HEAD
     selfAttentionKvCacheNode.inTensorViewFuncs.resize(selfAttentionKvCacheNode.inTensorIds.size());
     selfAttentionKvCacheNode.inTensorViewFuncs.at(2) = 
     [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)
     {
         newDims = {oldDims.at(0), oldDims.at(1), qPositionEmbeddingParam.headNum, oldDims.at(2) / qPositionEmbeddingParam.headNum};
     };
+=======
+>>>>>>> fix llama layer
 
     selfOutLinearNode.operation = &selfOutLinearOp;
     selfOutLinearNode.inTensorIds = {selfOut, selfOutLinearWeight, selfOutLinearBias};
