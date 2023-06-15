@@ -45,12 +45,13 @@ AsdOps::Status MlpTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantP
     ASD_LOG(INFO) << "weightGate" << weightGate.sizes();
     ASD_LOG(INFO) << "weightDown" << weightDown.sizes();
     ASD_LOG(INFO) << "weightUp" << weightUp.sizes();
-    // torch::save(atOutTensor.to(at::Device(at::kCPU)), "hiddenStates_input.path");
-    // torch::save(atOutTensor.to(at::Device(at::kCPU)), "hiddenStates_input.path");
-    // torch::save(atOutTensor.to(at::Device(at::kCPU)), "hiddenStates_input.path");
-    hiddenStates = at::matmul(at::silu(hiddenStates), weightGate.t()) * at::matmul(hiddenStates, weightUp.t());
+    // torch::save(hiddenStates.to(at::Device(at::kCPU)), "hiddenStates.pth");
+    // torch::save(weightGate.to(at::Device(at::kCPU)), "weightGate.pth");
+    // torch::save(weightDown.to(at::Device(at::kCPU)), "weightDown.pth");
+    // torch::save(weightUp.to(at::Device(at::kCPU)), "weightUp.pth");
+    hiddenStates = at::silu(at::matmul(hiddenStates, weightGate.t())) * at::matmul(hiddenStates, weightUp.t());
     at::Tensor atOutTensor = at::matmul(hiddenStates, weightDown.t()).contiguous();
-    torch::save(atOutTensor.to(at::Device(at::kCPU)), "mlp_llama_output.path");
+    // torch::save(atOutTensor.to(at::Device(at::kCPU)), "mlp_llama_output.pth");
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
