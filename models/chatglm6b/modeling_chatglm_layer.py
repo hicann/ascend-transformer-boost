@@ -630,13 +630,9 @@ class GLMBlock(torch.nn.Module):
             params_dtype=params_dtype,
         )
 
-        self.test_operation = torch.classes.LayerTorch.LayerTorch("GlmBlock")
-        self.test_operation.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": layer_id,
-                                                  "layerNormEps": layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * num_layers)}))
-        self.add_test_operation = torch.classes.OperationTorch.OperationTorch(
-            "AddOperation")
-        self.add_test_operation.set_param(
-            json.dumps({"scale": math.sqrt(2 * num_layers)}))
+        self.acl_layer = torch.classes.LayerTorch.LayerTorch("ChatGlm6BLayer")
+        self.acl_layer.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": layer_id,
+                                             "layerNormEps": layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * num_layers)}))
 
     def forward(
             self,
@@ -692,7 +688,7 @@ class GLMBlock(torch.nn.Module):
         alpha = (2 * self.num_layers) ** 0.5
         hidden_states = attention_input * alpha + attention_output
         # if layer_past is not None:
-        #     test_add = self.add_test_operation.execute([attention_input, attention_output])
+        #     test_add = self.add_acl_layer.execute([attention_input, attention_output])
         #     assert torch.allclose(hidden_states, test_add[0], rtol=0.02, atol=0.02), 'add fail'
 
         # if layer_past is not None:
@@ -714,17 +710,7 @@ class GLMBlock(torch.nn.Module):
         if layer_past is not None:
             print(outputs[0][0].shape)
             print(outputs[0][1].shape)
-            test_glmBlockOut = torch.zeros(test_in.shape).half().npu()
-            test_presentKey = torch.zeros(layer_past[0].shape[0]+1,
-                                          layer_past[0].shape[1],
-                                          layer_past[0].shape[2],
-                                          layer_past[0].shape[3]
-                                          ).half().npu()
-            test_presentValue = torch.zeros(layer_past[1].shape[0]+1,
-                                            layer_past[1].shape[1],
-                                            layer_past[1].shape[2],
-                                            layer_past[1].shape[3]
-                                            ).half().npu()
+
             global cosTable
             global sinTable
             pastKey, pastValue = layer_past
@@ -739,17 +725,10 @@ class GLMBlock(torch.nn.Module):
             inputs.append(pastKey)
             inputs.append(pastValue)
             global glm_block
-            # if glm_block:
-            #     # print("inputs sizes here:")
-            #     glm_block = False
-            # for tensor in inputs:
-            # print(tensor.size())
-            # print(tensor.dtype)
-            self.test_operation.execute(
-                inputs, [test_glmBlockOut, test_presentKey, test_presentValue])
-            # print(test_glmBlockOut.dtype)
-            # print(output.dtype)
-            # torch.save(output.cpu(), 'golden.path')
+
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
+                inputs)
+
             assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
                 test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
             print("success!")
