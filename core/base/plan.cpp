@@ -59,6 +59,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
                 ASD_LOG(INFO) << "Plan node[" << nodeId << " view inTensor[" << i
                               << "], old:" << TensorUtil::AsdOpsDimsToString(node.inTensors.at(i)->desc.dims)
                               << ", new:" << TensorUtil::AsdOpsDimsToString(viewTensor.desc.dims);
+                node.variantPack.inTensors.at(i) = viewTensor;
             } else {
                 node.variantPack.inTensors.at(i) = *node.inTensors.at(i);
             }
