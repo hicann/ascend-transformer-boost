@@ -40,6 +40,17 @@ class OperationTest(unittest.TestCase):
         golden_out_tensors = self.golden_calc(in_tensors)
         self.__golden_compare_all(out_tensors, golden_out_tensors)
 
+    def execute_out(self, op_name, op_param, in_tensors, out_tensors):
+        operation = torch.classes.OperationTorch.OperationTorch(
+            op_name)
+        if isinstance(op_param, dict):
+            operation.set_param(json.dumps(op_param))
+        elif isinstance(op_param, str):
+            operation.set_param(op_param)
+        operation.execute_out(in_tensors, out_tensors)
+        golden_out_tensors = self.golden_calc(in_tensors)
+        self.__golden_compare_all(out_tensors, golden_out_tensors)
+
     def golden_compare(self, out_tensor, golden_out_tensor):
         print("out_tensor.shape", out_tensor.shape,
               "\ngolden_out_tensor.shape:", golden_out_tensor.shape)

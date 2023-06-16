@@ -46,7 +46,22 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
         auto &node = runnerGraph_.nodes.at(nodeId);
         node.variantPack.inTensors.resize(node.inTensors.size());
         for (size_t i = 0; i < node.inTensors.size(); ++i) {
-            node.variantPack.inTensors.at(i) = *node.inTensors.at(i);
+            if (i < node.inTensorViewFuncs.size() && node.inTensorViewFuncs.at(i)) {
+                AsdOps::Tensor viewTensor = *node.inTensors.at(i);
+                viewTensor.desc.dims.clear();
+                node.inTensorViewFuncs.at(i)(node.inTensors.at(i)->desc.dims, viewTensor.desc.dims);
+                if (viewTensor.Numel() != node.inTensors.at(i)->Numel()) {
+                    ASD_LOG(ERROR) << "Plan node[" << nodeId
+                                   << "] invalid view func, viewTensor.Numel:" << viewTensor.Numel()
+                                   << ", tensor.Numel:" << node.inTensors.at(i)->Numel();
+                    return AsdOps::Status::FailStatus(1, "invalid view");
+                }
+                ASD_LOG(INFO) << "Plan node[" << nodeId << " view inTensor[" << i
+                              << "], old:" << TensorUtil::AsdOpsDimsToString(node.inTensors.at(i)->desc.dims)
+                              << ", new:" << TensorUtil::AsdOpsDimsToString(viewTensor.desc.dims);
+            } else {
+                node.variantPack.inTensors.at(i) = *node.inTensors.at(i);
+            }
         }
 
         node.variantPack.outTensors.resize(node.outTensors.size());
