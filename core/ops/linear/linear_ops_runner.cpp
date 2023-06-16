@@ -134,15 +134,15 @@ AsdOps::Status LinearOpsRunner::SetupKernelGraph910A(const VariantPack &variantP
         transdata0Node.inTensors = {&inputTensor};
         transdata0Node.outTensors = {&transdata0ResultTensor};
 
-        ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << matmulOrgShape.at(0) << ", "
-                      << matmulOrgShape.at(1) << ", " << matmulOrgShape.at(2) << "]";
+        ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString(matmulOrgShape)
+                      << "]";
         matmulNode.opDesc = {0, "MatMulOperation",
                              AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB, matmulOrgShape})};
         matmulNode.inTensors = {&transdata0ResultTensor, &weightTensor};
         matmulNode.outTensors = {&matmulResultTensor};
 
-        ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << transdataOrgShape.at(0) << ", "
-                      << transdataOrgShape.at(1) << "]";
+        ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << TensorUtil::AsdOpsDimsToString(transdataOrgShape)
+                      << "]";
         transdata2Node.opDesc = {
             0, "TransdataOperation",
             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transdataOrgShape})};
@@ -191,14 +191,15 @@ AsdOps::Status LinearOpsRunner::SetupKernelGraph910A(const VariantPack &variantP
         transdata1Node.inTensors = {&weightTensor};
         transdata1Node.outTensors = {&transdata1ResultTensor};
 
-        ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << matmulOrgShape.at(0) << ", "
-                      << matmulOrgShape.at(1) << ", " << matmulOrgShape.at(2) << "]";
-        matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true, matmulOrgShape})};
+        ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString(matmulOrgShape)
+                      << "]";
+        matmulNode.opDesc = {0, "MatMulOperation",
+                             AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB, matmulOrgShape})};
         matmulNode.inTensors = {&transdata0ResultTensor, &transdata1ResultTensor};
         matmulNode.outTensors = {&matmulResultTensor};
 
-        ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << transdataOrgShape.at(0) << ", "
-                      << transdataOrgShape.at(1) << "]";
+        ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << TensorUtil::AsdOpsDimsToString(transdataOrgShape)
+                      << "]";
         transdata2Node.opDesc = {
             0, "TransdataOperation",
             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transdataOrgShape})};
@@ -236,9 +237,10 @@ AsdOps::Status LinearOpsRunner::SetupKernelGraph910B(const VariantPack &variantP
     auto &matmulNode = kernelGraph_.nodes[0];
     auto &addNode = kernelGraph_.nodes[1];
 
-    ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << matmulOrgShape.at(0) << ", " << matmulOrgShape.at(1)
-                  << ", " << matmulOrgShape.at(2) << "]";
-    matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true, matmulOrgShape})};
+    ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString(matmulOrgShape)
+                  << "]";
+    matmulNode.opDesc = {0, "MatMulOperation",
+                         AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB, matmulOrgShape})};
     matmulNode.inTensors = {&inputTensor, &weightTensor};
     matmulNode.outTensors = {&matmulResultTensor};
 
