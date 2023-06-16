@@ -47,8 +47,12 @@ static void ElewiseJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc
 static void SplitJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
 {
     AsdOps::OpParam::Split param;
-    param.splitType =
-        static_cast<AsdOps::OpParam::Split::SplitType>(opDescJson["specificParam"]["splitType"].get<int>());
+    if (opDescJson["specificParam"].contains("splitDim")) {
+        param.splitDim = opDescJson["specificParam"]["splitDim"].get<int>();
+    }
+    if (opDescJson["specificParam"].contains("splitNum")) {
+        param.splitNum = opDescJson["specificParam"]["splitNum"].get<int>();
+    }
     opDesc.specificParam = param;
 }
 
