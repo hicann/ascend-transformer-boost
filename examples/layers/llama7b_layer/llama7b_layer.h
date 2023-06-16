@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CHATGLM6BLAYER_H
-#define CHATGLM6BLAYER_H
+#ifndef LLAMA7BBLAYER_H
+#define LLAMA7BBLAYER_H
 #include "examples/layers/layer.h"
 
 namespace AclTransformer {

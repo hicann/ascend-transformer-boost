@@ -23,6 +23,7 @@
 #include "acltransformer/plan_builder.h"
 #include "examples/layers/bert/bert_layer.h"
 #include "examples/layers/chatglm6b/chatglm6b_layer.h"
+#include "examples/layers/llama7b_layer/llama7b_layer.h"
 
 LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
 {
@@ -32,7 +33,7 @@ LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
     } else if (layerName == "ChatGlm6BLayer") {
         layer_ = new AclTransformer::ChatGlm6BLayer();
     } else if (layerName == "Llama7BLayer") {
-        layer_ = new AclTransformer::ChatGlm6BLayer();
+        layer_ = new AclTransformer::Llama7BLayer();
     }
 }
 
@@ -74,6 +75,7 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
         variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(inTensors.at(i)));
     }
 
+    ASD_LOG(INFO) << "LayerTorch::Start infer outTensors";
     CreateAtOutTensors(variantPack.inTensors, outTensors);
 
     for (size_t i = 0; i < outTensors.size(); ++i) {
@@ -84,6 +86,9 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
     }
 
     AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
+    if (handle.stream != nullptr) {
+        ASD_LOG(INFO) << "LayerTorch::Get Handle success!";
+    }
     layer_->Execute(handle, variantPack);
 
     ASD_LOG(WARN) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
