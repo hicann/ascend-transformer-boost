@@ -333,8 +333,10 @@ void OpsRunner::FillTilingData(const VariantPack &variantPack)
         KernelGraphNode &node = kernelGraph_.nodes.at(i);
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
-        uint64_t tilingSize = kernel->GetLaunchBufferSize(kernelRunInfo);
-        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " tilingSize:" << tilingSize;
+        uint64_t orgTilingSize = kernel->GetLaunchBufferSize(kernelRunInfo);
+        uint64_t tilingSize = (orgTilingSize + 7) / 8 * 8;
+        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " orgTilingSize:" << orgTilingSize
+                      << ", tilingSize:" << tilingSize;
         kernelTilingSizes_.at(i) = tilingSize;
         totalTilingSize += tilingSize;
     }
