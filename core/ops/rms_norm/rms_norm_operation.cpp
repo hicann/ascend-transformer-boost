@@ -15,6 +15,7 @@
  */
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/config.h"
+#include <asdops/utils/log/log.h>
 #include "rms_norm_ops_runner_builder.h"
 #include "rms_norm_torch_runner_builder.h"
 
@@ -39,6 +40,8 @@ AsdOps::Status RmsNormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor
 
     outTensorDescs.resize(1);
     outTensorDescs.at(0) = inTensors.at(0).desc;
+    ASD_LOG(INFO) << "outTensor dtype:" << outTensorDescs.at(0).dtype;
+    ASD_LOG(INFO) << "outTensor format:" << outTensorDescs.at(0).format;
     return AsdOps::Status::OkStatus();
 }
 

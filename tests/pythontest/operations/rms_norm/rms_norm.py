@@ -38,6 +38,8 @@ class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
+        print("weight shape")
+        print(self.get_tensor(INTENSOR1).shape)
         self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
                                       self.get_tensor(INTENSOR1).npu()])
 
