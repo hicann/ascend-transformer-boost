@@ -64,6 +64,7 @@ AsdOps::Status PlanBuilder::BuildImpl(const VariantPack &variantPack, const Oper
         RunnerGraphNode runnerNode;
         runnerNode.operation = node.operation;
         runnerNode.runner = op->CreateBestRunner(variantPack);
+        runnerNode.inTensorViewFuncs = node.inTensorViewFuncs;
         runnerNode.inTensors.resize(node.inTensorIds.size());
         runnerNode.outTensors.resize(node.outTensorIds.size());
         for (size_t i = 0; i < node.inTensorIds.size(); ++i) {
