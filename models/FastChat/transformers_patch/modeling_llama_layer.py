@@ -147,6 +147,19 @@ class LlamaRotaryEmbedding(torch.nn.Module):
             self.sin_cached[:, :, :seq_len, ...].to(dtype=x.dtype),
         )
 
+# inv_freq_global = (1.0 / (torch.tensor(10000).double() **
+#                     (torch.arange(0, 128, 2).float() / 128).double())).npu()
+# temp_global = torch.arange(2048, device='cpu').npu()
+# freqs_global = torch.einsum('i,j->ij', temp_global, inv_freq_global)
+# emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
+# cosTable = emb_global.cos()[None, None, :, :]
+# sinTable = emb_global.sin()[None, None, :, :]
+x = torch.zeros(1).npu()
+rot_emb_global = LlamaRotaryEmbedding(128, max_position_embeddings=2048)
+cosTable, sinTable = rot_emb_global.forward(x, 2048)
+cosTable = cosTable.npu().half()
+sinTable = sinTable.npu().half()
+
 
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
@@ -224,20 +237,38 @@ class LlamaAttention(nn.Module):
         use_cache: bool = False,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.size()
-
-        query_states = self.q_proj(hidden_states).view(
+        # torch.save(hidden_states.cpu(), '8_out0.path')
+        query_states = self.q_proj(hidden_states)
+        # if past_key_value is not None:
+        #     torch.save(query_states.cpu(), '1_out0.path')
+        query_states = query_states.view(
             bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = self.k_proj(hidden_states).view(
+        
+        key_states = self.k_proj(hidden_states)
+        # if past_key_value is not None:
+        #     torch.save(key_states.cpu(), '2_out0.path')
+        key_states = key_states.view(
             bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        value_states = self.v_proj(hidden_states).view(
+        
+        value_states = self.v_proj(hidden_states)
+        # if past_key_value is not None:
+        #     torch.save(value_states.cpu(), '3_out0.path')
+        value_states = value_states.view(
             bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-
+        
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
         cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
+        # [batch, head_num, seq_len, head_size]
+        global cosTable
+        global sinTable
         query_states, key_states = apply_rotary_pos_emb(
-            query_states, key_states, cos, sin, position_ids)
+            query_states, key_states, cosTable, sinTable, position_ids)
+        # if past_key_value is not None:
+        #     # [seq_len, batch, head_num, head_size]
+        #     torch.save(query_states.cpu().permute(2, 0, 1, 3), '4_out0.path')
+        #     torch.save(key_states.cpu().permute(2, 0, 1, 3), '5_out0.path')
         # [bsz, nh, t, hd]
 
         if past_key_value is not None:
@@ -281,6 +312,8 @@ class LlamaAttention(nn.Module):
         attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
 
         attn_output = self.o_proj(attn_output)
+        # if past_key_value is not None:
+        #     torch.save(key_states.cpu(), '8_out0.path')
 
         if not output_attentions:
             attn_weights = None
@@ -302,10 +335,17 @@ class LlamaDecoderLayer(nn.Module):
             config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = LlamaRMSNorm(
             config.hidden_size, eps=config.rms_norm_eps)
-        self.acl_llama_layer = torch.classes.OperationTorch.OperationTorch(
+        self.acl_llama_layer = torch.classes.LayerTorch.LayerTorch(
             "Llama7BLayer")
-        self.acl_llama_layer.set_param(
-            json.dumps({"headNum": 32}))
+        headSize = config.hidden_size // config.num_attention_heads
+        param = json.dumps({"headNum" : config.num_attention_heads, "rmsNormEps" : config.rms_norm_eps, 
+                        "dk" : headSize, "model" : "llama7b"})
+        print(param)
+        self.acl_llama_layer.set_param(param)
+        self.acl_weights = []
+        # for tensor in weights:
+        #     print(tensor)
+        
 
     def forward(
         self,
@@ -329,10 +369,47 @@ class LlamaDecoderLayer(nn.Module):
                 (see `past_key_values`).
             past_key_value (`Tuple(torch.FloatTensor)`, *optional*): cached past key and value projection states
         """
+        test_llama7bOut = None
+        if past_key_value is not None:
+            if len(self.acl_weights) == 0:
+                weights = list(self.state_dict().values())
+                self.acl_weights.append(weights[8].npu())
+                self.acl_weights.append(weights[0].npu())
+                self.acl_weights.append(torch.zeros(self.hidden_size).npu().half())
+                self.acl_weights.append(weights[1].npu())
+                self.acl_weights.append(torch.zeros(self.hidden_size).npu().half())
+                self.acl_weights.append(weights[2].npu())
+                self.acl_weights.append(torch.zeros(self.hidden_size).npu().half())
+                self.acl_weights.append(weights[3].npu())
+                self.acl_weights.append(torch.zeros(self.hidden_size).npu().half())
+                self.acl_weights.append(weights[9].npu())
+                self.acl_weights.append(weights[5].npu().half())
+                self.acl_weights.append(weights[6].npu())
+                self.acl_weights.append(weights[7].npu())
+
+            global cosTable
+            global sinTable
+            pastKey, pastValue = past_key_value
+            inputs = [hidden_states]
+            inputs.extend(self.acl_weights)
+            inputs.append(position_ids)
+            inputs.append(cosTable)
+            inputs.append(sinTable)
+            inputs.append(attention_mask)
+            inputs.append(pastKey.permute(2, 0, 1, 3))
+            inputs.append(pastValue.permute(2, 0, 1, 3))
+            # for tensor in inputs:
+            #     print(tensor.device)
+
+            test_llama7bOut, test_presentKey, test_presentValue = self.acl_llama_layer.execute(inputs)
 
         residual = hidden_states
-
+        # if test_llama7bOut is not None:
+        #     torch.save(hidden_states.cpu(), '0_in0.path')
         hidden_states = self.input_layernorm(hidden_states)
+        # if test_llama7bOut is not None:
+            # torch.save(self.input_layernorm.weight.cpu(), '0_in1.path')
+            # torch.save(hidden_states.cpu(), '0_out0.path')
 
         # Self Attention
         hidden_states, self_attn_weights, present_key_value = self.self_attn(
@@ -343,13 +420,21 @@ class LlamaDecoderLayer(nn.Module):
             output_attentions=output_attentions,
             use_cache=use_cache,
         )
+        # if test_llama7bOut is not None:
+        #     torch.save(hidden_states.cpu(), '8_out0.path')
         hidden_states = residual + hidden_states
 
         # Fully Connected
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
+        # if test_llama7bOut is not None:
+        #     torch.save(hidden_states.cpu(), '10_out0.path')
         hidden_states = self.mlp(hidden_states)
+        # if test_llama7bOut is not None:
+        #     torch.save(hidden_states.cpu(), '11_out0.path')
         hidden_states = residual + hidden_states
+        # if test_llama7bOut is not None:
+        #     torch.save(hidden_states.cpu(), '12_out0.path')
 
         outputs = (hidden_states,)
 
@@ -358,6 +443,14 @@ class LlamaDecoderLayer(nn.Module):
 
         if use_cache:
             outputs += (present_key_value,)
+            
+        if test_llama7bOut is not None:
+            # print(test_llama7bOut)
+            # print(hidden_states)
+            assert torch.allclose(test_llama7bOut, hidden_states, rtol=0.05, atol=0.05), 'not equal'
+            # assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
+            #         test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
+            print("success!")
 
         return outputs
 

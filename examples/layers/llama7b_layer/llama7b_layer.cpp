@@ -54,6 +54,7 @@ AsdOps::Status Llama7BLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> &i
 
 AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
 { // in
+    ASD_LOG(INFO) << "start Llama7BLayer!";
     const uint64_t hiddenStates = 0;
     const uint64_t normWeight = 1;
     const uint64_t qMixdWeight = 2;
@@ -129,7 +130,7 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
 
     static int64_t graphId = 0;
     AclTransformer::OperationGraph opGraph;
-    opGraph.name = "GlmBlockGraph_" + std::to_string(graphId++);
+    opGraph.name = "Llama7BGraph_" + std::to_string(graphId++);
     opGraph.inTensorSize = variantPack.inTensors.size();
     opGraph.outTensorSize = variantPack.outTensors.size();
     opGraph.intermediateTensorSize = 12;
