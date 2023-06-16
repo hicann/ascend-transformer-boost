@@ -179,32 +179,9 @@ class LlamaMLP(nn.Module):
         self.down_proj = nn.Linear(intermediate_size, hidden_size, bias=False)
         self.up_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
         self.act_fn = ACT2FN[hidden_act]
-        self.mlp_operation = torch.classes.OperationTorch.OperationTorch("MlpOperation")
-        self.mlp_operation.set_param(json.dumps({}))
 
     def forward(self, x):
-        # torch.save(x.cpu(), 'intensor0.pth')
-        # torch.save(self.gate_proj.weight.cpu(), 'intensor1.pth')
-        # torch.save(self.down_proj.weight.cpu(), 'intensor2.pth')
-        # torch.save(self.up_proj.weight.cpu(), 'intensor3.pth')
-        # gate_linear_mul_x = self.gate_proj(x)
-        # torch.save(gate_linear_mul_x.cpu(), 'gate_linear_mul_x.pth')
-        # silu_result = self.act_fn(gate_linear_mul_x)
-        # torch.save(silu_result.cpu(), 'silu_result.pth')
-        # up_linear_mul_x = self.up_proj(x)
-        # torch.save(up_linear_mul_x.cpu(), 'up_linear_mul_x.pth')
-        # mul = silu_result * up_linear_mul_x
-        # torch.save(mul.cpu(), 'mul.pth')
-        # output = self.down_proj(mul)
-        # torch.save(output.cpu(), 'outtensor0.pth')
-        output = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
-        output_exec = self.mlp_operation.execute([x,
-                                           self.gate_proj.weight,
-                                           self.down_proj.weight,
-                                           self.up_proj.weight])
-        assert torch.allclose(output, output_exec[0],
-                              rtol=0.02, atol=0.02), "Not equal"
-        return output
+        return self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
 
 
 class LlamaAttention(nn.Module):
@@ -217,6 +194,8 @@ class LlamaAttention(nn.Module):
         self.num_heads = config.num_attention_heads
         self.head_dim = self.hidden_size // self.num_heads
         self.max_position_embeddings = config.max_position_embeddings
+        self.linear_operation = torch.classes.OperationTorch.OperationTorch("LinearOperation")
+        self.linear_operation.set_param(json.dumps({"transposeA": False, "transposeB": False,}))
 
         if (self.head_dim * self.num_heads) != self.hidden_size:
             raise ValueError(
@@ -247,9 +226,15 @@ class LlamaAttention(nn.Module):
         use_cache: bool = False,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.size()
+        # [bsz, nh, qlen, hd]
 
+        linear_bias = torch.zeros(self.q_proj.weight.shape[0]).npu(torch.npu.current_device())
+        query_states_exec = self.linear_operation.execute([hidden_states, self.q_proj.weight, linear_bias.to(hidden_states.dtype)])[0].view(
+            bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
         query_states = self.q_proj(hidden_states).view(
             bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+        assert torch.allclose(query_states_exec, query_states,
+                       atol=0.02, rtol=0.02), "Not equal"
         key_states = self.k_proj(hidden_states).view(
             bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
         value_states = self.v_proj(hidden_states).view(
