@@ -19,7 +19,7 @@
 #include <vector>
 namespace AclTransformer {
 struct RmsNormParam {
-    double rmsNormEps = 1e-12; // a value added to the denominator for numerical stability
+    float rmsNormEps = 1e-12; // a value added to the denominator for numerical stability
 };
 } // namespace AclTransformer
 #endif
