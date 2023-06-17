@@ -98,7 +98,7 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
         }
         std::swap(inputShape[0], inputShape[1]);
         std::swap(inputStride[0], inputStride[1]);
-        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, 0})});
+        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
     };
 
     catKeyNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({0})};
@@ -130,15 +130,16 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
         std::swap(inputShape[1], inputShape[2]);
         std::swap(inputStride[0], inputStride[1]);
         std::swap(inputStride[1], inputStride[2]);
-        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, 0})});
+        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
     };
 
     bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, param_.transKey, {/*oriShape*/}})};
     bmmQkNode.inTensors = {&transposedQ, &transposedK};
     bmmQkNode.outTensors = {&bmmQkOut};
 
+    float maskValue = -10000.0;
     maskNode.opDesc = {0, "BroadcastOperation", 
-        AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_MASKEDFILL, {-10000.0}})};
+        AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_MASKEDFILL, {maskValue}})};
     maskNode.inTensors = {&bmmQkOut, &attention_mask};
     maskNode.outTensors = {&maskOut};
     maskNode.inTensorViewFuncs[0] = 
