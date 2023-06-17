@@ -35,9 +35,9 @@ INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "tensors/operations/mlp", "outtensor0.pth")
 
-class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
+
+class TestMlpOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        print("golden output tensor")
         print(self.get_tensor(OUTTENSOR0))
         return [self.get_tensor(OUTTENSOR0).npu()]
 
