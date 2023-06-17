@@ -23,9 +23,11 @@
 #include <asdops/kernel.h>
 #include <asdops/op_desc.h>
 #include <asdops/run_info.h>
+#include <asdops/operation.h>
 
 namespace AclTransformer {
 using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
+using InferShapePreFunc = std::function<void(AsdOps::RunInfo &runInfo)>;
 
 struct KernelGraphNode {
     AsdOps::OpDesc opDesc;
@@ -34,6 +36,7 @@ struct KernelGraphNode {
     AsdOps::SVector<ViewFunc> inTensorViewFuncs;
     AsdOps::Kernel *kernel = nullptr;
     AsdOps::RunInfo kernelRunInfo;
+    InferShapePreFunc inferShapePreFunc;
 };
 
 struct KernelGraph {
@@ -63,12 +66,18 @@ private:
     void Reset();
     bool PlanKernelGraph(const VariantPack &variantPack);
     bool PlanOneKernel(size_t nodeId);
+    bool PlanOneKernelBuildRunInfo(KernelGraphNode &node, size_t nodeId);
+    bool PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId);
     void FillTilingData(const VariantPack &variantPack);
     void InitTensorMaxNodeMap();
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
     int64_t GetInTensorId(const AsdOps::Tensor *tensor);
     int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
     void WriteTilingData(const char *tilingData, size_t len, const std::string &filePath);
+    void UpdateRunInfoTensorData(VariantPack &variantPack);
+    AsdOps::Status UpdateRunInfoTiling(VariantPack &variantPack);
+    void UpdateRunInfoWorkspace(VariantPack &variantPack);
+    void RunAllKernel(Handle &handle);
 
 protected:
     KernelGraph kernelGraph_;
