@@ -79,4 +79,5 @@ install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so DESTINA
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/host DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/device DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/platform_configs DESTINATION .)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include/asdops DESTINATION include)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/core/include/acltransformer DESTINATION include)
