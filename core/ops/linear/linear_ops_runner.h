@@ -31,8 +31,10 @@ protected:
 private:
     AsdOps::Status SetupKernelGraph910A(const VariantPack &variantPack);
     AsdOps::Status SetupKernelGraph910B(const VariantPack &variantPack);
-    void ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack,
-                               AsdOps::SVector<int64_t> &matmulOrgShape, AsdOps::SVector<int64_t> &transdataOrgShape);
+    void ConvertNewVariantPackA(const VariantPack &variantPack, VariantPack &newVariantPack,
+                                AsdOps::SVector<int64_t> &matmulOrgShape, AsdOps::SVector<int64_t> &transdataOrgShape);
+    void ConvertNewVariantPackB(const VariantPack &variantPack, VariantPack &newVariantPack,
+                                AsdOps::SVector<int64_t> &matmulOrgShape, AsdOps::SVector<int64_t> &transdataOrgShape);
 
 private:
     LinearParam param_;
