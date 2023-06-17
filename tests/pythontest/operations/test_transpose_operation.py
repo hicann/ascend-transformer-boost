@@ -31,7 +31,7 @@ class TestAddOperation(operation_test.OperationTest):
 
     def test_2d_float(self):
         self.execute(OP_NAME, {"dimA" : 0, "dimB" : 1}, [torch.randn(
-            32, 128).npu()])
+            32, 128).npu().half()])
 
 
 if __name__ == '__main__':
