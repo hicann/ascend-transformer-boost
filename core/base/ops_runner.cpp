@@ -252,11 +252,12 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
     auto &node = kernelGraph_.nodes.at(nodeId);
     const AsdOps::OpDesc &opDesc = node.opDesc;
 
-    AsdOps::Operation *op = AsdOps::Ops::Instance().GetOperationByName(opDesc.opName);
+    AsdOps::Operation *op = AsdOps::Ops::Instance().GetOperationByName(node.opDesc.opName);
     if (op == nullptr) {
-        ASD_LOG(ERROR) << GetName() << " get operation by name fail, opName:" << opDesc.opName;
+        ASD_LOG(ERROR) << GetName() << " get operation by name fail, opName:" << node.opDesc.opName;
         return false;
     }
+
     if (!PlanOneKernelBuildRunInfo(node, nodeId)) {
         return false;
     }
@@ -266,10 +267,11 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
 
     AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
     if (tactic == nullptr) {
-        ASD_LOG(ERROR) << GetName() << " " << opDesc.opName
+        ASD_LOG(ERROR) << GetName() << " " << op->GetName()
                        << " get best tactic fail, tactic count:" << op->GetTacticCount();
         return false;
     }
+    ASD_LOG(INFO) << GetName() << " best tactic:" << tactic->GetName();
 
     node.kernel = tactic->GetBestKernel(node.kernelRunInfo);
     if (node.kernel == nullptr) {
@@ -277,7 +279,7 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
                        << " get best kernel fail, kernel count:" << tactic->GetKernelCount();
         return false;
     }
-    ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " get best tactic:" << tactic->GetName()
+    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " get best tactic:" << tactic->GetName()
                   << ", best kernel:" << node.kernel->GetName();
 
     auto it = maxNodeIdTensorMap_.find(nodeId);

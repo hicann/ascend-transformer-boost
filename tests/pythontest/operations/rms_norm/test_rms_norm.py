@@ -31,15 +31,12 @@ INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "tensors/operations/rms_norm", "outtensor0.pth")
 
-class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
+
+class TestRmsNormOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        print("golden output tensor")
-        print(self.get_tensor(OUTTENSOR0))
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
-        print("weight shape")
-        print(self.get_tensor(INTENSOR1).shape)
         self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
                                       self.get_tensor(INTENSOR1).npu()])
 
