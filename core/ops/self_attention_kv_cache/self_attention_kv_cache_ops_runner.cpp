@@ -138,7 +138,7 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     bmmQkNode.outTensors = {&bmmQkOut};
 
     maskNode.opDesc = {0, "BroadcastOperation", 
-        AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_MASKEDFILL})};
+        AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_MASKEDFILL, {-10000.0}})};
     maskNode.inTensors = {&bmmQkOut, &attention_mask};
     maskNode.outTensors = {&maskOut};
     maskNode.inTensorViewFuncs[0] = 
@@ -148,8 +148,8 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     };
 
     float scale = param_.layerId + 1.0;
-    mulsMaskOutNode.opDesc = {0, "BroadcastOperation", 
-        AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_MASKEDFILL, {-10000.0}})};
+    mulsMaskOutNode.opDesc = {0, "ElewiseOperation", 
+        AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, scale})};
     mulsMaskOutNode.inTensors = {&maskOut};
     mulsMaskOutNode.outTensors = {&attentionScores};
 
