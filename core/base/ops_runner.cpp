@@ -110,7 +110,19 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
     ASD_LOG(INFO) << GetName() << " execute start, intermediateSize:" << intermediateSize_
                   << ", tilingSize:" << tilingData_.size() << ", workspaceSize:" << workspaceSize_;
+    UpdateRunInfoTensorData(variantPack);
+    UpdateRunInfoTiling(variantPack);
+    UpdateRunInfoWorkspace(variantPack);
 
+    RunAllKernel(handle);
+
+    ASD_LOG(INFO) << GetName() << " execute end";
+
+    return AsdOps::Status::OkStatus();
+}
+
+void OpsRunner::UpdateRunInfoTensorData(VariantPack &variantPack)
+{
     char *deviceIntermediateBuffer = static_cast<char *>(variantPack.workspace);
     for (auto &node : kernelGraph_.nodes) {
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetInTensorCount(); tensorId++) {
@@ -132,15 +144,18 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
             }
         }
     }
+}
 
+AsdOps::Status OpsRunner::UpdateRunInfoTiling(VariantPack &variantPack)
+{
     ASD_LOG(INFO) << GetName() << " update kernel runinfo launch buffer";
-    uint64_t offset = intermediateSize_;
     if (tilingData_.size() > 0) {
-        char *deviceTilingBuffer = static_cast<char *>(variantPack.workspace) + offset;
+        char *deviceTilingBuffer = static_cast<char *>(variantPack.workspace) + intermediateSize_;
         int st = AsdRtMemCopy(deviceTilingBuffer, tilingData_.size(), tilingData_.data(), tilingData_.size(),
                               ASDRT_MEMCOPY_HOST_TO_DEVICE);
         if (st != ASDRT_SUCCESS) {
-            return AsdOps::Status::FailStatus(1, "copy device memory fail");
+            ASD_LOG(ERROR) << "AsdRtMemCopy fail, error:" << st;
+            return AsdOps::Status::FailStatus(1, "AsdRtMemCopy fail");
         }
 
         uint64_t internalOffset = 0;
@@ -151,12 +166,16 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
                                                 tilingBufferSize);
             internalOffset += tilingBufferSize;
         }
-        offset += tilingData_.size();
     }
+    return AsdOps::Status::OkStatus();
+}
 
+void OpsRunner::UpdateRunInfoWorkspace(VariantPack &variantPack)
+{
     ASD_LOG(INFO) << GetName() << " update kernel runinfo workspace";
     if (workspaceSize_ > 0) {
-        char *deviceWorkspaceBuffer = static_cast<char *>(variantPack.workspace) + offset;
+        char *deviceWorkspaceBuffer =
+            static_cast<char *>(variantPack.workspace) + intermediateSize_ + tilingData_.size();
         for (auto &node : kernelGraph_.nodes) {
             AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
             const AsdOps::SVector<int64_t> &workspaces = kernelRunInfo.GetWorkSpace();
@@ -173,7 +192,10 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
             kernelRunInfo.SetDeviceLaunchBufferWorkspace(deviceLaunchBufferWorkspace);
         }
     }
+}
 
+void OpsRunner::RunAllKernel(Handle &handle)
+{
     ASD_LOG(INFO) << GetName() << " start run all kernel";
     for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
         auto &node = kernelGraph_.nodes.at(i);
@@ -198,9 +220,7 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
         }
         ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run end";
     }
-    ASD_LOG(INFO) << GetName() << " execute end";
-
-    return AsdOps::Status::OkStatus();
+    ASD_LOG(INFO) << GetName() << " finish run all kernel";
 }
 
 void OpsRunner::Reset()
@@ -237,66 +257,12 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
         ASD_LOG(ERROR) << GetName() << " get operation by name fail, opName:" << opDesc.opName;
         return false;
     }
-
-    node.kernelRunInfo.SetOpDesc(opDesc);
-    for (size_t i = 0; i < node.inTensors.size(); ++i) {
-        AsdOps::Tensor *tensor = node.inTensors.at(i);
-        if (i < node.inTensorViewFuncs.size() && node.inTensorViewFuncs.at(i)) {
-            AsdOps::Tensor viewTensor = *tensor;
-            viewTensor.desc.dims.clear();
-            node.inTensorViewFuncs.at(i)(tensor->desc.dims, viewTensor.desc.dims);
-            if (viewTensor.Numel() != tensor->Numel()) {
-                ASD_LOG(ERROR) << GetName() << " node[" << nodeId
-                               << "] invalid view func, viewTensor.Numel:" << viewTensor.Numel()
-                               << ", tensor.Numel:" << tensor->Numel();
-                return false;
-            }
-            ASD_LOG(INFO) << GetName() << " node[" << nodeId << " view inTensor[" << i
-                          << "], old:" << TensorUtil::AsdOpsDimsToString(tensor->desc.dims)
-                          << ", new:" << TensorUtil::AsdOpsDimsToString(viewTensor.desc.dims);
-            node.kernelRunInfo.AddInTensor(viewTensor);
-        } else {
-            node.kernelRunInfo.AddInTensor(*tensor);
-        }
-    }
-    for (size_t i = 0; i < node.outTensors.size(); ++i) {
-        AsdOps::Tensor tensor;
-        node.kernelRunInfo.AddOutTensor(tensor);
-    }
-
-    ASD_LOG(INFO) << GetName() << " " << opDesc.opName
-                  << " infer shape start, runInfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
-    AsdOps::Status st = op->InferShape(node.kernelRunInfo);
-    if (!st.Ok()) {
-        ASD_LOG(ERROR) << opDesc.opName << " infer shape fail, error:" << st.Message();
+    if (!PlanOneKernelBuildRunInfo(node, nodeId)) {
         return false;
     }
-    ASD_LOG(INFO) << GetName() << " " << opDesc.opName
-                  << " infer shape success, runInfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
-
-    for (size_t i = 0; i < node.outTensors.size(); ++i) {
-        AsdOps::Tensor *outTensor = node.outTensors.at(i);
-        AsdOps::Tensor &runInfoOutTensor = node.kernelRunInfo.GetOutTensor(i);
-        if (IsInternalTensor(outTensor)) {
-            if (runInfoOutTensor.desc.dims.size() != 0) {
-                outTensor->desc = runInfoOutTensor.desc;
-            } else {
-                ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " outTensors[" << i
-                              << "] is internal tensor, infer shape wrong, not use infer shape desc";
-            }
-            outTensor->dataSize = TensorUtil::CalcTensorDataSize(outTensor->desc);
-            outTensor->data = memAllocatinSolver_->Malloc(outTensor->dataSize);
-            ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " outTensors[" << i
-                          << "] is internal tensor, mem solve:" << outTensor->data;
-        } else {
-            ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " outTensors[" << i << "] is not internal tensor";
-        }
-        runInfoOutTensor.data = outTensor->data;
-        runInfoOutTensor.dataSize = outTensor->dataSize;
+    if (!PlanOneKernelInferShape(op, node, nodeId)) {
+        return false;
     }
-
-    ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " after mem solve, runinfo:\n"
-                  << AsdOpsRunInfoToString(node.kernelRunInfo);
 
     AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
     if (tactic == nullptr) {
@@ -322,6 +288,81 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
         }
     }
 
+    return true;
+}
+
+bool OpsRunner::PlanOneKernelBuildRunInfo(KernelGraphNode &node, size_t nodeId)
+{
+    node.kernelRunInfo.SetOpDesc(node.opDesc);
+    for (size_t i = 0; i < node.inTensors.size(); ++i) {
+        AsdOps::Tensor *tensor = node.inTensors.at(i);
+        if (i < node.inTensorViewFuncs.size() && node.inTensorViewFuncs.at(i)) {
+            AsdOps::Tensor viewTensor = *tensor;
+            viewTensor.desc.dims.clear();
+            node.inTensorViewFuncs.at(i)(tensor->desc.dims, viewTensor.desc.dims);
+            if (viewTensor.Numel() != tensor->Numel()) {
+                ASD_LOG(ERROR) << GetName() << " node[" << nodeId
+                               << "] invalid view func, viewTensor.Numel:" << viewTensor.Numel()
+                               << ", tensor.Numel:" << tensor->Numel();
+                return false;
+            }
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << " view inTensor[" << i
+                          << "], old:" << TensorUtil::AsdOpsDimsToString(tensor->desc.dims)
+                          << ", new:" << TensorUtil::AsdOpsDimsToString(viewTensor.desc.dims);
+            node.kernelRunInfo.AddInTensor(viewTensor);
+        } else {
+            node.kernelRunInfo.AddInTensor(*tensor);
+        }
+    }
+    for (size_t i = 0; i < node.outTensors.size(); ++i) {
+        AsdOps::Tensor tensor;
+        node.kernelRunInfo.AddOutTensor(tensor);
+    }
+    return true;
+}
+
+bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId)
+{
+    ASD_LOG(INFO) << GetName() << " " << op->GetName()
+                  << " infer shape start, runInfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
+    if (node.inferShapePreFunc) {
+        ASD_LOG(INFO) << GetName() << " " << op->GetName()
+                      << " call inferShapePreFunc, old kernelRunInfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
+        node.inferShapePreFunc(node.kernelRunInfo);
+        ASD_LOG(INFO) << GetName() << " " << op->GetName()
+                      << " call inferShapePreFunc, new kernelRunInfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
+    }
+    AsdOps::Status st = op->InferShape(node.kernelRunInfo);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << op->GetName() << " infer shape fail, error:" << st.Message();
+        return false;
+    }
+    ASD_LOG(INFO) << GetName() << " " << op->GetName()
+                  << " infer shape success, runInfo:" << AsdOpsRunInfoToString(node.kernelRunInfo);
+
+    for (size_t i = 0; i < node.outTensors.size(); ++i) {
+        AsdOps::Tensor *outTensor = node.outTensors.at(i);
+        AsdOps::Tensor &runInfoOutTensor = node.kernelRunInfo.GetOutTensor(i);
+        if (IsInternalTensor(outTensor)) {
+            if (runInfoOutTensor.desc.dims.size() != 0) {
+                outTensor->desc = runInfoOutTensor.desc;
+            } else {
+                ASD_LOG(INFO) << GetName() << " " << op->GetName() << " outTensors[" << i
+                              << "] is internal tensor, infer shape wrong, not use infer shape desc";
+            }
+            outTensor->dataSize = TensorUtil::CalcTensorDataSize(outTensor->desc);
+            outTensor->data = memAllocatinSolver_->Malloc(outTensor->dataSize);
+            ASD_LOG(INFO) << GetName() << " " << op->GetName() << " outTensors[" << i
+                          << "] is internal tensor, mem solve:" << outTensor->data;
+        } else {
+            ASD_LOG(INFO) << GetName() << " " << op->GetName() << " outTensors[" << i << "] is not internal tensor";
+        }
+        runInfoOutTensor.data = outTensor->data;
+        runInfoOutTensor.dataSize = outTensor->dataSize;
+    }
+
+    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " after mem solve, runinfo:\n"
+                  << AsdOpsRunInfoToString(node.kernelRunInfo);
     return true;
 }
 
