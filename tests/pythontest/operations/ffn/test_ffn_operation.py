@@ -23,7 +23,7 @@ import operation_test  # NOQA: E402
 
 
 OP_NAME = "FfnOperation"
-PARAM = {}
+PARAM = '{"transposeA": false, "transposeB": false}'
 INTENSOR0 = os.path.join(
     os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "intensor0.pth")
 INTENSOR1 = os.path.join(
