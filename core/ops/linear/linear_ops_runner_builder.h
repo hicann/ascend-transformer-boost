@@ -15,19 +15,38 @@
  */
 #ifndef LINERA_OPS_RUNNER_BUILDER_H
 #define LINERA_OPS_RUNNER_BUILDER_H
+#include <asdops/utils/log/log.h>
+#include <asdops/utils/rt/rt.h>
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/linear.h"
-#include "linear_ops_runner.h"
+#include "linear_ops_runner_910a.h"
+#include "linear_ops_runner_910b.h"
 
 namespace AclTransformer {
 class LinearOpsRunnerBuilder : public RunnerBuilder {
 public:
-    LinearOpsRunnerBuilder(const LinearParam &param) : param_(param) {}
+    LinearOpsRunnerBuilder(const LinearParam &param) : param_(param)
+    {
+        ASD_LOG(INFO) << "LinearOperation::LinearOperation called";
+        const int versionLen = 32;
+        char version[versionLen] = {0};
+        AsdRtDeviceGetSocVersion(version, versionLen);
+        ASD_LOG(INFO) << "SocVersion:" << std::string(version);
+        is910B_ = std::string(version) == "Ascend910B4";
+    }
     virtual ~LinearOpsRunnerBuilder() = default;
-    Runner *Build() override { return new LinearOpsRunner(param_); }
+    Runner *Build() override
+    {
+        if (is910B_) {
+            return new LinearOpsRunner910B(param_);
+        } else {
+            return new LinearOpsRunner910A(param_);
+        }
+    }
 
 private:
     LinearParam param_;
+    bool is910B_ = false;
 };
 
 } // namespace AclTransformer
