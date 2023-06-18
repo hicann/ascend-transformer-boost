@@ -32,8 +32,7 @@ AsdOps::Status FfnOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 
     kernelGraph_.internalTensors.resize(3);
     AsdOps::Tensor &matmulOutTensor = kernelGraph_.internalTensors[0];
-    AsdOps::Tensor &castMatmulOutTensor = kernelGraph_.internalTensors[1];
-    AsdOps::Tensor &addOutTensor = kernelGraph_.internalTensors[2];
+    AsdOps::Tensor &addOutTensor = kernelGraph_.internalTensors[1];
 
     kernelGraph_.nodes.resize(3);
     auto &matmulNode = kernelGraph_.nodes[0];
@@ -43,13 +42,17 @@ AsdOps::Status FfnOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
     matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB})};
     matmulNode.inTensors = {&aTensor, &bTensor};
     matmulNode.outTensors = {&matmulOutTensor};
+    matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
+    matmulNode.inTensorViewFuncs.at(0) = [](const AsdOps::SVector<int64_t> &oldDims,
+                                            AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
+    };
 
     addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
-    addNode.inTensors = {&castMatmulOutTensor, &cTensor};
+    addNode.inTensors = {&matmulOutTensor, &cTensor};
     addNode.outTensors = {&addOutTensor};
 
-    geluNode.opDesc = {0, "ElewiseOperation",
-                       AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+    geluNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
     geluNode.inTensors = {&addOutTensor};
     geluNode.outTensors = {&operationOutTensor};
 
