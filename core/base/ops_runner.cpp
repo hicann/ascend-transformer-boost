@@ -93,7 +93,7 @@ AsdOps::Status OpsRunner::SetupImpl(const VariantPack &variantPack)
     }
 
     InitTensorMaxNodeMap();
-    ASD_LOG(INFO) << GetName() << " Setup start, kernel graph:" << kernelGraph_.ToString();
+    ASD_LOG(INFO) << GetName() << " Setup start, kernel graph:\n" << kernelGraph_.ToString();
 
     if (!PlanKernelGraph(variantPack)) {
         ASD_LOG(ERROR) << GetName() << " PlanKernelGraph fail";

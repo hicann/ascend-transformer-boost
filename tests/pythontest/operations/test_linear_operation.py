@@ -33,7 +33,7 @@ class TestLinearOperation(operation_test.OperationTest):
 
     def test_2d_half(self):
         self.execute(OP_NAME, '{"transposeA":false,"transposeB":true}',
-                     [torch.rand(32, 1024).npu().half(),
+                     [torch.rand(1, 32, 1024).npu().half(),
                       torch.rand(4096, 1024).npu().half(),
                       torch.rand(4096).npu().half()])
 
