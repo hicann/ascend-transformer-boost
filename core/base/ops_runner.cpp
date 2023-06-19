@@ -135,7 +135,7 @@ void OpsRunner::UpdateRunInfoTensorData(VariantPack &variantPack)
                     tensor.data = variantPack.inTensors.at(tensorIdInVariantPack).data;
                 } else {
                     int64_t tensorIdInVariantPack = GetOutTensorId(node.inTensors.at(tensorId));
-                    if (tensorIdInVariantPack == -1) {
+                    if (tensorIdInVariantPack != -1) {
                         tensor.data = variantPack.outTensors.at(tensorIdInVariantPack).data;
                     } else {
                         ASD_LOG(ERROR) << GetName() << " node.inTensors[" << tensorId
