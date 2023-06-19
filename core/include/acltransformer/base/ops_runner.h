@@ -42,8 +42,8 @@ struct KernelGraphNode {
 struct KernelGraph {
     AsdOps::SVector<AsdOps::Tensor> inTensors;
     AsdOps::SVector<AsdOps::Tensor> outTensors;
-    AsdOps::SVector<AsdOps::Tensor> internalTensors;
-    AsdOps::SVector<KernelGraphNode> nodes;
+    AsdOps::SVector<AsdOps::Tensor, 64> internalTensors;
+    AsdOps::SVector<KernelGraphNode, 64> nodes;
     std::string ToString() const;
 };
 
