@@ -130,8 +130,18 @@ void OpsRunner::UpdateRunInfoTensorData(VariantPack &variantPack)
             if (IsInternalTensor(node.inTensors.at(tensorId))) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)tensor.data;
             } else {
-                int64_t tensorIdInRuninfo = GetInTensorId(node.inTensors.at(tensorId));
-                tensor.data = variantPack.inTensors.at(tensorIdInRuninfo).data;
+                int64_t tensorIdInVariantPack = GetInTensorId(node.inTensors.at(tensorId));
+                if (tensorIdInVariantPack != -1) {
+                    tensor.data = variantPack.inTensors.at(tensorIdInVariantPack).data;
+                } else {
+                    int64_t tensorIdInVariantPack = GetOutTensorId(node.inTensors.at(tensorId));
+                    if (tensorIdInVariantPack == -1) {
+                        tensor.data = variantPack.outTensors.at(tensorIdInVariantPack).data;
+                    } else {
+                        ASD_LOG(ERROR) << GetName() << " node.inTensors[" << tensorId
+                                       << "] not in variantPack's inTensors or outTensors";
+                    }
+                }
             }
         }
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetOutTensorCount(); tensorId++) {
@@ -139,8 +149,13 @@ void OpsRunner::UpdateRunInfoTensorData(VariantPack &variantPack)
             if (IsInternalTensor(node.outTensors.at(tensorId))) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)tensor.data;
             } else {
-                int64_t tensorIdInRuninfo = GetOutTensorId(node.outTensors.at(tensorId));
-                tensor.data = variantPack.outTensors.at(tensorIdInRuninfo).data;
+                int64_t tensorIdInVariantPack = GetOutTensorId(node.outTensors.at(tensorId));
+                if (tensorIdInVariantPack != -1) {
+                    tensor.data = variantPack.outTensors.at(tensorIdInVariantPack).data;
+                } else {
+                    ASD_LOG(ERROR) << GetName() << " node.outTensors[" << tensorId
+                                   << "] not in variantPack's inTensors or outTensors";
+                }
             }
         }
     }
