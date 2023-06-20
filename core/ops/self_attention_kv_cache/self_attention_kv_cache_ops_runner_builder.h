@@ -15,16 +15,28 @@
  */
 #ifndef SELFATTENTIONKVCACHE_OPS_RUNNER_BUILDER_H
 #define SELFATTENTIONKVCACHE_OPS_RUNNER_BUILDER_H
+#include <asdops/utils/log/log.h>
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/self_attention_kv_cache.h"
 #include "self_attention_kv_cache_ops_runner.h"
+#include "self_attention_kv_cache_ops_llama7b_runner.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
 public:
     SelfAttentionKvCacheOpsRunnerBuilder(const SelfAttentionKvCacheParam &param) : param_(param) {}
     virtual ~SelfAttentionKvCacheOpsRunnerBuilder() = default;
-    Runner *Build() override { return new SelfAttentionKvCacheOpsRunner(param_); }
+    Runner *Build() override
+    {
+        if (param_.model == "chatglm6b") {
+            return new SelfAttentionKvCacheOpsRunner(param_);
+        } else if (param_.model == "llama7b") {
+            return new SelfAttentionKvCacheOpsLlama7bRunner(param_);
+        } else {
+            ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
+            return nullptr;
+        }
+    }
 
 private:
     SelfAttentionKvCacheParam param_;
