@@ -30,7 +30,7 @@ AsdOps::Status FfnOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
     kernelGraph_.outTensors = variantPack.outTensors;
     AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[0];
 
-    kernelGraph_.internalTensors.resize(3);
+    kernelGraph_.internalTensors.resize(2);
     AsdOps::Tensor &matmulOutTensor = kernelGraph_.internalTensors[0];
     AsdOps::Tensor &addOutTensor = kernelGraph_.internalTensors[1];
 
