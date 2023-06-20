@@ -109,7 +109,10 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 
     for (auto &node : runnerGraph_.nodes) {
         ASD_LOG(INFO) << "Plan call " << node.runner->GetName() << " setup ";
-        node.runner->Setup(node.variantPack);
+        AsdOps::Status st = node.runner->Setup(node.variantPack);
+        if (!st.Ok()) {
+            return st;
+        }
         uint64_t runnerWorkspaceSize = node.runner->GetWorkspaceSize();
         ASD_LOG(INFO) << "Plan get " << node.runner->GetName() << " workspace size:" << runnerWorkspaceSize;
         workspaceSize_ = std::max(runnerWorkspaceSize, workspaceSize_);
