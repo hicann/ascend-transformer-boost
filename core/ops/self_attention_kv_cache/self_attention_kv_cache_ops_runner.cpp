@@ -49,7 +49,7 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(1);
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(2);
 
-    kernelGraph_.internalTensors.resize(7);
+    kernelGraph_.internalTensors.resize(9);
     AsdOps::Tensor &divOut = kernelGraph_.internalTensors.at(0);
     AsdOps::Tensor &transposedQ = kernelGraph_.internalTensors.at(1);
     AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(2);
@@ -57,8 +57,10 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     AsdOps::Tensor &maskOut = kernelGraph_.internalTensors.at(4);
     AsdOps::Tensor &attentionScores = kernelGraph_.internalTensors.at(5);
     AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(6);
+    AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(7);
+    AsdOps::Tensor &bmmVout = kernelGraph_.internalTensors.at(8);
 
-    kernelGraph_.nodes.resize(10);
+    kernelGraph_.nodes.resize(12);
     auto &mulsQNode = kernelGraph_.nodes.at(0);
     auto &permuteQNode = kernelGraph_.nodes.at(1);
     auto &catKeyNode = kernelGraph_.nodes.at(2);
@@ -68,23 +70,33 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     auto &mulsMaskOutNode = kernelGraph_.nodes.at(6);
     auto &softMaxNode = kernelGraph_.nodes.at(7);
     auto &catValueNode = kernelGraph_.nodes.at(8);
-    auto &bmmVNode = kernelGraph_.nodes.at(9);
+    auto &permuteVNode = kernelGraph_.nodes.at(9);
+    auto &bmmVNode = kernelGraph_.nodes.at(10);
+    auto &permuteContextNode = kernelGraph_.nodes.at(11);
 
     float varAttr = 1.0 / (sqrt(param_.dk) * (param_.layerId + 1));
     mulsQNode.opDesc = {0, "ElewiseOperation",
                         AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, varAttr})};
     mulsQNode.inTensors = {&mixedQuery};
     mulsQNode.outTensors = {&divOut};
+    mulsQNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        for (int i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+    };
 
     permuteQNode.opDesc = {0, "AsStridedOperation"};
-    permuteQNode.inTensors = {&mixedQuery};
+    permuteQNode.inTensors = {&divOut};
     permuteQNode.outTensors = {&transposedQ};
     permuteQNode.inTensorViewFuncs.resize(permuteQNode.inTensors.size());
     permuteQNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0), oldDims.at(1) * oldDims.at(2), oldDims.at(3)};
     };
-    permuteQNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
+    permuteQNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         // permute [1, 0, 2]
+        for (int i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
         AsdOps::SVector<int64_t> inputShape = runInfo.GetInTensor(0).desc.dims;
         AsdOps::SVector<int64_t> inputStride;
         int64_t size = inputShape.size();
@@ -100,8 +112,13 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     };
 
     catKeyNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({0})};
-    catKeyNode.inTensors = {&mixedKey, &pastKey};
+    catKeyNode.inTensors = {&pastKey, &mixedKey};
     catKeyNode.outTensors = {&presentKey};
+    catKeyNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        for (int i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+    };
 
     permuteKNode.opDesc = {0, "AsStridedOperation"};
     permuteKNode.inTensors = {&presentKey};
@@ -112,6 +129,9 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     };
     permuteKNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         // permute [1, 2, 0]
+        for (int i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
         AsdOps::SVector<int64_t> inputShape = runInfo.GetInTensor(0).desc.dims;
         AsdOps::SVector<int64_t> inputStride;
         int64_t size = inputShape.size();
@@ -128,7 +148,7 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
         runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
     };
 
-    bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, param_.transKey, {/*oriShape*/}})};
+    bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
     bmmQkNode.inTensors = {&transposedQ, &transposedK};
     bmmQkNode.outTensors = {&bmmQkOut};
 
@@ -139,7 +159,7 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     maskNode.outTensors = {&maskOut};
     maskNode.inTensorViewFuncs.resize(maskNode.inTensors.size());
     maskNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(2), oldDims.at(3)};
+        newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(1), oldDims.at(2)};
     };
 
     float scale = param_.layerId + 1.0;
@@ -153,15 +173,73 @@ AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack
     softMaxNode.outTensors = {&attentionProbs};
 
     catValueNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({0})};
-    catValueNode.inTensors = {&mixedValue, &pastValue};
+    catValueNode.inTensors = {&pastValue, &mixedValue};
     catValueNode.outTensors = {&presentValue};
+    catValueNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        for (int i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+    };
+
+    permuteVNode.opDesc = {0, "AsStridedOperation"};
+    permuteVNode.inTensors = {&presentValue};
+    permuteVNode.outTensors = {&transposedV};
+    permuteVNode.inTensorViewFuncs.resize(permuteVNode.inTensors.size());
+    permuteVNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1) * oldDims.at(2), oldDims.at(3)};
+    };
+    permuteVNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        // permute [1, 0, 2]
+        AsdOps::SVector<int64_t> inputShape = runInfo.GetInTensor(0).desc.dims;
+        AsdOps::SVector<int64_t> inputStride;
+        int64_t size = inputShape.size();
+        inputStride.resize(size);
+        int64_t stride = 1;
+        for (size_t i = 0; i < size; i++) {
+            inputStride.at(size - i - 1) = stride;
+            stride *= inputShape.at(size - i - 1);
+        }
+        std::swap(inputShape[0], inputShape[1]);
+        std::swap(inputStride[0], inputStride[1]);
+        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
+    };
 
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
-    bmmVNode.inTensors = {&attentionProbs, &presentValue};
-    bmmVNode.outTensors = {&context};
+    bmmVNode.inTensors = {&attentionProbs, &transposedV};
+    bmmVNode.outTensors = {&bmmVout};
     bmmVNode.inTensorViewFuncs.resize(bmmVNode.inTensors.size());
-    bmmVNode.inTensorViewFuncs[1] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1) * oldDims.at(2), oldDims.at(3)};
+    bmmVNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1) , oldDims.at(2), oldDims.at(3)};
+    };
+    bmmVNode.inferShapePreFunc  = [](AsdOps::RunInfo &runInfo) {
+        for (int i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+    };
+
+    permuteContextNode.opDesc = {0, "AsStridedOperation"};
+    permuteContextNode.inTensors = {&bmmVout};
+    permuteContextNode.outTensors = {&context};
+    permuteContextNode.inTensorViewFuncs.resize(permuteContextNode.inTensors.size());
+    permuteContextNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(1), oldDims.at(2)};
+    };
+    permuteContextNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        // permute [2, 0, 1, 3]
+        AsdOps::SVector<int64_t> inputShape = runInfo.GetInTensor(0).desc.dims;
+        AsdOps::SVector<int64_t> inputStride;
+        int64_t size = inputShape.size();
+        inputStride.resize(size);
+        int64_t stride = 1;
+        for (size_t i = 0; i < size; i++) {
+            inputStride.at(size - i - 1) = stride;
+            stride *= inputShape.at(size - i - 1);
+        }
+        std::swap(inputShape[1], inputShape[2]);
+        std::swap(inputShape[0], inputShape[1]);
+        std::swap(inputStride[1], inputStride[2]);
+        std::swap(inputStride[0], inputStride[1]);
+        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
     };
 
     return AsdOps::Status::OkStatus();

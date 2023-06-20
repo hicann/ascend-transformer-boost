@@ -316,10 +316,13 @@ bool OpsRunner::PlanOneKernelBuildRunInfo(KernelGraphNode &node, size_t nodeId)
         if (i < node.inTensorViewFuncs.size() && node.inTensorViewFuncs.at(i)) {
             AsdOps::Tensor viewTensor = *tensor;
             viewTensor.desc.dims.clear();
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId
+                               << "] inTensorViewFuncs[" << i << "], tensor->desc.dims:" << TensorUtil::AsdOpsDimsToString(tensor->desc.dims)
+                               << ",  viewTensor.desc.dims:" << TensorUtil::AsdOpsDimsToString( viewTensor.desc.dims);
             node.inTensorViewFuncs.at(i)(tensor->desc.dims, viewTensor.desc.dims);
             if (viewTensor.Numel() != tensor->Numel()) {
                 ASD_LOG(ERROR) << GetName() << " node[" << nodeId
-                               << "] invalid view func, viewTensor.Numel:" << viewTensor.Numel()
+                               << "] inTensorViewFuncs[" << i << "], viewTensor.Numel:" << viewTensor.Numel()
                                << ", tensor.Numel:" << tensor->Numel();
                 return false;
             }
