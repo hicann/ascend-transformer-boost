@@ -215,6 +215,10 @@ void OpsRunner::RunAllKernel(Handle &handle)
     for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
         auto &node = kernelGraph_.nodes.at(i);
         AsdOps::Kernel *kernel = node.kernel;
+        if (kernel == nullptr) {
+            ASD_LOG(ERROR) << GetName() << " node[" << i << "] kernel is null";
+            return;
+        }
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         kernelRunInfo.SetStream(handle.stream);
         ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run start, runinfo:\n"
@@ -316,14 +320,13 @@ bool OpsRunner::PlanOneKernelBuildRunInfo(KernelGraphNode &node, size_t nodeId)
         if (i < node.inTensorViewFuncs.size() && node.inTensorViewFuncs.at(i)) {
             AsdOps::Tensor viewTensor = *tensor;
             viewTensor.desc.dims.clear();
-            ASD_LOG(INFO) << GetName() << " node[" << nodeId
-                               << "] inTensorViewFuncs[" << i << "], tensor->desc.dims:" << TensorUtil::AsdOpsDimsToString(tensor->desc.dims)
-                               << ",  viewTensor.desc.dims:" << TensorUtil::AsdOpsDimsToString( viewTensor.desc.dims);
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] inTensorViewFuncs[" << i
+                          << "], tensor->desc.dims:" << TensorUtil::AsdOpsDimsToString(tensor->desc.dims)
+                          << ",  viewTensor.desc.dims:" << TensorUtil::AsdOpsDimsToString(viewTensor.desc.dims);
             node.inTensorViewFuncs.at(i)(tensor->desc.dims, viewTensor.desc.dims);
             if (viewTensor.Numel() != tensor->Numel()) {
-                ASD_LOG(ERROR) << GetName() << " node[" << nodeId
-                               << "] inTensorViewFuncs[" << i << "], viewTensor.Numel:" << viewTensor.Numel()
-                               << ", tensor.Numel:" << tensor->Numel();
+                ASD_LOG(ERROR) << GetName() << " node[" << nodeId << "] inTensorViewFuncs[" << i
+                               << "], viewTensor.Numel:" << viewTensor.Numel() << ", tensor.Numel:" << tensor->Numel();
                 return false;
             }
             ASD_LOG(INFO) << GetName() << " node[" << nodeId << " view inTensor[" << i
