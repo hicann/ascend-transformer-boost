@@ -27,6 +27,7 @@ public:
     ~LayerTorch();
     void SetParam(std::string param);
     std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
+    void ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
     c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_); }
 
 private:
