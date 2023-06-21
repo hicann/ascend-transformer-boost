@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/add_operation.h"
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
 #include "add_ops_runner_builder.h"
 #include "add_torch_runner_builder.h"

@@ -34,19 +34,19 @@ Config::Config()
     isTransposeOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_TRANSPOSE_OPSRUNNER_ENABLE");
     isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE");
     isStreamSyncEveryKernelEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_KERNEL_ENABLE");
-    isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE");
-    isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
+    isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE", true);
+    isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE", true);
 }
 
 Config::~Config() {}
 
 std::string Config::GetSaveTensorDir() { return "tensors"; }
 
-bool Config::IsEnable(const char *env)
+bool Config::IsEnable(const char *env, bool enable)
 {
     const char *saveTensor = std::getenv(env);
     if (!saveTensor) {
-        return false;
+        return enable;
     }
     return std::string(saveTensor) == "1";
 }

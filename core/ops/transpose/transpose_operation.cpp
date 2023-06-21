@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/transpose_operation.h"
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
 #include "transpose_ops_runner_builder.h"
 #include "transpose_torch_runner_builder.h"
@@ -31,7 +32,7 @@ TransposeOperation::TransposeOperation(const TransposeParam &param) : Operation(
 TransposeOperation::~TransposeOperation() {}
 
 AsdOps::Status TransposeOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (inTensors.size() != 1) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 1");

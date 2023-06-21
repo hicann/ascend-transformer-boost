@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/rms_norm_operation.h"
-#include "acltransformer/config.h"
 #include <asdops/utils/log/log.h>
+#include <asdops/utils/singleton/singleton.h>
+#include "acltransformer/config.h"
 #include "rms_norm_ops_runner_builder.h"
 #include "rms_norm_torch_runner_builder.h"
 

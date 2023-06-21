@@ -32,8 +32,13 @@ public:
     virtual AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
 
 protected:
+    void ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransformer::VariantPack &variantPack);
+
+protected:
     std::string layerName_;
     nlohmann::json paramJson_;
+    void *workspace = nullptr;
+    uint64_t workspaceSize = 0;
 };
 } // namespace AclTransformer
 #endif

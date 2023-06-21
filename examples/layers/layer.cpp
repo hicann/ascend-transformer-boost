@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 #include "layer.h"
+#include <asdops/utils/log/log.h>
+#include <asdops/utils/rt/rt.h>
+#include "acltransformer/plan.h"
+#include "acltransformer/plan_builder.h"
+#include "examples/utils/example_util.h"
+
 namespace AclTransformer {
 Layer::Layer(const std::string &layerName) : layerName_(layerName) {}
 
@@ -22,4 +28,46 @@ Layer::~Layer() {}
 std::string Layer::GetName() const { return layerName_; }
 
 void Layer::SetParam(const nlohmann::json &paramJson) { paramJson_ = paramJson; }
+
+void Layer::ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransformer::VariantPack &variantPack)
+{
+    AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
+
+    AclTransformer::PlanBuilder planBuilder;
+    AclTransformer::Plan plan;
+    AsdOps::Status st = planBuilder.Build(variantPack, opGraph, plan);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << opGraph.name << " PlanBuilder build plan fail, error:" << st.Message();
+        return;
+    }
+
+    st = plan.Setup(handle, variantPack);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << opGraph.name << " Plan Setup fail error:" << st.Message();
+        return;
+    }
+
+    variantPack.workspaceSize = plan.GetWorkspaceSize();
+    ASD_LOG(INFO) << opGraph.name << " Plan GetWorkspaceSize:" << variantPack.workspaceSize;
+
+    if (variantPack.workspaceSize > 0) {
+        ASD_LOG(INFO) << opGraph.name
+                      << " AsdRtMemMallocDevice variantPack.workspaceSize:" << variantPack.workspaceSize;
+        int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
+        if (st != ASDRT_SUCCESS) {
+            ASD_LOG(ERROR) << opGraph.name << " AsdRtMemMallocDevice fail";
+            return;
+        }
+    }
+
+    st = plan.Execute(handle, variantPack);
+    ASD_LOG_IF(!st.Ok(), ERROR) << opGraph.name << " Plan Execute fail, error:" << st.Message();
+
+    if (variantPack.workspace != nullptr) {
+        AsdRtMemFreeDevice(variantPack.workspace);
+        ASD_LOG(INFO) << opGraph.name << " AsdRtMemFreeDevice free:" << variantPack.workspace;
+        variantPack.workspace = nullptr;
+        variantPack.workspaceSize = 0;
+    }
+}
 } // namespace AclTransformer

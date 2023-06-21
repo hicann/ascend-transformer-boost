@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/mlp_operation.h"
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
 #include "mlp_torch_runner_builder.h"
 #include "mlp_ops_runner_builder.h"
