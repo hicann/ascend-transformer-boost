@@ -2,7 +2,9 @@
 
 # activate Ascend environment
 source /usr/local/Ascend/ascend-toolkit/set_env.sh
-
+SCRIPT_DIR=$(cd $(dirname $0); pwd)
+cd $SCRIPT_DIR
+pwd
 if [ ! -d "$ACLTRANSFORMER_TESTDATA/weights/llama/vicuna-7b" ];then
     echo "$ACLTRANSFORMER_TESTDATA/weights/llama/vicuna-7b dir not exist, can't run"
     exit

@@ -32,10 +32,10 @@ Config::Config()
     isSelfAttentionOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_SELFATTENTION_OPSRUNNER_ENABLE");
     isPositionEmbedding1dSplitOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_1D_SPLIT_OPSRUNNER_ENABLE");
     isTransposeOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_TRANSPOSE_OPSRUNNER_ENABLE");
-    isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE");
+    isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE", true);
     isStreamSyncEveryKernelEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_KERNEL_ENABLE");
-    isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE", true);
-    isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE", true);
+    isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE");
+    isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
 }
 
 Config::~Config() {}

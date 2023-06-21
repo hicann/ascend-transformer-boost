@@ -39,8 +39,8 @@ if ACLTRANSFORMER_HOME_PATH is None:
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "examples/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
-
-# operation = torch.classes.OperationTorch.OperationTorch("SelfAttentionKvCacheOperation")
+acl_layer = torch.classes.LayerTorch.LayerTorch("ChatGlm6BLayer")
+acl_layer.set_workspace(1020 * 1024 * 1000)
 
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
@@ -293,7 +293,6 @@ def attention_fn(
         0, 1), key_layer.permute(1, 2, 0))
     # change view to [b, np, sq, sk]
     attention_scores = matmul_result.view(*output_size)
-
 
     if self.scale_mask_softmax:
         self.scale_mask_softmax.scale = query_key_layer_scaling_coeff
@@ -575,6 +574,7 @@ class GLMBlock(torch.nn.Module):
 
         # Layernorm on the input data.
         self.input_layernorm = layernorm(hidden_size, eps=layernorm_epsilon)
+        self.layernorm_epsilon = layernorm_epsilon
 
         self.position_encoding_2d = position_encoding_2d
 
@@ -604,10 +604,6 @@ class GLMBlock(torch.nn.Module):
             params_dtype=params_dtype,
         )
 
-        self.acl_layer = torch.classes.LayerTorch.LayerTorch("ChatGlm6BLayer")
-        self.acl_layer.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": layer_id,
-                                             "layerNormEps": layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * num_layers)}))
-
     def forward(
             self,
             hidden_states: torch.Tensor,
@@ -622,7 +618,6 @@ class GLMBlock(torch.nn.Module):
         hidden_states: [seq_len, batch, hidden_size]
         attention_mask: [(1, 1), seq_len, seq_len]
         """
-
 
         test_glmBlockOut = None
         test_presentKey = None
@@ -663,9 +658,6 @@ class GLMBlock(torch.nn.Module):
         output = mlp_input * alpha + mlp_output
 
         if layer_past is not None:
-            print(outputs[0][0].shape)
-            print(outputs[0][1].shape)
-
             global cosTable
             global sinTable
             pastKey, pastValue = layer_past
@@ -680,13 +672,15 @@ class GLMBlock(torch.nn.Module):
             inputs.append(pastKey)
             inputs.append(pastValue)
             global glm_block
+            acl_layer.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
+                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)}))
 
-            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
+            test_glmBlockOut, test_presentKey, test_presentValue = acl_layer.execute(
                 inputs)
 
             assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
                 test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
-            print("success!")
+            print("success, acl == origin")
             output = test_glmBlockOut
 
         if use_cache:

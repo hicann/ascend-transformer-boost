@@ -91,7 +91,7 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
     }
     layer_->Execute(handle, variantPack);
 
-    ASD_LOG(WARN) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
+    ASD_LOG(FATAL) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
     return outTensors;
 }
 
@@ -120,7 +120,16 @@ void LayerTorch::ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<to
     }
     layer_->Execute(handle, variantPack);
 
-    ASD_LOG(WARN) << "LayerTorch::ExecuteOut end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
+    ASD_LOG(FATAL) << "LayerTorch::ExecuteOut end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
+}
+
+void LayerTorch::SetWorkspace(int64_t workspaceSize)
+{
+    if (!layer_) {
+        ASD_LOG(ERROR) << "layer is null";
+        return;
+    }
+    layer_->SetWorkspace(workspaceSize);
 }
 
 void LayerTorch::CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
@@ -142,5 +151,6 @@ TORCH_LIBRARY(LayerTorch, m)
         .def(torch::init<std::string>())
         .def("execute", &LayerTorch::Execute)
         .def("execute_out", &LayerTorch::ExecuteOut)
-        .def("set_param", &LayerTorch::SetParam);
+        .def("set_param", &LayerTorch::SetParam)
+        .def("set_workspace", &LayerTorch::SetWorkspace);
 }
