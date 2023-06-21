@@ -179,7 +179,7 @@ AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
     ffnResidualAddNode.inTensorIds = {selfNormOut, ffnLinearOut};
     ffnResidualAddNode.outTensorIds = {glmBlockOut};
 
-    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
+    ExecuteOperationGraph(opGraph, variantPack);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

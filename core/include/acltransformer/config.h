@@ -42,7 +42,7 @@ public:
     bool IsStreamSyncEveryPlanEnable();
 
 private:
-    static bool IsEnable(const char *env);
+    static bool IsEnable(const char *env, bool enable = false);
 
 private:
     bool isSaveTensor_ = false;
