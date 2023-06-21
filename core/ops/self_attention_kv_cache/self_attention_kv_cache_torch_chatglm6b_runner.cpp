@@ -17,6 +17,7 @@
 #include <cmath>
 #ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
+#include <torch_npu/csrc/core/npu/NPUStream.h>
 #include "acltransformer/torch/torch_util.h"
 #endif
 #include <asdops/utils/log/log.h>
@@ -147,9 +148,7 @@ AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &han
                        << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
 
-    torch::save(contextLayer.to(at::Device(at::kCPU)), "tensors/contextLayer.pth");
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
-    TensorUtil::SaveTensor(variantPack.outTensors[0], "tensors/contextLayer.bin");
 
     return AsdOps::Status::OkStatus();
 #else

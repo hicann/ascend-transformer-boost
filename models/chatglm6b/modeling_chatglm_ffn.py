@@ -4,7 +4,7 @@ import math
 import copy
 import os
 import warnings
-
+import json
 import torch
 import torch.utils.checkpoint
 import torch.nn.functional as F
@@ -525,6 +525,8 @@ class GLU(torch.nn.Module):
         )
         self.acl_ffn_operation = torch.classes.OperationTorch.OperationTorch(
             "FfnOperation")
+        self.acl_ffn_operation.set_param(
+            '{"transposeA":false,"transposeB":false}')
 
     def forward(self, hidden_states):
         """

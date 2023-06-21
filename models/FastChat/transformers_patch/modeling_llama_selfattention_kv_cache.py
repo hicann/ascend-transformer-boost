@@ -197,7 +197,7 @@ class LlamaAttention(nn.Module):
         self.acl_attention_operation = torch.classes.OperationTorch.OperationTorch(
             "SelfAttentionKvCacheOperation")
         self.acl_attention_operation.set_param(
-            json.dumps({"dk": 128, "model": "llama7b"}))
+            json.dumps({"headNum": self.num_heads, "dk": self.head_dim, "model": "llama7b"}))
 
         if (self.head_dim * self.num_heads) != self.hidden_size:
             raise ValueError(
@@ -237,9 +237,18 @@ class LlamaAttention(nn.Module):
             bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
 
         kv_seq_len = key_states.shape[-2]
+
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
-            context_layer, present_key, present_value = self.acl_attention_fn.execute([query_states.permute(2, 0, 1, 3),
+            
+        cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
+        query_states, key_states = apply_rotary_pos_emb(
+            query_states, key_states, cos, sin, position_ids)
+        
+        # [bsz, nh, t, hd]
+        context_layer = None
+        if past_key_value is not None:
+            context_layer, present_key, present_value = self.acl_attention_operation.execute([query_states.permute(2, 0, 1, 3),
                                                                                        key_states.permute(
                                                                                            2, 0, 1, 3),
                                                                                        value_states.permute(
@@ -248,13 +257,10 @@ class LlamaAttention(nn.Module):
                                                                                        past_key_value[0].permute(
                                                                                            2, 0, 1, 3),
                                                                                        past_key_value[1].permute(2, 0, 1, 3)])  # [qlen, bsz, nh, hd]
+            print("execute success")
             context_layer = context_layer.transpose(0, 1)
             present_key = present_key.permute(1, 2, 0, 3)
             present_value = present_value.permute(1, 2, 0, 3)
-        cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
-        query_states, key_states = apply_rotary_pos_emb(
-            query_states, key_states, cos, sin, position_ids)
-        # [bsz, nh, t, hd]
 
         if past_key_value is not None:
             # reuse k, v, self_attention
@@ -295,8 +301,9 @@ class LlamaAttention(nn.Module):
 
         attn_output = attn_output.transpose(1, 2)
         attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
-        assert torch.allclose(attn_output, context_layer,
-                              rtol=0.02, atol=0.02), "Not equal"
+        if context_layer is not None:
+            assert torch.allclose(attn_output, context_layer,
+                                rtol=0.02, atol=0.02), "Not equal"
         attn_output = self.o_proj(attn_output)
 
         if not output_attentions:

@@ -25,7 +25,7 @@ PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingPa
 #ifdef USE_TORCH_RUNNER
     runnerBuilders_ = {new PositionEmbeddingOpsRunnerBuilder(param_), new PositionEmbeddingTorchRunnerBuilder(param_)};
 #else
-    runnerBuilders_ = {new PositionEmbeddingTorchRunnerBuilder(param_)};
+    runnerBuilders_ = {new PositionEmbeddingOpsRunnerBuilder(param_)};
 #endif
 }
 

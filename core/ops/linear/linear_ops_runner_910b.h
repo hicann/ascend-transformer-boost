@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * you may not use this file ex10cept in compliance with the License.
  * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -13,28 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINEAR_OPS_RUNNER_H
-#define LINEAR_OPS_RUNNER_H
+#ifndef LINEAR_OPS_RUNNER_910B_H
+#define LINEAR_OPS_RUNNER_910B_H
 #include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/linear.h"
 
 namespace AclTransformer {
-class LinearOpsRunner : public OpsRunner {
+class LinearOpsRunner910B : public OpsRunner {
 public:
-    LinearOpsRunner(LinearParam &param);
-    virtual ~LinearOpsRunner();
+    explicit LinearOpsRunner910B(LinearParam &param);
+    virtual ~LinearOpsRunner910B();
 
 protected:
     AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
-
-private:
-    void ConvertNewVariantPack(const VariantPack &variantPack, VariantPack &newVariantPack,
-                               AsdOps::SVector<int64_t> &matmulOrgShape, AsdOps::SVector<int64_t> &transdataOrgShape);
 
 private:
     LinearParam param_;
 };
-
 } // namespace AclTransformer
 #endif

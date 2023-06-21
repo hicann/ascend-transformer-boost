@@ -21,8 +21,8 @@ import torch_npu
 sys.path.append(os.path.dirname(__file__))
 import operation_test  # NOQA: E402
 
-
 OP_NAME = "LinearOperation"
+PARAM = '{"transposeA": false, "transposeB": false}'
 
 
 class TestLinearOperation(operation_test.OperationTest):
@@ -32,11 +32,10 @@ class TestLinearOperation(operation_test.OperationTest):
         return [golden_result]
 
     def test_2d_half(self):
-        self.execute(OP_NAME, '{"transposeA":false,"transposeB":true}',
-                     [torch.rand(5584, 1024).npu().half(),
+        self.execute(OP_NAME, PARAM,
+                     [torch.rand(1, 32, 1024).npu().half(),
                       torch.rand(4096, 1024).npu().half(),
                       torch.rand(4096).npu().half()])
-
 
 if __name__ == '__main__':
     unittest.main()

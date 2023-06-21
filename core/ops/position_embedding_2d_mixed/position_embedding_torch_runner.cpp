@@ -50,9 +50,7 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
 
     mixed =
         mixed.view({mixed.sizes()[0], mixed.sizes()[1], this->param_.headNum, mixed.sizes()[2] / this->param_.headNum});
-    torch::save(mixed.to(at::Device(at::kCPU)), "mixed.pth");
     std::vector<torch::Tensor> qkvLayer = mixed.chunk(3, -1);
-    torch::save(qkvLayer[2].to(at::Device(at::kCPU)), "vlayer.pth");
     std::vector<torch::Tensor> qChunks = qkvLayer[0].chunk(2, -1);
     std::vector<torch::Tensor> kChunks = qkvLayer[1].chunk(2, -1);
 

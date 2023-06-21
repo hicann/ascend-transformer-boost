@@ -45,6 +45,11 @@ int64_t ExampleUtil::GetTensorNpuFormat(const at::Tensor &tensor)
 #endif
 }
 
+at::Tensor ExampleUtil::NpuFormatCast(const at::Tensor &tensor)
+{
+    return at_npu::native::NPUNativeFunctions::npu_format_cast(tensor, GetTensorNpuFormat(tensor));
+}
+
 void ExampleUtil::ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
                                 std::vector<at::Tensor> atOutTensors)
 {
@@ -245,10 +250,18 @@ at::Tensor ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorD
 #endif
 
     ASD_LOG(INFO) << "ApplyTensorWithFormat stat, format:" << tensorDesc.format;
-    at::Tensor newTensor =
-        at_npu::native::OpPreparation::ApplyTensorWithFormat(
-            at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options, tensorDesc.format)
-            .contiguous();
+    at::Tensor newTensor = at_npu::native::OpPreparation::ApplyTensorWithFormat(
+        at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options, tensorDesc.format);
+    ASD_LOG(INFO) << "ApplyTensorWithFormat end, newTensor.format:" << GetTensorNpuFormat(newTensor)
+                  << ", is_contiguous:" << newTensor.is_contiguous();
+    if (GetTensorNpuFormat(newTensor) != tensorDesc.format) {
+        ASD_LOG(WARN) << "ApplyTensorWithFormat newTensor.format:" << GetTensorNpuFormat(newTensor)
+                      << " != " << tensorDesc.format;
+    }
+    if (!newTensor.is_contiguous()) {
+        newTensor = newTensor.contiguous();
+    }
+
     ASD_LOG(INFO) << "ApplyTensorWithFormat success, newTensor.options:" << newTensor.options()
                   << ", format:" << GetTensorNpuFormat(newTensor) << ", is_contiguous:" << newTensor.is_contiguous();
 

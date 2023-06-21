@@ -86,12 +86,9 @@ function fn_build_asdops()
         build_options="$build_options --use_cxx11_abi=0"
     fi
 
-    build_options="$build_options --output=$THIRD_PARTY_DIR --build_config=$CODE_ROOT/scripts/asdops_build_config.json"
+    build_options="$build_options --output=$THIRD_PARTY_DIR"
     echo "bash scripts/build.sh release $build_options"
     bash scripts/build.sh release $build_options
-    cd $THIRD_PARTY_DIR
-    tar -xvf asdops.tar.gz
-    cd ..
 }
 
 function fn_build_nlohmann_json()

@@ -46,7 +46,23 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
         auto &node = runnerGraph_.nodes.at(nodeId);
         node.variantPack.inTensors.resize(node.inTensors.size());
         for (size_t i = 0; i < node.inTensors.size(); ++i) {
-            node.variantPack.inTensors.at(i) = *node.inTensors.at(i);
+            if (i < node.inTensorViewFuncs.size() && node.inTensorViewFuncs.at(i)) {
+                AsdOps::Tensor viewTensor = *node.inTensors.at(i);
+                viewTensor.desc.dims.clear();
+                node.inTensorViewFuncs.at(i)(node.inTensors.at(i)->desc.dims, viewTensor.desc.dims);
+                if (viewTensor.Numel() != node.inTensors.at(i)->Numel()) {
+                    ASD_LOG(ERROR) << "Plan node[" << nodeId
+                                   << "] invalid view func, viewTensor.Numel:" << viewTensor.Numel()
+                                   << ", tensor.Numel:" << node.inTensors.at(i)->Numel();
+                    return AsdOps::Status::FailStatus(1, "invalid view");
+                }
+                ASD_LOG(INFO) << "Plan node[" << nodeId << " view inTensor[" << i
+                              << "], old:" << TensorUtil::AsdOpsDimsToString(node.inTensors.at(i)->desc.dims)
+                              << ", new:" << TensorUtil::AsdOpsDimsToString(viewTensor.desc.dims);
+                node.variantPack.inTensors.at(i) = viewTensor;
+            } else {
+                node.variantPack.inTensors.at(i) = *node.inTensors.at(i);
+            }
         }
 
         node.variantPack.outTensors.resize(node.outTensors.size());
@@ -93,7 +109,10 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 
     for (auto &node : runnerGraph_.nodes) {
         ASD_LOG(INFO) << "Plan call " << node.runner->GetName() << " setup ";
-        node.runner->Setup(node.variantPack);
+        AsdOps::Status st = node.runner->Setup(node.variantPack);
+        if (!st.Ok()) {
+            return st;
+        }
         uint64_t runnerWorkspaceSize = node.runner->GetWorkspaceSize();
         ASD_LOG(INFO) << "Plan get " << node.runner->GetName() << " workspace size:" << runnerWorkspaceSize;
         workspaceSize_ = std::max(runnerWorkspaceSize, workspaceSize_);

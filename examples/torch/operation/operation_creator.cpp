@@ -29,6 +29,7 @@
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
+#include "acltransformer/ops/any_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -89,6 +90,13 @@ AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &paramJson)
     return new AclTransformer::MlpOperation(param);
 }
 
+AclTransformer::Operation *AnyOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::AnyParam param;
+    param.kernelGraph = paramJson;
+    return new AclTransformer::AnyOperation(param);
+}
+
 AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionParam param;
@@ -102,10 +110,10 @@ AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &pa
 
 AclTransformer::Operation *PositionEmbedding1dSplitOperationCreate(const nlohmann::json &paramJson)
 {
-    AclTransformer::PositionEmbeddingParam param;
+    AclTransformer::PositionEmbedding1dSplitParam param;
     param.headNum = paramJson["headNum"].get<int>();
     ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
-    return new AclTransformer::PositionEmbeddingOperation(param);
+    return new AclTransformer::PositionEmbedding1dSplitOperation(param);
 }
 
 AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json &paramJson)
@@ -160,7 +168,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
-    {"SelfAttentionOperation", &SelfAttentionOperationCreate}};
+    {"SelfAttentionOperation", &SelfAttentionOperationCreate},
+    {"AnyOperation", &AnyOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {

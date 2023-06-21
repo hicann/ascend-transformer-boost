@@ -243,11 +243,6 @@ def attention_fn(
     if layer_past is not None:
         past_key, past_value = layer_past
         idScal = layer_id.item()
-        # global operation
-        # operation.set_param(json.dumps({"transKey": True, "dk": 128,
-        #                     "headNum": 32, "layerId": idScal}))
-        # result, present_key, present_value = operation.execute(
-        #         [query_layer, key_layer, value_layer, attention_mask, past_key, past_value])
         key_layer = torch.cat((past_key, key_layer), dim=0)
         value_layer = torch.cat((past_value, value_layer), dim=0)
 
@@ -298,9 +293,7 @@ def attention_fn(
         0, 1), key_layer.permute(1, 2, 0))
     # change view to [b, np, sq, sk]
     attention_scores = matmul_result.view(*output_size)
-    # if layer_past is not None:
-    #     torch.save(attention_scores.cpu(), 'bmm1_golden.path')
-    #     print("layer_id===>:" + str(layer_id))
+
 
     if self.scale_mask_softmax:
         self.scale_mask_softmax.scale = query_key_layer_scaling_coeff
@@ -356,12 +349,6 @@ def attention_fn(
     new_context_layer_shape = context_layer.size(
     )[:-2] + (hidden_size_per_partition,)
     context_layer = context_layer.view(*new_context_layer_shape)
-    # if layer_past is not None:
-    #         torch.save(context_layer.cpu(), '6.path')
-    # if layer_past is not None:
-    #     assert torch.allclose(context_layer, result, rtol=1e-5, atol=1e-5) , 'test_not_equal'
-    #     print('test_success')
-    #     outputs = (result, (present_key, present_value), attention_probs)
 
     outputs = (context_layer, present, attention_probs)
 
@@ -458,8 +445,6 @@ class SelfAttention(torch.nn.Module):
 
         # [seq_len, batch, 3 * hidden_size]
         mixed_raw_layer = self.query_key_value(hidden_states)
-        # if layer_past is not None:
-        #     torch.save(mixed_raw_layer.cpu(), '2.path')
 
         # [seq_len, batch, 3 * hidden_size] --> [seq_len, batch, num_attention_heads, 3 * hidden_size_per_attention_head]
         new_tensor_shape = mixed_raw_layer.size()[:-1] + (
@@ -491,10 +476,6 @@ class SelfAttention(torch.nn.Module):
             query_layer, key_layer = apply_rotary_pos_emb_index(
                 query_layer, key_layer, cos, sin, position_ids)
 
-        # if layer_past is not None:
-        #     torch.save(query_layer.cpu(), '3.path')
-        #     torch.save(key_layer.cpu(), '4.path')
-        #     torch.save(value_layer.cpu(), '5.path')
         # [seq_len, batch, hidden_size]
         context_layer, present, attention_probs = attention_fn(
             self=self,
@@ -509,9 +490,6 @@ class SelfAttention(torch.nn.Module):
         )
 
         output = self.dense(context_layer)
-
-        # if layer_past is not None:
-        #     torch.save(output.cpu(), '7.path')
 
         outputs = (output, present)
 
@@ -569,14 +547,10 @@ class GLU(torch.nn.Module):
         intermediate_parallel = self.dense_h_to_4h(hidden_states)
 
         intermediate_parallel = self.activation_func(intermediate_parallel)
-        # torch.save(intermediate_parallel.cpu(), '10.path')
 
         output = self.dense_4h_to_h(intermediate_parallel)
 
         return output
-
-
-glm_block = True
 
 
 class GLMBlock(torch.nn.Module):
@@ -630,13 +604,9 @@ class GLMBlock(torch.nn.Module):
             params_dtype=params_dtype,
         )
 
-        self.test_operation = torch.classes.LayerTorch.LayerTorch("GlmBlock")
-        self.test_operation.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": layer_id,
-                                                  "layerNormEps": layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * num_layers)}))
-        self.add_test_operation = torch.classes.OperationTorch.OperationTorch(
-            "AddOperation")
-        self.add_test_operation.set_param(
-            json.dumps({"scale": math.sqrt(2 * num_layers)}))
+        self.acl_layer = torch.classes.LayerTorch.LayerTorch("ChatGlm6BLayer")
+        self.acl_layer.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": layer_id,
+                                             "layerNormEps": layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * num_layers)}))
 
     def forward(
             self,
@@ -653,11 +623,7 @@ class GLMBlock(torch.nn.Module):
         attention_mask: [(1, 1), seq_len, seq_len]
         """
 
-        # global glm_block
-        # if glm_block:
-        #     glm_block = False
-        #     for tensor in list(self.state_dict().values()):
-        #         print(tensor.size())
+
         test_glmBlockOut = None
         test_presentKey = None
         test_presentValue = None
@@ -667,12 +633,8 @@ class GLMBlock(torch.nn.Module):
         # [seq_len, batch, hidden_size]
         if layer_past is not None:
             test_in = hidden_states
-        #     torch.save(hidden_states.cpu(), '1a.path')
-        #     torch.save(self.input_layernorm.weight.cpu(), '1w.path')
-        #     torch.save(self.input_layernorm.bias.cpu(), '1b.path')
         attention_input = self.input_layernorm(hidden_states)
-        # if layer_past is not None:
-        #     torch.save(attention_input.cpu(), '1.path')
+
         # Self attention.
         attention_outputs = self.attention(
             attention_input,
@@ -691,22 +653,11 @@ class GLMBlock(torch.nn.Module):
         # Residual connection.
         alpha = (2 * self.num_layers) ** 0.5
         hidden_states = attention_input * alpha + attention_output
-        # if layer_past is not None:
-        #     test_add = self.add_test_operation.execute([attention_input, attention_output])
-        #     assert torch.allclose(hidden_states, test_add[0], rtol=0.02, atol=0.02), 'add fail'
-
-        # if layer_past is not None:
-        #     print("residual add scale:" + str(alpha))
-        #     torch.save(hidden_states.cpu(), '8.path')
 
         mlp_input = self.post_attention_layernorm(hidden_states)
-        # if layer_past is not None:
-        #     torch.save(mlp_input.cpu(), '9.path')
 
         # MLP.
         mlp_output = self.mlp(mlp_input)
-        # if layer_past is not None:
-        #     torch.save(mlp_output.cpu(), '11.path')
 
         # Second residual connection.
         output = mlp_input * alpha + mlp_output
@@ -714,17 +665,7 @@ class GLMBlock(torch.nn.Module):
         if layer_past is not None:
             print(outputs[0][0].shape)
             print(outputs[0][1].shape)
-            test_glmBlockOut = torch.zeros(test_in.shape).half().npu()
-            test_presentKey = torch.zeros(layer_past[0].shape[0]+1,
-                                          layer_past[0].shape[1],
-                                          layer_past[0].shape[2],
-                                          layer_past[0].shape[3]
-                                          ).half().npu()
-            test_presentValue = torch.zeros(layer_past[1].shape[0]+1,
-                                            layer_past[1].shape[1],
-                                            layer_past[1].shape[2],
-                                            layer_past[1].shape[3]
-                                            ).half().npu()
+
             global cosTable
             global sinTable
             pastKey, pastValue = layer_past
@@ -739,17 +680,10 @@ class GLMBlock(torch.nn.Module):
             inputs.append(pastKey)
             inputs.append(pastValue)
             global glm_block
-            # if glm_block:
-            #     # print("inputs sizes here:")
-            #     glm_block = False
-            # for tensor in inputs:
-            # print(tensor.size())
-            # print(tensor.dtype)
-            self.test_operation.execute(
-                inputs, [test_glmBlockOut, test_presentKey, test_presentValue])
-            # print(test_glmBlockOut.dtype)
-            # print(output.dtype)
-            # torch.save(output.cpu(), 'golden.path')
+
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
+                inputs)
+
             assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
                 test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
             print("success!")

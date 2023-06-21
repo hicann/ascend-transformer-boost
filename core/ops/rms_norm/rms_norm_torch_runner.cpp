@@ -35,18 +35,41 @@ AsdOps::Status RmsNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &vari
         return AsdOps::Status::FailStatus(1, "RmsNormTorchRunner inTensor num error!");
     }
 #ifdef USE_TORCH_RUNNER
+    ASD_LOG(INFO) << "RmsNormTorchRunner start";
     at::Tensor atInTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    ASD_LOG(INFO) << "receive inputs";
 
     caffe2::TypeMeta inTensorType = atInTensor.dtype();
     atInTensor = atInTensor.to(torch::kFloat32);
-    at::Tensor variance = at::square(atInTensor).mean(-1);
-    at::Tensor hiddenStates = hiddenStates * at::rsqrt(variance + param_.rmsNormEps);
+    // torch::save(atInTensor.to(at::Device(at::kCPU)), "atInTensor_cpp.pth");
+    ASD_LOG(INFO) << "cast to f32";
+    at::Tensor squareRslt = at::square(atInTensor);
+    // torch::save(squareRslt.to(at::Device(at::kCPU)), "squareRslt_cpp.pth");
+    at::Tensor variance = squareRslt.mean(-1, true);
+    // torch::save(variance.to(at::Device(at::kCPU)), "variance_cpp.pth");
+    ASD_LOG(INFO) << "square and mean ok";
+    ASD_LOG(INFO) << "param_.rmsNormEps " << param_.rmsNormEps;
+    ASD_LOG(INFO) << "atInTensor.shape " << atInTensor.sizes();
+    ASD_LOG(INFO) << "variance.shape " << variance.sizes();
+    // ASD_LOG(INFO) << "sum" <<  (variance + param_.rmsNormEps);
+    at::Tensor addRslt = torch::add(variance, torch::tensor(param_.rmsNormEps));
+    // torch::save(addRslt.to(at::Device(at::kCPU)), "addRslt_cpp.pth");
+    at::Tensor rsqrtResult = at::rsqrt(addRslt);
+    // torch::save(rsqrtResult.to(at::Device(at::kCPU)), "rsqrtResult_cpp.pth");
+    ASD_LOG(INFO) << "rsqrt ok";
+    at::Tensor hiddenStates = atInTensor * rsqrtResult;
+    // torch::save(hiddenStates.to(at::Device(at::kCPU)), "mul_cpp.pth");
+    ASD_LOG(INFO) << "mul ok";
 
     at::Tensor atOutTensor = atInTensorWeight * hiddenStates;
+    // torch::save(atOutTensor.to(at::Device(at::kCPU)), "mul2_cpp.pth");
+    ASD_LOG(INFO) << "mul 2 ok";
     atOutTensor = atOutTensor.to(inTensorType).contiguous();
+    // torch::save(atOutTensor.to(at::Device(at::kCPU)), "atOutTensor_f32_cpp.pth");
 
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
+    ASD_LOG(INFO) << "RmsNormTorchRunner end";
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");

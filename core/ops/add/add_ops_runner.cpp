@@ -31,6 +31,7 @@ AsdOps::Status AddOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
     ASD_LOG(INFO) << GetName() << " SetupKernelGraph start param_.scale:" << param_.scale;
     if (param_.scale == 1) {
+        ASD_LOG(INFO) << GetName() << " simple add";
         kernelGraph_.inTensors = variantPack.inTensors;
         AsdOps::Tensor &aTensor = kernelGraph_.inTensors.at(0);
         AsdOps::Tensor &bTensor = kernelGraph_.inTensors.at(1);
@@ -45,6 +46,7 @@ AsdOps::Status AddOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
         addNode.inTensors = {&aTensor, &bTensor};
         addNode.outTensors = {&operationOutTensor};
     } else {
+        ASD_LOG(INFO) << GetName() << " muls then add";
         kernelGraph_.inTensors = variantPack.inTensors;
         AsdOps::Tensor &aTensor = kernelGraph_.inTensors.at(0);
         AsdOps::Tensor &bTensor = kernelGraph_.inTensors.at(1);
