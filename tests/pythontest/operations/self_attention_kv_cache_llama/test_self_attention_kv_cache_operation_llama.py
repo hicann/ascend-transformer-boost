@@ -52,12 +52,24 @@ class TestSelfAttentionKvCacheOperationLLAMA(operation_test.OperationTest):
                 self.get_tensor(OUTTENSOR2).npu()]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu(),
-                                      self.get_tensor(INTENSOR3).npu(),
-                                      self.get_tensor(INTENSOR4).npu(),
-                                      self.get_tensor(INTENSOR5).npu()])
+        intensor0 = self.get_tensor(INTENSOR0).npu()
+        intensor0.data = intensor0.data.npu_format_cast(2)
+        intensor1 = self.get_tensor(INTENSOR1).npu()
+        intensor1.data = intensor1.data.npu_format_cast(2)
+        intensor2 = self.get_tensor(INTENSOR2).npu()
+        intensor2.data = intensor2.data.npu_format_cast(2)
+        intensor3 = self.get_tensor(INTENSOR3).npu()
+        intensor3.data = intensor3.data.npu_format_cast(2)
+        intensor4 = self.get_tensor(INTENSOR4).npu()
+        intensor4.data = intensor4.data.npu_format_cast(2)
+        intensor5 = self.get_tensor(INTENSOR5).npu()
+        intensor5.data = intensor5.data.npu_format_cast(2)
+        self.execute(OP_NAME, PARAM, [intensor0,
+                                      intensor1,
+                                      intensor2,
+                                      intensor3,
+                                      intensor4,
+                                      intensor5])
 
 
 if __name__ == '__main__':

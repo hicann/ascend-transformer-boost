@@ -74,11 +74,11 @@ AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const Vari
     AsdOps::Tensor &pastValue = kernelGraph_.inTensors.at(5);
 
     kernelGraph_.outTensors = variantPack.outTensors;
-    AsdOps::Tensor &context = kernelGraph_.outTensors.at(0);
+    AsdOps::Tensor &contextOut = kernelGraph_.outTensors.at(0);
     AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(1);
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(2);
 
-    kernelGraph_.internalTensors.resize(16);
+    kernelGraph_.internalTensors.resize(14);
     AsdOps::Tensor &permutedQ = kernelGraph_.internalTensors.at(0);
     AsdOps::Tensor &permutedK = kernelGraph_.internalTensors.at(1);
     AsdOps::Tensor &permutedV = kernelGraph_.internalTensors.at(2);
@@ -86,15 +86,13 @@ AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const Vari
     AsdOps::Tensor &permutedPastV = kernelGraph_.internalTensors.at(4);
     AsdOps::Tensor &catKeyOut = kernelGraph_.internalTensors.at(5);
     AsdOps::Tensor &catValueOut = kernelGraph_.internalTensors.at(6);
-    AsdOps::Tensor &permutedPresentK = kernelGraph_.internalTensors.at(7);
-    AsdOps::Tensor &permutedPresentV = kernelGraph_.internalTensors.at(8);
-    AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(9);
-    AsdOps::Tensor &bmmQkOut = kernelGraph_.internalTensors.at(10);
-    AsdOps::Tensor &mulsOut = kernelGraph_.internalTensors.at(11);
-    AsdOps::Tensor &attentionScores = kernelGraph_.internalTensors.at(12);
-    AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(13);
-    AsdOps::Tensor &bmmVOut = kernelGraph_.internalTensors.at(14);
-    AsdOps::Tensor &contextT1Out = kernelGraph_.internalTensors.at(15);
+    AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(7);
+    AsdOps::Tensor &bmmQkOut = kernelGraph_.internalTensors.at(8);
+    AsdOps::Tensor &mulsOut = kernelGraph_.internalTensors.at(9);
+    AsdOps::Tensor &attentionScores = kernelGraph_.internalTensors.at(10);
+    AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(11);
+    AsdOps::Tensor &bmmVOut = kernelGraph_.internalTensors.at(12);
+    AsdOps::Tensor &contextTOut = kernelGraph_.internalTensors.at(13);
 
     kernelGraph_.nodes.resize(17);
     auto &permuteQNode = kernelGraph_.nodes.at(0);
@@ -116,77 +114,55 @@ AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const Vari
     auto &transposeContext2Node = kernelGraph_.nodes.at(16);
 
     /* permute inputs */
-    for (size_t i = 0; i < 5; i++) {
-        auto &node = kernelGraph_.nodes.at(i);
-        node.opDesc = {0, "AsStridedOperation"};
-        node.inTensors = {&kernelGraph_.inTensors.at(i)};
-        node.outTensors = {&kernelGraph_.internalTensors.at(i)};
-        AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({2, 0, 1, 3}), node);
-        // auto &node = kernelGraph_.nodes.at(i);
-        // node.opDesc = {0, "AsStridedOperation"};
-        // node.inTensors = {&kernelGraph_.inTensors.at(i)};
-        // node.outTensors = {&kernelGraph_.internalTensors.at(i)};
-        // node.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
-        //     // permute [1, 2, 0, 3]
-        //     AsdOps::SVector<int64_t> &dims = runInfo.GetInTensor(0).desc.dims;
-        //     AsdOps::SVector<int64_t> inputShape = {dims[1], dims[2], dims[0], dims[3]};
-        //     AsdOps::SVector<int64_t> inputStrideOrig;
-        //     int64_t size = inputShape.size();
-        //     inputStrideOrig.resize(size);
-        //     int64_t stride = 1;
-        //     for (size_t i = 0; i < size; i++) {
-        //         inputStrideOrig.at(size - i - 1) = stride;
-        //         stride *= inputShape.at(size - i - 1);
-        //     }
-        //     AsdOps::SVector<int64_t> inputStride = {inputStrideOrig[1], inputStrideOrig[2], inputStrideOrig[0],
-        //                                             inputStrideOrig[3]};
-        //     runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
-        // };
-    }
+    permuteQNode.opDesc = {0, "AsStridedOperation"};
+    permuteQNode.inTensors = {&mixedQuery};
+    permuteQNode.outTensors = {&permutedQ};
+    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 2, 0, 3}), permuteQNode);
+
+    permuteKNode.opDesc = {0, "AsStridedOperation"};
+    permuteKNode.inTensors = {&mixedKey};
+    permuteKNode.outTensors = {&permutedK};
+    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 2, 0, 3}), permuteKNode);
+
+    permuteVNode.opDesc = {0, "AsStridedOperation"};
+    permuteVNode.inTensors = {&mixedValue};
+    permuteVNode.outTensors = {&permutedV};
+    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 2, 0, 3}), permuteVNode);
+
+    permutePastKNode.opDesc = {0, "AsStridedOperation"};
+    permutePastKNode.inTensors = {&pastKey};
+    permutePastKNode.outTensors = {&permutedPastK};
+    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 2, 0, 3}), permutePastKNode);
+
+    permutePastVNode.opDesc = {0, "AsStridedOperation"};
+    permutePastVNode.inTensors = {&pastValue};
+    permutePastVNode.outTensors = {&permutedPastV};
+    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 2, 0, 3}), permutePastVNode);
 
     catKeyNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({2})};
-    catKeyNode.inTensors = {&mixedKey, &pastKey};
+    catKeyNode.inTensors = {&permutedPastK, &permutedK};
     catKeyNode.outTensors = {&catKeyOut};
 
     permutePresentKNode.opDesc = {0, "AsStridedOperation"};
     permutePresentKNode.inTensors = {&catKeyOut};
     permutePresentKNode.outTensors = {&presentKey};
-    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 2, 0, 3}), permutePresentKNode);
-    // permutePresentKNode.opDesc = {0, "AsStridedOperation"};
-    // permutePresentKNode.inTensors = {&catKeyOut};
-    // permutePresentKNode.outTensors = {&presentKey};
-    // permutePresentKNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
-    //     // permute [2, 0, 1, 3]
-    //     AsdOps::SVector<int64_t> &dims = runInfo.GetInTensor(0).desc.dims;
-    //     AsdOps::SVector<int64_t> inputShape = {dims[2], dims[0], dims[1], dims[3]};
-    //     AsdOps::SVector<int64_t> inputStrideOrig;
-    //     int64_t size = inputShape.size();
-    //     inputStrideOrig.resize(size);
-    //     int64_t stride = 1;
-    //     for (size_t i = 0; i < size; i++) {
-    //         inputStrideOrig.at(size - i - 1) = stride;
-    //         stride *= inputShape.at(size - i - 1);
-    //     }
-    //     AsdOps::SVector<int64_t> inputStride = {inputStrideOrig[2], inputStrideOrig[0], inputStrideOrig[1],
-    //                                             inputStrideOrig[3]};
-    //     runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
-    // };
+    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({2, 0, 1, 3}), permutePresentKNode);
 
     catValueNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({2})};
-    catValueNode.inTensors = {&mixedValue, &pastValue};
+    catValueNode.inTensors = {&permutedPastV, &permutedV};
     catValueNode.outTensors = {&catValueOut};
 
     permutePresentVNode.opDesc = {0, "AsStridedOperation"};
     permutePresentVNode.inTensors = {&catValueOut};
     permutePresentVNode.outTensors = {&presentValue};
-    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 2, 0, 3}), permutePresentVNode);
+    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({2, 0, 1, 3}), permutePresentVNode);
 
     transposePresentKNode.opDesc = {0, "AsStridedOperation"};
-    transposePresentKNode.inTensors = {&presentKey};
+    transposePresentKNode.inTensors = {&catKeyOut};
     transposePresentKNode.outTensors = {&transposedK};
     AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({0, 1, 3, 2}), transposePresentKNode);
 
-    bmmQKNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, param_.transKey, {/*oriShape*/}})};
+    bmmQKNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
     bmmQKNode.inTensors = {&permutedQ, &transposedK};
     bmmQKNode.outTensors = {&bmmQkOut};
     bmmQKNode.inTensorViewFuncs.resize(bmmQKNode.inTensors.size());
@@ -217,7 +193,7 @@ AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const Vari
     softMaxNode.outTensors = {&attentionProbs};
 
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
-    bmmVNode.inTensors = {&attentionProbs, &presentValue};
+    bmmVNode.inTensors = {&attentionProbs, &catValueOut};
     bmmVNode.outTensors = {&bmmVOut};
     bmmVNode.inTensorViewFuncs.resize(bmmVNode.inTensors.size());
     bmmVNode.inTensorViewFuncs[1] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
@@ -226,7 +202,7 @@ AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const Vari
 
     transposeContext1Node.opDesc = {0, "AsStridedOperation"};
     transposeContext1Node.inTensors = {&bmmVOut};
-    transposeContext1Node.outTensors = {&contextT1Out};
+    transposeContext1Node.outTensors = {&contextTOut};
     transposeContext1Node.inTensorViewFuncs.resize(transposeContext1Node.inTensors.size());
     transposeContext1Node.inTensorViewFuncs[0] = [&](const AsdOps::SVector<int64_t> &oldDims,
                                                      AsdOps::SVector<int64_t> &newDims) {
@@ -235,8 +211,8 @@ AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const Vari
     AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({0, 2, 1, 3}), transposeContext1Node);
 
     transposeContext2Node.opDesc = {0, "AsStridedOperation"};
-    transposeContext2Node.inTensors = {&contextT1Out};
-    transposeContext2Node.outTensors = {&context};
+    transposeContext2Node.inTensors = {&contextTOut};
+    transposeContext2Node.outTensors = {&contextOut};
     transposeContext2Node.inTensorViewFuncs.resize(transposeContext2Node.inTensors.size());
     transposeContext2Node.inTensorViewFuncs[0] = [&](const AsdOps::SVector<int64_t> &oldDims,
                                                      AsdOps::SVector<int64_t> &newDims) {
