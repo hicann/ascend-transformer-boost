@@ -87,8 +87,8 @@ function fn_build_asdops()
     fi
 
     build_options="$build_options --output=$THIRD_PARTY_DIR"
-    echo "bash scripts/build.sh release $build_options"
-    bash scripts/build.sh release $build_options
+    echo "bash scripts/build.sh dev $build_options"
+    bash scripts/build.sh dev $build_options
 }
 
 function fn_build_nlohmann_json()
