@@ -57,7 +57,7 @@ AsdOps::Status PositionEmbeddingOperation::InferShape(const AsdOps::SVector<AsdO
 RunnerBuilder *PositionEmbeddingOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
-    size_t index = Config::IsPositionEmbeddingOpsRunnerEnable() ? 0 : 1;
+    size_t index = AsdOps::GetSingleton<Config>().IsPositionEmbeddingOpsRunnerEnable() ? 0 : 1;
 #else
     size_t index = 0;
 #endif

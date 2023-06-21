@@ -16,6 +16,7 @@
 #include "acltransformer/operation.h"
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/log/log.h>
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/runner.h"
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/config.h"
@@ -84,14 +85,15 @@ AsdOps::Status Operation::Execute(Handle &handle, VariantPack &variantPack)
         return st;
     }
 
-    ASD_LOG(INFO) << GetName() << " AsdRtStreamSynchronize stream:" << handle.stream;
-    int ret = AsdRtStreamSynchronize(handle.stream);
-    if (ret != 0) {
-        ASD_LOG(ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
-        return AsdOps::Status::FailStatus(1, "AsdRtStreamSynchronize fail");
+    if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryOperationEnable()) {
+        int ret = AsdRtStreamSynchronize(handle.stream);
+        if (ret != 0) {
+            ASD_LOG(ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
+            return AsdOps::Status::FailStatus(1, "AsdRtStreamSynchronize fail");
+        }
     }
 
-    if (Config::IsSaveTensor()) {
+    if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
         std::string dirPath = Config::GetSaveTensorDir() + "/" + runner_->GetName();
         TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
         ASD_LOG(INFO) << GetName() << " SaveVariantPack " << dirPath;

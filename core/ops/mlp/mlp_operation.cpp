@@ -31,7 +31,7 @@ MlpOperation::MlpOperation(const MlpParam &param) : Operation("MlpOperation"), p
 MlpOperation::~MlpOperation() {}
 
 AsdOps::Status MlpOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                         AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (inTensors.size() != 4) {
         return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 4");
@@ -45,7 +45,7 @@ AsdOps::Status MlpOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &i
 RunnerBuilder *MlpOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
-    size_t index = Config::IsMlpOpsRunnerEnable() ? 0 : 1;
+    size_t index = AsdOps::GetSingleton<Config>().IsMlpOpsRunnerEnable() ? 0 : 1;
 #else
     size_t index = 0;
 #endif
