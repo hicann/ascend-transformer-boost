@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/position_embedding_operation.h"
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
 #include "position_embedding_ops_runner_builder.h"
 #include "position_embedding_torch_runner_builder.h"

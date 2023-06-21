@@ -35,7 +35,7 @@ Llama7BLayer::Llama7BLayer() : Layer("Llama7BLayer") {}
 Llama7BLayer::~Llama7BLayer() {}
 
 AsdOps::Status Llama7BLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                          AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (inTensors.size() != 20) {
         return AsdOps::Status::FailStatus(1, "in tensor size != 20");
@@ -179,13 +179,14 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
     vTransposeNode.outTensorIds = {transposeVout};
 
     selfAttentionKvCacheNode.operation = &selfAttentionKvCacheOp;
-    selfAttentionKvCacheNode.inTensorIds = {positionEmbedQ, positionEmbedK, transposeVout, attentionMask, pastKey, pastValue};
+    selfAttentionKvCacheNode.inTensorIds = {positionEmbedQ, positionEmbedK, transposeVout,
+                                            attentionMask,  pastKey,        pastValue};
     selfAttentionKvCacheNode.outTensorIds = {selfOut, presentKey, presentValue};
     selfAttentionKvCacheNode.inTensorViewFuncs.resize(selfAttentionKvCacheNode.inTensorIds.size());
-    selfAttentionKvCacheNode.inTensorViewFuncs.at(2) = 
-    [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)
-    {
-        newDims = {oldDims.at(0), oldDims.at(1), qPositionEmbeddingParam.headNum, oldDims.at(2) / qPositionEmbeddingParam.headNum};
+    selfAttentionKvCacheNode.inTensorViewFuncs.at(2) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                                           AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), qPositionEmbeddingParam.headNum,
+                   oldDims.at(2) / qPositionEmbeddingParam.headNum};
     };
 
     selfOutLinearNode.operation = &selfOutLinearOp;
@@ -208,7 +209,7 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
     mlpResidualAddNode.inTensorIds = {selfResidualAddOut, mlpOut};
     mlpResidualAddNode.outTensorIds = {llama7bLayerOut};
 
-    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
+    ExecuteOperationGraph(opGraph, variantPack);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

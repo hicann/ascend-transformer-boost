@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/add_norm_operation.h"
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
 #include "add_norm_ops_runner_builder.h"
 #include "add_norm_torch_runner_builder.h"
@@ -45,7 +46,7 @@ AsdOps::Status AddNormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor
 RunnerBuilder *AddNormOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
-    size_t index = IsAddNormOpsRunnerEnable() ? 0 : 1;
+    size_t index = AsdOps::GetSingleton<Config>().IsAddNormOpsRunnerEnable() ? 0 : 1;
 #else
     size_t index = 0;
 #endif

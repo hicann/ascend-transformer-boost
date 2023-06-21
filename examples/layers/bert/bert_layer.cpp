@@ -147,7 +147,7 @@ AsdOps::Status BertLayer::Execute(Handle &handle, VariantPack &variantPack)
     bertOutAddNormNode.inTensorIds = {bertOutLinearOutId, selfAddNormOutId, bertOutNormWeightId, bertOutNormBiasId};
     bertOutAddNormNode.outTensorIds = {bertLayerOutId};
 
-    ExampleUtil::ExecuteOperationGraph(opGraph, variantPack);
+    ExecuteOperationGraph(opGraph, variantPack);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

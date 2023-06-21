@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
 #include "position_embedding_1d_split_ops_runner_builder.h"
 #include "position_embedding_1d_split_torch_runner_builder.h"

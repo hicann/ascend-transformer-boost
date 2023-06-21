@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/linear_operation.h"
-#include "asdops/utils/log/log.h"
-#include "asdops/utils/svector/svector.h"
+#include <asdops/utils/log/log.h>
+#include <asdops/utils/svector/svector.h>
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
 #include "linear_ops_runner_builder.h"
 #include "linear_torch_runner_builder.h"
