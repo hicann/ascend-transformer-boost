@@ -97,7 +97,30 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
 
 void LayerTorch::ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors)
 {
-    ASD_LOG(ERROR) << "not implement";
+    AsdOps::Timer timer;
+    AclTransformer::VariantPack variantPack;
+    ASD_LOG(INFO) << "LayerTorch::ExecuteOut start";
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        inTensors.at(i) = inTensors.at(i).contiguous();
+        ASD_LOG(INFO) << "inTensors[" << i << "].options:" << inTensors.at(i).options()
+                      << ", data:" << inTensors.at(i).data_ptr();
+        variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(inTensors.at(i)));
+    }
+
+    for (size_t i = 0; i < outTensors.size(); ++i) {
+        outTensors.at(i) = outTensors.at(i).contiguous();
+        ASD_LOG(INFO) << "outTensors[" << i << "].options:" << outTensors.at(i).options()
+                      << ", data:" << outTensors.at(i).data_ptr();
+        variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(outTensors.at(i)));
+    }
+
+    AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
+    if (handle.stream != nullptr) {
+        ASD_LOG(INFO) << "LayerTorch::Get Handle success!";
+    }
+    layer_->Execute(handle, variantPack);
+
+    ASD_LOG(WARN) << "LayerTorch::ExecuteOut end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
 }
 
 void LayerTorch::CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
