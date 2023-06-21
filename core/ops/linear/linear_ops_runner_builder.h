@@ -32,7 +32,7 @@ public:
         char version[versionLen] = {0};
         AsdRtDeviceGetSocVersion(version, versionLen);
         ASD_LOG(INFO) << "SocVersion:" << std::string(version);
-        is910B_ = std::string(version) == "Ascend910B4";
+        is910B_ = std::string(version).find("Ascend910B") != std::npos;
     }
     virtual ~LinearOpsRunnerBuilder() = default;
     Runner *Build() override
