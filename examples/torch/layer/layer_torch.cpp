@@ -95,6 +95,11 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
     return outTensors;
 }
 
+void LayerTorch::ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors)
+{
+    ASD_LOG(ERROR) << "not implement";
+}
+
 void LayerTorch::CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                     std::vector<torch::Tensor> &atOutTensors)
 {
@@ -113,5 +118,6 @@ TORCH_LIBRARY(LayerTorch, m)
     m.class_<LayerTorch>("LayerTorch")
         .def(torch::init<std::string>())
         .def("execute", &LayerTorch::Execute)
+        .def("execute_out", &LayerTorch::ExecuteOut)
         .def("set_param", &LayerTorch::SetParam);
 }
