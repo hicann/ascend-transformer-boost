@@ -21,6 +21,7 @@
 #include <asdops/ops.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
+#include <asdops/utils/singleton/singleton.h>
 #include <asdops/utils/filesystem/filesystem.h>
 #include "acltransformer/utils/mem_allocation_solver/best_mem_allocation_solver.h"
 #include "acltransformer/utils/tensor_util.h"
@@ -226,7 +227,7 @@ void OpsRunner::RunAllKernel(Handle &handle)
 
         kernel->Run(kernelRunInfo);
 
-        if (Config::IsSaveTensor()) {
+        if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName()
                           << " AsdRtStreamSynchronize, stream:" << handle.stream;
             int ret = AsdRtStreamSynchronize(handle.stream);
@@ -414,7 +415,7 @@ void OpsRunner::FillTilingData(const VariantPack &variantPack)
         uint64_t tilingSize = kernelTilingSizes_.at(i);
         if (tilingSize > 0) {
             kernel->InitHostLaunchBuffer(kernelRunInfo, static_cast<char *>(tilingData_.data()) + offset, tilingSize);
-            if (Config::IsSaveTensor()) {
+            if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
                 std::string fileDir =
                     Config::GetSaveTensorDir() + "/" + GetName() + "/" + std::to_string(i) + "_" + kernel->GetName();
                 WriteTilingData(static_cast<char *>(tilingData_.data()) + offset, tilingSize, fileDir);

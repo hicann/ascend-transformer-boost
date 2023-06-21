@@ -135,12 +135,12 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
     };
     split0Node.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{dims.size() - 1, 3}});
+        runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, 3}});
     };
 
     InferShapePreFunc split1InferShape = [](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{dims.size() - 1, 2}});
+        runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, 2}});
     };
     split1Node.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 2}};
     split1Node.inTensors = {&qLayer};
@@ -175,7 +175,7 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
         if (oldDims.at(1) == 1) {
             newDims.resize(oldDims.size() - 1);
             newDims.at(0) = oldDims.at(0);
-            for (int i = 1; i < newDims.size(); i++) {
+            for (size_t i = 1; i < newDims.size(); i++) {
                 newDims.at(i) = oldDims.at(i + 1);
             }
         } else {
@@ -222,7 +222,7 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
     muls0Node.outTensors = {&qChunk0Slice1Neg};
     InferShapePreFunc cat0InferShape = [](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        runInfo.SetOpDesc({0, "ConcatOperation", AsdOps::OpParam::Concat{dims.size() - 1}});
+        runInfo.SetOpDesc({0, "ConcatOperation", AsdOps::OpParam::Concat{int(dims.size()) - 1}});
     };
     cat0Node.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
     cat0Node.inTensors = {&qChunk0Slice1Neg, &qChunk0Slice0};
@@ -249,7 +249,7 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
     split5Node.inferShapePreFunc = split1InferShape;
 
     muls2Node.opDesc = {0, "ElewiseOperation",
-                       AsdOps::OpParam::Elewise{AsdOps::OpParam::Elewise::ElewiseType::ELEWISE_MULS, -1}};
+                        AsdOps::OpParam::Elewise{AsdOps::OpParam::Elewise::ElewiseType::ELEWISE_MULS, -1}};
     muls2Node.inTensors = {&kChunk0Slice1};
     muls2Node.outTensors = {&kChunk0Slice1Neg};
     cat2Node.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
@@ -276,19 +276,19 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
         newDims.at(0) = oldDims.at(0);
         newDims.at(1) = oldDims.at(1);
         newDims.at(2) = 1;
-        for (int i = 3; i < newDims.size(); i++) {
+        for (size_t i = 3; i < newDims.size(); i++) {
             newDims.at(i) = oldDims.at(i - 1);
         }
     };
 
     mul00Node.opDesc = {0, "BroadcastOperation",
-                       AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
+                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul00Node.inTensors = {&qChunk0, &cos0};
     mul00Node.outTensors = {&qEmbedded0Part0};
     mul00Node.inTensorViewFuncs.resize(mul00Node.inTensors.size());
     mul00Node.inTensorViewFuncs.at(1) = Unsqueeze2;
     mul01Node.opDesc = {0, "BroadcastOperation",
-                       AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
+                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul01Node.inTensors = {&qRotate0, &sin0};
     mul01Node.outTensors = {&qEmbedded0Part1};
     mul01Node.inTensorViewFuncs.resize(mul01Node.inTensors.size());
@@ -299,13 +299,13 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
     add0Node.outTensors = {&qEmbedded0};
 
     mul10Node.opDesc = {0, "BroadcastOperation",
-                       AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
+                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul10Node.inTensors = {&qChunk1, &cos1};
     mul10Node.outTensors = {&qEmbedded1Part0};
     mul10Node.inTensorViewFuncs.resize(mul10Node.inTensors.size());
     mul10Node.inTensorViewFuncs.at(1) = Unsqueeze2;
     mul11Node.opDesc = {0, "BroadcastOperation",
-                       AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
+                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul11Node.inTensors = {&qRotate1, &sin1};
     mul11Node.outTensors = {&qEmbedded1Part1};
     mul11Node.inTensorViewFuncs.resize(mul11Node.inTensors.size());
@@ -316,13 +316,13 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
     add1Node.outTensors = {&qEmbedded1};
 
     mul20Node.opDesc = {0, "BroadcastOperation",
-                       AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
+                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul20Node.inTensors = {&kChunk0, &cos0};
     mul20Node.outTensors = {&kEmbedded0Part0};
     mul20Node.inTensorViewFuncs.resize(mul20Node.inTensors.size());
     mul20Node.inTensorViewFuncs.at(1) = Unsqueeze2;
     mul21Node.opDesc = {0, "BroadcastOperation",
-                       AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
+                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul21Node.inTensors = {&kRotate0, &sin0};
     mul21Node.outTensors = {&kEmbedded0Part1};
     mul21Node.inTensorViewFuncs.resize(mul21Node.inTensors.size());
@@ -333,13 +333,13 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
     add2Node.outTensors = {&kEmbedded0};
 
     mul30Node.opDesc = {0, "BroadcastOperation",
-                       AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
+                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul30Node.inTensors = {&kChunk1, &cos1};
     mul30Node.outTensors = {&kEmbedded1Part0};
     mul30Node.inTensorViewFuncs.resize(mul30Node.inTensors.size());
     mul30Node.inTensorViewFuncs.at(1) = Unsqueeze2;
     mul31Node.opDesc = {0, "BroadcastOperation",
-                       AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
+                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul31Node.inTensors = {&kRotate1, &sin1};
     mul31Node.outTensors = {&kEmbedded1Part1};
     mul31Node.inTensorViewFuncs.resize(mul31Node.inTensors.size());

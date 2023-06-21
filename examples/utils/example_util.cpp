@@ -21,6 +21,7 @@
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
 #include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include <asdops/utils/rt/rt.h>
+#include <asdops/utils/singleton/singleton.h>
 #include <asdops/utils/filesystem/filesystem.h>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/plan_builder.h"
@@ -101,7 +102,7 @@ void ExampleUtil::ExecuteOperation(AclTransformer::Operation *operation, std::ve
     }
 
     static int64_t opId = 0;
-    if (AclTransformer::Config::IsSaveTensor()) {
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
         std::string dirPath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(opId++) + "_" +
                               operation->GetName() + "_brefore";
         AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
@@ -127,7 +128,7 @@ void ExampleUtil::ExecuteOperation(AclTransformer::Operation *operation, std::ve
     st = operation->Execute(handle, variantPack);
     ASD_LOG_IF(!st.Ok(), ERROR) << operation->GetName() << " execute fail, error:" << st.Message();
 
-    if (AclTransformer::Config::IsSaveTensor()) {
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
         std::string dirPath =
             AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(opId++) + "_" + operation->GetName();
         AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);

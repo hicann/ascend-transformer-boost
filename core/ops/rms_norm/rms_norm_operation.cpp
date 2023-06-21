@@ -48,7 +48,7 @@ AsdOps::Status RmsNormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor
 RunnerBuilder *RmsNormOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
-    size_t index = Config::IsRmsNormOpsRunnerEnable() ? 0 : 1;
+    size_t index = AsdOps::GetSingleton<Config>().IsRmsNormOpsRunnerEnable() ? 0 : 1;
 #else
     size_t index = 0;
 #endif

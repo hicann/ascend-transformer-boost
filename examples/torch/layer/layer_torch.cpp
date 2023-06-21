@@ -69,7 +69,7 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
     ASD_LOG(INFO) << "LayerTorch::Execute start";
     for (size_t i = 0; i < inTensors.size(); ++i) {
         inTensors.at(i) = inTensors.at(i).contiguous();
-        inTensors.at(i) = ExampleUtil::NpuFormatCast(inTensors.at(i));
+        // inTensors.at(i) = ExampleUtil::NpuFormatCast(inTensors.at(i));
         ASD_LOG(INFO) << "inTensors[" << i << "].options:" << inTensors.at(i).options()
                       << ", data:" << inTensors.at(i).data_ptr();
         variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(inTensors.at(i)));
