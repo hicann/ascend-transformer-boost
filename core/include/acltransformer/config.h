@@ -20,23 +20,48 @@
 namespace AclTransformer {
 class Config {
 public:
+    Config();
+    ~Config();
     static std::string GetSaveTensorDir();
-    static bool IsSaveTensor();
-    static bool IsAddOpsRunnerEnable();
-    static bool IsAddNormOpsRunnerEnable();
-    static bool IsRmsNormOpsRunnerEnable();
-    static bool IsFfnOpsRunnerEnable();
-    static bool IsLinearOpsRunnerEnable();
-    static bool IsNormOpsRunnerEnable();
-    static bool IsMlpOpsRunnerEnable();
-    static bool IsPositionEmbeddingOpsRunnerEnable();
-    static bool IsSelfAttentionKVCacheOpsRunnerEnable();
-    static bool IsSelfAttentionOpsRunnerEnable();
-    static bool IsPositionEmbedding1dSplitOpsRunnerEnable();
-    static bool IsTransposeOpsRunnerEnable();
+    bool IsSaveTensor();
+    bool IsAddOpsRunnerEnable();
+    bool IsAddNormOpsRunnerEnable();
+    bool IsRmsNormOpsRunnerEnable();
+    bool IsFfnOpsRunnerEnable();
+    bool IsLinearOpsRunnerEnable();
+    bool IsNormOpsRunnerEnable();
+    bool IsMlpOpsRunnerEnable();
+    bool IsPositionEmbeddingOpsRunnerEnable();
+    bool IsSelfAttentionKVCacheOpsRunnerEnable();
+    bool IsSelfAttentionOpsRunnerEnable();
+    bool IsPositionEmbedding1dSplitOpsRunnerEnable();
+    bool IsTransposeOpsRunnerEnable();
+    bool IsStreamSyncEveryRunnerEnable();
+    bool IsStreamSyncEveryKernelEnable();
+    bool IsStreamSyncEveryOperationEnable();
+    bool IsStreamSyncEveryPlanEnable();
 
 private:
     static bool IsEnable(const char *env);
+
+private:
+    bool isSaveTensor_ = false;
+    bool isAddOpsRunnerEnable_ = false;
+    bool isAddNormOpsRunnerEnable_ = false;
+    bool isRmsNormOpsRunnerEnable_ = false;
+    bool isFfnOpsRunnerEnable_ = false;
+    bool isLinearOpsRunnerEnable_ = false;
+    bool isNormOpsRunnerEnable_ = false;
+    bool isMlpOpsRunnerEnable_ = false;
+    bool isPositionEmbeddingOpsRunnerEnable_ = false;
+    bool isSelfAttentionKVCacheOpsRunnerEnable_ = false;
+    bool isSelfAttentionOpsRunnerEnable_ = false;
+    bool isPositionEmbedding1dSplitOpsRunnerEnable_ = false;
+    bool isTransposeOpsRunnerEnable_ = false;
+    bool isStreamSyncEveryRunnerEnable_ = false;
+    bool isStreamSyncEveryKernelEnable_ = false;
+    bool isStreamSyncEveryOperationEnable_ = false;
+    bool isStreamSyncEveryPlanEnable_ = false;
 };
 } // namespace AclTransformer
 #endif

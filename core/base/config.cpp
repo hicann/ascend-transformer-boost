@@ -17,6 +17,29 @@
 #include <string>
 
 namespace AclTransformer {
+Config::Config()
+{
+    isSaveTensor_ = IsEnable("ACLTRANSFORMER_SAVE_TENSOR");
+    isAddOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE");
+    isAddNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE");
+    isRmsNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_RMSNORM_OPSRUNNER_ENABLE");
+    isFfnOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_FFN_OPSRUNNER_ENABLE");
+    isLinearOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_LINEAR_OPSRUNNER_ENABLE");
+    isNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_NORM_OPSRUNNER_ENABLE");
+    isMlpOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_MLP_OPSRUNNER_ENABLE");
+    isPositionEmbeddingOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_OPSRUNNER_ENABLE");
+    isSelfAttentionKVCacheOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_SELFATTENTIONKVCACHE_OPSRUNNER_ENABLE");
+    isSelfAttentionOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_SELFATTENTION_OPSRUNNER_ENABLE");
+    isPositionEmbedding1dSplitOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_1D_SPLIT_OPSRUNNER_ENABLE");
+    isTransposeOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_TRANSPOSE_OPSRUNNER_ENABLE");
+    isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE");
+    isStreamSyncEveryKernelEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_KERNEL_ENABLE");
+    isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE");
+    isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
+}
+
+Config::~Config() {}
+
 std::string Config::GetSaveTensorDir() { return "tensors"; }
 
 bool Config::IsEnable(const char *env)
@@ -28,42 +51,37 @@ bool Config::IsEnable(const char *env)
     return std::string(saveTensor) == "1";
 }
 
-bool Config::IsSaveTensor() { return IsEnable("ACLTRANSFORMER_SAVE_TENSOR"); }
+bool Config::IsSaveTensor() { return isSaveTensor_; }
 
-bool Config::IsAddOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE"); }
+bool Config::IsAddOpsRunnerEnable() { return isAddOpsRunnerEnable_; }
 
-bool Config::IsAddNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE"); }
+bool Config::IsAddNormOpsRunnerEnable() { return isAddNormOpsRunnerEnable_; }
 
-bool Config::IsRmsNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_RMSNORM_OPSRUNNER_ENABLE"); }
+bool Config::IsRmsNormOpsRunnerEnable() { return isRmsNormOpsRunnerEnable_; }
 
-bool Config::IsFfnOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_FFN_OPSRUNNER_ENABLE"); }
+bool Config::IsFfnOpsRunnerEnable() { return isFfnOpsRunnerEnable_; }
 
-bool Config::IsLinearOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_LINEAR_OPSRUNNER_ENABLE"); }
+bool Config::IsLinearOpsRunnerEnable() { return isLinearOpsRunnerEnable_; }
 
-bool Config::IsNormOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_NORM_OPSRUNNER_ENABLE"); }
+bool Config::IsNormOpsRunnerEnable() { return isNormOpsRunnerEnable_; }
 
-bool Config::IsMlpOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_MLP_OPSRUNNER_ENABLE"); }
+bool Config::IsMlpOpsRunnerEnable() { return isMlpOpsRunnerEnable_; }
 
-bool Config::IsPositionEmbeddingOpsRunnerEnable()
-{
-    return IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_OPSRUNNER_ENABLE");
-}
+bool Config::IsPositionEmbeddingOpsRunnerEnable() { return isPositionEmbeddingOpsRunnerEnable_; }
 
-bool Config::IsPositionEmbedding1dSplitOpsRunnerEnable()
-{
-    return IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_1D_SPLIT_OPSRUNNER_ENABLE");
-}
+bool Config::IsPositionEmbedding1dSplitOpsRunnerEnable() { return isPositionEmbedding1dSplitOpsRunnerEnable_; }
 
-bool Config::IsTransposeOpsRunnerEnable()
-{
-    return IsEnable("ACLTRANSFORMER_TRANSPOSE_OPSRUNNER_ENABLE");
-}
+bool Config::IsTransposeOpsRunnerEnable() { return isTransposeOpsRunnerEnable_; }
 
-bool Config::IsSelfAttentionKVCacheOpsRunnerEnable()
-{
-    return IsEnable("ACLTRANSFORMER_SELFATTENTIONKVCACHE_OPSRUNNER_ENABLE");
-}
+bool Config::IsSelfAttentionKVCacheOpsRunnerEnable() { return isSelfAttentionKVCacheOpsRunnerEnable_; }
 
-bool Config::IsSelfAttentionOpsRunnerEnable() { return IsEnable("ACLTRANSFORMER_SELFATTENTION_OPSRUNNER_ENABLE"); }
+bool Config::IsSelfAttentionOpsRunnerEnable() { return isSelfAttentionOpsRunnerEnable_; }
 
+bool Config::IsStreamSyncEveryRunnerEnable() { return isStreamSyncEveryRunnerEnable_; }
+
+bool Config::IsStreamSyncEveryKernelEnable() { return isStreamSyncEveryKernelEnable_; }
+
+bool Config::IsStreamSyncEveryOperationEnable() { return isStreamSyncEveryOperationEnable_; }
+
+bool Config::IsStreamSyncEveryPlanEnable() { return isStreamSyncEveryPlanEnable_; }
 } // namespace AclTransformer

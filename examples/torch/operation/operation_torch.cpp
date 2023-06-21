@@ -18,6 +18,7 @@
 #include <torch_npu/csrc/core/npu/register/OptionsManager.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
 #include "examples/utils/example_util.h"
@@ -82,7 +83,7 @@ void OperationTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vec
                       << ", format:" << ExampleUtil::GetTensorNpuFormat(atInTensors.at(i));
         atInTensors.at(i) = ExampleUtil::NpuFormatCast(atInTensors.at(i));
         variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i)));
-        if (AclTransformer::Config::IsSaveTensor()) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +
                                    opName_ + "/intensor" + std::to_string(i) + ".pth";
             ExampleUtil::SaveTensor(atInTensors.at(i), filePath);
@@ -96,7 +97,7 @@ void OperationTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vec
                       << ", storage_offset:" << atOutTensors.at(i).storage_offset()
                       << ", format:" << ExampleUtil::GetTensorNpuFormat(atOutTensors.at(i));
         variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atOutTensors.at(i)));
-        if (AclTransformer::Config::IsSaveTensor()) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +
                                    opName_ + "/outtensor" + std::to_string(i) + ".pth";
             ExampleUtil::SaveTensor(atOutTensors.at(i), filePath);
@@ -125,7 +126,7 @@ void OperationTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vec
     ASD_LOG_IF(!st.Ok(), ERROR) << operation->GetName() << " execute fail, error:" << st.Message();
 
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        if (AclTransformer::Config::IsSaveTensor()) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +
                                    opName_ + "/outtensor" + std::to_string(i) + ".pth";
             ExampleUtil::SaveTensor(atOutTensors.at(i), filePath);
@@ -158,7 +159,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
                       << ", format:" << ExampleUtil::GetTensorNpuFormat(atInTensors.at(i));
         atInTensors.at(i) = ExampleUtil::NpuFormatCast(atInTensors.at(i));
         variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i)));
-        if (AclTransformer::Config::IsSaveTensor()) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +
                                    opName_ + "/intensor" + std::to_string(i) + ".pth";
             ExampleUtil::SaveTensor(atInTensors.at(i), filePath);
@@ -197,7 +198,7 @@ void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std:
     ASD_LOG_IF(!st.Ok(), ERROR) << operation->GetName() << " execute fail, error:" << st.Message();
 
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        if (AclTransformer::Config::IsSaveTensor()) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(execCount) + "_" +
                                    opName_ + "/outtensor" + std::to_string(i) + ".pth";
             ExampleUtil::SaveTensor(atOutTensors.at(i), filePath);

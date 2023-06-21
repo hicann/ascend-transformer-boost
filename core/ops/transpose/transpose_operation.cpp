@@ -46,7 +46,7 @@ AsdOps::Status TransposeOperation::InferShape(const AsdOps::SVector<AsdOps::Tens
 RunnerBuilder *TransposeOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
-    size_t index = Config::IsTransposeOpsRunnerEnable() ? 0 : 1;
+    size_t index = AsdOps::GetSingleton<Config>().IsTransposeOpsRunnerEnable() ? 0 : 1;
 #else
     size_t index = 0;
 #endif

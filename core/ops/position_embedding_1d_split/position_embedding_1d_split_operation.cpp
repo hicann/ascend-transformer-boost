@@ -23,7 +23,8 @@ PositionEmbedding1dSplitOperation::PositionEmbedding1dSplitOperation(const Posit
     : Operation("PositionEmbedding1dSplitOperation"), param_(param)
 {
 #ifdef USE_TORCH_RUNNER
-    runnerBuilders_ = {new PositionEmbedding1dSplitOpsRunnerBuilder(param_), new PositionEmbedding1dSplitTorchRunnerBuilder(param_)};
+    runnerBuilders_ = {new PositionEmbedding1dSplitOpsRunnerBuilder(param_),
+                       new PositionEmbedding1dSplitTorchRunnerBuilder(param_)};
 #else
     runnerBuilders_ = {new PositionEmbedding1dSplitTorchRunnerBuilder(param_)};
 #endif
@@ -32,7 +33,7 @@ PositionEmbedding1dSplitOperation::PositionEmbedding1dSplitOperation(const Posit
 PositionEmbedding1dSplitOperation::~PositionEmbedding1dSplitOperation() {}
 
 AsdOps::Status PositionEmbedding1dSplitOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+                                                             AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
     // in : Q,[batch, seq_len, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
     // out : Q ,[seq_len, batch, head_num, head_size]
@@ -55,7 +56,7 @@ AsdOps::Status PositionEmbedding1dSplitOperation::InferShape(const AsdOps::SVect
 RunnerBuilder *PositionEmbedding1dSplitOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
-    size_t index = Config::IsPositionEmbedding1dSplitOpsRunnerEnable() ? 0 : 1;
+    size_t index = AsdOps::GetSingleton<Config>().IsPositionEmbedding1dSplitOpsRunnerEnable() ? 0 : 1;
 #else
     size_t index = 0;
 #endif

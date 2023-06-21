@@ -18,6 +18,7 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/time/timer.h>
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/utils/mem_allocation_solver/best_mem_allocation_solver.h"
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
@@ -182,7 +183,11 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
         LogVariantPack(node.variantPack);
         AsdOps::Timer timer;
         node.runner->Execute(handle, node.variantPack);
-        if (Config::IsSaveTensor()) {
+        if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryRunnerEnable()) {
+            int ret = AsdRtStreamSynchronize(handle.stream);
+            ASD_LOG_IF(ret != 0, ERROR) << "Plan AsdRtStreamSynchronize node[" << nodeId << "] fail, ret:" << ret;
+        }
+        if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
             AsdRtStreamSynchronize(handle.stream);
             std::string dirPath = Config::GetSaveTensorDir() + "/" + runnerGraph_.name + "/" + std::to_string(nodeId) +
                                   "_" + node.runner->GetName();
@@ -194,11 +199,9 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
         nodeId++;
     }
 
-    if (handle.stream != nullptr) {
-        ASD_LOG(INFO) << "Plan AsdRtStreamSynchronize stream:" << handle.stream;
-        AsdRtStreamSynchronize(handle.stream);
-    } else {
-        ASD_LOG(ERROR) << "Plan handle.stream is null";
+    if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryPlanEnable()) {
+        int ret = AsdRtStreamSynchronize(handle.stream);
+        ASD_LOG_IF(ret != 0, ERROR) << "Plan AsdRtStreamSynchronize node[" << nodeId << "] fail, ret:" << ret;
     }
 
     ASD_LOG(INFO) << "Plan execute success";
