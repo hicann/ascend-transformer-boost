@@ -375,7 +375,7 @@ bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &
                               << "] is internal tensor, infer shape wrong, not use infer shape desc";
             }
             outTensor->dataSize = TensorUtil::CalcTensorDataSize(outTensor->desc);
-            outTensor->data = memAllocatinSolver_->Malloc(outTensor->dataSize);
+            outTensor->data = memAllocatinSolver_->Malloc(TensorUtil::AlignInt(outTensor->dataSize, 32));
             ASD_LOG(INFO) << GetName() << " " << op->GetName() << " outTensors[" << i
                           << "] is internal tensor, mem solve:" << outTensor->data;
         } else {
@@ -399,7 +399,8 @@ void OpsRunner::FillTilingData(const VariantPack &variantPack)
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         uint64_t orgTilingSize = kernel->GetLaunchBufferSize(kernelRunInfo);
-        uint64_t tilingSize = (orgTilingSize + 7) / 8 * 8;
+        uint64_t tilingSize = TensorUtil::AlignInt(orgTilingSize, 32);
+        ;
         ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " orgTilingSize:" << orgTilingSize
                       << ", tilingSize:" << tilingSize;
         kernelTilingSizes_.at(i) = tilingSize;
@@ -439,6 +440,7 @@ void OpsRunner::FillTilingData(const VariantPack &variantPack)
                 ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " workspaces[" << i
                               << "]:" << workspaces.at(i);
             }
+            kernelWorkspaceSize = TensorUtil::AlignInt(int64_t(kernelWorkspaceSize), 32);
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << ", kernelWorkspaceSize:" << kernelWorkspaceSize
                           << ", maxKernelWorkspaceSize:" << maxKernelWorkspaceSize;
             ASD_LOG_IF(kernelWorkspaceSize > 1024 * 1024, ERROR)

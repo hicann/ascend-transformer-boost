@@ -86,7 +86,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
             if (outTensor->data == nullptr) {
                 outTensor->desc = outTensorDescs.at(i);
                 outTensor->dataSize = TensorUtil::CalcTensorDataSize(*outTensor);
-                outTensor->data = memAllocatinSolver_->Malloc(outTensor->dataSize);
+                outTensor->data = memAllocatinSolver_->Malloc(TensorUtil::AlignInt(outTensor->dataSize, 32));
                 ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName()
                               << " MemAllocationSolver Malloc dataSize:" << outTensor->dataSize
                               << ", blockAddress:" << int64_t(outTensor->data);
@@ -115,6 +115,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
             return st;
         }
         uint64_t runnerWorkspaceSize = node.runner->GetWorkspaceSize();
+        runnerWorkspaceSize = TensorUtil::AlignInt(runnerWorkspaceSize, 32);
         ASD_LOG(INFO) << "Plan get " << node.runner->GetName() << " workspace size:" << runnerWorkspaceSize;
         workspaceSize_ = std::max(runnerWorkspaceSize, workspaceSize_);
     }

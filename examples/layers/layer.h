@@ -27,6 +27,7 @@ public:
     virtual ~Layer();
     std::string GetName() const;
     void SetParam(const nlohmann::json &paramJson);
+    void SetWorkspace(uint64_t workspaceSize);
     virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) = 0;
     virtual AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) = 0;
@@ -37,8 +38,9 @@ protected:
 protected:
     std::string layerName_;
     nlohmann::json paramJson_;
-    void *workspace = nullptr;
-    uint64_t workspaceSize = 0;
+    void *workspace_ = nullptr;
+    uint64_t workspaceSize_ = 0;
+    void *lastStream_ = nullptr;
 };
 } // namespace AclTransformer
 #endif

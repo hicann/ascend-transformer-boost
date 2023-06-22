@@ -34,6 +34,7 @@ public:
     static void SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath);
     static bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
     static std::string AsdOpsDimsToString(const AsdOps::SVector<int64_t> &dims);
+    static int64_t AlignInt(int64_t value, int align);
 };
 } // namespace AclTransformer
 #endif
