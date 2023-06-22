@@ -154,4 +154,6 @@ std::string TensorUtil::AsdOpsDimsToString(const AsdOps::SVector<int64_t> &dims)
     }
     return str;
 }
+
+int64_t TensorUtil::AlignInt(int64_t value, int align) { return (value + (align - 1)) / align * align; }
 } // namespace AclTransformer

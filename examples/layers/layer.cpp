@@ -29,9 +29,40 @@ std::string Layer::GetName() const { return layerName_; }
 
 void Layer::SetParam(const nlohmann::json &paramJson) { paramJson_ = paramJson; }
 
+void Layer::SetWorkspace(uint64_t workspaceSize)
+{
+    if (workspaceSize <= workspaceSize_) {
+        ASD_LOG(INFO) << GetName() << " workspaceSize:" << workspaceSize << " <= workspaceSize_:" << workspaceSize_
+                      << ", not new device mem";
+        return;
+    }
+
+    if (workspace_) {
+        ASD_LOG(INFO) << GetName() << " AsdRtMemFreeDevice workspace:" << workspace_
+                      << ", workspaceSize:" << workspaceSize_;
+        AsdRtMemFreeDevice(workspace_);
+        workspace_ = nullptr;
+        workspaceSize_ = 0;
+    }
+
+    ASD_LOG(INFO) << GetName() << " AsdRtMemMallocDevice workspaceSize:" << workspaceSize;
+    int st = AsdRtMemMallocDevice((void **)&workspace_, workspaceSize, ASDRT_MEM_DEFAULT);
+    if (st != ASDRT_SUCCESS) {
+        ASD_LOG(ERROR) << GetName() << " AsdRtMemMallocDevice fail, ret:" << st;
+        return;
+    }
+    workspaceSize_ = workspaceSize;
+}
+
 void Layer::ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransformer::VariantPack &variantPack)
 {
-    AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
+    void *stream = ExampleUtil::GetCurrentStream();
+    if (lastStream_ != nullptr && lastStream_ != stream) {
+        ASD_LOG(ERROR) << "stream changed";
+        return;
+    }
+    lastStream_ = stream;
+    AclTransformer::Handle handle = {stream};
 
     AclTransformer::PlanBuilder planBuilder;
     AclTransformer::Plan plan;
@@ -53,21 +84,11 @@ void Layer::ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTr
     if (variantPack.workspaceSize > 0) {
         ASD_LOG(INFO) << opGraph.name
                       << " AsdRtMemMallocDevice variantPack.workspaceSize:" << variantPack.workspaceSize;
-        int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
-        if (st != ASDRT_SUCCESS) {
-            ASD_LOG(ERROR) << opGraph.name << " AsdRtMemMallocDevice fail";
-            return;
-        }
+        SetWorkspace(variantPack.workspaceSize);
+        variantPack.workspace = workspace_;
     }
 
     st = plan.Execute(handle, variantPack);
     ASD_LOG_IF(!st.Ok(), ERROR) << opGraph.name << " Plan Execute fail, error:" << st.Message();
-
-    if (variantPack.workspace != nullptr) {
-        AsdRtMemFreeDevice(variantPack.workspace);
-        ASD_LOG(INFO) << opGraph.name << " AsdRtMemFreeDevice free:" << variantPack.workspace;
-        variantPack.workspace = nullptr;
-        variantPack.workspaceSize = 0;
-    }
 }
 } // namespace AclTransformer
