@@ -29,11 +29,58 @@ MlpOpsRunner::~MlpOpsRunner() {}
 
 AsdOps::Status MlpOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
+    kernelGraph_.inTensors = variantPack.inTensors;
+    AsdOps::Tensor &hiddenStatus = kernelGraph_.inTensors.at(0);
+    AsdOps::Tensor &weightGate = kernelGraph_.inTensors.at(1);
+    AsdOps::Tensor &weightDown = kernelGraph_.inTensors.at(2);
+    AsdOps::Tensor &weightUp = kernelGraph_.inTensors.at(3);
+
+    kernelGraph_.outTensors = variantPack.outTensors;
+    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors.at(0);
+
+    kernelGraph_.internalTensors.resize(4);
+    AsdOps::Tensor &matmulGateOut = kernelGraph_.internalTensors.at(0);
+    AsdOps::Tensor &matmulUpOut = kernelGraph_.internalTensors.at(1);
+    AsdOps::Tensor &mulOut = kernelGraph_.internalTensors.at(2);
+    AsdOps::Tensor &swishOut = kernelGraph_.internalTensors.at(3);
+
+    kernelGraph_.nodes.resize(5);
+    auto &matmulGateNode = kernelGraph_.nodes[0];
+    auto &swishNode = kernelGraph_.nodes[1];
+    auto &matmulUpNode = kernelGraph_.nodes[2];
+    auto &mulNode = kernelGraph_.nodes[3];
+    auto &matmulDownNode = kernelGraph_.nodes[4];
+
+    matmulGateNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
+    matmulGateNode.inTensors = {&hiddenStatus, &weightGate};
+    matmulGateNode.outTensors = {&matmulGateOut};
+    matmulGateNode.inTensorViewFuncs.resize(matmulGateNode.inTensors.size());
+    matmulGateNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
+    };
+
+    swishNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_SWISH})};
+    swishNode.inTensors = {&matmulGateOut};
+    swishNode.outTensors = {&swishOut};
+
+    matmulUpNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
+    matmulUpNode.inTensors = {&hiddenStatus, &weightUp};
+    matmulUpNode.outTensors = {&matmulUpOut};
+    matmulUpNode.inTensorViewFuncs.resize(matmulUpNode.inTensors.size());
+    matmulUpNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
+    };
+
+    mulNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_MUL})};
+    mulNode.inTensors = {&swishOut, &matmulUpOut};
+    mulNode.outTensors = {&mulOut};
+
+    matmulDownNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
+    matmulDownNode.inTensors = {&mulOut, &weightDown};
+    matmulDownNode.outTensors = {&resultTensor};
+
     return AsdOps::Status::OkStatus();
 }
 
-bool MlpOpsRunner::CalcLayerMlpTensor(const VariantPack &variantPack, int64_t &beginDim)
-{
-    return true;
-}
+bool MlpOpsRunner::CalcLayerMlpTensor(const VariantPack &variantPack, int64_t &beginDim) { return true; }
 } // namespace AclTransformer
