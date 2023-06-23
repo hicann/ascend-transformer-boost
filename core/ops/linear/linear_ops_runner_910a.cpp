@@ -19,7 +19,10 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-LinearOpsRunner910A::LinearOpsRunner910A(LinearParam &param) : OpsRunner("LinearOpsRunner910A"), param_(param) {}
+LinearOpsRunner910A::LinearOpsRunner910A(LinearParam &param)
+    : OpsRunner("LinearOpsRunner910A", RUNNER_TYPE_LINEAR), param_(param)
+{
+}
 
 LinearOpsRunner910A::~LinearOpsRunner910A() {}
 
@@ -92,11 +95,11 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const VariantPack &varian
         AsdOps::SVector<int64_t> bTensorNewDims = {1, bLastDim / blockDim, bTensor.desc.dims.at(1), blockDim};
         bTensor.View(bTensorNewDims);
         ASD_LOG(INFO) << GetName()
-                        << " bTensor last dim is not 16, view:" << TensorUtil::AsdOpsTensorDescToString(bTensor.desc);
+                      << " bTensor last dim is not 16, view:" << TensorUtil::AsdOpsTensorDescToString(bTensor.desc);
     }
 
     ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString()
-                    << ", newVariantPack:" << newVariantPack.ToString();
+                  << ", newVariantPack:" << newVariantPack.ToString();
 
     kernelGraph_.inTensors = newVariantPack.inTensors;
     AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[id0];
@@ -117,27 +120,25 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const VariantPack &varian
     auto &addNode = kernelGraph_.nodes[id3];
 
     transdata0Node.opDesc = {0, "TransdataOperation",
-                                AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
     transdata0Node.inTensors = {&inputTensor};
     transdata0Node.outTensors = {&transdata0ResultTensor};
 
     ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString(matmulOrgShape)
-                    << "]";
+                  << "]";
     matmulNode.opDesc = {0, "MatMulOperation",
-                            AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB, matmulOrgShape})};
+                         AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB, matmulOrgShape})};
     matmulNode.inTensors = {&transdata0ResultTensor, &weightTensor};
     matmulNode.outTensors = {&matmulResultTensor};
 
-    ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << TensorUtil::AsdOpsDimsToString(transdataOrgShape)
-                    << "]";
+    ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << TensorUtil::AsdOpsDimsToString(transdataOrgShape) << "]";
     transdata2Node.opDesc = {
         0, "TransdataOperation",
         AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transdataOrgShape})};
     transdata2Node.inTensors = {&matmulResultTensor};
     transdata2Node.outTensors = {&transdata2ResultTensor};
 
-    addNode.opDesc = {0, "BroadcastOperation",
-                        AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
+    addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
     addNode.inTensors = {&transdata2ResultTensor, &biasTensor};
     addNode.outTensors = {&resultTensor};
     return AsdOps::Status::OkStatus();
@@ -157,7 +158,7 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const VariantPack &varian
     VariantPack newVariantPack;
     ConvertNewVariantPackA(variantPack, newVariantPack, matmulOrgShape, transdataOrgShape);
     ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString()
-                    << ", newVariantPack:" << newVariantPack.ToString();
+                  << ", newVariantPack:" << newVariantPack.ToString();
 
     kernelGraph_.inTensors = newVariantPack.inTensors;
     AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[id0];
@@ -180,32 +181,30 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const VariantPack &varian
     auto &addNode = kernelGraph_.nodes[id4];
 
     transdata0Node.opDesc = {0, "TransdataOperation",
-                                AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
     transdata0Node.inTensors = {&inputTensor};
     transdata0Node.outTensors = {&transdata0ResultTensor};
 
     transdata1Node.opDesc = {0, "TransdataOperation",
-                                AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
     transdata1Node.inTensors = {&weightTensor};
     transdata1Node.outTensors = {&transdata1ResultTensor};
 
     ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString(matmulOrgShape)
-                    << "]";
+                  << "]";
     matmulNode.opDesc = {0, "MatMulOperation",
-                            AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB, matmulOrgShape})};
+                         AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB, matmulOrgShape})};
     matmulNode.inTensors = {&transdata0ResultTensor, &transdata1ResultTensor};
     matmulNode.outTensors = {&matmulResultTensor};
 
-    ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << TensorUtil::AsdOpsDimsToString(transdataOrgShape)
-                    << "]";
+    ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << TensorUtil::AsdOpsDimsToString(transdataOrgShape) << "]";
     transdata2Node.opDesc = {
         0, "TransdataOperation",
         AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transdataOrgShape})};
     transdata2Node.inTensors = {&matmulResultTensor};
     transdata2Node.outTensors = {&transdata2ResultTensor};
 
-    addNode.opDesc = {0, "BroadcastOperation",
-                        AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
+    addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
     addNode.inTensors = {&transdata2ResultTensor, &biasTensor};
     addNode.outTensors = {&resultTensor};
     return AsdOps::Status::OkStatus();

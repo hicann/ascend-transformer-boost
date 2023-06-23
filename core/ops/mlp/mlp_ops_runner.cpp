@@ -20,7 +20,7 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-MlpOpsRunner::MlpOpsRunner(const MlpParam &param) : OpsRunner("MlpOpsRunner"), param_(param)
+MlpOpsRunner::MlpOpsRunner(const MlpParam &param) : OpsRunner("MlpOpsRunner", RUNNER_TYPE_MLP), param_(param)
 {
     ASD_LOG(INFO) << "MlpOperation::MlpOperation called";
 }
@@ -55,7 +55,8 @@ AsdOps::Status MlpOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
     matmulGateNode.inTensors = {&hiddenStatus, &weightGate};
     matmulGateNode.outTensors = {&matmulGateOut};
     matmulGateNode.inTensorViewFuncs.resize(matmulGateNode.inTensors.size());
-    matmulGateNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+    matmulGateNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                              AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
     };
 
@@ -67,7 +68,8 @@ AsdOps::Status MlpOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
     matmulUpNode.inTensors = {&hiddenStatus, &weightUp};
     matmulUpNode.outTensors = {&matmulUpOut};
     matmulUpNode.inTensorViewFuncs.resize(matmulUpNode.inTensors.size());
-    matmulUpNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+    matmulUpNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                            AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
     };
 

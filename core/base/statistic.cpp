@@ -16,15 +16,18 @@
 #include "acltransformer/statistic.h"
 
 namespace AclTransformer {
-    std::string Statistic::ToString() const {
-        return "layerExecTime" + std::to_string(layerExecTime) + ", " +
-            "syclTime" + std::to_string(syclTime) + ", " +
-            "tillingCopyTime" + std::to_string(tillingCopyTime);
-    }
-
-    void Statistic::Reset() {
-        layerExecTime = 0;
-        syclTime = 0;
-        tillingCopyTime = 0;
-    }
+std::string Statistic::ToString() const
+{
+    return "layerExecTime:" + std::to_string(layerExecTime) + ", " + "syclTime:" + std::to_string(syclTime) + ", " +
+           "tillingCopyTime:" + std::to_string(tillingCopyTime) +
+           ", getBestKernelTime:" + std::to_string(getBestKernelTime);
 }
+
+void Statistic::Reset()
+{
+    layerExecTime = 0;
+    syclTime = 0;
+    tillingCopyTime = 0;
+    getBestKernelTime = 0;
+}
+} // namespace AclTransformer

@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
@@ -15,21 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_ops_runner.h"
-#include <asdops/utils/log/log.h>
-#include <asdops/params/params.h>
+#ifndef ACLTRANSFORMER_RUNNERTYPE_H
+#define ACLTRANSFORMER_RUNNERTYPE_H
 
 namespace AclTransformer {
-SelfAttentionOpsRunner::SelfAttentionOpsRunner(const SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionOpsRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
-{
-    ASD_LOG(INFO) << "SelfAttentionOperation::SelfAttentionOperation called";
-}
-
-AsdOps::Status SelfAttentionOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    return AsdOps::Status::OkStatus();
-}
-
-SelfAttentionOpsRunner::~SelfAttentionOpsRunner() {}
+enum RunnerType {
+    RUNNER_TYPE_UNDEFINED = -1,
+    RUNNER_TYPE_ADD = 0,
+    RUNNER_TYPE_ADD_NORM,
+    RUNNER_TYPE_FFN,
+    RUNNER_TYPE_LINEAR,
+    RUNNER_TYPE_MLP,
+    RUNNER_TYPE_NORM,
+    RUNNER_TYPE_POSITION_EMBEDDING_1D_SPLIT,
+    RUNNER_TYPE_POSITION_EMBEDDING_2D_MIXED,
+    RUNNER_TYPE_RMS_NORM,
+    RUNNER_TYPE_SELF_ATTENTION,
+    RUNNER_TYPE_SELF_ATTENTION_KV_CACHE,
+    RUNNER_TYPE_TRANSPOSE,
+    RUNNER_TYPE_MAX
+};
 } // namespace AclTransformer
+#endif

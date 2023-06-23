@@ -22,6 +22,7 @@ struct Statistic {
     uint64_t layerExecTime = 0;
     uint64_t syclTime = 0;
     uint64_t tillingCopyTime = 0;
+    uint64_t getBestKernelTime = 0;
 
     std::string ToString() const;
     void Reset();
