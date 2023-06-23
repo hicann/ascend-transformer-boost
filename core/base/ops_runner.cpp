@@ -26,6 +26,8 @@
 #include "acltransformer/utils/mem_allocation_solver/best_mem_allocation_solver.h"
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
+#include <asdops/utils/time/timer.h>
+#include "acltransformer/statistic.h"
 
 namespace AclTransformer {
 std::string KernelGraph::ToString() const
@@ -166,9 +168,11 @@ AsdOps::Status OpsRunner::UpdateRunInfoTiling(VariantPack &variantPack)
 {
     ASD_LOG(INFO) << GetName() << " update kernel runinfo launch buffer";
     if (tilingData_.size() > 0) {
+        AsdOps::Timer timer;
         char *deviceTilingBuffer = static_cast<char *>(variantPack.workspace) + intermediateSize_;
         int st = AsdRtMemCopy(deviceTilingBuffer, tilingData_.size(), tilingData_.data(), tilingData_.size(),
                               ASDRT_MEMCOPY_HOST_TO_DEVICE);
+        AsdOps::GetSingleton<Statistic>().tillingCopyTime += timer.ElapsedMicroSecond();                      
         if (st != ASDRT_SUCCESS) {
             ASD_LOG(ERROR) << "AsdRtMemCopy fail, error:" << st;
             return AsdOps::Status::FailStatus(1, "AsdRtMemCopy fail");
