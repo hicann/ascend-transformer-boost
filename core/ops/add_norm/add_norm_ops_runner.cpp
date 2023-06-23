@@ -22,7 +22,10 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-AddNormOpsRunner::AddNormOpsRunner(const AddNormParam &param) : OpsRunner("AddNormOpsRunner"), param_(param) {}
+AddNormOpsRunner::AddNormOpsRunner(const AddNormParam &param)
+    : OpsRunner("AddNormOpsRunner", RUNNER_TYPE_ADD_NORM), param_(param)
+{
+}
 
 AddNormOpsRunner::~AddNormOpsRunner() {}
 

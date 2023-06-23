@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
@@ -15,21 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_ops_runner.h"
-#include <asdops/utils/log/log.h>
-#include <asdops/params/params.h>
-
-namespace AclTransformer {
-SelfAttentionOpsRunner::SelfAttentionOpsRunner(const SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionOpsRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
-{
-    ASD_LOG(INFO) << "SelfAttentionOperation::SelfAttentionOperation called";
-}
-
-AsdOps::Status SelfAttentionOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    return AsdOps::Status::OkStatus();
-}
-
-SelfAttentionOpsRunner::~SelfAttentionOpsRunner() {}
-} // namespace AclTransformer
+#ifndef ACLTRANSFORMER_KERNEL_TYPE_H
+#define ACLTRANSFORMER_KERNEL_TYPE_H
+enum KernelType {
+    KERNEL_TYPE_UNDEFINED = -1,
+    KERNEL_TYPE_ADD = 0,
+    KERNEL_TYPE_MAX,
+};
+#endif

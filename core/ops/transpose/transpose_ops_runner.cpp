@@ -20,7 +20,8 @@
 #include <asdops/params/params.h>
 
 namespace AclTransformer {
-TransposeOpsRunner::TransposeOpsRunner(const TransposeParam &param) : OpsRunner("TransposeOpsRunner"), param_(param)
+TransposeOpsRunner::TransposeOpsRunner(const TransposeParam &param)
+    : OpsRunner("TransposeOpsRunner", RUNNER_TYPE_TRANSPOSE), param_(param)
 {
     ASD_LOG(INFO) << "TransposeOperation::TransposeOperation called";
 }
@@ -50,10 +51,7 @@ AsdOps::Status TransposeOpsRunner::SetupKernelGraph(const VariantPack &variantPa
 
     kernelGraph_.nodes.resize(1);
     auto &asstridedNode = kernelGraph_.nodes.at(0);
-    asstridedNode.opDesc =
-    { 0,
-      "AsStridedOperation",
-      AsdOps::OpParam::AsStrided({sizeParam, strideParam, offsetParam}) };
+    asstridedNode.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided({sizeParam, strideParam, offsetParam})};
     asstridedNode.inTensors = {&operationInTensor};
     asstridedNode.outTensors = {&operationOutTensor};
 

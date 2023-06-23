@@ -24,6 +24,8 @@
 #include <asdops/op_desc.h>
 #include <asdops/run_info.h>
 #include <asdops/operation.h>
+#include "acltransformer/kernel_type.h"
+#include "acltransformer/runner_type.h"
 
 namespace AclTransformer {
 using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
@@ -34,6 +36,7 @@ struct KernelGraphNode {
     AsdOps::SVector<AsdOps::Tensor *> inTensors;
     AsdOps::SVector<AsdOps::Tensor *> outTensors;
     AsdOps::SVector<ViewFunc> inTensorViewFuncs;
+    KernelType kernelType = KERNEL_TYPE_UNDEFINED;
     AsdOps::Kernel *kernel = nullptr;
     AsdOps::RunInfo kernelRunInfo;
     InferShapePreFunc inferShapePreFunc;
@@ -51,7 +54,7 @@ class MemAllocationSolver;
 
 class OpsRunner : public Runner {
 public:
-    OpsRunner(const std::string &name);
+    OpsRunner(const std::string &name, RunnerType runnerType = RUNNER_TYPE_UNDEFINED);
     virtual ~OpsRunner();
 
 protected:
@@ -68,6 +71,7 @@ private:
     bool PlanOneKernel(size_t nodeId);
     bool PlanOneKernelBuildRunInfo(KernelGraphNode &node, size_t nodeId);
     bool PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId);
+    bool PlanOneKernelSelectBestKernel(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId);
     void FillTilingData(const VariantPack &variantPack);
     void InitTensorMaxNodeMap();
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
@@ -88,6 +92,7 @@ protected:
     std::map<AsdOps::Tensor *, uint64_t> tensorMaxNodeIdMap_;
     std::map<uint64_t, std::set<AsdOps::Tensor *>> maxNodeIdTensorMap_;
     MemAllocationSolver *memAllocatinSolver_ = nullptr;
+    RunnerType runnerType_ = RUNNER_TYPE_UNDEFINED;
 };
 } // namespace AclTransformer
 #endif

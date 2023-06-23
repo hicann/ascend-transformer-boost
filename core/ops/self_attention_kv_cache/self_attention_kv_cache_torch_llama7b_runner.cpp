@@ -127,8 +127,8 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     attention_probs = attention_probs.to(torch::kHalf);
     // [batch*head_num, seq_len, head_size]
 
-    presentValue =
-        presentValue.view({presentValue.sizes()[0] * presentValue.sizes()[1], presentValue.sizes()[2], presentValue.sizes()[3]});
+    presentValue = presentValue.view(
+        {presentValue.sizes()[0] * presentValue.sizes()[1], presentValue.sizes()[2], presentValue.sizes()[3]});
     ASD_LOG(INFO) << "attention_probs before bmm2" << attention_probs.sizes() << " dtype:" << attention_probs.dtype();
     ASD_LOG(INFO) << "presentValue before bmm2" << presentValue.sizes() << " dtype:" << presentValue.dtype();
     // [batch*head_num, seq_len, head_size]

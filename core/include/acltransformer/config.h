@@ -40,6 +40,7 @@ public:
     bool IsStreamSyncEveryKernelEnable();
     bool IsStreamSyncEveryOperationEnable();
     bool IsStreamSyncEveryPlanEnable();
+    bool IsKernelCacheEnable();
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
@@ -62,6 +63,7 @@ private:
     bool isStreamSyncEveryKernelEnable_ = false;
     bool isStreamSyncEveryOperationEnable_ = false;
     bool isStreamSyncEveryPlanEnable_ = false;
+    bool isKernelCacheEnable_ = false;
 };
 } // namespace AclTransformer
 #endif

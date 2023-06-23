@@ -23,7 +23,7 @@
 
 namespace AclTransformer {
 SelfAttentionKvCacheOpsRunner::SelfAttentionKvCacheOpsRunner(const SelfAttentionKvCacheParam &param)
-    : OpsRunner("SelfAttentionKvCacheOpsRunner"), param_(param)
+    : OpsRunner("SelfAttentionKvCacheOpsRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
     ASD_LOG(INFO) << "SelfAttentionKVCacheOperation::SelfAttentionKVCacheOperation called";
 }
