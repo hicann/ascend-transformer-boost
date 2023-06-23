@@ -22,6 +22,7 @@
 #include "acltransformer/utils/mem_allocation_solver/best_mem_allocation_solver.h"
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
+#include "acltransformer/statistic.h"
 
 namespace AclTransformer {
 std::string RunnerGraph::ToString() const
@@ -182,10 +183,11 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
     for (auto &node : runnerGraph_.nodes) {
         ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " execute start:" << handle.stream;
         LogVariantPack(node.variantPack);
-        AsdOps::Timer timer;
         node.runner->Execute(handle, node.variantPack);
         if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryRunnerEnable()) {
+            AsdOps::Timer timer;
             int ret = AsdRtStreamSynchronize(handle.stream);
+            AsdOps::GetSingleton<Statistic>().tillingCopyTime += timer.ElapsedMicroSecond();
             ASD_LOG_IF(ret != 0, ERROR) << "Plan AsdRtStreamSynchronize node[" << nodeId << "] fail, ret:" << ret;
         }
         if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
@@ -195,8 +197,6 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
             TensorUtil::SaveVariantPack(handle, node.variantPack, dirPath);
             ASD_LOG(INFO) << "Plan SaveVariantPack " << dirPath;
         }
-        ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName()
-                      << " execute end, use time:" << timer.ElapsedMicroSecond();
         nodeId++;
     }
 

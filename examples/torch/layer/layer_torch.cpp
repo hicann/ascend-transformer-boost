@@ -17,6 +17,8 @@
 #include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
+#include <asdops/utils/singleton/singleton.h>
+#include "acltransformer/statistic.h"
 #include "acltransformer/operation.h"
 #include "acltransformer/operation_graph.h"
 #include "examples/utils/example_util.h"
@@ -63,7 +65,6 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
         ASD_LOG(ERROR) << "LayerTorch::Execute fail, layer is null";
         return outTensors;
     }
-    AsdOps::Timer timer;
 
     AclTransformer::VariantPack variantPack;
     ASD_LOG(INFO) << "LayerTorch::Execute start";
@@ -89,15 +90,16 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
     if (handle.stream != nullptr) {
         ASD_LOG(INFO) << "LayerTorch::Get Handle success!";
     }
+    AsdOps::Timer timer;
     layer_->Execute(handle, variantPack);
-
-    ASD_LOG(FATAL) << "LayerTorch::Execute end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
+    AsdOps::GetSingleton<AclTransformer::Statistic>().layerExecTime += timer.ElapsedMicroSecond();
+    ASD_LOG(FATAL) << "LayerTorch::Execute end, use time:" <<  AsdOps::GetSingleton<AclTransformer::Statistic>().ToString();
+    AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
     return outTensors;
 }
 
 void LayerTorch::ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors)
 {
-    AsdOps::Timer timer;
     AclTransformer::VariantPack variantPack;
     ASD_LOG(INFO) << "LayerTorch::ExecuteOut start";
     for (size_t i = 0; i < inTensors.size(); ++i) {
@@ -118,9 +120,11 @@ void LayerTorch::ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<to
     if (handle.stream != nullptr) {
         ASD_LOG(INFO) << "LayerTorch::Get Handle success!";
     }
+    AsdOps::Timer timer;
     layer_->Execute(handle, variantPack);
-
-    ASD_LOG(FATAL) << "LayerTorch::ExecuteOut end, use time:" << timer.ElapsedMicroSecond() << " microsecond";
+    AsdOps::GetSingleton<AclTransformer::Statistic>().layerExecTime += timer.ElapsedMicroSecond();
+    ASD_LOG(FATAL) << "LayerTorch::Execute end, use time:" <<  AsdOps::GetSingleton<AclTransformer::Statistic>().ToString();
+    AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
 }
 
 void LayerTorch::SetWorkspace(int64_t workspaceSize)
