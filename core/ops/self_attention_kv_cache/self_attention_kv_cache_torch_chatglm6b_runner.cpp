@@ -17,7 +17,6 @@
 #include <cmath>
 #ifdef USE_TORCH_RUNNER
 #include <ATen/ATen.h>
-#include <torch_npu/csrc/core/npu/NPUStream.h>
 #include "acltransformer/torch/torch_util.h"
 #endif
 #include <asdops/utils/log/log.h>

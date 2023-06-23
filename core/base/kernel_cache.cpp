@@ -30,7 +30,7 @@ void KernelCache::Add(RunnerType runnerType, int64_t kernelIndex, const AsdOps::
                       AsdOps::Kernel *kernel)
 {
     if (runnerType >= 0 && runnerType < RUNNER_TYPE_MAX) {
-        if (kernelIndex >= 0 && kernelIndex < cachedKernels_.at(runnerType).size()) {
+        if (kernelIndex >= 0 && (uint64_t)kernelIndex < cachedKernels_.at(runnerType).size()) {
             cachedKernels_.at(runnerType).at(kernelIndex).first = runInfo;
             cachedKernels_.at(runnerType).at(kernelIndex).second = kernel;
         }
@@ -40,7 +40,7 @@ void KernelCache::Add(RunnerType runnerType, int64_t kernelIndex, const AsdOps::
 AsdOps::Kernel *KernelCache::Get(RunnerType runnerType, int64_t kernelIndex, const AsdOps::RunInfo &runInfo)
 {
     if (runnerType >= 0 && runnerType < RUNNER_TYPE_MAX) {
-        if (kernelIndex >= 0 && kernelIndex < cachedKernels_.at(runnerType).size()) {
+        if (kernelIndex >= 0 && (uint64_t)kernelIndex < cachedKernels_.at(runnerType).size()) {
             if (IsRunInfoEqual(cachedKernels_.at(runnerType).at(kernelIndex).first, runInfo)) {
                 return cachedKernels_.at(runnerType).at(kernelIndex).second;
             }
@@ -55,7 +55,7 @@ bool KernelCache::IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::
         return false;
     }
 
-    for (int i = 0; i < runInfo1.GetInTensorCount(); ++i) {
+    for (uint64_t i = 0; i < runInfo1.GetInTensorCount(); ++i) {
         if (!IsTensorDescEqual(runInfo1.GetInTensor(i).desc, runInfo2.GetInTensor(i).desc)) {
             return false;
         }
