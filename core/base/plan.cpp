@@ -39,6 +39,10 @@ Plan::~Plan()
         delete memAllocatinSolver_;
         memAllocatinSolver_ = nullptr;
     }
+    for(auto &node : runnerGraph_.nodes) {
+        delete node.runner;
+        node.runner = nullptr;
+    }
 }
 
 AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
