@@ -20,7 +20,7 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-NormOpsRunner::NormOpsRunner(const NormParam &param) : OpsRunner("NormOpsRunner"), param_(param)
+NormOpsRunner::NormOpsRunner(const NormParam &param) : OpsRunner("NormOpsRunner", RUNNER_TYPE_NORM), param_(param)
 {
     ASD_LOG(INFO) << "NormOperation::NormOperation called";
 }

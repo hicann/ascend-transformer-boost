@@ -21,12 +21,13 @@
 #include <asdops/ops.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
+#include <asdops/utils/time/timer.h>
 #include <asdops/utils/singleton/singleton.h>
 #include <asdops/utils/filesystem/filesystem.h>
 #include "acltransformer/utils/mem_allocation_solver/best_mem_allocation_solver.h"
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
-#include <asdops/utils/time/timer.h>
+#include "acltransformer/kernel_cache.h"
 #include "acltransformer/statistic.h"
 
 namespace AclTransformer {
@@ -76,7 +77,10 @@ std::string AsdOpsRunInfoToString(const AsdOps::RunInfo &kernelRunInfo)
     return ss.str();
 }
 
-OpsRunner::OpsRunner(const std::string &name) : Runner(name) { memAllocatinSolver_ = new BestMemAllocationSolver(); }
+OpsRunner::OpsRunner(const std::string &name, RunnerType runnerType) : Runner(name), runnerType_(runnerType)
+{
+    memAllocatinSolver_ = new BestMemAllocationSolver();
+}
 
 OpsRunner::~OpsRunner()
 {
@@ -94,6 +98,8 @@ AsdOps::Status OpsRunner::SetupImpl(const VariantPack &variantPack)
     if (!st.Ok()) {
         return st;
     }
+
+    AsdOps::GetSingleton<KernelCache>().Init(runnerType_, kernelGraph_.nodes.size());
 
     InitTensorMaxNodeMap();
     ASD_LOG(INFO) << GetName() << " Setup start, kernel graph:\n" << kernelGraph_.ToString();
@@ -172,7 +178,7 @@ AsdOps::Status OpsRunner::UpdateRunInfoTiling(VariantPack &variantPack)
         char *deviceTilingBuffer = static_cast<char *>(variantPack.workspace) + intermediateSize_;
         int st = AsdRtMemCopy(deviceTilingBuffer, tilingData_.size(), tilingData_.data(), tilingData_.size(),
                               ASDRT_MEMCOPY_HOST_TO_DEVICE);
-        AsdOps::GetSingleton<Statistic>().tillingCopyTime += timer.ElapsedMicroSecond();                      
+        AsdOps::GetSingleton<Statistic>().tillingCopyTime += timer.ElapsedMicroSecond();
         if (st != ASDRT_SUCCESS) {
             ASD_LOG(ERROR) << "AsdRtMemCopy fail, error:" << st;
             return AsdOps::Status::FailStatus(1, "AsdRtMemCopy fail");
@@ -289,22 +295,9 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
         return false;
     }
 
-    AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
-    if (tactic == nullptr) {
-        ASD_LOG(ERROR) << GetName() << " " << op->GetName()
-                       << " get best tactic fail, tactic count:" << op->GetTacticCount();
+    if (!PlanOneKernelSelectBestKernel(op, node, nodeId)) {
         return false;
     }
-    ASD_LOG(INFO) << GetName() << " best tactic:" << tactic->GetName();
-
-    node.kernel = tactic->GetBestKernel(node.kernelRunInfo);
-    if (node.kernel == nullptr) {
-        ASD_LOG(ERROR) << GetName() << " " << tactic->GetName()
-                       << " get best kernel fail, kernel count:" << tactic->GetKernelCount();
-        return false;
-    }
-    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " get best tactic:" << tactic->GetName()
-                  << ", best kernel:" << node.kernel->GetName();
 
     auto it = maxNodeIdTensorMap_.find(nodeId);
     if (it != maxNodeIdTensorMap_.end()) {
@@ -391,6 +384,41 @@ bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &
 
     ASD_LOG(INFO) << GetName() << " " << op->GetName() << " after mem solve, runinfo:\n"
                   << AsdOpsRunInfoToString(node.kernelRunInfo);
+    return true;
+}
+
+bool OpsRunner::PlanOneKernelSelectBestKernel(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId)
+{
+    if (AsdOps::GetSingleton<Config>().IsKernelCacheEnable()) {
+        node.kernel = AsdOps::GetSingleton<KernelCache>().Get(runnerType_, nodeId, node.kernelRunInfo);
+        if (node.kernel) {
+            ASD_LOG(INFO) << GetName() << " " << op->GetName() << ", get cached best kernel:" << node.kernel->GetName();
+            return true;
+        }
+    }
+
+    AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
+    if (tactic == nullptr) {
+        ASD_LOG(ERROR) << GetName() << " " << op->GetName()
+                       << " get best tactic fail, tactic count:" << op->GetTacticCount();
+        return false;
+    }
+    ASD_LOG(INFO) << GetName() << " best tactic:" << tactic->GetName();
+
+    AsdOps::Timer timer;
+    node.kernel = tactic->GetBestKernel(node.kernelRunInfo);
+    AsdOps::GetSingleton<Statistic>().getBestKernelTime += timer.ElapsedMicroSecond();
+    if (node.kernel == nullptr) {
+        ASD_LOG(ERROR) << GetName() << " " << tactic->GetName()
+                       << " get best kernel fail, kernel count:" << tactic->GetKernelCount();
+        return false;
+    }
+    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " get best tactic:" << tactic->GetName()
+                  << ", best kernel:" << node.kernel->GetName();
+
+    if (AsdOps::GetSingleton<Config>().IsKernelCacheEnable()) {
+        AsdOps::GetSingleton<KernelCache>().Add(runnerType_, nodeId, node.kernelRunInfo, node.kernel);
+    }
     return true;
 }
 

@@ -21,7 +21,7 @@
 
 namespace AclTransformer {
 PositionEmbeddingOpsRunner::PositionEmbeddingOpsRunner(const PositionEmbeddingParam &param)
-    : OpsRunner("PositionEmbeddingOpsRunner"), param_(param)
+    : OpsRunner("PositionEmbeddingOpsRunner", RUNNER_TYPE_POSITION_EMBEDDING_2D_MIXED), param_(param)
 {
     ASD_LOG(INFO) << "PositionEmbeddingOperation::PositionEmbeddingOperation called";
 }

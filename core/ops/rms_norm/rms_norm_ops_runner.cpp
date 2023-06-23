@@ -22,17 +22,14 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-RmsNormOpsRunner::RmsNormOpsRunner(const RmsNormParam &param) : OpsRunner("RmsNormOpsRunner"), param_(param) {}
+RmsNormOpsRunner::RmsNormOpsRunner(const RmsNormParam &param)
+    : OpsRunner("RmsNormOpsRunner", RUNNER_TYPE_RMS_NORM), param_(param)
+{
+}
 
 RmsNormOpsRunner::~RmsNormOpsRunner() {}
 
-AsdOps::Status RmsNormOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    return AsdOps::Status::OkStatus();
-}
+AsdOps::Status RmsNormOpsRunner::SetupKernelGraph(const VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
 
-bool RmsNormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim)
-{
-    return true;
-}
+bool RmsNormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim) { return true; }
 } // namespace AclTransformer

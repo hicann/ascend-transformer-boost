@@ -21,7 +21,7 @@
 
 namespace AclTransformer {
 PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const PositionEmbedding1dSplitParam &param)
-    : OpsRunner("PositionEmbedding1dSplitOpsRunner"), param_(param)
+    : OpsRunner("PositionEmbedding1dSplitOpsRunner", RUNNER_TYPE_POSITION_EMBEDDING_1D_SPLIT), param_(param)
 {
     ASD_LOG(INFO) << "PositionEmbedding1dSplitOperation::PositionEmbedding1dSplitOperation called";
 }
@@ -30,9 +30,8 @@ PositionEmbedding1dSplitOpsRunner::~PositionEmbedding1dSplitOpsRunner() {}
 
 AsdOps::Status PositionEmbedding1dSplitOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start: " << "headNum: " << param_.headNum;
-
-
+    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start: "
+                  << "headNum: " << param_.headNum;
 
     return AsdOps::Status::OkStatus();
 }
