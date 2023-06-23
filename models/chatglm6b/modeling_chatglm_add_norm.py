@@ -30,6 +30,8 @@ from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaL
 
 from .configuration_chatglm import ChatGLMConfig
 
+import time
+
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
@@ -987,6 +989,11 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             bias=False,
             dtype=torch.half
         )
+        
+        self.count = 0
+        self.total = 0
+        self.cur_time = 0
+        self.first = 0
 
     def get_output_embeddings(self):
         return self.lm_head
@@ -1288,12 +1295,22 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
             # forward pass to get next token
+            torch.npu.synchronize()
+            start = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=False,
                 output_hidden_states=False,
             )
+            torch.npu.synchronize()
+            end = time.time()
+            self.count += 1
+            self.cur_time = (end - start) * 1000
+            if self.count == 1:
+                self.first = self.cur_time
+            else:
+                self.total += self.cur_time
 
             next_token_logits = outputs.logits[:, -1, :]
 

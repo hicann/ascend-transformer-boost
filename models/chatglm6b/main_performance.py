@@ -80,6 +80,9 @@ def signal_handler(signal, frame):
 
 def main():
     history = []
+    question = 0
+    test_tokens_num = 64
+    output_file = open('performance.txt', 'w')
     global stop_stream
     print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
     while True:
@@ -92,16 +95,34 @@ def main():
             print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
             continue
         count = 0
+        question += 1
+        model.count = 0
+        model.cur_time = 0
+        model.first = 0
+        model.total = 0
         for response, history in model.stream_chat(tokenizer, query, history=history):
             if stop_stream:
                 stop_stream = False
                 break
             else:
                 count += 1
-                if count % 3 == 0:
+                if count % 10 == 0:
                     os.system(clear_command)
                     print(build_prompt(history), flush=True)
                     signal.signal(signal.SIGINT, signal_handler)
+                if question > 0:
+                    if model.count == 1:
+                        output_file.write(f"First token time:\n{model.first}ms\n")
+                        output_file.write("Per token time\n")
+                    elif model.count < test_tokens_num:
+                        output_file.write(f"{model.cur_time}ms\n")
+                    else:
+                        output_file.write(f"{model.cur_time}ms\n")
+                        output_file.write("Average token time without first token\n")
+                        output_file.write(f"{model.total / (test_tokens_num - 1)}ms\n")
+                        output_file.write(f"Response time\n{model.first + model.total}ms\n")
+                        output_file.close()
+                        exit()
         os.system(clear_command)
         print(build_prompt(history), flush=True)
 

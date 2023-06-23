@@ -30,6 +30,8 @@ from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaL
 
 from .configuration_chatglm import ChatGLMConfig
 
+import time
+
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
 torch._C._jit_set_profiling_executor(False)
@@ -942,6 +944,11 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             hidden_states=all_hidden_states,
             attentions=all_self_attentions,
         )
+        
+        self.count = 0
+        self.total = 0
+        self.cur_time = 0
+        self.first = 0
 
 
 class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
@@ -1265,12 +1272,22 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
             # forward pass to get next token
+            torch.npu.synchronize()
+            start = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=False,
                 output_hidden_states=False,
             )
+            torch.npu.synchronize()
+            end = time.time()
+            self.count += 1
+            self.cur_time = (end - start) * 1000
+            if self.count == 1:
+                self.first = self.cur_time
+            else:
+                self.total += self.cur_time
 
             next_token_logits = outputs.logits[:, -1, :]
 
