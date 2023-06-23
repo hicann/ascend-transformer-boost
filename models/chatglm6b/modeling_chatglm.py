@@ -944,11 +944,6 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             hidden_states=all_hidden_states,
             attentions=all_self_attentions,
         )
-        
-        self.count = 0
-        self.total = 0
-        self.cur_time = 0
-        self.first = 0
 
 
 class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
@@ -971,6 +966,11 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             bias=False,
             dtype=torch.half
         )
+        
+        self.count = 0
+        self.total = 0
+        self.cur_time = 0
+        self.first = 0
 
     def get_output_embeddings(self):
         return self.lm_head
