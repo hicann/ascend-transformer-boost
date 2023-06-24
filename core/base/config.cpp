@@ -16,6 +16,7 @@
 #include "acltransformer/config.h"
 #include <string>
 #include <iostream>
+#include <asdops/utils/log/log.h>
 
 namespace AclTransformer {
 Config::Config()
@@ -38,12 +39,12 @@ Config::Config()
     isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE");
     isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
     isKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_KERNELCACHE_ENABLE");
-    std::cout << "isSaveTensor:" << isSaveTensor_
-              << ", isStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
-              << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
-              << ", isStreamSyncEveryOperationEnable:" << isStreamSyncEveryOperationEnable_
-              << ", isStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
-              << ", isKernelCacheEnable:" << isKernelCacheEnable_;
+    ASD_LOG(INFO) << "isSaveTensor:" << isSaveTensor_
+                  << ", isStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
+                  << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
+                  << ", isStreamSyncEveryOperationEnable:" << isStreamSyncEveryOperationEnable_
+                  << ", isStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
+                  << ", isKernelCacheEnable:" << isKernelCacheEnable_;
 }
 
 Config::~Config() {}

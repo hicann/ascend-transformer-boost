@@ -18,9 +18,11 @@
 #include <torch_npu/csrc/core/npu/register/OptionsManager.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
+#include <asdops/utils/time/timer.h>
 #include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
+#include "acltransformer/statistic.h"
 #include "examples/utils/example_util.h"
 #include "operation_creator.h"
 
@@ -36,6 +38,7 @@ void OperationTorch::SetParam(std::string param) { param_ = param; }
 
 std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> atInTensors)
 {
+    AsdOps::Timer timer;
     ASD_LOG(INFO) << "OperationTorch::Execute";
     for (auto &inTensor : atInTensors) {
         inTensor = inTensor.contiguous();
@@ -52,11 +55,18 @@ std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> at
     ExecuteOperation(operation, atInTensors, atOutTensors);
 
     delete operation;
+
+    AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer.ElapsedMicroSecond();
+    ASD_LOG(FATAL) << "OperationTorch::Execute end, use time:"
+                   << AsdOps::GetSingleton<AclTransformer::Statistic>().ToString();
+    AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
+
     return atOutTensors;
 }
 
 void OperationTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vector<torch::Tensor> atOutTensors)
 {
+    AsdOps::Timer timer;
     ASD_LOG(INFO) << "OperationTorch::Execute";
     for (auto &inTensor : atInTensors) {
         inTensor = inTensor.contiguous();
@@ -143,6 +153,10 @@ void OperationTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vec
     execCount++;
 
     delete operation;
+    AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer.ElapsedMicroSecond();
+    ASD_LOG(FATAL) << "OperationTorch::Execute end, use time:"
+                   << AsdOps::GetSingleton<AclTransformer::Statistic>().ToString();
+    AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
 }
 
 void OperationTorch::ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> &atInTensors,

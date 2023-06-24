@@ -28,7 +28,7 @@ public:
     ~KernelCache();
     void Init(RunnerType runnerType, uint64_t kernelCount);
     void Add(RunnerType runnerType, int64_t kernelIndex, const AsdOps::RunInfo &runInfo, AsdOps::Kernel *kernel);
-    AsdOps::Kernel *Get(RunnerType runnerType, int64_t kernelIndex, const AsdOps::RunInfo &runInfo);
+    AsdOps::Kernel *Get(RunnerType runnerType, int64_t kernelIndex, AsdOps::RunInfo &runInfo);
 
 private:
     bool IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::RunInfo &runInfo2);

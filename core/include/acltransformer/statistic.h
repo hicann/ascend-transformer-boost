@@ -19,7 +19,7 @@
 
 namespace AclTransformer {
 struct Statistic {
-    uint64_t layerExecTime = 0;
+    uint64_t totalTime = 0;
     uint64_t syclTime = 0;
     uint64_t tillingCopyTime = 0;
     uint64_t getBestKernelTime = 0;

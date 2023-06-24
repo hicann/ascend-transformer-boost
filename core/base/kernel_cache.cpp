@@ -37,11 +37,12 @@ void KernelCache::Add(RunnerType runnerType, int64_t kernelIndex, const AsdOps::
     }
 }
 
-AsdOps::Kernel *KernelCache::Get(RunnerType runnerType, int64_t kernelIndex, const AsdOps::RunInfo &runInfo)
+AsdOps::Kernel *KernelCache::Get(RunnerType runnerType, int64_t kernelIndex, AsdOps::RunInfo &runInfo)
 {
     if (runnerType >= 0 && runnerType < RUNNER_TYPE_MAX) {
         if (kernelIndex >= 0 && (uint64_t)kernelIndex < cachedKernels_.at(runnerType).size()) {
             if (IsRunInfoEqual(cachedKernels_.at(runnerType).at(kernelIndex).first, runInfo)) {
+                runInfo = cachedKernels_.at(runnerType).at(kernelIndex).first;
                 return cachedKernels_.at(runnerType).at(kernelIndex).second;
             }
         }

@@ -18,14 +18,14 @@
 namespace AclTransformer {
 std::string Statistic::ToString() const
 {
-    return "layerExecTime:" + std::to_string(layerExecTime) + ", " + "syclTime:" + std::to_string(syclTime) + ", " +
-           "tillingCopyTime:" + std::to_string(tillingCopyTime) +
+    return "totalTime:" + std::to_string(totalTime) + ", syclTime:" + std::to_string(syclTime) +
+           ", tillingCopyTime:" + std::to_string(tillingCopyTime) +
            ", getBestKernelTime:" + std::to_string(getBestKernelTime);
 }
 
 void Statistic::Reset()
 {
-    layerExecTime = 0;
+    totalTime = 0;
     syclTime = 0;
     tillingCopyTime = 0;
     getBestKernelTime = 0;
