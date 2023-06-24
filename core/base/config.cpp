@@ -24,6 +24,7 @@ namespace AclTransformer {
 Config::Config()
 {
     InitSkipKernelName();
+    InitWorkspaceSize();
     isSaveTensor_ = IsEnable("ACLTRANSFORMER_SAVE_TENSOR");
     isAddOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE");
     isAddNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE");
@@ -47,7 +48,7 @@ Config::Config()
                   << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
                   << ", isStreamSyncEveryOperationEnable:" << isStreamSyncEveryOperationEnable_
                   << ", isStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
-                  << ", isKernelCacheEnable:" << isKernelCacheEnable_;
+                  << ", isKernelCacheEnable:" << isKernelCacheEnable_ << ", workspaceSize:" << workspaceSize_;
 }
 
 Config::~Config() {}
@@ -122,5 +123,16 @@ void Config::InitSkipKernelName()
         return;
     }
     AsdOps::StrSplit(std::string(envStr), ',', skipKernelNames_);
+}
+
+bool Config::GetWorkspaceSize() { return workspaceSize_; }
+
+void Config::InitWorkspaceSize()
+{
+    const char *envStr = std::getenv("ACLTRANSFORMER_WORKSPACE_SIZE");
+    if (!envStr) {
+        return;
+    }
+    workspaceSize_ = atoi(envStr);
 }
 } // namespace AclTransformer

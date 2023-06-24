@@ -27,15 +27,16 @@
 #include "examples/layers/chatglm6b/chatglm6b_layer.h"
 #include "examples/layers/llama7b_layer/llama7b_layer.h"
 
-LayerTorch::LayerTorch(std::string layerName) : layerName_(layerName)
+LayerTorch::LayerTorch(std::string layerName, std::string param) : layerName_(layerName), param_(param)
 {
     ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName;
+    nlohmann::json paramJson = nlohmann::json::parse(param);
     if (layerName == "BertLayer") {
-        layer_ = new AclTransformer::BertLayer();
+        layer_ = new AclTransformer::BertLayer(paramJson);
     } else if (layerName == "ChatGlm6BLayer") {
-        layer_ = new AclTransformer::ChatGlm6BLayer();
+        layer_ = new AclTransformer::ChatGlm6BLayer(paramJson);
     } else if (layerName == "Llama7BLayer") {
-        layer_ = new AclTransformer::Llama7BLayer();
+        layer_ = new AclTransformer::Llama7BLayer(paramJson);
     }
 }
 
@@ -45,17 +46,6 @@ LayerTorch::~LayerTorch()
         delete layer_;
         layer_ = nullptr;
     }
-}
-
-void LayerTorch::SetParam(std::string param)
-{
-    if (!layer_) {
-        ASD_LOG(ERROR) << "layer is null";
-        return;
-    }
-
-    nlohmann::json paramJson = nlohmann::json::parse(param);
-    layer_->SetParam(paramJson);
 }
 
 std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTensors)
@@ -87,12 +77,7 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> inTens
         variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(outTensors.at(i)));
     }
 
-    AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
-    if (handle.stream != nullptr) {
-        ASD_LOG(INFO) << "LayerTorch::Get Handle success!";
-    }
-
-    layer_->Execute(handle, variantPack);
+    layer_->Execute(variantPack);
 
     AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer.ElapsedMicroSecond();
     ASD_LOG(FATAL) << "LayerTorch::Execute end, use time:"
@@ -120,26 +105,12 @@ void LayerTorch::ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<to
         variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(outTensors.at(i)));
     }
 
-    AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
-    if (handle.stream != nullptr) {
-        ASD_LOG(INFO) << "LayerTorch::Get Handle success!";
-    }
-
-    layer_->Execute(handle, variantPack);
+    layer_->Execute(variantPack);
 
     AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer.ElapsedMicroSecond();
     ASD_LOG(FATAL) << "LayerTorch::Execute end, use time:"
                    << AsdOps::GetSingleton<AclTransformer::Statistic>().ToString();
     AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
-}
-
-void LayerTorch::SetWorkspace(int64_t workspaceSize)
-{
-    if (!layer_) {
-        ASD_LOG(ERROR) << "layer is null";
-        return;
-    }
-    layer_->SetWorkspace(workspaceSize);
 }
 
 void LayerTorch::CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
@@ -158,9 +129,7 @@ void LayerTorch::CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTen
 TORCH_LIBRARY(LayerTorch, m)
 {
     m.class_<LayerTorch>("LayerTorch")
-        .def(torch::init<std::string>())
+        .def(torch::init<std::string, std::string>())
         .def("execute", &LayerTorch::Execute)
-        .def("execute_out", &LayerTorch::ExecuteOut)
-        .def("set_param", &LayerTorch::SetParam)
-        .def("set_workspace", &LayerTorch::SetWorkspace);
+        .def("execute_out", &LayerTorch::ExecuteOut);
 }

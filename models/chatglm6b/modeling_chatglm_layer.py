@@ -41,8 +41,7 @@ if ACLTRANSFORMER_HOME_PATH is None:
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "examples/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
-acl_layer = torch.classes.LayerTorch.LayerTorch("ChatGlm6BLayer")
-acl_layer.set_workspace(1020 * 1024 * 1000)
+
 
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
@@ -605,6 +604,11 @@ class GLMBlock(torch.nn.Module):
             layer_id=layer_id,
             params_dtype=params_dtype,
         )
+        acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
+                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)}))
+
+        self.acl_layer=torch.classes.LayerTorch.LayerTorch(
+            "ChatGlm6BLayer", acl_param)
 
     def forward(
             self,
@@ -621,26 +625,26 @@ class GLMBlock(torch.nn.Module):
         attention_mask: [(1, 1), seq_len, seq_len]
         """
 
-        test_glmBlockOut = None
-        test_presentKey = None
-        test_presentValue = None
-        test_in = None
+        test_glmBlockOut=None
+        test_presentKey=None
+        test_presentValue=None
+        test_in=None
 
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
         if layer_past is not None:
-            test_in = hidden_states
-        attention_input = self.input_layernorm(hidden_states)
+            test_in=hidden_states
+        attention_input=self.input_layernorm(hidden_states)
 
         # Self attention.
-        attention_outputs = self.attention(
+        attention_outputs=self.attention(
             attention_input,
             position_ids,
-            attention_mask=attention_mask,
-            layer_id=layer_id,
-            layer_past=layer_past,
-            use_cache=use_cache,
-            output_attentions=output_attentions
+            attention_mask = attention_mask,
+            layer_id = layer_id,
+            layer_past = layer_past,
+            use_cache = use_cache,
+            output_attentions = output_attentions
         )
 
         attention_output = attention_outputs[0]
@@ -674,10 +678,8 @@ class GLMBlock(torch.nn.Module):
             inputs.append(pastKey)
             inputs.append(pastValue)
             global glm_block
-            acl_layer.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)}))
-
-            test_glmBlockOut, test_presentKey, test_presentValue = acl_layer.execute(
+           
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
                 inputs)
 
             assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
@@ -1022,7 +1024,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             bias=False,
             dtype=torch.half
         )
-        
+
         self.count = 0
         self.total = 0
         self.cur_time = 0

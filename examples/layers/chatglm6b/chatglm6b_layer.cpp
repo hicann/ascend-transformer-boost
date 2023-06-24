@@ -29,7 +29,7 @@
 #include "acltransformer/ops/ffn_operation.h"
 
 namespace AclTransformer {
-ChatGlm6BLayer::ChatGlm6BLayer() : Layer("ChatGlm6BLayer") {}
+ChatGlm6BLayer::ChatGlm6BLayer(const nlohmann::json &paramJson) : Layer("ChatGlm6BLayer", paramJson) { BuildGraph();  BuildPlan();}
 
 ChatGlm6BLayer::~ChatGlm6BLayer() {}
 
@@ -51,7 +51,7 @@ AsdOps::Status ChatGlm6BLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> 
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
+void ChatGlm6BLayer::BuildGraph()
 { // in
     const uint64_t hiddenStates = 0;
     const uint64_t normWeight = 1;
@@ -109,77 +109,75 @@ AsdOps::Status ChatGlm6BLayer::Execute(Handle &handle, VariantPack &variantPack)
     AclTransformer::AddParam ffnResidualAddParam;
     ffnResidualAddParam.scale = selfResidualAddParam.scale;
 
-    AclTransformer::NormOperation inputNormOp(inputNormParam);
-    AclTransformer::LinearOperation mixdQkvLinearOp(mixdQkvLinearParam);
-    AclTransformer::PositionEmbeddingOperation positionEmbeddingOp(positionEmbeddingParam);
-    AclTransformer::SelfAttentionKvCacheOperation selfAttentionKvCacheOp(selfAttentionKvCacheParam);
-    AclTransformer::LinearOperation selfOutLinearOp(selfOutLinearParam);
-    AclTransformer::AddOperation selfResidualAddOp(selfResidualAddParam);
-    AclTransformer::NormOperation selfNormOp(selfNormParam);
-    AclTransformer::FfnOperation ffnOp(ffnParam);
-    AclTransformer::LinearOperation ffnLinearOp(ffnLinearParam);
-    AclTransformer::AddOperation ffnResidualAddOp(ffnResidualAddParam);
+    AclTransformer::NormOperation *inputNormOp = new AclTransformer::NormOperation(inputNormParam);
+    AclTransformer::LinearOperation *mixdQkvLinearOp = new AclTransformer::LinearOperation(mixdQkvLinearParam);
+    AclTransformer::PositionEmbeddingOperation *positionEmbeddingOp =
+        new AclTransformer::PositionEmbeddingOperation(positionEmbeddingParam);
+    AclTransformer::SelfAttentionKvCacheOperation *selfAttentionKvCacheOp =
+        new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam);
+    AclTransformer::LinearOperation *selfOutLinearOp = new AclTransformer::LinearOperation(selfOutLinearParam);
+    AclTransformer::AddOperation *selfResidualAddOp = new AclTransformer::AddOperation(selfResidualAddParam);
+    AclTransformer::NormOperation *selfNormOp = new AclTransformer::NormOperation(selfNormParam);
+    AclTransformer::FfnOperation *ffnOp = new AclTransformer::FfnOperation(ffnParam);
+    AclTransformer::LinearOperation *ffnLinearOp = new AclTransformer::LinearOperation(ffnLinearParam);
+    AclTransformer::AddOperation *ffnResidualAddOp = new AclTransformer::AddOperation(ffnResidualAddParam);
 
     static int64_t graphId = 0;
-    AclTransformer::OperationGraph opGraph;
-    opGraph.name = "GlmBlockGraph_" + std::to_string(graphId++);
-    opGraph.inTensorSize = variantPack.inTensors.size();
-    opGraph.outTensorSize = variantPack.outTensors.size();
-    opGraph.intermediateTensorSize = 11;
-    opGraph.nodes.resize(10);
+    opGraph_.name = "GlmBlockGraph_" + std::to_string(graphId++);
+    opGraph_.inTensorSize = 19;
+    opGraph_.outTensorSize = 3;
+    opGraph_.intermediateTensorSize = 11;
+    opGraph_.nodes.resize(10);
 
-    AclTransformer::OperationGraphNode &inputNormNode = opGraph.nodes.at(0);
-    AclTransformer::OperationGraphNode &mixdQkvLinearNode = opGraph.nodes.at(1);
-    AclTransformer::OperationGraphNode &positionEmbeddingNode = opGraph.nodes.at(2);
-    AclTransformer::OperationGraphNode &selfAttentionKvCacheNode = opGraph.nodes.at(3);
-    AclTransformer::OperationGraphNode &selfOutLinearNode = opGraph.nodes.at(4);
-    AclTransformer::OperationGraphNode &selfResidualAddNode = opGraph.nodes.at(5);
-    AclTransformer::OperationGraphNode &selfNormNode = opGraph.nodes.at(6);
-    AclTransformer::OperationGraphNode &ffnNode = opGraph.nodes.at(7);
-    AclTransformer::OperationGraphNode &ffnLinearNode = opGraph.nodes.at(8);
-    AclTransformer::OperationGraphNode &ffnResidualAddNode = opGraph.nodes.at(9);
+    AclTransformer::OperationGraphNode &inputNormNode = opGraph_.nodes.at(0);
+    AclTransformer::OperationGraphNode &mixdQkvLinearNode = opGraph_.nodes.at(1);
+    AclTransformer::OperationGraphNode &positionEmbeddingNode = opGraph_.nodes.at(2);
+    AclTransformer::OperationGraphNode &selfAttentionKvCacheNode = opGraph_.nodes.at(3);
+    AclTransformer::OperationGraphNode &selfOutLinearNode = opGraph_.nodes.at(4);
+    AclTransformer::OperationGraphNode &selfResidualAddNode = opGraph_.nodes.at(5);
+    AclTransformer::OperationGraphNode &selfNormNode = opGraph_.nodes.at(6);
+    AclTransformer::OperationGraphNode &ffnNode = opGraph_.nodes.at(7);
+    AclTransformer::OperationGraphNode &ffnLinearNode = opGraph_.nodes.at(8);
+    AclTransformer::OperationGraphNode &ffnResidualAddNode = opGraph_.nodes.at(9);
 
-    inputNormNode.operation = &inputNormOp;
+    inputNormNode.operation = inputNormOp;
     inputNormNode.inTensorIds = {hiddenStates, normWeight, normBias};
     inputNormNode.outTensorIds = {inputNormOut};
 
-    mixdQkvLinearNode.operation = &mixdQkvLinearOp;
+    mixdQkvLinearNode.operation = mixdQkvLinearOp;
     mixdQkvLinearNode.inTensorIds = {inputNormOut, qkvMixdWeight, qkvMixdBias};
     mixdQkvLinearNode.outTensorIds = {mixedLinearOutQkv};
 
-    positionEmbeddingNode.operation = &positionEmbeddingOp;
+    positionEmbeddingNode.operation = positionEmbeddingOp;
     positionEmbeddingNode.inTensorIds = {mixedLinearOutQkv, positionIds, cosTable, sinTable};
     positionEmbeddingNode.outTensorIds = {positionEmbedQ, positionEmbedK, value};
 
-    selfAttentionKvCacheNode.operation = &selfAttentionKvCacheOp;
+    selfAttentionKvCacheNode.operation = selfAttentionKvCacheOp;
     selfAttentionKvCacheNode.inTensorIds = {positionEmbedQ, positionEmbedK, value, attentionMask, pastKey, pastValue};
     selfAttentionKvCacheNode.outTensorIds = {selfOut, presentKey, presentValue};
 
-    selfOutLinearNode.operation = &selfOutLinearOp;
+    selfOutLinearNode.operation = selfOutLinearOp;
     selfOutLinearNode.inTensorIds = {selfOut, selfOutLinearWeight, selfOutLinearBias};
     selfOutLinearNode.outTensorIds = {selfLinearOut};
 
-    selfResidualAddNode.operation = &selfResidualAddOp;
+    selfResidualAddNode.operation = selfResidualAddOp;
     selfResidualAddNode.inTensorIds = {inputNormOut, selfLinearOut};
     selfResidualAddNode.outTensorIds = {selfResidualAddOut};
 
-    selfNormNode.operation = &selfNormOp;
+    selfNormNode.operation = selfNormOp;
     selfNormNode.inTensorIds = {selfResidualAddOut, selfOutNormWeight, selfOutNormBias};
     selfNormNode.outTensorIds = {selfNormOut};
 
-    ffnNode.operation = &ffnOp;
+    ffnNode.operation = ffnOp;
     ffnNode.inTensorIds = {selfNormOut, ffnLinearWeight, ffnLinearBias};
     ffnNode.outTensorIds = {ffnOut};
 
-    ffnLinearNode.operation = &ffnLinearOp;
+    ffnLinearNode.operation = ffnLinearOp;
     ffnLinearNode.inTensorIds = {ffnOut, ffnOutLinearWeight, ffnOutLinearBias};
     ffnLinearNode.outTensorIds = {ffnLinearOut};
 
-    ffnResidualAddNode.operation = &ffnResidualAddOp;
+    ffnResidualAddNode.operation = ffnResidualAddOp;
     ffnResidualAddNode.inTensorIds = {selfNormOut, ffnLinearOut};
     ffnResidualAddNode.outTensorIds = {glmBlockOut};
-
-    ExecuteOperationGraph(opGraph, variantPack);
-    return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

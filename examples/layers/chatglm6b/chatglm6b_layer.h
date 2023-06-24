@@ -20,11 +20,13 @@
 namespace AclTransformer {
 class ChatGlm6BLayer : public Layer {
 public:
-    ChatGlm6BLayer();
+    ChatGlm6BLayer(const nlohmann::json &paramJson);
     virtual ~ChatGlm6BLayer();
     AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+private:
+    void BuildGraph();
 };
 } // namespace AclTransformer
 #endif

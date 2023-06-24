@@ -19,34 +19,20 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-AsdOps::Status PlanBuilder::Build(const VariantPack &variantPack, const OperationGraph &opGraph, Plan &plan)
+AsdOps::Status PlanBuilder::Build(const OperationGraph &opGraph, Plan &plan)
 {
     try {
-        ASD_LOG(INFO) << "PlanBuilder::Build variantPack:" << variantPack.ToString()
-                      << ", opGraph:" << opGraph.ToString();
-        if (opGraph.inTensorSize != variantPack.inTensors.size()) {
-            ASD_LOG(ERROR) << "PlanBuilder::Build fail, opGraph.inTensorSize:" << opGraph.inTensorSize
-                           << " != variantPack.inTensors.size:" << variantPack.inTensors.size();
-            return AsdOps::Status::FailStatus(1, "opGraph.inTensorSize != variantPack.inTensors.size");
-        }
-        if (opGraph.outTensorSize != variantPack.outTensors.size()) {
-            ASD_LOG(ERROR) << "PlanBuilder::Build fail, opGraph.outTensorSize:" << opGraph.outTensorSize
-                           << " != variantPack.outTensors.size:" << variantPack.outTensors.size();
-            return AsdOps::Status::FailStatus(1, "opGraph.outTensorSize != variantPack.outTensors.size");
-        }
-
-        return BuildImpl(variantPack, opGraph, plan);
+        ASD_LOG(INFO) << "PlanBuilder::Build opGraph:" << opGraph.ToString();
+        return BuildImpl(opGraph, plan);
     } catch (const std::exception &e) {
         ASD_LOG(ERROR) << "PlanBuilder::Build fail, exception:" << e.what();
         return AsdOps::Status::FailStatus(1, e.what());
     }
 }
 
-AsdOps::Status PlanBuilder::BuildImpl(const VariantPack &variantPack, const OperationGraph &opGraph, Plan &plan)
+AsdOps::Status PlanBuilder::BuildImpl(const OperationGraph &opGraph, Plan &plan)
 {
     plan.runnerGraph_.name = opGraph.name;
-    plan.runnerGraph_.inTensors = variantPack.inTensors;
-    plan.runnerGraph_.outTensors = variantPack.outTensors;
     plan.runnerGraph_.internalTensors.resize(opGraph.intermediateTensorSize);
     std::vector<AsdOps::Tensor *> fullTensorPtrs;
     for (size_t i = 0; i < plan.runnerGraph_.inTensors.size(); ++i) {
@@ -63,7 +49,6 @@ AsdOps::Status PlanBuilder::BuildImpl(const VariantPack &variantPack, const Oper
         Operation *op = node.operation;
         RunnerGraphNode runnerNode;
         runnerNode.operation = node.operation;
-        runnerNode.runner = op->CreateBestRunner(variantPack);
         runnerNode.inTensorViewFuncs = node.inTensorViewFuncs;
         runnerNode.inTensors.resize(node.inTensorIds.size());
         runnerNode.outTensors.resize(node.outTensorIds.size());

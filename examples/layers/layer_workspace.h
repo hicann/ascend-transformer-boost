@@ -13,34 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LAYER_H
-#define LAYER_H
+#ifndef LAYER_WORKSPACE_H
+#define LAYER_WORKSPACE_H
 #include <string>
 #include <nlohmann/json.hpp>
 #include "acltransformer/operation_graph.h"
 #include "acltransformer/variant_pack.h"
-#include "acltransformer/plan.h"
 
 namespace AclTransformer {
-class Layer {
+class LayerWorkspace {
 public:
-    Layer(const std::string &layerName, const nlohmann::json &paramJson);
-    virtual ~Layer();
-    std::string GetName() const;
-    virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) = 0;
+    LayerWorkspace();
+    ~LayerWorkspace();
+    void SetWorkspace(uint64_t workspaceSize);
+    void *GetWorkspace();
 
-    void Execute(AclTransformer::VariantPack &variantPack);
+private:
+    void Free();
 
-protected:
-    void BuildPlan();
-
-protected:
-    std::string layerName_;
-    nlohmann::json paramJson_;
-    AclTransformer::OperationGraph opGraph_;
-    void *lastStream_ = nullptr;
-    AclTransformer::Plan plan_;
+private:
+    void *workspace_ = nullptr;
+    uint64_t workspaceSize_ = 0;
 };
 } // namespace AclTransformer
 #endif

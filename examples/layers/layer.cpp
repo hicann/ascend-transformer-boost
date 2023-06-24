@@ -16,45 +16,39 @@
 #include "layer.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
+#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/plan.h"
 #include "acltransformer/plan_builder.h"
 #include "examples/utils/example_util.h"
+#include "layer_workspace.h"
 
 namespace AclTransformer {
-Layer::Layer(const std::string &layerName) : layerName_(layerName) {}
+Layer::Layer(const std::string &layerName, const nlohmann::json &paramJson)
+    : layerName_(layerName), paramJson_(paramJson)
+{
+}
 
-Layer::~Layer() {}
+Layer::~Layer()
+{
+    for (auto &node : opGraph_.nodes) {
+        delete node.operation;
+        node.operation = nullptr;
+    }
+}
 
 std::string Layer::GetName() const { return layerName_; }
 
-void Layer::SetParam(const nlohmann::json &paramJson) { paramJson_ = paramJson; }
-
-void Layer::SetWorkspace(uint64_t workspaceSize)
+void Layer::BuildPlan()
 {
-    if (workspaceSize <= workspaceSize_) {
-        ASD_LOG(INFO) << GetName() << " workspaceSize:" << workspaceSize << " <= workspaceSize_:" << workspaceSize_
-                      << ", not new device mem";
+    PlanBuilder planBuilder;
+    AsdOps::Status st = planBuilder.Build(opGraph_, plan_);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << opGraph_.name << " PlanBuilder build plan fail, error:" << st.Message();
         return;
     }
-
-    if (workspace_) {
-        ASD_LOG(INFO) << GetName() << " AsdRtMemFreeDevice workspace:" << workspace_
-                      << ", workspaceSize:" << workspaceSize_;
-        AsdRtMemFreeDevice(workspace_);
-        workspace_ = nullptr;
-        workspaceSize_ = 0;
-    }
-
-    ASD_LOG(INFO) << GetName() << " AsdRtMemMallocDevice workspaceSize:" << workspaceSize;
-    int st = AsdRtMemMallocDevice((void **)&workspace_, workspaceSize, ASDRT_MEM_DEFAULT);
-    if (st != ASDRT_SUCCESS) {
-        ASD_LOG(ERROR) << GetName() << " AsdRtMemMallocDevice fail, ret:" << st;
-        return;
-    }
-    workspaceSize_ = workspaceSize;
 }
 
-void Layer::ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTransformer::VariantPack &variantPack)
+void Layer::Execute(AclTransformer::VariantPack &variantPack)
 {
     void *stream = ExampleUtil::GetCurrentStream();
     if (lastStream_ != nullptr && lastStream_ != stream) {
@@ -64,31 +58,23 @@ void Layer::ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph, AclTr
     lastStream_ = stream;
     AclTransformer::Handle handle = {stream};
 
-    AclTransformer::PlanBuilder planBuilder;
-    AclTransformer::Plan plan;
-    AsdOps::Status st = planBuilder.Build(variantPack, opGraph, plan);
+    AsdOps::Status st = plan_.Setup(handle, variantPack);
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << opGraph.name << " PlanBuilder build plan fail, error:" << st.Message();
+        ASD_LOG(ERROR) << opGraph_.name << " Plan Setup fail error:" << st.Message();
         return;
     }
 
-    st = plan.Setup(handle, variantPack);
-    if (!st.Ok()) {
-        ASD_LOG(ERROR) << opGraph.name << " Plan Setup fail error:" << st.Message();
-        return;
-    }
-
-    variantPack.workspaceSize = plan.GetWorkspaceSize();
-    ASD_LOG(INFO) << opGraph.name << " Plan GetWorkspaceSize:" << variantPack.workspaceSize;
+    variantPack.workspaceSize = plan_.GetWorkspaceSize();
+    ASD_LOG(INFO) << opGraph_.name << " Plan GetWorkspaceSize:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
-        ASD_LOG(INFO) << opGraph.name
+        ASD_LOG(INFO) << opGraph_.name
                       << " AsdRtMemMallocDevice variantPack.workspaceSize:" << variantPack.workspaceSize;
-        SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = workspace_;
+        AsdOps::GetSingleton<LayerWorkspace>().SetWorkspace(variantPack.workspaceSize);
+        variantPack.workspace = AsdOps::GetSingleton<LayerWorkspace>().GetWorkspace();
     }
 
-    st = plan.Execute(handle, variantPack);
-    ASD_LOG_IF(!st.Ok(), ERROR) << opGraph.name << " Plan Execute fail, error:" << st.Message();
+    st = plan_.Execute(handle, variantPack);
+    ASD_LOG_IF(!st.Ok(), ERROR) << opGraph_.name << " Plan Execute fail, error:" << st.Message();
 }
 } // namespace AclTransformer
