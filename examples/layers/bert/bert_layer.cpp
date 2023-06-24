@@ -27,7 +27,11 @@
 #include "acltransformer/ops/ffn_operation.h"
 
 namespace AclTransformer {
-BertLayer::BertLayer() : Layer("BertLayer") {}
+BertLayer::BertLayer(const nlohmann::json &paramJson) : Layer("BertLayer", paramJson)
+{
+    BuildGraph();
+    BuildPlan();
+}
 
 BertLayer::~BertLayer() {}
 
@@ -38,7 +42,7 @@ AsdOps::Status BertLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTe
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status BertLayer::Execute(Handle &handle, VariantPack &variantPack)
+void BertLayer::BuildGraph()
 {
     const uint64_t hiddenStatesId = 0;
     const uint64_t qLinearWeightId = 1;
@@ -83,71 +87,68 @@ AsdOps::Status BertLayer::Execute(Handle &handle, VariantPack &variantPack)
     AclTransformer::LinearParam bertOutLinearParam;
     AclTransformer::AddNormParam bertOutAddNormParam;
 
-    AclTransformer::LinearOperation qLinearOp(qLinearParam);
-    AclTransformer::LinearOperation kLinearOp(kLinearParam);
-    AclTransformer::LinearOperation vLinearOp(vLinearParam);
-    AclTransformer::SelfAttentionOperation selfAttentionOp(selfAttentionParam);
-    AclTransformer::LinearOperation selfOutLinearOp(selfOutLinearParam);
-    AclTransformer::AddNormOperation selfOutAddNormOp(selfOutAddNormParam);
-    AclTransformer::FfnOperation ffnOp(ffnParam);
-    AclTransformer::LinearOperation bertOutLinearOp(bertOutLinearParam);
-    AclTransformer::AddNormOperation bertOutAddNormOp(bertOutAddNormParam);
+    AclTransformer::LinearOperation *qLinearOp = new AclTransformer::LinearOperation(qLinearParam);
+    AclTransformer::LinearOperation *kLinearOp = new AclTransformer::LinearOperation(kLinearParam);
+    AclTransformer::LinearOperation *vLinearOp = new AclTransformer::LinearOperation(vLinearParam);
+    AclTransformer::SelfAttentionOperation *selfAttentionOp =
+        new AclTransformer::SelfAttentionOperation(selfAttentionParam);
+    AclTransformer::LinearOperation *selfOutLinearOp = new AclTransformer::LinearOperation(selfOutLinearParam);
+    AclTransformer::AddNormOperation *selfOutAddNormOp = new AclTransformer::AddNormOperation(selfOutAddNormParam);
+    AclTransformer::FfnOperation *ffnOp = new AclTransformer::FfnOperation(ffnParam);
+    AclTransformer::LinearOperation *bertOutLinearOp = new AclTransformer::LinearOperation(bertOutLinearParam);
+    AclTransformer::AddNormOperation *bertOutAddNormOp = new AclTransformer::AddNormOperation(bertOutAddNormParam);
 
     static int64_t graphId = 0;
-    AclTransformer::OperationGraph opGraph;
-    opGraph.name = "BertLayerGraph_" + std::to_string(graphId++);
-    opGraph.inTensorSize = variantPack.inTensors.size();
-    opGraph.outTensorSize = variantPack.outTensors.size();
-    opGraph.intermediateTensorSize = 8;
-    opGraph.nodes.resize(9);
+    opGraph_.name = "BertLayerGraph_" + std::to_string(graphId++);
+    opGraph_.inTensorSize = 18;
+    opGraph_.outTensorSize = 1;
+    opGraph_.intermediateTensorSize = 8;
+    opGraph_.nodes.resize(9);
 
-    AclTransformer::OperationGraphNode &qLinearNode = opGraph.nodes.at(0);
-    AclTransformer::OperationGraphNode &kLinearNode = opGraph.nodes.at(1);
-    AclTransformer::OperationGraphNode &vLinearNode = opGraph.nodes.at(2);
-    AclTransformer::OperationGraphNode &selfAttentionNode = opGraph.nodes.at(3);
-    AclTransformer::OperationGraphNode &selfOutLinearNode = opGraph.nodes.at(4);
-    AclTransformer::OperationGraphNode &selfOutAddNormNode = opGraph.nodes.at(5);
-    AclTransformer::OperationGraphNode &ffnNode = opGraph.nodes.at(6);
-    AclTransformer::OperationGraphNode &bertOutLinearNode = opGraph.nodes.at(7);
-    AclTransformer::OperationGraphNode &bertOutAddNormNode = opGraph.nodes.at(8);
+    AclTransformer::OperationGraphNode &qLinearNode = opGraph_.nodes.at(0);
+    AclTransformer::OperationGraphNode &kLinearNode = opGraph_.nodes.at(1);
+    AclTransformer::OperationGraphNode &vLinearNode = opGraph_.nodes.at(2);
+    AclTransformer::OperationGraphNode &selfAttentionNode = opGraph_.nodes.at(3);
+    AclTransformer::OperationGraphNode &selfOutLinearNode = opGraph_.nodes.at(4);
+    AclTransformer::OperationGraphNode &selfOutAddNormNode = opGraph_.nodes.at(5);
+    AclTransformer::OperationGraphNode &ffnNode = opGraph_.nodes.at(6);
+    AclTransformer::OperationGraphNode &bertOutLinearNode = opGraph_.nodes.at(7);
+    AclTransformer::OperationGraphNode &bertOutAddNormNode = opGraph_.nodes.at(8);
 
-    qLinearNode.operation = &qLinearOp;
+    qLinearNode.operation = qLinearOp;
     qLinearNode.inTensorIds = {hiddenStatesId, qLinearWeightId, qLinearBiasId};
     qLinearNode.outTensorIds = {mixedQueryId};
 
-    kLinearNode.operation = &kLinearOp;
+    kLinearNode.operation = kLinearOp;
     kLinearNode.inTensorIds = {hiddenStatesId, kLinearWeightId, kLinearBiasId};
     kLinearNode.outTensorIds = {mixedKeyId};
 
-    vLinearNode.operation = &vLinearOp;
+    vLinearNode.operation = vLinearOp;
     vLinearNode.inTensorIds = {hiddenStatesId, vLinearWeightId, vLinearBiasId};
     vLinearNode.outTensorIds = {mixedValueId};
 
-    selfAttentionNode.operation = &selfAttentionOp;
+    selfAttentionNode.operation = selfAttentionOp;
     selfAttentionNode.inTensorIds = {mixedQueryId, mixedKeyId, mixedValueId, attentionMaskId};
     selfAttentionNode.outTensorIds = {selfAttentionOutId};
 
-    selfOutLinearNode.operation = &selfOutLinearOp;
+    selfOutLinearNode.operation = selfOutLinearOp;
     selfOutLinearNode.inTensorIds = {selfAttentionOutId, selfOutLinearWeightId, selfOutLinearBiasId};
     selfOutLinearNode.outTensorIds = {selfLinearOutId};
 
-    selfOutAddNormNode.operation = &selfOutAddNormOp;
+    selfOutAddNormNode.operation = selfOutAddNormOp;
     selfOutAddNormNode.inTensorIds = {selfLinearOutId, hiddenStatesId, selfOutNormWeightId, selfOutNormBiasId};
     selfOutAddNormNode.outTensorIds = {selfAddNormOutId};
 
-    ffnNode.operation = &ffnOp;
+    ffnNode.operation = ffnOp;
     ffnNode.inTensorIds = {selfAddNormOutId, ffnLinearWeightId, ffnLinearBiasId};
     ffnNode.outTensorIds = {ffnOutId};
 
-    bertOutLinearNode.operation = &bertOutLinearOp;
+    bertOutLinearNode.operation = bertOutLinearOp;
     bertOutLinearNode.inTensorIds = {ffnOutId, bertOutLinearWeightId, bertOutLinearBiasId};
     bertOutLinearNode.outTensorIds = {bertOutLinearOutId};
 
-    bertOutAddNormNode.operation = &bertOutAddNormOp;
+    bertOutAddNormNode.operation = bertOutAddNormOp;
     bertOutAddNormNode.inTensorIds = {bertOutLinearOutId, selfAddNormOutId, bertOutNormWeightId, bertOutNormBiasId};
     bertOutAddNormNode.outTensorIds = {bertLayerOutId};
-
-    ExecuteOperationGraph(opGraph, variantPack);
-    return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

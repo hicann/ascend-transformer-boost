@@ -20,11 +20,13 @@
 namespace AclTransformer {
 class BertLayer : public Layer {
 public:
-    BertLayer();
+    BertLayer(const nlohmann::json &paramJson);
     virtual ~BertLayer();
     AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+private:
+    void BuildGraph();
 };
 } // namespace AclTransformer
 #endif

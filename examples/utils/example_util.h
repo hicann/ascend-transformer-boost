@@ -34,8 +34,6 @@ public:
                               std::vector<at::Tensor> atOutTensors);
     static void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor *> atInTensors,
                                  std::vector<at::Tensor *> atOutTensors);
-    static void ExecuteOperationGraph(AclTransformer::OperationGraph &opGraph,
-                                      AclTransformer::VariantPack &variantPack);
     static void BuildVariantPack(const std::vector<torch::Tensor> &inTensors,
                                  const std::vector<torch::Tensor> &outTensors,
                                  AclTransformer::VariantPack &variantPack);

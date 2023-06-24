@@ -40,7 +40,7 @@ public:
 protected:
     Runner *CreateBestRunner(const VariantPack &variantPack);
     virtual RunnerBuilder *FindBestRunnerBuilder(const VariantPack &variantPack) = 0;
-    friend class PlanBuilder;
+    friend class Plan;
 
 protected:
     Runner *runner_ = nullptr;

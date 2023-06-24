@@ -23,13 +23,11 @@
 
 class LayerTorch : public torch::CustomClassHolder {
 public:
-    LayerTorch(std::string layerName);
+    LayerTorch(std::string layerName, std::string param);
     ~LayerTorch();
-    void SetParam(std::string param);
     std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
     void ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
-    void SetWorkspace(int64_t workspaceSize);
-    c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_); }
+    c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_, param_); }
 
 private:
     void CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTensors, std::vector<torch::Tensor> &atOutTensors);

@@ -30,7 +30,11 @@
 #include "acltransformer/ops/transpose_operation.h"
 
 namespace AclTransformer {
-Llama7BLayer::Llama7BLayer() : Layer("Llama7BLayer") {}
+Llama7BLayer::Llama7BLayer(const nlohmann::json &paramJson) : Layer("Llama7BLayer", paramJson)
+{
+    BuildGraph();
+    BuildPlan();
+}
 
 Llama7BLayer::~Llama7BLayer() {}
 
@@ -52,7 +56,7 @@ AsdOps::Status Llama7BLayer::InferShape(const AsdOps::SVector<AsdOps::Tensor> &i
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
+void Llama7BLayer::BuildGraph()
 { // in
     ASD_LOG(INFO) << "start Llama7BLayer!";
     const uint64_t hiddenStates = 0;
@@ -114,71 +118,73 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
     AclTransformer::MlpParam mlpParam;
     AclTransformer::AddParam mlpResidualAddParam;
 
-    AclTransformer::RmsNormOperation inputNormOp(inputNormParam);
-    AclTransformer::LinearOperation mixdQLinearOp(mixdQLinearParam);
-    AclTransformer::LinearOperation mixdKLinearOp(mixdKLinearParam);
-    AclTransformer::LinearOperation mixdVLinearOp(mixdVLinearParam);
-    AclTransformer::PositionEmbedding1dSplitOperation qPositionEmbeddingOp(qPositionEmbeddingParam);
-    AclTransformer::PositionEmbedding1dSplitOperation kPositionEmbeddingOp(kPositionEmbeddingParam);
-    AclTransformer::TransposeOperation vTransposeOp(vTransposeParam);
-    AclTransformer::SelfAttentionKvCacheOperation selfAttentionKvCacheOp(selfAttentionKvCacheParam);
-    AclTransformer::LinearOperation selfOutLinearOp(selfOutLinearParam);
-    AclTransformer::AddOperation selfResidualAddOp(selfResidualAddParam);
-    AclTransformer::RmsNormOperation selfNormOp(selfNormParam);
-    AclTransformer::MlpOperation mlpOp(mlpParam);
-    AclTransformer::AddOperation mlpResidualAddOp(mlpResidualAddParam);
+    AclTransformer::RmsNormOperation *inputNormOp = new AclTransformer::RmsNormOperation(inputNormParam);
+    AclTransformer::LinearOperation *mixdQLinearOp = new AclTransformer::LinearOperation(mixdQLinearParam);
+    AclTransformer::LinearOperation *mixdKLinearOp = new AclTransformer::LinearOperation(mixdKLinearParam);
+    AclTransformer::LinearOperation *mixdVLinearOp = new AclTransformer::LinearOperation(mixdVLinearParam);
+    AclTransformer::PositionEmbedding1dSplitOperation *qPositionEmbeddingOp =
+        new AclTransformer::PositionEmbedding1dSplitOperation(qPositionEmbeddingParam);
+    AclTransformer::PositionEmbedding1dSplitOperation *kPositionEmbeddingOp =
+        new AclTransformer::PositionEmbedding1dSplitOperation(kPositionEmbeddingParam);
+    AclTransformer::TransposeOperation *vTransposeOp = new AclTransformer::TransposeOperation(vTransposeParam);
+    AclTransformer::SelfAttentionKvCacheOperation *selfAttentionKvCacheOp =
+        new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam);
+    AclTransformer::LinearOperation *selfOutLinearOp = new AclTransformer::LinearOperation(selfOutLinearParam);
+    AclTransformer::AddOperation *selfResidualAddOp = new AclTransformer::AddOperation(selfResidualAddParam);
+    AclTransformer::RmsNormOperation *selfNormOp = new AclTransformer::RmsNormOperation(selfNormParam);
+    AclTransformer::MlpOperation *mlpOp = new AclTransformer::MlpOperation(mlpParam);
+    AclTransformer::AddOperation *mlpResidualAddOp = new AclTransformer::AddOperation(mlpResidualAddParam);
 
     static int64_t graphId = 0;
-    AclTransformer::OperationGraph opGraph;
-    opGraph.name = "Llama7BGraph_" + std::to_string(graphId++);
-    opGraph.inTensorSize = variantPack.inTensors.size();
-    opGraph.outTensorSize = variantPack.outTensors.size();
-    opGraph.intermediateTensorSize = 12;
-    opGraph.nodes.resize(13);
+    opGraph_.name = "Llama7BGraph_" + std::to_string(graphId++);
+    opGraph_.inTensorSize = 20;
+    opGraph_.outTensorSize = 3;
+    opGraph_.intermediateTensorSize = 12;
+    opGraph_.nodes.resize(13);
 
-    AclTransformer::OperationGraphNode &inputNormNode = opGraph.nodes.at(0);
-    AclTransformer::OperationGraphNode &mixdQLinearNode = opGraph.nodes.at(1);
-    AclTransformer::OperationGraphNode &mixdKLinearNode = opGraph.nodes.at(2);
-    AclTransformer::OperationGraphNode &mixdVLinearNode = opGraph.nodes.at(3);
-    AclTransformer::OperationGraphNode &qPositionEmbeddingNode = opGraph.nodes.at(4);
-    AclTransformer::OperationGraphNode &kPositionEmbeddingNode = opGraph.nodes.at(5);
-    AclTransformer::OperationGraphNode &vTransposeNode = opGraph.nodes.at(6);
-    AclTransformer::OperationGraphNode &selfAttentionKvCacheNode = opGraph.nodes.at(7);
-    AclTransformer::OperationGraphNode &selfOutLinearNode = opGraph.nodes.at(8);
-    AclTransformer::OperationGraphNode &selfResidualAddNode = opGraph.nodes.at(9);
-    AclTransformer::OperationGraphNode &selfNormNode = opGraph.nodes.at(10);
-    AclTransformer::OperationGraphNode &mlpNode = opGraph.nodes.at(11);
-    AclTransformer::OperationGraphNode &mlpResidualAddNode = opGraph.nodes.at(12);
+    AclTransformer::OperationGraphNode &inputNormNode = opGraph_.nodes.at(0);
+    AclTransformer::OperationGraphNode &mixdQLinearNode = opGraph_.nodes.at(1);
+    AclTransformer::OperationGraphNode &mixdKLinearNode = opGraph_.nodes.at(2);
+    AclTransformer::OperationGraphNode &mixdVLinearNode = opGraph_.nodes.at(3);
+    AclTransformer::OperationGraphNode &qPositionEmbeddingNode = opGraph_.nodes.at(4);
+    AclTransformer::OperationGraphNode &kPositionEmbeddingNode = opGraph_.nodes.at(5);
+    AclTransformer::OperationGraphNode &vTransposeNode = opGraph_.nodes.at(6);
+    AclTransformer::OperationGraphNode &selfAttentionKvCacheNode = opGraph_.nodes.at(7);
+    AclTransformer::OperationGraphNode &selfOutLinearNode = opGraph_.nodes.at(8);
+    AclTransformer::OperationGraphNode &selfResidualAddNode = opGraph_.nodes.at(9);
+    AclTransformer::OperationGraphNode &selfNormNode = opGraph_.nodes.at(10);
+    AclTransformer::OperationGraphNode &mlpNode = opGraph_.nodes.at(11);
+    AclTransformer::OperationGraphNode &mlpResidualAddNode = opGraph_.nodes.at(12);
 
-    inputNormNode.operation = &inputNormOp;
+    inputNormNode.operation = inputNormOp;
     inputNormNode.inTensorIds = {hiddenStates, normWeight};
     inputNormNode.outTensorIds = {inputNormOut};
 
-    mixdQLinearNode.operation = &mixdQLinearOp;
+    mixdQLinearNode.operation = mixdQLinearOp;
     mixdQLinearNode.inTensorIds = {inputNormOut, qMixdWeight, qMixdBias};
     mixdQLinearNode.outTensorIds = {mixedQ};
 
-    mixdKLinearNode.operation = &mixdKLinearOp;
+    mixdKLinearNode.operation = mixdKLinearOp;
     mixdKLinearNode.inTensorIds = {inputNormOut, kMixdWeight, kMixdBias};
     mixdKLinearNode.outTensorIds = {mixedK};
 
-    mixdVLinearNode.operation = &mixdVLinearOp;
+    mixdVLinearNode.operation = mixdVLinearOp;
     mixdVLinearNode.inTensorIds = {inputNormOut, vMixdWeight, vMixdBias};
     mixdVLinearNode.outTensorIds = {mixedV};
 
-    qPositionEmbeddingNode.operation = &qPositionEmbeddingOp;
+    qPositionEmbeddingNode.operation = qPositionEmbeddingOp;
     qPositionEmbeddingNode.inTensorIds = {mixedQ, positionIds, cosTable, sinTable};
     qPositionEmbeddingNode.outTensorIds = {positionEmbedQ};
 
-    kPositionEmbeddingNode.operation = &kPositionEmbeddingOp;
+    kPositionEmbeddingNode.operation = kPositionEmbeddingOp;
     kPositionEmbeddingNode.inTensorIds = {mixedK, positionIds, cosTable, sinTable};
     kPositionEmbeddingNode.outTensorIds = {positionEmbedK};
 
-    vTransposeNode.operation = &vTransposeOp;
+    vTransposeNode.operation = vTransposeOp;
     vTransposeNode.inTensorIds = {mixedV};
     vTransposeNode.outTensorIds = {transposeVout};
 
-    selfAttentionKvCacheNode.operation = &selfAttentionKvCacheOp;
+    selfAttentionKvCacheNode.operation = selfAttentionKvCacheOp;
     selfAttentionKvCacheNode.inTensorIds = {positionEmbedQ, positionEmbedK, transposeVout,
                                             attentionMask,  pastKey,        pastValue};
     selfAttentionKvCacheNode.outTensorIds = {selfOut, presentKey, presentValue};
@@ -189,27 +195,24 @@ AsdOps::Status Llama7BLayer::Execute(Handle &handle, VariantPack &variantPack)
                    oldDims.at(2) / qPositionEmbeddingParam.headNum};
     };
 
-    selfOutLinearNode.operation = &selfOutLinearOp;
+    selfOutLinearNode.operation = selfOutLinearOp;
     selfOutLinearNode.inTensorIds = {selfOut, selfOutLinearWeight, selfOutLinearBias};
     selfOutLinearNode.outTensorIds = {selfLinearOut};
 
-    selfResidualAddNode.operation = &selfResidualAddOp;
+    selfResidualAddNode.operation = selfResidualAddOp;
     selfResidualAddNode.inTensorIds = {hiddenStates, selfLinearOut};
     selfResidualAddNode.outTensorIds = {selfResidualAddOut};
 
-    selfNormNode.operation = &selfNormOp;
+    selfNormNode.operation = selfNormOp;
     selfNormNode.inTensorIds = {selfResidualAddOut, selfOutNormWeight};
     selfNormNode.outTensorIds = {selfNormOut};
 
-    mlpNode.operation = &mlpOp;
+    mlpNode.operation = mlpOp;
     mlpNode.inTensorIds = {selfNormOut, mlpGateWeight, mlpDownWeight, mlpUpWeight};
     mlpNode.outTensorIds = {mlpOut};
 
-    mlpResidualAddNode.operation = &mlpResidualAddOp;
+    mlpResidualAddNode.operation = mlpResidualAddOp;
     mlpResidualAddNode.inTensorIds = {selfResidualAddOut, mlpOut};
     mlpResidualAddNode.outTensorIds = {llama7bLayerOut};
-
-    ExecuteOperationGraph(opGraph, variantPack);
-    return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

@@ -20,11 +20,13 @@
 namespace AclTransformer {
 class Llama7BLayer : public Layer {
 public:
-    Llama7BLayer();
+    Llama7BLayer(const nlohmann::json &paramJson);
     virtual ~Llama7BLayer();
     AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack) override;
+
+private:
+    void BuildGraph();
 };
 } // namespace AclTransformer
 #endif
