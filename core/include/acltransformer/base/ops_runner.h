@@ -24,7 +24,6 @@
 #include <asdops/op_desc.h>
 #include <asdops/run_info.h>
 #include <asdops/operation.h>
-#include "acltransformer/kernel_type.h"
 #include "acltransformer/runner_type.h"
 
 namespace AclTransformer {
@@ -36,7 +35,6 @@ struct KernelGraphNode {
     AsdOps::SVector<AsdOps::Tensor *> inTensors;
     AsdOps::SVector<AsdOps::Tensor *> outTensors;
     AsdOps::SVector<ViewFunc> inTensorViewFuncs;
-    KernelType kernelType = KERNEL_TYPE_UNDEFINED;
     AsdOps::Kernel *kernel = nullptr;
     AsdOps::RunInfo kernelRunInfo;
     InferShapePreFunc inferShapePreFunc;

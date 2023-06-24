@@ -44,7 +44,7 @@ AsdOps::Status Operation::Setup(VariantPack &variantPack)
 {
     ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString();
     if (runner_ == nullptr) {
-        runner_ = CreateBestRunner(variantPack);
+        runner_ = CreateBestRunner();
         ASD_LOG_IF(runner_ == nullptr, ERROR) << GetName() << " CreateBestRunner fail";
     }
     if (!runner_) {
@@ -103,9 +103,9 @@ AsdOps::Status Operation::Execute(Handle &handle, VariantPack &variantPack)
     return AsdOps::Status::OkStatus();
 }
 
-Runner *Operation::CreateBestRunner(const VariantPack &variantPack)
+Runner *Operation::CreateBestRunner()
 {
-    RunnerBuilder *runnerBuilder = FindBestRunnerBuilder(variantPack);
+    RunnerBuilder *runnerBuilder = FindBestRunnerBuilder();
     if (runnerBuilder) {
         return runnerBuilder->Build();
     } else {

@@ -17,6 +17,8 @@
 #define LINERA_OPS_RUNNER_BUILDER_H
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
+#include <asdops/utils/singleton/singleton.h>
+#include "acltransformer/config.h"
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/linear.h"
 #include "linear_ops_runner_910a.h"
@@ -28,16 +30,11 @@ public:
     LinearOpsRunnerBuilder(const LinearParam &param) : param_(param)
     {
         ASD_LOG(INFO) << "LinearOperation::LinearOperation called";
-        const int versionLen = 32;
-        char version[versionLen] = {0};
-        AsdRtDeviceGetSocVersion(version, versionLen);
-        ASD_LOG(INFO) << "SocVersion:" << std::string(version);
-        is910B_ = std::string(version).find("Ascend910B") != std::string::npos;
-    }
+        }
     virtual ~LinearOpsRunnerBuilder() = default;
     Runner *Build() override
     {
-        if (is910B_) {
+        if (AsdOps::GetSingleton<Config>().Is910B()) {
             return new LinearOpsRunner910B(param_);
         } else {
             return new LinearOpsRunner910A(param_);
@@ -46,7 +43,6 @@ public:
 
 private:
     LinearParam param_;
-    bool is910B_ = false;
 };
 
 } // namespace AclTransformer

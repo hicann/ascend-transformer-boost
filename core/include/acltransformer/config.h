@@ -44,11 +44,13 @@ public:
     bool IsKernelCacheEnable();
     bool IsSkipKernel(const std::string &kernelName);
     bool GetWorkspaceSize();
+    bool Is910B();
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
     void InitSkipKernelName();
     void InitWorkspaceSize();
+    void InitIs910B();
 
 private:
     bool isSaveTensor_ = false;
@@ -71,6 +73,7 @@ private:
     bool isKernelCacheEnable_ = false;
     std::vector<std::string> skipKernelNames_;
     uint64_t workspaceSize_ = 1024 * 1024 * 1000;
+    bool is910B_ = false;
 };
 } // namespace AclTransformer
 #endif

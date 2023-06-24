@@ -17,8 +17,10 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/singleton/singleton.h>
+#include <asdops/utils/time/timer.h>
 #include "acltransformer/plan.h"
 #include "acltransformer/plan_builder.h"
+#include "acltransformer/statistic.h"
 #include "examples/utils/example_util.h"
 #include "layer_workspace.h"
 
@@ -58,7 +60,9 @@ void Layer::Execute(AclTransformer::VariantPack &variantPack)
     lastStream_ = stream;
     AclTransformer::Handle handle = {stream};
 
+    AsdOps::Timer timer1;
     AsdOps::Status st = plan_.Setup(handle, variantPack);
+    AsdOps::GetSingleton<Statistic>().planSetupTime = timer1.ElapsedMicroSecond();
     if (!st.Ok()) {
         ASD_LOG(ERROR) << opGraph_.name << " Plan Setup fail error:" << st.Message();
         return;
@@ -74,7 +78,9 @@ void Layer::Execute(AclTransformer::VariantPack &variantPack)
         variantPack.workspace = AsdOps::GetSingleton<LayerWorkspace>().GetWorkspace();
     }
 
+    AsdOps::Timer timer2;
     st = plan_.Execute(handle, variantPack);
+    AsdOps::GetSingleton<Statistic>().planExecuteTime = timer2.ElapsedMicroSecond();
     ASD_LOG_IF(!st.Ok(), ERROR) << opGraph_.name << " Plan Execute fail, error:" << st.Message();
 }
 } // namespace AclTransformer

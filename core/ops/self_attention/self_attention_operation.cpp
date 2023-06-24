@@ -44,7 +44,7 @@ AsdOps::Status SelfAttentionOperation::InferShape(const AsdOps::SVector<AsdOps::
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *SelfAttentionOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+RunnerBuilder *SelfAttentionOperation::FindBestRunnerBuilder()
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsSelfAttentionOpsRunnerEnable() ? 0 : 1;
