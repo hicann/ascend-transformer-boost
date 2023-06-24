@@ -33,7 +33,7 @@ public:
     int64_t GetTensorW(const AsdOps::TensorDesc &tensorDesc) const;
 
 protected:
-    RunnerBuilder *FindBestRunnerBuilder(const VariantPack &variantPack) override;
+    RunnerBuilder *FindBestRunnerBuilder() override;
 
 private:
     LinearParam param_;

@@ -54,7 +54,7 @@ AsdOps::Status PositionEmbedding1dSplitOperation::InferShape(const AsdOps::SVect
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *PositionEmbedding1dSplitOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+RunnerBuilder *PositionEmbedding1dSplitOperation::FindBestRunnerBuilder()
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsPositionEmbedding1dSplitOpsRunnerEnable() ? 0 : 1;

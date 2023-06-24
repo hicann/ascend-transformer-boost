@@ -32,23 +32,28 @@ AsdOps::Status PlanBuilder::Build(const OperationGraph &opGraph, Plan &plan)
 
 AsdOps::Status PlanBuilder::BuildImpl(const OperationGraph &opGraph, Plan &plan)
 {
+    VariantPack variantPack;
     plan.runnerGraph_.name = opGraph.name;
+    plan.runnerGraph_.inTensors.resize(opGraph.inTensorSize);
+    plan.runnerGraph_.outTensors.resize(opGraph.outTensorSize);
     plan.runnerGraph_.internalTensors.resize(opGraph.intermediateTensorSize);
-    std::vector<AsdOps::Tensor *> fullTensorPtrs;
+    std::vector<AsdOps::Tensor *> fullTensorPtrs(opGraph.inTensorSize + opGraph.outTensorSize +
+                                                 opGraph.intermediateTensorSize);
+    size_t offset = 0;
     for (size_t i = 0; i < plan.runnerGraph_.inTensors.size(); ++i) {
-        fullTensorPtrs.push_back(&plan.runnerGraph_.inTensors.at(i));
+        fullTensorPtrs.at(offset++) = &plan.runnerGraph_.inTensors.at(i);
     }
     for (size_t i = 0; i < plan.runnerGraph_.outTensors.size(); ++i) {
-        fullTensorPtrs.push_back(&plan.runnerGraph_.outTensors.at(i));
+        fullTensorPtrs.at(offset++) = &plan.runnerGraph_.outTensors.at(i);
     }
     for (size_t i = 0; i < plan.runnerGraph_.internalTensors.size(); ++i) {
-        fullTensorPtrs.push_back(&plan.runnerGraph_.internalTensors.at(i));
+        fullTensorPtrs.at(offset++) = &plan.runnerGraph_.internalTensors.at(i);
     }
 
     for (auto &node : opGraph.nodes) {
-        Operation *op = node.operation;
         RunnerGraphNode runnerNode;
         runnerNode.operation = node.operation;
+        runnerNode.runner = node.operation->CreateBestRunner();
         runnerNode.inTensorViewFuncs = node.inTensorViewFuncs;
         runnerNode.inTensors.resize(node.inTensorIds.size());
         runnerNode.outTensors.resize(node.outTensorIds.size());

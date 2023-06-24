@@ -23,6 +23,8 @@ struct Statistic {
     uint64_t syclTime = 0;
     uint64_t tillingCopyTime = 0;
     uint64_t getBestKernelTime = 0;
+    uint64_t planSetupTime = 0;
+    uint64_t planExecuteTime = 0;
 
     std::string ToString() const;
     void Reset();
