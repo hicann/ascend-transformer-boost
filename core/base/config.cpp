@@ -117,7 +117,7 @@ bool Config::IsSkipKernel(const std::string &kernelName)
 
 void Config::InitSkipKernelName()
 {
-    const char *envStr = std::getenv("ACLTRANSFORMER_SKIL_KERNELS");
+    const char *envStr = std::getenv("ACLTRANSFORMER_SKIP_KERNELS");
     if (!envStr) {
         return;
     }
