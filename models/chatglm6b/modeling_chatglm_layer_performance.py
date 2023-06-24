@@ -41,8 +41,6 @@ if ACLTRANSFORMER_HOME_PATH is None:
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "examples/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
-acl_layer = torch.classes.LayerTorch.LayerTorch("ChatGlm6BLayer")
-acl_layer.set_workspace(1020 * 1024 * 1000)
 
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
@@ -605,6 +603,11 @@ class GLMBlock(torch.nn.Module):
             layer_id=layer_id,
             params_dtype=params_dtype,
         )
+        acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
+                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
+
+        self.acl_layer=torch.classes.LayerTorch.LayerTorch(
+            "ChatGlm6BLayer", acl_param)
 
     def forward(
             self,
@@ -678,10 +681,8 @@ class GLMBlock(torch.nn.Module):
             inputs.append(attention_mask)
             inputs.append(pastKey)
             inputs.append(pastValue)
-            acl_layer.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)}))
 
-            test_glmBlockOut, test_presentKey, test_presentValue = acl_layer.execute(
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
                 inputs)
             
             outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
