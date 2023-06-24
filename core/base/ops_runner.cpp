@@ -418,6 +418,7 @@ bool OpsRunner::PlanOneKernelSelectBestKernel(AsdOps::Operation *op, KernelGraph
 
     if (AsdOps::GetSingleton<Config>().IsKernelCacheEnable()) {
         AsdOps::GetSingleton<KernelCache>().Add(runnerType_, nodeId, node.kernelRunInfo, node.kernel);
+        ASD_LOG(INFO) << GetName() << " " << op->GetName() << ", cache best kernel:" << node.kernel->GetName();
     }
     return true;
 }
