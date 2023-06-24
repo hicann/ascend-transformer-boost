@@ -30,12 +30,12 @@ torch.classes.load_library(LIB_PATH)
 
 class LayerTest(unittest.TestCase):
     def execute(self, layer_name, layer_param, in_tensors):
-        layer = torch.classes.LayerTorch.LayerTorch(
-            layer_name)
         if isinstance(layer_param, dict):
-            layer.set_param(json.dumps(layer_param))
-        elif isinstance(layer_param, str):
-            layer.set_param(layer_param)
+            layer_param = (json.dumps(layer_param))
+
+        layer = torch.classes.LayerTorch.LayerTorch(
+            layer_name, layer_param)
+
         out_tensors = layer.execute(in_tensors)
         golden_out_tensors = self.golden_calc(in_tensors)
         self.__golden_compare_all(out_tensors, golden_out_tensors)

@@ -43,10 +43,12 @@ public:
     bool IsStreamSyncEveryPlanEnable();
     bool IsKernelCacheEnable();
     bool IsSkipKernel(const std::string &kernelName);
+    bool GetWorkspaceSize();
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
     void InitSkipKernelName();
+    void InitWorkspaceSize();
 
 private:
     bool isSaveTensor_ = false;
@@ -68,6 +70,7 @@ private:
     bool isStreamSyncEveryPlanEnable_ = false;
     bool isKernelCacheEnable_ = false;
     std::vector<std::string> skipKernelNames_;
+    uint64_t workspaceSize_ = 1024 * 1024 * 1000;
 };
 } // namespace AclTransformer
 #endif

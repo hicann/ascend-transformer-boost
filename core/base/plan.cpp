@@ -48,6 +48,9 @@ Plan::~Plan()
 AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 {
     ASD_LOG(INFO) << "Plan::Setup start";
+    runnerGraph_.inTensors = variantPack.inTensors;
+    runnerGraph_.outTensors = variantPack.outTensors;
+
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         node.variantPack.inTensors.resize(node.inTensors.size());
@@ -85,6 +88,8 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
                           << TensorUtil::AsdOpsTensorDescToString(outTensorDescs.at(i));
         }
         ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " infer shape end";
+
+        node.runner = node.operation->CreateBestRunner(node.variantPack);
 
         for (size_t i = 0; i < node.outTensors.size(); ++i) {
             AsdOps::Tensor *outTensor = node.outTensors.at(i);
