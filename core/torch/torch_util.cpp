@@ -41,7 +41,7 @@ void *TorchUtil::GetTensorDataPtr(const at::Tensor &tensor)
                   << tensor.storage().unsafeGetStorageImpl()->data()
                   << ", tensor.storage_offset():" << tensor.storage_offset()
                   << ", tensor.itemsize():" << tensor.itemsize() << ", tensor.data_ptr():" << tensor.data_ptr();
-    return tensor.storage().unsafeGetStorageImpl()->data() + tensor.storage_offset() * tensor.itemsize();
+    return (char *)tensor.storage().unsafeGetStorageImpl()->data() + tensor.storage_offset() * tensor.itemsize();
 }
 
 at::Tensor TorchUtil::CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc)
@@ -109,7 +109,7 @@ void TorchUtil::CopyAtTensor2AsdOpsTensor(void *stream, const at::Tensor &atTens
     ASD_LOG_IF(!atTensor.is_contiguous(), ERROR) << "atTensor is not is_contiguous, can't copy to asdTensor";
     c10_npu::NPUStream npuStream = c10_npu::getCurrentNPUStream();
 
-    ASD_LOG_IF(atTensor.numel() * atTensor.element_size() != asdTensor.dataSize, ERROR)
+    ASD_LOG_IF(atTensor.numel() * atTensor.element_size() != (int64_t)asdTensor.dataSize, ERROR)
         << " not atTensor.numel() * atTensor.element_size():" << atTensor.numel() * atTensor.element_size()
         << ", asdTensor.dataSize:" << asdTensor.dataSize;
 

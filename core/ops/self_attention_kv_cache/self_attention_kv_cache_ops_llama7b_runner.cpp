@@ -34,19 +34,18 @@ void SelfAttentionKvCacheOpsLlama7bRunner::AsStrideKernelInferShapeSet(const Asd
                                                                        KernelGraphNode &node)
 {
     node.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
-        AsdOps::SVector<int64_t> &dims = runInfo.GetInTensor(0).desc.dims;
         AsdOps::SVector<int64_t> inputShapeOrig = runInfo.GetInTensor(0).desc.dims;
         AsdOps::SVector<int64_t> inputStrideOrig;
         AsdOps::SVector<int64_t> inputShape;
         AsdOps::SVector<int64_t> inputStride;
 
-        int64_t size = inputShapeOrig.size();
+        uint64_t size = inputShapeOrig.size();
         if (sequence.size() != size) {
             ASD_LOG(ERROR) << "AsStride config size error: " << size << " -> " << sequence.size();
             return;
         }
         inputStrideOrig.resize(size);
-        int64_t stride = 1;
+        uint64_t stride = 1;
         for (size_t i = 0; i < size; i++) {
             inputStrideOrig.at(size - i - 1) = stride;
             stride *= inputShapeOrig.at(size - i - 1);
