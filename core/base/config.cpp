@@ -17,6 +17,7 @@
 #include <string>
 #include <iostream>
 #include <asdops/utils/log/log.h>
+#include <asdops/utils/rt/rt.h>
 #include <asdops/utils/strings/match.h>
 #include <asdops/utils/strings/str_split.h>
 
@@ -25,6 +26,7 @@ Config::Config()
 {
     InitSkipKernelName();
     InitWorkspaceSize();
+    InitIs910B();
     isSaveTensor_ = IsEnable("ACLTRANSFORMER_SAVE_TENSOR");
     isAddOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE");
     isAddNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE");
@@ -42,7 +44,7 @@ Config::Config()
     isStreamSyncEveryKernelEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_KERNEL_ENABLE");
     isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE");
     isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
-    isKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_KERNELCACHE_ENABLE");
+    isKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_KERNELCACHE_ENABLE", true);
     ASD_LOG(INFO) << "isSaveTensor:" << isSaveTensor_
                   << ", isStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                   << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
@@ -134,5 +136,16 @@ void Config::InitWorkspaceSize()
         return;
     }
     workspaceSize_ = atoi(envStr);
+}
+
+bool Config::Is910B() { return is910B_; }
+
+void Config::InitIs910B()
+{
+    const int versionLen = 32;
+    char version[versionLen] = {0};
+    AsdRtDeviceGetSocVersion(version, versionLen);
+    ASD_LOG(INFO) << "SocVersion:" << std::string(version);
+    is910B_ = std::string(version).find("Ascend910B") != std::string::npos;
 }
 } // namespace AclTransformer

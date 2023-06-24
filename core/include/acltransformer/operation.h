@@ -38,9 +38,9 @@ public:
     AsdOps::Status Execute(Handle &handle, VariantPack &variantPack);
 
 protected:
-    Runner *CreateBestRunner(const VariantPack &variantPack);
-    virtual RunnerBuilder *FindBestRunnerBuilder(const VariantPack &variantPack) = 0;
-    friend class Plan;
+    Runner *CreateBestRunner();
+    virtual RunnerBuilder *FindBestRunnerBuilder() = 0;
+    friend class PlanBuilder;
 
 protected:
     Runner *runner_ = nullptr;

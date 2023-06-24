@@ -55,7 +55,7 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShape(const AsdOps::SVector<A
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *SelfAttentionKvCacheOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+RunnerBuilder *SelfAttentionKvCacheOperation::FindBestRunnerBuilder()
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsSelfAttentionKVCacheOpsRunnerEnable() ? 0 : 1;

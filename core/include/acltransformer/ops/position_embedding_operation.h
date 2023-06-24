@@ -27,7 +27,7 @@ public:
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
 
 protected:
-    RunnerBuilder *FindBestRunnerBuilder(const VariantPack &variantPack) override;
+    RunnerBuilder *FindBestRunnerBuilder() override;
 
 private:
     PositionEmbeddingParam param_;

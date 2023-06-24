@@ -38,5 +38,5 @@ AsdOps::Status AnyOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &i
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *AnyOperation::FindBestRunnerBuilder(const VariantPack &variantPack) { return runnerBuilders_.at(0); }
+RunnerBuilder *AnyOperation::FindBestRunnerBuilder() { return runnerBuilders_.at(0); }
 } // namespace AclTransformer

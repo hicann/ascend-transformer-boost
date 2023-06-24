@@ -43,7 +43,7 @@ AsdOps::Status MlpOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &i
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *MlpOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+RunnerBuilder *MlpOperation::FindBestRunnerBuilder()
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsMlpOpsRunnerEnable() ? 0 : 1;

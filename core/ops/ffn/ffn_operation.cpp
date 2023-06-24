@@ -97,7 +97,7 @@ int64_t FfnOperation::GetTensorW(const AsdOps::TensorDesc &tensorDesc) const
     return tensorDesc.dims[DIM_2];
 }
 
-RunnerBuilder *FfnOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+RunnerBuilder *FfnOperation::FindBestRunnerBuilder()
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsFfnOpsRunnerEnable() ? 0 : 1;

@@ -264,6 +264,9 @@ void OpsRunner::Reset()
     kernelTilingSizes_.clear();
     workspaceSize_ = 0;
     memAllocatinSolver_->Reset();
+    for (auto &node : kernelGraph_.nodes) {
+        node.kernelRunInfo.Reset();
+    }
 }
 
 bool OpsRunner::PlanKernelGraph(const VariantPack &variantPack)

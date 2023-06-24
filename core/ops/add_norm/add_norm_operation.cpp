@@ -43,7 +43,7 @@ AsdOps::Status AddNormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *AddNormOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+RunnerBuilder *AddNormOperation::FindBestRunnerBuilder()
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsAddNormOpsRunnerEnable() ? 0 : 1;

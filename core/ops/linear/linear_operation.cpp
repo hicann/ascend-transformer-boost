@@ -99,7 +99,7 @@ int64_t LinearOperation::GetTensorW(const AsdOps::TensorDesc &tensorDesc) const
     return tensorDesc.dims[DIM_2];
 }
 
-RunnerBuilder *LinearOperation::FindBestRunnerBuilder(const VariantPack &variantPack)
+RunnerBuilder *LinearOperation::FindBestRunnerBuilder()
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsLinearOpsRunnerEnable() ? 0 : 1;
