@@ -121,6 +121,6 @@ void Config::InitSkipKernelName()
     if (!envStr) {
         return;
     }
-    AsdOps::Split(std::string(envStr), ',', skipKernelNames_);
+    AsdOps::StrSplit(std::string(envStr), ',', skipKernelNames_);
 }
 } // namespace AclTransformer
