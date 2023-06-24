@@ -39,7 +39,7 @@ Plan::~Plan()
         delete memAllocatinSolver_;
         memAllocatinSolver_ = nullptr;
     }
-    for(auto &node : runnerGraph_.nodes) {
+    for (auto &node : runnerGraph_.nodes) {
         delete node.runner;
         node.runner = nullptr;
     }
@@ -191,7 +191,7 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
         if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryRunnerEnable()) {
             AsdOps::Timer timer;
             int ret = AsdRtStreamSynchronize(handle.stream);
-            AsdOps::GetSingleton<Statistic>().tillingCopyTime += timer.ElapsedMicroSecond();
+            AsdOps::GetSingleton<Statistic>().syclTime += timer.ElapsedMicroSecond();
             ASD_LOG_IF(ret != 0, ERROR) << "Plan AsdRtStreamSynchronize node[" << nodeId << "] fail, ret:" << ret;
         }
         if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
