@@ -31,6 +31,8 @@ from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaL
 
 from .configuration_chatglm import ChatGLMConfig
 
+import time
+
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
     raise RuntimeError(
@@ -622,46 +624,51 @@ class GLMBlock(torch.nn.Module):
         test_glmBlockOut = None
         test_presentKey = None
         test_presentValue = None
-        test_in = None
-
+        
+        outputs = None
+        
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
-        if layer_past is not None:
-            test_in = hidden_states
-        attention_input = self.input_layernorm(hidden_states)
+        if layer_past is None:
+            attention_input = self.input_layernorm(hidden_states)
 
-        # Self attention.
-        attention_outputs = self.attention(
-            attention_input,
-            position_ids,
-            attention_mask=attention_mask,
-            layer_id=layer_id,
-            layer_past=layer_past,
-            use_cache=use_cache,
-            output_attentions=output_attentions
-        )
+            # Self attention.
+            attention_outputs = self.attention(
+                attention_input,
+                position_ids,
+                attention_mask=attention_mask,
+                layer_id=layer_id,
+                layer_past=layer_past,
+                use_cache=use_cache,
+                output_attentions=output_attentions
+            )
 
-        attention_output = attention_outputs[0]
+            attention_output = attention_outputs[0]
 
-        outputs = attention_outputs[1:]
+            outputs = attention_outputs[1:]
 
-        # Residual connection.
-        alpha = (2 * self.num_layers) ** 0.5
-        hidden_states = attention_input * alpha + attention_output
+            # Residual connection.
+            alpha = (2 * self.num_layers) ** 0.5
+            hidden_states = attention_input * alpha + attention_output
 
-        mlp_input = self.post_attention_layernorm(hidden_states)
+            mlp_input = self.post_attention_layernorm(hidden_states)
 
-        # MLP.
-        mlp_output = self.mlp(mlp_input)
+            # MLP.
+            mlp_output = self.mlp(mlp_input)
 
-        # Second residual connection.
-        output = mlp_input * alpha + mlp_output
+            # Second residual connection.
+            output = mlp_input * alpha + mlp_output
+            
+            if use_cache:
+                outputs = (output,) + outputs
+            else:
+                outputs = (output,) + outputs[1:]
 
-        if layer_past is not None:
+        else:
             global cosTable
             global sinTable
             pastKey, pastValue = layer_past
-            inputs = [test_in]
+            inputs = [hidden_states]
             weights = list(self.state_dict().values())
             del weights[2]
             inputs.extend(weights)
@@ -671,22 +678,15 @@ class GLMBlock(torch.nn.Module):
             inputs.append(attention_mask)
             inputs.append(pastKey)
             inputs.append(pastValue)
-            global glm_block
             acl_layer.set_param(json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
                                             "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)}))
 
             test_glmBlockOut, test_presentKey, test_presentValue = acl_layer.execute(
                 inputs)
+            
+            outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
 
-            assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
-                test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
-            print("success, acl == origin")
-            output = test_glmBlockOut
-
-        if use_cache:
-            outputs = (output,) + outputs
-        else:
-            outputs = (output,) + outputs[1:]
+        
 
         return outputs  # hidden_states, present, attentions
 
@@ -1020,6 +1020,11 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             bias=False,
             dtype=torch.half
         )
+        
+        self.count = 0
+        self.total = 0
+        self.cur_time = 0
+        self.first = 0
 
     def get_output_embeddings(self):
         return self.lm_head
@@ -1321,12 +1326,22 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
             # forward pass to get next token
+            torch.npu.synchronize()
+            start = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=False,
                 output_hidden_states=False,
             )
+            torch.npu.synchronize()
+            end = time.time()
+            self.count += 1
+            self.cur_time = (end - start) * 1000
+            if self.count == 1:
+                self.first = self.cur_time
+            else:
+                self.total += self.cur_time
 
             next_token_logits = outputs.logits[:, -1, :]
 
