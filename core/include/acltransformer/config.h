@@ -16,6 +16,7 @@
 #ifndef ACLTRANSFORMER_CONFIG_H
 #define ACLTRANSFORMER_CONFIG_H
 #include <string>
+#include <vector>
 
 namespace AclTransformer {
 class Config {
@@ -41,9 +42,11 @@ public:
     bool IsStreamSyncEveryOperationEnable();
     bool IsStreamSyncEveryPlanEnable();
     bool IsKernelCacheEnable();
+    bool IsSkipKernel(const std::string &kernelName);
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
+    void InitSkipKernelName();
 
 private:
     bool isSaveTensor_ = false;
@@ -64,6 +67,7 @@ private:
     bool isStreamSyncEveryOperationEnable_ = false;
     bool isStreamSyncEveryPlanEnable_ = false;
     bool isKernelCacheEnable_ = false;
+    std::vector<std::string> skipKernelNames_;
 };
 } // namespace AclTransformer
 #endif

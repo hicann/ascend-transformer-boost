@@ -222,7 +222,7 @@ void OpsRunner::UpdateRunInfoWorkspace(VariantPack &variantPack)
 
 void OpsRunner::RunAllKernel(Handle &handle)
 {
-    ASD_LOG(INFO) << GetName() << " start run all kernel";
+    ASD_LOG(INFO) << GetName() << " start run all kernel, kernel count:" << kernelGraph_.nodes.size();
     for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
         auto &node = kernelGraph_.nodes.at(i);
         AsdOps::Kernel *kernel = node.kernel;
@@ -235,6 +235,10 @@ void OpsRunner::RunAllKernel(Handle &handle)
         ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run start, runinfo:\n"
                       << AsdOpsRunInfoToString(kernelRunInfo);
 
+        if (AsdOps::GetSingleton<Config>().IsSkipKernel(kernel->GetName())) {
+            ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " skip";
+            continue;
+        }
         kernel->Run(kernelRunInfo);
 
         if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
