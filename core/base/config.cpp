@@ -17,10 +17,13 @@
 #include <string>
 #include <iostream>
 #include <asdops/utils/log/log.h>
+#include <asdops/utils/strings/match.h>
+#include <asdops/utils/strings/str_split.h>
 
 namespace AclTransformer {
 Config::Config()
 {
+    InitSkipKernelName();
     isSaveTensor_ = IsEnable("ACLTRANSFORMER_SAVE_TENSOR");
     isAddOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE");
     isAddNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE");
@@ -95,4 +98,29 @@ bool Config::IsStreamSyncEveryOperationEnable() { return isStreamSyncEveryOperat
 bool Config::IsStreamSyncEveryPlanEnable() { return isStreamSyncEveryPlanEnable_; }
 
 bool Config::IsKernelCacheEnable() { return isKernelCacheEnable_; }
+
+bool Config::IsSkipKernel(const std::string &kernelName)
+{
+    if (skipKernelNames_.empty()) {
+        return false;
+    }
+    if (skipKernelNames_.size() == 1 && skipKernelNames_.at(0) == "all") {
+        return true;
+    }
+    for (auto &skipKernelName : skipKernelNames_) {
+        if (AsdOps::StartsWith(kernelName, skipKernelName)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Config::InitSkipKernelName()
+{
+    const char *envStr = std::getenv("ACLTRANSFORMER_SKIL_KERNELS");
+    if (!envStr) {
+        return;
+    }
+    AsdOps::Split(std::string(envStr), ',', skipKernelNames_);
+}
 } // namespace AclTransformer
