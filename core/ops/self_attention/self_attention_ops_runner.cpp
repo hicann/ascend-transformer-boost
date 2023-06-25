@@ -23,7 +23,7 @@ namespace AclTransformer {
 SelfAttentionOpsRunner::SelfAttentionOpsRunner(const SelfAttentionParam &param)
     : OpsRunner("SelfAttentionOpsRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionOperation::SelfAttentionOperation called";
+    ASD_LOG(INFO) << "SelfAttentionOpsRunner::SelfAttentionOpsRunner called";
 }
 
 AsdOps::Status SelfAttentionOpsRunner::SetupKernelGraph(const VariantPack &variantPack)

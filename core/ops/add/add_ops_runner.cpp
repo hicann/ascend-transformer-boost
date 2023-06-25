@@ -22,7 +22,7 @@
 namespace AclTransformer {
 AddOpsRunner::AddOpsRunner(const AddParam &param) : OpsRunner("AddOpsRunner", RUNNER_TYPE_ADD), param_(param)
 {
-    ASD_LOG(INFO) << "AddOperation::AddOperation called";
+    ASD_LOG(INFO) << "AddOpsRunner::AddOpsRunner called";
 }
 
 AddOpsRunner::~AddOpsRunner() {}

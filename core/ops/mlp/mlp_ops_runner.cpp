@@ -22,7 +22,7 @@
 namespace AclTransformer {
 MlpOpsRunner::MlpOpsRunner(const MlpParam &param) : OpsRunner("MlpOpsRunner", RUNNER_TYPE_MLP), param_(param)
 {
-    ASD_LOG(INFO) << "MlpOperation::MlpOperation called";
+    ASD_LOG(INFO) << "MlpOpsRunner::MlpOpsRunner called";
 }
 
 MlpOpsRunner::~MlpOpsRunner() {}

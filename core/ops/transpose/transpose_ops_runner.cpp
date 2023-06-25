@@ -23,7 +23,7 @@ namespace AclTransformer {
 TransposeOpsRunner::TransposeOpsRunner(const TransposeParam &param)
     : OpsRunner("TransposeOpsRunner", RUNNER_TYPE_TRANSPOSE), param_(param)
 {
-    ASD_LOG(INFO) << "TransposeOperation::TransposeOperation called";
+    ASD_LOG(INFO) << "TransposeOpsRunner::TransposeOpsRunner called";
 }
 
 TransposeOpsRunner::~TransposeOpsRunner() {}

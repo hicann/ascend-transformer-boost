@@ -25,7 +25,7 @@ namespace AclTransformer {
 SelfAttentionKvCacheOpsLlama7bRunner::SelfAttentionKvCacheOpsLlama7bRunner(const SelfAttentionKvCacheParam &param)
     : OpsRunner("SelfAttentionKvCacheOpsLlama7bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionKVCacheOperation::SelfAttentionKVCacheOperation called";
+    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsLlama7bRunner::SelfAttentionKvCacheOpsLlama7bRunner called";
 }
 
 SelfAttentionKvCacheOpsLlama7bRunner::~SelfAttentionKvCacheOpsLlama7bRunner() {}
