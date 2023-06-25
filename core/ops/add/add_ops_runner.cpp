@@ -23,21 +23,13 @@ namespace AclTransformer {
 AddOpsRunner::AddOpsRunner(const AddParam &param) : OpsRunner("AddOpsRunner", RUNNER_TYPE_ADD), param_(param)
 {
     ASD_LOG(INFO) << "AddOpsRunner::AddOpsRunner called";
-}
-
-AddOpsRunner::~AddOpsRunner() {}
-
-AsdOps::Status AddOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start param_.scale:" << param_.scale;
+    kernelGraph_.inTensors.resize(2);
+    kernelGraph_.outTensors.resize(1);
+    AsdOps::Tensor &aTensor = kernelGraph_.inTensors.at(0);
+    AsdOps::Tensor &bTensor = kernelGraph_.inTensors.at(1);
+    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors.at(0);
     if (param_.scale == 1) {
         ASD_LOG(INFO) << GetName() << " simple add";
-        kernelGraph_.inTensors = variantPack.inTensors;
-        AsdOps::Tensor &aTensor = kernelGraph_.inTensors.at(0);
-        AsdOps::Tensor &bTensor = kernelGraph_.inTensors.at(1);
-        kernelGraph_.outTensors = variantPack.outTensors;
-        AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors.at(0);
-
         kernelGraph_.nodes.resize(1);
         auto &addNode = kernelGraph_.nodes.at(0);
 
@@ -47,11 +39,6 @@ AsdOps::Status AddOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
         addNode.outTensors = {&operationOutTensor};
     } else {
         ASD_LOG(INFO) << GetName() << " muls then add";
-        kernelGraph_.inTensors = variantPack.inTensors;
-        AsdOps::Tensor &aTensor = kernelGraph_.inTensors.at(0);
-        AsdOps::Tensor &bTensor = kernelGraph_.inTensors.at(1);
-        kernelGraph_.outTensors = variantPack.outTensors;
-        AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors.at(0);
         kernelGraph_.internalTensors.resize(1);
         AsdOps::Tensor &mulsOutTensor = kernelGraph_.internalTensors.at(0);
 
@@ -69,6 +56,7 @@ AsdOps::Status AddOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
         addNode.inTensors = {&mulsOutTensor, &bTensor};
         addNode.outTensors = {&operationOutTensor};
     }
-    return AsdOps::Status::OkStatus();
 }
+
+AddOpsRunner::~AddOpsRunner() {}
 } // namespace AclTransformer

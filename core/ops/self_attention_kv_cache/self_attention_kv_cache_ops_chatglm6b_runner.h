@@ -24,9 +24,6 @@ public:
     SelfAttentionKvCacheOpsChatGlm6bRunner(const SelfAttentionKvCacheParam &param);
     virtual ~SelfAttentionKvCacheOpsChatGlm6bRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
 private:
     SelfAttentionKvCacheParam param_;
 };

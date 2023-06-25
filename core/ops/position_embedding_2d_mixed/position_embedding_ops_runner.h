@@ -24,9 +24,6 @@ public:
     PositionEmbeddingOpsRunner(const PositionEmbeddingParam &param);
     virtual ~PositionEmbeddingOpsRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
 private:
     PositionEmbeddingParam param_;
 };

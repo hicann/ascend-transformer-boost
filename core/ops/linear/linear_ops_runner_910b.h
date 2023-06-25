@@ -24,9 +24,6 @@ public:
     explicit LinearOpsRunner910B(LinearParam &param);
     virtual ~LinearOpsRunner910B();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
 private:
     LinearParam param_;
 };

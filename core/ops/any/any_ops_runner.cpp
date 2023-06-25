@@ -25,26 +25,8 @@ namespace AclTransformer {
 AnyOpsRunner::AnyOpsRunner(const AnyParam &param) : OpsRunner("AnyOpsRunner"), param_(param)
 {
     ASD_LOG(INFO) << "AnyOpsRunner::AnyOpsRunner called";
-}
-
-AnyOpsRunner::~AnyOpsRunner() {}
-
-AsdOps::Status AnyOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start";
-    kernelGraph_.inTensors = variantPack.inTensors;
-    kernelGraph_.outTensors = variantPack.outTensors;
-    if (kernelGraph_.inTensors.size() != param_.kernelGraph["inTensors"].size()) {
-        ASD_LOG(ERROR) << "invalid json kernel graph, variantPack.inTensors.size:" << variantPack.inTensors.size()
-                       << ",  param_.kernelGraph[\"inTensors\"].size():" << param_.kernelGraph["inTensors"].size();
-        return AsdOps::Status::FailStatus(1, "invalid json kernel graph");
-    }
-    if (kernelGraph_.outTensors.size() != param_.kernelGraph["outTensors"].size()) {
-        ASD_LOG(ERROR) << "invalid json kernel graph, variantPack.outTensors.size:" << variantPack.outTensors.size()
-                       << ",  param_.kernelGraph[\"outTensors\"].size():" << param_.kernelGraph["outTensors"].size();
-        return AsdOps::Status::FailStatus(1, "invalid json kernel graph");
-    }
-
+    kernelGraph_.inTensors.resize(param_.kernelGraph["inTensors"].size());
+    kernelGraph_.outTensors.resize(param_.kernelGraph["outTensors"].size());
     std::map<std::string, AsdOps::Tensor *> tensorMap;
     for (size_t i = 0; i < param_.kernelGraph["inTensors"].size(); ++i) {
         std::string tensorName = param_.kernelGraph["inTensors"].at(i).get<std::string>();
@@ -78,7 +60,7 @@ AsdOps::Status AnyOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
             auto it = tensorMap.find(tensorName);
             if (it == tensorMap.end()) {
                 ASD_LOG(ERROR) << "nodes[" << i << "] inTensor:" << tensorName << " not exist";
-                return AsdOps::Status::FailStatus(1, "invalid kernel graph");
+                return;
             }
             kernelNode.inTensors[i] = it->second;
         }
@@ -91,13 +73,14 @@ AsdOps::Status AnyOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
             auto it = tensorMap.find(tensorName);
             if (it == tensorMap.end()) {
                 ASD_LOG(ERROR) << "nodes[" << i << "] outTensor:" << tensorName << " not exist";
-                return AsdOps::Status::FailStatus(1, "invalid kernel graph");
+                return;
             }
             kernelNode.outTensors[i] = it->second;
         }
 
         kernelGraph_.nodes.push_back(kernelNode);
     }
-    return AsdOps::Status::OkStatus();
 }
+
+AnyOpsRunner::~AnyOpsRunner() {}
 } // namespace AclTransformer

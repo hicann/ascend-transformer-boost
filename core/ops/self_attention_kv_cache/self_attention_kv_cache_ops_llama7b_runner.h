@@ -24,9 +24,6 @@ public:
     SelfAttentionKvCacheOpsLlama7bRunner(const SelfAttentionKvCacheParam &param);
     virtual ~SelfAttentionKvCacheOpsLlama7bRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
 private:
     void AsStrideKernelInferShapeSet(const AsdOps::SVector<int64_t> &sequence, KernelGraphNode &node);
 

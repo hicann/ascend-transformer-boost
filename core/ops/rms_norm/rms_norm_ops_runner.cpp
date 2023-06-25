@@ -29,8 +29,4 @@ RmsNormOpsRunner::RmsNormOpsRunner(const RmsNormParam &param)
 }
 
 RmsNormOpsRunner::~RmsNormOpsRunner() {}
-
-AsdOps::Status RmsNormOpsRunner::SetupKernelGraph(const VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
-
-bool RmsNormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim) { return true; }
 } // namespace AclTransformer

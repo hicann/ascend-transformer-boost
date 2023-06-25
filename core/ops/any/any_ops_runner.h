@@ -24,9 +24,6 @@ public:
     explicit AnyOpsRunner(const AnyParam &param);
     virtual ~AnyOpsRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
 private:
     AnyParam param_;
 };

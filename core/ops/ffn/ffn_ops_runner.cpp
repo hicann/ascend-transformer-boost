@@ -22,15 +22,11 @@ namespace AclTransformer {
 FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner", RUNNER_TYPE_FFN), param_(param)
 {
     ASD_LOG(INFO) << "FfnOpsRunner::FfnOpsRunner";
-}
-
-AsdOps::Status FfnOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    kernelGraph_.inTensors = variantPack.inTensors;
+    kernelGraph_.inTensors.resize(3);
     AsdOps::Tensor &aTensor = kernelGraph_.inTensors[0];
     AsdOps::Tensor &bTensor = kernelGraph_.inTensors[1];
     AsdOps::Tensor &cTensor = kernelGraph_.inTensors[2];
-    kernelGraph_.outTensors = variantPack.outTensors;
+    kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[0];
 
     kernelGraph_.internalTensors.resize(2);
@@ -58,8 +54,6 @@ AsdOps::Status FfnOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
     geluNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
     geluNode.inTensors = {&addOutTensor};
     geluNode.outTensors = {&operationOutTensor};
-
-    return AsdOps::Status::OkStatus();
 }
 
 FfnOpsRunner::~FfnOpsRunner() {}

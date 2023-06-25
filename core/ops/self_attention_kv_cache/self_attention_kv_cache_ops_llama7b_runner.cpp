@@ -25,46 +25,10 @@ namespace AclTransformer {
 SelfAttentionKvCacheOpsLlama7bRunner::SelfAttentionKvCacheOpsLlama7bRunner(const SelfAttentionKvCacheParam &param)
     : OpsRunner("SelfAttentionKvCacheOpsLlama7bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsLlama7bRunner::SelfAttentionKvCacheOpsLlama7bRunner called";
-}
-
-SelfAttentionKvCacheOpsLlama7bRunner::~SelfAttentionKvCacheOpsLlama7bRunner() {}
-
-void SelfAttentionKvCacheOpsLlama7bRunner::AsStrideKernelInferShapeSet(const AsdOps::SVector<int64_t> &sequence,
-                                                                       KernelGraphNode &node)
-{
-    node.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
-        AsdOps::SVector<int64_t> inputShapeOrig = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> inputStrideOrig;
-        AsdOps::SVector<int64_t> inputShape;
-        AsdOps::SVector<int64_t> inputStride;
-
-        uint64_t size = inputShapeOrig.size();
-        if (sequence.size() != size) {
-            ASD_LOG(ERROR) << "AsStride config size error: " << size << " -> " << sequence.size();
-            return;
-        }
-        inputStrideOrig.resize(size);
-        uint64_t stride = 1;
-        for (size_t i = 0; i < size; i++) {
-            inputStrideOrig.at(size - i - 1) = stride;
-            stride *= inputShapeOrig.at(size - i - 1);
-        }
-        for (size_t i = 0; i < size; i++) {
-            inputShape.push_back(inputShapeOrig[sequence[i]]);
-            inputStride.push_back(inputStrideOrig[sequence[i]]);
-        }
-        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
-    };
-}
-
-AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start: "
-                  << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
-                  << ",layerId: " << param_.layerId;
-
-    kernelGraph_.inTensors = variantPack.inTensors;
+    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsLlama7bRunner::SelfAttentionKvCacheOpsLlama7bRunner called, transKey:"
+                  << param_.transKey << ", dk: " << param_.dk << ", headNum: " << param_.headNum
+                  << ", layerId: " << param_.layerId;
+    kernelGraph_.inTensors.resize(6);
     AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(1);
     AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(2);
@@ -72,7 +36,7 @@ AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const Vari
     AsdOps::Tensor &pastKey = kernelGraph_.inTensors.at(4);
     AsdOps::Tensor &pastValue = kernelGraph_.inTensors.at(5);
 
-    kernelGraph_.outTensors = variantPack.outTensors;
+    kernelGraph_.outTensors.resize(3);
     AsdOps::Tensor &contextOut = kernelGraph_.outTensors.at(0);
     AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(1);
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(2);
@@ -218,6 +182,35 @@ AsdOps::Status SelfAttentionKvCacheOpsLlama7bRunner::SetupKernelGraph(const Vari
         newDims = {oldDims.at(0), oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
     };
     AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 0, 2}), transposeContext2Node);
-    return AsdOps::Status::OkStatus();
+}
+
+SelfAttentionKvCacheOpsLlama7bRunner::~SelfAttentionKvCacheOpsLlama7bRunner() {}
+
+void SelfAttentionKvCacheOpsLlama7bRunner::AsStrideKernelInferShapeSet(const AsdOps::SVector<int64_t> &sequence,
+                                                                       KernelGraphNode &node)
+{
+    node.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
+        AsdOps::SVector<int64_t> inputShapeOrig = runInfo.GetInTensor(0).desc.dims;
+        AsdOps::SVector<int64_t> inputStrideOrig;
+        AsdOps::SVector<int64_t> inputShape;
+        AsdOps::SVector<int64_t> inputStride;
+
+        uint64_t size = inputShapeOrig.size();
+        if (sequence.size() != size) {
+            ASD_LOG(ERROR) << "AsStride config size error: " << size << " -> " << sequence.size();
+            return;
+        }
+        inputStrideOrig.resize(size);
+        uint64_t stride = 1;
+        for (size_t i = 0; i < size; i++) {
+            inputStrideOrig.at(size - i - 1) = stride;
+            stride *= inputShapeOrig.at(size - i - 1);
+        }
+        for (size_t i = 0; i < size; i++) {
+            inputShape.push_back(inputShapeOrig[sequence[i]]);
+            inputStride.push_back(inputStrideOrig[sequence[i]]);
+        }
+        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
+    };
 }
 } // namespace AclTransformer

@@ -107,7 +107,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
         auto it = maxNodeIdTensorMap_.find(nodeId);
         if (it != maxNodeIdTensorMap_.end()) {
             for (auto tensorIt : it->second) {
-                ASD_LOG(INFO) << runnerGraph_.name << node.runner->GetName() << " free tensor:" << tensorIt;
+                ASD_LOG(INFO) << runnerGraph_.name << " " << node.runner->GetName() << " free tensor:" << tensorIt;
                 memAllocatinSolver_->Free((char *)tensorIt->data);
             }
         }

@@ -23,23 +23,14 @@ namespace AclTransformer {
 PositionEmbeddingOpsRunner::PositionEmbeddingOpsRunner(const PositionEmbeddingParam &param)
     : OpsRunner("PositionEmbeddingOpsRunner", RUNNER_TYPE_POSITION_EMBEDDING_2D_MIXED), param_(param)
 {
-    ASD_LOG(INFO) << "PositionEmbeddingOpsRunner::PositionEmbeddingOpsRunner called";
-}
-
-PositionEmbeddingOpsRunner::~PositionEmbeddingOpsRunner() {}
-
-AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start: "
-                  << "headNum: " << param_.headNum;
-
-    kernelGraph_.inTensors = variantPack.inTensors;
+    ASD_LOG(INFO) << "PositionEmbeddingOpsRunner::PositionEmbeddingOpsRunner called, headNum: " << param_.headNum;
+    kernelGraph_.inTensors.resize(4);
     AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &positionIds = kernelGraph_.inTensors.at(1);
     AsdOps::Tensor &cosTable = kernelGraph_.inTensors.at(2);
     AsdOps::Tensor &sinTable = kernelGraph_.inTensors.at(3);
 
-    kernelGraph_.outTensors = variantPack.outTensors;
+    kernelGraph_.outTensors.resize(3);
     AsdOps::Tensor &qEmbedded = kernelGraph_.outTensors.at(0);
     AsdOps::Tensor &kEmbedded = kernelGraph_.outTensors.at(1);
     AsdOps::Tensor &value = kernelGraph_.outTensors.at(2);
@@ -357,7 +348,7 @@ AsdOps::Status PositionEmbeddingOpsRunner::SetupKernelGraph(const VariantPack &v
     cat5Node.inTensors = {&kEmbedded0, &kEmbedded1};
     cat5Node.outTensors = {&kEmbedded};
     cat5Node.inferShapePreFunc = cat0InferShape;
-
-    return AsdOps::Status::OkStatus();
 }
+
+PositionEmbeddingOpsRunner::~PositionEmbeddingOpsRunner() {}
 } // namespace AclTransformer
