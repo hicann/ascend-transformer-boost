@@ -23,17 +23,10 @@ namespace AclTransformer {
 TransposeOpsRunner::TransposeOpsRunner(const TransposeParam &param)
     : OpsRunner("TransposeOpsRunner", RUNNER_TYPE_TRANSPOSE), param_(param)
 {
-    ASD_LOG(INFO) << "TransposeOpsRunner::TransposeOpsRunner called";
-}
-
-TransposeOpsRunner::~TransposeOpsRunner() {}
-
-AsdOps::Status TransposeOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start!";
-    ASD_LOG(INFO) << "param_.dimA:" << param_.dimA << " param_.dimB:" << param_.dimB;
-    kernelGraph_.inTensors = variantPack.inTensors;
-    kernelGraph_.outTensors = variantPack.outTensors;
+    ASD_LOG(INFO) << "TransposeOpsRunner::TransposeOpsRunner called, param_.dimA:" << param_.dimA
+                  << " param_.dimB:" << param_.dimB;
+    kernelGraph_.inTensors.resize(1);
+    kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &operationInTensor = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors.at(0);
 
@@ -54,7 +47,7 @@ AsdOps::Status TransposeOpsRunner::SetupKernelGraph(const VariantPack &variantPa
     asstridedNode.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided({sizeParam, strideParam, offsetParam})};
     asstridedNode.inTensors = {&operationInTensor};
     asstridedNode.outTensors = {&operationOutTensor};
-
-    return AsdOps::Status::OkStatus();
 }
+
+TransposeOpsRunner::~TransposeOpsRunner() {}
 } // namespace AclTransformer

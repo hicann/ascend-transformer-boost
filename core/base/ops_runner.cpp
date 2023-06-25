@@ -94,6 +94,8 @@ AsdOps::Status OpsRunner::SetupImpl(const VariantPack &variantPack)
 {
     Reset();
 
+    kernelGraph_.inTensors = variantPack.inTensors;
+    kernelGraph_.outTensors = variantPack.outTensors;
     AsdOps::Status st = SetupKernelGraph(variantPack);
     if (!st.Ok()) {
         return st;
@@ -509,6 +511,11 @@ void OpsRunner::WriteTilingData(const char *tilingData, size_t len, const std::s
 
 void OpsRunner::InitTensorMaxNodeMap()
 {
+    if (!tensorMaxNodeIdMap_.empty()) {
+        ASD_LOG(INFO) << GetName() << " InitTensorMaxNodeMap call once";
+        return;
+    }
+
     for (size_t i = 0; i < kernelGraph_.internalTensors.size(); ++i) {
         AsdOps::Tensor &internalTensor = kernelGraph_.internalTensors[i];
         uint64_t maxNodeId = 0;
@@ -560,4 +567,6 @@ int64_t OpsRunner::GetOutTensorId(const AsdOps::Tensor *tensor)
     }
     return -1;
 }
+
+AsdOps::Status OpsRunner::SetupKernelGraph(const VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
 } // namespace AclTransformer

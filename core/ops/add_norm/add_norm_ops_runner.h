@@ -24,10 +24,6 @@ public:
     AddNormOpsRunner(const AddNormParam &param);
     virtual ~AddNormOpsRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-    bool CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim);
-
 private:
     AddNormParam param_;
 };

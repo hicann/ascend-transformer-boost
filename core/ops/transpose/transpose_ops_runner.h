@@ -24,9 +24,6 @@ public:
     TransposeOpsRunner(const TransposeParam &param);
     virtual ~TransposeOpsRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
 private:
     TransposeParam param_;
 };

@@ -22,18 +22,12 @@
 namespace AclTransformer {
 NormOpsRunner::NormOpsRunner(const NormParam &param) : OpsRunner("NormOpsRunner", RUNNER_TYPE_NORM), param_(param)
 {
-    ASD_LOG(INFO) << "NormOpsRunner::NormOpsRunner called";
-}
-
-NormOpsRunner::~NormOpsRunner() {}
-
-AsdOps::Status NormOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    kernelGraph_.inTensors = variantPack.inTensors;
+    ASD_LOG(INFO) << "NormOpsRunner::NormOpsRunner called, param.layerNormEps:" << param_.layerNormEps;
+    kernelGraph_.inTensors.resize(3);
     AsdOps::Tensor &xTensor = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &weightTensor = kernelGraph_.inTensors.at(1);
     AsdOps::Tensor &biasTensor = kernelGraph_.inTensors.at(2);
-    kernelGraph_.outTensors = variantPack.outTensors;
+    kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &resultTensor = kernelGraph_.outTensors.at(0);
     kernelGraph_.internalTensors.resize(2);
     AsdOps::Tensor &layerNormMeanTensor = kernelGraph_.internalTensors.at(0);
@@ -42,66 +36,16 @@ AsdOps::Status NormOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
     kernelGraph_.nodes.resize(1);
     auto &layerNormNode = kernelGraph_.nodes[0];
 
-    int64_t beginDim = 0;
-    if (!CalcLayerNormTensor(variantPack, beginDim)) {
-        ASD_LOG(ERROR) << GetName() << " CalcLayerNormTensor fail";
-        return AsdOps::Status::FailStatus(1, "CalcLayerNormTensor fail");
-    }
-
     AsdOps::OpParam::Norm normParam = {AsdOps::OpParam::Norm::NORM_LAYERNORM};
-    normParam.begin_norm_axis = beginDim;
-    normParam.begin_params_axis = beginDim;
+    normParam.begin_norm_axis = 1;
+    normParam.begin_params_axis = 1;
     normParam.epsilon = param_.layerNormEps;
     ASD_LOG(INFO) << GetName() << " NormOperation opDesc normParam begin_norm_axis:" << normParam.begin_norm_axis
                   << ", begin_params_axis:" << normParam.begin_params_axis << ", epsilon:" << normParam.epsilon;
     layerNormNode.opDesc = {0, "NormOperation", normParam};
     layerNormNode.inTensors = {&xTensor, &weightTensor, &biasTensor};
     layerNormNode.outTensors = {&resultTensor, &layerNormMeanTensor, &layerNormVarianceTensor};
-    return AsdOps::Status::OkStatus();
 }
 
-bool NormOpsRunner::CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim)
-{
-    AsdOps::TensorDesc inputDesc;
-    inputDesc.dtype = variantPack.inTensors.at(0).desc.dtype;
-    if (variantPack.inTensors.at(0).desc.dims.size() > variantPack.inTensors.at(1).desc.dims.size()) {
-        inputDesc.dims = variantPack.inTensors.at(0).desc.dims;
-    } else {
-        inputDesc.dims = variantPack.inTensors.at(1).desc.dims;
-    }
-
-    const AsdOps::Tensor &weightTensor = variantPack.inTensors.at(2);
-    const AsdOps::Tensor &biasTensor = variantPack.inTensors.at(3);
-
-    ASD_LOG(INFO) << GetName() << " layer norm input desc:" << TensorUtil::AsdOpsTensorDescToString(inputDesc)
-                  << ", weightTensor:" << TensorUtil::AsdOpsTensorToString(weightTensor)
-                  << ", biasTensor:" << TensorUtil::AsdOpsTensorToString(biasTensor);
-
-    const int axis = inputDesc.dims.size() - weightTensor.desc.dims.size();
-    const int64_t M =
-        std::accumulate(inputDesc.dims.begin(), inputDesc.dims.begin() + axis, 1LL, std::multiplies<int64_t>());
-
-    ASD_LOG(INFO) << GetName() << " M:" << M;
-    if (M < 0) {
-        return false;
-    }
-
-    int64_t numels = 1;
-    AsdOps::SVector<int64_t> reduceDims; // the output of mean and rstd is Multidimension
-    AsdOps::SVector<int64_t> weightDims; // the input of weight is Multidimension
-    for (size_t i = 0; i < inputDesc.dims.size(); i++) {
-        numels *= inputDesc.dims.at(i);
-        reduceDims.emplace_back(inputDesc.dims.at(i));
-        if (numels == M) {
-            beginDim = i + 1;
-            while (++i < inputDesc.dims.size()) {
-                reduceDims.emplace_back(1);
-                weightDims.emplace_back(inputDesc.dims.at(i));
-            }
-            break;
-        }
-    }
-
-    return true;
-}
+NormOpsRunner::~NormOpsRunner() {}
 } // namespace AclTransformer

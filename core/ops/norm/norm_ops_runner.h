@@ -23,13 +23,6 @@ class NormOpsRunner : public OpsRunner {
 public:
     NormOpsRunner(const NormParam &param);
     virtual ~NormOpsRunner();
-
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
-private:
-    bool CalcLayerNormTensor(const VariantPack &variantPack, int64_t &beginDim);
-
 private:
     NormParam param_;
 };
