@@ -22,6 +22,7 @@ namespace AclTransformer {
 LinearOpsRunner910B::LinearOpsRunner910B(LinearParam &param)
     : OpsRunner("LinearOpsRunner910B", RUNNER_TYPE_LINEAR), param_(param)
 {
+    ASD_LOG(INFO) << "LinearOpsRunner910B::LinearOpsRunner910B";
 }
 
 LinearOpsRunner910B::~LinearOpsRunner910B() {}

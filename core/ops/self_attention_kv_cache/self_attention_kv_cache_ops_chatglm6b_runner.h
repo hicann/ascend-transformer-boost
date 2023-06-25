@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SELFATTENTIONKVCACHE_OPS_RUNNER_H
-#define SELFATTENTIONKVCACHE_OPS_RUNNER_H
+#ifndef SELFATTENTIONKVCACHE_OPS_CHATGLM6B_RUNNER_H
+#define SELFATTENTIONKVCACHE_OPS_CHATGLM6B_RUNNER_H
 #include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/self_attention_kv_cache.h"
 
 namespace AclTransformer {
-class SelfAttentionKvCacheOpsRunner : public OpsRunner {
+class SelfAttentionKvCacheOpsChatGlm6bRunner : public OpsRunner {
 public:
-    SelfAttentionKvCacheOpsRunner(const SelfAttentionKvCacheParam &param);
-    virtual ~SelfAttentionKvCacheOpsRunner();
+    SelfAttentionKvCacheOpsChatGlm6bRunner(const SelfAttentionKvCacheParam &param);
+    virtual ~SelfAttentionKvCacheOpsChatGlm6bRunner();
 
 protected:
     AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;

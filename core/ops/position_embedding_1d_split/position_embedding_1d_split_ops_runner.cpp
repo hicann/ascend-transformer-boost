@@ -23,7 +23,7 @@ namespace AclTransformer {
 PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const PositionEmbedding1dSplitParam &param)
     : OpsRunner("PositionEmbedding1dSplitOpsRunner", RUNNER_TYPE_POSITION_EMBEDDING_1D_SPLIT), param_(param)
 {
-    ASD_LOG(INFO) << "PositionEmbedding1dSplitOperation::PositionEmbedding1dSplitOperation called";
+    ASD_LOG(INFO) << "PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner called";
 }
 
 PositionEmbedding1dSplitOpsRunner::~PositionEmbedding1dSplitOpsRunner() {}

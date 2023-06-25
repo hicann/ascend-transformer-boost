@@ -28,7 +28,7 @@ SelfAttentionKvCacheTorchChatGlm6bRunner::SelfAttentionKvCacheTorchChatGlm6bRunn
     const SelfAttentionKvCacheParam &param)
     : Runner("SelfAttentionKvCacheTorchChatGlm6bRunner"), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation called";
+    ASD_LOG(INFO) << "SelfAttentionKvCacheTorchChatGlm6bRunner::SelfAttentionKvCacheTorchChatGlm6bRunner called";
 }
 
 SelfAttentionKvCacheTorchChatGlm6bRunner::~SelfAttentionKvCacheTorchChatGlm6bRunner() {}

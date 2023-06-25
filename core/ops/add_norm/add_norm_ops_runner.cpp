@@ -25,6 +25,7 @@ namespace AclTransformer {
 AddNormOpsRunner::AddNormOpsRunner(const AddNormParam &param)
     : OpsRunner("AddNormOpsRunner", RUNNER_TYPE_ADD_NORM), param_(param)
 {
+    ASD_LOG(INFO) << "AddNormOpsRunner::AddNormOpsRunner";
 }
 
 AddNormOpsRunner::~AddNormOpsRunner() {}
