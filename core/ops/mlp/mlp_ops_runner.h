@@ -24,12 +24,6 @@ public:
     MlpOpsRunner(const MlpParam &param);
     virtual ~MlpOpsRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
-private:
-    bool CalcLayerMlpTensor(const VariantPack &variantPack, int64_t &beginDim);
-
 private:
     MlpParam param_;
 };

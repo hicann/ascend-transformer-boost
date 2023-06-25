@@ -56,12 +56,13 @@ public:
     virtual ~OpsRunner();
 
 protected:
-    AsdOps::Status SetupImpl(const VariantPack &variantPack) override;
-    uint64_t GetWorkspaceSizeImpl() override;
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    virtual AsdOps::Status SetupKernelGraph(const VariantPack &variantPack);
 
 protected:
-    virtual AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) = 0;
+    AsdOps::Status SetupImpl(const VariantPack &variantPack) override;
+
+    uint64_t GetWorkspaceSizeImpl() override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     void Reset();

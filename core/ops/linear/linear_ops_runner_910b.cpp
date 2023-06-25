@@ -23,21 +23,14 @@ LinearOpsRunner910B::LinearOpsRunner910B(LinearParam &param)
     : OpsRunner("LinearOpsRunner910B", RUNNER_TYPE_LINEAR), param_(param)
 {
     ASD_LOG(INFO) << "LinearOpsRunner910B::LinearOpsRunner910B";
-}
-
-LinearOpsRunner910B::~LinearOpsRunner910B() {}
-
-AsdOps::Status LinearOpsRunner910B::SetupKernelGraph(const VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph910B start";
     const std::size_t nodeSize = 2;
     const std::size_t dim2 = 2;
-    kernelGraph_.inTensors = variantPack.inTensors;
+    kernelGraph_.inTensors.resize(3);
     AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[0];
     AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[1];
     AsdOps::Tensor &biasTensor = kernelGraph_.inTensors[2];
 
-    kernelGraph_.outTensors = variantPack.outTensors;
+    kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[0];
     kernelGraph_.internalTensors.resize(1);
     AsdOps::Tensor &matmulResultTensor = kernelGraph_.internalTensors[0];
@@ -58,7 +51,7 @@ AsdOps::Status LinearOpsRunner910B::SetupKernelGraph(const VariantPack &variantP
     addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
     addNode.inTensors = {&matmulResultTensor, &biasTensor};
     addNode.outTensors = {&resultTensor};
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph910B end";
-    return AsdOps::Status::OkStatus();
 }
+
+LinearOpsRunner910B::~LinearOpsRunner910B() {}
 } // namespace AclTransformer

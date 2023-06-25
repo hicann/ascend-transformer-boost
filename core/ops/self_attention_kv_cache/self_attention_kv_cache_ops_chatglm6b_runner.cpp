@@ -25,18 +25,10 @@ namespace AclTransformer {
 SelfAttentionKvCacheOpsChatGlm6bRunner::SelfAttentionKvCacheOpsChatGlm6bRunner(const SelfAttentionKvCacheParam &param)
     : OpsRunner("SelfAttentionKvCacheOpsChatGlm6bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsChatGlm6bRunner::SelfAttentionKvCacheOpsChatGlm6bRunner called";
-}
-
-SelfAttentionKvCacheOpsChatGlm6bRunner::~SelfAttentionKvCacheOpsChatGlm6bRunner() {}
-
-AsdOps::Status SelfAttentionKvCacheOpsChatGlm6bRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start: "
+    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsChatGlm6bRunner::SelfAttentionKvCacheOpsChatGlm6bRunner called"
                   << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
                   << ",layerId: " << param_.layerId;
-
-    kernelGraph_.inTensors = variantPack.inTensors;
+    kernelGraph_.inTensors.resize(6);
     AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(1);
     AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(2);
@@ -44,7 +36,7 @@ AsdOps::Status SelfAttentionKvCacheOpsChatGlm6bRunner::SetupKernelGraph(const Va
     AsdOps::Tensor &pastKey = kernelGraph_.inTensors.at(4);
     AsdOps::Tensor &pastValue = kernelGraph_.inTensors.at(5);
 
-    kernelGraph_.outTensors = variantPack.outTensors;
+    kernelGraph_.outTensors.resize(3);
     AsdOps::Tensor &context = kernelGraph_.outTensors.at(0);
     AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(1);
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(2);
@@ -242,7 +234,7 @@ AsdOps::Status SelfAttentionKvCacheOpsChatGlm6bRunner::SetupKernelGraph(const Va
         std::swap(inputStride[0], inputStride[1]);
         runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
     };
-
-    return AsdOps::Status::OkStatus();
 }
+
+SelfAttentionKvCacheOpsChatGlm6bRunner::~SelfAttentionKvCacheOpsChatGlm6bRunner() {}
 } // namespace AclTransformer

@@ -23,19 +23,13 @@ namespace AclTransformer {
 MlpOpsRunner::MlpOpsRunner(const MlpParam &param) : OpsRunner("MlpOpsRunner", RUNNER_TYPE_MLP), param_(param)
 {
     ASD_LOG(INFO) << "MlpOpsRunner::MlpOpsRunner called";
-}
-
-MlpOpsRunner::~MlpOpsRunner() {}
-
-AsdOps::Status MlpOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    kernelGraph_.inTensors = variantPack.inTensors;
+    kernelGraph_.inTensors.resize(4);
     AsdOps::Tensor &hiddenStatus = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &weightGate = kernelGraph_.inTensors.at(1);
     AsdOps::Tensor &weightDown = kernelGraph_.inTensors.at(2);
     AsdOps::Tensor &weightUp = kernelGraph_.inTensors.at(3);
 
-    kernelGraph_.outTensors = variantPack.outTensors;
+    kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &resultTensor = kernelGraph_.outTensors.at(0);
 
     kernelGraph_.internalTensors.resize(4);
@@ -80,9 +74,7 @@ AsdOps::Status MlpOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
     matmulDownNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
     matmulDownNode.inTensors = {&mulOut, &weightDown};
     matmulDownNode.outTensors = {&resultTensor};
-
-    return AsdOps::Status::OkStatus();
 }
 
-bool MlpOpsRunner::CalcLayerMlpTensor(const VariantPack &variantPack, int64_t &beginDim) { return true; }
+MlpOpsRunner::~MlpOpsRunner() {}
 } // namespace AclTransformer

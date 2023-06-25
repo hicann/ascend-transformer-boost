@@ -24,9 +24,6 @@ public:
     AddOpsRunner(const AddParam &param);
     virtual ~AddOpsRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
 private:
     AddParam param_;
 };
