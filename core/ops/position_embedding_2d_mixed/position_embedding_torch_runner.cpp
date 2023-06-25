@@ -27,7 +27,7 @@ namespace AclTransformer {
 PositionEmbeddingTorchRunner::PositionEmbeddingTorchRunner(const PositionEmbeddingParam &param)
     : Runner("PositionEmbeddingTorchRunner"), param_(param)
 {
-    ASD_LOG(INFO) << "PositionEmbeddingOperation::PositionEmbeddingOperation called";
+    ASD_LOG(INFO) << "PositionEmbeddingTorchRunner::PositionEmbeddingTorchRunner called";
 }
 
 PositionEmbeddingTorchRunner::~PositionEmbeddingTorchRunner() {}

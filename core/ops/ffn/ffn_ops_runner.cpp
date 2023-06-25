@@ -19,7 +19,10 @@
 #include <asdops/params/matmul.h>
 
 namespace AclTransformer {
-FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner", RUNNER_TYPE_FFN), param_(param) {}
+FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner", RUNNER_TYPE_FFN), param_(param)
+{
+    ASD_LOG(INFO) << "FfnOpsRunner::FfnOpsRunner";
+}
 
 AsdOps::Status FfnOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
 {

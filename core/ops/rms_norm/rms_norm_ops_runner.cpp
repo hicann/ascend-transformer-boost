@@ -25,6 +25,7 @@ namespace AclTransformer {
 RmsNormOpsRunner::RmsNormOpsRunner(const RmsNormParam &param)
     : OpsRunner("RmsNormOpsRunner", RUNNER_TYPE_RMS_NORM), param_(param)
 {
+    ASD_LOG(INFO) << "RmsNormOpsRunner::RmsNormOpsRunner called";
 }
 
 RmsNormOpsRunner::~RmsNormOpsRunner() {}

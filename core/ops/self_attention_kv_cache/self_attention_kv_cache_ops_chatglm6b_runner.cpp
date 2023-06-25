@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_kv_cache_ops_runner.h"
+#include "self_attention_kv_cache_ops_chatglm6b_runner.h"
 #include <numeric>
 #include <cmath>
 #include <asdops/utils/log/log.h>
@@ -22,15 +22,15 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheOpsRunner::SelfAttentionKvCacheOpsRunner(const SelfAttentionKvCacheParam &param)
-    : OpsRunner("SelfAttentionKvCacheOpsRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
+SelfAttentionKvCacheOpsChatGlm6bRunner::SelfAttentionKvCacheOpsChatGlm6bRunner(const SelfAttentionKvCacheParam &param)
+    : OpsRunner("SelfAttentionKvCacheOpsChatGlm6bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionKVCacheOperation::SelfAttentionKVCacheOperation called";
+    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsChatGlm6bRunner::SelfAttentionKvCacheOpsChatGlm6bRunner called";
 }
 
-SelfAttentionKvCacheOpsRunner::~SelfAttentionKvCacheOpsRunner() {}
+SelfAttentionKvCacheOpsChatGlm6bRunner::~SelfAttentionKvCacheOpsChatGlm6bRunner() {}
 
-AsdOps::Status SelfAttentionKvCacheOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
+AsdOps::Status SelfAttentionKvCacheOpsChatGlm6bRunner::SetupKernelGraph(const VariantPack &variantPack)
 {
     ASD_LOG(INFO) << GetName() << " SetupKernelGraph start: "
                   << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum

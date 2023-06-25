@@ -22,7 +22,7 @@
 namespace AclTransformer {
 NormOpsRunner::NormOpsRunner(const NormParam &param) : OpsRunner("NormOpsRunner", RUNNER_TYPE_NORM), param_(param)
 {
-    ASD_LOG(INFO) << "NormOperation::NormOperation called";
+    ASD_LOG(INFO) << "NormOpsRunner::NormOpsRunner called";
 }
 
 NormOpsRunner::~NormOpsRunner() {}

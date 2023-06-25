@@ -24,7 +24,7 @@
 namespace AclTransformer {
 AnyOpsRunner::AnyOpsRunner(const AnyParam &param) : OpsRunner("AnyOpsRunner"), param_(param)
 {
-    ASD_LOG(INFO) << "AnyOperation::AnyOperation called";
+    ASD_LOG(INFO) << "AnyOpsRunner::AnyOpsRunner called";
 }
 
 AnyOpsRunner::~AnyOpsRunner() {}
