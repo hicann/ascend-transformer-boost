@@ -92,10 +92,21 @@ OpsRunner::~OpsRunner()
 
 AsdOps::Status OpsRunner::SetupImpl(const VariantPack &variantPack)
 {
-    Reset();
-
     kernelGraph_.inTensors = variantPack.inTensors;
     kernelGraph_.outTensors = variantPack.outTensors;
+    if (AsdOps::GetSingleton<Config>().IsOpsRunnerSetupCacheEnable()) {
+        if (IsVariantPackInputEqual(variantPack, lastVariantPack_)) {
+            ASD_LOG(FATAL) << GetName() << " variantPack input is not change, setup do nothing";
+            return AsdOps::Status::OkStatus();
+        } else {
+            ASD_LOG(FATAL) << GetName() << " variantPack input is change, setup do";
+        }
+    }
+
+    lastVariantPack_ = variantPack;
+
+    Reset();
+
     AsdOps::Status st = SetupKernelGraph(variantPack);
     if (!st.Ok()) {
         return st;
@@ -569,4 +580,17 @@ int64_t OpsRunner::GetOutTensorId(const AsdOps::Tensor *tensor)
 }
 
 AsdOps::Status OpsRunner::SetupKernelGraph(const VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
+
+bool OpsRunner::IsVariantPackInputEqual(const VariantPack &variantPack1, const VariantPack &variantPack2)
+{
+    if (variantPack1.inTensors.size() != variantPack2.inTensors.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < variantPack1.inTensors.size(); ++i) {
+        if (!TensorUtil::AsdOpsTensorDescEqual(variantPack1.inTensors.at(i).desc, variantPack2.inTensors.at(i).desc)) {
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace AclTransformer

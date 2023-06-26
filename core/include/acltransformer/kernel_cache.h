@@ -31,7 +31,6 @@ public:
 
 private:
     bool IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::RunInfo &runInfo2);
-    bool IsTensorDescEqual(const AsdOps::TensorDesc &tensorDesc1, const AsdOps::TensorDesc &tensorDesc2);
 
 private:
     std::vector<std::vector<std::pair<AsdOps::RunInfo, AsdOps::Kernel *>>> cachedKernels_;
