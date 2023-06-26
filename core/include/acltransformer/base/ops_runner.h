@@ -81,6 +81,7 @@ private:
     AsdOps::Status UpdateRunInfoTiling(VariantPack &variantPack);
     void UpdateRunInfoWorkspace(VariantPack &variantPack);
     void RunAllKernel(Handle &handle);
+    bool IsVariantPackInputEqual(const VariantPack &variantPack1, const VariantPack &variantPack2);
 
 protected:
     KernelGraph kernelGraph_;
@@ -92,6 +93,7 @@ protected:
     std::map<uint64_t, std::set<AsdOps::Tensor *>> maxNodeIdTensorMap_;
     MemAllocationSolver *memAllocatinSolver_ = nullptr;
     RunnerType runnerType_ = RUNNER_TYPE_UNDEFINED;
+    VariantPack lastVariantPack_;
 };
 } // namespace AclTransformer
 #endif

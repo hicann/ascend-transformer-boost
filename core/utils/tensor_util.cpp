@@ -82,7 +82,8 @@ std::string TensorUtil::AsdOpsTensorDescToString(const AsdOps::TensorDesc &tenso
 
 bool TensorUtil::AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB)
 {
-    return tensorDescA.dims == tensorDescB.dims && tensorDescA.dtype == tensorDescB.dtype;
+    return tensorDescA.dtype == tensorDescB.dtype && tensorDescA.format == tensorDescB.format &&
+           tensorDescA.dims == tensorDescB.dims;
 }
 
 void TensorUtil::SaveTensor(const AsdOps::Tensor &tensor, const std::string &filePath)

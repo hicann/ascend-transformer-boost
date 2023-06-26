@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #include "acltransformer/kernel_cache.h"
+#include "acltransformer/utils/tensor_util.h"
+
 namespace AclTransformer {
 KernelCache::KernelCache() { cachedKernels_.resize(RUNNER_TYPE_MAX); }
 
@@ -57,17 +59,11 @@ bool KernelCache::IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::
     }
 
     for (uint64_t i = 0; i < runInfo1.GetInTensorCount(); ++i) {
-        if (!IsTensorDescEqual(runInfo1.GetInTensor(i).desc, runInfo2.GetInTensor(i).desc)) {
+        if (!TensorUtil::AsdOpsTensorDescEqual(runInfo1.GetInTensor(i).desc, runInfo2.GetInTensor(i).desc)) {
             return false;
         }
     }
 
     return true;
-}
-
-bool KernelCache::IsTensorDescEqual(const AsdOps::TensorDesc &tensorDesc1, const AsdOps::TensorDesc &tensorDesc2)
-{
-    return tensorDesc1.dtype == tensorDesc2.dtype && tensorDesc1.format == tensorDesc2.format &&
-           tensorDesc1.dims == tensorDesc2.dims;
 }
 } // namespace AclTransformer

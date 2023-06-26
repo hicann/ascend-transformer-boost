@@ -45,12 +45,14 @@ Config::Config()
     isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE");
     isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
     isKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_KERNELCACHE_ENABLE", true);
-    ASD_LOG(INFO) << "isSaveTensor:" << isSaveTensor_
-                  << ", isStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
-                  << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
-                  << ", isStreamSyncEveryOperationEnable:" << isStreamSyncEveryOperationEnable_
-                  << ", isStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
-                  << ", isKernelCacheEnable:" << isKernelCacheEnable_ << ", workspaceSize:" << workspaceSize_;
+    isOpsRunnerSetupCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_SETUP_CACHE_ENABLE", false);
+    ASD_LOG(FATAL) << "isSaveTensor:" << isSaveTensor_
+                   << ", isStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
+                   << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
+                   << ", isStreamSyncEveryOperationEnable:" << isStreamSyncEveryOperationEnable_
+                   << ", isStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
+                   << ", isKernelCacheEnable:" << isKernelCacheEnable_ << ", workspaceSize:" << workspaceSize_
+                   << ", isOpsRunnerSetupCacheEnable_" << isOpsRunnerSetupCacheEnable_;
 }
 
 Config::~Config() {}
@@ -148,4 +150,6 @@ void Config::InitIs910B()
     ASD_LOG(INFO) << "SocVersion:" << std::string(version);
     is910B_ = std::string(version).find("Ascend910B") != std::string::npos;
 }
+
+bool Config::IsOpsRunnerSetupCacheEnable() { return isOpsRunnerSetupCacheEnable_; }
 } // namespace AclTransformer
