@@ -40,13 +40,13 @@ Config::Config()
     isSelfAttentionOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_SELFATTENTION_OPSRUNNER_ENABLE");
     isPositionEmbedding1dSplitOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_1D_SPLIT_OPSRUNNER_ENABLE");
     isTransposeOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_TRANSPOSE_OPSRUNNER_ENABLE");
-    isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE", true);
+    isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE");
     isStreamSyncEveryKernelEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_KERNEL_ENABLE");
     isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE");
     isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
     isKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_KERNELCACHE_ENABLE", true);
     isOpsRunnerSetupCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_SETUP_CACHE_ENABLE", false);
-    isOpsRunnerWorkspaceReusageEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_WORKSPACE_REUSAGE_ENABLE", true);
+    isOpsRunnerWorkspaceReusageEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_WORKSPACE_REUSAGE_ENABLE");
     ASD_LOG(FATAL) << "isSaveTensor:" << isSaveTensor_
                    << ", isStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
