@@ -74,7 +74,7 @@ private:
     bool isStreamSyncEveryPlanEnable_ = false;
     bool isKernelCacheEnable_ = false;
     std::vector<std::string> skipKernelNames_;
-    uint64_t workspaceSize_ = 1024 * 1024 * 1024 * 2;
+    uint64_t workspaceSize_ = 1024 * 1024 * 500;
     bool is910B_ = false;
     bool isOpsRunnerSetupCacheEnable_ = false;
     bool isOpsRunnerWorkspaceReusageEnable_ = true;
