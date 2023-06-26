@@ -116,7 +116,9 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
     ASD_LOG(INFO) << "Plan MemAllocationSolver malloc size:" << memAllocatinSolver_->GetMallocSize()
                   << ", real size:" << memAllocatinSolver_->GetSize();
 
-    for (auto &node : runnerGraph_.nodes) {
+    workspaceSizes_.resize(runnerGraph_.nodes.size());
+    for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
+        auto &node = runnerGraph_.nodes.at(nodeId);
         ASD_LOG(INFO) << "Plan call " << node.runner->GetName() << " setup ";
         AsdOps::Status st = node.runner->Setup(node.variantPack);
         if (!st.Ok()) {
@@ -125,14 +127,20 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
         uint64_t runnerWorkspaceSize = node.runner->GetWorkspaceSize();
         runnerWorkspaceSize = TensorUtil::AlignInt(runnerWorkspaceSize, 32);
         ASD_LOG(INFO) << "Plan get " << node.runner->GetName() << " workspace size:" << runnerWorkspaceSize;
-        workspaceSize_ = std::max(runnerWorkspaceSize, workspaceSize_);
+        if (AsdOps::GetSingleton<Config>().IsOpsRunnerWorkspaceReusageEnable()) {
+            totalWorkspaceSize_ = std::max(runnerWorkspaceSize, totalWorkspaceSize_);
+        } else {
+            totalWorkspaceSize_ += runnerWorkspaceSize;
+            workspaceSizes_.at(nodeId) = runnerWorkspaceSize;
+        }
     }
 
-    ASD_LOG(INFO) << "Plan::Setup end, intermediateSize:" << intermediateSize_ << ", workspaceSize:" << workspaceSize_;
+    ASD_LOG(INFO) << "Plan::Setup end, intermediateSize:" << intermediateSize_
+                  << ", totalWorkspaceSize:" << totalWorkspaceSize_;
     return AsdOps::Status::OkStatus();
 }
 
-uint64_t Plan::GetWorkspaceSize() { return workspaceSize_ + intermediateSize_; }
+uint64_t Plan::GetWorkspaceSize() { return totalWorkspaceSize_ + intermediateSize_; }
 
 AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
 {
@@ -141,15 +149,23 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
         return AsdOps::Status::FailStatus(1, "handle stream is null");
     }
     ASD_LOG(INFO) << "Plan::Execute start, runnerGraph_.nodes:" << runnerGraph_.nodes.size();
-    uint64_t offset = 0;
-    if (workspaceSize_ > 0) {
+
+    if (totalWorkspaceSize_ > 0) {
+        uint64_t offset = 0;
+        size_t nodeId = 0;
         for (auto &node : runnerGraph_.nodes) {
             VariantPack &runnerVariantPack = node.variantPack;
-            runnerVariantPack.workspace = variantPack.workspace;
+            if (AsdOps::GetSingleton<Config>().IsOpsRunnerWorkspaceReusageEnable()) {
+                runnerVariantPack.workspace = variantPack.workspace;
+            } else {
+                runnerVariantPack.workspace = variantPack.workspace + offset;
+                offset += workspaceSizes_.at(nodeId++);
+            }
             runnerVariantPack.workspaceSize = node.runner->GetWorkspaceSize();
         }
-        offset += workspaceSize_;
     }
+
+    uint64_t offset = totalWorkspaceSize_;
 
     char *intermediateBuffer = static_cast<char *>(variantPack.workspace) + offset;
     ASD_LOG(INFO) << "Plan update tensor.data start";
@@ -218,7 +234,8 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
 
 void Plan::Reset()
 {
-    workspaceSize_ = 0;
+    totalWorkspaceSize_ = 0;
+    workspaceSizes_.clear();
     intermediateSize_ = 0;
     if (memAllocatinSolver_) {
         memAllocatinSolver_->Reset();

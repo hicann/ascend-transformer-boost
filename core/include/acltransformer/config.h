@@ -43,9 +43,10 @@ public:
     bool IsStreamSyncEveryPlanEnable();
     bool IsKernelCacheEnable();
     bool IsSkipKernel(const std::string &kernelName);
-    bool GetWorkspaceSize();
+    uint64_t GetWorkspaceSize();
     bool Is910B();
     bool IsOpsRunnerSetupCacheEnable();
+    bool IsOpsRunnerWorkspaceReusageEnable();
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
@@ -76,6 +77,7 @@ private:
     uint64_t workspaceSize_ = 1024 * 1024 * 1000;
     bool is910B_ = false;
     bool isOpsRunnerSetupCacheEnable_ = false;
+    bool isOpsRunnerWorkspaceReusageEnable_ = true;
 };
 } // namespace AclTransformer
 #endif
