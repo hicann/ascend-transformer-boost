@@ -15,43 +15,40 @@
  */
 #include "layer_workspace.h"
 #include <asdops/utils/log/log.h>
-#include <asdops/utils/rt/rt.h>
 #include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
+#include "layer_workspace_rt.h"
+#include "layer_workspace_torch.h"
 
 namespace AclTransformer {
 
-LayerWorkspace::LayerWorkspace() { SetWorkspace(AsdOps::GetSingleton<Config>().GetWorkspaceSize()); }
-
-LayerWorkspace::~LayerWorkspace() { Free(); }
-
-void LayerWorkspace::SetWorkspace(uint64_t workspaceSize)
+LayerWorkspace::LayerWorkspace()
 {
-    if (workspaceSize <= workspaceSize_) {
-        ASD_LOG(INFO) << "LayerWorkspace::SetWorkspace workspaceSize:" << workspaceSize
-                      << " <= workspaceSize_:" << workspaceSize_ << ", not new device mem";
-        return;
+    bool ret = IsUserTorch();
+    ASD_LOG(FATAL) << "LayerWorkspace is use torch:" << IsUserTorch()
+                   << ", can change it use ACLTRANSFORMER_WORKSPACE_USE_TORCH";
+
+    if (ret) {
+        base_.reset(new LayerWorkspaceTorch());
+    } else {
+        base_.reset(new LayerWorkspaceRt());
     }
 
-    ASD_LOG(INFO) << "LayerWorkspace::SetWorkspace AsdRtMemMallocDevice workspaceSize:" << workspaceSize;
-    int st = AsdRtMemMallocDevice((void **)&workspace_, workspaceSize, ASDRT_MEM_DEFAULT);
-    if (st != ASDRT_SUCCESS) {
-        ASD_LOG(ERROR) << "LayerWorkspace::SetWorkspace AsdRtMemMallocDevice fail, ret:" << st;
-        return;
-    }
-    workspaceSize_ = workspaceSize;
+    SetWorkspace(AsdOps::GetSingleton<Config>().GetWorkspaceSize());
 }
 
-void *LayerWorkspace::GetWorkspace() { return workspace_; }
+LayerWorkspace::~LayerWorkspace() {}
 
-void LayerWorkspace::Free()
+void LayerWorkspace::SetWorkspace(uint64_t workspaceSize) { base_->SetWorkspace(workspaceSize); }
+
+void *LayerWorkspace::GetWorkspace() { return base_->GetWorkspace(); }
+
+bool LayerWorkspace::IsUserTorch()
 {
-    if (workspace_) {
-        ASD_LOG(INFO) << "LayerWorkspace::SetWorkspace AsdRtMemFreeDevice workspace:" << workspace_
-                      << ", workspaceSize:" << workspaceSize_;
-        AsdRtMemFreeDevice(workspace_);
-        workspace_ = nullptr;
-        workspaceSize_ = 0;
+    const char *envStr = std::getenv("ACLTRANSFORMER_WORKSPACE_USE_TORCH");
+    if (envStr == nullptr) {
+        return true;
     }
+    return std::string(envStr) == "1";
 }
 } // namespace AclTransformer

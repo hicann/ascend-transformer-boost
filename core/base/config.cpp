@@ -46,13 +46,15 @@ Config::Config()
     isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
     isKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_KERNELCACHE_ENABLE", true);
     isOpsRunnerSetupCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_SETUP_CACHE_ENABLE", false);
+    isOpsRunnerWorkspaceReusageEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_WORKSPACE_REUSAGE_ENABLE", true);
     ASD_LOG(FATAL) << "isSaveTensor:" << isSaveTensor_
                    << ", isStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
                    << ", isStreamSyncEveryOperationEnable:" << isStreamSyncEveryOperationEnable_
                    << ", isStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
                    << ", isKernelCacheEnable:" << isKernelCacheEnable_ << ", workspaceSize:" << workspaceSize_
-                   << ", isOpsRunnerSetupCacheEnable_" << isOpsRunnerSetupCacheEnable_;
+                   << ", isOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
+                   << ", isOpsRunnerWorkspaceReusageEnable:" << isOpsRunnerWorkspaceReusageEnable_;
 }
 
 Config::~Config() {}
@@ -129,7 +131,7 @@ void Config::InitSkipKernelName()
     AsdOps::StrSplit(std::string(envStr), ',', skipKernelNames_);
 }
 
-bool Config::GetWorkspaceSize() { return workspaceSize_; }
+uint64_t Config::GetWorkspaceSize() { return workspaceSize_; }
 
 void Config::InitWorkspaceSize()
 {
@@ -137,7 +139,7 @@ void Config::InitWorkspaceSize()
     if (!envStr) {
         return;
     }
-    workspaceSize_ = atoi(envStr);
+    workspaceSize_ = atoll(envStr);
 }
 
 bool Config::Is910B() { return is910B_; }
@@ -152,4 +154,6 @@ void Config::InitIs910B()
 }
 
 bool Config::IsOpsRunnerSetupCacheEnable() { return isOpsRunnerSetupCacheEnable_; }
+
+bool Config::IsOpsRunnerWorkspaceReusageEnable() { return isOpsRunnerWorkspaceReusageEnable_; }
 } // namespace AclTransformer

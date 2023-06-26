@@ -13,26 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LAYER_WORKSPACE_H
-#define LAYER_WORKSPACE_H
+#ifndef LAYER_WORKSPACE_BASE_H
+#define LAYER_WORKSPACE_BASE_H
 #include <cstdint>
-#include <memory>
 
 namespace AclTransformer {
-class LayerWorkspaceBase;
-
-class LayerWorkspace {
+class LayerWorkspaceBase {
 public:
-    LayerWorkspace();
-    ~LayerWorkspace();
-    virtual void SetWorkspace(uint64_t workspaceSize);
-    virtual void *GetWorkspace();
-
-private:
-    bool IsUserTorch();
-
-private:
-    std::unique_ptr<LayerWorkspaceBase> base_;
+    LayerWorkspaceBase();
+    virtual ~LayerWorkspaceBase();
+    virtual void SetWorkspace(uint64_t workspaceSize) = 0;
+    virtual void *GetWorkspace() = 0;
 };
 } // namespace AclTransformer
 #endif

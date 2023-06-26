@@ -67,7 +67,8 @@ private:
 protected:
     friend class PlanBuilder;
     RunnerGraph runnerGraph_;
-    uint64_t workspaceSize_ = 0;
+    uint64_t totalWorkspaceSize_ = 0;
+    AsdOps::SVector<uint64_t> workspaceSizes_;
     uint64_t intermediateSize_ = 0;
     MemAllocationSolver *memAllocatinSolver_ = nullptr;
     std::map<AsdOps::Tensor *, uint64_t> tensorMaxNodeIdMap_;
