@@ -31,19 +31,18 @@ NormOperation::NormOperation(const NormParam &param) : Operation("NormOperation"
 
 NormOperation::~NormOperation() {}
 
-AsdOps::Status NormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                         AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
-{
-    if (inTensors.size() != 3) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 3");
-    }
+uint64_t NormOperation::GetInTensorCount() const { return 3; }
 
-    outTensorDescs.resize(1);
+uint64_t NormOperation::GetOutTensorCount() const { return 1; }
+
+AsdOps::Status NormOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                             AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+{
     outTensorDescs.at(0) = inTensors.at(0).desc;
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *NormOperation::FindBestRunnerBuilder()
+RunnerBuilder *NormOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsNormOpsRunnerEnable() ? 0 : 1;

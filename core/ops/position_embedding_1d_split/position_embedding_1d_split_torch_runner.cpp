@@ -32,18 +32,19 @@ PositionEmbedding1dSplitTorchRunner::PositionEmbedding1dSplitTorchRunner(const P
 
 PositionEmbedding1dSplitTorchRunner::~PositionEmbedding1dSplitTorchRunner() {}
 
-AsdOps::Status PositionEmbedding1dSplitTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status PositionEmbedding1dSplitTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
 #ifdef USE_TORCH_RUNNER
     // in : Q,[batch, seq_len, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
     // out : Q ,[seq_len, batch, head_num, head_size]
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum;
-    torch::Tensor input = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    torch::Tensor positionIds = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    torch::Tensor cosTable = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-    torch::Tensor sinTable = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    torch::Tensor input = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
+    torch::Tensor positionIds = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
+    torch::Tensor cosTable = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
+    torch::Tensor sinTable = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[3]);
     // [batch, headNum, seqlen, headDim]
-    input = input.view({input.sizes()[0], input.sizes()[1], param_.headNum, input.sizes()[2] / param_.headNum}).transpose(1, 2);
+    input = input.view({input.sizes()[0], input.sizes()[1], param_.headNum, input.sizes()[2] / param_.headNum})
+                .transpose(1, 2);
     // [seqLen, head_dim]
     cosTable = cosTable.squeeze(1).squeeze(0);
     sinTable = sinTable.squeeze(1).squeeze(0);
@@ -54,15 +55,15 @@ AsdOps::Status PositionEmbedding1dSplitTorchRunner::ExecuteImpl(Handle &handle, 
     int chunksLastDimSize = input.sizes()[chunksLastDim];
     ASD_LOG(INFO) << "chunksLastDim: " << chunksLastDim;
     ASD_LOG(INFO) << "chunksLastDimSize: " << chunksLastDimSize;
-    torch::Tensor inputRotate = torch::cat({input.slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(),
-                                         input.slice(-1, 0, chunksLastDimSize / 2)},
-                                        chunksLastDim);
+    torch::Tensor inputRotate = torch::cat(
+        {input.slice(-1, chunksLastDimSize / 2, chunksLastDimSize).neg(), input.slice(-1, 0, chunksLastDimSize / 2)},
+        chunksLastDim);
     // [batch, headNum, seqlen, headDim]
     torch::Tensor inputEmbedded = torch::add(torch::mul(input, cos), torch::mul(inputRotate, sin));
     // [seqlen, batch, headNum, headDim]
     inputEmbedded = inputEmbedded.permute({2, 0, 1, 3});
     ASD_LOG(INFO) << "inputEmbedded: " << inputEmbedded.sizes();
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, inputEmbedded.contiguous(), variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, inputEmbedded.contiguous(), runnerVariantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");

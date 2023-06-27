@@ -31,19 +31,18 @@ MlpOperation::MlpOperation(const MlpParam &param) : Operation("MlpOperation"), p
 
 MlpOperation::~MlpOperation() {}
 
-AsdOps::Status MlpOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
-{
-    if (inTensors.size() != 4) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 4");
-    }
+uint64_t MlpOperation::GetInTensorCount() const { return 4; }
 
-    outTensorDescs.resize(1);
+uint64_t MlpOperation::GetOutTensorCount() const { return 1; }
+
+AsdOps::Status MlpOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+{
     outTensorDescs.at(0) = inTensors.at(0).desc;
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *MlpOperation::FindBestRunnerBuilder()
+RunnerBuilder *MlpOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsMlpOpsRunnerEnable() ? 0 : 1;

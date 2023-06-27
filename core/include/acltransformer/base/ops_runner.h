@@ -56,44 +56,50 @@ public:
     virtual ~OpsRunner();
 
 protected:
-    virtual AsdOps::Status SetupKernelGraph(const VariantPack &variantPack);
+    virtual AsdOps::Status SetupKernelGraph(const RunnerVariantPack &runnerVariantPack);
 
 protected:
-    AsdOps::Status SetupImpl(const VariantPack &variantPack) override;
-
-    uint64_t GetWorkspaceSizeImpl() override;
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    AsdOps::Status SetupImpl(const RunnerVariantPack &runnerVariantPack) override;
+    uint64_t GetTilingBufferSizeImpl() override;
+    void FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t tilingBufferSize) override;
+    uint64_t GetWorkspaceBufferSizeImpl() override;
+    uint64_t GetIntermediateBufferSizeImpl() override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
     void Reset();
-    bool PlanKernelGraph(const VariantPack &variantPack);
+    bool PlanKernelGraph(const RunnerVariantPack &runnerVariantPack);
     bool PlanOneKernel(size_t nodeId);
     bool PlanOneKernelBuildRunInfo(KernelGraphNode &node, size_t nodeId);
     bool PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId);
     bool PlanOneKernelSelectBestKernel(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId);
-    void FillTilingData(const VariantPack &variantPack);
+    void CalcTilingBufferSize(const RunnerVariantPack &runnerVariantPack);
     void InitTensorMaxNodeMap();
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
     int64_t GetInTensorId(const AsdOps::Tensor *tensor);
     int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
     void WriteTilingData(const char *tilingData, size_t len, const std::string &filePath);
-    void UpdateRunInfoTensorData(VariantPack &variantPack);
-    AsdOps::Status UpdateRunInfoTiling(VariantPack &variantPack);
-    void UpdateRunInfoWorkspace(VariantPack &variantPack);
+    void UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack);
+    AsdOps::Status UpdateRunInfoTiling(RunnerVariantPack &runnerVariantPack);
+    void UpdateRunInfoWorkspace(RunnerVariantPack &runnerVariantPack);
     void RunAllKernel(Handle &handle);
-    bool IsVariantPackInputEqual(const VariantPack &variantPack1, const VariantPack &variantPack2);
+    bool IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
+                                       const RunnerVariantPack &runnerVariantPack2);
+    bool IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::RunInfo &runInfo2);
 
 protected:
     KernelGraph kernelGraph_;
-    uint64_t intermediateSize_ = 0;
-    std::vector<char> tilingData_;
-    std::vector<uint64_t> kernelTilingSizes_;
+    uint64_t totalTilingSize_ = 0;
+    AsdOps::SVector<uint64_t, 64> tilingSizes_;
     uint64_t workspaceSize_ = 0;
+    uint64_t intermediateSize_ = 0;
     std::map<AsdOps::Tensor *, uint64_t> tensorMaxNodeIdMap_;
     std::map<uint64_t, std::set<AsdOps::Tensor *>> maxNodeIdTensorMap_;
     MemAllocationSolver *memAllocatinSolver_ = nullptr;
     RunnerType runnerType_ = RUNNER_TYPE_UNDEFINED;
-    VariantPack lastVariantPack_;
+    RunnerVariantPack lastRunnerVariantPack_;
+    AsdOps::RunInfo lastRunInfo_;
+    AsdOps::Kernel *lastKernel_ = nullptr;
 };
 } // namespace AclTransformer
 #endif

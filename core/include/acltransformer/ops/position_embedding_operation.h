@@ -23,11 +23,13 @@ class PositionEmbeddingOperation : public Operation {
 public:
     PositionEmbeddingOperation(const PositionEmbeddingParam &param);
     virtual ~PositionEmbeddingOperation();
-    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
 
 protected:
-    RunnerBuilder *FindBestRunnerBuilder() override;
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    RunnerBuilder *FindBestRunnerBuilder() const override;
 
 private:
     PositionEmbeddingParam param_;

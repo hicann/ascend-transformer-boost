@@ -30,13 +30,14 @@ public:
     virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) = 0;
 
-    void Execute(AclTransformer::VariantPack &variantPack);
+    void Execute(Handle &handle, AclTransformer::VariantPack &variantPack);
 
 protected:
     void BuildPlan();
 
 protected:
     std::string layerName_;
+    uint64_t layerId_ = 0;
     nlohmann::json paramJson_;
     AclTransformer::OperationGraph opGraph_;
     void *lastStream_ = nullptr;

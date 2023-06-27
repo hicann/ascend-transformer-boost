@@ -13,41 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "layer_workspace_rt.h"
+#include "workspace_rt.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 
 namespace AclTransformer {
 
-LayerWorkspaceRt::LayerWorkspaceRt() { ASD_LOG(INFO) << "LayerWorkspaceRt::LayerWorkspaceRt called"; }
+WorkspaceRt::WorkspaceRt() { ASD_LOG(INFO) << "WorkspaceRt::WorkspaceRt called"; }
 
-LayerWorkspaceRt::~LayerWorkspaceRt() { Free(); }
+WorkspaceRt::~WorkspaceRt() { Free(); }
 
-void LayerWorkspaceRt::SetWorkspace(uint64_t workspaceSize)
+void WorkspaceRt::SetWorkspace(uint64_t workspaceSize)
 {
     if (workspaceSize <= workspaceSize_) {
-        ASD_LOG(INFO) << "LayerWorkspaceRt::SetWorkspace workspaceSize:" << workspaceSize
+        ASD_LOG(INFO) << "WorkspaceRt::SetWorkspace workspaceSize:" << workspaceSize
                       << " <= workspaceSize_:" << workspaceSize_ << ", not new device mem";
         return;
     }
 
     Free();
 
-    ASD_LOG(INFO) << "LayerWorkspaceRt::SetWorkspace AsdRtMemMallocDevice workspaceSize:" << workspaceSize;
+    ASD_LOG(INFO) << "WorkspaceRt::SetWorkspace AsdRtMemMallocDevice workspaceSize:" << workspaceSize;
     int st = AsdRtMemMallocDevice((void **)&workspace_, workspaceSize, ASDRT_MEM_DEFAULT);
     if (st != ASDRT_SUCCESS) {
-        ASD_LOG(ERROR) << "LayerWorkspaceRt::SetWorkspace AsdRtMemMallocDevice fail, ret:" << st;
+        ASD_LOG(ERROR) << "WorkspaceRt::SetWorkspace AsdRtMemMallocDevice fail, ret:" << st;
         return;
     }
     workspaceSize_ = workspaceSize;
 }
 
-void *LayerWorkspaceRt::GetWorkspace() { return workspace_; }
+void *WorkspaceRt::GetWorkspace() { return workspace_; }
 
-void LayerWorkspaceRt::Free()
+void WorkspaceRt::Free()
 {
     if (workspace_) {
-        ASD_LOG(INFO) << "LayerWorkspaceRt::SetWorkspace AsdRtMemFreeDevice workspace:" << workspace_
+        ASD_LOG(INFO) << "WorkspaceRt::SetWorkspace AsdRtMemFreeDevice workspace:" << workspace_
                       << ", workspaceSize:" << workspaceSize_;
         AsdRtMemFreeDevice(workspace_);
         workspace_ = nullptr;

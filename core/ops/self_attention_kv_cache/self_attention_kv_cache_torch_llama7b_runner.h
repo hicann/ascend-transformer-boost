@@ -21,14 +21,14 @@
 namespace AclTransformer {
 class SelfAttentionKvCacheTorchLlama7bRunner : public Runner {
 public:
-    SelfAttentionKvCacheTorchLlama7bRunner(const SelfAttentionKvCacheParam  &param);
+    SelfAttentionKvCacheTorchLlama7bRunner(const SelfAttentionKvCacheParam &param);
     virtual ~SelfAttentionKvCacheTorchLlama7bRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
-    SelfAttentionKvCacheParam  param_;
+    SelfAttentionKvCacheParam param_;
 };
 
 } // namespace AclTransformer

@@ -31,79 +31,25 @@ Operation::~Operation()
         delete it;
     }
     runnerBuilders_.clear();
-
-    if (runner_) {
-        delete runner_;
-        runner_ = nullptr;
-    }
 }
 
 std::string Operation::GetName() const { return name_; }
 
-AsdOps::Status Operation::Setup(VariantPack &variantPack)
+AsdOps::Status Operation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                     AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString();
-    if (runner_ == nullptr) {
-        runner_ = CreateBestRunner();
-        ASD_LOG_IF(runner_ == nullptr, ERROR) << GetName() << " CreateBestRunner fail";
-    }
-    if (!runner_) {
-        return AsdOps::Status::FailStatus(1, "create best runner fail");
+    uint64_t inTensorCount = GetInTensorCount();
+    if (inTensors.size() != inTensorCount) {
+        return AsdOps::Status::FailStatus(1, "inTensors size is not " + std::to_string(inTensorCount));
     }
 
-    ASD_LOG(INFO) << runner_->GetName() << " Setup start";
-    AsdOps::Status st = runner_->Setup(variantPack);
-    ASD_LOG(INFO) << runner_->GetName() << " Setup end, result:" << st.Message();
-    if (!st.Ok()) {
-        ASD_LOG(ERROR) << GetName() << " Setup fail, error:" << st.Message();
-        return st;
-    }
+    uint64_t outTensorCount = GetOutTensorCount();
+    outTensorDescs.resize(outTensorCount);
 
-    ASD_LOG(INFO) << GetName() << " Setup success";
-    return AsdOps::Status::OkStatus();
+    return InferShapeImpl(inTensors, outTensorDescs);
 }
 
-uint64_t Operation::GetWorkspaceSize() { return runner_ ? runner_->GetWorkspaceSize() : 0; }
-
-AsdOps::Status Operation::Execute(Handle &handle, VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " Execute variantPack:" << variantPack.ToString();
-    if (handle.stream == nullptr) {
-        ASD_LOG(ERROR) << GetName() << " handle.stream is null";
-        return AsdOps::Status::FailStatus(1, "handle.stream is null");
-    }
-    if (!runner_) {
-        ASD_LOG(ERROR) << GetName() << " runner is null";
-        return AsdOps::Status::FailStatus(1, "runner is null");
-    }
-
-    ASD_LOG(INFO) << runner_->GetName() << " Execute start";
-    AsdOps::Status st = runner_->Execute(handle, variantPack);
-    ASD_LOG(INFO) << runner_->GetName() << " Execute end";
-    if (!st.Ok()) {
-        ASD_LOG(ERROR) << GetName() << " execute fail, error:" << st.Message();
-        return st;
-    }
-
-    if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryOperationEnable()) {
-        int ret = AsdRtStreamSynchronize(handle.stream);
-        if (ret != 0) {
-            ASD_LOG(ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
-            return AsdOps::Status::FailStatus(1, "AsdRtStreamSynchronize fail");
-        }
-    }
-
-    if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
-        std::string dirPath = Config::GetSaveTensorDir() + "/" + runner_->GetName();
-        TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
-        ASD_LOG(INFO) << GetName() << " SaveVariantPack " << dirPath;
-    }
-
-    ASD_LOG(INFO) << GetName() << " Execute success";
-    return AsdOps::Status::OkStatus();
-}
-
-Runner *Operation::CreateBestRunner()
+Runner *Operation::CreateBestRunner() const
 {
     RunnerBuilder *runnerBuilder = FindBestRunnerBuilder();
     if (runnerBuilder) {

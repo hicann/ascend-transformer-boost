@@ -25,7 +25,7 @@ public:
     virtual ~TransposeTorchRunner();
 
 private:
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
     TransposeParam param_;

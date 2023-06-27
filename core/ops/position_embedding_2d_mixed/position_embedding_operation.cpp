@@ -32,17 +32,15 @@ PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingPa
 
 PositionEmbeddingOperation::~PositionEmbeddingOperation() {}
 
-AsdOps::Status PositionEmbeddingOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+uint64_t PositionEmbeddingOperation::GetInTensorCount() const { return 4; }
+
+uint64_t PositionEmbeddingOperation::GetOutTensorCount() const { return 3; }
+
+AsdOps::Status PositionEmbeddingOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                          AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     // in : Q,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
     // out : Q ,[seq_len, batch, head_num, head_size]
-    if (inTensors.size() != 4) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 4 ");
-    }
-
-    outTensorDescs.resize(3);
-
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(0).dims.clear();
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
@@ -55,7 +53,7 @@ AsdOps::Status PositionEmbeddingOperation::InferShape(const AsdOps::SVector<AsdO
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *PositionEmbeddingOperation::FindBestRunnerBuilder()
+RunnerBuilder *PositionEmbeddingOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsPositionEmbeddingOpsRunnerEnable() ? 0 : 1;

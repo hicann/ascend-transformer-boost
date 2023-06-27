@@ -23,11 +23,13 @@ class MlpOperation : public Operation {
 public:
     MlpOperation(const MlpParam &param);
     virtual ~MlpOperation();
-    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
 
 protected:
-    RunnerBuilder *FindBestRunnerBuilder() override;
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    RunnerBuilder *FindBestRunnerBuilder() const override;
 
 private:
     MlpParam param_;

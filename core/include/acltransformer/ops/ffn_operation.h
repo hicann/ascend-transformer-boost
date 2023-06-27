@@ -24,8 +24,10 @@ class FfnOperation : public Operation {
 public:
     FfnOperation(const FfnParam &param);
     virtual ~FfnOperation();
-    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
+
+private:
     bool IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const;
     int64_t GetTensorBatch(const AsdOps::TensorDesc &tensorDesc) const;
@@ -33,7 +35,9 @@ public:
     int64_t GetTensorW(const AsdOps::TensorDesc &tensorDesc) const;
 
 protected:
-    RunnerBuilder *FindBestRunnerBuilder() override;
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    RunnerBuilder *FindBestRunnerBuilder() const override;
 
 private:
     FfnParam param_;

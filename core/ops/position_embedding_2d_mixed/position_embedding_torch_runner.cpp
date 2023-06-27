@@ -32,16 +32,16 @@ PositionEmbeddingTorchRunner::PositionEmbeddingTorchRunner(const PositionEmbeddi
 
 PositionEmbeddingTorchRunner::~PositionEmbeddingTorchRunner() {}
 
-AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
 #ifdef USE_TORCH_RUNNER
     // in : [seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
     // out : [seq_len, batch, head_num, head_size]
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum;
-    torch::Tensor mixed = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    torch::Tensor positionIds = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    torch::Tensor cosTable = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
-    torch::Tensor sinTable = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    torch::Tensor mixed = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
+    torch::Tensor positionIds = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
+    torch::Tensor cosTable = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
+    torch::Tensor sinTable = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[3]);
     ASD_LOG(INFO) << "start";
     ASD_LOG(INFO) << "mixed" << mixed.sizes();
     ASD_LOG(INFO) << "positionIds" << positionIds.sizes();
@@ -88,14 +88,14 @@ AsdOps::Status PositionEmbeddingTorchRunner::ExecuteImpl(Handle &handle, Variant
 
     torch::Tensor qEmbedded = torch::cat({qEmbedded1, qEmbedded2}, chunksLastDim).contiguous();
     torch::Tensor kEmbedded = torch::cat({kEmbedded1, kEmbedded2}, chunksLastDim).contiguous();
-    ASD_LOG(INFO) << "qEmbedded: " << qEmbedded.sizes() << ", variantPack.outTensors[0].desc:"
-                  << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
-    ASD_LOG(INFO) << "kEmbedded: " << kEmbedded.sizes() << ", variantPack.outTensors[0].desc:"
-                  << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
+    ASD_LOG(INFO) << "qEmbedded: " << qEmbedded.sizes() << ", runnerVariantPack.outTensors[0].desc:"
+                  << TensorUtil::AsdOpsTensorDescToString(runnerVariantPack.outTensors[0].desc);
+    ASD_LOG(INFO) << "kEmbedded: " << kEmbedded.sizes() << ", runnerVariantPack.outTensors[0].desc:"
+                  << TensorUtil::AsdOpsTensorDescToString(runnerVariantPack.outTensors[0].desc);
 
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, qEmbedded.contiguous(), variantPack.outTensors[0]);
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, kEmbedded.contiguous(), variantPack.outTensors[1]);
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, qkvLayer[2].contiguous(), variantPack.outTensors[2]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, qEmbedded.contiguous(), runnerVariantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, kEmbedded.contiguous(), runnerVariantPack.outTensors[1]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, qkvLayer[2].contiguous(), runnerVariantPack.outTensors[2]);
 
     return AsdOps::Status::OkStatus();
 #else

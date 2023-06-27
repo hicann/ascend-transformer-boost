@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LAYER_WORKSPACE_BASE_H
-#define LAYER_WORKSPACE_BASE_H
+#ifndef WORKSPACE_BASE_H
+#define WORKSPACE_BASE_H
 #include <cstdint>
 
 namespace AclTransformer {
-class LayerWorkspaceBase {
+class WorkspaceBase {
 public:
-    LayerWorkspaceBase();
-    virtual ~LayerWorkspaceBase();
+    WorkspaceBase();
+    virtual ~WorkspaceBase();
     virtual void SetWorkspace(uint64_t workspaceSize) = 0;
     virtual void *GetWorkspace() = 0;
 };

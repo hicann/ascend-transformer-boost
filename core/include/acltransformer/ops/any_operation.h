@@ -23,11 +23,13 @@ class AnyOperation : public Operation {
 public:
     explicit AnyOperation(const AnyParam &param);
     ~AnyOperation();
-    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
 
 protected:
-    RunnerBuilder *FindBestRunnerBuilder() override;
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    RunnerBuilder *FindBestRunnerBuilder() const override;
 
 private:
     AnyParam param_;

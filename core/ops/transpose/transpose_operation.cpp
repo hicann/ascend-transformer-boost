@@ -31,20 +31,19 @@ TransposeOperation::TransposeOperation(const TransposeParam &param) : Operation(
 
 TransposeOperation::~TransposeOperation() {}
 
-AsdOps::Status TransposeOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
-{
-    if (inTensors.size() != 1) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 1");
-    }
+uint64_t TransposeOperation::GetInTensorCount() const { return 1; }
 
-    outTensorDescs.resize(1);
+uint64_t TransposeOperation::GetOutTensorCount() const { return 1; }
+
+AsdOps::Status TransposeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+{
     outTensorDescs.at(0) = inTensors.at(0).desc;
     std::swap(outTensorDescs.at(0).dims[param_.dimA], outTensorDescs.at(0).dims[param_.dimB]);
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *TransposeOperation::FindBestRunnerBuilder()
+RunnerBuilder *TransposeOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsTransposeOpsRunnerEnable() ? 0 : 1;
