@@ -44,6 +44,9 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
     ASD_LOG(INFO) << name_ << " setup start";
     runnerGraph_.inTensors = variantPack.inTensors;
     runnerGraph_.outTensors = variantPack.outTensors;
+
+    Reset();
+
     AsdOps::Status st = PreparseNodeRunnerVariantPack();
     if (!st.Ok()) {
         ASD_LOG(ERROR) << name_ << " setup fail, PreparseNodeRunnerVariantPack fail, error:" << st.Message();
