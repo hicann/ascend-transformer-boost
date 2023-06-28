@@ -139,8 +139,8 @@ AsdOps::Status Plan::CopyHostTilingToDevice(Handle handle, VariantPack &variantP
         char *totalTilingBuffer = static_cast<char *>(variantPack.workspace);
         ASD_LOG(INFO) << name_ << " copy host tiling to device start, totalTilingBufferSize:" << totalTilingBufferSize_;
         AsdOps::Timer timer;
-        int ret = AsdRtMemCopy(totalTilingBuffer, totalTilingBufferSize_, totalHostTilingBuffer_.data(),
-                               totalTilingBufferSize_, ASDRT_MEMCOPY_HOST_TO_DEVICE);
+        int ret = AsdRtMemCopyAsync(totalTilingBuffer, totalTilingBufferSize_, totalHostTilingBuffer_.data(),
+                                    totalTilingBufferSize_, ASDRT_MEMCOPY_HOST_TO_DEVICE, handle.stream);
         AsdOps::GetSingleton<Statistic>().tillingCopyTime = timer.ElapsedMicroSecond();
         if (ret != 0) {
             ASD_LOG(ERROR) << name_ << " copy host tiling to device fail, ret:" << ret;
