@@ -18,7 +18,7 @@
 #include <string>
 #include <asdops/utils/status/status.h>
 #include "acltransformer/handle.h"
-#include "acltransformer/variant_pack.h"
+#include "acltransformer/runner_variant_pack.h"
 
 namespace AclTransformer {
 class Runner {
@@ -26,15 +26,21 @@ public:
     Runner(const std::string &name);
     virtual ~Runner();
     std::string GetName() const;
-    AsdOps::Status Setup(const VariantPack &variantPack);
-    uint64_t GetWorkspaceSize();
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack);
+    AsdOps::Status Setup(const RunnerVariantPack &runnerVariantPack);
+    uint64_t GetTilingBufferSize();
+    void FillHostTilingBufferSize(void *hostTilingBuffer, uint64_t tilingBufferSize);
+    uint64_t GetWorkspaceBufferSize();
+    uint64_t GetIntermediateBufferSize();
+    AsdOps::Status Execute(Handle &handle, RunnerVariantPack &runnerVariantPack);
 
 private:
-    virtual AsdOps::Status IsConsistent(const VariantPack &variantPack);
-    virtual AsdOps::Status SetupImpl(const VariantPack &variantPack);
-    virtual uint64_t GetWorkspaceSizeImpl();
-    virtual AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack);
+    virtual AsdOps::Status IsConsistent(const RunnerVariantPack &runnerVariantPack);
+    virtual AsdOps::Status SetupImpl(const RunnerVariantPack &runnerVariantPack);
+    virtual uint64_t GetTilingBufferSizeImpl();
+    virtual void FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t tilingBufferSize);
+    virtual uint64_t GetWorkspaceBufferSizeImpl();
+    virtual uint64_t GetIntermediateBufferSizeImpl();
+    virtual AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack);
 
 private:
     std::string name_;

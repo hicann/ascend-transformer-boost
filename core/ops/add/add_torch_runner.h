@@ -25,7 +25,7 @@ public:
     virtual ~AddTorchRunner();
 
 private:
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
     AddParam param_;

@@ -13,23 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SELFATTENTION_KV_CACHE_TORCH_CHATGLM6B_RUNNER_H
-#define SELFATTENTION_KV_CACHE_TORCH_CHATGLM6B_RUNNER_H
-#include "acltransformer/runner.h"
-#include "acltransformer/params/self_attention_kv_cache.h"
+#ifndef WORKSPACE_H
+#define WORKSPACE_H
+#include <cstdint>
+#include <memory>
 
 namespace AclTransformer {
-class SelfAttentionKvCacheTorchChatGlm6bRunner : public Runner {
-public:
-    SelfAttentionKvCacheTorchChatGlm6bRunner(const SelfAttentionKvCacheParam &param);
-    virtual ~SelfAttentionKvCacheTorchChatGlm6bRunner();
+class WorkspaceBase;
 
-protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+class Workspace {
+public:
+    Workspace();
+    ~Workspace();
+    virtual void SetWorkspace(uint64_t workspaceSize);
+    virtual void *GetWorkspace();
 
 private:
-    SelfAttentionKvCacheParam param_;
-};
+    bool IsUserTorch();
 
+private:
+    std::unique_ptr<WorkspaceBase> base_;
+};
 } // namespace AclTransformer
 #endif

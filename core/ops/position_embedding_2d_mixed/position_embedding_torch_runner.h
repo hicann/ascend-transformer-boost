@@ -21,14 +21,14 @@
 namespace AclTransformer {
 class PositionEmbeddingTorchRunner : public Runner {
 public:
-    PositionEmbeddingTorchRunner(const PositionEmbeddingParam  &param);
+    PositionEmbeddingTorchRunner(const PositionEmbeddingParam &param);
     virtual ~PositionEmbeddingTorchRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
-    PositionEmbeddingParam  param_;
+    PositionEmbeddingParam param_;
 };
 
 } // namespace AclTransformer

@@ -32,21 +32,18 @@ RmsNormOperation::RmsNormOperation(const RmsNormParam &param) : Operation("RmsNo
 
 RmsNormOperation::~RmsNormOperation() {}
 
-AsdOps::Status RmsNormOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
-{
-    if (inTensors.size() != 2) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 2");
-    }
+uint64_t RmsNormOperation::GetInTensorCount() const { return 2; }
 
-    outTensorDescs.resize(1);
+uint64_t RmsNormOperation::GetOutTensorCount() const { return 1; }
+
+AsdOps::Status RmsNormOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+{
     outTensorDescs.at(0) = inTensors.at(0).desc;
-    ASD_LOG(INFO) << "outTensor dtype:" << outTensorDescs.at(0).dtype;
-    ASD_LOG(INFO) << "outTensor format:" << outTensorDescs.at(0).format;
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *RmsNormOperation::FindBestRunnerBuilder()
+RunnerBuilder *RmsNormOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsRmsNormOpsRunnerEnable() ? 0 : 1;

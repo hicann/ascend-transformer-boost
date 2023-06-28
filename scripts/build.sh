@@ -403,7 +403,7 @@ function fn_main()
             fn_run_pythontest
             ;;
         "debug")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Debug"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_DEBUG=ON"
             fn_build
             fn_make_tar_package
             ;;

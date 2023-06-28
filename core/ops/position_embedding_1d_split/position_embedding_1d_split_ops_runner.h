@@ -24,9 +24,6 @@ public:
     PositionEmbedding1dSplitOpsRunner(const PositionEmbedding1dSplitParam &param);
     virtual ~PositionEmbedding1dSplitOpsRunner();
 
-protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-
 private:
     PositionEmbedding1dSplitParam param_;
 };

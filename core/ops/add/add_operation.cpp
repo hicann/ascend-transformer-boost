@@ -31,19 +31,18 @@ AddOperation::AddOperation(const AddParam &param) : Operation("AddOperation"), p
 
 AddOperation::~AddOperation() {}
 
-AsdOps::Status AddOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
-{
-    if (inTensors.size() != 2) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 2");
-    }
+uint64_t AddOperation::GetInTensorCount() const { return 2; }
 
-    outTensorDescs.resize(1);
+uint64_t AddOperation::GetOutTensorCount() const { return 1; }
+
+AsdOps::Status AddOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+{
     outTensorDescs.at(0) = inTensors.at(0).desc;
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *AddOperation::FindBestRunnerBuilder()
+RunnerBuilder *AddOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsAddOpsRunnerEnable() ? 0 : 1;

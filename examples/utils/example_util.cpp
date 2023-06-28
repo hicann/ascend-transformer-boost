@@ -51,98 +51,6 @@ at::Tensor ExampleUtil::NpuFormatCast(const at::Tensor &tensor)
     return at_npu::native::NPUNativeFunctions::npu_format_cast(tensor, GetTensorNpuFormat(tensor));
 }
 
-void ExampleUtil::ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
-                                std::vector<at::Tensor> atOutTensors)
-{
-    AclTransformer::Handle handle;
-    handle.stream = GetCurrentStream();
-
-    AclTransformer::VariantPack variantPack;
-    for (size_t i = 0; i < atInTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(atInTensors.at(i)));
-    }
-    for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(atOutTensors.at(i)));
-    }
-
-    runner->Setup(variantPack);
-    variantPack.workspaceSize = runner->GetWorkspaceSize();
-
-    if (variantPack.workspaceSize > 0) {
-        int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
-        if (st != ASDRT_SUCCESS) {
-            ASD_LOG(ERROR) << "malloc device memory fail";
-            return;
-        }
-    }
-
-    runner->Execute(handle, variantPack);
-    ASD_LOG(INFO) << "AsdRtStreamSynchronize stream:" << handle.stream;
-    AsdRtStreamSynchronize(handle.stream);
-
-    if (variantPack.workspace != nullptr) {
-        AsdRtMemFreeDevice(variantPack.workspace);
-        ASD_LOG(INFO) << "AsdRtMemFreeDevice free:" << variantPack.workspace
-                      << ", variantPack.workspaceSize:" << variantPack.workspaceSize;
-        variantPack.workspace = nullptr;
-        variantPack.workspaceSize = 0;
-    }
-}
-
-void ExampleUtil::ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor *> atInTensors,
-                                   std::vector<at::Tensor *> atOutTensors)
-{
-    AclTransformer::Handle handle = {GetCurrentStream()};
-    AclTransformer::VariantPack variantPack;
-    for (size_t i = 0; i < atInTensors.size(); ++i) {
-        variantPack.inTensors.push_back(AtTensor2AsdTensor(*atInTensors.at(i)));
-    }
-    for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        variantPack.outTensors.push_back(AtTensor2AsdTensor(*atOutTensors.at(i)));
-    }
-
-    static int64_t opId = 0;
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        std::string dirPath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(opId++) + "_" +
-                              operation->GetName() + "_brefore";
-        AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
-        ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
-    }
-
-    AsdOps::Status st = operation->Setup(variantPack);
-    if (!st.Ok()) {
-        ASD_LOG(ERROR) << operation->GetName() << " Setup fail, not call execute";
-        return;
-    }
-
-    variantPack.workspaceSize = operation->GetWorkspaceSize();
-    ASD_LOG(ERROR) << operation->GetName() << " GetWorkspaceSize:" << variantPack.workspaceSize;
-    if (variantPack.workspaceSize > 0) {
-        int st = AsdRtMemMallocDevice((void **)&variantPack.workspace, variantPack.workspaceSize, ASDRT_MEM_DEFAULT);
-        if (st != ASDRT_SUCCESS) {
-            ASD_LOG(ERROR) << operation->GetName() << " AsdRtMemMallocDevice fail";
-            return;
-        }
-    }
-
-    st = operation->Execute(handle, variantPack);
-    ASD_LOG_IF(!st.Ok(), ERROR) << operation->GetName() << " execute fail, error:" << st.Message();
-
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        std::string dirPath =
-            AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(opId++) + "_" + operation->GetName();
-        AclTransformer::TensorUtil::SaveVariantPack(handle, variantPack, dirPath);
-        ASD_LOG(INFO) << operation->GetName() << " SaveVariantPack " << dirPath;
-    }
-
-    if (variantPack.workspace != nullptr) {
-        AsdRtMemFreeDevice(variantPack.workspace);
-        ASD_LOG(INFO) << operation->GetName() << " AsdRtMemFreeDevice free:" << variantPack.workspace;
-        variantPack.workspace = nullptr;
-        variantPack.workspaceSize = 0;
-    }
-}
-
 void ExampleUtil::BuildVariantPack(const std::vector<torch::Tensor> &inTensors,
                                    const std::vector<torch::Tensor> &outTensors,
                                    AclTransformer::VariantPack &variantPack)
@@ -164,7 +72,7 @@ AsdOps::Tensor ExampleUtil::AtTensor2AsdTensor(const at::Tensor &atTensor)
         {at::ScalarType::Long, AsdOps::TENSOR_DTYPE_INT64},
     };
 
-    ASD_LOG_IF(!atTensor.is_contiguous(), ERROR) << "atTensor is not contiguous";
+    ASD_LOG_IF(!atTensor.is_contiguous(), FATAL) << "atTensor is not contiguous";
     AsdOps::Tensor asdTensor;
     asdTensor.desc.format = static_cast<AsdOps::TensorFormat>(GetTensorNpuFormat(atTensor));
     asdTensor.data = atTensor.data_ptr();
@@ -234,4 +142,11 @@ void ExampleUtil::SaveTensor(const at::Tensor &tensor, const std::string &filePa
         AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     }
     torch::save(tensor.to(at::Device(at::kCPU)), filePath);
+}
+
+void ExampleUtil::ContiguousAtTensor(std::vector<torch::Tensor> &atTensors)
+{
+    for (size_t i = 0; i < atTensors.size(); ++i) {
+        atTensors.at(i) = atTensors.at(i).contiguous();
+    }
 }

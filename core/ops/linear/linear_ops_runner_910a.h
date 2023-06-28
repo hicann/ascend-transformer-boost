@@ -25,14 +25,15 @@ public:
     virtual ~LinearOpsRunner910A();
 
 protected:
-    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    AsdOps::Status SetupKernelGraph(const RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
-    void ConvertNewVariantPackA(const VariantPack &variantPack, VariantPack &newVariantPack,
-                                AsdOps::SVector<int64_t> &matmulOrgShape, AsdOps::SVector<int64_t> &transdataOrgShape);
-    AsdOps::Status SetupKernelGraphNz(const VariantPack &variantPack);
-    AsdOps::Status SetupKernelGraphNd(const VariantPack &variantPack);
+    void ConvertNewRunnerVariantPackA(const RunnerVariantPack &runnerVariantPack,
+                                      RunnerVariantPack &newRunnerVariantPack, AsdOps::SVector<int64_t> &matmulOrgShape,
+                                      AsdOps::SVector<int64_t> &transdataOrgShape);
+    AsdOps::Status SetupKernelGraphNz(const RunnerVariantPack &runnerVariantPack);
+    AsdOps::Status SetupKernelGraphNd(const RunnerVariantPack &runnerVariantPack);
 
 private:
     LinearParam param_;

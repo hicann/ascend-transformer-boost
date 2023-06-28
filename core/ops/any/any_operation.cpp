@@ -26,17 +26,15 @@ AnyOperation::AnyOperation(const AnyParam &param) : Operation("AnyOperation"), p
 
 AnyOperation::~AnyOperation() {}
 
-AsdOps::Status AnyOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
-{
-    if (inTensors.size() != 2) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 2");
-    }
+uint64_t AnyOperation::GetInTensorCount() const { return 0; }
 
-    outTensorDescs.resize(1);
-    outTensorDescs.at(0) = inTensors.at(0).desc;
+uint64_t AnyOperation::GetOutTensorCount() const { return 0; }
+
+AsdOps::Status AnyOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+{
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *AnyOperation::FindBestRunnerBuilder() { return runnerBuilders_.at(0); }
+RunnerBuilder *AnyOperation::FindBestRunnerBuilder() const { return runnerBuilders_.at(0); }
 } // namespace AclTransformer

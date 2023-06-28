@@ -37,15 +37,14 @@ public:
     bool IsSelfAttentionOpsRunnerEnable();
     bool IsPositionEmbedding1dSplitOpsRunnerEnable();
     bool IsTransposeOpsRunnerEnable();
-    bool IsStreamSyncEveryRunnerEnable();
     bool IsStreamSyncEveryKernelEnable();
-    bool IsStreamSyncEveryOperationEnable();
+    bool IsStreamSyncEveryRunnerEnable();
     bool IsStreamSyncEveryPlanEnable();
-    bool IsKernelCacheEnable();
     bool IsSkipKernel(const std::string &kernelName);
     uint64_t GetWorkspaceSize();
     bool Is910B();
     bool IsOpsRunnerSetupCacheEnable();
+    bool IsOpsRunnerKernelCacheEnable();
     bool IsOpsRunnerWorkspaceReusageEnable();
 
 private:
@@ -68,15 +67,14 @@ private:
     bool isSelfAttentionOpsRunnerEnable_ = false;
     bool isPositionEmbedding1dSplitOpsRunnerEnable_ = false;
     bool isTransposeOpsRunnerEnable_ = false;
-    bool isStreamSyncEveryRunnerEnable_ = false;
     bool isStreamSyncEveryKernelEnable_ = false;
-    bool isStreamSyncEveryOperationEnable_ = false;
+    bool isStreamSyncEveryRunnerEnable_ = false;
     bool isStreamSyncEveryPlanEnable_ = false;
-    bool isKernelCacheEnable_ = false;
     std::vector<std::string> skipKernelNames_;
-    uint64_t workspaceSize_ = 1024 * 1024 * 500;
+    uint64_t workspaceSize_ = 1024 * 1024 * 1024 * 5LL;
     bool is910B_ = false;
     bool isOpsRunnerSetupCacheEnable_ = false;
+    bool isOpsRunnerKernelCacheEnable_ = false;
     bool isOpsRunnerWorkspaceReusageEnable_ = true;
 };
 } // namespace AclTransformer

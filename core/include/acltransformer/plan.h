@@ -18,6 +18,7 @@
 #include <map>
 #include <set>
 #include <functional>
+#include <memory>
 #include <asdops/utils/svector/svector.h>
 #include "acltransformer/runner.h"
 #include "acltransformer/operation.h"
@@ -27,16 +28,15 @@ using RunnerGraphNodeViewFunc =
     std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
 
 struct RunnerGraphNode {
-    Operation *operation = nullptr;
-    Runner *runner = nullptr;
+    const Operation *operation = nullptr;
+    std::shared_ptr<Runner> runner;
     AsdOps::SVector<AsdOps::Tensor *> inTensors;
     AsdOps::SVector<AsdOps::Tensor *> outTensors;
     AsdOps::SVector<RunnerGraphNodeViewFunc> inTensorViewFuncs;
-    VariantPack variantPack;
+    RunnerVariantPack runnerVariantPack;
 };
 
 struct RunnerGraph {
-    std::string name;
     AsdOps::SVector<AsdOps::Tensor> inTensors;
     AsdOps::SVector<AsdOps::Tensor> outTensors;
     AsdOps::SVector<AsdOps::Tensor> internalTensors;
@@ -62,17 +62,30 @@ private:
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
     int64_t GetInTensorId(const AsdOps::Tensor *tensor);
     int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
-    void LogVariantPack(const VariantPack &variantPack);
+    AsdOps::Status PreparseNodeRunnerVariantPack();
+    AsdOps::Status RunNodeInTensorViewFuncs(size_t nodeId, RunnerGraphNode &node);
+    void InferShapeNode(size_t nodeId, RunnerGraphNode &node);
+    AsdOps::Status SetupAllRunners();
+    AsdOps::Status CopyHostTilingToDevice(Handle handle, VariantPack &variantPack);
+    void UpdateRunnerVariantPackBuffer(VariantPack &variantPack);
+    void UpdateRunnerVariantPackTensorData(VariantPack &variantPack);
+    AsdOps::Status ExecuteAllRunner(Handle &handle, VariantPack &variantPack);
 
 protected:
     friend class PlanBuilder;
+    std::string name_;
     RunnerGraph runnerGraph_;
-    uint64_t totalWorkspaceSize_ = 0;
-    AsdOps::SVector<uint64_t> workspaceSizes_;
-    uint64_t intermediateSize_ = 0;
-    MemAllocationSolver *memAllocatinSolver_ = nullptr;
     std::map<AsdOps::Tensor *, uint64_t> tensorMaxNodeIdMap_;
     std::map<uint64_t, std::set<AsdOps::Tensor *>> maxNodeIdTensorMap_;
+    uint64_t selfIntermediateBufferSize_ = 0;
+    uint64_t totalTilingBufferSize_ = 0;
+    AsdOps::SVector<uint64_t> tilingBufferSizes_;
+    std::vector<char> totalHostTilingBuffer_;
+    uint64_t maxWorkspaceBufferSize_ = 0;
+    AsdOps::SVector<uint64_t> workspaceBufferSizes_;
+    uint64_t maxIntermediateBufferSize_ = 0;
+    AsdOps::SVector<uint64_t> intermediateBufferSizes_;
+    std::unique_ptr<MemAllocationSolver> memAllocatinSolver_;
 };
 } // namespace AclTransformer
 #endif

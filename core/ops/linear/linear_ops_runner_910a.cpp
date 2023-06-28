@@ -27,23 +27,24 @@ LinearOpsRunner910A::LinearOpsRunner910A(LinearParam &param)
 
 LinearOpsRunner910A::~LinearOpsRunner910A() {}
 
-AsdOps::Status LinearOpsRunner910A::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status LinearOpsRunner910A::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
-    VariantPack newVariantPack;
+    RunnerVariantPack newRunnerVariantPack;
     AsdOps::SVector<int64_t> matmulOrgShape;
     AsdOps::SVector<int64_t> transdataOrgShape;
-    ConvertNewVariantPackA(variantPack, newVariantPack, matmulOrgShape, transdataOrgShape);
-    return OpsRunner::ExecuteImpl(handle, newVariantPack);
+    ConvertNewRunnerVariantPackA(runnerVariantPack, newRunnerVariantPack, matmulOrgShape, transdataOrgShape);
+    return OpsRunner::ExecuteImpl(handle, newRunnerVariantPack);
 }
 
-void LinearOpsRunner910A::ConvertNewVariantPackA(const VariantPack &variantPack, VariantPack &newVariantPack,
-                                                 AsdOps::SVector<int64_t> &matmulOrgShape,
-                                                 AsdOps::SVector<int64_t> &transdataOrgShape)
+void LinearOpsRunner910A::ConvertNewRunnerVariantPackA(const RunnerVariantPack &runnerVariantPack,
+                                                       RunnerVariantPack &newRunnerVariantPack,
+                                                       AsdOps::SVector<int64_t> &matmulOrgShape,
+                                                       AsdOps::SVector<int64_t> &transdataOrgShape)
 {
     const std::size_t dim2 = 2;
-    newVariantPack = variantPack;
-    AsdOps::Tensor &aTensor = newVariantPack.inTensors.at(0);
-    AsdOps::Tensor &bTensor = newVariantPack.inTensors.at(1);
+    newRunnerVariantPack = runnerVariantPack;
+    AsdOps::Tensor &aTensor = newRunnerVariantPack.inTensors.at(0);
+    AsdOps::Tensor &bTensor = newRunnerVariantPack.inTensors.at(1);
     if (aTensor.desc.dims.size() == 1 || aTensor.desc.dims.size() == dim2) {
         return;
     }
@@ -75,7 +76,7 @@ void LinearOpsRunner910A::ConvertNewVariantPackA(const VariantPack &variantPack,
     ASD_LOG(INFO) << GetName() << " after add one, new bTensor:" << TensorUtil::AsdOpsTensorToString(bTensor);
 }
 
-AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const VariantPack &variantPack)
+AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const RunnerVariantPack &runnerVariantPack)
 {
     const std::size_t nodeSize = 4;
     const std::size_t internalTensorsSize = 3;
@@ -88,9 +89,9 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const VariantPack &varian
     ASD_LOG(INFO) << GetName() << " SetupKernelGraph b format is nz";
     AsdOps::SVector<int64_t> matmulOrgShape;
     AsdOps::SVector<int64_t> transdataOrgShape;
-    VariantPack newVariantPack;
-    ConvertNewVariantPackA(variantPack, newVariantPack, matmulOrgShape, transdataOrgShape);
-    auto &bTensor = newVariantPack.inTensors.at(1);
+    RunnerVariantPack newRunnerVariantPack;
+    ConvertNewRunnerVariantPackA(runnerVariantPack, newRunnerVariantPack, matmulOrgShape, transdataOrgShape);
+    auto &bTensor = newRunnerVariantPack.inTensors.at(1);
     int64_t bLastDim = bTensor.desc.dims.at(bTensor.desc.dims.size() - 1);
     if (bLastDim != blockDim || bTensor.desc.dims.size() < dimSize) {
         AsdOps::SVector<int64_t> bTensorNewDims = {1, bLastDim / blockDim, bTensor.desc.dims.at(1), blockDim};
@@ -99,15 +100,15 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const VariantPack &varian
                       << " bTensor last dim is not 16, view:" << TensorUtil::AsdOpsTensorDescToString(bTensor.desc);
     }
 
-    ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString()
-                  << ", newVariantPack:" << newVariantPack.ToString();
+    ASD_LOG(INFO) << GetName() << " Setup runnerVariantPack:" << runnerVariantPack.ToString()
+                  << ", newRunnerVariantPack:" << newRunnerVariantPack.ToString();
 
-    kernelGraph_.inTensors = newVariantPack.inTensors;
+    kernelGraph_.inTensors = newRunnerVariantPack.inTensors;
     AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[id0];
     AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[id1];
     AsdOps::Tensor &biasTensor = kernelGraph_.inTensors[id2];
 
-    kernelGraph_.outTensors = newVariantPack.outTensors;
+    kernelGraph_.outTensors = newRunnerVariantPack.outTensors;
     AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[0];
     kernelGraph_.internalTensors.resize(internalTensorsSize);
     AsdOps::Tensor &transdata0ResultTensor = kernelGraph_.internalTensors[id0];
@@ -145,7 +146,7 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const VariantPack &varian
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const VariantPack &variantPack)
+AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const RunnerVariantPack &runnerVariantPack)
 {
     const std::size_t nodeSize = 5;
     const std::size_t internalTensorsSize = 4;
@@ -156,17 +157,17 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const VariantPack &varian
     const std::size_t id4 = 4;
     AsdOps::SVector<int64_t> matmulOrgShape;
     AsdOps::SVector<int64_t> transdataOrgShape;
-    VariantPack newVariantPack;
-    ConvertNewVariantPackA(variantPack, newVariantPack, matmulOrgShape, transdataOrgShape);
-    ASD_LOG(INFO) << GetName() << " Setup variantPack:" << variantPack.ToString()
-                  << ", newVariantPack:" << newVariantPack.ToString();
+    RunnerVariantPack newRunnerVariantPack;
+    ConvertNewRunnerVariantPackA(runnerVariantPack, newRunnerVariantPack, matmulOrgShape, transdataOrgShape);
+    ASD_LOG(INFO) << GetName() << " Setup runnerVariantPack:" << runnerVariantPack.ToString()
+                  << ", newRunnerVariantPack:" << newRunnerVariantPack.ToString();
 
-    kernelGraph_.inTensors = newVariantPack.inTensors;
+    kernelGraph_.inTensors = newRunnerVariantPack.inTensors;
     AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[id0];
     AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[id1];
     AsdOps::Tensor &biasTensor = kernelGraph_.inTensors[id2];
 
-    kernelGraph_.outTensors = newVariantPack.outTensors;
+    kernelGraph_.outTensors = newRunnerVariantPack.outTensors;
     AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[0];
     kernelGraph_.internalTensors.resize(internalTensorsSize);
     AsdOps::Tensor &transdata0ResultTensor = kernelGraph_.internalTensors[id0];
@@ -211,12 +212,12 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const VariantPack &varian
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status LinearOpsRunner910A::SetupKernelGraph(const VariantPack &variantPack)
+AsdOps::Status LinearOpsRunner910A::SetupKernelGraph(const RunnerVariantPack &runnerVariantPack)
 {
-    if (variantPack.inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ) {
-        return SetupKernelGraphNz(variantPack);
+    if (runnerVariantPack.inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ) {
+        return SetupKernelGraphNz(runnerVariantPack);
     } else {
-        return SetupKernelGraphNd(variantPack);
+        return SetupKernelGraphNd(runnerVariantPack);
     }
 }
 } // namespace AclTransformer

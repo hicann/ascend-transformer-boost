@@ -30,16 +30,13 @@ public:
     static void *GetCurrentStream();
     static int64_t GetTensorNpuFormat(const at::Tensor &tensor);
     static at::Tensor NpuFormatCast(const at::Tensor &tensor);
-    static void ExecuteRunner(AclTransformer::Runner *runner, std::vector<at::Tensor> atInTensors,
-                              std::vector<at::Tensor> atOutTensors);
-    static void ExecuteOperation(AclTransformer::Operation *operation, std::vector<at::Tensor *> atInTensors,
-                                 std::vector<at::Tensor *> atOutTensors);
     static void BuildVariantPack(const std::vector<torch::Tensor> &inTensors,
                                  const std::vector<torch::Tensor> &outTensors,
                                  AclTransformer::VariantPack &variantPack);
     static AsdOps::Tensor AtTensor2AsdTensor(const at::Tensor &atTensor);
     static at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc);
     static void SaveTensor(const at::Tensor &tensor, const std::string &filePath);
+    static void ContiguousAtTensor(std::vector<torch::Tensor> &atTensors);
 };
 
 #endif

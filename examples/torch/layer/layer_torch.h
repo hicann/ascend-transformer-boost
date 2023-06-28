@@ -30,12 +30,20 @@ public:
     c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_, param_); }
 
 private:
-    void CreateAtOutTensors(const AsdOps::SVector<AsdOps::Tensor> &inTensors, std::vector<torch::Tensor> &atOutTensors);
+    void CreateAtOutTensors(const std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors);
+    void ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors);
+    void BuildVariantPack(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors,
+                          AclTransformer::VariantPack &variantPack);
+
+    std::string GetLogPrefix();
 
 private:
     std::string layerName_;
     std::string param_;
     AclTransformer::Layer *layer_ = nullptr;
+    uint64_t executeCount_ = 0;
+    uint64_t layerId_ = 0;
+    static uint64_t totalExecuteCount_;
 };
 
 #endif

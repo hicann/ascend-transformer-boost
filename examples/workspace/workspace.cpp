@@ -13,37 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "layer_workspace.h"
+#include "workspace.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
-#include "layer_workspace_rt.h"
-#include "layer_workspace_torch.h"
+#include "workspace_rt.h"
+#include "workspace_torch.h"
 
 namespace AclTransformer {
 
-LayerWorkspace::LayerWorkspace()
+Workspace::Workspace()
 {
     bool ret = IsUserTorch();
-    ASD_LOG(FATAL) << "LayerWorkspace is use torch:" << IsUserTorch()
-                   << ", can change it use ACLTRANSFORMER_WORKSPACE_USE_TORCH";
+    ASD_LOG(INFO) << "Workspace is use torch:" << IsUserTorch()
+                  << ", can change it use ACLTRANSFORMER_WORKSPACE_USE_TORCH";
 
     if (ret) {
-        base_.reset(new LayerWorkspaceTorch());
+        base_.reset(new WorkspaceTorch());
     } else {
-        base_.reset(new LayerWorkspaceRt());
+        base_.reset(new WorkspaceRt());
     }
 
     SetWorkspace(AsdOps::GetSingleton<Config>().GetWorkspaceSize());
 }
 
-LayerWorkspace::~LayerWorkspace() {}
+Workspace::~Workspace() {}
 
-void LayerWorkspace::SetWorkspace(uint64_t workspaceSize) { base_->SetWorkspace(workspaceSize); }
+void Workspace::SetWorkspace(uint64_t workspaceSize) { base_->SetWorkspace(workspaceSize); }
 
-void *LayerWorkspace::GetWorkspace() { return base_->GetWorkspace(); }
+void *Workspace::GetWorkspace() { return base_->GetWorkspace(); }
 
-bool LayerWorkspace::IsUserTorch()
+bool Workspace::IsUserTorch()
 {
     const char *envStr = std::getenv("ACLTRANSFORMER_WORKSPACE_USE_TORCH");
     if (envStr == nullptr) {

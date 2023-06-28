@@ -23,18 +23,20 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-TransposeTorchRunner::TransposeTorchRunner(const TransposeParam &param) : Runner("TransposeTorchRunner"), param_(param) {}
+TransposeTorchRunner::TransposeTorchRunner(const TransposeParam &param) : Runner("TransposeTorchRunner"), param_(param)
+{
+}
 
 TransposeTorchRunner::~TransposeTorchRunner() {}
 
-AsdOps::Status TransposeTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status TransposeTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
 #ifdef USE_TORCH_RUNNER
-    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
+    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors.at(0));
     ASD_LOG(INFO) << "in: " << atInTensorA.sizes();
     at::Tensor atOutTensor = torch::transpose(atInTensorA, param_.dimA, param_.dimB).contiguous();
     ASD_LOG(INFO) << "out: " << atOutTensor.sizes();
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");

@@ -31,21 +31,23 @@ public:
     Operation(const std::string &name);
     virtual ~Operation();
     std::string GetName() const;
-    virtual AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) = 0;
-    AsdOps::Status Setup(VariantPack &variantPack);
-    uint64_t GetWorkspaceSize();
-    AsdOps::Status Execute(Handle &handle, VariantPack &variantPack);
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const;
+    virtual uint64_t GetInTensorCount() const = 0;
+    virtual uint64_t GetOutTensorCount() const = 0;
 
 protected:
-    Runner *CreateBestRunner();
-    virtual RunnerBuilder *FindBestRunnerBuilder() = 0;
+    Runner *CreateBestRunner() const;
+
+protected:
+    virtual AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                          AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const = 0;
+    virtual RunnerBuilder *FindBestRunnerBuilder() const = 0;
     friend class PlanBuilder;
 
 protected:
-    Runner *runner_ = nullptr;
-    std::vector<RunnerBuilder *> runnerBuilders_;
     std::string name_;
+    std::vector<RunnerBuilder *> runnerBuilders_;
 };
 } // namespace AclTransformer
 #endif

@@ -19,18 +19,20 @@
 #include "acltransformer/params/self_attention_kv_cache.h"
 
 namespace AclTransformer {
-class SelfAttentionKvCacheOperation  : public Operation {
+class SelfAttentionKvCacheOperation : public Operation {
 public:
-    SelfAttentionKvCacheOperation (const SelfAttentionKvCacheParam  &param);
-    ~SelfAttentionKvCacheOperation ();
-    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    SelfAttentionKvCacheOperation(const SelfAttentionKvCacheParam &param);
+    ~SelfAttentionKvCacheOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
 
 protected:
-    RunnerBuilder *FindBestRunnerBuilder() override;
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    RunnerBuilder *FindBestRunnerBuilder() const override;
 
 private:
-    SelfAttentionKvCacheParam  param_;
+    SelfAttentionKvCacheParam param_;
 };
 } // namespace AclTransformer
 #endif

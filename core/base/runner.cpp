@@ -22,31 +22,49 @@ Runner::~Runner() {}
 
 std::string Runner::GetName() const { return name_; }
 
-AsdOps::Status Runner::Setup(const VariantPack &variantPack)
+AsdOps::Status Runner::Setup(const RunnerVariantPack &runnerVariantPack)
 {
-    AsdOps::Status st = IsConsistent(variantPack);
+    AsdOps::Status st = IsConsistent(runnerVariantPack);
     if (!st.Ok()) {
         return st;
     }
-    return SetupImpl(variantPack);
+    return SetupImpl(runnerVariantPack);
 }
 
-uint64_t Runner::GetWorkspaceSize() { return GetWorkspaceSizeImpl(); }
+uint64_t Runner::GetIntermediateBufferSize() { return GetIntermediateBufferSizeImpl(); }
 
-AsdOps::Status Runner::Execute(Handle &handle, VariantPack &variantPack)
+uint64_t Runner::GetTilingBufferSize() { return GetTilingBufferSizeImpl(); }
+
+void Runner::FillHostTilingBufferSize(void *hostTilingBuffer, uint64_t tilingBufferSize)
 {
-    AsdOps::Status st = IsConsistent(variantPack);
+    FillHostTilingBufferSizeImpl(hostTilingBuffer, tilingBufferSize);
+}
+
+uint64_t Runner::GetWorkspaceBufferSize() { return GetWorkspaceBufferSizeImpl(); }
+
+AsdOps::Status Runner::Execute(Handle &handle, RunnerVariantPack &runnerVariantPack)
+{
+    AsdOps::Status st = IsConsistent(runnerVariantPack);
     if (!st.Ok()) {
         return st;
     }
-    return ExecuteImpl(handle, variantPack);
+    return ExecuteImpl(handle, runnerVariantPack);
 }
 
-AsdOps::Status Runner::IsConsistent(const VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
+AsdOps::Status Runner::IsConsistent(const RunnerVariantPack &runnerVariantPack) { return AsdOps::Status::OkStatus(); }
 
-AsdOps::Status Runner::SetupImpl(const VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
+AsdOps::Status Runner::SetupImpl(const RunnerVariantPack &runnerVariantPack) { return AsdOps::Status::OkStatus(); }
 
-uint64_t Runner::GetWorkspaceSizeImpl() { return 0; }
+uint64_t Runner::GetIntermediateBufferSizeImpl() { return 0; }
 
-AsdOps::Status Runner::ExecuteImpl(Handle &handle, VariantPack &variantPack) { return AsdOps::Status::OkStatus(); }
+uint64_t Runner::GetTilingBufferSizeImpl() { return 0; }
+
+void Runner::FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t tilingBufferSize) {}
+
+uint64_t Runner::GetWorkspaceBufferSizeImpl() { return 0; }
+
+AsdOps::Status Runner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
+{
+    return AsdOps::Status::OkStatus();
+}
 } // namespace AclTransformer

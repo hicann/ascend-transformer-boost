@@ -33,16 +33,15 @@ SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation(const SelfAttention
 
 SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() {}
 
-AsdOps::Status SelfAttentionKvCacheOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                         AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+uint64_t SelfAttentionKvCacheOperation::GetInTensorCount() const { return 6; }
+
+uint64_t SelfAttentionKvCacheOperation::GetOutTensorCount() const { return 3; }
+
+AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                             AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
     // out : out presentK presentV [seq_len, batch, head_num * head_size]
-    if (inTensors.size() != 6) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 6");
-    }
-
-    outTensorDescs.resize(3);
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(0).dims.clear();
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
@@ -55,7 +54,7 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShape(const AsdOps::SVector<A
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *SelfAttentionKvCacheOperation::FindBestRunnerBuilder()
+RunnerBuilder *SelfAttentionKvCacheOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsSelfAttentionKVCacheOpsRunnerEnable() ? 0 : 1;

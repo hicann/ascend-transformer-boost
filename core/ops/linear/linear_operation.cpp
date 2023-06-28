@@ -38,15 +38,14 @@ LinearOperation::LinearOperation(const LinearParam &param) : Operation("LinearOp
 
 LinearOperation::~LinearOperation() {}
 
-AsdOps::Status LinearOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                           AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+uint64_t LinearOperation::GetInTensorCount() const { return 3; }
+
+uint64_t LinearOperation::GetOutTensorCount() const { return 1; }
+
+AsdOps::Status LinearOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     // in * weight + bias
-    // in[0,1] + weight[1]
-    if (inTensors.size() != 3) {
-        return AsdOps::Status::FailStatus(1, "inTensors size is not 3");
-    }
-    outTensorDescs.resize(1);
     outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
     outTensorDescs.at(0).format = inTensors.at(0).desc.format;
     outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
@@ -99,7 +98,7 @@ int64_t LinearOperation::GetTensorW(const AsdOps::TensorDesc &tensorDesc) const
     return tensorDesc.dims[DIM_2];
 }
 
-RunnerBuilder *LinearOperation::FindBestRunnerBuilder()
+RunnerBuilder *LinearOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsLinearOpsRunnerEnable() ? 0 : 1;

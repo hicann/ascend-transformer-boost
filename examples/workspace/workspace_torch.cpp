@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "layer_workspace_torch.h"
+#include "workspace_torch.h"
 #include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
@@ -21,14 +21,14 @@
 #include "acltransformer/config.h"
 
 namespace AclTransformer {
-LayerWorkspaceTorch::LayerWorkspaceTorch() { ASD_LOG(INFO) << "LayerWorkspaceTorch::LayerWorkspaceTorch called"; }
+WorkspaceTorch::WorkspaceTorch() { ASD_LOG(INFO) << "WorkspaceTorch::WorkspaceTorch called"; }
 
-LayerWorkspaceTorch::~LayerWorkspaceTorch() {}
+WorkspaceTorch::~WorkspaceTorch() {}
 
-void LayerWorkspaceTorch::SetWorkspace(uint64_t workspaceSize)
+void WorkspaceTorch::SetWorkspace(uint64_t workspaceSize)
 {
     if (workspaceSize <= workspaceSize_) {
-        ASD_LOG(INFO) << "LayerWorkspaceTorch::SetWorkspace workspaceSize:" << workspaceSize
+        ASD_LOG(INFO) << "WorkspaceTorch::SetWorkspace workspaceSize:" << workspaceSize
                       << " <= workspaceSize_:" << workspaceSize_ << ", not new device mem";
         return;
     }
@@ -43,11 +43,11 @@ void LayerWorkspaceTorch::SetWorkspace(uint64_t workspaceSize)
 #endif
 
     at::SmallVector<int64_t, 8> dim = {1024, 1024, (int64_t)workspaceSize / 1024 / 1024};
-    ASD_LOG(FATAL) << "LayerWorkspaceTorch ApplyTensorWithFormat workspaceSize:" << workspaceSize << ", dim:" << dim;
+    ASD_LOG(FATAL) << "WorkspaceTorch ApplyTensorWithFormat workspaceSize:" << workspaceSize << ", dim:" << dim;
     workspaceTensor_ = at_npu::native::OpPreparation::ApplyTensorWithFormat(dim, options, 2);
-    ASD_LOG(FATAL) << "LayerWorkspaceTorch ApplyTensorWithFormat success";
+    ASD_LOG(FATAL) << "WorkspaceTorch ApplyTensorWithFormat success";
     workspaceSize_ = workspaceSize;
 }
 
-void *LayerWorkspaceTorch::GetWorkspace() { return workspaceTensor_.data_ptr(); }
+void *WorkspaceTorch::GetWorkspace() { return workspaceTensor_.data_ptr(); }
 } // namespace AclTransformer

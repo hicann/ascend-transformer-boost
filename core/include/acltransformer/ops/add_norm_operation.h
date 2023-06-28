@@ -24,11 +24,13 @@ class AddNormOperation : public Operation {
 public:
     AddNormOperation(const AddNormParam &param);
     virtual ~AddNormOperation();
-    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
 
 protected:
-    RunnerBuilder *FindBestRunnerBuilder() override;
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    RunnerBuilder *FindBestRunnerBuilder() const override;
 
 private:
     AddNormParam param_;

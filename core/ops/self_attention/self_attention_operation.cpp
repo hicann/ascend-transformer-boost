@@ -32,19 +32,18 @@ SelfAttentionOperation::SelfAttentionOperation(const SelfAttentionParam &param)
 
 SelfAttentionOperation::~SelfAttentionOperation() {}
 
-AsdOps::Status SelfAttentionOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
-{
-    if (inTensors.size() != 4) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 2");
-    }
+uint64_t SelfAttentionOperation::GetInTensorCount() const { return 4; }
 
-    outTensorDescs.resize(1);
+uint64_t SelfAttentionOperation::GetOutTensorCount() const { return 1; }
+
+AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+{
     outTensorDescs.at(0) = inTensors.at(0).desc;
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *SelfAttentionOperation::FindBestRunnerBuilder()
+RunnerBuilder *SelfAttentionOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsSelfAttentionOpsRunnerEnable() ? 0 : 1;
