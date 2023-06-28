@@ -27,12 +27,4 @@ PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const Posit
 }
 
 PositionEmbedding1dSplitOpsRunner::~PositionEmbedding1dSplitOpsRunner() {}
-
-AsdOps::Status PositionEmbedding1dSplitOpsRunner::SetupKernelGraph(const VariantPack &variantPack)
-{
-    ASD_LOG(INFO) << GetName() << " SetupKernelGraph start: "
-                  << "headNum: " << param_.headNum;
-
-    return AsdOps::Status::OkStatus();
-}
 } // namespace AclTransformer

@@ -29,15 +29,15 @@ RmsNormTorchRunner::RmsNormTorchRunner(const RmsNormParam &param) : Runner("RmsN
 
 RmsNormTorchRunner::~RmsNormTorchRunner() {}
 
-AsdOps::Status RmsNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status RmsNormTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
-    if (variantPack.inTensors.size() != 2) {
+    if (runnerVariantPack.inTensors.size() != 2) {
         return AsdOps::Status::FailStatus(1, "RmsNormTorchRunner inTensor num error!");
     }
 #ifdef USE_TORCH_RUNNER
     ASD_LOG(INFO) << "RmsNormTorchRunner start";
-    at::Tensor atInTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor atInTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
     ASD_LOG(INFO) << "receive inputs";
 
     caffe2::TypeMeta inTensorType = atInTensor.dtype();
@@ -68,7 +68,7 @@ AsdOps::Status RmsNormTorchRunner::ExecuteImpl(Handle &handle, VariantPack &vari
     atOutTensor = atOutTensor.to(inTensorType).contiguous();
     // torch::save(atOutTensor.to(at::Device(at::kCPU)), "atOutTensor_f32_cpp.pth");
 
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
     ASD_LOG(INFO) << "RmsNormTorchRunner end";
     return AsdOps::Status::OkStatus();
 #else

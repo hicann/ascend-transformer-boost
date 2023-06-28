@@ -27,12 +27,12 @@ AddTorchRunner::AddTorchRunner(const AddParam &param) : Runner("AddTorchRunner")
 
 AddTorchRunner::~AddTorchRunner() {}
 
-AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
     ASD_LOG(INFO) << "scale : " << this->param_.scale;
 #ifdef USE_TORCH_RUNNER
-    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(0));
-    at::Tensor atInTensorB = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors.at(1));
+    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors.at(0));
+    at::Tensor atInTensorB = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors.at(1));
 
     atInTensorA = atInTensorA.to(torch::kFloat);
     at::Tensor atOutTensor = atInTensorA * this->param_.scale;
@@ -40,7 +40,7 @@ AsdOps::Status AddTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantP
 
     atOutTensor = atOutTensor + atInTensorB;
     atOutTensor = atOutTensor.contiguous();
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");

@@ -38,13 +38,13 @@ FfnOperation::FfnOperation(const FfnParam &param) : Operation("FfnOperation"), p
 
 FfnOperation::~FfnOperation() {}
 
-AsdOps::Status FfnOperation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
+uint64_t FfnOperation::GetInTensorCount() const { return 3; }
+
+uint64_t FfnOperation::GetOutTensorCount() const { return 1; }
+
+AsdOps::Status FfnOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    if (inTensors.size() != 3) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 3");
-    }
-    outTensorDescs.resize(1);
     outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
     outTensorDescs.at(0).format = inTensors.at(0).desc.format;
     outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
@@ -97,7 +97,7 @@ int64_t FfnOperation::GetTensorW(const AsdOps::TensorDesc &tensorDesc) const
     return tensorDesc.dims[DIM_2];
 }
 
-RunnerBuilder *FfnOperation::FindBestRunnerBuilder()
+RunnerBuilder *FfnOperation::FindBestRunnerBuilder() const
 {
 #ifdef USE_TORCH_RUNNER
     size_t index = AsdOps::GetSingleton<Config>().IsFfnOpsRunnerEnable() ? 0 : 1;

@@ -98,8 +98,6 @@ void BertLayer::BuildGraph()
     AclTransformer::LinearOperation *bertOutLinearOp = new AclTransformer::LinearOperation(bertOutLinearParam);
     AclTransformer::AddNormOperation *bertOutAddNormOp = new AclTransformer::AddNormOperation(bertOutAddNormParam);
 
-    static int64_t graphId = 0;
-    opGraph_.name = "BertLayerGraph_" + std::to_string(graphId++);
     opGraph_.inTensorSize = 18;
     opGraph_.outTensorSize = 1;
     opGraph_.intermediateTensorSize = 8;

@@ -25,7 +25,7 @@ public:
     virtual ~RmsNormTorchRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
     RmsNormParam param_;

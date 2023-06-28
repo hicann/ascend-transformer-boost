@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LAYER_WORKSPACE_RT_H
-#define LAYER_WORKSPACE_RT_H
-#include "layer_workspace_base.h"
+#ifndef WORKSPACE_TORCH_H
+#define WORKSPACE_TORCH_H
+#include "workspace_base.h"
+#include <torch/torch.h>
 
 namespace AclTransformer {
-class LayerWorkspaceRt : public LayerWorkspaceBase {
+class WorkspaceTorch : public WorkspaceBase {
 public:
-    LayerWorkspaceRt();
-    virtual ~LayerWorkspaceRt();
+    WorkspaceTorch();
+    virtual ~WorkspaceTorch();
     void SetWorkspace(uint64_t workspaceSize) override;
     void *GetWorkspace() override;
 
 private:
-    void Free();
-
-private:
-    void *workspace_ = nullptr;
+    at::Tensor workspaceTensor_;
     uint64_t workspaceSize_ = 0;
 };
 } // namespace AclTransformer

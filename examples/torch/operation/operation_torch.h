@@ -20,6 +20,7 @@
 #include <torch/script.h>
 #include <torch/custom_class.h>
 #include "acltransformer/operation.h"
+#include "acltransformer/plan.h"
 
 class OperationTorch : public torch::CustomClassHolder {
 public:
@@ -31,14 +32,17 @@ public:
     c10::intrusive_ptr<OperationTorch> clone() const { return c10::make_intrusive<OperationTorch>(opName_); }
 
 private:
-    void ExecuteOperation(AclTransformer::Operation *operation, std::vector<torch::Tensor> &atInTensors,
-                          std::vector<torch::Tensor> &atOutTensors);
-    void CreateAtOutTensors(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                            std::vector<torch::Tensor> &atOutTensors);
+    void CreateAtOutTensors(const std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors);
+    void ExecuteOutImpl(std::vector<torch::Tensor> &inTensors, std::vector<torch::Tensor> &outTensor);
+    void BuildVariantPack(std::vector<torch::Tensor> &inTensors, std::vector<torch::Tensor> &outTensor,
+                          AclTransformer::VariantPack &variantPack);
 
 private:
     std::string opName_;
     std::string param_;
+    std::unique_ptr<AclTransformer::Operation> operation_;
+    AclTransformer::Plan plan_;
+    uint64_t executeCount_ = 0;
 };
 
 #endif

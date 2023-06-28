@@ -21,7 +21,9 @@ std::string Statistic::ToString() const
     return "totalTime:" + std::to_string(totalTime) + ", syclTime:" + std::to_string(syclTime) +
            ", tillingCopyTime:" + std::to_string(tillingCopyTime) +
            ", getBestKernelTime:" + std::to_string(getBestKernelTime) +
-           ", planSetupTime:" + std::to_string(planSetupTime) + ", planExecuteTime:" + std::to_string(planExecuteTime);
+           ", planSetupTime:" + std::to_string(planSetupTime) + ", planExecuteTime:" + std::to_string(planExecuteTime) +
+           ", kernelCacheHitCount:" + std::to_string(kernelCacheHitCount_) +
+           ", kernelCacheMissCount:" + std::to_string(kernelCacheMissCount_);
 }
 
 void Statistic::Reset()
@@ -32,5 +34,7 @@ void Statistic::Reset()
     getBestKernelTime = 0;
     planSetupTime = 0;
     planExecuteTime = 0;
+    kernelCacheHitCount_ = 0;
+    kernelCacheMissCount_ = 0;
 }
 } // namespace AclTransformer

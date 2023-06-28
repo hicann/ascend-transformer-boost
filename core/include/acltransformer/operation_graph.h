@@ -26,14 +26,13 @@ using OperationGraphNodeViewFunc =
     std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
 
 struct OperationGraphNode {
-    Operation *operation = nullptr;
+    const Operation *operation = nullptr;
     AsdOps::SVector<uint64_t> inTensorIds;
     AsdOps::SVector<uint64_t> outTensorIds;
     AsdOps::SVector<OperationGraphNodeViewFunc> inTensorViewFuncs;
 };
 
 struct OperationGraph {
-    std::string name;
     uint64_t inTensorSize = 0;
     uint64_t outTensorSize = 0;
     uint64_t intermediateTensorSize = 0;

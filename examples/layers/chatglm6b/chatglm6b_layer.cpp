@@ -29,7 +29,11 @@
 #include "acltransformer/ops/ffn_operation.h"
 
 namespace AclTransformer {
-ChatGlm6BLayer::ChatGlm6BLayer(const nlohmann::json &paramJson) : Layer("ChatGlm6BLayer", paramJson) { BuildGraph();  BuildPlan();}
+ChatGlm6BLayer::ChatGlm6BLayer(const nlohmann::json &paramJson) : Layer("ChatGlm6BLayer", paramJson)
+{
+    BuildGraph();
+    BuildPlan();
+}
 
 ChatGlm6BLayer::~ChatGlm6BLayer() {}
 
@@ -122,8 +126,6 @@ void ChatGlm6BLayer::BuildGraph()
     AclTransformer::LinearOperation *ffnLinearOp = new AclTransformer::LinearOperation(ffnLinearParam);
     AclTransformer::AddOperation *ffnResidualAddOp = new AclTransformer::AddOperation(ffnResidualAddParam);
 
-    static int64_t graphId = 0;
-    opGraph_.name = "GlmBlockGraph_" + std::to_string(graphId++);
     opGraph_.inTensorSize = 19;
     opGraph_.outTensorSize = 3;
     opGraph_.intermediateTensorSize = 11;

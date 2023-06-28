@@ -25,10 +25,11 @@
 namespace AclTransformer {
 class PlanBuilder {
 public:
-    AsdOps::Status Build(const OperationGraph &opGraph, Plan &plan);
+    AsdOps::Status Build(const std::string &planName, const OperationGraph &opGraph, Plan &plan);
+    AsdOps::Status Build(const std::string &planName, const Operation *op, Plan &plan);
 
 private:
-    AsdOps::Status BuildImpl(const OperationGraph &opGraph, Plan &plan);
+    AsdOps::Status BuildImpl(const std::string &planName, const OperationGraph &opGraph, Plan &plan);
     void LogOperationGraph(const OperationGraph &opGraph);
     void LogRunnerGraph(const RunnerGraph &runnerGraph);
 };

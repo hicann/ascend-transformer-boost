@@ -127,6 +127,23 @@ void TensorUtil::SaveVariantPack(Handle &handle, const VariantPack &variantPack,
     }
 }
 
+void TensorUtil::SaveVariantPack(Handle &handle, const RunnerVariantPack &runnerVariantPack, const std::string &dirPath)
+{
+    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    for (size_t i = 0; i < runnerVariantPack.inTensors.size(); ++i) {
+        std::string fileName = "inTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
+        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
+        SaveTensor(runnerVariantPack.inTensors.at(i), filePath);
+    }
+
+    for (size_t i = 0; i < runnerVariantPack.outTensors.size(); ++i) {
+        std::string fileName = "outTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
+        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
+        SaveTensor(runnerVariantPack.outTensors.at(i), filePath);
+    }
+}
+
 void TensorUtil::SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath)
 {
     AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -157,4 +174,21 @@ std::string TensorUtil::AsdOpsDimsToString(const AsdOps::SVector<int64_t> &dims)
 }
 
 int64_t TensorUtil::AlignInt(int64_t value, int align) { return (value + (align - 1)) / align * align; }
+
+std::string TensorUtil::AsdOpsRunInfoToString(const AsdOps::RunInfo &kernelRunInfo)
+{
+    std::stringstream ss;
+    ss << "opdesc.opName:" << kernelRunInfo.GetOpDesc().opName << ", stream:" << kernelRunInfo.GetStream() << std::endl;
+
+    for (size_t i = 0; i < kernelRunInfo.GetInTensorCount(); ++i) {
+        ss << "intensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetInTensor(i)) << std::endl;
+    }
+    for (size_t i = 0; i < kernelRunInfo.GetOutTensorCount(); ++i) {
+        ss << "outtensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i));
+        if (i != kernelRunInfo.GetOutTensorCount() - 1) {
+            ss << std::endl;
+        }
+    }
+    return ss.str();
+}
 } // namespace AclTransformer

@@ -25,7 +25,7 @@ public:
     virtual ~LinearTorchRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
     LinearParam param_;

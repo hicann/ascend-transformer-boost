@@ -30,18 +30,18 @@ FfnTorchRunner::FfnTorchRunner(const FfnParam &param) : Runner("FfnTorchRunner")
 
 FfnTorchRunner::~FfnTorchRunner() {}
 
-AsdOps::Status FfnTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status FfnTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
-    if (variantPack.inTensors.size() != 3) {
+    if (runnerVariantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "FfnTorchRunner inTensor num error!");
     }
 #ifdef USE_TORCH_RUNNER
-    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    at::Tensor atInTensorBias = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
+    at::Tensor atInTensorBias = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
 
     at::Tensor atOutTensor = at::gelu(at::linear(atInTensorA, atInTensorWeight, atInTensorBias)).contiguous();
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");

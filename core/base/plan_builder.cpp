@@ -19,21 +19,44 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-AsdOps::Status PlanBuilder::Build(const OperationGraph &opGraph, Plan &plan)
+AsdOps::Status PlanBuilder::Build(const std::string &planName, const OperationGraph &opGraph, Plan &plan)
 {
     try {
         ASD_LOG(INFO) << "PlanBuilder::Build opGraph:" << opGraph.ToString();
-        return BuildImpl(opGraph, plan);
+        return BuildImpl(planName, opGraph, plan);
     } catch (const std::exception &e) {
         ASD_LOG(ERROR) << "PlanBuilder::Build fail, exception:" << e.what();
         return AsdOps::Status::FailStatus(1, e.what());
     }
 }
 
-AsdOps::Status PlanBuilder::BuildImpl(const OperationGraph &opGraph, Plan &plan)
+AsdOps::Status PlanBuilder::Build(const std::string &planName, const Operation *op, Plan &plan)
+{
+    OperationGraph opGraph;
+    opGraph.inTensorSize = op->GetInTensorCount();
+    opGraph.outTensorSize = op->GetOutTensorCount();
+    opGraph.intermediateTensorSize = 0;
+
+    opGraph.nodes.resize(1);
+    OperationGraphNode &node = opGraph.nodes.at(0);
+    node.operation = op;
+    node.inTensorIds.resize(opGraph.inTensorSize);
+    node.outTensorIds.resize(opGraph.outTensorSize);
+    uint64_t tensorId = 0;
+    for (size_t i = 0; i < opGraph.inTensorSize; ++i, ++tensorId) {
+        node.inTensorIds.at(i) = tensorId;
+    }
+    for (size_t i = 0; i < opGraph.outTensorSize; ++i, ++tensorId) {
+        node.outTensorIds.at(i) = tensorId;
+    }
+
+    return Build(planName, opGraph, plan);
+}
+
+AsdOps::Status PlanBuilder::BuildImpl(const std::string &planName, const OperationGraph &opGraph, Plan &plan)
 {
     VariantPack variantPack;
-    plan.runnerGraph_.name = opGraph.name;
+    plan.name_ = planName;
     plan.runnerGraph_.inTensors.resize(opGraph.inTensorSize);
     plan.runnerGraph_.outTensors.resize(opGraph.outTensorSize);
     plan.runnerGraph_.internalTensors.resize(opGraph.intermediateTensorSize);
@@ -53,7 +76,7 @@ AsdOps::Status PlanBuilder::BuildImpl(const OperationGraph &opGraph, Plan &plan)
     for (auto &node : opGraph.nodes) {
         RunnerGraphNode runnerNode;
         runnerNode.operation = node.operation;
-        runnerNode.runner = node.operation->CreateBestRunner();
+        runnerNode.runner.reset(node.operation->CreateBestRunner());
         runnerNode.inTensorViewFuncs = node.inTensorViewFuncs;
         runnerNode.inTensors.resize(node.inTensorIds.size());
         runnerNode.outTensors.resize(node.outTensorIds.size());

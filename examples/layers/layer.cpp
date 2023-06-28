@@ -22,12 +22,13 @@
 #include "acltransformer/plan_builder.h"
 #include "acltransformer/statistic.h"
 #include "examples/utils/example_util.h"
-#include "layer_workspace.h"
+#include "examples/workspace/workspace.h"
 
 namespace AclTransformer {
 Layer::Layer(const std::string &layerName, const nlohmann::json &paramJson)
     : layerName_(layerName), paramJson_(paramJson)
 {
+    layerId_ = paramJson_["layerId"].get<int>();
 }
 
 Layer::~Layer()
@@ -43,44 +44,36 @@ std::string Layer::GetName() const { return layerName_; }
 void Layer::BuildPlan()
 {
     PlanBuilder planBuilder;
-    AsdOps::Status st = planBuilder.Build(opGraph_, plan_);
+    std::string planName = layerName_ + "_" + std::to_string(layerId_);
+    AsdOps::Status st = planBuilder.Build(planName, opGraph_, plan_);
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << opGraph_.name << " PlanBuilder build plan fail, error:" << st.Message();
+        ASD_LOG(ERROR) << layerName_ << " PlanBuilder build plan fail, error:" << st.Message();
         return;
     }
 }
 
-void Layer::Execute(AclTransformer::VariantPack &variantPack)
+void Layer::Execute(Handle &handle, AclTransformer::VariantPack &variantPack)
 {
-    void *stream = ExampleUtil::GetCurrentStream();
-    if (lastStream_ != nullptr && lastStream_ != stream) {
-        ASD_LOG(ERROR) << "stream changed";
-        return;
-    }
-    lastStream_ = stream;
-    AclTransformer::Handle handle = {stream};
-
     AsdOps::Timer timer1;
     AsdOps::Status st = plan_.Setup(handle, variantPack);
     AsdOps::GetSingleton<Statistic>().planSetupTime = timer1.ElapsedMicroSecond();
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << opGraph_.name << " Plan Setup fail error:" << st.Message();
+        ASD_LOG(ERROR) << layerName_ << " Setup fail error:" << st.Message();
         return;
     }
 
     variantPack.workspaceSize = plan_.GetWorkspaceSize();
-    ASD_LOG(INFO) << opGraph_.name << " Plan GetWorkspaceSize:" << variantPack.workspaceSize;
+    ASD_LOG(INFO) << layerName_ << "  GetWorkspaceSize:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
-        ASD_LOG(INFO) << opGraph_.name
-                      << " AsdRtMemMallocDevice variantPack.workspaceSize:" << variantPack.workspaceSize;
-        AsdOps::GetSingleton<LayerWorkspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<LayerWorkspace>().GetWorkspace();
+        ASD_LOG(INFO) << layerName_ << " AsdRtMemMallocDevice variantPack.workspaceSize:" << variantPack.workspaceSize;
+        AsdOps::GetSingleton<Workspace>().SetWorkspace(variantPack.workspaceSize);
+        variantPack.workspace = AsdOps::GetSingleton<Workspace>().GetWorkspace();
     }
 
     AsdOps::Timer timer2;
     st = plan_.Execute(handle, variantPack);
     AsdOps::GetSingleton<Statistic>().planExecuteTime = timer2.ElapsedMicroSecond();
-    ASD_LOG_IF(!st.Ok(), ERROR) << opGraph_.name << " Plan Execute fail, error:" << st.Message();
+    ASD_LOG_IF(!st.Ok(), ERROR) << layerName_ << " Execute fail, error:" << st.Message();
 }
 } // namespace AclTransformer

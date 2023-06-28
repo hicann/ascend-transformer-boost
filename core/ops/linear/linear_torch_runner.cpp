@@ -30,19 +30,19 @@ LinearTorchRunner::LinearTorchRunner(LinearParam &param) : Runner("LinearTorchRu
 
 LinearTorchRunner::~LinearTorchRunner() {}
 
-AsdOps::Status LinearTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
+AsdOps::Status LinearTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
     ASD_LOG(INFO) << "LinearTorchRunner start";
-    if (variantPack.inTensors.size() != 3) {
+    if (runnerVariantPack.inTensors.size() != 3) {
         return AsdOps::Status::FailStatus(1, "LinearTorchRunner inTensor num error!");
     }
 
 #ifdef USE_TORCH_RUNNER
-    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
-    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
-    at::Tensor atInTensorWeightias = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
+    at::Tensor atInTensorWeight = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
+    at::Tensor atInTensorWeightias = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
     at::Tensor atOutTensor = at::linear(atInTensorA, atInTensorWeight, atInTensorWeightias).contiguous();
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");

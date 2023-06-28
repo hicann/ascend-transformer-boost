@@ -40,21 +40,20 @@ Config::Config()
     isSelfAttentionOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_SELFATTENTION_OPSRUNNER_ENABLE");
     isPositionEmbedding1dSplitOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_1D_SPLIT_OPSRUNNER_ENABLE");
     isTransposeOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_TRANSPOSE_OPSRUNNER_ENABLE");
-    isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE");
     isStreamSyncEveryKernelEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_KERNEL_ENABLE");
-    isStreamSyncEveryOperationEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_OPERATOIN_ENABLE");
+    isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE");
     isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
-    isKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_KERNELCACHE_ENABLE", true);
-    isOpsRunnerSetupCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_SETUP_CACHE_ENABLE", false);
+    isOpsRunnerSetupCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_SETUP_CACHE_ENABLE");
+    isOpsRunnerKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE", true);
     isOpsRunnerWorkspaceReusageEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_WORKSPACE_REUSAGE_ENABLE");
-    ASD_LOG(FATAL) << "isSaveTensor:" << isSaveTensor_
-                   << ", isStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
-                   << ", isStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
-                   << ", isStreamSyncEveryOperationEnable:" << isStreamSyncEveryOperationEnable_
-                   << ", isStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
-                   << ", isKernelCacheEnable:" << isKernelCacheEnable_ << ", workspaceSize:" << workspaceSize_
-                   << ", isOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
-                   << ", isOpsRunnerWorkspaceReusageEnable:" << isOpsRunnerWorkspaceReusageEnable_;
+    ASD_LOG(FATAL) << "Config:\nIsSaveTensor:" << isSaveTensor_
+                   << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
+                   << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
+                   << "\nIsStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
+                   << "\nWorkspaceSize:" << workspaceSize_
+                   << "\nIsOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
+                   << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_
+                   << "\nIsOpsRunnerWorkspaceReusageEnable:" << isOpsRunnerWorkspaceReusageEnable_;
 }
 
 Config::~Config() {}
@@ -96,15 +95,11 @@ bool Config::IsSelfAttentionKVCacheOpsRunnerEnable() { return isSelfAttentionKVC
 
 bool Config::IsSelfAttentionOpsRunnerEnable() { return isSelfAttentionOpsRunnerEnable_; }
 
-bool Config::IsStreamSyncEveryRunnerEnable() { return isStreamSyncEveryRunnerEnable_; }
-
 bool Config::IsStreamSyncEveryKernelEnable() { return isStreamSyncEveryKernelEnable_; }
 
-bool Config::IsStreamSyncEveryOperationEnable() { return isStreamSyncEveryOperationEnable_; }
+bool Config::IsStreamSyncEveryRunnerEnable() { return isStreamSyncEveryRunnerEnable_; }
 
 bool Config::IsStreamSyncEveryPlanEnable() { return isStreamSyncEveryPlanEnable_; }
-
-bool Config::IsKernelCacheEnable() { return isKernelCacheEnable_; }
 
 bool Config::IsSkipKernel(const std::string &kernelName)
 {
@@ -154,6 +149,8 @@ void Config::InitIs910B()
 }
 
 bool Config::IsOpsRunnerSetupCacheEnable() { return isOpsRunnerSetupCacheEnable_; }
+
+bool Config::IsOpsRunnerKernelCacheEnable() { return isOpsRunnerKernelCacheEnable_; }
 
 bool Config::IsOpsRunnerWorkspaceReusageEnable() { return isOpsRunnerWorkspaceReusageEnable_; }
 } // namespace AclTransformer

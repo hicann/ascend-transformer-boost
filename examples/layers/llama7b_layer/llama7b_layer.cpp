@@ -135,8 +135,6 @@ void Llama7BLayer::BuildGraph()
     AclTransformer::MlpOperation *mlpOp = new AclTransformer::MlpOperation(mlpParam);
     AclTransformer::AddOperation *mlpResidualAddOp = new AclTransformer::AddOperation(mlpResidualAddParam);
 
-    static int64_t graphId = 0;
-    opGraph_.name = "Llama7BGraph_" + std::to_string(graphId++);
     opGraph_.inTensorSize = 20;
     opGraph_.outTensorSize = 3;
     opGraph_.intermediateTensorSize = 12;

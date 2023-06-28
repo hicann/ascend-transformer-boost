@@ -13,26 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LAYER_WORKSPACE_H
-#define LAYER_WORKSPACE_H
-#include <cstdint>
-#include <memory>
+#ifndef ACLTRANSFORMER_RUNNER_VARIANT_PACK_H
+#define ACLTRANSFORMER_RUNNER_VARIANT_PACK_H
+#include <string>
+#include <asdops/tensor.h>
+#include <asdops/utils/svector/svector.h>
 
 namespace AclTransformer {
-class LayerWorkspaceBase;
-
-class LayerWorkspace {
-public:
-    LayerWorkspace();
-    ~LayerWorkspace();
-    virtual void SetWorkspace(uint64_t workspaceSize);
-    virtual void *GetWorkspace();
-
-private:
-    bool IsUserTorch();
-
-private:
-    std::unique_ptr<LayerWorkspaceBase> base_;
+struct RunnerVariantPack {
+    AsdOps::SVector<AsdOps::Tensor> inTensors;
+    AsdOps::SVector<AsdOps::Tensor> outTensors;
+    void *tilingBuffer = nullptr;
+    uint64_t tilingBufferSize = 0;
+    void *workspaceBuffer = nullptr;
+    uint64_t workspaceBufferSize = 0;
+    void *intermediateBuffer = nullptr;
+    uint64_t intermediateBufferSize = 0;
+    std::string ToString() const;
 };
 } // namespace AclTransformer
 #endif
