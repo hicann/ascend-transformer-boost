@@ -74,6 +74,7 @@ private:
     bool is910B_ = false;
     bool isOpsRunnerSetupCacheEnable_ = false;
     bool isOpsRunnerKernelCacheEnable_ = false;
+    bool isUsePpMatmul_ = false;
 };
 } // namespace AclTransformer
 #endif
