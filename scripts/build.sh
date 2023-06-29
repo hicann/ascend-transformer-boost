@@ -29,7 +29,7 @@ DEVICE_CODE_PACK_SWITCH=ON
 USE_CXX11_ABI=ON
 USE_VERBOSE=OFF
 BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples"
-BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" "--use_cxx11_abi=1" "--build_config=.*")
+BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off")
 
 function fn_build_googltest()
 {
@@ -344,6 +344,9 @@ function fn_main()
         "--no_devicebin")
             DEVICE_CODE_PACK_SWITCH=OFF
             ;;
+        "--optimize_off")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_OPTIMIZE=OFF"
+            ;;
         --link_python=*)
             arg2=${arg2#*=}
             if [ -z $arg2 ];then
@@ -403,7 +406,7 @@ function fn_main()
             fn_run_pythontest
             ;;
         "debug")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_DEBUG=ON"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS}"
             fn_build
             fn_make_tar_package
             ;;
