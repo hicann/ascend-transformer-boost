@@ -5,13 +5,15 @@ project("acltransformer")
 option(USE_UT_TEST "USE_UT_TEST" OFF)
 option(USE_GCOV "USE_GCOV" OFF)
 option(USE_CXX11_ABI "USE_CXX11_ABI" ON)
+option(USE_OPTIMIZE "USE_OPTIMIZE" ON)
 
 message(STATUS "USE_UT_TEST:${USE_UT_TEST}")
 
 
 # compile flag
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/acltransformer" CACHE PATH "..." FORCE)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/acltransformer"
+        CACHE PATH "..." FORCE)
 endif()
 message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
@@ -21,17 +23,24 @@ if(USE_GCOV)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
     set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
 endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-deprecated-declarations -Wno-conversion-null")
-if(BUILD_DEBUG)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pipe -fstack-protector-all -fno-use-cxa-atexit")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-conversion-null")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -fstack-protector-all")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fno-use-cxa-atexit")
+if(USE_OPTIMIZE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O2 -pipe -fstack-protector-all -fno-use-cxa-atexit")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing -g -fPIC -Wl,--build-id=none")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wl,--build-id=none")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
-set(LD_FLAGS_GLOBAL "-shared -rdynamic -ldl -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--build-id=none")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LD_FLAGS_GLOBAL} -fexceptions")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LD_FLAGS_GLOBAL} -pie -fPIE")
+set(LD_FLAGS_GLOBAL "-shared -rdynamic -ldl -Wl,-z,relro \
+    -Wl,-z,now -Wl,-z,noexecstack -Wl,--build-id=none")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} \
+    ${LD_FLAGS_GLOBAL} -fexceptions")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LD_FLAGS_GLOBAL} \
+    -pie -fPIE")
 if(TORCH_18)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTORCH_18")
 endif()
@@ -78,10 +87,15 @@ add_subdirectory(tools)
 
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/bin DESTINATION .)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so DESTINATION lib)
+install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so 
+        DESTINATION lib)
+install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so 
+        DESTINATION lib)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/host DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/device DESTINATION .)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/platform_configs DESTINATION .)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include/asdops DESTINATION include)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/core/include/acltransformer DESTINATION include)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/platform_configs 
+        DESTINATION .)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include/asdops 
+        DESTINATION include)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/core/include/acltransformer 
+        DESTINATION include)

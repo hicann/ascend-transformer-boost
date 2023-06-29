@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 #include "operation_torch.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
+#pragma GCC diagnostic pop
 #include <torch_npu/csrc/core/npu/register/OptionsManager.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
