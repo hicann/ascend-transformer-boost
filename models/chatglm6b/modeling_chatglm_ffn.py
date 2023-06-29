@@ -534,14 +534,15 @@ class GLU(torch.nn.Module):
         """
 
         # [seq_len, batch, inner_hidden_size]
-        
-        acl_intermediate_parallel = self.acl_ffn_operation.execute([hidden_states, self.dense_h_to_4h.weight, self.dense_h_to_4h.bias])
-        
+
+        acl_intermediate_parallel = self.acl_ffn_operation.execute(
+            [hidden_states, self.dense_h_to_4h.weight, self.dense_h_to_4h.bias])
+
         intermediate_parallel = self.dense_h_to_4h(hidden_states)
 
         intermediate_parallel = self.activation_func(intermediate_parallel)
-        
-        if torch.allclose(acl_intermediate_parallel, intermediate_parallel, rtol=0.02, atol=0.02):
+
+        if torch.allclose(acl_intermediate_parallel[0], intermediate_parallel, rtol=0.02, atol=0.02):
             print("equal")
         else:
             print("not euqal")

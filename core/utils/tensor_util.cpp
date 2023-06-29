@@ -178,17 +178,31 @@ int64_t TensorUtil::AlignInt(int64_t value, int align) { return (value + (align 
 std::string TensorUtil::AsdOpsRunInfoToString(const AsdOps::RunInfo &kernelRunInfo)
 {
     std::stringstream ss;
-    ss << "opdesc.opName:" << kernelRunInfo.GetOpDesc().opName << ", stream:" << kernelRunInfo.GetStream() << std::endl;
+    void *deviceLaunchBuffer = nullptr;
+    uint32_t launchBufferSize = 0;
+    kernelRunInfo.GetDeviceLaunchBuffer(deviceLaunchBuffer, launchBufferSize);
+
+    ss << "opdesc.opName:" << kernelRunInfo.GetOpDesc().opName << ", stream:" << kernelRunInfo.GetStream()
+       << ", deviceLaunchBuffer:" << deviceLaunchBuffer << ", launchBufferSize:" << launchBufferSize
+       << ", blockDim:" << kernelRunInfo.GetBlockDim() << std::endl;
+
+    AsdOps::SVector<void *> deviceLaunchBufferWorkspace;
+    kernelRunInfo.GetDeviceLaunchBufferWorkspace(deviceLaunchBufferWorkspace);
+    for (size_t i = 0; i < deviceLaunchBufferWorkspace.size(); ++i) {
+        ss << "workspace[" << i << "]:" << deviceLaunchBufferWorkspace.at(i) << std::endl;
+    }
 
     for (size_t i = 0; i < kernelRunInfo.GetInTensorCount(); ++i) {
         ss << "intensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetInTensor(i)) << std::endl;
     }
+    for (size_t i = 0; i < kernelRunInfo.GetConstTensorCount(); ++i) {
+        ss << "consttensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetConstTensor(i))
+           << std::endl;
+    }
     for (size_t i = 0; i < kernelRunInfo.GetOutTensorCount(); ++i) {
         ss << "outtensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i));
-        if (i != kernelRunInfo.GetOutTensorCount() - 1) {
-            ss << std::endl;
-        }
     }
+
     return ss.str();
 }
 } // namespace AclTransformer

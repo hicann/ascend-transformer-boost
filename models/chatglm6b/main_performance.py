@@ -110,17 +110,21 @@ def main():
                     os.system(clear_command)
                     print(build_prompt(history), flush=True)
                     signal.signal(signal.SIGINT, signal_handler)
-                if question > 0:
+                if question > 1:
                     if model.count == 1:
-                        output_file.write(f"First token time:\n{model.first}ms\n")
+                        output_file.write(
+                            f"First token time:\n{model.first}ms\n")
                         output_file.write("Per token time\n")
                     elif model.count < test_tokens_num:
                         output_file.write(f"{model.cur_time}ms\n")
                     else:
                         output_file.write(f"{model.cur_time}ms\n")
-                        output_file.write("Average token time without first token\n")
-                        output_file.write(f"{model.total / (test_tokens_num - 1)}ms\n")
-                        output_file.write(f"Response time\n{model.first + model.total}ms\n")
+                        output_file.write(
+                            "Average token time without first token\n")
+                        output_file.write(
+                            f"{model.total / (test_tokens_num - 1)}ms\n")
+                        output_file.write(
+                            f"Response time\n{model.first + model.total}ms\n")
                         output_file.close()
                         exit()
         os.system(clear_command)
