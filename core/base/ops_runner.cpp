@@ -77,7 +77,8 @@ AsdOps::Status OpsRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack)
     kernelGraph_.inTensors = runnerVariantPack.inTensors;
     kernelGraph_.outTensors = runnerVariantPack.outTensors;
     if (AsdOps::GetSingleton<Config>().IsOpsRunnerSetupCacheEnable()) {
-        if (IsRunnerVariantPackInputEqual(runnerVariantPack, lastRunnerVariantPack_)) {
+        if (IsRunnerVariantPackInputEqual(runnerVariantPack, lastRunnerVariantPack_) &&
+            GetName() != "PositionEmbeddingOpsRunner") {
             ASD_LOG(INFO) << GetName() << " runnerVariantPack input is not change, setup do nothing";
             return AsdOps::Status::OkStatus();
         } else {
@@ -194,7 +195,7 @@ void OpsRunner::UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack)
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetInTensorCount(); tensorId++) {
             AsdOps::Tensor &tensor = node.kernelRunInfo.GetInTensor(tensorId);
             if (IsInternalTensor(node.inTensors.at(tensorId))) {
-                tensor.data = deviceIntermediateBuffer + (uint64_t)tensor.data;
+                tensor.data = deviceIntermediateBuffer + (uint64_t)node.inTensors.at(tensorId)->data;
             } else {
                 int64_t tensorIdInRunnerVariantPack = GetInTensorId(node.inTensors.at(tensorId));
                 if (tensorIdInRunnerVariantPack != -1) {
@@ -213,7 +214,7 @@ void OpsRunner::UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack)
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetOutTensorCount(); tensorId++) {
             AsdOps::Tensor &tensor = node.kernelRunInfo.GetOutTensor(tensorId);
             if (IsInternalTensor(node.outTensors.at(tensorId))) {
-                tensor.data = deviceIntermediateBuffer + (uint64_t)tensor.data;
+                tensor.data = deviceIntermediateBuffer + (uint64_t)node.outTensors.at(tensorId)->data;
             } else {
                 int64_t tensorIdInRunnerVariantPack = GetOutTensorId(node.outTensors.at(tensorId));
                 if (tensorIdInRunnerVariantPack != -1) {
@@ -457,10 +458,10 @@ bool OpsRunner::PlanOneKernelSelectBestKernel(AsdOps::Operation *op, KernelGraph
         node.kernel = AsdOps::GetSingleton<KernelCache>().Get(runnerType_, nodeId, node.kernelRunInfo);
         if (node.kernel) {
             ASD_LOG(INFO) << GetName() << " " << op->GetName() << ", get cached best kernel:" << node.kernel->GetName();
-            AsdOps::GetSingleton<Statistic>().kernelCacheHitCount_++;
+            AsdOps::GetSingleton<Statistic>().kernelCacheHitCount++;
             return true;
         }
-        AsdOps::GetSingleton<Statistic>().kernelCacheMissCount_++;
+        AsdOps::GetSingleton<Statistic>().kernelCacheMissCount++;
     }
 
     AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
