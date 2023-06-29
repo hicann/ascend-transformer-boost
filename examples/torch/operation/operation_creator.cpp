@@ -48,6 +48,8 @@ AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJso
     AclTransformer::AddNormParam param;
     param.layerNormEps = paramJson["layerNormEps"].get<double>();
     ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps;
+    param.zoom_scale = paramJson["zoom_scale"].get<float>();
+    ASD_LOG(INFO) << "NormParam zoom_scale:" << param.zoom_scale;
     return new AclTransformer::AddNormOperation(param);
 }
 
