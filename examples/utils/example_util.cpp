@@ -17,7 +17,10 @@
 #include "example_util.h"
 #include <iostream>
 #include <sys/stat.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include <torch_npu/csrc/core/npu/NPUStream.h>
+#pragma GCC diagnostic pop
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
 #include <torch_npu/csrc/framework/utils/OpPreparation.h>
 #include <asdops/utils/rt/rt.h>
