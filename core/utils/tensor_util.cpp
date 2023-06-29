@@ -200,7 +200,8 @@ std::string TensorUtil::AsdOpsRunInfoToString(const AsdOps::RunInfo &kernelRunIn
            << std::endl;
     }
     for (size_t i = 0; i < kernelRunInfo.GetOutTensorCount(); ++i) {
-        ss << "outtensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i));
+        ss << "outtensors[" << i << "]: " << TensorUtil::AsdOpsTensorToString(kernelRunInfo.GetOutTensor(i))
+           << std::endl;
     }
 
     return ss.str();
