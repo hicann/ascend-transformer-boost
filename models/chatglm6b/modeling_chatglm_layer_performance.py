@@ -1026,6 +1026,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         self.total = 0
         self.cur_time = 0
         self.first = 0
+        self.pre_processing = 0
+        self.post_processing = 0
 
     def get_output_embeddings(self):
         return self.lm_head
@@ -1265,6 +1267,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 int, torch.Tensor], List[int]]] = None,
             **kwargs,
     ):
+        pre_processing_start = time.time()
         batch_size, input_ids_seq_length = input_ids.shape[0], input_ids.shape[-1]
 
         if generation_config is None:
@@ -1323,6 +1326,9 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
+        
+        pre_processing_end = time.time()
+        self.pre_processing = (pre_processing_end - pre_processing_start) * 1000
         while True:
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
@@ -1344,6 +1350,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             else:
                 self.total += self.cur_time
 
+            post_processing_start = time.time()
             next_token_logits = outputs.logits[:, -1, :]
 
             # pre-process distribution
@@ -1365,6 +1372,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             )
             unfinished_sequences = unfinished_sequences.mul(
                 (sum(next_tokens != i for i in eos_token_id)).long())
+            post_processing_end = time.time()
+            self.post_processing = (post_processing_end - post_processing_start) * 1000
 
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):

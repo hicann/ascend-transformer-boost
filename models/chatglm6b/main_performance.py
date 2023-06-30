@@ -100,6 +100,8 @@ def main():
         model.cur_time = 0
         model.first = 0
         model.total = 0
+        model.pre_processing = 0
+        model.post_processing = 0
         for response, history in model.stream_chat(tokenizer, query, history=history):
             if stop_stream:
                 stop_stream = False
@@ -107,16 +109,17 @@ def main():
             else:
                 count += 1
                 if count % 10 == 0:
-                    os.system(clear_command)
+                    # os.system(clear_command)
                     print(build_prompt(history), flush=True)
-                    signal.signal(signal.SIGINT, signal_handler)
+                    # signal.signal(signal.SIGINT, signal_handler)
                 if question > 1:
                     if model.count == 1:
-                        output_file.write(
-                            f"First token time:\n{model.first}ms\n")
+                        output_file.write(f"pre_processing: {model.post_processing}ms, " + \
+                            "First token time: {model.first}ms\n")
                         output_file.write("Per token time\n")
                     elif model.count < test_tokens_num:
-                        output_file.write(f"{model.cur_time}ms\n")
+                        output_file.write(f"{model.count}: {model.cur_time}ms, " + \
+                            "post_processing: {model.post_processing}ms\n")
                     else:
                         output_file.write(f"{model.cur_time}ms\n")
                         output_file.write(
