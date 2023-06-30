@@ -45,13 +45,15 @@ Config::Config()
     isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
     isOpsRunnerSetupCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_SETUP_CACHE_ENABLE");
     isOpsRunnerKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE");
+    isUsePpMatmul_ = IsEnable("ASDOPS_MATMUL_PP_FLAG");
     ASD_LOG(FATAL) << "Config:\nIsSaveTensor:" << isSaveTensor_
                    << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
                    << "\nIsStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
                    << "\nWorkspaceSize:" << workspaceSize_
                    << "\nIsOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
-                   << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_;
+                   << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_
+                   << "\nisUsePpMatmul_:" << isUsePpMatmul_;
 }
 
 Config::~Config() {}
