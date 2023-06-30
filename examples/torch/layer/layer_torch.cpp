@@ -43,6 +43,8 @@ LayerTorch::LayerTorch(std::string layerName, std::string param) : layerName_(la
         layer_ = new AclTransformer::BertLayer(paramJson);
     } else if (layerName == "ChatGlm6BLayer") {
         layer_ = new AclTransformer::ChatGlm6BLayer(paramJson);
+        chatGlmInTensors_.resize(19);
+        chatGlmOutTensors_.resize(3);
     } else if (layerName == "Llama7BLayer") {
         layer_ = new AclTransformer::Llama7BLayer(paramJson);
     }
@@ -62,6 +64,7 @@ std::vector<torch::Tensor> LayerTorch::Execute(std::vector<torch::Tensor> atInTe
     if (!layer_) {
         ASD_LOG(FATAL) << "LayerTorch::Execute fail, layer is null";
     }
+    timer_.Reset();
 
     ExampleUtil::ContiguousAtTensor(atInTensors);
     std::vector<torch::Tensor> atOutTensors;
@@ -76,17 +79,58 @@ void LayerTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vector<
     if (!layer_) {
         ASD_LOG(FATAL) << "LayerTorch::Execute fail, layer is null";
     }
+    timer_.Reset();
 
     ExampleUtil::ContiguousAtTensor(atInTensors);
     ExampleUtil::ContiguousAtTensor(atOutTensors);
     ExecuteOutImpl(atInTensors, atOutTensors);
 }
 
+void LayerTorch::SetChatGlmWeights(std::vector<torch::Tensor> weightTensors)
+{
+    size_t weightId = 0;
+    chatGlmInTensors_.at(1) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(2) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(3) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(4) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(5) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(6) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(7) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(8) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(9) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(10) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(11) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(12) = weightTensors.at(weightId++);
+
+    chatGlmInTensors_.at(14) = weightTensors.at(weightId++);
+    chatGlmInTensors_.at(15) = weightTensors.at(weightId++);
+}
+
+void LayerTorch::ExecuteOutChatGlm(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
+                                   torch::Tensor attentionMaskTensor, torch::Tensor pastKeyTensor,
+                                   torch::Tensor pastValueTensor, torch::Tensor blockOutTensor,
+                                   torch::Tensor presentKey, torch::Tensor presentValue)
+{
+    timer_.Reset();
+
+    chatGlmInTensors_.at(0) = hiddenStateTensor;
+    chatGlmInTensors_.at(13) = positionIdTensor;
+    chatGlmInTensors_.at(16) = attentionMaskTensor;
+    chatGlmInTensors_.at(17) = pastKeyTensor;
+    chatGlmInTensors_.at(18) = pastValueTensor;
+
+    chatGlmOutTensors_.at(0) = blockOutTensor;
+    chatGlmOutTensors_.at(1) = presentKey;
+    chatGlmOutTensors_.at(2) = presentValue;
+
+    ExampleUtil::ContiguousAtTensor(chatGlmInTensors_);
+    ExampleUtil::ContiguousAtTensor(chatGlmOutTensors_);
+    ExecuteOutImpl(chatGlmInTensors_, chatGlmOutTensors_);
+}
+
 void LayerTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors)
 {
     ASD_LOG(INFO) << GetLogPrefix() << " ExecuteOut execCount:" << executeCount_;
-    AsdOps::Timer timer;
-
     AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
 
     AclTransformer::VariantPack variantPack;
@@ -94,7 +138,7 @@ void LayerTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std::ve
 
     layer_->Execute(handle, variantPack);
 
-    AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer.ElapsedMicroSecond();
+    AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer_.ElapsedMicroSecond();
     ASD_LOG(FATAL) << GetLogPrefix() << " totalExecuteCount:" << totalExecuteCount_
                    << ", executeCount:" << executeCount_ << ", statistic:["
                    << AsdOps::GetSingleton<AclTransformer::Statistic>().ToString() << "]";
@@ -166,5 +210,7 @@ TORCH_LIBRARY(LayerTorch, m)
     m.class_<LayerTorch>("LayerTorch")
         .def(torch::init<std::string, std::string>())
         .def("execute", &LayerTorch::Execute)
-        .def("execute_out", &LayerTorch::ExecuteOut);
+        .def("execute_out", &LayerTorch::ExecuteOut)
+        .def("set_chatglm_weights", &LayerTorch::SetChatGlmWeights)
+        .def("execute_out_chatglm", &LayerTorch::ExecuteOutChatGlm);
 }
