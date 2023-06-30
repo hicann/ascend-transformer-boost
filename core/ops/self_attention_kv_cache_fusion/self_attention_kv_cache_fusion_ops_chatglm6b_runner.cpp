@@ -24,7 +24,7 @@
 namespace AclTransformer {
 SelfAttentionKvCacheFusionOpsChatGlm6bRunner::
     SelfAttentionKvCacheFusionOpsChatGlm6bRunner(const SelfAttentionKvCacheFusionParam &param)
-    : OpsRunner("SelfAttentionKvCacheFusionOpsChatGlm6bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
+    : OpsRunner("SelfAttentionKvCacheFusionOpsChatGlm6bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_FUSION_CACHE), param_(param)
 {
     ASD_LOG(INFO) <<
         "SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner called";
@@ -59,7 +59,7 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::
     // 2、V cache
     VCacheNode.opDesc = {0, "KvCacheOperation"};
     VCacheNode.inTensors = {&mixedValue, &layerId, &cacheV, &seqLen, &tokenOffset};
-    KCacheNode.outTensors = {&cacheV}; // Kcache and Vcache output and input use same space
+    VCacheNode.outTensors = {&cacheV}; // Kcache and Vcache output and input use same space
 
     // 3、flash attention
     flashAttentionNode.opDesc = {0, "FlashAttentionOperation"};
