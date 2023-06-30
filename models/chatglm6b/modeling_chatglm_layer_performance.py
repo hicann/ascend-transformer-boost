@@ -604,11 +604,11 @@ class GLMBlock(torch.nn.Module):
             params_dtype=params_dtype,
         )
         acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
+                                "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
 
-        self.acl_layer=torch.classes.LayerTorch.LayerTorch(
+        self.acl_layer = torch.classes.LayerTorch.LayerTorch(
             "ChatGlm6BLayer", acl_param)
-        
+
         self.input = []
         self.input_flag = False
 
@@ -627,12 +627,8 @@ class GLMBlock(torch.nn.Module):
         attention_mask: [(1, 1), seq_len, seq_len]
         """
 
-        test_glmBlockOut = None
-        test_presentKey = None
-        test_presentValue = None
-        
         outputs = None
-        
+
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
         if layer_past is None:
@@ -664,13 +660,19 @@ class GLMBlock(torch.nn.Module):
 
             # Second residual connection.
             output = mlp_input * alpha + mlp_output
-            
+
             if use_cache:
                 outputs = (output,) + outputs
             else:
                 outputs = (output,) + outputs[1:]
 
         else:
+            test_glmBlockOut = torch.zeros(hidden_states.shape).half().npu()
+            new_shape_k = torch.Size(
+                [layer_past[0].shape[0] + 1] + list(layer_past[0].shape[1:]))
+            test_presentKey = torch.zeros(new_shape_k).half().npu()
+            test_presentValue = torch.zeros(new_shape_k).half().npu()
+
             setup_start = time.time()
             pastKey, pastValue = layer_past
             if not self.input_flag:
@@ -687,6 +689,9 @@ class GLMBlock(torch.nn.Module):
                 self.input.append(attention_mask)
                 self.input.append(pastKey)
                 self.input.append(pastValue)
+                weights.append(cosTable)
+                weights.append(sinTable)
+                self.acl_layer.set_chatglm_weights(weights)
             else:
                 self.input[0] = hidden_states
                 self.input[13] = position_ids
@@ -694,12 +699,15 @@ class GLMBlock(torch.nn.Module):
                 self.input[17] = pastKey
                 self.input[18] = pastValue
 
-            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
-                self.input)
-            
-            outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
+            # test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
+            #     self.input)
 
-        
+            # outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
+
+            self.acl_layer.execute_out_chatglm(hidden_states, position_ids,
+                                               attention_mask, pastKey, pastValue,
+                                               test_glmBlockOut, test_presentKey, test_presentValue)
+            outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
 
         return outputs  # hidden_states, present, attentions
 
@@ -847,7 +855,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         # Final layer norm before output.
         self.final_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon)
-        
+
         self.layers_tensor = []
         for i in range(self.num_layers):
             self.layers_tensor.append(torch.tensor(i).npu())
@@ -1037,7 +1045,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             bias=False,
             dtype=torch.half
         )
-        
+
         self.count = 0
         self.total = 0
         self.cur_time = 0
@@ -1342,9 +1350,10 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
-        
+
         pre_processing_end = time.time()
-        self.pre_processing = (pre_processing_end - pre_processing_start) * 1000
+        self.pre_processing = (pre_processing_end -
+                               pre_processing_start) * 1000
         while True:
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
@@ -1389,7 +1398,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             unfinished_sequences = unfinished_sequences.mul(
                 (sum(next_tokens != i for i in eos_token_id)).long())
             post_processing_end = time.time()
-            self.post_processing = (post_processing_end - post_processing_start) * 1000
+            self.post_processing = (
+                post_processing_end - post_processing_start) * 1000
 
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
