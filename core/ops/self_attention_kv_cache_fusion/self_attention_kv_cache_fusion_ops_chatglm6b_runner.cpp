@@ -22,12 +22,12 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheFusionOpsChatGlm6bRunner::
-    SelfAttentionKvCacheFusionOpsChatGlm6bRunner(const SelfAttentionKvCacheFusionParam &param)
+SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner(
+    const SelfAttentionKvCacheFusionParam &param)
     : OpsRunner("SelfAttentionKvCacheFusionOpsChatGlm6bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
-    ASD_LOG(INFO) <<
-        "SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner called";
+    ASD_LOG(INFO)
+        << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner called";
 
     kernelGraph_.inTensors.resize(inTensSize);
     // kv cache input
@@ -45,8 +45,8 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::
 
     kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &context = kernelGraph_.outTensors.at(0);
-    
-    kernelGraph_.nodes.resize(NodeSize);
+
+    kernelGraph_.nodes.resize(3);
     auto &KCacheNode = kernelGraph_.nodes.at(0);
     auto &VCacheNode = kernelGraph_.nodes.at(1);
     auto &flashAttentionNode = kernelGraph_.nodes.at(index2);

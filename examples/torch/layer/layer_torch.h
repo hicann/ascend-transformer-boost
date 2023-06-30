@@ -18,6 +18,7 @@
 #include <string>
 #include <torch/script.h>
 #include <torch/custom_class.h>
+#include <asdops/utils/time/timer.h>
 #include "acltransformer/operation_graph.h"
 #include "examples/layers/layer.h"
 
@@ -27,6 +28,11 @@ public:
     ~LayerTorch();
     std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
     void ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
+    void SetChatGlmWeights(std::vector<torch::Tensor> weightTensors);
+    void ExecuteOutChatGlm(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
+                           torch::Tensor attentionMaskTensor, torch::Tensor pastKeyTensor,
+                           torch::Tensor pastValueTensor, torch::Tensor blockOutTensor, torch::Tensor presentKey,
+                           torch::Tensor presentValue);
     c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_, param_); }
 
 private:
@@ -44,6 +50,9 @@ private:
     uint64_t executeCount_ = 0;
     uint64_t layerId_ = 0;
     static uint64_t totalExecuteCount_;
+    AsdOps::Timer timer_;
+    std::vector<torch::Tensor> chatGlmInTensors_;
+    std::vector<torch::Tensor> chatGlmOutTensors_;
 };
 
 #endif
