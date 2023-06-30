@@ -22,6 +22,7 @@ std::string Statistic::ToString() const
            ", tillingCopyTime:" + std::to_string(tillingCopyTime) +
            ", getBestKernelTime:" + std::to_string(getBestKernelTime) +
            ", planSetupTime:" + std::to_string(planSetupTime) + ", planExecuteTime:" + std::to_string(planExecuteTime) +
+           ", kernelExecuteTime:" + std::to_string(kernelExecuteTime) +
            ", kernelCacheHitCount:" + std::to_string(kernelCacheHitCount) +
            ", kernelCacheMissCount:" + std::to_string(kernelCacheMissCount);
 }
@@ -34,6 +35,7 @@ void Statistic::Reset()
     getBestKernelTime = 0;
     planSetupTime = 0;
     planExecuteTime = 0;
+    kernelExecuteTime = 0;
     kernelCacheHitCount = 0;
     kernelCacheMissCount = 0;
 }

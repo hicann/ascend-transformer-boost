@@ -284,7 +284,11 @@ void OpsRunner::RunAllKernel(Handle &handle)
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " skip";
             continue;
         }
+
+        AsdOps::Timer timer;
         AsdOps::Status st = kernel->Run(kernelRunInfo);
+        AsdOps::GetSingleton<Statistic>().kernelExecuteTime += timer.ElapsedMicroSecond();
+
         if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryKernelEnable()) {
             AsdOps::Timer timer;
             int ret = AsdRtStreamSynchronize(handle.stream);
