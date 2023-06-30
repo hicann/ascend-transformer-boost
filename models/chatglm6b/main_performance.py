@@ -115,13 +115,14 @@ def main():
                 if question > 1:
                     if model.count == 1:
                         output_file.write(f"pre_processing: {model.post_processing}ms, " + \
-                            "First token time: {model.first}ms\n")
+                            f"First token time: {model.first}ms\n")
                         output_file.write("Per token time\n")
                     elif model.count < test_tokens_num:
                         output_file.write(f"{model.count}: {model.cur_time}ms, " + \
-                            "post_processing: {model.post_processing}ms\n")
+                            f"post_processing: {model.post_processing}ms\n")
                     else:
-                        output_file.write(f"{model.cur_time}ms\n")
+                        output_file.write(f"{model.count}: {model.cur_time}ms, " + \
+                            f"post_processing: {model.post_processing}ms\n")
                         output_file.write(
                             "Average token time without first token\n")
                         output_file.write(
