@@ -36,9 +36,6 @@ AsdOps::Status SelfAttentionKvCacheFusionOperation::InferShapeImpl(const AsdOps:
 {
     // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
     // out : out from flas attention [seq_len , batch, head_num, head_size]
-    if (inTensors.size() != GetInTensorCount()) {
-        return AsdOps::Status::FailStatus(1, "inTensorDescs size is not 9");
-    }
     outTensorDescs.resize(GetOutTensorCount());
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(0).dims.clear();

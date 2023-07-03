@@ -605,7 +605,7 @@ class GLMBlock(torch.nn.Module):
 
         acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
                                             "layerNormEps": layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
-        self.acl_layer=torch.classes.LayerTorch.LayerTorch("ChatGlm6BLayer", acl_param)
+        self.acl_layer=torch.classes.LayerTorch.LayerTorch("ChatGlm6BFusionLayer", acl_param)
 
     def forward(
             self,
