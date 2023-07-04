@@ -25,7 +25,7 @@
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
-#include "acltransformer/ops/self_attention_kv_cache_operation.h"
+#include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 
 namespace AclTransformer {
@@ -93,10 +93,8 @@ void ChatGlm6BFusionLayer::BuildGraph()
     AclTransformer::LinearParam mixdQkvLinearParam;
     AclTransformer::PositionEmbeddingParam positionEmbeddingParam;
     positionEmbeddingParam.headNum = paramJson_["headNum"].get<int>();
-    AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
-    selfAttentionKvCacheParam.transKey = paramJson_["transKey"].get<bool>();
-    selfAttentionKvCacheParam.dk = paramJson_["dk"].get<int>();
-    selfAttentionKvCacheParam.headNum = positionEmbeddingParam.headNum;
+    AclTransformer::SelfAttentionKvCacheFusionParam selfAttentionKvCacheParam;
+    selfAttentionKvCacheParam.headNum = paramJson_["headNum"].get<int>();
     AclTransformer::LinearParam selfOutLinearParam;
     AclTransformer::AddParam selfResidualAddParam;
     selfResidualAddParam.scale = paramJson_["ResidualAddScale"].get<float>();
@@ -111,8 +109,8 @@ void ChatGlm6BFusionLayer::BuildGraph()
     AclTransformer::LinearOperation *mixdQkvLinearOp = new AclTransformer::LinearOperation(mixdQkvLinearParam);
     AclTransformer::PositionEmbeddingOperation *positionEmbeddingOp =
         new AclTransformer::PositionEmbeddingOperation(positionEmbeddingParam);
-    AclTransformer::SelfAttentionKvCacheOperation *selfAttentionKvCacheOp =
-        new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam);
+    AclTransformer::SelfAttentionKvCacheFusionOperation *selfAttentionKvCacheOp =
+        new AclTransformer::SelfAttentionKvCacheFusionOperation(selfAttentionKvCacheParam);
     AclTransformer::LinearOperation *selfOutLinearOp = new AclTransformer::LinearOperation(selfOutLinearParam);
     AclTransformer::AddOperation *selfResidualAddOp = new AclTransformer::AddOperation(selfResidualAddParam);
     AclTransformer::NormOperation *selfNormOp = new AclTransformer::NormOperation(selfNormParam);
