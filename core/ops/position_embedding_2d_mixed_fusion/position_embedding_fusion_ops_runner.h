@@ -13,19 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef POSITIONEMBEDDING_OPS_RUNNER_H
-#define POSITIONEMBEDDING_OPS_RUNNER_H
+#ifndef POSITIONEMBEDDING_FUSION_OPS_RUNNER_H
+#define POSITIONEMBEDDING_FUSION_OPS_RUNNER_H
 #include "acltransformer/base/ops_runner.h"
-#include "acltransformer/params/position_embedding.h"
+#include "acltransformer/params/position_embedding_fusion.h"
 
 namespace AclTransformer {
-class PositionEmbeddingOpsRunner : public OpsRunner {
+class PositionEmbeddingFusionOpsRunner : public OpsRunner {
 public:
-    PositionEmbeddingOpsRunner(const PositionEmbeddingParam &param);
-    virtual ~PositionEmbeddingOpsRunner();
+    explicit PositionEmbeddingFusionOpsRunner(const PositionEmbeddingFusionParam &param);
+    virtual ~PositionEmbeddingFusionOpsRunner();
 
 private:
-    PositionEmbeddingParam param_;
+    PositionEmbeddingFusionParam param_;
+    const std::size_t size2 = 2;
+    const std::size_t index2 = 2;
+    const std::size_t index3 = 3;
+    const std::size_t index4 = 4;
+    const std::size_t index5 = 5;
+    const std::size_t index6 = 6;
+    const std::size_t index7 = 7;
+    const std::size_t index8 = 8;
 };
 } // namespace AclTransformer
 #endif

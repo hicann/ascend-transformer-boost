@@ -22,12 +22,13 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheFusionOpsChatGlm6bRunner::
-    SelfAttentionKvCacheFusionOpsChatGlm6bRunner(const SelfAttentionKvCacheFusionParam &param)
-    : OpsRunner("SelfAttentionKvCacheFusionOpsChatGlm6bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
+SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner(
+    const SelfAttentionKvCacheFusionParam &param)
+    : OpsRunner("SelfAttentionKvCacheFusionOpsChatGlm6bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_FUSION_CACHE),
+      param_(param)
 {
-    ASD_LOG(INFO) <<
-        "SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner called";
+    ASD_LOG(INFO)
+        << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner called";
 
     kernelGraph_.inTensors.resize(inTensSize);
     // kv cache input
@@ -45,7 +46,7 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::
 
     kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &context = kernelGraph_.outTensors.at(0);
-    
+
     kernelGraph_.nodes.resize(nodeSize);
     auto &KCacheNode = kernelGraph_.nodes.at(0);
     auto &VCacheNode = kernelGraph_.nodes.at(1);
@@ -59,7 +60,7 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::
     // 2、V cache
     VCacheNode.opDesc = {0, "KvCacheOperation"};
     VCacheNode.inTensors = {&mixedValue, &layerId, &cacheV, &seqLen, &tokenOffset};
-    KCacheNode.outTensors = {&cacheV}; // Kcache and Vcache output and input use same space
+    VCacheNode.outTensors = {&cacheV}; // Kcache and Vcache output and input use same space
 
     // 3、flash attention
     flashAttentionNode.opDesc = {0, "FlashAttentionOperation"};
