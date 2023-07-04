@@ -25,6 +25,7 @@ class LayerTorch : public torch::CustomClassHolder {
 public:
     LayerTorch(std::string layerName, std::string param);
     ~LayerTorch();
+    void SetParam(std::string param);
     std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
     void ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensors);
     c10::intrusive_ptr<LayerTorch> clone() const { return c10::make_intrusive<LayerTorch>(layerName_, param_); }
@@ -34,13 +35,14 @@ private:
     void ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors);
     void BuildVariantPack(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors,
                           AclTransformer::VariantPack &variantPack);
+    void SetLayer(std::string param);
 
     std::string GetLogPrefix();
 
 private:
     std::string layerName_;
     std::string param_;
-    AclTransformer::Layer *layer_ = nullptr;
+    std::unique_ptr<AclTransformer::Layer> layer_;
     uint64_t executeCount_ = 0;
     uint64_t layerId_ = 0;
     static uint64_t totalExecuteCount_;
