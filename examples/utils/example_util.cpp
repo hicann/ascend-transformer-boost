@@ -27,9 +27,9 @@
 #include <asdops/utils/singleton/singleton.h>
 #include <asdops/utils/filesystem/filesystem.h>
 #include <asdops/utils/log/log.h>
-#include "acltransformer/plan_builder.h"
 #include "acltransformer/config.h"
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/statistic.h"
 
 void *ExampleUtil::GetCurrentStream()
 {
@@ -150,6 +150,9 @@ void ExampleUtil::SaveTensor(const at::Tensor &tensor, const std::string &filePa
 void ExampleUtil::ContiguousAtTensor(std::vector<torch::Tensor> &atTensors)
 {
     for (size_t i = 0; i < atTensors.size(); ++i) {
-        atTensors.at(i) = atTensors.at(i).contiguous();
+        if (!atTensors.at(i).is_contiguous()) {
+            atTensors.at(i) = atTensors.at(i).contiguous();
+            AsdOps::GetSingleton<AclTransformer::Statistic>().contiguousCount++;
+        }
     }
 }

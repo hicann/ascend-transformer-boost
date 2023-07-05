@@ -127,23 +127,6 @@ void TensorUtil::SaveVariantPack(Handle &handle, const VariantPack &variantPack,
     }
 }
 
-void TensorUtil::SaveVariantPack(Handle &handle, const RunnerVariantPack &runnerVariantPack, const std::string &dirPath)
-{
-    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    for (size_t i = 0; i < runnerVariantPack.inTensors.size(); ++i) {
-        std::string fileName = "inTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
-        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
-        SaveTensor(runnerVariantPack.inTensors.at(i), filePath);
-    }
-
-    for (size_t i = 0; i < runnerVariantPack.outTensors.size(); ++i) {
-        std::string fileName = "outTensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
-        std::string filePath = AsdOps::FileSystem::Join({dirPath, fileName});
-        SaveTensor(runnerVariantPack.outTensors.at(i), filePath);
-    }
-}
-
 void TensorUtil::SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath)
 {
     AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);

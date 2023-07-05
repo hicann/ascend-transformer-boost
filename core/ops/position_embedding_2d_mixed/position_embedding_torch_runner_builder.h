@@ -15,7 +15,7 @@
  */
 #ifndef POSITION_EMBEDDING_TORCH_RUNNER_BUILDER_H
 #define POSITION_EMBEDDING_TORCH_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/position_embedding.h"
 #include "position_embedding_torch_runner.h"
 

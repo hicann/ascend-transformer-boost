@@ -29,18 +29,18 @@ MlpTorchRunner::MlpTorchRunner(const MlpParam &param) : Runner("MlpTorchRunner")
 
 MlpTorchRunner::~MlpTorchRunner() {}
 
-AsdOps::Status MlpTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
+AsdOps::Status MlpTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
-    if (runnerVariantPack.inTensors.size() != 4) {
+    if (variantPack.inTensors.size() != 4) {
         return AsdOps::Status::FailStatus(1, "MlpTorchRunner inTensor num error!");
     }
 #ifdef USE_TORCH_RUNNER
     ASD_LOG(INFO) << "MlpTorchRunner run!";
     ASD_LOG(INFO) << "start";
-    at::Tensor hiddenStates = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
-    at::Tensor weightGate = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
-    at::Tensor weightDown = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
-    at::Tensor weightUp = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[3]);
+    at::Tensor hiddenStates = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    at::Tensor weightGate = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    at::Tensor weightDown = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    at::Tensor weightUp = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
     ASD_LOG(INFO) << "hiddenStates" << hiddenStates.sizes();
     ASD_LOG(INFO) << "weightGate" << weightGate.sizes();
     ASD_LOG(INFO) << "weightDown" << weightDown.sizes();
@@ -52,7 +52,7 @@ AsdOps::Status MlpTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &ru
     hiddenStates = at::silu(at::matmul(hiddenStates, weightGate.t())) * at::matmul(hiddenStates, weightUp.t());
     at::Tensor atOutTensor = at::matmul(hiddenStates, weightDown.t()).contiguous();
     // torch::save(atOutTensor.to(at::Device(at::kCPU)), "mlp_llama_output.pth");
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
 #else
     return AsdOps::Status::FailStatus(1, "USE_TORCH_RUNNER not define");

@@ -23,8 +23,12 @@ namespace AclTransformer {
 struct VariantPack {
     AsdOps::SVector<AsdOps::Tensor> inTensors;
     AsdOps::SVector<AsdOps::Tensor> outTensors;
-    void *workspace = nullptr;
-    uint64_t workspaceSize = 0;
+    void *tilingBuffer = nullptr;
+    uint64_t tilingBufferSize = 0;
+    void *workspaceBuffer = nullptr;
+    uint64_t workspaceBufferSize = 0;
+    void *intermediateBuffer = nullptr;
+    uint64_t intermediateBufferSize = 0;
     std::string ToString() const;
 };
 } // namespace AclTransformer

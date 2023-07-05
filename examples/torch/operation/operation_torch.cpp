@@ -21,18 +21,18 @@
 #include <torch_npu/csrc/core/npu/register/OptionsManager.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
-#include <asdops/utils/time/timer.h>
 #include <asdops/ops.h>
 #include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
-#include "acltransformer/plan_builder.h"
+#include "acltransformer/context/work_context.h"
 #include "examples/utils/example_util.h"
-#include "examples/workspace/workspace.h"
 #include "operation_creator.h"
 
-OperationTorch::OperationTorch(std::string opName) : opName_(opName)
+uint64_t OperationTorch::totalExecuteCount_ = 0;
+
+OperationTorch::OperationTorch(std::string opName) : name_(opName), opName_(opName)
 {
     ASD_LOG(INFO) << "OperationTorch::OperationTorch, TASK_QUEUE_ENABLE:"
                   << c10_npu::option::OptionsManager().CheckQueueEnable() << ", opName:" << opName;
@@ -42,9 +42,11 @@ OperationTorch::OperationTorch(std::string opName) : opName_(opName)
 
 OperationTorch::~OperationTorch() {}
 
+void OperationTorch::SetName(std::string name) { name_ = name; }
+
 void OperationTorch::SetParam(std::string param)
 {
-    ASD_LOG(INFO) << "OperationTorch::SetParam start";
+    ASD_LOG(INFO) << "OperationTorch::SetParam start, param:" << param;
     param_ = param;
 
     AclTransformer::Operation *operation = CreateOperation(opName_, param_);
@@ -55,10 +57,9 @@ void OperationTorch::SetParam(std::string param)
 
     operation_.reset(operation);
 
-    AclTransformer::PlanBuilder planBuilder;
-    AsdOps::Status st = planBuilder.Build(operation_->GetName() + "Plan", operation_.get(), plan_);
+    AsdOps::Status st = operation_->BuildPlan(&plan_);
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << operation_->GetName() << " build plan fail, error:" << st.Message();
+        ASD_LOG(ERROR) << name_ << " build plan fail, error:" << st.Message();
         return;
     }
 
@@ -67,8 +68,10 @@ void OperationTorch::SetParam(std::string param)
 
 std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> atInTensors)
 {
+    timer_.Reset();
+    ASD_LOG(INFO) << name_ << " Execute start";
     if (!operation_) {
-        ASD_LOG(FATAL) << "OperationTorch::Execute fail, operation is null";
+        ASD_LOG(FATAL) << name_ << " Execute fail, operation is null";
     }
     ExampleUtil::ContiguousAtTensor(atInTensors);
 
@@ -82,8 +85,10 @@ std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> at
 
 void OperationTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vector<torch::Tensor> atOutTensors)
 {
+    timer_.Reset();
+    ASD_LOG(INFO) << name_ << " ExecuteOut start";
     if (!operation_) {
-        ASD_LOG(FATAL) << "OperationTorch::Execute fail, operation is null";
+        ASD_LOG(FATAL) << name_ << " ExecuteOut fail, operation is null";
     }
 
     ExampleUtil::ContiguousAtTensor(atInTensors);
@@ -93,46 +98,97 @@ void OperationTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vec
 
 void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors)
 {
-    ASD_LOG(INFO) << "OperationTorch::Execute execCount:" << executeCount_;
-    AsdOps::Timer timer;
-
     AclTransformer::Handle handle = {ExampleUtil::GetCurrentStream()};
 
     AclTransformer::VariantPack variantPack;
     BuildVariantPack(atInTensors, atOutTensors, variantPack);
 
-    AsdOps::Status st = plan_.Setup(handle, variantPack);
+    AsdOps::Timer t1;
+    AsdOps::Status st = plan_.Setup(variantPack);
+    AsdOps::GetSingleton<AclTransformer::Statistic>().planSetupTime += t1.ElapsedMicroSecond();
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << operation_->GetName() << " Setup fail, not call execute";
+        ASD_LOG(ERROR) << name_ << " Setup fail, not call execute";
         return;
     }
 
-    variantPack.workspaceSize = plan_.GetWorkspaceSize();
-    ASD_LOG(INFO) << operation_->GetName() << " GetWorkspaceSize:" << variantPack.workspaceSize;
-
-    if (variantPack.workspaceSize > 0) {
-        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
+    if (!CopyTiling(handle, variantPack)) {
+        return;
     }
 
+    variantPack.workspaceBufferSize = plan_.GetWorkspaceBufferSize();
+    ASD_LOG(INFO) << name_ << " GetWorkspaceBufferSize:" << variantPack.workspaceBufferSize;
+    if (variantPack.workspaceBufferSize > 0) {
+        variantPack.workspaceBuffer =
+            AsdOps::GetSingleton<AclTransformer::WorkContext>().GetWorkspaceBuffer(variantPack.workspaceBufferSize);
+    }
+
+    variantPack.intermediateBufferSize = plan_.GetIntermediateBufferSize();
+    ASD_LOG(INFO) << name_ << " GetIntermediateBufferSize:" << variantPack.intermediateBufferSize;
+    if (variantPack.intermediateBufferSize) {
+        variantPack.intermediateBuffer = AsdOps::GetSingleton<AclTransformer::WorkContext>().GetIntermediateBuffer(
+            variantPack.intermediateBufferSize);
+    }
+
+    AsdOps::Timer t2;
     st = plan_.Execute(handle, variantPack);
-    ASD_LOG_IF(!st.Ok(), ERROR) << operation_->GetName() << " execute fail, error:" << st.Message();
+    AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += t2.ElapsedMicroSecond();
+    ASD_LOG_IF(!st.Ok(), ERROR) << name_ << " execute fail, error:" << st.Message();
 
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(executeCount_) +
-                                   "_" + opName_ + "/outtensor" + std::to_string(i) + ".pth";
+                                   "_" + name_ + "/outtensor" + std::to_string(i) + ".pth";
             ExampleUtil::SaveTensor(atOutTensors.at(i), filePath);
-            ASD_LOG(INFO) << operation_->GetName() << " save tensor:" << filePath;
+            ASD_LOG(INFO) << name_ << " save tensor:" << filePath;
         }
     }
 
-    AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer.ElapsedMicroSecond();
-    ASD_LOG(FATAL) << operation_->GetName() << " executeCount:" << executeCount_ << ", statistic:["
-                   << AsdOps::GetSingleton<AclTransformer::Statistic>().ToString() << "]";
+    AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer_.ElapsedMicroSecond();
+    ASD_LOG(FATAL) << name_ << " totalExecuteCount:" << totalExecuteCount_ << ", executeCount:" << executeCount_
+                   << ", statistic:[" << AsdOps::GetSingleton<AclTransformer::Statistic>().ToString() << "]";
     AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
 
     executeCount_++;
+    totalExecuteCount_++;
+}
+
+bool OperationTorch::CopyTiling(AclTransformer::Handle handle, AclTransformer::VariantPack &variantPack)
+{
+    variantPack.tilingBufferSize = plan_.GetTilingBufferSize();
+    ASD_LOG(INFO) << name_ << " GetTilingBufferSize:" << variantPack.tilingBufferSize;
+
+    if (variantPack.tilingBufferSize == 0) {
+        return true;
+    }
+
+    void *hostTilingBuffer =
+        AsdOps::GetSingleton<AclTransformer::WorkContext>().GetHostTilingBuffer(variantPack.tilingBufferSize);
+    if (hostTilingBuffer == nullptr) {
+        ASD_LOG(FATAL) << name_ << " GetHostTilingBuffer null buffer";
+        return false;
+    }
+
+    AsdOps::Timer t1;
+    plan_.FillHostTilingBufferSize(hostTilingBuffer, variantPack.tilingBufferSize);
+    AsdOps::GetSingleton<AclTransformer::Statistic>().tilingFillTime += t1.ElapsedMicroSecond();
+
+    variantPack.tilingBuffer =
+        AsdOps::GetSingleton<AclTransformer::WorkContext>().GetTilingBuffer(variantPack.tilingBufferSize);
+    if (variantPack.tilingBuffer == nullptr) {
+        ASD_LOG(FATAL) << name_ << " GetTilingBuffer null buffer";
+        return false;
+    }
+
+    AsdOps::Timer timer;
+    int ret = AsdRtMemCopyAsync(variantPack.tilingBuffer, variantPack.tilingBufferSize, hostTilingBuffer,
+                                variantPack.tilingBufferSize, ASDRT_MEMCOPY_HOST_TO_DEVICE, handle.stream);
+    AsdOps::GetSingleton<AclTransformer::Statistic>().tillingCopyTime += timer.ElapsedMicroSecond();
+    if (ret != 0) {
+        ASD_LOG(ERROR) << name_ << " copy host tiling to device fail, ret:" << ret;
+        return false;
+    }
+
+    return true;
 }
 
 void OperationTorch::CreateAtOutTensors(const std::vector<torch::Tensor> &atInTensors,
@@ -145,14 +201,14 @@ void OperationTorch::CreateAtOutTensors(const std::vector<torch::Tensor> &atInTe
         auto &atInTensor = atInTensors.at(i);
         AsdOps::Tensor inTensor = ExampleUtil::AtTensor2AsdTensor(atInTensor);
         inTensors.push_back(inTensor);
-        ASD_LOG(INFO) << "infer shape inTensors[" << i
+        ASD_LOG(INFO) << name_ << " infer shape inTensors[" << i
                       << "]:" << AclTransformer::TensorUtil::AsdOpsTensorToString(inTensors.at(i));
     }
     operation_->InferShape(inTensors, outTensorDescs);
 
     atOutTensors.resize(outTensorDescs.size());
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
-        ASD_LOG(INFO) << "infer shape outTensorDescs[" << i
+        ASD_LOG(INFO) << name_ << " infer shape outTensorDescs[" << i
                       << "]:" << AclTransformer::TensorUtil::AsdOpsTensorDescToString(outTensorDescs.at(i));
         at::Tensor newTensor = ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
         atOutTensors.at(i) = newTensor;
@@ -171,9 +227,9 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
         variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i)));
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(executeCount_) +
-                                   "_" + opName_ + "/intensor" + std::to_string(i) + ".pth";
+                                   "_" + name_ + "/intensor" + std::to_string(i) + ".pth";
             ExampleUtil::SaveTensor(atInTensors.at(i), filePath);
-            ASD_LOG(INFO) << operation_->GetName() << " save tensor:" << filePath;
+            ASD_LOG(INFO) << name_ << " save tensor:" << filePath;
         }
     }
 
@@ -185,9 +241,9 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
         variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atOutTensors.at(i)));
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(executeCount_) +
-                                   "_" + opName_ + "/outtensor" + std::to_string(i) + ".pth";
+                                   "_" + name_ + "/outtensor" + std::to_string(i) + ".pth";
             ExampleUtil::SaveTensor(atOutTensors.at(i), filePath);
-            ASD_LOG(INFO) << operation_->GetName() << " save tensor:" << filePath;
+            ASD_LOG(INFO) << name_ << " save tensor:" << filePath;
         }
     }
 }
@@ -196,6 +252,7 @@ TORCH_LIBRARY(OperationTorch, m)
 {
     m.class_<OperationTorch>("OperationTorch")
         .def(torch::init<std::string>())
+        .def("set_name", &OperationTorch::SetName)
         .def("set_param", &OperationTorch::SetParam)
         .def("execute", &OperationTorch::Execute)
         .def("execute_out", &OperationTorch::ExecuteOut);

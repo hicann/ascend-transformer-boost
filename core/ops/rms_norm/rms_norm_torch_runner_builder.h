@@ -15,7 +15,7 @@
  */
 #ifndef RMSNORM_TORCH_RUNNER_BUILDER_H
 #define RMSNORM_TORCH_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/rms_norm.h"
 #include "rms_norm_torch_runner.h"
 

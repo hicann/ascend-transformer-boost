@@ -15,7 +15,7 @@
  */
 #ifndef SELFATTENTIONKVCACHEFUSION_OPS_CHATGLM6B_RUNNER_H
 #define SELFATTENTIONKVCACHEFUSION_OPS_CHATGLM6B_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/self_attention_kv_cache_fusion.h"
 
 namespace AclTransformer {

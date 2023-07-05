@@ -15,7 +15,7 @@
  */
 #ifndef MLP_TORCH_RUNNER_BUILDER_H
 #define MLP_TORCH_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/mlp.h"
 #include "mlp_torch_runner.h"
 

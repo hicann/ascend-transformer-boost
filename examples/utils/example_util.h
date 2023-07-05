@@ -19,7 +19,7 @@
 #include <string>
 #include <asdops/tensor.h>
 #include <torch/torch.h>
-#include "acltransformer/runner.h"
+#include "acltransformer/runner/runner.h"
 #include "acltransformer/operation.h"
 #include "acltransformer/operation_graph.h"
 #include "acltransformer/handle.h"

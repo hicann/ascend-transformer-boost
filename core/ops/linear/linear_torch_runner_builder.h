@@ -15,7 +15,7 @@
  */
 #ifndef LINERA_TORCH_RUNNER_BUILDER_H
 #define LINERA_TORCH_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/linear.h"
 #include "linear_torch_runner.h"
 

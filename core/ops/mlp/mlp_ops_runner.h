@@ -15,7 +15,7 @@
  */
 #ifndef MLP_OPS_RUNNER_H
 #define MLP_OPS_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/mlp.h"
 
 namespace AclTransformer {

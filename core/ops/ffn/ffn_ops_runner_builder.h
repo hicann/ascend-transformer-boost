@@ -15,7 +15,7 @@
  */
 #ifndef FFN_OPS_RUNNER_BUILDER_H
 #define FFN_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/ffn.h"
 #include "ffn_ops_runner.h"
 

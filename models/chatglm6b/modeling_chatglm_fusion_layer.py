@@ -604,8 +604,10 @@ class GLMBlock(torch.nn.Module):
         )
 
         acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                            "layerNormEps": layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
-        self.acl_layer=torch.classes.LayerTorch.LayerTorch("ChatGlm6BFusionLayer", acl_param)
+                                "layerNormEps": layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
+        self.acl_operation = torch.classes.OperationTorch.OperationTorch(
+            "ChatGlm6BFusionOperation")
+        self.acl_operation.set_param(acl_param)
 
     def forward(
             self,
@@ -710,7 +712,7 @@ class GLMBlock(torch.nn.Module):
             inputs.append(layer_id_input)
             global glm_block
 
-            test_glmBlockOut = self.acl_layer.execute(inputs)
+            test_glmBlockOut = self.acl_operation.execute(inputs)
 
             assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
                 test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'

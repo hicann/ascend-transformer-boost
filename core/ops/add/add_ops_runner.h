@@ -15,7 +15,7 @@
  */
 #ifndef ADD_OPS_RUNNER_H
 #define ADD_OPS_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/add.h"
 
 namespace AclTransformer {

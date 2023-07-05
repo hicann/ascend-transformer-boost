@@ -15,7 +15,7 @@
  */
 #ifndef NORM_OPS_RUNNER_H
 #define NORM_OPS_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/norm.h"
 
 namespace AclTransformer {

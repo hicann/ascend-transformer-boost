@@ -15,7 +15,7 @@
  */
 #ifndef ANY_OPS_RUNNER_H
 #define ANY_OPS_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/any.h"
 
 namespace AclTransformer {

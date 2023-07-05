@@ -15,7 +15,7 @@
  */
 #ifndef POSITIONEMBEDDING_FUSION_OPS_RUNNER_BUILDER_H
 #define POSITIONEMBEDDING_FUSION_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/position_embedding_fusion.h"
 #include "position_embedding_fusion_ops_runner.h"
 

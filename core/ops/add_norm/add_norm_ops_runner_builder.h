@@ -15,7 +15,7 @@
  */
 #ifndef ADDNORM_OPS_RUNNER_BUILDER_H
 #define ADDNORM_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/add_norm.h"
 #include "add_norm_ops_runner.h"
 

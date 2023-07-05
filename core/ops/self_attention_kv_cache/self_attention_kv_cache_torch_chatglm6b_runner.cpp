@@ -34,7 +34,7 @@ SelfAttentionKvCacheTorchChatGlm6bRunner::SelfAttentionKvCacheTorchChatGlm6bRunn
 SelfAttentionKvCacheTorchChatGlm6bRunner::~SelfAttentionKvCacheTorchChatGlm6bRunner() {}
 
 AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &handle,
-                                                                     RunnerVariantPack &runnerVariantPack)
+                                                                     VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
     // in : Q K V attention_mast pastK pastV
@@ -42,15 +42,15 @@ AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &han
     // Q K V pastK pastV : [seq_len, batch, head_num, head_size]
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk: " << this->param_.dk
                   << "  layer id: " << this->param_.layerId;
-    torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
-    torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
-    torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
-    torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[3]);
-    torch::Tensor pastKey = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[4]);
-    torch::Tensor pastValue = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[5]);
-    // torch::Tensor *atOutTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.outTensors[0]);
-    // torch::Tensor *presentKeyout = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.outTensors[1]);
-    // torch::Tensor *presentValueOut = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.outTensors[2]);
+    torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    torch::Tensor pastKey = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[4]);
+    torch::Tensor pastValue = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[5]);
+    // torch::Tensor *atOutTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[0]);
+    // torch::Tensor *presentKeyout = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[1]);
+    // torch::Tensor *presentValueOut = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[2]);
     ASD_LOG(INFO) << "start";
     ASD_LOG(INFO) << "mixedQuery" << mixedQuery.sizes();
     ASD_LOG(INFO) << "mixedKey" << mixedKey.sizes();
@@ -62,11 +62,11 @@ AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &han
     torch::Tensor presentKey = torch::cat({pastKey, mixedKey}, 0).contiguous();
     // torch::save(presentKey.to(at::Device(at::kCPU)), "cat_presentKey.pth");
     //*presentKeyout = presentKey;
-    if (!TorchUtil::IsTensorDimEqual(presentKey.sizes(), runnerVariantPack.outTensors[1].desc.dims)) {
-        ASD_LOG(ERROR) << "presentKey.sizes:" << presentKey.sizes() << ", runnerVariantPack.outTensors[1].desc:"
-                       << TensorUtil::AsdOpsTensorDescToString(runnerVariantPack.outTensors[1].desc);
+    if (!TorchUtil::IsTensorDimEqual(presentKey.sizes(), variantPack.outTensors[1].desc.dims)) {
+        ASD_LOG(ERROR) << "presentKey.sizes:" << presentKey.sizes() << ", variantPack.outTensors[1].desc:"
+                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[1].desc);
     }
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentKey, runnerVariantPack.outTensors[1]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentKey, variantPack.outTensors[1]);
     ASD_LOG(INFO) << "cat K end" << presentKey.sizes();
     // [seq_len, batch*head_num, head_size]
     mixedQuery =
@@ -76,12 +76,12 @@ AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &han
 
     torch::Tensor presentValue = torch::cat({pastValue, mixedValue}, 0).contiguous();
     //*presentValueOut = presentValue;
-    if (!TorchUtil::IsTensorDimEqual(presentValue.sizes(), runnerVariantPack.outTensors[2].desc.dims)) {
-        ASD_LOG(ERROR) << "presentValue.sizes:" << presentValue.sizes() << ", runnerVariantPack.outTensors[2].desc:"
-                       << TensorUtil::AsdOpsTensorDescToString(runnerVariantPack.outTensors[2].desc);
+    if (!TorchUtil::IsTensorDimEqual(presentValue.sizes(), variantPack.outTensors[2].desc.dims)) {
+        ASD_LOG(ERROR) << "presentValue.sizes:" << presentValue.sizes() << ", variantPack.outTensors[2].desc:"
+                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
     }
 
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentValue, runnerVariantPack.outTensors[2]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentValue, variantPack.outTensors[2]);
     ASD_LOG(INFO) << "cat V end" << presentValue.sizes();
     // [seq_len, batch*head_num, head_size]
     presentValue = presentValue.view(
@@ -143,12 +143,12 @@ AsdOps::Status SelfAttentionKvCacheTorchChatGlm6bRunner::ExecuteImpl(Handle &han
             .view({contextLayer.sizes()[0], contextLayer.sizes()[1], contextLayer.sizes()[2] * contextLayer.sizes()[3]})
             .contiguous();
 
-    if (!TorchUtil::IsTensorDimEqual(contextLayer.sizes(), runnerVariantPack.outTensors[0].desc.dims)) {
-        ASD_LOG(ERROR) << "contextLayer.sizes:" << contextLayer.sizes() << ", runnerVariantPack.outTensors[0].desc:"
-                       << TensorUtil::AsdOpsTensorDescToString(runnerVariantPack.outTensors[0].desc);
+    if (!TorchUtil::IsTensorDimEqual(contextLayer.sizes(), variantPack.outTensors[0].desc.dims)) {
+        ASD_LOG(ERROR) << "contextLayer.sizes:" << contextLayer.sizes() << ", variantPack.outTensors[0].desc:"
+                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
 
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, runnerVariantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
 
     return AsdOps::Status::OkStatus();
 #else

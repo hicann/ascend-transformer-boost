@@ -15,7 +15,7 @@
  */
 #ifndef ADD_TORCH_RUNNER_H
 #define ADD_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
+#include "acltransformer/runner/runner.h"
 #include "acltransformer/params/self_attention.h"
 
 namespace AclTransformer {
@@ -25,7 +25,7 @@ public:
     virtual ~SelfAttentionTorchRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     SelfAttentionParam param_;

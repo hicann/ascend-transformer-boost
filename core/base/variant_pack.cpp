@@ -21,7 +21,10 @@ namespace AclTransformer {
 std::string VariantPack::ToString() const
 {
     std::stringstream ss;
-    ss << "workspace:" << workspace << ", workspaceSize:" << workspaceSize << std::endl;
+    ss << "tilingBuffer:" << tilingBuffer << ", tilingBufferSize:" << tilingBufferSize << workspaceBuffer << ":"
+       << workspaceBuffer << ", workspaceBufferSize:" << workspaceBufferSize
+       << ", intermediateBuffer:" << intermediateBuffer << ", intermediateBufferSize:" << intermediateBufferSize
+       << std::endl;
     for (size_t i = 0; i < inTensors.size(); ++i) {
         ss << "inTensors[" << i << "]:" << TensorUtil::AsdOpsTensorToString(inTensors.at(i)) << std::endl;
     }

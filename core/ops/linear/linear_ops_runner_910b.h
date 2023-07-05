@@ -15,7 +15,7 @@
  */
 #ifndef LINEAR_OPS_RUNNER_910B_H
 #define LINEAR_OPS_RUNNER_910B_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/linear.h"
 
 namespace AclTransformer {

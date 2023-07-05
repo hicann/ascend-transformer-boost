@@ -20,7 +20,6 @@
 #include <asdops/tensor.h>
 #include <asdops/run_info.h>
 #include "acltransformer/variant_pack.h"
-#include "acltransformer/runner_variant_pack.h"
 #include "acltransformer/handle.h"
 
 namespace AclTransformer {
@@ -32,7 +31,6 @@ public:
     static std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
     static void SaveTensor(const AsdOps::Tensor &tensor, const std::string &filePath);
     static void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath);
-    static void SaveVariantPack(Handle &handle, const RunnerVariantPack &runnerVariantPack, const std::string &dirPath);
     static void SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath);
     static bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
     static std::string AsdOpsDimsToString(const AsdOps::SVector<int64_t> &dims);
