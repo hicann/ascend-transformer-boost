@@ -15,7 +15,7 @@
  */
 #ifndef RMS_NORM_TORCH_RUNNER_H
 #define RMS_NORM_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
+#include "acltransformer/runner/runner.h"
 #include "acltransformer/params/rms_norm.h"
 
 namespace AclTransformer {
@@ -25,7 +25,7 @@ public:
     virtual ~RmsNormTorchRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     RmsNormParam param_;

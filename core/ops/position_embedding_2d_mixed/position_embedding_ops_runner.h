@@ -15,7 +15,7 @@
  */
 #ifndef POSITIONEMBEDDING_OPS_RUNNER_H
 #define POSITIONEMBEDDING_OPS_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/position_embedding.h"
 
 namespace AclTransformer {
@@ -27,5 +27,6 @@ public:
 private:
     PositionEmbeddingParam param_;
 };
+
 } // namespace AclTransformer
 #endif

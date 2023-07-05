@@ -30,6 +30,11 @@
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/any_operation.h"
+#include "examples/ops/chatglm6b/chatglm6b_operation.h"
+#include "examples/ops/chatglm6b/chatglm6b28_operation.h"
+#include "examples/ops/chatglm6b/chatglm6b_fusion_operation.h"
+#include "examples/ops/bert/bert_operation.h"
+#include "examples/ops/llama7b/llama7b_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -156,6 +161,70 @@ AclTransformer::Operation *TransposeOperationCreate(const nlohmann::json &paramJ
     return new AclTransformer::TransposeOperation(param);
 }
 
+AclTransformer::Operation *BertOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BertParam param;
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.headNum = paramJson["headNum"].get<int>();
+    ASD_LOG(INFO) << "BertParam transKey:" << param.transKey << ", dk" << param.dk << ", headNum:" << param.headNum;
+    return new AclTransformer::BertOperation(param);
+}
+
+AclTransformer::Operation *ChatGlm6BOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    ASD_LOG(INFO) << "ChatGlm6BParam layerNormEps:" << param.layerNormEps << ", headNum" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale;
+    return new AclTransformer::ChatGlm6BOperation(param);
+}
+
+AclTransformer::Operation *ChatGlm6B28OperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6B28Param param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerCount = paramJson["layerCount"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    ASD_LOG(INFO) << "ChatGlm6BParam layerNormEps:" << param.layerNormEps << ", headNum" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerCount:" << param.layerCount
+                  << ", residualAddScale:" << param.residualAddScale;
+    return new AclTransformer::ChatGlm6B28Operation(param);
+}
+
+AclTransformer::Operation *ChatGlm6BFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BFusionParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    ASD_LOG(INFO) << "ChatGlm6BFusionParam layerNormEps:" << param.layerNormEps << ", headNum" << param.headNum
+                  << ", residualAddScale:" << param.residualAddScale;
+    return new AclTransformer::ChatGlm6BFusionOperation(param);
+}
+
+AclTransformer::Operation *Llam7BOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Llam7BParam param;
+    param.rmsNormEps = paramJson["rmsNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+
+    ASD_LOG(INFO) << "Llam7BParam rmsNormEps:" << param.rmsNormEps << ", dk" << param.dk
+                  << ", headNum:" << param.headNum << ", model:" << param.model;
+    return new AclTransformer::Llam7BOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
@@ -169,7 +238,13 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
     {"SelfAttentionOperation", &SelfAttentionOperationCreate},
-    {"AnyOperation", &AnyOperationCreate}};
+    {"AnyOperation", &AnyOperationCreate},
+    {"BertOperation", &BertOperationCreate},
+    {"ChatGlm6BOperation", &ChatGlm6BOperationCreate},
+    {"ChatGlm6B28Operation", &ChatGlm6B28OperationCreate},
+    {"ChatGlm6BFusionOperation", &ChatGlm6BFusionOperationCreate},
+    {"Llam7BOperation", &Llam7BOperationCreate},
+};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {

@@ -15,7 +15,7 @@
  */
 #ifndef MLP_OPS_RUNNER_BUILDER_H
 #define MLP_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/mlp.h"
 #include "mlp_ops_runner.h"
 

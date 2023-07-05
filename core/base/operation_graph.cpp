@@ -41,4 +41,6 @@ std::string OperationGraph::ToString() const
     }
     return ss.str();
 }
+
+void OperationGraph::LayerSingle(OperationGraph &other) const {}
 } // namespace AclTransformer

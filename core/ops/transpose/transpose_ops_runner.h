@@ -15,7 +15,7 @@
  */
 #ifndef TRANSPOSE_OPS_RUNNER_H
 #define TRANSPOSE_OPS_RUNNER_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/transpose.h"
 
 namespace AclTransformer {

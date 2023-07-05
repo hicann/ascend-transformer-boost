@@ -32,17 +32,17 @@ SelfAttentionTorchRunner::SelfAttentionTorchRunner(const SelfAttentionParam &par
 
 SelfAttentionTorchRunner::~SelfAttentionTorchRunner() {}
 
-AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
+AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
     // 384, 32, 1024 -> 384, 32, 1024
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk:" << this->param_.dk;
-    torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
+    torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
     mixedQuery = mixedQuery.view({mixedQuery.sizes()[0], mixedQuery.sizes()[1] * this->param_.headNum,
                                   mixedQuery.sizes()[2] / this->param_.headNum});
     mixedQuery = torch::transpose(mixedQuery, 0, 1);
-    torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
-    torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
+    torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
     mixedValue = mixedValue.view({mixedValue.sizes()[0], mixedValue.sizes()[1] * this->param_.headNum,
                                   mixedValue.sizes()[2] / this->param_.headNum});
     mixedValue = torch::transpose(mixedValue, 0, 1);
@@ -50,7 +50,7 @@ AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, RunnerVaria
         {mixedKey.sizes()[0], mixedKey.sizes()[1] * this->param_.headNum, mixedKey.sizes()[2] / this->param_.headNum});
     mixedKey = mixedKey.permute({1, 2, 0});
 
-    torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[3]);
+    torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
 
     double scal = 1 / sqrt(this->param_.dk);
     torch::Tensor attentionScores = torch::bmm(mixedQuery, mixedKey).contiguous();
@@ -69,7 +69,7 @@ AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, RunnerVaria
                                            contextLayer.sizes()[2] * this->param_.headNum})
                                     .contiguous();
 
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, variantPack.outTensors[0]);
 
     return AsdOps::Status::OkStatus();
 #else

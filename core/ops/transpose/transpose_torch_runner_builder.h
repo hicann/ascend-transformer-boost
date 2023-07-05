@@ -15,7 +15,7 @@
  */
 #ifndef TRANSPOSE_TORCH_RUNNER_BUILDER_H
 #define TRANSPOSE_TORCH_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/transpose.h"
 #include "transpose_torch_runner.h"
 

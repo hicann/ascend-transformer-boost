@@ -15,7 +15,7 @@
  */
 #ifndef TRANSPOSE_TORCH_RUNNER_H
 #define TRANSPOSE_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
+#include "acltransformer/runner/runner.h"
 #include "acltransformer/params/transpose.h"
 
 namespace AclTransformer {
@@ -25,7 +25,7 @@ public:
     virtual ~TransposeTorchRunner();
 
 private:
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     TransposeParam param_;

@@ -53,7 +53,7 @@ Config::Config()
                    << "\nWorkspaceSize:" << workspaceSize_
                    << "\nIsOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
                    << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_
-                   << "\nisUsePpMatmul_:" << isUsePpMatmul_;
+                   << "\nIsUsePpMatmul:" << isUsePpMatmul_;
 }
 
 Config::~Config() {}

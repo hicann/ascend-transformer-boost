@@ -38,6 +38,7 @@ struct OperationGraph {
     uint64_t intermediateTensorSize = 0;
     AsdOps::SVector<OperationGraphNode, 64> nodes;
     std::string ToString() const;
+    void LayerSingle(OperationGraph &other) const;
 };
 } // namespace AclTransformer
 #endif

@@ -15,7 +15,7 @@
  */
 #ifndef LINEAR_OPS_RUNNER_910A_H
 #define LINEAR_OPS_RUNNER_910A_H
-#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/runner/ops_runner.h"
 #include "acltransformer/params/linear.h"
 
 namespace AclTransformer {
@@ -25,15 +25,15 @@ public:
     virtual ~LinearOpsRunner910A();
 
 protected:
-    AsdOps::Status SetupKernelGraph(const RunnerVariantPack &runnerVariantPack) override;
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status SetupKernelGraph(const VariantPack &variantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
-    void ConvertNewRunnerVariantPackA(const RunnerVariantPack &runnerVariantPack,
-                                      RunnerVariantPack &newRunnerVariantPack, AsdOps::SVector<int64_t> &matmulOrgShape,
+    void ConvertNewVariantPackA(const VariantPack &variantPack,
+                                      VariantPack &newVariantPack, AsdOps::SVector<int64_t> &matmulOrgShape,
                                       AsdOps::SVector<int64_t> &transdataOrgShape);
-    AsdOps::Status SetupKernelGraphNz(const RunnerVariantPack &runnerVariantPack);
-    AsdOps::Status SetupKernelGraphNd(const RunnerVariantPack &runnerVariantPack);
+    AsdOps::Status SetupKernelGraphNz(const VariantPack &variantPack);
+    AsdOps::Status SetupKernelGraphNd(const VariantPack &variantPack);
 
 private:
     LinearParam param_;

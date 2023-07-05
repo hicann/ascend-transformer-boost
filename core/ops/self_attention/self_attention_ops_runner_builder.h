@@ -15,7 +15,7 @@
  */
 #ifndef SELF_ATTETION_OPS_RUNNER_BUILDER_H
 #define SELF_ATTETION_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/self_attention.h"
 #include "self_attention_ops_runner.h"
 

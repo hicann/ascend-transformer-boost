@@ -15,7 +15,7 @@
  */
 #ifndef SELF_ATTETION_KV_CACHE_TORCH_RUNNER_BUILDER_H
 #define SELF_ATTETION_KV_CACHE_TORCH_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include <asdops/utils/log/log.h>
 #include "acltransformer/params/self_attention_kv_cache.h"
 #include "self_attention_kv_cache_torch_chatglm6b_runner.h"

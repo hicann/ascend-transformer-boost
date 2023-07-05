@@ -15,7 +15,7 @@
  */
 #ifndef FFN_TORCH_RUNNER_H
 #define FFN_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
+#include "acltransformer/runner/runner.h"
 #include "acltransformer/params/ffn.h"
 
 namespace AclTransformer {
@@ -25,7 +25,7 @@ public:
     virtual ~FfnTorchRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
 private:

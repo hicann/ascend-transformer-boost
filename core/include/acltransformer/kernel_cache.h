@@ -18,7 +18,7 @@
 #include <vector>
 #include <asdops/run_info.h>
 #include <asdops/kernel.h>
-#include "acltransformer/runner_type.h"
+#include "acltransformer/runner/runner_type.h"
 
 namespace AclTransformer {
 class KernelCache {

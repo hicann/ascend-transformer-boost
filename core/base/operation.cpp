@@ -17,10 +17,11 @@
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/singleton/singleton.h>
-#include "acltransformer/runner.h"
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/config.h"
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/plan.h"
 
 namespace AclTransformer {
 Operation::Operation(const std::string &name) : name_(name) {}
@@ -49,6 +50,20 @@ AsdOps::Status Operation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTe
     return InferShapeImpl(inTensors, outTensorDescs);
 }
 
+AsdOps::Status Operation::BuildPlan(Plan *plan)
+{
+    ASD_LOG(INFO) << GetName() << " build plan start";
+    if (plan == nullptr) {
+        return AsdOps::Status::FailStatus(1, "invalid param, plan is null");
+    }
+
+    plan->runner_.reset(CreateBestRunner());
+
+    ASD_LOG(INFO) << GetName() << " build plan success";
+
+    return AsdOps::Status::OkStatus();
+}
+
 Runner *Operation::CreateBestRunner() const
 {
     RunnerBuilder *runnerBuilder = FindBestRunnerBuilder();
@@ -59,4 +74,6 @@ Runner *Operation::CreateBestRunner() const
         return nullptr;
     }
 }
+
+RunnerBuilder *Operation::FindBestRunnerBuilder() const { return nullptr; }
 } // namespace AclTransformer

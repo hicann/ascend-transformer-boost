@@ -19,6 +19,7 @@
 #include <vector>
 #include <torch/script.h>
 #include <torch/custom_class.h>
+#include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
 #include "acltransformer/plan.h"
 
@@ -26,6 +27,7 @@ class OperationTorch : public torch::CustomClassHolder {
 public:
     OperationTorch(std::string opName);
     ~OperationTorch();
+    void SetName(std::string name);
     void SetParam(std::string param);
     std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
     void ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensor);
@@ -36,13 +38,17 @@ private:
     void ExecuteOutImpl(std::vector<torch::Tensor> &inTensors, std::vector<torch::Tensor> &outTensor);
     void BuildVariantPack(std::vector<torch::Tensor> &inTensors, std::vector<torch::Tensor> &outTensor,
                           AclTransformer::VariantPack &variantPack);
+    bool CopyTiling(AclTransformer::Handle handle, AclTransformer::VariantPack &variantPack);
 
 private:
+    std::string name_;
     std::string opName_;
     std::string param_;
     std::unique_ptr<AclTransformer::Operation> operation_;
     AclTransformer::Plan plan_;
     uint64_t executeCount_ = 0;
+    AsdOps::Timer timer_;
+    static uint64_t totalExecuteCount_;
 };
 
 #endif

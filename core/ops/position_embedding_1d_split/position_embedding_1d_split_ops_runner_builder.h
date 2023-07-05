@@ -15,7 +15,7 @@
  */
 #ifndef POSITIONEMBEDDING_1D_SPLIT_OPS_RUNNER_BUILDER_H
 #define POSITIONEMBEDDING_1D_SPLIT_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/position_embedding_1d_split.h"
 #include "position_embedding_1d_split_ops_runner.h"
 

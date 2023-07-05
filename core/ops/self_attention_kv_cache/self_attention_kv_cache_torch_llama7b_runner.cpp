@@ -32,22 +32,22 @@ SelfAttentionKvCacheTorchLlama7bRunner::SelfAttentionKvCacheTorchLlama7bRunner(c
 
 SelfAttentionKvCacheTorchLlama7bRunner::~SelfAttentionKvCacheTorchLlama7bRunner() {}
 
-AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
+AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handle, VariantPack &variantPack)
 {
 #ifdef USE_TORCH_RUNNER
     // in : Q K V attention_mast pastK pastV
     // out : result presentK presentV
     // Q K V pastK pastV : [seq_len, batch, head_num, head_size]
     ASD_LOG(INFO) << "headNum:" << this->param_.headNum << "   dk: " << this->param_.dk;
-    torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
-    torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
-    torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
-    torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[3]);
-    torch::Tensor pastKey = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[4]);
-    torch::Tensor pastValue = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[5]);
-    // torch::Tensor *atOutTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.outTensors[0]);
-    // torch::Tensor *presentKeyout = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.outTensors[1]);
-    // torch::Tensor *presentValueOut = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.outTensors[2]);
+    torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[0]);
+    torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[1]);
+    torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[2]);
+    torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[3]);
+    torch::Tensor pastKey = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[4]);
+    torch::Tensor pastValue = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.inTensors[5]);
+    // torch::Tensor *atOutTensor = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[0]);
+    // torch::Tensor *presentKeyout = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[1]);
+    // torch::Tensor *presentValueOut = TorchUtil::AsdOpsTensor2AtTensor(handle, variantPack.outTensors[2]);
     ASD_LOG(INFO) << "start";
     ASD_LOG(INFO) << "mixedQuery" << mixedQuery.sizes();
     ASD_LOG(INFO) << "mixedKey" << mixedKey.sizes();
@@ -75,23 +75,23 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     torch::Tensor presentKeyOut = presentKey;
     // [seq_len, batch, head_num, head_size]
     presentKeyOut = presentKeyOut.permute({2, 0, 1, 3}).contiguous();
-    if (!TorchUtil::IsTensorDimEqual(presentKeyOut.sizes(), runnerVariantPack.outTensors[1].desc.dims)) {
-        ASD_LOG(ERROR) << "presentKeyOut.sizes:" << presentKeyOut.sizes() << ", runnerVariantPack.outTensors[2].desc:"
-                       << TensorUtil::AsdOpsTensorDescToString(runnerVariantPack.outTensors[1].desc);
+    if (!TorchUtil::IsTensorDimEqual(presentKeyOut.sizes(), variantPack.outTensors[1].desc.dims)) {
+        ASD_LOG(ERROR) << "presentKeyOut.sizes:" << presentKeyOut.sizes() << ", variantPack.outTensors[2].desc:"
+                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[1].desc);
     }
     torch::save(presentKeyOut.to(at::Device(at::kCPU)), "presentKeyOut_example.path");
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentKeyOut, runnerVariantPack.outTensors[1]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentKeyOut, variantPack.outTensors[1]);
 
     torch::Tensor presentValueOut = presentValue;
     // [seq_len, batch, head_num, head_size]
     presentValueOut = presentValueOut.permute({2, 0, 1, 3}).contiguous();
-    if (!TorchUtil::IsTensorDimEqual(presentValueOut.sizes(), runnerVariantPack.outTensors[2].desc.dims)) {
+    if (!TorchUtil::IsTensorDimEqual(presentValueOut.sizes(), variantPack.outTensors[2].desc.dims)) {
         ASD_LOG(ERROR) << "presentValueOut.sizes:" << presentValueOut.sizes()
-                       << ", runnerVariantPack.outTensors[2].desc:"
-                       << TensorUtil::AsdOpsTensorDescToString(runnerVariantPack.outTensors[2].desc);
+                       << ", variantPack.outTensors[2].desc:"
+                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[2].desc);
     }
     // torch::save(presentValueOut.to(at::Device(at::kCPU)), "presentValueOut_example.path");
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentValueOut, runnerVariantPack.outTensors[2]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, presentValueOut, variantPack.outTensors[2]);
 
     // [batch, head_num, head_size, kv_seq_len]
     presentKey = torch::transpose(presentKey, 2, 3);
@@ -153,13 +153,13 @@ AsdOps::Status SelfAttentionKvCacheTorchLlama7bRunner::ExecuteImpl(Handle &handl
     // [seq_len, batch, head_num*head_size]
     contextLayer = torch::transpose(contextLayer, 0, 1).contiguous();
     ASD_LOG(INFO) << "contextLayer transpose01 ok";
-    if (!TorchUtil::IsTensorDimEqual(contextLayer.sizes(), runnerVariantPack.outTensors[0].desc.dims)) {
-        ASD_LOG(ERROR) << "contextLayer.sizes:" << contextLayer.sizes() << ", runnerVariantPack.outTensors[0].desc:"
-                       << TensorUtil::AsdOpsTensorDescToString(runnerVariantPack.outTensors[0].desc);
+    if (!TorchUtil::IsTensorDimEqual(contextLayer.sizes(), variantPack.outTensors[0].desc.dims)) {
+        ASD_LOG(ERROR) << "contextLayer.sizes:" << contextLayer.sizes() << ", variantPack.outTensors[0].desc:"
+                       << TensorUtil::AsdOpsTensorDescToString(variantPack.outTensors[0].desc);
     }
     // torch::save(contextLayer.to(at::Device(at::kCPU)), "context_layer_example.path");
     ASD_LOG(INFO) << "contextLayer shape:" << contextLayer.sizes();
-    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, runnerVariantPack.outTensors[0]);
+    TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, contextLayer, variantPack.outTensors[0]);
 
     return AsdOps::Status::OkStatus();
 #else

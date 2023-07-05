@@ -603,10 +603,12 @@ class GLMBlock(torch.nn.Module):
             params_dtype=params_dtype,
         )
         acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
+                                "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
-        self.acl_layer=torch.classes.LayerTorch.LayerTorch(
-            "ChatGlm6BLayer", acl_param)
+        self.acl_operation = torch.classes.OperationTorch.OperationTorch(
+            "ChatGlm6BOperation")
+        self.acl_operation.set_name("ChatGlm6BOperation_" + str(self.layer_id))
+        self.acl_operation.set_param(acl_param)
 
     def forward(
             self,
@@ -623,26 +625,26 @@ class GLMBlock(torch.nn.Module):
         attention_mask: [(1, 1), seq_len, seq_len]
         """
 
-        test_glmBlockOut=None
-        test_presentKey=None
-        test_presentValue=None
-        test_in=None
+        test_glmBlockOut = None
+        test_presentKey = None
+        test_presentValue = None
+        test_in = None
 
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
         if layer_past is not None:
-            test_in=hidden_states
-        attention_input=self.input_layernorm(hidden_states)
+            test_in = hidden_states
+        attention_input = self.input_layernorm(hidden_states)
 
         # Self attention.
-        attention_outputs=self.attention(
+        attention_outputs = self.attention(
             attention_input,
             position_ids,
-            attention_mask = attention_mask,
-            layer_id = layer_id,
-            layer_past = layer_past,
-            use_cache = use_cache,
-            output_attentions = output_attentions
+            attention_mask=attention_mask,
+            layer_id=layer_id,
+            layer_past=layer_past,
+            use_cache=use_cache,
+            output_attentions=output_attentions
         )
 
         attention_output = attention_outputs[0]
@@ -676,8 +678,8 @@ class GLMBlock(torch.nn.Module):
             inputs.append(pastKey)
             inputs.append(pastValue)
             global glm_block
-           
-            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
+
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_operation.execute(
                 inputs)
 
             assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(

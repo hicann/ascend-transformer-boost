@@ -15,7 +15,7 @@
  */
 #ifndef SELFATTENTION_KV_CACHE_TORCH_CHATGLM6B_RUNNER_H
 #define SELFATTENTION_KV_CACHE_TORCH_CHATGLM6B_RUNNER_H
-#include "acltransformer/runner.h"
+#include "acltransformer/runner/runner.h"
 #include "acltransformer/params/self_attention_kv_cache.h"
 
 namespace AclTransformer {
@@ -25,7 +25,7 @@ public:
     virtual ~SelfAttentionKvCacheTorchChatGlm6bRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     SelfAttentionKvCacheParam param_;

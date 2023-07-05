@@ -15,7 +15,7 @@
  */
 #ifndef RMSNORM_OPS_RUNNER_BUILDER_H
 #define RMSNORM_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#include "acltransformer/runner/runner_builder.h"
 #include "acltransformer/params/rms_norm.h"
 #include "rms_norm_ops_runner.h"
 

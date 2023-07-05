@@ -15,7 +15,7 @@
  */
 #ifndef NORM_TORCH_RUNNER_H
 #define NORM_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
+#include "acltransformer/runner/runner.h"
 #include "acltransformer/params/norm.h"
 
 namespace AclTransformer {
@@ -25,7 +25,7 @@ public:
     virtual ~NormTorchRunner();
 
 protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, VariantPack &variantPack) override;
 
 private:
     NormParam param_;
