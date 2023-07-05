@@ -27,6 +27,8 @@ public:
 
 private:
     void BuildGraph();
+    void BuildEncoderGraph();
+    void BuildDecoderGraph();
 };
 } // namespace AclTransformer
 #endif

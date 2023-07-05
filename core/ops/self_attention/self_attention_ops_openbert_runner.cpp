@@ -15,16 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_ops_runner.h"
+#include "self_attention_ops_openbert_runner.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/params/params.h>
 
 namespace AclTransformer {
-SelfAttentionOpsRunner::SelfAttentionOpsRunner(const SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionOpsRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
+SelfAttentionOpsOpenbertRunner::SelfAttentionOpsOpenbertRunner(const SelfAttentionParam &param)
+    : OpsRunner("SelfAttentionOpsOpenbertRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionOpsRunner::SelfAttentionOpsRunner called";
+    ASD_LOG(INFO) << "SelfAttentionOpsOpenbertRunner::SelfAttentionOpsOpenbertRunner called";
 }
 
-SelfAttentionOpsRunner::~SelfAttentionOpsRunner() {}
+SelfAttentionOpsOpenbertRunner::~SelfAttentionOpsOpenbertRunner() {}
 } // namespace AclTransformer
