@@ -19,10 +19,10 @@
 #include "acltransformer/params/self_attention.h"
 
 namespace AclTransformer {
-class SelfAttentionTorchRunner : public Runner {
+class SelfAttentionOpenbertTorchRunner : public Runner {
 public:
-    SelfAttentionTorchRunner(const SelfAttentionParam &param);
-    virtual ~SelfAttentionTorchRunner();
+    SelfAttentionOpenbertTorchRunner(const SelfAttentionParam &param);
+    virtual ~SelfAttentionOpenbertTorchRunner();
 
 protected:
     AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;

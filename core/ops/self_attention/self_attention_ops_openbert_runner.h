@@ -13,18 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SELF_ATTETION_TORCH_RUNNER_BUILDER_H
-#define SELF_ATTETION_TORCH_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#ifndef SELFATTENTION_OPS_OPENBERT_RUNNER_H
+#define SELFATTENTION_OPS_OPENBERT_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/self_attention.h"
-#include "self_attention_torch_openbert_runner.h"
 
 namespace AclTransformer {
-class SelfAttentionTorchRunnerBuilder : public RunnerBuilder {
+class SelfAttentionOpsOpenbertRunner : public OpsRunner {
 public:
-    SelfAttentionTorchRunnerBuilder(const SelfAttentionParam &param) : param_(param) {}
-    virtual ~SelfAttentionTorchRunnerBuilder() = default;
-    Runner *Build() override { return new SelfAttentionOpenbertTorchRunner(param_); }
+    SelfAttentionOpsOpenbertRunner(const SelfAttentionParam &param);
+    virtual ~SelfAttentionOpsOpenbertRunner();
 
 private:
     SelfAttentionParam param_;

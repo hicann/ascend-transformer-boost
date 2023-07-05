@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_torch_runner.h"
+#include "self_attention_torch_openbert_runner.h"
 #include <cmath>
 #ifdef USE_TORCH_RUNNER
 #include <torch/torch.h>
@@ -24,15 +24,15 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionTorchRunner::SelfAttentionTorchRunner(const SelfAttentionParam &param)
-    : Runner("SelfAttentionTorchRunner"), param_(param)
+SelfAttentionOpenbertTorchRunner::SelfAttentionOpenbertTorchRunner(const SelfAttentionParam &param)
+    : Runner("SelfAttentionOpenbertTorchRunner"), param_(param)
 {
     ASD_LOG(INFO) << "SelfAttentionOperation::SelfAttentionOperation called";
 }
 
-SelfAttentionTorchRunner::~SelfAttentionTorchRunner() {}
+SelfAttentionOpenbertTorchRunner::~SelfAttentionOpenbertTorchRunner() {}
 
-AsdOps::Status SelfAttentionTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
+AsdOps::Status SelfAttentionOpenbertTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
 #ifdef USE_TORCH_RUNNER
     // 384, 32, 1024 -> 384, 32, 1024
