@@ -7,7 +7,8 @@ from transformers import AutoTokenizer, AutoModel
 # 适配昇腾NPU
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
-torch.npu.set_device(torch.device("npu:0"))
+device_id = 0
+torch.npu.set_device(torch.device(f"npu:{device_id}"))
 
 # 使用二进制优化，消除动态shape的编译问题
 torch.npu.set_compile_mode(jit_compile=False)
