@@ -38,25 +38,30 @@ LayerTorch::LayerTorch(std::string layerName, std::string param) : layerName_(la
     ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName;
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
-    nlohmann::json paramJson = nlohmann::json::parse(param);
-    layerId_ = paramJson["layerId"].get<int>();
-    if (layerName == "BertLayer") {
-        layer_ = new AclTransformer::BertLayer(paramJson);
-    } else if (layerName == "ChatGlm6BLayer") {
-        layer_ = new AclTransformer::ChatGlm6BLayer(paramJson);
-    } else if (layerName == "ChatGlm6BFusionLayer") {
-        layer_ = new AclTransformer::ChatGlm6BFusionLayer(paramJson);
-    } else if (layerName == "Llama7BLayer") {
-        layer_ = new AclTransformer::Llama7BLayer(paramJson);
-    }
+    SetLayer(param);
     ASD_LOG(INFO) << "LayerTorch::LayerTorch end";
 }
 
-LayerTorch::~LayerTorch()
+LayerTorch::~LayerTorch() {}
+
+void LayerTorch::SetParam(std::string param)
 {
-    if (layer_) {
-        delete layer_;
-        layer_ = nullptr;
+    ASD_LOG(INFO) << "LayerTorch::SetParam";
+    SetLayer(param);
+}
+
+void LayerTorch::SetLayer(std::string param)
+{
+    nlohmann::json paramJson = nlohmann::json::parse(param);
+    layerId_ = paramJson["layerId"].get<int>();
+    if (layerName_ == "BertLayer") {
+        layer_.reset(new AclTransformer::BertLayer(paramJson));
+    } else if (layerName_ == "ChatGlm6BLayer") {
+        layer_.reset(new AclTransformer::ChatGlm6BLayer(paramJson));
+    } else if (layerName_ == "ChatGlm6BFusionLayer") {
+        layer_.reset(new AclTransformer::ChatGlm6BFusionLayer(paramJson));
+    } else if (layerName_ == "Llama7BLayer") {
+        layer_.reset(new AclTransformer::Llama7BLayer(paramJson));
     }
 }
 
@@ -168,6 +173,7 @@ TORCH_LIBRARY(LayerTorch, m)
 {
     m.class_<LayerTorch>("LayerTorch")
         .def(torch::init<std::string, std::string>())
+        .def("set_param", &LayerTorch::SetParam)
         .def("execute", &LayerTorch::Execute)
         .def("execute_out", &LayerTorch::ExecuteOut);
 }
