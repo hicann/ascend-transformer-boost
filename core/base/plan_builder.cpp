@@ -73,6 +73,7 @@ AsdOps::Status PlanBuilder::BuildImpl(const std::string &planName, const Operati
         fullTensorPtrs.at(offset++) = &plan.runnerGraph_.internalTensors.at(i);
     }
 
+    plan.runnerGraph_.nodes.clear();
     for (auto &node : opGraph.nodes) {
         RunnerGraphNode runnerNode;
         runnerNode.operation = node.operation;

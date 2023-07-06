@@ -37,13 +37,14 @@ public:
     virtual uint64_t GetOutTensorCount() const = 0;
 
 protected:
-    Runner *CreateBestRunner() const;
+    virtual Runner *CreateBestRunner() const;
+    friend class GraphOperation;
+    friend class PlanBuilder;
 
 protected:
     virtual AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                           AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const = 0;
     virtual RunnerBuilder *FindBestRunnerBuilder() const = 0;
-    friend class PlanBuilder;
 
 protected:
     std::string name_;

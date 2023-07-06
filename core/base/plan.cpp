@@ -283,6 +283,8 @@ int64_t Plan::GetOutTensorId(const AsdOps::Tensor *tensor)
 
 void Plan::InitTensorMaxNodeMap()
 {
+    tensorMaxNodeIdMap_.clear();
+    maxNodeIdTensorMap_.clear();
     for (size_t i = 0; i < runnerGraph_.internalTensors.size(); ++i) {
         AsdOps::Tensor &internalTensor = runnerGraph_.internalTensors[i];
         uint64_t maxNodeId = 0;
