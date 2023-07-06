@@ -100,7 +100,7 @@ def main():
             else:
                 count += 1
                 if count % 3 == 0:
-                    os.system(clear_command)
+                    # os.system(clear_command)
                     print(build_prompt(history), flush=True)
                     signal.signal(signal.SIGINT, signal_handler)
         os.system(clear_command)
