@@ -44,11 +44,14 @@ public:
         AsdOps::SVector<AsdOps::Tensor> inTensors;
         AsdOps::SVector<AsdOps::Tensor> outTensors;
         AsdOps::SVector<AsdOps::Tensor> internalTensors;
-        AsdOps::SVector<Node> nodes;
+        AsdOps::SVector<Node, 64> nodes;
         std::map<AsdOps::Tensor *, uint64_t> tensorMaxNodeIdMap;
         std::map<uint64_t, std::set<AsdOps::Tensor *>> maxNodeIdTensorMap;
         std::string ToString() const;
         void InitTensorMaxNodeMap();
+        bool IsInternalTensor(const AsdOps::Tensor *tensor);
+        int64_t GetInTensorId(const AsdOps::Tensor *tensor);
+        int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
     };
 
     GraphRunner(const std::string &name);
@@ -63,7 +66,20 @@ protected:
     uint64_t GetIntermediateBufferSizeImpl() override;
     AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
-protected:
+private:
+    void Reset();
+    AsdOps::Status PreparseNodeVariantPack();
+    AsdOps::Status RunNodeInTensorViewFuncs(size_t nodeId, Node &node);
+    void InferShapeNode(size_t nodeId, Node &node);
+    AsdOps::Status SetupAllRunners();
+    void CalcTilingBufferSize();
+    void CalcIntermediateBufferSize();
+    void UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack);
+    void UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPack);
+    AsdOps::Status ExecuteAllRunner(Handle &handle, RunnerVariantPack &runnerVariantPack);
+    void *GetInOrOutTensorData(AsdOps::Tensor *tensor, const RunnerVariantPack &runnerVariantPack);
+
+private:
     Graph runnerGraph_;
     uint64_t selfIntermediateBufferSize_ = 0;
     uint64_t totalTilingBufferSize_ = 0;

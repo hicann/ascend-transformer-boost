@@ -21,6 +21,7 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/config.h"
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/planv2.h"
 
 namespace AclTransformer {
 Operation::Operation(const std::string &name) : name_(name) {}
@@ -47,6 +48,17 @@ AsdOps::Status Operation::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTe
     outTensorDescs.resize(outTensorCount);
 
     return InferShapeImpl(inTensors, outTensorDescs);
+}
+
+AsdOps::Status Operation::BuildPlan(PlanV2 *planv2)
+{
+    if (planv2 == nullptr) {
+        return AsdOps::Status::FailStatus(1, "null planv2");
+    }
+
+    planv2->name_ = GetName() + "PlanV2";
+    planv2->runner_.reset(CreateBestRunner());
+    return AsdOps::Status::OkStatus();
 }
 
 Runner *Operation::CreateBestRunner() const
