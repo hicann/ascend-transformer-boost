@@ -30,10 +30,12 @@
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/any_operation.h"
+#include "examples/ops/chatglm6b/chatglm6bblock/chatglm6bblock_operation.h"
+#include "examples/ops/chatglm6b/chatglm6bmodel/chatglm6bmodel_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
-AclTransformer::Operation *AddOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *AddOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddParam param;
     if (paramJson.find("scale") != paramJson.end()) {
@@ -43,7 +45,7 @@ AclTransformer::Operation *AddOperationCreate(const nlohmann::json &paramJson)
     return new AclTransformer::AddOperation(param);
 }
 
-AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddNormParam param;
     param.layerNormEps = paramJson["layerNormEps"].get<double>();
@@ -51,14 +53,14 @@ AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJso
     return new AclTransformer::AddNormOperation(param);
 }
 
-AclTransformer::Operation *RmsNormOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *RmsNormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::RmsNormParam param;
     param.rmsNormEps = paramJson["rmsNormEps"].get<double>();
     return new AclTransformer::RmsNormOperation(param);
 }
 
-AclTransformer::Operation *NormOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *NormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::NormParam param;
     param.layerNormEps = paramJson["layerNormEps"].get<double>();
@@ -66,7 +68,7 @@ AclTransformer::Operation *NormOperationCreate(const nlohmann::json &paramJson)
     return new AclTransformer::NormOperation(param);
 }
 
-AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::LinearParam param;
     param.transposeA = paramJson["transposeA"].get<bool>();
@@ -75,7 +77,7 @@ AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &paramJson
     return new AclTransformer::LinearOperation(param);
 }
 
-AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::FfnParam param;
     param.transposeA = paramJson["transposeA"].get<bool>();
@@ -84,20 +86,20 @@ AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &paramJson)
     return new AclTransformer::FfnOperation(param);
 }
 
-AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::MlpParam param;
     return new AclTransformer::MlpOperation(param);
 }
 
-AclTransformer::Operation *AnyOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *AnyOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AnyParam param;
     param.kernelGraph = paramJson;
     return new AclTransformer::AnyOperation(param);
 }
 
-AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionParam param;
     if (paramJson.contains("transKey")) {
@@ -120,7 +122,7 @@ AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &pa
     return new AclTransformer::SelfAttentionOperation(param);
 }
 
-AclTransformer::Operation *PositionEmbedding1dSplitOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *PositionEmbedding1dSplitOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbedding1dSplitParam param;
     param.headNum = paramJson["headNum"].get<int>();
@@ -128,7 +130,7 @@ AclTransformer::Operation *PositionEmbedding1dSplitOperationCreate(const nlohman
     return new AclTransformer::PositionEmbedding1dSplitOperation(param);
 }
 
-AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingParam param;
     param.headNum = paramJson["headNum"].get<int>();
@@ -136,7 +138,7 @@ AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json
     return new AclTransformer::PositionEmbeddingOperation(param);
 }
 
-AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionKvCacheParam param;
     if (paramJson.contains("transKey")) {
@@ -159,13 +161,43 @@ AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nlohmann::j
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }
 
-AclTransformer::Operation *TransposeOperationCreate(const nlohmann::json &paramJson)
+static AclTransformer::Operation *TransposeOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::TransposeParam param;
     param.dimA = paramJson["dimA"].get<int>();
     param.dimB = paramJson["dimB"].get<int>();
     ASD_LOG(INFO) << "transpose(" << param.dimA << "," << param.dimB << ")";
     return new AclTransformer::TransposeOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm6BBlockOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BBlockParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    ASD_LOG(INFO) << "ChatGlm6BBlockParam layerNormEps:" << param.layerNormEps << ", headNum" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale;
+    return new AclTransformer::ChatGlm6BBlockOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm6BModelOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BModelParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerNum = paramJson["layerNum"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    ASD_LOG(INFO) << "ChatGlm6BModelParam layerNormEps:" << param.layerNormEps << ", headNum" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerNum:" << param.layerNum
+                  << ", residualAddScale:" << param.residualAddScale;
+    return new AclTransformer::ChatGlm6BModelOperation(param);
 }
 
 std::map<std::string, OperationCreateFunc> g_funcMap = {
@@ -181,7 +213,10 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
     {"SelfAttentionOperation", &SelfAttentionOperationCreate},
-    {"AnyOperation", &AnyOperationCreate}};
+    {"AnyOperation", &AnyOperationCreate},
+    {"ChatGlm6BBlockOperation", &ChatGlm6BBlockOperationCreate},
+    {"ChatGlm6BModelOperation", &ChatGlm6BModelOperationCreate},
+};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
