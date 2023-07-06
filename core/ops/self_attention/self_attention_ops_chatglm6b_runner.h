@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SELFATTENTION_OPS_RUNNER_H
-#define SELFATTENTION_OPS_RUNNER_H
+#ifndef SELFATTENTION_OPS_CHATGLM6B_RUNNER_H
+#define SELFATTENTION_OPS_CHATGLM6B_RUNNER_H
 #include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/self_attention.h"
 
 namespace AclTransformer {
-class SelfAttentionOpsRunner : public OpsRunner {
+class SelfAttentionOpsChatglm6bRunner : public OpsRunner {
 public:
-    SelfAttentionOpsRunner(const SelfAttentionParam &param);
-    virtual ~SelfAttentionOpsRunner();
+    SelfAttentionOpsChatglm6bRunner(const SelfAttentionParam &param);
+    virtual ~SelfAttentionOpsChatglm6bRunner();
 
 private:
     SelfAttentionParam param_;

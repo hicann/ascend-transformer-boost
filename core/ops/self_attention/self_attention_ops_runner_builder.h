@@ -17,14 +17,25 @@
 #define SELF_ATTETION_OPS_RUNNER_BUILDER_H
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/self_attention.h"
-#include "self_attention_ops_runner.h"
+#include "self_attention_ops_openbert_runner.h"
+#include "self_attention_ops_chatglm6b_runner.h"
+#include <asdops/utils/log/log.h>
 
 namespace AclTransformer {
 class SelfAttentionOpsRunnerBuilder : public RunnerBuilder {
 public:
     SelfAttentionOpsRunnerBuilder(const SelfAttentionParam &param) : param_(param) {}
     virtual ~SelfAttentionOpsRunnerBuilder() = default;
-    Runner *Build() override { return new SelfAttentionOpsRunner(param_); }
+    Runner *Build() override { 
+            if (param_.model == "openbert") {
+                return new SelfAttentionOpsOpenbertRunner(param_);
+            } else if (param_.model == "chatglm6b") {
+                return new SelfAttentionOpsChatglm6bRunner(param_); 
+            } else {
+                ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
+                return nullptr;
+            }
+    }
 
 private:
     SelfAttentionParam param_;

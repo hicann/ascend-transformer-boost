@@ -18,6 +18,7 @@
 #include "acltransformer/config.h"
 #include "self_attention_torch_runner_builder.h"
 #include "self_attention_ops_runner_builder.h"
+#include <asdops/utils/log/log.h>
 
 namespace AclTransformer {
 SelfAttentionOperation::SelfAttentionOperation(const SelfAttentionParam &param)
@@ -39,7 +40,15 @@ uint64_t SelfAttentionOperation::GetOutTensorCount() const { return 1; }
 AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    outTensorDescs.at(0) = inTensors.at(0).desc;
+    if (param_.model == "openbert") {
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+    } else if (param_.model == "chatglm6b") {
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
+    }
     return AsdOps::Status::OkStatus();
 }
 
