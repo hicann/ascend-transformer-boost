@@ -23,8 +23,6 @@ class ChatGlm6BModelOperation : public GraphOperation {
 public:
     ChatGlm6BModelOperation(const ChatGlm6BModelParam &param);
     ~ChatGlm6BModelOperation();
-    uint64_t GetInTensorCount() const override;
-    uint64_t GetOutTensorCount() const override;
 
 protected:
     AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
