@@ -19,34 +19,35 @@
 #include "position_embedding_fusion_ops_runner_builder.h"
 
 namespace AclTransformer {
-PositionEmbeddingFusionOperation::PositionEmbeddingFusionOperation(const PositionEmbeddingFusionParam &param)
-    : Operation("PositionEmbeddingFusionOperation"), param_(param)
+RopeOperation::RopeOperation(const PositionEmbeddingFusionParam &param)
+    : Operation("RopeOperation"), param_(param)
 {
     runnerBuilders_ = {new PositionEmbeddingFusionOpsRunnerBuilder(param_)};
 }
 
-PositionEmbeddingFusionOperation::~PositionEmbeddingFusionOperation() {}
+RopeOperation::~RopeOperation() {}
 
-uint64_t PositionEmbeddingFusionOperation::GetInTensorCount() const { return inTensorSize; }
+uint64_t RopeOperation::GetInTensorCount() const { return inTensorSize; }
 
-uint64_t PositionEmbeddingFusionOperation::GetOutTensorCount() const { return outTensorSize; }
+uint64_t RopeOperation::GetOutTensorCount() const { return outTensorSize; }
 
 AsdOps::Status
-PositionEmbeddingFusionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                 AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+RopeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    // in : Q,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
-    // out : Q ,[seq_len * batch, head_num * head_size]
-    outTensorDescs.at(0) = inTensors.at(0).desc;
-    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims.at(0) * inTensors.at(0).desc.dims.at(1),
-                                 inTensors.at(0).desc.dims.at(2) / kqvSliceSize}; // 2=index
+    outTensorDescs.at(0).format = inTensors.at(0).desc.format;
+    outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
+    outTensorDescs.at(0).dims.push_back(param_.headNum);
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[2] / param_.headNum / kqvSliceSize);
+
     outTensorDescs.at(1) = outTensorDescs.at(0);
     outTensorDescs.at(2) = outTensorDescs.at(0); // 2=index
-
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *PositionEmbeddingFusionOperation::FindBestRunnerBuilder() const
+RunnerBuilder *RopeOperation::FindBestRunnerBuilder() const
 {
     size_t index = 0;
     return runnerBuilders_.at(index);

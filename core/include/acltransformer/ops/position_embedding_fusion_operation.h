@@ -19,10 +19,10 @@
 #include "acltransformer/params/position_embedding_fusion.h"
 
 namespace AclTransformer {
-class PositionEmbeddingFusionOperation : public Operation {
+class RopeOperation : public Operation {
 public:
-    PositionEmbeddingFusionOperation(const PositionEmbeddingFusionParam &param);
-    virtual ~PositionEmbeddingFusionOperation();
+    RopeOperation(const PositionEmbeddingFusionParam &param);
+    virtual ~RopeOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 
@@ -33,7 +33,7 @@ protected:
 
 private:
     PositionEmbeddingFusionParam param_;
-    const size_t inTensorSize = 7;
+    const size_t inTensorSize = 5;
     const size_t outTensorSize = 3;
     const int32_t kqvSliceSize = 3;
 };

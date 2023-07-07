@@ -32,6 +32,7 @@
 #include "acltransformer/ops/any_operation.h"
 #include "examples/ops/chatglm6b/chatglm6bblock/chatglm6bblock_operation.h"
 #include "examples/ops/chatglm6b/chatglm6bmodel/chatglm6bmodel_operation.h"
+#include "acltransformer/ops/position_embedding_fusion_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -44,7 +45,13 @@ static AclTransformer::Operation *AddOperationCreate(const nlohmann::json &param
     ASD_LOG(INFO) << "AddParam scale:" << param.scale;
     return new AclTransformer::AddOperation(param);
 }
-
+AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::PositionEmbeddingFusionParam param;
+    param.headNum = paramJson["headNum"].get<int64_t>();
+    ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    return new AclTransformer::RopeOperation(param);
+}
 static AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddNormParam param;
@@ -201,10 +208,10 @@ static AclTransformer::Operation *ChatGlm6BModelOperationCreate(const nlohmann::
                   << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BModelOperation(param);
 }
-
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
+    {"RopeOperation", &RopeOperationCreate},
     {"AddNormOperation", &AddNormOperationCreate},
     {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},

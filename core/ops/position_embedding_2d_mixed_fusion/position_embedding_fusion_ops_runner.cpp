@@ -17,6 +17,7 @@
 #include <numeric>
 #include <asdops/utils/log/log.h>
 #include <asdops/params/params.h>
+#include <asdops/params/rope.h>
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
@@ -25,64 +26,48 @@ PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner(const Positio
 {
     ASD_LOG(INFO) << "PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner called, headNum: "
                   << param_.headNum;
-    const size_t inTensorSize = 7;
+    const size_t inTensorSize = 5;
     const size_t outTensorSize = 3;
-    const size_t interTensorSize = 16;
-    const size_t nodeSize = 14;
+    const size_t interTensorSize = 10;
+    const size_t nodeSize = 10;
     const int32_t kqvSliceSize = 3;
     kernelGraph_.inTensors.resize(inTensorSize);
     AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &positionIds = kernelGraph_.inTensors.at(1);
     AsdOps::Tensor &cosTable = kernelGraph_.inTensors.at(index2);
     AsdOps::Tensor &sinTable = kernelGraph_.inTensors.at(index3);
-    AsdOps::Tensor &layerId = kernelGraph_.inTensors.at(index4);
-    AsdOps::Tensor &seqLen = kernelGraph_.inTensors.at(index5);
-    AsdOps::Tensor &tokenOffset = kernelGraph_.inTensors.at(index6);
+    AsdOps::Tensor &seqLen = kernelGraph_.inTensors.at(index4);
 
     kernelGraph_.outTensors.resize(outTensorSize);
     AsdOps::Tensor &qEmbedded = kernelGraph_.outTensors.at(0);
     AsdOps::Tensor &kEmbedded = kernelGraph_.outTensors.at(1);
-    AsdOps::Tensor &value = kernelGraph_.outTensors.at(index2);
+    AsdOps::Tensor &value = kernelGraph_.outTensors.at(index2);  // V
 
     kernelGraph_.internalTensors.resize(interTensorSize);
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &qLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &kLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &qChunk0 = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &qChunk1 = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &kChunk0 = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &kChunk1 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &positionIds0 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &positionIds1 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &cos0 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &sin0 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &cos1 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &sin1 = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &qEmbedded0 = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &qEmbedded1 = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &kEmbedded0 = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &kEmbedded1 = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &cos_sum = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &sin_sum = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
-    auto &globalInfoNode = kernelGraph_.nodes[nodeNum++];
     auto &split0Node = kernelGraph_.nodes[nodeNum++];
-    auto &split1Node = kernelGraph_.nodes[nodeNum++];
-    auto &split2Node = kernelGraph_.nodes[nodeNum++];
     auto &asStrided0Node = kernelGraph_.nodes[nodeNum++];
     auto &asStrided1Node = kernelGraph_.nodes[nodeNum++];
     auto &embedding0Node = kernelGraph_.nodes[nodeNum++];
     auto &embedding1Node = kernelGraph_.nodes[nodeNum++];
     auto &embedding2Node = kernelGraph_.nodes[nodeNum++];
     auto &embedding3Node = kernelGraph_.nodes[nodeNum++];
+    auto &concate4Node = kernelGraph_.nodes[nodeNum++];
+    auto &concate5Node = kernelGraph_.nodes[nodeNum++];
     auto &rope0Node = kernelGraph_.nodes[nodeNum++];
-    auto &rope1Node = kernelGraph_.nodes[nodeNum++];
-    auto &cat0Node = kernelGraph_.nodes[nodeNum++];
-    auto &cat1Node = kernelGraph_.nodes[nodeNum++];
-
-    globalInfoNode.opDesc = {0, "GlobalInfoOperation"};
-    globalInfoNode.inTensors = {&layerId, &seqLen, &tokenOffset};
-    globalInfoNode.outTensors = {&layerId, &tokenOffset};
 
     split0Node.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, kqvSliceSize}};
     split0Node.inTensors = {&mixedQkv};
@@ -97,23 +82,9 @@ PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner(const Positio
         runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, kqvSliceSize}});
     };
 
-    InferShapePreFunc split1InferShape = [](AsdOps::RunInfo &runInfo) {
-        AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, 2}});
-    };
-    split1Node.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 2}};
-    split1Node.inTensors = {&qLayer};
-    split1Node.outTensors = {&qChunk0, &qChunk1};
-    split1Node.inferShapePreFunc = split1InferShape;
-
-    split2Node.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 2}};
-    split2Node.inTensors = {&kLayer};
-    split2Node.outTensors = {&kChunk0, &kChunk1};
-    split2Node.inferShapePreFunc = split1InferShape;
-
     asStrided0Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
     asStrided0Node.inTensors = {&positionIds};
-    asStrided0Node.outTensors = {&positionIds0};
+    asStrided0Node.outTensors = {&positionIds0}; 
     asStrided0Node.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         AsdOps::SVector<int64_t> asStridedDims = {dims.at(2), dims.at(0)};
@@ -175,6 +146,16 @@ PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner(const Positio
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         runInfo.SetOpDesc({0, "ConcatOperation", AsdOps::OpParam::Concat{int(dims.size()) - 1}});
     };
+    
+    concate4Node.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
+    concate4Node.inTensors = {&cos0, &cos1};
+    concate4Node.outTensors = {&cos_sum};
+    concate4Node.inferShapePreFunc = cat0InferShape;
+
+    concate5Node.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
+    concate5Node.inTensors = {&sin0, &sin1};
+    concate5Node.outTensors = {&sin_sum};
+    concate5Node.inferShapePreFunc = cat0InferShape;
 
     ViewFunc ropeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims.resize(2);
@@ -187,33 +168,14 @@ PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner(const Positio
     };
 
     const size_t ropeViewSize = 4;
-    rope0Node.opDesc = {0, "RotaryPositionEmbeddingOperation", AsdOps::OpParam::Concat{0}};
-    rope0Node.inTensors = {&qChunk0, &kChunk0, &cos0, &sin0, &seqLen};
-    rope0Node.outTensors = {&qEmbedded0, &kEmbedded0};
+    rope0Node.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPEND}};
+    rope0Node.inTensors = {&qLayer, &kLayer, &cos_sum, &sin_sum, &seqLen};
+    rope0Node.outTensors = {&qEmbedded, &kEmbedded};
     rope0Node.inTensorViewFuncs.resize(ropeViewSize);
     rope0Node.inTensorViewFuncs.at(0) = ropeKqView;
     rope0Node.inTensorViewFuncs.at(1) = ropeKqView;
     rope0Node.inTensorViewFuncs.at(index2) = ropeCosSinView;
     rope0Node.inTensorViewFuncs.at(index3) = ropeCosSinView;
-
-    rope1Node.opDesc = {0, "RotaryPositionEmbeddingOperation", AsdOps::OpParam::Concat{0}};
-    rope1Node.inTensors = {&qChunk1, &kChunk1, &cos1, &sin1, &seqLen};
-    rope1Node.outTensors = {&qEmbedded1, &kEmbedded1};
-    rope1Node.inTensorViewFuncs.resize(ropeViewSize);
-    rope1Node.inTensorViewFuncs.at(0) = ropeKqView;
-    rope1Node.inTensorViewFuncs.at(1) = ropeKqView;
-    rope1Node.inTensorViewFuncs.at(index2) = ropeCosSinView;
-    rope1Node.inTensorViewFuncs.at(index3) = ropeCosSinView;
-
-    cat0Node.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
-    cat0Node.inTensors = {&qEmbedded0, &qEmbedded1};
-    cat0Node.outTensors = {&qEmbedded};
-    cat0Node.inferShapePreFunc = cat0InferShape;
-
-    cat1Node.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
-    cat1Node.inTensors = {&kEmbedded0, &kEmbedded1};
-    cat1Node.outTensors = {&kEmbedded};
-    cat1Node.inferShapePreFunc = cat0InferShape;
 }
 
 PositionEmbeddingFusionOpsRunner::~PositionEmbeddingFusionOpsRunner() {}
