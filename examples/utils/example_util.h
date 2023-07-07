@@ -37,6 +37,7 @@ public:
     static at::Tensor CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &tensorDesc);
     static void SaveTensor(const at::Tensor &tensor, const std::string &filePath);
     static void ContiguousAtTensor(std::vector<torch::Tensor> &atTensors);
+    static void ContiguousAtTensor(torch::Tensor &atTensor);
 };
 
 #endif

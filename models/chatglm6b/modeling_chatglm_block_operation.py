@@ -607,7 +607,8 @@ class GLMBlock(torch.nn.Module):
 
         self.acl_operation = torch.classes.OperationTorch.OperationTorch(
             "ChatGlm6BBlockOperation")
-        self.acl_operation.set_name("ChatGlm6BBlockOperation_" + str(self.layer_id))
+        self.acl_operation.set_name(
+            "ChatGlm6BBlockOperation_" + str(self.layer_id))
         self.acl_operation.set_param(acl_param)
 
     def forward(
@@ -682,9 +683,12 @@ class GLMBlock(torch.nn.Module):
             test_glmBlockOut, test_presentKey, test_presentValue = self.acl_operation.execute(
                 inputs)
 
-            assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
-                test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
-            print("success, acl == origin")
+            if torch.allclose(output, test_glmBlockOut, rtol=0.1, atol=0.1):
+                print("equal")
+            else:
+                print("not euqal")
+                exit()
+
             output = test_glmBlockOut
 
         if use_cache:

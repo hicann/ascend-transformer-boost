@@ -179,7 +179,7 @@ static AclTransformer::Operation *ChatGlm6BBlockOperationCreate(const nlohmann::
     param.dk = paramJson["dk"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    ASD_LOG(INFO) << "ChatGlm6BBlockParam layerNormEps:" << param.layerNormEps << ", headNum" << param.headNum
+    ASD_LOG(INFO) << "ChatGlm6BBlockParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
                   << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
                   << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BBlockOperation(param);
