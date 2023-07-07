@@ -150,6 +150,15 @@ void ExampleUtil::SaveTensor(const at::Tensor &tensor, const std::string &filePa
 void ExampleUtil::ContiguousAtTensor(std::vector<torch::Tensor> &atTensors)
 {
     for (size_t i = 0; i < atTensors.size(); ++i) {
-        atTensors.at(i) = atTensors.at(i).contiguous();
+        if (!atTensors.at(i).is_contiguous()) {
+            atTensors.at(i) = atTensors.at(i).contiguous();
+        }
+    }
+}
+
+void ExampleUtil::ContiguousAtTensor(torch::Tensor &atTensor)
+{
+    if (!atTensor.is_contiguous()) {
+        atTensor = atTensor.contiguous();
     }
 }

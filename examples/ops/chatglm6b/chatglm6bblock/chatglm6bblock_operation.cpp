@@ -97,7 +97,7 @@ ChatGlm6BBlockOperation::ChatGlm6BBlockOperation(const ChatGlm6BBlockParam &para
     positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_VALUE};
 
     selfAttentionKvCacheNode.operation.reset(new AclTransformer::SelfAttentionKvCacheOperation(
-        {param_.transKey, param_.transKey, param_.headNum, param_.layerId}));
+        {param_.transKey, param_.dk, param_.headNum, param_.layerId}));
     selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
                                             INTERMIDATE_POSITIONEMBEDK,
                                             INTERMIDATE_VALUE,
