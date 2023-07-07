@@ -44,8 +44,8 @@ Config::Config()
     isStreamSyncEveryRunnerEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_RUNNER_ENABLE");
     isStreamSyncEveryPlanEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_PLAN_ENABLE");
     isOpsRunnerSetupCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_SETUP_CACHE_ENABLE");
-    isOpsRunnerKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE", true);
-    isOpsRunnerWorkspaceReusageEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_WORKSPACE_REUSAGE_ENABLE");
+    isOpsRunnerKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE");
+    isUsePpMatmul_ = IsEnable("ASDOPS_MATMUL_PP_FLAG");
     ASD_LOG(FATAL) << "Config:\nIsSaveTensor:" << isSaveTensor_
                    << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
@@ -53,7 +53,7 @@ Config::Config()
                    << "\nWorkspaceSize:" << workspaceSize_
                    << "\nIsOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
                    << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_
-                   << "\nIsOpsRunnerWorkspaceReusageEnable:" << isOpsRunnerWorkspaceReusageEnable_;
+                   << "\nisUsePpMatmul_:" << isUsePpMatmul_;
 }
 
 Config::~Config() {}
@@ -151,6 +151,4 @@ void Config::InitIs910B()
 bool Config::IsOpsRunnerSetupCacheEnable() { return isOpsRunnerSetupCacheEnable_; }
 
 bool Config::IsOpsRunnerKernelCacheEnable() { return isOpsRunnerKernelCacheEnable_; }
-
-bool Config::IsOpsRunnerWorkspaceReusageEnable() { return isOpsRunnerWorkspaceReusageEnable_; }
 } // namespace AclTransformer

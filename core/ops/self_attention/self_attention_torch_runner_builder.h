@@ -17,14 +17,14 @@
 #define SELF_ATTETION_TORCH_RUNNER_BUILDER_H
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/self_attention.h"
-#include "self_attention_torch_runner.h"
+#include "self_attention_torch_openbert_runner.h"
 
 namespace AclTransformer {
 class SelfAttentionTorchRunnerBuilder : public RunnerBuilder {
 public:
     SelfAttentionTorchRunnerBuilder(const SelfAttentionParam &param) : param_(param) {}
     virtual ~SelfAttentionTorchRunnerBuilder() = default;
-    Runner *Build() override { return new SelfAttentionTorchRunner(param_); }
+    Runner *Build() override { return new SelfAttentionOpenbertTorchRunner(param_); }
 
 private:
     SelfAttentionParam param_;

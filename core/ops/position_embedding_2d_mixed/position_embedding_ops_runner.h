@@ -27,6 +27,5 @@ public:
 private:
     PositionEmbeddingParam param_;
 };
-
 } // namespace AclTransformer
 #endif

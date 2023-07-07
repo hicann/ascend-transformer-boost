@@ -20,6 +20,8 @@ struct SelfAttentionParam {
     bool transKey = false;
     int64_t dk = 0;
     int64_t headNum = 0;
+    int64_t layerId = 0;
+    std::string model = "openbert";
 };
 } // namespace AclTransformer
 #endif

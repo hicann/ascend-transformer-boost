@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
@@ -15,16 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_ops_runner.h"
-#include <asdops/utils/log/log.h>
-#include <asdops/params/params.h>
+#ifndef OPS_CHATGML6B_CHATGML6BBLOCK_OPERATION_H
+#define OPS_CHATGML6B_CHATGML6BBLOCK_OPERATION_H
+#include "acltransformer/graph_operation.h"
+#include "chatglm6bblock_param.h"
 
 namespace AclTransformer {
-SelfAttentionOpsRunner::SelfAttentionOpsRunner(const SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionOpsRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
-{
-    ASD_LOG(INFO) << "SelfAttentionOpsRunner::SelfAttentionOpsRunner called";
-}
+class ChatGlm6BBlockOperation : public GraphOperation {
+public:
+    ChatGlm6BBlockOperation(const ChatGlm6BBlockParam &param);
+    ~ChatGlm6BBlockOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
 
-SelfAttentionOpsRunner::~SelfAttentionOpsRunner() {}
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+
+private:
+    ChatGlm6BBlockParam param_;
+};
 } // namespace AclTransformer
+#endif

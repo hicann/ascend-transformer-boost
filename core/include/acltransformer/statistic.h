@@ -25,8 +25,9 @@ struct Statistic {
     uint64_t getBestKernelTime = 0;
     uint64_t planSetupTime = 0;
     uint64_t planExecuteTime = 0;
-    uint64_t kernelCacheHitCount_ = 0;
-    uint64_t kernelCacheMissCount_ = 0;
+    uint64_t kernelExecuteTime = 0;
+    uint64_t kernelCacheHitCount = 0;
+    uint64_t kernelCacheMissCount = 0;
 
     std::string ToString() const;
     void Reset();

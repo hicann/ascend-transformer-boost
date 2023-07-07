@@ -30,6 +30,13 @@ namespace AclTransformer {
 using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
 using InferShapePreFunc = std::function<void(AsdOps::RunInfo &runInfo)>;
 
+enum TensorType {
+    UNDEFINED_TENSOR = 0,
+    IN_TENSOR,
+    OUT_TENSOR,
+    INTERMEDIATE_TENSOR
+};
+
 struct KernelGraphNode {
     AsdOps::OpDesc opDesc;
     AsdOps::SVector<AsdOps::Tensor *> inTensors;
@@ -38,6 +45,8 @@ struct KernelGraphNode {
     AsdOps::Kernel *kernel = nullptr;
     AsdOps::RunInfo kernelRunInfo;
     InferShapePreFunc inferShapePreFunc;
+    AsdOps::SVector<TensorType> inTensorsType;
+    AsdOps::SVector<TensorType> outTensorsType;
 };
 
 struct KernelGraph {
@@ -86,6 +95,7 @@ private:
     bool IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
                                        const RunnerVariantPack &runnerVariantPack2);
     bool IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::RunInfo &runInfo2);
+    void InitTensorsType();
 
 protected:
     KernelGraph kernelGraph_;
@@ -100,6 +110,7 @@ protected:
     RunnerVariantPack lastRunnerVariantPack_;
     AsdOps::RunInfo lastRunInfo_;
     AsdOps::Kernel *lastKernel_ = nullptr;
+    bool initTensorTypeFlag_ = false;
 };
 } // namespace AclTransformer
 #endif

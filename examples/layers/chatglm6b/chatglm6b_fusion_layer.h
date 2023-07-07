@@ -13,23 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ADD_TORCH_RUNNER_H
-#define ADD_TORCH_RUNNER_H
-#include "acltransformer/runner.h"
-#include "acltransformer/params/self_attention.h"
+#ifndef CHATGLM6BFUSIONLAYER_H
+#define CHATGLM6BFUSIONLAYER_H
+#include "examples/layers/layer.h"
 
 namespace AclTransformer {
-class SelfAttentionTorchRunner : public Runner {
+class ChatGlm6BFusionLayer : public Layer {
 public:
-    SelfAttentionTorchRunner(const SelfAttentionParam &param);
-    virtual ~SelfAttentionTorchRunner();
-
-protected:
-    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    explicit ChatGlm6BFusionLayer(const nlohmann::json &paramJson);
+    virtual ~ChatGlm6BFusionLayer();
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
 
 private:
-    SelfAttentionParam param_;
+    void BuildGraph();
 };
-
 } // namespace AclTransformer
 #endif

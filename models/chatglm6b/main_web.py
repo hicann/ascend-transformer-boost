@@ -5,8 +5,8 @@ import torch
 # 适配昇腾NPU
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
-# 此处和下面的 def predict 对齐
-torch.npu.set_device(torch.device("npu:0"))
+device_id = 0
+torch.npu.set_device(torch.device(f"npu:{device_id}"))
 
 import gradio as gr
 import mdtex2html
@@ -111,7 +111,7 @@ def parse_text(text):
 
 
 def predict(input, chatbot, max_length, top_p, temperature, history):
-    torch.npu.set_device(torch.device("npu:0"))
+    torch.npu.set_device(torch.device(f"npu:{device_id}"))
     chatbot.append((parse_text(input), ""))
     for response, history in model.stream_chat(tokenizer, input, history, max_length=max_length, top_p=top_p,
                                                temperature=temperature):

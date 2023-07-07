@@ -44,6 +44,9 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
     ASD_LOG(INFO) << name_ << " setup start";
     runnerGraph_.inTensors = variantPack.inTensors;
     runnerGraph_.outTensors = variantPack.outTensors;
+
+    Reset();
+
     AsdOps::Status st = PreparseNodeRunnerVariantPack();
     if (!st.Ok()) {
         ASD_LOG(ERROR) << name_ << " setup fail, PreparseNodeRunnerVariantPack fail, error:" << st.Message();
@@ -200,7 +203,12 @@ void Plan::UpdateRunnerVariantPackTensorData(VariantPack &variantPack)
                               << "] is internal, tensor.data:" << tensor.data;
             } else {
                 int64_t tensorIdInRuninfo = GetInTensorId(node.inTensors.at(i));
-                tensor.data = variantPack.inTensors.at(tensorIdInRuninfo).data;
+                if (tensorIdInRuninfo == -1) {
+                    tensorIdInRuninfo = GetOutTensorId(node.inTensors.at(i));
+                    tensor.data = variantPack.outTensors.at(tensorIdInRuninfo).data;
+                } else {
+                    tensor.data = variantPack.inTensors.at(tensorIdInRuninfo).data;
+                }
                 ASD_LOG(INFO) << name_ << " update node[" << nodeId << "].intensor is not internal";
             }
         }
@@ -212,7 +220,12 @@ void Plan::UpdateRunnerVariantPackTensorData(VariantPack &variantPack)
                               << "] is internal, tensor.data:" << tensor.data;
             } else {
                 int64_t tensorIdInRuninfo = GetOutTensorId(node.outTensors.at(i));
-                tensor.data = variantPack.outTensors.at(tensorIdInRuninfo).data;
+                if (tensorIdInRuninfo == -1) {
+                    tensorIdInRuninfo = GetInTensorId(node.outTensors.at(i));
+                    tensor.data = variantPack.inTensors.at(tensorIdInRuninfo).data;
+                } else {
+                    tensor.data = variantPack.outTensors.at(tensorIdInRuninfo).data;
+                }
                 ASD_LOG(INFO) << name_ << " update node[" << nodeId << "].outtensor[" << i << "] is not internal";
             }
         }
@@ -231,6 +244,10 @@ void Plan::Reset()
     maxIntermediateBufferSize_ = 0;
     intermediateBufferSizes_.clear();
     memAllocatinSolver_->Reset();
+    for (size_t i = 0; i < runnerGraph_.internalTensors.size(); i++) {
+        AsdOps::Tensor emptyTensor;
+        runnerGraph_.internalTensors.at(i) = emptyTensor;
+    }
 }
 
 bool Plan::IsInternalTensor(const AsdOps::Tensor *tensor)
@@ -266,6 +283,8 @@ int64_t Plan::GetOutTensorId(const AsdOps::Tensor *tensor)
 
 void Plan::InitTensorMaxNodeMap()
 {
+    tensorMaxNodeIdMap_.clear();
+    maxNodeIdTensorMap_.clear();
     for (size_t i = 0; i < runnerGraph_.internalTensors.size(); ++i) {
         AsdOps::Tensor &internalTensor = runnerGraph_.internalTensors[i];
         uint64_t maxNodeId = 0;
