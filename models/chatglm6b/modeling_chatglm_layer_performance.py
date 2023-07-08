@@ -605,12 +605,18 @@ class GLMBlock(torch.nn.Module):
         )
         acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
                                             "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
+        acl_param_encode = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id, "phase": "encoder",
+                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
 
         self.acl_layer=torch.classes.LayerTorch.LayerTorch(
             "ChatGlm6BLayer", acl_param)
+        self.acl_layer_encoder=torch.classes.LayerTorch.LayerTorch(
+            "ChatGlm6BLayer", acl_param_encode)
         
         self.input = []
         self.input_flag = False
+        self.input_full = []
+        self.input_full_flag = False
 
     def forward(
             self,
@@ -630,53 +636,33 @@ class GLMBlock(torch.nn.Module):
         test_glmBlockOut = None
         test_presentKey = None
         test_presentValue = None
-        
-        outputs = None
+        global cosTable
+        global sinTable
         
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
         if layer_past is None:
-            attention_input = self.input_layernorm(hidden_states)
-
-            # Self attention.
-            attention_outputs = self.attention(
-                attention_input,
-                position_ids,
-                attention_mask=attention_mask,
-                layer_id=layer_id,
-                layer_past=layer_past,
-                use_cache=use_cache,
-                output_attentions=output_attentions
-            )
-
-            attention_output = attention_outputs[0]
-
-            outputs = attention_outputs[1:]
-
-            # Residual connection.
-            alpha = (2 * self.num_layers) ** 0.5
-            hidden_states = attention_input * alpha + attention_output
-
-            mlp_input = self.post_attention_layernorm(hidden_states)
-
-            # MLP.
-            mlp_output = self.mlp(mlp_input)
-
-            # Second residual connection.
-            output = mlp_input * alpha + mlp_output
-            
-            if use_cache:
-                outputs = (output,) + outputs
+            if not self.input_full_flag:
+                self.input_full_flag = True
+                self.input_full = [hidden_states]
+                weights = list(self.state_dict().values())
+                del weights[2]
+                self.input_full.extend(weights)
+                self.input_full.append(position_ids)
+                self.input_full.append(cosTable)
+                self.input_full.append(sinTable)
+                self.input_full.append(attention_mask)
             else:
-                outputs = (output,) + outputs[1:]
+                self.input_full[0] = hidden_states
+                self.input_full[13] = position_ids
+                self.input_full[16] = attention_mask
+            
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer_encoder.execute(self.input_full)
 
         else:
-            setup_start = time.time()
             pastKey, pastValue = layer_past
             if not self.input_flag:
                 self.input_flag = True
-                global cosTable
-                global sinTable
                 self.input = [hidden_states]
                 weights = list(self.state_dict().values())
                 del weights[2]
@@ -694,12 +680,9 @@ class GLMBlock(torch.nn.Module):
                 self.input[17] = pastKey
                 self.input[18] = pastValue
 
-            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
-                self.input)
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(self.input)
             
-            outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
-
-        
+        outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
 
         return outputs  # hidden_states, present, attentions
 
