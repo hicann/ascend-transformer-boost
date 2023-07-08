@@ -29,33 +29,20 @@ AddNormOpsRunner::AddNormOpsRunner(const AddNormParam &param)
     kernelGraph_.inTensors.resize(4);
     AsdOps::Tensor &xTensor = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &yTensor = kernelGraph_.inTensors.at(1);
-    AsdOps::Tensor &weightTensor = kernelGraph_.inTensors.at(2);
-    AsdOps::Tensor &biasTensor = kernelGraph_.inTensors.at(3);
+    AsdOps::Tensor &gammaTensor = kernelGraph_.inTensors.at(2);
+    AsdOps::Tensor &betaTensor = kernelGraph_.inTensors.at(3);
     kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &resultTensor = kernelGraph_.outTensors.at(0);
-    kernelGraph_.internalTensors.resize(3);
-    AsdOps::Tensor &addNodeResultTensor = kernelGraph_.internalTensors.at(0);
-    AsdOps::Tensor &layerNormMeanTensor = kernelGraph_.internalTensors.at(1);
-    AsdOps::Tensor &layerNormVarianceTensor = kernelGraph_.internalTensors.at(2);
-
-    kernelGraph_.nodes.resize(2);
-    auto &addNode = kernelGraph_.nodes[0];
-    auto &layerNormNode = kernelGraph_.nodes[1];
-
-    addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
-    addNode.inTensors = {&xTensor, &yTensor};
-    addNode.outTensors = {&addNodeResultTensor};
-
-    AsdOps::OpParam::Norm normParam = {AsdOps::OpParam::Norm::NORM_LAYERNORM};
-    normParam.begin_norm_axis = 1;
-    normParam.begin_params_axis = 1;
-    normParam.epsilon = param_.layerNormEps;
-    ASD_LOG(INFO) << GetName() << " NormOperation opDesc normParam.begin_norm_axis:" << normParam.begin_norm_axis
-                  << ", normParam.begin_params_axis:" << normParam.begin_params_axis
-                  << ", normParam.epsilon:" << normParam.epsilon;
-    layerNormNode.opDesc = {0, "NormOperation", normParam};
-    layerNormNode.inTensors = {&addNodeResultTensor, &weightTensor, &biasTensor};
-    layerNormNode.outTensors = {&resultTensor, &layerNormMeanTensor, &layerNormVarianceTensor};
+    kernelGraph_.nodes.resize(1);
+    auto &addLayerNormNode = kernelGraph_.nodes[0];
+    AsdOps::OpParam::Norm opCommonParam = {AsdOps::OpParam::Norm::NORM_POSTLAYERNORM};
+    opCommonParam.ops_mode = 0;
+    opCommonParam.epsilon = param_.layerNormEps;
+    opCommonParam.zoom_scale_value = param_.zoom_scale;
+    ASD_LOG(INFO) << GetName() << ", opCommonParam.epsilon:" << opCommonParam.epsilon;
+    addLayerNormNode.opDesc = {0, "NormOperation", opCommonParam};
+    addLayerNormNode.inTensors = {&xTensor, &yTensor, &gammaTensor, &betaTensor};
+    addLayerNormNode.outTensors = {&resultTensor};
 }
 
 AddNormOpsRunner::~AddNormOpsRunner() {}

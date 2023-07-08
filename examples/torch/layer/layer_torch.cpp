@@ -28,7 +28,7 @@
 #include "examples/utils/example_util.h"
 #include "examples/layers/bert/bert_layer.h"
 #include "examples/layers/chatglm6b/chatglm6b_layer.h"
-#include "examples/layers/chatglm6b/chatglm6b_fusion_layer.h"
+#include "examples/layers/chatglm6bV2/chatglm6b_layer_v2.h"
 #include "examples/layers/llama7b_layer/llama7b_layer.h"
 
 uint64_t LayerTorch::totalExecuteCount_ = 0;
@@ -38,7 +38,17 @@ LayerTorch::LayerTorch(std::string layerName, std::string param) : layerName_(la
     ASD_LOG(INFO) << "LayerTorch::LayerTorch called, layerName:" << layerName;
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
-    SetLayer(param);
+    nlohmann::json paramJson = nlohmann::json::parse(param);
+    layerId_ = paramJson["layerId"].get<int>();
+    if (layerName == "BertLayer") {
+        layer_ = new AclTransformer::BertLayer(paramJson);
+    } else if (layerName == "ChatGlm6BLayer") {
+        layer_ = new AclTransformer::ChatGlm6BLayer(paramJson);
+    } else if (layerName == "Llama7BLayer") {
+        layer_ = new AclTransformer::Llama7BLayer(paramJson);
+    } else if (layerName == "ChatGlm6BLayerV2") {
+        layer_ = new AclTransformer::ChatGlm6BLayerV2(paramJson);
+    }
     ASD_LOG(INFO) << "LayerTorch::LayerTorch end";
 }
 

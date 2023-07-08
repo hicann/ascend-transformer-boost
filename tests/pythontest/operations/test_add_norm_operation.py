@@ -27,16 +27,20 @@ OP_NAME = "AddNormOperation"
 
 class TestAddNormOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        layer_norm = torch.nn.LayerNorm([3]).npu()
+        layer_norm = torch.nn.LayerNorm([1, 4096], eps=0.00001).npu()
+        gamma = in_tensors[2]
+        beta = in_tensors[3]
+        res_in =  in_tensors[1] * 0.5
+        res_in = res_in.half().npu()
         layer_norm.load_state_dict(
-            {"weight": in_tensors[2], "bias": in_tensors[3]})
-        golden_result = layer_norm(in_tensors[0] + in_tensors[1])
+            {"weight": gamma, "bias": beta})
+        golden_result = layer_norm(in_tensors[0] + res_in)
         return [golden_result]
 
     def test_2d_half(self):
-        self.execute(OP_NAME, {"layerNormEps": 1e-12},
-                     [torch.rand(2, 3).npu().half(), torch.rand(2, 3).npu().half(),
-                      torch.rand(3).npu().half(), torch.rand(3).npu().half()])
+        self.execute(OP_NAME, {"layerNormEps": 1e-5, "zoom_scale": 0.5},
+                     [torch.rand(10, 1, 4096).npu().half(), torch.rand(10, 1, 4096).npu().half(),
+                      torch.rand(1, 4096).npu().half(), torch.rand(1, 4096).npu().half()])
 
 
 if __name__ == '__main__':
