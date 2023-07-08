@@ -107,15 +107,15 @@ Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN�
           + rand_tensor_performance.py<br>
             随机tensor性能测试入口脚本，打点在入口脚本内，所以能执行所有模型文件。<br>
             rand_tensor_performance.py 脚本指令：
-            >   full：进行全量测试；<br>
-            >   incremental：进行增量测试；
+            >   full：仅进行全量测试；<br>
+            >   full_and_incremental：进行全量+增量测试，默认执行该测试；
             
             脚本参数：
             >   seq_len=：设置输入seq_len大小，默认为512；<br>
             >   batch=：设置输入batch大小，默认为8；<br>
-            >   test_cycle=：设置测试的token数，默认为100；
+            >   test_cycle=：设置测试的token数，默认为100，全量+增量测试时，执行1次全量测试与99次增量测试；<br>
+            >   device_id=：设置device id，默认为0；
 
-            执行随机tensor性能测试入口脚本必须指定为全量测试或增量测试。
           + main_web.py<br>
             WebUI入口脚本，执行后生成一个web demo，可在网页上与模型之间进行问答对话。<br>
             执行main_web.py需要额外安装两个python库：
