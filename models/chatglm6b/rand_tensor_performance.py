@@ -7,14 +7,6 @@ from transformers import AutoTokenizer, AutoModel
 # 适配昇腾NPU
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
-device_id = 0
-torch.npu.set_device(torch.device(f"npu:{device_id}"))
-
-# 使用二进制优化，消除动态shape的编译问题
-torch.npu.set_compile_mode(jit_compile=False)
-option = {}
-option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril"
-torch.npu.set_option(option)
 
 
 def load_model():
@@ -62,13 +54,50 @@ def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> to
 transformers.generation.TopPLogitsWarper.__call__ = __call__
 
 
+def warm_up(model):
+    past_key_values = None
+    input_ids = torch.randint(150000, (1, 4)).npu()
+    input_ids[:, -2] = 150001
+    input_ids[:, -1] = 150004
+    position_ids = torch.randint(2048, (1, 2, 4)).npu()
+    position_ids[0][0][0] = 2047
+    attention_mask = (torch.randint(4, (1, 1, 4, 4)) == torch.randint(1, (1, 1, 4, 4))).npu()
+    model_inputs = {
+        "input_ids": input_ids,
+        "past_key_values": past_key_values,
+        "position_ids": position_ids,
+        "attention_mask": attention_mask
+    }
+    outputs = model(
+        **model_inputs,
+        return_dict=True,
+        output_attentions=False,
+        output_hidden_states=False,
+    )
+    for _ in range(5):
+        past_key_values = outputs.past_key_values
+        input_ids = torch.randint(150000, (1, 1)).npu()
+        position_ids = torch.randint(2048, (1, 2, 1)).npu()
+        model_inputs = {
+            "input_ids": input_ids,
+            "past_key_values": past_key_values,
+            "position_ids": position_ids
+        }
+        outputs = model(
+            **model_inputs,
+            return_dict=True,
+            output_attentions=False,
+            output_hidden_states=False,
+        )
+
+
 # 全量
 def full_test(seq_len, batch, test_cycle, model):
-    start_to_test = 2
     print("start run.")
+    warm_up(model)
     past_key_values = None
     sum_time = 0
-    for i in range(start_to_test + test_cycle):
+    for i in range(test_cycle):
         input_ids = torch.randint(150000, (batch, seq_len)).npu()
         input_ids[:, -2] = 150001
         input_ids[:, -1] = 150004
@@ -92,16 +121,16 @@ def full_test(seq_len, batch, test_cycle, model):
         torch.npu.synchronize()
         end = time.time()
         cur_time = (end - start) * 1000
-        if i >= start_to_test:
-            sum_time += cur_time
+        sum_time += cur_time
         print(f"{cur_time}ms")
     sum_time = sum_time / test_cycle
     print(f"average = {sum_time}ms")
 
-#增量
-def incremental_test(seq_len, batch, test_cycle, model):
-    start_to_test = 2
+
+#全量+增量
+def full_and_incremental_test(seq_len, batch, test_cycle, model):
     print("start run.")
+    warm_up(model)
     past_key_values = None
     input_ids = torch.randint(150000, (batch, seq_len)).npu()
     input_ids[:, -2] = 150001
@@ -115,17 +144,24 @@ def incremental_test(seq_len, batch, test_cycle, model):
         "position_ids": position_ids,
         "attention_mask": attention_mask
     }
+    torch.npu.synchronize()
+    start = time.time()
     outputs = model(
         **model_inputs,
         return_dict=True,
         output_attentions=False,
         output_hidden_states=False,
     )
+    torch.npu.synchronize()
+    end = time.time()
+    first_time = (end - start) * 1000
+    print(f"first token: {first_time}ms")
     sum_time = 0
-    for i in range(start_to_test + test_cycle):
+    test_cycle -= 1
+    for i in range(test_cycle):
+        past_key_values = outputs.past_key_values
         input_ids = torch.randint(150000, (batch, 1)).npu()
         position_ids = torch.randint(2048, (1, 2, 1)).npu()
-        past_key_values = outputs.past_key_values
         model_inputs = {
             "input_ids": input_ids,
             "past_key_values": past_key_values,
@@ -142,35 +178,46 @@ def incremental_test(seq_len, batch, test_cycle, model):
         torch.npu.synchronize()
         end = time.time()
         cur_time = (end - start) * 1000
-        if i >= start_to_test:
-            sum_time += cur_time
-        print(f"{cur_time}ms")
-    sum_time = sum_time / test_cycle
-    print(f"average = {sum_time}ms")
+        sum_time += cur_time
+        print(f"token_{i + 1}: {cur_time}ms")
+    print(f"average token: {sum_time / test_cycle}ms")
+    print(f"response time: {first_time + sum_time}ms")
 
 
-test_funcs = {"full": full_test, "incremental": incremental_test}
-arg_map = {"seq_len": 512, "batch": 8, "test_cycle": 100}
+test_funcs = {"full": full_test, "full_and_incremental": full_and_incremental_test}
+arg_map = {"seq_len": 512, "batch": 8, "test_cycle": 100, "device_id": 0}
 
 if __name__ == "__main__":
     argv_len = len(sys.argv)
-    if argv_len < 2:
-        print("need param!")
-        exit()
-    func_name = sys.argv[1]
-    if func_name not in test_funcs:
-        print("func not exist!")
-    if argv_len > 2:
-        for i in range(2, argv_len):
-            (arg_name, arg_value) = sys.argv[i].split('=')
-            if arg_name not in arg_map:
-                print(f"arg_name: {arg_name} not in arg_map.")
-                continue
-            arg_value = int(arg_value)
-            arg_map[arg_name] = arg_value
+    argv_index = 1
+    func_name = "full_and_incremental"
+    if argv_index < argv_len and sys.argv[argv_index] in test_funcs:
+        func_name = sys.argv[argv_index]
+        argv_index += 1
+    while argv_index < argv_len:
+        (arg_name, arg_value) = sys.argv[argv_index].split('=')
+        argv_index += 1
+        if arg_name not in arg_map:
+            print(f"arg_name: {arg_name} not in arg_map.")
+            continue
+        arg_value = int(arg_value)
+        arg_map[arg_name] = arg_value
     print("arg_map: " + str(arg_map))
-    if arg_map["test_cycle"] == 0:
-        print("test_cycle can't equal 0!")
+    if arg_map["test_cycle"] == 0 or arg_map["batch"] == 0 or arg_map["seq_len"] == 0:
+        print("test_cycle & batch & seq_len can't equal 0!")
         exit()
+    
+    device_id = arg_map["device_id"]
+    torch.npu.set_device(torch.device(f"npu:{device_id}"))
+    # 使用二进制优化，消除动态shape的编译问题
+    torch.npu.set_compile_mode(jit_compile=False)
+    option = {}
+    option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril"
+    torch.npu.set_option(option)
+    
     model = load_model()
-    test_funcs[func_name](**arg_map, model=model)
+    input_param = {"seq_len": arg_map["seq_len"],
+                   "batch": arg_map["batch"],
+                   "test_cycle": arg_map["test_cycle"],
+                   "model": model}
+    test_funcs[func_name](**input_param)
