@@ -19,6 +19,7 @@
 #include <vector>
 #include <torch/script.h>
 #include <torch/custom_class.h>
+#include <asdops/utils/time/timer.h>
 #include "acltransformer/operation.h"
 #include "acltransformer/planv2.h"
 
@@ -54,17 +55,19 @@ public:
     c10::intrusive_ptr<ChatGlm6BModelTorch> clone() const { return c10::make_intrusive<ChatGlm6BModelTorch>(); }
 
 private:
-    void BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
-                          std::vector<torch::Tensor> &atOutTensors, AclTransformer::VariantPack &variantPack);
+    void BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors, torch::Tensor &outTensor,
+                          torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut,
+                          AclTransformer::VariantPack &variantPack);
     void ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
                         torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
                         torch::Tensor &attentionMaskTensor, std::vector<torch::Tensor> &pastKeyTensors,
                         std::vector<torch::Tensor> &pastValueTensors, torch::Tensor &outTensor,
-                        std::vector<torch::Tensor> &presendKeyTensors, std::vector<torch::Tensor> &presentValueTensors);
+                        std::vector<torch::Tensor> &presendKeyTensors, std::vector<torch::Tensor> &presentValueTensors,
+                        bool newOut);
     // IN:hiddenStateTensor+12个权重+positionIdTensor+cosTable+sinTable+attentionMaskTensor+pastKeyTensor+pastValueTensor
     // OUT:outTensor + presendKey + presentValue
-    void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
-                                std::vector<torch::Tensor> &opAtOutTensors);
+    void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
+                                torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut);
 
 private:
     ChatGlm6BModelParam modelParam_;
@@ -73,6 +76,7 @@ private:
     std::vector<torch::Tensor> weightTensors_;
     uint64_t executeCount_ = 0;
     AclTransformer::Handle handle_;
+    AsdOps::Timer timer_;
 };
 
 #endif
