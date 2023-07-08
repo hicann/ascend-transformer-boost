@@ -13,14 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_ADDNORM_H
-#define ACLTRANSFOERM_PARAMS_ADDNORM_H
+#ifndef CHAT_GLM6_B_LAYER_V2_H
+#define CHAT_GLM6_B_LAYER_V2_H
+#include "examples/layers/layer.h"
 
-#include <vector>
 namespace AclTransformer {
-struct AddNormParam {
-    double layerNormEps = 1e-12; // a value added to the denominator for numerical stability
-    float zoom_scale = 1.0f;
+class ChatGlm6BLayerV2 : public Layer {
+public:
+    explicit ChatGlm6BLayerV2(const nlohmann::json &paramJson);
+    virtual ~ChatGlm6BLayerV2();
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+
+private:
+    void BuildGraph();
 };
 } // namespace AclTransformer
 #endif
