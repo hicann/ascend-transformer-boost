@@ -151,7 +151,7 @@ PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner(const Positio
     concate4Node.inTensors = {&cos0, &cos1};
     concate4Node.outTensors = {&cos_sum};
     concate4Node.inferShapePreFunc = cat0InferShape;
-
+    
     concate5Node.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
     concate5Node.inTensors = {&sin0, &sin1};
     concate5Node.outTensors = {&sin_sum};
@@ -160,8 +160,8 @@ PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner(const Positio
     ViewFunc ropeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims.resize(2);
         newDims.at(0) = oldDims.at(0) * oldDims.at(1);
-        newDims.at(1) = oldDims.at(2);
-    };
+        newDims.at(1) = oldDims.at(2); 
+    }; 
 
     ViewFunc ropeKqView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
