@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML6B_CHATGML6BMODEL_PARAM_H
-#define OPS_CHATGML6B_CHATGML6BMODEL_PARAM_H
+#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_PARAM_H
+#define OPS_CHATGML6B_CHATGLM6BLAYER_PARAM_H
 
 namespace AclTransformer {
-struct ChatGlm6BModelParam {
+struct ChatGlm6BLayerParam {
     double layerNormEps = 0;
     int headNum = 0;
     bool transKey = false;
     int dk = 0;
-    int layerNum = 0;
+    int layerId = 0;
     float residualAddScale = 0;
 };
 } // namespace AclTransformer
