@@ -192,7 +192,7 @@ void OpsRunner::FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t ti
             kernelWorkspaceSize = TensorUtil::AlignInt(int64_t(kernelWorkspaceSize), 32);
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " kernelWorkspaceSize:" << kernelWorkspaceSize
                           << ", maxKernelWorkspaceSize:" << maxKernelWorkspaceSize;
-            ASD_LOG_IF(kernelWorkspaceSize > 1024 * 16385, ERROR)
+            ASD_LOG_IF(kernelWorkspaceSize > 272630016, ERROR)
                 << GetName() << " " << kernel->GetName() << " kernelWorkspaceSize too large, discard";
             maxKernelWorkspaceSize = std::max(maxKernelWorkspaceSize, kernelWorkspaceSize);
         }
@@ -229,7 +229,7 @@ void OpsRunner::UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack)
             if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)node.inTensors.at(tensorId)->data;
             } else {
-                int64_t tensorIdInRunnerVariantPack = GetInTensorId(node.inTensors.at(tensorId));
+                int64_t tensorIdInRunnerVariantPack = GetInTensorId(node.outTensors.at(tensorId));
                 if (tensorIdInRunnerVariantPack != -1) {
                     tensor.data = runnerVariantPack.inTensors.at(tensorIdInRunnerVariantPack).data;
                 } else {
