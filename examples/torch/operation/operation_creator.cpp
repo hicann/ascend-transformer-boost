@@ -28,11 +28,11 @@
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
+#include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/any_operation.h"
 #include "examples/ops/chatglm6b/chatglm6bblock/chatglm6bblock_operation.h"
 #include "examples/ops/chatglm6b/chatglm6bmodel/chatglm6bmodel_operation.h"
-#include "acltransformer/ops/position_embedding_fusion_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -45,20 +45,12 @@ static AclTransformer::Operation *AddOperationCreate(const nlohmann::json &param
     ASD_LOG(INFO) << "AddParam scale:" << param.scale;
     return new AclTransformer::AddOperation(param);
 }
-AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
-{
-    AclTransformer::PositionEmbeddingFusionParam param;
-    param.headNum = paramJson["headNum"].get<int64_t>();
-    ASD_LOG(INFO) << "param.headNum: " << param.headNum;
-    return new AclTransformer::RopeOperation(param);
-}
+
 static AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddNormParam param;
     param.layerNormEps = paramJson["layerNormEps"].get<double>();
     ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps;
-    param.zoom_scale = paramJson["zoom_scale"].get<float>();
-    ASD_LOG(INFO) << "NormParam zoom_scale:" << param.zoom_scale;
     return new AclTransformer::AddNormOperation(param);
 }
 
@@ -188,10 +180,36 @@ static AclTransformer::Operation *ChatGlm6BBlockOperationCreate(const nlohmann::
     param.dk = paramJson["dk"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    ASD_LOG(INFO) << "ChatGlm6BBlockParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+    ASD_LOG(INFO) << "ChatGlm6BBlockParam layerNormEps:" << param.layerNormEps << ", headNum" << param.headNum
                   << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
                   << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BBlockOperation(param);
+}
+
+AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::SelfAttentionKvCacheFusionParam param;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.contains("layerId")) {
+        param.layerId = paramJson["layerId"].get<int>();
+    }
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+        ASD_LOG(FATAL) << "token offset:" << param.tokenOffset.at(0);
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+        ASD_LOG(FATAL) << "seqLen:" << param.seqLen.at(0);
+    }
+    ASD_LOG(INFO) << "SelfAttentionKvCacheFusionParam headNum:" << param.headNum;
+    AclTransformer::Operation *opAddr = new AclTransformer::SelfAttentionKvCacheFusionOperation(param);
+    ASD_LOG(FATAL) << "SelfAttentionKvCacheFusionOperation addr:" << opAddr;
+    return opAddr;
 }
 
 static AclTransformer::Operation *ChatGlm6BModelOperationCreate(const nlohmann::json &paramJson)
@@ -208,10 +226,10 @@ static AclTransformer::Operation *ChatGlm6BModelOperationCreate(const nlohmann::
                   << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BModelOperation(param);
 }
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
-    {"RopeOperation", &RopeOperationCreate},
     {"AddNormOperation", &AddNormOperationCreate},
     {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
@@ -221,6 +239,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
+    {"SelfAttentionKvCacheFusionOperation", &SelfAttentionKvCacheFusionOperationCreate},
     {"SelfAttentionOperation", &SelfAttentionOperationCreate},
     {"AnyOperation", &AnyOperationCreate},
     {"ChatGlm6BBlockOperation", &ChatGlm6BBlockOperationCreate},

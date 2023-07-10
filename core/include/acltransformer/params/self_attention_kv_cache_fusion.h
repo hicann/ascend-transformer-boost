@@ -17,7 +17,11 @@
 #define ACLTRANSFOERM_PARAMS_SELFATTENTION_KV_CACHE_FUSION_H
 namespace AclTransformer {
 struct SelfAttentionKvCacheFusionParam {
-    uint32_t headNum = 0;
+    int32_t headNum = 0;
+    int32_t layerId = 0;
+    int32_t dk = 0;
+    AsdOps::SVector<int32_t> seqLen;
+    AsdOps::SVector<int32_t> tokenOffset;
 };
 } // namespace AclTransformer
 #endif
