@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm6bblock_operation.h"
+#include "chatglm6blayer_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
@@ -23,7 +23,7 @@
 #include "acltransformer/ops/ffn_operation.h"
 
 namespace AclTransformer {
-enum Chatglm6BBlockTensorId {
+enum Chatglm6BLayerTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
     IN_NORMBIAS,
@@ -43,7 +43,7 @@ enum Chatglm6BBlockTensorId {
     IN_ATTENTIONMASK,
     IN_PASTKEY,
     IN_PASTVALUE,
-    OUT_GLMBLOCKOUT,
+    OUT_GLMLAYEROUT,
     OUT_PRESENTKEY,
     OUT_PRESENTVALUE,
     INTERMIDATE_INPUTNORMOUT,
@@ -64,8 +64,8 @@ static const uint64_t OUT_TENSOR_COUNT = 3;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
 static const uint64_t NODE_COUNT = 10;
 
-ChatGlm6BBlockOperation::ChatGlm6BBlockOperation(const ChatGlm6BBlockParam &param)
-    : GraphOperation("ChatGlm6BBlockOperation"), param_(param)
+ChatGlm6BLayerOperation::ChatGlm6BLayerOperation(const ChatGlm6BLayerParam &param)
+    : GraphOperation("ChatGlm6BLayerOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -128,16 +128,16 @@ ChatGlm6BBlockOperation::ChatGlm6BBlockOperation(const ChatGlm6BBlockParam &para
 
     ffnResidualAddNode.operation.reset(new AclTransformer::AddOperation({param_.residualAddScale}));
     ffnResidualAddNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, INTERMIDATE_FFNLINEAROUT};
-    ffnResidualAddNode.outTensorIds = {OUT_GLMBLOCKOUT};
+    ffnResidualAddNode.outTensorIds = {OUT_GLMLAYEROUT};
 }
 
-ChatGlm6BBlockOperation::~ChatGlm6BBlockOperation() {}
+ChatGlm6BLayerOperation::~ChatGlm6BLayerOperation() {}
 
-uint64_t ChatGlm6BBlockOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t ChatGlm6BLayerOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t ChatGlm6BBlockOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t ChatGlm6BLayerOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status ChatGlm6BBlockOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+AsdOps::Status ChatGlm6BLayerOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
