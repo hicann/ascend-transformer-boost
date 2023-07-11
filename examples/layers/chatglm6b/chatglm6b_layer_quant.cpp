@@ -17,7 +17,6 @@
 #include <string>
 #include <regex>
 
-#include "chatglm6b_layer_quant.h"
 #include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/time/timer.h>
@@ -38,6 +37,9 @@
 #include "acltransformer/ops/add_norm_quant_operation.h"
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
+
+#include "chatglm6b_layer_quant.h"
+
 
 namespace AclTransformer {
 ChatGlm6BLayerQuant::ChatGlm6BLayerQuant(const nlohmann::json &paramJson) : Layer("ChatGlm6BLayerQuant", paramJson)

@@ -24,11 +24,12 @@ class AddNormQuantOpsRunnerBuilder : public RunnerBuilder {
 public:
     AddNormQuantOpsRunnerBuilder(const AddNormQuantParam &param) : param_(param) {}
     virtual ~AddNormQuantOpsRunnerBuilder() = default;
-    Runner *Build() override { return new AddNormQuantOpsRunner(param_); }
+    Runner *Build() override { 
+	return new AddNormQuantOpsRunner(param_); 
+	}
 
 private:
     AddNormQuantParam param_;
 };
-
 } // namespace AclTransformer
 #endif

@@ -26,9 +26,13 @@ NormQuantOperation::NormQuantOperation(const NormQuantParam &param) : Operation(
 
 NormQuantOperation::~NormQuantOperation() {}
 
-uint64_t NormQuantOperation::GetInTensorCount() const { return 3; }
+uint64_t NormQuantOperation::GetInTensorCount() const { 
+	return 3; 
+	}
 
-uint64_t NormQuantOperation::GetOutTensorCount() const { return 2; }
+uint64_t NormQuantOperation::GetOutTensorCount() const { 
+	return 2; 
+	}
 
 AsdOps::Status NormQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const

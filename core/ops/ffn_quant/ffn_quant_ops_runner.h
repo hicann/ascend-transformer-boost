@@ -27,6 +27,5 @@ public:
 private:
     FfnQuantParam param_;
 };
-
 } // namespace AclTransformer
 #endif

@@ -70,7 +70,7 @@ AsdOps::Tensor ExampleUtil::AtTensor2AsdTensor(const at::Tensor &atTensor)
 {
     static std::map<at::ScalarType, AsdOps::TensorDType> dtypeMap = {
         {at::ScalarType::Bool, AsdOps::TENSOR_DTYPE_BOOL},   {at::ScalarType::Byte, AsdOps::TENSOR_DTYPE_UINT8},
-        {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_UINT8},  {at::ScalarType::Half, AsdOps::TENSOR_DTYPE_FLOAT16},
+        {at::ScalarType::Char, AsdOps::TENSOR_DTYPE_INT8},   {at::ScalarType::Half, AsdOps::TENSOR_DTYPE_FLOAT16},
         {at::ScalarType::Float, AsdOps::TENSOR_DTYPE_FLOAT}, {at::ScalarType::Int, AsdOps::TENSOR_DTYPE_INT32},
         {at::ScalarType::Long, AsdOps::TENSOR_DTYPE_INT64},
     };
@@ -108,6 +108,8 @@ at::Tensor ExampleUtil::CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorD
         options = options.dtype(at::kBool);
     } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_INT64) {
         options = options.dtype(at::kLong);
+    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_INT8) {
+        options = options.dtype(at::kChar);
     } else {
         ASD_LOG(ERROR) << "not support dtype:" << tensorDesc.dtype;
     }

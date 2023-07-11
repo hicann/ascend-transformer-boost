@@ -27,19 +27,17 @@ public:
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    RunnerBuilder *FindBestRunnerBuilder() const override;
+	
 private:
     bool IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const;
     int64_t GetTensorBatch(const AsdOps::TensorDesc &tensorDesc) const;
     int64_t GetTensorH(const AsdOps::TensorDesc &tensorDesc) const;
     int64_t GetTensorW(const AsdOps::TensorDesc &tensorDesc) const;
-
-protected:
-    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
-    RunnerBuilder *FindBestRunnerBuilder() const override;
-
-private:
     LinearParam param_;
     Runner *runner_ = nullptr;
 };

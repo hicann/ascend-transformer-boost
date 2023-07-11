@@ -35,9 +35,13 @@ LinearQuantOperation::LinearQuantOperation(const LinearQuantParam &param)
 
 LinearQuantOperation::~LinearQuantOperation() {}
 
-uint64_t LinearQuantOperation::GetInTensorCount() const { return 4; }
+uint64_t LinearQuantOperation::GetInTensorCount() const { 
+	return 4; 
+	}
 
-uint64_t LinearQuantOperation::GetOutTensorCount() const { return 1; }
+uint64_t LinearQuantOperation::GetOutTensorCount() const { 
+	return 1; 
+	}
 
 AsdOps::Status LinearQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                     AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
@@ -98,5 +102,4 @@ RunnerBuilder *LinearQuantOperation::FindBestRunnerBuilder() const
     size_t index = 0;
     return runnerBuilders_.at(index);
 }
-
 } // namespace AclTransformer

@@ -37,6 +37,5 @@ public:
 private:
     LinearQuantParam param_;
 };
-
 } // namespace AclTransformer
 #endif

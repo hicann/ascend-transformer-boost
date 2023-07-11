@@ -27,6 +27,5 @@ public:
 private:
     AddNormQuantParam param_;
 };
-
 } // namespace AclTransformer
 #endif

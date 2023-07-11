@@ -26,9 +26,13 @@ QuantOperation::QuantOperation(const QuantParam &param) : Operation("QuantOperat
 
 QuantOperation::~QuantOperation() {}
 
-uint64_t QuantOperation::GetInTensorCount() const { return 1; }
+uint64_t QuantOperation::GetInTensorCount() const { 
+	return 1; 
+	}
 
-uint64_t QuantOperation::GetOutTensorCount() const { return 1; }
+uint64_t QuantOperation::GetOutTensorCount() const { 
+	return 1; 
+	}
 
 AsdOps::Status QuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const

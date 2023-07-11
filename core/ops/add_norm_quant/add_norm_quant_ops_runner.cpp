@@ -15,11 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "add_norm_quant_ops_runner.h"
-#include <numeric>
 #include <asdops/utils/log/log.h>
 #include <asdops/params/params.h>
 #include "acltransformer/utils/tensor_util.h"
+#include "add_norm_quant_ops_runner.h"
+
 
 namespace AclTransformer {
 AddNormQuantOpsRunner::AddNormQuantOpsRunner(const AddNormQuantParam &param)

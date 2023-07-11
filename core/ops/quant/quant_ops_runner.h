@@ -27,6 +27,5 @@ public:
 private:
     QuantParam param_;
 };
-
 } // namespace AclTransformer
 #endif
