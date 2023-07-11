@@ -30,8 +30,7 @@
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/any_operation.h"
-#include "examples/ops/chatglm6b/chatglm6bblock/chatglm6bblock_operation.h"
-#include "examples/ops/chatglm6b/chatglm6bmodel/chatglm6bmodel_operation.h"
+#include "examples/ops/chatglm6b/chatglm6blayer_operation.h"
 #include "acltransformer/ops/position_embedding_fusion_operation.h"
 #include "acltransformer/ops/quant_operation.h"
 #include "acltransformer/ops/add_norm_quant_operation.h"
@@ -184,6 +183,21 @@ static AclTransformer::Operation *TransposeOperationCreate(const nlohmann::json 
     return new AclTransformer::TransposeOperation(param);
 }
 
+static AclTransformer::Operation *ChatGlm6BLayerOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    ASD_LOG(INFO) << "ChatGlm6BLayerParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale;
+    return new AclTransformer::ChatGlm6BLayerOperation(param);
+}
+
 AclTransformer::Operation *FfnQuantOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::FfnQuantParam param;
@@ -235,35 +249,7 @@ AclTransformer::Operation *QuantOperationCreate(const nlohmann::json &paramJson)
     ASD_LOG(INFO) << "QuantParam input scale:" << param.input_scale << ", input_offset:" << param.input_offset;
     return new AclTransformer::QuantOperation(param);
 }
-static AclTransformer::Operation *ChatGlm6BBlockOperationCreate(const nlohmann::json &paramJson)
-{
-    AclTransformer::ChatGlm6BBlockParam param;
-    param.layerNormEps = paramJson["layerNormEps"].get<double>();
-    param.headNum = paramJson["headNum"].get<int>();
-    param.transKey = paramJson["transKey"].get<bool>();
-    param.dk = paramJson["dk"].get<int>();
-    param.layerId = paramJson["layerId"].get<int>();
-    param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    ASD_LOG(INFO) << "ChatGlm6BBlockParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
-                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
-                  << ", residualAddScale:" << param.residualAddScale;
-    return new AclTransformer::ChatGlm6BBlockOperation(param);
-}
 
-static AclTransformer::Operation *ChatGlm6BModelOperationCreate(const nlohmann::json &paramJson)
-{
-    AclTransformer::ChatGlm6BModelParam param;
-    param.layerNormEps = paramJson["layerNormEps"].get<double>();
-    param.headNum = paramJson["headNum"].get<int>();
-    param.transKey = paramJson["transKey"].get<bool>();
-    param.dk = paramJson["dk"].get<int>();
-    param.layerNum = paramJson["layerNum"].get<int>();
-    param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    ASD_LOG(INFO) << "ChatGlm6BModelParam layerNormEps:" << param.layerNormEps << ", headNum" << param.headNum
-                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerNum:" << param.layerNum
-                  << ", residualAddScale:" << param.residualAddScale;
-    return new AclTransformer::ChatGlm6BModelOperation(param);
-}
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
@@ -279,9 +265,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
     {"SelfAttentionOperation", &SelfAttentionOperationCreate},
     {"AnyOperation", &AnyOperationCreate},
-    {"ChatGlm6BBlockOperation", &ChatGlm6BBlockOperationCreate},
-    {"ChatGlm6BModelOperation", &ChatGlm6BModelOperationCreate},
-    {"QuantOperation", &QuantOperationCreate},
+    {"ChatGlm6BLayerOperation", &ChatGlm6BLayerOperationCreate},
+	{"QuantOperation", &QuantOperationCreate},
     {"AddNormQuantOperation", &AddNormQuantOperationCreate},
     {"NormQuantOperation", &NormQuantOperationCreate},
     {"LinearQuantOperation", &LinearQuantOperationCreate},
