@@ -28,6 +28,7 @@
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
+#include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/any_operation.h"
 #include "examples/ops/chatglm6b/chatglm6blayer_operation.h"
@@ -193,6 +194,32 @@ static AclTransformer::Operation *ChatGlm6BLayerOperationCreate(const nlohmann::
     return new AclTransformer::ChatGlm6BLayerOperation(param);
 }
 
+AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::SelfAttentionKvCacheFusionParam param;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.contains("layerId")) {
+        param.layerId = paramJson["layerId"].get<int>();
+    }
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+        ASD_LOG(FATAL) << "token offset:" << param.tokenOffset.at(0);
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+        ASD_LOG(FATAL) << "seqLen:" << param.seqLen.at(0);
+    }
+    ASD_LOG(INFO) << "SelfAttentionKvCacheFusionParam headNum:" << param.headNum;
+    AclTransformer::Operation *opAddr = new AclTransformer::SelfAttentionKvCacheFusionOperation(param);
+    ASD_LOG(FATAL) << "SelfAttentionKvCacheFusionOperation addr:" << opAddr;
+    return opAddr;
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
@@ -206,6 +233,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
+    {"SelfAttentionKvCacheFusionOperation", &SelfAttentionKvCacheFusionOperationCreate},
     {"SelfAttentionOperation", &SelfAttentionOperationCreate},
     {"AnyOperation", &AnyOperationCreate},
     {"ChatGlm6BLayerOperation", &ChatGlm6BLayerOperationCreate},

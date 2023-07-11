@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
@@ -17,6 +18,7 @@
 #include "acltransformer/config.h"
 #include "self_attention_kv_cache_fusion_ops_runner_builder.h"
 #include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
+#include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
 SelfAttentionKvCacheFusionOperation::SelfAttentionKvCacheFusionOperation(const SelfAttentionKvCacheFusionParam &param)
@@ -36,13 +38,14 @@ AsdOps::Status SelfAttentionKvCacheFusionOperation::InferShapeImpl(const AsdOps:
 {
     // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
     // out : out from flas attention [seq_len , batch, head_num, head_size]
+    ASD_LOG(FATAL) << "inTensors size: " << inTensors.size();
     outTensorDescs.resize(GetOutTensorCount());
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(0).dims.clear();
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
-    outTensorDescs.at(0).dims.push_back(1); // batch == 1
-    outTensorDescs.at(0).dims.push_back(param_.headNum);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1) / param_.headNum);
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1)); // batch == 1
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
+    ASD_LOG(FATAL) << "self attention dims: " << TensorUtil::AsdOpsDimsToString(outTensorDescs.at(0).dims);
     return AsdOps::Status::OkStatus();
 }
 
