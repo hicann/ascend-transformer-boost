@@ -31,6 +31,11 @@ public:
     using NodeViewFunc =
         std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
 
+    enum TensorType {
+        INTERMEDIATE_TENSOR = 0,
+        NOT_INTERMEDIATE_TENSOR,
+    };
+
     struct Node {
         std::shared_ptr<Operation> operation;
         std::shared_ptr<Runner> runner;
@@ -38,6 +43,8 @@ public:
         AsdOps::SVector<AsdOps::Tensor *> outTensors;
         AsdOps::SVector<NodeViewFunc> inTensorViewFuncs;
         RunnerVariantPack runnerVariantPack;
+        AsdOps::SVector<TensorType> inTensorTypes;
+        AsdOps::SVector<TensorType> outTensorTypes;
     };
 
     struct Graph {
@@ -48,10 +55,12 @@ public:
         std::map<AsdOps::Tensor *, uint64_t> tensorMaxNodeIdMap;
         std::map<uint64_t, std::set<AsdOps::Tensor *>> maxNodeIdTensorMap;
         std::string ToString() const;
+        void Init();
+
+    private:
         void InitTensorMaxNodeMap();
+        void InitTensorType();
         bool IsInternalTensor(const AsdOps::Tensor *tensor);
-        int64_t GetInTensorId(const AsdOps::Tensor *tensor);
-        int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
     };
 
     GraphRunner(const std::string &name);
@@ -77,7 +86,6 @@ private:
     void UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack);
     void UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPack);
     AsdOps::Status ExecuteAllRunner(Handle &handle, RunnerVariantPack &runnerVariantPack);
-    void *GetInOrOutTensorData(AsdOps::Tensor *tensor, const RunnerVariantPack &runnerVariantPack);
 
 private:
     Graph runnerGraph_;
