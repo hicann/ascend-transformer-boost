@@ -60,6 +60,12 @@ std::string GraphRunner::Graph::ToString() const
     return ss.str();
 }
 
+void GraphRunner::Graph::Init()
+{
+    InitTensorMaxNodeMap();
+    InitTensorType();
+}
+
 void GraphRunner::Graph::InitTensorMaxNodeMap()
 {
     tensorMaxNodeIdMap.clear();
@@ -84,6 +90,26 @@ void GraphRunner::Graph::InitTensorMaxNodeMap()
     }
 }
 
+void GraphRunner::Graph::InitTensorType()
+{
+    for (auto &node : nodes) {
+        node.inTensorTypes.resize(node.inTensors.size());
+        node.outTensorTypes.resize(node.outTensors.size());
+
+        for (size_t i = 0; i < node.inTensors.size(); ++i) {
+            if (IsInternalTensor(node.inTensors.at(i))) {
+                node.inTensorTypes.at(i) = GraphRunner::INTERMEDIATE_TENSOR;
+            }
+        }
+
+        for (size_t i = 0; i < node.outTensors.size(); ++i) {
+            if (IsInternalTensor(node.outTensors.at(i))) {
+                node.outTensorTypes.at(i) = GraphRunner::INTERMEDIATE_TENSOR;
+            }
+        }
+    }
+}
+
 bool GraphRunner::Graph::IsInternalTensor(const AsdOps::Tensor *tensor)
 {
     for (auto &internalTensor : internalTensors) {
@@ -93,26 +119,6 @@ bool GraphRunner::Graph::IsInternalTensor(const AsdOps::Tensor *tensor)
     }
 
     return false;
-}
-
-int64_t GraphRunner::Graph::GetInTensorId(const AsdOps::Tensor *tensor)
-{
-    for (size_t i = 0; i < inTensors.size(); ++i) {
-        if (&inTensors.at(i) == tensor) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-int64_t GraphRunner::Graph::GetOutTensorId(const AsdOps::Tensor *tensor)
-{
-    for (size_t i = 0; i < outTensors.size(); ++i) {
-        if (&outTensors.at(i) == tensor) {
-            return i;
-        }
-    }
-    return -1;
 }
 
 GraphRunner::GraphRunner(const std::string &name) : Runner(name)
@@ -384,25 +390,26 @@ void GraphRunner::UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPa
         ASD_LOG(INFO) << GetName() << " update tensor.data node[" << nodeId << "]";
         for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
             auto &tensor = node.runnerVariantPack.inTensors.at(i);
-            if (runnerGraph_.IsInternalTensor(node.inTensors.at(i))) {
+            if (node.inTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
                 tensor.data = selfIntermediateBuffer + (uint64_t)tensor.data;
                 ASD_LOG(INFO) << GetName() << " update node[" << nodeId << "].intensors[" << i
                               << "] is internal, tensor.data:" << tensor.data;
             } else {
-                tensor.data = GetInOrOutTensorData(node.inTensors.at(i), runnerVariantPack);
-
-                ASD_LOG(INFO) << GetName() << " update node[" << nodeId << "].intensor is not internal";
+                tensor.data = node.inTensors.at(i)->data;
+                ASD_LOG(INFO) << GetName() << " update node[" << nodeId
+                              << "].intensor is not internal, tensor.data:" << tensor.data;
             }
         }
         for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); ++i) {
             auto &tensor = node.runnerVariantPack.outTensors.at(i);
-            if (runnerGraph_.IsInternalTensor(node.outTensors.at(i))) {
+            if (node.outTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
                 tensor.data = selfIntermediateBuffer + (uint64_t)tensor.data;
                 ASD_LOG(INFO) << GetName() << " update node[" << nodeId << "].outtensor[" << i
                               << "] is internal, tensor.data:" << tensor.data;
             } else {
-                tensor.data = GetInOrOutTensorData(node.outTensors.at(i), runnerVariantPack);
-                ASD_LOG(INFO) << GetName() << " update node[" << nodeId << "].outtensor[" << i << "] is not internal";
+                tensor.data = node.outTensors.at(i)->data;
+                ASD_LOG(INFO) << GetName() << " update node[" << nodeId << "].outtensor[" << i
+                              << "] is not internal, tensor.data:" << tensor.data;
             }
         }
     }
@@ -446,19 +453,5 @@ AsdOps::Status GraphRunner::ExecuteAllRunner(Handle &handle, RunnerVariantPack &
     }
 
     return AsdOps::Status::OkStatus();
-}
-
-void *GraphRunner::GetInOrOutTensorData(AsdOps::Tensor *tensor, const RunnerVariantPack &runnerVariantPack)
-{
-    int64_t tensorId = runnerGraph_.GetInTensorId(tensor);
-    if (tensorId != -1) {
-        return runnerVariantPack.inTensors.at(tensorId).data;
-    }
-
-    tensorId = runnerGraph_.GetOutTensorId(tensor);
-    if (tensorId != -1) {
-        return runnerVariantPack.outTensors.at(tensorId).data;
-    }
-    return nullptr;
 }
 } // namespace AclTransformer

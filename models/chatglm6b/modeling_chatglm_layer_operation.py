@@ -31,8 +31,6 @@ from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaL
 
 from .configuration_chatglm import ChatGLMConfig
 
-import time
-
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
     raise RuntimeError(
@@ -41,6 +39,7 @@ if ACLTRANSFORMER_HOME_PATH is None:
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "examples/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
+
 
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
@@ -607,13 +606,10 @@ class GLMBlock(torch.nn.Module):
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
         self.acl_operation = torch.classes.OperationTorch.OperationTorch(
-            "ChatGlm6BBlockOperation")
+            "ChatGlm6BLayerOperation")
         self.acl_operation.set_name(
-            "ChatGlm6BBlockOperation_" + str(self.layer_id))
+            "ChatGlm6BLayerOperation_" + str(self.layer_id))
         self.acl_operation.set_param(acl_param)
-
-        self.input = []
-        self.input_flag = False
 
     def forward(
             self,
@@ -633,74 +629,72 @@ class GLMBlock(torch.nn.Module):
         test_glmBlockOut = None
         test_presentKey = None
         test_presentValue = None
-
-        outputs = None
+        test_in = None
 
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
-        if layer_past is None:
-            attention_input = self.input_layernorm(hidden_states)
+        if layer_past is not None:
+            test_in = hidden_states
+        attention_input = self.input_layernorm(hidden_states)
 
-            # Self attention.
-            attention_outputs = self.attention(
-                attention_input,
-                position_ids,
-                attention_mask=attention_mask,
-                layer_id=layer_id,
-                layer_past=layer_past,
-                use_cache=use_cache,
-                output_attentions=output_attentions
-            )
+        # Self attention.
+        attention_outputs = self.attention(
+            attention_input,
+            position_ids,
+            attention_mask=attention_mask,
+            layer_id=layer_id,
+            layer_past=layer_past,
+            use_cache=use_cache,
+            output_attentions=output_attentions
+        )
 
-            attention_output = attention_outputs[0]
+        attention_output = attention_outputs[0]
 
-            outputs = attention_outputs[1:]
+        outputs = attention_outputs[1:]
 
-            # Residual connection.
-            alpha = (2 * self.num_layers) ** 0.5
-            hidden_states = attention_input * alpha + attention_output
+        # Residual connection.
+        alpha = (2 * self.num_layers) ** 0.5
+        hidden_states = attention_input * alpha + attention_output
 
-            mlp_input = self.post_attention_layernorm(hidden_states)
+        mlp_input = self.post_attention_layernorm(hidden_states)
 
-            # MLP.
-            mlp_output = self.mlp(mlp_input)
+        # MLP.
+        mlp_output = self.mlp(mlp_input)
 
-            # Second residual connection.
-            output = mlp_input * alpha + mlp_output
+        # Second residual connection.
+        output = mlp_input * alpha + mlp_output
 
-            if use_cache:
-                outputs = (output,) + outputs
-            else:
-                outputs = (output,) + outputs[1:]
-
-        else:
-            setup_start = time.time()
+        if layer_past is not None:
+            global cosTable
+            global sinTable
             pastKey, pastValue = layer_past
-            if not self.input_flag:
-                self.input_flag = True
-                global cosTable
-                global sinTable
-                self.input = [hidden_states]
-                weights = list(self.state_dict().values())
-                del weights[2]
-                self.input.extend(weights)
-                self.input.append(position_ids)
-                self.input.append(cosTable)
-                self.input.append(sinTable)
-                self.input.append(attention_mask)
-                self.input.append(pastKey)
-                self.input.append(pastValue)
-            else:
-                self.input[0] = hidden_states
-                self.input[13] = position_ids
-                self.input[16] = attention_mask
-                self.input[17] = pastKey
-                self.input[18] = pastValue
+            inputs = [test_in]
+            weights = list(self.state_dict().values())
+            del weights[2]
+            inputs.extend(weights)
+            inputs.append(position_ids)
+            inputs.append(cosTable)
+            inputs.append(sinTable)
+            inputs.append(attention_mask)
+            inputs.append(pastKey)
+            inputs.append(pastValue)
+            global glm_block
 
             test_glmBlockOut, test_presentKey, test_presentValue = self.acl_operation.execute(
-                self.input)
+                inputs)
 
-            outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
+            if torch.allclose(output, test_glmBlockOut, rtol=0.1, atol=0.1):
+                print("equal")
+            else:
+                print("not euqal")
+                exit()
+
+            output = test_glmBlockOut
+
+        if use_cache:
+            outputs = (output,) + outputs
+        else:
+            outputs = (output,) + outputs[1:]
 
         return outputs  # hidden_states, present, attentions
 
@@ -849,10 +843,6 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         self.final_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon)
 
-        self.layers_tensor = []
-        for i in range(self.num_layers):
-            self.layers_tensor.append(torch.tensor(i).npu())
-
     def get_input_embeddings(self):
         return self.word_embeddings
 
@@ -986,7 +976,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
                 hidden_states,
                 position_ids=position_ids,
                 attention_mask=attention_mask,
-                layer_id=self.layers_tensor[i],
+                layer_id=torch.tensor(i),
                 layer_past=past_key_values[i],
                 use_cache=use_cache,
                 output_attentions=output_attentions
@@ -1038,13 +1028,6 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             bias=False,
             dtype=torch.half
         )
-
-        self.count = 0
-        self.total = 0
-        self.cur_time = 0
-        self.first = 0
-        self.pre_processing = 0
-        self.post_processing = 0
 
     def get_output_embeddings(self):
         return self.lm_head
@@ -1284,7 +1267,6 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 int, torch.Tensor], List[int]]] = None,
             **kwargs,
     ):
-        pre_processing_start = time.time()
         batch_size, input_ids_seq_length = input_ids.shape[0], input_ids.shape[-1]
 
         if generation_config is None:
@@ -1343,32 +1325,17 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
-
-        pre_processing_end = time.time()
-        self.pre_processing = (pre_processing_end -
-                               pre_processing_start) * 1000
         while True:
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
             # forward pass to get next token
-            torch.npu.synchronize()
-            start = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=False,
                 output_hidden_states=False,
             )
-            torch.npu.synchronize()
-            end = time.time()
-            self.count += 1
-            self.cur_time = (end - start) * 1000
-            if self.count == 1:
-                self.first = self.cur_time
-            else:
-                self.total += self.cur_time
 
-            post_processing_start = time.time()
             next_token_logits = outputs.logits[:, -1, :]
 
             # pre-process distribution
@@ -1390,9 +1357,6 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             )
             unfinished_sequences = unfinished_sequences.mul(
                 (sum(next_tokens != i for i in eos_token_id)).long())
-            post_processing_end = time.time()
-            self.post_processing = (
-                post_processing_end - post_processing_start) * 1000
 
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
