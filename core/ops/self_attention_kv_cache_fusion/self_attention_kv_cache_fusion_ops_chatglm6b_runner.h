@@ -26,7 +26,7 @@ public:
 private:
     SelfAttentionKvCacheFusionParam param_;
     const std::size_t inTensSize = 9;
-    const std::size_t nodeSize = 3;
+    const std::size_t nodeSize = 4;
     const std::size_t index2 = 2;
     const std::size_t index3 = 3;
     const std::size_t index4 = 4;
