@@ -15,6 +15,7 @@
  */
 #include "acltransformer/kernel_cache.h"
 #include "acltransformer/utils/tensor_util.h"
+#include <asdops/params/params.h>
 
 namespace AclTransformer {
 KernelCache::KernelCache() { cachedKernels_.resize(RUNNER_TYPE_MAX); }
@@ -64,6 +65,20 @@ bool KernelCache::IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::
         }
     }
 
+    if (runInfo1.GetOpDesc().opName == runInfo2.GetOpDesc().opName && runInfo1.GetOpDesc().opName == "NormOperation") {
+        auto norm1 = AsdOps::AnyCast<AsdOps::OpParam::Norm>(runInfo1.GetOpDesc().specificParam);
+        auto norm2 = AsdOps::AnyCast<AsdOps::OpParam::Norm>(runInfo2.GetOpDesc().specificParam);
+        return norm1.normType == norm2.normType && norm1.input_offset == norm2.input_offset &&
+                   norm1.input_scale == norm2.input_scale && norm1.input_alpha == norm2.input_alpha;
+    }
+
+    if (runInfo1.GetOpDesc().opName == runInfo2.GetOpDesc().opName &&
+        runInfo1.GetOpDesc().opName == "ElewiseOperation") {
+        auto elewise1 = AsdOps::AnyCast<AsdOps::OpParam::Elewise>(runInfo1.GetOpDesc().specificParam);
+        auto elewise2 = AsdOps::AnyCast<AsdOps::OpParam::Elewise>(runInfo2.GetOpDesc().specificParam);
+        return elewise1.elewiseType == elewise2.elewiseType && elewise1.input_offset == elewise2.input_offset &&
+               elewise1.input_scale == elewise2.input_scale;
+    }
     return true;
 }
 } // namespace AclTransformer
