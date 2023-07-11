@@ -33,6 +33,11 @@
 #include "examples/ops/chatglm6b/chatglm6bblock/chatglm6bblock_operation.h"
 #include "examples/ops/chatglm6b/chatglm6bmodel/chatglm6bmodel_operation.h"
 #include "acltransformer/ops/position_embedding_fusion_operation.h"
+#include "acltransformer/ops/quant_operation.h"
+#include "acltransformer/ops/add_norm_quant_operation.h"
+#include "acltransformer/ops/norm_quant_operation.h"
+#include "acltransformer/ops/linear_quant_operation.h"
+#include "acltransformer/ops/ffn_quant_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -179,6 +184,57 @@ static AclTransformer::Operation *TransposeOperationCreate(const nlohmann::json 
     return new AclTransformer::TransposeOperation(param);
 }
 
+AclTransformer::Operation *FfnQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::FfnQuantParam param;
+    param.transposeA = paramJson["transposeA"].get<bool>();
+    param.transposeB = paramJson["transposeB"].get<bool>();
+    ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
+    return new AclTransformer::FfnQuantOperation(param);
+}
+
+AclTransformer::Operation *LinearQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LinearQuantParam param;
+    param.transposeA = paramJson["transposeA"].get<bool>();
+    param.transposeB = paramJson["transposeB"].get<bool>();
+    ASD_LOG(INFO) << "LinearQuantParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
+    return new AclTransformer::LinearQuantOperation(param);
+}
+AclTransformer::Operation *AddNormQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::AddNormQuantParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.input_scale = paramJson["input_scale"].get<float>();
+    param.input_offset = paramJson["input_offset"].get<int>();
+    param.input_alpha = paramJson["input_alpha"].get<float>();
+
+    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps << ", input_scale:" << param.input_scale
+                  << ", input_offset:" << param.input_offset << ", input_alpha:" << param.input_alpha;
+    return new AclTransformer::AddNormQuantOperation(param);
+}
+
+AclTransformer::Operation *NormQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::NormQuantParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.input_scale = paramJson["input_scale"].get<float>();
+    param.input_offset = paramJson["input_offset"].get<int>();
+    param.input_alpha = paramJson["input_alpha"].get<float>();
+
+    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps << ", input_scale:" << param.input_scale
+                  << ", input_offset:" << param.input_offset << ", input_alpha:" << param.input_alpha;
+    return new AclTransformer::NormQuantOperation(param);
+}
+
+AclTransformer::Operation *QuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::QuantParam param;
+    param.input_scale = paramJson["input_scale"].get<float>();
+    param.input_offset = paramJson["input_offset"].get<int>();
+    ASD_LOG(INFO) << "QuantParam input scale:" << param.input_scale << ", input_offset:" << param.input_offset;
+    return new AclTransformer::QuantOperation(param);
+}
 static AclTransformer::Operation *ChatGlm6BBlockOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::ChatGlm6BBlockParam param;
@@ -225,6 +281,11 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AnyOperation", &AnyOperationCreate},
     {"ChatGlm6BBlockOperation", &ChatGlm6BBlockOperationCreate},
     {"ChatGlm6BModelOperation", &ChatGlm6BModelOperationCreate},
+    {"QuantOperation", &QuantOperationCreate},
+    {"AddNormQuantOperation", &AddNormQuantOperationCreate},
+    {"NormQuantOperation", &NormQuantOperationCreate},
+    {"LinearQuantOperation", &LinearQuantOperationCreate},
+    {"FfnQuantOperation", &FfnQuantOperationCreate},
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
