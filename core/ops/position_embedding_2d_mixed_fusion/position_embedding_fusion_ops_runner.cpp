@@ -176,6 +176,9 @@ PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner(const Positio
     rope0Node.inTensorViewFuncs.at(1) = ropeKqView;
     rope0Node.inTensorViewFuncs.at(index2) = ropeCosSinView;
     rope0Node.inTensorViewFuncs.at(index3) = ropeCosSinView;
+    rope0Node.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        runInfo.GetInTensor(4).desc.dtype = AsdOps::TENSOR_DTYPE_UINT32;
+    };
 }
 
 PositionEmbeddingFusionOpsRunner::~PositionEmbeddingFusionOpsRunner() {}

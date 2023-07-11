@@ -13,17 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML6B_CHATGML6BBLOCK_PARAM_H
-#define OPS_CHATGML6B_CHATGML6BBLOCK_PARAM_H
+#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_OPERATION_H
+#define OPS_CHATGML6B_CHATGLM6BLAYER_OPERATION_H
+#include "acltransformer/graph_operation.h"
+#include "chatglm6blayer_param.h"
 
 namespace AclTransformer {
-struct ChatGlm6BBlockParam {
-    double layerNormEps = 0;
-    int headNum = 0;
-    bool transKey = false;
-    int dk = 0;
-    int layerId = 0;
-    float residualAddScale = 0;
+class ChatGlm6BLayerOperation : public GraphOperation {
+public:
+    explicit ChatGlm6BLayerOperation(const ChatGlm6BLayerParam &param);
+    ~ChatGlm6BLayerOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
+
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+
+private:
+    ChatGlm6BLayerParam param_;
 };
 } // namespace AclTransformer
 #endif

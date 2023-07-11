@@ -70,7 +70,7 @@ AsdOps::Status ChatGlm6BFusionLayer::InferShape(const AsdOps::SVector<AsdOps::Te
         return AsdOps::Status::OkStatus();
     }
 
-    return AsdOps::Status::FailStatus(1, "in tensor size != 17 or 19");
+    return AsdOps::Status::FailStatus(1, "in tensor size != 17 or 20");
 }
 
 void ChatGlm6BFusionLayer::BuildGraph()
