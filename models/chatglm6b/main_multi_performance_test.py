@@ -2,7 +2,6 @@ from rand_tensor_pverformance import full_and_incremental_test, load_model
 import torch_npu
 
 if __name__ == "__main__":
-    # torch.npu.set_device(torch.device("npu:3"))
     file = open("multi_performance_test.csv", 'w')
     file.write(f"Batch,max_seq_token,input_seq_len(Encoding),output_seq_len(Decoding),TokensPerSecond(ms),ResponseTime(ms),FirstTokenTime(ms),TimePerTokens(ms)\n")
     model = load_model()
