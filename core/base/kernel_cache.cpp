@@ -14,9 +14,35 @@
  * limitations under the License.
  */
 #include "acltransformer/kernel_cache.h"
+#include <functional>
+#include <asdops/params/params.h>
+#include "asdops/utils/log/log.h"
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
+using ParamCompareFunc = std::function<bool(const AsdOps::Any &, const AsdOps::Any &)>;
+
+template <typename T> bool ParamCompareFuncImpl(const AsdOps::Any &any1, const AsdOps::Any &any2)
+{
+    const auto &content1 = AsdOps::AnyCast<T>(any1);
+    const auto &content2 = AsdOps::AnyCast<T>(any2);
+    return content1 == content2;
+}
+
+static std::map<std::size_t, ParamCompareFunc> ParamCompareMap_ = {
+    {typeid(AsdOps::OpParam::AsStrided).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::AsStrided>},
+    {typeid(AsdOps::OpParam::Attention).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Attention>},
+    {typeid(AsdOps::OpParam::Broadcast).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Broadcast>},
+    {typeid(AsdOps::OpParam::Concat).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Concat>},
+    {typeid(AsdOps::OpParam::Elewise).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Elewise>},
+    {typeid(AsdOps::OpParam::Gather).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Gather>},
+    {typeid(AsdOps::OpParam::GlobalInfo).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::GlobalInfo>},
+    {typeid(AsdOps::OpParam::MatMul).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::MatMul>},
+    {typeid(AsdOps::OpParam::Norm).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Norm>},
+    {typeid(AsdOps::OpParam::Split).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Split>},
+    {typeid(AsdOps::OpParam::Transdata).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Transdata>},
+    {typeid(AsdOps::OpParam::Transpose).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Transpose>}};
+
 KernelCache::KernelCache() { cachedKernels_.resize(RUNNER_TYPE_MAX); }
 
 KernelCache::~KernelCache() {}
@@ -62,6 +88,18 @@ bool KernelCache::IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::
         if (!TensorUtil::AsdOpsTensorDescEqual(runInfo1.GetInTensor(i).desc, runInfo2.GetInTensor(i).desc)) {
             return false;
         }
+    }
+
+    const AsdOps::OpDesc &opDesc1 = runInfo1.GetOpDesc();
+    const AsdOps::OpDesc &opDesc2 = runInfo2.GetOpDesc();
+    if (opDesc1.opName != opDesc2.opName) {
+        return false;
+    }
+    auto it = ParamCompareMap_.find(opDesc1.specificParam.Type().hash_code());
+    if (it != ParamCompareMap_.end()) {
+        return it->second(opDesc1.specificParam, opDesc2.specificParam);
+    } else {
+        ASD_LOG(WARN) << "Can not compare param of " << opDesc1.opName;
     }
 
     return true;
