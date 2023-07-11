@@ -27,6 +27,11 @@ namespace AclTransformer {
 using RunnerGraphNodeViewFunc =
     std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
 
+enum TensorType {
+    INTERMEDIATE_TENSOR = 0,
+    NOT_INTERMEDIATE_TENSOR,
+};
+
 struct RunnerGraphNode {
     const Operation *operation = nullptr;
     std::shared_ptr<Runner> runner;
@@ -34,6 +39,8 @@ struct RunnerGraphNode {
     AsdOps::SVector<AsdOps::Tensor *> outTensors;
     AsdOps::SVector<RunnerGraphNodeViewFunc> inTensorViewFuncs;
     RunnerVariantPack runnerVariantPack;
+    AsdOps::SVector<TensorType> inTensorTypes;
+    AsdOps::SVector<TensorType> outTensorTypes;
 };
 
 struct RunnerGraph {
@@ -56,6 +63,7 @@ public:
 
 protected:
     void InitTensorMaxNodeMap();
+    void InitTensorType();
 
 private:
     void Reset();

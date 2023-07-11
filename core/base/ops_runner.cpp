@@ -206,7 +206,8 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerV
 {
     ASD_LOG(INFO) << GetName() << " execute start, totalTilingSize:" << totalTilingSize_
                   << ", workspaceSize:" << workspaceSize_ << ", intermediateSize:" << intermediateSize_;
-
+    kernelGraph_.inTensors = runnerVariantPack.inTensors;
+    kernelGraph_.outTensors = runnerVariantPack.outTensors;
     UpdateRunInfoTensorData(runnerVariantPack);
     UpdateRunInfoTiling(runnerVariantPack);
     UpdateRunInfoWorkspace(runnerVariantPack);
@@ -221,24 +222,14 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerV
 void OpsRunner::UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack)
 {
     char *deviceIntermediateBuffer = static_cast<char *>(runnerVariantPack.intermediateBuffer);
-    for (auto &node : kernelGraph_.nodes) {
+    for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
+        auto &node = kernelGraph_.nodes.at(nodeId);
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetInTensorCount(); tensorId++) {
             AsdOps::Tensor &tensor = node.kernelRunInfo.GetInTensor(tensorId);
             if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)node.inTensors.at(tensorId)->data;
             } else {
-                int64_t tensorIdInRunnerVariantPack = GetInTensorId(node.inTensors.at(tensorId));
-                if (tensorIdInRunnerVariantPack != -1) {
-                    tensor.data = runnerVariantPack.inTensors.at(tensorIdInRunnerVariantPack).data;
-                } else {
-                    int64_t tensorIdInRunnerVariantPack = GetOutTensorId(node.inTensors.at(tensorId));
-                    if (tensorIdInRunnerVariantPack != -1) {
-                        tensor.data = runnerVariantPack.outTensors.at(tensorIdInRunnerVariantPack).data;
-                    } else {
-                        ASD_LOG(ERROR) << GetName() << " node.inTensors[" << tensorId
-                                       << "] not in runnerVariantPack's inTensors or outTensors";
-                    }
-                }
+                tensor.data = node.inTensors.at(tensorId)->data;
             }
         }
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetOutTensorCount(); tensorId++) {
@@ -246,13 +237,7 @@ void OpsRunner::UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack)
             if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)node.outTensors.at(tensorId)->data;
             } else {
-                int64_t tensorIdInRunnerVariantPack = GetOutTensorId(node.outTensors.at(tensorId));
-                if (tensorIdInRunnerVariantPack != -1) {
-                    tensor.data = runnerVariantPack.outTensors.at(tensorIdInRunnerVariantPack).data;
-                } else {
-                    ASD_LOG(ERROR) << GetName() << " node.outTensors[" << tensorId
-                                   << "] not in runnerVariantPack's inTensors or outTensors";
-                }
+                tensor.data = node.outTensors.at(tensorId)->data;
             }
         }
     }

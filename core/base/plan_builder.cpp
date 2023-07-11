@@ -92,6 +92,7 @@ AsdOps::Status PlanBuilder::BuildImpl(const std::string &planName, const Operati
 
     ASD_LOG(INFO) << "PlanBuilder::Build success, RunnerGraph:" << plan.runnerGraph_.ToString();
     plan.InitTensorMaxNodeMap();
+    plan.InitTensorType();
     return AsdOps::Status::OkStatus();
 }
 

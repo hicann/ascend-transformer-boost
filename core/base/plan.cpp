@@ -79,6 +79,8 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
         ASD_LOG(ERROR) << name_ << " Execute fail, handle.stream is null";
         return AsdOps::Status::FailStatus(1, "handle stream is null");
     }
+    runnerGraph_.inTensors = variantPack.inTensors;
+    runnerGraph_.outTensors = variantPack.outTensors;
 
     AsdOps::Status st = CopyHostTilingToDevice(handle, variantPack);
     if (!st.Ok()) {
@@ -197,35 +199,23 @@ void Plan::UpdateRunnerVariantPackTensorData(VariantPack &variantPack)
         ASD_LOG(INFO) << name_ << " update tensor.data node[" << nodeId << "]";
         for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
             auto &tensor = node.runnerVariantPack.inTensors.at(i);
-            if (IsInternalTensor(node.inTensors.at(i))) {
+            if (node.inTensorTypes.at(i) == INTERMEDIATE_TENSOR) {
                 tensor.data = selfIntermediateBuffer + (uint64_t)tensor.data;
                 ASD_LOG(INFO) << name_ << " update node[" << nodeId << "].intensors[" << i
                               << "] is internal, tensor.data:" << tensor.data;
             } else {
-                int64_t tensorIdInRuninfo = GetInTensorId(node.inTensors.at(i));
-                if (tensorIdInRuninfo == -1) {
-                    tensorIdInRuninfo = GetOutTensorId(node.inTensors.at(i));
-                    tensor.data = variantPack.outTensors.at(tensorIdInRuninfo).data;
-                } else {
-                    tensor.data = variantPack.inTensors.at(tensorIdInRuninfo).data;
-                }
+                tensor.data = node.inTensors.at(i)->data;
                 ASD_LOG(INFO) << name_ << " update node[" << nodeId << "].intensor is not internal";
             }
         }
         for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); ++i) {
             auto &tensor = node.runnerVariantPack.outTensors.at(i);
-            if (IsInternalTensor(node.outTensors.at(i))) {
+            if (node.outTensorTypes.at(i) == INTERMEDIATE_TENSOR) {
                 tensor.data = selfIntermediateBuffer + (uint64_t)tensor.data;
                 ASD_LOG(INFO) << name_ << " update node[" << nodeId << "].outtensor[" << i
                               << "] is internal, tensor.data:" << tensor.data;
             } else {
-                int64_t tensorIdInRuninfo = GetOutTensorId(node.outTensors.at(i));
-                if (tensorIdInRuninfo == -1) {
-                    tensorIdInRuninfo = GetInTensorId(node.outTensors.at(i));
-                    tensor.data = variantPack.inTensors.at(tensorIdInRuninfo).data;
-                } else {
-                    tensor.data = variantPack.outTensors.at(tensorIdInRuninfo).data;
-                }
+                tensor.data = node.outTensors.at(i)->data;
                 ASD_LOG(INFO) << name_ << " update node[" << nodeId << "].outtensor[" << i << "] is not internal";
             }
         }
@@ -303,6 +293,22 @@ void Plan::InitTensorMaxNodeMap()
                       << ", dependNodeCount:" << dependNodeCount;
         ASD_LOG_IF(dependNodeCount == 0, ERROR) << "internal tensor[" << i << "] dependNodeCount is 0, graph wrong";
         maxNodeIdTensorMap_[maxNodeId].insert(&internalTensor);
+    }
+}
+
+void Plan::InitTensorType()
+{
+    for (auto &node : runnerGraph_.nodes) {
+        node.inTensorTypes.resize(node.inTensors.size());
+        node.outTensorTypes.resize(node.outTensors.size());
+        for (size_t i = 0; i < node.inTensors.size(); ++i) {
+            node.inTensorTypes.at(i) =
+                IsInternalTensor(node.inTensors.at(i)) ? INTERMEDIATE_TENSOR : NOT_INTERMEDIATE_TENSOR;
+        }
+        for (size_t i = 0; i < node.outTensors.size(); ++i) {
+            node.outTensorTypes.at(i) =
+                IsInternalTensor(node.outTensors.at(i)) ? INTERMEDIATE_TENSOR : NOT_INTERMEDIATE_TENSOR;
+        }
     }
 }
 

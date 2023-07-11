@@ -95,7 +95,7 @@ Runner *GraphOperation::CreateBestRunner() const
         }
     }
 
-    runnerGraph.InitTensorMaxNodeMap();
+    runnerGraph.Init();
     return runner;
 }
 
