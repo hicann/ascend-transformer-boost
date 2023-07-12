@@ -21,7 +21,7 @@
 namespace AclTransformer {
 class FfnQuantOpsRunner : public OpsRunner {
 public:
-    FfnQuantOpsRunner(const FfnQuantParam &param);
+    explicit FfnQuantOpsRunner(const FfnQuantParam &param);
     virtual ~FfnQuantOpsRunner();
 
 private:

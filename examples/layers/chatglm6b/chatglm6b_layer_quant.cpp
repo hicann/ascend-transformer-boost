@@ -53,12 +53,12 @@ ChatGlm6BLayerQuant::~ChatGlm6BLayerQuant() {}
 AsdOps::Status ChatGlm6BLayerQuant::InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs)
 {
-    int layer_id = paramJson_["layerId"].get<int>();
+    int layerId = paramJson_["layerId"].get<int>();
 
     const AsdOps::Tensor &keyTensor = inTensors.at(21);
     const AsdOps::Tensor &ValueTensor = inTensors.at(22);
 
-    if (layer_id == 27) {
+    if (layerId == 27) {
         outTensorDescs.resize(3);
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(1) = keyTensor.desc;
@@ -80,11 +80,11 @@ AsdOps::Status ChatGlm6BLayerQuant::InferShape(const AsdOps::SVector<AsdOps::Ten
 
 void ChatGlm6BLayerQuant::BuildGraph()
 {
-    int layer_id = paramJson_["layerId"].get<int>();
-    if (layer_id == 0) {
+    int layerId = paramJson_["layerId"].get<int>();
+    if (layerId == 0) {
         // Use middle graph
         BuildMidGraph();
-    } else if (layer_id == 27) {
+    } else if (layerId == 27) {
         BuildLastGraph();
     } else {
         BuildMidGraph();
@@ -654,5 +654,4 @@ void ChatGlm6BLayerQuant::BuildLastGraph()
     ffnResidualAddNode.inTensorIds = {resOut, ffnOutLinearQuantOut};
     ffnResidualAddNode.outTensorIds = {glmBlockOut};
 }
-
 } // namespace AclTransformer

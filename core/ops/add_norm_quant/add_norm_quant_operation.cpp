@@ -27,13 +27,9 @@ AddNormQuantOperation::AddNormQuantOperation(const AddNormQuantParam &param)
 
 AddNormQuantOperation::~AddNormQuantOperation() {}
 
-uint64_t AddNormQuantOperation::GetInTensorCount() const { 
-	return 4; 
-	}
+uint64_t AddNormQuantOperation::GetInTensorCount() const { return 4; }
 
-uint64_t AddNormQuantOperation::GetOutTensorCount() const { 
-	return 2; 
-	}
+uint64_t AddNormQuantOperation::GetOutTensorCount() const { return 2; }
 
 AsdOps::Status AddNormQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const

@@ -34,13 +34,9 @@ FfnQuantOperation::FfnQuantOperation(const FfnQuantParam &param) : Operation("Ff
 
 FfnQuantOperation::~FfnQuantOperation() {}
 
-uint64_t FfnQuantOperation::GetInTensorCount() const {
-	return 4; 
-	}
+uint64_t FfnQuantOperation::GetInTensorCount() const { return 4; }
 
-uint64_t FfnQuantOperation::GetOutTensorCount() const { 
-	return 1; 
-	}
+uint64_t FfnQuantOperation::GetOutTensorCount() const { return 1; }
 
 AsdOps::Status FfnQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const

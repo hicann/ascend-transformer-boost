@@ -22,11 +22,9 @@
 namespace AclTransformer {
 class FfnQuantOpsRunnerBuilder : public RunnerBuilder {
 public:
-    FfnQuantOpsRunnerBuilder(const FfnQuantParam &param) : param_(param) {}
+    explicit FfnQuantOpsRunnerBuilder(const FfnQuantParam &param) : param_(param) {}
     virtual ~FfnQuantOpsRunnerBuilder() = default;
-    Runner *Build() override { 
-	return new FfnQuantOpsRunner(param_); 
-	}
+    Runner *Build() override { return new FfnQuantOpsRunner(param_); }
 
 private:
     FfnQuantParam param_;

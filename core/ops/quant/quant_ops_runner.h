@@ -21,7 +21,7 @@
 namespace AclTransformer {
 class QuantOpsRunner : public OpsRunner {
 public:
-    QuantOpsRunner(const QuantParam &param);
+    explicit QuantOpsRunner(const QuantParam &param);
     virtual ~QuantOpsRunner();
 
 private:

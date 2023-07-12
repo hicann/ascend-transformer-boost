@@ -20,7 +20,7 @@
 namespace AclTransformer {
 class ChatGlm6BLayerQuant : public Layer {
 public:
-    ChatGlm6BLayerQuant(const nlohmann::json &paramJson);
+    explicit ChatGlm6BLayerQuant(const nlohmann::json &paramJson);
     virtual ~ChatGlm6BLayerQuant();
     AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;

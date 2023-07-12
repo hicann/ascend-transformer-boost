@@ -27,7 +27,7 @@
 namespace AclTransformer {
 class LinearQuantOpsRunnerBuilder : public RunnerBuilder {
 public:
-    LinearQuantOpsRunnerBuilder(const LinearQuantParam &param) : param_(param)
+    explicit LinearQuantOpsRunnerBuilder(const LinearQuantParam &param) : param_(param)
     {
         ASD_LOG(INFO) << "LinearOQuantperation::LinearQuantOperation called";
     }

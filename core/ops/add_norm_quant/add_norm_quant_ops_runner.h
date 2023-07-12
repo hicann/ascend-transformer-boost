@@ -21,7 +21,7 @@
 namespace AclTransformer {
 class AddNormQuantOpsRunner : public OpsRunner {
 public:
-    AddNormQuantOpsRunner(const AddNormQuantParam &param);
+    explicit AddNormQuantOpsRunner(const AddNormQuantParam &param);
     virtual ~AddNormQuantOpsRunner();
 
 private:
