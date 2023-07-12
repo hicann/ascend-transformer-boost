@@ -20,9 +20,9 @@
 namespace AclTransformer {
 struct NormQuantParam {
     double layerNormEps = 1e-12; // a value added to the denominator for numerical stability
-    float input_scale = 1;
-    int input_offset = 0;
-    float input_alpha = 1;
+    float inputScale = 1;
+    int inputOffset = 0;
+    float inputAlpha = 1;
 };
 } // namespace AclTransformer
 #endif

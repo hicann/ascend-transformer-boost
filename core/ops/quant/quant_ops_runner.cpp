@@ -33,7 +33,7 @@ QuantOpsRunner::QuantOpsRunner(const QuantParam &param) : OpsRunner("QuantOpsRun
     auto &quantNode = kernelGraph_.nodes.at(0);
     quantNode.opDesc = {0, "ElewiseOperation",
                         AsdOps::OpParam::Elewise(
-                            {AsdOps::OpParam::Elewise::ELEWISE_QUANT, 0, 0, param_.input_scale, param_.input_offset})};
+                            {AsdOps::OpParam::Elewise::ELEWISE_QUANT, 0, 0, param_.inputScale, param_.inputOffset})};
     quantNode.inTensors = {&aTensor};
     quantNode.outTensors = {&operationOutTensor};
 }

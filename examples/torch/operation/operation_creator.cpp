@@ -219,12 +219,12 @@ AclTransformer::Operation *AddNormQuantOperationCreate(const nlohmann::json &par
 {
     AclTransformer::AddNormQuantParam param;
     param.layerNormEps = paramJson["layerNormEps"].get<double>();
-    param.input_scale = paramJson["input_scale"].get<float>();
-    param.input_offset = paramJson["input_offset"].get<int>();
-    param.input_alpha = paramJson["input_alpha"].get<float>();
+    param.inputScale = paramJson["input_scale"].get<float>();
+    param.inputOffset = paramJson["input_offset"].get<int>();
+    param.inputAlpha = paramJson["input_alpha"].get<float>();
 
-    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps << ", input_scale:" << param.input_scale
-                  << ", input_offset:" << param.input_offset << ", input_alpha:" << param.input_alpha;
+    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps << ", input_scale:" << param.inputScale
+                  << ", input_offset:" << param.inputOffset << ", input_alpha:" << param.inputAlpha;
     return new AclTransformer::AddNormQuantOperation(param);
 }
 
@@ -232,21 +232,21 @@ AclTransformer::Operation *NormQuantOperationCreate(const nlohmann::json &paramJ
 {
     AclTransformer::NormQuantParam param;
     param.layerNormEps = paramJson["layerNormEps"].get<double>();
-    param.input_scale = paramJson["input_scale"].get<float>();
-    param.input_offset = paramJson["input_offset"].get<int>();
-    param.input_alpha = paramJson["input_alpha"].get<float>();
+    param.inputScale = paramJson["input_scale"].get<float>();
+    param.inputOffset = paramJson["input_offset"].get<int>();
+    param.inputAlpha = paramJson["input_alpha"].get<float>();
 
-    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps << ", input_scale:" << param.input_scale
-                  << ", input_offset:" << param.input_offset << ", input_alpha:" << param.input_alpha;
+    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps << ", input_scale:" << param.inputScale
+                  << ", input_offset:" << param.inputOffset << ", input_alpha:" << param.inputAlpha;
     return new AclTransformer::NormQuantOperation(param);
 }
 
 AclTransformer::Operation *QuantOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::QuantParam param;
-    param.input_scale = paramJson["input_scale"].get<float>();
-    param.input_offset = paramJson["input_offset"].get<int>();
-    ASD_LOG(INFO) << "QuantParam input scale:" << param.input_scale << ", input_offset:" << param.input_offset;
+    param.inputScale = paramJson["input_scale"].get<float>();
+    param.inputOffset = paramJson["input_offset"].get<int>();
+    ASD_LOG(INFO) << "QuantParam input scale:" << param.inputScale << ", input_offset:" << param.inputOffset;
     return new AclTransformer::QuantOperation(param);
 }
 

@@ -17,8 +17,8 @@
 #define ACLTRANSFOERM_PARAMS_QUANT_H
 namespace AclTransformer {
 struct QuantParam {
-    float input_scale = 1;
-    int input_offset = 0;
+    float inputScale = 1;
+    int inputOffset = 0;
 };
 } // namespace AclTransformer
 #endif

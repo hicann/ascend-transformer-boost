@@ -43,9 +43,9 @@ AddNormQuantOpsRunner::AddNormQuantOpsRunner(const AddNormQuantParam &param)
     normParam.begin_norm_axis = 1;
     normParam.begin_params_axis = 1;
     normParam.epsilon = param_.layerNormEps;
-    normParam.input_scale = param_.input_scale;
-    normParam.input_offset = param_.input_offset;
-    normParam.input_alpha = param_.input_alpha;
+    normParam.input_scale = param_.inputScale;
+    normParam.input_offset = param_.inputOffset;
+    normParam.input_alpha = param_.inputAlpha;
     normParam.ops_mode = 0;
 
     ASD_LOG(INFO) << GetName() << " NormOperation opDesc normParam.begin_norm_axis:" << normParam.begin_norm_axis
