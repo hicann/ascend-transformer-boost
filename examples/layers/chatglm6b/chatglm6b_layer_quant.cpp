@@ -153,9 +153,9 @@ void ChatGlm6BLayerQuant::BuildMidGraph()
 
     AclTransformer::AddNormQuantParam inputLayernormQuantParam;
     inputLayernormQuantParam.layerNormEps = paramJson_["layerNormEps"].get<double>();
-    inputLayernormQuantParam.input_scale = paramJson_["qkv_input_scale"].get<float>();
-    inputLayernormQuantParam.input_offset = paramJson_["qkv_input_offset"].get<int>();
-    inputLayernormQuantParam.input_alpha = paramJson_["ResidualAddScale"].get<float>();
+    inputLayernormQuantParam.inputScale = paramJson_["QkvInputScale"].get<float>();
+    inputLayernormQuantParam.inputOffset = paramJson_["QkvInputOffset"].get<int>();
+    inputLayernormQuantParam.inputAlpha = paramJson_["ResidualAddScale"].get<float>();
 
     AclTransformer::LinearQuantParam minxedQKVLinearQuantParam;
     minxedQKVLinearQuantParam.transposeA = false;
@@ -171,8 +171,8 @@ void ChatGlm6BLayerQuant::BuildMidGraph()
     selfAttentionKvCacheParam.layerId = paramJson_["layerId"].get<int>();
 
     AclTransformer::QuantParam denseQuantParam;
-    denseQuantParam.input_scale = paramJson_["dense_input_scale"].get<float>();
-    denseQuantParam.input_offset = paramJson_["dense_input_offset"].get<int>();
+    denseQuantParam.inputScale = paramJson_["DenseInputScale"].get<float>();
+    denseQuantParam.inputOffset = paramJson_["DenseInputOffset"].get<int>();
 
     AclTransformer::LinearQuantParam denseLinearQuantParam;
     denseLinearQuantParam.transposeA = false;
@@ -180,17 +180,17 @@ void ChatGlm6BLayerQuant::BuildMidGraph()
 
     AclTransformer::AddNormQuantParam selfLayernormQuantParam;
     selfLayernormQuantParam.layerNormEps = paramJson_["layerNormEps"].get<double>();
-    selfLayernormQuantParam.input_scale = paramJson_["self_ln_input_scale"].get<float>();
-    selfLayernormQuantParam.input_offset = paramJson_["self_ln_input_offset"].get<int>();
-    selfLayernormQuantParam.input_alpha = paramJson_["ResidualAddScale"].get<float>();
+    selfLayernormQuantParam.inputScale = paramJson_["SelfLnInputScale"].get<float>();
+    selfLayernormQuantParam.inputOffset = paramJson_["SelfLnInputOffset"].get<int>();
+    selfLayernormQuantParam.inputAlpha = paramJson_["ResidualAddScale"].get<float>();
 
     AclTransformer::FfnQuantParam ffnLinearQuantParam;
     ffnLinearQuantParam.transposeA = false;
     ffnLinearQuantParam.transposeB = false;
 
     AclTransformer::QuantParam ffnOutQuantParam;
-    ffnOutQuantParam.input_scale = paramJson_["ffn_out_input_scale"].get<float>();
-    ffnOutQuantParam.input_offset = paramJson_["ffn_out_input_offset"].get<int>();
+    ffnOutQuantParam.inputScale = paramJson_["FfnOutInputScale"].get<float>();
+    ffnOutQuantParam.inputOffset = paramJson_["FfnOutInputOffset"].get<int>();
 
     AclTransformer::LinearQuantParam ffnOutLinearQuantParam;
     ffnOutLinearQuantParam.transposeA = false;
@@ -335,9 +335,9 @@ void ChatGlm6BLayerQuant::BuildFirstGraph()
 
     AclTransformer::NormQuantParam inputLayernormQuantParam;
     inputLayernormQuantParam.layerNormEps = paramJson_["layerNormEps"].get<double>();
-    inputLayernormQuantParam.input_scale = paramJson_["qkv_input_scale"].get<float>();
-    inputLayernormQuantParam.input_offset = paramJson_["qkv_input_offset"].get<int>();
-    inputLayernormQuantParam.input_alpha = paramJson_["ResidualAddScale"].get<float>();
+    inputLayernormQuantParam.inputScale = paramJson_["QkvInputScale"].get<float>();
+    inputLayernormQuantParam.inputOffset = paramJson_["QkvInputOffset"].get<int>();
+    inputLayernormQuantParam.inputAlpha = paramJson_["ResidualAddScale"].get<float>();
 
     AclTransformer::LinearQuantParam minxedQKVLinearQuantParam;
     minxedQKVLinearQuantParam.transposeA = false;
@@ -353,8 +353,8 @@ void ChatGlm6BLayerQuant::BuildFirstGraph()
     selfAttentionKvCacheParam.layerId = paramJson_["layerId"].get<int>();
 
     AclTransformer::QuantParam denseQuantParam;
-    denseQuantParam.input_scale = paramJson_["dense_input_scale"].get<float>();
-    denseQuantParam.input_offset = paramJson_["dense_input_offset"].get<int>();
+    denseQuantParam.inputScale = paramJson_["DenseInputScale"].get<float>();
+    denseQuantParam.inputOffset = paramJson_["DenseInputOffset"].get<int>();
 
     AclTransformer::LinearQuantParam denseLinearQuantParam;
     denseLinearQuantParam.transposeA = false;
@@ -362,17 +362,17 @@ void ChatGlm6BLayerQuant::BuildFirstGraph()
 
     AclTransformer::AddNormQuantParam selfLayernormQuantParam;
     selfLayernormQuantParam.layerNormEps = paramJson_["layerNormEps"].get<double>();
-    selfLayernormQuantParam.input_scale = paramJson_["self_ln_input_scale"].get<float>();
-    selfLayernormQuantParam.input_offset = paramJson_["self_ln_input_offset"].get<int>();
-    selfLayernormQuantParam.input_alpha = paramJson_["ResidualAddScale"].get<float>();
+    selfLayernormQuantParam.inputScale = paramJson_["SelfLnInputScale"].get<float>();
+    selfLayernormQuantParam.inputOffset = paramJson_["selfLnInputOffset"].get<int>();
+    selfLayernormQuantParam.inputAlpha = paramJson_["ResidualAddScale"].get<float>();
 
     AclTransformer::FfnQuantParam ffnLinearQuantParam;
     ffnLinearQuantParam.transposeA = false;
     ffnLinearQuantParam.transposeB = false;
 
     AclTransformer::QuantParam ffnOutQuantParam;
-    ffnOutQuantParam.input_scale = paramJson_["ffn_out_input_scale"].get<float>();
-    ffnOutQuantParam.input_offset = paramJson_["ffn_out_input_offset"].get<int>();
+    ffnOutQuantParam.inputScale = paramJson_["FfnOutInputScale"].get<float>();
+    ffnOutQuantParam.inputOffset = paramJson_["FfnOutInputOffset"].get<int>();
 
     AclTransformer::LinearQuantParam ffnOutLinearQuantParam;
     ffnOutLinearQuantParam.transposeA = false;
@@ -520,9 +520,9 @@ void ChatGlm6BLayerQuant::BuildLastGraph()
 
     AclTransformer::AddNormQuantParam inputLayernormQuantParam;
     inputLayernormQuantParam.layerNormEps = paramJson_["layerNormEps"].get<double>();
-    inputLayernormQuantParam.input_scale = paramJson_["qkv_input_scale"].get<float>();
-    inputLayernormQuantParam.input_offset = paramJson_["qkv_input_offset"].get<int>();
-    inputLayernormQuantParam.input_alpha = paramJson_["ResidualAddScale"].get<float>();
+    inputLayernormQuantParam.inputScale = paramJson_["QkvInputScale"].get<float>();
+    inputLayernormQuantParam.inputOffset = paramJson_["QkvInputOffset"].get<int>();
+    inputLayernormQuantParam.inputAlpha = paramJson_["ResidualAddScale"].get<float>();
 
     AclTransformer::LinearQuantParam minxedQKVLinearQuantParam;
     minxedQKVLinearQuantParam.transposeA = false;
@@ -538,8 +538,8 @@ void ChatGlm6BLayerQuant::BuildLastGraph()
     selfAttentionKvCacheParam.layerId = paramJson_["layerId"].get<int>();
 
     AclTransformer::QuantParam denseQuantParam;
-    denseQuantParam.input_scale = paramJson_["dense_input_scale"].get<float>();
-    denseQuantParam.input_offset = paramJson_["dense_input_offset"].get<int>();
+    denseQuantParam.inputScale = paramJson_["DenseInputScale"].get<float>();
+    denseQuantParam.inputOffset = paramJson_["DenseInputOffset"].get<int>();
 
     AclTransformer::LinearQuantParam denseLinearQuantParam;
     denseLinearQuantParam.transposeA = false;
@@ -547,17 +547,17 @@ void ChatGlm6BLayerQuant::BuildLastGraph()
 
     AclTransformer::AddNormQuantParam selfLayernormQuantParam;
     selfLayernormQuantParam.layerNormEps = paramJson_["layerNormEps"].get<double>();
-    selfLayernormQuantParam.input_scale = paramJson_["self_ln_input_scale"].get<float>();
-    selfLayernormQuantParam.input_offset = paramJson_["self_ln_input_offset"].get<int>();
-    selfLayernormQuantParam.input_alpha = paramJson_["ResidualAddScale"].get<float>();
+    selfLayernormQuantParam.inputScale = paramJson_["SelfLnInputScale"].get<float>();
+    selfLayernormQuantParam.inputOffset = paramJson_["SelfLnInputOffset"].get<int>();
+    selfLayernormQuantParam.inputAlpha = paramJson_["ResidualAddScale"].get<float>();
 
     AclTransformer::FfnQuantParam ffnLinearQuantParam;
     ffnLinearQuantParam.transposeA = false;
     ffnLinearQuantParam.transposeB = false;
 
     AclTransformer::QuantParam ffnOutQuantParam;
-    ffnOutQuantParam.input_scale = paramJson_["ffn_out_input_scale"].get<float>();
-    ffnOutQuantParam.input_offset = paramJson_["ffn_out_input_offset"].get<int>();
+    ffnOutQuantParam.inputScale = paramJson_["FfnOutInputScale"].get<float>();
+    ffnOutQuantParam.inputOffset = paramJson_["FfnOutInputOffset"].get<int>();
 
     AclTransformer::LinearQuantParam ffnOutLinearQuantParam;
     ffnOutLinearQuantParam.transposeA = false;
