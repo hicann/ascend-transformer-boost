@@ -87,73 +87,6 @@ static void ResizeJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
     opDesc.specificParam = param;
 }
 
-static void PoolJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
-{
-    AsdOps::OpParam::Pool param;
-    param.poolType = static_cast<AsdOps::OpParam::Pool::PoolType>(opDescJson["specificParam"]["poolType"].get<int>());
-    {
-        const nlohmann::json kernelSizeValues = opDescJson["specificParam"]["kernelSize"];
-        const int kernelSizeSizes = int(kernelSizeValues.size());
-        for (int i = 0; i < kernelSizeSizes; ++i) {
-            param.kernelSize[i] = kernelSizeValues[i].get<int>();
-        }
-    }
-    {
-        const nlohmann::json strideValues = opDescJson["specificParam"]["stride"];
-        const int strideSizes = int(strideValues.size());
-        for (int i = 0; i < strideSizes; ++i) {
-            param.stride[i] = strideValues[i].get<int>();
-        }
-    }
-    {
-        const nlohmann::json paddingValues = opDescJson["specificParam"]["padding"];
-        const int paddingSizes = int(paddingValues.size());
-        for (int i = 0; i < paddingSizes; ++i) {
-            param.padding[i] = paddingValues[i].get<int>();
-        }
-    }
-    {
-        const nlohmann::json dilationValues = opDescJson["specificParam"]["dilation"];
-        const int dilationSizes = int(dilationValues.size());
-        for (int i = 0; i < dilationSizes; ++i) {
-            param.dilation[i] = dilationValues[i].get<int>();
-        }
-    }
-    param.returnIndices = opDescJson["specificParam"]["returnIndices"].get<bool>();
-    param.ceilMode = opDescJson["specificParam"]["ceilMode"].get<bool>();
-    param.extValue = opDescJson["specificParam"]["extValue"].get<std::string>();
-    opDesc.specificParam = param;
-}
-
-static void UnPoolJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
-{
-    AsdOps::OpParam::UnPool param;
-    param.poolType = static_cast<AsdOps::OpParam::UnPool::PoolType>(opDescJson["specificParam"]["poolType"].get<int>());
-    {
-        const nlohmann::json kernelSizeValues = opDescJson["specificParam"]["kernelSize"];
-        const int kernelSizeSizes = int(kernelSizeValues.size());
-        for (int i = 0; i < kernelSizeSizes; ++i) {
-            param.kernelSize[i] = kernelSizeValues[i].get<int>();
-        }
-    }
-    {
-        const nlohmann::json strideValues = opDescJson["specificParam"]["stride"];
-        const int strideSizes = int(strideValues.size());
-        for (int i = 0; i < strideSizes; ++i) {
-            param.stride[i] = strideValues[i].get<int>();
-        }
-    }
-    {
-        const nlohmann::json paddingValues = opDescJson["specificParam"]["padding"];
-        const int paddingSizes = int(paddingValues.size());
-        for (int i = 0; i < paddingSizes; ++i) {
-            param.padding[i] = paddingValues[i].get<int>();
-        }
-    }
-    param.extValue = opDescJson["specificParam"]["extValue"].get<std::string>();
-    opDesc.specificParam = param;
-}
-
 static void GatherJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
 {
     AsdOps::OpParam::Gather param;
@@ -204,13 +137,10 @@ static void NormJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
 using OpDescSetFunc = std::function<void(const nlohmann::json &, AsdOps::OpDesc &)>;
 
 static const std::map<std::string, OpDescSetFunc> OP_DESC_JSON_FUNC_MAP = {
-    {"AsStridedOperation", AsStridedJson}, {"ActivationOperation", ActivationJson},
-    {"ElewiseOperation", ElewiseJson},     {"SplitOperation", SplitJson},
-    {"MatMulOperation", MatMulJson},       {"ReduceOperation", ReduceJson},
-    {"ConcatOperation", ConcatJson},       {"ResizeOperation", ResizeJson},
-    {"PoolOperation", PoolJson},           {"UnPoolOperation", UnPoolJson},
-    {"GatherOperation", GatherJson},       {"BroadcastOperation", BroadcastJson},
-    {"TransdataOperation", TransdataJson}, {"NormOperation", NormJson},
+    {"AsStridedOperation", AsStridedJson}, {"ActivationOperation", ActivationJson}, {"ElewiseOperation", ElewiseJson},
+    {"SplitOperation", SplitJson},         {"MatMulOperation", MatMulJson},         {"ReduceOperation", ReduceJson},
+    {"ConcatOperation", ConcatJson},       {"ResizeOperation", ResizeJson},         {"GatherOperation", GatherJson},
+    {"BroadcastOperation", BroadcastJson}, {"TransdataOperation", TransdataJson},   {"NormOperation", NormJson},
 };
 
 void JsonToOpDesc(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)

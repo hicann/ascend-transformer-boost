@@ -13,15 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_SELFATTENTION_KV_CACHE_FUSION_H
-#define ACLTRANSFOERM_PARAMS_SELFATTENTION_KV_CACHE_FUSION_H
+#ifndef CHATGLM6B_FUSION_LAYERV2_H
+#define CHATGLM6B_FUSION_LAYERV2_H
+#include "examples/layers/layer.h"
+
 namespace AclTransformer {
-struct SelfAttentionKvCacheFusionParam {
-    int32_t headNum = 0;
-    int32_t layerId = 0;
-    int32_t dk = 0;
-    AsdOps::SVector<int32_t> seqLen;
-    AsdOps::SVector<int32_t> tokenOffset;
+class ChatGlm6BFusionLayerV2 : public Layer {
+public:
+    explicit ChatGlm6BFusionLayerV2(const nlohmann::json &paramJson);
+    virtual ~ChatGlm6BFusionLayerV2();
+    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+
+private:
+    void BuildGraph();
 };
 } // namespace AclTransformer
 #endif
