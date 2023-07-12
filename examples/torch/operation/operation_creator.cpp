@@ -249,6 +249,8 @@ AclTransformer::Operation *QuantOperationCreate(const nlohmann::json &paramJson)
     param.inputOffset = paramJson["input_offset"].get<int>();
     ASD_LOG(INFO) << "QuantParam input scale:" << param.inputScale << ", input_offset:" << param.inputOffset;
     return new AclTransformer::QuantOperation(param);
+}
+
 AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionKvCacheFusionParam param;
