@@ -294,7 +294,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"SelfAttentionOperation", &SelfAttentionOperationCreate},
     {"AnyOperation", &AnyOperationCreate},
     {"ChatGlm6BLayerOperation", &ChatGlm6BLayerOperationCreate},
-	{"QuantOperation", &QuantOperationCreate},
+    {"QuantOperation", &QuantOperationCreate},
     {"AddNormQuantOperation", &AddNormQuantOperationCreate},
     {"NormQuantOperation", &NormQuantOperationCreate},
     {"LinearQuantOperation", &LinearQuantOperationCreate},
