@@ -37,6 +37,8 @@ class TensorBinFile:
             dtype = numpy.float16
         elif self.dtype == 2:  # int8
             dtype = numpy.int8
+        elif self.dtype == 3:  # int32
+            dtype = numpy.int32
         elif self.dtype == 9:  # int64
             dtype = numpy.int64
         elif self.dtype == 12:
