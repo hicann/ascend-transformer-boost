@@ -238,6 +238,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
+    {"MatmulOperation", &MatmulOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
     {"MlpOperation", &MlpOperationCreate},
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},

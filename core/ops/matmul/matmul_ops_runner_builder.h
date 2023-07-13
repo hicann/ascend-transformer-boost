@@ -29,16 +29,9 @@ public:
     MatmulOpsRunnerBuilder(const MatmulParam &param) : param_(param)
     {
         ASD_LOG(INFO) << "MatmulOperation::MatmulOperation called";
-        }
-    virtual ~MatmulOpsRunnerBuilder() = default;
-    Runner *Build() override
-    {
-        if (AsdOps::GetSingleton<Config>().Is910B()) {
-            return new MatmulOpsRunner910B(param_);
-        } else {
-            //return new MatmulOpsRunner910A(param_);
-        }
     }
+    virtual ~MatmulOpsRunnerBuilder() = default;
+    Runner *Build() override { return new MatmulOpsRunner910B(param_); }
 
 private:
     MatmulParam param_;
