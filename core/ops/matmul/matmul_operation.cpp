@@ -49,13 +49,13 @@ AsdOps::Status MatmulOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Ten
 
     // to do shape, make sure dims is 2 or 3
     if ( inTensorA_Dims == 3 || inTensorB_Dims == 3) {
-        int64_t outTensorDim0 = inTensorA_Dims < inTensorB_Dims ? inTensors.at(1).desc.dims[0] : inTensors.at(0).desc.dims[0];
-        int64_t outTensorDim1 = param_.transposeA ? inTensors.at(0).desc.dims[inTensorA_Dims - 1] : inTensors.at(0).desc.dims[inTensorA_Dims - 2]; 
-        int64_t outTensorDim2 = param_.transposeB ? inTensors.at(1).desc.dims[inTensorB_Dims - 2] : inTensors.at(1).desc.dims[inTensorB_Dims - 1];
+        auto outTensorDim0 = inTensorA_Dims < inTensorB_Dims ? inTensors.at(1).desc.dims[0] : inTensors.at(0).desc.dims[0];
+        auto outTensorDim1 = param_.transposeA ? inTensors.at(0).desc.dims[inTensorA_Dims - 1] : inTensors.at(0).desc.dims[inTensorA_Dims - 2]; 
+        auto outTensorDim2 = param_.transposeB ? inTensors.at(1).desc.dims[inTensorB_Dims - 2] : inTensors.at(1).desc.dims[inTensorB_Dims - 1];
         outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2}; 
     } else {
-        int64_t outTensorDim0 = param_.transposeA ? inTensors.at(0).desc.dims[1] : inTensors.at(0).desc.dims[0]; 
-        int64_t outTensorDim1 = param_.transposeB ? inTensors.at(1).desc.dims[0] : inTensors.at(1).desc.dims[1];
+        auto outTensorDim0 = param_.transposeA ? inTensors.at(0).desc.dims[1] : inTensors.at(0).desc.dims[0]; 
+        auto outTensorDim1 = param_.transposeB ? inTensors.at(1).desc.dims[0] : inTensors.at(1).desc.dims[1];
         outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1}; 
     }
     
