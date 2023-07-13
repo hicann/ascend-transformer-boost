@@ -179,9 +179,11 @@ def full_and_incremental_test(seq_len, batch, test_cycle, model):
         end = time.time()
         cur_time = (end - start) * 1000
         sum_time += cur_time
-        print(f"token_{i + 1}: {cur_time}ms")
+        # print(f"token_{i + 1}: {cur_time}ms")
+    avg_time = sum_time / test_cycle
     print(f"average token: {sum_time / test_cycle}ms")
     print(f"response time: {first_time + sum_time}ms")
+    return first_time, avg_time
 
 
 test_funcs = {"full": full_test, "full_and_incremental": full_and_incremental_test}
