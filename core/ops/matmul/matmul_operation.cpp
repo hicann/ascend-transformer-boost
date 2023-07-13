@@ -44,9 +44,9 @@ AsdOps::Status MatmulOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Ten
     outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
     outTensorDescs.at(0).format = inTensors.at(0).desc.format;
 
-    outTensor_dim0 = inTensors.at(0).desc.dims[0];
-    outTensor_dim1 = param_.transposeA ? inTensors.at(0).desc.dims[2] : inTensors.at(0).desc.dims[1]; 
-    outTensor_dim2 = param_.transposeB ? inTensors.at(1).desc.dims[1] : inTensors.at(1).desc.dims[0];
+    int64_t outTensor_dim0 = inTensors.at(0).desc.dims[0];
+    int64_t outTensor_dim1 = param_.transposeA ? inTensors.at(0).desc.dims[2] : inTensors.at(0).desc.dims[1]; 
+    int64_t outTensor_dim2 = param_.transposeB ? inTensors.at(1).desc.dims[1] : inTensors.at(1).desc.dims[0];
     outTensorDescs.at(0).dims = {outTensor_dim0, outTensor_dim1, outTensor_dim2}; // to do shape
 
     return AsdOps::Status::OkStatus();
