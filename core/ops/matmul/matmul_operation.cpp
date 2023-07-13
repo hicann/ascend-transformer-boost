@@ -75,7 +75,7 @@ int64_t MatmulOperation::GetTensorBatch(const AsdOps::TensorDesc &tensorDesc) co
     if (tensorDesc.dims.size() == DIM_2) {
         return DIM_1;
     }
-    return tensorDesc.dims[DIM_0];
+    return tensorDesc.dims[DIM_0];  //待确定，应该是DIM_1
 }
 
 
