@@ -39,22 +39,22 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(MatmulParam &param)
     matmulNode.inTensors = {&inputTensor, &weightTensor};
     matmulNode.outTensors = {&resultTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size()); 
-    // //matmul必须是二维矩阵，三维矩阵需要合轴
-    // if (inputTensor.desc.dims.size() == 3)
-    // {
-    //     matmulNode.inTensorViewFuncs.at(0) = [](const AsdOps::SVector<int64_t> &oldDims,
-    //                                         AsdOps::SVector<int64_t> &newDims) {
-    //                                             newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
-    //                                         };
-    // }
+    //matmul必须是二维矩阵，三维矩阵需要合轴
+    if (inputTensor.desc.dims.size() == 3)
+    {
+        matmulNode.inTensorViewFuncs.at(0) = [](const AsdOps::SVector<int64_t> &oldDims,
+                                            AsdOps::SVector<int64_t> &newDims) {
+                                                newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
+                                            };
+    }
 
-    // if (weightTensor.desc.dims.size() == 3)
-    // {
-    //     matmulNode.inTensorViewFuncs.at(1) = [](const AsdOps::SVector<int64_t> &oldDims,
-    //                                         AsdOps::SVector<int64_t> &newDims) {
-    //                                             newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
-    //                                         };
-    // }
+    if (weightTensor.desc.dims.size() == 3)
+    {
+        matmulNode.inTensorViewFuncs.at(1) = [](const AsdOps::SVector<int64_t> &oldDims,
+                                            AsdOps::SVector<int64_t> &newDims) {
+                                                newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
+                                            };
+    }
     
 
 }
