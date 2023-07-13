@@ -35,7 +35,7 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(MatmulParam &param)
     kernelGraph_.nodes.resize(nodeSize);
     auto &matmulNode = kernelGraph_.nodes[0];
 
-    matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB})};
+    matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB})};
     matmulNode.inTensors = {&inputTensor, &weightTensor};
     matmulNode.outTensors = {&resultTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());  //matmul必须是二维矩阵，需要合轴
