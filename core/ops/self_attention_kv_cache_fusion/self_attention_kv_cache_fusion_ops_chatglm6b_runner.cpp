@@ -34,7 +34,7 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatG
         << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner called";
 
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT);
-    
+
     size_t tensorId = 0;
     // kv cache input
     AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(tensorId++);
@@ -44,7 +44,7 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatG
     // flash attention input
     AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(tensorId++);
     AsdOps::Tensor &attentionMask = kernelGraph_.inTensors.at(tensorId++);
-    
+
     AsdOps::Tensor &tokenOffset = kernelGraph_.inTensors.at(tensorId++);
     AsdOps::Tensor &seqLen = kernelGraph_.inTensors.at(tensorId++);
 
@@ -69,26 +69,28 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatG
     KCacheNode.outTensors = {&cacheK}; // Kcache and Vcache output and input use same space
     KCacheNode.inTensorViewFuncs.resize(KCacheNode.inTensors.size());
     KCacheNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1) , oldDims.at(2) * oldDims.at(3)};
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
     };
     KCacheNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
     };
+
     // 2、V cache  seq_len, batch, head_num, head_size]
     VCacheNode.opDesc = {0, "KVCacheOperation"};
     VCacheNode.inTensors = {&mixedValue, &layerId, &cacheV, &tokenOffset, &seqLen};
     VCacheNode.outTensors = {&cacheV}; // Kcache and Vcache output and input use same space
     VCacheNode.inTensorViewFuncs.resize(VCacheNode.inTensors.size());
     VCacheNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0)*oldDims.at(1) , oldDims.at(2)*oldDims.at(3)};
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
     };
     VCacheNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
     };
+
     // 3、div
     float varAttr = 1.0 / (sqrt(param.dk) * (param.layerId + 1));
     mulsQNode.opDesc = {0, "ElewiseOperation",
@@ -100,14 +102,18 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatG
             runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
     };
-    
+
+    ASD_LOG(INFO) << GetName() << " AsdOps::OpParam::Attention param headNum:" << param.headNum
+                  << ", seqLen:" << param.seqLen << ", tokenOffset:" << param.tokenOffset;
     // 4、flash attention
-    flashAttentionNode.opDesc = {0, "AttentionOperation", AsdOps::OpParam::Attention{param.headNum, param.seqLen, param.tokenOffset}};
+    flashAttentionNode.opDesc = {0, "AttentionOperation",
+                                 AsdOps::OpParam::Attention{param.headNum, param.seqLen, param.tokenOffset}};
     flashAttentionNode.inTensors = {&divOut, &cacheK, &cacheV, &layerId, &attentionMask};
     flashAttentionNode.outTensors = {&context};
     flashAttentionNode.inTensorViewFuncs.resize(flashAttentionNode.inTensors.size());
-    flashAttentionNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0)*oldDims.at(1) , oldDims.at(2)*oldDims.at(3)};
+    flashAttentionNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
+                                                 AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
     };
 }
 

@@ -617,35 +617,36 @@ class GLMBlock(torch.nn.Module):
             "NormOperation")
         self.acl_input_layernorm_operation.set_param(
             json.dumps({"layerNormEps": layernorm_epsilon}))
-        
+
         self.acl_mixed_qkv_linear_operation = torch.classes.OperationTorch.OperationTorch(
             "LinearOperation")
         self.acl_mixed_qkv_linear_operation.set_param(
             '{"transposeA":false,"transposeB":false}')
-        
+
         self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch(
             "PositionEmbeddingOperation")
-        self.acl_position_embedding_operation.set_param(json.dumps({"headNum": num_attention_heads}))
+        self.acl_position_embedding_operation.set_param(
+            json.dumps({"headNum": num_attention_heads}))
 
         self.acl_self_attention_kv_cache_operation = torch.classes.OperationTorch.OperationTorch(
             "SelfAttentionKvCacheFusionOperation")
-        
+
         self.acl_self_out_linear_operation = torch.classes.OperationTorch.OperationTorch(
             "LinearOperation")
         self.acl_self_out_linear_operation.set_param(
             '{"transposeA":false,"transposeB":false}')
-        
+
         alpha = (2 * self.num_layers) ** 0.5
         self.acl_self_residual_add_operation = torch.classes.OperationTorch.OperationTorch(
             "AddOperation")
         self.acl_self_residual_add_operation.set_param(
             json.dumps({"scale": alpha}))
-        
+
         self.acl_self_layernorm_operation = torch.classes.OperationTorch.OperationTorch(
             "NormOperation")
         self.acl_self_layernorm_operation.set_param(
             json.dumps({"layerNormEps": layernorm_epsilon}))
-        
+
         self.acl_ffn_operation = torch.classes.OperationTorch.OperationTorch(
             "FfnOperation")
         self.acl_ffn_operation.set_param(
@@ -655,7 +656,7 @@ class GLMBlock(torch.nn.Module):
             "LinearOperation")
         self.acl_ffn_linear_operation.set_param(
             '{"transposeA":false,"transposeB":false}')
-        
+
         self.acl_ffn_residual_add_operation = torch.classes.OperationTorch.OperationTorch(
             "AddOperation")
         self.acl_ffn_residual_add_operation.set_param(
@@ -690,11 +691,10 @@ class GLMBlock(torch.nn.Module):
         test_in = None
 
         batch_num = hidden_states.size(1)
-        layer_id_input = torch.tensor([layer_id], dtype=torch.half).npu()
-        seq_len = torch.ones(batch_num, dtype=torch.half).npu()
+        layer_id_input = torch.tensor([layer_id], dtype=torch.int32).npu()
+        seq_len = torch.ones(batch_num, dtype=torch.int32).npu()
         token_offset = torch.full(
-            (batch_num,), token_num[layer_id], dtype=torch.half, device=kv_cache.device)
-
+            (batch_num,), token_num[layer_id], dtype=torch.int32, device=kv_cache.device)
 
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
@@ -730,8 +730,6 @@ class GLMBlock(torch.nn.Module):
             output_attentions=output_attentions
         )
 
-
-
         attention_output = attention_outputs[0]
         if layer_past is not None and layer_id == 0:
             print("attention_output shape:" + str(attention_output.shape))
@@ -760,8 +758,10 @@ class GLMBlock(torch.nn.Module):
         if use_cache:
             if not increment_flags[layer_id]:
                 token_num[layer_id] = outputs[0][0].shape[0]
-                kv_cache[0, layer_id, 0, :token_num[layer_id], ...] = outputs[0][0].transpose(0, 1) # batch = 1
-                kv_cache[1, layer_id, 0, :token_num[layer_id], ...] = outputs[0][1].transpose(0, 1) # batch = 1
+                kv_cache[0, layer_id, 0, :token_num[layer_id], ...] = outputs[0][0].transpose(
+                    0, 1)  # batch = 1
+                kv_cache[1, layer_id, 0, :token_num[layer_id], ...] = outputs[0][1].transpose(
+                    0, 1)  # batch = 1
                 if token_offset is None:
                     token_offset = torch.full(
                         (batch_num,), token_num[layer_id], dtype=torch.int32, device=kv_cache.device)
@@ -787,27 +787,32 @@ class GLMBlock(torch.nn.Module):
             attention_mask_side = attention_mask.shape[0]
             print("attention mask:" + str(attention_mask.shape))
             print("attention mask value:" + str(attention_mask))
-            attention_mask_max[:attention_mask_side, :attention_mask_side] = attention_mask.to(torch.half)
+            attention_mask_max[:attention_mask_side,
+                               :attention_mask_side] = attention_mask.to(torch.half)
             if seq_len[0] == 1:
-                attention_mask_max = torch.zeros(2048, 2048, dtype=torch.half).npu()
-                print("11111111111attention_mask_max",attention_mask_max)
+                attention_mask_max = torch.zeros(
+                    2048, 2048, dtype=torch.half).npu()
+                print("11111111111attention_mask_max", attention_mask_max)
             inputs.extend(weights)
             inputs.append(position_ids)
             inputs.append(cosTable)
             inputs.append(sinTable)
-            inputs.append(attention_mask_max) #16
-            inputs.append(k_cache_input) #17
-            inputs.append(v_cache_input) #18
+            inputs.append(attention_mask_max)  # 16
+            inputs.append(k_cache_input)  # 17
+            inputs.append(v_cache_input)  # 18
             inputs.append(token_offset)
             inputs.append(seq_len)
             inputs.append(layer_id_input)
             global glm_block
 
-            input_norm_out = self.acl_input_layernorm_operation.execute([inputs[0], inputs[1], inputs[2]])
-            
-            mixed_linear_out = self.acl_mixed_qkv_linear_operation.execute([input_norm_out[0], inputs[3], inputs[4]])
-            
-            positionEmbedQ, positionEmbedK, value = self.acl_position_embedding_operation.execute([mixed_linear_out[0], inputs[13], cosTable, sinTable])
+            input_norm_out = self.acl_input_layernorm_operation.execute(
+                [inputs[0], inputs[1], inputs[2]])
+
+            mixed_linear_out = self.acl_mixed_qkv_linear_operation.execute(
+                [input_norm_out[0], inputs[3], inputs[4]])
+
+            positionEmbedQ, positionEmbedK, value = self.acl_position_embedding_operation.execute(
+                [mixed_linear_out[0], inputs[13], cosTable, sinTable])
             # torch.save(positionEmbedQ.cpu(), 'positionEmbedQ_flash.pth')
             # torch.save(positionEmbedK.cpu(), 'positionEmbedK_flash.pth')
             # torch.save(value.cpu(), 'value_flash.pth')
@@ -818,31 +823,39 @@ class GLMBlock(torch.nn.Module):
             # torch.save(inputs[20].cpu(), 'token_offset_flash.pth')
             # torch.save(inputs[21].cpu(), 'layer_id_input.pth')
 
-
             print("layer_id:" + str(layer_id))
             print("tokenOffset:" + str([token_num[layer_id]]))
-            self_attention_param = json.dumps({"headNum": 32, "dk": 128, "layerId": layer_id.item(), "tokenOffset": [token_num[layer_id]], "seqLen": [1]})
-            self.acl_self_attention_kv_cache_operation.set_param(self_attention_param)
+            self_attention_param = json.dumps({"headNum": 32, "dk": 128, "layerId": layer_id.item(
+            ), "tokenOffset": [token_num[layer_id]], "seqLen": [1]})
+            self.acl_self_attention_kv_cache_operation.set_param(
+                self_attention_param)
 
             # outputs = (presentKey, presentValue)
 
-            selfOut = self.acl_self_attention_kv_cache_operation.execute([positionEmbedK, value, inputs[17], inputs[18], positionEmbedQ, inputs[16], inputs[19], inputs[20], inputs[21]])
+            selfOut = self.acl_self_attention_kv_cache_operation.execute(
+                [positionEmbedK, value, inputs[17], inputs[18], positionEmbedQ, inputs[16], inputs[19], inputs[20], inputs[21]])
 
             # torch.save(selfOut[0].cpu(), 'selfOut_flash.pth')
             # torch.save(inputs[17].cpu(), 'k_cache_output_flash.pth')
             # torch.save(inputs[18].cpu(), 'v_cache_output_flash.pth')
 
-            self_linear_out = self.acl_self_out_linear_operation.execute([selfOut[0], inputs[5], inputs[6]])
-            
-            self_residual_add_out = self.acl_self_residual_add_operation.execute([input_norm_out[0], self_linear_out[0]])
-            
-            self_norm_out = self.acl_self_layernorm_operation.execute([self_residual_add_out[0], inputs[7], inputs[8]])
-            
-            ffn_out = self.acl_ffn_operation.execute([self_norm_out[0], inputs[9], inputs[10]])
-            
-            ffn_linear_out = self.acl_ffn_linear_operation.execute([ffn_out[0], inputs[11], inputs[12]])
-            
-            ffn_residual_add_out = self.acl_ffn_residual_add_operation.execute([self_norm_out[0], ffn_linear_out[0]])
+            self_linear_out = self.acl_self_out_linear_operation.execute(
+                [selfOut[0], inputs[5], inputs[6]])
+
+            self_residual_add_out = self.acl_self_residual_add_operation.execute(
+                [input_norm_out[0], self_linear_out[0]])
+
+            self_norm_out = self.acl_self_layernorm_operation.execute(
+                [self_residual_add_out[0], inputs[7], inputs[8]])
+
+            ffn_out = self.acl_ffn_operation.execute(
+                [self_norm_out[0], inputs[9], inputs[10]])
+
+            ffn_linear_out = self.acl_ffn_linear_operation.execute(
+                [ffn_out[0], inputs[11], inputs[12]])
+
+            ffn_residual_add_out = self.acl_ffn_residual_add_operation.execute(
+                [self_norm_out[0], ffn_linear_out[0]])
 
             # print("output:" + str(output))
             # print("ffn_residual_add_out[0]:" + str(ffn_residual_add_out[0]))
@@ -1003,7 +1016,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         global attention_mask_max
 
         #attention_mask_max = torch.zeros(self.max_sequence_length, self.max_sequence_length, dtype=torch.half).npu()
-        attention_mask_max = torch.full((self.max_sequence_length, self.max_sequence_length), -10000, dtype=torch.half).npu()
+        attention_mask_max = torch.full(
+            (self.max_sequence_length, self.max_sequence_length), -10000, dtype=torch.half).npu()
         print("!!!!!!!!attention_mask_max", attention_mask_max)
         if kv_cache is None:
             kv_cache = torch.zeros(2,
@@ -1176,8 +1190,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             if output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
-            past_k = kv_cache[0][i][:,:token_num[i]].transpose(0, 1)
-            past_v = kv_cache[1][i][:,:token_num[i]].transpose(0, 1)
+            past_k = kv_cache[0][i][:, :token_num[i]].transpose(0, 1)
+            past_v = kv_cache[1][i][:, :token_num[i]].transpose(0, 1)
 
             layer_ret = layer(
                 hidden_states,
@@ -1193,8 +1207,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
 
             if use_cache:
                 presents = presents + \
-                    ((kv_cache[0][i][:,:token_num[i]].transpose(0, 1),
-                     kv_cache[1][i][:,:token_num[i]].transpose(0, 1)),)
+                    ((kv_cache[0][i][:, :token_num[i]].transpose(0, 1),
+                     kv_cache[1][i][:, :token_num[i]].transpose(0, 1)),)
 
             if output_attentions:
                 all_self_attentions = all_self_attentions + \
