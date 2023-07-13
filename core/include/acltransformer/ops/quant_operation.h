@@ -13,17 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_LINEAR_OPERATION_H
-#define ACLTRANSFORMER_LINEAR_OPERATION_H
+#ifndef ACLTRANSFORMER_QUANT_OPERATION_H
+#define ACLTRANSFORMER_QUANT_OPERATION_H
 #include "acltransformer/operation.h"
-#include "acltransformer/params/linear.h"
+#include "acltransformer/params/quant.h"
 
 namespace AclTransformer {
-// gelu(A*B+Bias)
-class LinearOperation : public Operation {
+class QuantOperation : public Operation {
 public:
-    LinearOperation(const LinearParam &param);
-    virtual ~LinearOperation();
+    QuantOperation(const QuantParam &param);
+    ~QuantOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 
@@ -31,15 +30,8 @@ protected:
     AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
     RunnerBuilder *FindBestRunnerBuilder() const override;
-	
 private:
-    bool IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
-                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const;
-    int64_t GetTensorBatch(const AsdOps::TensorDesc &tensorDesc) const;
-    int64_t GetTensorH(const AsdOps::TensorDesc &tensorDesc) const;
-    int64_t GetTensorW(const AsdOps::TensorDesc &tensorDesc) const;
-    LinearParam param_;
-    Runner *runner_ = nullptr;
+    QuantParam param_;
 };
 } // namespace AclTransformer
 #endif
