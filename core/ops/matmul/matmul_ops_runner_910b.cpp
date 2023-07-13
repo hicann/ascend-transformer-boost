@@ -45,7 +45,7 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(MatmulParam &param)
                                             AsdOps::SVector<int64_t> &newDims) {
                                                 if (oldDims.size() == 3 && matmulNode.inTensors[1]->desc.dims.size() == 2) 
                                                 {
-                                                    newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
+                                                    newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
                                                 } else {
                                                     newDims = oldDims;
                                                 }                                               
