@@ -30,6 +30,7 @@ template <typename T> bool ParamCompareFuncImpl(const AsdOps::Any &any1, const A
 }
 
 static std::map<std::size_t, ParamCompareFunc> ParamCompareMap_ = {
+    {typeid(AsdOps::OpParam::Activation).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Activation>},
     {typeid(AsdOps::OpParam::AsStrided).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::AsStrided>},
     {typeid(AsdOps::OpParam::Attention).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Attention>},
     {typeid(AsdOps::OpParam::Broadcast).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Broadcast>},
@@ -37,8 +38,10 @@ static std::map<std::size_t, ParamCompareFunc> ParamCompareMap_ = {
     {typeid(AsdOps::OpParam::Elewise).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Elewise>},
     {typeid(AsdOps::OpParam::Gather).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Gather>},
     {typeid(AsdOps::OpParam::GlobalInfo).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::GlobalInfo>},
+    {typeid(AsdOps::OpParam::KVCache).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::KVCache>},
     {typeid(AsdOps::OpParam::MatMul).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::MatMul>},
     {typeid(AsdOps::OpParam::Norm).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Norm>},
+    {typeid(AsdOps::OpParam::Reduce).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Reduce>},
     {typeid(AsdOps::OpParam::Split).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Split>},
     {typeid(AsdOps::OpParam::Transdata).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Transdata>},
     {typeid(AsdOps::OpParam::Transpose).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Transpose>}};

@@ -22,6 +22,8 @@
 #include "acltransformer/planv2.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/linear_operation.h"
+#include "acltransformer/ops/add_norm_operation.h"
+#include "acltransformer/ops/ffn_operation.h"
 
 namespace AclTransformer {
 using OperationCreateFunc = std::function<Operation *(const AsdOps::Any &opParam)>;
@@ -38,9 +40,23 @@ Operation *LinearCreate(const AsdOps::Any &opParam)
     return new LinearOperation(param);
 }
 
+Operation *AddNormCreate(const AsdOps::Any &opParam)
+{
+    const auto &param = AsdOps::AnyCast<AddNormParam>(opParam);
+    return new AddNormOperation(param);
+}
+
+Operation *FfnCreate(const AsdOps::Any &opParam)
+{
+    const auto &param = AsdOps::AnyCast<FfnParam>(opParam);
+    return new FfnOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> OPERATION_CREATE_FUNC_MAP = {
     {"AddOperation", &AddCreate},
     {"LinearOperation", &LinearCreate},
+    {"AddNormOperation", &AddNormCreate},
+    {"FfnOperation", &FfnCreate},
 };
 
 OperationCall::OperationCall(const std::string &opName, const AsdOps::Any &opParam)
