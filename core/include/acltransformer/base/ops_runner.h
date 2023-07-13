@@ -34,7 +34,7 @@ enum TensorType {
     UNDEFINED_TENSOR = 0,
     IN_TENSOR,
     OUT_TENSOR,
-    INTERMEDIATE_TENSOR
+    INTERMEDIATE_TENSOR,
 };
 
 struct KernelGraphNode {
@@ -85,8 +85,6 @@ private:
     void CalcTilingBufferSize(const RunnerVariantPack &runnerVariantPack);
     void InitTensorMaxNodeMap();
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
-    int64_t GetInTensorId(const AsdOps::Tensor *tensor);
-    int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
     void WriteTilingData(const char *tilingData, size_t len, const std::string &filePath);
     void UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack);
     AsdOps::Status UpdateRunInfoTiling(RunnerVariantPack &runnerVariantPack);

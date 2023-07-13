@@ -52,6 +52,9 @@ KernelCache::~KernelCache() {}
 
 void KernelCache::Init(RunnerType runnerType, uint64_t kernelCount)
 {
+    if (runnerType == RUNNER_TYPE_UNDEFINED) {
+        return;
+    }
     if (cachedKernels_.at(runnerType).empty()) {
         cachedKernels_.at(runnerType).resize(kernelCount);
     }

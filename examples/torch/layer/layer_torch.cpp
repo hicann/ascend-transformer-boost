@@ -32,6 +32,7 @@
 #include "examples/layers/chatglm6bV2/chatglm6b_layer_v2.h"
 #include "examples/layers/llama7b_layer/llama7b_layer.h"
 #include "examples/layers/chatglm6b/chatglm6b_layer_quant.h"
+#include "examples/layers/chatglm6b/chatglm6b_fusion_layerv2.h"
 
 uint64_t LayerTorch::totalExecuteCount_ = 0;
 
@@ -66,6 +67,8 @@ void LayerTorch::SetLayer(std::string param)
         layer_.reset(new AclTransformer::Llama7BLayer(paramJson));
     } else if (layerName_ == "ChatGlm6BLayerQuant") {
         layer_.reset(new AclTransformer::ChatGlm6BLayerQuant(paramJson));
+    } else if (layerName_ == "ChatGlm6BFusionLayerV2") {
+        layer_.reset(new AclTransformer::ChatGlm6BFusionLayerV2(paramJson));
     } else {
         ASD_LOG(ERROR) << "LayerTorch::SetLayer layer name " << layerName_ << " cannot be found";
     }
