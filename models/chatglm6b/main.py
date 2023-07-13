@@ -9,8 +9,11 @@ import torch
 # 适配昇腾NPU
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
-device_id = 0
-torch.npu.set_device(torch.device(f"npu:{device_id}"))
+
+DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
+if DEVICE_ID is not None:
+    print(f"user npu:{DEVICE_ID}")
+    torch.npu.set_device(torch.device(f"npu:{DEVICE_ID}"))
 
 # 使用二进制优化，消除动态shape的编译问题
 torch.npu.set_compile_mode(jit_compile=False)

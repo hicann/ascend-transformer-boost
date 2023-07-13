@@ -690,10 +690,10 @@ class GLMBlock(torch.nn.Module):
         test_in = None
 
         batch_num = hidden_states.size(1)
-        layer_id_input = torch.tensor([layer_id], dtype=torch.half).npu()
-        seq_len = torch.ones(batch_num, dtype=torch.half).npu()
+        layer_id_input = torch.tensor([layer_id], dtype=torch.int32).npu()
+        seq_len = torch.ones(batch_num, dtype=torch.int32).npu()
         token_offset = torch.full(
-            (batch_num,), token_num[layer_id], dtype=torch.half, device=kv_cache.device)
+            (batch_num,), token_num[layer_id], dtype=torch.int32, device=kv_cache.device)
 
 
         # Layer norm at the begining of the transformer layer.
