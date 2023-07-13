@@ -47,9 +47,9 @@ AsdOps::Status MatmulOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Ten
     auto inTensorA_Dims = inTensors.at(0).desc.dims.size(); 
     auto inTensorB_Dims = inTensors.at(1).desc.dims.size(); 
 
-    // to do shape, make sure dims is 2 or 3
-    if ( inTensorA_Dims == 3 || inTensorB_Dims == 3) {
-        auto outTensorDim0 = inTensorA_Dims < inTensorB_Dims ? inTensors.at(1).desc.dims[0] : inTensors.at(0).desc.dims[0];
+    // 当前仅支持2维*2维，3维*3维，3维*2维
+    if ( inTensorA_Dims == 3) {
+        auto outTensorDim0 = inTensors.at(0).desc.dims[0];
         auto outTensorDim1 = param_.transposeA ? inTensors.at(0).desc.dims[inTensorA_Dims - 1] : inTensors.at(0).desc.dims[inTensorA_Dims - 2]; 
         auto outTensorDim2 = param_.transposeB ? inTensors.at(1).desc.dims[inTensorB_Dims - 2] : inTensors.at(1).desc.dims[inTensorB_Dims - 1];
         outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2}; 

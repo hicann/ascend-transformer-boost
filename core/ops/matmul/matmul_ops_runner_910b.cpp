@@ -24,7 +24,6 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(MatmulParam &param)
 {
     ASD_LOG(INFO) << "MatmulOpsRunner910B::MatmulOpsRunner910B";
     const std::size_t nodeSize = 1;
-    const std::size_t dim2 = 2;
     kernelGraph_.inTensors.resize(2);
     AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[0];
     AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[1];
@@ -39,23 +38,18 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(MatmulParam &param)
     matmulNode.inTensors = {&inputTensor, &weightTensor};
     matmulNode.outTensors = {&resultTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size()); 
-    //matmul必须是二维矩阵，三维矩阵需要合轴
-    if (inputTensor.desc.dims.size() == 3)
-    {
-        matmulNode.inTensorViewFuncs.at(0) = [](const AsdOps::SVector<int64_t> &oldDims,
-                                            AsdOps::SVector<int64_t> &newDims) {
-                                                newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
-                                            };
-    }
 
-    if (weightTensor.desc.dims.size() == 3)
-    {
-        matmulNode.inTensorViewFuncs.at(1) = [](const AsdOps::SVector<int64_t> &oldDims,
+    //matmul可以是2维*2维，或者3维*3维，如果是2维*3维，需要对第一个tensor做下合轴
+
+    matmulNode.inTensorViewFuncs.at(0) = [&](const AsdOps::SVector<int64_t> &oldDims,
                                             AsdOps::SVector<int64_t> &newDims) {
-                                                newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
-                                            };
-    }
-    
+                                                if (oldDims.size() == 3 && matmulNode.inTensors[1]->desc.dims.size() == 2) 
+                                                {
+                                                    newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
+                                                } else {
+                                                    newDims = oldDims;
+                                                }                                               
+                                            };      
 
 }
 
