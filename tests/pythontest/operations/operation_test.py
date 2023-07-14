@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import sys
 import unittest
 import json
 import numpy
 import torch
 import torch_npu
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../scripts"))
+import tensor_file  # NOQA:E402
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
@@ -26,6 +30,11 @@ if ACLTRANSFORMER_HOME_PATH is None:
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "examples/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
+
+DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
+if DEVICE_ID is not None:
+    print(f"user npu:{DEVICE_ID}")
+    torch.npu.set_device(torch.device(f"npu:{DEVICE_ID}"))
 
 
 class OperationTest(unittest.TestCase):
@@ -61,10 +70,7 @@ class OperationTest(unittest.TestCase):
     def get_tensor(self, file_path):
         if not os.path.exists(file_path):
             raise RuntimeError(f"{file_path} not exist")
-        try:
-            return list(torch.load(file_path).state_dict().values())[0]
-        except:
-            return torch.load(file_path)
+        return tensor_file.read_tensor(file_path)
 
     def __golden_compare_all(self, out_tensors, golden_out_tensors):
         self.assertEqual(len(out_tensors), len(golden_out_tensors))

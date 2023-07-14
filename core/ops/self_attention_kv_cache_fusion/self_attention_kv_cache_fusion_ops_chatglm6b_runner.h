@@ -23,17 +23,14 @@ class SelfAttentionKvCacheFusionOpsChatGlm6bRunner : public OpsRunner {
 public:
     explicit SelfAttentionKvCacheFusionOpsChatGlm6bRunner(const SelfAttentionKvCacheFusionParam &param);
     virtual ~SelfAttentionKvCacheFusionOpsChatGlm6bRunner();
+
+private:
+    bool IsUseMuls();
+    void BuildGraphWithMuls();
+    void BuildGraphWithoutMuls();
+
 private:
     SelfAttentionKvCacheFusionParam param_;
-    const std::size_t inTensSize = 9;
-    const std::size_t nodeSize = 4;
-    const std::size_t index2 = 2;
-    const std::size_t index3 = 3;
-    const std::size_t index4 = 4;
-    const std::size_t index5 = 5;
-    const std::size_t index6 = 6;
-    const std::size_t index7 = 7;
-    const std::size_t index8 = 8;
 };
 } // namespace AclTransformer
 #endif

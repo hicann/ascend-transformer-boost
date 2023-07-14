@@ -162,7 +162,7 @@ void OpsRunner::FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t ti
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName()
                           << " InitHostLaunchBuffer start, tilingSize:" << tilingSize << ", offset:" << offset
                           << ", runinfo:\n"
-                          << TensorUtil::AsdOpsRunInfoToString(kernelRunInfo);
+                          << kernelRunInfo.ToString();
             kernel->InitHostLaunchBuffer(kernelRunInfo, static_cast<char *>(hostTilingBuffer) + offset, tilingSize);
             if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
                 std::string fileDir = Config::GetSaveTensorDir() + "/" + GetName() + "/" + std::to_string(nodeId) +
@@ -206,6 +206,8 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerV
 {
     ASD_LOG(INFO) << GetName() << " execute start, totalTilingSize:" << totalTilingSize_
                   << ", workspaceSize:" << workspaceSize_ << ", intermediateSize:" << intermediateSize_;
+    kernelGraph_.inTensors = runnerVariantPack.inTensors;
+    kernelGraph_.outTensors = runnerVariantPack.outTensors;
 
     UpdateRunInfoTensorData(runnerVariantPack);
     UpdateRunInfoTiling(runnerVariantPack);
@@ -221,38 +223,30 @@ AsdOps::Status OpsRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerV
 void OpsRunner::UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack)
 {
     char *deviceIntermediateBuffer = static_cast<char *>(runnerVariantPack.intermediateBuffer);
-    for (auto &node : kernelGraph_.nodes) {
+    for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
+        auto &node = kernelGraph_.nodes.at(nodeId);
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetInTensorCount(); tensorId++) {
             AsdOps::Tensor &tensor = node.kernelRunInfo.GetInTensor(tensorId);
             if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)node.inTensors.at(tensorId)->data;
+                ASD_LOG(INFO) << GetName() << " update tensor data, node[" << nodeId << "].inTensors[" << tensorId
+                              << "] is intermeidate tensor, data:" << tensor.data;
             } else {
-                int64_t tensorIdInRunnerVariantPack = GetInTensorId(node.inTensors.at(tensorId));
-                if (tensorIdInRunnerVariantPack != -1) {
-                    tensor.data = runnerVariantPack.inTensors.at(tensorIdInRunnerVariantPack).data;
-                } else {
-                    int64_t tensorIdInRunnerVariantPack = GetOutTensorId(node.inTensors.at(tensorId));
-                    if (tensorIdInRunnerVariantPack != -1) {
-                        tensor.data = runnerVariantPack.outTensors.at(tensorIdInRunnerVariantPack).data;
-                    } else {
-                        ASD_LOG(ERROR) << GetName() << " node.inTensors[" << tensorId
-                                       << "] not in runnerVariantPack's inTensors or outTensors";
-                    }
-                }
+                tensor.data = node.inTensors.at(tensorId)->data;
+                ASD_LOG(INFO) << GetName() << " update tensor data, node[" << nodeId << "].inTensors[" << tensorId
+                              << "] is not intermeidate tensor, data:" << tensor.data;
             }
         }
         for (uint64_t tensorId = 0; tensorId < node.kernelRunInfo.GetOutTensorCount(); tensorId++) {
             AsdOps::Tensor &tensor = node.kernelRunInfo.GetOutTensor(tensorId);
             if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                 tensor.data = deviceIntermediateBuffer + (uint64_t)node.outTensors.at(tensorId)->data;
+                ASD_LOG(INFO) << GetName() << " update tensor data, node[" << nodeId << "].outTensors[" << tensorId
+                              << "] is intermeidate tensor, data:" << tensor.data;
             } else {
-                int64_t tensorIdInRunnerVariantPack = GetOutTensorId(node.outTensors.at(tensorId));
-                if (tensorIdInRunnerVariantPack != -1) {
-                    tensor.data = runnerVariantPack.outTensors.at(tensorIdInRunnerVariantPack).data;
-                } else {
-                    ASD_LOG(ERROR) << GetName() << " node.outTensors[" << tensorId
-                                   << "] not in runnerVariantPack's inTensors or outTensors";
-                }
+                tensor.data = node.outTensors.at(tensorId)->data;
+                ASD_LOG(INFO) << GetName() << " update tensor data, node[" << nodeId << "].outTensors[" << tensorId
+                              << "] is not intermeidate tensor, data:" << tensor.data;
             }
         }
     }
@@ -308,8 +302,7 @@ void OpsRunner::RunAllKernel(Handle &handle)
         }
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         kernelRunInfo.SetStream(handle.stream);
-        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run start, runinfo:\n"
-                      << TensorUtil::AsdOpsRunInfoToString(kernelRunInfo);
+        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run start, runinfo:\n" << kernelRunInfo.ToString();
 
         if (AsdOps::GetSingleton<Config>().IsSkipKernel(kernel->GetName())) {
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " skip";
@@ -322,6 +315,8 @@ void OpsRunner::RunAllKernel(Handle &handle)
 
         if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryKernelEnable()) {
             AsdOps::Timer timer;
+            ASD_LOG(INFO) << GetName() << " " << kernel->GetName()
+                          << " AsdRtStreamSynchronize, stream:" << handle.stream;
             int ret = AsdRtStreamSynchronize(handle.stream);
             AsdOps::GetSingleton<Statistic>().syclTime += timer.ElapsedMicroSecond();
             ASD_LOG_IF(ret != 0, ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
@@ -437,22 +432,22 @@ bool OpsRunner::PlanOneKernelBuildRunInfo(KernelGraphNode &node, size_t nodeId)
 
 bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId)
 {
-    ASD_LOG(INFO) << GetName() << " " << op->GetName()
-                  << " infer shape start, runInfo:" << TensorUtil::AsdOpsRunInfoToString(node.kernelRunInfo);
+    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " infer shape start, runInfo:\n"
+                  << node.kernelRunInfo.ToString();
     if (node.inferShapePreFunc) {
-        ASD_LOG(INFO) << GetName() << " " << op->GetName() << " call inferShapePreFunc, old kernelRunInfo:"
-                      << TensorUtil::AsdOpsRunInfoToString(node.kernelRunInfo);
+        ASD_LOG(INFO) << GetName() << " " << op->GetName() << " call inferShapePreFunc, old runInfo:\n"
+                      << node.kernelRunInfo.ToString();
         node.inferShapePreFunc(node.kernelRunInfo);
-        ASD_LOG(INFO) << GetName() << " " << op->GetName() << " call inferShapePreFunc, new kernelRunInfo:"
-                      << TensorUtil::AsdOpsRunInfoToString(node.kernelRunInfo);
+        ASD_LOG(INFO) << GetName() << " " << op->GetName() << " call inferShapePreFunc, new runInfo:\n"
+                      << node.kernelRunInfo.ToString();
     }
     AsdOps::Status st = op->InferShape(node.kernelRunInfo);
     if (!st.Ok()) {
         ASD_LOG(ERROR) << op->GetName() << " infer shape fail, error:" << st.Message();
         return false;
     }
-    ASD_LOG(INFO) << GetName() << " " << op->GetName()
-                  << " infer shape success, runInfo:" << TensorUtil::AsdOpsRunInfoToString(node.kernelRunInfo);
+    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " infer shape success, runInfo:\n"
+                  << node.kernelRunInfo.ToString();
 
     for (size_t i = 0; i < node.outTensors.size(); ++i) {
         AsdOps::Tensor *outTensor = node.outTensors.at(i);
@@ -482,7 +477,7 @@ bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &
     }
 
     ASD_LOG(INFO) << GetName() << " " << op->GetName() << " after mem solve, runinfo:\n"
-                  << TensorUtil::AsdOpsRunInfoToString(node.kernelRunInfo);
+                  << node.kernelRunInfo.ToString();
     return true;
 }
 
@@ -597,26 +592,6 @@ bool OpsRunner::IsInternalTensor(const AsdOps::Tensor *tensor)
     }
 
     return false;
-}
-
-int64_t OpsRunner::GetInTensorId(const AsdOps::Tensor *tensor)
-{
-    for (size_t i = 0; i < kernelGraph_.inTensors.size(); ++i) {
-        if (&kernelGraph_.inTensors.at(i) == tensor) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-int64_t OpsRunner::GetOutTensorId(const AsdOps::Tensor *tensor)
-{
-    for (size_t i = 0; i < kernelGraph_.outTensors.size(); ++i) {
-        if (&kernelGraph_.outTensors.at(i) == tensor) {
-            return i;
-        }
-    }
-    return -1;
 }
 
 AsdOps::Status OpsRunner::SetupKernelGraph(const RunnerVariantPack &runnerVariantPack)

@@ -15,6 +15,9 @@
  */
 #ifndef ANY_OPS_RUNNER_H
 #define ANY_OPS_RUNNER_H
+#include <map>
+#include <string>
+#include <asdops/tensor.h>
 #include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/any.h"
 
@@ -25,7 +28,11 @@ public:
     virtual ~AnyOpsRunner();
 
 private:
+    void ParseNodes();
+
+private:
     AnyParam param_;
+    std::map<std::string, AsdOps::Tensor *> tensorMap_;
 };
 } // namespace AclTransformer
 #endif
