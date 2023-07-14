@@ -168,12 +168,17 @@ void OperationTorch::CreateAtOutTensors(const std::vector<torch::Tensor> &atInTe
 void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors,
                                       AclTransformer::VariantPack &variantPack)
 {
+    variantPack.inTensors.resize(atInTensors.size());
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         ASD_LOG(INFO) << name_ << " execute start, atInTensors[" << i << "].options:" << atInTensors.at(i).options()
                       << ", data:" << atInTensors.at(i).data_ptr()
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
                       << ", format:" << ExampleUtil::GetTensorNpuFormat(atInTensors.at(i));
-        variantPack.inTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i)));
+        variantPack.inTensors.at(i) = ExampleUtil::AtTensor2AsdTensor(atInTensors.at(i));
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsConvertNCHWToND() &&
+            variantPack.inTensors.at(i).desc.format == AsdOps::TENSOR_FORMAT_NCHW) {
+            variantPack.inTensors.at(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(executeCount_) +
                                    "_" + opName_ + "/intensor" + std::to_string(i) + ".pth";
@@ -182,12 +187,17 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
         }
     }
 
+    variantPack.outTensors.resize(atOutTensors.size());
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
         ASD_LOG(INFO) << name_ << " execute start, atOutTensors[" << i << "].options:" << atOutTensors.at(i).options()
                       << ", data:" << atOutTensors.at(i).data_ptr()
                       << ", storage_offset:" << atOutTensors.at(i).storage_offset()
                       << ", format:" << ExampleUtil::GetTensorNpuFormat(atOutTensors.at(i));
-        variantPack.outTensors.push_back(ExampleUtil::AtTensor2AsdTensor(atOutTensors.at(i)));
+        variantPack.outTensors.at(i) = ExampleUtil::AtTensor2AsdTensor(atOutTensors.at(i));
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsConvertNCHWToND() &&
+            variantPack.outTensors.at(i).desc.format == AsdOps::TENSOR_FORMAT_NCHW) {
+            variantPack.outTensors.at(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(executeCount_) +
                                    "_" + opName_ + "/outtensor" + std::to_string(i) + ".pth";
