@@ -653,7 +653,8 @@ class GLMBlock(torch.nn.Module):
                                 "FfnOutInputScale" :float(1 / input_scale_dict[dense_4h_to_h_name]), "FfnOutInputOffset":int(input_offset_dict[dense_4h_to_h_name]) })
         self.acl_quant_layer=torch.classes.LayerTorch.LayerTorch(
             "ChatGlm6BLayerQuant", acl_param)
-
+        self.input = []
+        self.input_flag = False
     def forward(
             self,
             hidden_states: torch.Tensor,
@@ -716,30 +717,32 @@ class GLMBlock(torch.nn.Module):
                 outputs = (output, None) + outputs[1:]
 
         else:
-            global cosTable
-            global sinTable
             pastKey, pastValue = layer_past
-            inputs = [test_in]
-            weights = list(self.state_dict().values())
-            del weights[14:19]
-            del weights[16:]
-            inputs.extend(weights)
-            # inputs[2] = inputs[2].to(torch.float32)
-            # inputs[5] = inputs[5].to(torch.float32)
-            # inputs[8] = inputs[8].to(torch.float32)
-            # inputs[11] = inputs[11].to(torch.float32)
-            inputs.append(position_ids)
-            inputs.append(cosTable)
-            inputs.append(sinTable)
-            inputs.append(attention_mask)
-            inputs.append(pastKey)
-            inputs.append(pastValue)
-            inputs.append(res_out)
+            if not self.input_flag:
+                self.input_flag = True
+                global cosTable
+                global sinTable
+                self.input = [hidden_states]
+                weights = list(self.state_dict().values())
+                del weights[14:19]
+                del weights[16:]
+                self.input.extend(weights)
+                self.input.append(position_ids)
+                self.input.append(cosTable)
+                self.input.append(sinTable)
+                self.input.append(attention_mask)
+                self.input.append(pastKey)
+                self.input.append(pastValue)
+                self.input.append(res_out)
+            else:
+                self.input[0] = hidden_states
+                self.input[17] = position_ids
+                self.input[20] = attention_mask
+                self.input[21] = pastKey
+                self.input[22] = pastValue
+                self.input[23] = res_out
 
-            global glm_block
-
-            layer_time_start = time.time()
-            acl_output = self.acl_quant_layer.execute(inputs)
+            acl_output = self.acl_quant_layer.execute(self.input)
             outputs = (acl_output[0], acl_output[-1], (acl_output[1], acl_output[2]))
 
         return outputs  # hidden_states, present, attentions
