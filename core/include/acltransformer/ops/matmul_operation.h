@@ -19,7 +19,6 @@
 #include "acltransformer/params/matmul.h"
 
 namespace AclTransformer {
-// A * B^T
 class MatmulOperation : public Operation {
 public:
     MatmulOperation(const MatmulParam &param);
@@ -27,15 +26,15 @@ public:
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 
-private:
-    bool IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
-                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const;
-    int64_t GetTensorBatch(const AsdOps::TensorDesc &tensorDesc) const;
-
 protected:
     AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
     RunnerBuilder *FindBestRunnerBuilder() const override;
+
+private:
+    bool IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
+        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const;
+    int64_t GetTensorBatch(const AsdOps::TensorDesc &tensorDesc) const;
 
 private:
     MatmulParam param_;

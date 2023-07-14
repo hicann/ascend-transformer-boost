@@ -26,16 +26,18 @@
 namespace AclTransformer {
 class MatmulOpsRunnerBuilder : public RunnerBuilder {
 public:
-    MatmulOpsRunnerBuilder(const MatmulParam &param) : param_(param)
+    explicit MatmulOpsRunnerBuilder(const MatmulParam &param) : param_(param)
     {
         ASD_LOG(INFO) << "MatmulOperation::MatmulOperation called";
     }
     virtual ~MatmulOpsRunnerBuilder() = default;
-    Runner *Build() override { return new MatmulOpsRunner910B(param_); }
+    Runner *Build() override
+    {
+        return new MatmulOpsRunner910B(param_);
+    }
 
 private:
     MatmulParam param_;
 };
-
 } // namespace AclTransformer
 #endif
