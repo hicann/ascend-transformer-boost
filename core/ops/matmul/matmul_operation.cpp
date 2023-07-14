@@ -43,20 +43,18 @@ AsdOps::Status MatmulOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Ten
     // input * weight
     outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
     outTensorDescs.at(0).format = inTensors.at(0).desc.format;
-
-    auto inTensorA_Dims = inTensors.at(0).desc.dims.size(); 
-    auto inTensorB_Dims = inTensors.at(1).desc.dims.size(); 
-
+    auto inTensorA_Dims = inTensors.at(0).desc.dims.size();
+    auto inTensorB_Dims = inTensors.at(1).desc.dims.size();
     // 当前仅支持2维*2维，3维*3维，3维*2维
-    if ( inTensorA_Dims == 3) {
+    if (inTensorA_Dims == 3) {
         auto outTensorDim0 = inTensors.at(0).desc.dims[0];
         auto outTensorDim1 = param_.transposeA ? inTensors.at(0).desc.dims[inTensorA_Dims - 1] : inTensors.at(0).desc.dims[inTensorA_Dims - 2]; 
         auto outTensorDim2 = param_.transposeB ? inTensors.at(1).desc.dims[inTensorB_Dims - 2] : inTensors.at(1).desc.dims[inTensorB_Dims - 1];
-        outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2}; 
+        outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
     } else {
-        auto outTensorDim0 = param_.transposeA ? inTensors.at(0).desc.dims[1] : inTensors.at(0).desc.dims[0]; 
+        auto outTensorDim0 = param_.transposeA ? inTensors.at(0).desc.dims[1] : inTensors.at(0).desc.dims[0];
         auto outTensorDim1 = param_.transposeB ? inTensors.at(1).desc.dims[0] : inTensors.at(1).desc.dims[1];
-        outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1}; 
+        outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1};
     }
     
     return AsdOps::Status::OkStatus();

@@ -34,13 +34,11 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(MatmulParam &param)
     kernelGraph_.nodes.resize(nodeSize);
     auto &matmulNode = kernelGraph_.nodes[0];
 
-    matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB})};
+    matmulNode.opDesc = { 0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB}) };
     matmulNode.inTensors = {&inputTensor, &weightTensor};
     matmulNode.outTensors = {&resultTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size()); 
-
     //matmul可以是2维*2维，或者3维*3维，如果是2维*3维，需要对第一个tensor做下合轴
-
     matmulNode.inTensorViewFuncs.at(0) = [&](const AsdOps::SVector<int64_t> &oldDims,
                                             AsdOps::SVector<int64_t> &newDims) {
                                                 if (oldDims.size() == 3 && matmulNode.inTensors[1]->desc.dims.size() == 2) 
