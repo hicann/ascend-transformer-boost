@@ -39,7 +39,6 @@ protected:
 
 private:
     MatmulParam param_;
-    Runner *runner_ = nullptr;
 };
 } // namespace AclTransformer
 #endif

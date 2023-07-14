@@ -19,7 +19,7 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-MatmulOpsRunner910B::MatmulOpsRunner910B(MatmulParam &param)
+MatmulOpsRunner910B::MatmulOpsRunner910B(const MatmulParam &param)
     : OpsRunner("MatmulOpsRunner910B", RUNNER_TYPE_MATMUL), param_(param)
 {
     ASD_LOG(INFO) << "MatmulOpsRunner910B::MatmulOpsRunner910B";
@@ -39,16 +39,13 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(MatmulParam &param)
     matmulNode.outTensors = {&resultTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size()); 
     //matmul可以是2维*2维，或者3维*3维，如果是2维*3维，需要对第一个tensor做下合轴
-    matmulNode.inTensorViewFuncs.at(0) = [&](const AsdOps::SVector<int64_t> &oldDims,
-                                            AsdOps::SVector<int64_t> &newDims) {
-                                                if (oldDims.size() == 3 && matmulNode.inTensors[1]->desc.dims.size() == 2) 
-                                                {
+    matmulNode.inTensorViewFuncs.at(0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+                                                if (oldDims.size() == 3 && matmulNode.inTensors[1]->desc.dims.size() == 2) {
                                                     newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
                                                 } else {
                                                     newDims = oldDims;
-                                                }                                               
-                                            };      
-
+                                                }                                            
+                                            };     
 }
 
 MatmulOpsRunner910B::~MatmulOpsRunner910B() {}
