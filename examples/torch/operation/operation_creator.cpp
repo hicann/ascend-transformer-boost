@@ -79,7 +79,14 @@ static AclTransformer::Operation *NormOperationCreate(const nlohmann::json &para
 {
     AclTransformer::NormParam param;
     param.layerNormEps = paramJson["layerNormEps"].get<double>();
-    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps;
+    if (paramJson.contains("beginNormAxis")) {
+        param.beginNormAxis = paramJson["beginNormAxis"].get<int32_t>();
+    }
+    if (paramJson.contains("beginParamsAxis")) {
+        param.beginParamsAxis = paramJson["beginParamsAxis"].get<int32_t>();
+    }
+    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps << ", beginNormAxis:" << param.beginNormAxis
+                  << ", beginParamsAxis:" << param.beginParamsAxis;
     return new AclTransformer::NormOperation(param);
 }
 

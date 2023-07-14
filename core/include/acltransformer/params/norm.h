@@ -15,11 +15,14 @@
  */
 #ifndef ACLTRANSFOERM_PARAMS_NORM_H
 #define ACLTRANSFOERM_PARAMS_NORM_H
-
 #include <vector>
+#include <cstdint>
+
 namespace AclTransformer {
 struct NormParam {
-    double layerNormEps = 1e-5; 
+    double layerNormEps = 1e-5;
+    int32_t beginNormAxis = 1;
+    int32_t beginParamsAxis = 1;
 };
 } // namespace AclTransformer
 #endif
