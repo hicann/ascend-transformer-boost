@@ -21,7 +21,7 @@
 namespace AclTransformer {
 class MatmulOpsRunner910B : public OpsRunner {
 public:
-    explicit MatmulOpsRunner910B(MatmulParam &param);
+    explicit MatmulOpsRunner910B(const MatmulParam &param);
     virtual ~MatmulOpsRunner910B();
 
 private:
