@@ -46,6 +46,7 @@ Config::Config()
     isOpsRunnerSetupCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_SETUP_CACHE_ENABLE");
     isOpsRunnerKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE");
     isUsePpMatmul_ = IsEnable("ASDOPS_MATMUL_PP_FLAG");
+    isConvertNCHWToND_ = IsEnable("ACLTRANSFORMER_CONVERT_NCHW_TO_ND");
     ASD_LOG(FATAL) << "Config:\nIsSaveTensor:" << isSaveTensor_
                    << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
@@ -53,7 +54,7 @@ Config::Config()
                    << "\nWorkspaceSize:" << workspaceSize_
                    << "\nIsOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
                    << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_
-                   << "\nisUsePpMatmul_:" << isUsePpMatmul_;
+                   << "\nIsUsePpMatmul:" << isUsePpMatmul_ << ", \nIsConvertNCHWToND:" << isConvertNCHWToND_;
 }
 
 Config::~Config() {}
@@ -151,4 +152,6 @@ void Config::InitIs910B()
 bool Config::IsOpsRunnerSetupCacheEnable() { return isOpsRunnerSetupCacheEnable_; }
 
 bool Config::IsOpsRunnerKernelCacheEnable() { return isOpsRunnerKernelCacheEnable_; }
+
+bool Config::IsConvertNCHWToND() const { return isConvertNCHWToND_; }
 } // namespace AclTransformer

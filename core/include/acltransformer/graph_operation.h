@@ -43,6 +43,7 @@ public:
     };
 
     GraphOperation(const std::string &name);
+    GraphOperation(const std::string &name, const Graph &opGraph);
     virtual ~GraphOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
