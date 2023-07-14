@@ -27,7 +27,7 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(const MatmulParam &param)
     const std::size_t outTensorSize = 1;
     const std::size_t nodeSize = 1;
     const std::size_t dimSize_2 = 2;
-    const std::size_t dimSize_3 = 3;   
+    const std::size_t dimSize_3 = 3;
     kernelGraph_.inTensors.resize(inTensorSize);
     AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[0];
     AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[1];
@@ -38,7 +38,7 @@ MatmulOpsRunner910B::MatmulOpsRunner910B(const MatmulParam &param)
     kernelGraph_.nodes.resize(nodeSize);
     auto &matmulNode = kernelGraph_.nodes[0];
 
-    matmulNode.opDesc = { 0, "MatMulOperation", AsdOps::OpParam::MatMul({ param_.transposeA, param_.transposeB }) };
+    matmulNode.opDesc = { 0, "MatMulOperation", AsdOps::OpParam::MatMul( { param_.transposeA, param_.transposeB } ) };
     matmulNode.inTensors = { &inputTensor, &weightTensor };
     matmulNode.outTensors = { &resultTensor };
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
