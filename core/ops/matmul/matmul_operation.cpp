@@ -48,8 +48,8 @@ AsdOps::Status MatmulOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Ten
     // 当前仅支持2维*2维，3维*3维，3维*2维
     if (inTensorADims == 3) {
         auto outTensorDim0 = inTensors.at(0).desc.dims[0];
-        auto outTensorDim1 = param_.transposeA ? inTensors.at(0).desc.dims[inTensorA_Dims - 1] : inTensors.at(0).desc.dims[inTensorA_Dims - 2]; 
-        auto outTensorDim2 = param_.transposeB ? inTensors.at(1).desc.dims[inTensorB_Dims - 2] : inTensors.at(1).desc.dims[inTensorB_Dims - 1];
+        auto outTensorDim1 = param_.transposeA ? inTensors.at(0).desc.dims[inTensorADims - 1] : inTensors.at(0).desc.dims[inTensorADims - 2]; 
+        auto outTensorDim2 = param_.transposeB ? inTensors.at(1).desc.dims[inTensorBDims - 2] : inTensors.at(1).desc.dims[inTensorBDims - 1];
         outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
     } else {
         auto outTensorDim0 = param_.transposeA ? inTensors.at(0).desc.dims[1] : inTensors.at(0).desc.dims[0];
