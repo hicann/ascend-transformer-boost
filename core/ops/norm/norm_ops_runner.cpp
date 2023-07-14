@@ -37,8 +37,8 @@ NormOpsRunner::NormOpsRunner(const NormParam &param) : OpsRunner("NormOpsRunner"
     auto &layerNormNode = kernelGraph_.nodes[0];
 
     AsdOps::OpParam::Norm normParam = {AsdOps::OpParam::Norm::NORM_LAYERNORM};
-    normParam.begin_norm_axis = 1;
-    normParam.begin_params_axis = 1;
+    normParam.begin_norm_axis = param_.beginNormAxis;
+    normParam.begin_params_axis = param_.beginParamsAxis;
     normParam.epsilon = param_.layerNormEps;
     ASD_LOG(INFO) << GetName() << " NormOperation opDesc normParam begin_norm_axis:" << normParam.begin_norm_axis
                   << ", begin_params_axis:" << normParam.begin_params_axis << ", epsilon:" << normParam.epsilon;
