@@ -22,6 +22,7 @@
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
+#include "acltransformer/ops/matmul_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
@@ -89,6 +90,15 @@ static AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &pa
     param.transposeB = paramJson["transposeB"].get<bool>();
     ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
     return new AclTransformer::LinearOperation(param);
+}
+
+static AclTransformer::Operation *MatmulOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::MatmulParam param;
+    param.transposeA = paramJson["transposeA"].get<bool>();
+    param.transposeB = paramJson["transposeB"].get<bool>();
+    ASD_LOG(INFO) << "MatmulParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
+    return new AclTransformer::MatmulOperation(param);
 }
 
 static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &paramJson)
@@ -285,6 +295,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
+    {"MatmulOperation", &MatmulOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
     {"MlpOperation", &MlpOperationCreate},
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
