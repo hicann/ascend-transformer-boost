@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_ROPE_OPERATION_H
-#define OPS_CHATGML6B_CHATGLM6BLAYER_ROPE_OPERATION_H
+#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_DECODER_OPERATION_H
+#define OPS_CHATGML6B_CHATGLM6BLAYER_DECODER_OPERATION_H
 #include "acltransformer/graph_operation.h"
 #include "chatglm6blayer_param.h"
 
 namespace AclTransformer {
-class ChatGlm6BLayerRopeOperation : public GraphOperation {
+class ChatGlm6BLayerDecoderOperation : public GraphOperation {
 public:
-    explicit ChatGlm6BLayerRopeOperation(const ChatGlm6BLayerParam &param);
-    ~ChatGlm6BLayerRopeOperation();
+    explicit ChatGlm6BLayerDecoderOperation(const ChatGlm6BLayerParam &param);
+    ~ChatGlm6BLayerDecoderOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 
