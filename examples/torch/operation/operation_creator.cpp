@@ -39,6 +39,7 @@
 #include "acltransformer/ops/norm_quant_operation.h"
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
+#include "examples/ops/bert/bertlayer_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -294,6 +295,21 @@ AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohm
     return opAddr;
 }
 
+AclTransformer::Operation *BertLayerOperation(const nlohmann::json &paramJson)
+{
+    AclTransformer::BertLayerParam param;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.contains("transKey")) {
+        param.transKey = paramJson["transKey"].get<bool>();
+    }
+    return new AclTransformer::BertLayerOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
@@ -317,6 +333,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"NormQuantOperation", &NormQuantOperationCreate},
     {"LinearQuantOperation", &LinearQuantOperationCreate},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
+    {"BertLayerOperation", &BertLayerOperation},
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)

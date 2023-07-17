@@ -13,20 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef BERTLAYER_H
-#define BERTLAYER_H
-#include "examples/layers/layer.h"
+#ifndef OPS_BERT_BERTLAYER_PARAM_H
+#define OPS_BERT_BERTLAYER_PARAM_H
 
 namespace AclTransformer {
-class BertLayer : public Layer {
-public:
-    BertLayer(const nlohmann::json &paramJson);
-    virtual ~BertLayer();
-    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
-
-private:
-    void BuildGraph();
+struct BertLayerParam {
+    int headNum = 0;
+    bool transKey = false;
+    int dk = 0;
 };
 } // namespace AclTransformer
 #endif
