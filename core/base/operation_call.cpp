@@ -19,7 +19,7 @@
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/operation.h"
-#include "acltransformer/planv2.h"
+#include "acltransformer/plan.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
@@ -75,9 +75,9 @@ OperationCall::OperationCall(const std::string &opName, const AsdOps::Any &opPar
         return;
     }
 
-    plan_ = std::make_shared<PlanV2>();
+    plan_ = std::make_shared<Plan>();
     if (!plan_) {
-        ASD_LOG(ERROR) << "new PlanV2 fail";
+        ASD_LOG(ERROR) << "new Plan fail";
         return;
     }
 

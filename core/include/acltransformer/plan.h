@@ -15,36 +15,15 @@
  */
 #ifndef ACLTRANSFORMER_PLAN_H
 #define ACLTRANSFORMER_PLAN_H
-#include <map>
-#include <set>
-#include <functional>
 #include <memory>
-#include <asdops/utils/svector/svector.h>
-#include "acltransformer/runner.h"
-#include "acltransformer/operation.h"
+#include <vector>
+#include <asdops/utils/status/status.h>
+#include "acltransformer/handle.h"
+#include "acltransformer/variant_pack.h"
+#include "acltransformer/runner_variant_pack.h"
 
 namespace AclTransformer {
-using RunnerGraphNodeViewFunc =
-    std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
-
-struct RunnerGraphNode {
-    const Operation *operation = nullptr;
-    std::shared_ptr<Runner> runner;
-    AsdOps::SVector<AsdOps::Tensor *> inTensors;
-    AsdOps::SVector<AsdOps::Tensor *> outTensors;
-    AsdOps::SVector<RunnerGraphNodeViewFunc> inTensorViewFuncs;
-    RunnerVariantPack runnerVariantPack;
-};
-
-struct RunnerGraph {
-    AsdOps::SVector<AsdOps::Tensor> inTensors;
-    AsdOps::SVector<AsdOps::Tensor> outTensors;
-    AsdOps::SVector<AsdOps::Tensor> internalTensors;
-    AsdOps::SVector<RunnerGraphNode> nodes;
-    std::string ToString() const;
-};
-
-class MemAllocationSolver;
+class Runner;
 
 class Plan {
 public:
@@ -55,37 +34,17 @@ public:
     AsdOps::Status Execute(Handle handle, VariantPack &variantPack);
 
 protected:
-    void InitTensorMaxNodeMap();
+    std::unique_ptr<Runner> runner_;
+    std::string name_;
+    friend class Operation;
 
 private:
     void Reset();
-    bool IsInternalTensor(const AsdOps::Tensor *tensor);
-    int64_t GetInTensorId(const AsdOps::Tensor *tensor);
-    int64_t GetOutTensorId(const AsdOps::Tensor *tensor);
-    AsdOps::Status PreparseNodeRunnerVariantPack();
-    AsdOps::Status RunNodeInTensorViewFuncs(size_t nodeId, RunnerGraphNode &node);
-    void InferShapeNode(size_t nodeId, RunnerGraphNode &node);
-    AsdOps::Status SetupAllRunners();
-    AsdOps::Status CopyHostTilingToDevice(Handle handle, VariantPack &variantPack);
-    void UpdateRunnerVariantPackBuffer(VariantPack &variantPack);
-    void UpdateRunnerVariantPackTensorData(VariantPack &variantPack);
-    AsdOps::Status ExecuteAllRunner(Handle &handle, VariantPack &variantPack);
+    AsdOps::Status CopyHostTilingToDevice(Handle handle);
 
-protected:
-    friend class PlanBuilder;
-    std::string name_;
-    RunnerGraph runnerGraph_;
-    std::map<AsdOps::Tensor *, uint64_t> tensorMaxNodeIdMap_;
-    std::map<uint64_t, std::set<AsdOps::Tensor *>> maxNodeIdTensorMap_;
-    uint64_t selfIntermediateBufferSize_ = 0;
-    uint64_t totalTilingBufferSize_ = 0;
-    AsdOps::SVector<uint64_t> tilingBufferSizes_;
-    std::vector<char> totalHostTilingBuffer_;
-    uint64_t maxWorkspaceBufferSize_ = 0;
-    AsdOps::SVector<uint64_t> workspaceBufferSizes_;
-    uint64_t maxIntermediateBufferSize_ = 0;
-    AsdOps::SVector<uint64_t> intermediateBufferSizes_;
-    std::unique_ptr<MemAllocationSolver> memAllocatinSolver_;
+private:
+    std::vector<char> hostTilingBuffer_;
+    RunnerVariantPack runnerVariantPack_;
 };
 } // namespace AclTransformer
 #endif
