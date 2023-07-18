@@ -1,29 +1,15 @@
-import transformers
-import readline
-from transformers import AutoTokenizer, AutoModel
-import signal
-import platform
-import os
-import torch
-
 # 适配昇腾NPU
+import torch
 import torch_npu
-from torch_npu.contrib import transfer_to_npu
 device_id = 0
 torch.npu.set_device(torch.device(f"npu:{device_id}"))
+
 
 # 使用二进制优化，消除动态shape的编译问题
 torch.npu.set_compile_mode(jit_compile=False)
 option = {}
 option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril"
 torch.npu.set_option(option)
-
-tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
-model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
-
-os_name = platform.system()
-clear_command = 'cls' if os_name == 'Windows' else 'clear'
-stop_stream = False
 
 
 # 修改transformers的TopPLogitsWarper
@@ -44,9 +30,8 @@ def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> to
         1, sorted_indices, sorted_indices_to_remove)
     scores = scores.masked_fill(indices_to_remove, self.filter_value)
     return scores
-
-
 transformers.generation.TopPLogitsWarper.__call__ = __call__
+
 
 # 优化ND NZ排布，消除transdata
 soc_version = torch_npu._C._npu_get_soc_version()
@@ -64,48 +49,3 @@ else:
 for name, module in model.named_modules():
     if isinstance(module, torch.nn.Embedding):
         module.weight.data = module.weight.data.npu_format_cast(2)
-
-
-def build_prompt(history):
-    prompt = "欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序"
-    for query, response in history:
-        prompt += f"\n\n用户：{query}"
-        prompt += f"\n\nChatGLM-6B：{response}"
-    return prompt
-
-
-def signal_handler(signal, frame):
-    global stop_stream
-    stop_stream = True
-
-
-def main():
-    history = []
-    global stop_stream
-    print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
-    while True:
-        query = input("\n用户：")
-        if query.strip() == "stop":
-            break
-        if query.strip() == "clear":
-            history = []
-            os.system(clear_command)
-            print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
-            continue
-        count = 0
-        for response, history in model.stream_chat(tokenizer, query, history=history):
-            if stop_stream:
-                stop_stream = False
-                break
-            else:
-                count += 1
-                if count % 3 == 0:
-                    # os.system(clear_command)
-                    print(build_prompt(history), flush=True)
-                    signal.signal(signal.SIGINT, signal_handler)
-        os.system(clear_command)
-        print(build_prompt(history), flush=True)
-
-
-if __name__ == "__main__":
-    main()

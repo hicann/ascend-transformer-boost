@@ -1,70 +1,8 @@
-import transformers
 from transformers import AutoTokenizer, AutoModel
 import torch
-
-# 适配昇腾NPU
-import torch_npu
-from torch_npu.contrib import transfer_to_npu
-device_id = 0
-torch.npu.set_device(torch.device(f"npu:{device_id}"))
-
 import gradio as gr
 import mdtex2html
 
-# 使用二进制优化，消除动态shape的编译问题
-torch.npu.set_compile_mode(jit_compile=False)
-option = {}
-option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril"
-torch.npu.set_option(option)
-
-tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
-model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
-
-"""
-Transformer initialization
-"""
-
-# 修改transformers的TopPLogitsWarper
-def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-    sorted_logits, sorted_indices = torch.sort(scores, descending=False)
-    # cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
-    cumulative_probs = sorted_logits.softmax(
-        dim=-1).cpu().float().cumsum(dim=-1).to(sorted_logits.device).to(sorted_logits.dtype)
-
-    # Remove tokens with cumulative top_p above the threshold (token with 0 are kept)
-    sorted_indices_to_remove = cumulative_probs <= (1 - self.top_p)
-    if self.min_tokens_to_keep > 1:
-        # Keep at least min_tokens_to_keep
-        sorted_indices_to_remove[..., -self.min_tokens_to_keep:] = 0
-
-    # scatter sorted tensors to original indexing
-    indices_to_remove = sorted_indices_to_remove.scatter(
-        1, sorted_indices, sorted_indices_to_remove)
-    scores = scores.masked_fill(indices_to_remove, self.filter_value)
-    return scores
-
-transformers.generation.TopPLogitsWarper.__call__ = __call__
-
-# 优化ND NZ排布，消除transdata
-soc_version = torch_npu._C._npu_get_soc_version()
-if soc_version in [104, 220, 221, 222, 223]:
-    for name, module in model.named_modules():
-        if isinstance(module, torch.nn.Linear):
-            module.weight.data = module.weight.data.npu_format_cast(2)
-    print("soc_version:", soc_version, " is 910B, support ND")
-else:
-    for name, module in model.named_modules():
-        if isinstance(module, torch.nn.Linear):
-            module.weight.data = module.weight.data.npu_format_cast(29)
-    print("soc_version:", soc_version, " is not 910B, support NZ")
-
-for name, module in model.named_modules():
-    if isinstance(module, torch.nn.Embedding):
-        module.weight.data = module.weight.data.npu_format_cast(2)
-
-"""
-WebUI initialization
-"""
 
 def postprocess(self, y):
     if y is None:
@@ -118,14 +56,16 @@ def predict(input, chatbot, max_length, top_p, temperature, history):
         chatbot[-1] = (parse_text(input), parse_text(response))       
         yield chatbot, history
 
-
 def reset_user_input():
     return gr.update(value='')
-
 
 def reset_state():
     return [], []
 
+
+# 加载权重和模型
+tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
+model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
 
 with gr.Blocks() as demo:
     chatbot = gr.Chatbot()
@@ -140,7 +80,6 @@ with gr.Blocks() as demo:
             max_length = gr.Slider(0, 4096, value=2048, step=1.0, label="Maximum length", interactive=True)
             top_p = gr.Slider(0, 1, value=0.7, step=0.01, label="Top P", interactive=True)
             temperature = gr.Slider(0, 1, value=0.95, step=0.01, label="Temperature", interactive=True)
-
 
     history = gr.State([])
 
