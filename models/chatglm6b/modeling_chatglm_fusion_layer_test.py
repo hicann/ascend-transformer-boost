@@ -559,6 +559,7 @@ class GLU(torch.nn.Module):
 
         return output
 
+
 class GLMBlock(torch.nn.Module):
     def __init__(
             self,
@@ -611,10 +612,8 @@ class GLMBlock(torch.nn.Module):
             params_dtype=params_dtype,
         )
 
-        acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                            "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers),
-                                            "tokenOffset": [1], "seqLen": [1]})
-        self.acl_layer=torch.classes.LayerTorch.LayerTorch("ChatGlm6BFusionLayer", acl_param)
+        self.acl_layer_operation = torch.classes.OperationTorch.OperationTorch(
+            "ChatGlm6BLayerDecoderFlashAttentionOperation")
 
     def forward(
             self,
@@ -649,7 +648,6 @@ class GLMBlock(torch.nn.Module):
         seq_len = torch.ones(batch_num, dtype=torch.half).npu()
         token_offset = torch.full(
             (batch_num,), token_num[layer_id], dtype=torch.half, device=kv_cache.device)
-
 
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
@@ -689,13 +687,11 @@ class GLMBlock(torch.nn.Module):
             output_attentions=output_attentions
         )
 
-
-
         attention_output = attention_outputs[0]
         if layer_past is not None and layer_id == 21:
-              print("k_cache_input " + str(k_cache_input[layer_id]))
-              print("v_cache_input " + str(v_cache_input[layer_id]))
-              print("token_offset " + str(token_offset))
+            print("k_cache_input " + str(k_cache_input[layer_id]))
+            print("v_cache_input " + str(v_cache_input[layer_id]))
+            print("token_offset " + str(token_offset))
         #     torch.save(attention_output.cpu(), 'attention_output.pth')
         #     torch.save(k_cache_input[layer_id][:,:token_num[layer_id]].cpu(), 'k_cache_output.pth')
         #     torch.save(v_cache_input[layer_id][:,:token_num[layer_id]].cpu(), 'v_cache_output.pth')
@@ -718,8 +714,10 @@ class GLMBlock(torch.nn.Module):
         if use_cache:
             token_num[layer_id] = outputs[0][0].shape[0]
             if not increment_flags[layer_id]:
-                kv_cache[0, layer_id, 0, :token_num[layer_id], ...] = outputs[0][0].transpose(0, 1) # batch = 1
-                kv_cache[1, layer_id, 0, :token_num[layer_id], ...] = outputs[0][1].transpose(0, 1) # batch = 1
+                kv_cache[0, layer_id, 0, :token_num[layer_id], ...] = outputs[0][0].transpose(
+                    0, 1)  # batch = 1
+                kv_cache[1, layer_id, 0, :token_num[layer_id], ...] = outputs[0][1].transpose(
+                    0, 1)  # batch = 1
             if token_offset is None:
                 token_offset = torch.full(
                     (batch_num,), token_num[layer_id], dtype=torch.int32, device=kv_cache.device)
@@ -743,7 +741,8 @@ class GLMBlock(torch.nn.Module):
             del weights[2]
             attention_mask_side = attention_mask.shape[0]
             print("attention mask:" + str(attention_mask.shape))
-            attention_mask_max[:attention_mask_side, :attention_mask_side] = attention_mask.to(torch.half)
+            attention_mask_max[:attention_mask_side,
+                               :attention_mask_side] = attention_mask.to(torch.half)
             inputs.extend(weights)
             inputs.append(position_ids)
             inputs.append(cosTable)
@@ -757,10 +756,10 @@ class GLMBlock(torch.nn.Module):
             global glm_block
 
             acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                                "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers),
-                                                "tokenOffset": [token_num[layer_id]], "seqLen": [1]})
-            self.acl_layer.set_param(acl_param)
-            test_glmBlockOut = self.acl_layer.execute(inputs)
+                                    "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers),
+                                    "tokenOffset": [token_num[layer_id]], "seqLen": [1]})
+            self.acl_layer_operation.set_param(acl_param)
+            test_glmBlockOut = self.acl_layer_operation.execute(inputs)
 
             # assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut[0].view(
             #     test_glmBlockOut[0].numel()), dim=0).item() >= 0.99, 'fail'
@@ -909,7 +908,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         global token_num
         global attention_mask_max
 
-        attention_mask_max = torch.full((self.max_sequence_length, self.max_sequence_length), -1000, dtype=torch.half).npu()
+        attention_mask_max = torch.full(
+            (self.max_sequence_length, self.max_sequence_length), -1000, dtype=torch.half).npu()
         print("!!!!!!!!attention_mask_max", attention_mask_max)
 
         if kv_cache is None:
@@ -1083,8 +1083,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             if output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
-            past_k = kv_cache[0][i][:,:token_num[i]].transpose(0, 1)
-            past_v = kv_cache[1][i][:,:token_num[i]].transpose(0, 1)
+            past_k = kv_cache[0][i][:, :token_num[i]].transpose(0, 1)
+            past_v = kv_cache[1][i][:, :token_num[i]].transpose(0, 1)
 
             layer_ret = layer(
                 hidden_states,
@@ -1100,8 +1100,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
 
             if use_cache:
                 presents = presents + \
-                    ((kv_cache[0][i][:,:token_num[i]].transpose(0, 1),
-                     kv_cache[1][i][:,:token_num[i]].transpose(0, 1)),)
+                    ((kv_cache[0][i][:, :token_num[i]].transpose(0, 1),
+                     kv_cache[1][i][:, :token_num[i]].transpose(0, 1)),)
 
             if output_attentions:
                 all_self_attentions = all_self_attentions + \
@@ -1489,4 +1489,4 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
     def quantize(self, bits: int):
         from .quantization import quantize
         self.transformer = quantize(self.transformer, bits)
-        return self                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+        return self
