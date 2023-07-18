@@ -127,6 +127,13 @@ static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &param
 static AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::MlpParam param;
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+        ASD_LOG(INFO) << "MlpParam model:" << param.model;
+    } else {
+        param.model = "llama7b";
+        ASD_LOG(INFO) << "MlpParam is empty, default model:" << param.model;
+    }
     return new AclTransformer::MlpOperation(param);
 }
 
