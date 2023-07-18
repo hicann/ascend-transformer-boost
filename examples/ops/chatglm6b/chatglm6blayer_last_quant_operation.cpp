@@ -97,7 +97,8 @@ ChatGlm6BLayerLastQuantOperation::ChatGlm6BLayerLastQuantOperation(const ChatGlm
     GraphOperation::Node &ffnOutLinearQuantNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &ffnResidualAddNode = opGraph_.nodes.at(nodeId++);
 
-    inputQuantNode.operation.reset(new AclTransformer::AddNormQuantOperation({param_.layerNormEps, param_.qkvInputScale, param_.qkvInputOffset, param_.residualAddScale}));
+    inputQuantNode.operation.reset(new AclTransformer::AddNormQuantOperation(
+        {param_.layerNormEps, param_.qkvInputScale, param_.qkvInputOffset, param_.residualAddScale}));
     inputQuantNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT, IN_NORMBIAS, IN_RES};
     inputQuantNode.outTensorIds = {INTERMIDATE_INPUTNORMQUANT, INTERMIDATE_INPUTNORMRES};
 
@@ -119,28 +120,35 @@ ChatGlm6BLayerLastQuantOperation::ChatGlm6BLayerLastQuantOperation(const ChatGlm
                                             IN_PASTVALUE};
     selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    denseQuantNode.operation.reset(new AclTransformer::QuantOperation({param_.denseInputScale, param_.denseInputOffset}));
+    denseQuantNode.operation.reset(
+        new AclTransformer::QuantOperation({param_.denseInputScale, param_.denseInputOffset}));
     denseQuantNode.inTensorIds = {INTERMIDATE_SELFOUT};
     denseQuantNode.outTensorIds = {INTERMIDATE_DENSEQUANTOUT};
 
     denseLinearQuantNode.operation.reset(new AclTransformer::LinearQuantOperation({}));
-    denseLinearQuantNode.inTensorIds = {INTERMIDATE_DENSEQUANTOUT, IN_DENSEQUANTWEIGHT, IN_DENSEQUANTBIAS, IN_DENSEQUANTDEQSCALE};
+    denseLinearQuantNode.inTensorIds = {INTERMIDATE_DENSEQUANTOUT, IN_DENSEQUANTWEIGHT, IN_DENSEQUANTBIAS,
+                                        IN_DENSEQUANTDEQSCALE};
     denseLinearQuantNode.outTensorIds = {INTERMIDATE_DENSELINEARQUANTOUT};
 
-    selfLayernormQuantNode.operation.reset(new AclTransformer::AddNormQuantOperation({param_.layerNormEps,param_.selfLnInputScale, param_.selfLnInputOffset, param_.residualAddScale}));
-    selfLayernormQuantNode.inTensorIds = {INTERMIDATE_DENSELINEARQUANTOUT, IN_POSTNORMWEIGHT, IN_POSTNORMBIAS, INTERMIDATE_INPUTNORMRES};
+    selfLayernormQuantNode.operation.reset(new AclTransformer::AddNormQuantOperation(
+        {param_.layerNormEps, param_.selfLnInputScale, param_.selfLnInputOffset, param_.residualAddScale}));
+    selfLayernormQuantNode.inTensorIds = {INTERMIDATE_DENSELINEARQUANTOUT, IN_POSTNORMWEIGHT, IN_POSTNORMBIAS,
+                                          INTERMIDATE_INPUTNORMRES};
     selfLayernormQuantNode.outTensorIds = {INTERMIDATE_SELFNORMQUANTOUT, INTERMIDATE_SELFNORMRES};
 
     ffnLinearQuantNode.operation.reset(new AclTransformer::FfnQuantOperation({}));
-    ffnLinearQuantNode.inTensorIds = {INTERMIDATE_SELFNORMQUANTOUT, IN_FFNLINEARWEIGHT, IN_FFNLINEARBIAS, IN_FFNLINEARDEQSCALE};
+    ffnLinearQuantNode.inTensorIds = {INTERMIDATE_SELFNORMQUANTOUT, IN_FFNLINEARWEIGHT, IN_FFNLINEARBIAS,
+                                      IN_FFNLINEARDEQSCALE};
     ffnLinearQuantNode.outTensorIds = {INTERMIDATE_FFNOUT};
 
-    ffnOutQuantNode.operation.reset(new AclTransformer::QuantOperation({param_.ffnOutInputScale, param_.ffnOutInputOffset}));
+    ffnOutQuantNode.operation.reset(
+        new AclTransformer::QuantOperation({param_.ffnOutInputScale, param_.ffnOutInputOffset}));
     ffnOutQuantNode.inTensorIds = {INTERMIDATE_FFNOUT};
     ffnOutQuantNode.outTensorIds = {INTERMIDATE_FFNQUANTOUT};
 
     ffnOutLinearQuantNode.operation.reset(new AclTransformer::LinearQuantOperation({}));
-    ffnOutLinearQuantNode.inTensorIds = {INTERMIDATE_FFNQUANTOUT, IN_FFNOUTLINEARWEIGHT, IN_FFNOUTLINEARBIAS, IN_FFNOUTLINEARDEQSCALE};
+    ffnOutLinearQuantNode.inTensorIds = {INTERMIDATE_FFNQUANTOUT, IN_FFNOUTLINEARWEIGHT, IN_FFNOUTLINEARBIAS,
+                                         IN_FFNOUTLINEARDEQSCALE};
     ffnOutLinearQuantNode.outTensorIds = {INTERMIDATE_FFNLINEARQUANTOUT};
 
     ffnResidualAddNode.operation.reset(new AclTransformer::AddOperation({param_.residualAddScale}));
@@ -148,15 +156,15 @@ ChatGlm6BLayerLastQuantOperation::ChatGlm6BLayerLastQuantOperation(const ChatGlm
     ffnResidualAddNode.outTensorIds = {OUT_GLMLAYEROUT};
 }
 
-
 ChatGlm6BLayerLastQuantOperation::~ChatGlm6BLayerLastQuantOperation() {}
 
 uint64_t ChatGlm6BLayerLastQuantOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
 uint64_t ChatGlm6BLayerLastQuantOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status ChatGlm6BLayerLastQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+AsdOps::Status
+ChatGlm6BLayerLastQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                 AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
     const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);
