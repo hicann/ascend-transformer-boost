@@ -46,6 +46,7 @@
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "examples/ops/chatglm6b/chatglm6blayer_quant_operation.h"
 #include "examples/ops/chatglm6b/chatglm6blayer_last_quant_operation.h"
+#include "examples/ops/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -254,9 +255,9 @@ static AclTransformer::Operation *ChatGlm6BLayerDecoderRopeOperationCreate(const
     param.dk = paramJson["dk"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    ASD_LOG(INFO) << "ChatGlm6BLayerDecoderRopeParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
-                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
-                  << ", residualAddScale:" << param.residualAddScale;
+    ASD_LOG(INFO) << "ChatGlm6BLayerDecoderRopeParam layerNormEps:" << param.layerNormEps
+                  << ", headNum:" << param.headNum << ", transKey:" << param.transKey << ", dk:" << param.dk
+                  << ", layerId:" << param.layerId << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BLayerDecoderOperation(param);
 }
 
@@ -269,9 +270,9 @@ static AclTransformer::Operation *ChatGlm6BLayerEncoderRopeOperationCreate(const
     param.dk = paramJson["dk"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    ASD_LOG(INFO) << "ChatGlm6BLayerEncoderRopeParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
-                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
-                  << ", residualAddScale:" << param.residualAddScale;
+    ASD_LOG(INFO) << "ChatGlm6BLayerEncoderRopeParam layerNormEps:" << param.layerNormEps
+                  << ", headNum:" << param.headNum << ", transKey:" << param.transKey << ", dk:" << param.dk
+                  << ", layerId:" << param.layerId << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BLayerDecoderOperation(param);
 }
 
@@ -292,6 +293,7 @@ AclTransformer::Operation *LinearQuantOperationCreate(const nlohmann::json &para
     ASD_LOG(INFO) << "LinearQuantParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
     return new AclTransformer::LinearQuantOperation(param);
 }
+
 AclTransformer::Operation *AddNormQuantOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddNormQuantParam param;
@@ -424,6 +426,24 @@ static AclTransformer::Operation *ChatGlm6BLayerLastQuantOperationCreate(const n
     return new AclTransformer::ChatGlm6BLayerLastQuantOperation(param);
 }
 
+static AclTransformer::Operation *ChatGlm6BLayeEncoderFlashAttentionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BLayerDecoderFlashAttentionParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+    }
+    return new AclTransformer::ChatGlm6BLayerDecoderFlashAttentionOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
@@ -454,6 +474,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"ChatGlm6BLayerQuantOperation", &ChatGlm6BLayerQuantOperationCreate},
     {"ChatGlm6BLayerLastQuantOperation", &ChatGlm6BLayerLastQuantOperationCreate},
+    {"ChatGlm6BLayerDecoderFlashAttentionOperation", &ChatGlm6BLayeEncoderFlashAttentionOperationCreate},
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
