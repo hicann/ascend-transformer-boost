@@ -92,7 +92,6 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     GraphOperation::Node &mlpNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mlpResidualAddNode = opGraph_.nodes.at(nodeId++);
 
-    // TODO 参数是对的吗？
     inputNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORMOUT};
@@ -109,7 +108,6 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     mixdVLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_VMIXDWEIGHT, IN_VMIXDBIAS};
     mixdVLinearNode.outTensorIds = {INTERMIDATE_MIXEDV};
 
-    // TODO 参数是对的吗？
     qPositionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbedding1dSplitOperation({param_.headNum}));
     qPositionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDQ, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
     qPositionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ};
@@ -118,12 +116,10 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     kPositionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDK, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
     kPositionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDk};
 
-    // TODO 参数是对的吗？
     vTransposeNode.operation.reset(new AclTransformer::TransposeOperation({0, 1}));
     vTransposeNode.inTensorIds = {INTERMIDATE_MIXEDV};
     vTransposeNode.outTensorIds = {INTERMIDATE_TRANSPOSEVOUT};
 
-    // TODO 参数是对的吗？
     selfAttentionKvCacheNode.operation.reset(new AclTransformer::SelfAttentionKvCacheOperation(
         {param_.dk, param_.headNum, param_.model}));
     selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
@@ -134,13 +130,12 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
                                             IN_PASTVALUE};
     selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    // TODO viewfunc 怎么替换到这
-    // selfAttentionKvCacheNode.inTensorViewFuncs.resize(selfAttentionKvCacheNode.inTensorIds.size());
-    // selfAttentionKvCacheNode.inTensorViewFuncs.at(2) = [=](const AsdOps::SVector<int64_t> &oldDims,
-    //                                                        AsdOps::SVector<int64_t> &newDims) {
-    //     newDims = {oldDims.at(0), oldDims.at(1), qPositionEmbeddingParam.headNum,
-    //                oldDims.at(2) / qPositionEmbeddingParam.headNum};
-    // };
+    selfAttentionKvCacheNode.inTensorViewFuncs.resize(selfAttentionKvCacheNode.inTensorIds.size());
+    selfAttentionKvCacheNode.inTensorViewFuncs.at(2) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                                           AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), qPositionEmbeddingParam.headNum,
+                   oldDims.at(2) / qPositionEmbeddingParam.headNum};
+    };
 
     selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
     selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};

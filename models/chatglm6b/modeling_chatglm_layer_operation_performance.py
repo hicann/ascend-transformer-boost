@@ -607,9 +607,9 @@ class GLMBlock(torch.nn.Module):
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
         self.acl_operation = torch.classes.OperationTorch.OperationTorch(
-            "ChatGlm6BBlockOperation")
+            "ChatGlm6BLayerOperation")
         self.acl_operation.set_name(
-            "ChatGlm6BBlockOperation_" + str(self.layer_id))
+            "ChatGlm6BLayerOperation_" + str(self.layer_id))
         self.acl_operation.set_param(acl_param)
 
         self.input = []
