@@ -113,14 +113,18 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
 
     kPositionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbedding1dSplitOperation({param_.headNum}));
     kPositionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDK, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
-    kPositionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDk};
+    kPositionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDK};
 
     vTransposeNode.operation.reset(new AclTransformer::TransposeOperation({0, 1}));
     vTransposeNode.inTensorIds = {INTERMIDATE_MIXEDV};
     vTransposeNode.outTensorIds = {INTERMIDATE_TRANSPOSEVOUT};
 
+    AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
+    selfAttentionKvCacheParam.dk = param_.dk;
+    selfAttentionKvCacheParam.headNum = param_.headNum;
+    selfAttentionKvCacheParam.model = param_.model;
     selfAttentionKvCacheNode.operation.reset(new AclTransformer::SelfAttentionKvCacheOperation(
-        {param_.dk, param_.headNum, param_.model}));
+        selfAttentionKvCacheParam));
     selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
                                             INTERMIDATE_POSITIONEMBEDK,
                                             INTERMIDATE_TRANSPOSEVOUT,
@@ -132,8 +136,8 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     selfAttentionKvCacheNode.inTensorViewFuncs.resize(selfAttentionKvCacheNode.inTensorIds.size());
     selfAttentionKvCacheNode.inTensorViewFuncs.at(2) = [=](const AsdOps::SVector<int64_t> &oldDims,
                                                            AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1), qPositionEmbeddingParam.headNum,
-                   oldDims.at(2) / qPositionEmbeddingParam.headNum};
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum,
+                   oldDims.at(2) / param_.headNum};
     };
 
     selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
@@ -171,7 +175,7 @@ AsdOps::Status LLaMA7BLayerOperation::InferShapeImpl(const AsdOps::SVector<AsdOp
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(1) = keyTensor.desc;
     outTensorDescs.at(1).dims.at(0) += 1;
-    outTensorDescs.at(2) = ValueTensor.desc;
+    outTensorDescs.at(2) = valueTensor.desc;
     outTensorDescs.at(2).dims.at(0) += 1;
     return AsdOps::Status::OkStatus();
 }

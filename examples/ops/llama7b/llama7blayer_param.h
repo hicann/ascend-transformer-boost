@@ -21,6 +21,7 @@ struct LLaMA7BLayerParam {
     float rmsNormEps = 0;
     int headNum = 0;
     int dk = 0;
+    std::string model = "llama7b";
 };
 } // namespace AclTransformer
 #endif
