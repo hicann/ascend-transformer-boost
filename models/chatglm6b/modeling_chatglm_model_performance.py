@@ -800,8 +800,10 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         acl_param = json.dumps({"transKey": True, "dk": self.hidden_size_per_attention_head, "headNum": self.num_attention_heads, "layerNum": self.num_layers,
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
-        self.acl_operation = torch.classes.ChatGlm6BModelTorch.ChatGlm6BModelTorch()
-        self.acl_operation.set_param(acl_param)
+        self.acl_encoder_operation = torch.classes.ChatGlm6BModelEncoderTorch.ChatGlm6BModelEncoderTorch()
+        self.acl_encoder_operation.set_param(acl_param)
+        self.acl_decoder_operation = torch.classes.ChatGlm6BModelDecoderTorch.ChatGlm6BModelDecoderTorch()
+        self.acl_decoder_operation.set_param(acl_param)
         self.weightFlag = False
 
     def get_input_embeddings(self):
@@ -934,40 +936,20 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
                 weights_t = list(self.layers[i].state_dict().values())
                 del weights_t[2]
                 weights.extend(weights_t)
-            self.acl_operation.set_weight(weights)
+            self.acl_encoder_operation.set_weight(weights)
+            self.acl_decoder_operation.set_weight(weights)
             self.weightFlag = True
         
-        if past_key_values[0] is not None:
-            global cosTable
-            global sinTable
-            past_keys, past_values = map(list, zip(*past_key_values))
-            acl_model_out = self.acl_operation.execute(hidden_states, position_ids, cosTable, sinTable, attention_mask, past_keys, past_values)
-            hidden_states = acl_model_out[0]
+        global cosTable
+        global sinTable
+        if past_key_values[0] is None:
+            acl_model_out = self.acl_encoder_operation.execute(hidden_states, position_ids, cosTable, sinTable, attention_mask)
             presents = tuple(zip(acl_model_out[1:self.num_layers + 1], acl_model_out[self.num_layers + 1:]))
         else:
-            for i, layer in enumerate(self.layers):
-
-                if output_hidden_states:
-                    all_hidden_states = all_hidden_states + (hidden_states,)
-
-                layer_ret = layer(
-                    hidden_states,
-                    position_ids=position_ids,
-                    attention_mask=attention_mask,
-                    layer_id=torch.tensor(i),
-                    layer_past=past_key_values[i],
-                    use_cache=use_cache,
-                    output_attentions=output_attentions
-                )
-
-                hidden_states = layer_ret[0]
-
-                if use_cache:
-                    presents = presents + (layer_ret[1],)
-
-                if output_attentions:
-                    all_self_attentions = all_self_attentions + \
-                        (layer_ret[2 if use_cache else 1],)
+            past_keys, past_values = map(list, zip(*past_key_values))
+            acl_model_out = self.acl_decoder_operation.execute(hidden_states, position_ids, cosTable, sinTable, attention_mask, past_keys, past_values)
+            presents = tuple(zip(acl_model_out[1:self.num_layers + 1], acl_model_out[self.num_layers + 1:]))
+        hidden_states = acl_model_out[0]
 
         # Final layer norm.
         hidden_states = self.final_layernorm(hidden_states)

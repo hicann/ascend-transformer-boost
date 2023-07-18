@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm6blayer_operation.h"
+#include "chatglm6blayer_encoder_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
@@ -23,7 +23,7 @@
 #include "acltransformer/ops/ffn_operation.h"
 
 namespace AclTransformer {
-enum Chatglm6BLayerTensorId {
+enum Chatglm6BLayerEncoderTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
     IN_NORMBIAS,
@@ -41,16 +41,12 @@ enum Chatglm6BLayerTensorId {
     IN_COSTABLE,
     IN_SINTABLE,
     IN_ATTENTIONMASK,
-    IN_PASTKEY,
-    IN_PASTVALUE,
     OUT_GLMLAYEROUT,
     OUT_PRESENTKEY,
     OUT_PRESENTVALUE,
     INTERMIDATE_INPUTNORMOUT,
     INTERMIDATE_MIXEDLINEAROUTQKV,
     INTERMIDATE_POSITIONEMBEDQ,
-    INTERMIDATE_POSITIONEMBEDK,
-    INTERMIDATE_VALUE,
     INTERMIDATE_SELFOUT,
     INTERMIDATE_SELFLINEAROUT,
     INTERMIDATE_SELFRESIDUALADDOUT,
@@ -59,13 +55,13 @@ enum Chatglm6BLayerTensorId {
     INTERMIDATE_FFNLINEAROUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 19;
+static const uint64_t IN_TENSOR_COUNT = 17;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 9;
 static const uint64_t NODE_COUNT = 10;
 
-ChatGlm6BLayerOperation::ChatGlm6BLayerOperation(const ChatGlm6BLayerParam &param)
-    : GraphOperation("ChatGlm6BLayerOperation"), param_(param)
+ChatGlm6BLayerEncoderOperation::ChatGlm6BLayerEncoderOperation(const ChatGlm6BLayerParam &param)
+    : GraphOperation("ChatGlm6BLayerEncoderOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -76,7 +72,7 @@ ChatGlm6BLayerOperation::ChatGlm6BLayerOperation(const ChatGlm6BLayerParam &para
     GraphOperation::Node &inputNormNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mixdQkvLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &positionEmbeddingNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &selfAttentionKvCacheNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &selfAttentionNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfOutLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfResidualAddNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfNormNode = opGraph_.nodes.at(nodeId++);
@@ -94,17 +90,12 @@ ChatGlm6BLayerOperation::ChatGlm6BLayerOperation(const ChatGlm6BLayerParam &para
 
     positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation({param_.headNum}));
     positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
-    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_VALUE};
+    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    selfAttentionKvCacheNode.operation.reset(new AclTransformer::SelfAttentionKvCacheOperation(
-        {param_.transKey, param_.dk, param_.headNum, param_.layerId}));
-    selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
-                                            INTERMIDATE_POSITIONEMBEDK,
-                                            INTERMIDATE_VALUE,
-                                            IN_ATTENTIONMASK,
-                                            IN_PASTKEY,
-                                            IN_PASTVALUE};
-    selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
+    selfAttentionNode.operation.reset(new AclTransformer::SelfAttentionOperation(
+        {param_.transKey, param_.dk, param_.headNum, param_.layerId, "chatglm6b"}));
+    selfAttentionNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE, IN_ATTENTIONMASK};
+    selfAttentionNode.outTensorIds = {INTERMIDATE_SELFOUT};
 
     selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
     selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
@@ -131,23 +122,21 @@ ChatGlm6BLayerOperation::ChatGlm6BLayerOperation(const ChatGlm6BLayerParam &para
     ffnResidualAddNode.outTensorIds = {OUT_GLMLAYEROUT};
 }
 
-ChatGlm6BLayerOperation::~ChatGlm6BLayerOperation() {}
+ChatGlm6BLayerEncoderOperation::~ChatGlm6BLayerEncoderOperation() {}
 
-uint64_t ChatGlm6BLayerOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t ChatGlm6BLayerEncoderOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t ChatGlm6BLayerOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t ChatGlm6BLayerEncoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status ChatGlm6BLayerOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+AsdOps::Status ChatGlm6BLayerEncoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
-    const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);
     outTensorDescs.at(0) = inTensors.at(0).desc;
-    outTensorDescs.at(1) = keyTensor.desc;
-    outTensorDescs.at(1).dims.at(0) += 1;
+    outTensorDescs.at(1) = inTensors.at(0).desc;
+    outTensorDescs.at(1).dims.at(2) = param_.headNum;
+    outTensorDescs.at(1).dims.push_back(param_.dk);
     const size_t tensorId2 = 2;
-    outTensorDescs.at(tensorId2) = valueTensor.desc;
-    outTensorDescs.at(tensorId2).dims.at(0) += 1;
+    outTensorDescs.at(tensorId2) = outTensorDescs.at(1);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
