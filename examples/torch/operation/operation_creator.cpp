@@ -40,6 +40,9 @@
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "examples/ops/bert/bertlayer_operation.h"
+#include "acltransformer/ops/ffn_quant_operation.h"
+#include "examples/ops/chatglm6b/chatglm6blayer_quant_operation.h"
+#include "examples/ops/chatglm6b/chatglm6blayer_last_quant_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -310,6 +313,34 @@ AclTransformer::Operation *BertLayerOperation(const nlohmann::json &paramJson)
     return new AclTransformer::BertLayerOperation(param);
 }
 
+static AclTransformer::Operation *ChatGlm6BLayerLastQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BLayerQuantParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.qkvInputScale = paramJson["qkvInputScale"].get<float>();
+    param.qkvInputOffset = paramJson["qkvInputOffset"].get<int>();
+    param.denseInputScale = paramJson["denseInputScale"].get<float>();
+    param.denseInputOffset = paramJson["denseInputOffset"].get<int>();
+    param.selfLnInputScale = paramJson["selfLnInputScale"].get<float>();
+    param.selfLnInputOffset = paramJson["selfLnInputOffset"].get<int>();
+    param.ffnOutInputScale = paramJson["ffnOutInputScale"].get<float>();
+    param.ffnOutInputOffset = paramJson["ffnOutInputOffset"].get<int>();
+
+    ASD_LOG(INFO) << "ChatGlm6BLayerParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale << ", qkvInputScale:" << param.qkvInputScale
+                  << ", qkvInputOffset" << param.qkvInputOffset << ", denseInputScale" << param.denseInputScale
+                  << ", denseInputOffset" << param.denseInputOffset << ", selfLnInputScale" << param.selfLnInputScale
+                  << ", selfLnInputOffset" << param.selfLnInputOffset << ", ffnOutInputScale" << param.ffnOutInputScale
+                  << ", ffnOutInputOffset" << param.ffnOutInputOffset;
+    return new AclTransformer::ChatGlm6BLayerLastQuantOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
@@ -334,6 +365,9 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LinearQuantOperation", &LinearQuantOperationCreate},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"BertLayerOperation", &BertLayerOperation},
+    {"FfnQuantOperation", &FfnQuantOperationCreate},
+    {"ChatGlm6BLayerQuantOperation", &ChatGlm6BLayerQuantOperationCreate},
+    {"ChatGlm6BLayerLastQuantOperation", &ChatGlm6BLayerLastQuantOperationCreate},
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
