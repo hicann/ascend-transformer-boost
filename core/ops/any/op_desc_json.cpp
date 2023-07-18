@@ -40,7 +40,18 @@ static void ElewiseJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc
     AsdOps::OpParam::Elewise param;
     param.elewiseType =
         static_cast<AsdOps::OpParam::Elewise::ElewiseType>(opDescJson["specificParam"]["elewiseType"].get<int>());
-    param.varAttr = opDescJson["specificParam"]["varAttr"].get<float>();
+    if (opDescJson["specificParam"].contains("varAttr")) {
+        param.varAttr = opDescJson["specificParam"]["varAttr"].get<float>();
+    }
+    if (opDescJson["specificParam"].contains("scale")) {
+        param.scale = opDescJson["specificParam"]["scale"].get<float>();
+    }
+    if (opDescJson["specificParam"].contains("input_scale")) {
+        param.input_scale = opDescJson["specificParam"]["input_scale"].get<float>();
+    }
+    if (opDescJson["specificParam"].contains("input_offset")) {
+        param.input_offset = opDescJson["specificParam"]["input_offset"].get<float>();
+    }
     opDesc.specificParam = param;
 }
 
@@ -110,6 +121,7 @@ static void TransdataJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDe
     {
         const nlohmann::json outCropsValues = opDescJson["specificParam"]["outCrops"];
         const int outCropsSizes = int(outCropsValues.size());
+        param.outCrops.resize(outCropsSizes);
         for (int i = 0; i < outCropsSizes; ++i) {
             param.outCrops[i] = outCropsValues[i].get<int>();
         }
@@ -124,6 +136,7 @@ static void NormJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
     {
         const nlohmann::json axesValues = opDescJson["specificParam"]["axes"];
         const int axesSizes = int(axesValues.size());
+        param.axes.resize(axesSizes);
         for (int i = 0; i < axesSizes; ++i) {
             param.axes[i] = axesValues[i].get<int>();
         }
@@ -134,6 +147,35 @@ static void NormJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
     opDesc.specificParam = param;
 }
 
+static void AttentionJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
+{
+    AsdOps::OpParam::Attention param;
+    param.headSize = opDescJson["specificParam"]["headSize"].get<int>();
+    {
+        const nlohmann::json qSeqLenValues = opDescJson["specificParam"]["qSeqLen"];
+        const int qSeqLenSizes = int(qSeqLenValues.size());
+        param.qSeqLen.resize(qSeqLenSizes);
+        for (int i = 0; i < qSeqLenSizes; ++i) {
+            param.qSeqLen[i] = qSeqLenValues[i].get<int>();
+        }
+    }
+    {
+        const nlohmann::json kvSeqLenValues = opDescJson["specificParam"]["kvSeqLen"];
+        const int kvSeqLenSizes = int(kvSeqLenValues.size());
+        param.kvSeqLen.resize(kvSeqLenSizes);
+        for (int i = 0; i < kvSeqLenSizes; ++i) {
+            param.kvSeqLen[i] = kvSeqLenValues[i].get<int>();
+        }
+    }
+    opDesc.specificParam = param;
+}
+
+static void KVCacheJson(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)
+{
+    AsdOps::OpParam::KVCache param = {};
+    opDesc.specificParam = param;
+}
+
 using OpDescSetFunc = std::function<void(const nlohmann::json &, AsdOps::OpDesc &)>;
 
 static const std::map<std::string, OpDescSetFunc> OP_DESC_JSON_FUNC_MAP = {
@@ -141,6 +183,7 @@ static const std::map<std::string, OpDescSetFunc> OP_DESC_JSON_FUNC_MAP = {
     {"SplitOperation", SplitJson},         {"MatMulOperation", MatMulJson},         {"ReduceOperation", ReduceJson},
     {"ConcatOperation", ConcatJson},       {"ResizeOperation", ResizeJson},         {"GatherOperation", GatherJson},
     {"BroadcastOperation", BroadcastJson}, {"TransdataOperation", TransdataJson},   {"NormOperation", NormJson},
+    {"AttentionOperation", AttentionJson}, {"KVCacheOperatoin", KVCacheJson},
 };
 
 void JsonToOpDesc(const nlohmann::json &opDescJson, AsdOps::OpDesc &opDesc)

@@ -13,26 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ANY_OPS_RUNNER_H
-#define ANY_OPS_RUNNER_H
-#include <map>
-#include <string>
-#include <asdops/tensor.h>
-#include "acltransformer/base/ops_runner.h"
-#include "acltransformer/params/any.h"
+#ifndef MATMUL_OPS_RUNNER_BUILDER_H
+#define MATMUL_OPS_RUNNER_BUILDER_H
+#include <asdops/utils/log/log.h>
+#include <asdops/utils/rt/rt.h>
+#include <asdops/utils/singleton/singleton.h>
+#include "acltransformer/config.h"
+#include "acltransformer/runner_builder.h"
+#include "acltransformer/params/matmul.h"
+#include "matmul_ops_runner_910b.h"
 
 namespace AclTransformer {
-class AnyOpsRunner : public OpsRunner {
+class MatmulOpsRunnerBuilder : public RunnerBuilder {
 public:
-    explicit AnyOpsRunner(const AnyParam &param);
-    virtual ~AnyOpsRunner();
+    explicit MatmulOpsRunnerBuilder(const MatmulParam &param) : param_(param)
+    {
+        ASD_LOG(INFO) << "MatmulOperation::MatmulOperation called";
+    }
+    virtual ~MatmulOpsRunnerBuilder() = default;
+    Runner *Build() override
+    {
+        return new MatmulOpsRunner910B(param_);
+    }
 
 private:
-    void ParseNodes();
-
-private:
-    AnyParam param_;
-    std::map<std::string, AsdOps::Tensor *> tensorMap_;
+    MatmulParam param_;
 };
 } // namespace AclTransformer
 #endif

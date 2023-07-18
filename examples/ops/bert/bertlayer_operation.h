@@ -13,26 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ANY_OPS_RUNNER_H
-#define ANY_OPS_RUNNER_H
-#include <map>
-#include <string>
-#include <asdops/tensor.h>
-#include "acltransformer/base/ops_runner.h"
-#include "acltransformer/params/any.h"
+#ifndef OPS_BERT_BERTLAYER_OPERATION_H
+#define OPS_BERT_BERTLAYER_OPERATION_H
+#include "acltransformer/graph_operation.h"
+#include "bertlayer_param.h"
 
 namespace AclTransformer {
-class AnyOpsRunner : public OpsRunner {
+class BertLayerOperation : public GraphOperation {
 public:
-    explicit AnyOpsRunner(const AnyParam &param);
-    virtual ~AnyOpsRunner();
+    explicit BertLayerOperation(const BertLayerParam &param);
+    ~BertLayerOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
+
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
 
 private:
-    void ParseNodes();
-
-private:
-    AnyParam param_;
-    std::map<std::string, AsdOps::Tensor *> tensorMap_;
+    BertLayerParam param_;
 };
 } // namespace AclTransformer
 #endif

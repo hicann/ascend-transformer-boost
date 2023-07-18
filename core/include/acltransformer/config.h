@@ -45,6 +45,7 @@ public:
     bool Is910B();
     bool IsOpsRunnerSetupCacheEnable();
     bool IsOpsRunnerKernelCacheEnable();
+    bool IsConvertNCHWToND() const;
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
@@ -75,6 +76,7 @@ private:
     bool isOpsRunnerSetupCacheEnable_ = false;
     bool isOpsRunnerKernelCacheEnable_ = false;
     bool isUsePpMatmul_ = false;
+    bool isConvertNCHWToND_ = false;
 };
 } // namespace AclTransformer
 #endif

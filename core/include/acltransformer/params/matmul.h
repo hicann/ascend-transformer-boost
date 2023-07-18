@@ -13,26 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ANY_OPS_RUNNER_H
-#define ANY_OPS_RUNNER_H
-#include <map>
-#include <string>
-#include <asdops/tensor.h>
-#include "acltransformer/base/ops_runner.h"
-#include "acltransformer/params/any.h"
-
+#ifndef ACLTRANSFOERM_PARAMS_MATMUL_H
+#define ACLTRANSFOERM_PARAMS_MATMUL_H
 namespace AclTransformer {
-class AnyOpsRunner : public OpsRunner {
-public:
-    explicit AnyOpsRunner(const AnyParam &param);
-    virtual ~AnyOpsRunner();
-
-private:
-    void ParseNodes();
-
-private:
-    AnyParam param_;
-    std::map<std::string, AsdOps::Tensor *> tensorMap_;
+struct MatmulParam {
+    bool transposeA = false;
+    bool transposeB = false;
 };
 } // namespace AclTransformer
 #endif

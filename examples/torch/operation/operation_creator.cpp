@@ -22,6 +22,7 @@
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
+#include "acltransformer/ops/matmul_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
@@ -38,6 +39,7 @@
 #include "acltransformer/ops/norm_quant_operation.h"
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
+#include "examples/ops/bert/bertlayer_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -78,7 +80,14 @@ static AclTransformer::Operation *NormOperationCreate(const nlohmann::json &para
 {
     AclTransformer::NormParam param;
     param.layerNormEps = paramJson["layerNormEps"].get<double>();
-    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps;
+    if (paramJson.contains("beginNormAxis")) {
+        param.beginNormAxis = paramJson["beginNormAxis"].get<int32_t>();
+    }
+    if (paramJson.contains("beginParamsAxis")) {
+        param.beginParamsAxis = paramJson["beginParamsAxis"].get<int32_t>();
+    }
+    ASD_LOG(INFO) << "NormParam layerNormEps:" << param.layerNormEps << ", beginNormAxis:" << param.beginNormAxis
+                  << ", beginParamsAxis:" << param.beginParamsAxis;
     return new AclTransformer::NormOperation(param);
 }
 
@@ -89,6 +98,15 @@ static AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &pa
     param.transposeB = paramJson["transposeB"].get<bool>();
     ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
     return new AclTransformer::LinearOperation(param);
+}
+
+static AclTransformer::Operation *MatmulOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::MatmulParam param;
+    param.transposeA = paramJson["transposeA"].get<bool>();
+    param.transposeB = paramJson["transposeB"].get<bool>();
+    ASD_LOG(INFO) << "MatmulParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
+    return new AclTransformer::MatmulOperation(param);
 }
 
 static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &paramJson)
@@ -277,6 +295,21 @@ AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohm
     return opAddr;
 }
 
+AclTransformer::Operation *BertLayerOperation(const nlohmann::json &paramJson)
+{
+    AclTransformer::BertLayerParam param;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.contains("transKey")) {
+        param.transKey = paramJson["transKey"].get<bool>();
+    }
+    return new AclTransformer::BertLayerOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
@@ -285,6 +318,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
+    {"MatmulOperation", &MatmulOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
     {"MlpOperation", &MlpOperationCreate},
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
@@ -299,6 +333,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"NormQuantOperation", &NormQuantOperationCreate},
     {"LinearQuantOperation", &LinearQuantOperationCreate},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
+    {"BertLayerOperation", &BertLayerOperation},
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)

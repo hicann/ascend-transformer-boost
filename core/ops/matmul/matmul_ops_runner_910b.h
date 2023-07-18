@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * you may not use this file ex10cept in compliance with the License.
  * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -13,20 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef BERTLAYER_H
-#define BERTLAYER_H
-#include "examples/layers/layer.h"
+#ifndef MATMUL_OPS_RUNNER_910B_H
+#define MATMUL_OPS_RUNNER_910B_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/matmul.h"
 
 namespace AclTransformer {
-class BertLayer : public Layer {
+class MatmulOpsRunner910B : public OpsRunner {
 public:
-    BertLayer(const nlohmann::json &paramJson);
-    virtual ~BertLayer();
-    AsdOps::Status InferShape(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) override;
+    explicit MatmulOpsRunner910B(const MatmulParam &param);
+    virtual ~MatmulOpsRunner910B();
 
 private:
-    void BuildGraph();
+    MatmulParam param_;
 };
 } // namespace AclTransformer
 #endif

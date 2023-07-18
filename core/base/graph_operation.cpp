@@ -45,6 +45,8 @@ std::string GraphOperation::Graph::ToString() const
 
 GraphOperation::GraphOperation(const std::string &name) : Operation(name) {}
 
+GraphOperation::GraphOperation(const std::string &name, const Graph &opGraph) : Operation(name), opGraph_(opGraph) {}
+
 GraphOperation::~GraphOperation() {}
 
 uint64_t GraphOperation::GetInTensorCount() const { return opGraph_.inTensorSize; }
