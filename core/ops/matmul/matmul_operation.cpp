@@ -28,7 +28,7 @@ static constexpr int64_t DIM_3 = 3;
 namespace AclTransformer {
 MatmulOperation::MatmulOperation(const MatmulParam &param) : Operation("MatmulOperation"), param_(param)
 {
-    runnerBuilders_ = { new MatmulOpsRunnerBuilder(param_) };
+    runnerBuilders_ = {new MatmulOpsRunnerBuilder(param_)};
 }
 
 MatmulOperation::~MatmulOperation() {}
@@ -44,7 +44,7 @@ uint64_t MatmulOperation::GetOutTensorCount() const
 }
 
 AsdOps::Status MatmulOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-    AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+                                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     // input * weight
     outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
@@ -54,22 +54,22 @@ AsdOps::Status MatmulOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Ten
     // 当前仅支持2维*2维，3维*3维，3维*2维
     if (inTensorADims == DIM_3) {
         auto outTensorDim0 = inTensors.at(0).desc.dims[0];
-        auto outTensorDim1 = param_.transposeA ? inTensors.at(0).desc.dims[inTensorADims - 1] :
-                                                 inTensors.at(0).desc.dims[inTensorADims - 2];
-        auto outTensorDim2 = param_.transposeB ? inTensors.at(1).desc.dims[inTensorBDims - 2] :
-                                                 inTensors.at(1).desc.dims[inTensorBDims - 1];
-        outTensorDescs.at(0).dims = { outTensorDim0, outTensorDim1, outTensorDim2 };
+        auto outTensorDim1 = param_.transposeA ? inTensors.at(0).desc.dims[inTensorADims - 1]
+                                               : inTensors.at(0).desc.dims[inTensorADims - 2];
+        auto outTensorDim2 = param_.transposeB ? inTensors.at(1).desc.dims[inTensorBDims - 2]
+                                               : inTensors.at(1).desc.dims[inTensorBDims - 1];
+        outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
     } else {
         auto outTensorDim0 = param_.transposeA ? inTensors.at(0).desc.dims[1] : inTensors.at(0).desc.dims[0];
         auto outTensorDim1 = param_.transposeB ? inTensors.at(1).desc.dims[0] : inTensors.at(1).desc.dims[1];
-        outTensorDescs.at(0).dims = { outTensorDim0, outTensorDim1 };
+        outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1};
     }
 
     return AsdOps::Status::OkStatus();
 }
 
 bool MatmulOperation::IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
-    AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     ASDOPS_CHECK_TRUE(inTensorDescs.size() == static_cast<size_t>(DIM_2), return false);
     ASDOPS_CHECK_TRUE(outTensorDescs.size() == static_cast<size_t>(DIM_1), return false);
@@ -93,7 +93,6 @@ int64_t MatmulOperation::GetTensorBatch(const AsdOps::TensorDesc &tensorDesc) co
     }
     return tensorDesc.dims[DIM_0];
 }
-
 
 RunnerBuilder *MatmulOperation::FindBestRunnerBuilder() const
 {

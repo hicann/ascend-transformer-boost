@@ -13,13 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_MLP_H
-#define ACLTRANSFOERM_PARAMS_MLP_H
+#ifndef MLP_OPS_GLM130B_RUNNER_H
+#define MLP_OPS_GLM130B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/mlp.h"
 
-#include <vector>
 namespace AclTransformer {
-struct MlpParam {
-    std::string model = "llama7b";
+class MlpOpsGlm130bRunner : public OpsRunner {
+public:
+    explicit MlpOpsGlm130bRunner(const MlpParam &param);
+    virtual ~MlpOpsGlm130bRunner();
+
+private:
+    MlpParam param_;
 };
 } // namespace AclTransformer
 #endif

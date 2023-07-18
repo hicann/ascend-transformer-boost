@@ -15,16 +15,25 @@
  */
 #ifndef MLP_OPS_RUNNER_BUILDER_H
 #define MLP_OPS_RUNNER_BUILDER_H
+#include <asdops/utils/log/log.h>
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/mlp.h"
 #include "mlp_ops_runner.h"
+#include "mlp_ops_glm130b_runner.h"
 
 namespace AclTransformer {
 class MlpOpsRunnerBuilder : public RunnerBuilder {
 public:
     MlpOpsRunnerBuilder(const MlpParam &param) : param_(param) {}
     virtual ~MlpOpsRunnerBuilder() = default;
-    Runner *Build() override { return new MlpOpsRunner(param_); }
+    Runner *Build() override
+    {
+        if (param_.model == "glm130b") {
+            return new MlpOpsGlm130bRunner(param_);
+        } else {
+            return new MlpOpsRunner(param_);
+        }
+    }
 
 private:
     MlpParam param_;
