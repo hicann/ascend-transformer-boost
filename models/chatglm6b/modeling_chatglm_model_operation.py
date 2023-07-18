@@ -807,14 +807,16 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         # Final layer norm before output.
         self.final_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon)
-        
-        
+
         acl_param = json.dumps({"transKey": True, "dk": self.hidden_size_per_attention_head, "headNum": self.num_attention_heads, "layerNum": self.num_layers,
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
         self.acl_operation = torch.classes.ChatGlm6BModelTorch.ChatGlm6BModelTorch()
         self.acl_operation.set_param(acl_param)
         self.weightFlag = False
+        self.present_keys_global = None
+        self.present_values_global = None
+        self.acl_model_out = None
 
     def get_input_embeddings(self):
         return self.word_embeddings
@@ -939,7 +941,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
 
         else:
             attention_mask = attention_mask.to(input_ids.device)
-            
+
         if self.weightFlag is False:
             weights = []
             for i in range(self.num_layers):
@@ -947,18 +949,24 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
                 del weights_t[2]
                 weights.extend(weights_t)
             self.acl_operation.set_weight(weights)
+            self.present_keys_global = [torch.zeros(self.max_sequence_length, 1, self.num_attention_heads, self.hidden_size_per_attention_head,
+                                               device=hidden_states.device, dtype=hidden_states.dtype) for i in range(self.num_layers)]
+            self.present_values_global = [torch.zeros(self.max_sequence_length, 1, self.num_attention_heads, self.hidden_size_per_attention_head,
+                                               device=hidden_states.device, dtype=hidden_states.dtype) for i in range(self.num_layers)]
+            self.acl_model_out = torch.zeros(
+                hidden_states.shape, device=hidden_states.device, dtype=hidden_states.dtype)
             self.weightFlag = True
-        
+
         is_decoder = False
         if past_key_values[0] is not None:
             is_decoder = True
             global cosTable
             global sinTable
             past_keys, past_values = map(list, zip(*past_key_values))
-            acl_model_out = torch.zeros(hidden_states.shape).npu().half()
-            present_keys = [torch.zeros(t.shape[0] + 1, *t.shape[1:]).npu().half() for t in past_keys]
-            present_values = [torch.zeros(t.shape[0] + 1, *t.shape[1:]).npu().half() for t in past_values]
-            self.acl_operation.execute_out(hidden_states, position_ids, cosTable, sinTable, attention_mask, past_keys, past_values, acl_model_out, present_keys, present_values)
+            present_keys = [self.present_keys_global[i][:t.shape[0]+1, ...] for i, t in enumerate(past_keys)]
+            present_values = [self.present_values_global[i][:t.shape[0]+1, ...] for i, t in enumerate(past_values)]
+            self.acl_operation.execute_out(hidden_states, position_ids, cosTable, sinTable,
+                                           attention_mask, past_keys, past_values, self.acl_model_out, present_keys, present_values)
 
         for i, layer in enumerate(self.layers):
 
@@ -986,7 +994,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
 
         # Final layer norm.
         if is_decoder:
-            if torch.allclose(hidden_states, acl_model_out, rtol=0.1, atol=0.1):
+            if torch.allclose(hidden_states, self.acl_model_out, rtol=0.1, atol=0.1):
                 print("equal")
             else:
                 print("not equal")
