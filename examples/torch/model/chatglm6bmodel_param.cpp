@@ -13,13 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_MLP_H
-#define ACLTRANSFOERM_PARAMS_MLP_H
+#include "chatglm6bmodel_param.h"
+#include <nlohmann/json.hpp>
 
-#include <vector>
-namespace AclTransformer {
-struct MlpParam {
-    std::string model = "llama7b";
-};
-} // namespace AclTransformer
-#endif
+void ChatGlm6BModelParam::FromString(const std::string &param)
+{
+    nlohmann::json paramJson = nlohmann::json::parse(param);
+    layerNormEps = paramJson["layerNormEps"].get<double>();
+    headNum = paramJson["headNum"].get<int>();
+    transKey = paramJson["transKey"].get<bool>();
+    dk = paramJson["dk"].get<int>();
+    layerNum = paramJson["layerNum"].get<int>();
+    residualAddScale = paramJson["residualAddScale"].get<float>();
+}

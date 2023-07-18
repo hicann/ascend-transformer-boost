@@ -606,9 +606,9 @@ class GLMBlock(torch.nn.Module):
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
         self.acl_operation = torch.classes.OperationTorch.OperationTorch(
-            "ChatGlm6BLayerOperation")
+            "ChatGlm6BLayerDecoderOperation")
         self.acl_operation.set_name(
-            "ChatGlm6BLayerOperation_" + str(self.layer_id))
+            "ChatGlm6BLayerDecoderOperation_" + str(self.layer_id))
         self.acl_operation.set_param(acl_param)
 
     def forward(

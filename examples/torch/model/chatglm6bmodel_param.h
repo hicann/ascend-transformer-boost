@@ -13,13 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_MLP_H
-#define ACLTRANSFOERM_PARAMS_MLP_H
+#ifndef CHATGLM6BMODEL_PARAM_H
+#define CHATGLM6BMODEL_PARAM_H
+#include <string>
 
-#include <vector>
-namespace AclTransformer {
-struct MlpParam {
-    std::string model = "llama7b";
+struct ChatGlm6BModelParam {
+    double layerNormEps = 0;
+    int headNum = 0;
+    bool transKey = false;
+    int dk = 0;
+    int layerNum = 0;
+    float residualAddScale = 0;
+    void FromString(const std::string &param);
 };
-} // namespace AclTransformer
+
 #endif

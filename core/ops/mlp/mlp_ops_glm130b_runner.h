@@ -13,25 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_OPERATION_H
-#define OPS_CHATGML6B_CHATGLM6BLAYER_OPERATION_H
-#include "acltransformer/graph_operation.h"
-#include "chatglm6blayer_param.h"
+#ifndef MLP_OPS_GLM130B_RUNNER_H
+#define MLP_OPS_GLM130B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/mlp.h"
 
 namespace AclTransformer {
-class ChatGlm6BLayerOperation : public GraphOperation {
+class MlpOpsGlm130bRunner : public OpsRunner {
 public:
-    explicit ChatGlm6BLayerOperation(const ChatGlm6BLayerParam &param);
-    ~ChatGlm6BLayerOperation();
-    uint64_t GetInTensorCount() const override;
-    uint64_t GetOutTensorCount() const override;
-
-protected:
-    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    explicit MlpOpsGlm130bRunner(const MlpParam &param);
+    virtual ~MlpOpsGlm130bRunner();
 
 private:
-    ChatGlm6BLayerParam param_;
+    MlpParam param_;
 };
 } // namespace AclTransformer
 #endif

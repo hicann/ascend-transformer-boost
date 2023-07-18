@@ -13,31 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef MLP_OPS_RUNNER_BUILDER_H
-#define MLP_OPS_RUNNER_BUILDER_H
-#include <asdops/utils/log/log.h>
-#include "acltransformer/runner_builder.h"
-#include "acltransformer/params/mlp.h"
-#include "mlp_ops_runner.h"
-#include "mlp_ops_glm130b_runner.h"
+#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_ENCODER_OPERATION_H
+#define OPS_CHATGML6B_CHATGLM6BLAYER_ENCODER_OPERATION_H
+#include "acltransformer/graph_operation.h"
+#include "chatglm6blayer_param.h"
 
 namespace AclTransformer {
-class MlpOpsRunnerBuilder : public RunnerBuilder {
+class ChatGlm6BLayerEncoderOperation : public GraphOperation {
 public:
-    MlpOpsRunnerBuilder(const MlpParam &param) : param_(param) {}
-    virtual ~MlpOpsRunnerBuilder() = default;
-    Runner *Build() override
-    {
-        if (param_.model == "glm130b") {
-            return new MlpOpsGlm130bRunner(param_);
-        } else {
-            return new MlpOpsRunner(param_);
-        }
-    }
+    explicit ChatGlm6BLayerEncoderOperation(const ChatGlm6BLayerParam &param);
+    ~ChatGlm6BLayerEncoderOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
+
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
 
 private:
-    MlpParam param_;
+    ChatGlm6BLayerParam param_;
 };
-
 } // namespace AclTransformer
 #endif
