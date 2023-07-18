@@ -26,7 +26,6 @@
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/config.h"
 #include "examples/utils/example_util.h"
-#include "examples/layers/bert/bert_layer.h"
 #include "examples/layers/chatglm6b/chatglm6b_layer.h"
 #include "examples/layers/chatglm6b/chatglm6b_fusion_layer.h"
 #include "examples/layers/chatglm6bV2/chatglm6b_layer_v2.h"
@@ -57,9 +56,7 @@ void LayerTorch::SetLayer(std::string param)
 {
     nlohmann::json paramJson = nlohmann::json::parse(param);
     layerId_ = paramJson["layerId"].get<int>();
-    if (layerName_ == "BertLayer") {
-        layer_.reset(new AclTransformer::BertLayer(paramJson));
-    } else if (layerName_ == "ChatGlm6BLayer") {
+    if (layerName_ == "ChatGlm6BLayer") {
         layer_.reset(new AclTransformer::ChatGlm6BLayer(paramJson));
     } else if (layerName_ == "ChatGlm6BFusionLayer") {
         layer_.reset(new AclTransformer::ChatGlm6BFusionLayer(paramJson));
