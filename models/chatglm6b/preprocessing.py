@@ -13,6 +13,7 @@ torch.npu.set_option(option)
 
 
 # 修改transformers的TopPLogitsWarper
+import transformers
 def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
     sorted_logits, sorted_indices = torch.sort(scores, descending=False)
     # cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
