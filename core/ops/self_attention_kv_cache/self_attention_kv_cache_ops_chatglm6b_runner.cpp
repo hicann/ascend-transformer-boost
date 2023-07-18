@@ -41,30 +41,34 @@ SelfAttentionKvCacheOpsChatGlm6bRunner::SelfAttentionKvCacheOpsChatGlm6bRunner(c
     AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(1);
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(2);
 
-    kernelGraph_.internalTensors.resize(9);
+    kernelGraph_.internalTensors.resize(11);
     AsdOps::Tensor &divOut = kernelGraph_.internalTensors.at(0);
     AsdOps::Tensor &transposedQ = kernelGraph_.internalTensors.at(1);
     AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(2);
     AsdOps::Tensor &bmmQkOut = kernelGraph_.internalTensors.at(3);
     AsdOps::Tensor &maskOut = kernelGraph_.internalTensors.at(4);
-    AsdOps::Tensor &attentionScores = kernelGraph_.internalTensors.at(5);
-    AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(6);
-    AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(7);
-    AsdOps::Tensor &bmmVout = kernelGraph_.internalTensors.at(8);
+    AsdOps::Tensor &maskOutF32 = kernelGraph_.internalTensors.at(5);
+    AsdOps::Tensor &attentionScoresF32 = kernelGraph_.internalTensors.at(6);
+    AsdOps::Tensor &attentionProbsF32 = kernelGraph_.internalTensors.at(7);
+    AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(8);
+    AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(9);
+    AsdOps::Tensor &bmmVout = kernelGraph_.internalTensors.at(10);
 
-    kernelGraph_.nodes.resize(12);
+    kernelGraph_.nodes.resize(14);
     auto &mulsQNode = kernelGraph_.nodes.at(0);
     auto &permuteQNode = kernelGraph_.nodes.at(1);
     auto &catKeyNode = kernelGraph_.nodes.at(2);
     auto &permuteKNode = kernelGraph_.nodes.at(3);
     auto &bmmQkNode = kernelGraph_.nodes.at(4);
     auto &maskNode = kernelGraph_.nodes.at(5);
-    auto &mulsMaskOutNode = kernelGraph_.nodes.at(6);
-    auto &softMaxNode = kernelGraph_.nodes.at(7);
-    auto &catValueNode = kernelGraph_.nodes.at(8);
-    auto &permuteVNode = kernelGraph_.nodes.at(9);
-    auto &bmmVNode = kernelGraph_.nodes.at(10);
-    auto &permuteContextNode = kernelGraph_.nodes.at(11);
+    auto &castInNode = kernelGraph_.nodes.at(6);
+    auto &mulsMaskOutNode = kernelGraph_.nodes.at(7);
+    auto &softMaxNode = kernelGraph_.nodes.at(8);
+    auto &castOutNode = kernelGraph_.nodes.at(9);
+    auto &catValueNode = kernelGraph_.nodes.at(10);
+    auto &permuteVNode = kernelGraph_.nodes.at(11);
+    auto &bmmVNode = kernelGraph_.nodes.at(12);
+    auto &permuteContextNode = kernelGraph_.nodes.at(13);
 
     float varAttr = 1.0 / (sqrt(param_.dk) * (param_.layerId + 1));
     mulsQNode.opDesc = {0, "ElewiseOperation",
@@ -123,15 +127,23 @@ SelfAttentionKvCacheOpsChatGlm6bRunner::SelfAttentionKvCacheOpsChatGlm6bRunner(c
         newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(1), oldDims.at(2)};
     };
 
+    castInNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_CAST})};
+    castInNode.inTensors = {&maskOut};
+    castInNode.outTensors = {&maskOutF32};
+
     float scale = param_.layerId + 1.0;
     mulsMaskOutNode.opDesc = {0, "ElewiseOperation",
                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, scale})};
-    mulsMaskOutNode.inTensors = {&maskOut};
-    mulsMaskOutNode.outTensors = {&attentionScores};
+    mulsMaskOutNode.inTensors = {&maskOutF32};
+    mulsMaskOutNode.outTensors = {&attentionScoresF32};
 
     softMaxNode.opDesc = {0, "NormOperation", AsdOps::OpParam::Norm({AsdOps::OpParam::Norm::NORM_SOFTMAX, {-1}})};
-    softMaxNode.inTensors = {&attentionScores};
-    softMaxNode.outTensors = {&attentionProbs};
+    softMaxNode.inTensors = {&attentionScoresF32};
+    softMaxNode.outTensors = {&attentionProbsF32};
+
+    castOutNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_CAST})};
+    castOutNode.inTensors = {&attentionProbsF32};
+    castOutNode.outTensors = {&attentionProbs};
 
     catValueNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({0})};
     catValueNode.inTensors = {&pastValue, &mixedValue};

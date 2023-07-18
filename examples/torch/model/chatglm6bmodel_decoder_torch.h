@@ -13,30 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CHATGLM6B_TORCH_H
-#define CHATGLM6B_TORCH_H
+#ifndef CHATGLM6BMODEL_DECODER_TORCH_H
+#define CHATGLM6BMODEL_DECODER_TORCH_H
 #include <string>
 #include <vector>
 #include <torch/script.h>
 #include <torch/custom_class.h>
 #include <asdops/utils/time/timer.h>
+#include "chatglm6bmodel_param.h"
 #include "acltransformer/operation.h"
 #include "acltransformer/planv2.h"
 
-struct ChatGlm6BModelRopeParam {
-    double layerNormEps = 0;
-    int headNum = 0;
-    bool transKey = false;
-    int dk = 0;
-    int layerNum = 0;
-    float residualAddScale = 0;
-    void FromString(const std::string &param);
-};
-
-class ChatGlm6BModelRopeTorch : public torch::CustomClassHolder {
+class ChatGlm6BModelDecoderTorch : public torch::CustomClassHolder {
 public:
-    ChatGlm6BModelRopeTorch();
-    ~ChatGlm6BModelRopeTorch();
+    ChatGlm6BModelDecoderTorch();
+    ~ChatGlm6BModelDecoderTorch();
     void SetParam(std::string param);
 
     // 每个layer 12个权重
@@ -46,13 +37,16 @@ public:
     std::vector<torch::Tensor> Execute(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
                                        torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
                                        torch::Tensor attentionMaskTensor, std::vector<torch::Tensor> pastKeyTensors,
-                                       std::vector<torch::Tensor> pastValueTensors, torch::Tensor seqLen);
+                                       std::vector<torch::Tensor> pastValueTensors);
     void ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor, torch::Tensor cosTableTensor,
                     torch::Tensor sinTableTensor, torch::Tensor attentionMaskTensor,
                     std::vector<torch::Tensor> pastKeyTensors, std::vector<torch::Tensor> pastValueTensors,
                     torch::Tensor outTensor, std::vector<torch::Tensor> presendKeyTensors,
-                    std::vector<torch::Tensor> presentValueTensors, torch::Tensor seqLen);
-    c10::intrusive_ptr<ChatGlm6BModelRopeTorch> clone() const { return c10::make_intrusive<ChatGlm6BModelRopeTorch>(); }
+                    std::vector<torch::Tensor> presentValueTensors);
+    c10::intrusive_ptr<ChatGlm6BModelDecoderTorch> clone() const
+    {
+        return c10::make_intrusive<ChatGlm6BModelDecoderTorch>();
+    }
 
 private:
     void BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors, torch::Tensor &outTensor,
@@ -63,14 +57,14 @@ private:
                         torch::Tensor &attentionMaskTensor, std::vector<torch::Tensor> &pastKeyTensors,
                         std::vector<torch::Tensor> &pastValueTensors, torch::Tensor &outTensor,
                         std::vector<torch::Tensor> &presendKeyTensors, std::vector<torch::Tensor> &presentValueTensors,
-                        torch::Tensor &seqLen, bool newOut);
+                        bool newOut);
     // IN:hiddenStateTensor+12个权重+positionIdTensor+cosTable+sinTable+attentionMaskTensor+pastKeyTensor+pastValueTensor
     // OUT:outTensor + presendKey + presentValue
     void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
                                 torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut);
 
 private:
-    ChatGlm6BModelRopeParam modelParam_;
+    ChatGlm6BModelParam modelParam_;
     std::vector<std::shared_ptr<AclTransformer::Operation>> operations_;
     std::vector<std::shared_ptr<AclTransformer::PlanV2>> planv2s_;
     std::vector<torch::Tensor> weightTensors_;
