@@ -1,4 +1,5 @@
 import transformers
+import readline
 from transformers import AutoTokenizer, AutoModel
 import signal
 import platform
@@ -8,7 +9,10 @@ import torch
 # 适配昇腾NPU
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
-torch.npu.set_device(torch.device("npu:0"))
+DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
+if DEVICE_ID is not None:
+    print(f"user npu:{DEVICE_ID}")
+    torch.npu.set_device(torch.device(f"npu:{DEVICE_ID}"))
 
 # 使用二进制优化，消除动态shape的编译问题
 torch.npu.set_compile_mode(jit_compile=False)
@@ -90,7 +94,7 @@ def main():
             break
         if query.strip() == "clear":
             history = []
-            os.system(clear_command)
+            # os.system(clear_command)
             print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
             continue
         count = 0
@@ -99,6 +103,8 @@ def main():
         model.cur_time = 0
         model.first = 0
         model.total = 0
+        model.pre_processing = 0
+        model.post_processing = 0
         for response, history in model.stream_chat(tokenizer, query, history=history):
             if stop_stream:
                 stop_stream = False
@@ -106,23 +112,29 @@ def main():
             else:
                 count += 1
                 if count % 10 == 0:
-                    os.system(clear_command)
+                    # os.system(clear_command)
                     print(build_prompt(history), flush=True)
-                    signal.signal(signal.SIGINT, signal_handler)
-                if question > 0:
+                    # signal.signal(signal.SIGINT, signal_handler)
+                if question > 1:
                     if model.count == 1:
-                        output_file.write(f"First token time:\n{model.first}ms\n")
+                        output_file.write(f"pre_processing: {model.post_processing}ms, " + \
+                            f"First token time: {model.first}ms\n")
                         output_file.write("Per token time\n")
                     elif model.count < test_tokens_num:
-                        output_file.write(f"{model.cur_time}ms\n")
+                        output_file.write(f"{model.count}: {model.cur_time}ms, " + \
+                            f"post_processing: {model.post_processing}ms\n")
                     else:
-                        output_file.write(f"{model.cur_time}ms\n")
-                        output_file.write("Average token time without first token\n")
-                        output_file.write(f"{model.total / (test_tokens_num - 1)}ms\n")
-                        output_file.write(f"Response time\n{model.first + model.total}ms\n")
+                        output_file.write(f"{model.count}: {model.cur_time}ms, " + \
+                            f"post_processing: {model.post_processing}ms\n")
+                        output_file.write(
+                            "Average token time without first token\n")
+                        output_file.write(
+                            f"{model.total / (test_tokens_num - 1)}ms\n")
+                        output_file.write(
+                            f"Response time\n{model.first + model.total}ms\n")
                         output_file.close()
                         exit()
-        os.system(clear_command)
+        # os.system(clear_command)
         print(build_prompt(history), flush=True)
 
 

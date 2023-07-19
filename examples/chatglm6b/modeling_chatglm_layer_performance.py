@@ -203,15 +203,6 @@ class RotaryEmbedding(torch.nn.Module):
         return self.cos_cached[:seq_len, ...], self.sin_cached[:seq_len, ...]
 
 
-inv_freq_global = 1. / \
-    (10000 ** (torch.arange(0, 64, 2).float() / 64)).npu().half()
-temp_global = torch.arange(2049, device='cpu').npu().half()
-freqs_global = torch.einsum('i,j->ij', temp_global, inv_freq_global)
-emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
-cosTable = emb_global.cos().unsqueeze(1)
-sinTable = emb_global.sin().unsqueeze(1)
-
-
 def rotate_half(x):
     x1, x2 = x[..., :x.shape[-1] // 2], x[..., x.shape[-1] // 2:]
     # dim=-1 triggers a bug in earlier torch versions
@@ -604,19 +595,27 @@ class GLMBlock(torch.nn.Module):
             params_dtype=params_dtype,
         )
         acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
-        acl_param_encode = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id, "phase": "encoder",
-                                       "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
+                                "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
-        self.acl_layer = torch.classes.LayerTorch.LayerTorch(
-            "ChatGlm6BFusionLayer", acl_param)
-        self.acl_layer_encoder = torch.classes.LayerTorch.LayerTorch(
-            "ChatGlm6BLayer", acl_param_encode)
-
-        self.input = []
-        self.input_flag = False
+        self.acl_encoder_operation = torch.classes.OperationTorch.OperationTorch(
+            "ChatGlm6BLayerEncoderRopeOperation")
+        self.acl_encoder_operation.set_name(
+            "ChatGlm6BLayerEncoderRopeOperation_" + str(self.layer_id))
+        self.acl_encoder_operation.set_param(acl_param)
+        self.acl_decoder_operation = torch.classes.OperationTorch.OperationTorch(
+            "ChatGlm6BLayerDecoderRopeOperation")
+        self.acl_decoder_operation.set_name(
+            "ChatGlm6BLayerDecoderRopeOperation_" + str(self.layer_id))
+        self.acl_decoder_operation.set_param(acl_param)
+        
         self.input_full = []
         self.input_full_flag = False
+        self.input = []
+        self.input_flag = False
+
+        self.rotary_flag = False
+        self.cos = None
+        self.sin = None
 
     def forward(
             self,
@@ -636,11 +635,19 @@ class GLMBlock(torch.nn.Module):
         test_glmBlockOut = None
         test_presentKey = None
         test_presentValue = None
-        global cosTable
-        global sinTable
 
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
+        if not self.rotary_flag:
+            self.rotary_flag = True
+            temp_global = torch.arange(2048, device='cpu').npu().half()
+            freqs_global = torch.einsum('i,j->ij', temp_global, self.attention.rotary_emb.inv_freq)
+            emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
+            self.cos = emb_global.cos().unsqueeze(1)
+            self.sin = emb_global.sin().unsqueeze(1)
+
+        seq_len = torch.tensor([hidden_states.shape[0]]
+                               * hidden_states.shape[1]).npu()
         if layer_past is None:
             if not self.input_full_flag:
                 self.input_full_flag = True
@@ -649,15 +656,17 @@ class GLMBlock(torch.nn.Module):
                 del weights[2]
                 self.input_full.extend(weights)
                 self.input_full.append(position_ids)
-                self.input_full.append(cosTable)
-                self.input_full.append(sinTable)
+                self.input_full.append(self.cos)
+                self.input_full.append(self.sin)
                 self.input_full.append(attention_mask)
+                self.input_full.append(seq_len)
             else:
                 self.input_full[0] = hidden_states
                 self.input_full[13] = position_ids
                 self.input_full[16] = attention_mask
+                self.input_full[17] = seq_len
 
-            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer_encoder.execute(
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_encoder_operation.execute(
                 self.input_full)
 
         else:
@@ -665,14 +674,12 @@ class GLMBlock(torch.nn.Module):
             if not self.input_flag:
                 self.input_flag = True
                 self.input = [hidden_states]
-                seq_len = torch.tensor(
-                    [hidden_states.shape[0]] * hidden_states.shape[1]).npu()
                 weights = list(self.state_dict().values())
                 del weights[2]
                 self.input.extend(weights)
                 self.input.append(position_ids)
-                self.input.append(cosTable)
-                self.input.append(sinTable)
+                self.input.append(self.cos)
+                self.input.append(self.sin)
                 self.input.append(attention_mask)
                 self.input.append(pastKey)
                 self.input.append(pastValue)
@@ -683,8 +690,9 @@ class GLMBlock(torch.nn.Module):
                 self.input[16] = attention_mask
                 self.input[17] = pastKey
                 self.input[18] = pastValue
+                self.input[19] = seq_len
 
-            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_decoder_operation.execute(
                 self.input)
 
         outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
