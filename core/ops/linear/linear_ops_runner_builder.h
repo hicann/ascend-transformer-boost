@@ -27,10 +27,7 @@
 namespace AclTransformer {
 class LinearOpsRunnerBuilder : public RunnerBuilder {
 public:
-    LinearOpsRunnerBuilder(const LinearParam &param) : param_(param)
-    {
-        ASD_LOG(INFO) << "LinearOperation::LinearOperation called";
-        }
+    LinearOpsRunnerBuilder(const LinearParam &param) : param_(param) {}
     virtual ~LinearOpsRunnerBuilder() = default;
     Runner *Build() override
     {

@@ -31,6 +31,7 @@ Plan::~Plan() {}
 
 AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 {
+    ASD_LOG(INFO) << name_ << " setup start";
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
 
@@ -55,7 +56,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
     runnerVariantPack_.workspaceBufferSize = runner_->GetWorkspaceBufferSize();
     runnerVariantPack_.intermediateBufferSize = runner_->GetIntermediateBufferSize();
 
-    ASD_LOG(INFO) << name_ << " runner setup success, tilingBufferSize:" << runnerVariantPack_.tilingBufferSize
+    ASD_LOG(INFO) << name_ << " setup success, tilingBufferSize:" << runnerVariantPack_.tilingBufferSize
                   << ", workspaceBufferSize:" << runnerVariantPack_.workspaceBufferSize
                   << ", intermediateBufferSize:" << runnerVariantPack_.intermediateBufferSize;
     return AsdOps::Status::OkStatus();
@@ -69,12 +70,13 @@ uint64_t Plan::GetWorkspaceSize()
 
 AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
 {
+    ASD_LOG(INFO) << name_ << " execute start";
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
     runnerVariantPack_.tilingBuffer = variantPack.workspace;
-    runnerVariantPack_.workspaceBuffer = (char *)variantPack.workspace + runnerVariantPack_.tilingBufferSize;
+    runnerVariantPack_.workspaceBuffer = (uint8_t *)variantPack.workspace + runnerVariantPack_.tilingBufferSize;
     runnerVariantPack_.intermediateBuffer =
-        (char *)variantPack.workspace + runnerVariantPack_.tilingBufferSize + runnerVariantPack_.workspaceBufferSize;
+        (uint8_t *)variantPack.workspace + runnerVariantPack_.tilingBufferSize + runnerVariantPack_.workspaceBufferSize;
 
     AsdOps::Status st = CopyHostTilingToDevice(handle);
     if (!st.Ok()) {
@@ -87,7 +89,7 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
         return st;
     }
 
-    ASD_LOG(INFO) << name_ << " runner execute success";
+    ASD_LOG(INFO) << name_ << " execute success";
     return AsdOps::Status::OkStatus();
 }
 
@@ -110,11 +112,12 @@ AsdOps::Status Plan::CopyHostTilingToDevice(Handle handle)
         int ret = AsdRtMemCopyAsync(runnerVariantPack_.tilingBuffer, runnerVariantPack_.tilingBufferSize,
                                     hostTilingBuffer_.data(), runnerVariantPack_.tilingBufferSize,
                                     ASDRT_MEMCOPY_HOST_TO_DEVICE, handle.stream);
-        AsdOps::GetSingleton<Statistic>().tillingCopyTime = timer.ElapsedMicroSecond();
+        AsdOps::GetSingleton<Statistic>().tillingCopyTime += timer.ElapsedMicroSecond();
         if (ret != 0) {
             ASD_LOG(ERROR) << name_ << " copy host tiling to device fail, ret:" << ret;
             return AsdOps::Status::FailStatus(1, "copy host tiling to device fail");
         }
+        ASD_LOG(INFO) << name_ << " copy host tiling to device success";
     }
     return AsdOps::Status::OkStatus();
 }

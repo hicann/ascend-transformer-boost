@@ -304,6 +304,7 @@ AsdOps::Status GraphRunner::SetupAllRunners()
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
+        ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] setup start";
         AsdOps::Status st = node.runner->Setup(node.runnerVariantPack);
         if (!st.Ok()) {
             ASD_LOG(ERROR) << GetName() << " node[" << nodeId << "] setup fail, error:" << st.Message();

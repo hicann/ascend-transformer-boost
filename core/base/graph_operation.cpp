@@ -55,7 +55,7 @@ uint64_t GraphOperation::GetOutTensorCount() const { return opGraph_.outTensorSi
 
 Runner *GraphOperation::CreateBestRunner() const
 {
-    GraphRunner *runner = new GraphRunner(GetName() + "Runner");
+    GraphRunner *runner = new GraphRunner(GetName() + "GraphRunner");
     if (runner == nullptr) {
         ASD_LOG(ERROR) << name_ << " new GraphRunner fail";
         return nullptr;

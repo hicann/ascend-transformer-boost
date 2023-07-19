@@ -92,8 +92,8 @@ private:
     void RunAllKernel(Handle &handle);
     bool IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
                                        const RunnerVariantPack &runnerVariantPack2);
-    bool IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::RunInfo &runInfo2);
     void InitTensorsType();
+    void CalcKernelWorkspace();
 
 protected:
     KernelGraph kernelGraph_;
