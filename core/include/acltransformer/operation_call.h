@@ -22,7 +22,7 @@
 
 namespace AclTransformer {
 class Operation;
-class PlanV2;
+class Plan;
 
 class OperationCall {
 public:
@@ -35,7 +35,7 @@ public:
 
 private:
     std::shared_ptr<Operation> operation_;
-    std::shared_ptr<PlanV2> plan_;
+    std::shared_ptr<Plan> plan_;
 };
 } // namespace AclTransformer
 #endif

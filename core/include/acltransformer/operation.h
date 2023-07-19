@@ -25,7 +25,7 @@
 namespace AclTransformer {
 class Runner;
 class RunnerBuilder;
-class PlanV2;
+class Plan;
 class Operation {
 public:
     Operation(const std::string &name);
@@ -35,12 +35,11 @@ public:
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const;
     virtual uint64_t GetInTensorCount() const = 0;
     virtual uint64_t GetOutTensorCount() const = 0;
-    AsdOps::Status BuildPlan(PlanV2 *planv2);
+    AsdOps::Status BuildPlan(Plan *plan);
 
 protected:
     virtual Runner *CreateBestRunner() const;
     friend class GraphOperation;
-    friend class PlanBuilder;
 
 protected:
     virtual AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,

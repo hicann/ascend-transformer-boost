@@ -78,7 +78,8 @@ link_directories(
 
 add_subdirectory(core)
 if(USE_EXAMPLES)
-    add_subdirectory(examples)
+    add_subdirectory(models)
+    add_subdirectory(torch)
 endif()
 if(USE_UT_TEST)
     add_subdirectory(tests)
@@ -87,15 +88,15 @@ add_subdirectory(tools)
 
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/bin DESTINATION .)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so 
+install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so
         DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so 
+install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so
         DESTINATION lib)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/host DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/device DESTINATION .)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/platform_configs 
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/platform_configs
         DESTINATION .)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include/asdops 
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include/asdops
         DESTINATION include)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/core/include/acltransformer 
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/core/include/acltransformer
         DESTINATION include)
