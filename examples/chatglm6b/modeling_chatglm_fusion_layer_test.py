@@ -644,10 +644,10 @@ class GLMBlock(torch.nn.Module):
         test_in = None
 
         batch_num = hidden_states.size(1)
-        layer_id_input = torch.tensor([layer_id], dtype=torch.half).npu()
-        seq_len = torch.ones(batch_num, dtype=torch.half).npu()
+        layer_id_input = torch.tensor([layer_id], dtype=torch.int32).npu()
+        seq_len = torch.ones(batch_num, dtype=torch.int32).npu()
         token_offset = torch.full(
-            (batch_num,), token_num[layer_id], dtype=torch.half, device=kv_cache.device)
+            (batch_num,), token_num[layer_id], dtype=torch.int32, device=kv_cache.device)
 
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
@@ -712,8 +712,8 @@ class GLMBlock(torch.nn.Module):
         output = mlp_input * alpha + mlp_output
 
         if use_cache:
-            token_num[layer_id] = outputs[0][0].shape[0]
             if not increment_flags[layer_id]:
+                token_num[layer_id] = outputs[0][0].shape[0]
                 kv_cache[0, layer_id, 0, :token_num[layer_id], ...] = outputs[0][0].transpose(
                     0, 1)  # batch = 1
                 kv_cache[1, layer_id, 0, :token_num[layer_id], ...] = outputs[0][1].transpose(
@@ -723,10 +723,9 @@ class GLMBlock(torch.nn.Module):
                     (batch_num,), token_num[layer_id], dtype=torch.int32, device=kv_cache.device)
 
         if increment_flags[layer_id]:
+            token_num[layer_id] = token_num[layer_id] + 1
             token_offset = torch.full(
                 (batch_num,), token_num[layer_id], dtype=torch.int32, device=kv_cache.device)
-            # print(outputs[0][0].shape)
-            # print(outputs[0][1].shape)
             layer_id_input = torch.tensor([layer_id], dtype=torch.int32).npu()
 
             if seq_len is None:
@@ -743,6 +742,8 @@ class GLMBlock(torch.nn.Module):
             print("attention mask:" + str(attention_mask.shape))
             attention_mask_max[:attention_mask_side,
                                :attention_mask_side] = attention_mask.to(torch.half)
+            if seq_len[0] == 1:
+                attention_mask_max = torch.zeros(2048, 2048, dtype=torch.half).npu()
             inputs.extend(weights)
             inputs.append(position_ids)
             inputs.append(cosTable)
@@ -750,8 +751,8 @@ class GLMBlock(torch.nn.Module):
             inputs.append(attention_mask_max)
             inputs.append(k_cache_input)
             inputs.append(v_cache_input)
-            inputs.append(seq_len)
             inputs.append(token_offset)
+            inputs.append(seq_len)
             inputs.append(layer_id_input)
             global glm_block
 
@@ -764,9 +765,7 @@ class GLMBlock(torch.nn.Module):
             # assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut[0].view(
             #     test_glmBlockOut[0].numel()), dim=0).item() >= 0.99, 'fail'
             print("success!")
-            # output = test_glmBlockOut[0]
-
-            token_num[layer_id] = token_num[layer_id] + 1
+            output = test_glmBlockOut[0]
 
         if not increment_flags[layer_id]:
             increment_flags[layer_id] = True
