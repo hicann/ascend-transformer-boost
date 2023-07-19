@@ -17,6 +17,9 @@
 #include <algorithm>
 #include <sstream>
 #include <fstream>
+#include <unistd.h>
+#include <cstring>
+#include <syscall.h>
 #include <sys/stat.h>
 #include <asdops/ops.h>
 #include <asdops/utils/log/log.h>
@@ -26,6 +29,7 @@
 #include <asdops/utils/filesystem/filesystem.h>
 #include "acltransformer/utils/mem_allocation_solver/best_mem_allocation_solver.h"
 #include "acltransformer/utils/tensor_util.h"
+#include "acltransformer/utils/profiling/profiling_funcs.h"
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "acltransformer/kernel_cache.h"
@@ -298,6 +302,49 @@ void OpsRunner::UpdateRunInfoWorkspace(RunnerVariantPack &runnerVariantPack)
     }
 }
 
+#ifdef USE_PROFILING
+void OpsRunner::ReportLaunchInfo(const uint64_t beginTime, const char *opName)
+{
+    MsProfApi info{};
+    info.type = MSPROF_REPORT_NODE_LAUNCH_TYPE;
+    const size_t nameLen = strlen(opName);
+    info.itemId = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(opName, nameLen);
+    info.level = MSPROF_REPORT_NODE_LEVEL;
+    const uint64_t endTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
+    info.threadId = static_cast<uint32_t>(syscall(SYS_gettid));
+    info.beginTime = beginTime;
+    info.endTime = endTime;
+    info.magicNumber = MSPROF_REPORT_DATA_MAGIC_NUM;
+    info.reserve = 0;
+    auto ret = AsdOps::GetSingleton<AsdProfiling>().AsdReportApi(true, &info);
+    if (ret != 0) {
+        ASD_LOG(ERROR) << "AsdReportApi error!";
+    }
+}
+
+void OpsRunner::ReportAdditionalInfo(const uint64_t timeStamp, const char *opName)
+{
+    const size_t nameLen = strlen(opName);
+    const uint64_t nameHash = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(opName, nameLen);
+    MsprofCompactInfo nodeBasicInfo{};
+    auto &profNodeBasicInfo = nodeBasicInfo.data.nodeBasicInfo;
+    profNodeBasicInfo.opName = nameHash;
+    profNodeBasicInfo.opType = nameHash;
+    profNodeBasicInfo.taskType = MSPROF_GE_TASK_TYPE_AI_CORE;
+    profNodeBasicInfo.blockDim = 0;
+    nodeBasicInfo.level = static_cast<uint16_t>(MSPROF_REPORT_NODE_LEVEL);
+    nodeBasicInfo.type = MSPROF_REPORT_NODE_BASIC_INFO_TYPE;
+    nodeBasicInfo.timeStamp = timeStamp;
+    nodeBasicInfo.threadId = static_cast<uint32_t>(syscall(SYS_gettid));
+    auto ret = AsdOps::GetSingleton<AsdProfiling>().AsdReportCompactInfo(
+        static_cast<uint32_t>(true), static_cast<void *>(&nodeBasicInfo),
+        static_cast<uint32_t>(sizeof(MsprofCompactInfo)));
+    if (ret != 0) {
+        ASD_LOG(ERROR) << "AsdReportCompactInfo error!";
+    }
+}
+#endif
+
 void OpsRunner::RunAllKernel(Handle &handle)
 {
     ASD_LOG(INFO) << GetName() << " start run all kernel, kernel count:" << kernelGraph_.nodes.size();
@@ -318,7 +365,16 @@ void OpsRunner::RunAllKernel(Handle &handle)
         }
 
         AsdOps::Timer timer;
+#ifdef USE_PROFILING
+        const auto beginTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
+#endif
+
         AsdOps::Status st = kernel->Run(kernelRunInfo);
+
+#ifdef USE_PROFILING
+        ReportLaunchInfo(beginTime, kernel->GetName().c_str());
+        ReportAdditionalInfo(beginTime + 1, kernel->GetName().c_str());
+#endif
         AsdOps::GetSingleton<Statistic>().kernelExecuteTime += timer.ElapsedMicroSecond();
 
         if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryKernelEnable()) {

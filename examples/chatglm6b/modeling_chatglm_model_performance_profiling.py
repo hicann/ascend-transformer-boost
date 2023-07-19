@@ -1321,7 +1321,13 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
             # forward pass to get next token
-            torch.npu.synchronize()
+
+            stream = torch.npu.current_stream()
+            stream.synchronize()
+            prof = torch.npu.profile('./')
+            if self.count == 50:
+                prof.__enter__()
+            
             start = time.time()
             outputs = self(
                 **model_inputs,
@@ -1329,8 +1335,13 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 output_attentions=False,
                 output_hidden_states=False,
             )
-            torch.npu.synchronize()
             end = time.time()
+
+            stream = torch.npu.current_stream()
+            stream.synchronize()
+            if self.count == 50:
+                prof.__exit__(None, None, None)
+            
             self.count += 1
             self.cur_time = (end - start) * 1000
             if self.count == 1:
