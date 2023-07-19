@@ -204,15 +204,6 @@ class RotaryEmbedding(torch.nn.Module):
         return self.cos_cached[:seq_len, ...], self.sin_cached[:seq_len, ...]
 
 
-inv_freq_global = 1. / \
-    (10000 ** (torch.arange(0, 64, 2).float() / 64)).npu().half()
-temp_global = torch.arange(2049, device='cpu').npu().half()
-freqs_global = torch.einsum('i,j->ij', temp_global, inv_freq_global)
-emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
-cosTable = emb_global.cos().unsqueeze(1)
-sinTable = emb_global.sin().unsqueeze(1)
-
-
 def rotate_half(x):
     x1, x2 = x[..., :x.shape[-1] // 2], x[..., x.shape[-1] // 2:]
     # dim=-1 triggers a bug in earlier torch versions
@@ -605,16 +596,6 @@ class GLMBlock(torch.nn.Module):
             params_dtype=params_dtype,
         )
 
-        acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id,
-                                "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
-        acl_param_encode = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerId": self.layer_id, "phase": "encoder",
-                                       "layerNormEps": self.layernorm_epsilon, "ResidualAddScale": math.sqrt(2 * self.num_layers)})
-
-        self.acl_layer = torch.classes.LayerTorch.LayerTorch(
-            "ChatGlm6BLayer", acl_param)
-        self.acl_layer_encoder = torch.classes.LayerTorch.LayerTorch(
-            "ChatGlm6BLayer", acl_param_encode)
-
     def forward(
             self,
             hidden_states: torch.Tensor,
@@ -629,27 +610,49 @@ class GLMBlock(torch.nn.Module):
         hidden_states: [seq_len, batch, hidden_size]
         attention_mask: [(1, 1), seq_len, seq_len]
         """
-        global cosTable
-        global sinTable
-        inputs = [hidden_states]
-        weights = list(self.state_dict().values())
-        del weights[2]
-        inputs.extend(weights)
-        inputs.append(position_ids)
-        inputs.append(cosTable)
-        inputs.append(sinTable)
-        inputs.append(attention_mask)
-        if layer_past is None:
-            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer_encoder.execute(
-                inputs)
-        else:
-            pastKey, pastValue = layer_past
-            inputs.append(pastKey)
-            inputs.append(pastValue)
-            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_layer.execute(
-                inputs)
 
-        outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
+        test_glmBlockOut = None
+        test_presentKey = None
+        test_presentValue = None
+        test_in = None
+
+        # Layer norm at the begining of the transformer layer.
+        # [seq_len, batch, hidden_size]
+        if layer_past is not None:
+            test_in = hidden_states
+        attention_input = self.input_layernorm(hidden_states)
+
+        # Self attention.
+        attention_outputs = self.attention(
+            attention_input,
+            position_ids,
+            attention_mask=attention_mask,
+            layer_id=layer_id,
+            layer_past=layer_past,
+            use_cache=use_cache,
+            output_attentions=output_attentions
+        )
+
+        attention_output = attention_outputs[0]
+
+        outputs = attention_outputs[1:]
+
+        # Residual connection.
+        alpha = (2 * self.num_layers) ** 0.5
+        hidden_states = attention_input * alpha + attention_output
+
+        mlp_input = self.post_attention_layernorm(hidden_states)
+
+        # MLP.
+        mlp_output = self.mlp(mlp_input)
+
+        # Second residual connection.
+        output = mlp_input * alpha + mlp_output
+
+        if use_cache:
+            outputs = (output,) + outputs
+        else:
+            outputs = (output,) + outputs[1:]
 
         return outputs  # hidden_states, present, attentions
 
@@ -801,11 +804,15 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         acl_param = json.dumps({"transKey": True, "dk": self.hidden_size_per_attention_head, "headNum": self.num_attention_heads, "layerNum": self.num_layers,
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
-        self.acl_encoder_operation = torch.classes.ChatGlm6BModelEncoderTorch.ChatGlm6BModelEncoderTorch()
+        self.acl_encoder_operation = torch.classes.ChatGlm6BModelEncoderRopeTorch.ChatGlm6BModelEncoderRopeTorch()
         self.acl_encoder_operation.set_param(acl_param)
-        self.acl_decoder_operation = torch.classes.ChatGlm6BModelDecoderTorch.ChatGlm6BModelDecoderTorch()
+        self.acl_decoder_operation = torch.classes.ChatGlm6BModelDecoderRopeTorch.ChatGlm6BModelDecoderRopeTorch()
         self.acl_decoder_operation.set_param(acl_param)
         self.weightFlag = False
+        
+        self.rotary_flag = False
+        self.cos = None
+        self.sin = None
 
     def get_input_embeddings(self):
         return self.word_embeddings
@@ -941,17 +948,25 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             self.acl_decoder_operation.set_weight(weights)
             self.weightFlag = True
 
-        global cosTable
-        global sinTable
+        if not self.rotary_flag:
+            self.rotary_flag = True
+            temp_global = torch.arange(2048, device='cpu').npu().half()
+            freqs_global = torch.einsum('i,j->ij', temp_global, self.layers[0].attention.rotary_emb.inv_freq)
+            emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
+            self.cos = emb_global.cos().unsqueeze(1)
+            self.sin = emb_global.sin().unsqueeze(1)
+
+        seq_len = torch.tensor(
+            [hidden_states.shape[0]] * hidden_states.shape[1], device=hidden_states.device)
         if past_key_values[0] is None:
             acl_model_out = self.acl_encoder_operation.execute(
-                hidden_states, position_ids, cosTable, sinTable, attention_mask)
+                hidden_states, position_ids, self.cos, self.sin, attention_mask, seq_len)
             presents = tuple(
                 zip(acl_model_out[1:self.num_layers + 1], acl_model_out[self.num_layers + 1:]))
         else:
             past_keys, past_values = map(list, zip(*past_key_values))
             acl_model_out = self.acl_decoder_operation.execute(
-                hidden_states, position_ids, cosTable, sinTable, attention_mask, past_keys, past_values)
+                hidden_states, position_ids, self.cos, self.sin, attention_mask, past_keys, past_values, seq_len)
             presents = tuple(
                 zip(acl_model_out[1:self.num_layers + 1], acl_model_out[self.num_layers + 1:]))
         hidden_states = acl_model_out[0]
