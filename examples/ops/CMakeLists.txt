@@ -1,2 +1,0 @@
-file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
-add_library(examples_ops OBJECT ${SOURCE_FILES})

@@ -28,7 +28,7 @@ if ACLTRANSFORMER_HOME_PATH is None:
         "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
 
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
-                        "examples/libacltransformer_torch.so")
+                        "lib/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
 
 DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
