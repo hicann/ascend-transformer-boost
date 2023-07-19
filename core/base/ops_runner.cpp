@@ -159,7 +159,7 @@ void OpsRunner::FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t ti
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         uint64_t tilingSize = tilingSizes_.at(nodeId);
         if (tilingSize > 0) {
-            ASD_LOG(INFO) << GetName() << " " << kernel->GetName()
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << kernel->GetName()
                           << " InitHostLaunchBuffer start, tilingSize:" << tilingSize << ", offset:" << offset
                           << ", runinfo:\n"
                           << kernelRunInfo.ToString();
@@ -169,28 +169,36 @@ void OpsRunner::FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t ti
                                       "_" + kernel->GetName();
                 WriteTilingData(static_cast<char *>(hostTilingBuffer) + offset, tilingSize, fileDir);
             }
-            ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " InitHostLaunchBuffer success";
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << kernel->GetName()
+                          << " InitHostLaunchBuffer success";
             offset += tilingSize;
         }
     }
 
+    CalcKernelWorkspace();
+}
+
+void OpsRunner::CalcKernelWorkspace()
+{
     uint64_t maxKernelWorkspaceSize = 0;
-    for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
-        KernelGraphNode &node = kernelGraph_.nodes.at(i);
+    for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
+        KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
-        uint64_t tilingSize = tilingSizes_.at(i);
+        uint64_t tilingSize = tilingSizes_.at(nodeId);
         if (tilingSize > 0) {
             const AsdOps::SVector<int64_t> &workspaces = kernelRunInfo.GetWorkSpace();
-            ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " workspaces.size:" << workspaces.size();
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << kernel->GetName()
+                          << " workspaces.size:" << workspaces.size();
             uint64_t kernelWorkspaceSize = 0;
             for (size_t i = 0; i < workspaces.size(); ++i) {
                 kernelWorkspaceSize += workspaces.at(i);
-                ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " workspaces[" << i
+                ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << kernel->GetName() << " workspaces[" << i
                               << "]:" << workspaces.at(i);
             }
             kernelWorkspaceSize = TensorUtil::AlignInt(int64_t(kernelWorkspaceSize), 32);
-            ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " kernelWorkspaceSize:" << kernelWorkspaceSize
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << kernel->GetName()
+                          << " kernelWorkspaceSize:" << kernelWorkspaceSize
                           << ", maxKernelWorkspaceSize:" << maxKernelWorkspaceSize;
             maxKernelWorkspaceSize = std::max(maxKernelWorkspaceSize, kernelWorkspaceSize);
         }
@@ -372,7 +380,8 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
 
     AsdOps::Operation *op = AsdOps::Ops::Instance().GetOperationByName(node.opDesc.opName);
     if (op == nullptr) {
-        ASD_LOG(ERROR) << GetName() << " get operation by name fail, opName:" << node.opDesc.opName;
+        ASD_LOG(ERROR) << GetName() << " node[" << nodeId
+                       << "] get operation by name fail, opName:" << node.opDesc.opName;
         return false;
     }
 
@@ -391,7 +400,7 @@ bool OpsRunner::PlanOneKernel(size_t nodeId)
     if (it != maxNodeIdTensorMap_.end()) {
         for (auto tensorIt : it->second) {
             memAllocatinSolver_->Free((char *)tensorIt->data);
-            ASD_LOG(INFO) << GetName() << " " << opDesc.opName << " mem free:" << tensorIt->data;
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << opDesc.opName << " mem free:" << tensorIt->data;
         }
     }
 
@@ -432,21 +441,23 @@ bool OpsRunner::PlanOneKernelBuildRunInfo(KernelGraphNode &node, size_t nodeId)
 
 bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &node, size_t nodeId)
 {
-    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " infer shape start, runInfo:\n"
+    ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName() << " infer shape start, runInfo:\n"
                   << node.kernelRunInfo.ToString();
     if (node.inferShapePreFunc) {
-        ASD_LOG(INFO) << GetName() << " " << op->GetName() << " call inferShapePreFunc, old runInfo:\n"
+        ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName()
+                      << " call inferShapePreFunc, old runInfo:\n"
                       << node.kernelRunInfo.ToString();
         node.inferShapePreFunc(node.kernelRunInfo);
-        ASD_LOG(INFO) << GetName() << " " << op->GetName() << " call inferShapePreFunc, new runInfo:\n"
+        ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName()
+                      << " call inferShapePreFunc, new runInfo:\n"
                       << node.kernelRunInfo.ToString();
     }
     AsdOps::Status st = op->InferShape(node.kernelRunInfo);
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << op->GetName() << " infer shape fail, error:" << st.Message();
+        ASD_LOG(ERROR) << op->GetName() << " node[" << nodeId << "] infer shape fail, error:" << st.Message();
         return false;
     }
-    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " infer shape success, runInfo:\n"
+    ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName() << " infer shape success, runInfo:\n"
                   << node.kernelRunInfo.ToString();
 
     for (size_t i = 0; i < node.outTensors.size(); ++i) {
@@ -456,15 +467,16 @@ bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &
             if (runInfoOutTensor.desc.dims.size() != 0) {
                 outTensor->desc = runInfoOutTensor.desc;
             } else {
-                ASD_LOG(INFO) << GetName() << " " << op->GetName() << " outTensors[" << i
+                ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName() << " outTensors[" << i
                               << "] is internal tensor, infer shape wrong, not use infer shape desc";
             }
             outTensor->dataSize = TensorUtil::CalcTensorDataSize(outTensor->desc);
             outTensor->data = memAllocatinSolver_->Malloc(TensorUtil::AlignInt(outTensor->dataSize, 32));
-            ASD_LOG(INFO) << GetName() << " " << op->GetName() << " outTensors[" << i
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName() << " outTensors[" << i
                           << "] is internal tensor, mem solve:" << outTensor->data;
         } else {
-            ASD_LOG(INFO) << GetName() << " " << op->GetName() << " outTensors[" << i << "] is not internal tensor";
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName() << " outTensors[" << i
+                          << "] is not internal tensor";
             if (!TensorUtil::AsdOpsTensorDescEqual(outTensor->desc, runInfoOutTensor.desc)) {
                 ASD_LOG(WARN) << GetName() << " node[" << nodeId
                               << "] outTensor->desc:" << TensorUtil::AsdOpsTensorDescToString(outTensor->desc)
@@ -476,7 +488,7 @@ bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &
         runInfoOutTensor.dataSize = outTensor->dataSize;
     }
 
-    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " after mem solve, runinfo:\n"
+    ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName() << " after mem solve, runinfo:\n"
                   << node.kernelRunInfo.ToString();
     return true;
 }
@@ -486,7 +498,8 @@ bool OpsRunner::PlanOneKernelSelectBestKernel(AsdOps::Operation *op, KernelGraph
     if (AsdOps::GetSingleton<Config>().IsOpsRunnerKernelCacheEnable()) {
         node.kernel = AsdOps::GetSingleton<KernelCache>().Get(runnerType_, nodeId, node.kernelRunInfo);
         if (node.kernel) {
-            ASD_LOG(INFO) << GetName() << " " << op->GetName() << ", get cached best kernel:" << node.kernel->GetName();
+            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName()
+                          << ", get cached best kernel:" << node.kernel->GetName();
             AsdOps::GetSingleton<Statistic>().kernelCacheHitCount++;
             return true;
         }
@@ -495,26 +508,28 @@ bool OpsRunner::PlanOneKernelSelectBestKernel(AsdOps::Operation *op, KernelGraph
 
     AsdOps::Tactic *tactic = op->GetBestTactic(node.kernelRunInfo);
     if (tactic == nullptr) {
-        ASD_LOG(ERROR) << GetName() << " " << op->GetName()
+        ASD_LOG(ERROR) << GetName() << " node[" << nodeId << "] " << op->GetName()
                        << " get best tactic fail, tactic count:" << op->GetTacticCount();
         return false;
     }
-    ASD_LOG(INFO) << GetName() << " best tactic:" << tactic->GetName();
+    ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] "
+                  << " best tactic:" << tactic->GetName();
 
     AsdOps::Timer timer;
     node.kernel = tactic->GetBestKernel(node.kernelRunInfo);
     AsdOps::GetSingleton<Statistic>().getBestKernelTime += timer.ElapsedMicroSecond();
     if (node.kernel == nullptr) {
-        ASD_LOG(ERROR) << GetName() << " " << tactic->GetName()
+        ASD_LOG(ERROR) << GetName() << " node[" << nodeId << "] " << tactic->GetName()
                        << " get best kernel fail, kernel count:" << tactic->GetKernelCount();
         return false;
     }
-    ASD_LOG(INFO) << GetName() << " " << op->GetName() << " get best tactic:" << tactic->GetName()
-                  << ", best kernel:" << node.kernel->GetName();
+    ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName()
+                  << " get best tactic:" << tactic->GetName() << ", best kernel:" << node.kernel->GetName();
 
     if (AsdOps::GetSingleton<Config>().IsOpsRunnerKernelCacheEnable()) {
         AsdOps::GetSingleton<KernelCache>().Add(runnerType_, nodeId, node.kernelRunInfo, node.kernel);
-        ASD_LOG(INFO) << GetName() << " " << op->GetName() << ", cache best kernel:" << node.kernel->GetName();
+        ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName()
+                      << ", cache best kernel:" << node.kernel->GetName();
     }
 
     return true;
@@ -525,15 +540,15 @@ void OpsRunner::CalcTilingBufferSize(const RunnerVariantPack &runnerVariantPack)
     ASD_LOG(INFO) << GetName() << " calc tiling buffer size start";
     tilingSizes_.resize(kernelGraph_.nodes.size());
     totalTilingSize_ = 0;
-    for (size_t i = 0; i < kernelGraph_.nodes.size(); ++i) {
-        KernelGraphNode &node = kernelGraph_.nodes.at(i);
+    for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
+        KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         AsdOps::Kernel *kernel = node.kernel;
         AsdOps::RunInfo &kernelRunInfo = node.kernelRunInfo;
         uint64_t orgTilingSize = kernel->GetLaunchBufferSize(kernelRunInfo);
         uint64_t tilingSize = TensorUtil::AlignInt(orgTilingSize, 32);
-        ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " orgTilingSize:" << orgTilingSize
-                      << ", tilingSize:" << tilingSize;
-        tilingSizes_.at(i) = tilingSize;
+        ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << kernel->GetName()
+                      << " orgTilingSize:" << orgTilingSize << ", tilingSize:" << tilingSize;
+        tilingSizes_.at(nodeId) = tilingSize;
         totalTilingSize_ += tilingSize;
     }
     ASD_LOG(INFO) << GetName() << " calc tiling buffer size end, totalTilingSize:" << totalTilingSize_;
@@ -611,21 +626,6 @@ bool OpsRunner::IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVar
             return false;
         }
     }
-    return true;
-}
-
-bool OpsRunner::IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::RunInfo &runInfo2)
-{
-    if (runInfo1.GetInTensorCount() != runInfo2.GetInTensorCount()) {
-        return false;
-    }
-
-    for (uint64_t i = 0; i < runInfo1.GetInTensorCount(); ++i) {
-        if (!TensorUtil::AsdOpsTensorDescEqual(runInfo1.GetInTensor(i).desc, runInfo2.GetInTensor(i).desc)) {
-            return false;
-        }
-    }
-
     return true;
 }
 } // namespace AclTransformer
