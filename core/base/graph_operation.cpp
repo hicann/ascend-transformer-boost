@@ -98,7 +98,7 @@ Runner *GraphOperation::CreateBestRunner() const
         runnerNode.useVariantPackParam = opNode.useVariantPackParam;
     }
 
-    runnerGraph.InitTensorMaxNodeMap();
+    runnerGraph.Init();
     return runner;
 }
 
