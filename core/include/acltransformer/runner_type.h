@@ -39,6 +39,7 @@ enum RunnerType {
     RUNNER_TYPE_LINEAR_QUANT,
     RUNNER_TYPE_FFN_QUANT,
     RUNNER_TYPE_QUANT,
+    RUNNER_TYPE_ALL_REDUCE,
     RUNNER_TYPE_MAX
 };
 } // namespace AclTransformer
