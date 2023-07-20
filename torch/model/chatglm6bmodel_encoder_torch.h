@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CHATGLM6BMODEL_ENCODER_ROPE_TORCH_H
-#define CHATGLM6BMODEL_ENCODER_ROPE_TORCH_H
+#ifndef CHATGLM6BMODEL_ENCODER_TORCH_H
+#define CHATGLM6BMODEL_ENCODER_TORCH_H
 #include <string>
 #include <vector>
 #include <torch/script.h>
@@ -24,10 +24,10 @@
 #include "acltransformer/operation.h"
 #include "acltransformer/plan.h"
 
-class ChatGlm6BModelEncoderRopeTorch : public torch::CustomClassHolder {
+class ChatGlm6BModelEncoderTorch : public torch::CustomClassHolder {
 public:
-    ChatGlm6BModelEncoderRopeTorch();
-    ~ChatGlm6BModelEncoderRopeTorch();
+    ChatGlm6BModelEncoderTorch();
+    ~ChatGlm6BModelEncoderTorch();
     void SetParam(std::string param);
 
     // 每个layer 12个权重
@@ -41,9 +41,9 @@ public:
                     torch::Tensor sinTableTensor, torch::Tensor attentionMaskTensor, torch::Tensor seqLen,
                     torch::Tensor outTensor, std::vector<torch::Tensor> presendKeyTensors,
                     std::vector<torch::Tensor> presentValueTensors);
-    c10::intrusive_ptr<ChatGlm6BModelEncoderRopeTorch> clone() const
+    c10::intrusive_ptr<ChatGlm6BModelEncoderTorch> clone() const
     {
-        return c10::make_intrusive<ChatGlm6BModelEncoderRopeTorch>();
+        return c10::make_intrusive<ChatGlm6BModelEncoderTorch>();
     }
 
 private:

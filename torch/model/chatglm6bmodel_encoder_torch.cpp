@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm6bmodel_decoder_rope_torch.h"
+#include "chatglm6bmodel_encoder_torch.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
@@ -29,21 +29,21 @@
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
 #include "torch/workspace/workspace.h"
-#include "models/chatglm6b/chatglm6blayer_decoder_rope_operation.h"
+#include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
 
 const size_t WEIGHT_COUNT_PER_LAYER = 12;
 
-ChatGlm6BModelDecoderRopeTorch::ChatGlm6BModelDecoderRopeTorch()
+ChatGlm6BModelEncoderTorch::ChatGlm6BModelEncoderTorch()
 {
-    ASD_LOG(INFO) << "ChatGlm6BModelDecoderRopeTorch::ChatGlm6BModelDecoderRopeTorch, TASK_QUEUE_ENABLE:"
+    ASD_LOG(INFO) << "ChatGlm6BModelEncoderTorch::ChatGlm6BModelEncoderTorch, TASK_QUEUE_ENABLE:"
                   << c10_npu::option::OptionsManager().CheckQueueEnable();
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
 }
 
-ChatGlm6BModelDecoderRopeTorch::~ChatGlm6BModelDecoderRopeTorch() {}
+ChatGlm6BModelEncoderTorch::~ChatGlm6BModelEncoderTorch() {}
 
-void ChatGlm6BModelDecoderRopeTorch::SetParam(std::string param)
+void ChatGlm6BModelEncoderTorch::SetParam(std::string param)
 {
     ASD_LOG(INFO) << "ChatGlm6BModel set param start, param:" << param;
     modelParam_.FromString(param);
@@ -58,7 +58,7 @@ void ChatGlm6BModelDecoderRopeTorch::SetParam(std::string param)
         opParam.dk = modelParam_.dk;
         opParam.layerId = i;
         opParam.residualAddScale = modelParam_.residualAddScale;
-        AclTransformer::Operation *op = new AclTransformer::ChatGlm6BLayerDecoderRopeOperation(opParam);
+        AclTransformer::Operation *op = new AclTransformer::ChatGlm6BLayerEncoderOperation(opParam);
         operations_.at(i).reset(op);
         AclTransformer::Plan *plan = new AclTransformer::Plan();
         op->BuildPlan(plan);
@@ -68,7 +68,7 @@ void ChatGlm6BModelDecoderRopeTorch::SetParam(std::string param)
     ASD_LOG(INFO) << "ChatGlm6BModel set param end";
 }
 
-void ChatGlm6BModelDecoderRopeTorch::SetWeight(std::vector<torch::Tensor> weightTensors)
+void ChatGlm6BModelEncoderTorch::SetWeight(std::vector<torch::Tensor> weightTensors)
 {
     if (weightTensors.size() != modelParam_.layerNum * WEIGHT_COUNT_PER_LAYER) {
         ASD_LOG(ERROR) << "ChatGlm6BModel set weight fail, weightTensors.size:" << weightTensors.size()
@@ -82,19 +82,19 @@ void ChatGlm6BModelDecoderRopeTorch::SetWeight(std::vector<torch::Tensor> weight
     Utils::ContiguousAtTensor(weightTensors_);
 }
 
-std::vector<torch::Tensor>
-ChatGlm6BModelDecoderRopeTorch::Execute(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
-                                        torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                                        torch::Tensor attentionMaskTensor, std::vector<torch::Tensor> pastKeyTensors,
-                                        std::vector<torch::Tensor> pastValueTensors, torch::Tensor seqLen)
+std::vector<torch::Tensor> ChatGlm6BModelEncoderTorch::Execute(torch::Tensor hiddenStateTensor,
+                                                               torch::Tensor positionIdTensor,
+                                                               torch::Tensor cosTableTensor,
+                                                               torch::Tensor sinTableTensor,
+                                                               torch::Tensor attentionMaskTensor, torch::Tensor seqLen)
 {
     timer_.Reset();
     torch::Tensor outTensor;
     std::vector<torch::Tensor> presendKeyTensors(modelParam_.layerNum);
     std::vector<torch::Tensor> presentValueTensors(modelParam_.layerNum);
 
-    ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor,
-                   pastKeyTensors, pastValueTensors, seqLen, outTensor, presendKeyTensors, presentValueTensors, true);
+    ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor, seqLen,
+                   outTensor, presendKeyTensors, presentValueTensors, true);
 
     std::vector<torch::Tensor> outTensors(1 + modelParam_.layerNum * 2);
     size_t tensorId = 0;
@@ -109,31 +109,26 @@ ChatGlm6BModelDecoderRopeTorch::Execute(torch::Tensor hiddenStateTensor, torch::
     return outTensors;
 }
 
-void ChatGlm6BModelDecoderRopeTorch::ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
-                                                torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                                                torch::Tensor attentionMaskTensor,
-                                                std::vector<torch::Tensor> pastKeyTensors,
-                                                std::vector<torch::Tensor> pastValueTensors, torch::Tensor seqLen,
-                                                torch::Tensor outTensor, std::vector<torch::Tensor> presendKeyTensors,
-                                                std::vector<torch::Tensor> presentValueTensors)
+void ChatGlm6BModelEncoderTorch::ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
+                                            torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
+                                            torch::Tensor attentionMaskTensor, torch::Tensor seqLen,
+                                            torch::Tensor outTensor, std::vector<torch::Tensor> presendKeyTensors,
+                                            std::vector<torch::Tensor> presentValueTensors)
 {
     timer_.Reset();
-    ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor,
-                   pastKeyTensors, pastValueTensors, seqLen, outTensor, presendKeyTensors, presentValueTensors, false);
+    ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor, seqLen,
+                   outTensor, presendKeyTensors, presentValueTensors, false);
 }
 
-void ChatGlm6BModelDecoderRopeTorch::ExecuteOutImpl(
-    torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor, torch::Tensor &cosTableTensor,
-    torch::Tensor &sinTableTensor, torch::Tensor &attentionMaskTensor, std::vector<torch::Tensor> &pastKeyTensors,
-    std::vector<torch::Tensor> &pastValueTensors, torch::Tensor &seqLen, torch::Tensor &outTensor,
-    std::vector<torch::Tensor> &presendKeyTensors, std::vector<torch::Tensor> &presentValueTensors, bool newOut)
+void ChatGlm6BModelEncoderTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
+                                                torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
+                                                torch::Tensor &attentionMaskTensor, torch::Tensor &seqLen,
+                                                torch::Tensor &outTensor, std::vector<torch::Tensor> &presendKeyTensors,
+                                                std::vector<torch::Tensor> &presentValueTensors, bool newOut)
 {
-    if ((int)pastKeyTensors.size() != modelParam_.layerNum || (int)pastValueTensors.size() != modelParam_.layerNum ||
-        (int)presendKeyTensors.size() != modelParam_.layerNum ||
+    if ((int)presendKeyTensors.size() != modelParam_.layerNum ||
         (int)presentValueTensors.size() != modelParam_.layerNum) {
-        ASD_LOG(ERROR) << "ChatGlm6BModel pastKeyTensors.size:" << pastKeyTensors.size()
-                       << ", pastValueTensors.size:" << pastValueTensors.size()
-                       << ", presendKeyTensors.size:" << presendKeyTensors.size()
+        ASD_LOG(ERROR) << "ChatGlm6BModel presendKeyTensors.size:" << presendKeyTensors.size()
                        << ", presentValueTensors.size:" << presentValueTensors.size();
         return;
     }
@@ -145,8 +140,6 @@ void ChatGlm6BModelDecoderRopeTorch::ExecuteOutImpl(
     Utils::ContiguousAtTensor(cosTableTensor);
     Utils::ContiguousAtTensor(sinTableTensor);
     Utils::ContiguousAtTensor(attentionMaskTensor);
-    Utils::ContiguousAtTensor(pastKeyTensors);
-    Utils::ContiguousAtTensor(pastValueTensors);
     Utils::ContiguousAtTensor(seqLen);
     if (!newOut) {
         Utils::ContiguousAtTensor(outTensor);
@@ -169,9 +162,7 @@ void ChatGlm6BModelDecoderRopeTorch::ExecuteOutImpl(
         opAtInTensors.at(inTensorId++) = cosTableTensor;      // cosTable
         opAtInTensors.at(inTensorId++) = sinTableTensor;      // sinTable
         opAtInTensors.at(inTensorId++) = attentionMaskTensor; // attentionMaskTensor
-        opAtInTensors.at(inTensorId++) = pastKeyTensors.at(layerId);
-        opAtInTensors.at(inTensorId++) = pastValueTensors.at(layerId);
-        opAtInTensors.at(inTensorId++) = seqLen; // seqLen
+        opAtInTensors.at(inTensorId++) = seqLen;              // seqLen
 
         ExecuteSingleOperation(layerId, opAtInTensors, outTensor, presendKeyTensors.at(layerId),
                                presentValueTensors.at(layerId), newOut);
@@ -187,10 +178,10 @@ void ChatGlm6BModelDecoderRopeTorch::ExecuteOutImpl(
     executeCount_++;
 }
 
-void ChatGlm6BModelDecoderRopeTorch::BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
-                                                      torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
-                                                      torch::Tensor &presentValueTensor, bool newOut,
-                                                      AclTransformer::VariantPack &variantPack)
+void ChatGlm6BModelEncoderTorch::BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
+                                                  torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
+                                                  torch::Tensor &presentValueTensor, bool newOut,
+                                                  AclTransformer::VariantPack &variantPack)
 {
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " atInTensors[" << i
@@ -214,9 +205,9 @@ void ChatGlm6BModelDecoderRopeTorch::BuildVariantPack(int layerId, std::vector<t
     variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(presentValueTensor));
 }
 
-void ChatGlm6BModelDecoderRopeTorch::ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
-                                                            torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
-                                                            torch::Tensor &presentValueTensor, bool newOut)
+void ChatGlm6BModelEncoderTorch::ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
+                                                        torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
+                                                        torch::Tensor &presentValueTensor, bool newOut)
 {
     AclTransformer::Plan &plan = *plans_.at(layerId);
 
@@ -254,12 +245,12 @@ void ChatGlm6BModelDecoderRopeTorch::ExecuteSingleOperation(int layerId, std::ve
     ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelLayer_" << layerId << " execute plan fail, error:" << st.Message();
 }
 
-TORCH_LIBRARY(ChatGlm6BModelDecoderRopeTorch, m)
+TORCH_LIBRARY(ChatGlm6BModelEncoderTorch, m)
 {
-    m.class_<ChatGlm6BModelDecoderRopeTorch>("ChatGlm6BModelDecoderRopeTorch")
+    m.class_<ChatGlm6BModelEncoderTorch>("ChatGlm6BModelEncoderTorch")
         .def(torch::init<>())
-        .def("set_param", &ChatGlm6BModelDecoderRopeTorch::SetParam)
-        .def("set_weight", &ChatGlm6BModelDecoderRopeTorch::SetWeight)
-        .def("execute", &ChatGlm6BModelDecoderRopeTorch::Execute)
-        .def("execute_out", &ChatGlm6BModelDecoderRopeTorch::ExecuteOut);
+        .def("set_param", &ChatGlm6BModelEncoderTorch::SetParam)
+        .def("set_weight", &ChatGlm6BModelEncoderTorch::SetWeight)
+        .def("execute", &ChatGlm6BModelEncoderTorch::Execute)
+        .def("execute_out", &ChatGlm6BModelEncoderTorch::ExecuteOut);
 }
