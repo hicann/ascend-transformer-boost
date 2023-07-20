@@ -48,6 +48,9 @@ endif()
 if(USE_TORCH_RUNNER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_TORCH_RUNNER")
 endif()
+if(USE_LCCL_RUNNER)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_LCCL_RUNNER")
+endif()
 if(USE_PROFILING)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_PROFILING")
 endif()
@@ -66,6 +69,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include
     ${PROJECT_SOURCE_DIR}/3rdparty/googletest/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
+    ${PROJECT_SOURCE_DIR}/3rdparty/lccl/include
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{PYTHON_INCLUDE_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/include
@@ -75,6 +79,7 @@ include_directories(
 link_directories(
     ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib
     ${PROJECT_SOURCE_DIR}/3rdparty/googletest/lib
+    ${PROJECT_SOURCE_DIR}/3rdparty/lccl/lib
     $ENV{ASCEND_HOME_PATH}/lib64
     $ENV{PYTHON_LIB_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/lib
@@ -96,6 +101,12 @@ install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so
         DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so
         DESTINATION lib)
+if(USE_LCCL_RUNNER)
+    install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/lccl/lib/liblccl.so
+            DESTINATION lib)
+    install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/lccl/lib/lccl.o
+            DESTINATION lib)
+endif()
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/host DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/device DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/platform_configs
