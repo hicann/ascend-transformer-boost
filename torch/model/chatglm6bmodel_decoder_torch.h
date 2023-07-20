@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CHATGLM6BMODEL_DECODER_ROPE_TORCH_H
-#define CHATGLM6BMODEL_DECODER_ROPE_TORCH_H
+#ifndef CHATGLM6BMODEL_DECODER_TORCH_H
+#define CHATGLM6BMODEL_DECODER_TORCH_H
 #include <string>
 #include <vector>
 #include <torch/script.h>
@@ -24,10 +24,10 @@
 #include "acltransformer/operation.h"
 #include "acltransformer/plan.h"
 
-class ChatGlm6BModelDecoderRopeTorch : public torch::CustomClassHolder {
+class ChatGlm6BModelDecoderTorch : public torch::CustomClassHolder {
 public:
-    ChatGlm6BModelDecoderRopeTorch();
-    ~ChatGlm6BModelDecoderRopeTorch();
+    ChatGlm6BModelDecoderTorch();
+    ~ChatGlm6BModelDecoderTorch();
     void SetParam(std::string param);
 
     // 每个layer 12个权重
@@ -43,9 +43,9 @@ public:
                     std::vector<torch::Tensor> pastKeyTensors, std::vector<torch::Tensor> pastValueTensors,
                     torch::Tensor seqLen, torch::Tensor outTensor, std::vector<torch::Tensor> presendKeyTensors,
                     std::vector<torch::Tensor> presentValueTensors);
-    c10::intrusive_ptr<ChatGlm6BModelDecoderRopeTorch> clone() const
+    c10::intrusive_ptr<ChatGlm6BModelDecoderTorch> clone() const
     {
-        return c10::make_intrusive<ChatGlm6BModelDecoderRopeTorch>();
+        return c10::make_intrusive<ChatGlm6BModelDecoderTorch>();
     }
 
 private:

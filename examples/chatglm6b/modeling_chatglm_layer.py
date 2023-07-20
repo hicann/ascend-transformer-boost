@@ -597,14 +597,14 @@ class GLMBlock(torch.nn.Module):
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
         self.acl_encoder_operation = torch.classes.OperationTorch.OperationTorch(
-            "ChatGlm6BLayerEncoderRopeOperation")
+            "ChatGlm6BLayerEncoderOperation")
         self.acl_encoder_operation.set_name(
-            "ChatGlm6BLayerEncoderRopeOperation_" + str(self.layer_id))
+            "ChatGlm6BLayerEncoderOperation_" + str(self.layer_id))
         self.acl_encoder_operation.set_param(acl_param)
         self.acl_decoder_operation = torch.classes.OperationTorch.OperationTorch(
-            "ChatGlm6BLayerDecoderRopeOperation")
+            "ChatGlm6BLayerDecoderOperation")
         self.acl_decoder_operation.set_name(
-            "ChatGlm6BLayerDecoderRopeOperation_" + str(self.layer_id))
+            "ChatGlm6BLayerDecoderOperation_" + str(self.layer_id))
         self.acl_decoder_operation.set_param(acl_param)
 
         self.input_full = []
@@ -637,15 +637,16 @@ class GLMBlock(torch.nn.Module):
         test_glmBlockOut = None
         test_presentKey = None
         test_presentValue = None
-        
+
         if not self.rotary_flag:
             self.rotary_flag = True
             temp_global = torch.arange(2048, device='cpu').npu().half()
-            freqs_global = torch.einsum('i,j->ij', temp_global, self.attention.rotary_emb.inv_freq)
+            freqs_global = torch.einsum(
+                'i,j->ij', temp_global, self.attention.rotary_emb.inv_freq)
             emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
             self.cos = emb_global.cos().unsqueeze(1)
             self.sin = emb_global.sin().unsqueeze(1)
-        
+
         seq_len = torch.tensor([hidden_states.shape[0]]
                                * hidden_states.shape[1]).npu()
         if layer_past is None:
@@ -694,7 +695,7 @@ class GLMBlock(torch.nn.Module):
 
             test_glmBlockOut, test_presentKey, test_presentValue = self.acl_decoder_operation.execute(
                 self.input)
-        
+
         if layer_past is not None:
             test_in = hidden_states
         attention_input = self.input_layernorm(hidden_states)
@@ -726,7 +727,6 @@ class GLMBlock(torch.nn.Module):
         # Second residual connection.
         output = mlp_input * alpha + mlp_output
 
-        
         if torch.allclose(output, test_glmBlockOut, rtol=0.02, atol=0.02):
             print("equal")
         else:

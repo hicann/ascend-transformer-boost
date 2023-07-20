@@ -804,12 +804,12 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         acl_param = json.dumps({"transKey": True, "dk": self.hidden_size_per_attention_head, "headNum": self.num_attention_heads, "layerNum": self.num_layers,
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
 
-        self.acl_encoder_operation = torch.classes.ChatGlm6BModelEncoderRopeTorch.ChatGlm6BModelEncoderRopeTorch()
+        self.acl_encoder_operation = torch.classes.ChatGlm6BModelEncoderTorch.ChatGlm6BModelEncoderTorch()
         self.acl_encoder_operation.set_param(acl_param)
-        self.acl_decoder_operation = torch.classes.ChatGlm6BModelDecoderRopeTorch.ChatGlm6BModelDecoderRopeTorch()
+        self.acl_decoder_operation = torch.classes.ChatGlm6BModelDecoderTorch.ChatGlm6BModelDecoderTorch()
         self.acl_decoder_operation.set_param(acl_param)
         self.weightFlag = False
-        
+
         self.rotary_flag = False
         self.cos = None
         self.sin = None
@@ -951,7 +951,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         if not self.rotary_flag:
             self.rotary_flag = True
             temp_global = torch.arange(2048, device='cpu').npu().half()
-            freqs_global = torch.einsum('i,j->ij', temp_global, self.layers[0].attention.rotary_emb.inv_freq)
+            freqs_global = torch.einsum(
+                'i,j->ij', temp_global, self.layers[0].attention.rotary_emb.inv_freq)
             emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
             self.cos = emb_global.cos().unsqueeze(1)
             self.sin = emb_global.sin().unsqueeze(1)
