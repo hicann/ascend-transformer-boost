@@ -118,7 +118,8 @@ at::Tensor Utils::CreateAtTensorFromAsdOpsTensorDesc(const AsdOps::TensorDesc &t
     options = options.layout(torch::kStrided).requires_grad(false).device(at::kPrivateUse1);
 #endif
 
-    ASD_LOG(INFO) << "ApplyTensorWithFormat stat, format:" << tensorDesc.format;
+    ASD_LOG(INFO) << "ApplyTensorWithFormat stat, format:" << tensorDesc.format << ", dtype:" << tensorDesc.dtype
+                  << ", dims:" << tensorDesc.dims;
     at::Tensor newTensor = at_npu::native::OpPreparation::ApplyTensorWithFormat(
         at::IntArrayRef(tensorDesc.dims.data(), tensorDesc.dims.size()), options, tensorDesc.format);
     ASD_LOG(INFO) << "ApplyTensorWithFormat end, newTensor.format:" << GetTensorNpuFormat(newTensor)
