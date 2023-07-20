@@ -95,6 +95,7 @@ Runner *GraphOperation::CreateBestRunner() const
         for (size_t i = 0; i < opNode.outTensorIds.size(); ++i) {
             runnerNode.outTensors.at(i) = fullTensorPtrs.at(opNode.outTensorIds.at(i));
         }
+        runnerNode.useVariantPackParam = opNode.useVariantPackParam;
     }
 
     runnerGraph.InitTensorMaxNodeMap();

@@ -28,13 +28,17 @@ public:
     ~OperationTorch();
     void SetName(std::string name);
     void SetParam(std::string param);
-    std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> inTensors);
-    void ExecuteOut(std::vector<torch::Tensor> inTensors, std::vector<torch::Tensor> outTensor);
+    std::vector<torch::Tensor> ExecuteWithParam(std::vector<torch::Tensor> atInTensors, std::string varaintPackParam);
+    void ExecuteOutWithParam(std::vector<torch::Tensor> atInTensors, std::vector<torch::Tensor> atOutTensors,
+                             std::string varaintPackParam);
+    std::vector<torch::Tensor> Execute(std::vector<torch::Tensor> atInTensors);
+    void ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vector<torch::Tensor> atOutTensors);
     c10::intrusive_ptr<OperationTorch> clone() const { return c10::make_intrusive<OperationTorch>(opName_); }
 
 private:
     void CreateAtOutTensors(const std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors);
-    void ExecuteOutImpl(std::vector<torch::Tensor> &inTensors, std::vector<torch::Tensor> &outTensor);
+    void ExecuteOutImpl(std::vector<torch::Tensor> &inTensors, std::vector<torch::Tensor> &outTensor,
+                        const std::string &varaintPackParam = "");
     void BuildVariantPack(std::vector<torch::Tensor> &inTensors, std::vector<torch::Tensor> &outTensor,
                           AclTransformer::VariantPack &variantPack);
 

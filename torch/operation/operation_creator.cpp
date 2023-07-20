@@ -223,9 +223,9 @@ static AclTransformer::Operation *ChatGlm6BLayerDecoderOperationCreate(const nlo
     param.dk = paramJson["dk"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    ASD_LOG(INFO) << "ChatGlm6BLayerDecoderParam layerNormEps:" << param.layerNormEps
-                  << ", headNum:" << param.headNum << ", transKey:" << param.transKey << ", dk:" << param.dk
-                  << ", layerId:" << param.layerId << ", residualAddScale:" << param.residualAddScale;
+    ASD_LOG(INFO) << "ChatGlm6BLayerDecoderParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BLayerDecoderOperation(param);
 }
 
@@ -238,9 +238,9 @@ static AclTransformer::Operation *ChatGlm6BLayerEncoderOperationCreate(const nlo
     param.dk = paramJson["dk"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    ASD_LOG(INFO) << "ChatGlm6BLayerEncoderParam layerNormEps:" << param.layerNormEps
-                  << ", headNum:" << param.headNum << ", transKey:" << param.transKey << ", dk:" << param.dk
-                  << ", layerId:" << param.layerId << ", residualAddScale:" << param.residualAddScale;
+    ASD_LOG(INFO) << "ChatGlm6BLayerEncoderParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BLayerEncoderOperation(param);
 }
 
@@ -459,4 +459,21 @@ AclTransformer::Operation *CreateOperation(const std::string &opName, const std:
         ASD_LOG(ERROR) << opName << " parse json fail, error:" << e.what();
     }
     return nullptr;
+}
+
+AsdOps::Any ParseParam(const std::string &opName, const std::string &param)
+{
+    nlohmann::json paramJson = nlohmann::json::parse(param);
+
+    if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation") {
+        AclTransformer::SelfAttentionKvCacheFusionVariantPackParam opParam;
+        for (auto item : paramJson["tokenOffset"]) {
+            opParam.tokenOffset.push_back(item.get<int>());
+        }
+        for (auto item : paramJson["seqLen"]) {
+            opParam.seqLen.push_back(item.get<int>());
+        }
+        return opParam;
+    }
+    return AsdOps::Any();
 }

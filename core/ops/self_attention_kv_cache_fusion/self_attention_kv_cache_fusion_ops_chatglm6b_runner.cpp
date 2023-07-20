@@ -33,6 +33,7 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatG
         << useMuls;
     if (useMuls) {
         BuildGraphWithMuls();
+        SetKernelGrapModifyFunc();
     } else {
         BuildGraphWithoutMuls();
     }
@@ -203,6 +204,27 @@ void SelfAttentionKvCacheFusionOpsChatGlm6bRunner::BuildGraphWithoutMuls()
     flashAttentionNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
                                                  AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
+    };
+}
+
+void SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SetKernelGrapModifyFunc()
+{
+    kernelGraph_.kernelGraphModifyFunc = [&](const RunnerVariantPack &runnerVariantPack) {
+        if (typeid(SelfAttentionKvCacheFusionVariantPackParam) != runnerVariantPack.param.Type()) {
+            ASD_LOG(FATAL) << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner invalid type "
+                              "SelfAttentionKvCacheFusionVariantPackParam";
+            return;
+        }
+        const SelfAttentionKvCacheFusionVariantPackParam &newParam =
+            AsdOps::AnyCast<SelfAttentionKvCacheFusionVariantPackParam>(runnerVariantPack.param);
+        const size_t flashAttentionNodeId = 3;
+        auto &flashAttentionNode = kernelGraph_.nodes.at(flashAttentionNodeId);
+
+        flashAttentionNode.kernelRunInfo.SetOpDesc(
+            {0, "AttentionOperation",
+             AsdOps::OpParam::Attention{param_.headNum, newParam.seqLen, newParam.tokenOffset}});
+        ASD_LOG(INFO) << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner SetOpDesc AsdOps::OpParam::Attention.headNum:"
+                      << param_.headNum << ", seqLen:" << newParam.seqLen << ", tokenOffset:" << newParam.tokenOffset;
     };
 }
 } // namespace AclTransformer

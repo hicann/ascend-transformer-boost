@@ -18,6 +18,7 @@
 #include <string>
 #include <asdops/tensor.h>
 #include <asdops/utils/svector/svector.h>
+#include <asdops/utils/any/any.h>
 
 namespace AclTransformer {
 struct RunnerVariantPack {
@@ -29,6 +30,7 @@ struct RunnerVariantPack {
     uint64_t workspaceBufferSize = 0;
     void *intermediateBuffer = nullptr;
     uint64_t intermediateBufferSize = 0;
+    AsdOps::Any param;
     std::string ToString() const;
 };
 } // namespace AclTransformer

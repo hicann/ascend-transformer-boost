@@ -29,6 +29,7 @@
 namespace AclTransformer {
 using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
 using InferShapePreFunc = std::function<void(AsdOps::RunInfo &runInfo)>;
+using KernelGrapModifyFunc = std::function<void(const RunnerVariantPack &runnerVariantPack)>;
 
 enum TensorType {
     UNDEFINED_TENSOR = 0,
@@ -54,6 +55,7 @@ struct KernelGraph {
     AsdOps::SVector<AsdOps::Tensor> outTensors;
     AsdOps::SVector<AsdOps::Tensor, 64> internalTensors;
     AsdOps::SVector<KernelGraphNode, 64> nodes;
+    KernelGrapModifyFunc kernelGraphModifyFunc;
     std::string ToString() const;
 };
 
