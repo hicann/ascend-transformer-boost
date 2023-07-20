@@ -28,8 +28,10 @@ target_link_libraries(acltransformer PRIVATE core_torch torch
                       c10 torch_cpu torch_python torch_npu python3)
 endif()
 
+if(USE_PROFILING)
 target_link_libraries(acltransformer PRIVATE profapi)
 target_link_libraries(acltransformer_static PRIVATE profapi)
+endif()
 
 install(TARGETS acltransformer_static DESTINATION lib)
 install(TARGETS acltransformer DESTINATION lib)
