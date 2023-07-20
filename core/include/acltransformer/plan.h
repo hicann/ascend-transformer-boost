@@ -41,6 +41,9 @@ protected:
 private:
     void Reset();
     AsdOps::Status CopyHostTilingToDevice(Handle handle);
+#ifdef USE_PROFILING
+    void ReportApiInfo(const uint64_t beginTime, const char *opName);
+#endif
 
 private:
     std::vector<char> hostTilingBuffer_;
