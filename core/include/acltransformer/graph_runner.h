@@ -38,6 +38,7 @@ public:
         AsdOps::SVector<AsdOps::Tensor *> outTensors;
         AsdOps::SVector<NodeViewFunc> inTensorViewFuncs;
         RunnerVariantPack runnerVariantPack;
+        bool useVariantPackParam = false;
     };
 
     struct Graph {
@@ -71,7 +72,7 @@ private:
     AsdOps::Status PreparseNodeVariantPack();
     AsdOps::Status RunNodeInTensorViewFuncs(size_t nodeId, Node &node);
     void InferShapeNode(size_t nodeId, Node &node);
-    AsdOps::Status SetupAllRunners();
+    AsdOps::Status SetupAllRunners(const RunnerVariantPack &runnerVariantPack);
     void CalcTilingBufferSize();
     void CalcIntermediateBufferSize();
     void UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack);

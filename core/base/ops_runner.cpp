@@ -78,6 +78,12 @@ OpsRunner::~OpsRunner()
 
 AsdOps::Status OpsRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack)
 {
+    if (kernelGraph_.kernelGraphModifyFunc) {
+        ASD_LOG(INFO) << GetName() << " call kernelGraphModifyFunc start";
+        kernelGraph_.kernelGraphModifyFunc(runnerVariantPack);
+        ASD_LOG(INFO) << GetName() << " call kernelGraphModifyFunc end";
+    }
+
     kernelGraph_.inTensors = runnerVariantPack.inTensors;
     kernelGraph_.outTensors = runnerVariantPack.outTensors;
     if (AsdOps::GetSingleton<Config>().IsOpsRunnerSetupCacheEnable()) {

@@ -23,5 +23,10 @@ struct SelfAttentionKvCacheFusionParam {
     AsdOps::SVector<int32_t> seqLen;
     AsdOps::SVector<int32_t> tokenOffset;
 };
+
+struct SelfAttentionKvCacheFusionVariantPackParam {
+    AsdOps::SVector<int32_t> seqLen;
+    AsdOps::SVector<int32_t> tokenOffset;
+};
 } // namespace AclTransformer
 #endif

@@ -32,6 +32,7 @@ public:
         AsdOps::SVector<uint64_t> inTensorIds;
         AsdOps::SVector<uint64_t> outTensorIds;
         AsdOps::SVector<NodeViewFunc> inTensorViewFuncs;
+        bool useVariantPackParam = false;
     };
 
     struct Graph {
