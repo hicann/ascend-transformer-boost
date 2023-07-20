@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm6blayer_encoder_rope_operation.h"
+#include "chatglm6blayer_decoder_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
@@ -23,7 +23,7 @@
 #include "acltransformer/ops/ffn_operation.h"
 
 namespace AclTransformer {
-enum Chatglm6BLayerEncoderRopeTensorId {
+enum Chatglm6BLayerDecoderTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
     IN_NORMBIAS,
@@ -41,6 +41,8 @@ enum Chatglm6BLayerEncoderRopeTensorId {
     IN_COSTABLE,
     IN_SINTABLE,
     IN_ATTENTIONMASK,
+    IN_PASTKEY,
+    IN_PASTVALUE,
     IN_SEQLEN,
     OUT_GLMLAYEROUT,
     OUT_PRESENTKEY,
@@ -48,6 +50,8 @@ enum Chatglm6BLayerEncoderRopeTensorId {
     INTERMIDATE_INPUTNORMOUT,
     INTERMIDATE_MIXEDLINEAROUTQKV,
     INTERMIDATE_POSITIONEMBEDQ,
+    INTERMIDATE_POSITIONEMBEDK,
+    INTERMIDATE_VALUE,
     INTERMIDATE_SELFOUT,
     INTERMIDATE_SELFLINEAROUT,
     INTERMIDATE_SELFRESIDUALADDOUT,
@@ -56,13 +60,13 @@ enum Chatglm6BLayerEncoderRopeTensorId {
     INTERMIDATE_FFNLINEAROUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 18;
+static const uint64_t IN_TENSOR_COUNT = 20;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 9;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
 static const uint64_t NODE_COUNT = 10;
 
-ChatGlm6BLayerEncoderRopeOperation::ChatGlm6BLayerEncoderRopeOperation(const ChatGlm6BLayerParam &param)
-    : GraphOperation("ChatGlm6BLayerEncoderRopeOperation"), param_(param)
+ChatGlm6BLayerDecoderOperation::ChatGlm6BLayerDecoderOperation(const ChatGlm6BLayerParam &param)
+    : GraphOperation("ChatGlm6BLayerDecoderOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -73,7 +77,7 @@ ChatGlm6BLayerEncoderRopeOperation::ChatGlm6BLayerEncoderRopeOperation(const Cha
     GraphOperation::Node &inputNormNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mixdQkvLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &positionEmbeddingNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &selfAttentionNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &selfAttentionKvCacheNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfOutLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfResidualAddNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfNormNode = opGraph_.nodes.at(nodeId++);
@@ -92,12 +96,17 @@ ChatGlm6BLayerEncoderRopeOperation::ChatGlm6BLayerEncoderRopeOperation(const Cha
     positionEmbeddingNode.operation.reset(new AclTransformer::RopeOperation({param_.headNum}));
     positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE,
                                          IN_SEQLEN};
-    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE};
+    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_VALUE};
 
-    selfAttentionNode.operation.reset(new AclTransformer::SelfAttentionOperation(
-        {param_.transKey, param_.dk, param_.headNum, param_.layerId, "chatglm6b"}));
-    selfAttentionNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE, IN_ATTENTIONMASK};
-    selfAttentionNode.outTensorIds = {INTERMIDATE_SELFOUT};
+    selfAttentionKvCacheNode.operation.reset(new AclTransformer::SelfAttentionKvCacheOperation(
+        {param_.transKey, param_.dk, param_.headNum, param_.layerId}));
+    selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
+                                            INTERMIDATE_POSITIONEMBEDK,
+                                            INTERMIDATE_VALUE,
+                                            IN_ATTENTIONMASK,
+                                            IN_PASTKEY,
+                                            IN_PASTVALUE};
+    selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
     selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
     selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
@@ -124,22 +133,23 @@ ChatGlm6BLayerEncoderRopeOperation::ChatGlm6BLayerEncoderRopeOperation(const Cha
     ffnResidualAddNode.outTensorIds = {OUT_GLMLAYEROUT};
 }
 
-ChatGlm6BLayerEncoderRopeOperation::~ChatGlm6BLayerEncoderRopeOperation() {}
+ChatGlm6BLayerDecoderOperation::~ChatGlm6BLayerDecoderOperation() {}
 
-uint64_t ChatGlm6BLayerEncoderRopeOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t ChatGlm6BLayerDecoderOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t ChatGlm6BLayerEncoderRopeOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t ChatGlm6BLayerDecoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status
-ChatGlm6BLayerEncoderRopeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+AsdOps::Status ChatGlm6BLayerDecoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
+    const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
+    const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);
     outTensorDescs.at(0) = inTensors.at(0).desc;
-    outTensorDescs.at(1) = inTensors.at(0).desc;
-    outTensorDescs.at(1).dims.at(2) = param_.headNum;
-    outTensorDescs.at(1).dims.push_back(param_.dk);
+    outTensorDescs.at(1) = keyTensor.desc;
+    outTensorDescs.at(1).dims.at(0) += 1;
     const size_t tensorId2 = 2;
-    outTensorDescs.at(tensorId2) = outTensorDescs.at(1);
+    outTensorDescs.at(tensorId2) = valueTensor.desc;
+    outTensorDescs.at(tensorId2).dims.at(0) += 1;
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
