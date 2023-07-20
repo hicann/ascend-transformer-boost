@@ -62,6 +62,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
     ASD_LOG(INFO) << name_ << " setup start";
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
+    runnerVariantPack_.param = variantPack.param;
 
     Reset();
 
@@ -108,6 +109,7 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
     ASD_LOG(INFO) << name_ << " execute start";
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
+    runnerVariantPack_.param = variantPack.param;
     runnerVariantPack_.tilingBuffer = variantPack.workspace;
     runnerVariantPack_.workspaceBuffer = (uint8_t *)variantPack.workspace + runnerVariantPack_.tilingBufferSize;
     runnerVariantPack_.intermediateBuffer =

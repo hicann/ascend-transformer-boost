@@ -65,6 +65,44 @@ void OperationTorch::SetParam(std::string param)
     ASD_LOG(INFO) << name_ << " set param end";
 }
 
+std::vector<torch::Tensor> OperationTorch::ExecuteWithParam(std::vector<torch::Tensor> atInTensors,
+                                                            std::string varaintPackParam)
+{
+    ASD_LOG(INFO) << name_ << " execute start";
+    if (!operation_) {
+        SetParam(varaintPackParam);
+    }
+
+    if (!operation_) {
+        ASD_LOG(FATAL) << name_ << " execute fail, operation is null";
+    }
+    Utils::ContiguousAtTensor(atInTensors);
+
+    std::vector<torch::Tensor> atOutTensors;
+    CreateAtOutTensors(atInTensors, atOutTensors);
+    Utils::ContiguousAtTensor(atOutTensors);
+
+    ExecuteOutImpl(atInTensors, atOutTensors, varaintPackParam);
+    return atOutTensors;
+}
+
+void OperationTorch::ExecuteOutWithParam(std::vector<torch::Tensor> atInTensors,
+                                         std::vector<torch::Tensor> atOutTensors, std::string varaintPackParam)
+{
+    ASD_LOG(INFO) << name_ << " execute out start";
+    if (!operation_) {
+        SetParam(varaintPackParam);
+    }
+
+    if (!operation_) {
+        ASD_LOG(FATAL) << name_ << " execute out fail, operation is null";
+    }
+
+    Utils::ContiguousAtTensor(atInTensors);
+    Utils::ContiguousAtTensor(atOutTensors);
+    ExecuteOutImpl(atInTensors, atOutTensors, varaintPackParam);
+}
+
 std::vector<torch::Tensor> OperationTorch::Execute(std::vector<torch::Tensor> atInTensors)
 {
     ASD_LOG(INFO) << name_ << " execute start";
@@ -93,7 +131,8 @@ void OperationTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vec
     ExecuteOutImpl(atInTensors, atOutTensors);
 }
 
-void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors)
+void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std::vector<torch::Tensor> &atOutTensors,
+                                    const std::string &varaintPackParam)
 {
     ASD_LOG(INFO) << name_ << " execute impl execCount:" << executeCount_;
     AsdOps::Timer timer;
@@ -101,6 +140,9 @@ void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std
     AclTransformer::Handle handle = {Utils::GetCurrentStream()};
 
     AclTransformer::VariantPack variantPack;
+    if (varaintPackParam != "") {
+        variantPack.param = ParseParam(opName_, varaintPackParam);
+    }
     BuildVariantPack(atInTensors, atOutTensors, variantPack);
 
     AsdOps::Timer timer1;
@@ -214,5 +256,8 @@ TORCH_LIBRARY(OperationTorch, m)
         .def("set_name", &OperationTorch::SetName)
         .def("set_param", &OperationTorch::SetParam)
         .def("execute", &OperationTorch::Execute)
-        .def("execute_out", &OperationTorch::ExecuteOut);
+        .def("execute_out", &OperationTorch::ExecuteOut)
+        .def("execute_with_param", &OperationTorch::ExecuteWithParam)
+        .def("execute_out_with_param", &OperationTorch::ExecuteOutWithParam);
+    ;
 }

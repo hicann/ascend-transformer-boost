@@ -138,7 +138,7 @@ AsdOps::Status GraphRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack
         return st;
     }
 
-    st = SetupAllRunners();
+    st = SetupAllRunners(runnerVariantPack);
     if (!st.Ok()) {
         ASD_LOG(ERROR) << GetName() << " setup fail, SetupAllRunners fail, error:" << st.Message();
         return st;
@@ -300,11 +300,14 @@ void GraphRunner::InferShapeNode(size_t nodeId, GraphRunner::Node &node)
     }
 }
 
-AsdOps::Status GraphRunner::SetupAllRunners()
+AsdOps::Status GraphRunner::SetupAllRunners(const RunnerVariantPack &runnerVariantPack)
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] setup start";
+        if (node.useVariantPackParam) {
+            node.runnerVariantPack.param = runnerVariantPack.param;
+        }
         AsdOps::Status st = node.runner->Setup(node.runnerVariantPack);
         if (!st.Ok()) {
             ASD_LOG(ERROR) << GetName() << " node[" << nodeId << "] setup fail, error:" << st.Message();

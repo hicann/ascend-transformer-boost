@@ -18,6 +18,7 @@
 #include <string>
 #include <asdops/tensor.h>
 #include <asdops/utils/svector/svector.h>
+#include <asdops/utils/any/any.h>
 
 namespace AclTransformer {
 struct VariantPack {
@@ -25,6 +26,7 @@ struct VariantPack {
     AsdOps::SVector<AsdOps::Tensor> outTensors;
     void *workspace = nullptr;
     uint64_t workspaceSize = 0;
+    AsdOps::Any param;
     std::string ToString() const;
 };
 } // namespace AclTransformer

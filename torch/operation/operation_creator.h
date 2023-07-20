@@ -16,6 +16,10 @@
 #ifndef OPERATION_CREATOR_H
 #define OPERATION_CREATOR_H
 #include <string>
+#include <asdops/utils/any/any.h>
 #include "acltransformer/operation.h"
+
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param);
+AsdOps::Any ParseParam(const std::string &opName, const std::string &param);
+
 #endif

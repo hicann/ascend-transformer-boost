@@ -121,6 +121,7 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
                                             IN_TOKENOFFSET_ID,
                                             IN_LAYERID_ID};
     selfAttentionKvCacheNode.outTensorIds = {INTERMEDIATE_SELFOUT_ID};
+    selfAttentionKvCacheNode.useVariantPackParam = true;
 
     selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation(AclTransformer::LinearParam()));
     selfOutLinearNode.inTensorIds = {INTERMEDIATE_SELFOUT_ID, IN_SELFOUTLINEARWEIGHT_ID, IN_SELFOUTLINEARBIAS_ID};

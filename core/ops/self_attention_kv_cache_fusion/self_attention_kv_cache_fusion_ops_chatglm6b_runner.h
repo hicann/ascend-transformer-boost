@@ -28,6 +28,7 @@ private:
     bool IsUseMuls();
     void BuildGraphWithMuls();
     void BuildGraphWithoutMuls();
+    void SetKernelGrapModifyFunc();
 
 private:
     SelfAttentionKvCacheFusionParam param_;
