@@ -6,4 +6,9 @@ if(USE_TORCH_RUNNER)
 else()
     target_link_libraries(acltransformer_hello PRIVATE acltransformer dl)
 endif()
+
+if(USE_LCCL_RUNNER)
+    target_link_libraries(acltransformer_hello lccl)
+endif()
+
 install(TARGETS acltransformer_hello DESTINATION bin)

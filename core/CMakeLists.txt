@@ -17,6 +17,10 @@ target_link_libraries(acltransformer_static PRIVATE
                       torch_python torch_npu python3)
 endif()
 
+if(USE_LCCL_RUNNER)
+target_link_libraries(acltransformer_static PRIVATE lccl)
+endif()
+
 add_library(acltransformer SHARED ${SOURCE_FILES})
 
 
@@ -26,6 +30,10 @@ target_link_libraries(acltransformer PRIVATE core_utils core_base
 if(USE_TORCH_RUNNER)
 target_link_libraries(acltransformer PRIVATE core_torch torch
                       c10 torch_cpu torch_python torch_npu python3)
+endif()
+
+if(USE_LCCL_RUNNER)
+target_link_libraries(acltransformer PRIVATE lccl)
 endif()
 
 if(USE_PROFILING)
