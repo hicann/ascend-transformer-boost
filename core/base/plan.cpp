@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 #include "acltransformer/plan.h"
+#include <unistd.h>
+#include <cstring>
+#include <syscall.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/status/status.h>
 #include <asdops/utils/rt/rt.h>
@@ -21,6 +24,7 @@
 #include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/runner.h"
 #include "acltransformer/statistic.h"
+#include "acltransformer/utils/profiling/profiling_funcs.h"
 
 namespace AclTransformer {
 const size_t HOST_TILING_BUFFER_DEFAULT_SIZE = 1024;
@@ -29,8 +33,32 @@ Plan::Plan() { hostTilingBuffer_.resize(HOST_TILING_BUFFER_DEFAULT_SIZE); }
 
 Plan::~Plan() {}
 
+#ifdef USE_PROFILING
+void Plan::ReportApiInfo(const uint64_t beginTime, const char *opName)
+{
+    MsProfApi info{};
+    info.type = MSPROF_REPORT_ACL_OTHERS_BASE_TYPE;
+    const size_t nameLen = strlen(opName);
+    info.itemId = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(opName, nameLen);
+    info.level = MSPROF_REPORT_ACL_LEVEL;
+    const uint64_t endTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
+    info.threadId = static_cast<uint32_t>(syscall(SYS_gettid));
+    info.beginTime = beginTime;
+    info.endTime = endTime;
+    info.magicNumber = MSPROF_REPORT_DATA_MAGIC_NUM;
+    info.reserve = 0;
+    auto ret = AsdOps::GetSingleton<AsdProfiling>().AsdReportApi(true, &info);
+    if (ret != 0) {
+        ASD_LOG(ERROR) << "AsdReportApi error!";
+    }
+}
+#endif
+
 AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 {
+#ifdef USE_PROFILING
+    const auto beginTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
+#endif
     ASD_LOG(INFO) << name_ << " setup start";
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
@@ -59,6 +87,10 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
     ASD_LOG(INFO) << name_ << " setup success, tilingBufferSize:" << runnerVariantPack_.tilingBufferSize
                   << ", workspaceBufferSize:" << runnerVariantPack_.workspaceBufferSize
                   << ", intermediateBufferSize:" << runnerVariantPack_.intermediateBufferSize;
+
+#ifdef USE_PROFILING
+    ReportApiInfo(beginTime, "Plan::SetUp");
+#endif
     return AsdOps::Status::OkStatus();
 }
 
@@ -70,6 +102,9 @@ uint64_t Plan::GetWorkspaceSize()
 
 AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
 {
+#ifdef USE_PROFILING
+    const auto beginTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
+#endif
     ASD_LOG(INFO) << name_ << " execute start";
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
@@ -90,6 +125,10 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
     }
 
     ASD_LOG(INFO) << name_ << " execute success";
+    ASD_LOG(INFO) << name_ << " runner execute success";
+#ifdef USE_PROFILING
+    ReportApiInfo(beginTime, "Plan::Execute");
+#endif
     return AsdOps::Status::OkStatus();
 }
 
