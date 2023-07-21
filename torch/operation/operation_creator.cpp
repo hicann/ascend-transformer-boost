@@ -43,7 +43,7 @@
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
 #include "models/bert/bertlayer_operation.h"
 #include "models/chatglm6b/chatglm6blayer_quant_operation.h"
-#inodels/chatglm6b/chatglm6blayer_first_quant_operation.h"
+#include "models/chatglm6b/chatglm6blayer_first_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_last_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
 
