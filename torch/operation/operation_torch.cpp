@@ -196,7 +196,8 @@ void OperationTorch::CreateAtOutTensors(const std::vector<torch::Tensor> &atInTe
         ASD_LOG(INFO) << name_ << " infer shape inTensors[" << i
                       << "]:" << AclTransformer::TensorUtil::AsdOpsTensorToString(inTensors.at(i));
     }
-    operation_->InferShape(inTensors, outTensorDescs);
+    AsdOps::Status st = operation_->InferShape(inTensors, outTensorDescs);
+    ASD_LOG_IF(!st.Ok(), FATAL) << name_ << " infer shape fail, error:" << st.Message();
 
     atOutTensors.resize(outTensorDescs.size());
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
