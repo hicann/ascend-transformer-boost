@@ -237,9 +237,10 @@ static AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nloh
 static AclTransformer::Operation *TransposeOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::TransposeParam param;
-    param.dimA = paramJson["dimA"].get<int>();
-    param.dimB = paramJson["dimB"].get<int>();
-    ASD_LOG(INFO) << "transpose(" << param.dimA << "," << param.dimB << ")";
+    for (auto item : paramJson["perm"]) {
+        param.perm.push_back(item.get<int>());
+    }
+    ASD_LOG(INFO) << "transpose(" << param.perm << ")";
     return new AclTransformer::TransposeOperation(param);
 }
 

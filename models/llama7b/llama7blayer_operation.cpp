@@ -102,7 +102,7 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     mixdKLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
     mixdKLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_KMIXDWEIGHT, IN_KMIXDBIAS};
     mixdKLinearNode.outTensorIds = {INTERMIDATE_MIXEDK};
-    
+
     mixdVLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
     mixdVLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_VMIXDWEIGHT, IN_VMIXDBIAS};
     mixdVLinearNode.outTensorIds = {INTERMIDATE_MIXEDV};
@@ -115,7 +115,8 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     kPositionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDK, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
     kPositionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDK};
 
-    vTransposeNode.operation.reset(new AclTransformer::TransposeOperation({0, 1}));
+    AsdOps::SVector<int32_t> perm = {0, 1};
+    vTransposeNode.operation.reset(new AclTransformer::TransposeOperation({perm}));
     vTransposeNode.inTensorIds = {INTERMIDATE_MIXEDV};
     vTransposeNode.outTensorIds = {INTERMIDATE_TRANSPOSEVOUT};
 
@@ -123,8 +124,8 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     selfAttentionKvCacheParam.dk = param_.dk;
     selfAttentionKvCacheParam.headNum = param_.headNum;
     selfAttentionKvCacheParam.model = param_.model;
-    selfAttentionKvCacheNode.operation.reset(new AclTransformer::SelfAttentionKvCacheOperation(
-        selfAttentionKvCacheParam));
+    selfAttentionKvCacheNode.operation.reset(
+        new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam));
     selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
                                             INTERMIDATE_POSITIONEMBEDK,
                                             INTERMIDATE_TRANSPOSEVOUT,
@@ -136,8 +137,7 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     selfAttentionKvCacheNode.inTensorViewFuncs.resize(selfAttentionKvCacheNode.inTensorIds.size());
     selfAttentionKvCacheNode.inTensorViewFuncs.at(2) = [=](const AsdOps::SVector<int64_t> &oldDims,
                                                            AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum,
-                   oldDims.at(2) / param_.headNum};
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
     };
 
     selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
@@ -168,7 +168,7 @@ uint64_t LLaMA7BLayerOperation::GetInTensorCount() const { return IN_TENSOR_COUN
 uint64_t LLaMA7BLayerOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
 AsdOps::Status LLaMA7BLayerOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+                                                     AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
     const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);
