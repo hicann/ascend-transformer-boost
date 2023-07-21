@@ -20,6 +20,7 @@
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
+#include "acltransformer/ops/position_embedding_fusion_operation.h"
 
 namespace AclTransformer {
 enum Chatglm6BLayerDecoderFlashAttentionTensorId {
@@ -95,11 +96,9 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
     mixdQkvLinearNode.inTensorIds = {INTERMEDIATE_INPUTNORMOUT_ID, IN_QKVMIXEDWEIGHT_ID, IN_QKVMIXEDBIAS_ID};
     mixdQkvLinearNode.outTensorIds = {INTERMEDIATE_MIXEDLINEAROUTQKV_ID};
 
-    AclTransformer::PositionEmbeddingParam positionEmbeddingParam;
-    positionEmbeddingParam.headNum = param_.headNum;
-    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation(positionEmbeddingParam));
+    positionEmbeddingNode.operation.reset(new AclTransformer::RopeOperation({param_.headNum}));
     positionEmbeddingNode.inTensorIds = {INTERMEDIATE_MIXEDLINEAROUTQKV_ID, IN_POSITIONIDS_ID, IN_COSTABLE_ID,
-                                         IN_SINTABLE_ID};
+                                         IN_SINTABLE_ID, IN_SEQLEN_ID};
     positionEmbeddingNode.outTensorIds = {INTERMEDIATE_POSITIONEMBEDQ_ID, INTERMEDIATE_POSITIONEMBEDK_ID,
                                           INTERMEDIATE_VALUE_ID};
 
