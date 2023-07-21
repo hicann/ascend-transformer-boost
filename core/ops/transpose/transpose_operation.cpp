@@ -39,7 +39,9 @@ AsdOps::Status TransposeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::
                                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0) = inTensors.at(0).desc;
-    std::swap(outTensorDescs.at(0).dims[param_.dimA], outTensorDescs.at(0).dims[param_.dimB]);
+    for (size_t i = 0; i < outTensorDescs.at(0).dims.size(); i++) {
+        outTensorDescs.at(0).dims.at(i) = inTensors.at(0).desc.dims.at(param_.perm.at(i));
+    }
     return AsdOps::Status::OkStatus();
 }
 

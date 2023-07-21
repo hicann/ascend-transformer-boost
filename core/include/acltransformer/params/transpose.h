@@ -15,10 +15,12 @@
  */
 #ifndef ACLTRANSFOERM_PARAMS_TRANSPOSE_H
 #define ACLTRANSFOERM_PARAMS_TRANSPOSE_H
+
+#include <asdops/utils/svector/svector.h>
+
 namespace AclTransformer {
 struct TransposeParam {
-    int64_t dimA = 0;
-    int64_t dimB = 0;
+    AsdOps::SVector<int32_t> perm;
 };
 } // namespace AclTransformer
 #endif
