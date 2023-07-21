@@ -25,6 +25,7 @@
 #include "acltransformer/runner.h"
 #include "acltransformer/statistic.h"
 #include "acltransformer/utils/profiling/profiling_funcs.h"
+#include "acltransformer/context/work_context.h"
 
 namespace AclTransformer {
 const size_t HOST_TILING_BUFFER_DEFAULT_SIZE = 1024;
@@ -97,8 +98,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 
 uint64_t Plan::GetWorkspaceSize()
 {
-    return runnerVariantPack_.tilingBufferSize + runnerVariantPack_.workspaceBufferSize +
-           runnerVariantPack_.intermediateBufferSize;
+    return runnerVariantPack_.workspaceBufferSize + runnerVariantPack_.intermediateBufferSize;
 }
 
 AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
@@ -110,10 +110,10 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
     runnerVariantPack_.param = variantPack.param;
-    runnerVariantPack_.tilingBuffer = variantPack.workspace;
-    runnerVariantPack_.workspaceBuffer = (uint8_t *)variantPack.workspace + runnerVariantPack_.tilingBufferSize;
-    runnerVariantPack_.intermediateBuffer =
-        (uint8_t *)variantPack.workspace + runnerVariantPack_.tilingBufferSize + runnerVariantPack_.workspaceBufferSize;
+    runnerVariantPack_.tilingBuffer =
+        AsdOps::GetSingleton<WorkContext>().GetTilingBuffer(runnerVariantPack_.tilingBufferSize);
+    runnerVariantPack_.workspaceBuffer = (uint8_t *)variantPack.workspace;
+    runnerVariantPack_.intermediateBuffer = (uint8_t *)variantPack.workspace + runnerVariantPack_.workspaceBufferSize;
 
     AsdOps::Status st = CopyHostTilingToDevice(handle);
     if (!st.Ok()) {
