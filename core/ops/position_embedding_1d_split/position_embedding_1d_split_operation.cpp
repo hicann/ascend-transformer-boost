@@ -27,7 +27,7 @@ PositionEmbedding1dSplitOperation::PositionEmbedding1dSplitOperation(const Posit
     runnerBuilders_ = {new PositionEmbedding1dSplitOpsRunnerBuilder(param_),
                        new PositionEmbedding1dSplitTorchRunnerBuilder(param_)};
 #else
-    runnerBuilders_ = {new PositionEmbedding1dSplitTorchRunnerBuilder(param_)};
+    runnerBuilders_ = {new PositionEmbedding1dSplitOpsRunnerBuilder(param_)};
 #endif
 }
 
