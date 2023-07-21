@@ -17,6 +17,8 @@
 #include <nlohmann/json.hpp>
 #include <functional>
 #include <asdops/utils/log/log.h>
+#include "acltransformer/ops/linear_parallel_operation.h"
+#include "acltransformer/ops/all_reduce_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
@@ -45,8 +47,34 @@
 #include "models/chatglm6b/chatglm6blayer_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_last_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
+#include "models/chatglm130b/chatglm130b_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
+
+static AclTransformer::Operation *AllReduceOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::AllReduceParam param;
+    param.rank = paramJson["rank"].get<int>();
+    param.rankSize = paramJson["rankSize"].get<int>();
+    ASD_LOG(INFO) << "AllReduceParam rank:" << param.rank;
+    ASD_LOG(INFO) << "AllReduceParam rankSize:" << param.rankSize;
+    return new AclTransformer::AllReduceOperation(param);
+}
+
+static AclTransformer::Operation *LinearParallelOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LinearParallelParam param;
+    if (paramJson.find("transWeight") != paramJson.end()) {
+        param.transWeight = paramJson["transWeight"].get<bool>();
+    }
+    if (paramJson.find("bias") != paramJson.end()) {
+        param.bias = paramJson["bias"].get<std::string>();
+    }
+    param.rank = paramJson["rank"].get<int>();
+    param.rankSize = paramJson["rankSize"].get<int>();
+    param.parallelType = paramJson["parallelType"].get<std::string>();
+    return new AclTransformer::LinearParallelOperation(param);
+}
 
 static AclTransformer::Operation *AddOperationCreate(const nlohmann::json &paramJson)
 {
@@ -412,7 +440,39 @@ static AclTransformer::Operation *ChatGlm6BLayeEncoderFlashAttentionOperationCre
     return new AclTransformer::ChatGlm6BLayerDecoderFlashAttentionOperation(param);
 }
 
+AclTransformer::Operation *Glm130BLayerOperation(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm130BLayerParam param;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.contains("transKey")) {
+        param.transKey = paramJson["transKey"].get<bool>();
+    }
+    if (paramJson.contains("rank")) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.contains("rankSize")) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.contains("layerId")) {
+        param.layerId = paramJson["layerId"].get<int>();
+    }
+    if (paramJson.contains("residualAddScale")) {
+        param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    }
+    if (paramJson.contains("layerNormEps")) {
+        param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    }
+    return new AclTransformer::ChatGlm130BLayerOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
+    {"AllReduceOperation",AllReduceOperationCreate},
+    {"LinearParallelOperation", &LinearParallelOperationCreate},
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
     {"RopeOperation", &RopeOperationCreate},
@@ -441,6 +501,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm6BLayerQuantOperation", &ChatGlm6BLayerQuantOperationCreate},
     {"ChatGlm6BLayerLastQuantOperation", &ChatGlm6BLayerLastQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFlashAttentionOperation", &ChatGlm6BLayeEncoderFlashAttentionOperationCreate},
+    {"Glm130BLayerOperation", &Glm130BLayerOperation},
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
