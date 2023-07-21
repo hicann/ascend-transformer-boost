@@ -770,7 +770,6 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
 
         # recording parameters
         self.max_sequence_length = config.max_sequence_length
-        print("max_sequence_length: ", str(self.max_sequence_length))
         self.hidden_size = config.hidden_size
         self.params_dtype = torch.half
         self.num_attention_heads = config.num_attention_heads
@@ -933,8 +932,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         else:
             raise ValueError(
                 "You have to specify either input_ids or inputs_embeds")
-
-        if self.token_num == 0:
+        full_flag = True if input_ids.numel() > 1 else False
+        if full_flag:
             past_key_values = tuple([None] * len(self.layers))
             seq = input_ids[0].tolist()
 
@@ -997,9 +996,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             self.cos = emb_global.cos().unsqueeze(1)
             self.sin = emb_global.sin().unsqueeze(1)
 
-        
-        
-        if self.token_num == 0:
+        if full_flag:
+            self.token_num = 0
             self.seq_len = torch.tensor([hidden_states.shape[0]] * hidden_states.shape[1], device=hidden_states.device)
             acl_model_out = self.acl_encoder_operation.execute(
                 hidden_states, position_ids, self.cos, self.sin, attention_mask, self.seq_len)
@@ -1010,12 +1008,11 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             for i in range(self.num_layers):
                 self.kv_cache[0, i, 0, :acl_model_out[1].size()[0], ...] = acl_model_out[i+1].transpose(
                         0, 1)  # batch = 1
-                self.kv_cache[1, i, 0, :acl_model_out[1].size()[0], ...] = acl_model_out[i+29].transpose(
-                        0, 1)  # batch = 1
+                self.kv_cache[1, i, 0, :acl_model_out[1].size()[0], ...] =
+                    acl_model_out[i + 1 + self.num_layers].transpose(0, 1)  # batch = 1
                 self.token_num = acl_model_out[1].size()[0]
             self.seq_len = torch.tensor([1] * hidden_states.shape[1], device=self.kv_cache.device) 
         else:
-            self.seq_len = torch.tensor([1] * hidden_states.shape[1], device=self.kv_cache.device) 
             self.token_num = self.token_num + 1
             acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerNum": self.num_layers,
                                     "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers),
@@ -1419,7 +1416,6 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
-                self.transformer.token_num = 0 
                 break
             yield input_ids
 
