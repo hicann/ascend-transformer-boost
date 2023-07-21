@@ -220,9 +220,8 @@ void SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SetKernelGrapModifyFunc()
         const size_t flashAttentionNodeId = 3;
         auto &flashAttentionNode = kernelGraph_.nodes.at(flashAttentionNodeId);
 
-        flashAttentionNode.kernelRunInfo.SetOpDesc(
-            {0, "AttentionOperation",
-             AsdOps::OpParam::Attention{param_.headNum, newParam.seqLen, newParam.tokenOffset}});
+        flashAttentionNode.opDesc = {0, "AttentionOperation",
+                                     AsdOps::OpParam::Attention{param_.headNum, newParam.seqLen, newParam.tokenOffset}};
         ASD_LOG(INFO) << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner SetOpDesc AsdOps::OpParam::Attention.headNum:"
                       << param_.headNum << ", seqLen:" << newParam.seqLen << ", tokenOffset:" << newParam.tokenOffset;
     };
