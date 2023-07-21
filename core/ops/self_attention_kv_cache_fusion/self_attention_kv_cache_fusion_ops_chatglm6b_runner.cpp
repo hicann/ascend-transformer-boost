@@ -27,10 +27,10 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatG
     : OpsRunner("SelfAttentionKvCacheFusionOpsChatGlm6bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_FUSION_CACHE),
       param_(param)
 {
+    setupCacheEnable_ = false;
     bool useMuls = IsUseMuls();
-    ASD_LOG(INFO)
-        << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatGlm6bRunner called useMuls:"
-        << useMuls;
+    ASD_LOG(INFO) << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner new, useMuls:" << useMuls
+                  << ", setupCacheEnable:" << setupCacheEnable_;
     if (useMuls) {
         BuildGraphWithMuls();
         SetKernelGrapModifyFunc();

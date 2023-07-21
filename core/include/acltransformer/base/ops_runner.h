@@ -115,6 +115,7 @@ protected:
     AsdOps::RunInfo lastRunInfo_;
     AsdOps::Kernel *lastKernel_ = nullptr;
     bool initTensorTypeFlag_ = false;
+    bool setupCacheEnable_ = true;
 };
 } // namespace AclTransformer
 #endif

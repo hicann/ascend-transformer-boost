@@ -86,7 +86,7 @@ AsdOps::Status OpsRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack)
 
     kernelGraph_.inTensors = runnerVariantPack.inTensors;
     kernelGraph_.outTensors = runnerVariantPack.outTensors;
-    if (AsdOps::GetSingleton<Config>().IsOpsRunnerSetupCacheEnable()) {
+    if (AsdOps::GetSingleton<Config>().IsOpsRunnerSetupCacheEnable() && setupCacheEnable_) {
         if (IsRunnerVariantPackInputEqual(runnerVariantPack, lastRunnerVariantPack_)) {
             ASD_LOG(INFO) << GetName() << " runnerVariantPack input is not change, setup do nothing";
             return AsdOps::Status::OkStatus();
