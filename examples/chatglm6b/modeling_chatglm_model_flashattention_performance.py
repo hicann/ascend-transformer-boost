@@ -1008,7 +1008,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             for i in range(self.num_layers):
                 self.kv_cache[0, i, 0, :acl_model_out[1].size()[0], ...] = acl_model_out[i+1].transpose(
                         0, 1)  # batch = 1
-                self.kv_cache[1, i, 0, :acl_model_out[1].size()[0], ...] =
+                self.kv_cache[1, i, 0, :acl_model_out[1].size()[0], ...] = \
                     acl_model_out[i + 1 + self.num_layers].transpose(0, 1)  # batch = 1
                 self.token_num = acl_model_out[1].size()[0]
             self.seq_len = torch.tensor([1] * hidden_states.shape[1], device=self.kv_cache.device) 
