@@ -17,6 +17,7 @@
 #define ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_H
 namespace AclTransformer {
 struct PositionEmbeddingParam {
+    bool is2d = true;
     int64_t headNum = 0;
 };
 } // namespace AclTransformer
