@@ -18,13 +18,20 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/position_embedding.h"
 #include "position_embedding_ops_runner.h"
+#include "position_embedding_1d_ops_runner.h"
 
 namespace AclTransformer {
 class PositionEmbeddingOpsRunnerBuilder : public RunnerBuilder {
 public:
     PositionEmbeddingOpsRunnerBuilder(const PositionEmbeddingParam &param) : param_(param) {}
     virtual ~PositionEmbeddingOpsRunnerBuilder() = default;
-    Runner *Build() override { return new PositionEmbeddingOpsRunner(param_); }
+    Runner *Build() override { 
+        if (param_.is2d) {
+            return new PositionEmbeddingOpsRunner(param_);
+        } else {
+            return new PositionEmbedding1dOpsRunner(param_);
+        }
+    }
 
 private:
     PositionEmbeddingParam param_;
