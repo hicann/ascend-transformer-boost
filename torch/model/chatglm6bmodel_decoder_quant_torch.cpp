@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm6bmodel_quant_torch.h"
+#include "chatglm6bmodel_decoder_quant_torch.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
@@ -29,25 +29,27 @@
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
 #include "torch/workspace/workspace.h"
-#include "models/chatglm6b/chatglm6blayer_quant_operation.h"
-#include "models/chatglm6b/chatglm6blayer_first_quant_operation.h"
-#include "models/chatglm6b/chatglm6blayer_last_quant_operation.h"
-
+#include "models/chatglm6b/chatglm6blayer_decoder_quant_operation.h"
+#include "models/chatglm6b/chatglm6blayer_decoder_first_quant_operation.h"
+#include "models/chatglm6b/chatglm6blayer_decoder_last_quant_operation.h"
 const size_t WEIGHT_COUNT_PER_LAYER = 16;
+const size_t TENSOR2 = 2;
+const size_t TENSOR3 = 3;
 
-ChatGlm6BModelQuantTorch::ChatGlm6BModelQuantTorch()
+
+ChatGlm6BModelDecoderQuantTorch::ChatGlm6BModelDecoderQuantTorch()
 {
-    ASD_LOG(INFO) << "ChatGlm6BModelQuantTorch::ChatGlm6BModelQuantTorch, TASK_QUEUE_ENABLE:"
+    ASD_LOG(INFO) << "ChatGlm6BModelDecoderQuantTorch::ChatGlm6BModelDecoderQuantTorch, TASK_QUEUE_ENABLE:"
                   << c10_npu::option::OptionsManager().CheckQueueEnable();
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
 }
 
-ChatGlm6BModelQuantTorch::~ChatGlm6BModelQuantTorch() {}
+ChatGlm6BModelDecoderQuantTorch::~ChatGlm6BModelDecoderQuantTorch() {}
 
-void ChatGlm6BModelQuantTorch::SetParam(std::string param)
+void ChatGlm6BModelDecoderQuantTorch::SetParam(std::string param)
 {
-    ASD_LOG(INFO) << "ChatGlm6BModelQuant set param start, param:" << param;
+    ASD_LOG(INFO) << "ChatGlm6BModelDecoderQuant set param start, param:" << param;
     modelParam_.FromString(param);
     operations_.resize(modelParam_.layerNum);
     plans_.resize(modelParam_.layerNum);
@@ -70,11 +72,11 @@ void ChatGlm6BModelQuantTorch::SetParam(std::string param)
         opParam.ffnOutInputOffset = modelParam_.ffnOutInputOffset[i];
         AclTransformer::Operation *op;
         if (i == 0) {
-            op = new AclTransformer::ChatGlm6BLayerFirstQuantOperation(opParam);
+            op = new AclTransformer::ChatGlm6BLayerDecoderFirstQuantOperation(opParam);
         } else if (i == modelParam_.layerNum - 1) {
-            op = new AclTransformer::ChatGlm6BLayerLastQuantOperation(opParam);
+            op = new AclTransformer::ChatGlm6BLayerDecoderLastQuantOperation(opParam);
         } else {
-            op = new AclTransformer::ChatGlm6BLayerQuantOperation(opParam);
+            op = new AclTransformer::ChatGlm6BLayerDecoderQuantOperation(opParam);
         }
         operations_.at(i).reset(op);
         AclTransformer::Plan *plan = new AclTransformer::Plan();
@@ -82,29 +84,28 @@ void ChatGlm6BModelQuantTorch::SetParam(std::string param)
         plans_.at(i).reset(plan);
     }
 
-    ASD_LOG(INFO) << "ChatGlm6BModelQuant set param end";
+    ASD_LOG(INFO) << "ChatGlm6BModelDecoderQuant set param end";
 }
 
-void ChatGlm6BModelQuantTorch::SetWeight(std::vector<torch::Tensor> weightTensors)
+void ChatGlm6BModelDecoderQuantTorch::SetWeight(std::vector<torch::Tensor> weightTensors)
 {
     if (weightTensors.size() != modelParam_.layerNum * WEIGHT_COUNT_PER_LAYER) {
-        ASD_LOG(ERROR) << "ChatGlm6BModelQuant set weight fail, weightTensors.size:" << weightTensors.size()
+        ASD_LOG(ERROR) << "ChatGlm6BModelDecoderQuant set weight fail, weightTensors.size:" << weightTensors.size()
                        << " != " << modelParam_.layerNum * WEIGHT_COUNT_PER_LAYER;
         return;
     }
 
-    ASD_LOG(INFO) << "ChatGlm6BModelQuant set weight success, size:" << weightTensors.size();
+    ASD_LOG(INFO) << "ChatGlm6BModelDecoderQuant set weight success, size:" << weightTensors.size();
 
     weightTensors_ = weightTensors;
     Utils::ContiguousAtTensor(weightTensors_);
 }
 
-std::vector<torch::Tensor> ChatGlm6BModelQuantTorch::Execute(torch::Tensor hiddenStateTensor,
-                                                             torch::Tensor positionIdTensor,
-                                                             torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                                                             torch::Tensor attentionMaskTensor,
-                                                             std::vector<torch::Tensor> pastKeyTensors,
-                                                             std::vector<torch::Tensor> pastValueTensors)
+std::vector<torch::Tensor>
+ChatGlm6BModelDecoderQuantTorch::Execute(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
+                                         torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
+                                         torch::Tensor attentionMaskTensor, std::vector<torch::Tensor> pastKeyTensors,
+                                         std::vector<torch::Tensor> pastValueTensors, torch::Tensor seqLen)
 {
     timer_.Reset();
     torch::Tensor outTensor;
@@ -112,9 +113,9 @@ std::vector<torch::Tensor> ChatGlm6BModelQuantTorch::Execute(torch::Tensor hidde
     std::vector<torch::Tensor> presentValueTensors(modelParam_.layerNum);
 
     ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor,
-                   pastKeyTensors, pastValueTensors, outTensor, presendKeyTensors, presentValueTensors, true);
+                   pastKeyTensors, pastValueTensors, seqLen, outTensor, presendKeyTensors, presentValueTensors, true);
 
-    std::vector<torch::Tensor> outTensors(1 + modelParam_.layerNum * 2);
+    std::vector<torch::Tensor> outTensors(1 + modelParam_.layerNum * TENSOR2);
     size_t tensorId = 0;
     outTensors.at(tensorId++) = outTensor;
     for (int i = 0; i < modelParam_.layerNum; ++i) {
@@ -127,30 +128,29 @@ std::vector<torch::Tensor> ChatGlm6BModelQuantTorch::Execute(torch::Tensor hidde
     return outTensors;
 }
 
-void ChatGlm6BModelQuantTorch::ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
-                                          torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                                          torch::Tensor attentionMaskTensor, std::vector<torch::Tensor> pastKeyTensors,
-                                          std::vector<torch::Tensor> pastValueTensors, torch::Tensor outTensor,
-                                          std::vector<torch::Tensor> presendKeyTensors,
-                                          std::vector<torch::Tensor> presentValueTensors)
+void ChatGlm6BModelDecoderQuantTorch::ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
+                                                 torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
+                                                 torch::Tensor attentionMaskTensor,
+                                                 std::vector<torch::Tensor> pastKeyTensors,
+                                                 std::vector<torch::Tensor> pastValueTensors, torch::Tensor seqLen,
+                                                 torch::Tensor outTensor, std::vector<torch::Tensor> presendKeyTensors,
+                                                 std::vector<torch::Tensor> presentValueTensors)
 {
     timer_.Reset();
     ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor,
-                   pastKeyTensors, pastValueTensors, outTensor, presendKeyTensors, presentValueTensors, false);
+                   pastKeyTensors, pastValueTensors, seqLen, outTensor, presendKeyTensors, presentValueTensors, false);
 }
 
-void ChatGlm6BModelQuantTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
-                                              torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
-                                              torch::Tensor &attentionMaskTensor,
-                                              std::vector<torch::Tensor> &pastKeyTensors,
-                                              std::vector<torch::Tensor> &pastValueTensors, torch::Tensor &outTensor,
-                                              std::vector<torch::Tensor> &presendKeyTensors,
-                                              std::vector<torch::Tensor> &presentValueTensors, bool newOut)
+void ChatGlm6BModelDecoderQuantTorch::ExecuteOutImpl(
+    torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor, torch::Tensor &cosTableTensor,
+    torch::Tensor &sinTableTensor, torch::Tensor &attentionMaskTensor, std::vector<torch::Tensor> &pastKeyTensors,
+    std::vector<torch::Tensor> &pastValueTensors, torch::Tensor seqLen, torch::Tensor &outTensor,
+    std::vector<torch::Tensor> &presendKeyTensors, std::vector<torch::Tensor> &presentValueTensors, bool newOut)
 {
     if ((int)pastKeyTensors.size() != modelParam_.layerNum || (int)pastValueTensors.size() != modelParam_.layerNum ||
         (int)presendKeyTensors.size() != modelParam_.layerNum ||
         (int)presentValueTensors.size() != modelParam_.layerNum) {
-        ASD_LOG(ERROR) << "ChatGlm6BModelQuant pastKeyTensors.size:" << pastKeyTensors.size()
+        ASD_LOG(ERROR) << "ChatGlm6BModelDecoderQuant pastKeyTensors.size:" << pastKeyTensors.size()
                        << ", pastValueTensors.size:" << pastValueTensors.size()
                        << ", presendKeyTensors.size:" << presendKeyTensors.size()
                        << ", presentValueTensors.size:" << presentValueTensors.size();
@@ -171,14 +171,13 @@ void ChatGlm6BModelQuantTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, 
         Utils::ContiguousAtTensor(presendKeyTensors);
         Utils::ContiguousAtTensor(presentValueTensors);
     }
-
+    AclTransformer::Operation *operation = operations_.at(0).get();
+    std::vector<torch::Tensor> opAtInTensors(operation->GetInTensorCount());
+    std::vector<torch::Tensor> opAtOutTensors(operation->GetOutTensorCount());
     torch::Tensor firstInTensor = hiddenStateTensor;
     torch::Tensor firstResInTensor = hiddenStateTensor;
-    torch::Tensor resInTensor = hiddenStateTensor;
-    for (int layerId = 0; layerId < modelParam_.layerNum; ++layerId) {
-        AclTransformer::Operation *operation = operations_.at(layerId).get();
-        std::vector<torch::Tensor> opAtInTensors(operation->GetInTensorCount());
-        std::vector<torch::Tensor> opAtOutTensors(operation->GetOutTensorCount());
+
+    for (int layerId = 0; layerId < modelParam_.layerNum - 1; ++layerId) {
         size_t inTensorId = 0;
         opAtInTensors.at(inTensorId++) = firstInTensor;
 
@@ -192,38 +191,45 @@ void ChatGlm6BModelQuantTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, 
         opAtInTensors.at(inTensorId++) = attentionMaskTensor; // attentionMaskTensor
         opAtInTensors.at(inTensorId++) = pastKeyTensors.at(layerId);
         opAtInTensors.at(inTensorId++) = pastValueTensors.at(layerId);
-
-        if (layerId != 0) {
-            opAtInTensors.at(inTensorId++) = firstResInTensor;
-        }
-
-        if (layerId == modelParam_.layerNum - 1) {
-            ExecuteLastSingleOperation(layerId, opAtInTensors, outTensor, presendKeyTensors.at(layerId),
-                                       presentValueTensors.at(layerId), newOut);
-        } else {
-            ExecuteSingleOperation(layerId, opAtInTensors, outTensor, presendKeyTensors.at(layerId),
-                                   presentValueTensors.at(layerId), resInTensor, newOut);
-            firstResInTensor = resInTensor;
-        }
-
+        opAtInTensors.at(inTensorId++) = seqLen;
+        opAtInTensors.at(inTensorId++) = firstResInTensor;
+        ExecuteSingleOperation(layerId, opAtInTensors, outTensor, presendKeyTensors.at(layerId),
+                               presentValueTensors.at(layerId), firstResInTensor, newOut);
         firstInTensor = outTensor;
     }
 
+    size_t lastInTensorId = 0;
+    size_t lastLayerId = modelParam_.layerNum - 1;
+    opAtInTensors.at(lastInTensorId++) = firstInTensor;
+    for (size_t weightTensorId = 0; weightTensorId < WEIGHT_COUNT_PER_LAYER; ++weightTensorId) {
+        opAtInTensors.at(lastInTensorId++) = weightTensors_.at(lastLayerId * WEIGHT_COUNT_PER_LAYER + weightTensorId);
+    }
+    opAtInTensors.at(lastInTensorId++) = positionIdTensor;    // positionIdTensor
+    opAtInTensors.at(lastInTensorId++) = cosTableTensor;      // cosTable
+    opAtInTensors.at(lastInTensorId++) = sinTableTensor;      // sinTable
+    opAtInTensors.at(lastInTensorId++) = attentionMaskTensor; // attentionMaskTensor
+    opAtInTensors.at(lastInTensorId++) = pastKeyTensors.at(lastLayerId);
+    opAtInTensors.at(lastInTensorId++) = pastValueTensors.at(lastLayerId);
+    opAtInTensors.at(lastInTensorId++) = seqLen;
+    opAtInTensors.at(lastInTensorId++) = firstResInTensor;
+    ExecuteLastSingleOperation(lastLayerId, opAtInTensors, outTensor, presendKeyTensors.at(lastLayerId),
+                               presentValueTensors.at(lastLayerId), newOut);
+
     AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer_.ElapsedMicroSecond();
-    ASD_LOG(FATAL) << "ChatGlm6BModelQuant executeCount:" << executeCount_ << ", statistic:["
+    ASD_LOG(FATAL) << "ChatGlm6BModelDecoderQuant executeCount:" << executeCount_ << ", statistic:["
                    << AsdOps::GetSingleton<AclTransformer::Statistic>().ToString() << "]";
     AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
 
     executeCount_++;
 }
 
-void ChatGlm6BModelQuantTorch::BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
-                                                torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
-                                                torch::Tensor &presentValueTensor, torch::Tensor &resIn, bool newOut,
-                                                AclTransformer::VariantPack &variantPack)
+void ChatGlm6BModelDecoderQuantTorch::BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
+                                                       torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
+                                                       torch::Tensor &presentValueTensor, torch::Tensor &resIn,
+                                                       bool newOut, AclTransformer::VariantPack &variantPack)
 {
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        ASD_LOG(INFO) << "ChatGlm6BModelQuantLayer_" << layerId << " atInTensors[" << i
+        ASD_LOG(INFO) << "ChatGlm6BModelDecoderQuantLayer_" << layerId << " atInTensors[" << i
                       << "].options:" << atInTensors.at(i).options() << ", data:" << atInTensors.at(i).data_ptr()
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
                       << ", format:" << Utils::GetTensorNpuFormat(atInTensors.at(i));
@@ -236,8 +242,8 @@ void ChatGlm6BModelQuantTorch::BuildVariantPack(int layerId, std::vector<torch::
         operation->InferShape(variantPack.inTensors, outTensorDescs);
         outTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(0));
         presendKeyTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(1));
-        presentValueTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(2));
-        resIn = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(3));
+        presentValueTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(TENSOR2));
+        resIn = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(TENSOR3));
     }
     variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(outTensor));
     variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(presendKeyTensor));
@@ -245,10 +251,10 @@ void ChatGlm6BModelQuantTorch::BuildVariantPack(int layerId, std::vector<torch::
     variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(resIn));
 }
 
-void ChatGlm6BModelQuantTorch::ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
-                                                      torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
-                                                      torch::Tensor &presentValueTensor, torch::Tensor &resIn,
-                                                      bool newOut)
+void ChatGlm6BModelDecoderQuantTorch::ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
+                                                             torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
+                                                             torch::Tensor &presentValueTensor, torch::Tensor &resIn,
+                                                             bool newOut)
 {
     AclTransformer::Plan &plan = *plans_.at(layerId);
 
@@ -260,80 +266,12 @@ void ChatGlm6BModelQuantTorch::ExecuteSingleOperation(int layerId, std::vector<t
     AsdOps::Status st = plan.Setup(handle_, variantPack);
     AsdOps::GetSingleton<AclTransformer::Statistic>().planSetupTime += timer1.ElapsedMicroSecond();
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << "ChatGlm6BModelQuantLayer_" << layerId << " setup plan fail, not call execute";
+        ASD_LOG(ERROR) << "ChatGlm6BModelDecoderQuantLayer_" << layerId << " setup plan fail, not call execute";
         return;
     }
 
     variantPack.workspaceSize = plan.GetWorkspaceSize();
-    ASD_LOG(INFO) << "ChatGlm6BModelQuantLayer_" << layerId << " get plan workspace size:" << variantPack.workspaceSize;
-
-    if (variantPack.workspaceSize > 0) {
-        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
-    }
-
-    AsdOps::Timer timer2;
-    st = plan.Execute(handle_, variantPack);
-
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        AsdRtStreamSynchronize(handle_.stream);
-        std::string dirPath =
-            AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelQuantLayer_" + std::to_string(layerId);
-        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
-        ASD_LOG(FATAL) << "ChatGlm6BModelQuantLayer_" << layerId << " save variant pack, dir:" << dirPath;
-    }
-
-    AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
-    ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelQuantLayer_" << layerId
-                                << " execute plan fail, error:" << st.Message();
-}
-
-void ChatGlm6BModelQuantTorch::BuildVariantPackLast(int layerId, std::vector<torch::Tensor> &atInTensors,
-                                                    torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
-                                                    torch::Tensor &presentValueTensor, bool newOut,
-                                                    AclTransformer::VariantPack &variantPack)
-{
-    for (size_t i = 0; i < atInTensors.size(); ++i) {
-        ASD_LOG(INFO) << "ChatGlm6BModelQuantLayer_" << layerId << " atInTensors[" << i
-                      << "].options:" << atInTensors.at(i).options() << ", data:" << atInTensors.at(i).data_ptr()
-                      << ", storage_offset:" << atInTensors.at(i).storage_offset()
-                      << ", format:" << Utils::GetTensorNpuFormat(atInTensors.at(i));
-        variantPack.inTensors.push_back(Utils::AtTensor2AsdTensor(atInTensors.at(i)));
-    }
-
-    if (newOut) {
-        AclTransformer::Operation *operation = operations_.at(layerId).get();
-        AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
-        operation->InferShape(variantPack.inTensors, outTensorDescs);
-        outTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(0));
-        presendKeyTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(1));
-        presentValueTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(2));
-    }
-
-    variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(outTensor));
-    variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(presendKeyTensor));
-    variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(presentValueTensor));
-}
-
-void ChatGlm6BModelQuantTorch::ExecuteLastSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
-                                                          torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
-                                                          torch::Tensor &presentValueTensor, bool newOut)
-{
-    AclTransformer::Plan &plan = *plans_.at(layerId);
-
-    AclTransformer::VariantPack variantPack;
-    BuildVariantPackLast(layerId, opAtInTensors, outTensor, presendKeyTensor, presentValueTensor, newOut, variantPack);
-
-    AsdOps::Timer timer1;
-    AsdOps::Status st = plan.Setup(handle_, variantPack);
-    AsdOps::GetSingleton<AclTransformer::Statistic>().planSetupTime += timer1.ElapsedMicroSecond();
-    if (!st.Ok()) {
-        ASD_LOG(ERROR) << "ChatGlm6BModelQuantLastLayer_" << layerId << " setup plan fail, not call execute";
-        return;
-    }
-
-    variantPack.workspaceSize = plan.GetWorkspaceSize();
-    ASD_LOG(INFO) << "ChatGlm6BModelQuantLastLayer_" << layerId
+    ASD_LOG(INFO) << "ChatGlm6BModelDecoderQuantLayer_" << layerId
                   << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
@@ -347,22 +285,92 @@ void ChatGlm6BModelQuantTorch::ExecuteLastSingleOperation(int layerId, std::vect
     if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
         AsdRtStreamSynchronize(handle_.stream);
         std::string dirPath =
-            AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelQuantLastLayer_" + std::to_string(layerId);
+            AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelDecoderQuantLayer_" + std::to_string(layerId);
         AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
-        ASD_LOG(FATAL) << "ChatGlm6BModelQuantLastLayer_" << layerId << " save variant pack, dir:" << dirPath;
+        ASD_LOG(FATAL) << "ChatGlm6BModelDecoderQuantLayer_" << layerId << " save variant pack, dir:" << dirPath;
     }
 
     AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
-    ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelQuantLastLayer_" << layerId
+    ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelDecoderQuantLayer_" << layerId
                                 << " execute plan fail, error:" << st.Message();
 }
 
-TORCH_LIBRARY(ChatGlm6BModelQuantTorch, m)
+void ChatGlm6BModelDecoderQuantTorch::BuildVariantPackLast(int layerId, std::vector<torch::Tensor> &atInTensors,
+                                                           torch::Tensor &outTensor, torch::Tensor &presendKeyTensor,
+                                                           torch::Tensor &presentValueTensor, bool newOut,
+                                                           AclTransformer::VariantPack &variantPack)
 {
-    m.class_<ChatGlm6BModelQuantTorch>("ChatGlm6BModelQuantTorch")
+    for (size_t i = 0; i < atInTensors.size(); ++i) {
+        ASD_LOG(INFO) << "ChatGlm6BModelDecoderQuantLayer_" << layerId << " atInTensors[" << i
+                      << "].options:" << atInTensors.at(i).options() << ", data:" << atInTensors.at(i).data_ptr()
+                      << ", storage_offset:" << atInTensors.at(i).storage_offset()
+                      << ", format:" << Utils::GetTensorNpuFormat(atInTensors.at(i));
+        variantPack.inTensors.push_back(Utils::AtTensor2AsdTensor(atInTensors.at(i)));
+    }
+
+    if (newOut) {
+        AclTransformer::Operation *operation = operations_.at(layerId).get();
+        AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+        operation->InferShape(variantPack.inTensors, outTensorDescs);
+        outTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(0));
+        presendKeyTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(1));
+        presentValueTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(TENSOR2));
+    }
+
+    variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(outTensor));
+    variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(presendKeyTensor));
+    variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(presentValueTensor));
+}
+
+void ChatGlm6BModelDecoderQuantTorch::ExecuteLastSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
+                                                                 torch::Tensor &outTensor,
+                                                                 torch::Tensor &presendKeyTensor,
+                                                                 torch::Tensor &presentValueTensor, bool newOut)
+{
+    AclTransformer::Plan &plan = *plans_.at(layerId);
+
+    AclTransformer::VariantPack variantPack;
+    BuildVariantPackLast(layerId, opAtInTensors, outTensor, presendKeyTensor, presentValueTensor, newOut, variantPack);
+
+    AsdOps::Timer timer1;
+    AsdOps::Status st = plan.Setup(handle_, variantPack);
+    AsdOps::GetSingleton<AclTransformer::Statistic>().planSetupTime += timer1.ElapsedMicroSecond();
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << "ChatGlm6BModelDecoderQuantLastLayer_" << layerId << " setup plan fail, not call execute";
+        return;
+    }
+
+    variantPack.workspaceSize = plan.GetWorkspaceSize();
+    ASD_LOG(INFO) << "ChatGlm6BModelDecoderQuantLastLayer_" << layerId
+                  << " get plan workspace size:" << variantPack.workspaceSize;
+
+    if (variantPack.workspaceSize > 0) {
+        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
+        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
+    }
+
+    AsdOps::Timer timer2;
+    st = plan.Execute(handle_, variantPack);
+
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        AsdRtStreamSynchronize(handle_.stream);
+        std::string dirPath = AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelDecoderQuantLastLayer_" +
+                              std::to_string(layerId);
+        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
+        ASD_LOG(FATAL) << "ChatGlm6BModelDecoderQuantLastLayer_" << layerId << " save variant pack, dir:" << dirPath;
+    }
+
+    AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
+    ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelDecoderQuantLastLayer_" << layerId
+                                << " execute plan fail, error:" << st.Message();
+}
+
+TORCH_LIBRARY(ChatGlm6BModelDecoderQuantTorch, m)
+{
+    m.class_<ChatGlm6BModelDecoderQuantTorch>("ChatGlm6BModelDecoderQuantTorch")
         .def(torch::init<>())
-        .def("set_param", &ChatGlm6BModelQuantTorch::SetParam)
-        .def("set_weight", &ChatGlm6BModelQuantTorch::SetWeight)
-        .def("execute", &ChatGlm6BModelQuantTorch::Execute)
-        .def("execute_out", &ChatGlm6BModelQuantTorch::ExecuteOut);
+        .def("set_param", &ChatGlm6BModelDecoderQuantTorch::SetParam)
+        .def("set_weight", &ChatGlm6BModelDecoderQuantTorch::SetWeight)
+        .def("execute", &ChatGlm6BModelDecoderQuantTorch::Execute)
+        .def("execute_out", &ChatGlm6BModelDecoderQuantTorch::ExecuteOut);
 }
