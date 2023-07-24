@@ -30,7 +30,7 @@ class TestAddOperation(operation_test.OperationTest):
         return [in_tensors[0].transpose(0, 1)]
 
     def test_2d_float(self):
-        self.execute(OP_NAME, {"dimA" : 0, "dimB" : 1}, [torch.randn(
+        self.execute(OP_NAME, {"perm": [1, 0]}, [torch.randn(
             32, 128).npu().half()])
 
 

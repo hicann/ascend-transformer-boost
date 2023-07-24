@@ -23,30 +23,20 @@ namespace AclTransformer {
 TransposeOpsRunner::TransposeOpsRunner(const TransposeParam &param)
     : OpsRunner("TransposeOpsRunner", RUNNER_TYPE_TRANSPOSE), param_(param)
 {
-    ASD_LOG(INFO) << "TransposeOpsRunner::TransposeOpsRunner called, param_.dimA:" << param_.dimA
-                  << " param_.dimB:" << param_.dimB;
+    ASD_LOG(INFO) << "TransposeOpsRunner::TransposeOpsRunner called, param_.perm:" << param_.perm;
     kernelGraph_.inTensors.resize(1);
     kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &operationInTensor = kernelGraph_.inTensors.at(0);
+
     AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors.at(0);
 
-    size_t size = operationInTensor.desc.dims.size();
-    AsdOps::SVector<int64_t> sizeParam = operationInTensor.desc.dims;
-    AsdOps::SVector<int64_t> strideParam(size);
-    AsdOps::SVector<int64_t> offsetParam = {0};
-    int64_t stride = 1;
-    for (size_t i = 0; i < size; i++) {
-        strideParam.at(size - i - 1) = stride;
-        stride *= sizeParam.at(size - i - 1);
-    }
-    std::swap(sizeParam[param_.dimA], sizeParam[param_.dimB]);
-    std::swap(strideParam[param_.dimA], strideParam[param_.dimB]);
-
     kernelGraph_.nodes.resize(1);
-    auto &asstridedNode = kernelGraph_.nodes.at(0);
-    asstridedNode.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided({sizeParam, strideParam, offsetParam})};
-    asstridedNode.inTensors = {&operationInTensor};
-    asstridedNode.outTensors = {&operationOutTensor};
+    auto &transposeNode = kernelGraph_.nodes.at(0);
+
+    AsdOps::OpParam::Transpose transposeNodeParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, param_.perm};
+    transposeNode.opDesc = {0, "TransposeOperation", transposeNodeParam};
+    transposeNode.inTensors = {&operationInTensor};
+    transposeNode.outTensors = {&operationOutTensor};
 }
 
 TransposeOpsRunner::~TransposeOpsRunner() {}
