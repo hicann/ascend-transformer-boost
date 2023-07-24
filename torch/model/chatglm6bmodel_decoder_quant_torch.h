@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CHATGLM6BMODEL_QUANT_TORCH_H
-#define CHATGLM6BMODEL_QUANT_TORCH_H
+#ifndef CHATGLM6BMODEL_DECODER_QUANT_TORCH_H
+#define CHATGLM6BMODEL_DECODER_QUANT_TORCH_H
 #include <string>
 #include <vector>
 #include <torch/script.h>
@@ -24,10 +24,10 @@
 #include "acltransformer/operation.h"
 #include "acltransformer/plan.h"
 
-class ChatGlm6BModelQuantTorch : public torch::CustomClassHolder {
+class ChatGlm6BModelDecoderQuantTorch : public torch::CustomClassHolder {
 public:
-    ChatGlm6BModelQuantTorch();
-    ~ChatGlm6BModelQuantTorch();
+    ChatGlm6BModelDecoderQuantTorch();
+    ~ChatGlm6BModelDecoderQuantTorch();
     void SetParam(std::string param);
 
     void SetWeight(std::vector<torch::Tensor> weightTensors);
@@ -36,15 +36,15 @@ public:
     std::vector<torch::Tensor> Execute(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
                                        torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
                                        torch::Tensor attentionMaskTensor, std::vector<torch::Tensor> pastKeyTensors,
-                                       std::vector<torch::Tensor> pastValueTensors);
+                                       std::vector<torch::Tensor> pastValueTensors, torch::Tensor seqLen);
     void ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor, torch::Tensor cosTableTensor,
                     torch::Tensor sinTableTensor, torch::Tensor attentionMaskTensor,
                     std::vector<torch::Tensor> pastKeyTensors, std::vector<torch::Tensor> pastValueTensors,
-                    torch::Tensor outTensor, std::vector<torch::Tensor> presendKeyTensors,
+                    torch::Tensor seqLen, torch::Tensor outTensor, std::vector<torch::Tensor> presendKeyTensors,
                     std::vector<torch::Tensor> presentValueTensors);
-    c10::intrusive_ptr<ChatGlm6BModelQuantTorch> clone() const
+    c10::intrusive_ptr<ChatGlm6BModelDecoderQuantTorch> clone() const
     {
-        return c10::make_intrusive<ChatGlm6BModelQuantTorch>();
+        return c10::make_intrusive<ChatGlm6BModelDecoderQuantTorch>();
     }
 
 private:
@@ -57,7 +57,7 @@ private:
     void ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
                         torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
                         torch::Tensor &attentionMaskTensor, std::vector<torch::Tensor> &pastKeyTensors,
-                        std::vector<torch::Tensor> &pastValueTensors, torch::Tensor &outTensor,
+                        std::vector<torch::Tensor> &pastValueTensors, torch::Tensor seqLen, torch::Tensor &outTensor,
                         std::vector<torch::Tensor> &presendKeyTensors, std::vector<torch::Tensor> &presentValueTensors,
                         bool newOut);
     void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,

@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm6blayer_first_quant_operation.h"
+#include "chatglm6blayer_decoder_quant_operation.h"
 #include "acltransformer/ops/quant_operation.h"
 #include "acltransformer/ops/norm_quant_operation.h"
 #include "acltransformer/ops/add_norm_quant_operation.h"
 #include "acltransformer/ops/linear_quant_operation.h"
-#include "acltransformer/ops/position_embedding_operation.h"
+#include "acltransformer/ops/position_embedding_fusion_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 
 namespace AclTransformer {
-enum Chatglm6BLayerFirstQuantTensorId {
+enum Chatglm6BLayerDecoderQuantRopeTensorId {
     IN_HIDDENSTATES = 0,
     IN_QKVMIXDWEIGHT,
     IN_QKVDEQSCALE,
@@ -48,6 +48,8 @@ enum Chatglm6BLayerFirstQuantTensorId {
     IN_ATTENTIONMASK,
     IN_PASTKEY,
     IN_PASTVALUE,
+    IN_SEQLEN,
+    IN_RES,
 
     OUT_GLMLAYEROUT,
     OUT_PRESENTKEY,
@@ -68,13 +70,13 @@ enum Chatglm6BLayerFirstQuantTensorId {
     INTERMIDATE_FFNQUANTOUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 23;
+static const uint64_t IN_TENSOR_COUNT = 25;
 static const uint64_t OUT_TENSOR_COUNT = 4;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 12;
 static const uint64_t NODE_COUNT = 10;
 
-ChatGlm6BLayerFirstQuantOperation::ChatGlm6BLayerFirstQuantOperation(const ChatGlm6BLayerQuantParam &param)
-    : GraphOperation("ChatGlm6BLayerFirstQuantOperation"), param_(param)
+ChatGlm6BLayerDecoderQuantOperation::ChatGlm6BLayerDecoderQuantOperation(const ChatGlm6BLayerQuantParam &param)
+    : GraphOperation("ChatGlm6BLayerDecoderQuantOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -93,17 +95,18 @@ ChatGlm6BLayerFirstQuantOperation::ChatGlm6BLayerFirstQuantOperation(const ChatG
     GraphOperation::Node &ffnOutQuantNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &ffnOutLinearQuantNode = opGraph_.nodes.at(nodeId++);
 
-    inputQuantNode.operation.reset(new AclTransformer::NormQuantOperation(
+    inputQuantNode.operation.reset(new AclTransformer::AddNormQuantOperation(
         {param_.layerNormEps, param_.qkvInputScale, param_.qkvInputOffset, param_.residualAddScale}));
-    inputQuantNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT, IN_NORMBIAS};
+    inputQuantNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT, IN_NORMBIAS, IN_RES};
     inputQuantNode.outTensorIds = {INTERMIDATE_INPUTNORMQUANT, INTERMIDATE_INPUTNORMRES};
 
     mixdQkvLinearQuantNode.operation.reset(new AclTransformer::LinearQuantOperation({}));
     mixdQkvLinearQuantNode.inTensorIds = {INTERMIDATE_INPUTNORMQUANT, IN_QKVMIXDWEIGHT, IN_QKVMIXDBIAS, IN_QKVDEQSCALE};
     mixdQkvLinearQuantNode.outTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV};
 
-    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation({param_.headNum}));
-    positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
+    positionEmbeddingNode.operation.reset(new AclTransformer::RopeOperation({param_.headNum}));
+    positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE,
+                                         IN_SEQLEN};
     positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_VALUE};
 
     selfAttentionKvCacheNode.operation.reset(new AclTransformer::SelfAttentionKvCacheOperation(
@@ -148,14 +151,15 @@ ChatGlm6BLayerFirstQuantOperation::ChatGlm6BLayerFirstQuantOperation(const ChatG
     ffnOutLinearQuantNode.outTensorIds = {OUT_GLMLAYEROUT};
 }
 
-ChatGlm6BLayerFirstQuantOperation::~ChatGlm6BLayerFirstQuantOperation() {}
+ChatGlm6BLayerDecoderQuantOperation::~ChatGlm6BLayerDecoderQuantOperation() {}
 
-uint64_t ChatGlm6BLayerFirstQuantOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t ChatGlm6BLayerDecoderQuantOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t ChatGlm6BLayerFirstQuantOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t ChatGlm6BLayerDecoderQuantOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status ChatGlm6BLayerFirstQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-																 AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+AsdOps::Status
+ChatGlm6BLayerDecoderQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                    AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
     const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);
