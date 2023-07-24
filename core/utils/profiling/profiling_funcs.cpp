@@ -19,18 +19,54 @@
 #include <asdops/utils/log/log.h>
 
 namespace AclTransformer {
-AsdProfiling::AsdProfiling() {}
+AsdProfiling::AsdProfiling() { kernelNameHashCache_.resize(RUNNER_TYPE_MAX); }
 
 AsdProfiling::~AsdProfiling() {}
 
-int32_t AsdProfiling::AsdReportApi(uint32_t agingFlag, const MsProfApi *api) { return MsprofReportApi(agingFlag, api); }
+void AsdProfiling::Init(RunnerType runnerType, uint64_t kernelCount)
+{
+    if (runnerType == RUNNER_TYPE_UNDEFINED) {
+        return;
+    }
+    if (kernelNameHashCache_.at(runnerType).empty()) {
+        kernelNameHashCache_.at(runnerType).resize(kernelCount);
+    }
+}
+
+int32_t AsdProfiling::AsdReportApi(uint32_t agingFlag, const MsProfApi *api)
+{
+    ASD_LOG(INFO) << "AsdReportApi start!";
+    return MsprofReportApi(agingFlag, api);
+}
 
 int32_t AsdProfiling::AsdReportCompactInfo(uint32_t agingFlag, void *data, uint32_t length)
 {
+    ASD_LOG(INFO) << "AsdReportCompactInfo start!";
     return MsprofReportCompactInfo(agingFlag, data, length);
 }
 
 uint64_t AsdProfiling::AsdSysCycleTime() { return MsprofSysCycleTime(); }
 
 uint64_t AsdProfiling::AsdGetHashId(const char *hashInfo, size_t length) { return MsprofGetHashId(hashInfo, length); }
+
+uint64_t AsdProfiling::AsdGetHashId(const char *hashInfo, size_t length, RunnerType runnerType, size_t nodeId)
+{
+    if (runnerType >= 0 && runnerType < RUNNER_TYPE_MAX) {
+        if (nodeId >= 0 && (uint64_t)nodeId < kernelNameHashCache_.at(runnerType).size()) {
+            auto hashId = kernelNameHashCache_.at(runnerType).at(nodeId);
+            if (hashId != 0) {
+                return hashId;
+            }
+        }
+    }
+
+    auto hashId = MsprofGetHashId(hashInfo, length);
+
+    if (runnerType >= 0 && runnerType < RUNNER_TYPE_MAX) {
+        if (nodeId >= 0 && (uint64_t)nodeId < kernelNameHashCache_.at(runnerType).size()) {
+            kernelNameHashCache_.at(runnerType).at(nodeId) = hashId;
+        }
+    }
+    return hashId;
+}
 } // namespace AclTransformer

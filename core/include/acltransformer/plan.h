@@ -25,6 +25,14 @@
 namespace AclTransformer {
 class Runner;
 
+#ifdef USE_PROFILING
+#define MAX_PROFILING_FUNC_NAME 2
+enum ProfilingFuncName {
+    PLAN_SETUP = 0,
+    PLAN_EXECUTE
+};
+#endif
+
 class Plan {
 public:
     Plan();
@@ -42,12 +50,16 @@ private:
     void Reset();
     AsdOps::Status CopyHostTilingToDevice(Handle handle);
 #ifdef USE_PROFILING
-    void ReportApiInfo(const uint64_t beginTime, const char *opName);
+    void ReportApiInfo(const uint64_t beginTime, ProfilingFuncName type);
 #endif
 
 private:
     std::vector<char> hostTilingBuffer_;
     RunnerVariantPack runnerVariantPack_;
+
+#ifdef USE_PROFILING
+    std::vector<uint64_t> hashIdArray_;
+#endif
 };
 } // namespace AclTransformer
 #endif
