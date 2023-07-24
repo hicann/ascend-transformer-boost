@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_QUANT_OPERATION_H
-#define OPS_CHATGML6B_CHATGLM6BLAYER_QUANT_OPERATION_H
+#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_DECODER_FIRST_QUANT_OPERATION_H
+#define OPS_CHATGML6B_CHATGLM6BLAYER_DECODER_FIRST_QUANT_OPERATION_H
 #include "acltransformer/graph_operation.h"
 #include "chatglm6blayer_quant_param.h"
 
 namespace AclTransformer {
-class ChatGlm6BLayerQuantOperation : public GraphOperation {
+class ChatGlm6BLayerDecoderFirstQuantOperation : public GraphOperation {
 public:
-    explicit ChatGlm6BLayerQuantOperation(const ChatGlm6BLayerQuantParam &param);
-    ~ChatGlm6BLayerQuantOperation();
+    explicit ChatGlm6BLayerDecoderFirstQuantOperation(const ChatGlm6BLayerQuantParam &param);
+    ~ChatGlm6BLayerDecoderFirstQuantOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 
