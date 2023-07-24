@@ -989,6 +989,40 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         )
 
 
+class TopPLogits(torch.nn.Module):
+    def __init__(self, top_p: float, top_k: float, temperature: float, filter_value: float = -float("Inf"),min_tokens_to_keep: int = 1):
+        super(TopPLogits, self).__init__()
+        top_p = float(top_p)
+        if top_p < 0 or top_p > 1.0:
+            raise ValueError(f"'top_p' has to be a float > 0 and < 1, but is {top_p}")
+        if not isinstance(min_tokens_to_keep, int) or (min_tokens_to_keep < 0):
+            raise ValueError(f"'min_tokens_to_keep' has to be a non-begative integer, but is {min_tokens_to_keep}")
+        
+        self.top_p = top_p
+        self.filter_value = filter_value
+        self.min_tokens_to_keep = min_tokens_to_keep
+        self.top_k = top_k
+        self.temperature = temperature
+    
+    def __call__(self, scores: torch.FloatTensor):
+        scores = scores / self.temperature
+        top_k = min(self.top_k, scores.size(-1)) # safety check
+        # remove all tokens with a probability less than the last token of the top-k
+         
+        values, indices = torch.topk(scores, top_k)
+        values = torch.filp(values, dim=[1])
+        cumulative_probs = values.softmax(dim=-1).cumsum(dim=-1)
+        
+        sorted_indices_to_remove = cumulative_probs <= (1 - self.top_p)
+        
+        if self.min_tokens_to_keep > 1:
+            sorted_indices_to_remove[..., -self.min_tokens_to_keep:] = 0
+        
+        values = values.masked_fill(sorted_indices_to_remove, self.filter_value)
+
+        return values, indices
+
+
 class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -1318,6 +1352,10 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         pre_processing_end = time.time()
         self.pre_processing = (pre_processing_end -
                                pre_processing_start) * 1000
+        
+        # initialize the new TopPLogits outside the loop
+        tp = TopPLogits(generation_config.top_p, generation_config.top_k, generation_config.temperature)
+
         while True:
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
@@ -1353,6 +1391,22 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                     probs, num_samples=1).squeeze(1)
             else:
                 next_tokens = torch.argmax(probs, dim=-1)
+
+            # if you need to test the performance,
+            # comment out the source code corresponding to the post-processing
+            # ------------------post-processing after optimization--------------------
+            output, indices = tp(next_token_scores)
+            probs_opt = nn.functional.softmax(output, dim=-1)
+            next_tokens_opt = torch.multinomial(probs_opt, num_samples=1)
+            for i in next_tokens:
+                next_tokens_opt = indices[0][len(indices[0])-i-1]
+            next_tokens_opt = next_tokens_opt.npu()
+
+            # -----------------------------precision compare-------------------------
+            assert torch.allclose(next_tokens, next_tokens_opt, atol=0.02, rtol=0.02), "Post not Equal"
+            # print(">>> get through assert<<<")
+            # -----------------------------------------------------------------------
+
 
             # update generated ids, model inputs, and length for next step
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
