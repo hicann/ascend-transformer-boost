@@ -29,17 +29,28 @@
 namespace AclTransformer {
 const size_t HOST_TILING_BUFFER_DEFAULT_SIZE = 1024;
 
-Plan::Plan() { hostTilingBuffer_.resize(HOST_TILING_BUFFER_DEFAULT_SIZE); }
+Plan::Plan()
+{
+    hostTilingBuffer_.resize(HOST_TILING_BUFFER_DEFAULT_SIZE);
+#ifdef USE_PROFILING
+    hashIdArray_.resize(MAX_PROFILING_FUNC_NAME);
+    const char *setUpName = "Plan::SetUp";
+    const char *executeName = "Plan::Execute";
+    const size_t setUpNameLen = strlen(setUpName);
+    const size_t executeNameLen = strlen(executeName);
+    hashIdArray_.at(PLAN_SETUP) = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(setUpName, setUpNameLen);
+    hashIdArray_.at(PLAN_EXECUTE) = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(executeName, executeNameLen);
+#endif
+}
 
 Plan::~Plan() {}
 
 #ifdef USE_PROFILING
-void Plan::ReportApiInfo(const uint64_t beginTime, const char *opName)
+void Plan::ReportApiInfo(const uint64_t beginTime, ProfilingFuncName type)
 {
     MsProfApi info{};
     info.type = MSPROF_REPORT_ACL_OTHERS_BASE_TYPE;
-    const size_t nameLen = strlen(opName);
-    info.itemId = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(opName, nameLen);
+    info.itemId = hashIdArray_.at(type);
     info.level = MSPROF_REPORT_ACL_LEVEL;
     const uint64_t endTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
     info.threadId = static_cast<uint32_t>(syscall(SYS_gettid));
@@ -90,7 +101,7 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
                   << ", intermediateBufferSize:" << runnerVariantPack_.intermediateBufferSize;
 
 #ifdef USE_PROFILING
-    ReportApiInfo(beginTime, "Plan::SetUp");
+    ReportApiInfo(beginTime, PLAN_SETUP);
 #endif
     return AsdOps::Status::OkStatus();
 }
@@ -129,7 +140,7 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
     ASD_LOG(INFO) << name_ << " execute success";
     ASD_LOG(INFO) << name_ << " runner execute success";
 #ifdef USE_PROFILING
-    ReportApiInfo(beginTime, "Plan::Execute");
+    ReportApiInfo(beginTime, PLAN_EXECUTE);
 #endif
     return AsdOps::Status::OkStatus();
 }

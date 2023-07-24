@@ -107,6 +107,10 @@ AsdOps::Status OpsRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack)
 
     AsdOps::GetSingleton<KernelCache>().Init(runnerType_, kernelGraph_.nodes.size());
 
+#ifdef USE_PROFILING
+    AsdOps::GetSingleton<AsdProfiling>().Init(runnerType_, kernelGraph_.nodes.size());
+#endif
+
     InitTensorMaxNodeMap();
     ASD_LOG(INFO) << GetName() << " Setup start, kernel graph:\n" << kernelGraph_.ToString();
 
@@ -309,12 +313,12 @@ void OpsRunner::UpdateRunInfoWorkspace(RunnerVariantPack &runnerVariantPack)
 }
 
 #ifdef USE_PROFILING
-void OpsRunner::ReportLaunchInfo(const uint64_t beginTime, const char *opName)
+void OpsRunner::ReportLaunchInfo(const uint64_t beginTime, const char *opName, size_t nodeId)
 {
     MsProfApi info{};
     info.type = MSPROF_REPORT_NODE_LAUNCH_TYPE;
     const size_t nameLen = strlen(opName);
-    info.itemId = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(opName, nameLen);
+    info.itemId = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(opName, nameLen, runnerType_, nodeId);
     info.level = MSPROF_REPORT_NODE_LEVEL;
     const uint64_t endTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
     info.threadId = static_cast<uint32_t>(syscall(SYS_gettid));
@@ -328,10 +332,10 @@ void OpsRunner::ReportLaunchInfo(const uint64_t beginTime, const char *opName)
     }
 }
 
-void OpsRunner::ReportAdditionalInfo(const uint64_t timeStamp, const char *opName)
+void OpsRunner::ReportAdditionalInfo(const uint64_t timeStamp, const char *opName, size_t nodeId)
 {
     const size_t nameLen = strlen(opName);
-    const uint64_t nameHash = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(opName, nameLen);
+    const uint64_t nameHash = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(opName, nameLen, runnerType_, nodeId);
     MsprofCompactInfo nodeBasicInfo{};
     auto &profNodeBasicInfo = nodeBasicInfo.data.nodeBasicInfo;
     profNodeBasicInfo.opName = nameHash;
@@ -378,8 +382,8 @@ void OpsRunner::RunAllKernel(Handle &handle)
         AsdOps::Status st = kernel->Run(kernelRunInfo);
 
 #ifdef USE_PROFILING
-        ReportLaunchInfo(beginTime, kernel->GetName().c_str());
-        ReportAdditionalInfo(beginTime + 1, kernel->GetName().c_str());
+        ReportLaunchInfo(beginTime, kernel->GetName().c_str(), i);
+        ReportAdditionalInfo(beginTime + 1, kernel->GetName().c_str(), i);
 #endif
         AsdOps::GetSingleton<Statistic>().kernelExecuteTime += timer.ElapsedMicroSecond();
 
