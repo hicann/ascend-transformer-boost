@@ -95,8 +95,8 @@ private:
     void InitTensorsType();
     void CalcKernelWorkspace();
 #ifdef USE_PROFILING
-    void ReportLaunchInfo(const uint64_t beginTime, const char *opName);
-    void ReportAdditionalInfo(const uint64_t timeStamp, const char *opName);
+    void ReportLaunchInfo(const uint64_t beginTime, const char *opName, size_t nodeId);
+    void ReportAdditionalInfo(const uint64_t timeStamp, const char *opName, size_t nodeId);
 #endif
 
 protected:

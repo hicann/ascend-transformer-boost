@@ -16,7 +16,9 @@
 #ifndef PROFILING_FUNCS_H
 #define PROFILING_FUNCS_H
 
+#include <vector>
 #include "prof_api.h"
+#include "acltransformer/runner_type.h"
 
 namespace AclTransformer {
 
@@ -33,6 +35,8 @@ public:
     int32_t AsdReportCompactInfo(uint32_t agingFlag, void *data, uint32_t length);
     uint64_t AsdSysCycleTime();
     uint64_t AsdGetHashId(const char *hashInfo, size_t length);
+    uint64_t AsdGetHashId(const char *hashInfo, size_t length, RunnerType runnerType, size_t nodeId);
+    void Init(RunnerType runnerType, uint64_t kernelCount);
 
 private:
     void *soHandle_;
@@ -40,6 +44,7 @@ private:
     ProfReportCompactInfo asdReportCompactInfo_;
     ProfSysCycleTime asdSysCycleTime_;
     ProfGetHashId asdGetHashId_;
+    std::vector<std::vector<uint64_t>> kernelNameHashCache_;
 };
 } // namespace AclTransformer
 #endif
