@@ -21,7 +21,7 @@
 namespace AclTransformer {
 FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner", RUNNER_TYPE_FFN), param_(param)
 {
-    ASD_LOG(INFO) << "FfnOpsRunner::FfnOpsRunner";
+    ASD_LOG(INFO) << "FfnOpsRunner910B::FfnOpsRunner910B";
     kernelGraph_.inTensors.resize(3);
     AsdOps::Tensor &aTensor = kernelGraph_.inTensors[0];
     AsdOps::Tensor &bTensor = kernelGraph_.inTensors[1];
@@ -36,7 +36,7 @@ FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner", RU
     kernelGraph_.nodes.resize(3);
     auto &matmulNode = kernelGraph_.nodes[0];
     auto &addNode = kernelGraph_.nodes[1];
-    auto &activateNode = kernelGraph_.nodes[2];
+    auto &geluNode = kernelGraph_.nodes[2];
 
     matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB})};
     matmulNode.inTensors = {&aTensor, &bTensor};
@@ -51,27 +51,9 @@ FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner", RU
     addNode.inTensors = {&matmulOutTensor, &cTensor};
     addNode.outTensors = {&addOutTensor};
 
-    switch (param_.activationFuncType) {
-    case FfnParam::ActivationFuncType::FAST_GELU:
-        activateNode.opDesc = {0, "ElewiseOperation",
-                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
-        break;
-    case FfnParam::ActivationFuncType::GELU:
-        activateNode.opDesc = {0, "ActivationOperation",
-                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
-        break;
-    case FfnParam::ActivationFuncType::RELU:
-        activateNode.opDesc = {0, "ActivationOperation",
-                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_RELU})};
-        break;
-    default:
-        activateNode.opDesc = {0, "ElewiseOperation",
-                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
-        break;
-    }
-
-    activateNode.inTensors = {&addOutTensor};
-    activateNode.outTensors = {&operationOutTensor};
+    geluNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+    geluNode.inTensors = {&addOutTensor};
+    geluNode.outTensors = {&operationOutTensor};
 }
 
 FfnOpsRunner::~FfnOpsRunner() {}
