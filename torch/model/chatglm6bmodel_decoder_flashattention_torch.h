@@ -25,8 +25,7 @@
 #include "acltransformer/plan.h"
 #include "acltransformer/params/self_attention_kv_cache_fusion.h"
 
-class ChatGlm6BModelDecoderFlashattentionTorch : public torch::CustomClassHolder
-{
+class ChatGlm6BModelDecoderFlashattentionTorch : public torch::CustomClassHolder {
 public:
     ChatGlm6BModelDecoderFlashattentionTorch();
     ~ChatGlm6BModelDecoderFlashattentionTorch();
@@ -38,37 +37,31 @@ public:
     // outTensor, 28 presendKeyTensors, 28 presentValueTensors
     std::vector<torch::Tensor> Execute(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
                                        torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                                       torch::Tensor attentionMaskTensor,
-                                       torch::Tensor pastKeyTensors, torch::Tensor pastValueTensors,
-                                       torch::Tensor tokenOffset, torch::Tensor seqLen,
+                                       torch::Tensor attentionMaskTensor, torch::Tensor pastKeyTensors,
+                                       torch::Tensor pastValueTensors, torch::Tensor tokenOffset, torch::Tensor seqLen,
                                        std::vector<torch::Tensor> layerIdInput, std::string param);
-    void ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
-                    torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                    torch::Tensor attentionMaskTensor,
-                    torch::Tensor pastKeyTensors, torch::Tensor pastValueTensors,
-                    torch::Tensor tokenOffset, torch::Tensor seqLen,
-                    std::vector<torch::Tensor> layerIdInput,
-                    torch::Tensor outTensor, std::string param);
+    void ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor, torch::Tensor cosTableTensor,
+                    torch::Tensor sinTableTensor, torch::Tensor attentionMaskTensor, torch::Tensor pastKeyTensors,
+                    torch::Tensor pastValueTensors, torch::Tensor tokenOffset, torch::Tensor seqLen,
+                    std::vector<torch::Tensor> layerIdInput, torch::Tensor outTensor, std::string param);
     c10::intrusive_ptr<ChatGlm6BModelDecoderFlashattentionTorch> clone() const
     {
         return c10::make_intrusive<ChatGlm6BModelDecoderFlashattentionTorch>();
     }
-    
+
 private:
-    void BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
-                            torch::Tensor &outTensor, bool newOut,
-                            AclTransformer::VariantPack &variantPack);
-    void ExecuteOutImpl(torch::Tensor & hiddenStateTensor, torch::Tensor & positionIdTensor,
-                        torch::Tensor & cosTableTensor, torch::Tensor & sinTableTensor,
-                        torch::Tensor & attentionMaskTensor,
-                        torch::Tensor & pastKeyTensors, torch::Tensor & pastValueTensors,
-                        torch::Tensor & tokenOffset, torch::Tensor & seqLen,
-                        std::vector<torch::Tensor> & layerIdInput,
-                        torch::Tensor & outTensor, bool newOut, std::string param);
+    void BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors, torch::Tensor &outTensor, bool newOut,
+                          AclTransformer::VariantPack &variantPack);
+    void ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
+                        torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
+                        torch::Tensor &attentionMaskTensor, torch::Tensor &pastKeyTensors,
+                        torch::Tensor &pastValueTensors, torch::Tensor &tokenOffset, torch::Tensor &seqLen,
+                        std::vector<torch::Tensor> &layerIdInput, torch::Tensor &outTensor, bool newOut,
+                        std::string param);
     // IN:hiddenStateTensor+12个权重+positionIdTensor+cosTable+sinTable+attentionMaskTensor+pastKeyTensor+pastValueTensor
     // OUT:outTensor + presendKey + presentValue
-    void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
-                                torch::Tensor &outTensor, bool newOut);
+    void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
+                                bool newOut);
     void ParseParam(const std::string &param);
 
 private:
@@ -76,6 +69,7 @@ private:
     std::vector<std::shared_ptr<AclTransformer::Operation>> operations_;
     std::vector<std::shared_ptr<AclTransformer::Plan>> plans_;
     std::vector<torch::Tensor> weightTensors_;
+    std::vector<torch::Tensor> outTensors_;
     uint64_t executeCount_ = 0;
     AclTransformer::Handle handle_;
     AsdOps::Timer timer_;
