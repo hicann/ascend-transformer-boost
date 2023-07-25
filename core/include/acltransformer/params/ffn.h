@@ -17,8 +17,14 @@
 #define ACLTRANSFOERM_PARAMS_FFN_H
 namespace AclTransformer {
 struct FfnParam {
+    enum ActivationFuncType {
+        FAST_GELU = 0,
+        GELU,
+        RELU
+    };
     bool transposeA = false;
     bool transposeB = false;
+    ActivationFuncType activationFuncType = FAST_GELU;
 };
 } // namespace AclTransformer
 #endif
