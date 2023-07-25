@@ -21,12 +21,6 @@
 #include "acltransformer/runner_type.h"
 
 namespace AclTransformer {
-
-using ProfReportApi = int32_t (*)(uint32_t agingFlag, const MsProfApi *api);
-using ProfReportCompactInfo = int32_t (*)(uint32_t agingFlag, void *data, uint32_t length);
-using ProfSysCycleTime = uint64_t (*)();
-using ProfGetHashId = uint64_t (*)(const char *hashInfo, size_t length);
-
 class AsdProfiling {
 public:
     AsdProfiling();
@@ -39,11 +33,6 @@ public:
     void Init(RunnerType runnerType, uint64_t kernelCount);
 
 private:
-    void *soHandle_;
-    ProfReportApi asdReportApi_;
-    ProfReportCompactInfo asdReportCompactInfo_;
-    ProfSysCycleTime asdSysCycleTime_;
-    ProfGetHashId asdGetHashId_;
     std::vector<std::vector<uint64_t>> kernelNameHashCache_;
 };
 } // namespace AclTransformer
