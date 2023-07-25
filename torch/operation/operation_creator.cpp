@@ -41,6 +41,7 @@
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
+#include "acltransformer/ops/dequant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
 #include "models/bert/bertlayer_operation.h"
@@ -327,6 +328,12 @@ AclTransformer::Operation *QuantOperationCreate(const nlohmann::json &paramJson)
     return new AclTransformer::QuantOperation(param);
 }
 
+AclTransformer::Operation *DequantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::DequantParam param;
+    return new AclTransformer::DequantOperation(param);
+}
+
 AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionKvCacheFusionParam param;
@@ -528,6 +535,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"BertLayerOperation", &BertLayerOperation},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
+	{"DequantOperation",&DequantOperationCreate},
     {"ChatGlm6BLayerDecoderQuantOperation", &ChatGlm6BLayerDecoderQuantOperationCreate},
     {"ChatGlm6BLayerDecoderLastQuantOperation", &ChatGlm6BLayerDecoderLastQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFirstQuantOperation", &ChatGlm6BLayerDecoderFirstQuantOperationCreate},
