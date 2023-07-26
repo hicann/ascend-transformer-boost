@@ -31,7 +31,7 @@ uint64_t DequantOperation::GetInTensorCount() const { return 2; }
 uint64_t DequantOperation::GetOutTensorCount() const { return 1; }
 
 AsdOps::Status DequantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+												AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(0).dtype = AsdOps::TENSOR_DTYPE_FLOAT16;

@@ -20,7 +20,8 @@
 #include <asdops/params/params.h>
 
 namespace AclTransformer {
-DequantOpsRunner::DequantOpsRunner(const DequantParam &param) : OpsRunner("DequantOpsRunner", RUNNER_TYPE_QUANT), param_(param)
+DequantOpsRunner::DequantOpsRunner(const DequantParam &param) 
+	: OpsRunner("DequantOpsRunner", RUNNER_TYPE_QUANT), param_(param)
 {
     ASD_LOG(INFO) << "DequantOperation::DequantOperation called";
 
@@ -35,7 +36,7 @@ DequantOpsRunner::DequantOpsRunner(const DequantParam &param) : OpsRunner("Dequa
     dequantNode.opDesc = {0, "ElewiseOperation",
                         AsdOps::OpParam::Elewise(
                             {AsdOps::OpParam::Elewise::ELEWISE_DEQUANT, 0, 0, 0, 0})};
-    dequantNode.inTensors = {&aTensor,&bTensor};
+    dequantNode.inTensors = {&aTensor, &bTensor};
     dequantNode.outTensors = {&operationOutTensor};
 }
 
