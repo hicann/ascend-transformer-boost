@@ -17,6 +17,8 @@
 #define SELFATTENTIONKVCACHE_OPS_RUNNER_BUILDER_H
 #include <asdops/utils/log/log.h>
 #include "acltransformer/runner_builder.h"
+#include <asdops/utils/singleton/singleton.h>
+
 #include "acltransformer/params/self_attention_kv_cache.h"
 #include "self_attention_kv_cache_ops_chatglm6b_runner.h"
 #include "self_attention_kv_cache_ops_llama7b_runner.h"
@@ -30,7 +32,7 @@ public:
     Runner *Build() override
     {
         if (param_.model == "chatglm6b") {
-            if (AsdOps::GetSingleton<config>().Is910B()) {
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
                 return new SelfAttentionKvCacheOpsChatGlm6bRunner(param_);
             } else {
                 return new SelfAttentionKvCacheOpsChatGlm6bRunner910a(param_);

@@ -140,7 +140,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     };
 
     transdataQKNode.opDesc = {0, "TransdataOperation",
-                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::NZ_TO_FRACTAL_ND, {0, 0}})};
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
     transdataQKNode.inTensors = {&bmmQkOut};
     transdataQKNode.outTensors = {&bmmQkOutTransResult};
     transdataQKNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
@@ -148,7 +148,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         AsdOps::SVector<int64_t> Kdims = transposedK.desc.dims;
         AsdOps::SVector<int64_t> transQKTargetDims = {Qdims.at(0), Qdims.at(1), Qdims.at(2), Kdims.at(2)};
         runInfo.SetOpDesc(0, "TransdataOperation", 
-                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::NZ_TO_FRACTAL_ND, transQKTargetDims}));
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND , transQKTargetDims}));
     };
 
     float maskValue = -10000.0;
@@ -230,7 +230,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         AsdOps::SVector<int64_t> Vdims = transposedV.desc.dims;
         AsdOps::SVector<int64_t> transBmmTargetDims = {ProbsDims.at(0), ProbsDims.at(1), ProbsDims.at(2), Vdims.at(2)};
         runInfo.SetOpDesc(0, "TransdataOperation", 
-                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::NZ_TO_FRACTAL_ND, transBmmTargetDims}));
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transBmmTargetDims}));
     };
 
     AsdOps::OpParam::Transpose permuteContextNodeParam =
