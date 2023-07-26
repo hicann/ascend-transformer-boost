@@ -189,8 +189,8 @@ function fn_build()
     fi
     make install
     chmod +x $OUTPUT_DIR/acltransformer/bin/*
-    fn_generate_doxygen 
     fn_copy_tools
+    fn_generate_doxygen 
 }
 
 function fn_run_unittest()
