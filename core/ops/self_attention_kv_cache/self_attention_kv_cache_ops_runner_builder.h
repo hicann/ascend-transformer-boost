@@ -20,6 +20,7 @@
 #include "acltransformer/params/self_attention_kv_cache.h"
 #include "self_attention_kv_cache_ops_chatglm6b_runner.h"
 #include "self_attention_kv_cache_ops_llama7b_runner.h"
+#include "self_attention_kv_cache_ops_chatglm6b_runner_910a.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
@@ -29,7 +30,11 @@ public:
     Runner *Build() override
     {
         if (param_.model == "chatglm6b") {
-            return new SelfAttentionKvCacheOpsChatGlm6bRunner(param_);
+            if (AsdOps::GetSingleton<config>().Is910B()) {
+                return new SelfAttentionKvCacheOpsChatGlm6bRunner(param_);
+            } else {
+                return new SelfAttentionKvCacheOpsChatGlm6bRunner910a(param_);
+            }
         } else if (param_.model == "llama7b") {
             return new SelfAttentionKvCacheOpsLlama7bRunner(param_);
         } else {
