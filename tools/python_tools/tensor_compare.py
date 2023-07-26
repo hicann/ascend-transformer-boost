@@ -14,10 +14,17 @@ def main():
     print("tensor1.shape", tensor1.shape, ", dtype:", tensor1.dtype)
     print("tensor2.shape", tensor2.shape, ", dtype:", tensor2.dtype)
 
-    if torch.allclose(tensor1, tensor2, rtol=0.02, atol=0.02):
-        print("equal")
-    else:
-        print("not equal")
+    sub_tensor = tensor1 - tensor2
+    abs_tensor = sub_tensor.abs()
+
+    absolute_err = abs_tensor.type(torch.float64).sum() / abs_tensor.numel()
+    relative_err = torch.div(abs_tensor, tensor2.abs()).type(torch.float64).sum() / abs_tensor.numel()
+    
+    print("Absolute error: ")
+    print(absolute_err)
+    print("Relative error:")
+    print(relative_err)
+
 
 
 if __name__ == "__main__":
