@@ -19,6 +19,7 @@ namespace AclTransformer {
 struct LinearParam {
     bool transposeA = false;
     bool transposeB = false;
+    bool hasBias = true;
 };
 } // namespace AclTransformer
 #endif
