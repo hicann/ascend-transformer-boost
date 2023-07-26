@@ -129,6 +129,7 @@ function fn_build_release_3rdparty()
 
 function fn_copy_tools()
 {
+    echo "COPY TOOLS!!!!!!!!!!!!!!!!!!!!!"
     cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
 }
 
