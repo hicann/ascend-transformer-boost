@@ -19,13 +19,18 @@ import numpy
 import torch
 import torch_npu
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../../scripts"))
-import tensor_file  # NOQA:E402
-
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
     raise RuntimeError(
         "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
+
+TOOLS_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH, "tools/python_tools")
+
+sys.path.append(TOOLS_PATH)
+
+import tensor_file  # NOQA:E402
+
+
 
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "lib/libacltransformer_torch.so")
