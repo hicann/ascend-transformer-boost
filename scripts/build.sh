@@ -127,6 +127,14 @@ function fn_build_release_3rdparty()
     cd $CODE_ROOT
 }
 
+function fn_copy_tools()
+{
+    if [!d "$OUTPUT_DIR/acltransformer/tools"]; then
+        mkdir $OUTPUT_DIR/acltransformer/tools
+    fi
+    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
+}
+
 function fn_download_testdata()
 {
     echo "git clone -b testdata https://gitee.com/ascend/ascend-transformer-acceleration.git $CODE_ROOT/testdata"
@@ -183,7 +191,8 @@ function fn_build()
     fi
     make install
     chmod +x $OUTPUT_DIR/acltransformer/bin/*
-    fn_generate_doxygen
+    fn_generate_doxygen 
+    fn_copy_tools
 }
 
 function fn_run_unittest()
