@@ -199,7 +199,11 @@ AsdOps::Status GraphRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runne
     }
     if (runnerGraph_.inTensors.size() != runnerVariantPack.inTensors.size() ||
         runnerGraph_.outTensors.size() != runnerVariantPack.outTensors.size()) {
-        ASD_LOG(FATAL) << GetName() << " runnerVariantPack tensor size not graph tensor size";
+        ASD_LOG(FATAL) << GetName() << " runnerVariantPack tensor size not graph tensor size, runnerGraph_.inTensors:"
+                       << runnerGraph_.inTensors.size()
+                       << ", runnerVariantPack.inTensors:" << runnerVariantPack.inTensors.size()
+                       << ", runnerGraph_.outTensors:" << runnerGraph_.outTensors.size()
+                       << ", runnerVariantPack.outTensors:" << runnerVariantPack.outTensors.size();
         return AsdOps::Status::FailStatus(1, "runnerVariantPack tensor size not graph tensor size");
     }
 

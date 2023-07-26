@@ -20,6 +20,7 @@
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
 #pragma GCC diagnostic pop
 #include <torch_npu/csrc/core/npu/register/OptionsManager.h>
+#include <torch_npu/csrc/framework/OpCommand.h>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/time/timer.h>
@@ -29,18 +30,31 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/workspace/workspace.h"
+#include "torch/context/context.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
 
 const size_t WEIGHT_COUNT_PER_LAYER = 12;
 
 ChatGlm6BModelDecoderFlashattentionTorch::ChatGlm6BModelDecoderFlashattentionTorch()
 {
-    ASD_LOG(INFO)
-        << "ChatGlm6BModelDecoderFlashattentionTorch::ChatGlm6BModelDecoderFlashattentionTorch, TASK_QUEUE_ENABLE:"
-        << c10_npu::option::OptionsManager().CheckQueueEnable();
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
+
+    AsdRtDeviceGetCurrent(&currentDevId_);
+
+    const char *envStr = std::getenv("TASK_QUEUE_ENABLE");
+    isTaskQueueEnable_ = (envStr != nullptr && std::string(envStr) == "1") ? true : false;
+
+    envStr = std::getenv("ACLTRANSFORMER_PLAN_EXECUTE_ASYNC");
+    isUsePlanExecuteAsync_ = (envStr != nullptr && std::string(envStr) == "1") ? true : false;
+    if (isUsePlanExecuteAsync_ && !isTaskQueueEnable_) {
+        std::thread thread = std::thread(std::bind(&ChatGlm6BModelDecoderFlashattentionTorch::ThreadProcessTask, this));
+        taskProcessThread_ = std::move(thread);
+    }
+
+    ASD_LOG(FATAL) << "ChatGlm6BModelDecoderFlashattentionTorch new, TASK_QUEUE_ENABLE:" << isTaskQueueEnable_
+                   << ", ACLTRANSFORMER_PLAN_EXECUTE_ASYNC:" << isUsePlanExecuteAsync_
+                   << ", currentDevId:" << currentDevId_;
 }
 
 ChatGlm6BModelDecoderFlashattentionTorch::~ChatGlm6BModelDecoderFlashattentionTorch() {}
@@ -52,6 +66,7 @@ void ChatGlm6BModelDecoderFlashattentionTorch::SetParam(std::string param)
     operations_.resize(modelParam_.layerNum);
     plans_.resize(modelParam_.layerNum);
     outTensors_.resize(modelParam_.layerNum);
+    variantPacks_.resize(modelParam_.layerNum);
 
     for (int i = 0; i < modelParam_.layerNum; ++i) {
         AclTransformer::ChatGlm6BLayerDecoderFlashAttentionParam opParam;
@@ -135,6 +150,7 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteOutImpl(
 {
     handle_ = {Utils::GetCurrentStream()};
     ParseParam(param);
+    allTaskFinish_ = false;
 
     Utils::ContiguousAtTensor(hiddenStateTensor);
     Utils::ContiguousAtTensor(positionIdTensor);
@@ -172,10 +188,12 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteOutImpl(
         opAtInTensors.at(inTensorId++) = seqLen; // seqLen
         opAtInTensors.at(inTensorId++) = layerIdInput.at(layerId);
 
-        ExecuteSingleOperation(layerId, opAtInTensors, outTensor, newOut);
+        ExecuteLayerOperation(layerId, opAtInTensors, outTensor, newOut);
 
         firstInTensor = outTensor;
     }
+
+    WaitAsyncPlanExecuteFinish();
 
     AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer_.ElapsedMicroSecond();
     ASD_LOG(FATAL) << "ChatGlm6BModel executeCount:" << executeCount_ << ", statistic:["
@@ -189,6 +207,7 @@ void ChatGlm6BModelDecoderFlashattentionTorch::BuildVariantPack(int layerId, std
                                                                 torch::Tensor &outTensor, bool newOut,
                                                                 AclTransformer::VariantPack &variantPack)
 {
+    variantPack.inTensors.clear();
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " atInTensors[" << i
                       << "].options:" << atInTensors.at(i).options() << ", data:" << atInTensors.at(i).data_ptr()
@@ -206,17 +225,17 @@ void ChatGlm6BModelDecoderFlashattentionTorch::BuildVariantPack(int layerId, std
         }
         outTensor = outTensors_.at(layerId);
     }
-
+    variantPack.outTensors.clear();
     variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(outTensor));
 }
 
-void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteSingleOperation(int layerId,
-                                                                      std::vector<torch::Tensor> &opAtInTensors,
-                                                                      torch::Tensor &outTensor, bool newOut)
+void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteLayerOperation(int layerId,
+                                                                     std::vector<torch::Tensor> &opAtInTensors,
+                                                                     torch::Tensor &outTensor, bool newOut)
 {
     AclTransformer::Plan &plan = *plans_.at(layerId);
 
-    AclTransformer::VariantPack variantPack;
+    AclTransformer::VariantPack &variantPack = variantPacks_.at(layerId);
     variantPack.param = variantPackParam_;
     BuildVariantPack(layerId, opAtInTensors, outTensor, newOut, variantPack);
 
@@ -232,23 +251,29 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteSingleOperation(int layerI
     ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
-        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
+        variantPack.workspace =
+            AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
     }
 
-    AsdOps::Timer timer2;
-    st = plan.Execute(handle_, variantPack);
-
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        AsdRtStreamSynchronize(handle_.stream);
-        std::string dirPath =
-            AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelLayer_" + std::to_string(layerId);
-        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
-        ASD_LOG(FATAL) << "ChatGlm6BModelLayer_" << layerId << " save variant pack, dir:" << dirPath;
+    if (isUsePlanExecuteAsync_) {
+        if (isTaskQueueEnable_) {
+#ifdef TORCH_SETCUSTOMHANDLER
+            at_npu::native::OpCommand cmd;
+            cmd.Name("ChatGlm6BModelLayer_" + std::to_string(layerId));
+            cmd.SetCustomHandler([=]() {
+                ExecutePlan(layerId);
+                return 0;
+            });
+            cmd.Run();
+#else
+            ASD_LOG(FATAL) << "ChatGlm6BModelLayer_" << layerId << " torch_npu is low, can't support SetCustomHandler";
+#endif
+        } else {
+            PushTask(layerId);
+        }
+    } else {
+        ExecutePlan(layerId);
     }
-
-    AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
-    ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelLayer_" << layerId << " execute plan fail, error:" << st.Message();
 }
 
 void ChatGlm6BModelDecoderFlashattentionTorch::ParseParam(const std::string &param)
@@ -261,6 +286,75 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ParseParam(const std::string &par
     variantPackParam_.seqLen.clear();
     for (auto item : paramJson["seqLen"]) {
         variantPackParam_.seqLen.push_back(item.get<int>());
+    }
+}
+
+void ChatGlm6BModelDecoderFlashattentionTorch::ThreadProcessTask()
+{
+    ASD_LOG(FATAL) << "ChatGlm6BModelLayer ThreadProcessTask start";
+    int ret = AsdRtDeviceSetCurrent(currentDevId_);
+    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtDeviceSetCurrent fail, error:" << ret;
+
+    int processTaskCount = 0;
+    while (true) {
+        int layerId = PopTask();
+        ExecutePlan(layerId);
+        processTaskCount++;
+        if (processTaskCount == modelParam_.layerNum) {
+            ASD_LOG(INFO) << "ChatGlm6BModelLayer thread process all layers";
+            processTaskCount = 0;
+            allTaskFinish_ = true;
+        }
+    }
+}
+
+void ChatGlm6BModelDecoderFlashattentionTorch::ExecutePlan(int layerId)
+{
+    AsdOps::Timer timer2;
+    AclTransformer::Plan &plan = *plans_.at(layerId);
+    AclTransformer::VariantPack &variantPack = variantPacks_.at(layerId);
+    ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " execute plan start";
+    AsdOps::Status st = plan.Execute(handle_, variantPack);
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        AsdRtStreamSynchronize(handle_.stream);
+        std::string dirPath =
+            AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelLayer_" + std::to_string(layerId);
+        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
+        ASD_LOG(FATAL) << "ChatGlm6BModelLayer_" << layerId << " save variant pack, dir:" << dirPath;
+    }
+
+    AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
+    ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelLayer_" << layerId << " execute plan fail, error:" << st.Message();
+}
+
+void ChatGlm6BModelDecoderFlashattentionTorch::PushTask(int layerId)
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    taskQueue_.push(layerId);
+    lock.unlock();
+    cond_.notify_one();
+}
+
+int ChatGlm6BModelDecoderFlashattentionTorch::PopTask()
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    while (taskQueue_.empty()) {
+        cond_.wait(lock);
+    }
+    int layerId = taskQueue_.front();
+    taskQueue_.pop();
+    return layerId;
+}
+
+void ChatGlm6BModelDecoderFlashattentionTorch::WaitAsyncPlanExecuteFinish()
+{
+    if (isUsePlanExecuteAsync_ && !isTaskQueueEnable_) {
+        while (true) {
+            if (allTaskFinish_) {
+                ASD_LOG(INFO) << "ChatGlm6BModel allTaskFinish is true, break";
+                break;
+            }
+        }
     }
 }
 

@@ -17,6 +17,11 @@
 #define CHATGLM6BMODEL_DECODER_QUANT_FLASH_TORCH_H
 #include <string>
 #include <vector>
+#include <mutex>
+#include <condition_variable>
+#include <functional>
+#include <thread>
+#include <queue>
 #include <torch/script.h>
 #include <torch/custom_class.h>
 #include <asdops/utils/time/timer.h>
@@ -59,21 +64,36 @@ private:
                         torch::Tensor &pastValueTensors, torch::Tensor &tokenOffset, torch::Tensor &seqLen,
                         std::vector<torch::Tensor> &layerIdInput, torch::Tensor &outTensor, bool newOut,
                         std::string param);
-    void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
-                                torch::Tensor &resIn, bool newOut);
-    void ExecuteLastSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
-                                    bool newOut);
+    void ExecuteLayerOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
+                               torch::Tensor &resIn, bool newOut);
+    void ExecuteLastLayerOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
+                                   bool newOut);
     void ParseParam(const std::string &param);
+    void ThreadProcessTask();
+    void ExecutePlan(int layerId);
+    void PushTask(int layerId);
+    int PopTask();
+    void WaitAsyncPlanExecuteFinish();
 
 private:
     ChatGlm6BModelQuantFlashParam modelParam_;
     std::vector<std::shared_ptr<AclTransformer::Operation>> operations_;
     std::vector<std::shared_ptr<AclTransformer::Plan>> plans_;
     std::vector<torch::Tensor> weightTensors_;
+    std::vector<torch::Tensor> outTensors_;
+    std::vector<AclTransformer::VariantPack> variantPacks_;
     uint64_t executeCount_ = 0;
     AclTransformer::Handle handle_;
     AsdOps::Timer timer_;
     AclTransformer::SelfAttentionKvCacheFusionVariantPackParam variantPackParam_;
+    bool isUsePlanExecuteAsync_ = false;
+    bool isTaskQueueEnable_ = false;
+    std::queue<int> taskQueue_;
+    std::mutex mutex_;
+    std::condition_variable cond_;
+    std::thread taskProcessThread_;
+    std::atomic_bool allTaskFinish_;
+    int32_t currentDevId_ = 0;
 };
 
 #endif
