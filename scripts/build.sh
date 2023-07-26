@@ -129,9 +129,6 @@ function fn_build_release_3rdparty()
 
 function fn_copy_tools()
 {
-    if [!d "$OUTPUT_DIR/acltransformer/tools"]; then
-        mkdir $OUTPUT_DIR/acltransformer/tools
-    fi
     cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
 }
 
