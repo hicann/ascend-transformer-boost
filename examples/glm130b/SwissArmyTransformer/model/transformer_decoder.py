@@ -17,6 +17,7 @@
 """Transformer."""
 
 import os
+import time
 import json
 import math
 import copy
@@ -27,6 +28,8 @@ from SwissArmyTransformer import mpu
 from SwissArmyTransformer.mpu.initialize import get_model_parallel_world_size, get_model_parallel_rank
 from SwissArmyTransformer.mpu.layers import ColumnParallelLinear, RowParallelLinear, VocabParallelEmbedding
 from SwissArmyTransformer.mpu.mappings import gather_from_model_parallel_region, copy_to_model_parallel_region
+from SwissArmyTransformer.model.position_embedding import RotaryEmbedding
+from SwissArmyTransformer.model.position_embedding import apply_rotary_pos_emb_index
 
 from deepspeed.runtime.activation_checkpointing.checkpointing import checkpoint
 
@@ -383,6 +386,8 @@ class BaseTransformer(torch.nn.Module):
         self.rank = torch.distributed.get_rank()
         self.head_size = hidden_size // num_attention_heads
         self.headNum = num_attention_heads
+        self.num_layers = num_layers
+        self.rotary_emb = None
 
         # create embedding parameters
         self.embedding_dropout = torch.nn.Dropout(embedding_dropout_prob)
@@ -426,25 +431,23 @@ class BaseTransformer(torch.nn.Module):
                 device=device
             )
 
-        def get_acl_layer(layer_id):
-            acl_layer = torch.classes.OperationTorch.OperationTorch("Glm130BLayerOperation")
-            acl_layer.set_param(
-                json.dumps({"layerNormEps": layernorm_epsilon,
-                            "transKey": False,
-                            "headNum": num_attention_heads,
-                            "dk": self.head_size,
-                            "layerId": layer_id,
-                            "rank": self.rank,
-                            "rankSize": self.rankSize,
-                            "residualAddScale": sqrt(2*num_layers)
-                })
-            )
-            return acl_layer
-
-
         self.layers = torch.nn.ModuleList(
             [get_layer(layer_id) for layer_id in range(num_layers)])
-        self.acl_layers = [get_acl_layer(layer_id) for layer_id in range(num_layers)]
+
+        # 替换70层Layer
+        acl_param = json.dumps({
+                            "transKey": False,
+                            "layerNum": num_layers,
+                            "headNum": num_attention_heads,
+                            "dk": self.head_size,
+                            "rank": self.rank,
+                            "rankSize": self.rankSize,
+                            "residualAddScale": (2 * num_layers) ** 0.5,
+                            "layerNormEps": layernorm_epsilon
+                            })
+        # "rankRoot": 0,
+        self.acl_glm130b_decoder_operation = torch.classes.Glm130BModelDecoderTorch.Glm130BModelDecoderTorch()
+        self.acl_glm130b_decoder_operation.set_param(acl_param)
 
         # Final layer norm before output.
         self.use_final_layernorm = use_final_layernorm
@@ -573,6 +576,52 @@ class BaseTransformer(torch.nn.Module):
                 l += chunk_length
         else:
             output_this_layer = []
+            
+            #add acl decoder
+            acl_decoder_input = hidden_states.clone()
+            if self.rotary_emb is None:
+                self.rotary_emb = RotaryEmbedding(
+                    self.head_size,
+                    base = 10000,
+                    precision=torch.half,
+                    learnable=False,
+                    device=torch.cuda.current_device(),
+                )
+            self.acl_weights = []
+            for layer in self.layers:
+                acl_layer_weights = list(layer.state_dict().values())
+                self.acl_weights.extend(acl_layer_weights[0:8])
+                self.acl_weights.extend(acl_layer_weights[10:12])
+                self.acl_weights.extend(acl_layer_weights[8:10])  
+
+            pastKeyTensors = []
+            pastValueTensors = []
+            mem = None
+            if "mems" in kw_args:
+                mems = kw_args["mems"]
+                for i in range(self.num_layers):
+                    layer_id = torch.tensor(i)
+                    mem = mems[layer_id] if mems is not None else None
+                    if mem is not None:
+                        b = acl_decoder_input.shape[1]
+                        nh = self.headNum
+                        head_size = self.head_size
+                        rank_size = self.rankSize
+                        mem = mem.expand(b, -1, -1).reshape(b, mem.shape[1], 2, nh // rank_size, head_size).permute(2, 1, 0, 3, 4)
+                        pastk, pastv = mem[0], mem[1]
+                        pastKeyTensors.append(pastk)
+                        pastValueTensors.append(pastv)
+                
+                if mem is not None:
+                    self.acl_glm130b_decoder_operation.set_weight(self.acl_weights)
+                    cos, sin = self.rotary_emb(acl_decoder_input, seq_len=position_ids.max() + 1)
+                    start = time.time()
+                    acl_decoder_output = self.acl_glm130b_decoder_operation.execute(acl_decoder_input, position_ids,
+                                                                                  cos, sin, attention_mask,
+                                                                                  pastKeyTensors, pastValueTensors)
+                    print('acl decoder output[0][0,0,0] : ' + str(acl_decoder_output[0][0,0,0]))
+                    print('decoder takes (second) : ' + str(time.time() - start))
+                    
             for i, layer in enumerate(self.layers):
                 args = [hidden_states, attention_mask]
 
@@ -596,6 +645,19 @@ class BaseTransformer(torch.nn.Module):
                 if output_hidden_states:
                     output_this_layer['hidden_states'] = hidden_states
                 output_per_layers.append(output_this_layer)
+            
+            if mem is not None:
+                if torch.allclose(acl_decoder_output[0], hidden_states, rtol=0.02, atol=0.02):
+                    if torch.distributed.get_rank() == 0:
+                        print("~~~~~~~~~test decoder equal!~~~~~~~~~")
+                        print('acl output', acl_decoder_output[0])
+                        print('torch output', hidden_states)
+                else:
+                    if torch.distributed.get_rank() == 0:
+                        print("+++++++++test decoder NOT equal!+++++++++")
+                        print('acl output', acl_decoder_output[0])
+                        print('torch output', hidden_states)
+                hidden_states = acl_decoder_output[0]
 
         # Final layer norm.
         if self.use_final_layernorm:

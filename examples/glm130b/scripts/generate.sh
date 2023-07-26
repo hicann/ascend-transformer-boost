@@ -4,7 +4,7 @@ script_path=$(realpath $0)
 script_dir=$(dirname $script_path)
 main_dir=$(dirname $script_dir)
 
-source "${main_dir}/configs/model_glm_130b_2p.sh"
+source "${main_dir}/configs/model_glm_130b.sh"
 
 SEED=1234
 MAX_OUTPUT_LENGTH=256
@@ -34,6 +34,6 @@ ARGS="${main_dir}/generate.py \
        $MODEL_ARGS \
        $*"
 
-run_cmd="torchrun --nproc_per_node $MP_SIZE ${ARGS}"
+run_cmd="torchrun --nproc_per_node $MP_SIZE --master_port 12233 ${ARGS}"
 echo ${run_cmd}
 eval ${run_cmd}

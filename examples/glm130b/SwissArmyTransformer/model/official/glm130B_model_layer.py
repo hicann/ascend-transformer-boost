@@ -150,15 +150,14 @@ class DeepNormWithGLUMixin(BaseMixin):
 
         layerId = kw_args["layer_id"]
         weights = list(layer.state_dict().values())
-        keys = list(layer.state_dict().keys())
+        # keys = list(layer.state_dict().keys())
         acl_outs = None
         mem = None
-        for i in range(len(weights)):
-            layer.state_dict()[keys[i]].add_(0.0017) # 初始權重
-
-        print(f"{layerId} layer weights shape:=======================")
-        for weight in weights:
-            print(weight.shape)
+        # for i in range(len(weights)):
+        #     layer.state_dict()[keys[i]].add_(0.0017) # 初始權重
+        # print(f"{layerId} layer weights shape:=======================")
+        # for weight in weights:
+        #     print(weight.shape)
 
         if "mems" in kw_args:
             mems = kw_args["mems"]
@@ -205,11 +204,16 @@ class DeepNormWithGLUMixin(BaseMixin):
 
         if mem is not None:
             if torch.allclose(output, acl_outs[0], rtol=0.02, atol=0.02):
-                print('layer equal!')
-                print(output)
-                print(acl_outs[0])
+                if torch.distributed.get_rank() == 0:
+                    print('=======layer equal!=======')
+                    print('torch output is ' + str(output))
+                    print('acl output is ' + str(acl_outs[0]))
             else:
-                print('layer no equal!')
+                if torch.distributed.get_rank() == 0:
+                    print('=======layer no equal!=======')
+                    print('torch output is ' + str(output))
+                    print('acl output is ' + str(acl_outs[0]))
+            return acl_outs[0]
 
         return output
 

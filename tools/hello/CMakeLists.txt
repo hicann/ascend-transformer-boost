@@ -9,7 +9,7 @@ else()
 endif()
 
 if(USE_LCCL_RUNNER)
-    target_link_libraries(acltransformer_hello lccl)
+    target_link_libraries(acltransformer_hello PRIVATE lccl ascendcl)
 endif()
 
 install(TARGETS acltransformer_hello DESTINATION bin)
