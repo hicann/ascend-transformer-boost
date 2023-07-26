@@ -1044,7 +1044,7 @@ class TopPLogits(torch.nn.Module):
         # remove all tokens with a probability less than the last token of the top-k
          
         values, indices = torch.topk(scores, top_k)
-        values = torch.filp(values, dim=[1])
+        values = torch.flip(values, dims=[1])
         cumulative_probs = values.softmax(dim=-1).cumsum(dim=-1)
         
         sorted_indices_to_remove = cumulative_probs <= (1 - self.top_p)
