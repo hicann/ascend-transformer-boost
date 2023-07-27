@@ -17,6 +17,11 @@
 #define CHATGLM6BMODEL_DECODER_TORCH_H
 #include <string>
 #include <vector>
+#include <mutex>
+#include <condition_variable>
+#include <functional>
+#include <thread>
+#include <queue>
 #include <torch/script.h>
 #include <torch/custom_class.h>
 #include <asdops/utils/time/timer.h>
@@ -60,9 +65,14 @@ private:
                         std::string param);
     // IN:hiddenStateTensor+12个权重+positionIdTensor+cosTable+sinTable+attentionMaskTensor+pastKeyTensor+pastValueTensor
     // OUT:outTensor + presendKey + presentValue
-    void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
-                                bool newOut);
+    void ExecuteLayerOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
+                               bool newOut);
     void ParseParam(const std::string &param);
+    void ThreadProcessTask();
+    void ExecutePlan(int layerId);
+    void PushTask(int layerId);
+    int PopTask();
+    void WaitAsyncPlanExecuteFinish();
 
 private:
     ChatGlm6BModelFlashattentionParam modelParam_;
@@ -70,10 +80,19 @@ private:
     std::vector<std::shared_ptr<AclTransformer::Plan>> plans_;
     std::vector<torch::Tensor> weightTensors_;
     std::vector<torch::Tensor> outTensors_;
+    std::vector<AclTransformer::VariantPack> variantPacks_;
     uint64_t executeCount_ = 0;
     AclTransformer::Handle handle_;
     AsdOps::Timer timer_;
     AclTransformer::SelfAttentionKvCacheFusionVariantPackParam variantPackParam_;
+    bool isUsePlanExecuteAsync_ = false;
+    bool isTaskQueueEnable_ = false;
+    std::queue<int> taskQueue_;
+    std::mutex mutex_;
+    std::condition_variable cond_;
+    std::thread taskProcessThread_;
+    std::atomic_bool allTaskFinish_;
+    int32_t currentDevId_ = 0;
 };
 
 #endif
