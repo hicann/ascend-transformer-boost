@@ -130,7 +130,10 @@ static AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &pa
     AclTransformer::LinearParam param;
     param.transposeA = paramJson["transposeA"].get<bool>();
     param.transposeB = paramJson["transposeB"].get<bool>();
-    ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
+    if (paramJson.contains("hasBias")) {
+        param.hasBias = paramJson["hasBias"].get<bool>();
+    }
+    ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB << ", hasBias:" << param.hasBias;
     return new AclTransformer::LinearOperation(param);
 }
 
@@ -148,7 +151,10 @@ static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &param
     AclTransformer::FfnParam param;
     param.transposeA = paramJson["transposeA"].get<bool>();
     param.transposeB = paramJson["transposeB"].get<bool>();
-    ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB;
+    if (paramJson.contains("hasBias")) {
+        param.hasBias = paramJson["hasBias"].get<bool>();
+    }
+    ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB << ", hasBias:" << param.hasBias;
     return new AclTransformer::FfnOperation(param);
 }
 

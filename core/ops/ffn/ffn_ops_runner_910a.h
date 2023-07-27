@@ -2,7 +2,7 @@
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file ex10cept in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef LINEAR_OPS_RUNNER_910A_H
-#define LINEAR_OPS_RUNNER_910A_H
+#ifndef FFN_OPS_RUNNER_910A_H
+#define FFN_OPS_RUNNER_910A_H
 #include "acltransformer/base/ops_runner.h"
-#include "acltransformer/params/linear.h"
+#include "acltransformer/params/ffn.h"
 
 namespace AclTransformer {
-class LinearOpsRunner910A : public OpsRunner {
+class FfnOpsRunner910A : public OpsRunner {
 public:
-    explicit LinearOpsRunner910A(LinearParam &param);
-    virtual ~LinearOpsRunner910A();
+    FfnOpsRunner910A(const FfnParam &param);
+    virtual ~FfnOpsRunner910A();
 
 protected:
     AsdOps::Status SetupKernelGraph(const RunnerVariantPack &runnerVariantPack) override;
@@ -34,10 +34,11 @@ private:
     AsdOps::Status SetupKernelGraphNdWithoutBias(const RunnerVariantPack &runnerVariantPack);
 
 private:
-    LinearParam param_;
+    FfnParam param_;
     AsdOps::SVector<int64_t> oriDimA_;
     AsdOps::SVector<int64_t> oriDimB_;
     std::size_t oriSize_ = 3;
 };
+
 } // namespace AclTransformer
 #endif
