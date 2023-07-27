@@ -26,18 +26,17 @@ public:
 
 protected:
     AsdOps::Status SetupKernelGraph(const RunnerVariantPack &runnerVariantPack) override;
+    AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
 
 private:
+    void ConvertNewRunnerVariantPackA(const RunnerVariantPack &runnerVariantPack,
+                                      RunnerVariantPack &newRunnerVariantPack, AsdOps::SVector<int64_t> &matmulOrgShape,
+                                      AsdOps::SVector<int64_t> &transdataOrgShape);
     AsdOps::Status SetupKernelGraphNz(const RunnerVariantPack &runnerVariantPack);
-    AsdOps::Status SetupKernelGraphNzWithoutBias(const RunnerVariantPack &runnerVariantPack);
     AsdOps::Status SetupKernelGraphNd(const RunnerVariantPack &runnerVariantPack);
-    AsdOps::Status SetupKernelGraphNdWithoutBias(const RunnerVariantPack &runnerVariantPack);
 
 private:
     FfnParam param_;
-    AsdOps::SVector<int64_t> oriDimA_;
-    AsdOps::SVector<int64_t> oriDimB_;
-    std::size_t oriSize_ = 3;
 };
 
 } // namespace AclTransformer

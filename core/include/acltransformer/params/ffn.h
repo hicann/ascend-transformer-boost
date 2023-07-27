@@ -24,7 +24,6 @@ struct FfnParam {
     };
     bool transposeA = false;
     bool transposeB = false;
-    bool hasBias = true;
     ActivationFuncType activationFuncType = FAST_GELU;
 };
 } // namespace AclTransformer
