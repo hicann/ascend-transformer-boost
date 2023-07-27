@@ -82,10 +82,6 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     auto &transdataBmmVNode = kernelGraph_.nodes.at(18);
     auto &permuteContextNode = kernelGraph_.nodes.at(19);
 
-    AsdOps::SVector<int64_t> orgQDims;
-    AsdOps::SVector<int64_t> orgKDims;
-    AsdOps::SVector<int64_t> orgProbsDims;
-    AsdOps::SVector<int64_t> orgVDims;
 
 
     float varAttr = 1.0 / (sqrt(param_.dk) * (param_.layerId + 1));
@@ -134,7 +130,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgQDims = runInfo.GetInTensor(0).desc.dims;
+        orgQDims_ = runInfo.GetInTensor(0).desc.dims;
     };
 
     transdataKNode.opDesc = {0, "TransdataOperation",
@@ -145,7 +141,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgKDims = runInfo.GetInTensor(0).desc.dims;
+        orgKDims_ = runInfo.GetInTensor(0).desc.dims;
     };
 
     bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
@@ -154,7 +150,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     bmmQkNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
         runInfo.SetOpDesc({0, "MatMulOperation", 
                             AsdOps::OpParam::MatMul({false, false, 
-                                                        {orgQDims.at(0), orgQDims.at(1), orgQDims.at(2), orgKDims.at(2)}})});
+                                                        {orgQDims_.at(0), orgQDims_.at(1), orgQDims_.at(2), orgKDims_.at(2)}})});
     };
 
     transdataQKNode.opDesc = {0, "TransdataOperation",
@@ -162,7 +158,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     transdataQKNode.inTensors = {&bmmQkOut};
     transdataQKNode.outTensors = {&bmmQkOutTransResult};
     transdataQKNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
-        AsdOps::SVector<int64_t> transQKTargetDims = {orgQDims.at(0), orgQDims.at(1), orgKDims.at(2)};
+        AsdOps::SVector<int64_t> transQKTargetDims = {orgQDims_.at(0), orgQDims_.at(1), orgKDims_.at(2)};
         runInfo.SetOpDesc({0, "TransdataOperation", 
                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND , transQKTargetDims})});
     };
@@ -221,7 +217,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgProbsDims = runInfo.GetInTensor(0).desc.dims;
+        orgProbsDims_ = runInfo.GetInTensor(0).desc.dims;
     };
 
     transdataVNode.opDesc = {0, "TransdataOperation",
@@ -232,7 +228,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgVDims = runInfo.GetInTensor(0).desc.dims;
+        orgVDims_ = runInfo.GetInTensor(0).desc.dims;
     };
 
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
@@ -245,7 +241,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     bmmVNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
         runInfo.SetOpDesc({0, "MatMulOperation", 
                             AsdOps::OpParam::MatMul({false, false, 
-                                                        {orgProbsDims.at(0), orgProbsDims.at(1), orgProbsDims.at(2), orgVDims.at(2)}})});
+                                                        {orgProbsDims_.at(0), orgProbsDims_.at(1), orgProbsDims_.at(2), orgVDims_.at(2)}})});
 
     };
 
@@ -255,7 +251,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     transdataBmmVNode.inTensors = {&bmmVout};
     transdataBmmVNode.outTensors = {&bmmVoutTransResult};
     transdataBmmVNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
-        AsdOps::SVector<int64_t> transBmmTargetDims = {orgProbsDims.at(0), orgProbsDims.at(1), orgVDims.at(2)};
+        AsdOps::SVector<int64_t> transBmmTargetDims = {orgProbsDims_.at(0), orgProbsDims_.at(1), orgVDims_.at(2)};
         runInfo.SetOpDesc({0, "TransdataOperation", 
                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND , transBmmTargetDims})});
     };

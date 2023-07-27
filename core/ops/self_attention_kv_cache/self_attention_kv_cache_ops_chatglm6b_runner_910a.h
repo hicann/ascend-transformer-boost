@@ -26,6 +26,10 @@ public:
 
 private:
     SelfAttentionKvCacheParam param_;
+    AsdOps::SVector<int64_t> orgQDims_;
+    AsdOps::SVector<int64_t> orgKDims_;
+    AsdOps::SVector<int64_t> orgProbsDims_;
+    AsdOps::SVector<int64_t> orgVDims_;
 };
 
 } // namespace AclTransformer
