@@ -145,7 +145,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgKDims = runInfo.getInTensor(0).desc.dims;
+        orgKDims = runInfo.GetInTensor(0).desc.dims;
     };
 
     bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
@@ -232,7 +232,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgVDims = runInfo.GetIntensor(0).desc.dims;
+        orgVDims = runInfo.GetInTensor(0).desc.dims;
     };
 
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
