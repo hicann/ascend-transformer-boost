@@ -22,7 +22,8 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunner910a(const SelfAttentionKvCacheParam &param)
+SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunner910a(
+    const SelfAttentionKvCacheParam &param)
     : OpsRunner("SelfAttentionKvCacheOpsChatGlm6bRunner910a", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
     ASD_LOG(INFO) << "SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunner910a called"
@@ -81,8 +82,6 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     auto &bmmVNode = kernelGraph_.nodes.at(17);
     auto &transdataBmmVNode = kernelGraph_.nodes.at(18);
     auto &permuteContextNode = kernelGraph_.nodes.at(19);
-
-
 
     float varAttr = 1.0 / (sqrt(param_.dk) * (param_.layerId + 1));
     mulsQNode.opDesc = {0, "ElewiseOperation",
@@ -148,19 +147,20 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     bmmQkNode.inTensors = {&transposedQTransResult, &transposedKTransResult};
     bmmQkNode.outTensors = {&bmmQkOut};
     bmmQkNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
-        runInfo.SetOpDesc({0, "MatMulOperation", 
-                            AsdOps::OpParam::MatMul({false, false, 
-                                                        {orgQDims_.at(0), orgQDims_.at(1), orgQDims_.at(2), orgKDims_.at(2)}})});
+        runInfo.SetOpDesc({0, "MatMulOperation",
+                           AsdOps::OpParam::MatMul(
+                               {false, false, {orgQDims_.at(1), orgQDims_.at(2), orgKDims_.at(2)}})});
     };
 
     transdataQKNode.opDesc = {0, "TransdataOperation",
-                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
+                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
     transdataQKNode.inTensors = {&bmmQkOut};
     transdataQKNode.outTensors = {&bmmQkOutTransResult};
     transdataQKNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> transQKTargetDims = {orgQDims_.at(1), orgKDims_.at(2)};
-        runInfo.SetOpDesc({0, "TransdataOperation", 
-                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND , transQKTargetDims})});
+        runInfo.SetOpDesc(
+            {0, "TransdataOperation",
+             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transQKTargetDims})});
     };
 
     float maskValue = -10000.0;
@@ -210,9 +210,14 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     };
 
     transdataProbsNode.opDesc = {0, "TransdataOperation",
-                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
+                                 AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
     transdataProbsNode.inTensors = {&attentionProbs};
     transdataProbsNode.outTensors = {&attentionProbsTransResult};
+    transdataProbsNode.inTensorViewFuncs.resize(transdataProbsNode.inTensors.size());
+    transdataProbsNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
+                                                 AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    };
     transdataProbsNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
@@ -234,30 +239,26 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
     bmmVNode.inTensors = {&attentionProbsTransResult, &transposedVTransResult};
     bmmVNode.outTensors = {&bmmVout};
-    bmmVNode.inTensorViewFuncs.resize(bmmVNode.inTensors.size());
-    bmmVNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
-    };
     bmmVNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
-        runInfo.SetOpDesc({0, "MatMulOperation", 
-                            AsdOps::OpParam::MatMul({false, false, 
-                                                        {orgProbsDims_.at(0), orgProbsDims_.at(1), orgProbsDims_.at(2), orgVDims_.at(2)}})});
-
+        runInfo.SetOpDesc(
+            {0, "MatMulOperation",
+             AsdOps::OpParam::MatMul(
+                 {false, false, {orgProbsDims_.at(1), orgProbsDims_.at(2), orgVDims_.at(2)}})});
     };
 
-    transdataBmmVNode.opDesc = {
-        0, "TransdataOperation",
-        AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
+    transdataBmmVNode.opDesc = {0, "TransdataOperation",
+                                AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
     transdataBmmVNode.inTensors = {&bmmVout};
     transdataBmmVNode.outTensors = {&bmmVoutTransResult};
     transdataBmmVNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> transBmmTargetDims = {orgProbsDims_.at(1), orgVDims_.at(2)};
-        runInfo.SetOpDesc({0, "TransdataOperation", 
-                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND , transBmmTargetDims})});
+        runInfo.SetOpDesc(
+            {0, "TransdataOperation",
+             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transBmmTargetDims})});
     };
 
-    AsdOps::OpParam::Transpose permuteContextNodeParam =
-        {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {2, 0, 1, 3}};
+    AsdOps::OpParam::Transpose permuteContextNodeParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE,
+                                                          {2, 0, 1, 3}};
     permuteContextNode.opDesc = {0, "TransposeOperation", permuteContextNodeParam};
     permuteContextNode.inTensors = {&bmmVoutTransResult};
     permuteContextNode.outTensors = {&context};
