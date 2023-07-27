@@ -83,7 +83,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     auto &permuteContextNode = kernelGraph_.nodes.at(19);
 
     AsdOps::SVector<int64_t> orgQDims;
-    AsdOps::Svector<int64_t> orgKDims;
+    AsdOps::SVector<int64_t> orgKDims;
     AsdOps::SVector<int64_t> orgProbsDims;
     AsdOps::SVector<int64_t> orgVDims;
 
@@ -134,7 +134,7 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgQDims = runInfo.getIntensor(0).desc.dims;
+        orgQDims = runInfo.GetIntensor(0).desc.dims;
     };
 
     transdataKNode.opDesc = {0, "TransdataOperation",
@@ -146,14 +146,14 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
         orgKDims = runInfo.getIntensor(0).desc.dims;
-    }
+    };
 
     bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
     bmmQkNode.inTensors = {&transposedQTransResult, &transposedKTransResult};
     bmmQkNode.outTensors = {&bmmQkOut};
-    bmmQkNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+    bmmQkNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
         runInfo.SetOpDesc(0, "MatMulOperation", 
-                            AsdOps::OpParam::Matmul({false, false, 
+                            AsdOps::OpParam::MatMul({false, false, 
                                                         {orgQDims.at(0), orgQDims.at(1), orgQDims.at(2), orgKDims.at(2)}}));
     };
 
@@ -221,18 +221,18 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgProbsDims = runInfo.getIntensor(0).desc.dims;
+        orgProbsDims = runInfo.GetIntensor(0).desc.dims;
     };
 
     transdataVNode.opDesc = {0, "TransdataOperation",
                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
     transdataVNode.inTensors = {&transposedV};
-    transdataVNode.outTensors = {&transposdVTransResult};
+    transdataVNode.outTensors = {&transposedVTransResult};
     transdataVNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        orgVDims = runInfo.getIntensor(0).desc.dims;
+        orgVDims = runInfo.GetIntensor(0).desc.dims;
     };
 
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
@@ -244,14 +244,14 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     };
     bmmVNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
         runInfo.SetOpDesc(0, "MatMulOperation", 
-                            AsdOps::OpParam::Matmul({false, false, 
+                            AsdOps::OpParam::MatMul({false, false, 
                                                         {orgProbsDims.at(0), orgProbsDims.at(1), orgProbsProbsims.at(2), orgVDims.at(2)}}));
 
     };
 
     transdataBmmVNode.opDesc = {
         0, "TransdataOperation",
-        AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transdataOrgShape})};
+        AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
     transdataBmmVNode.inTensors = {&bmmVout};
     transdataBmmVNode.outTensors = {&bmmVoutTransResult};
     transdataBmmVNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
@@ -272,5 +272,5 @@ SelfAttentionKvCacheOpsChatGlm6bRunner910a::SelfAttentionKvCacheOpsChatGlm6bRunn
     };
 }
 
-SelfAttentionKvCacheOpsChatGlm6bRunner::~SelfAttentionKvCacheOpsChatGlm6bRunner() {}
+SelfAttentionKvCacheOpsChatGlm6bRunner910a::~SelfAttentionKvCacheOpsChatGlm6bRunner910a() {}
 } // namespace AclTransformer
