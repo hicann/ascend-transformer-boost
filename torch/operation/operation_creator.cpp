@@ -49,6 +49,7 @@
 #include "models/chatglm6b/chatglm6blayer_decoder_last_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
 #include "models/chatglm130b/chatglm130b_operation.h"
+#include "models/llama7b/llama7blayer_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -368,6 +369,17 @@ AclTransformer::Operation *BertLayerOperation(const nlohmann::json &paramJson)
     return new AclTransformer::BertLayerOperation(param);
 }
 
+static AclTransformer::Operation *LLaMA7BLayerOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    ASD_LOG(INFO) << "LLaMA7BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::LLaMA7BLayerOperation(param);
+}
+
 static AclTransformer::Operation *ChatGlm6BLayerDecoderQuantOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::ChatGlm6BLayerQuantParam param;
@@ -527,6 +539,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LinearQuantOperation", &LinearQuantOperationCreate},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"BertLayerOperation", &BertLayerOperation},
+    {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"ChatGlm6BLayerDecoderQuantOperation", &ChatGlm6BLayerDecoderQuantOperationCreate},
     {"ChatGlm6BLayerDecoderLastQuantOperation", &ChatGlm6BLayerDecoderLastQuantOperationCreate},
