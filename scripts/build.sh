@@ -155,6 +155,14 @@ function fn_init_pytorch_env()
     else
         echo "use GetTensorNpuFormat"
     fi
+
+    COUNT=`grep SetCustomHandler ${PYTORCH_NPU_INSTALL_PATH}/include/torch_npu/csrc/framework/OpCommand.h | wc -l`
+    if [ $COUNT -ge 1 ];then
+        echo "use SetCustomHandler"
+        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_SETCUSTOMHANDLER=ON"
+    else
+        echo "not use SetCustomHandler"
+    fi
 }
 
 function fn_build()
