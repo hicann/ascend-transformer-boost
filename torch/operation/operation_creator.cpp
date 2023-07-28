@@ -42,6 +42,7 @@
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
+#include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
 #include "models/bert/bertlayer_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_quant_operation.h"
@@ -257,6 +258,22 @@ static AclTransformer::Operation *ChatGlm6BLayerDecoderOperationCreate(const nlo
                   << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
                   << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BLayerDecoderOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm6BLayerDecoderWithoutFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.beginNormAxis = paramJson["beginNormAxis"].get<int>();
+    ASD_LOG(INFO) << "ChatGlm6BLayerDecoderParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale << ", beginNormAxis:" << param.beginNormAxis;
+    return new AclTransformer::ChatGlm6BLayerDecoderWithoutFusionOperation(param);
 }
 
 static AclTransformer::Operation *ChatGlm6BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
@@ -520,6 +537,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"SelfAttentionOperation", &SelfAttentionOperationCreate},
     {"AnyOperation", &AnyOperationCreate},
     {"ChatGlm6BLayerDecoderOperation", &ChatGlm6BLayerDecoderOperationCreate},
+    {"ChatGlm6BLayerDecoderWithoutFusionOperation", &ChatGlm6BLayerDecoderWithoutFusionOperationCreate},
     {"ChatGlm6BLayerEncoderOperation", &ChatGlm6BLayerEncoderOperationCreate},
     {"QuantOperation", &QuantOperationCreate},
     {"AddNormQuantOperation", &AddNormQuantOperationCreate},

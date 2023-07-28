@@ -24,6 +24,7 @@ struct ChatGlm6BModelParam {
     int dk = 0;
     int layerNum = 0;
     float residualAddScale = 0;
+    int beginNormAxis = 1;
     void FromString(const std::string &param);
 };
 
