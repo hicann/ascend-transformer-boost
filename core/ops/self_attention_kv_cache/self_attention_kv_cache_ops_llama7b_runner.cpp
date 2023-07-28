@@ -42,39 +42,41 @@ SelfAttentionKvCacheOpsLlama7bRunner::SelfAttentionKvCacheOpsLlama7bRunner(const
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(2);
 
     kernelGraph_.internalTensors.resize(14);
-    AsdOps::Tensor &permutedQ = kernelGraph_.internalTensors.at(0);
-    AsdOps::Tensor &permutedK = kernelGraph_.internalTensors.at(1);
-    AsdOps::Tensor &permutedV = kernelGraph_.internalTensors.at(2);
-    AsdOps::Tensor &permutedPastK = kernelGraph_.internalTensors.at(3);
-    AsdOps::Tensor &permutedPastV = kernelGraph_.internalTensors.at(4);
-    AsdOps::Tensor &catKeyOut = kernelGraph_.internalTensors.at(5);
-    AsdOps::Tensor &catValueOut = kernelGraph_.internalTensors.at(6);
-    AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(7);
-    AsdOps::Tensor &bmmQkOut = kernelGraph_.internalTensors.at(8);
-    AsdOps::Tensor &mulsOut = kernelGraph_.internalTensors.at(9);
-    AsdOps::Tensor &attentionScores = kernelGraph_.internalTensors.at(10);
-    AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(11);
-    AsdOps::Tensor &bmmVOut = kernelGraph_.internalTensors.at(12);
-    AsdOps::Tensor &contextTOut = kernelGraph_.internalTensors.at(13);
+    int64_t internalTensorNum = 0;
+    AsdOps::Tensor &permutedQ = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedK = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedV = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedPastK = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedPastV = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &catKeyOut = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &catValueOut = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &bmmQkOut = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &mulsOut = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionScores = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &bmmVOut = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &contextTOut = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     kernelGraph_.nodes.resize(17);
-    auto &permuteQNode = kernelGraph_.nodes.at(0);
-    auto &permuteKNode = kernelGraph_.nodes.at(1);
-    auto &permuteVNode = kernelGraph_.nodes.at(2);
-    auto &permutePastKNode = kernelGraph_.nodes.at(3);
-    auto &permutePastVNode = kernelGraph_.nodes.at(4);
-    auto &catKeyNode = kernelGraph_.nodes.at(5);
-    auto &catValueNode = kernelGraph_.nodes.at(6);
-    auto &permutePresentKNode = kernelGraph_.nodes.at(7);
-    auto &permutePresentVNode = kernelGraph_.nodes.at(8);
-    auto &transposePresentKNode = kernelGraph_.nodes.at(9);
-    auto &bmmQKNode = kernelGraph_.nodes.at(10);
-    auto &mulsNode = kernelGraph_.nodes.at(11);
-    auto &addMaskNode = kernelGraph_.nodes.at(12);
-    auto &softMaxNode = kernelGraph_.nodes.at(13);
-    auto &bmmVNode = kernelGraph_.nodes.at(14);
-    auto &transposeContext1Node = kernelGraph_.nodes.at(15);
-    auto &transposeContext2Node = kernelGraph_.nodes.at(16);
+    int64_t nodeNum = 0;
+    auto &permuteQNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &permuteKNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &permuteVNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &permutePastKNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &permutePastVNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &catKeyNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &catValueNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &permutePresentKNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &permutePresentVNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &transposePresentKNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &bmmQKNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &mulsNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &addMaskNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &softMaxNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &bmmVNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &transposeContext1Node = kernelGraph_.nodes.at(nodeNum++);
+    auto &transposeContext2Node = kernelGraph_.nodes.at(nodeNum++);
 
     /* permute inputs */
     permuteQNode.opDesc = {0, "AsStridedOperation"};
@@ -121,9 +123,9 @@ SelfAttentionKvCacheOpsLlama7bRunner::SelfAttentionKvCacheOpsLlama7bRunner(const
     AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({2, 0, 1, 3}), permutePresentVNode);
 
     transposePresentKNode.opDesc = {0, "AsStridedOperation"};
-    transposePresentKNode.inTensors = {&catKeyOut};
+    transposePresentKNode.inTensors = {&presentKey};
     transposePresentKNode.outTensors = {&transposedK};
-    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({0, 1, 3, 2}), transposePresentKNode);
+    AsStrideKernelInferShapeSet(AsdOps::SVector<int64_t>({1, 2, 3, 0}), transposePresentKNode);
 
     bmmQKNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
     bmmQKNode.inTensors = {&permutedQ, &transposedK};
@@ -156,7 +158,7 @@ SelfAttentionKvCacheOpsLlama7bRunner::SelfAttentionKvCacheOpsLlama7bRunner(const
     softMaxNode.outTensors = {&attentionProbs};
 
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
-    bmmVNode.inTensors = {&attentionProbs, &catValueOut};
+    bmmVNode.inTensors = {&attentionProbs, &presentValue};
     bmmVNode.outTensors = {&bmmVOut};
     bmmVNode.inTensorViewFuncs.resize(bmmVNode.inTensors.size());
     bmmVNode.inTensorViewFuncs[1] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
