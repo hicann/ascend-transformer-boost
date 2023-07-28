@@ -24,7 +24,6 @@ PostOperation::PostOperation(const PostParam &param) : Operation("PostOperation"
 #ifdef USE_TORCH_RUNNER
     runnerBuilders_ = {new PostTorchRunnerBuilder(param_)};
 #else
-    runnerBuilders_ = {new PostOpsRunnerBuilder(param_)};
 #endif
 }
 
@@ -37,11 +36,11 @@ uint64_t PostOperation::GetOutTensorCount() const { return 2; }
 AsdOps::Status PostOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    outTensorDescs.at(0).dtype =  AsdOps::TensorDType::TENSOR_DTYPE_INT64;
+    outTensorDescs.at(0).dtype = AsdOps::TensorDType::TENSOR_DTYPE_INT64;
     outTensorDescs.at(0).dims = {1, param_.min_tokens_to_keep};
     outTensorDescs.at(0).format = AsdOps::TensorFormat::TENSOR_FORMAT_ND;
 
-    outTensorDescs.at(1).dtype =  AsdOps::TensorDType::TENSOR_DTYPE_INT64;
+    outTensorDescs.at(1).dtype = AsdOps::TensorDType::TENSOR_DTYPE_INT64;
     outTensorDescs.at(1).dims = {1, param_.top_k};
     outTensorDescs.at(1).format = AsdOps::TensorFormat::TENSOR_FORMAT_ND;
 
