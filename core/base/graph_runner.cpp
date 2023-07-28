@@ -387,7 +387,7 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
         auto &node = runnerGraph_.nodes.at(nodeId);
         node.runnerVariantPack.workspaceBuffer = runnerVariantPack.workspaceBuffer;
         node.runnerVariantPack.workspaceBufferSize = 
-            (nodeId <= workspaceBufferSizes_.size()) ? workspaceBufferSizes_.at(nodeId) : 0;
+            (nodeId < workspaceBufferSizes_.size()) ? workspaceBufferSizes_.at(nodeId) : 0;
     }
 
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
