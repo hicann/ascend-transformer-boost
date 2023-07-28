@@ -1,11 +1,16 @@
 import transformers
 from transformers import AutoTokenizer, AutoModel
 import torch
+import os
 
 # 适配昇腾NPU
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
+DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
 device_id = 0
+if DEVICE_ID is not None:
+    device_id = int(DEVICE_ID)
+print(f"user npu:{device_id}")
 torch.npu.set_device(torch.device(f"npu:{device_id}"))
 
 import gradio as gr
@@ -19,6 +24,19 @@ torch.npu.set_option(option)
 
 tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
 model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
+
+# 量化模型适配
+for name, mod in model.named_modules():
+    if type(mod).__name__ == "GLMBlock":
+        if hasattr(mod, "qkv_deq_scale"):
+            mod.qkv_deq_scale = torch.nn.Parameter(
+                mod.qkv_deq_scale.data.to(torch.float32))
+            mod.dense_deq_scale = torch.nn.Parameter(
+                mod.dense_deq_scale.data.to(torch.float32))
+            mod.hto4h_deq_scale = torch.nn.Parameter(
+                mod.hto4h_deq_scale.data.to(torch.float32))
+            mod.fhtoh_deq_scale = torch.nn.Parameter(
+                mod.fhtoh_deq_scale.data.to(torch.float32))
 
 """
 Transformer initialization

@@ -20,4 +20,4 @@ fi
 if [ ! -d "./chatglm_quant_param" ];then
     ln -s $ACLTRANSFORMER_TESTDATA/quant_param/chatglm6b/no_ft ./chatglm_quant_param
 fi
-python3 main_quant_performance.py
+python3 main_performance.py
