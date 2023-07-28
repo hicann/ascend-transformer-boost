@@ -34,7 +34,12 @@ AsdOps::Status TransposeTorchRunner::ExecuteImpl(Handle &handle, RunnerVariantPa
 #ifdef USE_TORCH_RUNNER
     at::Tensor atInTensorA = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors.at(0));
     ASD_LOG(INFO) << "in: " << atInTensorA.sizes();
-    at::Tensor atOutTensor = torch::transpose(atInTensorA, param_.dimA, param_.dimB).contiguous();
+    AsdOps::SVector<int64_t> perm;
+    for (size_t i = 0; i < param_.perm.size(); i++) {
+        perm.push_back(static_cast<int64_t>(param_.perm.at(i)));
+    }
+    at::Tensor atOutTensor =
+        torch::permute(atInTensorA, at::IntArrayRef(perm.data(), perm.size())).contiguous();
     ASD_LOG(INFO) << "out: " << atOutTensor.sizes();
     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
     return AsdOps::Status::OkStatus();
