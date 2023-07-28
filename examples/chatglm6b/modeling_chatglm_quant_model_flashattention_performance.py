@@ -1164,6 +1164,44 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         )
 
 
+class TopPLogits(torch.nn.Module):
+    def __init__(self, top_p: float, top_k: float, temperature: float, 
+                 filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+        super(TopPLogits, self).__init__()
+        top_p = float(top_p)
+        if top_p < 0 or top_p > 1.0:
+            raise ValueError(f"'top_p' has to be a float > 0 and < 1, but is {top_p}")
+        if not isinstance(min_tokens_to_keep, int) or (min_tokens_to_keep < 0):
+            raise ValueError(f"'min_tokens_to_keep' has to be a non-begative integer, but is {min_tokens_to_keep}")
+        
+        self.top_p = top_p
+        self.filter_value = filter_value
+        self.min_tokens_to_keep = min_tokens_to_keep
+        self.top_k = top_k
+        self.temperature = temperature
+    
+    def __call__(self, scores: torch.FloatTensor):
+        if self.temperature != 0:
+            scores = scores / self.temperature
+        else:
+            raise ValueError(f"'temperature has to be a float != 0 , but is {self.temperature}")
+        top_k = min(self.top_k, scores.size(-1)) # safety check
+        # remove all tokens with a probability less than the last token of the top-k
+         
+        values, indices = torch.topk(scores, top_k)
+        values = torch.flip(values, dims=[1])
+        cumulative_probs = values.softmax(dim=-1).cumsum(dim=-1)
+        
+        sorted_indices_to_remove = cumulative_probs <= (1 - self.top_p)
+        
+        if self.min_tokens_to_keep > 1:
+            sorted_indices_to_remove[..., -self.min_tokens_to_keep:] = 0
+        
+        values = values.masked_fill(sorted_indices_to_remove, self.filter_value)
+
+        return values, indices
+
+
 class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -1186,9 +1224,13 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         )
 
         self.count = 0
-        self.total = 0
-        self.cur_time = 0
-        self.first = 0
+        self.input_generate = 0
+        self.model_total = 0
+        self.token_total = 0
+        self.model_time = 0
+        self.token_time = 0
+        self.model_first = 0
+        self.token_first = 0
         self.pre_processing = 0
         self.post_processing = 0
 
@@ -1491,51 +1533,40 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         pre_processing_end = time.time()
         self.pre_processing = (pre_processing_end -
                                pre_processing_start) * 1000
+        
+        # initialize the new TopPLogits outside the loop
+        tp = TopPLogits(generation_config.top_p, generation_config.top_k, generation_config.temperature)
+        
         while True:
+            torch.npu.synchronize()
+            input_start = time.time()
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
             # forward pass to get next token
-
-            stream = torch.npu.current_stream()
-            stream.synchronize()
-            # prof = torch.npu.profile('./')
-            # if self.count == 50:
-            #     prof.__enter__()
-            start = time.time()
-
+            torch.npu.synchronize()
+            model_start = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=False,
                 output_hidden_states=False,
             )
+            torch.npu.synchronize()
+            model_end = time.time()
 
-            stream = torch.npu.current_stream()
-            stream.synchronize()
-            end = time.time()
-            # if self.count == 50:
-            #     prof.__exit__(None, None, None)
-            self.count += 1
-            self.cur_time = (end - start) * 1000
-            if self.count == 1:
-                self.first = self.cur_time
-            else:
-                self.total += self.cur_time
-
-            post_processing_start = time.time()
             next_token_logits = outputs.logits[:, -1, :]
 
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
-            next_token_scores = logits_warper(input_ids, next_token_scores)
-
-            # sample
-            probs = nn.functional.softmax(next_token_scores, dim=-1)
-            if generation_config.do_sample:
-                next_tokens = torch.multinomial(
-                    probs, num_samples=1).squeeze(1)
-            else:
-                next_tokens = torch.argmax(probs, dim=-1)
+            
+            # ------------------post-processing after optimization--------------------
+            output, indices = tp(next_token_scores)
+            probs = nn.functional.softmax(output, dim=-1)
+            next_tokens = torch.multinomial(probs, num_samples=1)
+            for i in next_tokens:
+                next_tokens = indices[0][len(indices[0])-i-1]
+            next_tokens = next_tokens.npu()
+            # -----------------------------------------------------------------------
 
             # update generated ids, model inputs, and length for next step
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
@@ -1545,8 +1576,19 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             unfinished_sequences = unfinished_sequences.mul(
                 (sum(next_tokens != i for i in eos_token_id)).long())
             post_processing_end = time.time()
+            
+            self.count += 1
+            self.input_generate = (model_start - input_start) * 1000
+            self.model_time = (model_end - model_start) * 1000
             self.post_processing = (
-                post_processing_end - post_processing_start) * 1000
+                post_processing_end - model_end) * 1000
+            self.token_time = (post_processing_end - input_start) * 1000
+            if self.count == 1:
+                self.model_first = self.model_time
+                self.token_first = self.token_time
+            else:
+                self.model_total += self.model_time
+                self.token_total += self.token_time
 
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
