@@ -44,4 +44,3 @@ RmsNormOpsRunner::RmsNormOpsRunner(const RmsNormParam &param)
 
 RmsNormOpsRunner::~RmsNormOpsRunner() {}
 } // namespace AclTransformer
-
