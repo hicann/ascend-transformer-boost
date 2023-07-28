@@ -12,6 +12,19 @@ from torch_npu.contrib import transfer_to_npu
 def load_model():
     tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
     model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
+    
+    # 量化模型适配
+    for name, mod in model.named_modules():
+        if type(mod).__name__ == "GLMBlock":
+            if hasattr(mod, "qkv_deq_scale"):
+                mod.qkv_deq_scale = torch.nn.Parameter(
+                    mod.qkv_deq_scale.data.to(torch.float32))
+                mod.dense_deq_scale = torch.nn.Parameter(
+                    mod.dense_deq_scale.data.to(torch.float32))
+                mod.hto4h_deq_scale = torch.nn.Parameter(
+                    mod.hto4h_deq_scale.data.to(torch.float32))
+                mod.fhtoh_deq_scale = torch.nn.Parameter(
+                    mod.fhtoh_deq_scale.data.to(torch.float32))
 
     # 优化ND NZ排布，消除transdata
     soc_version = torch_npu._C._npu_get_soc_version()

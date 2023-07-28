@@ -1049,9 +1049,13 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         )
 
         self.count = 0
-        self.total = 0
-        self.cur_time = 0
-        self.first = 0
+        self.input_generate = 0
+        self.model_total = 0
+        self.token_total = 0
+        self.model_time = 0
+        self.token_time = 0
+        self.model_first = 0
+        self.token_first = 0
         self.pre_processing = 0
         self.post_processing = 0
 
@@ -1361,11 +1365,13 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         tp = TopPLogits(generation_config.top_p, generation_config.top_k, generation_config.temperature)
 
         while True:
+            torch.npu.synchronize()
+            input_start = time.time()
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
             # forward pass to get next token
             torch.npu.synchronize()
-            start = time.time()
+            model_start = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
@@ -1373,15 +1379,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 output_hidden_states=False,
             )
             torch.npu.synchronize()
-            end = time.time()
-            self.count += 1
-            self.cur_time = (end - start) * 1000
-            if self.count == 1:
-                self.first = self.cur_time
-            else:
-                self.total += self.cur_time
+            model_end = time.time()
 
-            post_processing_start = time.time()
             next_token_logits = outputs.logits[:, -1, :]
 
             # pre-process distribution
@@ -1403,9 +1402,21 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             )
             unfinished_sequences = unfinished_sequences.mul(
                 (sum(next_tokens != i for i in eos_token_id)).long())
+            torch.npu.synchronize()
             post_processing_end = time.time()
+            
+            self.count += 1
+            self.input_generate = (model_start - input_start) * 1000
+            self.model_time = (model_end - model_start) * 1000
             self.post_processing = (
-                post_processing_end - post_processing_start) * 1000
+                post_processing_end - model_end) * 1000
+            self.token_time = (post_processing_end - input_start) * 1000
+            if self.count == 1:
+                self.model_first = self.model_time
+                self.token_first = self.token_time
+            else:
+                self.model_total += self.model_time
+                self.token_total += self.token_time
 
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
