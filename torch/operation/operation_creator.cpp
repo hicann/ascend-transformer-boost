@@ -21,6 +21,7 @@
 #include "acltransformer/ops/all_reduce_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
+#include "acltransformer/ops/post_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
@@ -52,6 +53,23 @@
 #include "models/chatglm130b/chatglm130b_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
+
+static AclTransformer::Operation *PostOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::PostParam param;
+    param.top_p = paramJson["top_p"].get<float>();
+    param.top_k = paramJson["top_k"].get<int>();
+    param.temperature = paramJson["temperature"].get<float>();
+    if (paramJson.find("filter_value") != paramJson.end()) {
+        param.filter_value = paramJson["filter_value"].get<float>();
+    }
+    param.min_tokens_to_keep = paramJson["min_tokens_to_keep"].get<int>();
+    ASD_LOG(INFO) << "PostParam top_p:" << param.top_p;
+    ASD_LOG(INFO) << "PostParam top_k:" << param.top_k;
+    ASD_LOG(INFO) << "PostParam temperature:" << param.temperature;
+    ASD_LOG(INFO) << "PostParam min_tokens_to_keep:" << param.min_tokens_to_keep;
+    return new AclTransformer::PostOperation(param);
+}
 
 static AclTransformer::Operation *AllReduceOperationCreate(const nlohmann::json &paramJson)
 {
@@ -510,6 +528,7 @@ AclTransformer::Operation *Glm130BLayerOperation(const nlohmann::json &paramJson
 }
 
 std::map<std::string, OperationCreateFunc> g_funcMap = {
+    {"PostOperation",&PostOperationCreate},
     {"AllReduceOperation",AllReduceOperationCreate},
     {"LinearParallelOperation", &LinearParallelOperationCreate},
     {"AddOperation", &AddOperationCreate},
