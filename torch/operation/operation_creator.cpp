@@ -51,8 +51,20 @@
 #include "models/chatglm6b/chatglm6blayer_decoder_last_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
 #include "models/chatglm130b/chatglm130b_operation.h"
+#include "models/llama7b/llama7blayer_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
+
+static AclTransformer::Operation *LLaMA7BLayerOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    ASD_LOG(INFO) << "LLaMA7BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::LLaMA7BLayerOperation(param);
+}
 
 static AclTransformer::Operation *PostOperationCreate(const nlohmann::json &paramJson)
 {
@@ -562,6 +574,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm6BLayerDecoderFirstQuantOperation", &ChatGlm6BLayerDecoderFirstQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFlashAttentionOperation", &ChatGlm6BLayeEncoderFlashAttentionOperationCreate},
     {"Glm130BLayerOperation", &Glm130BLayerOperation},
+    {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
