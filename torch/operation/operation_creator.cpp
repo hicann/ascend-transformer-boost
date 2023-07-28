@@ -26,6 +26,7 @@
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/matmul_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
+#include "acltransformer/ops/embedding_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
@@ -109,6 +110,14 @@ static AclTransformer::Operation *RmsNormOperationCreate(const nlohmann::json &p
     param.rmsNormEps = paramJson["rmsNormEps"].get<double>();
     return new AclTransformer::RmsNormOperation(param);
 }
+
+static AclTransformer::Operation *EmbeddingOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::EmbeddingParam param;
+    ASD_LOG(INFO) << "EmbeddingParam axis:" << param.axis;
+    return new AclTransformer::EmbeddingOperation(param);
+}
+
 
 static AclTransformer::Operation *NormOperationCreate(const nlohmann::json &paramJson)
 {
@@ -513,6 +522,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"MatmulOperation", &MatmulOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
     {"MlpOperation", &MlpOperationCreate},
+    {"EmbeddingOperation", &EmbeddingOperationCreate},
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
