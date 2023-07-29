@@ -272,6 +272,14 @@ def chat_loop(
     model, tokenizer = load_model(
         model_path, device, num_gpus, max_gpu_memory, load_8bit, debug
     )
+    
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            module.weight.data = module.weight.data.npu_format_cast(2)
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Embedding):
+            module.weight.data = module.weight.data.npu_format_cast(2)
+            
     is_chatglm = "chatglm" in str(type(model)).lower()
 
     # Chat

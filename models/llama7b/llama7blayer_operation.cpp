@@ -55,7 +55,6 @@ enum LLaMA7BLayerTensorId {
     INTERMIDATE_MIXEDV,
     INTERMIDATE_POSITIONEMBEDQ,
     INTERMIDATE_POSITIONEMBEDK,
-    INTERMIDATE_TRANSPOSEVOUT,
     INTERMIDATE_SELFOUT,
     INTERMIDATE_SELFLINEAROUT,
     INTERMIDATE_SELFRESIDUALADDOUT,
@@ -65,8 +64,8 @@ enum LLaMA7BLayerTensorId {
 
 static const uint64_t IN_TENSOR_COUNT = 20;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 12;
-static const uint64_t NODE_COUNT = 13;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
+static const uint64_t NODE_COUNT = 12;
 
 LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     : GraphOperation("LLaMA7BLayerOperation"), param_(param)
@@ -83,7 +82,6 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     GraphOperation::Node &mixdVLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &qPositionEmbeddingNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &kPositionEmbeddingNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &vTransposeNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfAttentionKvCacheNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfOutLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfResidualAddNode = opGraph_.nodes.at(nodeId++);
@@ -115,11 +113,6 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     kPositionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDK, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
     kPositionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDK};
 
-    AsdOps::SVector<int32_t> perm = {0, 1};
-    vTransposeNode.operation.reset(new AclTransformer::TransposeOperation({perm}));
-    vTransposeNode.inTensorIds = {INTERMIDATE_MIXEDV};
-    vTransposeNode.outTensorIds = {INTERMIDATE_TRANSPOSEVOUT};
-
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
     selfAttentionKvCacheParam.dk = param_.dk;
     selfAttentionKvCacheParam.headNum = param_.headNum;
@@ -128,7 +121,7 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
         new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam));
     selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
                                             INTERMIDATE_POSITIONEMBEDK,
-                                            INTERMIDATE_TRANSPOSEVOUT,
+                                            INTERMIDATE_MIXEDV,
                                             IN_ATTENTIONMASK,
                                             IN_PASTKEY,
                                             IN_PASTVALUE};
@@ -148,7 +141,7 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     selfResidualAddNode.inTensorIds = {IN_HIDDENSTATES, INTERMIDATE_SELFLINEAROUT};
     selfResidualAddNode.outTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT};
 
-    selfNormNode.operation.reset(new AclTransformer::NormOperation({param_.rmsNormEps}));
+    selfNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 
