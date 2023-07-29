@@ -23,25 +23,19 @@ import operation_test  # NOQA: E402
 
 
 OP_NAME = "FfnOperation"
-PARAM = '{"transposeA": false, "transposeB": false}'
-INTENSOR0 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "intensor0.pth")
-INTENSOR1 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "intensor1.pth")
-INTENSOR2 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "intensor2.pth")
-OUTTENSOR0 = os.path.join(
-    os.getenv("ACLTRANSFORMER_TESTDATA"), "tensors/operations/ffn", "outtensor0.pth")
-
+PARAM = '{"transposeA": false, "transposeB": false, "hasBias": true}'
 
 class TetFfn(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        return [self.get_tensor(OUTTENSOR0).npu()]
+        golden_result = torch.fast_gelu(torch.matmul(in_tensors[0], torch.transpose(
+            in_tensors[1], 0, 1)) + in_tensors[2])
+        return [golden_result]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu()])
+        self.execute(OP_NAME, PARAM, 
+                     [torch.rand(1, 32, 1024).npu().half(),
+                      torch.rand(4096, 1024).npu().half(),
+                      torch.rand(4096).npu().half()])
 
 
 if __name__ == '__main__':

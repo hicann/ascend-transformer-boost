@@ -17,6 +17,7 @@
 #define FFN_OPS_RUNNER_BUILDER_H
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/ffn.h"
+#include "ffn_ops_runner_910a.h"
 #include "ffn_ops_runner.h"
 
 namespace AclTransformer {
@@ -24,7 +25,14 @@ class FfnOpsRunnerBuilder : public RunnerBuilder {
 public:
     FfnOpsRunnerBuilder(const FfnParam &param) : param_(param) {}
     virtual ~FfnOpsRunnerBuilder() = default;
-    Runner *Build() override { return new FfnOpsRunner(param_); }
+    Runner *Build() override 
+    { 
+        if (AsdOps::GetSingleton<Config>().Is910B()) {
+            return new FfnOpsRunner(param_);
+        } else {
+            return new FfnOpsRunner910A(param_);
+        }
+    }
 
 private:
     FfnParam param_;

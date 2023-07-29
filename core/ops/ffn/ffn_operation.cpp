@@ -38,7 +38,7 @@ FfnOperation::FfnOperation(const FfnParam &param) : Operation("FfnOperation"), p
 
 FfnOperation::~FfnOperation() {}
 
-uint64_t FfnOperation::GetInTensorCount() const { return 3; }
+uint64_t FfnOperation::GetInTensorCount() const { return param_.hasBias ? DIM_3 : DIM_2; }
 
 uint64_t FfnOperation::GetOutTensorCount() const { return 1; }
 
@@ -47,16 +47,20 @@ AsdOps::Status FfnOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor
 {
     outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
     outTensorDescs.at(0).format = inTensors.at(0).desc.format;
-    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
+    if (param_.transposeB) {
+        outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
+                                 inTensors.at(1).desc.dims[1]};
+    } else {
+        outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
                                  inTensors.at(1).desc.dims[0]};
-
+    }
     return AsdOps::Status::OkStatus();
 }
 
 bool FfnOperation::IsConsistent(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
                                 AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    ASDOPS_CHECK_TRUE(inTensorDescs.size() == static_cast<size_t>(DIM_3), return false);
+    ASDOPS_CHECK_TRUE(inTensorDescs.size() == GetInTensorCount(), return false);
     ASDOPS_CHECK_TRUE(outTensorDescs.size() == static_cast<size_t>(DIM_1), return false);
     auto inTensorDescA = inTensorDescs[0];
     auto inTensorDescB = inTensorDescs[1];

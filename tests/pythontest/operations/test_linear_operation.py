@@ -22,7 +22,7 @@ sys.path.append(os.path.dirname(__file__))
 import operation_test  # NOQA: E402
 
 OP_NAME = "LinearOperation"
-PARAM = '{"transposeA": false, "transposeB": false}'
+PARAM = '{"transposeA": false, "transposeB": false, "hasBias": true}'
 
 
 class TestLinearOperation(operation_test.OperationTest):

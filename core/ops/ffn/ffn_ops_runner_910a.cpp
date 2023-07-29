@@ -13,24 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "linear_ops_runner_910a.h"
+#include "ffn_ops_runner_910a.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/params/params.h>
+#include <asdops/params/matmul.h>
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-LinearOpsRunner910A::LinearOpsRunner910A(LinearParam &param)
-    : OpsRunner("LinearOpsRunner910A", RUNNER_TYPE_LINEAR), param_(param)
+FfnOpsRunner910A::FfnOpsRunner910A(const FfnParam &param)
+    : OpsRunner("FfnOpsRunner910A", RUNNER_TYPE_FFN), param_(param)
 {
-    ASD_LOG(INFO) << "LinearOpsRunner910A::LinearOpsRunner910A";
+    ASD_LOG(INFO) << "FfnOpsRunner910A::FfnOpsRunner910A";
 }
 
-LinearOpsRunner910A::~LinearOpsRunner910A() {}
+FfnOpsRunner910A::~FfnOpsRunner910A() {}
 
-AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const RunnerVariantPack &runnerVariantPack)
+AsdOps::Status FfnOpsRunner910A::SetupKernelGraphNz(const RunnerVariantPack &runnerVariantPack)
 {
-    const std::size_t nodeSize = 4;
-    const std::size_t internalTensorsSize = 3;
+    const std::size_t nodeSize = 5;
+    const std::size_t internalTensorsSize = 4;
     const std::size_t dimSize = 4;
 
     ASD_LOG(INFO) << GetName() << " SetupKernelGraph b format is nz";
@@ -43,13 +44,14 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const RunnerVariantPack &
 
     kernelGraph_.outTensors = runnerVariantPack.outTensors;
     int64_t outTensorNum = 0;
-    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[outTensorNum++];
+    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[outTensorNum++];
 
     kernelGraph_.internalTensors.resize(internalTensorsSize);
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &transdata0ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
     AsdOps::Tensor &matmulResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
     AsdOps::Tensor &transdata2ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
+    AsdOps::Tensor &resultTensor = kernelGraph_.internalTensors[internalTensorNum++];
 
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
@@ -57,6 +59,7 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const RunnerVariantPack &
     auto &matmulNode = kernelGraph_.nodes[nodeNum++];
     auto &transdata2Node = kernelGraph_.nodes[nodeNum++];
     auto &addNode = kernelGraph_.nodes[nodeNum++];
+    auto &activateNode = kernelGraph_.nodes[nodeNum++];
 
     ViewFunc Squeeze1 = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         oriDimA_ = oldDims;
@@ -131,13 +134,36 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNz(const RunnerVariantPack &
     addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
     addNode.inTensors = {&transdata2ResultTensor, &biasTensor};
     addNode.outTensors = {&resultTensor};
+
+    switch (param_.activationFuncType) {
+    case FfnParam::ActivationFuncType::FAST_GELU:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    case FfnParam::ActivationFuncType::GELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
+        break;
+    case FfnParam::ActivationFuncType::RELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_RELU})};
+        break;
+    default:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    }
+
+    activateNode.inTensors = {&resultTensor};
+    activateNode.outTensors = {&operationOutTensor};
+
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNzWithoutBias(const RunnerVariantPack &runnerVariantPack)
+AsdOps::Status FfnOpsRunner910A::SetupKernelGraphNzWithoutBias(const RunnerVariantPack &runnerVariantPack)
 {
-    const std::size_t nodeSize = 3;
-    const std::size_t internalTensorsSize = 2;
+    const std::size_t nodeSize = 4;
+    const std::size_t internalTensorsSize = 3;
     const std::size_t dimSize = 4;
 
     ASD_LOG(INFO) << GetName() << " SetupKernelGraph b format is nz";
@@ -149,18 +175,20 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNzWithoutBias(const RunnerVa
 
     kernelGraph_.outTensors = runnerVariantPack.outTensors;
     int64_t outTensorNum = 0;
-    AsdOps::Tensor &transdata2ResultTensor = kernelGraph_.outTensors[outTensorNum++];
+    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[outTensorNum++];
 
     kernelGraph_.internalTensors.resize(internalTensorsSize);
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &transdata0ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
     AsdOps::Tensor &matmulResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
+    AsdOps::Tensor &transdata2ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
 
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
     auto &transdata0Node = kernelGraph_.nodes[nodeNum++];
     auto &matmulNode = kernelGraph_.nodes[nodeNum++];
     auto &transdata2Node = kernelGraph_.nodes[nodeNum++];
+    auto &activateNode = kernelGraph_.nodes[nodeNum++];
 
     ViewFunc Squeeze1 = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         oriDimA_ = oldDims;
@@ -181,15 +209,14 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNzWithoutBias(const RunnerVa
 
     ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString({0, 0}) << "]";
     ViewFunc CheckDimB = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        const int64_t blockDim = 16;
         int64_t bLastDim = oldDims.at(oldDims.size() - 1);
+        const int64_t blockDim = 16;
         if (bLastDim != blockDim || oldDims.size() < dimSize) {
             newDims = {1, bLastDim / blockDim, oldDims.at(0), blockDim};
         }
         oriDimB_ = {newDims.at(2), newDims.at(1) * newDims.at(3)};
     };
-    matmulNode.opDesc = {0, "MatMulOperation",
-                         AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB, {0, 0}})};
+    matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB, {0, 0}})};
     matmulNode.inTensors = {&transdata0ResultTensor, &weightTensor};
     matmulNode.outTensors = {&matmulResultTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
@@ -233,13 +260,35 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNzWithoutBias(const RunnerVa
                            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {dim0, dim1}})});
     };
 
+    switch (param_.activationFuncType) {
+    case FfnParam::ActivationFuncType::FAST_GELU:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    case FfnParam::ActivationFuncType::GELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
+        break;
+    case FfnParam::ActivationFuncType::RELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_RELU})};
+        break;
+    default:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    }
+
+    activateNode.inTensors = {&transdata2ResultTensor};
+    activateNode.outTensors = {&operationOutTensor};
+
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const RunnerVariantPack &runnerVariantPack)
+AsdOps::Status FfnOpsRunner910A::SetupKernelGraphNd(const RunnerVariantPack &runnerVariantPack)
 {
-    const std::size_t nodeSize = 5;
-    const std::size_t internalTensorsSize = 4;
+    const std::size_t nodeSize = 6;
+    const std::size_t internalTensorsSize = 5;
 
     kernelGraph_.inTensors = runnerVariantPack.inTensors;
     int64_t inTensorNum = 0;
@@ -249,7 +298,7 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const RunnerVariantPack &
 
     kernelGraph_.outTensors = runnerVariantPack.outTensors;
     int64_t outTensorNum = 0;
-    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[outTensorNum++];
+    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[outTensorNum++];
 
     kernelGraph_.internalTensors.resize(internalTensorsSize);
     int64_t internalTensorNum = 0;
@@ -257,6 +306,7 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const RunnerVariantPack &
     AsdOps::Tensor &transdata1ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
     AsdOps::Tensor &matmulResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
     AsdOps::Tensor &transdata2ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
+    AsdOps::Tensor &resultTensor = kernelGraph_.internalTensors[internalTensorNum++];
 
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
@@ -265,6 +315,7 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const RunnerVariantPack &
     auto &matmulNode = kernelGraph_.nodes[nodeNum++];
     auto &transdata2Node = kernelGraph_.nodes[nodeNum++];
     auto &addNode = kernelGraph_.nodes[nodeNum++];
+    auto &activateNode = kernelGraph_.nodes[nodeNum++];
 
     ViewFunc Squeeze1 = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         oriDimA_ = oldDims;
@@ -295,12 +346,10 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const RunnerVariantPack &
     transdata1Node.inTensorViewFuncs.at(0) = CheckDimB;
 
     ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString({0, 0}) << "]";
-
     matmulNode.opDesc = {0, "MatMulOperation",
                          AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB, {0, 0}})};
     matmulNode.inTensors = {&transdata0ResultTensor, &transdata1ResultTensor};
     matmulNode.outTensors = {&matmulResultTensor};
-    ASD_LOG(FATAL) << oriDimA_ << " " << oriDimB_;
     matmulNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         int64_t dim0, dim1, dim2;
         if (oriSize_ == 3) {
@@ -344,13 +393,36 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNd(const RunnerVariantPack &
     addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
     addNode.inTensors = {&transdata2ResultTensor, &biasTensor};
     addNode.outTensors = {&resultTensor};
+
+    switch (param_.activationFuncType) {
+    case FfnParam::ActivationFuncType::FAST_GELU:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    case FfnParam::ActivationFuncType::GELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
+        break;
+    case FfnParam::ActivationFuncType::RELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_RELU})};
+        break;
+    default:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    }
+
+    activateNode.inTensors = {&resultTensor};
+    activateNode.outTensors = {&operationOutTensor};
+
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNdWithoutBias(const RunnerVariantPack &runnerVariantPack)
+AsdOps::Status FfnOpsRunner910A::SetupKernelGraphNdWithoutBias(const RunnerVariantPack &runnerVariantPack)
 {
-    const std::size_t nodeSize = 4;
-    const std::size_t internalTensorsSize = 3;
+    const std::size_t nodeSize = 5;
+    const std::size_t internalTensorsSize = 4;
 
     kernelGraph_.inTensors = runnerVariantPack.inTensors;
     int64_t inTensorNum = 0;
@@ -359,13 +431,14 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNdWithoutBias(const RunnerVa
 
     kernelGraph_.outTensors = runnerVariantPack.outTensors;
     int64_t outTensorNum = 0;
-    AsdOps::Tensor &transdata2ResultTensor = kernelGraph_.outTensors[outTensorNum++];
+    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[outTensorNum++];
 
     kernelGraph_.internalTensors.resize(internalTensorsSize);
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &transdata0ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
     AsdOps::Tensor &transdata1ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
     AsdOps::Tensor &matmulResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
+    AsdOps::Tensor &transdata2ResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
 
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
@@ -373,6 +446,7 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNdWithoutBias(const RunnerVa
     auto &transdata1Node = kernelGraph_.nodes[nodeNum++];
     auto &matmulNode = kernelGraph_.nodes[nodeNum++];
     auto &transdata2Node = kernelGraph_.nodes[nodeNum++];
+    auto &activateNode = kernelGraph_.nodes[nodeNum++];
 
     ViewFunc Squeeze1 = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         oriDimA_ = oldDims;
@@ -403,7 +477,6 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNdWithoutBias(const RunnerVa
     transdata1Node.inTensorViewFuncs.at(0) = CheckDimB;
 
     ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString({0, 0}) << "]";
-
     matmulNode.opDesc = {0, "MatMulOperation",
                          AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB, {0, 0}})};
     matmulNode.inTensors = {&transdata0ResultTensor, &transdata1ResultTensor};
@@ -422,6 +495,7 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNdWithoutBias(const RunnerVa
         } else {
             dim2 = oriDimB_.at(1);
         }
+        ASD_LOG(FATAL) << dim0 << " " << dim1 << " " << dim2;
         runInfo.SetOpDesc({0, "MatMulOperation",
                            AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB, {dim0, dim1, dim2}})});
     };
@@ -447,19 +521,41 @@ AsdOps::Status LinearOpsRunner910A::SetupKernelGraphNdWithoutBias(const RunnerVa
                            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {dim0, dim1}})});
     };
 
+    switch (param_.activationFuncType) {
+    case FfnParam::ActivationFuncType::FAST_GELU:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    case FfnParam::ActivationFuncType::GELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
+        break;
+    case FfnParam::ActivationFuncType::RELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_RELU})};
+        break;
+    default:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    }
+
+    activateNode.inTensors = {&transdata2ResultTensor};
+    activateNode.outTensors = {&operationOutTensor};
+
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status LinearOpsRunner910A::SetupKernelGraph(const RunnerVariantPack &runnerVariantPack)
+AsdOps::Status FfnOpsRunner910A::SetupKernelGraph(const RunnerVariantPack &runnerVariantPack)
 {
     if (runnerVariantPack.inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ) {
-        if (param_.hasBias) {
+        if (runnerVariantPack.inTensors.size() == 3) {
             return SetupKernelGraphNz(runnerVariantPack);
         } else {
             return SetupKernelGraphNzWithoutBias(runnerVariantPack);
         }
     } else {
-        if (param_.hasBias) {
+        if (runnerVariantPack.inTensors.size() == 3) {
             return SetupKernelGraphNd(runnerVariantPack);
         } else {
             return SetupKernelGraphNdWithoutBias(runnerVariantPack);
