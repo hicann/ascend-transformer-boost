@@ -289,12 +289,14 @@ void GraphRunner::InferShapeNode(size_t nodeId, GraphRunner::Node &node)
                       << TensorUtil::AsdOpsTensorToString(node.runnerVariantPack.inTensors.at(i));
     }
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
-    node.operation->InferShape(node.runnerVariantPack.inTensors, outTensorDescs);
+    AsdOps::Status st = node.operation->InferShape(node.runnerVariantPack.inTensors, outTensorDescs);
+    ASD_LOG_IF(!st.Ok(), ERROR) << GetName() << " node[" << nodeId << "] infer shape fail, error:" << st.Message();
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
         ASD_LOG(INFO) << GetName() << " " << node.runner->GetName() << " outTensorDescs[" << i << "] "
                       << TensorUtil::AsdOpsTensorDescToString(outTensorDescs.at(i));
     }
     ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] infer shape end";
+    ASD_LOG_IF(outTensorDescs.size() != node.outTensors.size(), ERROR) <<  GetName() << " node[" << nodeId << "] infer shape outtensor not euqal node outtensor";
 
     for (size_t i = 0; i < node.outTensors.size(); ++i) {
         AsdOps::Tensor *outTensor = node.outTensors.at(i);
