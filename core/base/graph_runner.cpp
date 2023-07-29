@@ -288,6 +288,15 @@ void GraphRunner::InferShapeNode(size_t nodeId, GraphRunner::Node &node)
         ASD_LOG(INFO) << GetName() << " " << node.runner->GetName() << " intensor[" << i << "] "
                       << TensorUtil::AsdOpsTensorToString(node.runnerVariantPack.inTensors.at(i));
     }
+
+    if (node.inferShapePreFunc) {
+        ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] call inferShapePreFunc start, old variantPack:\n"
+                      << node.runnerVariantPack.ToString();
+        node.inferShapePreFunc(node.runnerVariantPack.inTensors, node.runnerVariantPack.outTensors);
+        ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] call inferShapePreFunc end, new variantPack:\n"
+                      << node.runnerVariantPack.ToString();
+    }
+
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     AsdOps::Status st = node.operation->InferShape(node.runnerVariantPack.inTensors, outTensorDescs);
     ASD_LOG_IF(!st.Ok(), ERROR) << GetName() << " node[" << nodeId << "] infer shape fail, error:" << st.Message();
@@ -296,7 +305,8 @@ void GraphRunner::InferShapeNode(size_t nodeId, GraphRunner::Node &node)
                       << TensorUtil::AsdOpsTensorDescToString(outTensorDescs.at(i));
     }
     ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] infer shape end";
-    ASD_LOG_IF(outTensorDescs.size() != node.outTensors.size(), ERROR) <<  GetName() << " node[" << nodeId << "] infer shape outtensor not euqal node outtensor";
+    ASD_LOG_IF(outTensorDescs.size() != node.outTensors.size(), ERROR)
+        << GetName() << " node[" << nodeId << "] infer shape outtensor not euqal node outtensor";
 
     for (size_t i = 0; i < node.outTensors.size(); ++i) {
         AsdOps::Tensor *outTensor = node.outTensors.at(i);
@@ -388,7 +398,7 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         node.runnerVariantPack.workspaceBuffer = runnerVariantPack.workspaceBuffer;
-        node.runnerVariantPack.workspaceBufferSize = 
+        node.runnerVariantPack.workspaceBufferSize =
             (nodeId < workspaceBufferSizes_.size()) ? workspaceBufferSizes_.at(nodeId) : 0;
     }
 

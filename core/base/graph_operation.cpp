@@ -87,6 +87,7 @@ Runner *GraphOperation::CreateBestRunner() const
         runnerNode.operation = opNode.operation;
         runnerNode.runner.reset(opNode.operation->CreateBestRunner());
         runnerNode.inTensorViewFuncs = opNode.inTensorViewFuncs;
+        runnerNode.inferShapePreFunc = opNode.inferShapePreFunc;
         runnerNode.inTensors.resize(opNode.inTensorIds.size());
         runnerNode.outTensors.resize(opNode.outTensorIds.size());
         for (size_t i = 0; i < opNode.inTensorIds.size(); ++i) {

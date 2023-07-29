@@ -24,14 +24,16 @@
 namespace AclTransformer {
 class GraphOperation : public Operation {
 public:
-    using NodeViewFunc =
-        std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
+    using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
+    using InferShapePreFunc =
+        std::function<void(AsdOps::SVector<AsdOps::Tensor> &inTensors, AsdOps::SVector<AsdOps::Tensor> &outTensors)>;
 
     struct Node {
         std::shared_ptr<Operation> operation;
         AsdOps::SVector<uint64_t> inTensorIds;
         AsdOps::SVector<uint64_t> outTensorIds;
-        AsdOps::SVector<NodeViewFunc> inTensorViewFuncs;
+        AsdOps::SVector<ViewFunc> inTensorViewFuncs;
+        InferShapePreFunc inferShapePreFunc;
         bool useVariantPackParam = false;
     };
 
