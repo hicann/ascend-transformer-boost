@@ -21,7 +21,7 @@
 namespace AclTransformer {
 struct NormParam {
     double layerNormEps = 1e-5;
-    int32_t beginNormAxis = 1;
+    int32_t beginNormAxis = 2;
     int32_t beginParamsAxis = 1;
 };
 } // namespace AclTransformer
