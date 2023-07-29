@@ -165,6 +165,11 @@ function fn_init_pytorch_env()
     fi
 }
 
+function fn_copy_tools()
+{
+    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
+}
+
 function fn_build()
 {
     fn_build_release_3rdparty
@@ -191,6 +196,7 @@ function fn_build()
     fi
     make install
     chmod +x $OUTPUT_DIR/acltransformer/bin/*
+    fn_copy_tools
     fn_generate_doxygen
 }
 
