@@ -23,21 +23,32 @@ LinearOpsRunner910B::LinearOpsRunner910B(LinearParam &param)
     : OpsRunner("LinearOpsRunner910B", RUNNER_TYPE_LINEAR), param_(param)
 {
     ASD_LOG(INFO) << "LinearOpsRunner910B::LinearOpsRunner910B";
+}
+
+LinearOpsRunner910B::~LinearOpsRunner910B() {}
+
+AsdOps::Status LinearOpsRunner910B::SetupKernelGraphWithBias(const RunnerVariantPack &runnerVariantPack) {
     const std::size_t nodeSize = 2;
     const std::size_t dim2 = 2;
+
     kernelGraph_.inTensors.resize(3);
-    AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[0];
-    AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[1];
-    AsdOps::Tensor &biasTensor = kernelGraph_.inTensors[2];
+    int64_t inTensorNum = 0;
+    AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[inTensorNum++];
+    AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[inTensorNum++];
+    AsdOps::Tensor &biasTensor = kernelGraph_.inTensors[inTensorNum++];
 
     kernelGraph_.outTensors.resize(1);
-    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[0];
+    int64_t outTensorNum = 0;
+    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[outTensorNum++];
+
     kernelGraph_.internalTensors.resize(1);
-    AsdOps::Tensor &matmulResultTensor = kernelGraph_.internalTensors[0];
+    int64_t internalTensorNum = 0;
+    AsdOps::Tensor &matmulResultTensor = kernelGraph_.internalTensors[internalTensorNum++];
 
     kernelGraph_.nodes.resize(nodeSize);
-    auto &matmulNode = kernelGraph_.nodes[0];
-    auto &addNode = kernelGraph_.nodes[1];
+    int64_t nodeNum = 0;
+    auto &matmulNode = kernelGraph_.nodes[nodeNum++];
+    auto &addNode = kernelGraph_.nodes[nodeNum++];
 
     matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB})};
     matmulNode.inTensors = {&inputTensor, &weightTensor};
@@ -51,7 +62,43 @@ LinearOpsRunner910B::LinearOpsRunner910B(LinearParam &param)
     addNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
     addNode.inTensors = {&matmulResultTensor, &biasTensor};
     addNode.outTensors = {&resultTensor};
+    return AsdOps::Status::OkStatus();
 }
 
-LinearOpsRunner910B::~LinearOpsRunner910B() {}
+AsdOps::Status LinearOpsRunner910B::SetupKernelGraphWithoutBias(const RunnerVariantPack &runnerVariantPack) {
+    const std::size_t nodeSize = 1;
+    const std::size_t dim2 = 2;
+
+    kernelGraph_.inTensors.resize(2);
+    int64_t inTensorNum = 0;
+    AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[inTensorNum++];
+    AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[inTensorNum++];
+
+    kernelGraph_.outTensors.resize(1);
+    int64_t outTensorNum = 0;
+    AsdOps::Tensor &matmulResultTensor = kernelGraph_.outTensors[outTensorNum++];
+
+    kernelGraph_.nodes.resize(nodeSize);
+    int64_t nodeNum = 0;
+    auto &matmulNode = kernelGraph_.nodes[nodeNum++];
+
+    matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB})};
+    matmulNode.inTensors = {&inputTensor, &weightTensor};
+    matmulNode.outTensors = {&matmulResultTensor};
+    matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
+    matmulNode.inTensorViewFuncs.at(0) = [](const AsdOps::SVector<int64_t> &oldDims,
+                                            AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(dim2)};
+    };
+    return AsdOps::Status::OkStatus();
+}
+
+AsdOps::Status LinearOpsRunner910B::SetupKernelGraph(const RunnerVariantPack &runnerVariantPack)
+{
+    if (param_.hasBias) {
+        return SetupKernelGraphWithBias(runnerVariantPack);
+    } else {
+        return SetupKernelGraphWithoutBias(runnerVariantPack);
+    }
+}
 } // namespace AclTransformer
