@@ -26,6 +26,9 @@ void ChatGlm6BModelFlashattentionParam::FromString(const std::string &param)
     dk = paramJson["dk"].get<int>();
     layerNum = paramJson["layerNum"].get<int>();
     residualAddScale = paramJson["residualAddScale"].get<float>();
+    if (paramJson.contains("beginNormAxis")) {
+        beginNormAxis = paramJson["beginNormAxis"].get<int>();
+    }
     for (auto item : paramJson["tokenOffset"]) {
         tokenOffset.push_back(item.get<int>());
     }

@@ -25,4 +25,7 @@ void ChatGlm6BModelParam::FromString(const std::string &param)
     dk = paramJson["dk"].get<int>();
     layerNum = paramJson["layerNum"].get<int>();
     residualAddScale = paramJson["residualAddScale"].get<float>();
+    if (paramJson.contains("beginNormAxis")) {
+        beginNormAxis = paramJson["beginNormAxis"].get<int>();
+    }
 }
