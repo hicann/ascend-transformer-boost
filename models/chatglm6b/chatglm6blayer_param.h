@@ -24,6 +24,8 @@ struct ChatGlm6BLayerParam {
     int dk = 0;
     int layerId = 0;
     float residualAddScale = 0;
+    int beginParamsAxis = 1;
+    int beginNormAxis = 1;
 };
 } // namespace AclTransformer
 #endif
