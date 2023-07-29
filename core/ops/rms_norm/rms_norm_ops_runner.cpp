@@ -26,6 +26,20 @@ RmsNormOpsRunner::RmsNormOpsRunner(const RmsNormParam &param)
     : OpsRunner("RmsNormOpsRunner", RUNNER_TYPE_RMS_NORM), param_(param)
 {
     ASD_LOG(INFO) << "RmsNormOpsRunner::RmsNormOpsRunner called";
+    kernelGraph_.inTensors.resize(2);
+    AsdOps::Tensor &inputTensor = kernelGraph_.inTensors[0];
+    AsdOps::Tensor &weightTensor = kernelGraph_.inTensors[1];
+
+    kernelGraph_.outTensors.resize(1);
+    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors[0];
+
+    kernelGraph_.nodes.resize(1);
+    auto &rmsNormNode = kernelGraph_.nodes[0];
+
+    AsdOps::OpParam::Norm rmsNormParam = {AsdOps::OpParam::Norm::NORM_RMSNORM};
+    rmsNormNode.opDesc = {0, "NormOperation", rmsNormParam};
+    rmsNormNode.inTensors = {&inputTensor, &weightTensor};
+    rmsNormNode.outTensors = {&resultTensor};
 }
 
 RmsNormOpsRunner::~RmsNormOpsRunner() {}
