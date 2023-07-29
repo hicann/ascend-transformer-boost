@@ -22,21 +22,31 @@ namespace AclTransformer {
 FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner", RUNNER_TYPE_FFN), param_(param)
 {
     ASD_LOG(INFO) << "FfnOpsRunner::FfnOpsRunner";
+}
+
+FfnOpsRunner::~FfnOpsRunner() {}
+
+AsdOps::Status FfnOpsRunner::SetupKernelGraphWithBias(const RunnerVariantPack &runnerVariantPack) {
     kernelGraph_.inTensors.resize(3);
-    AsdOps::Tensor &aTensor = kernelGraph_.inTensors[0];
-    AsdOps::Tensor &bTensor = kernelGraph_.inTensors[1];
-    AsdOps::Tensor &cTensor = kernelGraph_.inTensors[2];
+    int64_t inTensorNum = 0;
+    AsdOps::Tensor &aTensor = kernelGraph_.inTensors[inTensorNum++];
+    AsdOps::Tensor &bTensor = kernelGraph_.inTensors[inTensorNum++];
+    AsdOps::Tensor &cTensor = kernelGraph_.inTensors[inTensorNum++];
+    
     kernelGraph_.outTensors.resize(1);
-    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[0];
+    int64_t outTensorNum = 0;
+    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[outTensorNum++];
 
     kernelGraph_.internalTensors.resize(2);
-    AsdOps::Tensor &matmulOutTensor = kernelGraph_.internalTensors[0];
-    AsdOps::Tensor &addOutTensor = kernelGraph_.internalTensors[1];
+    int64_t internalTensorNum = 0;
+    AsdOps::Tensor &matmulOutTensor = kernelGraph_.internalTensors[internalTensorNum++];
+    AsdOps::Tensor &addOutTensor = kernelGraph_.internalTensors[internalTensorNum++];
 
     kernelGraph_.nodes.resize(3);
-    auto &matmulNode = kernelGraph_.nodes[0];
-    auto &addNode = kernelGraph_.nodes[1];
-    auto &activateNode = kernelGraph_.nodes[2];
+    int64_t nodeNum = 0;
+    auto &matmulNode = kernelGraph_.nodes[nodeNum++];
+    auto &addNode = kernelGraph_.nodes[nodeNum++];
+    auto &activateNode = kernelGraph_.nodes[nodeNum++];
 
     matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB})};
     matmulNode.inTensors = {&aTensor, &bTensor};
@@ -72,7 +82,67 @@ FfnOpsRunner::FfnOpsRunner(const FfnParam &param) : OpsRunner("FfnOpsRunner", RU
 
     activateNode.inTensors = {&addOutTensor};
     activateNode.outTensors = {&operationOutTensor};
+    return AsdOps::Status::OkStatus();
 }
 
-FfnOpsRunner::~FfnOpsRunner() {}
+AsdOps::Status FfnOpsRunner::SetupKernelGraphWithoutBias(const RunnerVariantPack &runnerVariantPack) {
+    kernelGraph_.inTensors.resize(2);
+    int64_t inTensorNum = 0;
+    AsdOps::Tensor &aTensor = kernelGraph_.inTensors[inTensorNum++];
+    AsdOps::Tensor &bTensor = kernelGraph_.inTensors[inTensorNum++];
+
+    kernelGraph_.outTensors.resize(1);
+    int64_t outTensorNum = 0;
+    AsdOps::Tensor &operationOutTensor = kernelGraph_.outTensors[outTensorNum++];
+
+    kernelGraph_.internalTensors.resize(1);
+    int64_t internalTensorNum = 0;
+    AsdOps::Tensor &matmulOutTensor = kernelGraph_.internalTensors[internalTensorNum++];
+
+    kernelGraph_.nodes.resize(2);
+    int64_t nodeNum = 0;
+    auto &matmulNode = kernelGraph_.nodes[nodeNum++];
+    auto &activateNode = kernelGraph_.nodes[nodeNum++];
+
+    matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB})};
+    matmulNode.inTensors = {&aTensor, &bTensor};
+    matmulNode.outTensors = {&matmulOutTensor};
+    matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
+    matmulNode.inTensorViewFuncs.at(0) = [](const AsdOps::SVector<int64_t> &oldDims,
+                                            AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
+    };
+
+    switch (param_.activationFuncType) {
+    case FfnParam::ActivationFuncType::FAST_GELU:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    case FfnParam::ActivationFuncType::GELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
+        break;
+    case FfnParam::ActivationFuncType::RELU:
+        activateNode.opDesc = {0, "ActivationOperation",
+                               AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_RELU})};
+        break;
+    default:
+        activateNode.opDesc = {0, "ElewiseOperation",
+                               AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_FASTGELU})};
+        break;
+    }
+
+    activateNode.inTensors = {&matmulOutTensor};
+    activateNode.outTensors = {&operationOutTensor};
+    return AsdOps::Status::OkStatus();
+}
+
+AsdOps::Status FfnOpsRunner::SetupKernelGraph(const RunnerVariantPack &runnerVariantPack)
+{
+    if (param_.hasBias) {
+        return SetupKernelGraphWithBias(runnerVariantPack);
+    } else {
+        return SetupKernelGraphWithoutBias(runnerVariantPack);
+    }
+}
 } // namespace AclTransformer

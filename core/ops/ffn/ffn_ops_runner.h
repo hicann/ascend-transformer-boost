@@ -24,6 +24,13 @@ public:
     FfnOpsRunner(const FfnParam &param);
     virtual ~FfnOpsRunner();
 
+protected:
+    AsdOps::Status SetupKernelGraph(const RunnerVariantPack &runnerVariantPack) override;
+
+private:
+    AsdOps::Status SetupKernelGraphWithBias(const RunnerVariantPack &runnerVariantPack);
+    AsdOps::Status SetupKernelGraphWithoutBias(const RunnerVariantPack &runnerVariantPack);
+
 private:
     FfnParam param_;
 };
