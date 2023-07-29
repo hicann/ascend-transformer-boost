@@ -16,15 +16,13 @@
 
 """Transformer."""
 
-import os
-import json
 import math
 import copy
 import torch
 import torch.nn.functional as F
 
 from SwissArmyTransformer import mpu
-from SwissArmyTransformer.mpu.initialize import get_model_parallel_world_size, get_model_parallel_rank
+from SwissArmyTransformer.mpu.initialize import get_model_parallel_world_size
 from SwissArmyTransformer.mpu.layers import ColumnParallelLinear, RowParallelLinear, VocabParallelEmbedding
 from SwissArmyTransformer.mpu.mappings import gather_from_model_parallel_region, copy_to_model_parallel_region
 
@@ -36,13 +34,6 @@ from SwissArmyTransformer.ops import LayerNorm
 
 from SwissArmyTransformer.transformer_defaults import HOOKS_DEFAULT, standard_attention
 
-ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
-if ACLTRANSFORMER_HOME_PATH is None:
-    raise RuntimeError(
-        "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
-LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
-                        "lib/libacltransformer_torch.so")
-torch.classes.load_library(LIB_PATH)
 
 class SelfAttention(torch.nn.Module):
     def __init__(self, hidden_size, num_attention_heads,
@@ -379,10 +370,6 @@ class BaseTransformer(torch.nn.Module):
         self.layernorm_order = layernorm_order
         self.hooks = copy.copy(hooks)  # hooks will be updated each forward
         object.__setattr__(self, 'transformer', self) # to give the default hooks the same api as outer hooks
-        self.rankSize = get_model_parallel_world_size()
-        self.rank = torch.distributed.get_rank()
-        self.head_size = hidden_size // num_attention_heads
-        self.headNum = num_attention_heads
 
         # create embedding parameters
         self.embedding_dropout = torch.nn.Dropout(embedding_dropout_prob)
@@ -426,25 +413,8 @@ class BaseTransformer(torch.nn.Module):
                 device=device
             )
 
-        def get_acl_layer(layer_id):
-            acl_layer = torch.classes.OperationTorch.OperationTorch("Glm130BLayerOperation")
-            acl_layer.set_param(
-                json.dumps({"layerNormEps": layernorm_epsilon,
-                            "transKey": False,
-                            "headNum": num_attention_heads,
-                            "dk": self.head_size,
-                            "layerId": layer_id,
-                            "rank": self.rank,
-                            "rankSize": self.rankSize,
-                            "residualAddScale": sqrt(2*num_layers)
-                })
-            )
-            return acl_layer
-
-
         self.layers = torch.nn.ModuleList(
             [get_layer(layer_id) for layer_id in range(num_layers)])
-        self.acl_layers = [get_acl_layer(layer_id) for layer_id in range(num_layers)]
 
         # Final layer norm before output.
         self.use_final_layernorm = use_final_layernorm

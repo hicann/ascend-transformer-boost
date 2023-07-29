@@ -436,7 +436,7 @@ class BaseTransformer(torch.nn.Module):
                             "layerId": layer_id,
                             "rank": self.rank,
                             "rankSize": self.rankSize,
-                            "residualAddScale": sqrt(2*num_layers)
+                            "residualAddScale": (2 * num_layers) ** 0.5
                 })
             )
             return acl_layer
