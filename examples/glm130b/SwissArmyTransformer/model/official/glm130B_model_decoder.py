@@ -135,56 +135,17 @@ class DeepNormWithGLUMixin(BaseMixin):
         hidden_states: [seq_len, batch, hidden_size]
         mask: [(1, 1), seq_len, seq_len]
         """
-        if self.rotary_emb is None:
-            self.rotary_emb = RotaryEmbedding(
-                self.transformer.head_size,
-                base=10000,
-                precision=torch.half,
-                learnable=False,
-                device=torch.cuda.current_device(),
-                )
+        # if self.rotary_emb is None:
+        #     self.rotary_emb = RotaryEmbedding(
+        #         self.transformer.head_size,
+        #         base=10000,
+        #         precision=torch.half,
+        #         learnable=False,
+        #         device=torch.cuda.current_device(),
+        #         )
             
         layer = self.transformer.layers[kw_args["layer_id"]]
-        acl_layer = self.transformer.acl_layers[kw_args["layer_id"]]
         # Layer norm at the begining of the transformer layer.
-
-        layerId = kw_args["layer_id"]
-        weights = list(layer.state_dict().values())
-        keys = list(layer.state_dict().keys())
-        acl_outs = None
-        mem = None
-        for i in range(len(weights)):
-            layer.state_dict()[keys[i]].add_(0.0017) # 初始權重
-
-        print(f"{layerId} layer weights shape:=======================")
-        for weight in weights:
-            print(weight.shape)
-
-        if "mems" in kw_args:
-            mems = kw_args["mems"]
-            mem = mems[kw_args["layer_id"]] if mems is not None else None
-            if mem is not None:
-                b = hidden_states.shape[1]
-                nh = self.transformer.headNum
-                head_size = self.transformer.head_size
-                rank_size = self.transformer.rankSize
-                mem = mem.expand(b, -1, -1).reshape(b, mem.shape[1], 2, nh // rank_size, head_size).permute(2, 1, 0, 3, 4)
-                pastk, pastv = mem[0], mem[1]
-
-                acl_inputs = [hidden_states]
-                acl_inputs.extend(weights[0:8])
-                acl_inputs.extend(weights[10:12])
-                acl_inputs.extend(weights[8:10])
-                acl_inputs.append(kw_args["position_ids"])
-
-                cos, sin = self.rotary_emb(hidden_states, seq_len=kw_args["position_ids"].max() + 1)
-                acl_inputs.append(cos)
-                acl_inputs.append(sin)
-                acl_inputs.append(mask)
-                acl_inputs.append(pastk)
-                acl_inputs.append(pastv)
-
-                acl_outs = acl_layer.execute(acl_inputs)
 
         attention_input = layer.input_layernorm(hidden_states)
 
@@ -202,14 +163,6 @@ class DeepNormWithGLUMixin(BaseMixin):
 
         # Second residual connection.
         output = mlp_input * alpha + mlp_output
-
-        if mem is not None:
-            if torch.allclose(output, acl_outs[0], rtol=0.02, atol=0.02):
-                print('layer equal!')
-                print(output)
-                print(acl_outs[0])
-            else:
-                print('layer no equal!')
 
         return output
 

@@ -71,7 +71,7 @@ def initialize_model_and_tokenizer(args):
                 model = quantize(model, args.quantization_bit_width)
 
             # Load checkpoint
-            # load_checkpoint(model, args)
+            load_checkpoint(model, args)
 
             if args.quantization_bit_width is not None and not args.from_quantized_checkpoint:
                 # Quantize model before moving to GPU
