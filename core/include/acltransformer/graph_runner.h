@@ -28,9 +28,9 @@ class Operation;
 
 class GraphRunner : public Runner {
 public:
-    using NodeViewFunc =
-        std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
-
+    using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
+    using InferShapePreFunc =
+        std::function<void(AsdOps::SVector<AsdOps::Tensor> &inTensors, AsdOps::SVector<AsdOps::Tensor> &outTensors)>;
     enum TensorType {
         INTERMEDIATE_TENSOR = 0,
         NOT_INTERMEDIATE_TENSOR,
@@ -40,7 +40,8 @@ public:
         std::shared_ptr<Runner> runner;
         AsdOps::SVector<AsdOps::Tensor *> inTensors;
         AsdOps::SVector<AsdOps::Tensor *> outTensors;
-        AsdOps::SVector<NodeViewFunc> inTensorViewFuncs;
+        AsdOps::SVector<ViewFunc> inTensorViewFuncs;
+        InferShapePreFunc inferShapePreFunc;
         RunnerVariantPack runnerVariantPack;
         bool useVariantPackParam = false;
         AsdOps::SVector<TensorType> inTensorTypes;
