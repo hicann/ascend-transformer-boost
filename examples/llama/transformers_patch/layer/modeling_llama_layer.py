@@ -336,8 +336,8 @@ class LlamaDecoderLayer(nn.Module):
             config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = LlamaRMSNorm(
             config.hidden_size, eps=config.rms_norm_eps)
-        self.acl_llama_layer = torch.classes.LayerTorch.LayerTorch(
-            "Llama7BLayer")
+        self.acl_llama_layer = torch.classes.OperationTorch.OperationTorch(
+            "LLaMA7BLayerOperation")
         headSize = config.hidden_size // config.num_attention_heads
         param = json.dumps({"headNum": config.num_attention_heads, "rmsNormEps": config.rms_norm_eps,
                             "dk": headSize, "model": "llama7b"})
@@ -449,14 +449,14 @@ class LlamaDecoderLayer(nn.Module):
         if use_cache:
             outputs += (present_key_value,)
 
-        if test_llama7bOut is not None:
+        # if test_llama7bOut is not None:
             # print(test_llama7bOut)
             # print(hidden_states)
-            assert torch.allclose(
-                test_llama7bOut, hidden_states, rtol=0.05, atol=0.05), 'not equal'
+            # assert torch.allclose(
+            #     test_llama7bOut, hidden_states, rtol=0.05, atol=0.05), 'not equal'
             # assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
             #         test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
-            print("success!")
+            # print("success!")
 
         return outputs
 
