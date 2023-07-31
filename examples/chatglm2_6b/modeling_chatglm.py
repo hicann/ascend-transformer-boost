@@ -9,6 +9,8 @@ import sys
 import torch
 import torch.utils.checkpoint
 import torch.nn.functional as F
+import logging as lg
+import time
 from torch import nn
 from torch.nn import CrossEntropyLoss, LayerNorm
 from torch.nn.utils import skip_init
@@ -24,6 +26,11 @@ from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaList, GenerationConfig, ModelOutput
 
 from .configuration_chatglm import ChatGLMConfig
+
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+
+lg.basicConfig(filename="glm2_mlp.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
 # flags required to enable jit fusion kernels
 
@@ -855,6 +862,11 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         self.config = config
         self.quantized = False
 
+        self.total = 0
+        self.count = 0
+        self.cur_time = 0
+        self.avg_time = 0
+
         if self.config.quantization_bit:
             self.quantize(self.config.quantization_bit, empty_init=True)
 
@@ -1137,15 +1149,30 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
+
+        self.total = 0
+        self.count = 0
         while True:
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
             # forward pass to get next token
+
+            start_time = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=False,
                 output_hidden_states=False,
             )
+
+            end_time = time.time()
+            self.count += 1
+            self.cur_time = (end_time - start_time) * 1000
+            if self.count == 1:
+                self.first = self.cur_time
+                lg.info(f"first token: {self.cur_time:.2f}")
+            else:
+                self.total += self.cur_time
+                lg.info(f"non-first token, {self.count}: {self.cur_time:.2f}")
 
             next_token_logits = outputs.logits[:, -1, :]
 
@@ -1173,6 +1200,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
                 break
+        self.avg_time = self.total / (self.count - 1)
+        lg.info(f"avg_time: {self.avg_time:.2f}")
 
     def quantize(self, bits: int, empty_init=False, device=None, **kwargs):
         if bits == 0:
