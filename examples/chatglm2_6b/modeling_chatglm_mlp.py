@@ -9,6 +9,10 @@ import sys
 import torch
 import torch.utils.checkpoint
 import torch.nn.functional as F
+import logging as lg
+import json
+import os
+import time
 from torch import nn
 from torch.nn import CrossEntropyLoss, LayerNorm
 from torch.nn.utils import skip_init
@@ -24,6 +28,17 @@ from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaList, GenerationConfig, ModelOutput
 
 from .configuration_chatglm import ChatGLMConfig
+
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
+if ACLTRANSFORMER_HOME_PATH is None:
+    raise RuntimeError("env ACLTRANSFORMER_HOME_PATH not exist, sources set_env.sh")
+LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
+                        "lib/libacltransformer_torch.so")
+
+torch.classes.load_library(LIB_PATH)
+lg.basicConfig(filename="glm2_mlp.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
 # flags required to enable jit fusion kernels
 
@@ -465,6 +480,11 @@ class MLP(torch.nn.Module):
     def __init__(self, config: ChatGLMConfig, device=None):
         super(MLP, self).__init__()
 
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.mlp_operation = torch.classes.OperationTorch.OperationTorch("MLPOperation")
+        self.mlp_operation.set_param(json.dumps({"model":"glm2"}))
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+
         self.add_bias = config.add_bias_linear
 
         # Project to 4h. If using swiglu double the output width, see https://arxiv.org/pdf/2002.05202.pdf
@@ -497,7 +517,16 @@ class MLP(torch.nn.Module):
         intermediate_parallel = self.activation_func(intermediate_parallel)
         # [s, b, h]
         output = self.dense_4h_to_h(intermediate_parallel)
-        return output
+
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+        output_exec = self.mlp_operation.execute([hidden_states,
+                                                  self.dense_h_to_4h.weight,
+                                                  self.dense_4h_to_h.weight])[0]
+        
+        assert torch.allclose(output, output_exec, atol=0.01, rtol=0.01), "MLP Not equal"
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++
+        
+        return output_exec
 
 
 class GLMBlock(torch.nn.Module):
@@ -855,6 +884,11 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         self.config = config
         self.quantized = False
 
+        self.total = 0
+        self.count = 0
+        self.cur_time = 0
+        self.avg_time = 0
+
         if self.config.quantization_bit:
             self.quantize(self.config.quantization_bit, empty_init=True)
 
@@ -1137,15 +1171,30 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
+
+        self.total = 0
+        self.count = 0
         while True:
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
             # forward pass to get next token
+
+            start_time = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=False,
                 output_hidden_states=False,
             )
+
+            end_time = time.time()
+            self.count += 1
+            self.cur_time = (end_time - start_time) * 1000
+            if self.count == 1:
+                self.first = self.cur_time
+                lg.info(f"first token: {self.cur_time:.2f}")
+            else:
+                self.total += self.cur_time
+                lg.info(f"non-first token, {self.count}: {self.cur_time:.2f}")
 
             next_token_logits = outputs.logits[:, -1, :]
 
@@ -1173,6 +1222,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
                 break
+        self.avg_time = self.total / (self.count - 1)
+        lg.info(f"avg_time: {self.avg_time:.2f}")
 
     def quantize(self, bits: int, empty_init=False, device=None, **kwargs):
         if bits == 0:
