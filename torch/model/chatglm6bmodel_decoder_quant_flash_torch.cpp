@@ -269,6 +269,7 @@ void ChatGlm6BModelDecoderQuantFlashTorch::ExecuteLayerOperation(int layerId, st
     AclTransformer::Plan &plan = *plans_.at(layerId);
 
     AclTransformer::VariantPack &variantPack = variantPacks_.at(layerId);
+    variantPackParam_.layerId = layerId;
     variantPack.param = variantPackParam_;
     BuildVariantPack(layerId, opAtInTensors, outTensor, resIn, newOut, variantPack);
 
