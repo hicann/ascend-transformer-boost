@@ -25,7 +25,6 @@ namespace AclTransformer {
 Config::Config()
 {
     InitSkipKernelName();
-    InitWorkspaceSize();
     InitIs910B();
     isSaveTensor_ = IsEnable("ACLTRANSFORMER_SAVE_TENSOR");
     isAddOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE");
@@ -51,7 +50,6 @@ Config::Config()
                    << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
                    << "\nIsStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
-                   << "\nWorkspaceSize:" << workspaceSize_
                    << "\nIsOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
                    << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_
                    << "\nIsUsePpMatmul:" << isUsePpMatmul_ << ", \nIsConvertNCHWToND:" << isConvertNCHWToND_;
@@ -125,17 +123,6 @@ void Config::InitSkipKernelName()
         return;
     }
     AsdOps::StrSplit(std::string(envStr), ',', skipKernelNames_);
-}
-
-uint64_t Config::GetWorkspaceSize() { return workspaceSize_; }
-
-void Config::InitWorkspaceSize()
-{
-    const char *envStr = std::getenv("ACLTRANSFORMER_WORKSPACE_SIZE");
-    if (!envStr) {
-        return;
-    }
-    workspaceSize_ = atoll(envStr);
 }
 
 bool Config::Is910B() { return is910B_; }

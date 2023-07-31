@@ -28,7 +28,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/workspace/workspace.h"
+#include "torch/context/context.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 
 const size_t WEIGHT_COUNT_PER_LAYER = 12;
@@ -237,8 +237,8 @@ void ChatGlm6BModelDecoderTorch::ExecuteSingleOperation(int layerId, std::vector
     ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
-        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
+        variantPack.workspace =
+            AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
     }
 
     AsdOps::Timer timer2;
