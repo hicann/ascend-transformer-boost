@@ -28,7 +28,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/workspace/workspace.h"
+#include "torch/context/context.h"
 #include "operation_creator.h"
 
 OperationTorch::OperationTorch(std::string opName) : opName_(opName), name_(opName)
@@ -157,8 +157,8 @@ void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std
     ASD_LOG(INFO) << name_ << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
-        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
+        variantPack.workspace =
+            AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
     }
 
     AsdOps::Timer timer2;
