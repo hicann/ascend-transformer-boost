@@ -167,7 +167,7 @@ function fn_init_pytorch_env()
 
 function fn_copy_tools()
 {
-    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
+    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools/python_tools
 }
 
 function fn_build()
