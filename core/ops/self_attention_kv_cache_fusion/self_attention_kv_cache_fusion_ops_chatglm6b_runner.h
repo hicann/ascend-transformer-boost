@@ -25,9 +25,7 @@ public:
     virtual ~SelfAttentionKvCacheFusionOpsChatGlm6bRunner();
 
 private:
-    bool IsUseMuls();
     void BuildGraphWithMuls();
-    void BuildGraphWithoutMuls();
     void SetKernelGrapModifyFunc();
 
 private:
