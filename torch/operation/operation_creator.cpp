@@ -149,7 +149,6 @@ static AclTransformer::Operation *EmbeddingOperationCreate(const nlohmann::json 
     return new AclTransformer::EmbeddingOperation(param);
 }
 
-
 static AclTransformer::Operation *NormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::NormParam param;
@@ -173,7 +172,8 @@ static AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &pa
     if (paramJson.contains("hasBias")) {
         param.hasBias = paramJson["hasBias"].get<bool>();
     }
-    ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB << ", hasBias:" << param.hasBias;
+    ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB
+                  << ", hasBias:" << param.hasBias;
     return new AclTransformer::LinearOperation(param);
 }
 
@@ -194,7 +194,8 @@ static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &param
     if (paramJson.contains("hasBias")) {
         param.hasBias = paramJson["hasBias"].get<bool>();
     }
-    ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB << ", hasBias:" << param.hasBias;
+    ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB
+                  << ", hasBias:" << param.hasBias;
     return new AclTransformer::FfnOperation(param);
 }
 
@@ -563,8 +564,8 @@ AclTransformer::Operation *Glm130BLayerOperation(const nlohmann::json &paramJson
 }
 
 std::map<std::string, OperationCreateFunc> g_funcMap = {
-    {"PostOperation",&PostOperationCreate},
-    {"AllReduceOperation",AllReduceOperationCreate},
+    {"PostOperation", &PostOperationCreate},
+    {"AllReduceOperation", AllReduceOperationCreate},
     {"LinearParallelOperation", &LinearParallelOperationCreate},
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
@@ -631,6 +632,7 @@ AsdOps::Any ParseParam(const std::string &opName, const std::string &param)
         for (auto item : paramJson["seqLen"]) {
             opParam.seqLen.push_back(item.get<int>());
         }
+        opParam.layerId = paramJson["layerId"].get<int>();
         return opParam;
     }
     return AsdOps::Any();

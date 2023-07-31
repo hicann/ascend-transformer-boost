@@ -28,28 +28,12 @@ SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SelfAttentionKvCacheFusionOpsChatG
       param_(param)
 {
     setupCacheEnable_ = false;
-    bool useMuls = IsUseMuls();
-    ASD_LOG(INFO) << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner new, useMuls:" << useMuls
-                  << ", setupCacheEnable:" << setupCacheEnable_;
-    if (useMuls) {
-        BuildGraphWithMuls();
-        SetKernelGrapModifyFunc();
-    } else {
-        BuildGraphWithoutMuls();
-    }
+    ASD_LOG(INFO) << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner new, setupCacheEnable:" << setupCacheEnable_;
+    BuildGraphWithMuls();
+    SetKernelGrapModifyFunc();
 }
 
 SelfAttentionKvCacheFusionOpsChatGlm6bRunner::~SelfAttentionKvCacheFusionOpsChatGlm6bRunner() {}
-
-bool SelfAttentionKvCacheFusionOpsChatGlm6bRunner::IsUseMuls()
-{
-    const char *envStr = std::getenv("ACLTRANSFORMER_FLASHATTENTION_USE_MULS");
-    if (!envStr) {
-        return false;
-    }
-
-    return std::string(envStr) == "1";
-}
 
 void SelfAttentionKvCacheFusionOpsChatGlm6bRunner::BuildGraphWithMuls()
 {
@@ -126,79 +110,10 @@ void SelfAttentionKvCacheFusionOpsChatGlm6bRunner::BuildGraphWithMuls()
     };
 
     // 4、flash attention
+    float tor = (float)(param_.layerId + 1);
     flashAttentionNode.opDesc = {0, "AttentionOperation",
-                                 AsdOps::OpParam::Attention{param_.headNum, param_.seqLen, param_.tokenOffset}};
+                                 AsdOps::OpParam::Attention{param_.headNum, param_.seqLen, param_.tokenOffset, tor}};
     flashAttentionNode.inTensors = {&divOut, &cacheK, &cacheV, &layerId, &attentionMask};
-    flashAttentionNode.outTensors = {&context};
-    flashAttentionNode.inTensorViewFuncs.resize(flashAttentionNode.inTensors.size());
-    flashAttentionNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
-                                                 AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
-    };
-}
-
-void SelfAttentionKvCacheFusionOpsChatGlm6bRunner::BuildGraphWithoutMuls()
-{
-    const size_t intTensorCount = 9;
-    const size_t nodeCount = 3;
-    kernelGraph_.inTensors.resize(intTensorCount);
-
-    size_t tensorId = 0;
-    // kv cache input
-    AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(tensorId++);
-    AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(tensorId++);
-    AsdOps::Tensor &cacheK = kernelGraph_.inTensors.at(tensorId++);
-    AsdOps::Tensor &cacheV = kernelGraph_.inTensors.at(tensorId++);
-    // flash attention input
-    AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(tensorId++);
-    AsdOps::Tensor &attentionMask = kernelGraph_.inTensors.at(tensorId++);
-
-    AsdOps::Tensor &tokenOffset = kernelGraph_.inTensors.at(tensorId++);
-    AsdOps::Tensor &seqLen = kernelGraph_.inTensors.at(tensorId++);
-
-    AsdOps::Tensor &layerId = kernelGraph_.inTensors.at(tensorId++);
-
-    kernelGraph_.outTensors.resize(1);
-    AsdOps::Tensor &context = kernelGraph_.outTensors.at(0);
-
-    size_t nodeId = 0;
-    kernelGraph_.nodes.resize(nodeCount);
-    auto &kCacheNode = kernelGraph_.nodes.at(nodeId++);
-    auto &vCacheNode = kernelGraph_.nodes.at(nodeId++);
-    auto &flashAttentionNode = kernelGraph_.nodes.at(nodeId++);
-
-    // 1、k cache
-    kCacheNode.opDesc = {0, "KVCacheOperation", AsdOps::OpParam::KVCache{AsdOps::OpParam::KVCache::KVCACHE}};
-    kCacheNode.inTensors = {&mixedKey, &layerId, &cacheK, &tokenOffset, &seqLen};
-    kCacheNode.outTensors = {&cacheK}; // Kcache and Vcache output and input use same space
-    kCacheNode.inTensorViewFuncs.resize(kCacheNode.inTensors.size());
-    kCacheNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
-    };
-    kCacheNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
-        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
-            runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
-        }
-    };
-
-    // 2、V cache  seq_len, batch, head_num, head_size]
-    vCacheNode.opDesc = {0, "KVCacheOperation", AsdOps::OpParam::KVCache{AsdOps::OpParam::KVCache::KVCACHE}};
-    vCacheNode.inTensors = {&mixedValue, &layerId, &cacheV, &tokenOffset, &seqLen};
-    vCacheNode.outTensors = {&cacheV}; // Kcache and Vcache output and input use same space
-    vCacheNode.inTensorViewFuncs.resize(vCacheNode.inTensors.size());
-    vCacheNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
-    };
-    vCacheNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
-        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
-            runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
-        }
-    };
-
-    // 3、flash attention
-    flashAttentionNode.opDesc = {0, "AttentionOperation",
-                                 AsdOps::OpParam::Attention{param_.headNum, param_.seqLen, param_.tokenOffset}};
-    flashAttentionNode.inTensors = {&mixedQuery, &cacheK, &cacheV, &layerId, &attentionMask};
     flashAttentionNode.outTensors = {&context};
     flashAttentionNode.inTensorViewFuncs.resize(flashAttentionNode.inTensors.size());
     flashAttentionNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
@@ -220,8 +135,10 @@ void SelfAttentionKvCacheFusionOpsChatGlm6bRunner::SetKernelGrapModifyFunc()
         const size_t flashAttentionNodeId = 3;
         auto &flashAttentionNode = kernelGraph_.nodes.at(flashAttentionNodeId);
 
-        flashAttentionNode.opDesc = {0, "AttentionOperation",
-                                     AsdOps::OpParam::Attention{param_.headNum, newParam.seqLen, newParam.tokenOffset}};
+        float tor = (float)(newParam.layerId + 1);
+        flashAttentionNode.opDesc = {
+            0, "AttentionOperation",
+            AsdOps::OpParam::Attention{param_.headNum, newParam.seqLen, newParam.tokenOffset, tor}};
         ASD_LOG(INFO) << "SelfAttentionKvCacheFusionOpsChatGlm6bRunner SetOpDesc AsdOps::OpParam::Attention.headNum:"
                       << param_.headNum << ", seqLen:" << newParam.seqLen << ", tokenOffset:" << newParam.tokenOffset;
     };
