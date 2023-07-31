@@ -41,7 +41,6 @@ public:
     bool IsStreamSyncEveryRunnerEnable();
     bool IsStreamSyncEveryPlanEnable();
     bool IsSkipKernel(const std::string &kernelName);
-    uint64_t GetWorkspaceSize();
     bool Is910B();
     bool IsOpsRunnerSetupCacheEnable();
     bool IsOpsRunnerKernelCacheEnable();
@@ -71,7 +70,6 @@ private:
     bool isStreamSyncEveryRunnerEnable_ = false;
     bool isStreamSyncEveryPlanEnable_ = false;
     std::vector<std::string> skipKernelNames_;
-    uint64_t workspaceSize_ = 1024 * 1024 * 1024 * 5LL;
     bool is910B_ = false;
     bool isOpsRunnerSetupCacheEnable_ = false;
     bool isOpsRunnerKernelCacheEnable_ = false;

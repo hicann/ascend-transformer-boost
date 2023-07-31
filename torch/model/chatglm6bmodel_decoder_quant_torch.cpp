@@ -28,14 +28,13 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/workspace/workspace.h"
+#include "torch/context/context.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_first_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_last_quant_operation.h"
 const size_t WEIGHT_COUNT_PER_LAYER = 16;
 const size_t TENSOR2 = 2;
 const size_t TENSOR3 = 3;
-
 
 ChatGlm6BModelDecoderQuantTorch::ChatGlm6BModelDecoderQuantTorch()
 {
@@ -275,8 +274,8 @@ void ChatGlm6BModelDecoderQuantTorch::ExecuteSingleOperation(int layerId, std::v
                   << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
-        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
+        variantPack.workspace =
+            AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
     }
 
     AsdOps::Timer timer2;
@@ -345,8 +344,8 @@ void ChatGlm6BModelDecoderQuantTorch::ExecuteLastSingleOperation(int layerId, st
                   << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
-        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
+        variantPack.workspace =
+            AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
     }
 
     AsdOps::Timer timer2;
