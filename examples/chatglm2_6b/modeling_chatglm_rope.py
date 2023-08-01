@@ -10,6 +10,8 @@ import torch
 import torch.utils.checkpoint
 import torch.nn.functional as F
 import logging as lg
+import json
+import os
 import time
 from torch import nn
 from torch.nn import CrossEntropyLoss, LayerNorm
@@ -29,8 +31,14 @@ from .configuration_chatglm import ChatGLMConfig
 
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
+if ACLTRANSFORMER_HOME_PATH is None:
+    raise RuntimeError("env ACLTRANSFORMER_HOME_PATH not exist, sources set_env.sh")
+LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
+                        "lib/libacltransformer_torch.so")
 
-lg.basicConfig(filename="glm2_mlp.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+torch.classes.load_library(LIB_PATH)
+lg.basicConfig(filename="glm2_rope.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
 # flags required to enable jit fusion kernels
 
@@ -350,6 +358,15 @@ class SelfAttention(torch.nn.Module):
         self.dense = nn.Linear(self.projection_size, config.hidden_size, bias=config.add_bias_linear,
                                device=device, **_config_to_kwargs(config)
                                )
+        # ++++++++++++++++++++++++
+        self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("PositionEmbeddingOperation")
+        self.acl_position_embedding_operation.set_param(json.dumps({
+            "numHeadPerPartition": self.num_attention_heads_per_partition,
+            "hiddenSizePerHead": self.hidden_size_per_attention_head,
+            "numGroupsPerPartition": self.num_multi_query_groups_per_partition,
+            "model": "chatglm2_6b"
+        }))
+        # ++++++++++++++++++++++++
 
     def _allocate_memory(self, inference_max_sequence_len, batch_size, device=None, dtype=None):
         if self.multi_query_attention:
@@ -379,6 +396,15 @@ class SelfAttention(torch.nn.Module):
 
         # Attention heads [sq, b, h] --> [sq, b, (np * 3 * hn)]
         mixed_x_layer = self.query_key_value(hidden_states)
+
+        # +++++++++++++++++++++++++++++++++
+        stream = torch.npu.current_stream()
+        stream.synchronize()
+        if rotary_pos_emb is not None:
+            query_layer_, key_layer_, value_layer_ = self.acl_position_embedding_operation.execute([mixed_x_layer, rotary_pos_emb])
+        stream = torch.npu.current_stream()
+        stream.synchronize()
+        # +++++++++++++++++++++++++++++++++
 
         if self.multi_query_attention:
             (query_layer, key_layer, value_layer) = mixed_x_layer.split(
@@ -412,6 +438,12 @@ class SelfAttention(torch.nn.Module):
         if rotary_pos_emb is not None:
             query_layer = apply_rotary_pos_emb(query_layer, rotary_pos_emb)
             key_layer = apply_rotary_pos_emb(key_layer, rotary_pos_emb)
+
+        # +++++++++++++++++++++++++++++++++
+        assert torch.allclose(query_layer, query_layer_, atol=0.001, rtol=0.001), "query_layer Not equal"
+        assert torch.allclose(key_layer, key_layer_, atol=0.001, rtol=0.001), "key_layer Not equal"
+        assert torch.allclose(value_layer, value_layer_, atol=0.001, rtol=0.001), "value_layer Not equal"
+        # +++++++++++++++++++++++++++++++++
 
         # adjust key and value for inference
         if kv_cache is not None:
