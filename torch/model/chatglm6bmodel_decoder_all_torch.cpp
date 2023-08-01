@@ -90,7 +90,7 @@ void ChatGlm6BModelDecoderAllTorch::SetParam(std::string param)
     operations_.at(1).reset(transpose);
     plans_.at(1).reset(transposePlan);
 
-    for (int i; i < modelParam_.layerNum; ++i) {
+    for (int i = 0; i < modelParam_.layerNum; ++i) {
         AclTransformer::ChatGlm6BLayerDecoderFlashAttentionParam opParam;
         opParam.layerNormEps = modelParam_.layerNormEps;
         opParam.headNum = modelParam_.headNum;
@@ -356,7 +356,7 @@ void ChatGlm6BModelDecoderAllTorch::ThreadProcessTask()
     int ret = AsdRtDeviceSetCurrent(currentDevId_);
     ASD_LOG_IF(ret != 0, ERROR) << "AsdRtDeviceSetCurrent fail, error:" << ret;
 
-    int processTaskCount = 0;
+    size_t processTaskCount = 0;
     while (true) {
         int opId = PopTask();
         ExecutePlan(opId);
