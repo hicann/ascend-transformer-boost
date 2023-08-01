@@ -43,8 +43,8 @@ enum Chatglm6BLayerDecoderFlashAttentionTensorId {
     IN_ATTENTIONMASK_ID,
     IN_CACHEK_ID,
     IN_CACHEV_ID,
-    IN_SEQLEN_ID,
     IN_TOKENOFFSET_ID,
+    IN_SEQLEN_ID,
     IN_LAYERID_ID,
     OUT_LAYEROUT_ID,
     INTERMEDIATE_INPUTNORMOUT_ID,
@@ -116,8 +116,8 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
                                             IN_CACHEV_ID,
                                             INTERMEDIATE_POSITIONEMBEDQ_ID,
                                             IN_ATTENTIONMASK_ID,
-                                            IN_SEQLEN_ID,
                                             IN_TOKENOFFSET_ID,
+                                            IN_SEQLEN_ID,
                                             IN_LAYERID_ID};
     selfAttentionKvCacheNode.outTensorIds = {INTERMEDIATE_SELFOUT_ID};
     selfAttentionKvCacheNode.useVariantPackParam = true;

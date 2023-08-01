@@ -43,6 +43,7 @@
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
+#include "acltransformer/ops/lm_head_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
@@ -563,6 +564,12 @@ AclTransformer::Operation *Glm130BLayerOperation(const nlohmann::json &paramJson
     return new AclTransformer::ChatGlm130BLayerOperation(param);
 }
 
+AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LmHeadParam param;
+    return new AclTransformer::LmHeadOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PostOperation", &PostOperationCreate},
     {"AllReduceOperation", AllReduceOperationCreate},
@@ -600,6 +607,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm6BLayerDecoderFlashAttentionOperation", &ChatGlm6BLayeEncoderFlashAttentionOperationCreate},
     {"Glm130BLayerOperation", &Glm130BLayerOperation},
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
+    {"LmHeadOperation", &LmHeadOperationCreate}
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
