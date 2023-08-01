@@ -75,6 +75,8 @@ protected:
     uint64_t GetWorkspaceBufferSizeImpl() override;
     uint64_t GetIntermediateBufferSizeImpl() override;
     AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+    void SetSaveTensorDir(const std::string &tensorDir) override;
+    void SetId(const std::string &id) override;
 
 private:
     void Reset();

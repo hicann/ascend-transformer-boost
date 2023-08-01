@@ -27,16 +27,17 @@ class Runner;
 
 #ifdef USE_PROFILING
 #define MAX_PROFILING_FUNC_NAME 2
-enum ProfilingFuncName {
-    PLAN_SETUP = 0,
-    PLAN_EXECUTE
-};
+enum ProfilingFuncName { PLAN_SETUP = 0, PLAN_EXECUTE };
 #endif
 
 class Plan {
 public:
     Plan();
     ~Plan();
+    void SetRunnerSaveTensorDir(const std::string &dir);
+    void SetRunnerId(const std::string &id);
+
+public:
     AsdOps::Status Setup(Handle handle, const VariantPack &variantPack);
     uint64_t GetWorkspaceSize();
     AsdOps::Status Execute(Handle handle, VariantPack &variantPack);

@@ -141,7 +141,11 @@ void Glm130BModelDecoderTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, 
                        << ", presentValueTensors.size:" << presentValueTensors.size();
         return;
     }
-
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        }
+    }
     handle_ = {Utils::GetCurrentStream()};
 
     Utils::ContiguousAtTensor(hiddenStateTensor);
@@ -240,20 +244,22 @@ void Glm130BModelDecoderTorch::ExecuteSingleOperation(int layerId, std::vector<t
         variantPack.workspace =
             AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
     }
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        std::string dir = GetSaveTensorDir() + "/" + std::to_string(layerId) + "_";
+        plan.SetRunnerSaveTensorDir(dir);
+    }
 
     AsdOps::Timer timer2;
     st = plan.Execute(handle_, variantPack);
 
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        AsdRtStreamSynchronize(handle_.stream);
-        std::string dirPath =
-            AclTransformer::Config::GetSaveTensorDir() + "/Glm130BModelLayer_" + std::to_string(layerId);
-        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
-        ASD_LOG(FATAL) << "Glm130BModelLayer_" << layerId << " save variant pack, dir:" << dirPath;
-    }
-
     AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
     ASD_LOG_IF(!st.Ok(), ERROR) << "Glm130BModelLayer_" << layerId << " execute plan fail, error:" << st.Message();
+}
+
+std::string Glm130BModelDecoderTorch::GetSaveTensorDir()
+{
+    std::string dir = std::to_string(executeCount_) + "/0_Glm130BModelDecoderTorch";
+    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 
 TORCH_LIBRARY(Glm130BModelDecoderTorch, m)
