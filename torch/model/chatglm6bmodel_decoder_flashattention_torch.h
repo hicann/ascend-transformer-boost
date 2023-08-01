@@ -57,6 +57,8 @@ public:
 private:
     void BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors, torch::Tensor &outTensor, bool newOut,
                           AclTransformer::VariantPack &variantPack);
+    void BuildGatherVariantPack(std::vector<torch::Tensor> &atInTensors, torch::Tensor &outTensor, bool newOut,
+                          AclTransformer::VariantPack &variantPack);
     void ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
                         torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
                         torch::Tensor &attentionMaskTensor, torch::Tensor &pastKeyTensors,
@@ -67,9 +69,12 @@ private:
     // OUT:outTensor + presendKey + presentValue
     void ExecuteLayerOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
                                bool newOut);
+    void ExecuteGatherOperation(std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &cosTableTensor,
+                               torch::Tensor &sinTableTensor, bool newOut);
     void ParseParam(const std::string &param);
     void ThreadProcessTask();
     void ExecutePlan(int layerId);
+    void ExecuteGatherPlan();
     void PushTask(int layerId);
     int PopTask();
     void WaitAsyncPlanExecuteFinish();
@@ -77,10 +82,13 @@ private:
 private:
     ChatGlm6BModelFlashattentionParam modelParam_;
     std::vector<std::shared_ptr<AclTransformer::Operation>> operations_;
+    std::vector<std::shared_ptr<AclTransformer::Operation>> gatherOperation_;
     std::vector<std::shared_ptr<AclTransformer::Plan>> plans_;
+    std::vector<std::shared_ptr<AclTransformer::Plan>> gatherPlan_;
     std::vector<torch::Tensor> weightTensors_;
     std::vector<torch::Tensor> outTensors_;
     std::vector<AclTransformer::VariantPack> variantPacks_;
+    std::vector<std::shared_ptr<AclTransformer::VariantPack>> gatherPack_;
     uint64_t executeCount_ = 0;
     AclTransformer::Handle handle_;
     AsdOps::Timer timer_;
