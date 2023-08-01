@@ -252,8 +252,24 @@ static AclTransformer::Operation *PositionEmbedding1dSplitOperationCreate(const 
 static AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingParam param;
-    param.headNum = paramJson["headNum"].get<int>();
-    ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int64_t>();
+        ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
+    }
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+    } else {
+        param.model = "llama7b";
+    }
+    if (paramJson.contains("numHeadPerPartition")) {
+        param.numHeadPerPartition = paramJson["numHeadPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("hiddenSizePerHead")) {
+        param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    }
+    if (paramJson.contains("numGroupsPerPartition")) {
+        param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    }
     return new AclTransformer::PositionEmbeddingOperation(param);
 }
 
