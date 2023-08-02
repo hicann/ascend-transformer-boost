@@ -35,7 +35,7 @@ MlpOperation::~MlpOperation() {}
 
 uint64_t MlpOperation::GetInTensorCount() const
 {
-    return (param_.model == "glm130b") ? GLM130B_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE;
+    return (param_.model == "glm130b" || param_.model == "chatglm2_6b") ? GLM130B_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE;
 }
 
 uint64_t MlpOperation::GetOutTensorCount() const { return 1; }
