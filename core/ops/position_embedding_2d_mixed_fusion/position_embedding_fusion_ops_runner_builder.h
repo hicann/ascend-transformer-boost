@@ -18,6 +18,7 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/position_embedding_fusion.h"
 #include "position_embedding_fusion_ops_runner.h"
+#include "position_embedding_fusion_ops_gptneox20b_runner.h"
 
 namespace AclTransformer {
 class PositionEmbeddingFusionOpsRunnerBuilder : public RunnerBuilder {
@@ -26,7 +27,7 @@ public:
     virtual ~PositionEmbeddingFusionOpsRunnerBuilder() = default;
     Runner *Build() override {
         if (param_.model == "gptneox20b") {
-            return new PositionEmbeddingFusionOpsRunnerBuilder
+            return new PositionEmbeddingFusionOpsGptNeox20bRunner(param_);
         }
         return new PositionEmbeddingFusionOpsRunner(param_); }
 

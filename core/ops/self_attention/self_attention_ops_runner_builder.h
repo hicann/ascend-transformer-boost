@@ -21,6 +21,7 @@
 #include "self_attention_ops_chatglm6b_runner.h"
 #include <asdops/utils/log/log.h>
 #include "self_attention_ops_chatglm6b_runner_910a.h"
+#include "self_attention_ops_gptneox20b_runner.h"
 
 namespace AclTransformer {
 class SelfAttentionOpsRunnerBuilder : public RunnerBuilder {
@@ -36,6 +37,8 @@ public:
                 } else {
                     return new SelfAttentionOpsChatglm6bRunner910a(param_);
                 }
+            } else if (param_.model == "gptneox20b") {
+                return new SelfAttentionOpsGptNeox20bRunner(param_);
             } else {
                 ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
                 return nullptr;
