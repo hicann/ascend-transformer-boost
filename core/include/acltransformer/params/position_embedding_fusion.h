@@ -18,6 +18,9 @@
 namespace AclTransformer {
 struct PositionEmbeddingFusionParam {
     int64_t headNum = 0;
+    int64_t dk = 0;
+    float rotaryPct = 0.25;
+    std::string model = "openbert";
 };
 } // namespace AclTransformer
 #endif
