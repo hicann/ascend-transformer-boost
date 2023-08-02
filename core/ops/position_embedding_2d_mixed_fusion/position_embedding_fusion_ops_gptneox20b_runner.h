@@ -13,22 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef POSITIONEMBEDDING_FUSION_OPS_RUNNER_BUILDER_H
-#define POSITIONEMBEDDING_FUSION_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#ifndef POSITIONEMBEDDING_FUSION_OPS_GPTNEOX20B_RUNNER_H
+#define POSITIONEMBEDDING_FUSION_OPS_GPTNEOX20B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/position_embedding_fusion.h"
-#include "position_embedding_fusion_ops_runner.h"
 
 namespace AclTransformer {
-class PositionEmbeddingFusionOpsRunnerBuilder : public RunnerBuilder {
+class PositionEmbeddingFusionOpsGptNeox20bRunner : public OpsRunner {
 public:
-    explicit PositionEmbeddingFusionOpsRunnerBuilder(const PositionEmbeddingFusionParam &param) : param_(param) {}
-    virtual ~PositionEmbeddingFusionOpsRunnerBuilder() = default;
-    Runner *Build() override {
-        if (param_.model == "gptneox20b") {
-            return new PositionEmbeddingFusionOpsRunnerBuilder
-        }
-        return new PositionEmbeddingFusionOpsRunner(param_); }
+    explicit PositionEmbeddingFusionOpsGptNeox20bRunner(const PositionEmbeddingFusionParam &param);
+    virtual ~PositionEmbeddingFusionOpsGptNeox20bRunner();
 
 private:
     PositionEmbeddingFusionParam param_;

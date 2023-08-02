@@ -297,7 +297,7 @@ PositionEmbeddingOpsGptNeox20bRunner::PositionEmbeddingOpsGptNeox20bRunner(const
     qTransNode.inTensors = {&queryCatted};
     qTransNode.outTensors = {&qEmbedded};
     kTransNode.opDesc = {0, "TransposeOperation", transSeqHeadNodeParam};
-    kTransNode.inTensors = {keyCatted};
+    kTransNode.inTensors = {&keyCatted};
     kTransNode.outTensors = {&kEmbedded};
     vTransNode.opDesc = {0, "TransposeOperation", transSeqHeadNodeParam};
     vTransNode.inTensors = {&valueSplit};
