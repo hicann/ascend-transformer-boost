@@ -32,16 +32,25 @@ def main():
 
     absolute_err = 0
     avg_cosine_similarity = 0
+    max_relative_err = 0
     
     if abs_tensor.numel() != 0:
         absolute_err = abs_tensor.type(torch.float64).sum() / abs_tensor.numel()
         cosine_similarity_tensor = torch.cosine_similarity(tensor1, tensor2)
         avg_cosine_similarity = cosine_similarity_tensor.abs()/cosine_similarity_tensor.numel()
+        div_tensor = tensor2.abs()
+        div_tensor.clamp_(1e-6)
+        relative_err_tensor = torch.div(abs_tensot, div_tensor)
+        max_relative_err = torch.max(relative_err_tensor)
+
+    
 
     print("Absolute error: ")
     print(absolute_err)
     print("Average cosine similarity:")
     print(avg_cosine_similarity)
+    print("Max relative error: ")
+    print(max_relative_err)
 
 
 
