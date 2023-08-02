@@ -33,6 +33,12 @@ public:
     uint64_t GetIntermediateBufferSize();
     AsdOps::Status Execute(Handle &handle, RunnerVariantPack &runnerVariantPack);
 
+protected:
+    virtual void SetSaveTensorDir(const std::string &tensorDir);
+    virtual void SetId(const std::string &id);
+    friend class GraphRunner;
+    friend class Plan;
+
 private:
     virtual AsdOps::Status IsConsistent(const RunnerVariantPack &runnerVariantPack);
     virtual AsdOps::Status SetupImpl(const RunnerVariantPack &runnerVariantPack);
@@ -41,6 +47,10 @@ private:
     virtual uint64_t GetWorkspaceBufferSizeImpl();
     virtual uint64_t GetIntermediateBufferSizeImpl();
     virtual AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack);
+
+protected:
+    std::string tensorDir_;
+    std::string id_;
 
 private:
     std::string name_;

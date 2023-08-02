@@ -223,6 +223,25 @@ AsdOps::Status GraphRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runne
     return AsdOps::Status::OkStatus();
 }
 
+void GraphRunner::SetSaveTensorDir(const std::string &tensorDir)
+{
+    tensorDir_ = tensorDir;
+    for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); nodeId++) {
+        auto &node = runnerGraph_.nodes.at(nodeId);
+        std::string newTensorDir = std::to_string(nodeId) + "_" + node.runner->GetName();
+        node.runner->SetSaveTensorDir(tensorDir + "/" + newTensorDir);
+    }
+}
+
+void GraphRunner::SetId(const std::string &id)
+{
+    id_ = id;
+    for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); nodeId++) {
+        auto &node = runnerGraph_.nodes.at(nodeId);
+        node.runner->SetId(id + "." + std::to_string(nodeId));
+    }
+}
+
 void GraphRunner::Reset()
 {
     selfIntermediateBufferSize_ = 0;
@@ -467,14 +486,6 @@ AsdOps::Status GraphRunner::ExecuteAllRunner(Handle &handle, RunnerVariantPack &
             int ret = AsdRtStreamSynchronize(handle.stream);
             AsdOps::GetSingleton<Statistic>().syclTime += timer.ElapsedMicroSecond();
             ASD_LOG_IF(ret != 0, ERROR) << GetName() << " node[" << nodeId << "] stream sync fail, ret:" << ret;
-        }
-
-        if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
-            AsdRtStreamSynchronize(handle.stream);
-            std::string dirPath = Config::GetSaveTensorDir() + "/" + GetName() + "/" + std::to_string(nodeId) + "_" +
-                                  node.runner->GetName();
-            TensorUtil::SaveVariantPack(handle, node.runnerVariantPack, dirPath);
-            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] save runner variant pack, dir:" << dirPath;
         }
     }
 

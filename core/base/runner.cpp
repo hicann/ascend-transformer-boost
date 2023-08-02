@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 #include "acltransformer/runner.h"
+#include <asdops/utils/singleton/singleton.h>
+#include <asdops/utils/log/log.h>
+#include <asdops/utils/rt/rt.h>
+#include "acltransformer/config.h"
+#include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
 Runner::Runner(const std::string &name) : name_(name) {}
@@ -48,7 +53,18 @@ AsdOps::Status Runner::Execute(Handle &handle, RunnerVariantPack &runnerVariantP
     if (!st.Ok()) {
         return st;
     }
-    return ExecuteImpl(handle, runnerVariantPack);
+
+    st = ExecuteImpl(handle, runnerVariantPack);
+
+    if (AsdOps::GetSingleton<Config>().IsSaveTensor() &&
+        (AsdOps::GetSingleton<Config>().IsSaveTensorForRunner(GetName()) ||
+         AsdOps::GetSingleton<Config>().IsSaveTensorForNode(id_))) {
+        int ret = AsdRtStreamSynchronize(handle.stream);
+        ASD_LOG_IF(ret != 0, ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
+        TensorUtil::SaveVariantPack(handle, runnerVariantPack, tensorDir_);
+        ASD_LOG(INFO) << GetName() << " save variant pack at " << tensorDir_;
+    }
+    return st;
 }
 
 AsdOps::Status Runner::IsConsistent(const RunnerVariantPack &runnerVariantPack) { return AsdOps::Status::OkStatus(); }
@@ -67,4 +83,8 @@ AsdOps::Status Runner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVari
 {
     return AsdOps::Status::OkStatus();
 }
+
+void Runner::SetSaveTensorDir(const std::string &tensorDir) { tensorDir_ = tensorDir; }
+
+void Runner::SetId(const std::string &id) { id_ = id; }
 } // namespace AclTransformer

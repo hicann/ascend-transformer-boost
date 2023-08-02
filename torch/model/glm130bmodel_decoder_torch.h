@@ -62,6 +62,7 @@ private:
     // OUT:outTensor + presentKey + presentValue
     void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
                                 torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut);
+    std::string GetSaveTensorDir();
 
 private:
     Glm130BModelParam modelParam_;
