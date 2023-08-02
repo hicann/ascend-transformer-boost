@@ -13,30 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef MLP_OPS_RUNNER_BUILDER_H
-#define MLP_OPS_RUNNER_BUILDER_H
-#include <asdops/utils/log/log.h>
-#include "acltransformer/runner_builder.h"
+#ifndef MLP_OPS_LLAMA13B_RUNNER_H
+#define MLP_OPS_LLAMA13B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/mlp.h"
-#include "mlp_ops_runner.h"
-#include "mlp_ops_glm130b_runner.h"
-#include "mlp_ops_llama13b_runner.h"
 
 namespace AclTransformer {
-class MlpOpsRunnerBuilder : public RunnerBuilder {
+class MlpOpsLlama13bRunner : public OpsRunner {
 public:
-    MlpOpsRunnerBuilder(const MlpParam &param) : param_(param) {}
-    virtual ~MlpOpsRunnerBuilder() = default;
-    Runner *Build() override
-    {
-        if (param_.model == "glm130b") {
-            return new MlpOpsGlm130bRunner(param_);
-        } else if (param_.model == "llama13b") {
-            return new MlpOpsLlama13bRunner(param_);
-        } else {
-            return new MlpOpsRunner(param_);
-        }
-    }
+    MlpOpsLlama13bRunner(const MlpParam &param);
+    virtual ~MlpOpsLlama13bRunner();
 
 private:
     MlpParam param_;
