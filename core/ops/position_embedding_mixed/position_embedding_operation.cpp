@@ -39,17 +39,29 @@ uint64_t PositionEmbeddingOperation::GetOutTensorCount() const { return 3; }
 AsdOps::Status PositionEmbeddingOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                           AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    // in : Q,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
-    // out : Q ,[seq_len, batch, head_num, head_size]
-    outTensorDescs.at(0) = inTensors.at(0).desc;
-    outTensorDescs.at(0).dims.clear();
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
-    outTensorDescs.at(0).dims.push_back(param_.headNum);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3); // 3=qkv
-    outTensorDescs.at(1) = outTensorDescs.at(0);
-    outTensorDescs.at(2) = outTensorDescs.at(0);
-
+    if (param_.model == "gptneox20b") {
+        // gptnexo20b in : QKV [bs, sq, 3 * all_hs], positionIds [bs, sql], cosTable, sinTable [sq, rd]
+        // out: q, k, v [bs, hn, sq, hs]
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(param_.headNum);
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3);
+        outTensorDescs.at(1) = outTensorDescs.at(0);
+        outTensorDescs.at(2) = outTensorDescs.at(0);
+    } else {
+        // in : Q,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
+        // out : Q ,[seq_len, batch, head_num, head_size]
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(param_.headNum);
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3); // 3=qkv
+        outTensorDescs.at(1) = outTensorDescs.at(0);
+        outTensorDescs.at(2) = outTensorDescs.at(0);
+    }
     return AsdOps::Status::OkStatus();
 }
 
