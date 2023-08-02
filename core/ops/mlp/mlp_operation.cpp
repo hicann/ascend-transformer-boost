@@ -20,6 +20,7 @@
 #include "mlp_ops_runner_builder.h"
 
 static constexpr int64_t GLM130B_IN_TENSOR_SIZE = 3;
+static constexpr int64_t LLAMA13B_IN_TENSOR_SIZE = 3;
 static constexpr int64_t DEFAULT_IN_TENSOR_SIZE = 4;
 namespace AclTransformer {
 MlpOperation::MlpOperation(const MlpParam &param) : Operation("MlpOperation"), param_(param)
@@ -35,7 +36,13 @@ MlpOperation::~MlpOperation() {}
 
 uint64_t MlpOperation::GetInTensorCount() const
 {
-    return (param_.model == "glm130b") ? GLM130B_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE;
+    if (param_.model == "glm130b") {
+        return GLM130B_IN_TENSOR_SIZE;
+    } else if (param_.model == "llama13b") {
+        return LLAMA13B_IN_TENSOR_SIZE;
+    } else {
+        return DEFAULT_IN_TENSOR_SIZE;
+    }
 }
 
 uint64_t MlpOperation::GetOutTensorCount() const { return 1; }
@@ -49,6 +56,11 @@ AsdOps::Status MlpOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor
         auto outTensorDim0 = inTensors.at(0).desc.dims[0];
         auto outTensorDim1 = inTensors.at(0).desc.dims[1];
         auto outTensorDim2 = inTensors.at(1).desc.dims[0] / 2;
+        outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
+    } else if (param_.model == "llama13b") {
+        auto outTensorDim0 = inTensors.at(0).desc.dims[0];
+        auto outTensorDim1 = inTensors.at(0).desc.dims[1];
+        auto outTensorDim2 = inTensors.at(1).desc.dims[0];
         outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
     }
 
