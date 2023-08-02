@@ -426,9 +426,9 @@ class BaseTransformer(torch.nn.Module):
                 device=device
             )
 
-        def get_acl_layer(layer_id):
-            acl_layer = torch.classes.OperationTorch.OperationTorch("Glm130BLayerOperation")
-            acl_layer.set_param(
+        def get_acl_layer_decoder(layer_id):
+            acl_layer_decoder = torch.classes.OperationTorch.OperationTorch("Glm130BLayerDecoderOperation")
+            acl_layer_decoder.set_param(
                 json.dumps({"layerNormEps": layernorm_epsilon,
                             "transKey": False,
                             "headNum": num_attention_heads,
@@ -439,12 +439,27 @@ class BaseTransformer(torch.nn.Module):
                             "residualAddScale": (2 * num_layers) ** 0.5
                 })
             )
-            return acl_layer
-
+            return acl_layer_decoder
+        
+        def get_acl_layer_encoder(layer_id):
+            acl_layer_encoder = torch.classes.OperationTorch.OperationTorch("Glm130BLayerEncoderOperation")
+            acl_layer_encoder.set_param(
+                json.dumps({"layerNormEps": layernorm_epsilon,
+                            "transKey": False,
+                            "headNum": num_attention_heads,
+                            "dk": self.head_size,
+                            "layerId": layer_id,
+                            "rank": self.rank,
+                            "rankSize": self.rankSize,
+                            "residualAddScale": (2 * num_layers) ** 0.5
+                })
+            )
+            return acl_layer_encoder
 
         self.layers = torch.nn.ModuleList(
             [get_layer(layer_id) for layer_id in range(num_layers)])
-        self.acl_layers = [get_acl_layer(layer_id) for layer_id in range(num_layers)]
+        self.acl_layers_decoder = [get_acl_layer_decoder(layer_id) for layer_id in range(num_layers)]
+        self.acl_layers_encoder = [get_acl_layer_encoder(layer_id) for layer_id in range(num_layers)]
 
         # Final layer norm before output.
         self.use_final_layernorm = use_final_layernorm

@@ -30,7 +30,7 @@ public:
     Runner *Build() override { 
             if (param_.model == "openbert") {
                 return new SelfAttentionOpsOpenbertRunner(param_);
-            } else if (param_.model == "chatglm6b") {
+            } else if (param_.model == "chatglm6b" || param_.model == "glm130b") {
                 if (AsdOps::GetSingleton<Config>().Is910B()) {
                     return new SelfAttentionOpsChatglm6bRunner(param_); 
                 } else {
