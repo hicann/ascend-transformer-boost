@@ -18,6 +18,9 @@
 namespace AclTransformer {
 struct PositionEmbeddingFusionParam {
     int64_t headNum = 0;
+    int64_t numHeadPerPartition = 0;
+    int64_t hiddenSizePerHead = 0;
+    int64_t numGroupsPerPartition = 0;
     std::string model = "chatglm";
 };
 } // namespace AclTransformer

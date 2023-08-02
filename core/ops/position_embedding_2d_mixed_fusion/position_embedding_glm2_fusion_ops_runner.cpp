@@ -60,6 +60,12 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     auto &split0Node = kernelGraph_.nodes[nodeNum++];
     auto &rope0Node = kernelGraph_.nodes[nodeNum++];
 
+    int64_t qLayerDim = param_.numHeadPerPartition * param_.hiddenSizePerHead;
+    int64_t kLayerDim = param_.numGroupsPerPartition * param_.hiddenSizePerHead;
+    int64_t np = param_.numHeadPerPartition;
+    int64_t hn = param_.hiddenSizePerHead;
+    int64_t gp = param_.numGroupsPerPartition;
+
     // split qkv
     asStrided0Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
     asStrided0Node.inTensors = {&mixedQkv};

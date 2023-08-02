@@ -124,8 +124,10 @@ AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
-    param.headNum = paramJson["headNum"].get<int64_t>(); 
-    ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<std::int64_t>();
+        ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    }
     return new AclTransformer::RopeOperation(param);
 }
 static AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
