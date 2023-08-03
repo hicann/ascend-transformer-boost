@@ -253,7 +253,11 @@ function fn_generate_doxygen()
     if [[ $OUTPUT_DIR != $CODE_ROOT/output ]];then
         sed -i 's|OUTPUT_DIRECTORY       =.\/output\/acltransformer\/doc|OUTPUT_DIRECTORY       ='"$OUTPUT_DIR"'\/acltransformer\/doc|g' $CODE_ROOT/Doxyfile
     fi
-    /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile >/dev/null 2>&1
+    if [ -f "/usr/local/doxygen/bin/doxygen"];then
+        /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile >/dev/null 2>&1
+    else 
+        echo "/usr/local/doxygen/bin/doxygen not exist,not generate doc"
+    fi
 }
 
 function fn_run_pythontest()
@@ -398,9 +402,6 @@ function fn_main()
 
     fn_init_pytorch_env
     case "${arg1}" in
-        "3rdparty")
-            fn_build_3rdparty
-            ;;
         "download_testdata")
             fn_download_testdata
             ;;
@@ -410,12 +411,15 @@ function fn_main()
             ;;
         "unittest")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
+            fn_build_3rdparty
             fn_build
             ;;
         "unittest_and_run")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
+            fn_build_3rdparty
             fn_build
+            fn_run_unittests
             fn_build_coverage
             ;;
         "pythontest")
