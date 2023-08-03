@@ -27,9 +27,9 @@ GatherOperation::GatherOperation(const PositionEmbeddingFusionParam &param)
 
 GatherOperation::~GatherOperation() {}
 
-uint64_t GatherOperation::GetInTensorCount() const { return inTensorSize; }
+uint64_t GatherOperation::GetInTensorCount() const { return IN_TENSOR_SIZE; }
 
-uint64_t GatherOperation::GetOutTensorCount() const { return outTensorSize; }
+uint64_t GatherOperation::GetOutTensorCount() const { return OUT_TENSOR_SIZE; }
 
 AsdOps::Status
 GatherOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
@@ -40,7 +40,7 @@ GatherOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
     outTensorDescs.at(0).dims.push_back(param_.headNum);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[2] / param_.headNum / kqvSliceSize);
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[2] / param_.headNum / KQV_SLICE_SIZE);
 
     outTensorDescs.at(1) = outTensorDescs.at(0);
     outTensorDescs.at(2) = outTensorDescs.at(0); // 2=index

@@ -26,6 +26,11 @@ public:
 
 private:
     PositionEmbeddingFusionParam param_;
+    const std::size_t IN_TENSOR_SIZE = 4;
+    const std::size_t OUT_TENSOR_SIZE = 3;
+    const std::size_t INTER_TENSOR_SIZE = 2;
+    const std::size_t NODE_SIZE = 2;
+    const std::int32_t KQV_SLICE_SIZE = 3;
     const std::size_t size2 = 2;
     const std::size_t index2 = 2;
     const std::size_t index3 = 3;

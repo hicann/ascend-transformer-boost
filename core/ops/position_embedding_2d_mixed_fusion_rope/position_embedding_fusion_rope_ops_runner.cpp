@@ -26,28 +26,26 @@ PositionEmbeddingFusionRopeOpsRunner::PositionEmbeddingFusionRopeOpsRunner(const
 {
     ASD_LOG(INFO) << "PositionEmbeddingFusionRopeOpsRunner::PositionEmbeddingFusionOpsRunner called, headNum: "
                   << param_.headNum;
-    const size_t inTensorSize = 4;
-    const size_t outTensorSize = 3;
-    const size_t interTensorSize = 2;
-    const size_t nodeSize = 2;
-    const int32_t kqvSliceSize = 3;
-    kernelGraph_.inTensors.resize(inTensorSize);
-    AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(0);
-    AsdOps::Tensor &cos_sum = kernelGraph_.inTensors.at(index2);
-    AsdOps::Tensor &sin_sum = kernelGraph_.inTensors.at(index3);
-    AsdOps::Tensor &seqLen = kernelGraph_.inTensors.at(index4);
 
-    kernelGraph_.outTensors.resize(outTensorSize);
+    const int32_t kqvSliceSize = 3;
+    kernelGraph_.inTensors.resize(IN_TENSOR_SIZE);
+    AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(0);
+    int64_t tempInTensorNum = 1;
+    AsdOps::Tensor &cos_sum = kernelGraph_.inTensors.at(tempInTensorNum++);
+    AsdOps::Tensor &sin_sum = kernelGraph_.inTensors.at(tempInTensorNum++);
+    AsdOps::Tensor &seqLen = kernelGraph_.inTensors.at(tempInTensorNum++);
+
+    kernelGraph_.outTensors.resize(OUT_TENSOR_SIZE);
     AsdOps::Tensor &qEmbedded = kernelGraph_.outTensors.at(0);
     AsdOps::Tensor &kEmbedded = kernelGraph_.outTensors.at(1);
-    AsdOps::Tensor &value = kernelGraph_.outTensors.at(index2);  // V
+    AsdOps::Tensor &value = kernelGraph_.outTensors.at(2);  // V
 
-    kernelGraph_.internalTensors.resize(interTensorSize);
+    kernelGraph_.internalTensors.resize(INTER_TENSOR_SIZE);
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &qLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &kLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
 
-    kernelGraph_.nodes.resize(nodeSize);
+    kernelGraph_.nodes.resize(NODE_SIZE);
     int64_t nodeNum = 0;
     auto &split0Node = kernelGraph_.nodes[nodeNum++];
     auto &rope0Node = kernelGraph_.nodes[nodeNum++];

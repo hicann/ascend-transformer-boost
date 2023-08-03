@@ -33,9 +33,9 @@ protected:
 
 private:
     PositionEmbeddingFusionParam param_;
-    const size_t inTensorSize = 3;
-    const size_t outTensorSize = 2;
-    const int32_t kqvSliceSize = 3;
+    const size_t IN_TENSOR_SIZE = 3;
+    const size_t OUT_TENSOR_SIZE = 2;
+    const int32_t KQV_SLICE_SIZE = 3;
 };
 } // namespace AclTransformer
 #endif

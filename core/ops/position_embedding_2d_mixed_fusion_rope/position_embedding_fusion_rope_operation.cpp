@@ -28,9 +28,9 @@ OptRopeOperation::OptRopeOperation(const PositionEmbeddingFusionParam &param)
 
 OptRopeOperation::~OptRopeOperation() {}
 
-uint64_t OptRopeOperation::GetInTensorCount() const { return inTensorSize; }
+uint64_t OptRopeOperation::GetInTensorCount() const { return IN_TENSOR_SIZE; }
 
-uint64_t OptRopeOperation::GetOutTensorCount() const { return outTensorSize; }
+uint64_t OptRopeOperation::GetOutTensorCount() const { return OUT_TENSOR_SIZE; }
 
 AsdOps::Status
 OptRopeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
@@ -41,7 +41,7 @@ OptRopeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensor
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
     outTensorDescs.at(0).dims.push_back(param_.headNum);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[2] / param_.headNum / kqvSliceSize);
+    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[2] / param_.headNum / KQV_SLICE_SIZE);
 
     outTensorDescs.at(1) = outTensorDescs.at(0);
     outTensorDescs.at(2) = outTensorDescs.at(0); // 2=index

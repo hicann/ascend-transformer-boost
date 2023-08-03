@@ -26,22 +26,17 @@ PositionEmbeddingFusionGatherOpsRunner::PositionEmbeddingFusionGatherOpsRunner(c
 {
     ASD_LOG(INFO) << "PositionEmbeddingFusionGatherOpsRunner::PositionEmbeddingFusionOpsRunner called, headNum: "
                   << param_.headNum;
-    const size_t inTensorSize = 3;
-    const size_t outTensorSize = 2;
-    const size_t interTensorSize = 8;
-    const size_t nodeSize = 8;
 
-    kernelGraph_.inTensors.resize(inTensorSize);
+    kernelGraph_.inTensors.resize(IN_TENSOR_SIZE);
     AsdOps::Tensor &positionIds = kernelGraph_.inTensors.at(0);
-    AsdOps::Tensor &cosTable = kernelGraph_.inTensors.at(index2);
-    AsdOps::Tensor &sinTable = kernelGraph_.inTensors.at(index3);
+    AsdOps::Tensor &cosTable = kernelGraph_.inTensors.at(2);
+    AsdOps::Tensor &sinTable = kernelGraph_.inTensors.at(3);
 
-
-    kernelGraph_.outTensors.resize(outTensorSize);
+    kernelGraph_.outTensors.resize(OUT_TENSOR_SIZE);
     AsdOps::Tensor &cos_sum = kernelGraph_.outTensors.at(0);
     AsdOps::Tensor &sin_sum = kernelGraph_.outTensors.at(1);
 
-    kernelGraph_.internalTensors.resize(interTensorSize);
+    kernelGraph_.internalTensors.resize(INTER_TENSOR_SIZE);
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &positionIds0 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &positionIds1 = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -49,10 +44,8 @@ PositionEmbeddingFusionGatherOpsRunner::PositionEmbeddingFusionGatherOpsRunner(c
     AsdOps::Tensor &sin0 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &cos1 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &sin1 = kernelGraph_.internalTensors.at(internalTensorNum++);
-    // AsdOps::Tensor &cos_sum = kernelGraph_.internalTensors.at(internalTensorNum++);
-    // AsdOps::Tensor &sin_sum = kernelGraph_.internalTensors.at(internalTensorNum++);
 
-    kernelGraph_.nodes.resize(nodeSize);
+    kernelGraph_.nodes.resize(NODE_SIZE);
     int64_t nodeNum = 0;
     auto &asStrided0Node = kernelGraph_.nodes[nodeNum++];
     auto &asStrided1Node = kernelGraph_.nodes[nodeNum++];
