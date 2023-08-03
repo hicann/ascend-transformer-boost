@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_ops_gptneox20b_runner.h"
+#include "self_attention_kv_cache_ops_gptneox20b_runner.h"
 #include <numeric>
 #include <cmath>
 #include <asdops/utils/log/log.h>
@@ -24,22 +24,27 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionOpsGptNeox20bRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
+SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner(const SelfAttentionParam &param)
+    : OpsRunner("SelfAttentionKvCacheOpsGptNeox20bRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner called"
+    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner called"
                   << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
                   << ",layerId: " << param_.layerId;
-    kernelGraph_.inTensors.resize(4);
+    kernelGraph_.inTensors.resize(6);
     int64_t inTensorId = 0;
-    AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(inTensorId++);  //[bs, hn, 1, hs]
     AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(inTensorId++);
     AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(inTensorId++);
-    AsdOps::Tensor &attention_mask = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &attention_mask = kernelGraph_.inTensors.at(inTensorId++);  // [1, 1, sq, sq]
+    AsdOps::Tensor &pastKey = kernelGraph_.inTensors.at(inTensorId++);    // [bs, hn, sq, hs]
+    AsdOps::Tensor &pastValue = kernelGraph_.inTensors.at(inTensorId++);
 
-    kernelGraph_.outTensors.resize(1);
+    kernelGraph_.outTensors.resize(3);
     int64_t outTensorId = 0;
     AsdOps::Tensor &context = kernelGraph_.outTensors.at(outTensorId++);
+    AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(outTensorId++);
+    AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(outTensorId++);
+
 
     kernelGraph_.internalTensors.resize(10);
     int64_t internalTensorId = 0;
@@ -54,8 +59,10 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     AsdOps::Tensor &softmaxFP16Out = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &bmmVout = kernelGraph_.internalTensors.at(internalTensorId++);
 
-    kernelGraph_.nodes.resize(11);
+    kernelGraph_.nodes.resize(13);
     int64_t nodeId = 0;
+    auto &catKeyNode = kernelGraph_.nodes.at(nodeId++);
+    auto &catValueNode = kernelGraph_.nodes.at(nodeId++);
     auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
     auto &mulsKNode = kernelGraph_.nodes.at(nodeId++);
     auto &permuteKNode = kernelGraph_.nodes.at(nodeId++);
@@ -69,6 +76,27 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
 
     auto &bmmVNode = kernelGraph_.nodes.at(nodeId++);
     auto &permuteContextNode = kernelGraph_.nodes.at(nodeId++);
+
+    // cat key
+    // key = torch.cat(key, pastKey)
+    catKeyNode.opDesc = {0, "ConcateOperation", AsdOps::OpParam::Concat({2})};
+    catKeyNode.inTensors = {&pastKey, &mixedKey};
+    catKeyNode.outTensors = {&presentKey};
+    catKeyNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+    };
+
+    catValueNode.opDesc = {0, "ConcateOperation", AsdOps::OpParam::Concat({2})};
+    catValueNode.inTensors = {&pastValue, &mixedValue};
+    catValueNode.outTensors = {&presentValue};
+    catValueNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+    };
+
 
     // scaling down q
     float scalingAttr0 = (1.0 / (sqrt(param_.dk))) * param_.scalingFactor;
@@ -87,7 +115,7 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     ASD_LOG(INFO) << "Scaling down for key with scaling factor " << scalingAttr1;
     mulsKNode.opDesc = {0, "ElewiseOperation",
                         AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, scalingAttr1})};
-    mulsKNode.inTensors = {&mixedKey};
+    mulsKNode.inTensors = {&presentKey};
     mulsKNode.outTensors = {&kScaledOut};
     mulsKNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
@@ -156,7 +184,7 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     castAttnToFp16.outTensors = {&softmaxFP16Out};
 
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
-    bmmVNode.inTensors = {&softmaxFP16Out, &mixedValue};
+    bmmVNode.inTensors = {&softmaxFP16Out, &presentValue};
     bmmVNode.outTensors = {&bmmVout};
     bmmVNode.inTensorViewFuncs.resize(bmmVNode.inTensors.size());
     bmmVNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
@@ -182,5 +210,5 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     };
 }
 
-SelfAttentionOpsGptNeox20bRunner::~SelfAttentionOpsGptNeox20bRunner() {}
+SelfAttentionKvCacheOpsGptNeox20bRunner::~SelfAttentionKvCacheOpsGptNeox20bRunner() {}
 } // namespace AclTransformer
