@@ -397,7 +397,7 @@ void OpsRunner::RunAllKernel(Handle &handle)
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName()
                           << " AsdRtStreamSynchronize, stream:" << handle.stream;
             int ret = AsdRtStreamSynchronize(handle.stream);
-            AsdOps::GetSingleton<Statistic>().syclTime += timer.ElapsedMicroSecond();
+            AsdOps::GetSingleton<Statistic>().streamSyncTime += timer.ElapsedMicroSecond();
             ASD_LOG_IF(ret != 0, ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
         }
 

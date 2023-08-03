@@ -218,7 +218,9 @@ void OperationTorch::CreateAtOutTensors(const std::vector<torch::Tensor> &atInTe
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
         ASD_LOG(INFO) << name_ << " infer shape outTensorDescs[" << i
                       << "]:" << AclTransformer::TensorUtil::AsdOpsTensorDescToString(outTensorDescs.at(i));
+        AsdOps::Timer timer;
         at::Tensor newTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
+        AsdOps::GetSingleton<AclTransformer::Statistic>().createTensorTime += timer.ElapsedMicroSecond();
         atOutTensors.at(i) = newTensor;
     }
 }
