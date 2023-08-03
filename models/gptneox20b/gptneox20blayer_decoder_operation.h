@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_GPTNEOX20B_GPTNEOX20BBLAYER_DECODER_OPERATION_H
-#define OPS_GPTNEOX20B_GPTNEOX20BBLAYER_DECODER_OPERATION_H
+#ifndef OPS_GPTNEOX20B_GPTNEOX20BLAYER_DECODER_OPERATION_H
+#define OPS_GPTNEOX20B_GPTNEOX20BLAYER_DECODER_OPERATION_H
 #include "acltransformer/graph_operation.h"
 #include "gptneox20blayer_param.h"
 
