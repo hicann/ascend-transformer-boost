@@ -388,6 +388,7 @@ class BaseTransformer(torch.nn.Module):
         self.headNum = num_attention_heads
         self.num_layers = num_layers
         self.rotary_emb = None
+        self.weight_flag = True
 
         # create embedding parameters
         self.embedding_dropout = torch.nn.Dropout(embedding_dropout_prob)
@@ -446,8 +447,12 @@ class BaseTransformer(torch.nn.Module):
                             "layerNormEps": layernorm_epsilon
                             })
         # "rankRoot": 0,
+        # transformer decoder 
         self.acl_glm130b_decoder_operation = torch.classes.Glm130BModelDecoderTorch.Glm130BModelDecoderTorch()
         self.acl_glm130b_decoder_operation.set_param(acl_param)
+        # transformer encoder
+        self.acl_glm130b_encoder_operation = torch.classes.Glm130BModelEncoderTorch.Glm130BModelEncoderTorch()
+        self.acl_glm130b_encoder_operation.set_param(acl_param)
 
         # Final layer norm before output.
         self.use_final_layernorm = use_final_layernorm
@@ -593,7 +598,9 @@ class BaseTransformer(torch.nn.Module):
                 self.acl_weights.extend(acl_layer_weights[0:8])
                 self.acl_weights.extend(acl_layer_weights[10:12])
                 self.acl_weights.extend(acl_layer_weights[8:10])  
-
+            if self.weight_flag:
+                self.acl_glm130b_decoder_operation.set_weight(self.acl_weights)
+                self.weight_flag = False
             pastKeyTensors = []
             pastValueTensors = []
             mem = None
@@ -612,52 +619,67 @@ class BaseTransformer(torch.nn.Module):
                         pastKeyTensors.append(pastk)
                         pastValueTensors.append(pastv)
                 
-                if mem is not None:
-                    self.acl_glm130b_decoder_operation.set_weight(self.acl_weights)
+                if mem is not None:                   
                     cos, sin = self.rotary_emb(acl_decoder_input, seq_len=position_ids.max() + 1)
                     start = time.time()
                     acl_decoder_output = self.acl_glm130b_decoder_operation.execute(acl_decoder_input, position_ids,
                                                                                   cos, sin, attention_mask,
                                                                                   pastKeyTensors, pastValueTensors)
-                    print('acl decoder output[0][0,0,0] : ' + str(acl_decoder_output[0][0,0,0]))
-                    print('decoder takes (second) : ' + str(time.time() - start))
-                    
-            for i, layer in enumerate(self.layers):
-                args = [hidden_states, attention_mask]
+                    # print('acl decoder output[0][0,0,0] : ' + str(acl_decoder_output[0][0,0,0]))
+                    # print('decoder takes (second) : ' + str(time.time() - start))
+                    hidden_states = acl_decoder_output[0]
+                    for i in range(self.num_layers):
+                        presentk = acl_decoder_output[i + 1]
+                        presentv = acl_decoder_output[i + 1 + self.num_layers]
+                        seq_len, b, nh, hidden_size = presentk.shape
+                        acl_cache_kv =  (
+                            torch.stack((presentk[-1:], presentv[-1:]))
+                            .permute(2, 1, 0, 3, 4)
+                            .detach()
+                            .contiguous()
+                            .view(b, 1, nh * hidden_size * 2)
+                        )
 
-                output_this_layer_obj, output_cross_layer_obj = {}, {}
+                        output_this_layer_dict = {}
+                        output_this_layer_dict['mem_kv'] = acl_cache_kv
+                        output_per_layers.append(output_this_layer_dict)
 
-                if 'layer_forward' in self.hooks: # customized layer_forward
-                    layer_ret = self.hooks['layer_forward'](*args,
-                        layer_id=torch.tensor(i),
-                        **kw_args,
-                        position_ids=position_ids,
-                        **output_cross_layer,
-                        output_this_layer=output_this_layer_obj, output_cross_layer=output_cross_layer_obj
-                    )
-                else:
-                    layer_ret = layer(*args, layer_id=torch.tensor(i), **kw_args, **output_cross_layer,
-                        output_this_layer=output_this_layer_obj, output_cross_layer=output_cross_layer_obj)
-                if isinstance(layer_ret, tuple):
-                    layer_ret = layer_ret[0] # for legacy API
-                hidden_states, output_this_layer, output_cross_layer = layer_ret, output_this_layer_obj, output_cross_layer_obj
+            if mem is None:            
+                for i, layer in enumerate(self.layers):
+                    args = [hidden_states, attention_mask]
 
-                if output_hidden_states:
-                    output_this_layer['hidden_states'] = hidden_states
-                output_per_layers.append(output_this_layer)
+                    output_this_layer_obj, output_cross_layer_obj = {}, {}
+
+                    if 'layer_forward' in self.hooks: # customized layer_forward
+                        layer_ret = self.hooks['layer_forward'](*args,
+                            layer_id=torch.tensor(i),
+                            **kw_args,
+                            position_ids=position_ids,
+                            **output_cross_layer,
+                            output_this_layer=output_this_layer_obj, output_cross_layer=output_cross_layer_obj
+                        )
+                    else:
+                        layer_ret = layer(*args, layer_id=torch.tensor(i), **kw_args, **output_cross_layer,
+                            output_this_layer=output_this_layer_obj, output_cross_layer=output_cross_layer_obj)
+                    if isinstance(layer_ret, tuple):
+                        layer_ret = layer_ret[0] # for legacy API
+                    hidden_states, output_this_layer, output_cross_layer = layer_ret, output_this_layer_obj, output_cross_layer_obj
+
+                    if output_hidden_states:
+                        output_this_layer['hidden_states'] = hidden_states
+                    output_per_layers.append(output_this_layer)
             
-            if mem is not None:
-                if torch.allclose(acl_decoder_output[0], hidden_states, rtol=0.02, atol=0.02):
-                    if torch.distributed.get_rank() == 0:
-                        print("~~~~~~~~~test decoder equal!~~~~~~~~~")
-                        print('acl output', acl_decoder_output[0])
-                        print('torch output', hidden_states)
-                else:
-                    if torch.distributed.get_rank() == 0:
-                        print("+++++++++test decoder NOT equal!+++++++++")
-                        print('acl output', acl_decoder_output[0])
-                        print('torch output', hidden_states)
-                hidden_states = acl_decoder_output[0]
+            # if mem is not None:
+            #     if torch.allclose(acl_decoder_output[0], hidden_states, rtol=0.02, atol=0.02):
+            #         if torch.distributed.get_rank() == 0:
+            #             print("~~~~~~~~~test decoder equal!~~~~~~~~~")
+            #             print('acl output', acl_decoder_output[0])
+            #             print('torch output', hidden_states)
+            #     else:
+            #         if torch.distributed.get_rank() == 0:
+            #             print("+++++++++test decoder NOT equal!+++++++++")
+            #             print('acl output', acl_decoder_output[0])
+            #             print('torch output', hidden_states)
 
         # Final layer norm.
         if self.use_final_layernorm:
