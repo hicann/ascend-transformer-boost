@@ -35,7 +35,7 @@ public:
 
 protected:
     virtual void SetSaveTensorDir(const std::string &tensorDir);
-    virtual void SetId(const std::string &id);
+    bool IsSaveTensor();
     friend class GraphRunner;
     friend class Plan;
 
@@ -50,7 +50,6 @@ private:
 
 protected:
     std::string tensorDir_;
-    std::string id_;
 
 private:
     std::string name_;

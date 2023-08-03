@@ -117,10 +117,6 @@ void ChatGlm6BModelDecoderAllTorch::SetParam(std::string param)
     operations_.at(modelParam_.layerNum + OPERATION_COUNT_BEFORE_LAYER).reset(finalLayernorm);
     plans_.at(modelParam_.layerNum + OPERATION_COUNT_BEFORE_LAYER).reset(finalLayernormPlan);
 
-    for (size_t i = 0; i < plans_.size(); ++i) {
-        plans_.at(i)->SetRunnerId("0." + std::to_string(i));
-    }
-
     ASD_LOG(INFO) << "ChatGlm6BModel set param end";
 }
 

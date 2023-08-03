@@ -129,6 +129,9 @@ void TensorUtil::SaveVariantPack(Handle &handle, const VariantPack &variantPack,
 
 void TensorUtil::SaveVariantPack(Handle &handle, const RunnerVariantPack &runnerVariantPack, const std::string &dirPath)
 {
+    int ret = AsdRtStreamSynchronize(handle.stream);
+    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtStreamSynchronize fail, ret:" << ret;
+
     AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     for (size_t i = 0; i < runnerVariantPack.inTensors.size(); ++i) {
@@ -146,6 +149,9 @@ void TensorUtil::SaveVariantPack(Handle &handle, const RunnerVariantPack &runner
 
 void TensorUtil::SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath)
 {
+    int ret = AsdRtStreamSynchronize(handle.stream);
+    ASD_LOG_IF(ret != 0, ERROR) << "AsdRtStreamSynchronize fail, ret:" << ret;
+
     AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     for (size_t i = 0; i < runInfo.GetInTensorCount(); ++i) {

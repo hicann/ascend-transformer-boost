@@ -159,6 +159,10 @@ bool Config::IsConvertNCHWToND() const { return isConvertNCHWToND_; }
 
 bool Config::IsSaveTensorForRunner(const std::string &runnerName)
 {
+    if (saveTensorRunnerNameSet_.empty()) {
+        return true;
+    }
+
     for (auto &name : saveTensorRunnerNameSet_) {
         if (AsdOps::StartsWith(runnerName, name)) {
             return true;
@@ -167,26 +171,9 @@ bool Config::IsSaveTensorForRunner(const std::string &runnerName)
     return false;
 }
 
-bool Config::IsSaveTensorForKernel(const std::string &kernelName)
-{
-    for (auto &name : saveTensorKernelNameSet_) {
-        if (AsdOps::StartsWith(kernelName, name)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool Config::IsSaveTensorForNode(const std::string &nodeId)
-{
-    return saveTensorNodeIdSet_.find(nodeId) != saveTensorNodeIdSet_.end();
-}
-
 void Config::InitSaveTensor()
 {
     InitSaveTensor("ACLTRANSFORMER_SAVE_TENSOR_RUNNER", saveTensorRunnerNameSet_);
-    InitSaveTensor("ACLTRANSFORMER_SAVE_TENSOR_KERNEL", saveTensorKernelNameSet_);
-    InitSaveTensor("ACLTRANSFORMER_SAVE_TENSOR_NODE", saveTensorNodeIdSet_);
     const char *envStr = std::getenv("ACLTRANSFORMER_SAVE_TENSOR_MAX");
     if (envStr) {
         saveTensorMaxNum_ = atoll(envStr);
