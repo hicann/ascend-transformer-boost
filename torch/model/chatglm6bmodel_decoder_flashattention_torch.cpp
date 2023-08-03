@@ -86,7 +86,6 @@ void ChatGlm6BModelDecoderFlashattentionTorch::SetParam(std::string param)
         AclTransformer::Plan *plan = new AclTransformer::Plan();
         op->BuildPlan(plan);
         plans_.at(i).reset(plan);
-        plan->SetRunnerId("0." + std::to_string(i));
     }
 
     ASD_LOG(INFO) << "ChatGlm6BModel set param end";

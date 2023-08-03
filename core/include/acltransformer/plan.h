@@ -35,7 +35,6 @@ public:
     Plan();
     ~Plan();
     void SetRunnerSaveTensorDir(const std::string &dir);
-    void SetRunnerId(const std::string &id);
 
 public:
     AsdOps::Status Setup(Handle handle, const VariantPack &variantPack);
