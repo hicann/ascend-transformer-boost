@@ -9,7 +9,7 @@ add_subdirectory(ops)
 add_library(acltransformer_static STATIC ${SOURCE_FILES})
 
 target_link_libraries(acltransformer_static PRIVATE core_utils
-                      core_base core_ops dl asdops_static)
+                      core_base core_ops dl asdops_static  pthread)
 
 if(USE_TORCH_RUNNER)
 target_link_libraries(acltransformer_static PRIVATE
@@ -18,7 +18,11 @@ target_link_libraries(acltransformer_static PRIVATE
 endif()
 
 if(USE_LCCL_RUNNER)
-target_link_libraries(acltransformer_static PRIVATE lccl)
+target_link_libraries(acltransformer_static PRIVATE lccl ascendcl)
+endif()
+
+if(USE_HCCL_RUNNER)
+target_link_libraries(acltransformer_static PRIVATE hccl pthread)
 endif()
 
 add_library(acltransformer SHARED ${SOURCE_FILES})
@@ -33,7 +37,11 @@ target_link_libraries(acltransformer PRIVATE core_torch torch
 endif()
 
 if(USE_LCCL_RUNNER)
-target_link_libraries(acltransformer PRIVATE lccl)
+target_link_libraries(acltransformer PRIVATE lccl ascendcl)
+endif()
+
+if(USE_HCCL_RUNNER)
+target_link_libraries(acltransformer PRIVATE hccl pthread)
 endif()
 
 if(USE_PROFILING)

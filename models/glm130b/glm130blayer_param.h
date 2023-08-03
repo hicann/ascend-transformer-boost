@@ -26,6 +26,7 @@ struct Glm130BLayerParam {
     int rankSize = 1;
     float residualAddScale = 0;
     double layerNormEps = 0;
+    std::string backend = "lccl";
 };
 } // namespace AclTransformer
 #endif
