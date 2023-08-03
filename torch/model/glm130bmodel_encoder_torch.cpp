@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "glm130bmodel_decoder_torch.h"
+#include "glm130bmodel_encoder_torch.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #include <torch_npu/csrc/framework/utils/CalcuOpUtil.h>
@@ -29,23 +29,23 @@
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
 #include "torch/context/context.h"
-#include "models/glm130b/glm130blayer_decoder_operation.h"
+#include "models/glm130b/glm130blayer_encoder_operation.h"
 
 const size_t WEIGHT_COUNT_PER_LAYER = 12;
 
-Glm130BModelDecoderTorch::Glm130BModelDecoderTorch()
+Glm130BModelEncoderTorch::Glm130BModelEncoderTorch()
 {
-    ASD_LOG(INFO) << "Glm130BModelDecoderTorch::Glm130BModelDecoderTorch, TASK_QUEUE_ENABLE:"
+    ASD_LOG(INFO) << "Glm130BModelEncoderTorch::Glm130BModelEncoderTorch, TASK_QUEUE_ENABLE:"
                   << c10_npu::option::OptionsManager().CheckQueueEnable();
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
 }
 
-Glm130BModelDecoderTorch::~Glm130BModelDecoderTorch() {}
+Glm130BModelEncoderTorch::~Glm130BModelEncoderTorch() {}
 
-void Glm130BModelDecoderTorch::SetParam(std::string param)
+void Glm130BModelEncoderTorch::SetParam(std::string param)
 {
-    ASD_LOG(INFO) << "Glm130BModelDecoderTorch set param start, param:" << param;
+    ASD_LOG(INFO) << "Glm130BModelEncoderTorch set param start, param:" << param;
     modelParam_.FromString(param);
     operations_.resize(modelParam_.layerNum);
     plans_.resize(modelParam_.layerNum);
@@ -60,44 +60,42 @@ void Glm130BModelDecoderTorch::SetParam(std::string param)
         opParam.rankSize = modelParam_.rankSize;
         opParam.residualAddScale = modelParam_.residualAddScale;
         opParam.layerNormEps = modelParam_.layerNormEps;
-        AclTransformer::Operation *op = new AclTransformer::Glm130BLayerDecoderOperation(opParam);
+        AclTransformer::Operation *op = new AclTransformer::Glm130BLayerEncoderOperation(opParam);
         operations_.at(i).reset(op);
         AclTransformer::Plan *plan = new AclTransformer::Plan();
         op->BuildPlan(plan);
         plans_.at(i).reset(plan);
     }
 
-    ASD_LOG(INFO) << "Glm130BModelDecoderTorch set param end";
+    ASD_LOG(INFO) << "Glm130BModelEncoderTorch set param end";
 }
 
-void Glm130BModelDecoderTorch::SetWeight(std::vector<torch::Tensor> weightTensors)
+void Glm130BModelEncoderTorch::SetWeight(std::vector<torch::Tensor> weightTensors)
 {
     if (weightTensors.size() != modelParam_.layerNum * WEIGHT_COUNT_PER_LAYER) {
-        ASD_LOG(ERROR) << "Glm130BModelDecoderTorch set weight fail, weightTensors.size:" << weightTensors.size()
+        ASD_LOG(ERROR) << "Glm130BModelEncoderTorch set weight fail, weightTensors.size:" << weightTensors.size()
                        << " != " << modelParam_.layerNum * WEIGHT_COUNT_PER_LAYER;
         return;
     }
 
-    ASD_LOG(INFO) << "Glm130BModelDecoderTorch set weight success, size:" << weightTensors.size();
+    ASD_LOG(INFO) << "Glm130BModelEncoderTorch set weight success, size:" << weightTensors.size();
 
     weightTensors_ = weightTensors;
     Utils::ContiguousAtTensor(weightTensors_);
 }
 
-std::vector<torch::Tensor> Glm130BModelDecoderTorch::Execute(torch::Tensor hiddenStateTensor,
+std::vector<torch::Tensor> Glm130BModelEncoderTorch::Execute(torch::Tensor hiddenStateTensor,
                                                              torch::Tensor positionIdTensor,
                                                              torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                                                             torch::Tensor attentionMaskTensor,
-                                                             std::vector<torch::Tensor> pastKeyTensors,
-                                                             std::vector<torch::Tensor> pastValueTensors)
+                                                             torch::Tensor attentionMaskTensor)
 {
     timer_.Reset();
     torch::Tensor outTensor;
     std::vector<torch::Tensor> presentKeyTensors(modelParam_.layerNum);
     std::vector<torch::Tensor> presentValueTensors(modelParam_.layerNum);
 
-    ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor,
-                   pastKeyTensors, pastValueTensors, outTensor, presentKeyTensors, presentValueTensors, true);
+    ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor, outTensor,
+                   presentKeyTensors, presentValueTensors, true);
 
     std::vector<torch::Tensor> outTensors(1 + modelParam_.layerNum * 2);
     size_t tensorId = 0;
@@ -112,32 +110,26 @@ std::vector<torch::Tensor> Glm130BModelDecoderTorch::Execute(torch::Tensor hidde
     return outTensors;
 }
 
-void Glm130BModelDecoderTorch::ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
+void Glm130BModelEncoderTorch::ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
                                           torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                                          torch::Tensor attentionMaskTensor, std::vector<torch::Tensor> pastKeyTensors,
-                                          std::vector<torch::Tensor> pastValueTensors, torch::Tensor outTensor,
+                                          torch::Tensor attentionMaskTensor, torch::Tensor outTensor,
                                           std::vector<torch::Tensor> presentKeyTensors,
                                           std::vector<torch::Tensor> presentValueTensors)
 {
     timer_.Reset();
-    ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor,
-                   pastKeyTensors, pastValueTensors, outTensor, presentKeyTensors, presentValueTensors, false);
+    ExecuteOutImpl(hiddenStateTensor, positionIdTensor, cosTableTensor, sinTableTensor, attentionMaskTensor, outTensor,
+                   presentKeyTensors, presentValueTensors, false);
 }
 
-void Glm130BModelDecoderTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
+void Glm130BModelEncoderTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
                                               torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
-                                              torch::Tensor &attentionMaskTensor,
-                                              std::vector<torch::Tensor> &pastKeyTensors,
-                                              std::vector<torch::Tensor> &pastValueTensors, torch::Tensor &outTensor,
+                                              torch::Tensor &attentionMaskTensor, torch::Tensor &outTensor,
                                               std::vector<torch::Tensor> &presentKeyTensors,
                                               std::vector<torch::Tensor> &presentValueTensors, bool newOut)
 {
-    if ((int)pastKeyTensors.size() != modelParam_.layerNum || (int)pastValueTensors.size() != modelParam_.layerNum ||
-        (int)presentKeyTensors.size() != modelParam_.layerNum ||
+    if ((int)presentKeyTensors.size() != modelParam_.layerNum ||
         (int)presentValueTensors.size() != modelParam_.layerNum) {
-        ASD_LOG(ERROR) << "Glm130BModelDecoderTorch pastKeyTensors.size:" << pastKeyTensors.size()
-                       << ", pastValueTensors.size:" << pastValueTensors.size()
-                       << ", presentKeyTensors.size:" << presentKeyTensors.size()
+        ASD_LOG(ERROR) << "Glm130BModelEncoderTorch presentKeyTensors.size:" << presentKeyTensors.size()
                        << ", presentValueTensors.size:" << presentValueTensors.size();
         return;
     }
@@ -153,8 +145,6 @@ void Glm130BModelDecoderTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, 
     Utils::ContiguousAtTensor(cosTableTensor);
     Utils::ContiguousAtTensor(sinTableTensor);
     Utils::ContiguousAtTensor(attentionMaskTensor);
-    Utils::ContiguousAtTensor(pastKeyTensors);
-    Utils::ContiguousAtTensor(pastValueTensors);
     if (!newOut) {
         Utils::ContiguousAtTensor(outTensor);
         Utils::ContiguousAtTensor(presentKeyTensors);
@@ -176,8 +166,6 @@ void Glm130BModelDecoderTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, 
         opAtInTensors.at(inTensorId++) = cosTableTensor;      // cosTable
         opAtInTensors.at(inTensorId++) = sinTableTensor;      // sinTable
         opAtInTensors.at(inTensorId++) = attentionMaskTensor; // attentionMaskTensor
-        opAtInTensors.at(inTensorId++) = pastKeyTensors.at(layerId);
-        opAtInTensors.at(inTensorId++) = pastValueTensors.at(layerId);
 
         ExecuteSingleOperation(layerId, opAtInTensors, outTensor, presentKeyTensors.at(layerId),
                                presentValueTensors.at(layerId), newOut);
@@ -186,20 +174,20 @@ void Glm130BModelDecoderTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, 
     }
 
     AsdOps::GetSingleton<AclTransformer::Statistic>().totalTime += timer_.ElapsedMicroSecond();
-    ASD_LOG(FATAL) << "Glm130BModelDecoderTorch executeCount:" << executeCount_ << ", statistic:["
+    ASD_LOG(FATAL) << "Glm130BModelEncoderTorch executeCount:" << executeCount_ << ", statistic:["
                    << AsdOps::GetSingleton<AclTransformer::Statistic>().ToString() << "]";
     AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
 
     executeCount_++;
 }
 
-void Glm130BModelDecoderTorch::BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
+void Glm130BModelEncoderTorch::BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
                                                 torch::Tensor &outTensor, torch::Tensor &presentKeyTensor,
                                                 torch::Tensor &presentValueTensor, bool newOut,
                                                 AclTransformer::VariantPack &variantPack)
 {
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        ASD_LOG(INFO) << "Glm130BModelLayerDecoder_" << layerId << " atInTensors[" << i
+        ASD_LOG(INFO) << "Glm130BModelLayerEncoder_" << layerId << " atInTensors[" << i
                       << "].options:" << atInTensors.at(i).options() << ", data:" << atInTensors.at(i).data_ptr()
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
                       << ", format:" << Utils::GetTensorNpuFormat(atInTensors.at(i));
@@ -220,7 +208,7 @@ void Glm130BModelDecoderTorch::BuildVariantPack(int layerId, std::vector<torch::
     variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(presentValueTensor));
 }
 
-void Glm130BModelDecoderTorch::ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
+void Glm130BModelEncoderTorch::ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors,
                                                       torch::Tensor &outTensor, torch::Tensor &presentKeyTensor,
                                                       torch::Tensor &presentValueTensor, bool newOut)
 {
@@ -233,42 +221,38 @@ void Glm130BModelDecoderTorch::ExecuteSingleOperation(int layerId, std::vector<t
     AsdOps::Status st = plan.Setup(handle_, variantPack);
     AsdOps::GetSingleton<AclTransformer::Statistic>().planSetupTime += timer1.ElapsedMicroSecond();
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << "Glm130BModelLayerDecoder_" << layerId << " setup plan fail, not call execute";
+        ASD_LOG(ERROR) << "Glm130BModelLayerEncoder_" << layerId << " setup plan fail, not call execute";
         return;
     }
 
     variantPack.workspaceSize = plan.GetWorkspaceSize();
-    ASD_LOG(INFO) << "Glm130BModelLayerDecoder_" << layerId << " get plan workspace size:" << variantPack.workspaceSize;
+    ASD_LOG(INFO) << "Glm130BModelLayerEncoder_" << layerId << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
         variantPack.workspace =
             AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
-    }
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        std::string dir = GetSaveTensorDir() + "/" + std::to_string(layerId) + "_";
-        plan.SetRunnerSaveTensorDir(dir);
     }
 
     AsdOps::Timer timer2;
     st = plan.Execute(handle_, variantPack);
 
     AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
-    ASD_LOG_IF(!st.Ok(), ERROR) << "Glm130BModelLayerDecoder_" << layerId
+    ASD_LOG_IF(!st.Ok(), ERROR) << "Glm130BModelLayerEncoder_" << layerId
                                 << " execute plan fail, error:" << st.Message();
 }
 
-std::string Glm130BModelDecoderTorch::GetSaveTensorDir()
+std::string Glm130BModelEncoderTorch::GetSaveTensorDir()
 {
-    std::string dir = std::to_string(executeCount_) + "/0_Glm130BModelDecoderTorch";
+    std::string dir = std::to_string(executeCount_) + "/0_Glm130BModelEncoderTorch";
     return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 
-TORCH_LIBRARY(Glm130BModelDecoderTorch, m)
+TORCH_LIBRARY(Glm130BModelEncoderTorch, m)
 {
-    m.class_<Glm130BModelDecoderTorch>("Glm130BModelDecoderTorch")
+    m.class_<Glm130BModelEncoderTorch>("Glm130BModelEncoderTorch")
         .def(torch::init<>())
-        .def("set_param", &Glm130BModelDecoderTorch::SetParam)
-        .def("set_weight", &Glm130BModelDecoderTorch::SetWeight)
-        .def("execute", &Glm130BModelDecoderTorch::Execute)
-        .def("execute_out", &Glm130BModelDecoderTorch::ExecuteOut);
+        .def("set_param", &Glm130BModelEncoderTorch::SetParam)
+        .def("set_weight", &Glm130BModelEncoderTorch::SetWeight)
+        .def("execute", &Glm130BModelEncoderTorch::Execute)
+        .def("execute_out", &Glm130BModelEncoderTorch::ExecuteOut);
 }

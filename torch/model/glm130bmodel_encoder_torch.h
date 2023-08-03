@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef GLM130BMODEL_DECODER_TORCH_H
-#define GLM130BMODEL_DECODER_TORCH_H
+#ifndef GLM130BMODEL_ENCODER_TORCH_H
+#define GLM130BMODEL_ENCODER_TORCH_H
 #include <string>
 #include <vector>
 #include <torch/script.h>
@@ -24,10 +24,10 @@
 #include "acltransformer/operation.h"
 #include "acltransformer/plan.h"
 
-class Glm130BModelDecoderTorch : public torch::CustomClassHolder {
+class Glm130BModelEncoderTorch : public torch::CustomClassHolder {
 public:
-    Glm130BModelDecoderTorch();
-    ~Glm130BModelDecoderTorch();
+    Glm130BModelEncoderTorch();
+    ~Glm130BModelEncoderTorch();
     void SetParam(std::string param);
 
     // 每个layer 12个权重
@@ -36,16 +36,14 @@ public:
     // outTensor, 70 presentKeyTensors, 70 presentValueTensors
     std::vector<torch::Tensor> Execute(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor,
                                        torch::Tensor cosTableTensor, torch::Tensor sinTableTensor,
-                                       torch::Tensor attentionMaskTensor, std::vector<torch::Tensor> pastKeyTensors,
-                                       std::vector<torch::Tensor> pastValueTensors);
+                                       torch::Tensor attentionMaskTensor);
     void ExecuteOut(torch::Tensor hiddenStateTensor, torch::Tensor positionIdTensor, torch::Tensor cosTableTensor,
                     torch::Tensor sinTableTensor, torch::Tensor attentionMaskTensor,
-                    std::vector<torch::Tensor> pastKeyTensors, std::vector<torch::Tensor> pastValueTensors,
                     torch::Tensor outTensor, std::vector<torch::Tensor> presentKeyTensors,
                     std::vector<torch::Tensor> presentValueTensors);
-    c10::intrusive_ptr<Glm130BModelDecoderTorch> clone() const
+    c10::intrusive_ptr<Glm130BModelEncoderTorch> clone() const
     {
-        return c10::make_intrusive<Glm130BModelDecoderTorch>();
+        return c10::make_intrusive<Glm130BModelEncoderTorch>();
     }
 
 private:
@@ -54,16 +52,15 @@ private:
                           AclTransformer::VariantPack &variantPack);
     void ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
                         torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
-                        torch::Tensor &attentionMaskTensor, std::vector<torch::Tensor> &pastKeyTensors,
-                        std::vector<torch::Tensor> &pastValueTensors, torch::Tensor &outTensor,
+                        torch::Tensor &attentionMaskTensor, torch::Tensor &outTensor,
                         std::vector<torch::Tensor> &presentKeyTensors, std::vector<torch::Tensor> &presentValueTensors,
                         bool newOut);
     // IN:hiddenStateTensor+12个权重+positionIdTensor+cosTable+sinTable+attentionMaskTensor+pastKeyTensor+pastValueTensor
     // OUT:outTensor + presentKey + presentValue
     void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
-                                torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut);
+                                torch::Tensor &presentKeyTensor, torch::Tensor &presentValueTensor, bool newOut);
     std::string GetSaveTensorDir();
-
+    
 private:
     Glm130BModelParam modelParam_;
     std::vector<std::shared_ptr<AclTransformer::Operation>> operations_;
