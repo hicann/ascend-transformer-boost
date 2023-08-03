@@ -33,6 +33,9 @@ BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--
 
 function fn_build_googltest()
 {
+    if [ -d "$THIRD_PARTY_DIR/googletest/lib" -a -d "$THIRD_PARTY_DIR/googletest/include" ];then
+        return $?
+    fi
     cd $CACHE_DIR
     rm -rf v1.13.0.tar.gz
     if [ -f "$CODE_ROOT/3rdparty/googletest-1.13.0.tar.gz" ];then
@@ -41,16 +44,24 @@ function fn_build_googltest()
         wget --no-check-certificate https://github.com/google/googletest/archive/refs/tags/v1.13.0.tar.gz
     fi
 
-    tar -xvf v1.13.0.tar.gz
+    tar -xf v1.13.0.tar.gz
     cd googletest-1.13.0
     mkdir build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/googletest ../
+    if [ "$USE_CXX11_ABI" == "ON" ]
+    then
+        sed -i '4 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)' ../CMakeLists.txt
+    else
+        sed -i '4 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)' ../CMakeLists.txt
+    fi
+    cmake -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/googletest -DBUILD_SHARED_LIBS=ON ../
     make -j
     make install
     cd ../../
+    if [ -d "$THIRD_PARTY_DIR/googletest/lib64" ];then
+        mv $THIRD_PARTY_DIR/googletest/lib64 $THIRD_PARTY_DIR/googletest/lib
+    fi
 }
-
 
 function fn_build_half()
 {
@@ -167,11 +178,7 @@ function fn_init_pytorch_env()
 
 function fn_copy_tools()
 {
-    if [ -d "$OUTPUT_DIR/acltransformer/tools" ];then
-        rm -rf $OUTPUT_DIR/acltransformer/tools
-    fi
-    mkdir $OUTPUT_DIR/acltransformer/tools
-    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools/python_tools
+    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
 }
 
 function fn_build()
@@ -257,10 +264,10 @@ function fn_generate_doxygen()
     if [[ $OUTPUT_DIR != $CODE_ROOT/output ]];then
         sed -i 's|OUTPUT_DIRECTORY       =.\/output\/acltransformer\/doc|OUTPUT_DIRECTORY       ='"$OUTPUT_DIR"'\/acltransformer\/doc|g' $CODE_ROOT/Doxyfile
     fi
-    if [ -f "/usr/local/doxygen/bin/doxygen"];then
+    if [ -f "/usr/local/doxygen/bin/doxygen" ];then
         /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile >/dev/null 2>&1
-    else 
-        echo "/usr/local/doxygen/bin/doxygen not exist,not generate doc"
+    else
+        echo "/usr/local/doxygen/bin/doxygen not exist, not generate doc"
     fi
 }
 
@@ -423,7 +430,7 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
             fn_build_3rdparty
             fn_build
-            fn_run_unittests
+            fn_run_unittest
             fn_build_coverage
             ;;
         "pythontest")
