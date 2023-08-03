@@ -380,6 +380,18 @@ void OpsRunner::RunAllKernel(Handle &handle)
         const auto beginTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
 #endif
 
+        if (AsdOps::GetSingleton<Config>().IsSaveTensor() &&
+            (AsdOps::GetSingleton<Config>().IsSaveTensorForKernel(kernel->GetName()) ||
+             AsdOps::GetSingleton<Config>().IsSaveTensorForNode(id_ + "." + std::to_string(i)))) {
+            ASD_LOG(INFO) << GetName() << " " << kernel->GetName()
+                          << " AsdRtStreamSynchronize, stream:" << handle.stream;
+            int ret = AsdRtStreamSynchronize(handle.stream);
+            ASD_LOG_IF(ret != 0, ERROR) << GetName() << " " << kernel->GetName()
+                                        << " AsdRtStreamSynchronize fail, ret:" << ret;
+            std::string dirPath = tensorDir_ + "/" + std::to_string(i) + "_" + kernel->GetName() + "/before";
+            TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath);
+            ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " SaveRunInfo " << dirPath;
+        }
         AsdOps::Status st = kernel->Run(kernelRunInfo);
 
 #ifdef USE_PROFILING
@@ -405,7 +417,7 @@ void OpsRunner::RunAllKernel(Handle &handle)
             int ret = AsdRtStreamSynchronize(handle.stream);
             ASD_LOG_IF(ret != 0, ERROR) << GetName() << " " << kernel->GetName()
                                         << " AsdRtStreamSynchronize fail, ret:" << ret;
-            std::string dirPath = tensorDir_ + "/" + std::to_string(i) + "_" + kernel->GetName();
+            std::string dirPath = tensorDir_ + "/" + std::to_string(i) + "_" + kernel->GetName() + "/after";
             TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath);
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " SaveRunInfo " << dirPath;
         }
