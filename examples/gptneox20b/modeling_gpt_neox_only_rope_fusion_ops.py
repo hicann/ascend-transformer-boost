@@ -132,10 +132,10 @@ class GPTNeoXAttention(nn.Module):
         self.alpha =(torch.tensor(1.0, dtype=self.norm_factor.dtype, device=self.norm_factor.device) / self.norm_factor).half().npu()
         self.layer_id = layer_id
 
-        self.acl_self_attention_operation = torch.classes.OperationTorch.OperationTorch("SelfAttentionOperation")
-        self.acl_self_attention_operation.set_param(
-            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b",
-                        "dk": self.head_size, "transKey": True, "scalingFactor": 0.1})
+        self.acl_position_embedding_fusion_operation = torch.classes.OperationTorch.OperationTorch("RopeOperation")
+        self.acl_position_embedding_fusion_operation.set_param(
+            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b", "rotaryPct": config.rotary_pct,
+                        "dk": self.head_size})
         )
 
     def _init_bias(self, max_positions, device=None):
@@ -191,6 +191,9 @@ class GPTNeoXAttention(nn.Module):
         #   --> [batch, seq_len, (np * 3 * head_size)]
         qkv = self.query_key_value(hidden_states)
 
+        # do position embedding ops
+        acl_qkv = qkv.half()
+
         # [batch, seq_len, (num_heads * 3 * head_size)]
         #   --> [batch, seq_len, num_heads, 3 * head_size]
         new_qkv_shape = qkv.size()[:-1] + (self.num_attention_heads, 3 * self.head_size)
@@ -216,6 +219,36 @@ class GPTNeoXAttention(nn.Module):
         query = torch.cat((query, query_pass), dim=-1)
         key = torch.cat((key, key_pass), dim=-1)
 
+        # test acl ops
+        test_query = query
+        test_key = key
+        test_value = value
+        acl_cos = cos.squeeze(0)
+        acl_cos = acl_cos.squeeze(0)
+        acl_sin = sin.squeeze(0)
+        acl_sin = acl_sin.squeeze(0)
+        seq_len_tensor = torch.tensor([position_ids.shape[1]] * position_ids.shape[0], device=hidden_states.device)
+        acl_query, acl_key, acl_value = self.acl_position_embedding_fusion_operation.execute(
+            [acl_qkv, position_ids, acl_cos.half(), acl_sin.half(), seq_len_tensor]
+        )
+
+        if np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02):
+            print("***equal query embed")
+        else:
+            print("!!!not equal query embed")
+            print("!!!query shape acl", acl_query, "test", test_query)
+        if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
+            print("***equal key embed")
+        else:
+            print("!!!not equal key embed")
+            print("!!!key shape acl", acl_key, "test", test_key)
+        if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02):
+            print("***equal value embed")
+        else:
+            print("!!!not equal value embed")
+            print("!!!value shape acl", acl_value, "test", test_value)
+
+
         # Cache QKV values
         if has_layer_past:
             past_key = layer_past[0]
@@ -224,44 +257,12 @@ class GPTNeoXAttention(nn.Module):
             value = torch.cat((past_value, value), dim=-2)
         present = (key, value) if use_cache else None
 
-        # do self attention ops
-        if not has_layer_past:
-            acl_query = query.half()
-            acl_key = key.half()
-            acl_value = value.half()
-            acl_key_length = key.shape[2]
-            acl_causal_mask = self.bias[:, :, :acl_key_length, :acl_key_length]
-            acl_causal_mask = ~acl_causal_mask
-
-            mask_value_tmp = torch.zeros(size=(1, 1, acl_key_length, acl_key_length)).npu()
-            # mask_value = torch.finfo(torch.float32).min
-            mask_value = -100000000.0
-            mask_value_tmp = torch.masked_fill(mask_value_tmp, acl_causal_mask, mask_value)
-            if attention_mask is not None:
-                acl_attn_mask = mask_value_tmp + attention_mask
-            else:
-                acl_attn_mask = mask_value_tmp
-            acl_result = self.acl_self_attention_operation.execute([acl_query, acl_key, acl_value, acl_attn_mask])
-            acl_result = acl_result[0]
-
         # Compute attention
         attn_output, attn_weights = self._attn(query, key, value, attention_mask, head_mask)
 
         # Reshape outputs
         attn_output = self._merge_heads(attn_output, self.num_attention_heads, self.head_size)
-
-        if not has_layer_past:
-            if np.allclose(acl_result.cpu(), attn_output.cpu(), rtol=0.02, atol=0.02):
-                print("******equal result")
-            else:
-                print("!!!!!!not equal result", acl_result, "\ntrue", attn_output)
-
-        if not has_layer_past:
-            attn_output = self.dense(acl_result)
-        else:
-            attn_output = self.dense(attn_output)
-
-        print("===layer id", self.layer_id, "value is", attn_output)
+        attn_output = self.dense(attn_output)
 
         outputs = (attn_output, present)
         if output_attentions:

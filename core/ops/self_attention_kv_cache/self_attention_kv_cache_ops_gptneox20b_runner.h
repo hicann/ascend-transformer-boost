@@ -16,16 +16,16 @@
 #ifndef SELFATTENTIONKVCACHE__OPS_GPTNOEX20B_RUNNER_H
 #define SELFATTENTIONKVCACHE__OPS_GPTNOEX20B_RUNNER_H
 #include "acltransformer/base/ops_runner.h"
-#include "acltransformer/params/self_attention.h"
+#include "acltransformer/params/self_attention_kv_cache.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsGptNeox20bRunner : public OpsRunner {
 public:
-    SelfAttentionKvCacheOpsGptNeox20bRunner(const SelfAttentionParam &param);
+    SelfAttentionKvCacheOpsGptNeox20bRunner(const SelfAttentionKvCacheParam &param);
     virtual ~SelfAttentionKvCacheOpsGptNeox20bRunner();
 
 private:
-    SelfAttentionParam param_;
+    SelfAttentionKvCacheParam param_;
 };
 
 } // namespace AclTransformer

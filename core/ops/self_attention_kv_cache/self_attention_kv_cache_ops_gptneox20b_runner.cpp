@@ -24,8 +24,8 @@
 #include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
-SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner(const SelfAttentionParam &param)
-    : OpsRunner("SelfAttentionKvCacheOpsGptNeox20bRunner", RUNNER_TYPE_SELF_ATTENTION), param_(param)
+SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner(const SelfAttentionKvCacheParam &param)
+    : OpsRunner("SelfAttentionKvCacheOpsGptNeox20bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
     ASD_LOG(INFO) << "SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner called"
                   << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
@@ -79,7 +79,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
 
     // cat key
     // key = torch.cat(key, pastKey)
-    catKeyNode.opDesc = {0, "ConcateOperation", AsdOps::OpParam::Concat({2})};
+    catKeyNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({2})};
     catKeyNode.inTensors = {&pastKey, &mixedKey};
     catKeyNode.outTensors = {&presentKey};
     catKeyNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
@@ -88,7 +88,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
         }
     };
 
-    catValueNode.opDesc = {0, "ConcateOperation", AsdOps::OpParam::Concat({2})};
+    catValueNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({2})};
     catValueNode.inTensors = {&pastValue, &mixedValue};
     catValueNode.outTensors = {&presentValue};
     catValueNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
@@ -126,7 +126,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     // key = key.view(bs * hn, sq, hs)
     // key = key.permute(0, 2, 1) // [bs * hn, hs, sq]
     AsdOps::OpParam::Transpose permuteKNodeParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 1}};
-    permuteKNode.opDesc = {0, "AsStridedOperation", permuteKNodeParam};
+    permuteKNode.opDesc = {0, "TransposeOperation", permuteKNodeParam};
     permuteKNode.inTensors = {&kScaledOut};
     permuteKNode.outTensors = {&transposedK};
     permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());

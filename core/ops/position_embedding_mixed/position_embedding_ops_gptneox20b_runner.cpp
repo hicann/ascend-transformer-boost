@@ -138,7 +138,7 @@ PositionEmbeddingOpsGptNeox20bRunner::PositionEmbeddingOpsGptNeox20bRunner(const
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), rotaryNum};
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), passNum};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2) * dims.at(3), dims.at(2) * dims.at(3), dims.at(3),
                                            1};
         int64_t offset = rotaryNum;

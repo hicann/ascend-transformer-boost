@@ -98,7 +98,7 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     // key = key.view(bs * hn, sq, hs)
     // key = key.permute(0, 2, 1) // [bs * hn, hs, sq]
     AsdOps::OpParam::Transpose permuteKNodeParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 1}};
-    permuteKNode.opDesc = {0, "AsStridedOperation", permuteKNodeParam};
+    permuteKNode.opDesc = {0, "TransposeOperation", permuteKNodeParam};
     permuteKNode.inTensors = {&kScaledOut};
     permuteKNode.outTensors = {&transposedK};
     permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());

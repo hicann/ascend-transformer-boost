@@ -270,9 +270,9 @@ class GPTNeoXAttention(nn.Module):
                 print("!!!!!!not equal value", acl_present_value, "\ntrue", present[1])
 
         if not has_layer_past:
-            attn_output = self.dense(acl_result)
-        else:
             attn_output = self.dense(attn_output)
+        else:
+            attn_output = self.dense(acl_result)
 
         print("===layer id", self.layer_id, "value is", attn_output)
 
@@ -822,6 +822,7 @@ class GPTNeoXForCausalLM(GPTNeoXPreTrainedModel):
 
     @add_start_docstrings_to_model_forward(GPT_NEOX_INPUTS_DOCSTRING.format("batch_size, sequence_length"))
     @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
+    @torch.no_grad()
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,

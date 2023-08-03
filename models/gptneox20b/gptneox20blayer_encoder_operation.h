@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML6B_CHATGLM6BLAYER_ENCODER_OPERATION_H
-#define OPS_CHATGML6B_CHATGLM6BLAYER_ENCODER_OPERATION_H
+#ifndef OPS_GPTNEOX20B_GPTNEOX20BBLAYER_ENCODER_OPERATION_H
+#define OPS_GPTNEOX20B_GPTNEOX20BBLAYER_ENCODER_OPERATION_H
 #include "acltransformer/graph_operation.h"
 #include "gptneox20blayer_param.h"
 

@@ -1,7 +1,7 @@
 import time
 import torch
 from transformers import AutoTokenizer, AutoModel
-from transformers import GPTNeoXConfig
+from configuration_gpt_neox import GPTNeoXConfig
 
 import os
 import random

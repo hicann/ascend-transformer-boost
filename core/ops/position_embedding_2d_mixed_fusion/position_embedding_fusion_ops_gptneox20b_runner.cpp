@@ -40,7 +40,7 @@ PositionEmbeddingFusionOpsGptNeox20bRunner::PositionEmbeddingFusionOpsGptNeox20b
     AsdOps::Tensor &kEmbedded = kernelGraph_.outTensors.at(outTensorId++);
     AsdOps::Tensor &value = kernelGraph_.outTensors.at(outTensorId++);  // V
 
-    kernelGraph_.internalTensors.resize(9);
+    kernelGraph_.internalTensors.resize(13);
     int64_t internalTensorId = 0;
     AsdOps::Tensor &querySplit = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keySplit = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -56,7 +56,7 @@ PositionEmbeddingFusionOpsGptNeox20bRunner::PositionEmbeddingFusionOpsGptNeox20b
     AsdOps::Tensor &queryCatted = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keyCatted = kernelGraph_.internalTensors.at(internalTensorId++);
 
-    kernelGraph_.nodes.resize(10);
+    kernelGraph_.nodes.resize(13);
     int64_t nodeId = 0;
     auto &splitQKVNode = kernelGraph_.nodes[nodeId++];
     auto &qRotSliceNode = kernelGraph_.nodes[nodeId++];
@@ -110,7 +110,7 @@ PositionEmbeddingFusionOpsGptNeox20bRunner::PositionEmbeddingFusionOpsGptNeox20b
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), rotaryNum};
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), passNum};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2) * dims.at(3), dims.at(2) * dims.at(3), dims.at(3),
                                            1};
         int64_t offset = rotaryNum;
@@ -138,40 +138,43 @@ PositionEmbeddingFusionOpsGptNeox20bRunner::PositionEmbeddingFusionOpsGptNeox20b
     kPassSliceNode.outTensors = {&keyPass};
     kPassSliceNode.inferShapePreFunc = splitPassPreFunc;
 
-//    // do embedding // [bs, sq, rd]
-//    cosEmbedNode.opDesc = {0, "GatherOperation",
-//                           AsdOps::OpParam::Gather{AsdOps::OpParam::Gather::GatherType::GATHER_V2, 0, {0}}};
-//    cosEmbedNode.inTensors = {&cosTable, &positionIds};
-//    cosEmbedNode.outTensors = {&cosEmbed};
-//    cosEmbedNode.inTensorViewFuncs.resize(cosEmbedNode.inTensors.size());
-//
-//    sinEmbedNode.opDesc = {0, "GatherOperation",
-//                           AsdOps::OpParam::Gather{AsdOps::OpParam::Gather::GatherType::GATHER_V2, 0, {0}}};
-//    sinEmbedNode.inTensors = {&sinTable, &positionIds};
-//    sinEmbedNode.outTensors = {&sinEmbed};
-//    sinEmbedNode.inTensorViewFuncs.resize(sinEmbedNode.inTensors.size());
-//
-//    //
-//    ViewFunc ropeQKVView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-//        // [bs * sq, hn * hs]
-//        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
-//    };
-//    ViewFunc ropeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-//        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
-//    };
-//    // out [bs * sq, hn * rd]
-//    const size_t ropeViewSize = 4;
-//    ropeNode.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPEND}};
-//    ropeNode.inTensors = {&queryRot, &keyRot, &cosEmbed, &sinEmbed, &seqLen};
-//    ropeNode.outTensors = {&queryRotEmbed, &keyRotEmbed};
-//    ropeNode.inTensorViewFuncs.resize(ropeViewSize);
-//    ropeNode.inTensorViewFuncs.at(0) = ropeQKVView;
-//    ropeNode.inTensorViewFuncs.at(1) = ropeQKVView;
-//    ropeNode.inTensorViewFuncs.at(2) = ropeCosSinView;
-//    ropeNode.inTensorViewFuncs.at(3) = ropeCosSinView;
-//    ropeNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
-//        runInfo.GetInTensor(4).desc.dtype = AsdOps::TENSOR_DTYPE_UINT32;
-//    };
+    // do embedding // [bs, sq, rd]
+    cosEmbedNode.opDesc = {0, "GatherOperation",
+                           AsdOps::OpParam::Gather{AsdOps::OpParam::Gather::GatherType::GATHER_V2, 0, {0}}};
+    cosEmbedNode.inTensors = {&cosTable, &positionIds};
+    cosEmbedNode.outTensors = {&cosEmbed};
+    cosEmbedNode.inTensorViewFuncs.resize(cosEmbedNode.inTensors.size());
+
+    sinEmbedNode.opDesc = {0, "GatherOperation",
+                           AsdOps::OpParam::Gather{AsdOps::OpParam::Gather::GatherType::GATHER_V2, 0, {0}}};
+    sinEmbedNode.inTensors = {&sinTable, &positionIds};
+    sinEmbedNode.outTensors = {&sinEmbed};
+    sinEmbedNode.inTensorViewFuncs.resize(sinEmbedNode.inTensors.size());
+
+    //
+    ViewFunc ropeQKVView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        // [bs * sq, hn * hs]
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
+    };
+    ViewFunc ropeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
+    };
+    // out [bs * sq, hn * rd]
+    const size_t ropeViewSize = 4;
+    AsdOps::OpParam::Rope ropeParam;
+    ropeParam.ropeType = AsdOps::OpParam::Rope::ROPEND;
+    ropeParam.rotaryCoeff = 2;
+    ropeNode.opDesc = {0, "RopeOperation", ropeParam};
+    ropeNode.inTensors = {&queryRot, &keyRot, &cosEmbed, &sinEmbed, &seqLen};
+    ropeNode.outTensors = {&queryRotEmbed, &keyRotEmbed};
+    ropeNode.inTensorViewFuncs.resize(ropeViewSize);
+    ropeNode.inTensorViewFuncs.at(0) = ropeQKVView;
+    ropeNode.inTensorViewFuncs.at(1) = ropeQKVView;
+    ropeNode.inTensorViewFuncs.at(2) = ropeCosSinView;
+    ropeNode.inTensorViewFuncs.at(3) = ropeCosSinView;
+    ropeNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        runInfo.GetInTensor(4).desc.dtype = AsdOps::TENSOR_DTYPE_UINT32;
+    };
 
     ViewFunc catQKVView = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         // old [bs * sq, hn * rd]
