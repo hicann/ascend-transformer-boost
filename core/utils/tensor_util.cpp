@@ -16,6 +16,7 @@
 #include "acltransformer/utils/tensor_util.h"
 #include <sstream>
 #include <fstream>
+#include <string>
 #include <sys/stat.h>
 #include <asdops/utils/binfile/binfile.h>
 #include <asdops/utils/log/log.h>
@@ -110,6 +111,43 @@ void TensorUtil::SaveTensor(const AsdOps::Tensor &tensor, const std::string &fil
     }
 }
 
+void TensorUtil::LoadTensor(AsdOps::Tensor &tensor, const std::string &filePath)
+{
+    ASD_LOG(INFO) << "load asdtensor start, filePath:" << filePath;
+    AsdOps::BinFile binFile;
+    AsdOps::Status st = binFile.Read(filePath);
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << "Tensor file read failed!";
+        return;
+    }
+    std::vector<std::pair<std::string, std::string>> attrMap;
+    binFile.GetAllAttrs(attrMap);
+    for (const auto it : attrMap) {
+        if (it.first == "format") {
+            tensor.desc.format = AsdOps::TensorFormat(std::stoi(it.second));
+        }
+        if (it.first == "dtype") {
+            tensor.desc.dtype = AsdOps::TensorDType(std::stoi(it.second));
+        }
+        if (it.first == "dims") {
+            tensor.desc.dims = AsdOpsStringToDims(it.second);
+        }
+        ASD_LOG(INFO) << it.first << "=" << it.second;
+    }
+
+    std::vector<std::pair<std::string, std::pair<void *, uint64_t>>> objMap;
+    binFile.GetAllObjects(objMap);
+    for (const auto it : objMap) {
+        if (it.first == "data") {
+            std::vector<char> hostData(it.second.second);
+            tensor.dataSize = it.second.second;
+            int ret = AsdRtMemMallocDevice(&tensor.data, tensor.dataSize, ASDRT_MEM_DEFAULT);
+            ASD_LOG_IF(ret != ASDRT_SUCCESS, ERROR) << "AsdRtMemMallocDevice fail, ret:" << ret;
+            AsdRtMemCopy(tensor.data, tensor.dataSize, hostData.data(), tensor.dataSize, ASDRT_MEMCOPY_HOST_TO_DEVICE);
+        }
+    }
+}
+
 void TensorUtil::SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath)
 {
     AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -177,6 +215,21 @@ std::string TensorUtil::AsdOpsDimsToString(const AsdOps::SVector<int64_t> &dims)
         }
     }
     return str;
+}
+
+AsdOps::SVector<int64_t> TensorUtil::AsdOpsStringToDims(const std::string str)
+{
+    size_t startPos = 0;
+    AsdOps::SVector<int64_t> dims;
+    size_t splitPos = str.find(",", startPos);
+    while (splitPos != std::string::npos) {
+        size_t dimsLenth = splitPos - startPos;
+        dims.push_back(std::stoi(str.substr(startPos, dimsLenth)));
+        startPos = splitPos + 1;
+        splitPos = str.find(",", startPos);
+    }
+    dims.push_back(std::stoi(str.substr(startPos, str.length() - startPos)));
+    return dims;
 }
 
 int64_t TensorUtil::AlignInt(int64_t value, int align) { return (value + (align - 1)) / align * align; }
