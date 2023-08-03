@@ -91,6 +91,12 @@ static AclTransformer::Operation *AllReduceOperationCreate(const nlohmann::json 
     AclTransformer::AllReduceParam param;
     param.rank = paramJson["rank"].get<int>();
     param.rankSize = paramJson["rankSize"].get<int>();
+    if (paramJson.find("rankRoot") != paramJson.end()) {
+        param.rankRoot = paramJson["rankRoot"].get<int>();
+    }
+    if (paramJson.find("backend") != paramJson.end()) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
     ASD_LOG(INFO) << "AllReduceParam rank:" << param.rank;
     ASD_LOG(INFO) << "AllReduceParam rankSize:" << param.rankSize;
     return new AclTransformer::AllReduceOperation(param);
@@ -104,6 +110,12 @@ static AclTransformer::Operation *LinearParallelOperationCreate(const nlohmann::
     }
     if (paramJson.find("bias") != paramJson.end()) {
         param.bias = paramJson["bias"].get<std::string>();
+    }
+    if (paramJson.find("rankRoot") != paramJson.end()) {
+        param.rankRoot = paramJson["rankRoot"].get<int>();
+    }
+    if (paramJson.find("backend") != paramJson.end()) {
+        param.backend = paramJson["backend"].get<std::string>();
     }
     param.rank = paramJson["rank"].get<int>();
     param.rankSize = paramJson["rankSize"].get<int>();
@@ -553,6 +565,9 @@ AclTransformer::Operation *Glm130BLayerDecoderOperationCreate(const nlohmann::js
     if (paramJson.contains("rankSize")) {
         param.rankSize = paramJson["rankSize"].get<int>();
     }
+    if (paramJson.contains("backend")) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
     if (paramJson.contains("layerId")) {
         param.layerId = paramJson["layerId"].get<int>();
     }
@@ -639,8 +654,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"Glm130BLayerDecoderOperation", &Glm130BLayerDecoderOperationCreate},
     {"Glm130BLayerEncoderOperation", &Glm130BLayerEncoderOperationCreate},
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
-    {"LmHeadOperation", &LmHeadOperationCreate}
-};
+    {"LmHeadOperation", &LmHeadOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {

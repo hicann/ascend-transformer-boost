@@ -13,14 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_ALL_REDUCE_H
-#define ACLTRANSFOERM_PARAMS_ALL_REDUCE_H
+#ifndef ALL_REDUCE_HCCL_RUNNER_H
+#define ALL_REDUCE_HCCL_RUNNER_H
+#include "acltransformer/base/hccl_runner.h"
+#include "acltransformer/params/all_reduce.h"
+
 namespace AclTransformer {
-struct AllReduceParam {
-    int rank = 0;
-    int rankSize = 0;
-    int rankRoot = 0;
-    std::string backend = "lccl";
+class AllReduceHcclRunner : public HcclRunner {
+public:
+    AllReduceHcclRunner(const AllReduceParam &param);
+    virtual ~AllReduceHcclRunner();
+
+private:
+    AllReduceParam param_;
 };
+
 } // namespace AclTransformer
 #endif

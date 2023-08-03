@@ -93,7 +93,8 @@ Glm130BLayerDecoderOperation::Glm130BLayerDecoderOperation(const Glm130BLayerPar
     mixdQkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXDWEIGHT, IN_QKVMIXDBIAS};
     mixdQkvLinearNode.outTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV};
 
-    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation({false, param_.headNum / param_.rankSize}));
+    positionEmbeddingNode.operation.reset(
+        new AclTransformer::PositionEmbeddingOperation({false, param_.headNum / param_.rankSize}));
     positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
     positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_VALUE};
 
@@ -107,8 +108,8 @@ Glm130BLayerDecoderOperation::Glm130BLayerDecoderOperation(const Glm130BLayerPar
                                             IN_PASTVALUE};
     selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    selfOutLinearParallelNode.operation.reset(
-        new AclTransformer::LinearParallelOperation({false, param_.rank, param_.rankSize, "", "RowParallel"}));
+    selfOutLinearParallelNode.operation.reset(new AclTransformer::LinearParallelOperation(
+        {false, param_.rank, param_.rankSize, 0, "", "RowParallel", param_.backend}));
     selfOutLinearParallelNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
     selfOutLinearParallelNode.outTensorIds = {INTERMIDATE_SELFLINEAROUT};
 
@@ -124,8 +125,8 @@ Glm130BLayerDecoderOperation::Glm130BLayerDecoderOperation(const Glm130BLayerPar
     mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPLINEARWEIGHT, IN_MLPLINEARBIAS};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 
-    mlpLinearParallelNode.operation.reset(
-        new AclTransformer::LinearParallelOperation({false, param_.rank, param_.rankSize, "", "RowParallel"}));
+    mlpLinearParallelNode.operation.reset(new AclTransformer::LinearParallelOperation(
+        {false, param_.rank, param_.rankSize, 0, "", "RowParallel", param_.backend}));
     mlpLinearParallelNode.inTensorIds = {INTERMIDATE_MLPOUT, IN_MLPOUTLINEARWEIGHT, IN_MLPOUTLINEARBIAS};
     mlpLinearParallelNode.outTensorIds = {INTERMIDATE_MLPLINEAROUT};
 
@@ -141,7 +142,7 @@ uint64_t Glm130BLayerDecoderOperation::GetInTensorCount() const { return IN_TENS
 uint64_t Glm130BLayerDecoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
 AsdOps::Status Glm130BLayerDecoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                         AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+                                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
     const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);

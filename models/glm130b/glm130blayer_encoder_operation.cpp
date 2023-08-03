@@ -99,8 +99,8 @@ Glm130BLayerEncoderOperation::Glm130BLayerEncoderOperation(const Glm130BLayerPar
     selfAttentionNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE, IN_ATTENTIONMASK};
     selfAttentionNode.outTensorIds = {INTERMIDATE_SELFOUT};
 
-    selfOutLinearParallelNode.operation.reset(
-        new AclTransformer::LinearParallelOperation({false, param_.rank, param_.rankSize, "", "RowParallel"}));
+    selfOutLinearParallelNode.operation.reset(new AclTransformer::LinearParallelOperation(
+        {false, param_.rank, param_.rankSize, 0, "", "RowParallel", param_.backend}));
     selfOutLinearParallelNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
     selfOutLinearParallelNode.outTensorIds = {INTERMIDATE_SELFLINEAROUT};
 
@@ -116,8 +116,8 @@ Glm130BLayerEncoderOperation::Glm130BLayerEncoderOperation(const Glm130BLayerPar
     mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPLINEARWEIGHT, IN_MLPLINEARBIAS};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 
-    mlpLinearParallelNode.operation.reset(
-        new AclTransformer::LinearParallelOperation({false, param_.rank, param_.rankSize, "", "RowParallel"}));
+    mlpLinearParallelNode.operation.reset(new AclTransformer::LinearParallelOperation(
+        {false, param_.rank, param_.rankSize, 0, "", "RowParallel", param_.backend}));
     mlpLinearParallelNode.inTensorIds = {INTERMIDATE_MLPOUT, IN_MLPOUTLINEARWEIGHT, IN_MLPOUTLINEARBIAS};
     mlpLinearParallelNode.outTensorIds = {INTERMIDATE_MLPLINEAROUT};
 
