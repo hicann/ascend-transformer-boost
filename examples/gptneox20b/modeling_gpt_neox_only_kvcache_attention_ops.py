@@ -132,6 +132,12 @@ class GPTNeoXAttention(nn.Module):
         self.alpha =(torch.tensor(1.0, dtype=self.norm_factor.dtype, device=self.norm_factor.device) / self.norm_factor).half().npu()
         self.layer_id = layer_id
 
+        self.acl_self_kv_cache_attention_operation = torch.classes.OperationTorch.OperationTorch("SelfAttentionKvCacheOperation")
+        self.acl_self_kv_cache_attention_operation.set_param(
+            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b",
+                        "dk": self.head_size, "transKey": True, "scalingFactor": 0.1})
+        )
+
     def _init_bias(self, max_positions, device=None):
         self.register_buffer(
             "bias",
@@ -210,6 +216,30 @@ class GPTNeoXAttention(nn.Module):
         query = torch.cat((query, query_pass), dim=-1)
         key = torch.cat((key, key_pass), dim=-1)
 
+        # do self kv cache attention
+        if has_layer_past:
+            acl_query = query.half()
+            acl_key = key.half()
+            acl_value = value.half()
+            acl_key_pass = layer_past[0].half()
+            acl_value_pass = layer_past[1].half()
+            acl_key_length = key.shape[2]
+            acl_causal_mask = self.bias[:, :, acl_key_length - 1:acl_key_length, :acl_key_length]
+            acl_causal_mask = ~acl_causal_mask
+
+            mask_value_tmp = torch.zeros(size=acl_causal_mask.shape).npu()
+            # mask_value = torch.finfo(torch.float32).min
+            mask_value = -100000000.0
+            mask_value_tmp = torch.masked_fill(mask_value_tmp, acl_causal_mask, mask_value)
+            if attention_mask is not None:
+                acl_attn_mask = mask_value_tmp + attention_mask
+            else:
+                acl_attn_mask = mask_value_tmp
+
+            acl_result, acl_present_key, acl_present_value = self.acl_self_kv_cache_attention_operation.execute(
+                [acl_query, acl_key, acl_value, acl_attn_mask, acl_key_pass, acl_value_pass]
+            )
+
         # Cache QKV values
         if has_layer_past:
             past_key = layer_past[0]
@@ -223,7 +253,28 @@ class GPTNeoXAttention(nn.Module):
 
         # Reshape outputs
         attn_output = self._merge_heads(attn_output, self.num_attention_heads, self.head_size)
-        attn_output = self.dense(attn_output)
+
+        if has_layer_past:
+            print("========compare layer:", self.layer_id)
+            if np.allclose(acl_result.cpu(), attn_output.cpu(), rtol=0.02, atol=0.02):
+                print("******equal result")
+            else:
+                print("!!!!!!not equal result", acl_result, "\ntrue", attn_output)
+            if np.allclose(acl_present_key.cpu(), present[0].cpu(), rtol=0.02, atol=0.02):
+                print("******equal key")
+            else:
+                print("!!!!!!not equal key", acl_present_key, "\ntrue", present[0])
+            if np.allclose(acl_present_value.cpu(), present[1].cpu(), rtol=0.02, atol=0.02):
+                print("******equal value")
+            else:
+                print("!!!!!!not equal value", acl_present_value, "\ntrue", present[1])
+
+        if not has_layer_past:
+            attn_output = self.dense(acl_result)
+        else:
+            attn_output = self.dense(attn_output)
+
+        print("===layer id", self.layer_id, "value is", attn_output)
 
         outputs = (attn_output, present)
         if output_attentions:

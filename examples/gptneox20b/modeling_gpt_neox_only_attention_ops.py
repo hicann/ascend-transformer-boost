@@ -132,6 +132,12 @@ class GPTNeoXAttention(nn.Module):
         self.alpha =(torch.tensor(1.0, dtype=self.norm_factor.dtype, device=self.norm_factor.device) / self.norm_factor).half().npu()
         self.layer_id = layer_id
 
+        self.acl_self_attention_operation = torch.classes.OperationTorch.OperationTorch("SelfAttentionOperation")
+        self.acl_self_attention_operation.set_param(
+            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b",
+                        "dk": self.head_size, "transKey": True, "scalingFactor": 0.1})
+        )
+
     def _init_bias(self, max_positions, device=None):
         self.register_buffer(
             "bias",
@@ -218,12 +224,44 @@ class GPTNeoXAttention(nn.Module):
             value = torch.cat((past_value, value), dim=-2)
         present = (key, value) if use_cache else None
 
+        # do self attention ops
+        if not has_layer_past:
+            acl_query = query.half()
+            acl_key = key.half()
+            acl_value = value.half()
+            acl_key_length = key.shape[2]
+            acl_causal_mask = self.bias[:, :, :acl_key_length, :acl_key_length]
+            acl_causal_mask = ~acl_causal_mask
+
+            mask_value_tmp = torch.zeros(size=(1, 1, acl_key_length, acl_key_length)).npu()
+            # mask_value = torch.finfo(torch.float32).min
+            mask_value = -100000000.0
+            mask_value_tmp = torch.masked_fill(mask_value_tmp, acl_causal_mask, mask_value)
+            if attention_mask is not None:
+                acl_attn_mask = mask_value_tmp + attention_mask
+            else:
+                acl_attn_mask = mask_value_tmp
+            acl_result = self.acl_self_attention_operation.execute([acl_query, acl_key, acl_value, acl_attn_mask])
+            acl_result = acl_result[0]
+
         # Compute attention
         attn_output, attn_weights = self._attn(query, key, value, attention_mask, head_mask)
 
         # Reshape outputs
         attn_output = self._merge_heads(attn_output, self.num_attention_heads, self.head_size)
-        attn_output = self.dense(attn_output)
+
+        if not has_layer_past:
+            if np.allclose(acl_result.cpu(), attn_output.cpu(), rtol=0.02, atol=0.02):
+                print("******equal result")
+            else:
+                print("!!!!!!not equal result", acl_result, "\ntrue", attn_output)
+
+        if not has_layer_past:
+            attn_output = self.dense(acl_result)
+        else:
+            attn_output = self.dense(attn_output)
+
+        print("===layer id", self.layer_id, "value is", attn_output)
 
         outputs = (attn_output, present)
         if output_attentions:

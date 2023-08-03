@@ -132,6 +132,12 @@ class GPTNeoXAttention(nn.Module):
         self.alpha =(torch.tensor(1.0, dtype=self.norm_factor.dtype, device=self.norm_factor.device) / self.norm_factor).half().npu()
         self.layer_id = layer_id
 
+        self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("PositionEmbeddingOperation")
+        self.acl_position_embedding_operation.set_param(
+            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b", "rotaryPct": config.rotary_pct,
+                        "dk": self.head_size})
+        )
+
     def _init_bias(self, max_positions, device=None):
         self.register_buffer(
             "bias",
@@ -185,6 +191,9 @@ class GPTNeoXAttention(nn.Module):
         #   --> [batch, seq_len, (np * 3 * head_size)]
         qkv = self.query_key_value(hidden_states)
 
+        # do position embedding ops
+        acl_qkv = qkv.half()
+
         # [batch, seq_len, (num_heads * 3 * head_size)]
         #   --> [batch, seq_len, num_heads, 3 * head_size]
         new_qkv_shape = qkv.size()[:-1] + (self.num_attention_heads, 3 * self.head_size)
@@ -209,6 +218,35 @@ class GPTNeoXAttention(nn.Module):
         query, key = apply_rotary_pos_emb(query_rot, key_rot, cos, sin, position_ids)
         query = torch.cat((query, query_pass), dim=-1)
         key = torch.cat((key, key_pass), dim=-1)
+
+        # test acl ops
+        test_query = query
+        test_key = key
+        test_value = value
+        acl_cos = cos.squeeze(0)
+        acl_cos = acl_cos.squeeze(0)
+        acl_sin = sin.squeeze(0)
+        acl_sin = acl_sin.squeeze(0)
+        acl_query, acl_key, acl_value = self.acl_position_embedding_operation.execute(
+            [acl_qkv, position_ids, acl_cos.half(), acl_sin.half()]
+        )
+
+        if (np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02)):
+            print("***equal query embed")
+        else:
+            print("!!!not equal query embed")
+            print("!!!query shape acl", acl_query.shape, "test", test_query)
+        if (np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02)):
+            print("***equal key embed")
+        else:
+            print("!!!not equal key embed")
+            print("!!!key shape acl", acl_key.shape, "test", test_key)
+        if (np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02)):
+            print("***equal value embed")
+        else:
+            print("!!!not equal value embed")
+            print("!!!value shape acl", acl_value.shape, "test", test_value)
+
 
         # Cache QKV values
         if has_layer_past:
