@@ -106,7 +106,7 @@ ChatGlm6BLayerEncoderQuantOperation::ChatGlm6BLayerEncoderQuantOperation(const C
     positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
     selfAttentionNode.operation.reset(new AclTransformer::SelfAttentionOperation(
-        {param_.transKey, param_.dk, param_.headNum, param_.layerId, "chatglm6b"}));
+        {param_.transKey, param_.dk, param_.headNum, param_.layerId, 1.0, "chatglm6b"}));
     selfAttentionNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE, IN_ATTENTIONMASK};
     selfAttentionNode.outTensorIds = {INTERMIDATE_SELFOUT};
 
