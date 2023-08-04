@@ -121,8 +121,9 @@ void HcclRunner::ShmBarrier(CShareMemory &shm, CommInitInfo &shmInfo)
     ShmSetReady(shm, shmInfo);
     bool allReady = true;
     while (true) {
+        allReady = true;
         shm.SemLock();
-        for (int i = 0; i <= rankSize_; i++) {
+        for (int i = 0; i < rankSize_; i++) {
             if (!shmInfo.barrier[i]) {
                 allReady = false;
             }
@@ -138,7 +139,6 @@ void HcclRunner::ShmBarrier(CShareMemory &shm, CommInitInfo &shmInfo)
 AsdOps::Status HcclRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
 #ifdef USE_HCCL_RUNNER
-    AsdOps::Timer timer;
     if (runnerType_ == RUNNER_TYPE_ALL_REDUCE) {
         auto ret = HcclAllReduce(runnerVariantPack.inTensors[0].data, runnerVariantPack.outTensors[0].data,
                                  runnerVariantPack.inTensors[0].Numel(),

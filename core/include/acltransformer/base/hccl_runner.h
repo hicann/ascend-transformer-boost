@@ -20,7 +20,7 @@
 #include "acltransformer/runner_type.h"
 #include <asdops/types.h>
 #ifdef USE_HCCL_RUNNER
-#include <hccl.h>
+#include <hccl/hccl.h>
 #include <hccl/hccl_types.h>
 #include "acltransformer/share_memory.h"
 #endif
