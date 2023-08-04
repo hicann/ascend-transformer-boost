@@ -230,6 +230,9 @@ class GPTNeoXAttention(nn.Module):
         acl_query, acl_key, acl_value = self.acl_position_embedding_operation.execute(
             [acl_qkv, position_ids, acl_cos.half(), acl_sin.half()]
         )
+        acl_query = acl_query.permute(0, 2, 1, 3) # trans to [bs, hn, sq, hs]
+        acl_key = acl_key.permute(0, 2, 1, 3)
+        acl_value = acl_value.permute(0, 2, 1, 3)
 
         if (np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02)):
             print("***equal query embed")

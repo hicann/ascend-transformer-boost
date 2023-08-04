@@ -42,21 +42,14 @@ AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdO
 {
     if (param_.model == "openbert") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
-    } else if (param_.model == "chatglm6b") {
+    } else if (param_.model == "chatglm6b" || param_.model == "gptneox20b") {
+        // gptneox20b [bs, sq, hn, hs]
+        // out [bs, sq, hn * hs]
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
-    } else if (param_.model == "gptneox20b") {
-        // input [bs, hn, sq, hs]
-        // output [bs, sq, hn * hs]
-        outTensorDescs.at(0) = inTensors.at(0).desc;
-        outTensorDescs.at(0).dims.clear();
-        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
-        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2));
-        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1) * inTensors.at(0).desc.dims.at(3));
-        outTensorDescs.at(0).format = AsdOps::TENSOR_FORMAT_ND;
     }
     return AsdOps::Status::OkStatus();
 }

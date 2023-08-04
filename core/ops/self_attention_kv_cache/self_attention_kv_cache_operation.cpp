@@ -41,18 +41,18 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVect
                                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     if (param_.model == "gptneox20b") {
-        // input [bs, hn, sq, hs]
+        // input [bs, sq, hn, hs]
         // output [bs, sq, hn * hs]
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
-        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2));
-        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1) * inTensors.at(0).desc.dims.at(3));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
 
         outTensorDescs.at(1) = inTensors.at(4).desc;
-        outTensorDescs.at(1).dims.at(2) = outTensorDescs.at(1).dims.at(2) + 1;
+        outTensorDescs.at(1).dims.at(1) = outTensorDescs.at(1).dims.at(1) + 1;
         outTensorDescs.at(2) = inTensors.at(5).desc;
-        outTensorDescs.at(2).dims.at(2) = outTensorDescs.at(2).dims.at(2) + 1;
+        outTensorDescs.at(2).dims.at(1) = outTensorDescs.at(2).dims.at(1) + 1;
     } else {
         // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
         // out : out presentK presentV [seq_len, batch, head_num * head_size]

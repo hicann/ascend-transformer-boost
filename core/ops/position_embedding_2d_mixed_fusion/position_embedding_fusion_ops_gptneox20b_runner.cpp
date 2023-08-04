@@ -40,11 +40,10 @@ PositionEmbeddingFusionOpsGptNeox20bRunner::PositionEmbeddingFusionOpsGptNeox20b
     AsdOps::Tensor &kEmbedded = kernelGraph_.outTensors.at(outTensorId++);
     AsdOps::Tensor &value = kernelGraph_.outTensors.at(outTensorId++);  // V
 
-    kernelGraph_.internalTensors.resize(13);
+    kernelGraph_.internalTensors.resize(10);
     int64_t internalTensorId = 0;
     AsdOps::Tensor &querySplit = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keySplit = kernelGraph_.internalTensors.at(internalTensorId++);
-    AsdOps::Tensor &valueSplit = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &queryRot = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &queryPass = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keyRot = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -53,10 +52,8 @@ PositionEmbeddingFusionOpsGptNeox20bRunner::PositionEmbeddingFusionOpsGptNeox20b
     AsdOps::Tensor &sinEmbed = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &queryRotEmbed = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keyRotEmbed = kernelGraph_.internalTensors.at(internalTensorId++);
-    AsdOps::Tensor &queryCatted = kernelGraph_.internalTensors.at(internalTensorId++);
-    AsdOps::Tensor &keyCatted = kernelGraph_.internalTensors.at(internalTensorId++);
 
-    kernelGraph_.nodes.resize(13);
+    kernelGraph_.nodes.resize(10);
     int64_t nodeId = 0;
     auto &splitQKVNode = kernelGraph_.nodes[nodeId++];
     auto &qRotSliceNode = kernelGraph_.nodes[nodeId++];
@@ -68,15 +65,12 @@ PositionEmbeddingFusionOpsGptNeox20bRunner::PositionEmbeddingFusionOpsGptNeox20b
     auto &ropeNode = kernelGraph_.nodes[nodeId++];
     auto &qCatNode = kernelGraph_.nodes[nodeId++];
     auto &kCatNode = kernelGraph_.nodes[nodeId++];
-    auto &qTransNode = kernelGraph_.nodes[nodeId++];
-    auto &kTransNode = kernelGraph_.nodes[nodeId++];
-    auto &vTransNode = kernelGraph_.nodes[nodeId++];
 
     // split mixedQKV to q k v
     // [bs, sq, hn * 3 * hs] --> [bs, sq, hn, 3*hs] --> 3 of [bs, sq, hn, hs]
     splitQKVNode.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 3}};
     splitQKVNode.inTensors = {&mixedQkv};
-    splitQKVNode.outTensors = {&querySplit, &keySplit, &valueSplit};
+    splitQKVNode.outTensors = {&querySplit, &keySplit, &value};
     splitQKVNode.inTensorViewFuncs.resize(splitQKVNode.inTensors.size());
     splitQKVNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
                                                AsdOps::SVector<int64_t> &newDims) {
@@ -194,29 +188,17 @@ PositionEmbeddingFusionOpsGptNeox20bRunner::PositionEmbeddingFusionOpsGptNeox20b
     // out [bs, sq, hb, hs]
     qCatNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
     qCatNode.inTensors = {&queryRot, &queryPass};
-    qCatNode.outTensors = {&queryCatted};
+    qCatNode.outTensors = {&qEmbedded};
     qCatNode.inTensorViewFuncs.resize(qCatNode.inTensors.size());
-//    qCatNode.inTensorViewFuncs.at(0) = catQKVView;
+    qCatNode.inTensorViewFuncs.at(0) = catQKVView;
     qCatNode.inferShapePreFunc = catLastDimInferShape;
 
     kCatNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat{0}};
     kCatNode.inTensors = {&keyRot, &keyPass};
-    kCatNode.outTensors = {&keyCatted};
+    kCatNode.outTensors = {&kEmbedded};
     kCatNode.inTensorViewFuncs.resize(kCatNode.inTensors.size());
-//    kCatNode.inTensorViewFuncs.at(0) = catQKVView;
+    kCatNode.inTensorViewFuncs.at(0) = catQKVView;
     kCatNode.inferShapePreFunc = catLastDimInferShape;
-
-    // out [bs, hn, sq, hs]
-    AsdOps::OpParam::Transpose transSeqHeadNodeParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0, 2, 1, 3}};
-    qTransNode.opDesc = {0, "TransposeOperation", transSeqHeadNodeParam};
-    qTransNode.inTensors = {&queryCatted};
-    qTransNode.outTensors = {&qEmbedded};
-    kTransNode.opDesc = {0, "TransposeOperation", transSeqHeadNodeParam};
-    kTransNode.inTensors = {&keyCatted};
-    kTransNode.outTensors = {&kEmbedded};
-    vTransNode.opDesc = {0, "TransposeOperation", transSeqHeadNodeParam};
-    vTransNode.inTensors = {&valueSplit};
-    vTransNode.outTensors = {&value};
 }
 
 PositionEmbeddingFusionOpsGptNeox20bRunner::~PositionEmbeddingFusionOpsGptNeox20bRunner() {}

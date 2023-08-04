@@ -32,19 +32,20 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
                   << ",layerId: " << param_.layerId;
     kernelGraph_.inTensors.resize(4);
     int64_t inTensorId = 0;
-    AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(inTensorId++);
-    AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(inTensorId++);
-    AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(inTensorId++);  // [bs, sq, hn, hs]
+    AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(inTensorId++);  // [bs, sq, hn, hs]
+    AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(inTensorId++);  // [bs, sq, hn, hs]
     AsdOps::Tensor &attention_mask = kernelGraph_.inTensors.at(inTensorId++);
 
     kernelGraph_.outTensors.resize(1);
     int64_t outTensorId = 0;
     AsdOps::Tensor &context = kernelGraph_.outTensors.at(outTensorId++);
 
-    kernelGraph_.internalTensors.resize(10);
+    kernelGraph_.internalTensors.resize(12);
     int64_t internalTensorId = 0;
     AsdOps::Tensor &qScaledOut = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &kScaledOut = kernelGraph_.internalTensors.at(internalTensorId++);
+    AsdOps::Tensor &transposedQ = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &bmmQkOut = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &castFP32Out = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -52,12 +53,14 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     AsdOps::Tensor &maskedFP32Out = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &softmaxFP32Out = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &softmaxFP16Out = kernelGraph_.internalTensors.at(internalTensorId++);
+    AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &bmmVout = kernelGraph_.internalTensors.at(internalTensorId++);
 
-    kernelGraph_.nodes.resize(11);
+    kernelGraph_.nodes.resize(13);
     int64_t nodeId = 0;
     auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
     auto &mulsKNode = kernelGraph_.nodes.at(nodeId++);
+    auto &permuteQNode = kernelGraph_.nodes.at(nodeId++);
     auto &permuteKNode = kernelGraph_.nodes.at(nodeId++);
     auto &bmmQkNode = kernelGraph_.nodes.at(nodeId++);
 
@@ -67,6 +70,7 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     auto &softMaxNode = kernelGraph_.nodes.at(nodeId++);
     auto &castAttnToFp16 = kernelGraph_.nodes.at(nodeId++);
 
+    auto &permuteVNode = kernelGraph_.nodes.at(nodeId++);
     auto &bmmVNode = kernelGraph_.nodes.at(nodeId++);
     auto &permuteContextNode = kernelGraph_.nodes.at(nodeId++);
 
@@ -96,23 +100,28 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
         }
     };
 
-    // key = key.view(bs * hn, sq, hs)
-    // key = key.permute(0, 2, 1) // [bs * hn, hs, sq]
-    AsdOps::OpParam::Transpose permuteKNodeParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 1}};
-    permuteKNode.opDesc = {0, "TransposeOperation", permuteKNodeParam};
+    // trans [bs, sq, hn, hs] to [bs, hn, sq, hs]
+    AsdOps::OpParam::Transpose permuteSeqHnParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 1, 3}};
+    // Q = q.permute(0, 2, 1, 3)  // [bs, hn, sq, hs]
+    permuteQNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
+    permuteQNode.inTensors = {&qScaledOut};
+    permuteQNode.outTensors = {&transposedQ};
+
+    // trans [bs, sq, hn, hs] to [bs, hn, hs, sq]
+    AsdOps::OpParam::Transpose permuteSeqHnHsParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 3, 1}};
+    permuteKNode.opDesc = {0, "TransposeOperation", permuteSeqHnHsParam};
     permuteKNode.inTensors = {&kScaledOut};
     permuteKNode.outTensors = {&transposedK};
-    permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
-    permuteKNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
-    };
 
     // [bs * hn, sq, sq]
     bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
-    bmmQkNode.inTensors = {&qScaledOut, &transposedK};
+    bmmQkNode.inTensors = {&transposedQ, &transposedK};
     bmmQkNode.outTensors = {&bmmQkOut};
-    bmmQkNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
+    bmmQkNode.inTensorViewFuncs.resize(bmmQkNode.inTensors.size());
     bmmQkNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    };
+    bmmQkNode.inTensorViewFuncs[1] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
     };
     bmmQkNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
@@ -156,8 +165,12 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     castAttnToFp16.inTensors = {&softmaxFP32Out};
     castAttnToFp16.outTensors = {&softmaxFP16Out};
 
+    permuteVNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
+    permuteVNode.inTensors = {&mixedValue};
+    permuteVNode.outTensors = {&transposedV};
+
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
-    bmmVNode.inTensors = {&softmaxFP16Out, &mixedValue};
+    bmmVNode.inTensors = {&softmaxFP16Out, &transposedV};
     bmmVNode.outTensors = {&bmmVout};
     bmmVNode.inTensorViewFuncs.resize(bmmVNode.inTensors.size());
     bmmVNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
@@ -172,6 +185,7 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
         }
     };
 
+    // [bs, hn, sq, hs]
     AsdOps::OpParam::Transpose permuteContextNodeParam = {AsdOps::OpParam::Transpose::TRANSPOSE, {0 ,2, 1, 3}};
     permuteContextNode.opDesc = {0, "TransposeOperation", permuteContextNodeParam};
     permuteContextNode.inTensors = {&bmmVout};

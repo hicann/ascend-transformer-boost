@@ -218,11 +218,11 @@ class GPTNeoXAttention(nn.Module):
 
         # do self kv cache attention
         if has_layer_past:
-            acl_query = query.half()
-            acl_key = key.half()
-            acl_value = value.half()
-            acl_key_pass = layer_past[0].half()
-            acl_value_pass = layer_past[1].half()
+            acl_query = query.half().permute(0, 2, 1, 3)
+            acl_key = key.half().permute(0, 2, 1, 3)
+            acl_value = value.half().permute(0, 2, 1, 3)
+            acl_key_pass = layer_past[0].half().permute(0, 2, 1, 3)
+            acl_value_pass = layer_past[1].half().permute(0, 2, 1, 3)
             acl_key_length = key.shape[2]
             acl_causal_mask = self.bias[:, :, acl_key_length - 1:acl_key_length, :acl_key_length]
             acl_causal_mask = ~acl_causal_mask

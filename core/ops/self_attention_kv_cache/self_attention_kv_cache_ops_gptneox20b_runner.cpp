@@ -50,6 +50,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     int64_t internalTensorId = 0;
     AsdOps::Tensor &qScaledOut = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &kScaledOut = kernelGraph_.internalTensors.at(internalTensorId++);
+    AsdOps::Tensor &transposedQ = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &bmmQkOut = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &castFP32Out = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -57,6 +58,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     AsdOps::Tensor &maskedFP32Out = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &softmaxFP32Out = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &softmaxFP16Out = kernelGraph_.internalTensors.at(internalTensorId++);
+    AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &bmmVout = kernelGraph_.internalTensors.at(internalTensorId++);
 
     kernelGraph_.nodes.resize(13);
@@ -65,6 +67,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     auto &catValueNode = kernelGraph_.nodes.at(nodeId++);
     auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
     auto &mulsKNode = kernelGraph_.nodes.at(nodeId++);
+    auto &permuteQNode = kernelGraph_.nodes.at(nodeId++);
     auto &permuteKNode = kernelGraph_.nodes.at(nodeId++);
     auto &bmmQkNode = kernelGraph_.nodes.at(nodeId++);
 
@@ -74,12 +77,13 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     auto &softMaxNode = kernelGraph_.nodes.at(nodeId++);
     auto &castAttnToFp16 = kernelGraph_.nodes.at(nodeId++);
 
+    auto &permuteVNode = kernelGraph_.nodes.at(nodeId++);
     auto &bmmVNode = kernelGraph_.nodes.at(nodeId++);
     auto &permuteContextNode = kernelGraph_.nodes.at(nodeId++);
 
     // cat key
     // key = torch.cat(key, pastKey)
-    catKeyNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({2})};
+    catKeyNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({1})};
     catKeyNode.inTensors = {&pastKey, &mixedKey};
     catKeyNode.outTensors = {&presentKey};
     catKeyNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
@@ -88,7 +92,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
         }
     };
 
-    catValueNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({2})};
+    catValueNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({1})};
     catValueNode.inTensors = {&pastValue, &mixedValue};
     catValueNode.outTensors = {&presentValue};
     catValueNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
@@ -124,23 +128,28 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
         }
     };
 
-    // key = key.view(bs * hn, sq, hs)
-    // key = key.permute(0, 2, 1) // [bs * hn, hs, sq]
-    AsdOps::OpParam::Transpose permuteKNodeParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 1}};
-    permuteKNode.opDesc = {0, "TransposeOperation", permuteKNodeParam};
+    // trans [bs, sq, hn, hs] to [bs, hn, sq, hs]
+    AsdOps::OpParam::Transpose permuteSeqHnParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 1, 3}};
+    // Q = q.permute(0, 2, 1, 3)  // [bs, hn, sq, hs]
+    permuteQNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
+    permuteQNode.inTensors = {&qScaledOut};
+    permuteQNode.outTensors = {&transposedQ};
+
+    // trans [bs, sq, hn, hs] to [bs, hn, hs, sq]
+    AsdOps::OpParam::Transpose permuteSeqHnHsParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 3, 1}};
+    permuteKNode.opDesc = {0, "TransposeOperation", permuteSeqHnHsParam};
     permuteKNode.inTensors = {&kScaledOut};
     permuteKNode.outTensors = {&transposedK};
-    permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
-    permuteKNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
-    };
 
     // [bs * hn, sq, sq]
     bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
-    bmmQkNode.inTensors = {&qScaledOut, &transposedK};
+    bmmQkNode.inTensors = {&transposedQ, &transposedK};
     bmmQkNode.outTensors = {&bmmQkOut};
-    bmmQkNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
+    bmmQkNode.inTensorViewFuncs.resize(bmmQkNode.inTensors.size());
     bmmQkNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    };
+    bmmQkNode.inTensorViewFuncs[1] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
     };
     bmmQkNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
@@ -184,8 +193,12 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     castAttnToFp16.inTensors = {&softmaxFP32Out};
     castAttnToFp16.outTensors = {&softmaxFP16Out};
 
+    permuteVNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
+    permuteVNode.inTensors = {&mixedValue};
+    permuteVNode.outTensors = {&transposedV};
+
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
-    bmmVNode.inTensors = {&softmaxFP16Out, &presentValue};
+    bmmVNode.inTensors = {&softmaxFP16Out, &transposedV};
     bmmVNode.outTensors = {&bmmVout};
     bmmVNode.inTensorViewFuncs.resize(bmmVNode.inTensors.size());
     bmmVNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {

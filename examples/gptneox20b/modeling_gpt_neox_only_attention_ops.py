@@ -226,9 +226,9 @@ class GPTNeoXAttention(nn.Module):
 
         # do self attention ops
         if not has_layer_past:
-            acl_query = query.half()
-            acl_key = key.half()
-            acl_value = value.half()
+            acl_query = query.half().permute(0, 2, 1, 3)
+            acl_key = key.half().permute(0, 2, 1, 3)
+            acl_value = value.half().permute(0, 2, 1, 3)
             acl_key_length = key.shape[2]
             acl_causal_mask = self.bias[:, :, :acl_key_length, :acl_key_length]
             acl_causal_mask = ~acl_causal_mask
