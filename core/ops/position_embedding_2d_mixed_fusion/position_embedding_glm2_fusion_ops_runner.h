@@ -13,25 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef POSITIONEMBEDDING_FUSION_OPS_RUNNER_BUILDER_H
-#define POSITIONEMBEDDING_FUSION_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#ifndef POSITIONEMBEDDING_FUSION_GLM2_OPS_RUNNER_H
+#define POSITIONEMBEDDING_FUSION_GLM2_OPS_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/position_embedding_fusion.h"
-#include "position_embedding_fusion_ops_runner.h"
-#include "position_embedding_glm2_fusion_ops_runner.h"
 
 namespace AclTransformer {
-class PositionEmbeddingFusionOpsRunnerBuilder : public RunnerBuilder {
+class PositionEmbeddingGlm2FusionOpsRunner : public OpsRunner {
 public:
-    explicit PositionEmbeddingFusionOpsRunnerBuilder(const PositionEmbeddingFusionParam &param) : param_(param) {}
-    virtual ~PositionEmbeddingFusionOpsRunnerBuilder() = default;
-    Runner *Build() override 
-    { 
-        if (param_.model == "chatglm2_6b"){
-            return new PositionEmbeddingGlm2FusionOpsRunner(param_);
-        }
-        return new PositionEmbeddingFusionOpsRunner(param_);
-    }
+    explicit PositionEmbeddingGlm2FusionOpsRunner(const PositionEmbeddingFusionParam &param);
+    virtual ~PositionEmbeddingGlm2FusionOpsRunner();
 
 private:
     PositionEmbeddingFusionParam param_;
