@@ -19,6 +19,7 @@
 #include "mlp_torch_runner_builder.h"
 #include "mlp_ops_runner_builder.h"
 
+static constexpr int64_t GLM2_6B_IN_TENSOR_SIZE = 3;
 static constexpr int64_t GLM130B_IN_TENSOR_SIZE = 3;
 static constexpr int64_t LLAMA13B_IN_TENSOR_SIZE = 3;
 static constexpr int64_t DEFAULT_IN_TENSOR_SIZE = 4;
@@ -38,6 +39,8 @@ uint64_t MlpOperation::GetInTensorCount() const
 {
     if (param_.model == "glm130b") {
         return GLM130B_IN_TENSOR_SIZE;
+    } else if (param_.model == "chatglm2_6b") {
+        return GLM2_6B_IN_TENSOR_SIZE;
     } else if (param_.model == "llama13b") {
         return LLAMA13B_IN_TENSOR_SIZE;
     } else {
