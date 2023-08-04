@@ -31,11 +31,13 @@ public:
     static std::string AsdOpsTensorToString(const AsdOps::Tensor &tensor);
     static std::string AsdOpsTensorDescToString(const AsdOps::TensorDesc &tensorDesc);
     static void SaveTensor(const AsdOps::Tensor &tensor, const std::string &filePath);
+    static void LoadTensor(AsdOps::Tensor &tensor, const std::string &filePath);
     static void SaveVariantPack(Handle &handle, const VariantPack &variantPack, const std::string &dirPath);
     static void SaveVariantPack(Handle &handle, const RunnerVariantPack &runnerVariantPack, const std::string &dirPath);
     static void SaveRunInfo(Handle &handle, const AsdOps::RunInfo &runInfo, const std::string &dirPath);
     static bool AsdOpsTensorDescEqual(const AsdOps::TensorDesc &tensorDescA, const AsdOps::TensorDesc &tensorDescB);
     static std::string AsdOpsDimsToString(const AsdOps::SVector<int64_t> &dims);
+    static AsdOps::SVector<int64_t> AsdOpsStringToDims(const std::string str);
     static int64_t AlignInt(int64_t value, int align);
 };
 } // namespace AclTransformer
