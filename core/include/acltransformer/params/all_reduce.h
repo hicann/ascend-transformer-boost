@@ -20,6 +20,7 @@ struct AllReduceParam {
     int rank = 0;
     int rankSize = 0;
     int rankRoot = 0;
+    std::string allReduceType = "sum";
     std::string backend = "lccl";
 };
 } // namespace AclTransformer
