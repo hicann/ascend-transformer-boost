@@ -135,7 +135,7 @@ class GPTNeoXAttention(nn.Module):
         self.acl_self_attention_operation = torch.classes.OperationTorch.OperationTorch("SelfAttentionOperation")
         self.acl_self_attention_operation.set_param(
             json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b",
-                        "dk": self.head_size, "transKey": True, "scalingFactor": 0.1})
+                        "dk": self.head_size, "transKey": True})
         )
 
     def _init_bias(self, max_positions, device=None):

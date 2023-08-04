@@ -25,7 +25,6 @@ struct GptNeox20BLayerParam {
    int layerId = 0;
    int beginParamsAxis = 1;
    float rotaryPct = 0.0;
-   float scalingFactor = 1.0;
 };
 } // namespace AclTransformer
 #endif

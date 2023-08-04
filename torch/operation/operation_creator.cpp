@@ -254,14 +254,11 @@ static AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::j
     if (paramJson.contains("dk")) {
         param.dk = paramJson["dk"].get<int>();
     }
-    if (paramJson.contains("scalingFactor")) {
-        param.scalingFactor = paramJson["scalingFactor"].get<float>();
-    }
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
-                  << ", layerId:" << param.layerId << ", dk:" << param.dk << ", scalingFactor:" << param.scalingFactor;
+                  << ", layerId:" << param.layerId << ", dk:" << param.dk;
     return new AclTransformer::SelfAttentionOperation(param);
 }
 
@@ -308,14 +305,11 @@ static AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nloh
     if (paramJson.contains("dk")) {
         param.dk = paramJson["dk"].get<int>();
     }
-    if (paramJson.contains("scalingFactor")) {
-        param.scalingFactor = paramJson["scalingFactor"].get<float>();
-    }
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
-                  << ", layerId:" << param.layerId << ", dk:" << param.dk << ", scalingFactor:" << param.scalingFactor;
+                  << ", layerId:" << param.layerId << ", dk:" << param.dk;
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }
 
@@ -616,10 +610,9 @@ static AclTransformer::Operation *GptNeox20BLayerEncoderOperationCreate(const nl
     param.dk = paramJson["dk"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.rotaryPct = paramJson["rotaryPct"].get<float>();
-    param.scalingFactor = paramJson["scalingFactor"].get<float>();
     ASD_LOG(INFO) << "GptNeox20BLayerParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
                   << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
-                  << ", rotaryPct:" << param.rotaryPct << ", scalingFactor:" << param.scalingFactor;
+                  << ", rotaryPct:" << param.rotaryPct;
     return new AclTransformer::GptNeox20BLayerEncoderOperation(param);
 }
 

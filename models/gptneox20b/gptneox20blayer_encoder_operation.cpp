@@ -102,7 +102,6 @@ GptNeox20BLayerEncoderOperation::GptNeox20BLayerEncoderOperation(const GptNeox20
     selfAttentionParam.dk = param_.dk;
     selfAttentionParam.headNum = param_.headNum;
     selfAttentionParam.model = "gptneox20b";
-    selfAttentionParam.scalingFactor = param_.scalingFactor;
     
     AclTransformer::LinearParam selfAttnLinearParam;
     selfAttnLinearParam = qkvLinearParam;
