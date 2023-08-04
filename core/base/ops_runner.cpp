@@ -178,9 +178,7 @@ void OpsRunner::FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t ti
                           << ", runinfo:\n"
                           << kernelRunInfo.ToString();
             kernel->InitHostLaunchBuffer(kernelRunInfo, static_cast<char *>(hostTilingBuffer) + offset, tilingSize);
-            if (AsdOps::GetSingleton<Config>().IsSaveTensor() &&
-                (AsdOps::GetSingleton<Config>().IsSaveTensorForKernel(kernel->GetName()) ||
-                 AsdOps::GetSingleton<Config>().IsSaveTensorForNode(id_ + "." + std::to_string(nodeId)))) {
+            if (IsSaveTensor()) {
                 std::string fileDir = tensorDir_ + "/" + std::to_string(nodeId) + "_" + kernel->GetName();
                 WriteTilingData(static_cast<char *>(hostTilingBuffer) + offset, tilingSize, fileDir);
             }
@@ -375,6 +373,12 @@ void OpsRunner::RunAllKernel(Handle &handle)
             continue;
         }
 
+        if (IsSaveTensor()) {
+            std::string dirPath = tensorDir_ + "/" + std::to_string(i) + "_" + kernel->GetName();
+            TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath + "/before");
+            ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " SaveRunInfo " << dirPath;
+        }
+
         AsdOps::Timer timer;
 #ifdef USE_PROFILING
         const auto beginTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
@@ -397,16 +401,9 @@ void OpsRunner::RunAllKernel(Handle &handle)
             ASD_LOG_IF(ret != 0, ERROR) << GetName() << " AsdRtStreamSynchronize fail, ret:" << ret;
         }
 
-        if (AsdOps::GetSingleton<Config>().IsSaveTensor() &&
-            (AsdOps::GetSingleton<Config>().IsSaveTensorForKernel(kernel->GetName()) ||
-             AsdOps::GetSingleton<Config>().IsSaveTensorForNode(id_ + "." + std::to_string(i)))) {
-            ASD_LOG(INFO) << GetName() << " " << kernel->GetName()
-                          << " AsdRtStreamSynchronize, stream:" << handle.stream;
-            int ret = AsdRtStreamSynchronize(handle.stream);
-            ASD_LOG_IF(ret != 0, ERROR) << GetName() << " " << kernel->GetName()
-                                        << " AsdRtStreamSynchronize fail, ret:" << ret;
+        if (IsSaveTensor()) {
             std::string dirPath = tensorDir_ + "/" + std::to_string(i) + "_" + kernel->GetName();
-            TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath);
+            TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath + "/after");
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " SaveRunInfo " << dirPath;
         }
         ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " run end";

@@ -233,15 +233,6 @@ void GraphRunner::SetSaveTensorDir(const std::string &tensorDir)
     }
 }
 
-void GraphRunner::SetId(const std::string &id)
-{
-    id_ = id;
-    for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); nodeId++) {
-        auto &node = runnerGraph_.nodes.at(nodeId);
-        node.runner->SetId(id + "." + std::to_string(nodeId));
-    }
-}
-
 void GraphRunner::Reset()
 {
     selfIntermediateBufferSize_ = 0;

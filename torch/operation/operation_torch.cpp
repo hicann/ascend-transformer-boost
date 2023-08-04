@@ -72,8 +72,6 @@ void OperationTorch::SetParam(std::string param)
         return;
     }
 
-    plan_.SetRunnerId(nodeId_ + ".0");
-
     ASD_LOG(INFO) << name_ << " set param end";
 }
 
@@ -185,8 +183,7 @@ void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std
     ASD_LOG_IF(!st.Ok(), ERROR) << name_ << " execute plan fail, error:" << st.Message();
 
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
-        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor() &&
-            AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensorForNode(nodeId_)) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = GetSaveTensorDir() + "/outtensor" + std::to_string(i) + ".pth";
             Utils::SaveTensor(atOutTensors.at(i), filePath);
             ASD_LOG(INFO) << name_ << " save tensor:" << filePath;
@@ -241,8 +238,7 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
             variantPack.inTensors.at(i).desc.format == AsdOps::TENSOR_FORMAT_NCHW) {
             variantPack.inTensors.at(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor() &&
-            AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensorForNode(nodeId_)) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
             std::string filePath = GetSaveTensorDir() + "/intensor" + std::to_string(i) + ".pth";
             Utils::SaveTensor(atInTensors.at(i), filePath);
             ASD_LOG(INFO) << operation_->GetName() << " save tensor:" << filePath;
