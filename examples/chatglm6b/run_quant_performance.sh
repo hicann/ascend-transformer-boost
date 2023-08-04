@@ -20,4 +20,22 @@ fi
 if [ ! -d "./chatglm_quant_param" ];then
     ln -s $ACLTRANSFORMER_TESTDATA/quant_param/chatglm6b/no_ft ./chatglm_quant_param
 fi
+
+SCRIPT_PATH=$1
+
+if [ $# -ne 1 ];then
+    echo "running the original model"
+    SCRIPT_PATH="./modeling_chatglm.py"
+fi
+
+if [ -f "./modeling_target.py" ];then
+    rm -rf ./modeling_target.py
+fi
+
+if [ ! -f $SCRIPT_PATH ];then
+    echo "cannot find the file to be tested"
+    exit 1
+fi
+
+ln -s $SCRIPT_PATH ./modeling_target.py 
 python3 main_performance.py
