@@ -20,6 +20,9 @@
 #include "self_attention_ops_runner_builder.h"
 #include <asdops/utils/log/log.h>
 
+static constexpr int64_t LLAMA7B_IN_TENSOR_SIZE = 3;
+static constexpr int64_t DEFAULT_IN_TENSOR_SIZE = 1;
+
 namespace AclTransformer {
 SelfAttentionOperation::SelfAttentionOperation(const SelfAttentionParam &param)
     : Operation("SelfAttentionOperation"), param_(param)
@@ -35,7 +38,10 @@ SelfAttentionOperation::~SelfAttentionOperation() {}
 
 uint64_t SelfAttentionOperation::GetInTensorCount() const { return 4; }
 
-uint64_t SelfAttentionOperation::GetOutTensorCount() const { return 1; }
+uint64_t SelfAttentionOperation::GetOutTensorCount() const 
+{ 
+    return (param_.model == "llama7b") ? LLAMA7B_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE; 
+}
 
 AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
@@ -48,6 +54,15 @@ AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdO
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
+    } else if (param_.model == "llama7b") {
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
+
+        outTensorDescs.at(1) = inTensors.at(1).desc;
+        outTensorDescs.at(2) = inTensors.at(2).desc;
     }
     return AsdOps::Status::OkStatus();
 }
