@@ -19,6 +19,7 @@
 #include "acltransformer/params/self_attention.h"
 #include "self_attention_ops_openbert_runner.h"
 #include "self_attention_ops_chatglm6b_runner.h"
+#include "self_attention_ops_llama7b_runner.h"
 #include <asdops/utils/log/log.h>
 #include "self_attention_ops_chatglm6b_runner_910a.h"
 
@@ -36,7 +37,13 @@ public:
                 } else {
                     return new SelfAttentionOpsChatglm6bRunner910a(param_);
                 }
-            } else {
+            } else if (param_.model == "llama7b") {
+                if (AsdOps::GetSingleton<Config>().Is910B()) {
+                    return new SelfAttentionOpsLlama7bRunner(param_); 
+                } else {
+                    return new SelfAttentionOpsLlama7bRunner(param_);
+                }
+            }  else {
                 ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
                 return nullptr;
             }
