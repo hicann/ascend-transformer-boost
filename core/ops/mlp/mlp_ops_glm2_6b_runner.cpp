@@ -56,17 +56,17 @@ MlpOpsGlm2Runner::MlpOpsGlm2Runner(const MlpParam &param)
     auto &matmulDownNode = kernelGraph_.nodes[nodeId++];
 
     matmulUpNode.opDesc = { 0, "MatMulOperation", AsdOps::OpParam::MatMul({ false, true }) };
-    matmulUpNode.inTensors = { &hiddenStates, &weight };
-    matmulUpNode.outTensors = { &matmulOut };
+    matmulUpNode.inTensors = { &hiddenStates, &weightUp };
+    matmulUpNode.outTensors = { &matmulUpOut };
     matmulUpNode.inTensorViewFuncs.resize(matmulUpNode.inTensors.size());
     matmulUpNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
     };
 
-    chunkNode.opDesc = { 0, "SplitOperation", AsdOps::OpParam::Split { 0, 2 } }; // splitDim,splitNum
-    chunkNode.inTensors = { &matmulUpOut };
-    chunkNode.outTensors = { &chunk0, &chunk1 };
-    chunkNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+    splitNode.opDesc = { 0, "SplitOperation", AsdOps::OpParam::Split { 0, 2 } }; // splitDim,splitNum
+    splitNode.inTensors = { &matmulUpOut };
+    splitNode.outTensors = { &chunk0, &chunk1 };
+    splitNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         runInfo.SetOpDesc({ 0, "SplitOperation", AsdOps::OpParam::Split { int(dims.size()) - 1, 2 } });
     };

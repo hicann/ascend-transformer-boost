@@ -32,7 +32,7 @@ public:
         if (param_.model == "glm130b") {
             return new MlpOpsGlm130bRunner(param_);
         } else if (param_.model == "chatglm2_6b"){
-            return new MlpOpsGlm2Runner(param_)
+            return new MlpOpsGlm2Runner(param_);
         }else {
             return new MlpOpsRunner(param_);
         }
