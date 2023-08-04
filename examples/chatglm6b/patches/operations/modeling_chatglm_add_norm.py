@@ -653,7 +653,7 @@ class GLMBlock(torch.nn.Module):
         mlp_output = self.mlp(mlp_input)
 
         # Second residual connection.
-        output = mlp_input * alpha + mlp_output
+        output = mlp_input * self.alpha + mlp_output
 
         if use_cache:
             outputs = (output,) + outputs
