@@ -5,6 +5,7 @@ import signal
 import platform
 import os
 import torch
+import sys
 
 # 适配昇腾NPU
 import torch_npu
@@ -22,21 +23,7 @@ option = {}
 option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril"
 torch.npu.set_option(option)
 
-tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
-model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
 
-# 量化模型适配
-for name, mod in model.named_modules():
-    if type(mod).__name__ == "GLMBlock":
-        if hasattr(mod, "qkv_deq_scale"):
-            mod.qkv_deq_scale = torch.nn.Parameter(
-                mod.qkv_deq_scale.data.to(torch.float32))
-            mod.dense_deq_scale = torch.nn.Parameter(
-                mod.dense_deq_scale.data.to(torch.float32))
-            mod.hto4h_deq_scale = torch.nn.Parameter(
-                mod.hto4h_deq_scale.data.to(torch.float32))
-            mod.fhtoh_deq_scale = torch.nn.Parameter(
-                mod.fhtoh_deq_scale.data.to(torch.float32))
 
 os_name = platform.system()
 clear_command = 'cls' if os_name == 'Windows' else 'clear'
@@ -65,22 +52,7 @@ def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> to
 
 transformers.generation.TopPLogitsWarper.__call__ = __call__
 
-# 优化ND NZ排布，消除transdata
-soc_version = torch_npu._C._npu_get_soc_version()
-if soc_version in [104, 220, 221, 222, 223]:
-    for name, module in model.named_modules():
-        if isinstance(module, torch.nn.Linear):
-            module.weight.data = module.weight.data.npu_format_cast(2)
-    print("soc_version:", soc_version, " is 910B, support ND")
-else:
-    for name, module in model.named_modules():
-        if isinstance(module, torch.nn.Linear):
-            module.weight.data = module.weight.data.npu_format_cast(29)
-    print("soc_version:", soc_version, " is not 910B, support NZ")
 
-for name, module in model.named_modules():
-    if isinstance(module, torch.nn.Embedding):
-        module.weight.data = module.weight.data.npu_format_cast(2)
 
 
 def build_prompt(history):
@@ -96,7 +68,40 @@ def signal_handler(signal, frame):
     stop_stream = True
 
 
-def main():
+def main(path="./"):
+    tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
+    model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
+
+
+    # 量化模型适配
+    for name, mod in model.named_modules():
+        if type(mod).__name__ == "GLMBlock":
+            if hasattr(mod, "qkv_deq_scale"):
+                mod.qkv_deq_scale = torch.nn.Parameter(
+                    mod.qkv_deq_scale.data.to(torch.float32))
+                mod.dense_deq_scale = torch.nn.Parameter(
+                    mod.dense_deq_scale.data.to(torch.float32))
+                mod.hto4h_deq_scale = torch.nn.Parameter(
+                    mod.hto4h_deq_scale.data.to(torch.float32))
+                mod.fhtoh_deq_scale = torch.nn.Parameter(
+                    mod.fhtoh_deq_scale.data.to(torch.float32))
+
+    # 优化ND NZ排布，消除transdata
+    soc_version = torch_npu._C._npu_get_soc_version()
+    if soc_version in [104, 220, 221, 222, 223]:
+        for name, module in model.named_modules():
+            if isinstance(module, torch.nn.Linear):
+                module.weight.data = module.weight.data.npu_format_cast(2)
+        print("soc_version:", soc_version, " is 910B, support ND")
+    else:
+        for name, module in model.named_modules():
+            if isinstance(module, torch.nn.Linear):
+                module.weight.data = module.weight.data.npu_format_cast(29)
+        print("soc_version:", soc_version, " is not 910B, support NZ")
+
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Embedding):
+            module.weight.data = module.weight.data.npu_format_cast(2)
     history = []
     question = 0
     test_tokens_num = 64
@@ -163,4 +168,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    path = sys.argv[1]
+    main(path)
