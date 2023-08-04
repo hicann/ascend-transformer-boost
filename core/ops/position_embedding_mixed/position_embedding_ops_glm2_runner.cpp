@@ -34,7 +34,7 @@ PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmb
     AsdOps::Tensor &kEmbedded = kernelGraph_.outTensors.at(1);
     AsdOps::Tensor &value = kernelGraph_.outTensors.at(2);
 
-    
+
 
     kernelGraph_.internalTensors.resize(29);
     int64_t internalTensorNum = 0;
@@ -124,10 +124,10 @@ PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmb
     asStrided1Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
     asStrided1Node.inTensors = {&mixedQkv};
     asStrided1Node.outTensors = {&kLayer};
-    asStrided1Node.inferShapePreFunc = [qLayerDim, kLayerDime](AsdOps::RunInfo &runInfo) {
+    asStrided1Node.inferShapePreFunc = [qLayerDim, kLayerDim](AsdOps::RunInfo &runInfo) {
         ASD_LOG(INFO) << "split k";
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), kLayerDime};
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), kLayerDim};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2), dims.at(2), 1};
         AsdOps::SVector<int64_t> offset = {qLayerDim};
         runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, offset}});
@@ -136,13 +136,12 @@ PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmb
     asStrided2Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
     asStrided2Node.inTensors = {&mixedQkv};
     asStrided2Node.outTensors = {&valueIntermediate};
-    asStrided2Node.inferShapePreFunc = [qLayerDim, kLayerDime](AsdOps::RunInfo &runInfo) {
-        ASD_LOG(INFO) << "split v
-        ";
+    asStrided2Node.inferShapePreFunc = [qLayerDim, kLayerDim](AsdOps::RunInfo &runInfo) {
+        ASD_LOG(INFO) << "split v";
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), kLayerDime};
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), kLayerDim};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2), dims.at(2), 1};
-        AsdOps::SVector<int64_t> offset = {qLayerDim + kLayerDime};
+        AsdOps::SVector<int64_t> offset = {qLayerDim + kLayerDim};
         runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, offset}});
     };
 

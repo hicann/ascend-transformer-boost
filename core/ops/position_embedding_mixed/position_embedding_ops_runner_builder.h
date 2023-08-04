@@ -28,7 +28,7 @@ public:
     virtual ~PositionEmbeddingOpsRunnerBuilder() = default;
     Runner *Build() override { 
         if (param_.model == "chatglm2_6b") {
-            return new PositionEmbeddingOpsGlm2Runner(param_)
+            return new PositionEmbeddingOpsGlm2Runner(param_);
         } else if (param_.is2d) {
             return new PositionEmbeddingOpsRunner(param_);
         } else {

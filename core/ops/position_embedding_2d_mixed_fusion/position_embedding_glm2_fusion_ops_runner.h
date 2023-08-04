@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef POSITIONEMBEDDING_FUSION_OPS_RUNNER_H
-#define POSITIONEMBEDDING_FUSION_OPS_RUNNER_H
+#ifndef POSITIONEMBEDDING_FUSION_GLM2_OPS_RUNNER_H
+#define POSITIONEMBEDDING_FUSION_GLM2_OPS_RUNNER_H
 #include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/position_embedding_fusion.h"
 

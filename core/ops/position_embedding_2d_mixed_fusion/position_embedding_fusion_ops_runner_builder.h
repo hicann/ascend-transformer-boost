@@ -25,7 +25,8 @@ class PositionEmbeddingFusionOpsRunnerBuilder : public RunnerBuilder {
 public:
     explicit PositionEmbeddingFusionOpsRunnerBuilder(const PositionEmbeddingFusionParam &param) : param_(param) {}
     virtual ~PositionEmbeddingFusionOpsRunnerBuilder() = default;
-    Runner *Build() override { 
+    Runner *Build() override 
+    { 
         if (param_.model == "chatglm2_6b"){
             return new PositionEmbeddingGlm2FusionOpsRunner(param_);
         }

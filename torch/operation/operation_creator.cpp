@@ -124,6 +124,15 @@ AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
+    if (paramJson.contains("numHeadPerPartition")) {
+        param.numHeadPerPartition = paramJson["numHeadPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("hiddenSizePerHead")) {
+        param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    }
+    if (paramJson.contains("numGroupsPerPartition")) {
+        param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    }
     if (paramJson.contains("headNum")) {
         param.headNum = paramJson["headNum"].get<std::int64_t>();
         ASD_LOG(INFO) << "param.headNum: " << param.headNum;

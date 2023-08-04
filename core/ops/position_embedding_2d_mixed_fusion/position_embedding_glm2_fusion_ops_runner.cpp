@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "position_embedding_fusion_ops_runner.h"
+#include "position_embedding_glm2_fusion_ops_runner.h"
 #include <numeric>
 #include <asdops/utils/log/log.h>
 #include <asdops/params/params.h>
@@ -26,11 +26,10 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
 {
     ASD_LOG(INFO) << "PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner called, headNum: "
                   << param_.headNum;
-    const size_t inTensorSize = 5;
+    const size_t inTensorSize = 3;
     const size_t outTensorSize = 3;
-    const size_t interTensorSize = 10;
-    const size_t nodeSize = 10;
-    const int32_t kqvSliceSize = 3;
+    const size_t interTensorSize = 8;
+    const size_t nodeSize = 9;
     kernelGraph_.inTensors.resize(inTensorSize);
     AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &ropeCache = kernelGraph_.inTensors.at(1);
@@ -39,7 +38,7 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     kernelGraph_.outTensors.resize(outTensorSize);
     AsdOps::Tensor &qEmbedded = kernelGraph_.outTensors.at(0);
     AsdOps::Tensor &kEmbedded = kernelGraph_.outTensors.at(1);
-    AsdOps::Tensor &value = kernelGraph_.outTensors.at(index2);  // V
+    AsdOps::Tensor &value = kernelGraph_.outTensors.at(2);  // V
 
     kernelGraph_.internalTensors.resize(interTensorSize);
     int64_t internalTensorNum = 0;
@@ -48,7 +47,9 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     AsdOps::Tensor &valueIntermediate = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &ropeCacheSlice = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &cos = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &cos1 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &sin = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &sin1 = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
@@ -58,6 +59,8 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     auto &muls0Node = kernelGraph_.nodes[nodeNum++];
     auto &asStrided3Node = kernelGraph_.nodes[nodeNum++];
     auto &split0Node = kernelGraph_.nodes[nodeNum++];
+    auto &asStrided4Node = kernelGraph_.nodes[nodeNum++];
+    auto &asStrided5Node = kernelGraph_.nodes[nodeNum++];
     auto &rope0Node = kernelGraph_.nodes[nodeNum++];
 
     int64_t qLayerDim = param_.numHeadPerPartition * param_.hiddenSizePerHead;
@@ -82,10 +85,10 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     asStrided1Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
     asStrided1Node.inTensors = {&mixedQkv};
     asStrided1Node.outTensors = {&kLayer};
-    asStrided1Node.inferShapePreFunc = [qLayerDim, kLayerDime](AsdOps::RunInfo &runInfo) {
+    asStrided1Node.inferShapePreFunc = [qLayerDim, kLayerDim](AsdOps::RunInfo &runInfo) {
         ASD_LOG(INFO) << "split k";
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), kLayerDime};
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), kLayerDim};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2), dims.at(2), 1};
         AsdOps::SVector<int64_t> offset = {qLayerDim};
         runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, offset}});
@@ -94,13 +97,12 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     asStrided2Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
     asStrided2Node.inTensors = {&mixedQkv};
     asStrided2Node.outTensors = {&valueIntermediate};
-    asStrided2Node.inferShapePreFunc = [qLayerDim, kLayerDime](AsdOps::RunInfo &runInfo) {
-        ASD_LOG(INFO) << "split v
-        ";
+    asStrided2Node.inferShapePreFunc = [qLayerDim, kLayerDim](AsdOps::RunInfo &runInfo) {
+        ASD_LOG(INFO) << "split v";
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), kLayerDime};
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), kLayerDim};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2), dims.at(2), 1};
-        AsdOps::SVector<int64_t> offset = {qLayerDim + kLayerDime};
+        AsdOps::SVector<int64_t> offset = {qLayerDim + kLayerDim};
         runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, offset}});
     };
 
@@ -139,18 +141,39 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     split0Node.outTensors = {&cos, &sin};
     split0Node.inferShapePreFunc = split1InferShape;
 
+    // need to double cos and sin
+    inferShapePreFunc sinCosInfer = [](AsdOps::RunInfo &runInfo) {
+        int64_t sq_len = kernelGraph_.inTensors.at(0).desc.dims[0];
+        ASD_LOG(INFO) << "double cos and sin";
+        AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), 2};
+        AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2) * dims.at(3), dims.at(2) * dims.at(3), dims.at(3), 0};
+        AsdOps::SVector<int64_t> offset = {0};
+        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, offset}});
+    };
+
+    asStrided4Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
+    asStrided4Node.inTensors = {&cos};
+    asStrided4Node.outTensors = {&cos1};
+    asStrided4Node.inferShapePreFunc = sinCosInfer;
+
+    asStrided5Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
+    asStrided5Node.inTensors = {&sin};
+    asStrided5Node.outTensors = {&sin1};
+    asStrided5Node.inferShapePreFunc = sinCosInfer;
+
     ViewFunc ropeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims.resize(2);
-        newDims.at(0) = oldDims.at(0);
-        newDims.at(1) = oldDims.at(1); 
+        newDims.at(0) = oldDims.at(0) * oldDims.at(1);
+        newDims.at(1) = oldDims.at(2) * oldDims.at(3); 
     }; 
 
     ViewFunc ropeKqView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
     };
 
     const size_t ropeViewSize = 4;
-    rope0Node.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPEND, 2}};
+    rope0Node.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPEND, hn / 2}};
     rope0Node.inTensors = {&qLayer, &kLayer, &cos, &sin, &seqLen};
     rope0Node.outTensors = {&qEmbedded, &kEmbedded};
     rope0Node.inTensorViewFuncs.resize(ropeViewSize);
