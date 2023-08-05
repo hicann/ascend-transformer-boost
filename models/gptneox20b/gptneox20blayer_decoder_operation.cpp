@@ -181,7 +181,7 @@ AsdOps::Status GptNeox20BLayerDecoderOperation::InferShapeImpl(const AsdOps::SVe
 
     outTensorDescs.at(1) = keyTensor.desc;
     outTensorDescs.at(1).dims.at(1) += 1;
-    outTensorDescs.at(2) = keyTensor.desc;
+    outTensorDescs.at(2) = valueTensor.desc;
     outTensorDescs.at(2).dims.at(1) += 1;
     return AsdOps::Status::OkStatus();
 }

@@ -750,9 +750,9 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
         else:
             past_keys, past_values = map(list, zip(*past_key_values))
             for i in range(len(past_keys)):
-                past_keys[i] = past_keys[i].half()
-                past_values[i] = past_values[i].half()
-            key_length = hidden_states.shape[1] + past_keys[0].shape[2]
+                past_keys[i] = past_keys[i].half().permute(0, 2, 1, 3)
+                past_values[i] = past_values[i].half().permute(0, 2, 1, 3)
+            key_length = hidden_states.shape[1] + past_keys[0].shape[1]
             query_length = hidden_states.shape[1]
             attention_mask_tmp = maskAttenCache[:, :, key_length - query_length: key_length, :key_length] + attention_mask
             acl_model_out = self.acl_decoder_operation.execute(hidden_states, position_ids, cosTable, sinTable,
@@ -808,8 +808,8 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
         for i in range(len(presents)):
             test_key = presents[i][0]
             test_value = presents[i][1]
-            acl_key = acl_presents[i][0]
-            acl_value = acl_presents[i][1]
+            acl_key = acl_presents[i][0].permute(0, 2, 1, 3)
+            acl_value = acl_presents[i][1].permute(0, 2, 1, 3)
             if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
                 print("****equal key of ", i)
             else:

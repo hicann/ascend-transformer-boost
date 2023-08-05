@@ -234,17 +234,17 @@ class GPTNeoXAttention(nn.Module):
         acl_key = acl_key.permute(0, 2, 1, 3)
         acl_value = acl_value.permute(0, 2, 1, 3)
 
-        if (np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02)):
+        if np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02):
             print("***equal query embed")
         else:
             print("!!!not equal query embed")
             print("!!!query shape acl", acl_query.shape, "test", test_query)
-        if (np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02)):
+        if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
             print("***equal key embed")
         else:
             print("!!!not equal key embed")
             print("!!!key shape acl", acl_key.shape, "test", test_key)
-        if (np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02)):
+        if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02):
             print("***equal value embed")
         else:
             print("!!!not equal value embed")

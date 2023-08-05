@@ -548,7 +548,7 @@ class GPTNeoXLayer(nn.Module):
         else:
             pastKey = layer_past[0].half().permute(0, 2, 1, 3)
             pastValue = layer_past[1].half().permute(0, 2, 1, 3)
-            key_length = hidden_states.shape[1] + pastKey.shape[2]
+            key_length = hidden_states.shape[1] + pastKey.shape[1]
             query_length = hidden_states.shape[1]
 
             attention_mask_tmp = maskAttenCache[:, :, key_length - query_length: key_length, :key_length] + attention_mask
