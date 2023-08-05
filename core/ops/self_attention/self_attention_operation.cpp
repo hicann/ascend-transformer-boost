@@ -48,7 +48,7 @@ AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdO
 {
     if (param_.model == "openbert") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
-    } else if (param_.model == "chatglm6b" || param_.model == "glm130b") {
+    } else if (param_.model == "chatglm6b" || param_.model == "glm130b" || param_.model == "chatglm2_6b") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
