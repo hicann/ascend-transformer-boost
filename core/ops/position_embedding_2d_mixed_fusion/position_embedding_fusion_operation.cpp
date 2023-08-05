@@ -35,6 +35,8 @@ AsdOps::Status
 RopeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
+    // gptnexo20b in : QKV [bs, sq, 3 * all_hs], positionIds [bs, sql], cosTable, sinTable [sq, rd]
+    // out: q, k, v [bs, sq, hn, hs]
     outTensorDescs.at(0).format = inTensors.at(0).desc.format;
     outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);

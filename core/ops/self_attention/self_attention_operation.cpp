@@ -38,9 +38,9 @@ SelfAttentionOperation::~SelfAttentionOperation() {}
 
 uint64_t SelfAttentionOperation::GetInTensorCount() const { return 4; }
 
-uint64_t SelfAttentionOperation::GetOutTensorCount() const 
-{ 
-    return (param_.model == "llama7b") ? LLAMA7B_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE; 
+uint64_t SelfAttentionOperation::GetOutTensorCount() const
+{
+    return (param_.model == "llama7b") ? LLAMA7B_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE;
 }
 
 AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
@@ -48,7 +48,9 @@ AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdO
 {
     if (param_.model == "openbert") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
-    } else if (param_.model == "chatglm6b" || param_.model == "glm130b") {
+    } else if (param_.model == "chatglm6b" || param_.model == "glm130b" || param_.model == "gptneox20b") {
+        // gptneox20b [bs, sq, hn, hs]
+        // out [bs, sq, hn * hs]
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));

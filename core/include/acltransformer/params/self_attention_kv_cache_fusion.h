@@ -20,6 +20,7 @@ struct SelfAttentionKvCacheFusionParam {
     int32_t headNum = 0;
     int32_t layerId = 0;
     int32_t dk = 0;
+    std::string model = "chatglm6b";
     AsdOps::SVector<int32_t> seqLen;
     AsdOps::SVector<int32_t> tokenOffset;
 };

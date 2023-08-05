@@ -34,9 +34,9 @@ PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingPa
 
 PositionEmbeddingOperation::~PositionEmbeddingOperation() {}
 
-uint64_t PositionEmbeddingOperation::GetInTensorCount() const 
-{ 
-    return (param_.model == "chatglm2_6b") ? GLM2_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE; 
+uint64_t PositionEmbeddingOperation::GetInTensorCount() const
+{
+    return (param_.model == "chatglm2_6b") ? GLM2_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE;
 }
 
 uint64_t PositionEmbeddingOperation::GetOutTensorCount() const { return 3; }
@@ -60,6 +60,8 @@ AsdOps::Status PositionEmbeddingOperation::InferShapeImpl(const AsdOps::SVector<
         outTensorDescs.at(1).dims.push_back(param_.hiddenSizePerHead);
         outTensorDescs.at(2) = outTensorDescs.at(1);
     } else{
+        // gptnexo20b in : QKV [bs, sq, 3 * all_hs], positionIds [bs, sql], cosTable, sinTable [sq, rd]
+        // out: q, k, v [bs, sq, hn, hs]
         // in : Q,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
         // out : Q ,[seq_len, batch, head_num, head_size]
         outTensorDescs.at(0) = inTensors.at(0).desc;

@@ -55,6 +55,8 @@
 #include "models/glm130b/glm130blayer_decoder_operation.h"
 #include "models/glm130b/glm130blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_operation.h"
+#include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
+#include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -135,8 +137,20 @@ static AclTransformer::Operation *AddOperationCreate(const nlohmann::json &param
 AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingFusionParam param;
-    param.headNum = paramJson["headNum"].get<int64_t>();
-        ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    if (paramJson.contains("rotaryPct")) {
+        param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int64_t>();
+    }
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int64_t>();
+    }
+    ASD_LOG(INFO) << "PositionEmbeddingFusionParam headNum:" << param.headNum << ", rotaryPct:" << param.rotaryPct
+                  << ", model:" << param.model << ", dk:" << param.dk;
     return new AclTransformer::RopeOperation(param);
 }
 static AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
@@ -208,8 +222,13 @@ static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &param
     if (paramJson.contains("hasBias")) {
         param.hasBias = paramJson["hasBias"].get<bool>();
     }
+    if (paramJson.contains("act")) {
+        if (paramJson["act"].get<std::string>() == "gelu") {
+            param.activationFuncType = AclTransformer::FfnParam::ActivationFuncType::GELU;
+        }
+    }
     ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB
-                  << ", hasBias:" << param.hasBias;
+                  << ", hasBias:" << param.hasBias << ", act:" << param.activationFuncType;
     return new AclTransformer::FfnOperation(param);
 }
 
@@ -284,6 +303,12 @@ static AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohman
     }
     if (paramJson.contains("numGroupsPerPartition")) {
         param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("rotaryPct")) {
+        param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int64_t>();
     }
     return new AclTransformer::PositionEmbeddingOperation(param);
 }
@@ -632,6 +657,36 @@ AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson
     return new AclTransformer::LmHeadOperation(param);
 }
 
+static AclTransformer::Operation *GptNeox20BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::GptNeox20BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    ASD_LOG(INFO) << "GptNeox20BLayerParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", rotaryPct:" << param.rotaryPct;
+    return new AclTransformer::GptNeox20BLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *GptNeox20BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::GptNeox20BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    ASD_LOG(INFO) << "GptNeox20BLayerParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", rotaryPct:" << param.rotaryPct;
+    return new AclTransformer::GptNeox20BLayerDecoderOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PostOperation", &PostOperationCreate},
     {"AllReduceOperation", AllReduceOperationCreate},
@@ -670,7 +725,10 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"Glm130BLayerDecoderOperation", &Glm130BLayerDecoderOperationCreate},
     {"Glm130BLayerEncoderOperation", &Glm130BLayerEncoderOperationCreate},
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
-    {"LmHeadOperation", &LmHeadOperationCreate}};
+    {"LmHeadOperation", &LmHeadOperationCreate},
+    {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
+    {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate}
+};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
