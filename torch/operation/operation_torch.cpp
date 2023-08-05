@@ -31,10 +31,20 @@
 #include "torch/context/context.h"
 #include "operation_creator.h"
 
+uint64_t GetNewOpId()
+{
+    static uint64_t opId = 0;
+    uint64_t newOpId = opId++;
+    return newOpId;
+}
+
 OperationTorch::OperationTorch(std::string opName) : opName_(opName), name_(opName)
 {
+    opId_ = GetNewOpId();
+    nodeId_ = std::to_string(opId_);
     ASD_LOG(INFO) << "OperationTorch::OperationTorch, TASK_QUEUE_ENABLE:"
-                  << c10_npu::option::OptionsManager().CheckQueueEnable() << ", opName:" << opName;
+                  << c10_npu::option::OptionsManager().CheckQueueEnable() << ", opName:" << opName
+                  << ", opId:" << opId_;
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
 }
@@ -136,6 +146,12 @@ void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std
 {
     ASD_LOG(INFO) << name_ << " execute impl execCount:" << executeCount_;
     AsdOps::Timer timer;
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        plan_.SetRunnerSaveTensorDir(GetSaveTensorDir() + "/0_");
+        if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        }
+    }
 
     AclTransformer::Handle handle = {Utils::GetCurrentStream()};
 
@@ -168,8 +184,7 @@ void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std
 
     for (size_t i = 0; i < atOutTensors.size(); ++i) {
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-            std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(executeCount_) +
-                                   "_" + opName_ + "/outtensor" + std::to_string(i) + ".pth";
+            std::string filePath = GetSaveTensorDir() + "/outtensor" + std::to_string(i) + ".pth";
             Utils::SaveTensor(atOutTensors.at(i), filePath);
             ASD_LOG(INFO) << name_ << " save tensor:" << filePath;
         }
@@ -203,7 +218,9 @@ void OperationTorch::CreateAtOutTensors(const std::vector<torch::Tensor> &atInTe
     for (size_t i = 0; i < outTensorDescs.size(); ++i) {
         ASD_LOG(INFO) << name_ << " infer shape outTensorDescs[" << i
                       << "]:" << AclTransformer::TensorUtil::AsdOpsTensorDescToString(outTensorDescs.at(i));
+        AsdOps::Timer timer;
         at::Tensor newTensor = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(i));
+        AsdOps::GetSingleton<AclTransformer::Statistic>().createTensorTime += timer.ElapsedMicroSecond();
         atOutTensors.at(i) = newTensor;
     }
 }
@@ -224,8 +241,7 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
             variantPack.inTensors.at(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-            std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(executeCount_) +
-                                   "_" + opName_ + "/intensor" + std::to_string(i) + ".pth";
+            std::string filePath = GetSaveTensorDir() + "/intensor" + std::to_string(i) + ".pth";
             Utils::SaveTensor(atInTensors.at(i), filePath);
             ASD_LOG(INFO) << operation_->GetName() << " save tensor:" << filePath;
         }
@@ -242,13 +258,13 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
             variantPack.outTensors.at(i).desc.format == AsdOps::TENSOR_FORMAT_NCHW) {
             variantPack.outTensors.at(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-            std::string filePath = AclTransformer::Config::GetSaveTensorDir() + "/" + std::to_string(executeCount_) +
-                                   "_" + opName_ + "/outtensor" + std::to_string(i) + ".pth";
-            Utils::SaveTensor(atOutTensors.at(i), filePath);
-            ASD_LOG(INFO) << operation_->GetName() << " save tensor:" << filePath;
-        }
     }
+}
+
+std::string OperationTorch::GetSaveTensorDir()
+{
+    std::string dir = std::to_string(executeCount_) + "/" + std::to_string(opId_) + "_OperationTorch";
+    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 
 TORCH_LIBRARY(OperationTorch, m)

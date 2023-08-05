@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 #include "acltransformer/runner.h"
+#include <asdops/utils/singleton/singleton.h>
+#include <asdops/utils/log/log.h>
+#include <asdops/utils/rt/rt.h>
+#include "acltransformer/config.h"
+#include "acltransformer/utils/tensor_util.h"
 
 namespace AclTransformer {
 Runner::Runner(const std::string &name) : name_(name) {}
@@ -48,7 +53,19 @@ AsdOps::Status Runner::Execute(Handle &handle, RunnerVariantPack &runnerVariantP
     if (!st.Ok()) {
         return st;
     }
-    return ExecuteImpl(handle, runnerVariantPack);
+
+    if (IsSaveTensor()) {
+        TensorUtil::SaveVariantPack(handle, runnerVariantPack, tensorDir_ + "/before");
+        ASD_LOG(INFO) << GetName() << " save variant pack at " << tensorDir_;
+    }
+
+    st = ExecuteImpl(handle, runnerVariantPack);
+
+    if (IsSaveTensor()) {
+        TensorUtil::SaveVariantPack(handle, runnerVariantPack, tensorDir_ + "/after");
+        ASD_LOG(INFO) << GetName() << " save variant pack at " << tensorDir_;
+    }
+    return st;
 }
 
 AsdOps::Status Runner::IsConsistent(const RunnerVariantPack &runnerVariantPack) { return AsdOps::Status::OkStatus(); }
@@ -66,5 +83,12 @@ uint64_t Runner::GetWorkspaceBufferSizeImpl() { return 0; }
 AsdOps::Status Runner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
     return AsdOps::Status::OkStatus();
+}
+
+void Runner::SetSaveTensorDir(const std::string &tensorDir) { tensorDir_ = tensorDir; }
+
+bool Runner::IsSaveTensor()
+{
+    return AsdOps::GetSingleton<Config>().IsSaveTensor() && AsdOps::GetSingleton<Config>().IsSaveTensorForRunner(name_);
 }
 } // namespace AclTransformer

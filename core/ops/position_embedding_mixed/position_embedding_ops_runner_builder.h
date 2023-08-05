@@ -19,6 +19,7 @@
 #include "acltransformer/params/position_embedding.h"
 #include "position_embedding_ops_runner.h"
 #include "position_embedding_1d_ops_runner.h"
+#include "position_embedding_ops_glm2_runner.h"
 #include "position_embedding_ops_gptneox20b_runner.h"
 
 namespace AclTransformer {
@@ -26,8 +27,10 @@ class PositionEmbeddingOpsRunnerBuilder : public RunnerBuilder {
 public:
     PositionEmbeddingOpsRunnerBuilder(const PositionEmbeddingParam &param) : param_(param) {}
     virtual ~PositionEmbeddingOpsRunnerBuilder() = default;
-    Runner *Build() override {
-        if (param_.model == "gptneox20b") {
+    Runner *Build() override { 
+        if (param_.model == "chatglm2_6b") {
+            return new PositionEmbeddingOpsGlm2Runner(param_);
+        } else if(param_.model == "gptneox20b") {
             return new PositionEmbeddingOpsGptNeox20bRunner(param_);
         } else if (param_.is2d) {
             return new PositionEmbeddingOpsRunner(param_);

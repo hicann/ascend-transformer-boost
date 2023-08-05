@@ -65,6 +65,8 @@ void Plan::ReportApiInfo(const uint64_t beginTime, ProfilingFuncName type)
 }
 #endif
 
+void Plan::SetRunnerSaveTensorDir(const std::string &dir) { runner_->SetSaveTensorDir(dir + runner_->GetName()); }
+
 AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 {
 #ifdef USE_PROFILING

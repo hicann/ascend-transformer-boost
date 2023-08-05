@@ -1,3 +1,5 @@
+import os
+import json
 import argparse
 import torch
 import torch_npu
@@ -12,6 +14,13 @@ from SwissArmyTransformer.training import load_checkpoint
 from SwissArmyTransformer.model import GLM130B
 from SwissArmyTransformer.mpu import get_model_parallel_world_size, get_model_parallel_rank, get_model_parallel_group
 
+ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
+if ACLTRANSFORMER_HOME_PATH is None:
+    raise RuntimeError(
+        "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
+LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
+                        "lib/libacltransformer_torch.so")
+torch.classes.load_library(LIB_PATH)
 
 def add_bminf_args(parser):
     """Arguments for BMInf"""
@@ -96,22 +105,34 @@ def initialize_model_and_tokenizer(args):
     torch.cuda.empty_cache()
     model.eval()
 
+    # verify all reduce
+    # oneTensor = torch.zeros([4,12288], device=torch.cuda.current_device(), dtype=torch.float16)
+    # oneTensor.add_(0.001)
+    # print('all reduce input tensor is ' + str(oneTensor))
+    # acl_allreduce_operation = torch.classes.OperationTorch.OperationTorch("AllReduceOperation")
+    # rankSize = get_model_parallel_world_size()
+    # rank = torch.distributed.get_rank()
+    # acl_param = json.dumps({"rank": rank, "rankSize": rankSize})
+    # acl_allreduce_operation.set_param(acl_param)
+    # outTensor = acl_allreduce_operation.execute([oneTensor])[0]
+    # print('all reduce output tensor is ' + str(outTensor))
+
     # generate rotary embedding cache
     original_parallel_output = model.transformer.parallel_output
     model.transformer.parallel_output = True
-    with torch.no_grad():
-        _, *_ = model(
-            torch.ones(1, args.max_sequence_length, device=torch.cuda.current_device(), dtype=torch.int64),
-            torch.arange(args.max_sequence_length, device=torch.cuda.current_device(), dtype=torch.int64).view(1, -1),
-            torch.randn(
-                1,
-                1,
-                args.max_sequence_length,
-                args.max_sequence_length,
-                device=torch.cuda.current_device(),
-            )
-            < 0.5,
-        )
+    # with torch.no_grad():
+    #     _, *_ = model(
+    #         torch.ones(1, args.max_sequence_length, device=torch.cuda.current_device(), dtype=torch.int64),
+    #         torch.arange(args.max_sequence_length, device=torch.cuda.current_device(), dtype=torch.int64).view(1, -1),
+    #         torch.randn(
+    #             1,
+    #             1,
+    #             args.max_sequence_length,
+    #             args.max_sequence_length,
+    #             device=torch.cuda.current_device(),
+    #         )
+    #         < 0.5,
+    #     )
     model.transformer.parallel_output = original_parallel_output
     torch.distributed.barrier()
 

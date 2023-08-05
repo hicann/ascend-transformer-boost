@@ -29,7 +29,7 @@
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
 #include "torch/context/context.h"
-#include "models/chatglm130b/chatglm130b_operation.h"
+#include "models/glm130b/glm130blayer_decoder_operation.h"
 
 const size_t WEIGHT_COUNT_PER_LAYER = 12;
 
@@ -51,7 +51,7 @@ void Glm130BModelDecoderTorch::SetParam(std::string param)
     plans_.resize(modelParam_.layerNum);
 
     for (int i = 0; i < modelParam_.layerNum; ++i) {
-        AclTransformer::ChatGlm130BLayerParam opParam;
+        AclTransformer::Glm130BLayerParam opParam;
         opParam.transKey = modelParam_.transKey;
         opParam.headNum = modelParam_.headNum;
         opParam.dk = modelParam_.dk;
@@ -60,7 +60,7 @@ void Glm130BModelDecoderTorch::SetParam(std::string param)
         opParam.rankSize = modelParam_.rankSize;
         opParam.residualAddScale = modelParam_.residualAddScale;
         opParam.layerNormEps = modelParam_.layerNormEps;
-        AclTransformer::Operation *op = new AclTransformer::ChatGlm130BLayerOperation(opParam);
+        AclTransformer::Operation *op = new AclTransformer::Glm130BLayerDecoderOperation(opParam);
         operations_.at(i).reset(op);
         AclTransformer::Plan *plan = new AclTransformer::Plan();
         op->BuildPlan(plan);
@@ -141,7 +141,11 @@ void Glm130BModelDecoderTorch::ExecuteOutImpl(torch::Tensor &hiddenStateTensor, 
                        << ", presentValueTensors.size:" << presentValueTensors.size();
         return;
     }
-
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        }
+    }
     handle_ = {Utils::GetCurrentStream()};
 
     Utils::ContiguousAtTensor(hiddenStateTensor);
@@ -195,7 +199,7 @@ void Glm130BModelDecoderTorch::BuildVariantPack(int layerId, std::vector<torch::
                                                 AclTransformer::VariantPack &variantPack)
 {
     for (size_t i = 0; i < atInTensors.size(); ++i) {
-        ASD_LOG(INFO) << "Glm130BModelLayer_" << layerId << " atInTensors[" << i
+        ASD_LOG(INFO) << "Glm130BModelLayerDecoder_" << layerId << " atInTensors[" << i
                       << "].options:" << atInTensors.at(i).options() << ", data:" << atInTensors.at(i).data_ptr()
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
                       << ", format:" << Utils::GetTensorNpuFormat(atInTensors.at(i));
@@ -229,31 +233,34 @@ void Glm130BModelDecoderTorch::ExecuteSingleOperation(int layerId, std::vector<t
     AsdOps::Status st = plan.Setup(handle_, variantPack);
     AsdOps::GetSingleton<AclTransformer::Statistic>().planSetupTime += timer1.ElapsedMicroSecond();
     if (!st.Ok()) {
-        ASD_LOG(ERROR) << "Glm130BModelLayer_" << layerId << " setup plan fail, not call execute";
+        ASD_LOG(ERROR) << "Glm130BModelLayerDecoder_" << layerId << " setup plan fail, not call execute";
         return;
     }
 
     variantPack.workspaceSize = plan.GetWorkspaceSize();
-    ASD_LOG(INFO) << "Glm130BModelLayer_" << layerId << " get plan workspace size:" << variantPack.workspaceSize;
+    ASD_LOG(INFO) << "Glm130BModelLayerDecoder_" << layerId << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
         variantPack.workspace =
             AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
     }
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        std::string dir = GetSaveTensorDir() + "/" + std::to_string(layerId) + "_";
+        plan.SetRunnerSaveTensorDir(dir);
+    }
 
     AsdOps::Timer timer2;
     st = plan.Execute(handle_, variantPack);
 
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        AsdRtStreamSynchronize(handle_.stream);
-        std::string dirPath =
-            AclTransformer::Config::GetSaveTensorDir() + "/Glm130BModelLayer_" + std::to_string(layerId);
-        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
-        ASD_LOG(FATAL) << "Glm130BModelLayer_" << layerId << " save variant pack, dir:" << dirPath;
-    }
-
     AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
-    ASD_LOG_IF(!st.Ok(), ERROR) << "Glm130BModelLayer_" << layerId << " execute plan fail, error:" << st.Message();
+    ASD_LOG_IF(!st.Ok(), ERROR) << "Glm130BModelLayerDecoder_" << layerId
+                                << " execute plan fail, error:" << st.Message();
+}
+
+std::string Glm130BModelDecoderTorch::GetSaveTensorDir()
+{
+    std::string dir = std::to_string(executeCount_) + "/0_Glm130BModelDecoderTorch";
+    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 
 TORCH_LIBRARY(Glm130BModelDecoderTorch, m)

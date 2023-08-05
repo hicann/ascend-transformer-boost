@@ -90,7 +90,7 @@ void ChatGlm6BModelDecoderAllTorch::SetParam(std::string param)
     operations_.at(1).reset(transpose);
     plans_.at(1).reset(transposePlan);
 
-    for (int i; i < modelParam_.layerNum; ++i) {
+    for (int i = 0; i < modelParam_.layerNum; ++i) {
         AclTransformer::ChatGlm6BLayerDecoderFlashAttentionParam opParam;
         opParam.layerNormEps = modelParam_.layerNormEps;
         opParam.headNum = modelParam_.headNum;
@@ -181,6 +181,12 @@ void ChatGlm6BModelDecoderAllTorch::ExecuteOutImpl(torch::Tensor &inputIds, torc
     handle_ = {Utils::GetCurrentStream()};
     ParseParam(param);
     allTaskFinish_ = false;
+
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        }
+    }
 
     Utils::ContiguousAtTensor(inputIds);
     Utils::ContiguousAtTensor(positionIdTensor);
@@ -356,7 +362,7 @@ void ChatGlm6BModelDecoderAllTorch::ThreadProcessTask()
     int ret = AsdRtDeviceSetCurrent(currentDevId_);
     ASD_LOG_IF(ret != 0, ERROR) << "AsdRtDeviceSetCurrent fail, error:" << ret;
 
-    int processTaskCount = 0;
+    size_t processTaskCount = 0;
     while (true) {
         int opId = PopTask();
         ExecutePlan(opId);
@@ -377,10 +383,8 @@ void ChatGlm6BModelDecoderAllTorch::ExecutePlan(int opId)
     ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << opId << " execute plan start";
     AsdOps::Status st = plan.Execute(handle_, variantPack);
     if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        AsdRtStreamSynchronize(handle_.stream);
-        std::string dirPath = AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelOp_" + std::to_string(opId);
-        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
-        ASD_LOG(FATAL) << "ChatGlm6BModelOp_" << opId << " save variant pack, dir:" << dirPath;
+        std::string dir = GetSaveTensorDir() + "/" + std::to_string(opId) + "_";
+        plan.SetRunnerSaveTensorDir(dir);
     }
 
     AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
@@ -416,6 +420,12 @@ void ChatGlm6BModelDecoderAllTorch::WaitAsyncPlanExecuteFinish()
             }
         }
     }
+}
+
+std::string ChatGlm6BModelDecoderAllTorch::GetSaveTensorDir()
+{
+    std::string dir = std::to_string(executeCount_) + "/0_ChatGlm6BModelDecoderAllTorch";
+    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 
 TORCH_LIBRARY(ChatGlm6BModelDecoderAllTorch, m)

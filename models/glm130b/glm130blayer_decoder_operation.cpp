@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm130b_operation.h"
+#include "glm130blayer_decoder_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
@@ -24,7 +24,7 @@
 #include "acltransformer/ops/mlp_operation.h"
 
 namespace AclTransformer {
-enum Chatglm130BLayerTensorId {
+enum glm130BLayerDecoderTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
     IN_NORMBIAS,
@@ -65,8 +65,8 @@ static const uint64_t OUT_TENSOR_COUNT = 3;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
 static const uint64_t NODE_COUNT = 10;
 
-ChatGlm130BLayerOperation::ChatGlm130BLayerOperation(const ChatGlm130BLayerParam &param)
-    : GraphOperation("ChatGlm130BLayerOperation"), param_(param)
+Glm130BLayerDecoderOperation::Glm130BLayerDecoderOperation(const Glm130BLayerParam &param)
+    : GraphOperation("Glm130BLayerDecoderOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -93,7 +93,8 @@ ChatGlm130BLayerOperation::ChatGlm130BLayerOperation(const ChatGlm130BLayerParam
     mixdQkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXDWEIGHT, IN_QKVMIXDBIAS};
     mixdQkvLinearNode.outTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV};
 
-    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation({false, param_.headNum / param_.rankSize}));
+    positionEmbeddingNode.operation.reset(
+        new AclTransformer::PositionEmbeddingOperation({false, param_.headNum / param_.rankSize}));
     positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
     positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_VALUE};
 
@@ -107,8 +108,8 @@ ChatGlm130BLayerOperation::ChatGlm130BLayerOperation(const ChatGlm130BLayerParam
                                             IN_PASTVALUE};
     selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    selfOutLinearParallelNode.operation.reset(
-        new AclTransformer::LinearParallelOperation({false, param_.rank, param_.rankSize, "", "RowParallel"}));
+    selfOutLinearParallelNode.operation.reset(new AclTransformer::LinearParallelOperation(
+        {false, param_.rank, param_.rankSize, 0, "", "RowParallel", param_.backend}));
     selfOutLinearParallelNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
     selfOutLinearParallelNode.outTensorIds = {INTERMIDATE_SELFLINEAROUT};
 
@@ -124,8 +125,8 @@ ChatGlm130BLayerOperation::ChatGlm130BLayerOperation(const ChatGlm130BLayerParam
     mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPLINEARWEIGHT, IN_MLPLINEARBIAS};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 
-    mlpLinearParallelNode.operation.reset(
-        new AclTransformer::LinearParallelOperation({false, param_.rank, param_.rankSize, "", "RowParallel"}));
+    mlpLinearParallelNode.operation.reset(new AclTransformer::LinearParallelOperation(
+        {false, param_.rank, param_.rankSize, 0, "", "RowParallel", param_.backend}));
     mlpLinearParallelNode.inTensorIds = {INTERMIDATE_MLPOUT, IN_MLPOUTLINEARWEIGHT, IN_MLPOUTLINEARBIAS};
     mlpLinearParallelNode.outTensorIds = {INTERMIDATE_MLPLINEAROUT};
 
@@ -134,14 +135,14 @@ ChatGlm130BLayerOperation::ChatGlm130BLayerOperation(const ChatGlm130BLayerParam
     mlpResidualAddNode.outTensorIds = {OUT_GLMLAYEROUT};
 }
 
-ChatGlm130BLayerOperation::~ChatGlm130BLayerOperation() {}
+Glm130BLayerDecoderOperation::~Glm130BLayerDecoderOperation() {}
 
-uint64_t ChatGlm130BLayerOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t Glm130BLayerDecoderOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t ChatGlm130BLayerOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t Glm130BLayerDecoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status ChatGlm130BLayerOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                         AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+AsdOps::Status Glm130BLayerDecoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
     const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);

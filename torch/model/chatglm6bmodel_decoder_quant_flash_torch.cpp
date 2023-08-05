@@ -166,6 +166,11 @@ void ChatGlm6BModelDecoderQuantFlashTorch::ExecuteOutImpl(
     handle_ = {Utils::GetCurrentStream()};
     ParseParam(param);
     allTaskFinish_ = false;
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        }
+    }
 
     Utils::ContiguousAtTensor(hiddenStateTensor);
     Utils::ContiguousAtTensor(positionIdTensor);
@@ -418,16 +423,13 @@ void ChatGlm6BModelDecoderQuantFlashTorch::ExecutePlan(int layerId)
     AsdOps::Timer timer2;
     AclTransformer::Plan &plan = *plans_.at(layerId);
     AclTransformer::VariantPack &variantPack = variantPacks_.at(layerId);
-    ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " execute plan start";
-    AsdOps::Status st = plan.Execute(handle_, variantPack);
     if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        AsdRtStreamSynchronize(handle_.stream);
-        std::string dirPath =
-            AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelLayer_" + std::to_string(layerId);
-        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
-        ASD_LOG(FATAL) << "ChatGlm6BModelLayer_" << layerId << " save variant pack, dir:" << dirPath;
+        std::string dir = GetSaveTensorDir() + "/" + std::to_string(layerId) + "_";
+        plan.SetRunnerSaveTensorDir(dir);
     }
 
+    ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " execute plan start";
+    AsdOps::Status st = plan.Execute(handle_, variantPack);
     AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
     ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelLayer_" << layerId << " execute plan fail, error:" << st.Message();
 }
@@ -461,6 +463,12 @@ void ChatGlm6BModelDecoderQuantFlashTorch::WaitAsyncPlanExecuteFinish()
             }
         }
     }
+}
+
+std::string ChatGlm6BModelDecoderQuantFlashTorch::GetSaveTensorDir()
+{
+    std::string dir = std::to_string(executeCount_) + "/0_ChatGlm6BModelDecoderQuantFlashTorch";
+    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 
 TORCH_LIBRARY(ChatGlm6BModelDecoderQuantFlashTorch, m)

@@ -13,19 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML130B_CHATGLM130BLAYER_PARAM_H
-#define OPS_CHATGML130B_CHATGLM130BLAYER_PARAM_H
+#ifndef OPS_GLM130B_GLM130BLAYER_DECODER_OPERATION_H
+#define OPS_GLM130B_GLM130BLAYER_DECODER_OPERATION_H
+#include "acltransformer/graph_operation.h"
+#include "glm130blayer_param.h"
 
 namespace AclTransformer {
-struct ChatGlm130BLayerParam {
-    bool transKey = false;
-    int headNum = 0;
-    int dk = 0;
-    int layerId = 0;
-    int rank = 0;
-    int rankSize = 1;
-    float residualAddScale = 0;
-    double layerNormEps = 0;
+class Glm130BLayerDecoderOperation : public GraphOperation {
+public:
+    explicit Glm130BLayerDecoderOperation(const Glm130BLayerParam &param);
+    ~Glm130BLayerDecoderOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
+
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+
+private:
+    Glm130BLayerParam param_;
 };
 } // namespace AclTransformer
 #endif

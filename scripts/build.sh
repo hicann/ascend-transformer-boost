@@ -29,10 +29,14 @@ DEVICE_CODE_PACK_SWITCH=ON
 USE_CXX11_ABI=ON
 USE_VERBOSE=OFF
 BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples"
-BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_profiling")
+BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" 
+    "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" "--use_profiling")
 
 function fn_build_googltest()
 {
+    if [ -d "$THIRD_PARTY_DIR/googletest/lib" -a -d "$THIRD_PARTY_DIR/googletest/include" ];then
+        return $?
+    fi
     cd $CACHE_DIR
     rm -rf v1.13.0.tar.gz
     if [ -f "$CODE_ROOT/3rdparty/googletest-1.13.0.tar.gz" ];then
@@ -41,16 +45,24 @@ function fn_build_googltest()
         wget --no-check-certificate https://github.com/google/googletest/archive/refs/tags/v1.13.0.tar.gz
     fi
 
-    tar -xvf v1.13.0.tar.gz
+    tar -xf v1.13.0.tar.gz
     cd googletest-1.13.0
     mkdir build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/googletest ../
+    if [ "$USE_CXX11_ABI" == "ON" ]
+    then
+        sed -i '4 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)' ../CMakeLists.txt
+    else
+        sed -i '4 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)' ../CMakeLists.txt
+    fi
+    cmake -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/googletest -DBUILD_SHARED_LIBS=ON ../
     make -j
     make install
     cd ../../
+    if [ -d "$THIRD_PARTY_DIR/googletest/lib64" ];then
+        mv $THIRD_PARTY_DIR/googletest/lib64 $THIRD_PARTY_DIR/googletest/lib
+    fi
 }
-
 
 function fn_build_half()
 {
@@ -167,7 +179,7 @@ function fn_init_pytorch_env()
 
 function fn_copy_tools()
 {
-    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools/python_tools
+    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
 }
 
 function fn_build()
@@ -253,7 +265,11 @@ function fn_generate_doxygen()
     if [[ $OUTPUT_DIR != $CODE_ROOT/output ]];then
         sed -i 's|OUTPUT_DIRECTORY       =.\/output\/acltransformer\/doc|OUTPUT_DIRECTORY       ='"$OUTPUT_DIR"'\/acltransformer\/doc|g' $CODE_ROOT/Doxyfile
     fi
-    /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile >/dev/null 2>&1
+    if [ -f "/usr/local/doxygen/bin/doxygen" ];then
+        /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile >/dev/null 2>&1
+    else
+        echo "/usr/local/doxygen/bin/doxygen not exist, not generate doc"
+    fi
 }
 
 function fn_run_pythontest()
@@ -388,6 +404,9 @@ function fn_main()
         "--use_lccl_runner")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_LCCL_RUNNER=ON"
             ;;
+        "--use_hccl_runner")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_HCCL_RUNNER=ON"
+            ;;
         "--use_profiling")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_PROFILING=ON"
             ;;
@@ -398,9 +417,6 @@ function fn_main()
 
     fn_init_pytorch_env
     case "${arg1}" in
-        "3rdparty")
-            fn_build_3rdparty
-            ;;
         "download_testdata")
             fn_download_testdata
             ;;
@@ -410,12 +426,15 @@ function fn_main()
             ;;
         "unittest")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
+            fn_build_3rdparty
             fn_build
             ;;
         "unittest_and_run")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
+            fn_build_3rdparty
             fn_build
+            fn_run_unittest
             fn_build_coverage
             ;;
         "pythontest")

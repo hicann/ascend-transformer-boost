@@ -18,12 +18,17 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/config.h"
 #include "all_reduce_lccl_runner_builder.h"
+#include "all_reduce_hccl_runner_builder.h"
 
 namespace AclTransformer {
 AllReduceOperation::AllReduceOperation(const AllReduceParam &param) : Operation("AllReduceOperation"), param_(param)
 {
     ASD_LOG(INFO) << "AllReduceOperation::AllReduceOperation called";
-    runnerBuilders_ = {new AllReduceLcclRunnerBuilder(param_)};
+    if (param_.backend == "lccl") {
+        runnerBuilders_ = {new AllReduceLcclRunnerBuilder(param_)};
+    } else if (param_.backend == "hccl") {
+        runnerBuilders_ = {new AllReduceHcclRunnerBuilder(param_)};
+    }
 }
 
 AllReduceOperation::~AllReduceOperation() {}
@@ -33,14 +38,11 @@ uint64_t AllReduceOperation::GetInTensorCount() const { return 1; }
 uint64_t AllReduceOperation::GetOutTensorCount() const { return 1; }
 
 AsdOps::Status AllReduceOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                            AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+                                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0) = inTensors.at(0).desc;
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *AllReduceOperation::FindBestRunnerBuilder() const
-{
-    return runnerBuilders_.at(0);
-}
+RunnerBuilder *AllReduceOperation::FindBestRunnerBuilder() const { return runnerBuilders_.at(0); }
 } // namespace AclTransformer

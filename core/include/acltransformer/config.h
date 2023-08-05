@@ -17,6 +17,7 @@
 #define ACLTRANSFORMER_CONFIG_H
 #include <string>
 #include <vector>
+#include <set>
 
 namespace AclTransformer {
 class Config {
@@ -25,6 +26,8 @@ public:
     ~Config();
     static std::string GetSaveTensorDir();
     bool IsSaveTensor();
+    void DisableSaveTensor();
+    uint64_t GetSaveTensorMaxNum();
     bool IsAddOpsRunnerEnable();
     bool IsAddNormOpsRunnerEnable();
     bool IsRmsNormOpsRunnerEnable();
@@ -45,15 +48,19 @@ public:
     bool IsOpsRunnerSetupCacheEnable();
     bool IsOpsRunnerKernelCacheEnable();
     bool IsConvertNCHWToND() const;
+    bool IsSaveTensorForRunner(const std::string &runnerName);
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
     void InitSkipKernelName();
     void InitWorkspaceSize();
     void InitIs910B();
+    void InitSaveTensor();
+    void InitSaveTensor(const char *env, std::set<std::string> &nameSet);
 
 private:
     bool isSaveTensor_ = false;
+    uint64_t saveTensorMaxNum_ = 1;
     bool isAddOpsRunnerEnable_ = false;
     bool isAddNormOpsRunnerEnable_ = false;
     bool isRmsNormOpsRunnerEnable_ = false;
@@ -75,6 +82,7 @@ private:
     bool isOpsRunnerKernelCacheEnable_ = false;
     bool isUsePpMatmul_ = false;
     bool isConvertNCHWToND_ = false;
+    std::set<std::string> saveTensorRunnerNameSet_;
 };
 } // namespace AclTransformer
 #endif

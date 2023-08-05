@@ -20,8 +20,10 @@ struct LinearParallelParam {
     bool transWeight = false;
     int rank = 0;
     int rankSize = 0;
+    int rankRoot = 0;
     std::string bias = "";
     std::string parallelType = "RowParallel";
+    std::string backend = "lccl";
 };
 } // namespace AclTransformer
 #endif

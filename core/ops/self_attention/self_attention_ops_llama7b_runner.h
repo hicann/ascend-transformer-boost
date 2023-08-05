@@ -13,25 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML130B_CHATGLM130BLAYER_OPERATION_H
-#define OPS_CHATGML130B_CHATGLM130BLAYER_OPERATION_H
-#include "acltransformer/graph_operation.h"
-#include "chatglm130b_param.h"
+#ifndef SELFATTENTION_OPS_LLAMA7B_RUNNER_H
+#define SELFATTENTION_OPS_LLAMA7B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/self_attention.h"
 
 namespace AclTransformer {
-class ChatGlm130BLayerOperation : public GraphOperation {
+class SelfAttentionOpsLlama7bRunner : public OpsRunner {
 public:
-    explicit ChatGlm130BLayerOperation(const ChatGlm130BLayerParam &param);
-    ~ChatGlm130BLayerOperation();
-    uint64_t GetInTensorCount() const override;
-    uint64_t GetOutTensorCount() const override;
-
-protected:
-    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    SelfAttentionOpsLlama7bRunner(const SelfAttentionParam &param);
+    virtual ~SelfAttentionOpsLlama7bRunner();
 
 private:
-    ChatGlm130BLayerParam param_;
+    void AsStrideKernelInferShapeSet(const AsdOps::SVector<int64_t> &sequence, KernelGraphNode &node);
+
+private:
+    SelfAttentionParam param_;
 };
+
 } // namespace AclTransformer
 #endif
