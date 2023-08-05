@@ -19,6 +19,7 @@
 #include "acltransformer/params/self_attention.h"
 #include "self_attention_ops_openbert_runner.h"
 #include "self_attention_ops_chatglm6b_runner.h"
+#include "self_attention_ops_chatglm2_6b_runner.h"
 #include <asdops/utils/log/log.h>
 #include "self_attention_ops_chatglm6b_runner_910a.h"
 
@@ -36,6 +37,8 @@ public:
                 } else {
                     return new SelfAttentionOpsChatglm6bRunner910a(param_);
                 }
+            } else if (param_.model == "chatglm2_6b") {
+                return new SelfAttentionOpsChatglm26bRunner(param_);
             } else {
                 ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
                 return nullptr;

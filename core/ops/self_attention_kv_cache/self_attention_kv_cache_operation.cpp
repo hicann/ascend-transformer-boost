@@ -33,25 +33,44 @@ SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation(const SelfAttention
 
 SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() {}
 
-uint64_t SelfAttentionKvCacheOperation::GetInTensorCount() const { return 6; }
+uint64_t SelfAttentionKvCacheOperation::GetInTensorCount() const {
+    if (param_.model == "chatglm2_6b") {
+        return 5;
+    } else if (param_.model == "chatglm6b") {
+        return 6;
+    }
+}
 
 uint64_t SelfAttentionKvCacheOperation::GetOutTensorCount() const { return 3; }
 
 AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
-    // out : out presentK presentV [seq_len, batch, head_num * head_size]
-    outTensorDescs.at(0) = inTensors.at(0).desc;
-    outTensorDescs.at(0).dims.clear();
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
-    outTensorDescs.at(1) = inTensors.at(4).desc;
-    outTensorDescs.at(1).dims.at(0) = outTensorDescs.at(1).dims.at(0) + 1;
-    outTensorDescs.at(2) = inTensors.at(5).desc;
-    outTensorDescs.at(2).dims.at(0) = outTensorDescs.at(2).dims.at(0) + 1;
-    return AsdOps::Status::OkStatus();
+    if (param_.model == "chatglm2_6b") {
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
+        outTensorDescs.at(1) = inTensors.at(3).desc;
+        outTensorDescs.at(1).dims.at(0) = outTensorDescs.at(1).dims.at(0) + 1;
+        outTensorDescs.at(2) = inTensors.at(4).desc;
+        outTensorDescs.at(2).dims.at(0) = outTensorDescs.at(2).dims.at(0) + 1;
+        return AsdOps::Status::OkStatus();
+    } else if (param_.model == "chatglm6b") {
+        // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
+        // out : out presentK presentV [seq_len, batch, head_num * head_size]
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
+        outTensorDescs.at(1) = inTensors.at(4).desc;
+        outTensorDescs.at(1).dims.at(0) = outTensorDescs.at(1).dims.at(0) + 1;
+        outTensorDescs.at(2) = inTensors.at(5).desc;
+        outTensorDescs.at(2).dims.at(0) = outTensorDescs.at(2).dims.at(0) + 1;
+        return AsdOps::Status::OkStatus();
+    }
 }
 
 RunnerBuilder *SelfAttentionKvCacheOperation::FindBestRunnerBuilder() const
