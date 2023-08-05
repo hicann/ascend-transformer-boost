@@ -185,9 +185,8 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
         }
     };
 
-    // [bs, hn, sq, hs]
-    AsdOps::OpParam::Transpose permuteContextNodeParam = {AsdOps::OpParam::Transpose::TRANSPOSE, {0 ,2, 1, 3}};
-    permuteContextNode.opDesc = {0, "TransposeOperation", permuteContextNodeParam};
+    // [bs, hn, sq, hs] to [bs, sq, hn, hs]
+    permuteContextNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
     permuteContextNode.inTensors = {&bmmVout};
     permuteContextNode.outTensors = {&context};
     permuteContextNode.inTensorViewFuncs.resize(permuteContextNode.inTensors.size());

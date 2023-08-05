@@ -239,6 +239,8 @@ class GPTNeoXAttention(nn.Module):
             acl_result, acl_present_key, acl_present_value = self.acl_self_kv_cache_attention_operation.execute(
                 [acl_query, acl_key, acl_value, acl_attn_mask, acl_key_pass, acl_value_pass]
             )
+            acl_present_key = acl_present_key.permute(0, 2, 1, 3)
+            acl_present_value = acl_present_value.permute(0, 2, 1, 3)
 
         # Cache QKV values
         if has_layer_past:

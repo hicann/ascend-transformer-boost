@@ -58,7 +58,6 @@ void GptNeox20BModelEncoderTorch::SetParam(std::string param)
         opParam.dk = modelParam_.dk;
         opParam.layerId = i;
         opParam.rotaryPct = modelParam_.rotaryPct;
-        opParam.scalingFactor = modelParam_.scalingFactor;
         AclTransformer::Operation *op = new AclTransformer::GptNeox20BLayerEncoderOperation(opParam);
         operations_.at(i).reset(op);
         AclTransformer::Plan *plan = new AclTransformer::Plan();

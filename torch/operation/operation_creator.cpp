@@ -625,10 +625,9 @@ static AclTransformer::Operation *GptNeox20BLayerDecoderOperationCreate(const nl
     param.dk = paramJson["dk"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.rotaryPct = paramJson["rotaryPct"].get<float>();
-    param.scalingFactor = paramJson["scalingFactor"].get<float>();
     ASD_LOG(INFO) << "GptNeox20BLayerParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
                   << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
-                  << ", rotaryPct:" << param.rotaryPct << ", scalingFactor:" << param.scalingFactor;
+                  << ", rotaryPct:" << param.rotaryPct;
     return new AclTransformer::GptNeox20BLayerDecoderOperation(param);
 }
 
@@ -671,7 +670,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate},
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
-    {"GptNeox20BlayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate}
+    {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate}
 };
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)

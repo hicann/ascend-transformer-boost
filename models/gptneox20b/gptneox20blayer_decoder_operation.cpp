@@ -67,7 +67,7 @@ static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
 static const uint64_t NODE_COUNT = 10;
 
 GptNeox20BLayerDecoderOperation::GptNeox20BLayerDecoderOperation(const GptNeox20BLayerParam &param)
-    : GraphOperation("GptNeox20BLayerEncoderOperation"), param_(param)
+    : GraphOperation("GptNeox20BLayerDecoderOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -180,9 +180,9 @@ AsdOps::Status GptNeox20BLayerDecoderOperation::InferShapeImpl(const AsdOps::SVe
     outTensorDescs.at(0) = inTensors.at(0).desc;  // [bs, sq, hn * hs]
 
     outTensorDescs.at(1) = keyTensor.desc;
-    outTensorDescs.at(1).dims.at(2) += 1;
+    outTensorDescs.at(1).dims.at(1) += 1;
     outTensorDescs.at(2) = keyTensor.desc;
-    outTensorDescs.at(2).dims.at(2) += 2;
+    outTensorDescs.at(2).dims.at(1) += 1;
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

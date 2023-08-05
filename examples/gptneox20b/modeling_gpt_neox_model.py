@@ -437,7 +437,7 @@ sinTable = emb.sin().half().npu()
 biasCache = torch.tril(torch.ones((2049, 2049), dtype=torch.bool)).view(1, 1, 2049, 2049).npu()
 biasCache = ~biasCache
 mask_value = -100000000.0
-maskAttenCache = torch.masked_fill(torch.zeros(size=(1, 1, 2049, 2049)), biasCache, mask_value)
+maskAttenCache = torch.masked_fill(torch.zeros(size=(1, 1, 2049, 2049)).npu(), biasCache, mask_value)
 
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
@@ -604,8 +604,7 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
         acl_param = json.dumps({
             "transKey": True, "dk": config.hidden_size // config.num_attention_heads,
             "headNum": config.num_attention_heads, "layerNum": self.num_layers,
-            "layerNormEps": config.layer_norm_eps, "rotaryPct": config.rotary_pct,
-            "scalingFactor": 0.1
+            "layerNormEps": config.layer_norm_eps, "rotaryPct": config.rotary_pct
         })
         self.acl_encoder_operation = torch.classes.GptNeox20BModelEncoderTorch.GptNeox20BModelEncoderTorch()
         self.acl_encoder_operation.set_param(acl_param)
@@ -731,7 +730,8 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
             weights = []
             for i in range(self.num_layers):
                 weights_t = list(self.layers[i].state_dict().values())
-                weights_t = weights_t[:4] + weights_t[7:]
+                # weights_t = weights_t[:4] + weights_t[7:]
+                del weights_t[4]
                 weights.extend(weights_t)
             self.acl_encoder_operation.set_weight(weights)
             self.acl_decoder_operation.set_weight(weights)

@@ -46,7 +46,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(outTensorId++);
 
 
-    kernelGraph_.internalTensors.resize(10);
+    kernelGraph_.internalTensors.resize(12);
     int64_t internalTensorId = 0;
     AsdOps::Tensor &qScaledOut = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &kScaledOut = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -61,7 +61,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &bmmVout = kernelGraph_.internalTensors.at(internalTensorId++);
 
-    kernelGraph_.nodes.resize(13);
+    kernelGraph_.nodes.resize(15);
     int64_t nodeId = 0;
     auto &catKeyNode = kernelGraph_.nodes.at(nodeId++);
     auto &catValueNode = kernelGraph_.nodes.at(nodeId++);
@@ -194,7 +194,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
     castAttnToFp16.outTensors = {&softmaxFP16Out};
 
     permuteVNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
-    permuteVNode.inTensors = {&mixedValue};
+    permuteVNode.inTensors = {&presentValue};
     permuteVNode.outTensors = {&transposedV};
 
     bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
@@ -213,8 +213,7 @@ SelfAttentionKvCacheOpsGptNeox20bRunner::SelfAttentionKvCacheOpsGptNeox20bRunner
         }
     };
 
-    AsdOps::OpParam::Transpose permuteContextNodeParam = {AsdOps::OpParam::Transpose::TRANSPOSE, {0 ,2, 1, 3}};
-    permuteContextNode.opDesc = {0, "TransposeOperation", permuteContextNodeParam};
+    permuteContextNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
     permuteContextNode.inTensors = {&bmmVout};
     permuteContextNode.outTensors = {&context};
     permuteContextNode.inTensorViewFuncs.resize(permuteContextNode.inTensors.size());

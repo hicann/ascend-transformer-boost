@@ -25,5 +25,4 @@ void GptNeox20BModelParam::FromString(const std::string &param)
     dk = paramJson["dk"].get<int>();
     layerNum = paramJson["layerNum"].get<int>();
     rotaryPct = paramJson["rotaryPct"].get<float>();
-    scalingFactor = paramJson["scalingFactor"].get<float>();
 }

@@ -24,7 +24,6 @@ struct GptNeox20BModelParam {
     int dk = 0;
     int layerNum = 0;
     float rotaryPct = 0;
-    float scalingFactor = 1.0;
     void FromString(const std::string &param);
 };
 

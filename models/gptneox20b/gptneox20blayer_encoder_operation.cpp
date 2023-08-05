@@ -43,7 +43,7 @@ enum GptNeox20BLayerEncoderTensorId {
     IN_COSTABLE,
     IN_SINTABLE,
     IN_ATTENTIONMASK,
-    OUT_GPTNEOXLARYEROUT,
+    OUT_GPTNEOXLAYEROUT,
     OUT_PRESENTKEY,
     OUT_PRESENTVALUE,
     INTERMEDIATE_INPUTLAYERNORMOUT,
@@ -57,7 +57,7 @@ enum GptNeox20BLayerEncoderTensorId {
     INTERMEDIATE_ATTNRESIDUALADDOUT,   
 };
 
-static const uint64_t IN_TENSOR_COUNT = 19;
+static const uint64_t IN_TENSOR_COUNT = 17;
 static const uint64_t OUT_TENSOR_COUNT = 3;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 9;
 static const uint64_t NODE_COUNT = 10;
@@ -157,7 +157,7 @@ GptNeox20BLayerEncoderOperation::GptNeox20BLayerEncoderOperation(const GptNeox20
 
     ffnResidualAddNode.operation.reset(new AclTransformer::AddOperation(ffnResidualAddParam));
     ffnResidualAddNode.inTensorIds = {INTERMEDIATE_ATTNRESIDUALADDOUT, INTERMEDIATE_FFNOUTLINEAROUT};
-    ffnResidualAddNode.outTensorIds = {OUT_GPTNEOXLARYEROUT};
+    ffnResidualAddNode.outTensorIds = {OUT_GPTNEOXLAYEROUT};
 }
 
 GptNeox20BLayerEncoderOperation::~GptNeox20BLayerEncoderOperation() {}
@@ -171,14 +171,14 @@ AsdOps::Status GptNeox20BLayerEncoderOperation::InferShapeImpl(const AsdOps::SVe
 {
     outTensorDescs.at(0) = inTensors.at(0).desc;  // [bs, sq, hn * hs]
 
-    outTensorDescs.at(1) = inTensors.at(0).desc;  // [bs, hn, sq, hs]
+    outTensorDescs.at(1) = inTensors.at(0).desc;  // [bs, sq, hn, hs]
     outTensorDescs.at(1).dims.clear();
     outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(0));
-    outTensorDescs.at(1).dims.push_back(param_.headNum);
     outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(1));
+    outTensorDescs.at(1).dims.push_back(param_.headNum);
     outTensorDescs.at(1).dims.push_back(param_.dk);
 
-    outTensorDescs.at(2) = outTensorDescs.at(1);  // [bs, hn, sq, hs]
+    outTensorDescs.at(2) = outTensorDescs.at(1);  // [bs, sq, hn, hs]
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
