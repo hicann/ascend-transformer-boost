@@ -208,8 +208,11 @@ static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &param
     if (paramJson.contains("hasBias")) {
         param.hasBias = paramJson["hasBias"].get<bool>();
     }
+    if (paramJson.contains("activationFuncType")) {
+        param.activationFuncType = paramJson["activationFuncType"].get<int32_t>();
+    }
     ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB
-                  << ", hasBias:" << param.hasBias;
+                  << ", hasBias:" << param.hasBias << ", activationFuncType:" << param.activationFuncType;
     return new AclTransformer::FfnOperation(param);
 }
 
