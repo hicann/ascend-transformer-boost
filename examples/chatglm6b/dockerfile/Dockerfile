@@ -1,0 +1,107 @@
+ARG UBUNTU_VERSION=18.04
+
+FROM ubuntu:${UBUNTU_VERSION}
+LABEL maintainer = "jitao jitao12@huawei.com"
+LABEL version = "1.0.0"
+LABEL description = "Image for chatglm6b 910b based on Ubuntu18.04"
+
+ENV GIT_SSL_NO_VERIFY=1
+ENV ACLTRANSFORMER_TESTDATA=/data/acltransformer_testdata
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Ascend/driver/lib64/driver/
+ENV SET_NPU_DEVICE=4
+
+WORKDIR /home
+
+# Install Required Libraries
+RUN chmod 777 /tmp
+RUN apt-get update
+RUN apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    zlib1g \
+    zlib1g-dev \
+    openssl \
+    git \
+    wget \
+    libsqlite3-dev \
+    libssl-dev \
+    libffi-dev \
+    unzip \
+    pciutils \
+    net-tools \
+    libblas-dev \ 
+    gfortran \
+    libblas3 \
+    libopenblas-dev \
+    libxml2-dev \
+    libxml2 \
+    vim
+
+# Install CMake   
+RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/cmake-3.27.1-linux-aarch64.sh --no-check-certificate
+RUN yes| bash cmake-3.27.1-linux-aarch64.sh --prefix=/usr/bin \
+    && rm -f cmake-3.27.1-linux-aarch64.sh
+ENV PATH="/usr/bin/cmake-3.27.1-linux-aarch64/bin:${PATH}"
+
+# Install Anaconda & Python3
+RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Anaconda3-2023.07-1-Linux-aarch64.sh --no-check-certificate
+
+RUN bash Anaconda3-2023.07-1-Linux-aarch64.sh -b -p /opt/conda \
+    && rm -f Anaconda3-2023.07-1-Linux-aarch64.sh
+RUN ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh \
+    && echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
+ENV PATH /opt/conda/bin:/opt/conda/condabin:$PATH
+
+RUN conda create --name py3.7 python=3.7.10 
+RUN echo "conda activate py3.7" >> ~/.bashrc
+ENV PATH /opt/conda/envs/py3.7/bin:$PATH
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/envs/py3.7/lib
+ENV LD_PRELOAD=/opt/conda/envs/py3.7/lib/libgomp.so.1
+RUN pip3 install \
+    attrs \
+    numpy \
+    decorator \
+    sympy \
+    cffi \
+    pyyaml \
+    pathlib2 \
+    psutil \
+    scipy \
+    requests \
+    absl-py \
+    protobuf==3.20.0 \
+    transformers==4.28.1 \
+    icetk \
+    cpm_kernels \
+    gradio \
+    mdtex2html 
+
+# Install Ascend Cann Library
+RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Ascend-cann-toolkit_CANN-6.4_linux-aarch64.run --no-check-certificate \
+    && wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Ascend-cann-kernels-910b_CANN-6.4_linux.run --no-check-certificate
+RUN chmod +x *.run
+RUN ./Ascend-cann-toolkit_CANN-6.4_linux-aarch64.run --install
+RUN ./Ascend-cann-kernels-910b_CANN-6.4_linux.run --install \
+    && rm -f Ascend-cann-toolkit_CANN-6.4_linux-aarch64.run Ascend-cann-kernels-910b_CANN-6.4_linux.run
+
+# Install Torch, Torch_npu, Apex
+RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl --no-check-certificate \
+    && pip3 install torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl \
+    && rm -f torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl
+
+RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl --no-check-certificate \
+    && pip3 install torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl \
+    && rm -f torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl
+
+RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl --no-check-certificate \
+    && pip3 install apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl \
+    && rm -f apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl
+
+RUN pip3 install pydantic==1.10.9 --force-reinstall
+
+# Create environment file
+RUN touch proxy.sh  \
+    && echo "export http_proxy=" >> proxy.sh \
+    && echo "export https_proxy=\$http_proxy" >> proxy.sh \
+    && echo "export no_proxy=" >> proxy.sh    
