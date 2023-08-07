@@ -70,3 +70,5 @@ TEST(TestTensorUtil, LoadTensorTest)
     AsdRtMemCopy(hostData1.data(), dataSize, tensor.data, dataSize, ASDRT_MEMCOPY_DEVICE_TO_HOST);
     EXPECT_EQ(hostData, hostData1);
 }
+
+
