@@ -27,7 +27,7 @@ const int32_t KQV_SLICE_SIZE = 3;
 GatherOperation::GatherOperation(const PositionEmbeddingFusionParam &param)
     : Operation("GatherOperation"), param_(param)
 {
-    runnerBuilders_ = {new PositionEmbeddingFusionOpsRunnerBuilder(param_)};
+    runnerBuilders_ = {new PositionEmbeddingFusionGatherOpsRunnerBuilder(param_)};
 }
 
 GatherOperation::~GatherOperation() {}
