@@ -251,8 +251,24 @@ static AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::j
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
+    if (paramJson.contains("prescale")) {
+        param.prescale = paramJson["prescale"].get<float>();
+    }
+    if (paramJson.contains("postscale")) {
+        param.postscale = paramJson["postscale"].get<float>();
+    }
+    if (paramJson.contains("num_attention_heads_per_partition")) {
+        param.num_attention_heads_per_partition = paramJson["num_attention_heads_per_partition"].get<int64_t>();
+    }
+    if (paramJson.contains("hidden_size_per_attention_head")) {
+        param.hidden_size_per_attention_head = paramJson["hidden_size_per_attention_head"].get<int64_t>();
+    }
+    if (paramJson.contains("num_multi_query_groups_per_partition")) {
+        param.num_multi_query_groups_per_partition = paramJson["num_multi_query_groups_per_partition"].get<int64_t>();
+    }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
-                  << ", layerId:" << param.layerId << ", dk:" << param.dk;
+                  << ", layerId:" << param.layerId << ", dk:" << param.dk << ", prescale" << param.prescale << ", postscale" << param.postscale << ", model" << param.model
+                  << ", hidden_size_per_attention_head" << param.hidden_size_per_attention_head;
     return new AclTransformer::SelfAttentionOperation(param);
 }
 
@@ -306,8 +322,26 @@ static AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nloh
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
+    if (paramJson.contains("prescale")) {
+        param.prescale = paramJson["prescale"].get<float>();
+    }
+    if (paramJson.contains("postscale")) {
+        param.postscale = paramJson["postscale"].get<float>();
+    }
+    if (paramJson.contains("num_attention_heads_per_partition")) {
+        param.num_attention_heads_per_partition = paramJson["num_attention_heads_per_partition"].get<int64_t>();
+    }
+    if (paramJson.contains("hidden_size_per_attention_head")) {
+        param.hidden_size_per_attention_head = paramJson["hidden_size_per_attention_head"].get<int64_t>();
+    }
+    if (paramJson.contains("num_multi_query_groups_per_partition")) {
+        param.num_multi_query_groups_per_partition = paramJson["num_multi_query_groups_per_partition"].get<int64_t>();
+    }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
-                  << ", layerId:" << param.layerId << ", dk:" << param.dk;
+                  << ", layerId:" << param.layerId << ", dk:" << param.dk << ", prescale" << param.prescale << ", postscale" << param.postscale << ", model" << param.model
+                  << ", hidden_size_per_attention_head" << param.hidden_size_per_attention_head
+                  << ", num_attention_heads_per_partition" << param.num_attention_heads_per_partition
+                  << ", num_multi_query_groups_per_partition" << param.num_multi_query_groups_per_partition;
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }
 

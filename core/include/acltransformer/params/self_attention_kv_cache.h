@@ -21,6 +21,11 @@ struct SelfAttentionKvCacheParam {
     int64_t dk = 0;
     int64_t headNum = 0;
     int64_t layerId = 0;
+    float prescale = 0;
+    float postscale = 0;
+    int64_t num_attention_heads_per_partition = 0;
+    int64_t hidden_size_per_attention_head = 0;
+    int64_t num_multi_query_groups_per_partition = 0;
     std::string model = "chatglm6b";
 };
 } // namespace AclTransformer
