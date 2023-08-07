@@ -22,8 +22,9 @@ option = {}
 option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril"
 torch.npu.set_option(option)
 
-tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
-model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
+tokenizer = AutoTokenizer.from_pretrained("./patches", trust_remote_code=True)
+model = AutoModel.from_pretrained(
+    "./patches", trust_remote_code=True).half().npu()
 
 # 量化模型适配
 for name, mod in model.named_modules():
@@ -100,7 +101,12 @@ def main():
     history = []
     question = 0
     test_tokens_num = 64
-    output_file = open('performance.txt', 'w')
+    performance_file_name = os.getenv('TEMP_TEST_PERFORMANCE_SAVE_PATH')
+    if performance_file_name is None:
+        performance_file_name = "performance.txt"
+    else:
+        performance_file_name = os.path.join(performance_file_name, "performance.txt")
+    output_file = open(performance_file_name, 'w')
     global stop_stream
     print("欢迎使用 ChatGLM-6B 模型，输入内容即可进行对话，clear 清空对话历史，stop 终止程序")
     while True:
@@ -136,25 +142,25 @@ def main():
                     # signal.signal(signal.SIGINT, signal_handler)
                 if question > 1:
                     if model.count == 1:
-                        output_file.write(f"pre_processing: {model.post_processing}ms\n" + \
-                            f"First model time: {model.model_first}ms, input generate: {model.input_generate}ms, " + \
-                            f"post processing: {model.post_processing}ms, First token time: {model.token_first}ms\n")
+                        output_file.write(f"pre_processing: {model.post_processing}ms\n" +
+                                          f"First model time: {model.model_first}ms, input generate: {model.input_generate}ms, " +
+                                          f"post processing: {model.post_processing}ms, First token time: {model.token_first}ms\n")
                         output_file.write("Per token time\n")
                     elif model.count < test_tokens_num:
-                        output_file.write(f"token_{model.count}: model time: {model.model_time}ms, " + \
-                            f"input generate: {model.input_generate}ms, " + \
-                            f"token time: {model.token_time}ms, post processing: {model.post_processing}ms\n")
+                        output_file.write(f"token_{model.count}: model time: {model.model_time}ms, " +
+                                          f"input generate: {model.input_generate}ms, " +
+                                          f"token time: {model.token_time}ms, post processing: {model.post_processing}ms\n")
                     else:
-                        output_file.write(f"token_{model.count}: model time: {model.model_time}ms, " + \
-                            f"input generate: {model.input_generate}ms, " + \
-                            f"token time: {model.token_time}ms, post processing: {model.post_processing}ms\n")
+                        output_file.write(f"token_{model.count}: model time: {model.model_time}ms, " +
+                                          f"input generate: {model.input_generate}ms, " +
+                                          f"token time: {model.token_time}ms, post processing: {model.post_processing}ms\n")
                         output_file.write(
                             "Average time without first token\n")
                         output_file.write(
-                            f"model time: {model.model_total / (test_tokens_num - 1)}ms, " + \
+                            f"model time: {model.model_total / (test_tokens_num - 1)}ms, " +
                             f"token time: {model.token_total / (test_tokens_num - 1)}ms\n")
                         output_file.write(
-                            f"Response time\nmodel time: {model.model_first + model.model_total}ms\n" + \
+                            f"Response time\nmodel time: {model.model_first + model.model_total}ms\n" +
                             f"token time: {model.token_first + model.token_total}ms\n")
                         output_file.close()
                         exit()
