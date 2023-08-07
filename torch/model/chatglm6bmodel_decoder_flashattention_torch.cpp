@@ -68,6 +68,23 @@ void ChatGlm6BModelDecoderFlashattentionTorch::SetParam(std::string param)
     outTensors_.resize(modelParam_.layerNum);
     variantPacks_.resize(modelParam_.layerNum);
 
+    AclTransformer::ChatGlm6BLayerDecoderFlashAttentionParam opParam;
+    opParam.layerNormEps = modelParam_.layerNormEps;
+    opParam.headNum = modelParam_.headNum;
+    opParam.transKey = modelParam_.transKey;
+    opParam.dk = modelParam_.dk;
+    opParam.residualAddScale = modelParam_.residualAddScale;
+
+    opParam.tokenOffset = modelParam_.tokenOffset;
+    opParam.seqLen = modelParam_.seqLen;
+
+    AclTransformer::Operation *op = new AclTransformer::ChatGlm6BLayerDecoderFlashAttentionOperation(opParam);
+
+    gatherOperation_.back().reset(op);
+    AclTransformer::Plan *plan = new AclTransformer::Plan();
+    op->BuildPlan(plan);
+    gatherPlan_.back().reset(plan);
+
     for (int i = 0; i < modelParam_.layerNum; ++i) {
         AclTransformer::ChatGlm6BLayerDecoderFlashAttentionParam opParam;
         opParam.layerNormEps = modelParam_.layerNormEps;
@@ -177,6 +194,14 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteOutImpl(
     std::vector<torch::Tensor> opAtInTensors(operation->GetInTensorCount());
     std::vector<torch::Tensor> opAtOutTensors(operation->GetOutTensorCount());
 
+    torch::Tensor GatherOutTensor = hiddenStateTensor;
+    size_t inTensorGatherId = 0;
+    opAtInTensors.at(inTensorGatherId++) = positionIdTensor;    // positionIdTensor
+    opAtInTensors.at(inTensorGatherId++) = cosTableTensor;      // cosTable
+    opAtInTensors.at(inTensorGatherId++) = sinTableTensor;      // sinTable
+    ExecuteGatherOperation(opAtInTensors, cosTableTensor, sinTableTensor, true);
+    GatherOutTensor = outTensor;
+
     torch::Tensor firstInTensor = hiddenStateTensor;
     for (int layerId = 0; layerId < modelParam_.layerNum; ++layerId) {
         size_t inTensorId = 0;
@@ -193,6 +218,7 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteOutImpl(
         opAtInTensors.at(inTensorId++) = tokenOffset;
         opAtInTensors.at(inTensorId++) = seqLen; // seqLen
         opAtInTensors.at(inTensorId++) = layerIdInput.at(layerId);
+        opAtInTensors.at(inTensorId++) = GatherOutTensor;
 
         ExecuteLayerOperation(layerId, opAtInTensors, outTensor, newOut);
 
@@ -207,6 +233,32 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteOutImpl(
     AsdOps::GetSingleton<AclTransformer::Statistic>().Reset();
 
     executeCount_++;
+}
+
+void ChatGlm6BModelDecoderFlashattentionTorch::BuildGatherVariantPack(std::vector<torch::Tensor> &atInTensors,
+                                                                torch::Tensor &outTensor, bool newOut,
+                                                                AclTransformer::VariantPack &variantPack)
+{
+    variantPack.inTensors.clear();
+    for (size_t i = 0; i < atInTensors.size(); ++i) {
+        ASD_LOG(INFO) << "ChatGlm6BModelGatherLayer"  << " atInTensors[" << i
+                      << "].options:" << atInTensors.at(i).options() << ", data:" << atInTensors.at(i).data_ptr()
+                      << ", storage_offset:" << atInTensors.at(i).storage_offset()
+                      << ", format:" << Utils::GetTensorNpuFormat(atInTensors.at(i));
+        variantPack.inTensors.push_back(Utils::AtTensor2AsdTensor(atInTensors.at(i)));
+    }
+
+    if (newOut) {
+        if (!outTensors_.back().numel()) {
+            AclTransformer::Operation *operation = operations_.back().get();
+            AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+            operation->InferShape(variantPack.inTensors, outTensorDescs);
+            outTensors_.back() = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(0));
+        }
+        outTensor = outTensors_.back();
+    }
+    variantPack.outTensors.clear();
+    variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(outTensor));
 }
 
 void ChatGlm6BModelDecoderFlashattentionTorch::BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
@@ -235,6 +287,29 @@ void ChatGlm6BModelDecoderFlashattentionTorch::BuildVariantPack(int layerId, std
     variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(outTensor));
 }
 
+void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteGatherOperation(std::vector<torch::Tensor> &opAtInTensors,
+                                                                     torch::Tensor &cos_table, torch::Tensor &sin_table, bool newOut)
+{
+    AclTransformer::Plan &plan = *gatherPlan_.back();
+    AclTransformer::VariantPack &variantPack = *gatherPack_.back();
+    variantPack.param = variantPackParam_;
+    torch::Tensor gatheroutTensor;
+    BuildGatherVariantPack(opAtInTensors, gatheroutTensor, true, variantPack);
+
+    AsdOps::Timer timer1;
+    AsdOps::Status st = plan.Setup(handle_, variantPack);
+    AsdOps::GetSingleton<AclTransformer::Statistic>().planSetupTime += timer1.ElapsedMicroSecond();
+    if (!st.Ok()) {
+        ASD_LOG(ERROR) << "ChatGlm6BModelGatherOperation" << " setup plan fail, not call execute";
+        return;
+    }
+
+    variantPack.workspaceSize = plan.GetWorkspaceSize();
+    ASD_LOG(INFO) << "ChatGlm6BModelGatherOperation" << " get plan workspace size:" << variantPack.workspaceSize;
+    ExecuteGatherPlan();
+
+}
+
 void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteLayerOperation(int layerId,
                                                                      std::vector<torch::Tensor> &opAtInTensors,
                                                                      torch::Tensor &outTensor, bool newOut)
@@ -242,7 +317,6 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteLayerOperation(int layerId
     AclTransformer::Plan &plan = *plans_.at(layerId);
 
     AclTransformer::VariantPack &variantPack = variantPacks_.at(layerId);
-    variantPackParam_.layerId = layerId;
     variantPack.param = variantPackParam_;
     BuildVariantPack(layerId, opAtInTensors, outTensor, newOut, variantPack);
 
@@ -313,6 +387,25 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ThreadProcessTask()
             allTaskFinish_ = true;
         }
     }
+}
+
+void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteGatherPlan()
+{
+    AsdOps::Timer timer2;
+    AclTransformer::Plan &plan = *gatherPlan_.back();
+    AclTransformer::VariantPack &variantPack = *gatherPack_.back();
+    ASD_LOG(INFO) << "ChatGlm6BModelGatherOperation" << " execute plan start";
+    AsdOps::Status st = plan.Execute(handle_, variantPack);
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        AsdRtStreamSynchronize(handle_.stream);
+        std::string dirPath =
+            AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelGatherOperation";
+        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
+        ASD_LOG(FATAL) << "ChatGlm6BModelGatherOperation" << " save variant pack, dir:" << dirPath;
+    }
+
+    AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
+    ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelGatherOperation" << " execute plan fail, error:" << st.Message();
 }
 
 void ChatGlm6BModelDecoderFlashattentionTorch::ExecutePlan(int layerId)
