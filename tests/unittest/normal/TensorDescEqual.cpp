@@ -25,7 +25,7 @@
 using namespace AclTransformer;
 using namespace AsdOps;
 
-TEST(TestTensorUtil,TensorDescNOTEqualTest){
+TEST(Testequal,TensorDescNOTEqualTest){
     AsdOps::TensorDesc TensorDescA;
     TensorDescA.dtype=TENSOR_DTYPE_INT32;
     TensorDescA.format=TENSOR_FORMAT_ND;
@@ -37,7 +37,7 @@ TEST(TestTensorUtil,TensorDescNOTEqualTest){
     EXPECT_EQ(TensorUtil::AsdOpsTensorDescEqual(TensorDescA,TensorDescB),false)
 }
 
-TEST(TestTensorUtil,TensorDescEqualTest){
+TEST(Testequal,TensorDescEqualTest){
     AsdOps::TensorDesc TensorDescA;
     TensorDescA.dtype=TENSOR_DTYPE_INT32;
     TensorDescA.format=TENSOR_FORMAT_ND;

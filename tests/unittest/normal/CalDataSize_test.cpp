@@ -26,7 +26,7 @@
 using namespace AclTransformer;
 using namespace AsdOps;
 
-TEST(TestTensorUtil, CalcTensorDataSizeTest1){
+TEST(CalTest, CalcTensorDataSizeTest1){
     AsdOps::Tensor tensor;
     tensor.desc.dtype=TENSOR_DTYPE_FLOAT16;
     tensor.desc.dims={3, 4, 7};
@@ -34,7 +34,7 @@ TEST(TestTensorUtil, CalcTensorDataSizeTest1){
 
 }
 
-TEST(TestTensorUtil, CalcTensorDataSizeTest2){
+TEST(CalTest, CalcTensorDataSizeTest2){
     AsdOps::Tensor tensor;
     tensor.desc.dtype=TENSOR_DTYPE_DOUBLE;
     tensor.desc.dims={3, 4, 7};
@@ -42,7 +42,7 @@ TEST(TestTensorUtil, CalcTensorDataSizeTest2){
 
 }
 
-TEST(TestTensorUtil, CalcTensorDataSizeTest3){
+TEST(CalTest, CalcTensorDataSizeTest3){
     AsdOps::Tensor tensor;
     tensor.desc.dtype=TENSOR_DTYPE_FLOAT16;
     tensor.desc.dims={};
