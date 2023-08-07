@@ -33,6 +33,7 @@
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
+#include "acltransformer/ops/position_embedding_1d_fusion_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/any_operation.h"
@@ -55,6 +56,8 @@
 #include "models/glm130b/glm130blayer_decoder_operation.h"
 #include "models/glm130b/glm130blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_operation.h"
+#include "models/llama7b/llama7blayer_fusion_operation.h"
+
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -67,6 +70,26 @@ static AclTransformer::Operation *LLaMA7BLayerOperationCreate(const nlohmann::js
     ASD_LOG(INFO) << "LLaMA7BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk;
     return new AclTransformer::LLaMA7BLayerOperation(param);
+}
+
+static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA7BLayerFusionParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    param.rotaryCoeff = paramJson["rotaryCoeff"].get<int>();
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+    }
+    ASD_LOG(INFO) << "LLaMA7BLayerFusionParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
+    return new AclTransformer::LLaMA7BLayerFusionOperation(param);
 }
 
 static AclTransformer::Operation *PostOperationCreate(const nlohmann::json &paramJson)
@@ -132,6 +155,7 @@ static AclTransformer::Operation *AddOperationCreate(const nlohmann::json &param
     ASD_LOG(INFO) << "AddParam scale:" << param.scale;
     return new AclTransformer::AddOperation(param);
 }
+
 AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingFusionParam param;
@@ -139,6 +163,15 @@ AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
         ASD_LOG(INFO) << "param.headNum: " << param.headNum;
     return new AclTransformer::RopeOperation(param);
 }
+
+AclTransformer::Operation *PositionEmbedding1dSplitFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::PositionEmbedding1dFusionParam param;
+    param.headNum = paramJson["headNum"].get<int64_t>();
+    ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    return new AclTransformer::PositionEmbedding1dSplitFusionOperation(param);
+}
+
 static AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddNormParam param;
@@ -634,11 +667,12 @@ AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson
 
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PostOperation", &PostOperationCreate},
-    {"AllReduceOperation", AllReduceOperationCreate},
+    {"AllReduceOperation", &AllReduceOperationCreate},
     {"LinearParallelOperation", &LinearParallelOperationCreate},
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
     {"RopeOperation", &RopeOperationCreate},
+    {"PositionEmbedding1dSplitFusionOperation", &PositionEmbedding1dSplitFusionOperationCreate},
     {"AddNormOperation", &AddNormOperationCreate},
     {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
@@ -670,6 +704,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"Glm130BLayerDecoderOperation", &Glm130BLayerDecoderOperationCreate},
     {"Glm130BLayerEncoderOperation", &Glm130BLayerEncoderOperationCreate},
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
+    {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
@@ -694,7 +729,7 @@ AsdOps::Any ParseParam(const std::string &opName, const std::string &param)
 {
     nlohmann::json paramJson = nlohmann::json::parse(param);
 
-    if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation") {
+    if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation" || opName == "LLaMA7BLayerFusionOperation") {
         AclTransformer::SelfAttentionKvCacheFusionVariantPackParam opParam;
         for (auto item : paramJson["tokenOffset"]) {
             opParam.tokenOffset.push_back(item.get<int>());
