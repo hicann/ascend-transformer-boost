@@ -13,16 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_H
-#define ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_H
+#ifndef SELFATTENTION_OPS_LLAMA7B_RUNNER_H
+#define SELFATTENTION_OPS_LLAMA7B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/self_attention.h"
+
 namespace AclTransformer {
-struct PositionEmbeddingParam {
-    bool is2d = true;
-    int64_t headNum = 0;
-    int64_t numHeadPerPartition = 0;
-    int64_t hiddenSizePerHead = 0;
-    int64_t numGroupsPerPartition = 0;
-    std::string model = "chatglm";
+class SelfAttentionOpsLlama7bRunner : public OpsRunner {
+public:
+    SelfAttentionOpsLlama7bRunner(const SelfAttentionParam &param);
+    virtual ~SelfAttentionOpsLlama7bRunner();
+
+private:
+    void AsStrideKernelInferShapeSet(const AsdOps::SVector<int64_t> &sequence, KernelGraphNode &node);
+
+private:
+    SelfAttentionParam param_;
 };
+
 } // namespace AclTransformer
 #endif
