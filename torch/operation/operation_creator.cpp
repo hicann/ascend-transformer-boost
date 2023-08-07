@@ -136,7 +136,7 @@ AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingFusionParam param;
     param.headNum = paramJson["headNum"].get<int64_t>();
-        ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    ASD_LOG(INFO) << "param.headNum: " << param.headNum;
     return new AclTransformer::RopeOperation(param);
 }
 static AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
@@ -209,7 +209,8 @@ static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &param
         param.hasBias = paramJson["hasBias"].get<bool>();
     }
     if (paramJson.contains("activationFuncType")) {
-        param.activationFuncType = paramJson["activationFuncType"].get<int32_t>();
+        param.activationFuncType =
+            AclTransformer::FfnParam::ActivationFuncType(paramJson["activationFuncType"].get<int32_t>());
     }
     ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB
                   << ", hasBias:" << param.hasBias << ", activationFuncType:" << param.activationFuncType;
