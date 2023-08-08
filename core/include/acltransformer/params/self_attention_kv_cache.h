@@ -23,7 +23,7 @@ struct SelfAttentionKvCacheParam {
     int64_t layerId = 0;
     float preScale = 0;
     float postScale = 0;
-    int64_t numAttentionHeadsPerPartition = 0;
+    int64_t numHeadsPerPartition = 0;
     int64_t hiddenSizePerAttentionHead = 0;
     int64_t numMultiQueryGroupsPerPartition = 0;
     std::string model = "chatglm6b";
