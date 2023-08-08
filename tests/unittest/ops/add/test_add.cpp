@@ -71,9 +71,10 @@ TEST(TestAddOperation, TestAdd)
 {
     AclTransformer::AddParam param;
     AclTransformer::AddOperation op(param);
-    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
                                                      {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
     OpTest opTest(1);
+    opTest.Golden(&AddGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);
 }
