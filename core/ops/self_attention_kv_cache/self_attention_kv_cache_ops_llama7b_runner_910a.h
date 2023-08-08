@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SELFATTENTIONKVCACHE_OPS_LLAMA7B_RUNNER_H
-#define SELFATTENTIONKVCACHE_OPS_LLAMA7B_RUNNER_H
+#ifndef SELFATTENTIONKVCACHE_OPS_LLAMA7B_RUNNER_910A_H
+#define SELFATTENTIONKVCACHE_OPS_LLAMA7B_RUNNER_910A_H
 #include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/self_attention_kv_cache.h"
 
 namespace AclTransformer {
-class SelfAttentionKvCacheOpsLlama7bRunner : public OpsRunner {
+class SelfAttentionKvCacheOpsLlama7bRunner910a : public OpsRunner {
 public:
-    SelfAttentionKvCacheOpsLlama7bRunner(const SelfAttentionKvCacheParam &param);
-    virtual ~SelfAttentionKvCacheOpsLlama7bRunner();
+    SelfAttentionKvCacheOpsLlama7bRunner910a(const SelfAttentionKvCacheParam &param);
+    virtual ~SelfAttentionKvCacheOpsLlama7bRunner910a();
 
 private:
     void AsStrideKernelInferShapeSet(const AsdOps::SVector<int64_t> &sequence, KernelGraphNode &node);

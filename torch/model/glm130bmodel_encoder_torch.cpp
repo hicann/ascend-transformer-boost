@@ -58,6 +58,7 @@ void Glm130BModelEncoderTorch::SetParam(std::string param)
         opParam.layerId = i;
         opParam.rank = modelParam_.rank;
         opParam.rankSize = modelParam_.rankSize;
+        opParam.backend = modelParam_.backend;
         opParam.residualAddScale = modelParam_.residualAddScale;
         opParam.layerNormEps = modelParam_.layerNormEps;
         AclTransformer::Operation *op = new AclTransformer::Glm130BLayerEncoderOperation(opParam);

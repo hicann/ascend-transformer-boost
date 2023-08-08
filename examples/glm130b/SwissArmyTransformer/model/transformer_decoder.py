@@ -443,6 +443,7 @@ class BaseTransformer(torch.nn.Module):
                             "dk": self.head_size,
                             "rank": self.rank,
                             "rankSize": self.rankSize,
+                            "backend": "hccl",
                             "residualAddScale": (2 * num_layers) ** 0.5,
                             "layerNormEps": layernorm_epsilon
                             })
