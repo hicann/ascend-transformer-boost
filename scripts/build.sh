@@ -89,6 +89,8 @@ function fn_build_asdops()
         echo "asdops exist in $THIRD_PARTY_DIR, not build it"
         return
     fi
+
+    cd $CACHE_DIR
     git clone https://gitee.com/ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
     ASD_OPP_PATH=/usr/local/Ascend/ascend-toolkit/6.0.2/opp
@@ -105,6 +107,8 @@ function fn_build_asdops()
     build_options="$build_options --output=$THIRD_PARTY_DIR"
     echo "bash scripts/build.sh dev $build_options"
     bash scripts/build.sh dev $build_options
+    cd $CACHE_DIR
+    sudo rm -rf ascend-op-common-lib
 }
 
 function fn_build_nlohmann_json()
@@ -119,6 +123,8 @@ function fn_build_nlohmann_json()
         unzip include.zip
         mkdir -p $THIRD_PARTY_DIR/nlohmannJson
         cp -r ./include $THIRD_PARTY_DIR/nlohmannJson
+        cd $CACHE_DIR
+        rm -rf nlohmann
     fi
 }
 
@@ -271,7 +277,7 @@ function fn_generate_doxygen()
         sed -i 's|OUTPUT_DIRECTORY       =.\/output\/acltransformer\/doc|OUTPUT_DIRECTORY       ='"$OUTPUT_DIR"'\/acltransformer\/doc|g' $CODE_ROOT/Doxyfile
     fi
     if [ -f "/usr/local/doxygen/bin/doxygen" ];then
-        /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile >/dev/null 2>&1
+        /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile
     else
         echo "/usr/local/doxygen/bin/doxygen not exist, not generate doc"
     fi
