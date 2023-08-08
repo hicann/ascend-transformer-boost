@@ -355,6 +355,12 @@ static AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohman
     if (paramJson.contains("numGroupsPerPartition")) {
         param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
     }
+    if (paramJson.contains("rotaryPct")) {
+        param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int64_t>();
+    }
     return new AclTransformer::PositionEmbeddingOperation(param);
 }
 
