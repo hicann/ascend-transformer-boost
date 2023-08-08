@@ -66,6 +66,10 @@ function fn_build_googltest()
 
 function fn_build_half()
 {
+    if [ -d "$THIRD_PARTY_DIR/half/include" ];then
+        echo "half exist in $THIRD_PARTY_DIR, not build it"
+        return
+    fi
     cd $CACHE_DIR
     rm -rf half-2.2.0.zip
     if [ -f "$CODE_ROOT/3rdparty/half-2.2.0.zip" ];then
@@ -124,6 +128,7 @@ function fn_build_3rdparty()
     mkdir $CACHE_DIR
     cd $CACHE_DIR
     fn_build_googltest
+    fn_build_half
     fn_build_nlohmann_json
     fn_build_asdops
     cd ..
