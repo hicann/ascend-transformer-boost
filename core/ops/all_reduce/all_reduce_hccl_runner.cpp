@@ -22,6 +22,9 @@ AllReduceHcclRunner::AllReduceHcclRunner(const AllReduceParam &param)
       param_(param)
 {
     ASD_LOG(INFO) << "AllReduceHcclRunner::AllReduceHcclRunner called";
+#ifdef USE_HCCL_RUNNER
+    allReduceType_ = GetAllReduceType(param_.allReduceType);
+#endif
 }
 
 AllReduceHcclRunner::~AllReduceHcclRunner() {}

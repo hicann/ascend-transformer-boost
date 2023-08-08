@@ -22,6 +22,7 @@
 #include "acltransformer/ops/ffn_operation.h"
 #include "acltransformer/ops/position_embedding_fusion_operation.h"
 
+
 namespace AclTransformer {
 enum Chatglm6BLayerDecoderFlashAttentionTensorId {
     IN_HIDDENSTATES_ID = 0,
@@ -43,8 +44,8 @@ enum Chatglm6BLayerDecoderFlashAttentionTensorId {
     IN_ATTENTIONMASK_ID,
     IN_CACHEK_ID,
     IN_CACHEV_ID,
-    IN_TOKENOFFSET_ID,
     IN_SEQLEN_ID,
+    IN_TOKENOFFSET_ID,
     IN_LAYERID_ID,
     OUT_LAYEROUT_ID,
     INTERMEDIATE_INPUTNORMOUT_ID,
@@ -96,6 +97,7 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
     mixdQkvLinearNode.inTensorIds = {INTERMEDIATE_INPUTNORMOUT_ID, IN_QKVMIXEDWEIGHT_ID, IN_QKVMIXEDBIAS_ID};
     mixdQkvLinearNode.outTensorIds = {INTERMEDIATE_MIXEDLINEAROUTQKV_ID};
 
+
     positionEmbeddingNode.operation.reset(new AclTransformer::RopeOperation({param_.headNum}));
     positionEmbeddingNode.inTensorIds = {INTERMEDIATE_MIXEDLINEAROUTQKV_ID, IN_POSITIONIDS_ID, IN_COSTABLE_ID,
                                          IN_SINTABLE_ID, IN_SEQLEN_ID};
@@ -116,8 +118,8 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
                                             IN_CACHEV_ID,
                                             INTERMEDIATE_POSITIONEMBEDQ_ID,
                                             IN_ATTENTIONMASK_ID,
-                                            IN_TOKENOFFSET_ID,
                                             IN_SEQLEN_ID,
+                                            IN_TOKENOFFSET_ID,
                                             IN_LAYERID_ID};
     selfAttentionKvCacheNode.outTensorIds = {INTERMEDIATE_SELFOUT_ID};
     selfAttentionKvCacheNode.useVariantPackParam = true;

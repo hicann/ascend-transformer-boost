@@ -22,6 +22,8 @@ struct PositionEmbeddingParam {
     int64_t numHeadPerPartition = 0;
     int64_t hiddenSizePerHead = 0;
     int64_t numGroupsPerPartition = 0;
+    int64_t dk = 0;
+    float rotaryPct = 0.25;
     std::string model = "chatglm";
 };
 } // namespace AclTransformer
