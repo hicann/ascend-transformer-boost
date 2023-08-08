@@ -1,5 +1,9 @@
 file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
 
+include_directories(
+    ${PROJECT_SOURCE_DIR}/3rdparty/half/include
+)
+
 add_executable(acltransformer_unittest ${SOURCE_FILES})
 target_link_libraries(acltransformer_unittest PRIVATE acltransformer asdops gtest gmock pthread dl torch c10 torch_cpu torch_python torch_npu ascendcl)
 if(NOT ${LINK_PYTHON} STREQUAL "")
