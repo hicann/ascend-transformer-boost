@@ -209,6 +209,32 @@ void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteOutImpl(
     executeCount_++;
 }
 
+void ChatGlm6BModelDecoderFlashattentionTorch::BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors,
+                                                                torch::Tensor &outTensor, bool newOut,
+                                                                AclTransformer::VariantPack &variantPack)
+{
+    variantPack.inTensors.clear();
+    for (size_t i = 0; i < atInTensors.size(); ++i) {
+        ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " atInTensors[" << i
+                      << "].options:" << atInTensors.at(i).options() << ", data:" << atInTensors.at(i).data_ptr()
+                      << ", storage_offset:" << atInTensors.at(i).storage_offset()
+                      << ", format:" << Utils::GetTensorNpuFormat(atInTensors.at(i));
+        variantPack.inTensors.push_back(Utils::AtTensor2AsdTensor(atInTensors.at(i)));
+    }
+
+    if (newOut) {
+        if (!outTensors_.at(layerId).numel()) {
+            AclTransformer::Operation *operation = operations_.at(layerId).get();
+            AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+            operation->InferShape(variantPack.inTensors, outTensorDescs);
+            outTensors_.at(layerId) = Utils::CreateAtTensorFromAsdOpsTensorDesc(outTensorDescs.at(0));
+        }
+        outTensor = outTensors_.at(layerId);
+    }
+    variantPack.outTensors.clear();
+    variantPack.outTensors.push_back(Utils::AtTensor2AsdTensor(outTensor));
+}
+
 void ChatGlm6BModelDecoderFlashattentionTorch::ExecuteLayerOperation(int layerId,
                                                                      std::vector<torch::Tensor> &opAtInTensors,
                                                                      torch::Tensor &outTensor, bool newOut)
