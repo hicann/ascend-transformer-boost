@@ -63,7 +63,7 @@ LinearParallelOperation::LinearParallelOperation(const LinearParallelParam &para
         };
 
         allReduceNode.operation.reset(
-            new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, param_.backend}));
+            new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend}));
         allReduceNode.inTensorIds = {INTERMIDATE_MATMULOUT};
         allReduceNode.outTensorIds = {INTERMIDATE_ALLREDUCEOUT};
 
@@ -96,7 +96,7 @@ LinearParallelOperation::LinearParallelOperation(const LinearParallelParam &para
         };
 
         allReduceNode.operation.reset(
-            new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, param_.backend}));
+            new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend}));
         allReduceNode.inTensorIds = {INTERMIDATE_MATMULOUT - 1};
         allReduceNode.outTensorIds = {OUT_LINEAROUT - 1};
     }
