@@ -18,6 +18,8 @@
 #include "acltransformer/config.h"
 #include "position_embedding_fusion_ops_runner_builder.h"
 
+static constexpr int64_t GLM2_IN_TENSOR_SIZE = 3;
+
 namespace AclTransformer {
 RopeOperation::RopeOperation(const PositionEmbeddingFusionParam &param)
     : Operation("RopeOperation"), param_(param)
@@ -27,7 +29,10 @@ RopeOperation::RopeOperation(const PositionEmbeddingFusionParam &param)
 
 RopeOperation::~RopeOperation() {}
 
-uint64_t RopeOperation::GetInTensorCount() const { return inTensorSize; }
+uint64_t RopeOperation::GetInTensorCount() const 
+{ 
+    return (param_.model == "chatglm2_6b") ? GLM2_IN_TENSOR_SIZE : inTensorSize; 
+}
 
 uint64_t RopeOperation::GetOutTensorCount() const { return outTensorSize; }
 
@@ -35,15 +40,32 @@ AsdOps::Status
 RopeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    outTensorDescs.at(0).format = inTensors.at(0).desc.format;
-    outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
-    outTensorDescs.at(0).dims.push_back(param_.headNum);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[2] / param_.headNum / kqvSliceSize);
+    if (param_.model == "chatglm2_6b") {
+        outTensorDescs.at(0).format = inTensors.at(0).desc.format;
+        outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
+        outTensorDescs.at(0).dims.push_back(param_.numHeadPerPartition);
+        outTensorDescs.at(0).dims.push_back(param_.hiddenSizePerHead);
 
-    outTensorDescs.at(1) = outTensorDescs.at(0);
-    outTensorDescs.at(2) = outTensorDescs.at(0); // 2=index
+        outTensorDescs.at(1) = inTensors.at(0).desc;
+        outTensorDescs.at(1).dims.clear();
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims[0]);
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims[1]);
+        outTensorDescs.at(1).dims.push_back(param_.numGroupsPerPartition);
+        outTensorDescs.at(1).dims.push_back(param_.hiddenSizePerHead);
+        outTensorDescs.at(2) = outTensorDescs.at(1); 
+    } else{
+        outTensorDescs.at(0).format = inTensors.at(0).desc.format;
+        outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
+        outTensorDescs.at(0).dims.push_back(param_.headNum);
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[2] / param_.headNum / kqvSliceSize);
+
+        outTensorDescs.at(1) = outTensorDescs.at(0);
+        outTensorDescs.at(2) = outTensorDescs.at(0); // 2=index
+    }
     return AsdOps::Status::OkStatus();
 }
 
