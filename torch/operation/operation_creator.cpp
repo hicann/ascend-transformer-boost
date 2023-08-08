@@ -297,8 +297,8 @@ static AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::j
     if (paramJson.contains("postScale")) {
         param.postScale = paramJson["postScale"].get<float>();
     }
-    if (paramJson.contains("numAttentionHeadsPerPartition")) {
-        param.numAttentionHeadsPerPartition = paramJson["numAttentionHeadsPerPartition"].get<int64_t>();
+    if (paramJson.contains("numHeadsPerPartition")) {
+        param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
     }
     if (paramJson.contains("hiddenSizePerAttentionHead")) {
         param.hiddenSizePerAttentionHead = paramJson["hiddenSizePerAttentionHead"].get<int64_t>();
@@ -368,8 +368,8 @@ static AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nloh
     if (paramJson.contains("postScale")) {
         param.postScale = paramJson["postScale"].get<float>();
     }
-    if (paramJson.contains("numAttentionHeadsPerPartition")) {
-        param.numAttentionHeadsPerPartition = paramJson["numAttentionHeadsPerPartition"].get<int64_t>();
+    if (paramJson.contains("numHeadsPerPartition")) {
+        param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
     }
     if (paramJson.contains("hiddenSizePerAttentionHead")) {
         param.hiddenSizePerAttentionHead = paramJson["hiddenSizePerAttentionHead"].get<int64_t>();
@@ -380,7 +380,7 @@ static AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nloh
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
                   << ", layerId:" << param.layerId << ", dk:" << param.dk << ", preScale" << param.preScale << ", postScale" << param.postScale << ", model" << param.model
                   << ", hiddenSizePerAttentionHead" << param.hiddenSizePerAttentionHead
-                  << ", numAttentionHeadsPerPartition" << param.numAttentionHeadsPerPartition
+                  << ", numHeadsPerPartition" << param.numHeadsPerPartition
                   << ", numMultiQueryGroupsPerPartition" << param.numMultiQueryGroupsPerPartition;
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }

@@ -13,7 +13,7 @@ SelfAttentionOpsChatglm26bRunner::SelfAttentionOpsChatglm26bRunner(const SelfAtt
     ASD_LOG(INFO) << "SelfAttentionOpsChatGlm26bRunner::SelfAttentionOpsChatGlm26bRunner called"
                   << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
                   << ",layerId: " << param_.layerId << ", preScale: " << param_.preScale << ", postscale" << param_.postScale
-                  << ", numAttentionHeadsPerPartition" << param_.numAttentionHeadsPerPartition
+                  << ", numHeadsPerPartition" << param_.numHeadsPerPartition
                   << ", hiddenSizePerAttentionHead " << param_.hiddenSizePerAttentionHead
                   << ", numMultiQueryGroupsPerPartition" << param_.numMultiQueryGroupsPerPartition << ", model " << param_.model;
     kernelGraph_.inTensors.resize(4);
@@ -81,7 +81,7 @@ SelfAttentionOpsChatglm26bRunner::SelfAttentionOpsChatglm26bRunner(const SelfAtt
     };
 
 
-    int64_t np = param_.numAttentionHeadsPerPartition;
+    int64_t np = param_.numHeadsPerPartition;
     int64_t hn = param_.hiddenSizePerAttentionHead;
     int64_t gp = param_.numMultiQueryGroupsPerPartition;
     InferShapePreFunc expandInferShape = [np, gp](AsdOps::RunInfo &runInfo) {
@@ -106,7 +106,7 @@ SelfAttentionOpsChatglm26bRunner::SelfAttentionOpsChatglm26bRunner(const SelfAtt
     permuteKNode.outTensors = {&transposedK};
     permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
     permuteKNode.inTensorViewFuncs[0] = [np, hn](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        int64_t firstViewDim1 = oldDims.at(0); newDims = {oldDims.at(0), oldDims.at(1) * np, hn};
+        newDims = {oldDims.at(0), oldDims.at(1) * np, hn};
     };
 
     bmmQkNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
