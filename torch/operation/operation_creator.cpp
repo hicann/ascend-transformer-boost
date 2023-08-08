@@ -97,6 +97,9 @@ static AclTransformer::Operation *AllReduceOperationCreate(const nlohmann::json 
     if (paramJson.find("backend") != paramJson.end()) {
         param.backend = paramJson["backend"].get<std::string>();
     }
+    if (paramJson.find("allReduceType") != paramJson.end()) {
+        param.allReduceType = paramJson["allReduceType"].get<std::string>();
+    }
     ASD_LOG(INFO) << "AllReduceParam rank:" << param.rank;
     ASD_LOG(INFO) << "AllReduceParam rankSize:" << param.rankSize;
     return new AclTransformer::AllReduceOperation(param);

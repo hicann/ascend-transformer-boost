@@ -54,6 +54,9 @@ protected:
     uint64_t GetWorkspaceBufferSizeImpl() override;
     uint64_t GetIntermediateBufferSizeImpl() override;
     AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+#ifdef USE_HCCL_RUNNER
+    HcclReduceOp GetAllReduceType(std::string allReduceType);
+#endif
 
 private:
 #ifdef USE_HCCL_RUNNER
@@ -70,6 +73,7 @@ protected:
     int rankSize_ = 0;
     int rankRoot_ = 0;
 #ifdef USE_HCCL_RUNNER
+    HcclReduceOp allReduceType_ = HCCL_REDUCE_SUM;
     HcclComm hcclComm_;
     HcclRootInfo hcclCommId_;
 #endif
