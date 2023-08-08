@@ -20,8 +20,6 @@
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
-#include "acltransformer/ops/position_embedding_fusion_operation.h"
-#include "acltransformer/ops/position_embedding_fusion_gather_operation.h"
 #include "acltransformer/ops/position_embedding_fusion_rope_operation.h"
 
 namespace AclTransformer {

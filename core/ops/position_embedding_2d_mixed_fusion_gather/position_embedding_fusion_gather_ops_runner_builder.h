@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef POSITIONEMBEDDING_FUSION_OPS_RUNNER_BUILDER_H
-#define POSITIONEMBEDDING_FUSION_OPS_RUNNER_BUILDER_H
+#ifndef POSITIONEMBEDDING_FUSION_GATHER_OPS_RUNNER_BUILDER_H
+#define POSITIONEMBEDDING_FUSION_GATHER_OPS_RUNNER_BUILDER_H
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/position_embedding_fusion.h"
-#include "position_embedding_fusion_ops_runner.h"
+#include "position_embedding_fusion_gather_ops_runner.h"
 
 namespace AclTransformer {
-class PositionEmbeddingFusionOpsRunnerBuilder : public RunnerBuilder {
+class PositionEmbeddingFusionGatherOpsRunnerBuilder : public RunnerBuilder {
 public:
-    explicit PositionEmbeddingFusionOpsRunnerBuilder(const PositionEmbeddingFusionParam &param) : param_(param) {}
-    virtual ~PositionEmbeddingFusionOpsRunnerBuilder() = default;
-    Runner *Build() override { return new PositionEmbeddingFusionOpsRunner(param_); }
+    explicit PositionEmbeddingFusionGatherOpsRunnerBuilder(const PositionEmbeddingFusionParam &param) : param_(param) {}
+    virtual ~PositionEmbeddingFusionGatherOpsRunnerBuilder() = default;
+    Runner *Build() override { return new PositionEmbeddingFusionGatherOpsRunner(param_); }
 
 private:
     PositionEmbeddingFusionParam param_;

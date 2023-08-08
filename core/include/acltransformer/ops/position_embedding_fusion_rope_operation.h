@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_POSITION_EMBEDDING_FUSION_OPERATION_H
-#define ACLTRANSFORMER_POSITION_EMBEDDING_FUSION_OPERATION_H
+#ifndef ACLTRANSFORMER_POSITION_EMBEDDING_FUSION_ROPE_OPERATION_H
+#define ACLTRANSFORMER_POSITION_EMBEDDING_FUSION_ROPE_OPERATION_H
 #include "acltransformer/operation.h"
 #include "acltransformer/params/position_embedding_fusion.h"
 
