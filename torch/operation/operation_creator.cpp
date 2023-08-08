@@ -708,6 +708,9 @@ AclTransformer::Operation *Glm130BLayerEncoderOperationCreate(const nlohmann::js
     if (paramJson.contains("rankSize")) {
         param.rankSize = paramJson["rankSize"].get<int>();
     }
+    if (paramJson.contains("backend")) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
     if (paramJson.contains("layerId")) {
         param.layerId = paramJson["layerId"].get<int>();
     }

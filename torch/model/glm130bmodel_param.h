@@ -26,6 +26,7 @@ struct Glm130BModelParam {
     int rankSize = 1;
     float residualAddScale = 0;
     double layerNormEps = 0;
+    std::string backend = "hccl";
     void FromString(const std::string &param);
 };
 
