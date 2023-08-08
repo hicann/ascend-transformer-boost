@@ -26,14 +26,15 @@ namespace AclTransformer {
 SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRunner310P(const SelfAttentionKvCacheParam &param)
 : OpsRunner("SelfAttentionKvCacheOpsChatGlm26bRunner310P", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRunner310P called"
-    << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
-    << ",layerId: " << param_.layerId << ", preScale: " << param_.preScale << ",postScale: " << param_.postScale;
+    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRunner310P called";
+
+    const int internalTensorSize = 16;
+    const int nodeSize = 19;
+    
     kernelGraph_.inTensors.resize(5);
     AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(1);
     AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(2);
-    // AsdOps::Tensor &attention_mask = kernelGraph_.inTensors.at(3);
     AsdOps::Tensor &pastKey = kernelGraph_.inTensors.at(3);
     AsdOps::Tensor &pastValue = kernelGraph_.inTensors.at(4);
 
@@ -42,7 +43,6 @@ SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRu
     AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(1);
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(2);
 
-    const int internalTensorSize = 16;
     kernelGraph_.internalTensors.resize(internalTensorSize);
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &divOut = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -62,7 +62,6 @@ SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRu
     AsdOps::Tensor &presentKeyExpand = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &presentValueExpand = kernelGraph_.internalTensors.at(internalTensorNum++);
 
-    const int nodeSize = 19;
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
     auto &mulsQNode = kernelGraph_.nodes.at(nodeNum++);
@@ -116,9 +115,9 @@ SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRu
         }
     };
 
-    int64_t np = param_.numAttentionHeadsPerPartition;
-    int64_t hn = param_.hiddenSizePerAttentionHead;
-    int64_t gp = param_.numMultiQueryGroupsPerPartition;
+    int64_t np = param_.numHeadsPerPartition;
+    int64_t hn = param_.hiddenSizePerHead;
+    int64_t gp = param_.numGroupsPerPartition;
     InferShapePreFunc expandInferShape = [np, gp](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), np / gp, dims.at(4)};
@@ -141,8 +140,6 @@ SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRu
     permuteKNode.outTensors = {&transposedK};
     permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
     permuteKNode.inTensorViewFuncs[0] = [np, hn](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        //  key_layer.size()[:2] + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
-        //  # [sk, b, np, hn] -> [sk, b * np, hn]
         newDims = {oldDims.at(0), oldDims.at(1) * np, hn};
     };
 

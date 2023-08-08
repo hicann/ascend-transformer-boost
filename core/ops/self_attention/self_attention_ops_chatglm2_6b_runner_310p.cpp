@@ -26,10 +26,12 @@ namespace AclTransformer {
 SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P(const SelfAttentionParam &param)
 : OpsRunner("SelfAttentionOpsChatglm26bRunner310P", RUNNER_TYPE_SELF_ATTENTION), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P called"
-    << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
-    << ",layerId: " << param_.layerId << ",preScale: " << param_.preScale << ",postScale: " << param_.postScale;
-
+    ASD_LOG(INFO) << "SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P called";
+    
+    const int internalTensorSize = 17;
+    const int nodeSize = 18;
+    float maskValue = -65504;
+    
     kernelGraph_.inTensors.resize(4);
     AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(1);
@@ -39,7 +41,6 @@ SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P(const
     kernelGraph_.outTensors.resize(1);
     AsdOps::Tensor &context = kernelGraph_.outTensors.at(0);
 
-    const int internalTensorSize = 17;
     kernelGraph_.internalTensors.resize(internalTensorSize);
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &divOut = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -60,7 +61,6 @@ SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P(const
     AsdOps::Tensor &keyExpand = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &valueExpand = kernelGraph_.internalTensors.at(internalTensorNum++);
 
-    const int nodeSize = 18;
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
     auto &mulsQNode = kernelGraph_.nodes.at(nodeNum++);
@@ -83,7 +83,6 @@ SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P(const
     auto &permuteContextNode = kernelGraph_.nodes.at(nodeNum++);
 
     float varAttr = 1.0 / (sqrt(param_.dk) * param_.preScale);
-    ASD_LOG(WARN) << "NORM FACTOR" << varAttr;
     mulsQNode.opDesc = {0, "ElewiseOperation",
                         AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, varAttr})};
     mulsQNode.inTensors = {&mixedQuery};
@@ -103,15 +102,10 @@ SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P(const
         newDims = {oldDims.at(0), oldDims.at(1) * oldDims.at(2), oldDims.at(3)};
     };
 
-    int64_t np = param_.numAttentionHeadsPerPartition;
-    int64_t hn = param_.hiddenSizePerAttentionHead;
-    int64_t gp = param_.numMultiQueryGroupsPerPartition;
-
+    int64_t np = param_.numHeadsPerPartition;
+    int64_t hn = param_.hiddenSizePerHead;
+    int64_t gp = param_.numGroupsPerPartition;
     InferShapePreFunc expandInferShape = [np, gp](AsdOps::RunInfo &runInfo) {
-        ASD_LOG(INFO) << "Expand key";
-        ASD_LOG(INFO) << "np: " << np;
-        ASD_LOG(INFO) << "gp: " << gp;
-        ASD_LOG(INFO) << "np / gp: " << np / gp;
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), np / gp, dims.at(4)};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2) * dims.at(4), dims.at(2) * dims.at(4), dims.at(4), 0, 1};
@@ -133,7 +127,7 @@ SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P(const
     permuteKNode.outTensors = {&transposedK};
     permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
     permuteKNode.inTensorViewFuncs[0] = [np, hn](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        int64_t firstViewDim1 = oldDims.at(0); newDims = {oldDims.at(0), oldDims.at(1) * np, hn};
+        newDims = {oldDims.at(0), oldDims.at(1) * np, hn};
     };
 
     transdataQNode.opDesc = {0, "TransdataOperation",
@@ -178,7 +172,6 @@ SelfAttentionOpsChatglm26bRunner310P::SelfAttentionOpsChatglm26bRunner310P(const
             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transQKTargetDims})});
     };
 
-    float maskValue = -65504;
     maskNode.opDesc = {0, "BroadcastOperation",
                     AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_MASKEDFILL, {maskValue}})};
     maskNode.inTensors = {&bmmQkOutTransResult, &attention_mask};
