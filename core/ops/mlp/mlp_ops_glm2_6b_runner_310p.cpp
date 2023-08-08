@@ -63,7 +63,7 @@ MlpOpsGlm2Runner310P::MlpOpsGlm2Runner310P(const MlpParam &param)
     auto &matmulDownNode = kernelGraph_.nodes[nodeId++];
     auto &transdataC2Node = kernelGraph_.nodes[nodeId++];
 
-    ViewFunc Squeeze1 = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+    ViewFunc Squeeze1ViewFunc = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         oriADims_ = oldDims;
         if (oldDims.size() == 2) {
             oriSize_ = 2;
@@ -78,9 +78,9 @@ MlpOpsGlm2Runner310P::MlpOpsGlm2Runner310P(const MlpParam &param)
     transdataA1Node.inTensors = {&hiddenStates};
     transdataA1Node.outTensors = {&transdataA1Out};
     transdataA1Node.inTensorViewFuncs.resize(transdataA1Node.inTensors.size());
-    transdataA1Node.inTensorViewFuncs.at(0) = Squeeze1;
+    transdataA1Node.inTensorViewFuncs.at(0) = Squeeze1ViewFunc;
 
-    ViewFunc CheckDimB = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+    ViewFunc CheckDimBViewFunc = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         int64_t bLastDim = oldDims.at(oldDims.size() - 1);
         const int64_t blockDim = 16;
         if (bLastDim != blockDim || oldDims.size() < dimSize) {
@@ -93,7 +93,7 @@ MlpOpsGlm2Runner310P::MlpOpsGlm2Runner310P(const MlpParam &param)
     matmulUpNode.inTensors = {&transdataA1Out, &weightUp};
     matmulUpNode.outTensors = {&matmulUpOut};
     matmulUpNode.inTensorViewFuncs.resize(matmulUpNode.inTensors.size());
-    matmulUpNode.inTensorViewFuncs.at(1) = CheckDimB;
+    matmulUpNode.inTensorViewFuncs.at(1) = CheckDimBViewFunc;
     matmulUpNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         int64_t dim0, dim1, dim2;
         if (oriSize_ == 3) {
@@ -147,13 +147,13 @@ MlpOpsGlm2Runner310P::MlpOpsGlm2Runner310P(const MlpParam &param)
     transdataA2Node.inTensors = {&mulOut};
     transdataA2Node.outTensors = {&transdataA2Out};
     transdataA2Node.inTensorViewFuncs.resize(transdataA2Node.inTensors.size());
-    transdataA2Node.inTensorViewFuncs.at(0) = Squeeze1;
+    transdataA2Node.inTensorViewFuncs.at(0) = Squeeze1ViewFunc;
 
     matmulDownNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
     matmulDownNode.inTensors = {&transdataA2Out, &weightDown};
     matmulDownNode.outTensors = {&matmulDownOut};
     matmulDownNode.inTensorViewFuncs.resize(matmulDownNode.inTensors.size());
-    matmulDownNode.inTensorViewFuncs.at(1) = CheckDimB;
+    matmulDownNode.inTensorViewFuncs.at(1) = CheckDimBViewFunc;
     matmulDownNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         int64_t dim0, dim1, dim2;
         if (oriSize_ == 3) {
