@@ -94,8 +94,13 @@ Glm130BLayerEncoderOperation::Glm130BLayerEncoderOperation(const Glm130BLayerPar
     positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
     positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    selfAttentionNode.operation.reset(new AclTransformer::SelfAttentionOperation(
-        {.transKey=param_.transKey, .dk=param_.dk, .headNum=param_.headNum / param_.rankSize, .layerId=param_.layerId, .model="glm130b"}));
+    AclTransformer::SelfAttentionParam selfAttentionParam;
+    selfAttentionParam.transKey = param_.transKey;
+    selfAttentionParam.dk = param_.dk;
+    selfAttentionParam.headNum = param_.headNum / param_.rankSize;
+    selfAttentionParam.layerId = param_.layerId;
+    selfAttentionParam.model = "chatglm6b";
+    selfAttentionNode.operation.reset(new AclTransformer::SelfAttentionOperation(selfAttentionParam));
     selfAttentionNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE, IN_ATTENTIONMASK};
     selfAttentionNode.outTensorIds = {INTERMIDATE_SELFOUT};
 

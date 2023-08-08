@@ -13,7 +13,7 @@ SelfAttentionKvCacheOpsChatGlm26bRunner::SelfAttentionKvCacheOpsChatGlm26bRunner
     ASD_LOG(INFO) << "SelfAttentionKvCacheOpsChatGlm26bRunner::SelfAttentionKvCacheOpsChatGlm26bRunner called"
                   << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
                   << ",layerId: " << param_.layerId << ", preScale: " << param_.preScale << ", postscale" << param_.postScale
-                  << ", numAttentionHeadsPerPartition" << param_.numAttentionHeadsPerPartition
+                  << ", numHeadsPerPartition" << param_.numHeadsPerPartition
                   << ", hiddenSizePerAttentionHead " << param_.hiddenSizePerAttentionHead
                   << ", numMultiQueryGroupsPerPartition" << param_.numMultiQueryGroupsPerPartition << ", model " << param_.model;
     kernelGraph_.inTensors.resize(5);
@@ -92,7 +92,7 @@ SelfAttentionKvCacheOpsChatGlm26bRunner::SelfAttentionKvCacheOpsChatGlm26bRunner
         }
     };
 
-    int64_t np = param_.numAttentionHeadsPerPartition;
+    int64_t np = param_.numHeadsPerPartition;
     int64_t hn = param_.hiddenSizePerAttentionHead;
     int64_t gp = param_.numMultiQueryGroupsPerPartition;
     InferShapePreFunc expandInferShape = [np, gp](AsdOps::RunInfo &runInfo) {
