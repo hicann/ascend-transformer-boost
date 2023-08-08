@@ -82,6 +82,7 @@ def batch_filling_sequence(
         print('Token num is {}, takes {} second.'.format(token_num, sum(token_time)))
         print('First token\'s time consuming is {} second.'.format(token_time[0]))
         print('Non first token\'s average time consuming is {} second.'.format((sum(token_time) - token_time[0]) / (token_num - 1)))
+        print('Non first token\'s performance is {} token/second.'.format((token_num - 1) / (sum(token_time) - token_time[0])))
     return strategy.finalize(tokens, mems)
 
 
