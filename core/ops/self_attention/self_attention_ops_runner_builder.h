@@ -22,27 +22,30 @@
 #include "self_attention_ops_chatglm2_6b_runner.h"
 #include <asdops/utils/log/log.h>
 #include "self_attention_ops_chatglm6b_runner_910a.h"
+#include "self_attention_ops_gptneox20b_runner.h"
 
 namespace AclTransformer {
 class SelfAttentionOpsRunnerBuilder : public RunnerBuilder {
 public:
     SelfAttentionOpsRunnerBuilder(const SelfAttentionParam &param) : param_(param) {}
     virtual ~SelfAttentionOpsRunnerBuilder() = default;
-    Runner *Build() override { 
-            if (param_.model == "openbert") {
-                return new SelfAttentionOpsOpenbertRunner(param_);
-            } else if (param_.model == "chatglm6b" || param_.model == "glm130b") {
-                if (AsdOps::GetSingleton<Config>().Is910B()) {
-                    return new SelfAttentionOpsChatglm6bRunner(param_); 
-                } else {
-                    return new SelfAttentionOpsChatglm6bRunner910a(param_);
-                }
-            } else if (param_.model == "chatglm2_6b") {
-                return new SelfAttentionOpsChatglm26bRunner(param_);
+    Runner *Build() override {
+        if (param_.model == "openbert") {
+            return new SelfAttentionOpsOpenbertRunner(param_);
+        } else if (param_.model == "chatglm6b" || param_.model == "glm130b") {
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                return new SelfAttentionOpsChatglm6bRunner(param_);
             } else {
-                ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
-                return nullptr;
+                return new SelfAttentionOpsChatglm6bRunner910a(param_);
             }
+        } else if (param_.model == "chatglm2_6b") {
+            return new SelfAttentionOpsChatglm26bRunner(param_);
+        } else if (param_.model == "gptneox20b") {
+            return new SelfAttentionOpsGptNeox20bRunner(param_);
+        } else {
+            ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
+            return nullptr;
+        }
     }
 
 private:
