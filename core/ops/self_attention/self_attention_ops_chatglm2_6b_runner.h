@@ -13,20 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_SELFATTENTION_KV_CACHE_H
-#define ACLTRANSFOERM_PARAMS_SELFATTENTION_KV_CACHE_H
+#ifndef SELFATTENTION_OPS_CHATGLM2_6B_RUNNER_H
+#define SELFATTENTION_OPS_CHATGLM2_6B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/self_attention.h"
+
 namespace AclTransformer {
-struct SelfAttentionKvCacheParam {
-    bool transKey = false;
-    int64_t dk = 0;
-    int64_t headNum = 0;
-    int64_t layerId = 0;
-    float preScale = 0;
-    float postScale = 0;
-    int64_t numAttentionHeadsPerPartition = 0;
-    int64_t hiddenSizePerAttentionHead = 0;
-    int64_t numMultiQueryGroupsPerPartition = 0;
-    std::string model = "chatglm6b";
+class SelfAttentionOpsChatglm26bRunner : public OpsRunner {
+public:
+    SelfAttentionOpsChatglm26bRunner(const SelfAttentionParam &param);
+    virtual ~SelfAttentionOpsChatglm26bRunner();
+
+private:
+    SelfAttentionParam param_;
 };
+
 } // namespace AclTransformer
 #endif
