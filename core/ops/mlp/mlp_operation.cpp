@@ -60,6 +60,11 @@ AsdOps::Status MlpOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor
         auto outTensorDim1 = inTensors.at(0).desc.dims[1];
         auto outTensorDim2 = inTensors.at(1).desc.dims[0] / 2;
         outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
+    } else if (param_.model == "chatglm2_6b") {
+        auto outTensorDim0 = inTensors.at(0).desc.dims[0];
+        auto outTensorDim1 = inTensors.at(0).desc.dims[1];
+        auto outTensorDim2 = inTensors.at(0).desc.dims[2];
+        outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
     } else if (param_.model == "llama13b") {
         auto outTensorDim0 = inTensors.at(0).desc.dims[0];
         auto outTensorDim1 = inTensors.at(0).desc.dims[1];
