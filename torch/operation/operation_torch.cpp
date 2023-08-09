@@ -28,7 +28,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/context/context.h"
+#include "acltransformer/context/context.h"
 #include "operation_creator.h"
 
 uint64_t GetNewOpId()
@@ -234,7 +234,9 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
                       << ", data:" << atInTensors.at(i).data_ptr()
                       << ", storage_offset:" << atInTensors.at(i).storage_offset()
                       << ", format:" << Utils::GetTensorNpuFormat(atInTensors.at(i));
-        atInTensors.at(i) = Utils::NpuFormatCast(atInTensors.at(i));
+        if (AsdOps::GetSingleton<AclTransformer::Config>().IsTorchTensorFormatCast()) {
+            atInTensors.at(i) = Utils::NpuFormatCast(atInTensors.at(i));
+        }
         variantPack.inTensors.at(i) = Utils::AtTensor2AsdTensor(atInTensors.at(i));
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsConvertNCHWToND() &&
             variantPack.inTensors.at(i).desc.format == AsdOps::TENSOR_FORMAT_NCHW) {

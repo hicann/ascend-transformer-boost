@@ -25,6 +25,7 @@ void Glm130BModelParam::FromString(const std::string &param)
     dk = paramJson["dk"].get<int>();
     rank = paramJson["rank"].get<int>();
     rankSize = paramJson["rankSize"].get<int>();
+    backend = paramJson["backend"].get<std::string>();
     residualAddScale = paramJson["residualAddScale"].get<float>();
     layerNormEps = paramJson["layerNormEps"].get<double>();
 }

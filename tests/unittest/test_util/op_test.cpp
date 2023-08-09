@@ -21,7 +21,7 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/singleton/singleton.h>
-#include "tests/unittest/context/context.h"
+#include "acltransformer/context/context.h"
 
 namespace AclTransformer {
 OpTest::OpTest(int deviceId) : deviceId_(deviceId) {}
@@ -78,12 +78,14 @@ void OpTest::Init()
     handle_ = {stream};
 }
 
-AsdOps::Status OpTest::Prepare(AclTransformer::Operation *operation ,const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
+AsdOps::Status OpTest::Prepare(AclTransformer::Operation *operation,
+                               const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
 {
     operation_ = operation;
 
     if (inTensorLists.size() != operation_->GetInTensorCount()) {
-        return AsdOps::Status::FailStatus(-1, "InTensors Count not equal " + std::to_string(operation_->GetInTensorCount()));
+        return AsdOps::Status::FailStatus(-1, "InTensors Count not equal " +
+                                                  std::to_string(operation_->GetInTensorCount()));
     }
 
     AsdOps::Status st = operation_->BuildPlan(&plan_);
@@ -91,7 +93,7 @@ AsdOps::Status OpTest::Prepare(AclTransformer::Operation *operation ,const AsdOp
         return AsdOps::Status::FailStatus(-1, operation_->GetName() + " build plan fail");
     }
 
-    return AsdOps::Status::OkStatus(); 
+    return AsdOps::Status::OkStatus();
 }
 
 AsdOps::Tensor OpTest::CreateHostTensor(const AsdOps::Tensor &tensorIn)
@@ -185,7 +187,7 @@ AsdOps::Tensor OpTest::CreateHostZeroTensor(const AsdOps::TensorDesc &tensorDesc
         tensor.dataSize = tensor.Numel() * sizeof(int32_t);
     } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_UINT32) {
         tensor.dataSize = tensor.Numel() * sizeof(uint32_t);
-    }  else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_INT8) {
+    } else if (tensorDesc.dtype == AsdOps::TENSOR_DTYPE_INT8) {
         tensor.dataSize = tensor.Numel() * sizeof(int8_t);
     } else {
         ASD_LOG(ERROR) << "not support";
@@ -243,7 +245,8 @@ AsdOps::Status OpTest::RunOperation()
     ASD_LOG(INFO) << "get plan workspace size:" << variantPack_.workspaceSize;
 
     if (variantPack_.workspaceSize > 0) {
-        variantPack_.workspace = AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack_.workspaceSize);
+        variantPack_.workspace =
+            AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack_.workspaceSize);
     }
 
     st = plan_.Execute(handle_, variantPack_);
@@ -273,7 +276,8 @@ AsdOps::Status OpTest::CopyDeviceTensorToHostTensor()
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status OpTest::Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs)
+AsdOps::Status OpTest::Run(AclTransformer::Operation *operation,
+                           const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs)
 {
     AsdOps::SVector<AsdOps::Tensor> inTensors;
     inTensors.resize(inTensorDescs.size());
@@ -281,7 +285,9 @@ AsdOps::Status OpTest::Run(AclTransformer::Operation *operation, const AsdOps::S
     return RunImpl(operation, inTensors);
 }
 
-AsdOps::Status OpTest::Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs, const AsdOps::Any &varaintPackParam)
+AsdOps::Status OpTest::Run(AclTransformer::Operation *operation,
+                           const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
+                           const AsdOps::Any &varaintPackParam)
 {
     AsdOps::SVector<AsdOps::Tensor> inTensors;
     inTensors.resize(inTensorDescs.size());
@@ -294,12 +300,15 @@ AsdOps::Status OpTest::Run(AclTransformer::Operation *operation, const AsdOps::S
     return RunImpl(operation, inTensorLists);
 }
 
-AsdOps::Status OpTest::Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists, const AsdOps::Any &varaintPackParam)
+AsdOps::Status OpTest::Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
+                           const AsdOps::Any &varaintPackParam)
 {
     return RunImpl(operation, inTensorLists, varaintPackParam);
 }
 
-AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists, const AsdOps::Any &varaintPackParam)
+AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation,
+                               const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
+                               const AsdOps::Any &varaintPackParam)
 {
     Cleanup();
     Init();
@@ -330,7 +339,8 @@ AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation, const AsdOp
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
+AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation,
+                               const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
 {
     Cleanup();
     Init();
@@ -431,7 +441,7 @@ AsdOps::Tensor OpTest::CreateHostRandTensor(const AsdOps::TensorDesc &tensorDesc
 }
 
 void OpTest::GenerateRandomTensors(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
-                           AsdOps::SVector<AsdOps::Tensor> &inTensors)
+                                   AsdOps::SVector<AsdOps::Tensor> &inTensors)
 {
     if (inTensorDescs.size() != inTensors.size()) {
         ASD_LOG(ERROR) << "TensorDescs Num not equal Tensors Num!";
@@ -440,7 +450,6 @@ void OpTest::GenerateRandomTensors(const AsdOps::SVector<AsdOps::TensorDesc> &in
     for (size_t i = 0; i < inTensorDescs.size(); i++) {
         inTensors.at(i) = CreateHostRandTensor(inTensorDescs.at(i));
     }
-    
 }
 
 void OpTest::Golden(OpTestGolden golden) { golden_ = golden; }

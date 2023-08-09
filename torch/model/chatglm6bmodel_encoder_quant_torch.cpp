@@ -28,7 +28,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/context/context.h"
+#include "acltransformer/context/context.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_first_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_last_quant_operation.h"

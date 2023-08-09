@@ -49,7 +49,7 @@ AsdOps::Status PositionEmbeddingOperation::InferShapeImpl(const AsdOps::SVector<
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
-        outTensorDescs.at(0).dims.push_back(param_.numHeadPerPartition);
+        outTensorDescs.at(0).dims.push_back(param_.numHeadsPerPartition);
         outTensorDescs.at(0).dims.push_back(param_.hiddenSizePerHead);
 
         outTensorDescs.at(1) = inTensors.at(0).desc;
