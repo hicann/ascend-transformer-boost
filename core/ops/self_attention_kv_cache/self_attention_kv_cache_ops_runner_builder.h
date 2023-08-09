@@ -37,7 +37,7 @@ public:
             } else {
                 return new SelfAttentionKvCacheOpsChatGlm6bRunner910a(param_);
             }
-        } else if (param_.model == "llama7b") {
+        } else if (param_.model == "llama7b" || param_.model == "llama13b") {
             return new SelfAttentionKvCacheOpsLlama7bRunner(param_);
         } else if (param_.model == "chatglm2_6b") {
             return new SelfAttentionKvCacheOpsChatGlm26bRunner(param_);
