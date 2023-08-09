@@ -30,7 +30,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/context/context.h"
+#include "acltransformer/context/context.h"
 
 namespace AclTransformer {
 std::string Model::Graph::ToString() const
