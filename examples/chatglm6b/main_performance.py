@@ -22,9 +22,9 @@ option = {}
 option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril"
 torch.npu.set_option(option)
 
-tokenizer = AutoTokenizer.from_pretrained("./patches", trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
 model = AutoModel.from_pretrained(
-    "./patches", trust_remote_code=True).half().npu()
+    "./", trust_remote_code=True).half().npu()
 
 # 量化模型适配
 for name, mod in model.named_modules():
