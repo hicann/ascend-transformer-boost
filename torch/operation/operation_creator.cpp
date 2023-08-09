@@ -57,6 +57,7 @@
 #include "models/glm130b/glm130blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_operation.h"
 #include "models/llama7b/llama7blayer_fusion_operation.h"
+#include "models/llama13b/llama13blayer_parallel_operation.h"
 
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
@@ -70,6 +71,32 @@ static AclTransformer::Operation *LLaMA7BLayerOperationCreate(const nlohmann::js
     ASD_LOG(INFO) << "LLaMA7BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk;
     return new AclTransformer::LLaMA7BLayerOperation(param);
+}
+
+static AclTransformer::Operation *LLaMA13BLayerOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA13BLayerParam param;
+    if (paramJson.find("rmsNormEps") != paramJson.end()) {
+        param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    }
+    if (paramJson.find("headNum") != paramJson.end()) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.find("dk") != paramJson.end()) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.find("rank") != paramJson.end()) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.find("rankSize") != paramJson.end()) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMA13BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::LLaMA13BLayerOperation(param);
 }
 
 static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohmann::json &paramJson)
@@ -769,7 +796,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"Glm130BLayerEncoderOperation", &Glm130BLayerEncoderOperationCreate},
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
     {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
-    {"LmHeadOperation", &LmHeadOperationCreate}};
+    {"LmHeadOperation", &LmHeadOperationCreate},
+    {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
