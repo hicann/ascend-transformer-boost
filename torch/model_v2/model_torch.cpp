@@ -24,6 +24,7 @@
 #include "model.h"
 #include "torch/utils/utils.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_model.h"
+#include "torch/model_v2/glm130b/glm130b_decoder_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -47,6 +48,8 @@ void ModelTorch::SetParam(std::string param)
     ASD_LOG(INFO) << "ModelTorch set param start, modelName:" << modelName_ << ", param:" << param;
     if (modelName_ == "ChatGlm6BDecoderModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderModel>(param);
+    } else if (modelName_ == "Glm130BDecoderModel") {
+        model_ = std::make_shared<AclTransformer::Glm130BDecoderModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
