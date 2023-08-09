@@ -28,7 +28,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/context/context.h"
+#include "acltransformer/context/context.h"
 #include "operation_creator.h"
 
 uint64_t GetNewOpId()

@@ -28,7 +28,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/context/context.h"
+#include "acltransformer/context/context.h"
 #include "models/glm130b/glm130blayer_decoder_operation.h"
 
 const size_t WEIGHT_COUNT_PER_LAYER = 12;
