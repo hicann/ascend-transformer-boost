@@ -60,7 +60,8 @@
 #include "models/chatglm2_6b/chatglm2_6b_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_encoder_operation.h"
 #include "models/llama13b/llama13blayer_parallel_operation.h"
-
+#include "models/chatglm2_6b/chatglm2_6b_fusion_layer_decoder_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
 static AclTransformer::Operation *LLaMA7BLayerOperationCreate(const nlohmann::json &paramJson)
@@ -529,6 +530,46 @@ static AclTransformer::Operation *ChatGlm2LayerDecoderOperationCreate(const nloh
     return new AclTransformer::ChatGlm2LayerDecoderOperation(param);
 }
 
+static AclTransformer::Operation *ChatGlm2FusionLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2LayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "ChatGlm2LayerEncoderOperationCreate numHeadsPerPartition:" << param.numHeadsPerPartition << ", numGroupsPerPartition:" << param.numGroupsPerPartition
+                  << ", hiddenSizePerHead:" << param.hiddenSizePerHead << ", rmsNormEps:" << param.rmsNormEps << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale << ", preScale:" << param.preScale << ", postScale:" << param.postScale
+                << ", transKey:" << param.transKey  << ", model:" << param.model;
+    return new AclTransformer::ChatGlm2FusionLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm2FusionLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2LayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "ChatGlm2LayerEncoderOperationCreate numHeadsPerPartition:" << param.numHeadsPerPartition << ", numGroupsPerPartition:" << param.numGroupsPerPartition
+                  << ", hiddenSizePerHead:" << param.hiddenSizePerHead << ", rmsNormEps:" << param.rmsNormEps << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale << ", preScale:" << param.preScale << ", postScale:" << param.postScale
+                << ", transKey:" << param.transKey  << ", model:" << param.model;
+    return new AclTransformer::ChatGlm2FusionLayerDecoderOperation(param);
+}
+
 AclTransformer::Operation *FfnQuantOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::FfnQuantParam param;
@@ -840,7 +881,9 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LmHeadOperation", &LmHeadOperationCreate},
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},
     {"ChatGlm2LayerDecoderOperation", &ChatGlm2LayerDecoderOperationCreate},
-    {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate}};
+    {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate},
+    {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
+    {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
