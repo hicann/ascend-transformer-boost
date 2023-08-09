@@ -45,7 +45,7 @@ RopeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
         outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
-        outTensorDescs.at(0).dims.push_back(param_.numHeadPerPartition);
+        outTensorDescs.at(0).dims.push_back(param_.numHeadsPerPartition);
         outTensorDescs.at(0).dims.push_back(param_.hiddenSizePerHead);
 
         outTensorDescs.at(1) = inTensors.at(0).desc;

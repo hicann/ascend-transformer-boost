@@ -14,8 +14,8 @@ SelfAttentionKvCacheOpsChatGlm26bRunner::SelfAttentionKvCacheOpsChatGlm26bRunner
                   << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
                   << ",layerId: " << param_.layerId << ", preScale: " << param_.preScale << ", postscale" << param_.postScale
                   << ", numHeadsPerPartition" << param_.numHeadsPerPartition
-                  << ", hiddenSizePerAttentionHead " << param_.hiddenSizePerAttentionHead
-                  << ", numMultiQueryGroupsPerPartition" << param_.numMultiQueryGroupsPerPartition << ", model " << param_.model;
+                  << ", hiddenSizePerHead " << param_.hiddenSizePerHead
+                  << ", numGroupsPerPartition" << param_.numGroupsPerPartition << ", model " << param_.model;
     kernelGraph_.inTensors.resize(5);
     int64_t inTensorNum = 0;
     AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(inTensorNum++);
@@ -93,8 +93,8 @@ SelfAttentionKvCacheOpsChatGlm26bRunner::SelfAttentionKvCacheOpsChatGlm26bRunner
     };
 
     int64_t np = param_.numHeadsPerPartition;
-    int64_t hn = param_.hiddenSizePerAttentionHead;
-    int64_t gp = param_.numMultiQueryGroupsPerPartition;
+    int64_t hn = param_.hiddenSizePerHead;
+    int64_t gp = param_.numGroupsPerPartition;
     InferShapePreFunc expandInferShape = [np, gp](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), np / gp, dims.at(4)};
