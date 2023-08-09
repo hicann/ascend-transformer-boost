@@ -49,6 +49,7 @@ public:
     bool IsOpsRunnerKernelCacheEnable();
     bool IsConvertNCHWToND() const;
     bool IsSaveTensorForRunner(const std::string &runnerName);
+    bool IsTorchTensorFormatCast();
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
@@ -82,6 +83,7 @@ private:
     bool isOpsRunnerKernelCacheEnable_ = false;
     bool isUsePpMatmul_ = false;
     bool isConvertNCHWToND_ = false;
+    bool isTorchTensorFormatCast_ = true;
     std::set<std::string> saveTensorRunnerNameSet_;
 };
 } // namespace AclTransformer

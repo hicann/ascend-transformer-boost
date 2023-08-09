@@ -48,6 +48,7 @@ Config::Config()
     isOpsRunnerKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE");
     isUsePpMatmul_ = IsEnable("ASDOPS_MATMUL_PP_FLAG");
     isConvertNCHWToND_ = IsEnable("ACLTRANSFORMER_CONVERT_NCHW_TO_ND");
+    isTorchTensorFormatCast_= IsEnable("ACLTRANSFORMER_TORCH_TENSOR_FORMAT_CAST");
     ASD_LOG(FATAL) << "Config:\nIsSaveTensor:" << isSaveTensor_
                    << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
@@ -114,6 +115,8 @@ bool Config::IsStreamSyncEveryKernelEnable() { return isStreamSyncEveryKernelEna
 bool Config::IsStreamSyncEveryRunnerEnable() { return isStreamSyncEveryRunnerEnable_; }
 
 bool Config::IsStreamSyncEveryPlanEnable() { return isStreamSyncEveryPlanEnable_; }
+
+bool Config::IsTorchTensorFormatCast() { return isTorchTensorFormatCast_; };
 
 bool Config::IsSkipKernel(const std::string &kernelName)
 {
