@@ -23,8 +23,10 @@ function fn_setup_lcov()
     else
         wget --no-check-certificate https://github.com/linux-test-project/lcov/archive/refs/tags/v1.16.tar.gz
         tar -xvf v1.16.tar.gz
-    fi
-
+    fi 
+    yum install perl-Digest-MD5
+    yum install perl*
+    yum install cpan
     cd lcov-1.16
     make -j
     make PREFIX=$INSTALL_DIR/lcov install
@@ -40,9 +42,13 @@ function fn_setup_doxygen()
         wget --no-check-certificate https://github.com/doxygen/doxygen/archive/refs/heads/master.tar.gz
         tar -xvf master.tar.gz
     fi
+    if[ `cat /etc/redhat-release`== "Ubuntu" ];then
+        apt-get install flex
+        apt-get install bison
+    else
+        yum install flex
+        yum install bison
 
-    apt-get install flex
-    apt-get install bison
 
     cd doxygen-master
     mkdir build
