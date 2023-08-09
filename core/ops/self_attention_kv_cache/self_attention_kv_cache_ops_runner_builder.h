@@ -23,11 +23,8 @@
 #include "self_attention_kv_cache_ops_llama7b_runner.h"
 #include "self_attention_kv_cache_ops_chatglm6b_runner_910a.h"
 #include "self_attention_kv_cache_ops_chatglm2_6b_runner.h"
-<<<<<<< HEAD
 #include "self_attention_kv_cache_ops_llama7b_runner_910a.h"
-=======
 #include "self_attention_kv_cache_ops_chatglm2_6b_runner_310p.h"
->>>>>>> b361fa1 (feat:add kvcache attention for chatglm2_6b 310p)
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
@@ -42,7 +39,7 @@ public:
             } else {
                 return new SelfAttentionKvCacheOpsChatGlm6bRunner910a(param_);
             }
-        } else if (param_.model == "llama7b") {
+        } else if (param_.model == "llama7b" || param_.model == "llama13b") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
                 return new SelfAttentionKvCacheOpsLlama7bRunner(param_);
             } else {

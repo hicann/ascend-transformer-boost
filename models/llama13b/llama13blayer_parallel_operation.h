@@ -13,15 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_FUSION_H
-#define ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_FUSION_H
+#ifndef OPS_LLAMA13B_LLAMA13BLAYER_OPERATION_H
+#define OPS_LLAMA13B_LLAMA13BLAYER_OPERATION_H
+
+#include "acltransformer/graph_operation.h"
+#include "llama13blayer_param_parallel.h"
+
 namespace AclTransformer {
-struct PositionEmbeddingFusionParam {
-    int64_t headNum = 0;
-    int64_t numHeadsPerPartition = 0;
-    int64_t hiddenSizePerHead = 0;
-    int64_t numGroupsPerPartition = 0;
-    std::string model = "chatglm";
+class LLaMA13BLayerOperation : public GraphOperation {
+public:
+    explicit LLaMA13BLayerOperation(const LLaMA13BLayerParam &param);
+    ~LLaMA13BLayerOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
+
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+
+private:
+    LLaMA13BLayerParam param_;
 };
 } // namespace AclTransformer
 #endif

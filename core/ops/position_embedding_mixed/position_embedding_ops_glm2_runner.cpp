@@ -23,8 +23,8 @@ namespace AclTransformer {
 PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmbeddingParam &param)
     : OpsRunner("PositionEmbeddingOpsGlm2Runner", RUNNER_TYPE_POSITION_EMBEDDING_2D_MIXED), param_(param)
 {
-    ASD_LOG(INFO) << "PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner called, numHeadPerPartition: " << param_.numHeadPerPartition;
-    ASD_LOG(INFO) << "numHeadPerPartition: " << param_.hiddenSizePerHead << "numGroupsPerPartition: " << param_.numGroupsPerPartition;
+    ASD_LOG(INFO) << "PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner called, numHeadsPerPartition: " << param_.numHeadsPerPartition;
+    ASD_LOG(INFO) << "numHeadsPerPartition: " << param_.hiddenSizePerHead << "numGroupsPerPartition: " << param_.numGroupsPerPartition;
     kernelGraph_.inTensors.resize(2);
     AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(0);
     AsdOps::Tensor &ropeCache = kernelGraph_.inTensors.at(1);
@@ -102,9 +102,9 @@ PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmb
     auto &cat2Node = kernelGraph_.nodes[nodeNum++];
     auto &cat3Node = kernelGraph_.nodes[nodeNum++];
 
-    int64_t qLayerDim = param_.numHeadPerPartition * param_.hiddenSizePerHead;
+    int64_t qLayerDim = param_.numHeadsPerPartition * param_.hiddenSizePerHead;
     int64_t kLayerDim = param_.numGroupsPerPartition * param_.hiddenSizePerHead;
-    int64_t np = param_.numHeadPerPartition;
+    int64_t np = param_.numHeadsPerPartition;
     int64_t hn = param_.hiddenSizePerHead;
     int64_t gp = param_.numGroupsPerPartition;
 

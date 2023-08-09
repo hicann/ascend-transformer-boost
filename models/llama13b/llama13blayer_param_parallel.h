@@ -13,15 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_FUSION_H
-#define ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_FUSION_H
+#ifndef OPS_LLAMA13B_LLAMA13BLAYER_PARAM_H
+#define OPS_LLAMA13B_LLAMA13BLAYER_PARAM_H
+
 namespace AclTransformer {
-struct PositionEmbeddingFusionParam {
-    int64_t headNum = 0;
-    int64_t numHeadsPerPartition = 0;
-    int64_t hiddenSizePerHead = 0;
-    int64_t numGroupsPerPartition = 0;
-    std::string model = "chatglm";
+struct LLaMA13BLayerParam {
+    float rmsNormEps = 0;
+    int headNum = 0;
+    int dk = 0;
+    int rank = 0;
+    int rankSize = 1;
+    std::string model = "llama13b";
 };
 } // namespace AclTransformer
 #endif

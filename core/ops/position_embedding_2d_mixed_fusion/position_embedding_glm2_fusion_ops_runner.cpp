@@ -73,7 +73,7 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     auto &cat0Node = kernelGraph_.nodes[nodeNum++];
     auto &cat1Node = kernelGraph_.nodes[nodeNum++];
 
-    int64_t qLayerDim = param_.numHeadPerPartition * param_.hiddenSizePerHead;
+    int64_t qLayerDim = param_.numHeadsPerPartition * param_.hiddenSizePerHead;
     int64_t kLayerDim = param_.numGroupsPerPartition * param_.hiddenSizePerHead;
     int64_t hiddenSizePerHead = param_.hiddenSizePerHead;
     int64_t numGroupsPerPartition = param_.numGroupsPerPartition;
@@ -179,7 +179,7 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     split1Node.inTensorViewFuncs.at(0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         int64_t sqLen = kernelGraph_.inTensors.at(0).desc.dims[0];
         int64_t batchSize = kernelGraph_.inTensors.at(0).desc.dims[1];
-        newDims = {sqLen, batchSize, param_.numHeadPerPartition, param_.hiddenSizePerHead};
+        newDims = {sqLen, batchSize, param_.numHeadsPerPartition, param_.hiddenSizePerHead};
     };
 
     split2Node.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 2}};
@@ -218,8 +218,8 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     cat0Node.inTensorViewFuncs.at(0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         int64_t sqLen = kernelGraph_.inTensors.at(0).desc.dims[0];
         int64_t batchSize = kernelGraph_.inTensors.at(0).desc.dims[1];
-        int64_t lastDim = oldDims.at(1) / param_.numHeadPerPartition;
-        newDims = {sqLen, batchSize, param_.numHeadPerPartition, lastDim};
+        int64_t lastDim = oldDims.at(1) / param_.numHeadsPerPartition;
+        newDims = {sqLen, batchSize, param_.numHeadsPerPartition, lastDim};
     };
     cat0Node.inferShapePreFunc = catInferShape;
 
