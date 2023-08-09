@@ -13,15 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_FUSION_H
-#define ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_FUSION_H
+#ifndef OPS_CHATGML2_6B_ENCODER_OPERATION_H
+#define OPS_CHATGML2_6B_ENCODER_OPERATION_H
+#include "acltransformer/graph_operation.h"
+#include "chatglm2_6b_layer_param.h"
+
 namespace AclTransformer {
-struct PositionEmbeddingFusionParam {
-    int64_t headNum = 0;
-    int64_t numHeadsPerPartition = 0;
-    int64_t hiddenSizePerHead = 0;
-    int64_t numGroupsPerPartition = 0;
-    std::string model = "chatglm";
+class ChatGlm2LayerEncoderOperation : public GraphOperation {
+public:
+    explicit ChatGlm2LayerEncoderOperation(const ChatGlm2LayerParam &param);
+    ~ChatGlm2LayerEncoderOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
+
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+
+private:
+    ChatGlm2LayerParam param_;
 };
 } // namespace AclTransformer
 #endif
