@@ -10,7 +10,7 @@ SCRIPT_DIR=$(cd $(dirname $0); pwd)
 SCRIPT_PATH=$(cd $(dirname $1); pwd)/$(basename $1)
 CURRENT_DIR=$(pwd)
 cd $SCRIPT_DIR
-MODEL_TARGET_DIR=$SCRIPT_DIR/patches
+MODEL_TARGET_DIR=$SCRIPT_DIR
 OPTION_ARG=$2
 TRANSFORMER_PACKAGE_PATH=$(python3 -c 'import transformers; import os; print(os.path.dirname(transformers.__file__))')
 pwd
