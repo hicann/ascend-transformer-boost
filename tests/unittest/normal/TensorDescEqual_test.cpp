@@ -22,29 +22,34 @@
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include "asdops/utils/filesystem/filesystem.h"
+
 using namespace AclTransformer;
 using namespace AsdOps;
 
-TEST(Testequal,TensorDescNOTEqualTest){
+TEST(Testequal,TensorDescNOTEqualTest1){
     AsdOps::TensorDesc TensorDescA;
     TensorDescA.dtype=TENSOR_DTYPE_INT32;
     TensorDescA.format=TENSOR_FORMAT_ND;
     SVector<int64_t> dimsA = {3, 5};
+    TensorDescA.dims=dimsA;
     AsdOps::TensorDesc TensorDescB;
     TensorDescB.dtype=TENSOR_DTYPE_INT32;
     TensorDescB.format=TENSOR_FORMAT_ND;
     SVector<int64_t> dimsB = {4, 6};
+    TensorDescB.dims=dimsB;
     EXPECT_EQ(TensorUtil::AsdOpsTensorDescEqual(TensorDescA,TensorDescB),false)
 }
 
-TEST(Testequal,TensorDescEqualTest){
+TEST(Testequal,TensorDescEqualTest2){
     AsdOps::TensorDesc TensorDescA;
     TensorDescA.dtype=TENSOR_DTYPE_INT32;
     TensorDescA.format=TENSOR_FORMAT_ND;
     SVector<int64_t> dimsA = {2, 5};
+    TensorDescA.dims=dimsA;
     AsdOps::TensorDesc TensorDescB;
     TensorDescB.dtype=TENSOR_DTYPE_INT32;
     TensorDescB.format=TENSOR_FORMAT_ND;
     SVector<int64_t> dimsB = {2, 5};
+    TensorDescB.dims=dimsB;
     EXPECT_EQ(TensorUtil::AsdOpsTensorDescEqual(TensorDescA,TensorDescB),true)
 }
