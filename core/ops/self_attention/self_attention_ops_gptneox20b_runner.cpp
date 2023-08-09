@@ -1,5 +1,3 @@
-
-
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
@@ -30,18 +28,23 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     ASD_LOG(INFO) << "SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner called"
                   << "transKey: " << param_.transKey << ",dk: " << param_.dk << ",headNum: " << param_.headNum
                   << ",layerId: " << param_.layerId;
-    kernelGraph_.inTensors.resize(4);
+    const size_t inTensorSize = 4;
+    const size_t outTensorSize = 1;
+    const size_t interTensorSize = 12;
+    const size_t nodeSize = 13;
+
+    kernelGraph_.inTensors.resize(inTensorSize);
     int64_t inTensorId = 0;
     AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(inTensorId++);  // [bs, sq, hn, hs]
     AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(inTensorId++);  // [bs, sq, hn, hs]
     AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(inTensorId++);  // [bs, sq, hn, hs]
     AsdOps::Tensor &attention_mask = kernelGraph_.inTensors.at(inTensorId++);
 
-    kernelGraph_.outTensors.resize(1);
+    kernelGraph_.outTensors.resize(outTensorSize);
     int64_t outTensorId = 0;
     AsdOps::Tensor &context = kernelGraph_.outTensors.at(outTensorId++);
 
-    kernelGraph_.internalTensors.resize(12);
+    kernelGraph_.internalTensors.resize(interTensorSize);
     int64_t internalTensorId = 0;
     AsdOps::Tensor &qScaledOut = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &kScaledOut = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -56,7 +59,7 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &bmmVout = kernelGraph_.internalTensors.at(internalTensorId++);
 
-    kernelGraph_.nodes.resize(13);
+    kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeId = 0;
     auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
     auto &mulsKNode = kernelGraph_.nodes.at(nodeId++);
