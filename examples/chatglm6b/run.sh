@@ -5,7 +5,6 @@
 # 测试结果将输出到当前目录下的performance.txt文件中
 
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
-cd $SCRIPT_DIR
 MODEL_TARGET_DIR=$SCRIPT_DIR
 TRANSFORMER_PACKAGE_PATH=$(python3 -c 'import transformers; import os; print(os.path.dirname(transformers.__file__))')
 RUN_OPTION_LIST="--run --performance --webdemo --zhipu --profiling"
@@ -69,6 +68,7 @@ function fn_main()
     if [[ ! -z "$1" ]];then
         RUN_OPTION=$1
     fi
+    cd $SCRIPT_DIR
 
     fn_prepare
 
@@ -83,7 +83,7 @@ function fn_main()
             python3 $SCRIPT_DIR/main_web.py
             ;;
         "--zhipu")
-            python3 $SCRIPT_DIR/main_multi_performance_test.py
+            python3 $SCRIPT_DIR/zhipu_test.py
             ;;
         "--profiling")
             
