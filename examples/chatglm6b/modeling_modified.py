@@ -33,6 +33,19 @@ import transformers.modeling_target
 
 
 class TestChatGLMForConditionalGeneration(transformers.modeling_target.ChatGLMForConditionalGeneration):
+    def __init__(self, config):
+        super().__init__(config)
+        self.count = 0
+        self.input_generate = 0
+        self.model_total = 0
+        self.token_total = 0
+        self.model_time = 0
+        self.token_time = 0
+        self.model_first = 0
+        self.token_first = 0
+        self.pre_processing = 0
+        self.post_processing = 0
+    
     @torch.no_grad()
     def stream_generate(
             self,
