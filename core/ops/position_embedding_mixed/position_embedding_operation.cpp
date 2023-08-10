@@ -19,6 +19,8 @@
 #include "position_embedding_ops_runner_builder.h"
 #include "position_embedding_torch_runner_builder.h"
 
+static constexpr int64_t GLM2_IN_TENSOR_SIZE = 2;
+static constexpr int64_t DEFAULT_IN_TENSOR_SIZE = 4;
 namespace AclTransformer {
 PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingParam &param)
     : Operation("PositionEmbeddingOperation"), param_(param)
@@ -32,23 +34,45 @@ PositionEmbeddingOperation::PositionEmbeddingOperation(const PositionEmbeddingPa
 
 PositionEmbeddingOperation::~PositionEmbeddingOperation() {}
 
-uint64_t PositionEmbeddingOperation::GetInTensorCount() const { return 4; }
+uint64_t PositionEmbeddingOperation::GetInTensorCount() const 
+{ 
+    return (param_.model == "chatglm2_6b") ? GLM2_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE; 
+}
 
 uint64_t PositionEmbeddingOperation::GetOutTensorCount() const { return 3; }
 
 AsdOps::Status PositionEmbeddingOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                           AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    // in : Q,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
-    // out : Q ,[seq_len, batch, head_num, head_size]
-    outTensorDescs.at(0) = inTensors.at(0).desc;
-    outTensorDescs.at(0).dims.clear();
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
-    outTensorDescs.at(0).dims.push_back(param_.headNum);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3); // 3=qkv
-    outTensorDescs.at(1) = outTensorDescs.at(0);
-    outTensorDescs.at(2) = outTensorDescs.at(0);
+    if (param_.model == "chatglm2_6b"){
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(param_.numHeadsPerPartition);
+        outTensorDescs.at(0).dims.push_back(param_.hiddenSizePerHead);
+
+        outTensorDescs.at(1) = inTensors.at(0).desc;
+        outTensorDescs.at(1).dims.clear();
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(1).dims.push_back(param_.numGroupsPerPartition);
+        outTensorDescs.at(1).dims.push_back(param_.hiddenSizePerHead);
+        outTensorDescs.at(2) = outTensorDescs.at(1);
+    } else{
+        // gptnexo20b in : QKV [bs, sq, 3 * all_hs], positionIds [bs, sql], cosTable, sinTable [sq, rd]
+        // out: q, k, v [bs, sq, hn, hs]
+        // in : Q,[seq_len, batch, all_head_size]   position_ids,[]  cos_table,[]  sin_table[]
+        // out : Q ,[seq_len, batch, head_num, head_size]
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(param_.headNum);
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3); // 3=qkv
+        outTensorDescs.at(1) = outTensorDescs.at(0);
+        outTensorDescs.at(2) = outTensorDescs.at(0);
+    }
 
     return AsdOps::Status::OkStatus();
 }

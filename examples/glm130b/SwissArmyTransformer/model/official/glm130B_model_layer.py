@@ -145,7 +145,10 @@ class DeepNormWithGLUMixin(BaseMixin):
                 )
             
         layer = self.transformer.layers[kw_args["layer_id"]]
-        acl_layer = self.transformer.acl_layers[kw_args["layer_id"]]
+        #增量decoder
+        acl_layer_decoder = self.transformer.acl_layers_decoder[kw_args["layer_id"]]
+        #全量encoder
+        acl_layer_encoder = self.transformer.acl_layers_encoder[kw_args["layer_id"]]
         # Layer norm at the begining of the transformer layer.
 
         layerId = kw_args["layer_id"]
@@ -158,6 +161,15 @@ class DeepNormWithGLUMixin(BaseMixin):
         # print(f"{layerId} layer weights shape:=======================")
         # for weight in weights:
         #     print(weight.shape)
+        cos, sin = self.rotary_emb(hidden_states, seq_len=kw_args["position_ids"].max() + 1)
+        acl_inputs = [hidden_states]
+        acl_inputs.extend(weights[0:8])
+        acl_inputs.extend(weights[10:12])
+        acl_inputs.extend(weights[8:10])
+        acl_inputs.append(kw_args["position_ids"])           
+        acl_inputs.append(cos)
+        acl_inputs.append(sin)
+        acl_inputs.append(mask)
 
         if "mems" in kw_args:
             mems = kw_args["mems"]
@@ -168,54 +180,59 @@ class DeepNormWithGLUMixin(BaseMixin):
                 head_size = self.transformer.head_size
                 rank_size = self.transformer.rankSize
                 mem = mem.expand(b, -1, -1).reshape(b, mem.shape[1], 2, nh // rank_size, head_size).permute(2, 1, 0, 3, 4)
-                pastk, pastv = mem[0], mem[1]
+                pastk, pastv = mem[0], mem[1]                
 
-                acl_inputs = [hidden_states]
-                acl_inputs.extend(weights[0:8])
-                acl_inputs.extend(weights[10:12])
-                acl_inputs.extend(weights[8:10])
-                acl_inputs.append(kw_args["position_ids"])
-
-                cos, sin = self.rotary_emb(hidden_states, seq_len=kw_args["position_ids"].max() + 1)
-                acl_inputs.append(cos)
-                acl_inputs.append(sin)
-                acl_inputs.append(mask)
                 acl_inputs.append(pastk)
                 acl_inputs.append(pastv)
 
-                acl_outs = acl_layer.execute(acl_inputs)
+                acl_outs = acl_layer_decoder.execute(acl_inputs)
 
-        attention_input = layer.input_layernorm(hidden_states)
+        if mem is None:
+            # ascend transformer encoder 
+            # all reduce performance not good to run....
+            # acl_outs = acl_layer_encoder.execute(acl_inputs)
 
-        # Self attention.
-        attention_output = layer.attention(attention_input, mask, **kw_args)
+            attention_input = layer.input_layernorm(hidden_states)
 
-        # Residual connection.
-        alpha = (2 * self.num_layers) ** 0.5
-        hidden_states = attention_input * alpha + attention_output
+            # Self attention.
+            attention_output = layer.attention(attention_input, mask, **kw_args)
 
-        mlp_input = layer.post_attention_layernorm(hidden_states)
+            # Residual connection.
+            alpha = (2 * self.num_layers) ** 0.5
+            hidden_states = attention_input * alpha + attention_output
 
-        # MLP.
-        mlp_output = layer.mlp(mlp_input, **kw_args)
+            mlp_input = layer.post_attention_layernorm(hidden_states)
 
-        # Second residual connection.
-        output = mlp_input * alpha + mlp_output
+            # MLP.
+            mlp_output = layer.mlp(mlp_input, **kw_args)
 
-        if mem is not None:
-            if torch.allclose(output, acl_outs[0], rtol=0.02, atol=0.02):
-                if torch.distributed.get_rank() == 0:
-                    print('=======layer equal!=======')
-                    print('torch output is ' + str(output))
-                    print('acl output is ' + str(acl_outs[0]))
-            else:
-                if torch.distributed.get_rank() == 0:
-                    print('=======layer no equal!=======')
-                    print('torch output is ' + str(output))
-                    print('acl output is ' + str(acl_outs[0]))
+            # Second residual connection.
+            output = mlp_input * alpha + mlp_output
+            
+            # if torch.allclose(output, acl_outs[0], rtol=0.02, atol=0.02):
+            #     if torch.distributed.get_rank() == 0:
+            #         print('=======layer encoder equal!=======')
+            #         print('torch output is ' + str(output))
+            #         print('acl output is ' + str(acl_outs[0]))
+            # else:
+            #     if torch.distributed.get_rank() == 0:
+            #         print('=======layer encoder no equal!=======')
+            #         print('torch output is ' + str(output))
+            #         print('acl output is ' + str(acl_outs[0]))
+
+            return output
+
+        else:
+            seq_len, b, nh, hidden_size = acl_outs[1].shape
+            acl_cache_kv =  (
+                torch.stack((acl_outs[1][-1:], acl_outs[2][-1:]))
+                .permute(2, 1, 0, 3, 4)
+                .detach()
+                .contiguous()
+                .view(b, 1, nh * hidden_size * 2)
+            )
+            kw_args["output_this_layer"]["mem_kv"] = acl_cache_kv
             return acl_outs[0]
-
-        return output
 
 
 class SelfAttentionWithFP32SoftmaxMixin(BaseMixin):

@@ -1,3 +1,4 @@
+import time
 import torch
 
 from typing import List, Union
@@ -36,7 +37,11 @@ def batch_filling_sequence(
     index = 0 if mems is None else mems.shape[2] # Next forward starting index, also the length of cache.
     num_beams = 1
     # step-by-step generation
+    token_num = 0
+    token_time = []
     while counter < seqs.shape[1] - 1:
+        start_time = time.time()
+        token_num += 1
         # Now, we want to generate seq[counter + 1],
         # token[:, index: counter+1] needs forwarding.
         # forward
@@ -70,8 +75,14 @@ def batch_filling_sequence(
             attention_mask_shape = attention_mask.shape[-3:]
             attention_mask = attention_mask.unsqueeze(1).expand(batch_size, num_beams, -1, -1, -1).reshape(
                 batch_size * num_beams, *attention_mask_shape)
+        token_time.append(time.time() - start_time)
         if strategy.is_done:
             break
+    if torch.distributed.get_rank() == 0:
+        print('Token num is {}, takes {} second.'.format(token_num, sum(token_time)))
+        print('First token\'s time consuming is {} second.'.format(token_time[0]))
+        print('Non first token\'s average time consuming is {} second.'.format((sum(token_time) - token_time[0]) / (token_num - 1)))
+        print('Non first token\'s performance is {} token/second.'.format((token_num - 1) / (sum(token_time) - token_time[0])))
     return strategy.finalize(tokens, mems)
 
 

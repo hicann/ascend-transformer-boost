@@ -50,7 +50,7 @@ public:
 
 private:
     void BuildVariantPack(int layerId, std::vector<torch::Tensor> &atInTensors, torch::Tensor &outTensor,
-                          torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut,
+                          torch::Tensor &presentKeyTensor, torch::Tensor &presentValueTensor, bool newOut,
                           AclTransformer::VariantPack &variantPack);
     void ExecuteOutImpl(torch::Tensor &hiddenStateTensor, torch::Tensor &positionIdTensor,
                         torch::Tensor &cosTableTensor, torch::Tensor &sinTableTensor,
@@ -62,6 +62,7 @@ private:
     // OUT:outTensor + presentKey + presentValue
     void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
                                 torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut);
+    std::string GetSaveTensorDir();
 
 private:
     Glm130BModelParam modelParam_;

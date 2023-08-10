@@ -41,9 +41,12 @@ private:
                         const std::string &varaintPackParam = "");
     void BuildVariantPack(std::vector<torch::Tensor> &inTensors, std::vector<torch::Tensor> &outTensor,
                           AclTransformer::VariantPack &variantPack);
+    std::string GetSaveTensorDir();
 
 private:
     std::string opName_;
+    uint64_t opId_ = 0;
+    std::string nodeId_ = "0";
     std::string name_;
     std::string param_;
     std::unique_ptr<AclTransformer::Operation> operation_;

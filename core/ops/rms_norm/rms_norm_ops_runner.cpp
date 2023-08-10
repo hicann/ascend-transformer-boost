@@ -37,6 +37,7 @@ RmsNormOpsRunner::RmsNormOpsRunner(const RmsNormParam &param)
     auto &rmsNormNode = kernelGraph_.nodes[0];
 
     AsdOps::OpParam::Norm rmsNormParam = {AsdOps::OpParam::Norm::NORM_RMSNORM};
+    rmsNormParam.epsilon = param_.rmsNormEps;
     rmsNormNode.opDesc = {0, "NormOperation", rmsNormParam};
     rmsNormNode.inTensors = {&inputTensor, &weightTensor};
     rmsNormNode.outTensors = {&resultTensor};
