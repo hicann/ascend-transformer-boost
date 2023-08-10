@@ -58,6 +58,7 @@ private:
     // OUT:outTensor + presendKey + presentValue
     void ExecuteSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
                                 torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut);
+    std::string GetSaveTensorDir();
 
 private:
     ChatGlm6BModelParam modelParam_;

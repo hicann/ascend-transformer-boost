@@ -16,6 +16,7 @@
 #include "acltransformer/config.h"
 #include <string>
 #include <iostream>
+#include <thread>
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
 #include <asdops/utils/strings/match.h>
@@ -25,8 +26,8 @@ namespace AclTransformer {
 Config::Config()
 {
     InitSkipKernelName();
-    InitWorkspaceSize();
     InitIs910B();
+    InitSaveTensor();
     isSaveTensor_ = IsEnable("ACLTRANSFORMER_SAVE_TENSOR");
     isAddOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE");
     isAddNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE");
@@ -47,11 +48,11 @@ Config::Config()
     isOpsRunnerKernelCacheEnable_ = IsEnable("ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE");
     isUsePpMatmul_ = IsEnable("ASDOPS_MATMUL_PP_FLAG");
     isConvertNCHWToND_ = IsEnable("ACLTRANSFORMER_CONVERT_NCHW_TO_ND");
+    isTorchTensorFormatCast_= IsEnable("ACLTRANSFORMER_TORCH_TENSOR_FORMAT_CAST");
     ASD_LOG(FATAL) << "Config:\nIsSaveTensor:" << isSaveTensor_
                    << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
                    << "\nIsStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
-                   << "\nWorkspaceSize:" << workspaceSize_
                    << "\nIsOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
                    << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_
                    << "\nIsUsePpMatmul:" << isUsePpMatmul_ << ", \nIsConvertNCHWToND:" << isConvertNCHWToND_;
@@ -59,7 +60,16 @@ Config::Config()
 
 Config::~Config() {}
 
-std::string Config::GetSaveTensorDir() { return "tensors"; }
+std::string Config::GetSaveTensorDir()
+{
+    std::ostringstream ss;
+    ss << std::this_thread::get_id();
+    const char *envStr = std::getenv("ACLTRANSFORMER_HOME_PATH");
+    if (envStr) {
+        return std::string(envStr) + "/tensors/thread_" + ss.str();
+    }
+    return "tensors/thread_" + ss.str();
+}
 
 bool Config::IsEnable(const char *env, bool enable)
 {
@@ -71,6 +81,10 @@ bool Config::IsEnable(const char *env, bool enable)
 }
 
 bool Config::IsSaveTensor() { return isSaveTensor_; }
+
+void Config::DisableSaveTensor() { isSaveTensor_ = false; }
+
+uint64_t Config::GetSaveTensorMaxNum() { return saveTensorMaxNum_; }
 
 bool Config::IsAddOpsRunnerEnable() { return isAddOpsRunnerEnable_; }
 
@@ -102,6 +116,8 @@ bool Config::IsStreamSyncEveryRunnerEnable() { return isStreamSyncEveryRunnerEna
 
 bool Config::IsStreamSyncEveryPlanEnable() { return isStreamSyncEveryPlanEnable_; }
 
+bool Config::IsTorchTensorFormatCast() { return isTorchTensorFormatCast_; };
+
 bool Config::IsSkipKernel(const std::string &kernelName)
 {
     if (skipKernelNames_.empty()) {
@@ -127,17 +143,6 @@ void Config::InitSkipKernelName()
     AsdOps::StrSplit(std::string(envStr), ',', skipKernelNames_);
 }
 
-uint64_t Config::GetWorkspaceSize() { return workspaceSize_; }
-
-void Config::InitWorkspaceSize()
-{
-    const char *envStr = std::getenv("ACLTRANSFORMER_WORKSPACE_SIZE");
-    if (!envStr) {
-        return;
-    }
-    workspaceSize_ = atoll(envStr);
-}
-
 bool Config::Is910B() { return is910B_; }
 
 void Config::InitIs910B()
@@ -154,4 +159,43 @@ bool Config::IsOpsRunnerSetupCacheEnable() { return isOpsRunnerSetupCacheEnable_
 bool Config::IsOpsRunnerKernelCacheEnable() { return isOpsRunnerKernelCacheEnable_; }
 
 bool Config::IsConvertNCHWToND() const { return isConvertNCHWToND_; }
+
+bool Config::IsSaveTensorForRunner(const std::string &runnerName)
+{
+    if (saveTensorRunnerNameSet_.empty()) {
+        return true;
+    }
+
+    for (auto &name : saveTensorRunnerNameSet_) {
+        if (AsdOps::StartsWith(runnerName, name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Config::InitSaveTensor()
+{
+    InitSaveTensor("ACLTRANSFORMER_SAVE_TENSOR_RUNNER", saveTensorRunnerNameSet_);
+    const char *envStr = std::getenv("ACLTRANSFORMER_SAVE_TENSOR_MAX");
+    if (envStr) {
+        saveTensorMaxNum_ = atoll(envStr);
+    }
+}
+
+void Config::InitSaveTensor(const char *env, std::set<std::string> &nameSet)
+{
+    const char *envStr = std::getenv(env);
+    if (!envStr) {
+        return;
+    }
+
+    std::vector<std::string> names;
+    AsdOps::StrSplit(std::string(envStr), ',', names);
+
+    for (auto &name : names) {
+        nameSet.insert(name);
+        ASD_LOG(INFO) << env << " name:" << name;
+    }
+}
 } // namespace AclTransformer

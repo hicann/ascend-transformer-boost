@@ -38,7 +38,11 @@ std::string GraphRunner::Graph::ToString() const
     }
     for (size_t i = 0; i < outTensors.size(); ++i) {
         ss << "outTensors[" << i << "]:" << &outTensors.at(i) << " "
-           << TensorUtil::AsdOpsTensorToString(inTensors.at(i)) << std::endl;
+           << TensorUtil::AsdOpsTensorToString(outTensors.at(i)) << std::endl;
+    }
+    for (size_t i = 0; i < internalTensors.size(); ++i) {
+        ss << "internalTensors[" << i << "]:" << &internalTensors.at(i) << " "
+           << TensorUtil::AsdOpsTensorToString(internalTensors.at(i)) << std::endl;
     }
     ss << "nodes:" << nodes.size() << std::endl;
 
@@ -221,6 +225,16 @@ AsdOps::Status GraphRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runne
 
     ASD_LOG(INFO) << GetName() << " execute success";
     return AsdOps::Status::OkStatus();
+}
+
+void GraphRunner::SetSaveTensorDir(const std::string &tensorDir)
+{
+    tensorDir_ = tensorDir;
+    for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); nodeId++) {
+        auto &node = runnerGraph_.nodes.at(nodeId);
+        std::string newTensorDir = std::to_string(nodeId) + "_" + node.runner->GetName();
+        node.runner->SetSaveTensorDir(tensorDir + "/" + newTensorDir);
+    }
 }
 
 void GraphRunner::Reset()
@@ -465,16 +479,8 @@ AsdOps::Status GraphRunner::ExecuteAllRunner(Handle &handle, RunnerVariantPack &
         if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryRunnerEnable()) {
             AsdOps::Timer timer;
             int ret = AsdRtStreamSynchronize(handle.stream);
-            AsdOps::GetSingleton<Statistic>().syclTime += timer.ElapsedMicroSecond();
+            AsdOps::GetSingleton<Statistic>().streamSyncTime += timer.ElapsedMicroSecond();
             ASD_LOG_IF(ret != 0, ERROR) << GetName() << " node[" << nodeId << "] stream sync fail, ret:" << ret;
-        }
-
-        if (AsdOps::GetSingleton<Config>().IsSaveTensor()) {
-            AsdRtStreamSynchronize(handle.stream);
-            std::string dirPath = Config::GetSaveTensorDir() + "/" + GetName() + "/" + std::to_string(nodeId) + "_" +
-                                  node.runner->GetName();
-            TensorUtil::SaveVariantPack(handle, node.runnerVariantPack, dirPath);
-            ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] save runner variant pack, dir:" << dirPath;
         }
     }
 

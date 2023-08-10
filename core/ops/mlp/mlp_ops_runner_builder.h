@@ -20,6 +20,11 @@
 #include "acltransformer/params/mlp.h"
 #include "mlp_ops_runner.h"
 #include "mlp_ops_glm130b_runner.h"
+#include "mlp_ops_glm2_6b_runner.h"
+#include "mlp_ops_glm2_6b_runner_310p.h"
+#include "mlp_ops_llama13b_runner.h"
+#include "mlp_ops_runner_910a.h"
+#include "mlp_ops_glm2_6b_runner.h"
 
 namespace AclTransformer {
 class MlpOpsRunnerBuilder : public RunnerBuilder {
@@ -30,8 +35,23 @@ public:
     {
         if (param_.model == "glm130b") {
             return new MlpOpsGlm130bRunner(param_);
+        } else if (param_.model == "chatglm2_6b") {
+            return new MlpOpsGlm2Runner(param_);
+        } else if (param_.model == "llama13b") {
+            return new MlpOpsLlama13bRunner(param_);
+        } else if (param_.model == "chatglm2_6b"){
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                return new MlpOpsGlm2Runner(param_);
+            } else {
+                return new MlpOpsGlm2Runner310P(param_);
+        }
+            return new MlpOpsGlm2Runner(param_);
         } else {
-            return new MlpOpsRunner(param_);
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                return new MlpOpsRunner(param_);
+            } else {
+                return new MlpOpsRunner910A(param_);
+            }
         }
     }
 
