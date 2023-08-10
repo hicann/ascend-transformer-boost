@@ -1,13 +1,13 @@
 # Usage:
 # 1. Configure proxy in your host machine.
-# 2. bash build_docker.sh [your proxy(http://...)]
-# 3. start_docker.sh [your container name(acltransformer_chatglm6b_[your name])]
+# (if you want to speed up the docker build procedure, you can put required installation packages under "/data/tmp") 
+# 2. bash build_docker.sh
+# 3. start_docker.sh [your container name(acltransformer_[your model name]_[your name])]
 # 4. docker exec -it --user root [your container name] bash
-# 5. configure /home/proxy.sh if you need to have access to Internet
 
 if [ $# -ne 1 ]; then
 	echo "error: need one argument describing your container name."
-	echo "usage: $0 [arg], arg in the format of acltransformer_chatglm6b_[your name]."
+	echo "usage: $0 [arg], arg in the format of acltransformer_[your model name]_[your name]."
 	exit 1
 fi
 docker run --name $1 -it -d --net=host --shm-size=500g \
@@ -24,4 +24,4 @@ docker run --name $1 -it -d --net=host --shm-size=500g \
 	-v /home:/home \
 	-v /usr/local/asdops:/usr/local/asdops \
 	-v /data/acltransformer_testdata:/data/acltransformer_testdata \
-	acltransformer_chatglm6b:v1
+	acltransformer:v1
