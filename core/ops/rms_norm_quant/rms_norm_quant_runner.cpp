@@ -34,8 +34,7 @@ RmsNormQuantOpsRunner::RmsNormQuantOpsRunner(const RmsNormQuantParam &param)
 
     kernelGraph_.nodes.resize(1);
     auto &rmsNormQuantNode = kernelGrpha_.nodes[0];
-    AsdOps::OpParam::RmsNormQuant rmsNormQuantParam = {AsdOps::OpParam::RmsNormQuant::RMSNORM_QUANT};
-
+    AsdOps::OpParam::Norm rmsNormQuantParam = {AsdOps::OpParam::Norm::NORM_RMSNORMQUANT};
     rmsNormQuantParam.input_scale = param_.inputScale;
     rmsNormQuantParam.input_offset = param_.inputOffset;
 

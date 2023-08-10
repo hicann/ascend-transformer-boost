@@ -17,7 +17,7 @@
 #define RMSNORM_QUANT_OPS_RUNNER_BUILDER_H
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/rms_norm_quant.h"
-#include "rms_norm_quant_runner.h"
+#include "rms_norm_quant_ops_runner.h"
 
 namespace AclTransformer {
 class RmsNormQuantOpsRunnerBuilder : public RunnerBuilder {
