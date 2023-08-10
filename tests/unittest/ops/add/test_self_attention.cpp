@@ -32,38 +32,38 @@ TEST(TestSelfAttentionOperation, InferShape) {
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     // openbert
     param.model = "openbert";
-    AclTransformer::SelfAttentionOperation op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation opOpenbert(param);
+    opOpenbert.InferShape(inTensorDescs, outTensorDescs);
     AsdOps::SVector<int64_t> expectDims = {1, 1, 1, 1};
     ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
-    EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2))
+    EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
     EXPECT_EQ(expectDims.at(3), outTensorDescs.at(0).dims.at(3));
 
     // chatglm6b / glm130b / chatglm2_6b
     param.model = "chatglm6b";
-    op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation opChatglm6b(param);
+    opChatglm6b.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
 
     param.model = "glm130b";
-    op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation opGlm130b(param);
+    opGlm130b.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
 
     param.model = "chatglm2_6b";
-    op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation opChatglm2_6b(param);
+    opChatglm2_6b.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
 
     // llama7b
     param.model = "llama7b";
-    op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation opLlama7b(param);
+    opLlama7b.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
 }
