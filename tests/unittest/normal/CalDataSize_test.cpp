@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "acltransformer/utils/tensor_util.h"
-#include <sstream>
-#include <fstream>
+#include <vector>
 #include <string>
-#include <sys/stat.h>
-#include <asdops/utils/binfile/binfile.h>
+#include <string.h>
+#include <cstdlib>
+#include <gtest/gtest.h>
+#include "acltransformer/utils/tensor_util.h"
 #include <asdops/utils/log/log.h>
 #include <asdops/utils/rt/rt.h>
-#include <asdops/utils/filesystem/filesystem.h>
+#include "asdops/utils/filesystem/filesystem.h"
 
 using namespace AclTransformer;
 using namespace AsdOps;
@@ -29,7 +29,8 @@ using namespace AsdOps;
 TEST(CalTest, CalcTensorDataSizeTest1){
     AsdOps::Tensor tensor;
     tensor.desc.dtype=TENSOR_DTYPE_FLOAT16;
-    tensor.desc.dims={3, 4, 7};
+    SVector<int64_t> dims = {3, 4, 7};
+    tensor.desc.dims = dims;
     EXPECT_EQ(TensorUtil::CalcTensorDataSize(tensor),168);
 
 }
@@ -37,7 +38,8 @@ TEST(CalTest, CalcTensorDataSizeTest1){
 TEST(CalTest, CalcTensorDataSizeTest2){
     AsdOps::Tensor tensor;
     tensor.desc.dtype=TENSOR_DTYPE_DOUBLE;
-    tensor.desc.dims={3, 4, 7};
+    SVector<int64_t> dims = {3, 4, 7};
+    tensor.desc.dims = dims;
     EXPECT_EQ(TensorUtil::CalcTensorDataSize(tensor),0);
 
 }
@@ -45,7 +47,8 @@ TEST(CalTest, CalcTensorDataSizeTest2){
 TEST(CalTest, CalcTensorDataSizeTest3){
     AsdOps::Tensor tensor;
     tensor.desc.dtype=TENSOR_DTYPE_FLOAT16;
-    tensor.desc.dims={};
+    SVector<int64_t> dims = {};
+    tensor.desc.dims = dims;
     EXPECT_EQ(TensorUtil::CalcTensorDataSize(tensor),0);
 
 }
