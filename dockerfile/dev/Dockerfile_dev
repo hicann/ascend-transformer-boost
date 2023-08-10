@@ -1,9 +1,8 @@
 ARG UBUNTU_VERSION=18.04
-
 FROM ubuntu:${UBUNTU_VERSION}
 LABEL maintainer = "jitao jitao12@huawei.com"
 LABEL version = "1.0.0"
-LABEL description = "Image for chatglm6b 910b based on Ubuntu18.04"
+LABEL description = "Image for chatglm6b & llama 910b based on Ubuntu18.04"
 
 ENV GIT_SSL_NO_VERIFY=1
 ENV ACLTRANSFORMER_TESTDATA=/data/acltransformer_testdata
@@ -38,15 +37,19 @@ RUN apt-get install -y \
     libxml2 \
     vim
 
-# Install CMake   
-RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/cmake-3.27.1-linux-aarch64.sh --no-check-certificate
+COPY tmp/ /home
+# Install CMake
+RUN if [ ! -e cmake-3.27.1-linux-aarch64.sh ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/cmake-3.27.1-linux-aarch64.sh --no-check-certificate; \
+    fi
 RUN yes| bash cmake-3.27.1-linux-aarch64.sh --prefix=/usr/bin \
     && rm -f cmake-3.27.1-linux-aarch64.sh
 ENV PATH="/usr/bin/cmake-3.27.1-linux-aarch64/bin:${PATH}"
 
 # Install Anaconda & Python3
-RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Anaconda3-2023.07-1-Linux-aarch64.sh --no-check-certificate
-
+RUN if [ ! -e Anaconda3-2023.07-1-Linux-aarch64.sh ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Anaconda3-2023.07-1-Linux-aarch64.sh --no-check-certificate; \
+    fi
 RUN bash Anaconda3-2023.07-1-Linux-aarch64.sh -b -p /opt/conda \
     && rm -f Anaconda3-2023.07-1-Linux-aarch64.sh
 RUN ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh \
@@ -78,30 +81,34 @@ RUN pip3 install \
     mdtex2html 
 
 # Install Ascend Cann Library
-RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Ascend-cann-toolkit_CANN-6.4_linux-aarch64.run --no-check-certificate \
-    && wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Ascend-cann-kernels-910b_CANN-6.4_linux.run --no-check-certificate
+RUN if [ ! -e Ascend-cann-toolkit_CANN-6.4_linux-aarch64.run ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Ascend-cann-toolkit_CANN-6.4_linux-aarch64.run --no-check-certificate; \
+    fi
+RUN if [ ! -e Ascend-cann-kernels-910b_CANN-6.4_linux.run ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Ascend-cann-kernels-910b_CANN-6.4_linux.run --no-check-certificate; \
+    fi
 RUN chmod +x *.run
 RUN ./Ascend-cann-toolkit_CANN-6.4_linux-aarch64.run --install
 RUN ./Ascend-cann-kernels-910b_CANN-6.4_linux.run --install \
     && rm -f Ascend-cann-toolkit_CANN-6.4_linux-aarch64.run Ascend-cann-kernels-910b_CANN-6.4_linux.run
 
 # Install Torch, Torch_npu, Apex
-RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl --no-check-certificate \
-    && pip3 install torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl \
+RUN if [ ! -e torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl --no-check-certificate; \
+    fi
+RUN pip3 install torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl \
     && rm -f torch-1.11.0-cp37-cp37m-manylinux2014_aarch64.whl
 
-RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl --no-check-certificate \
-    && pip3 install torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl \
+RUN if [ ! -e torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl --no-check-certificate; \
+    fi
+RUN pip3 install torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl \
     && rm -f torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl
 
-RUN wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl --no-check-certificate \
-    && pip3 install apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl \
+RUN if [ ! -e apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/torch1.11.0/apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl --no-check-certificate; \
+    fi
+RUN pip3 install apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl \
     && rm -f apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl
 
 RUN pip3 install pydantic==1.10.9 --force-reinstall
-
-# Create environment file
-RUN touch proxy.sh  \
-    && echo "export http_proxy=" >> proxy.sh \
-    && echo "export https_proxy=\$http_proxy" >> proxy.sh \
-    && echo "export no_proxy=" >> proxy.sh    
