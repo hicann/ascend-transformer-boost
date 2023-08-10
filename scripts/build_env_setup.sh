@@ -17,19 +17,24 @@ INSTALL_DIR=/usr/local
 
 function fn_setup_lcov()
 {
-    rm -rf lcov*
     if [ -f "lcov-v1.16.tar.gz" ];then
         tar -xvf lcov-v1.16.tar.gz
     else
         wget --no-check-certificate https://github.com/linux-test-project/lcov/archive/refs/tags/v1.16.tar.gz
         tar -xvf v1.16.tar.gz
-    fi
+    fi 
+    if[ `cat /etc/redhat-release`== "Ubuntu" ];then
+        apt-get install perl-Digest-MD5
+        apt-get install perl*
+        apt-get install cpan
+    else
+        yum install perl-Digest-MD5
+        yum install perl*
+        yum install cpan
 
     cd lcov-1.16
     make -j
     make PREFIX=$INSTALL_DIR/lcov install
-    rm -rf lcov-1.16
-    rm -rf v1.16.tar.gz
 }
 
 function fn_setup_doxygen()
@@ -40,9 +45,13 @@ function fn_setup_doxygen()
         wget --no-check-certificate https://github.com/doxygen/doxygen/archive/refs/heads/master.tar.gz
         tar -xvf master.tar.gz
     fi
+    if[ `cat /etc/redhat-release`== "Ubuntu" ];then
+        apt-get install flex
+        apt-get install bison
+    else
+        yum install flex
+        yum install bison
 
-    apt-get install flex
-    apt-get install bison
 
     cd doxygen-master
     mkdir build
@@ -50,8 +59,6 @@ function fn_setup_doxygen()
     cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/doxygen ../
     make -j
     make install
-    rm -rf doxygen-master
-    rm -rf master.tar.gz
 }
 
 function fn_main()
