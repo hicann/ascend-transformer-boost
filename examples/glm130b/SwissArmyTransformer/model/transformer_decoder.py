@@ -455,6 +455,10 @@ class BaseTransformer(torch.nn.Module):
         self.acl_glm130b_encoder_operation = torch.classes.Glm130BModelEncoderTorch.Glm130BModelEncoderTorch()
         self.acl_glm130b_encoder_operation.set_param(acl_param)
 
+        # decoder modelv2
+        self.acl_glm130b_decoder_operation_v2 = torch.classes.ModelTorch.ModelTorch("Glm130BDecoderModel")
+        self.acl_glm130b_decoder_operation_v2.set_param(acl_param)
+
         # Final layer norm before output.
         self.use_final_layernorm = use_final_layernorm
         if use_final_layernorm:
@@ -593,15 +597,19 @@ class BaseTransformer(torch.nn.Module):
                     learnable=False,
                     device=torch.cuda.current_device(),
                 )
-            self.acl_weights = []
-            for layer in self.layers:
-                acl_layer_weights = list(layer.state_dict().values())
-                self.acl_weights.extend(acl_layer_weights[0:8])
-                self.acl_weights.extend(acl_layer_weights[10:12])
-                self.acl_weights.extend(acl_layer_weights[8:10])  
+
             if self.weight_flag:
+                self.acl_weights = []
+                for layer in self.layers: 
+                    acl_layer_weights = list(layer.state_dict().values())
+                    self.acl_weights.extend(acl_layer_weights[0:8])
+                    self.acl_weights.extend(acl_layer_weights[10:12])
+                    self.acl_weights.extend(acl_layer_weights[8:10])
+                
                 self.acl_glm130b_decoder_operation.set_weight(self.acl_weights)
+                self.acl_glm130b_decoder_operation_v2.set_weight(self.acl_weights)
                 self.weight_flag = False
+
             pastKeyTensors = []
             pastValueTensors = []
             mem = None
@@ -622,16 +630,27 @@ class BaseTransformer(torch.nn.Module):
                 
                 if mem is not None:                   
                     cos, sin = self.rotary_emb(acl_decoder_input, seq_len=position_ids.max() + 1)
-                    start = time.time()
-                    acl_decoder_output = self.acl_glm130b_decoder_operation.execute(acl_decoder_input, position_ids,
-                                                                                  cos, sin, attention_mask,
-                                                                                  pastKeyTensors, pastValueTensors)
+                    # start = time.time()
+                    # acl_decoder_output = self.acl_glm130b_decoder_operation.execute(acl_decoder_input, position_ids,
+                    #                                                               cos, sin, attention_mask,
+                    #                                                               pastKeyTensors, pastValueTensors)
+                    # switch to modelv2
+                    acl_decoder_v2_input = []
+                    acl_decoder_v2_input.append(acl_decoder_input)
+                    acl_decoder_v2_input.append(position_ids)
+                    acl_decoder_v2_input.append(cos)
+                    acl_decoder_v2_input.append(sin)
+                    acl_decoder_v2_input.append(attention_mask)
+                    acl_decoder_v2_input.extend(pastKeyTensors)
+                    acl_decoder_v2_input.extend(pastValueTensors)
+                    acl_decoder_output_v2 = self.acl_glm130b_decoder_operation_v2.execute(acl_decoder_v2_input, json.dumps({}))
                     # print('acl decoder output[0][0,0,0] : ' + str(acl_decoder_output[0][0,0,0]))
                     # print('decoder takes (second) : ' + str(time.time() - start))
-                    hidden_states = acl_decoder_output[0]
+
+                    hidden_states = acl_decoder_output_v2[0]
                     for i in range(self.num_layers):
-                        presentk = acl_decoder_output[i + 1]
-                        presentv = acl_decoder_output[i + 1 + self.num_layers]
+                        presentk = acl_decoder_output_v2[i + 1]
+                        presentv = acl_decoder_output_v2[i + 1 + self.num_layers]
                         seq_len, b, nh, hidden_size = presentk.shape
                         acl_cache_kv =  (
                             torch.stack((presentk[-1:], presentv[-1:]))
