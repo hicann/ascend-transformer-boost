@@ -43,26 +43,26 @@ TEST(TestSelfAttentionOperation, InferShape) {
 
     // chatglm6b / glm130b / chatglm2_6b
     param.model = "chatglm6b";
-    AclTransformer::SelfAttentionOperation op(param);
+    op(param);
     op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
 
     param.model = "glm130b";
-    AclTransformer::SelfAttentionOperation op(param);
+    op(param);
     op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
 
     param.model = "chatglm2_6b";
-    AclTransformer::SelfAttentionOperation op(param);
+    op(param);
     op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
 
     // llama7b
     param.model = "llama7b";
-    AclTransformer::SelfAttentionOperation op(param);
+    op(param);
     op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
