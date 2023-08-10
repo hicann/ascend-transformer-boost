@@ -16,9 +16,12 @@
 #include "acltransformer/ops/rms_norm_quant_operation.h"
 #include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
-#include "rms_norm_quant_ops_runner_builder.h"
+#include "rms_norm_quant_runner_builder.h"
 
 namespace AclTransformer {
+const int RMSNORMQUANT_INTENSOR_COUNT = 3;
+const int RMSNORMQUANT_OUTTENSOR_COUNT = 1;
+
 RmsNormQuantOperation::RmsNormQuantOperation(const RmsNormQuantParam &param)
     : Operation("RmsNormQuantOperation"), param_(param)
 {
@@ -27,9 +30,9 @@ RmsNormQuantOperation::RmsNormQuantOperation(const RmsNormQuantParam &param)
 
 RmsNormQuantOperation::~RmsNormQuantOperation() {}
 
-uint64_t RmsNormQuantOperation::GetInTensorCount() const { return 3; }
+uint64_t RmsNormQuantOperation::GetInTensorCount() const { return RMSNORMQUANT_INTENSOR_COUNT; }
 
-uint64_t RmsNormQuantOperation::GetOutTensorCount() const { return 1; }
+uint64_t RmsNormQuantOperation::GetOutTensorCount() const { return RMSNORMQUANT_OUTTENSOR_COUNT; }
 
 AsdOps::Status RmsNormQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
