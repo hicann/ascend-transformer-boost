@@ -33,7 +33,7 @@ TEST(TestEmbeddingOperation, InferShape)
     op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
-    AsdOps::SVector<int64_t> expectDims = {1, 2, 1};
+    AsdOps::SVector<int64_t> expectDims = {1, 2, 2};
     ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
