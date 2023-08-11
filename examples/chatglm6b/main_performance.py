@@ -130,7 +130,10 @@ def main():
         model.token_first = 0
         model.pre_processing = 0
         model.post_processing = 0
+        print("before stream chat")
         for response, history in model.stream_chat(tokenizer, query, history=history):
+            print("enter stream chat")
+            print("count: " + str(count))
             if stop_stream:
                 stop_stream = False
                 break
