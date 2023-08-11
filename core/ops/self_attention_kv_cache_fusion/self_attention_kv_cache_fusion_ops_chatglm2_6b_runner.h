@@ -13,25 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_SELFATTENTION_KV_CACHE_FUSION_H
-#define ACLTRANSFOERM_PARAMS_SELFATTENTION_KV_CACHE_FUSION_H
-namespace AclTransformer {
-struct SelfAttentionKvCacheFusionParam {
-    int32_t headNum = 0;
-    int32_t layerId = 0;
-    int32_t dk = 0;
-    int64_t numHeadsPerPartition = 0;
-    int64_t hiddenSizePerHead = 0;
-    int64_t numGroupsPerPartition = 0;
-    std::string model = "chatglm6b";
-    AsdOps::SVector<int32_t> seqLen;
-    AsdOps::SVector<int32_t> tokenOffset;
-};
+#ifndef SELFATTENTIONKVCACHEFUSION_OPS_CHATGLM2_6B_RUNNER_H
+#define SELFATTENTIONKVCACHEFUSION_OPS_CHATGLM2_6B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/self_attention_kv_cache_fusion.h"
 
-struct SelfAttentionKvCacheFusionVariantPackParam {
-    AsdOps::SVector<int32_t> seqLen;
-    AsdOps::SVector<int32_t> tokenOffset;
-    int32_t layerId = 0;
+namespace AclTransformer {
+class SelfAttentionKvCacheFusionOpsChatGlm2Runner : public OpsRunner {
+public:
+    explicit SelfAttentionKvCacheFusionOpsChatGlm2Runner(const SelfAttentionKvCacheFusionParam &param);
+    virtual ~SelfAttentionKvCacheFusionOpsChatGlm2Runner();
+
+private:
+    void BuildGraphWithMuls();
+    void SetKernelGrapModifyFunc();
+
+private:
+    SelfAttentionKvCacheFusionParam param_;
 };
 } // namespace AclTransformer
 #endif
