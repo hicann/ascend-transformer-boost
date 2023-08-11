@@ -7,7 +7,6 @@ LABEL description = "Image for chatglm6b & llama 910b based on Ubuntu18.04"
 ENV GIT_SSL_NO_VERIFY=1
 ENV ACLTRANSFORMER_TESTDATA=/data/acltransformer_testdata
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Ascend/driver/lib64/driver/
-ENV SET_NPU_DEVICE=4
 
 WORKDIR /home
 
@@ -35,7 +34,8 @@ RUN apt-get install -y \
     libopenblas-dev \
     libxml2-dev \
     libxml2 \
-    vim
+    vim \
+    sudo
 
 COPY tmp/ /home
 # Install CMake
