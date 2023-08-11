@@ -21,16 +21,29 @@ model_pth = sys.argv[1]
 tokenizer = AutoTokenizer.from_pretrained(model_pth, use_fast=False)
 model = AutoModelForCausalLM.from_pretrained(model_pth).half().npu()
 
-for name, module in model.named_modules():
-    if isinstance(module, torch.nn.Linear):
-        module.weight.data = module.weight.data.npu_format_cast(2)
-for name, module in model.named_modules():
-    if isinstance(module, torch.nn.Embedding):
-        module.weight.data = module.weight.data.npu_format_cast(2)
-
 # padding
 tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 model.resize_token_embeddings(len(tokenizer))
+
+soc_version = torch_npu._C._npu_get_soc_version()
+if soc_version in [104, 220, 221, 222, 223]:
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            module.weight.data = module.weight.data.npu_format_cast(2)
+    print("soc version: ", soc_version, " is 910B, support ND")
+else: 
+    # if on 910A or 310P chip, eliminate the TransData and Transpose ops by converting weight data types 
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            if name == 'lm_head':
+                # eliminate TransData op before lm_head calculation
+                module.weight.data = torch.nn.parameter.Parameter(module.weight.data)
+            module.weight.data = module.weight.data.npu_format_cast(29)
+    print("soc version: ", soc_version, " is not 910B, support NZ")
+
+for name, module in model.named_modules():
+    if isinstance(module, torch.nn.Embedding):
+        module.weight.data = module.weight.data.npu_format_cast(2)
 
 # warm-up using huggingface's generate api
 print("--------------warm up--------------")
