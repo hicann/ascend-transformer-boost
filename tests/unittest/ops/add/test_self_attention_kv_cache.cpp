@@ -40,7 +40,7 @@ TEST(TestSelfAttentionKvCacheOperation, InferShape)
     op0.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
-    expectDims = {{1, 2, 12}, {3, 6, 7, 8}, {4, 7, 8, 9}};
+    expectDims = {{1, 2, 12}, {6, 6, 7, 8}, {7, 7, 8, 9}};
     ASSERT_EQ(expectDims.at(0).size(), outTensorDescs.at(0).dims.size());
     EXPECT_EQ(expectDims.at(0).at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(0).at(1), outTensorDescs.at(0).dims.at(1));
@@ -62,7 +62,7 @@ TEST(TestSelfAttentionKvCacheOperation, InferShape)
     op1.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
-    expectDims = {{1, 2, 12}, {3, 5, 6, 7}, {4, 6, 7, 8}};
+    expectDims = {{1, 2, 12}, {6, 6, 7, 8}, {7, 7, 8, 9}};
     ASSERT_EQ(expectDims.at(0).size(), outTensorDescs.at(0).dims.size());
     EXPECT_EQ(expectDims.at(0).at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(0).at(1), outTensorDescs.at(0).dims.at(1));
