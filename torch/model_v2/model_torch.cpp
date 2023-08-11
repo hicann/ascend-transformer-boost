@@ -97,6 +97,13 @@ std::vector<torch::Tensor> ModelTorch::Execute(std::vector<torch::Tensor> atInTe
 
     std::vector<AsdOps::Tensor> inTensors;
     AtTensor2AsdTensor(atInTensors, inTensors);
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsConvertNCHWToND()) {
+        for (AsdOps::Tensor tensor : inTensors) {
+            if (tensor.desc.format == AsdOps::TENSOR_FORMAT_NCHW) {
+                tensor.desc.format = AsdOps::TENSOR_FORMAT_ND;
+            }
+        }
+    }
 
     std::vector<AsdOps::TensorDesc> outTensorDescs(model_->GetOutTensorCount());
     AsdOps::Status st = model_->InferShape(inTensors, outTensorDescs);
