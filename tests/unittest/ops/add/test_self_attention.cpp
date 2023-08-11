@@ -34,8 +34,7 @@ TEST(TestSelfAttentionOperation, InferShape) {
     param.model = "openbert";
     AclTransformer::SelfAttentionOperation opOpenbert(param);
     opOpenbert.InferShape(inTensorDescs, outTensorDescs);
-    ASD_LOG(INFO) << "openbert outTensorDesc size: " << outTensorDescs.size();
-    ASSERT_EQ(outTensorDescs.size(), 4);
+    ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     AsdOps::SVector<int64_t> expectDimsOpenbert = {1, 2, 3, 4};
     ASSERT_EQ(expectDimsOpenbert.size(), outTensorDescs.at(0).dims.size());
@@ -49,7 +48,7 @@ TEST(TestSelfAttentionOperation, InferShape) {
     AclTransformer::SelfAttentionOperation opChatglm6b(param);
     opChatglm6b.InferShape(inTensorDescs, outTensorDescs);
     ASD_LOG(INFO) << "chatglm6b outTensorDesc size: " << outTensorDescs.size();
-    ASSERT_EQ(outTensorDescs.size(), 4);
+    ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     AsdOps::SVector<int64_t> expectDimsChatglm6b = {1, 2, 12};
     ASSERT_EQ(expectDimsChatglm6b.size(), outTensorDescs.at(0).dims.size());
@@ -61,7 +60,7 @@ TEST(TestSelfAttentionOperation, InferShape) {
     AclTransformer::SelfAttentionOperation opGlm130b(param);
     opGlm130b.InferShape(inTensorDescs, outTensorDescs);
     ASD_LOG(INFO) << "glm130b outTensorDesc size: " << outTensorDescs.size();
-    ASSERT_EQ(outTensorDescs.size(), 4);
+    ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     AsdOps::SVector<int64_t> expectDimsGlm130b = {1, 2, 12};
     ASSERT_EQ(expectDimsGlm130b.size(), outTensorDescs.at(0).dims.size());
@@ -73,7 +72,7 @@ TEST(TestSelfAttentionOperation, InferShape) {
     AclTransformer::SelfAttentionOperation opChatglm2_6b(param);
     opChatglm2_6b.InferShape(inTensorDescs, outTensorDescs);
     ASD_LOG(INFO) << "chatglm2_6b outTensorDesc size: " << outTensorDescs.size();
-    ASSERT_EQ(outTensorDescs.size(), 4);
+    ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     AsdOps::SVector<int64_t> expectDimsChatglm2_6b = {1, 2, 12};
     ASSERT_EQ(expectDimsChatglm2_6b.size(), outTensorDescs.at(0).dims.size());
