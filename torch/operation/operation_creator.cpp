@@ -44,6 +44,7 @@
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
+#include "acltransformer/ops/rms_norm_quant_operation.h"
 #include "acltransformer/ops/lm_head_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
@@ -234,6 +235,15 @@ static AclTransformer::Operation *RmsNormOperationCreate(const nlohmann::json &p
     param.rmsNormEps = paramJson["rmsNormEps"].get<double>();
     return new AclTransformer::RmsNormOperation(param);
 }
+
+static AclTransformer::Operation *RmsNormQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::RmsNormQuantParam param;
+    param.inputScale = paramJson["inputScale"].get<float>();
+    param.inputOffset = paramJson["inputOffset"].get<int>();
+    return new AclTransformer::RmsNormQuantOperation(param);
+}
+
 
 static AclTransformer::Operation *EmbeddingOperationCreate(const nlohmann::json &paramJson)
 {
@@ -848,6 +858,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PositionEmbedding1dSplitFusionOperation", &PositionEmbedding1dSplitFusionOperationCreate},
     {"AddNormOperation", &AddNormOperationCreate},
     {"RmsNormOperation", &RmsNormOperationCreate},
+    {"RmsNormQuantOperation", &RmsNormQuantOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
     {"MatmulOperation", &MatmulOperationCreate},
