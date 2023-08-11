@@ -98,9 +98,9 @@ std::vector<torch::Tensor> ModelTorch::Execute(std::vector<torch::Tensor> atInTe
     std::vector<AsdOps::Tensor> inTensors;
     AtTensor2AsdTensor(atInTensors, inTensors);
     if (AsdOps::GetSingleton<AclTransformer::Config>().IsConvertNCHWToND()) {
-        for (AsdOps::Tensor tensor : inTensors) {
-            if (tensor.desc.format == AsdOps::TENSOR_FORMAT_NCHW) {
-                tensor.desc.format = AsdOps::TENSOR_FORMAT_ND;
+        for (size_t i = 0; i < inTensors.size(); i++) {
+            if (inTensors.at(i).desc.format == AsdOps::TENSOR_FORMAT_NCHW) {
+                inTensors.at(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
             }
         }
     }
