@@ -28,7 +28,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/workspace/workspace.h"
+#include "acltransformer/context/context.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 
 const size_t WEIGHT_COUNT_PER_LAYER = 12;
@@ -73,8 +73,8 @@ void ChatGlm6BModelDecoderWithoutFusionTorch::SetParam(std::string param)
 void ChatGlm6BModelDecoderWithoutFusionTorch::SetWeight(std::vector<torch::Tensor> weightTensors)
 {
     if (weightTensors.size() != modelParam_.layerNum * WEIGHT_COUNT_PER_LAYER) {
-        ASD_LOG(ERROR) << "ChatGlm6BModelDecoderWithoutFusionTorch set weight fail, weightTensors.size:" << weightTensors.size()
-                       << " != " << modelParam_.layerNum * WEIGHT_COUNT_PER_LAYER;
+        ASD_LOG(ERROR) << "ChatGlm6BModelDecoderWithoutFusionTorch set weight fail, weightTensors.size:"
+                       << weightTensors.size() << " != " << modelParam_.layerNum * WEIGHT_COUNT_PER_LAYER;
         return;
     }
 
@@ -136,7 +136,11 @@ void ChatGlm6BModelDecoderWithoutFusionTorch::ExecuteOutImpl(
                        << ", presentValueTensors.size:" << presentValueTensors.size();
         return;
     }
-
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        }
+    }
     handle_ = {Utils::GetCurrentStream()};
 
     Utils::ContiguousAtTensor(hiddenStateTensor);
@@ -235,23 +239,25 @@ void ChatGlm6BModelDecoderWithoutFusionTorch::ExecuteSingleOperation(int layerId
     ASD_LOG(INFO) << "ChatGlm6BModelLayer_" << layerId << " get plan workspace size:" << variantPack.workspaceSize;
 
     if (variantPack.workspaceSize > 0) {
-        AsdOps::GetSingleton<AclTransformer::Workspace>().SetWorkspace(variantPack.workspaceSize);
-        variantPack.workspace = AsdOps::GetSingleton<AclTransformer::Workspace>().GetWorkspace();
+        variantPack.workspace =
+            AsdOps::GetSingleton<AclTransformer::Context>().GetWorkspaceBuffer(variantPack.workspaceSize);
+    }
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
+        std::string dir = GetSaveTensorDir() + "/" + std::to_string(layerId) + "_";
+        plan.SetRunnerSaveTensorDir(dir);
     }
 
     AsdOps::Timer timer2;
     st = plan.Execute(handle_, variantPack);
 
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        AsdRtStreamSynchronize(handle_.stream);
-        std::string dirPath =
-            AclTransformer::Config::GetSaveTensorDir() + "/ChatGlm6BModelLayer_" + std::to_string(layerId);
-        AclTransformer::TensorUtil::SaveVariantPack(handle_, variantPack, dirPath);
-        ASD_LOG(FATAL) << "ChatGlm6BModelLayer_" << layerId << " save variant pack, dir:" << dirPath;
-    }
-
     AsdOps::GetSingleton<AclTransformer::Statistic>().planExecuteTime += timer2.ElapsedMicroSecond();
     ASD_LOG_IF(!st.Ok(), ERROR) << "ChatGlm6BModelLayer_" << layerId << " execute plan fail, error:" << st.Message();
+}
+
+std::string ChatGlm6BModelDecoderWithoutFusionTorch::GetSaveTensorDir()
+{
+    std::string dir = std::to_string(executeCount_) + "/0_ChatGlm6BModelDecoderWithoutFusionTorch";
+    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 
 TORCH_LIBRARY(ChatGlm6BModelDecoderWithoutFusionTorch, m)

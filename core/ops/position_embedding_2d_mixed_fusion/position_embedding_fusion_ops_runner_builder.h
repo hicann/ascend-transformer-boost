@@ -18,13 +18,20 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/position_embedding_fusion.h"
 #include "position_embedding_fusion_ops_runner.h"
+#include "position_embedding_glm2_fusion_ops_runner.h"
 
 namespace AclTransformer {
 class PositionEmbeddingFusionOpsRunnerBuilder : public RunnerBuilder {
 public:
     explicit PositionEmbeddingFusionOpsRunnerBuilder(const PositionEmbeddingFusionParam &param) : param_(param) {}
     virtual ~PositionEmbeddingFusionOpsRunnerBuilder() = default;
-    Runner *Build() override { return new PositionEmbeddingFusionOpsRunner(param_); }
+    Runner *Build() override 
+    { 
+        if (param_.model == "chatglm2_6b"){
+            return new PositionEmbeddingGlm2FusionOpsRunner(param_);
+        }
+        return new PositionEmbeddingFusionOpsRunner(param_);
+    }
 
 private:
     PositionEmbeddingFusionParam param_;

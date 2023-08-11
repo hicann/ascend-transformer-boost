@@ -62,6 +62,7 @@ private:
                                 torch::Tensor &resIn, bool newOut);
     void ExecuteLastSingleOperation(int layerId, std::vector<torch::Tensor> &opAtInTensors, torch::Tensor &outTensor,
                                     torch::Tensor &presendKeyTensor, torch::Tensor &presentValueTensor, bool newOut);
+    std::string GetSaveTensorDir();
 
 private:
     ChatGlm6BModelQuantParam modelParam_;

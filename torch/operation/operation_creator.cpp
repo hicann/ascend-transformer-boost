@@ -33,6 +33,7 @@
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
+#include "acltransformer/ops/position_embedding_1d_fusion_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/any_operation.h"
@@ -43,6 +44,8 @@
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
+#include "acltransformer/ops/rms_norm_quant_operation.h"
+#include "acltransformer/ops/lm_head_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
@@ -51,9 +54,15 @@
 #include "models/chatglm6b/chatglm6blayer_decoder_first_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_last_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
-#include "models/chatglm130b/chatglm130b_operation.h"
+#include "models/glm130b/glm130blayer_decoder_operation.h"
+#include "models/glm130b/glm130blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_operation.h"
-
+#include "models/llama7b/llama7blayer_fusion_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_layer_decoder_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_layer_encoder_operation.h"
+#include "models/llama13b/llama13blayer_parallel_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_fusion_layer_decoder_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
 static AclTransformer::Operation *LLaMA7BLayerOperationCreate(const nlohmann::json &paramJson)
@@ -65,6 +74,52 @@ static AclTransformer::Operation *LLaMA7BLayerOperationCreate(const nlohmann::js
     ASD_LOG(INFO) << "LLaMA7BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk;
     return new AclTransformer::LLaMA7BLayerOperation(param);
+}
+
+static AclTransformer::Operation *LLaMA13BLayerOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA13BLayerParam param;
+    if (paramJson.find("rmsNormEps") != paramJson.end()) {
+        param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    }
+    if (paramJson.find("headNum") != paramJson.end()) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.find("dk") != paramJson.end()) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.find("rank") != paramJson.end()) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.find("rankSize") != paramJson.end()) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMA13BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::LLaMA13BLayerOperation(param);
+}
+
+static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA7BLayerFusionParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    param.rotaryCoeff = paramJson["rotaryCoeff"].get<int>();
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+    }
+    ASD_LOG(INFO) << "LLaMA7BLayerFusionParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
+    return new AclTransformer::LLaMA7BLayerFusionOperation(param);
 }
 
 static AclTransformer::Operation *PostOperationCreate(const nlohmann::json &paramJson)
@@ -89,6 +144,15 @@ static AclTransformer::Operation *AllReduceOperationCreate(const nlohmann::json 
     AclTransformer::AllReduceParam param;
     param.rank = paramJson["rank"].get<int>();
     param.rankSize = paramJson["rankSize"].get<int>();
+    if (paramJson.find("rankRoot") != paramJson.end()) {
+        param.rankRoot = paramJson["rankRoot"].get<int>();
+    }
+    if (paramJson.find("backend") != paramJson.end()) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
+    if (paramJson.find("allReduceType") != paramJson.end()) {
+        param.allReduceType = paramJson["allReduceType"].get<std::string>();
+    }
     ASD_LOG(INFO) << "AllReduceParam rank:" << param.rank;
     ASD_LOG(INFO) << "AllReduceParam rankSize:" << param.rankSize;
     return new AclTransformer::AllReduceOperation(param);
@@ -102,6 +166,12 @@ static AclTransformer::Operation *LinearParallelOperationCreate(const nlohmann::
     }
     if (paramJson.find("bias") != paramJson.end()) {
         param.bias = paramJson["bias"].get<std::string>();
+    }
+    if (paramJson.find("rankRoot") != paramJson.end()) {
+        param.rankRoot = paramJson["rankRoot"].get<int>();
+    }
+    if (paramJson.find("backend") != paramJson.end()) {
+        param.backend = paramJson["backend"].get<std::string>();
     }
     param.rank = paramJson["rank"].get<int>();
     param.rankSize = paramJson["rankSize"].get<int>();
@@ -118,13 +188,37 @@ static AclTransformer::Operation *AddOperationCreate(const nlohmann::json &param
     ASD_LOG(INFO) << "AddParam scale:" << param.scale;
     return new AclTransformer::AddOperation(param);
 }
+
 AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingFusionParam param;
-    param.headNum = paramJson["headNum"].get<int64_t>();
-    ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    if (paramJson.contains("numHeadsPerPartition")) {
+        param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("hiddenSizePerHead")) {
+        param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    }
+    if (paramJson.contains("numGroupsPerPartition")) {
+        param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<std::int64_t>();
+        ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    }
     return new AclTransformer::RopeOperation(param);
 }
+
+AclTransformer::Operation *PositionEmbedding1dSplitFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::PositionEmbedding1dFusionParam param;
+    param.headNum = paramJson["headNum"].get<int64_t>();
+    ASD_LOG(INFO) << "param.headNum: " << param.headNum;
+    return new AclTransformer::PositionEmbedding1dSplitFusionOperation(param);
+}
+
 static AclTransformer::Operation *AddNormOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::AddNormParam param;
@@ -142,13 +236,21 @@ static AclTransformer::Operation *RmsNormOperationCreate(const nlohmann::json &p
     return new AclTransformer::RmsNormOperation(param);
 }
 
+static AclTransformer::Operation *RmsNormQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::RmsNormQuantParam param;
+    param.inputScale = paramJson["inputScale"].get<float>();
+    param.inputOffset = paramJson["inputOffset"].get<int>();
+    return new AclTransformer::RmsNormQuantOperation(param);
+}
+
+
 static AclTransformer::Operation *EmbeddingOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::EmbeddingParam param;
     ASD_LOG(INFO) << "EmbeddingParam axis:" << param.axis;
     return new AclTransformer::EmbeddingOperation(param);
 }
-
 
 static AclTransformer::Operation *NormOperationCreate(const nlohmann::json &paramJson)
 {
@@ -173,7 +275,8 @@ static AclTransformer::Operation *LinearOperationCreate(const nlohmann::json &pa
     if (paramJson.contains("hasBias")) {
         param.hasBias = paramJson["hasBias"].get<bool>();
     }
-    ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB << ", hasBias:" << param.hasBias;
+    ASD_LOG(INFO) << "LinearParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB
+                  << ", hasBias:" << param.hasBias;
     return new AclTransformer::LinearOperation(param);
 }
 
@@ -194,7 +297,12 @@ static AclTransformer::Operation *FfnOperationCreate(const nlohmann::json &param
     if (paramJson.contains("hasBias")) {
         param.hasBias = paramJson["hasBias"].get<bool>();
     }
-    ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB << ", hasBias:" << param.hasBias;
+    if (paramJson.contains("activationFuncType")) {
+        param.activationFuncType =
+            AclTransformer::FfnParam::ActivationFuncType(paramJson["activationFuncType"].get<int32_t>());
+    }
+    ASD_LOG(INFO) << "FfnParam transposeA:" << param.transposeA << ", transposeB:" << param.transposeB
+                  << ", hasBias:" << param.hasBias << ", activationFuncType:" << param.activationFuncType;
     return new AclTransformer::FfnOperation(param);
 }
 
@@ -236,8 +344,24 @@ static AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::j
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
+    if (paramJson.contains("preScale")) {
+        param.preScale = paramJson["preScale"].get<float>();
+    }
+    if (paramJson.contains("postScale")) {
+        param.postScale = paramJson["postScale"].get<float>();
+    }
+    if (paramJson.contains("numHeadsPerPartition")) {
+        param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("hiddenSizePerHead")) {
+        param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    }
+    if (paramJson.contains("numGroupsPerPartition")) {
+        param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
-                  << ", layerId:" << param.layerId << ", dk:" << param.dk;
+                  << ", layerId:" << param.layerId << ", dk:" << param.dk << ", preScale" << param.preScale << ", postScale" << param.postScale << ", model" << param.model
+                  << ", hiddenSizePerHead" << param.hiddenSizePerHead;
     return new AclTransformer::SelfAttentionOperation(param);
 }
 
@@ -252,8 +376,30 @@ static AclTransformer::Operation *PositionEmbedding1dSplitOperationCreate(const 
 static AclTransformer::Operation *PositionEmbeddingOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::PositionEmbeddingParam param;
-    param.headNum = paramJson["headNum"].get<int>();
-    ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int64_t>();
+        ASD_LOG(INFO) << "PositionEmbeddingParam headNum:" << param.headNum;
+    }
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+    } else {
+        param.model = "llama7b";
+    }
+    if (paramJson.contains("numHeadsPerPartition")) {
+        param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("hiddenSizePerHead")) {
+        param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    }
+    if (paramJson.contains("numGroupsPerPartition")) {
+        param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("rotaryPct")) {
+        param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int64_t>();
+    }
     return new AclTransformer::PositionEmbeddingOperation(param);
 }
 
@@ -275,8 +421,26 @@ static AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nloh
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
+    if (paramJson.contains("preScale")) {
+        param.preScale = paramJson["preScale"].get<float>();
+    }
+    if (paramJson.contains("postScale")) {
+        param.postScale = paramJson["postScale"].get<float>();
+    }
+    if (paramJson.contains("numHeadsPerPartition")) {
+        param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("hiddenSizePerHead")) {
+        param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    }
+    if (paramJson.contains("numGroupsPerPartition")) {
+        param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
-                  << ", layerId:" << param.layerId << ", dk:" << param.dk;
+                  << ", layerId:" << param.layerId << ", dk:" << param.dk << ", preScale" << param.preScale << ", postScale" << param.postScale << ", model" << param.model
+                  << ", hiddenSizePerHead" << param.hiddenSizePerHead
+                  << ", numHeadsPerPartition" << param.numHeadsPerPartition
+                  << ", numGroupsPerPartition" << param.numGroupsPerPartition;
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }
 
@@ -334,6 +498,86 @@ static AclTransformer::Operation *ChatGlm6BLayerEncoderOperationCreate(const nlo
                   << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
                   << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm2LayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2LayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "ChatGlm2LayerEncoderOperationCreate numHeadsPerPartition:" << param.numHeadsPerPartition << ", numGroupsPerPartition:" << param.numGroupsPerPartition
+                  << ", hiddenSizePerHead:" << param.hiddenSizePerHead << ", rmsNormEps:" << param.rmsNormEps << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale << ", preScale:" << param.preScale << ", postScale:" << param.postScale
+                << ", transKey:" << param.transKey  << ", model:" << param.model;
+    return new AclTransformer::ChatGlm2LayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm2LayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2LayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "ChatGlm2LayerEncoderOperationCreate numHeadsPerPartition:" << param.numHeadsPerPartition << ", numGroupsPerPartition:" << param.numGroupsPerPartition
+                  << ", hiddenSizePerHead:" << param.hiddenSizePerHead << ", rmsNormEps:" << param.rmsNormEps << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale << ", preScale:" << param.preScale << ", postScale:" << param.postScale
+                << ", transKey:" << param.transKey  << ", model:" << param.model;
+    return new AclTransformer::ChatGlm2LayerDecoderOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm2FusionLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2LayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "ChatGlm2LayerEncoderOperationCreate numHeadsPerPartition:" << param.numHeadsPerPartition << ", numGroupsPerPartition:" << param.numGroupsPerPartition
+                  << ", hiddenSizePerHead:" << param.hiddenSizePerHead << ", rmsNormEps:" << param.rmsNormEps << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale << ", preScale:" << param.preScale << ", postScale:" << param.postScale
+                << ", transKey:" << param.transKey  << ", model:" << param.model;
+    return new AclTransformer::ChatGlm2FusionLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm2FusionLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2LayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "ChatGlm2LayerEncoderOperationCreate numHeadsPerPartition:" << param.numHeadsPerPartition << ", numGroupsPerPartition:" << param.numGroupsPerPartition
+                  << ", hiddenSizePerHead:" << param.hiddenSizePerHead << ", rmsNormEps:" << param.rmsNormEps << ", layerId:" << param.layerId
+                  << ", residualAddScale:" << param.residualAddScale << ", preScale:" << param.preScale << ", postScale:" << param.postScale
+                << ", transKey:" << param.transKey  << ", model:" << param.model;
+    return new AclTransformer::ChatGlm2FusionLayerDecoderOperation(param);
 }
 
 AclTransformer::Operation *FfnQuantOperationCreate(const nlohmann::json &paramJson)
@@ -532,9 +776,9 @@ static AclTransformer::Operation *ChatGlm6BLayeEncoderFlashAttentionOperationCre
     return new AclTransformer::ChatGlm6BLayerDecoderFlashAttentionOperation(param);
 }
 
-AclTransformer::Operation *Glm130BLayerOperation(const nlohmann::json &paramJson)
+AclTransformer::Operation *Glm130BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
 {
-    AclTransformer::ChatGlm130BLayerParam param;
+    AclTransformer::Glm130BLayerParam param;
     if (paramJson.contains("headNum")) {
         param.headNum = paramJson["headNum"].get<int>();
     }
@@ -550,6 +794,9 @@ AclTransformer::Operation *Glm130BLayerOperation(const nlohmann::json &paramJson
     if (paramJson.contains("rankSize")) {
         param.rankSize = paramJson["rankSize"].get<int>();
     }
+    if (paramJson.contains("backend")) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
     if (paramJson.contains("layerId")) {
         param.layerId = paramJson["layerId"].get<int>();
     }
@@ -559,18 +806,59 @@ AclTransformer::Operation *Glm130BLayerOperation(const nlohmann::json &paramJson
     if (paramJson.contains("layerNormEps")) {
         param.layerNormEps = paramJson["layerNormEps"].get<double>();
     }
-    return new AclTransformer::ChatGlm130BLayerOperation(param);
+    return new AclTransformer::Glm130BLayerDecoderOperation(param);
+}
+
+AclTransformer::Operation *Glm130BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Glm130BLayerParam param;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.contains("transKey")) {
+        param.transKey = paramJson["transKey"].get<bool>();
+    }
+    if (paramJson.contains("rank")) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.contains("rankSize")) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.contains("backend")) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
+    if (paramJson.contains("layerId")) {
+        param.layerId = paramJson["layerId"].get<int>();
+    }
+    if (paramJson.contains("residualAddScale")) {
+        param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    }
+    if (paramJson.contains("layerNormEps")) {
+        param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    }
+    return new AclTransformer::Glm130BLayerEncoderOperation(param);
+}
+
+AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LmHeadParam param;
+    return new AclTransformer::LmHeadOperation(param);
 }
 
 std::map<std::string, OperationCreateFunc> g_funcMap = {
-    {"PostOperation",&PostOperationCreate},
-    {"AllReduceOperation",AllReduceOperationCreate},
+    {"PostOperation", &PostOperationCreate},
+    {"AllReduceOperation", &AllReduceOperationCreate},
     {"LinearParallelOperation", &LinearParallelOperationCreate},
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
     {"RopeOperation", &RopeOperationCreate},
+    {"PositionEmbedding1dSplitFusionOperation", &PositionEmbedding1dSplitFusionOperationCreate},
     {"AddNormOperation", &AddNormOperationCreate},
     {"RmsNormOperation", &RmsNormOperationCreate},
+    {"RmsNormQuantOperation", &RmsNormQuantOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
     {"MatmulOperation", &MatmulOperationCreate},
@@ -597,9 +885,16 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm6BLayerDecoderLastQuantOperation", &ChatGlm6BLayerDecoderLastQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFirstQuantOperation", &ChatGlm6BLayerDecoderFirstQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFlashAttentionOperation", &ChatGlm6BLayeEncoderFlashAttentionOperationCreate},
-    {"Glm130BLayerOperation", &Glm130BLayerOperation},
+    {"Glm130BLayerDecoderOperation", &Glm130BLayerDecoderOperationCreate},
+    {"Glm130BLayerEncoderOperation", &Glm130BLayerEncoderOperationCreate},
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
-};
+    {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
+    {"LmHeadOperation", &LmHeadOperationCreate},
+    {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},
+    {"ChatGlm2LayerDecoderOperation", &ChatGlm2LayerDecoderOperationCreate},
+    {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate},
+    {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
+    {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
@@ -623,7 +918,7 @@ AsdOps::Any ParseParam(const std::string &opName, const std::string &param)
 {
     nlohmann::json paramJson = nlohmann::json::parse(param);
 
-    if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation") {
+    if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation" || opName == "LLaMA7BLayerFusionOperation") {
         AclTransformer::SelfAttentionKvCacheFusionVariantPackParam opParam;
         for (auto item : paramJson["tokenOffset"]) {
             opParam.tokenOffset.push_back(item.get<int>());
@@ -631,6 +926,7 @@ AsdOps::Any ParseParam(const std::string &opName, const std::string &param)
         for (auto item : paramJson["seqLen"]) {
             opParam.seqLen.push_back(item.get<int>());
         }
+        opParam.layerId = paramJson["layerId"].get<int>();
         return opParam;
     }
     return AsdOps::Any();

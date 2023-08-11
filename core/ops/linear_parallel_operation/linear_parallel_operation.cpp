@@ -51,17 +51,19 @@ LinearParallelOperation::LinearParallelOperation(const LinearParallelParam &para
         matmulNode.inTensorIds = {IN_INPUT, IN_WEIGHT};
         matmulNode.outTensorIds = {INTERMIDATE_MATMULOUT};
         matmulNode.inTensorViewFuncs.resize(matmulNode.inTensorIds.size());
-        matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
+                                             AsdOps::SVector<int64_t> &newDims) {
             // weight dimension suported: only 2
             int64_t dim0 = 1;
-            for (size_t i=0; i < oldDims.size()-1; i++) {
+            for (size_t i = 0; i < oldDims.size() - 1; i++) {
                 dim0 *= oldDims.at(i);
             }
-            int64_t dim1 = oldDims.at(oldDims.size()-1);
+            int64_t dim1 = oldDims.at(oldDims.size() - 1);
             newDims = {dim0, dim1};
         };
 
-        allReduceNode.operation.reset(new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize}));
+        allReduceNode.operation.reset(
+            new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend}));
         allReduceNode.inTensorIds = {INTERMIDATE_MATMULOUT};
         allReduceNode.outTensorIds = {INTERMIDATE_ALLREDUCEOUT};
 
@@ -82,17 +84,19 @@ LinearParallelOperation::LinearParallelOperation(const LinearParallelParam &para
         matmulNode.inTensorIds = {IN_INPUT, IN_WEIGHT};
         matmulNode.outTensorIds = {INTERMIDATE_MATMULOUT - 1};
         matmulNode.inTensorViewFuncs.resize(matmulNode.inTensorIds.size());
-        matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
+                                             AsdOps::SVector<int64_t> &newDims) {
             // weight dimension suported: only 2
             int64_t dim0 = 1;
-            for (size_t i=0; i < oldDims.size()-1; i++) {
+            for (size_t i = 0; i < oldDims.size() - 1; i++) {
                 dim0 *= oldDims.at(i);
             }
-            int64_t dim1 = oldDims.at(oldDims.size()-1);
+            int64_t dim1 = oldDims.at(oldDims.size() - 1);
             newDims = {dim0, dim1};
         };
 
-        allReduceNode.operation.reset(new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize}));
+        allReduceNode.operation.reset(
+            new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend}));
         allReduceNode.inTensorIds = {INTERMIDATE_MATMULOUT - 1};
         allReduceNode.outTensorIds = {OUT_LINEAROUT - 1};
     }
@@ -100,12 +104,12 @@ LinearParallelOperation::LinearParallelOperation(const LinearParallelParam &para
 
 LinearParallelOperation::~LinearParallelOperation() {}
 
-uint64_t LinearParallelOperation::GetInTensorCount() const 
-{ 
+uint64_t LinearParallelOperation::GetInTensorCount() const
+{
     if (param_.bias != "None") {
-        return IN_TENSOR_COUNT; 
+        return IN_TENSOR_COUNT;
     } else {
-        return IN_TENSOR_COUNT - 1; 
+        return IN_TENSOR_COUNT - 1;
     }
 }
 
@@ -119,9 +123,9 @@ AsdOps::Status LinearParallelOperation::InferShapeImpl(const AsdOps::SVector<Asd
     outTensorDescs.at(0).dims = inTensors.at(0).desc.dims;
     auto outDimSize = outTensorDescs.at(0).dims.size();
     if (!param_.transWeight) {
-        outTensorDescs.at(0).dims[outDimSize-1] = inTensors.at(1).desc.dims[0];
+        outTensorDescs.at(0).dims[outDimSize - 1] = inTensors.at(1).desc.dims[0];
     } else {
-        outTensorDescs.at(0).dims[outDimSize-1] = inTensors.at(1).desc.dims[1];
+        outTensorDescs.at(0).dims[outDimSize - 1] = inTensors.at(1).desc.dims[1];
     }
 
     return AsdOps::Status::OkStatus();

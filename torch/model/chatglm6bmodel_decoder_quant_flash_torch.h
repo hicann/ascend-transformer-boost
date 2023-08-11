@@ -74,6 +74,7 @@ private:
     void PushTask(int layerId);
     int PopTask();
     void WaitAsyncPlanExecuteFinish();
+    std::string GetSaveTensorDir();
 
 private:
     ChatGlm6BModelQuantFlashParam modelParam_;

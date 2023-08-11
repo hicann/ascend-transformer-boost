@@ -146,7 +146,7 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 
     mlpNode.operation.reset(new AclTransformer::MlpOperation({}));
-    mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPGATEWEIGHT, IN_MLPDOWNWEIGHT, IN_MLPUPWEIGHT};
+    mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPGATEWEIGHT, IN_MLPUPWEIGHT, IN_MLPDOWNWEIGHT};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 
     mlpResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
