@@ -28,7 +28,7 @@ using namespace AsdOps;
 
 TEST(TestTensorUtil, LoadTensorTest)
 {
-    const int currentDevId = 1;
+    const int currentDevId = 2;
     const int dataCount = 10;
     const int dataSize = dataCount * sizeof(int32_t);
     int32_t data[dataCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -69,4 +69,58 @@ TEST(TestTensorUtil, LoadTensorTest)
     std::vector<char> hostData1(dataSize);
     AsdRtMemCopy(hostData1.data(), dataSize, tensor.data, dataSize, ASDRT_MEMCOPY_DEVICE_TO_HOST);
     EXPECT_EQ(hostData, hostData1);
+}
+
+TEST(Testequal,TensorDescNOTEqualTest){
+    AsdOps::TensorDesc TensorDescA;
+    TensorDescA.dtype=TENSOR_DTYPE_INT32;
+    TensorDescA.format=TENSOR_FORMAT_ND;
+    SVector<int64_t> dimsA = {3, 5};
+    TensorDescA.dims = dimsA;
+    AsdOps::TensorDesc TensorDescB;
+    TensorDescB.dtype=TENSOR_DTYPE_INT32;
+    TensorDescB.format=TENSOR_FORMAT_ND;
+    SVector<int64_t> dimsB = {4, 6};
+    TensorDescB.dims = dimsB;
+    EXPECT_EQ(TensorUtil::AsdOpsTensorDescEqual(TensorDescA,TensorDescB),false);
+}
+
+TEST(Testequal,TensorDescEqualTest){
+    AsdOps::TensorDesc TensorDescA;
+    TensorDescA.dtype=TENSOR_DTYPE_INT32;
+    TensorDescA.format=TENSOR_FORMAT_ND;
+    SVector<int64_t> dimsA = {2, 5};
+    TensorDescB.dims = dimsA;
+    AsdOps::TensorDesc TensorDescB;
+    TensorDescB.dtype=TENSOR_DTYPE_INT32;
+    TensorDescB.format=TENSOR_FORMAT_ND;
+    SVector<int64_t> dimsB = {2, 5};
+    TensorDescB.dims = dimsB;
+    EXPECT_EQ(TensorUtil::AsdOpsTensorDescEqual(TensorDescA,TensorDescB),true);
+}
+TEST(CalTest, CalcTensorDataSizeTest1){
+    AsdOps::Tensor tensor;
+    tensor.desc.dtype=TENSOR_DTYPE_FLOAT16;
+    SVector<int64_t> dims = {3, 4, 7};
+    tensor.desc.dims = dims;
+    EXPECT_EQ(TensorUtil::CalcTensorDataSize(tensor),168);
+
+}
+
+TEST(CalTest, CalcTensorDataSizeTest2){
+    AsdOps::Tensor tensor;
+    tensor.desc.dtype=TENSOR_DTYPE_DOUBLE;
+    SVector<int64_t> dims = {3, 4, 7};
+    tensor.desc.dims = dims;
+    EXPECT_EQ(TensorUtil::CalcTensorDataSize(tensor),0);
+
+}
+
+TEST(CalTest, CalcTensorDataSizeTest3){
+    AsdOps::Tensor tensor;
+    tensor.desc.dtype=TENSOR_DTYPE_FLOAT16;
+    SVector<int64_t> dims = {};
+    tensor.desc.dims = dims;
+    EXPECT_EQ(TensorUtil::CalcTensorDataSize(tensor),0);
+
 }
