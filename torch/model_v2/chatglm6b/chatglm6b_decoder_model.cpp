@@ -149,12 +149,7 @@ void ChatGlm6BDecoderModel::BuildGraph()
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SEQLEN); // seqLen
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_MAX + layerId);
 
-        if (layerId != param_.layerNum - 1) {
-            layerNode.outTensors = {&graph_.internalTensors.at(OPERATION_COUNT_BEFORE_LAYER + layerId)};
-        } else {
-            layerNode.outTensors = {&graph_.outTensors.at(0)};
-        }
-
+        layerNode.outTensors = {&graph_.internalTensors.at(OPERATION_COUNT_BEFORE_LAYER + layerId)};
         firstInTensor = layerNode.outTensors.at(0);
     }
 
