@@ -34,9 +34,9 @@ TEST(TestSelfAttentionKvCacheOperation, InferShape)
                                                      {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}}};
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     AsdOps::SVector<AsdOps::SVector<int64_t>> expectDims;
-    
+
     // default(chatglm6b, not chatglm2_6b)
-    AclTransformer::AddOperation op0(param);
+    AclTransformer::SelfAttentionKvCacheOperation op0(param);
     op0.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
@@ -58,7 +58,7 @@ TEST(TestSelfAttentionKvCacheOperation, InferShape)
 
     // chatglm2_6b
     param.model = "chatglm2_6b";
-    AclTransformer::AddOperation op1(param);
+    AclTransformer::SelfAttentionKvCacheOperation op1(param);
     op1.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
