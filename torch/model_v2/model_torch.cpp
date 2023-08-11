@@ -25,6 +25,7 @@
 #include "torch/utils/utils.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_model.h"
 #include "torch/model_v2/glm130b/glm130b_decoder_model.h"
+#include "torch/model_v2/chatglm6b/chatglm6b_decoder_without_fusion_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -50,6 +51,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderModel>(param);
     } else if (modelName_ == "Glm130BDecoderModel") {
         model_ = std::make_shared<AclTransformer::Glm130BDecoderModel>(param);
+    } else if (modelName_ == "ChatGlm6BDecoderWithoutFusionModel") {
+        model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderWithoutFusionModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
@@ -82,6 +85,7 @@ void ModelTorch::SetWeight(std::vector<torch::Tensor> atWeightTensors)
 
 std::vector<torch::Tensor> ModelTorch::Execute(std::vector<torch::Tensor> atInTensors, std::string param)
 {
+    ASD_LOG(INFO) <<"!!!!!!!!execute begin!!!!!!!!!!!!";
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         const torch::Tensor &atTensor = atInTensors.at(i);
         ASD_LOG(INFO) << "ModelTorch atInTensors[" << i << "]"
