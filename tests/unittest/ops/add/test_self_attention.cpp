@@ -30,11 +30,11 @@ TEST(TestSelfAttentionOperation, InferShape) {
                                                      {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
                                                      {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}}};
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
-    
     AsdOps::SVector<int64_t> expectDims;
+    
     // openbert(default)
-    AclTransformer::SelfAttentionOperation op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation op0(param);
+    op0.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     expectDims = {1, 2, 3, 4};
@@ -43,12 +43,11 @@ TEST(TestSelfAttentionOperation, InferShape) {
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
     EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
     EXPECT_EQ(expectDims.at(3), outTensorDescs.at(0).dims.at(3));
-    delete op;
 
     // chatglm6b / glm130b / chatglm2_6b
     param.model = "chatglm6b";
-    AclTransformer::SelfAttentionOperation op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation op1(param);
+    op1.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     expectDims = {1, 2, 12};
@@ -56,23 +55,10 @@ TEST(TestSelfAttentionOperation, InferShape) {
     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
     EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
-    delete op;
 
     param.model = "glm130b";
-    AclTransformer::SelfAttentionOperation op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
-    ASSERT_EQ(outTensorDescs.size(), 1);
-    EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
-    expectDimsb = {1, 2, 12};
-    ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
-    EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
-    EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
-    EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
-    delete op;
-
-    param.model = "chatglm2_6b";
-    AclTransformer::SelfAttentionOperation op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation op2(param);
+    op2.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     expectDims = {1, 2, 12};
@@ -80,12 +66,22 @@ TEST(TestSelfAttentionOperation, InferShape) {
     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
     EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
-    delete op;
+
+    param.model = "chatglm2_6b";
+    AclTransformer::SelfAttentionOperation op3(param);
+    op3.InferShape(inTensorDescs, outTensorDescs);
+    ASSERT_EQ(outTensorDescs.size(), 1);
+    EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    expectDims = {1, 2, 12};
+    ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
+    EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
 
     // llama7b
     param.model = "llama7b";
-    AclTransformer::SelfAttentionOperation op(param);
-    op.InferShape(inTensorDescs, outTensorDescs);
+    AclTransformer::SelfAttentionOperation op4(param);
+    op4.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     AsdOps::SVector<AsdOps::SVector<int64_t>> expectDimsLlama7b = {{1, 2, 12}, {1, 2, 3, 4}, {1, 2, 3, 4}};
