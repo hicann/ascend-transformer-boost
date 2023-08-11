@@ -25,21 +25,23 @@ using namespace AsdOps;
 
 TEST(TestSelfAttentionOperation, InferShape) {
     AclTransformer::SelfAttentionParam param;
-    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}}};
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}}};
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     // openbert
     param.model = "openbert";
     AclTransformer::SelfAttentionOperation opOpenbert(param);
     opOpenbert.InferShape(inTensorDescs, outTensorDescs);
-    AsdOps::SVector<int64_t> expectDims = {1, 1, 1, 1};
-    ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
-    EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
-    EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
-    EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
-    EXPECT_EQ(expectDims.at(3), outTensorDescs.at(0).dims.at(3));
+    ASSERT_EQ(outTensorDescs.size(), 4);
+    EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    AsdOps::SVector<int64_t> expectDimsOpenbert = {1, 2, 3, 4};
+    ASSERT_EQ(expectDimsOpenbert.size(), outTensorDescs.at(0).dims.size());
+    EXPECT_EQ(expectDimsOpenbert.at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDimsOpenbert.at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDimsOpenbert.at(2), outTensorDescs.at(0).dims.at(2));
+    EXPECT_EQ(expectDimsOpenbert.at(3), outTensorDescs.at(0).dims.at(3));
 
     // chatglm6b / glm130b / chatglm2_6b
     param.model = "chatglm6b";
@@ -47,18 +49,34 @@ TEST(TestSelfAttentionOperation, InferShape) {
     opChatglm6b.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    AsdOps::SVector<int64_t> expectDimsChatglm6b = {1, 2, 12};
+    ASSERT_EQ(expectDimsChatglm6b.size(), outTensorDescs.at(0).dims.size());
+    EXPECT_EQ(expectDimsChatglm6b.at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDimsChatglm6b.at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDimsChatglm6b.at(2), outTensorDescs.at(0).dims.at(2));
 
     param.model = "glm130b";
     AclTransformer::SelfAttentionOperation opGlm130b(param);
     opGlm130b.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    AsdOps::SVector<int64_t> expectDimsGlm130b = {1, 2, 12};
+    ASSERT_EQ(expectDimsGlm130b.size(), outTensorDescs.at(0).dims.size());
+    EXPECT_EQ(expectDimsGlm130b.at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDimsGlm130b.at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDimsGlm130b.at(2), outTensorDescs.at(0).dims.at(2));
 
     param.model = "chatglm2_6b";
     AclTransformer::SelfAttentionOperation opChatglm2_6b(param);
     opChatglm2_6b.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 4);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    AsdOps::SVector<int64_t> expectDimsChatglm2_6b = {1, 2, 12};
+    ASSERT_EQ(expectDimsChatglm2_6b.size(), outTensorDescs.at(0).dims.size());
+    EXPECT_EQ(expectDimsChatglm2_6b.at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDimsChatglm2_6b.at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDimsChatglm2_6b.at(2), outTensorDescs.at(0).dims.at(2));
+
 
     // llama7b
     param.model = "llama7b";
@@ -66,6 +84,21 @@ TEST(TestSelfAttentionOperation, InferShape) {
     opLlama7b.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    AsdOps::SVector<AsdOps::SVector<int64_t>> expectDimsLlama7b = {{1, 2, 12}, {1, 2, 3, 4}, {1, 2, 3, 4}};
+    ASSERT_EQ(expectDimsLlama7b.at(0).size(), outTensorDescs.at(0).dims.size());
+    ASSERT_EQ(expectDimsLlama7b.at(1).size(), outTensorDescs.at(1).dims.size());
+    ASSERT_EQ(expectDimsLlama7b.at(2).size(), outTensorDescs.at(2).dims.size());
+    EXPECT_EQ(expectDimsLlama7b.at(0).at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDimsLlama7b.at(0).at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDimsLlama7b.at(0).at(2), outTensorDescs.at(0).dims.at(2));
+    EXPECT_EQ(expectDimsLlama7b.at(1).at(0), outTensorDescs.at(1).dims.at(0));
+    EXPECT_EQ(expectDimsLlama7b.at(1).at(1), outTensorDescs.at(1).dims.at(1));
+    EXPECT_EQ(expectDimsLlama7b.at(1).at(2), outTensorDescs.at(1).dims.at(2));
+    EXPECT_EQ(expectDimsLlama7b.at(1).at(3), outTensorDescs.at(1).dims.at(3));
+    EXPECT_EQ(expectDimsLlama7b.at(2).at(0), outTensorDescs.at(2).dims.at(0));
+    EXPECT_EQ(expectDimsLlama7b.at(2).at(1), outTensorDescs.at(2).dims.at(1));
+    EXPECT_EQ(expectDimsLlama7b.at(2).at(2), outTensorDescs.at(2).dims.at(2));
+    EXPECT_EQ(expectDimsLlama7b.at(2).at(3), outTensorDescs.at(2).dims.at(3));
 }
 
 // AsdOps::Status AddGolden(const GoldenContext &context) {
