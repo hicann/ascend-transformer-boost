@@ -457,7 +457,6 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
             fn_build_3rdparty
             fn_build
-            fn_run_unittest
             fn_build_coverage
             ;;
         "pythontest")
