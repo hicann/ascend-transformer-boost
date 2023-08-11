@@ -23,18 +23,19 @@
 using namespace AclTransformer;
 using namespace AsdOps;
 
-// TEST(TestEmbeddingOperation, InferShape)
-// {
-//     AclTransformer::EmbeddingParam param;
-//     AclTransformer::EmbeddingOperation op(param);
-//     AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
-//                                                      {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
-//     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
-//     op.InferShape(inTensorDescs, outTensorDescs);
-//     ASSERT_EQ(outTensorDescs.size(), 1);
-//     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
-//     AsdOps::SVector<int64_t> expectDims = {1, 2};
-//     ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
-//     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
-//     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
-// }
+TEST(TestEmbeddingOperation, InferShape)
+{
+    AclTransformer::EmbeddingParam param;
+    AclTransformer::EmbeddingOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
+    AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+    op.InferShape(inTensorDescs, outTensorDescs);
+    ASSERT_EQ(outTensorDescs.size(), 1);
+    EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    AsdOps::SVector<int64_t> expectDims = {1, 2, 1};
+    ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
+    EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
+}
