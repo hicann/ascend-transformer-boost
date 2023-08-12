@@ -13,38 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef GML130B_DECODER_MODEL_H
-#define GML130B_DECODER_MODEL_H
-#include "torch/model_v2/model.h"
+#ifndef ACLTRANSFORMER_ALL_GATHER_OPERATION_H
+#define ACLTRANSFORMER_ALL_GATHER_OPERATION_H
+#include "acltransformer/operation.h"
+#include "acltransformer/params/all_gather.h"
 
 namespace AclTransformer {
-class Glm130BDecoderModel : public Model {
+class AllGatherOperation : public Operation {
 public:
-    struct Param {
-        bool transKey = false;
-        int layerNum = 0;
-        int headNum = 0;
-        int dk = 0;
-        int rank = 0;
-        int rankSize = 1;
-        std::string backend = "hccl";
-        float residualAddScale = 0;
-        double layerNormEps = 0;
-        void FromString(const std::string &param);
-    };
-
-    Glm130BDecoderModel(const std::string &param);
-    ~Glm130BDecoderModel();
+    AllGatherOperation(const AllGatherParam &param);
+    ~AllGatherOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
-    AsdOps::Status InferShape(const std::vector<AsdOps::Tensor> &inTensors,
-                              std::vector<AsdOps::TensorDesc> &outTensorDescs) override;
+
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+    RunnerBuilder *FindBestRunnerBuilder() const override;
 
 private:
-    void BuildGraph() override;
-
-private:
-    Param param_;
+    AllGatherParam param_;
 };
 } // namespace AclTransformer
 #endif

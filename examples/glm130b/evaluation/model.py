@@ -39,6 +39,7 @@ def batch_filling_sequence(
     # step-by-step generation
     token_num = 0
     token_time = []
+    sample_time = []
     while counter < seqs.shape[1] - 1:
         start_time = time.time()
         token_num += 1
@@ -68,7 +69,9 @@ def batch_filling_sequence(
         logits = logits.reshape(batch_size, num_beams, -1)
         tokens = tokens.reshape(batch_size, num_beams, -1)
         mems = mems.reshape(mems.shape[0], batch_size, num_beams, mems.shape[-2], mems.shape[-1])
+        sample_start = time.time()
         tokens, mems = strategy.forward(logits, tokens, mems)
+        sample_time.append(time.time() - sample_start)
         if len(tokens.shape) == 3 and num_beams == 1:
             num_beams = tokens.shape[1]
             position_ids = position_ids.unsqueeze(1).expand(batch_size, num_beams, -1).reshape(batch_size * num_beams, -1)
@@ -79,10 +82,16 @@ def batch_filling_sequence(
         if strategy.is_done:
             break
     if torch.distributed.get_rank() == 0:
-        print('Token num is {}, takes {} second.'.format(token_num, sum(token_time)))
-        print('First token\'s time consuming is {} second.'.format(token_time[0]))
-        print('Non first token\'s average time consuming is {} second.'.format((sum(token_time) - token_time[0]) / (token_num - 1)))
-        print('Non first token\'s performance is {} token/second.'.format((token_num - 1) / (sum(token_time) - token_time[0])))
+        print('Token num is {}, takes {} second.'.format(
+            token_num, round(sum(token_time), 4)))
+        print('First token\'s time consuming is {} second.'.format(
+            round(token_time[0], 4)))
+        print('Non first token\'s average time consuming is {} second.'.format(
+            round((sum(token_time) - token_time[0]) / (token_num - 1), 4)))
+        print('Non first token\'s average sample time consuming is {} second.'.format(
+            round((sum(sample_time) - sample_time[0]) / (token_num - 1), 4)))
+        print('Non first token\'s performance is {} token/second.'.format(
+            round((token_num - 1) / (sum(token_time) - token_time[0]), 4)))
     return strategy.finalize(tokens, mems)
 
 
