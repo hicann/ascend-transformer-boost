@@ -379,21 +379,21 @@ class SelfAttention(torch.nn.Module):
             self.hidden_size_per_attention_head
 
         # Strided linear layer.
-        self.query_key_value = skip_init(
-            torch.nn.Linear,
-            hidden_size,
-            3 * self.inner_hidden_size,
-            bias=bias,
-            dtype=params_dtype,
-        )
+        # self.query_key_value = skip_init(
+        #     torch.nn.Linear,
+        #     hidden_size,
+        #     3 * self.inner_hidden_size,
+        #     bias=bias,
+        #     dtype=params_dtype,
+        # )
 
-        self.dense = skip_init(
-            torch.nn.Linear,
-            self.inner_hidden_size,
-            hidden_size,
-            bias=bias,
-            dtype=params_dtype,
-        )
+        # self.dense = skip_init(
+        #     torch.nn.Linear,
+        #     self.inner_hidden_size,
+        #     hidden_size,
+        #     bias=bias,
+        #     dtype=params_dtype,
+        # )
 
     @staticmethod
     def attention_mask_func(attention_scores, attention_mask):
@@ -514,21 +514,21 @@ class GLU(torch.nn.Module):
         if inner_hidden_size is None:
             inner_hidden_size = 4 * hidden_size
         self.inner_hidden_size = inner_hidden_size
-        self.dense_h_to_4h = skip_init(
-            torch.nn.Linear,
-            self.hidden_size,
-            self.inner_hidden_size,
-            bias=bias,
-            dtype=params_dtype,
-        )
-        # Project back to h.
-        self.dense_4h_to_h = skip_init(
-            torch.nn.Linear,
-            self.inner_hidden_size,
-            self.hidden_size,
-            bias=bias,
-            dtype=params_dtype,
-        )
+        # self.dense_h_to_4h = skip_init(
+        #     torch.nn.Linear,
+        #     self.hidden_size,
+        #     self.inner_hidden_size,
+        #     bias=bias,
+        #     dtype=params_dtype,
+        # )
+        # # Project back to h.
+        # self.dense_4h_to_h = skip_init(
+        #     torch.nn.Linear,
+        #     self.inner_hidden_size,
+        #     self.hidden_size,
+        #     bias=bias,
+        #     dtype=params_dtype,
+        # )
 
     def forward(self, hidden_states):
         """
@@ -1095,8 +1095,10 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             weights = []
             for i in range(self.num_layers):
                 weights_t = list(self.layers[i].state_dict().values())
-                del weights_t[14:19]
-                del weights_t[16:]
+                # print("weights_t", list(self.layers[i].state_dict().keys()))
+                # del weights_t[14:19]
+                # del weights_t[16:]
+                del weights_t[14]
                 weights.extend(weights_t)
             # print("==========set_weight", len(weights))
             self.acl_encoder_operation.set_weight(weights)
