@@ -28,7 +28,7 @@ using namespace AsdOps;
 
 TEST(TestTensorUtil, LoadTensorTest)
 {
-    const int currentDevId = 1;
+    const int currentDevId = 3;
     const int dataCount = 10;
     const int dataSize = dataCount * sizeof(int32_t);
     int32_t data[dataCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
