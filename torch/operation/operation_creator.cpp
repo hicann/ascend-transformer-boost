@@ -64,6 +64,8 @@
 #include "models/llama13b/llama13blayer_parallel_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
+#include "models/bloom7b/bloom7blayer_decoder_operation.h"
+
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
 static AclTransformer::Operation *LLaMA7BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
@@ -600,6 +602,20 @@ static AclTransformer::Operation *ChatGlm2FusionLayerDecoderOperationCreate(cons
     return new AclTransformer::ChatGlm2FusionLayerDecoderOperation(param);
 }
 
+static AclTransformer::Operation *Bloom7BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Bloom7BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    param.activationFuncType = paramJson["activationFuncType"].get<int>();
+    ASD_LOG(INFO) << "Bloom7BLayerDecoderOperationCreate layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", dk:" << param.dk << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
+                  << ", activationFuncType:" << param.activationFuncType;
+    return new AclTransformer::Bloom7BLayerDecoderOperation(param);
+}
+
 AclTransformer::Operation *FfnQuantOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::FfnQuantParam param;
@@ -915,7 +931,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2LayerDecoderOperation", &ChatGlm2LayerDecoderOperationCreate},
     {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate},
     {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
-    {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate}};
+    {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
+    {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
