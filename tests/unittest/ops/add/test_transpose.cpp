@@ -20,7 +20,7 @@
 #include "acltransformer/ops/transpose_operation.h"
 #include "tests/unittest/test_util/op_test.h"
 
-TEST(TestAddOperation, InferShape) {
+TEST(TestTransposeOperation, InferShape) {
     AclTransformer::TransposeParam param;
     param.perm = {0, 1, 2, 3};
     AclTransformer::TransposeOperation op(param);
