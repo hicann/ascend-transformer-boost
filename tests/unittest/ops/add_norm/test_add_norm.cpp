@@ -17,7 +17,7 @@
 #include <torch/torch.h>
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
-#include "acltransformer/ops/add_operation.h"
+#include "acltransformer/ops/add_norm_operation.h"
 #include "tests/unittest/test_util/op_test.h"
 
 using namespace AclTransformer;
@@ -25,32 +25,43 @@ using namespace AsdOps;
 constexpr float ATOL = 0.0001;
 constexpr float RTOL = 0.0001;
 
-TEST(TestAddOperation, InferShape)
+TEST(TestAddNormOperation, InferShape)
 {
-    AclTransformer::AddParam param;
-    AclTransformer::AddOperation op(param);
-    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
+    AclTransformer::AddNormParam param;
+    AclTransformer::AddNormOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+                                                     {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+                                                     {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+                                                     {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 1);
-    EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT16);
     AsdOps::SVector<int64_t> expectDims = {1, 2};
     ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
 }
 
-AsdOps::Status AddGolden(const GoldenContext &context)
+AsdOps::Status AddNormGolden(const GoldenContext &context)
 {
+    double layerNormEps = 1e-12;
     const AsdOps::Tensor &inTensor1 = context.hostInTensors.at(0);
     at::Tensor atInRefTensor1 = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kFloat);
     const AsdOps::Tensor &inTensor2 = context.hostInTensors.at(1);
     at::Tensor atInRefTensor2 = at::from_blob(inTensor2.data, ToIntArrayRef(inTensor2.desc.dims), at::kFloat);
+    const AsdOps::Tensor &inTensor3 = context.hostInTensors.at(2);
+    at::Tensor atInRefTensor3 = at::from_blob(inTensor3.data, ToIntArrayRef(inTensor3.desc.dims), at::kFloat);
+    const AsdOps::Tensor &inTensor4 = context.hostInTensors.at(3);
+    at::Tensor atInRefTensor4 = at::from_blob(inTensor4.data, ToIntArrayRef(inTensor4.desc.dims), at::kFloat);
 
     const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
     at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
-    at::Tensor refOutTensor = atInRefTensor1.add(atInRefTensor2);
+
+    at::Tensor refOutTensor = at::layer_norm(at::add(atInRefTensor1, atInRefTensor2), atInRefTensor3.sizes(),
+                                             atInRefTensor3, atInRefTensor4, layerNormEps)
+                                  .contiguous();
+
     float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
     float *atRefOutArray = (float *)refOutTensor.storage().data_ptr().get(); // golden
 
@@ -66,15 +77,17 @@ AsdOps::Status AddGolden(const GoldenContext &context)
     return Status::OkStatus();
 }
 
-TEST(TestAddOperation, TestAdd)
+TEST(TestAddNormOperation, TestAddNorm)
 {
-    AclTransformer::AddParam param;
-    AclTransformer::AddOperation op(param);
+    AclTransformer::AddNormParam param;
+    AclTransformer::AddNormOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
-        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
-        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
+        {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+        {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+        {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+        {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
     OpTest opTest(2);
-    opTest.Golden(&AddGolden);
+    opTest.Golden(&AddNormGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);
 }
