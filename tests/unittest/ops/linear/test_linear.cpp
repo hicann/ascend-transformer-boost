@@ -79,7 +79,7 @@ TEST(TestLinearOperation, TestLinear)
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}}};
-    OpTest opTest(4);
+    OpTest opTest;
     opTest.Golden(&LinearGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);
@@ -113,12 +113,12 @@ AsdOps::Status LinearWithoutBiasGolden(const GoldenContext &context)
 TEST(TestLinearOperation, TestLinearWithoutBias)
 {
     AclTransformer::LinearParam param;
-    op.hasBias = 0;
+    param.hasBias = 0;
     AclTransformer::LinearOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}}};
-    OpTest opTest(4);
+    OpTest opTest;
     opTest.Golden(&LinearWithoutBiasGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);

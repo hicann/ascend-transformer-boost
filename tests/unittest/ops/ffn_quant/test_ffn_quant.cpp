@@ -81,7 +81,7 @@ TEST(TestFfnQuantOperation, TestFfnQuant)
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {2, 2, 2}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {2, 2, 2}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {2, 2, 2}}};
-    OpTest opTest(4);
+    OpTest opTest;
     opTest.Golden(&FfnQuantGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);

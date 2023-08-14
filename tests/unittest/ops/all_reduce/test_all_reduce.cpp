@@ -69,7 +69,7 @@ TEST(TestAllReduceOperation, TestAllReduce)
     AclTransformer::AllReduceOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
-    OpTest opTest(2);
+    OpTest opTest;
     opTest.Golden(&AllReduceGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);
