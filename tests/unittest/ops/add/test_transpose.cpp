@@ -35,3 +35,4 @@ TEST(TestAddOperation, InferShape) {
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
     EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
     EXPECT_EQ(expectDims.at(3), outTensorDescs.at(0).dims.at(3));
+}
