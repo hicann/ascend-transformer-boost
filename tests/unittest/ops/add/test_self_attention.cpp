@@ -177,7 +177,7 @@ TEST(TestSelfAttentionOperation, TestSelfAttention)
     // openbert
     AclTransformer::SelfAttentionOperation op(param);
     OpTest opTest(3);
-    opTest.Golden(&AddGolden);
+    opTest.Golden(&AddGolden0);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);
 }
