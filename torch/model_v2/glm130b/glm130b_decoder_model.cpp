@@ -27,7 +27,7 @@ enum InTensorId {
     IN_TENSOR_COSTABLE,
     IN_TENSOR_SINTABLE,
     IN_TENSOR_ATTENTIONMASK,
-    IN_TENSOR_MAX,
+    IN_TENSOR_KEYVALUEBASEID,
 };
 
 void Glm130BDecoderModel::Param::FromString(const std::string &param)
@@ -63,12 +63,13 @@ AsdOps::Status Glm130BDecoderModel::InferShape(const std::vector<AsdOps::Tensor>
                                                std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (outTensorDescs.size() != GetOutTensorCount()) {
-        return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
+        return AsdOps::Status::FailStatus(1,
+                                          "Glm130BDecoderModel's outTensorDescs size not equal graph outTensors size");
     }
 
     outTensorDescs.at(0) = inTensors.at(0).desc;
-    const AsdOps::Tensor &keyTensor = inTensors.at(IN_TENSOR_MAX);
-    for (int i = 1; i < outTensorDescs.size(); i++) {
+    const AsdOps::Tensor &keyTensor = inTensors.at(IN_TENSOR_KEYVALUEBASEID);
+    for (size_t i = 1; i < outTensorDescs.size(); i++) {
         outTensorDescs.at(i) = keyTensor.desc;
         outTensorDescs.at(i).dims.at(0) += 1;
     }
@@ -81,7 +82,7 @@ void Glm130BDecoderModel::BuildGraph()
     const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum;
     graph_.weightTensors.resize(weightTensorSize);
 
-    graph_.inTensors.resize(5 + param_.layerNum * 2);
+    graph_.inTensors.resize(IN_TENSOR_KEYVALUEBASEID + param_.layerNum * 2);
     graph_.outTensors.resize(1 + param_.layerNum * 2);
 
     const int nodeSize = param_.layerNum;
@@ -121,8 +122,8 @@ void Glm130BDecoderModel::BuildGraph()
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_COSTABLE);
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SINTABLE);
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK);
-        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_MAX + layerId);
-        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_MAX + layerId + param_.layerNum);
+        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_KEYVALUEBASEID + layerId);
+        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_KEYVALUEBASEID + layerId + param_.layerNum);
 
         if (layerId != param_.layerNum - 1) {
             layerNode.outTensors = {&graph_.internalTensors.at(layerId), &graph_.outTensors.at(layerId + 1),

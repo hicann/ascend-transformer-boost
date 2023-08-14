@@ -1,4 +1,5 @@
-/*j* Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,18 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_HCCL_COMM_POOL_H
-#define ACLTRANSFORMER_HCCL_COMM_POOL_H
-
-#ifdef USE_HCCL_RUNNER
-#include <hccl/hccl.h>
-#include <hccl/hccl_types.h>
-#include <map>
-
+#ifndef ACLTRANSFOERM_PARAMS_ALL_GATHER_H
+#define ACLTRANSFOERM_PARAMS_ALL_GATHER_H
 namespace AclTransformer {
-struct HcclCommPool {
-    std::map<int, HcclComm> hcclCommPool;
+struct AllGatherParam {
+    int rank = 0;
+    int rankSize = 0;
+    int rankRoot = 0;
+    std::string backend = "hccl";
 };
 } // namespace AclTransformer
-#endif
 #endif
