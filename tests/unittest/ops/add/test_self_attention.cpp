@@ -102,6 +102,44 @@ TEST(TestSelfAttentionOperation, InferShape) {
 }
 
 // AsdOps::Status AddGolden(const GoldenContext &context) {
+//     const AsdOps::Tensor &inTensor1 = context.hostInTensors.at(0);
+//     at::Tensor atInRefTensor1 = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kFloat);
+//     const AsdOps::Tensor &inTensor2 = context.hostInTensors.at(1);
+//     at::Tensor atInRefTensor2 = at::from_blob(inTensor2.data, ToIntArrayRef(inTensor2.desc.dims), at::kFloat);
+
+//     torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
+//     mixedQuery = mixedQuery.view({mixedQuery.sizes()[0], mixedQuery.sizes()[1] * this->param_.headNum,
+//                                   mixedQuery.sizes()[2] / this->param_.headNum});
+//     mixedQuery = torch::transpose(mixedQuery, 0, 1);
+//     torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
+//     torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
+//     mixedValue = mixedValue.view({mixedValue.sizes()[0], mixedValue.sizes()[1] * this->param_.headNum,
+//                                   mixedValue.sizes()[2] / this->param_.headNum});
+//     mixedValue = torch::transpose(mixedValue, 0, 1);
+//     mixedKey = mixedKey.view(
+//         {mixedKey.sizes()[0], mixedKey.sizes()[1] * this->param_.headNum, mixedKey.sizes()[2] / this->param_.headNum});
+//     mixedKey = mixedKey.permute({1, 2, 0});
+
+//     torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[3]);
+
+//     double scal = 1 / sqrt(this->param_.dk);
+//     torch::Tensor attentionScores = torch::bmm(mixedQuery, mixedKey).contiguous();
+//     attentionScores = torch::mul(attentionScores, scal);
+//     attentionScores = attentionScores.view({attentionScores.sizes()[0] / this->param_.headNum, this->param_.headNum,
+//                                             attentionScores.sizes()[1], attentionScores.sizes()[2]});
+//     attentionScores = torch::add(attentionScores, attention_mask);
+//     attentionScores = attentionScores.view({attentionScores.sizes()[0] * attentionScores.sizes()[1],
+//                                             attentionScores.sizes()[2], attentionScores.sizes()[3]});
+
+//     torch::Tensor attention_probs = torch::softmax(attentionScores, -1);
+//     torch::Tensor contextLayer = torch::bmm(attention_probs, mixedValue);
+//     contextLayer = torch::transpose(contextLayer, 0, 1).contiguous();
+//     torch::Tensor atOutTensor = contextLayer
+//                                     .view({contextLayer.sizes()[0], contextLayer.sizes()[1] / this->param_.headNum,
+//                                            contextLayer.sizes()[2] * this->param_.headNum})
+//                                     .contiguous();
+
+//     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
 //     return Status::OkStatus();
 // }
 
