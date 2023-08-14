@@ -19,6 +19,7 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/linear_parallel_operation.h"
 #include "acltransformer/ops/all_reduce_operation.h"
+#include "acltransformer/ops/all_gather_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/add_norm_operation.h"
 #include "acltransformer/ops/post_operation.h"
@@ -155,6 +156,23 @@ static AclTransformer::Operation *AllReduceOperationCreate(const nlohmann::json 
     ASD_LOG(INFO) << "AllReduceParam rank:" << param.rank;
     ASD_LOG(INFO) << "AllReduceParam rankSize:" << param.rankSize;
     return new AclTransformer::AllReduceOperation(param);
+}
+
+static AclTransformer::Operation *AllGatherOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::AllGatherParam param;
+    param.rank = paramJson["rank"].get<int>();
+    param.rankSize = paramJson["rankSize"].get<int>();
+    if (paramJson.find("rankRoot") != paramJson.end()) {
+        param.rankRoot = paramJson["rankRoot"].get<int>();
+    }
+    if (paramJson.find("backend") != paramJson.end()) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "AllGatherParam rank:" << param.rank;
+    ASD_LOG(INFO) << "AllGatherParam rankSize:" << param.rankSize;
+    ASD_LOG(INFO) << "AllGatherParam backend:" << param.backend;
+    return new AclTransformer::AllGatherOperation(param);
 }
 
 static AclTransformer::Operation *LinearParallelOperationCreate(const nlohmann::json &paramJson)
@@ -841,6 +859,7 @@ AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PostOperation", &PostOperationCreate},
     {"AllReduceOperation", &AllReduceOperationCreate},
+    {"AllGatherOperation", &AllGatherOperationCreate},
     {"LinearParallelOperation", &LinearParallelOperationCreate},
     {"AddOperation", &AddOperationCreate},
     {"NormOperation", &NormOperationCreate},
