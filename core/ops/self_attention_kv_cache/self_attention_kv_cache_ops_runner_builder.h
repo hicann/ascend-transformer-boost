@@ -25,6 +25,7 @@
 #include "self_attention_kv_cache_ops_chatglm2_6b_runner.h"
 #include "self_attention_kv_cache_ops_llama7b_runner_910a.h"
 #include "self_attention_kv_cache_ops_chatglm2_6b_runner_310p.h"
+#include "self_attention_kv_cache_ops_bloom7b_runner.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
@@ -51,6 +52,8 @@ public:
                 } else {
                     return new SelfAttentionKvCacheOpsChatGlm26bRunner310P(param_);
                 }
+        } else if (param_.model == "bloom7b") {
+            return new SelfAttentionKvCacheOpsBloom7bRunner(param_);
         } else {
             ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
             return nullptr;
