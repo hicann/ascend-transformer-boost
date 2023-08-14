@@ -30,6 +30,11 @@
 namespace AclTransformer {
 class Model {
 public:
+    enum TensorType {
+        INTERMEDIATE_TENSOR = 0,
+        NOT_INTERMEDIATE_TENSOR,
+    };
+
     struct Node {
         std::shared_ptr<Operation> operation;
         std::shared_ptr<Plan> plan;
@@ -37,6 +42,8 @@ public:
         std::vector<AsdOps::Tensor *> outTensors;
         VariantPack variantPack;
         std::vector<torch::Tensor> torchTensors;
+        AsdOps::SVector<TensorType> inTensorTypes;
+        AsdOps::SVector<TensorType> outTensorTypes;
     };
 
     struct Graph {
@@ -47,6 +54,10 @@ public:
         std::vector<Node> nodes;
         void Init();
         std::string ToString() const;
+
+    private:
+        void InitTensorType();
+        bool IsInternalTensor(const AsdOps::Tensor *tensor);
     };
 
     Model(const std::string &modelName, const std::string &param);
