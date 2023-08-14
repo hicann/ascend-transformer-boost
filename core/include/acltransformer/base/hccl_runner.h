@@ -45,6 +45,9 @@ class HcclRunner : public Runner {
 public:
     HcclRunner(const std::string &name, RunnerType runnerType = RUNNER_TYPE_UNDEFINED, int rank = 0, int rankSize = 0,
                int rankRoot = 0);
+#ifdef USE_HCCL_RUNNER
+    HcclRunner(const std::string &name, HcclComm commExt, RunnerType runnerType = RUNNER_TYPE_UNDEFINED);
+#endif
     virtual ~HcclRunner();
 
 protected:
@@ -76,6 +79,7 @@ protected:
     HcclReduceOp allReduceType_ = HCCL_REDUCE_SUM;
     HcclComm hcclComm_;
     HcclRootInfo hcclCommId_;
+    bool useCommnExt_ = false;
 #endif
 };
 } // namespace AclTransformer

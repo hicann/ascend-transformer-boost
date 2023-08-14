@@ -28,6 +28,11 @@ public:
     Runner *Build() override
     {
         ASD_LOG(INFO) << "AllReduceHcclRunnerBuilder::AllReduceHcclRunnerBuilder called";
+#ifdef USE_HCCL_RUNNER
+        if (param_.useCommExt) {
+          return new AllReduceHcclRunner(param_, param_.commExt);
+        }
+#endif
         return new AllReduceHcclRunner(param_);
     }
 
