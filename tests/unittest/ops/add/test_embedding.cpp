@@ -23,8 +23,7 @@
 using namespace AclTransformer;
 using namespace AsdOps;
 
-TEST(TestEmbeddingOperation, InferShape)
-{
+TEST(TestEmbeddingOperation, InferShape) {
     AclTransformer::EmbeddingParam param;
     AclTransformer::EmbeddingOperation op(param);
     AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
