@@ -24,8 +24,8 @@
 
 static const uint64_t IN_TENSOR_COUNT = 6;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 20;
-static const uint64_t NODE_COUNT = 23;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 22;
+static const uint64_t NODE_COUNT = 25;
 namespace AclTransformer {
 SelfAttentionKvCacheOpsLlama7bRunner910a::SelfAttentionKvCacheOpsLlama7bRunner910a(const SelfAttentionKvCacheParam &param)
     : OpsRunner("SelfAttentionKvCacheOpsLlama7bRunner910a", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
@@ -67,6 +67,8 @@ SelfAttentionKvCacheOpsLlama7bRunner910a::SelfAttentionKvCacheOpsLlama7bRunner91
     AsdOps::Tensor &bmmQkOutTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &mulsOut = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &attentionScores = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionScoresF32 = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionProbsF32 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &attentionProbsTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &catValueOutTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -91,7 +93,9 @@ SelfAttentionKvCacheOpsLlama7bRunner910a::SelfAttentionKvCacheOpsLlama7bRunner91
     auto &transdataQKNode = kernelGraph_.nodes.at(nodeNum++);
     auto &mulsNode = kernelGraph_.nodes.at(nodeNum++);
     auto &addMaskNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &castInNode = kernelGraph_.nodes.at(nodeNum++);
     auto &softMaxNode = kernelGraph_.nodes.at(nodeNum++);
+    auto &castOutNode = kernelGraph_.nodes.at(nodeNum++);
     auto &transdataProbsNode = kernelGraph_.nodes.at(nodeNum++);
     auto &transdataVNode = kernelGraph_.nodes.at(nodeNum++);
     auto &bmmVNode = kernelGraph_.nodes.at(nodeNum++);
@@ -220,9 +224,17 @@ SelfAttentionKvCacheOpsLlama7bRunner910a::SelfAttentionKvCacheOpsLlama7bRunner91
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
     };
 
+    castInNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_CAST})};
+    castInNode.inTensors = {&attentionScores};
+    castInNode.outTensors = {&attentionScoresF32};
+
     softMaxNode.opDesc = {0, "NormOperation", AsdOps::OpParam::Norm({AsdOps::OpParam::Norm::NORM_SOFTMAX, {-1}})};
-    softMaxNode.inTensors = {&attentionScores};
-    softMaxNode.outTensors = {&attentionProbs};
+    softMaxNode.inTensors = {&attentionScoresF32};
+    softMaxNode.outTensors = {&attentionProbsF32};
+
+    castOutNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_CAST})};
+    castOutNode.inTensors = {&attentionProbsF32};
+    castOutNode.outTensors = {&attentionProbs};
 
     transdataProbsNode.opDesc = {0, "TransdataOperation",
                                  AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
