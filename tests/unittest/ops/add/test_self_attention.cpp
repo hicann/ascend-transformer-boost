@@ -22,16 +22,20 @@
 
 using namespace AclTransformer;
 using namespace AsdOps;
+constexpr float ATOL = 0.0001;
+constexpr float RTOL = 0.0001;
 
-TEST(TestSelfAttentionOperation, InferShape) {
+TEST(TestSelfAttentionOperation, InferShape)
+{
     AclTransformer::SelfAttentionParam param;
-    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}}};
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}}};
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     AsdOps::SVector<int64_t> expectDims;
-    
+
     // openbert(default)
     AclTransformer::SelfAttentionOperation op0(param);
     op0.InferShape(inTensorDescs, outTensorDescs);
@@ -101,56 +105,79 @@ TEST(TestSelfAttentionOperation, InferShape) {
     EXPECT_EQ(expectDimsLlama7b.at(2).at(3), outTensorDescs.at(2).dims.at(3));
 }
 
-// AsdOps::Status AddGolden(const GoldenContext &context) {
-//     const AsdOps::Tensor &inTensor1 = context.hostInTensors.at(0);
-//     at::Tensor atInRefTensor1 = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kFloat);
-//     const AsdOps::Tensor &inTensor2 = context.hostInTensors.at(1);
-//     at::Tensor atInRefTensor2 = at::from_blob(inTensor2.data, ToIntArrayRef(inTensor2.desc.dims), at::kFloat);
+/// @brief openbert test
+/// @param context
+/// @return
+AsdOps::Status AddGolden0(const GoldenContext &context)
+{
+    // construct param
+    int64_t paramHeadNum = 2;
+    int64_t paramDk = 2;
+    // get input/output tensor
+    const AsdOps::Tensor &inTensor1 = context.hostInTensors.at(0);
+    at::Tensor atInRefTensor1 = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kFloat);
+    const AsdOps::Tensor &inTensor2 = context.hostInTensors.at(1);
+    at::Tensor atInRefTensor2 = at::from_blob(inTensor2.data, ToIntArrayRef(inTensor2.desc.dims), at::kFloat);
+    const AsdOps::Tensor &inTensor3 = context.hostInTensors.at(2);
+    at::Tensor atInRefTensor3 = at::from_blob(inTensor3.data, ToIntArrayRef(inTensor3.desc.dims), at::kFloat);
+    const AsdOps::Tensor &inTensor4 = context.hostInTensors.at(3);
+    at::Tensor atInRefTensor4 = at::from_blob(inTensor4.data, ToIntArrayRef(inTensor4.desc.dims), at::kFloat);
+    const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
+    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // execute operation
+    atInRefTensor1 = atInRefTensor1.view({atInRefTensor1.sizes()[0], atInRefTensor1.sizes()[1] * paramHeadNum,
+                                          atInRefTensor1.sizes()[2] / paramHeadNum});
+    atInRefTensor1 = torch::transpose(atInRefTensor1, 0, 1);
+    atInRefTensor2 = atInRefTensor2.view({atInRefTensor2.sizes()[0], atInRefTensor2.sizes()[1] * paramHeadNum,
+                                          atInRefTensor2.sizes()[2] / paramHeadNum});
+    atInRefTensor2 = atInRefTensor2.permute({1, 2, 0});
+    atInRefTensor3 = atInRefTensor3.view({atInRefTensor3.sizes()[0], atInRefTensor3.sizes()[1] * paramHeadNum,
+                                          atInRefTensor3.sizes()[2] / paramHeadNum});
+    atInRefTensor3 = torch::transpose(atInRefTensor3, 0, 1);
+    double scal = 1 / sqrt(paramDk);
+    torch::Tensor attentionScores = torch::bmm(atInRefTensor1, atInRefTensor2).contiguous();
+    attentionScores = torch::mul(attentionScores, scal);
+    attentionScores = attentionScores.view({attentionScores.sizes()[0] / paramHeadNum, paramHeadNum,
+                                            attentionScores.sizes()[1], attentionScores.sizes()[2]});
+    attentionScores = torch::add(attentionScores, atInRefTensor4);
+    attentionScores = attentionScores.view({attentionScores.sizes()[0] * attentionScores.sizes()[1],
+                                            attentionScores.sizes()[2], attentionScores.sizes()[3]});
 
-//     torch::Tensor mixedQuery = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[0]);
-//     mixedQuery = mixedQuery.view({mixedQuery.sizes()[0], mixedQuery.sizes()[1] * this->param_.headNum,
-//                                   mixedQuery.sizes()[2] / this->param_.headNum});
-//     mixedQuery = torch::transpose(mixedQuery, 0, 1);
-//     torch::Tensor mixedKey = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[1]);
-//     torch::Tensor mixedValue = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[2]);
-//     mixedValue = mixedValue.view({mixedValue.sizes()[0], mixedValue.sizes()[1] * this->param_.headNum,
-//                                   mixedValue.sizes()[2] / this->param_.headNum});
-//     mixedValue = torch::transpose(mixedValue, 0, 1);
-//     mixedKey = mixedKey.view(
-//         {mixedKey.sizes()[0], mixedKey.sizes()[1] * this->param_.headNum, mixedKey.sizes()[2] / this->param_.headNum});
-//     mixedKey = mixedKey.permute({1, 2, 0});
+    torch::Tensor attention_probs = torch::softmax(attentionScores, -1);
+    torch::Tensor contextLayer = torch::bmm(attention_probs, atInRefTensor3);
+    contextLayer = torch::transpose(contextLayer, 0, 1).contiguous();
+    torch::Tensor refOutTensor = contextLayer
+                                     .view({contextLayer.sizes()[0], contextLayer.sizes()[1] / paramHeadNum,
+                                            contextLayer.sizes()[2] * paramHeadNum})
+                                     .contiguous();
+    float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
+    float *atRefOutArray = (float *)refOutTensor.storage().data_ptr().get(); // golden
+    // compare
+    for (int i = 0; i < outTensor.Numel(); i++) {
+        float expect = atRefOutArray[i];
+        float actual = atOutArray[i];
+        bool judge = std::abs(expect - actual) <= (ATOL + RTOL * std::abs(actual));
+        EXPECT_EQ(judge, true);
+        if (!judge) {
+            return Status::FailStatus(1, "unequal");
+        }
+    }
+    return Status::OkStatus();
+}
 
-//     torch::Tensor attention_mask = TorchUtil::AsdOpsTensor2AtTensor(handle, runnerVariantPack.inTensors[3]);
+TEST(TestSelfAttentionOperation, TestSelfAttention)
+{
+    AclTransformer::SelfAttentionParam param;
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}}};
 
-//     double scal = 1 / sqrt(this->param_.dk);
-//     torch::Tensor attentionScores = torch::bmm(mixedQuery, mixedKey).contiguous();
-//     attentionScores = torch::mul(attentionScores, scal);
-//     attentionScores = attentionScores.view({attentionScores.sizes()[0] / this->param_.headNum, this->param_.headNum,
-//                                             attentionScores.sizes()[1], attentionScores.sizes()[2]});
-//     attentionScores = torch::add(attentionScores, attention_mask);
-//     attentionScores = attentionScores.view({attentionScores.sizes()[0] * attentionScores.sizes()[1],
-//                                             attentionScores.sizes()[2], attentionScores.sizes()[3]});
-
-//     torch::Tensor attention_probs = torch::softmax(attentionScores, -1);
-//     torch::Tensor contextLayer = torch::bmm(attention_probs, mixedValue);
-//     contextLayer = torch::transpose(contextLayer, 0, 1).contiguous();
-//     torch::Tensor atOutTensor = contextLayer
-//                                     .view({contextLayer.sizes()[0], contextLayer.sizes()[1] / this->param_.headNum,
-//                                            contextLayer.sizes()[2] * this->param_.headNum})
-//                                     .contiguous();
-
-//     TorchUtil::CopyAtTensor2AsdOpsTensor(handle.stream, atOutTensor, runnerVariantPack.outTensors[0]);
-//     return Status::OkStatus();
-// }
-
-// TEST(TestSelfAttentionOperation, TestSelfAttention) {
-//     AclTransformer::SelfAttentionParam param;
-//     AclTransformer::SelfAttentionOperation op(param);
-//     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
-//                                                          {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
-
-//     OpTest opTest(3);
-//     opTest.Golden(&AddGolden);
-//     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
-//     ASSERT_EQ(status.Ok(), true);
-// }
+    // openbert
+    AclTransformer::SelfAttentionOperation op(param);
+    OpTest opTest(3);
+    opTest.Golden(&AddGolden);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
+    ASSERT_EQ(status.Ok(), true);
+}
