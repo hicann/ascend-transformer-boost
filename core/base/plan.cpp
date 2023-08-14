@@ -23,6 +23,7 @@
 #include <asdops/utils/time/timer.h>
 #include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/runner.h"
+#include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "acltransformer/utils/profiling/profiling_funcs.h"
 
@@ -32,20 +33,20 @@ const size_t HOST_TILING_BUFFER_DEFAULT_SIZE = 1024;
 Plan::Plan()
 {
     hostTilingBuffer_.resize(HOST_TILING_BUFFER_DEFAULT_SIZE);
-#ifdef USE_PROFILING
-    hashIdArray_.resize(MAX_PROFILING_FUNC_NAME);
-    const char *setUpName = "Plan::SetUp";
-    const char *executeName = "Plan::Execute";
-    const size_t setUpNameLen = strlen(setUpName);
-    const size_t executeNameLen = strlen(executeName);
-    hashIdArray_.at(PLAN_SETUP) = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(setUpName, setUpNameLen);
-    hashIdArray_.at(PLAN_EXECUTE) = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(executeName, executeNameLen);
-#endif
+    
+    if (AsdOps::GetSingleton<Config>().IsUsingProfiling()) {
+        hashIdArray_.resize(MAX_PROFILING_FUNC_NAME);
+        const char *setUpName = "Plan::SetUp";
+        const char *executeName = "Plan::Execute";
+        const size_t setUpNameLen = strlen(setUpName);
+        const size_t executeNameLen = strlen(executeName);
+        hashIdArray_.at(PLAN_SETUP) = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(setUpName, setUpNameLen);
+        hashIdArray_.at(PLAN_EXECUTE) = AsdOps::GetSingleton<AsdProfiling>().AsdGetHashId(executeName, executeNameLen);
+    }
 }
 
 Plan::~Plan() {}
 
-#ifdef USE_PROFILING
 void Plan::ReportApiInfo(const uint64_t beginTime, ProfilingFuncName type)
 {
     MsProfApi info{};
@@ -63,15 +64,14 @@ void Plan::ReportApiInfo(const uint64_t beginTime, ProfilingFuncName type)
         ASD_LOG(ERROR) << "AsdReportApi error!";
     }
 }
-#endif
 
 void Plan::SetRunnerSaveTensorDir(const std::string &dir) { runner_->SetSaveTensorDir(dir + runner_->GetName()); }
 
 AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
 {
-#ifdef USE_PROFILING
-    const auto beginTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
-#endif
+    const uint64_t beginTime = AsdOps::GetSingleton<Config>().IsUsingProfiling() 
+                                ? AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime()
+                                : 0;
     ASD_LOG(INFO) << name_ << " setup start";
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
@@ -102,9 +102,9 @@ AsdOps::Status Plan::Setup(Handle handle, const VariantPack &variantPack)
                   << ", workspaceBufferSize:" << runnerVariantPack_.workspaceBufferSize
                   << ", intermediateBufferSize:" << runnerVariantPack_.intermediateBufferSize;
 
-#ifdef USE_PROFILING
-    ReportApiInfo(beginTime, PLAN_SETUP);
-#endif
+    if (AsdOps::GetSingleton<Config>().IsUsingProfiling()) {
+        ReportApiInfo(beginTime, PLAN_SETUP);
+    }
     return AsdOps::Status::OkStatus();
 }
 
@@ -116,9 +116,9 @@ uint64_t Plan::GetWorkspaceSize()
 
 AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
 {
-#ifdef USE_PROFILING
-    const auto beginTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
-#endif
+    const uint64_t beginTime = AsdOps::GetSingleton<Config>().IsUsingProfiling() 
+                                    ? AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime()
+                                    : 0;
     ASD_LOG(INFO) << name_ << " execute start";
     runnerVariantPack_.inTensors = variantPack.inTensors;
     runnerVariantPack_.outTensors = variantPack.outTensors;
@@ -141,9 +141,9 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
 
     ASD_LOG(INFO) << name_ << " execute success";
     ASD_LOG(INFO) << name_ << " runner execute success";
-#ifdef USE_PROFILING
-    ReportApiInfo(beginTime, PLAN_EXECUTE);
-#endif
+    if (AsdOps::GetSingleton<Config>().IsUsingProfiling()) {
+        ReportApiInfo(beginTime, PLAN_EXECUTE);
+    }
     return AsdOps::Status::OkStatus();
 }
 
