@@ -50,6 +50,7 @@ public:
     bool IsConvertNCHWToND() const;
     bool IsSaveTensorForRunner(const std::string &runnerName);
     bool IsTorchTensorFormatCast();
+    bool IsUsingProfiling();
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
@@ -84,6 +85,7 @@ private:
     bool isUsePpMatmul_ = false;
     bool isConvertNCHWToND_ = false;
     bool isTorchTensorFormatCast_ = true;
+    bool isUsingProfiling_ = false;
     std::set<std::string> saveTensorRunnerNameSet_;
 };
 } // namespace AclTransformer

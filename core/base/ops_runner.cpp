@@ -107,9 +107,9 @@ AsdOps::Status OpsRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack)
 
     AsdOps::GetSingleton<KernelCache>().Init(runnerType_, kernelGraph_.nodes.size());
 
-#ifdef USE_PROFILING
-    AsdOps::GetSingleton<AsdProfiling>().Init(runnerType_, kernelGraph_.nodes.size());
-#endif
+    if (AsdOps::GetSingleton<Config>().IsUsingProfiling()) {
+        AsdOps::GetSingleton<AsdProfiling>().Init(runnerType_, kernelGraph_.nodes.size());
+    }
 
     InitTensorMaxNodeMap();
     ASD_LOG(INFO) << GetName() << " Setup start, kernel graph:\n" << kernelGraph_.ToString();
@@ -311,7 +311,6 @@ void OpsRunner::UpdateRunInfoWorkspace(RunnerVariantPack &runnerVariantPack)
     }
 }
 
-#ifdef USE_PROFILING
 void OpsRunner::ReportLaunchInfo(const uint64_t beginTime, const char *opName, size_t nodeId)
 {
     MsProfApi info{};
@@ -352,7 +351,6 @@ void OpsRunner::ReportAdditionalInfo(const uint64_t timeStamp, const char *opNam
         ASD_LOG(ERROR) << "AsdReportCompactInfo error!";
     }
 }
-#endif
 
 void OpsRunner::RunAllKernel(Handle &handle)
 {
@@ -380,16 +378,17 @@ void OpsRunner::RunAllKernel(Handle &handle)
         }
 
         AsdOps::Timer timer;
-#ifdef USE_PROFILING
-        const auto beginTime = AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime();
-#endif
+
+        const uint64_t beginTime = AsdOps::GetSingleton<Config>().IsUsingProfiling() 
+                                        ? AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime()
+                                        : 0;
 
         AsdOps::Status st = kernel->Run(kernelRunInfo);
 
-#ifdef USE_PROFILING
-        ReportLaunchInfo(beginTime, kernel->GetName().c_str(), i);
-        ReportAdditionalInfo(beginTime + 1, kernel->GetName().c_str(), i);
-#endif
+        if (AsdOps::GetSingleton<Config>().IsUsingProfiling()) {
+            ReportLaunchInfo(beginTime, kernel->GetName().c_str(), i);
+            ReportAdditionalInfo(beginTime + 1, kernel->GetName().c_str(), i);
+        }
         AsdOps::GetSingleton<Statistic>().kernelExecuteTime += timer.ElapsedMicroSecond();
 
         if (AsdOps::GetSingleton<Config>().IsStreamSyncEveryKernelEnable()) {
