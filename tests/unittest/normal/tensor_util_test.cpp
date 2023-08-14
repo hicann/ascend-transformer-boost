@@ -28,7 +28,8 @@ using namespace AsdOps;
 
 TEST(TestTensorUtil, LoadTensorTest)
 {
-    const int currentDevId = 2;
+    const char *devEnvStr = std::getenv("SET_NPU_DEVICE");
+    const int currentDevId = (devEnvStr != nullptr) ? atoi(devEnvStr) : 0;
     const int dataCount = 10;
     const int dataSize = dataCount * sizeof(int32_t);
     int32_t data[dataCount] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -41,10 +42,10 @@ TEST(TestTensorUtil, LoadTensorTest)
     if (!FileSystem::IsDir(dirStr)) {
         FileSystem::MakeDir(dirStr, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     }
-    
-    void *dataPtr = static_cast<void*>(data);
+
+    void *dataPtr = static_cast<void *>(data);
     std::vector<char> hostData(dataSize);
-    memcpy(hostData.data(), static_cast<char*>(dataPtr), dataSize);
+    memcpy(hostData.data(), static_cast<char *>(dataPtr), dataSize);
 
     AsdOps::Tensor tensor;
     tensor.desc.dtype = TensorDType::TENSOR_DTYPE_INT32;

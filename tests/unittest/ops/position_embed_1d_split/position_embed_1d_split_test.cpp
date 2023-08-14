@@ -108,7 +108,7 @@ TEST(TestPositionEmbedding1dSplitOperation, TestPositionEmbedding1dSplit)
                                             {AsdOps::TENSOR_DTYPE_INT64, AsdOps::TENSOR_FORMAT_ND, {8, 8}},
                                             {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}},
                                             {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}}};
-    OpTest opTest(4);
+    OpTest opTest;
     opTest.LongRand(LONG_MIN_VALUE,LONG_MAX_VALUE);
     opTest.Golden(std::bind(PosEmb1dSplitGolden, opParam, std::placeholders::_1));
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
