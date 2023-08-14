@@ -29,8 +29,6 @@ public:
         bool transKey = true;
         int layerNum = 0;
         float residualAddScale = 0;
-        std::string model = "chatglm2_6b";
-        
         void FromString(const std::string &param);
     };
 
