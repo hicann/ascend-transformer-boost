@@ -113,7 +113,7 @@ AsdOps::Status FfnWithoutBiasGolden(const GoldenContext &context)
 TEST(TestFfnOperation, TestFfnWithoutBias)
 {
     AclTransformer::FfnParam param;
-    op.hasBias = 0;
+    param.hasBias = 0;
     AclTransformer::FfnOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},

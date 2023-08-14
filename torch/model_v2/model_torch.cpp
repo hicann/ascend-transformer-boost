@@ -24,6 +24,9 @@
 #include "model.h"
 #include "torch/utils/utils.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_model.h"
+#include "torch/model_v2/chatglm2_6b/chatglm2_6b_decoder_model.h"
+#include "torch/model_v2/glm130b/glm130b_decoder_model.h"
+#include "torch/model_v2/chatglm2_6b/chatglm2_6b_encoder_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -47,6 +50,12 @@ void ModelTorch::SetParam(std::string param)
     ASD_LOG(INFO) << "ModelTorch set param start, modelName:" << modelName_ << ", param:" << param;
     if (modelName_ == "ChatGlm6BDecoderModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderModel>(param);
+    } else if (modelName_ == "ChatGlm2DecoderModel") {
+        model_ = std::make_shared<AclTransformer::ChatGlm2DecoderModel>(param);
+    } else if (modelName_ == "Glm130BDecoderModel") {
+        model_ = std::make_shared<AclTransformer::Glm130BDecoderModel>(param);
+    } else if (modelName_ == "ChatGlm2EncoderModel") {
+        model_ = std::make_shared<AclTransformer::ChatGlm2EncoderModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
@@ -94,6 +103,13 @@ std::vector<torch::Tensor> ModelTorch::Execute(std::vector<torch::Tensor> atInTe
 
     std::vector<AsdOps::Tensor> inTensors;
     AtTensor2AsdTensor(atInTensors, inTensors);
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsConvertNCHWToND()) {
+        for (size_t i = 0; i < inTensors.size(); ++i) {
+            if ( inTensors.at(i).desc.format == AsdOps::TENSOR_FORMAT_NCHW) {
+                 inTensors.at(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+            }
+        }
+    }
 
     std::vector<AsdOps::TensorDesc> outTensorDescs(model_->GetOutTensorCount());
     AsdOps::Status st = model_->InferShape(inTensors, outTensorDescs);

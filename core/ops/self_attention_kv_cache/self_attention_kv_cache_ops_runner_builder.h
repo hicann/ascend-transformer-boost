@@ -23,6 +23,8 @@
 #include "self_attention_kv_cache_ops_llama7b_runner.h"
 #include "self_attention_kv_cache_ops_chatglm6b_runner_910a.h"
 #include "self_attention_kv_cache_ops_chatglm2_6b_runner.h"
+#include "self_attention_kv_cache_ops_llama7b_runner_910a.h"
+#include "self_attention_kv_cache_ops_chatglm2_6b_runner_310p.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
@@ -37,10 +39,18 @@ public:
             } else {
                 return new SelfAttentionKvCacheOpsChatGlm6bRunner910a(param_);
             }
-        } else if (param_.model == "llama7b") {
-            return new SelfAttentionKvCacheOpsLlama7bRunner(param_);
+        } else if (param_.model == "llama7b" || param_.model == "llama13b") {
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                return new SelfAttentionKvCacheOpsLlama7bRunner(param_);
+            } else {
+                return new SelfAttentionKvCacheOpsLlama7bRunner910a(param_);
+            }
         } else if (param_.model == "chatglm2_6b") {
-            return new SelfAttentionKvCacheOpsChatGlm26bRunner(param_);
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                    return new SelfAttentionKvCacheOpsChatGlm26bRunner(param_); 
+                } else {
+                    return new SelfAttentionKvCacheOpsChatGlm26bRunner310P(param_);
+                }
         } else {
             ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
             return nullptr;

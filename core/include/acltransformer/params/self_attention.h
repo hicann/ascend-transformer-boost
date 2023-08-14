@@ -24,8 +24,8 @@ struct SelfAttentionParam {
     float preScale = 0;
     float postScale = 0;
     int64_t numHeadsPerPartition = 0;
-    int64_t hiddenSizePerAttentionHead = 0;
-    int64_t numMultiQueryGroupsPerPartition = 0;
+    int64_t hiddenSizePerHead = 0;
+    int64_t numGroupsPerPartition = 0;
     std::string model = "openbert";
 };
 } // namespace AclTransformer

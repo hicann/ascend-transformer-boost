@@ -28,7 +28,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/context/context.h"
+#include "acltransformer/context/context.h"
 #include "models/glm130b/glm130blayer_encoder_operation.h"
 
 const size_t WEIGHT_COUNT_PER_LAYER = 12;
@@ -58,6 +58,7 @@ void Glm130BModelEncoderTorch::SetParam(std::string param)
         opParam.layerId = i;
         opParam.rank = modelParam_.rank;
         opParam.rankSize = modelParam_.rankSize;
+        opParam.backend = modelParam_.backend;
         opParam.residualAddScale = modelParam_.residualAddScale;
         opParam.layerNormEps = modelParam_.layerNormEps;
         AclTransformer::Operation *op = new AclTransformer::Glm130BLayerEncoderOperation(opParam);

@@ -1,0 +1,3 @@
+cp -r /data/tmp .
+docker build --no-cache --network=host --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy -t acltransformer:v1 -f Dockerfile_dev .
+rm -rf tmp

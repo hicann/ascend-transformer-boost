@@ -28,6 +28,7 @@ HOST_CODE_PACK_SWITCH=ON
 DEVICE_CODE_PACK_SWITCH=ON
 USE_CXX11_ABI=ON
 USE_VERBOSE=OFF
+BUILD_EXAMPLES=OFF
 BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples"
 BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" 
     "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" "--use_profiling")
@@ -193,6 +194,11 @@ function fn_copy_tools()
     cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
 }
 
+function fn_copy_examples()
+{
+    cp -r $CODE_ROOT/examples $OUTPUT_DIR/acltransformer/examples
+}
+
 function fn_build()
 {
     fn_build_release_3rdparty
@@ -220,6 +226,11 @@ function fn_build()
     make install
     chmod +x $OUTPUT_DIR/acltransformer/bin/*
     fn_copy_tools
+    
+    if [ $BUILD_EXAMPLES == "ON" ];then
+        fn_copy_examples
+    fi
+
     fn_generate_doxygen
 }
 
@@ -433,6 +444,7 @@ function fn_main()
             ;;
         "examples")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
+            BUILD_EXAMPLES=ON
             fn_build
             ;;
         "unittest")
@@ -445,7 +457,6 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
             fn_build_3rdparty
             fn_build
-            fn_run_unittest
             fn_build_coverage
             ;;
         "pythontest")

@@ -30,7 +30,7 @@
 #include "acltransformer/config.h"
 #include "acltransformer/statistic.h"
 #include "torch/utils/utils.h"
-#include "torch/context/context.h"
+#include "acltransformer/context/context.h"
 
 namespace AclTransformer {
 std::string Model::Graph::ToString() const
@@ -80,6 +80,34 @@ void Model::Graph::Init()
         node.variantPack.outTensors.resize(node.outTensors.size());
         node.torchTensors.resize(node.outTensors.size());
     }
+    InitTensorType();
+}
+
+void Model::Graph::InitTensorType()
+{
+    for (auto &node : nodes) {
+        node.inTensorTypes.resize(node.inTensors.size());
+        node.outTensorTypes.resize(node.outTensors.size());
+        for (size_t i = 0; i < node.inTensors.size(); ++i) {
+            node.inTensorTypes.at(i) =
+                IsInternalTensor(node.inTensors.at(i)) ? Model::INTERMEDIATE_TENSOR : Model::NOT_INTERMEDIATE_TENSOR;
+        }
+        for (size_t i = 0; i < node.outTensors.size(); ++i) {
+            node.outTensorTypes.at(i) =
+                IsInternalTensor(node.outTensors.at(i)) ? Model::INTERMEDIATE_TENSOR : Model::NOT_INTERMEDIATE_TENSOR;
+        }
+    }
+}
+
+bool Model::Graph::IsInternalTensor(const AsdOps::Tensor *tensor)
+{
+    for (auto &internalTensor : internalTensors) {
+        if (&internalTensor == tensor) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 Model::Model(const std::string &modelName, const std::string &param) : modelName_(modelName), param_(param)
@@ -184,7 +212,7 @@ void Model::BuildNodeVariantPack(int nodeId)
 
     for (size_t i = 0; i < node.outTensors.size(); ++i) {
         node.variantPack.outTensors.at(i) = *node.outTensors.at(i);
-        if (node.variantPack.outTensors.at(i).data == nullptr) {
+        if (node.outTensorTypes.at(i) == Model::INTERMEDIATE_TENSOR) {
             if (node.torchTensors.at(i).numel() != outTensorDescs.at(i).Numel()) {
                 ASD_LOG(INFO) << modelName_ << "  nodes[" << nodeId << "] new outtensors[" << i << "]";
                 AsdOps::Timer timer;

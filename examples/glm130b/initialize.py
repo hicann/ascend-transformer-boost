@@ -112,7 +112,7 @@ def initialize_model_and_tokenizer(args):
     # acl_allreduce_operation = torch.classes.OperationTorch.OperationTorch("AllReduceOperation")
     # rankSize = get_model_parallel_world_size()
     # rank = torch.distributed.get_rank()
-    # acl_param = json.dumps({"rank": rank, "rankSize": rankSize})
+    # acl_param = json.dumps({"rank": rank, "rankSize": rankSize, "rankRoot": 0, "backend": "hccl"})
     # acl_allreduce_operation.set_param(acl_param)
     # outTensor = acl_allreduce_operation.execute([oneTensor])[0]
     # print('all reduce output tensor is ' + str(outTensor))

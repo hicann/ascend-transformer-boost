@@ -23,7 +23,7 @@ struct LinearParallelParam {
     int rankRoot = 0;
     std::string bias = "";
     std::string parallelType = "RowParallel";
-    std::string backend = "lccl";
+    std::string backend = "hccl";
 };
 } // namespace AclTransformer
 #endif

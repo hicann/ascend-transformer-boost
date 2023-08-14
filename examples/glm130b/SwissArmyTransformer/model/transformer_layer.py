@@ -436,6 +436,7 @@ class BaseTransformer(torch.nn.Module):
                             "layerId": layer_id,
                             "rank": self.rank,
                             "rankSize": self.rankSize,
+                            "backend": "hccl",
                             "residualAddScale": (2 * num_layers) ** 0.5
                 })
             )
@@ -451,6 +452,7 @@ class BaseTransformer(torch.nn.Module):
                             "layerId": layer_id,
                             "rank": self.rank,
                             "rankSize": self.rankSize,
+                            "backend": "hccl",
                             "residualAddScale": (2 * num_layers) ** 0.5
                 })
             )
