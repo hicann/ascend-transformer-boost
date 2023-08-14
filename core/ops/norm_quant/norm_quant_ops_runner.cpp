@@ -37,7 +37,7 @@ NormQuantOpsRunner::NormQuantOpsRunner(const NormQuantParam &param)
 
     kernelGraph_.nodes.resize(1);
     auto &layerNormNode = kernelGraph_.nodes[0];
-    AsdOps::OpParam::Norm normParam = {AsdOps::OpParam::Norm::NORM_POSTLAYERNORMQUANT};
+    AsdOps::OpParam::Norm normParam = {AsdOps::OpParam::Norm::NORM_LAYERNORMQUANT};
 
     normParam.begin_norm_axis = 1;
     normParam.begin_params_axis = 1;
