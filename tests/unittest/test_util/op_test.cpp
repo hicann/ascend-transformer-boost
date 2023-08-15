@@ -24,7 +24,11 @@
 #include "acltransformer/context/context.h"
 
 namespace AclTransformer {
-OpTest::OpTest(int deviceId) : deviceId_(deviceId) {}
+OpTest::OpTest()
+{
+    const char *envStr = std::getenv("SET_NPU_DEVICE");
+    deviceId_ = (envStr != nullptr) ? atoi(envStr) : 0;
+}
 
 OpTest::~OpTest() { Cleanup(); }
 
@@ -51,7 +55,6 @@ void OpTest::Cleanup()
     }
     goldenContext_.deviceInTensors.clear();
 
-    size_t i = 0;
     for (auto tensor : goldenContext_.deviceOutTensors) {
         if (tensor.data) {
             AsdRtMemFreeDevice(tensor.data);

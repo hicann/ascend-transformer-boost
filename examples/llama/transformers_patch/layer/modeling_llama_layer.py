@@ -449,14 +449,14 @@ class LlamaDecoderLayer(nn.Module):
         if use_cache:
             outputs += (present_key_value,)
 
-        # if test_llama7bOut is not None:
+        if test_llama7bOut is not None:
             # print(test_llama7bOut)
             # print(hidden_states)
-            # assert torch.allclose(
-            #     test_llama7bOut, hidden_states, rtol=0.05, atol=0.05), 'not equal'
+            assert torch.allclose(
+                test_llama7bOut, hidden_states, rtol=0.05, atol=0.05), 'not equal'
             # assert F.cosine_similarity(output.view(output.numel()), test_glmBlockOut.view(
             #         test_glmBlockOut.numel()), dim=0).item() >= 0.99, 'fail'
-            # print("success!")
+            print("success!")
 
         return outputs
 

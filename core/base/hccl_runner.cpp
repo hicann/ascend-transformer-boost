@@ -60,15 +60,7 @@ HcclRunner::HcclRunner(const std::string &name, RunnerType runnerType, int rank,
 #endif
 }
 
-HcclRunner::~HcclRunner()
-{
-#ifdef USE_HCCL_RUNNER
-    auto ret = HcclCommDestroy(hcclComm_);
-    if (ret != HCCL_SUCCESS) {
-        ASD_LOG(ERROR) << "HCCL CommSestroy ERROR" << ret;
-    }
-#endif
-}
+HcclRunner::~HcclRunner() {}
 
 AsdOps::Status HcclRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack) { return AsdOps::Status::OkStatus(); }
 

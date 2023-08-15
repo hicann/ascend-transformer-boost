@@ -21,9 +21,8 @@
 
 namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 7;
-const int FINALNORMNODE_WEIGHT_COUNT = 0;
-const int OPERATION_COUNT_BEFORE_LAYER = 0;
-const int OPERATION_COUNT_AFTER_LAYER = 0;
+const int FINALNORMNODE_WEIGHT_COUNT = 1;
+const int OPERATION_COUNT_AFTER_LAYER = 1;
 
 enum InTensorId {
     IN_TENSOR_HIDDENSTATES = 0,
@@ -40,20 +39,19 @@ void ChatGlm2DecoderModel::Param::FromString(const std::string &param)
 {
     nlohmann::json paramJson = nlohmann::json::parse(param);
     rmsNormEps = paramJson["rmsNormEps"].get<float>();
-    numHeadsPerPartition = paramJson["numHeadPerPartition"].get<int>();
+    numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int>();
     hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int>();
-    numGroupsPerPartition = paramJson["numGroupPerPartition"].get<int>();
+    numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int>();
     transKey = paramJson["transKey"].get<bool>();
     layerNum = paramJson["layerNum"].get<int>();
     residualAddScale = paramJson["residualAddScale"].get<float>();
-    model = paramJson["model"].get<std::string>();
     
     ASD_LOG(INFO) << "ChatGlm2DecoderModel param rmsNormEps:" << rmsNormEps
                   << ", numHeadsPerPartition:" << numHeadsPerPartition  
                   << ", hiddenSizePerHead:" << hiddenSizePerHead
                   << ", numGroupsPerPartition:" << numGroupsPerPartition
                   << ", transKey:" << transKey  << ", layerNum:" << layerNum
-                  << ", residualAddScale:" << residualAddScale << ", model:" << model;
+                  << ", residualAddScale:" << residualAddScale;
 }
 
 ChatGlm2DecoderModel::ChatGlm2DecoderModel(const std::string &param) : Model("ChatGlm2DecoderModel", param)
@@ -91,7 +89,7 @@ void ChatGlm2DecoderModel::BuildGraph()
     graph_.inTensors.resize(IN_TENSOR_MAX + param_.layerNum * 2);
     graph_.outTensors.resize(OUT_TENSOR_MAX + param_.layerNum * 2);
 
-    const int nodeSize = param_.layerNum + OPERATION_COUNT_BEFORE_LAYER + OPERATION_COUNT_AFTER_LAYER;
+    const int nodeSize = param_.layerNum + OPERATION_COUNT_AFTER_LAYER;
     graph_.nodes.resize(nodeSize);
 
     graph_.internalTensors.resize(graph_.nodes.size() - 1);
@@ -109,9 +107,9 @@ void ChatGlm2DecoderModel::BuildGraph()
         opParam.transKey = param_.transKey;
         opParam.layerId = layerId;
         opParam.residualAddScale = param_.residualAddScale;
-        opParam.preScale = layerId;
-        opParam.postScale = layerId;
-        opParam.model = param_.model;
+        opParam.preScale = layerId + 1;
+        opParam.postScale = layerId + 1;
+        opParam.model = "chatglm2_6b";
 
         layerNode.operation = std::make_shared<ChatGlm2LayerDecoderOperation>(opParam);
         layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
@@ -127,21 +125,16 @@ void ChatGlm2DecoderModel::BuildGraph()
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_MAX + layerId);
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_MAX + layerId + param_.layerNum);
 
-        if (layerId != param_.layerNum - 1) {
-            layerNode.outTensors = {&graph_.internalTensors.at(layerId), &graph_.outTensors.at(layerId + 1),
-                                    &graph_.outTensors.at(layerId + 1 + param_.layerNum)};
-        } else {
-            layerNode.outTensors = {&graph_.outTensors.at(0), &graph_.outTensors.at(layerId + 1),
-                                    &graph_.outTensors.at(layerId + 1 + param_.layerNum)};
-        }
+        layerNode.outTensors = {&graph_.internalTensors.at(layerId), &graph_.outTensors.at(layerId + 1),
+                                &graph_.outTensors.at(layerId + 1 + param_.layerNum)};
         firstInTensor = layerNode.outTensors.at(0); 
     }
 
-    // auto &finalNormNode = graph_.nodes.at(nodeId++);
-    // RmsNormParam finalNormParam = {param_.rmsNormEps};
-    // finalNormNode.operation = std::make_shared<RmsNormOperation>(finalNormParam);
-    // const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT;
-    // finalNormNode.inTensors = {firstInTensor, &graph_.weightTensors.at(finalLayerNormWeightTensorId)};
-    // finalNormNode.outTensors = {&graph_.outTensors.at(0)};
+    auto &finalNormNode = graph_.nodes.at(nodeId++);
+    RmsNormParam finalNormParam = {param_.rmsNormEps};
+    finalNormNode.operation = std::make_shared<RmsNormOperation>(finalNormParam);
+    const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT;
+    finalNormNode.inTensors = {firstInTensor, &graph_.weightTensors.at(finalLayerNormWeightTensorId)};
+    finalNormNode.outTensors = {&graph_.outTensors.at(0)};
 }
 } // namespace AclTransformer

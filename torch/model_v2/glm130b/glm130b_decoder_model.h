@@ -42,7 +42,7 @@ public:
 
 private:
     void BuildGraph() override;
-    
+
 private:
     Param param_;
 };
