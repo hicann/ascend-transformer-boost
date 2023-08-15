@@ -80,6 +80,8 @@ function fn_main()
             python3 $SCRIPT_DIR/main_performance.py
             ;;
         "--webdemo")
+            unset https_proxy
+            unset http_proxy
             python3 $SCRIPT_DIR/main_web.py
             ;;
         "--zhipu")
@@ -89,11 +91,11 @@ function fn_main()
             
             ;;
         "--help")
-            echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [model script path]"
+            echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
             ;;
         *)
             echo "unknown build type:${RUN_OPTION}"
-            echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [model script path]"
+            echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
             ;;
     esac
 

@@ -16,7 +16,7 @@ print("use " + device)
 torch.npu.set_device(device)
 
 # 使用二进制优化，消除动态shape的编译问题
-# torch.npu.set_compile_mode(jit_compile=False)
+torch.npu.set_compile_mode(jit_compile=False)
 
 tokenizer = AutoTokenizer.from_pretrained("./", use_fast=False)
 model = AutoModelForCausalLM.from_pretrained("./").half().to(device)
