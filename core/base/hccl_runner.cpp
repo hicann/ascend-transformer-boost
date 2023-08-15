@@ -60,6 +60,16 @@ HcclRunner::HcclRunner(const std::string &name, RunnerType runnerType, int rank,
 #endif
 }
 
+#ifdef USE_HCCL_RUNNER
+HcclRunner::HcclRunner(const std::string &name, HcclComm commExt, RunnerType runnerType)
+    : Runner(name), runnerType_(runnerType)
+{
+    ASD_LOG(INFO) << "HCCL Runner Init Begin , using commExt: " << commExt;
+    hcclComm_ = commExt;
+    useCommnExt_ = true;
+}
+#endif
+
 HcclRunner::~HcclRunner() {}
 
 AsdOps::Status HcclRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack) { return AsdOps::Status::OkStatus(); }

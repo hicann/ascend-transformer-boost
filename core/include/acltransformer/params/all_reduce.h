@@ -15,6 +15,8 @@
  */
 #ifndef ACLTRANSFOERM_PARAMS_ALL_REDUCE_H
 #define ACLTRANSFOERM_PARAMS_ALL_REDUCE_H
+#include <hccl/hccl.h>
+#include <hccl/hccl_types.h>
 namespace AclTransformer {
 struct AllReduceParam {
     int rank = 0;
@@ -22,6 +24,8 @@ struct AllReduceParam {
     int rankRoot = 0;
     std::string allReduceType = "sum";
     std::string backend = "hccl";
+    bool useCommExt = false;
+    HcclComm commExt; // only effect when useCommExt is true
 };
 } // namespace AclTransformer
 #endif
