@@ -161,7 +161,7 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("./", use_fast=False)
     model = AutoModelForCausalLM.from_pretrained("./").half().npu()
     nd_nz(model)
-    file = open(f"zhiputest_llama7b.csv", 'w')
+    file = open(f"zhiputest_llama1_7b.csv", 'w')
     file.write(f"Batch,max_seq_token,input_seq_len(Encoding),output_seq_len(Decoding),TokensPerSecond(ms),ResponseTime(ms),FirstTokenTime(ms),TimePerTokens(ms)\n")
     for batch_level in [1]:
         for seq_len_level in range(5, 11):
