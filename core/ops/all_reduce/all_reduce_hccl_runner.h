@@ -22,6 +22,9 @@ namespace AclTransformer {
 class AllReduceHcclRunner : public HcclRunner {
 public:
     AllReduceHcclRunner(const AllReduceParam &param);
+#ifdef USE_HCCL_RUNNER
+    AllReduceHcclRunner(const AllReduceParam &param, HcclComm commExt);
+#endif
     virtual ~AllReduceHcclRunner();
 
 private:

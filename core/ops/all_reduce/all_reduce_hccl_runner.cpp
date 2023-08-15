@@ -27,5 +27,16 @@ AllReduceHcclRunner::AllReduceHcclRunner(const AllReduceParam &param)
 #endif
 }
 
+#ifdef USE_HCCL_RUNNER
+AllReduceHcclRunner::AllReduceHcclRunner(const AllReduceParam &param, HcclComm commExt)
+    : HcclRunner("AllReduceHcclRunner", commExt, RUNNER_TYPE_ALL_REDUCE),
+      param_(param)
+{
+    ASD_LOG(INFO) << "AllReduceHcclRunner::AllReduceHcclRunner Ext called";
+
+    allReduceType_ = GetAllReduceType(param_.allReduceType);
+}
+#endif
+
 AllReduceHcclRunner::~AllReduceHcclRunner() {}
 } // namespace AclTransformer
