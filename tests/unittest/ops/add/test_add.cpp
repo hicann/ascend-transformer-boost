@@ -54,7 +54,6 @@ AsdOps::Status AddGolden(const GoldenContext &context)
     float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
     float *atRefOutArray = (float *)refOutTensor.storage().data_ptr().get(); // golden
 
-    float *outData = static_cast<float *>(outTensor.data);
     for (int i = 0; i < outTensor.Numel(); i++) {
         float expect = atRefOutArray[i];
         float actual = atOutArray[i];
@@ -71,9 +70,10 @@ TEST(TestAddOperation, TestAdd)
 {
     AclTransformer::AddParam param;
     AclTransformer::AddOperation op(param);
-    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
-    OpTest opTest(1);
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
+    OpTest opTest;
     opTest.Golden(&AddGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);

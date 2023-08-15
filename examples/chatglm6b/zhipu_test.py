@@ -23,7 +23,7 @@ if __name__ == "__main__":
     device_version = soc_version_map[torch_npu._C._npu_get_soc_version()]
 
     file = open(f"zhiputest_{device_version}.csv", 'w')
-    file.write(f"Batch,max_seq_token,input_seq_len(Encoding),output_seq_len(Decoding),TokensPerSecond(ms),ResponseTime(ms),FirstTokenTime(ms),TimePerTokens(ms)\n")
+    file.write(f"Batch,MaxSeqLen,InputSeqLen(Encoding),OutputSeqLen(Decoding),TokensPerSecond(ms),ResponseTime(ms),FirstTokenTime(ms),TimePerTokens(ms)\n")
     model = load_model()
     for batch_level in [1]:
         for seq_len_level in range(5,11):

@@ -34,7 +34,7 @@ using OpTestGolden = std::function<AsdOps::Status(const GoldenContext &context)>
 
 class OpTest {
 public:
-    explicit OpTest(int deviceId = 0);
+    explicit OpTest();
     ~OpTest();
     void Golden(OpTestGolden golden);
     void FloatRand(float min, float max);
@@ -43,12 +43,10 @@ public:
     void LongRand(int64_t min, int64_t max);
     AsdOps::Status Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs);
     AsdOps::Status Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists);
-    AsdOps::Status Run(AclTransformer::Operation *operation,
-                               const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
-                               const AsdOps::Any &varaintPackParam);
-    AsdOps::Status Run(AclTransformer::Operation *operation,
-                               const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
-                               const AsdOps::Any &varaintPackParam);
+    AsdOps::Status Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
+                       const AsdOps::Any &varaintPackParam);
+    AsdOps::Status Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
+                       const AsdOps::Any &varaintPackParam);
     AsdOps::Status RunImpl(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
                            const AsdOps::Any &varaintPackParam);
     AsdOps::Status RunImpl(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists);

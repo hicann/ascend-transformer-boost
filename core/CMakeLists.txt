@@ -45,10 +45,8 @@ if(USE_HCCL_RUNNER)
 target_link_libraries(acltransformer PRIVATE hccl pthread)
 endif()
 
-if(USE_PROFILING)
 target_link_libraries(acltransformer PRIVATE profapi)
 target_link_libraries(acltransformer_static PRIVATE profapi)
-endif()
 
 install(TARGETS acltransformer_static DESTINATION lib)
 install(TARGETS acltransformer DESTINATION lib)

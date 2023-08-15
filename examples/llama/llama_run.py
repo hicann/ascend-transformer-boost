@@ -80,8 +80,8 @@ sum_time = 0
 first_time = (end - start) * 1000
 print(f"first token: {first_time}ms")
 
-warm_up_cycle = 1
-test_cycle = 1
+warm_up_cycle = 3
+test_cycle = 50
 dummy_past_key_values = out.past_key_values
 dummy_input_ids_nxt = torch.randint(0, VOCAB_SIZE, [BATCH_SIZE, 1], dtype=torch.int).npu()
 seq_length = dummy_input_ids_nxt.shape[1]

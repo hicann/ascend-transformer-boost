@@ -22,7 +22,7 @@
 
 namespace AclTransformer {
 struct HcclCommPool {
-    std::map<int , HcclComm> hcclCommPool;
+    std::map<int, HcclComm> hcclCommPool;
 };
 } // namespace AclTransformer
 #endif

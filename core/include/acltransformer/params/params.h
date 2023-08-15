@@ -19,6 +19,7 @@
 #include "acltransformer/params/add_norm.h"
 #include "acltransformer/params/add_norm_quant.h"
 #include "acltransformer/params/all_reduce.h"
+#include "acltransformer/params/all_gather.h"
 #include "acltransformer/params/embedding.h"
 #include "acltransformer/params/ffn.h"
 #include "acltransformer/params/ffn_quant.h"

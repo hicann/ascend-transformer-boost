@@ -49,13 +49,15 @@ Config::Config()
     isUsePpMatmul_ = IsEnable("ASDOPS_MATMUL_PP_FLAG");
     isConvertNCHWToND_ = IsEnable("ACLTRANSFORMER_CONVERT_NCHW_TO_ND");
     isTorchTensorFormatCast_= IsEnable("ACLTRANSFORMER_TORCH_TENSOR_FORMAT_CAST");
+    isUsingProfiling_ = IsEnable("ACLTRANSFORMER_PROFILING_ENABLE");
     ASD_LOG(FATAL) << "Config:\nIsSaveTensor:" << isSaveTensor_
                    << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
                    << "\nIsStreamSyncEveryPlanEnable:" << isStreamSyncEveryPlanEnable_
                    << "\nIsOpsRunnerSetupCacheEnable:" << isOpsRunnerSetupCacheEnable_
                    << "\nIsOpsRunnerKernelCacheEnable:" << isOpsRunnerKernelCacheEnable_
-                   << "\nIsUsePpMatmul:" << isUsePpMatmul_ << ", \nIsConvertNCHWToND:" << isConvertNCHWToND_;
+                   << "\nIsUsePpMatmul:" << isUsePpMatmul_ << ", \nIsConvertNCHWToND:" << isConvertNCHWToND_
+                   << "\nIsUsingProfiling:" << isUsingProfiling_;
 }
 
 Config::~Config() {}
@@ -117,6 +119,8 @@ bool Config::IsStreamSyncEveryRunnerEnable() { return isStreamSyncEveryRunnerEna
 bool Config::IsStreamSyncEveryPlanEnable() { return isStreamSyncEveryPlanEnable_; }
 
 bool Config::IsTorchTensorFormatCast() { return isTorchTensorFormatCast_; };
+
+bool Config::IsUsingProfiling() { return isUsingProfiling_; };
 
 bool Config::IsSkipKernel(const std::string &kernelName)
 {

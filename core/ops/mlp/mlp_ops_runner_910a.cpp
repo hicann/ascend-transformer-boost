@@ -37,8 +37,8 @@ MlpOpsRunner910A::MlpOpsRunner910A(const MlpParam &param) : OpsRunner("MlpOpsRun
     int64_t inTensorNum = 0;
     AsdOps::Tensor &hiddenStatus = kernelGraph_.inTensors.at(inTensorNum++);
     AsdOps::Tensor &weightGate = kernelGraph_.inTensors.at(inTensorNum++);
-    AsdOps::Tensor &weightUp = kernelGraph_.inTensors.at(inTensorNum++);
     AsdOps::Tensor &weightDown = kernelGraph_.inTensors.at(inTensorNum++);
+    AsdOps::Tensor &weightUp = kernelGraph_.inTensors.at(inTensorNum++);
 
     int64_t outTensorNum = 0;
     AsdOps::Tensor &resultTensor = kernelGraph_.outTensors.at(outTensorNum++);
