@@ -42,6 +42,7 @@
 #include "acltransformer/ops/quant_operation.h"
 #include "acltransformer/ops/add_norm_quant_operation.h"
 #include "acltransformer/ops/norm_quant_operation.h"
+#include "acltransformer/ops/rms_norm_quant_operation.h"
 #include "acltransformer/ops/rms_pre_norm_quant_operation.h"
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
@@ -877,9 +878,18 @@ static AclTransformer::Operation *RmsPreNormQuantOperationCreate(const nlohmann:
     return new AclTransformer::RmsPreNormQuantOperation(param);
 }
 
+static AclTransformer::Operation *RmsNormQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::RmsNormQuantParam param;
+    param.inputScale = paramJson["inputScale"].get<double>();
+    param.inputOffset = paramJson["inputOffset"].get<int>();
+    return new AclTransformer::RmsNormQuantOperation(param);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PostOperation", &PostOperationCreate},
     {"RmsPreNormQuantOperation", &RmsPreNormQuantOperationCreate},
+    {"RmsNormQuantOperation", &RmsNormQuantOperationCreate},
     {"AllReduceOperation", &AllReduceOperationCreate},
     {"AllGatherOperation", &AllGatherOperationCreate},
     {"LinearParallelOperation", &LinearParallelOperationCreate},
