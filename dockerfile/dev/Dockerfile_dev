@@ -4,6 +4,8 @@ LABEL maintainer = "jitao jitao12@huawei.com"
 LABEL version = "1.0.0"
 LABEL description = "Image for chatglm6b & llama 910b based on Ubuntu18.04"
 
+ARG INSTALL_DIR=/usr/local
+ENV DEBIAN_FRONTEND=noninteractive
 ENV GIT_SSL_NO_VERIFY=1
 ENV ACLTRANSFORMER_TESTDATA=/data/acltransformer_testdata
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Ascend/driver/lib64/driver/
@@ -35,7 +37,12 @@ RUN apt-get install -y \
     libxml2-dev \
     libxml2 \
     vim \
-    sudo
+    sudo \
+    flex \
+    bison \
+    libdigest-md5-perl \
+    perl* \
+    cpanminus
 
 COPY tmp/ /home
 # Install CMake
@@ -112,3 +119,23 @@ RUN pip3 install apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl \
     && rm -f apex-0.1_ascend-cp37-cp37m-linux_aarch64.whl
 
 RUN pip3 install pydantic==1.10.9 --force-reinstall
+
+# Setup lcov & doxygen
+RUN wget --no-check-certificate https://github.com/linux-test-project/lcov/archive/refs/tags/v1.16.tar.gz \
+    && tar -xvf v1.16.tar.gz
+RUN cd lcov-1.16 \
+    && make -j \
+    && make PREFIX=$INSTALL_DIR/lcov install
+RUN rm v1.16.tar.gz \
+    && rm -rf lcov-1.16
+
+RUN wget --no-check-certificate https://github.com/doxygen/doxygen/archive/refs/heads/master.tar.gz \
+    && tar -xvf master.tar.gz
+RUN cd doxygen-master \
+    && mkdir build \
+    && cd build \
+    && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/doxygen ../ \
+    && make -j \
+    && make install
+RUN rm master.tar.gz \
+    && rm -rf doxygen-master

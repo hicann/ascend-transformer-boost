@@ -20,15 +20,15 @@ cd ..
 export CODE_ROOT=`pwd`
 export CACHE_DIR=$CODE_ROOT/build
 DEVICE_ID=0
-BUILD_OPTION_LIST="pull_chatglm_image pull_llama_image run_chatglm_container run_llama_container"
+BUILD_OPTION_LIST="pull_image run_container"
 BUILD_CONFIGURE_LIST=("--container_name=*" "--devid=*")
 
 
-function fn_pull_chatglm_image()
+function fn_pull_image()
 {
-    DOCKER_JSON=`docker inspect swr.cn-south-292.ca-aicc.com/yulaoshi/chatglm_mindspore-2-0_pytorch1-11-0_cann6-3-rc1:v1`
+    DOCKER_JSON=`docker inspect acltransformer:v1`
     if [ $? == "0" ];then
-        echo "chatglm image has already existed."
+        echo "chatglm & llama image has already existed."
         return 0
     fi
     cd $CACHE_DIR
@@ -36,50 +36,34 @@ function fn_pull_chatglm_image()
         mkdir $CACHE_DIR/docker
     fi
     cd docker
-    wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/acltransformer_testdata/images/chatglm6b_wmj_image.tar --no-check-certificate
-    docker load -i chatglm6b_wmj_image.tar
-    rm -f chatglm6b_wmj_image.tar
+    wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/acltransformer.tar --no-check-certificate
+    docker load -i acltransformer.tar
+    rm -f acltransformer.tar
 }
 
-function fn_pull_llama_image()
-{
-    DOCKER_JSON=`docker inspect llama_wmj:latest`
-    if [ $? == "0" ];then
-        echo "llama image has already existed."
-        return 0
-    fi
-    cd $CACHE_DIR
-    if [ ! -d "$CACHE_DIR/docker" ];then
-        mkdir $CACHE_DIR/docker
-    fi
-    cd docker
-    wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/acltransformer_testdata/images/llama_wmj_image.tar --no-check-certificate
-    docker load -i llama_wmj_image.tar
-    rm -f llama_wmj_image.tar
-}
-
-function fn_run_chatglm_container()
+function fn_run_container()
 {
     if [ -z $CONTAINER_NAME ];then
-        CONTAINER_NAME="chatglm"
+        CONTAINER_NAME="acltransformer"
     fi
-    docker run --name $CONTAINER_NAME -it -d --net=host --device=/dev/davinci$DEVICE_ID \
+    if [ -z $DEVICE_ID ];then
+        DEVICE_ID="0"
+    fi
+    docker run --name $CONTAINER_NAME -it -d --net=host --shm-size=500g --device=/dev/davinci$DEVICE_ID \
+        --privileged=true \
+        -w /home \
         --device=/dev/davinci_manager \
-        --device=/dev/devmm_svm \
         --device=/dev/hisi_hdc \
-        --entrypoint=/bin/bash \
-        -v /usr/local/dcmi:/usr/local/dcmi \
+        --device=/dev/devmm_svm \
+        --entrypoint=bash \
         -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \
-        -v /usr/local/Ascend/add-ons/:/usr/local/Ascend/add-ons/ \
-        -v /var/log/npu/:/usr/slog \
+        -v /usr/local/dcmi:/usr/local/dcmi \
         -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
-        -v /usr/local/asdops_opp_kernel:/usr/local/asdops_opp_kernel \
-        -v /home:/home swr.cn-south-292.ca-aicc.com/yulaoshi/chatglm_mindspore-2-0_pytorch1-11-0_cann6-3-rc1:v1
-}
-
-function fn_run_llama_container()
-{
-    echo "run_llama_container"
+        -v /usr/local/sbin/:/usr/local/sbin \
+        -v /home:/home \
+        -v /usr/local/asdops:/usr/local/asdops \
+        -v /data/acltransformer_testdata:/data/acltransformer_testdata \
+        acltransformer:v1
 }
 
 function fn_main()
@@ -118,17 +102,11 @@ function fn_main()
     done
 
     case "${arg1}" in
-        "pull_chatglm_image")
-            fn_pull_chatglm_image
+        "pull_image")
+            fn_pull_image
             ;;
-        "pull_llama_image")
-            fn_pull_llama_image
-            ;;
-        "run_chatglm_container")
-            fn_run_chatglm_container
-            ;;
-        "run_llama_container")
-            fn_run_llama_container
+        "run_container")
+            fn_run_container
             ;;
     esac
 }
