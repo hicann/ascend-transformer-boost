@@ -27,6 +27,7 @@ struct SelfAttentionKvCacheParam {
     int64_t hiddenSizePerHead = 0;
     int64_t numGroupsPerPartition = 0;
     std::string model = "chatglm6b";
+    float invNormFactorvarAttr = 0;
 };
 } // namespace AclTransformer
 #endif
