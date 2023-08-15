@@ -149,28 +149,35 @@ function fn_clean()
 
 function fn_main()
 {
+    echo "-----run.sh-----"
+    fn_clean
+    
     if [[ ! -z "$1" ]];then
         RUN_OPTION=$1
+        echo "[RUN_OPTION]: $RUN_OPTION"
         shift
     fi
     
-    if [ ! -z "$1" ];then
-        TEMP_SCRIPT_PATH=$(cd $(dirname $1); pwd)/$(basename $1)
-        if [ -f $TEMP_SCRIPT_PATH ];then
+    if [[ ! -z "$1" ]];then
+        MODEL=$1
+        echo "[MODEL]: $MODEL"
+        shift
+    fi
+    
+    if [[ ! -z "$1" ]];then
+        TEMP_SCRIPT_PATH="$1"
+        if [[ ! -e $TEMP_SCRIPT_PATH ]];then
             SCRIPT_PATH=$TEMP_SCRIPT_PATH
+            echo "[MODEL_SCRIPT_PATH]: $SCRIPT_PATH"
             shift
+        else
+            echo "WRONG dir"
+            exit -1
         fi
     fi
 
-    if [[ ! -z "$1" ]];then
-        MODEL=$1
-    fi
-
     cd $SCRIPT_DIR
-    echo "[MODEL_SCRIPT_PATH]: $SCRIPT_PATH"
     echo "[TRANSFORMER_PACKAGE_PATH]: $TRANSFORMER_PACKAGE_PATH"
-    echo "[RUN_OPTION]: $RUN_OPTION"
-    echo "[MODEL]: $MODEL"
 
     case "${MODEL}" in
         "--llama1-7b")
@@ -191,6 +198,7 @@ function fn_main()
         *)
             echo "unknown build type:${MODEL}"
             echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
+            exit -1
             ;;
     esac
 
@@ -215,6 +223,7 @@ function fn_main()
         *)
             echo "unknown build type:${RUN_OPTION}"
             echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
+            exit -1
             ;;
     esac
 
