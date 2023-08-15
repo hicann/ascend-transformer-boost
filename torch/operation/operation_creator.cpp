@@ -458,11 +458,15 @@ static AclTransformer::Operation *SelfAttentionKvCacheOperationCreate(const nloh
     if (paramJson.contains("numGroupsPerPartition")) {
         param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
     }
+    if (paramJson.contains("invNormFactorvarAttr")) {
+        param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
                   << ", layerId:" << param.layerId << ", dk:" << param.dk << ", preScale" << param.preScale << ", postScale" << param.postScale << ", model" << param.model
                   << ", hiddenSizePerHead" << param.hiddenSizePerHead
                   << ", numHeadsPerPartition" << param.numHeadsPerPartition
-                  << ", numGroupsPerPartition" << param.numGroupsPerPartition;
+                  << ", numGroupsPerPartition" << param.numGroupsPerPartition
+                  << ", invNormFactorvarAttr" << param.invNormFactorvarAttr;
     return new AclTransformer::SelfAttentionKvCacheOperation(param);
 }
 
