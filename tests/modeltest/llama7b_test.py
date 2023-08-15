@@ -14,8 +14,8 @@ class Llama7bModelTest(model_test.ModelTest):
         statistic.model_name = "llama7b"
         self.create_time(statistic)
         
-        performance_file_path = os.path.join(LLAMA7B_PATH, f"zhiputest_llama7b.csv")
-        os.system(f"bash {RUN_SHELL_PATH} {MODEL_SCRIPT_PATH} --zhipu")
+        performance_file_path = os.path.join(LLAMA7B_PATH, f"zhiputest_llama1_7b.csv")
+        os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama1-7b {MODEL_SCRIPT_PATH} ")
         if not os.path.exists(performance_file_path):
             print(f"file {performance_file_path} not exist!")
             return
