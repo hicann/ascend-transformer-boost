@@ -46,6 +46,7 @@ SelfAttentionKvCacheFusionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1)); // batch == 1
     outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
     return AsdOps::Status::OkStatus();
+
 }
 
 RunnerBuilder *SelfAttentionKvCacheFusionOperation::FindBestRunnerBuilder() const

@@ -687,6 +687,18 @@ AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohm
     if (paramJson.contains("layerId")) {
         param.layerId = paramJson["layerId"].get<int>();
     }
+    if (paramJson.contains("numHeadsPerPartition")) {
+        param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("hiddenSizePerHead")) {
+        param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    }
+    if (paramJson.contains("numGroupsPerPartition")) {
+        param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    }
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+    }
     for (auto item : paramJson["tokenOffset"]) {
         param.tokenOffset.push_back(item.get<int>());
         ASD_LOG(FATAL) << "token offset:" << param.tokenOffset.at(0);
