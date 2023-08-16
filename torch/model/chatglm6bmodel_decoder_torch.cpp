@@ -259,7 +259,13 @@ void ChatGlm6BModelDecoderTorch::ExecuteSingleOperation(int layerId, std::vector
 
 std::string ChatGlm6BModelDecoderTorch::GetSaveTensorDir()
 {
-    std::string dir = std::to_string(executeCount_) + "/0_ChatGlm6BModelDecoderTorch";
+    const char *envStr = std::getenv("AIT_CMP_TASK_ID");
+    std::string dir = "";
+    if (envStr) {
+        dir = std::string(envStr) + "/0_ChatGlm6BModelDecoderTorch";
+    } else {
+        dir = std::to_string(executeCount_) + "/0_ChatGlm6BModelDecoderTorch";
+    }
     return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 

@@ -365,7 +365,13 @@ void ChatGlm6BModelDecoderFlashattentionTorch::WaitAsyncPlanExecuteFinish()
 
 std::string ChatGlm6BModelDecoderFlashattentionTorch::GetSaveTensorDir()
 {
-    std::string dir = std::to_string(executeCount_) + "/0_ChatGlm6BModelDecoderFlashattentionTorch";
+    const char *envStr = std::getenv("AIT_CMP_TASK_ID");
+    std::string dir = "";
+    if (envStr) {
+        dir = std::string(envStr) + "/0_ChatGlm6BModelDecoderFlashattentionTorch";
+    } else {
+        dir = std::to_string(executeCount_) + "/0_ChatGlm6BModelDecoderFlashattentionTorch";
+    }
     return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
 }
 
