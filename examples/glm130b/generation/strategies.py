@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from SwissArmyTransformer.generation.sampling_strategies.base_strategy import top_k_logits
+from SwissArmyTransformer.generation.sampling_strategies.base_strategy import top_k_logits,top_k_logits_fast
 
 class BaseStrategy:
     def __init__(self, batch_size, invalid_slices=[], temperature=1., top_k=200, eps=1e-4, top_p=0.0, end_tokens=None):
