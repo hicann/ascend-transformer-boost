@@ -38,64 +38,67 @@ Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN�
 5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
 6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
 
-### 模型环境构建
+### 模型环境构建 (Chatglm6b & Llama 通用)
 + docker容器准备<br>
-    使用 scripts/docker_util.sh 脚本下载docker镜像、启动docker容器；<br>
+    - 需配置本机的proxy，确保能访问网络
+    - 创建镜像（已有可跳过）和容器
+    ```sh
+    方法一：使用dockerfile/dev中脚本创建，启动容器 (推荐)：
+    >   bash build_docker.sh：编译并加载镜像;
+    >   bash start-docker.sh [容器名]: 创建容器;
+    ```
+    ```sh
+    方法二: 使用 scripts/docker_util.sh 脚本下载docker镜像、启动docker容器;
     docker_util.sh 脚本指令：
-    >   pull_chatglm_image：下载并加载chatglm镜像；<br>
-    >   pull_llama_image：下载并加载llama镜像；<br>
-    >   run_chatglm_container：创建chatglm容器；<br>
-    >   run_llama_container：创建llama容器；
+    >   pull_image：下载并加载镜像;
+    >   run_container：创建容器;
     
     脚本参数：
-    >   --container_name=：设置docker容器名；<br>
-    >   --devid=：设置docker挂载的device id；
-    
-    创建容器后，通过
+    >   --container_name=：设置docker容器名;
+    >   --devid=：设置docker挂载的device id (默认为0);
+    ```
+    - 加载并进入容器
     ```sh
     docker exec -it --user root [容器名] bash
     ```
-    指令进入容器。
-+ chatglm环境准备
-    - 代理设置<br>
-        进入docker后，首先配置docker内代理以连接网络：
-        ```sh
-        export http_proxy="http://[代理IP]:[代理端口]"
-        export https_proxy=$http_proxy
-        ```
-    - CANN 环境准备<br>
-        如果是910B环境，需下载并安装适配910B的CANN toolkit；
-        若为910A，则直接设置CANN环境变量即可：
-        ```sh
-        source /usr/local/Ascend/ascend-toolkit/set_env.sh
-        ```
-    - 加速库编译<br>
-        拉取最新加速库代码并编译加速库，设置加速库环境变量：
-        ```sh
-        git clone https://gitee.com/ascend/ascend-transformer-acceleration.git
-        cd ascend-transformer-acceleration
-        bash scripts/build.sh examples
-        cd output/acltransformer
-        source set_env.sh
-        ```
-    - 模型执行<br>
-        设置npu id（不设默认为0）：
-        ```sh
-        export SET_NPU_DEVICE=0
-        ```
-        进入chatglm6b模型文件夹：
-        ```sh
-        cd [加速库根目录]/examples/chatglm6b
-        ```
-        使用run.sh文件启动模型。run.sh脚本指令如下：<br>
-        ```sh
-        bash run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]
-        # --run:            问答模式启动模型
-        # --performance:    模型性能测试，测试方法参考run.sh文件备注
-        # --webdemo:        启动模型webUI
-        # --zhipu:          智谱标准模型性能测试
-        # --profiling:      启动模型并开启profiling
-        ```
++ Chatglm6b环境准备
+  - 代理设置<br>
+    进入docker后，首先配置docker内代理以连接网络：
+    ```sh
+    export http_proxy="http://[代理IP]:[代理端口]"
+    export https_proxy=$http_proxy
+    ```
+  - CANN 环境准备<br>
+    ```sh
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh
+    ```
+  - 加速库编译<br>
+    拉取最新加速库代码并编译加速库，设置加速库环境变量：
+    ```sh
+    > git clone https://gitee.com/ascend/ascend-transformer-acceleration.git
+    > cd ascend-transformer-acceleration
+    > bash scripts/build.sh examples --use_cxx11_abi=0
+    > cd output/acltransformer
+    > source set_env.sh
+    ```
+  - 模型执行<br>
+      设置npu id（不设默认为0）：
+      ```sh
+      export SET_NPU_DEVICE=0
+      ```
+      进入chatglm6b模型文件夹：
+      ```sh
+      cd [加速库根目录]/examples/chatglm6b
+      ```
+      使用run.sh文件启动模型。run.sh脚本指令如下：<br>
+      ```sh
+      bash run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]
+      # --run:            问答模式启动模型
+      # --performance:    模型性能测试，测试方法参考run.sh文件备注
+      # --webdemo:        启动模型webUI
+      # --zhipu:          智谱标准模型性能测试
+      # --profiling:      启动模型并开启profiling
+      ```
 
 + llama 环境准备
   
