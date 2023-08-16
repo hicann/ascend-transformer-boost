@@ -22,6 +22,8 @@
 
 using namespace AclTransformer;
 using namespace AsdOps;
+constexpr float ATOL = 0.0001;
+constexpr float RTOL = 0.0001;
 
 TEST(TestTransposeOperation, InferShape)
 {
@@ -37,4 +39,44 @@ TEST(TestTransposeOperation, InferShape)
     ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
+}
+
+AsdOps::Status TransposeGolden(const GoldenContext &context)
+{
+    // define param
+    AsdOps::SVector<int64_t> paramPerm = {0, 1};
+    // get constructed input/output tensors
+    const AsdOps::Tensor inTensor = context.hostInTensors.at(0);
+    const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
+    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // construct ref input tensors
+    at::Tensor atInRefTensor = at::from_blob(inTensor.data, ToIntArrayRef(inTensor.desc.dims), at::kFloat);
+    // get ref output tensor
+    at::Tensor atOutRefTensor = atInRefTensor.permute(at::IntArrayRef(paramPerm.data(), paramPerm.size())).contiguous();
+    // compare
+    float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
+    float *atRefOutArray = (float *)atOutRefTensor.storage().data_ptr().get(); // golden
+    // compare
+    for (int i = 0; i < outTensor.Numel(); i++) {
+        float expect = atRefOutArray[i];
+        float actual = atOutArray[i];
+        bool judge = std::abs(expect - actual) <= (ATOL + RTOL * std::abs(actual));
+        EXPECT_EQ(judge, true);
+        if (!judge) {
+            return Status::FailStatus(1, "unequal");
+        }
+    }
+    return Status::OkStatus();
+}
+
+TEST(TestTransposeOperation, TestTranspose)
+{
+    AclTransformer::TransposeParam param;
+    param.perm = {0, 1};
+    AclTransformer::TransposeOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
+    OpTest opTest;
+    opTest.Golden(&TransposeGolden);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
+    ASSERT_EQ(status.Ok(), true);
 }
