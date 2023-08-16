@@ -45,7 +45,10 @@ enum Bloom7BLayerDecoderTensorId {
     OUT_PRESENTKEY,
     OUT_PRESENTVALUE,
     INTERMIDATE_INPUTNORM_OUT,
+    INTERMIDATE_QKVLINEAR_OUT,
     INTERMIDATE_SELFOUT,
+    INTERMIDATE_SELFLINEAROUT,
+    INTERMIDATE_SELFADDOUT,
     INTERMIDATE_SELFNORMOUT,
     INTERMIDATE_FFNOUT,
     INTERMIDATE_MLPLINEAROUT,
@@ -53,8 +56,8 @@ enum Bloom7BLayerDecoderTensorId {
 
 static const uint64_t IN_TENSOR_COUNT = 17;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 5;
-static const uint64_t NODE_COUNT = 6;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 8;
+static const uint64_t NODE_COUNT = 9;
 static const uint64_t HIDDEN_STATES_DIM = 3;
 
 Bloom7BLayerDecoderOperation::Bloom7BLayerDecoderOperation(const Bloom7BLayerParam &param)
@@ -67,7 +70,10 @@ Bloom7BLayerDecoderOperation::Bloom7BLayerDecoderOperation(const Bloom7BLayerPar
 
     size_t nodeId = 0;
     GraphOperation::Node &inputNormNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &fusedQKVNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfAttentionKvCacheNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &selfOutLinearNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &selfOutAddNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfNormNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mlpFfnNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mlpLinearNode = opGraph_.nodes.at(nodeId++);
@@ -77,6 +83,10 @@ Bloom7BLayerDecoderOperation::Bloom7BLayerDecoderOperation(const Bloom7BLayerPar
     inputNormNode.inTensorIds = {IN_HIDDEN_STATES, IN_NORM_WEIGHT, IN_NORM_BIAS};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORM_OUT};
 
+    fusedQKVNode.operation.reset(new AclTransformer::LinearOperation({}));
+    fusedQKVNode.inTensorIds = {INTERMIDATE_INPUTNORM_OUT, IN_QKVMIXD_WEIGHT, IN_QKVMIXD_BIAS};
+    fusedQKVNode.outTensorIds = {INTERMIDATE_QKVLINEAR_OUT};
+
     SelfAttentionKvCacheParam selfAttentionKvCacheParam;
     selfAttentionKvCacheParam.headNum = param_.headNum;
     selfAttentionKvCacheParam.dk = param_.dk;
@@ -84,13 +94,20 @@ Bloom7BLayerDecoderOperation::Bloom7BLayerDecoderOperation(const Bloom7BLayerPar
     selfAttentionKvCacheParam.model = param_.model;
     selfAttentionKvCacheNode.operation.reset(
         new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam));
-    selfAttentionKvCacheNode.inTensorIds = {
-        INTERMIDATE_INPUTNORM_OUT, IN_QKVMIXD_WEIGHT, IN_QKVMIXD_BIAS,   IN_PAST_KEY,     IN_PAST_VALUE, IN_ALIBI,
-        IN_DENSE_WEIGHT,           IN_DENSE_BIAS,     IN_ATTENTION_MASK, IN_HIDDEN_STATES};
+    selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_QKVLINEAR_OUT, IN_PAST_KEY, IN_PAST_VALUE, IN_ALIBI,
+                                            IN_ATTENTION_MASK};
     selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
+    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
+    selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_DENSE_WEIGHT, IN_DENSE_BIAS};
+    selfOutLinearNode.outTensorIds = {INTERMIDATE_SELFLINEAROUT};
+
+    selfOutAddNode.operation.reset(new AclTransformer::AddOperation({}));
+    selfOutAddNode.inTensorIds = {INTERMIDATE_SELFLINEAROUT, IN_HIDDEN_STATES};
+    selfOutAddNode.outTensorIds = {INTERMIDATE_SELFADDOUT};
+
     selfNormNode.operation.reset(new AclTransformer::NormOperation({param_.layerNormEps}));
-    selfNormNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTNORM_WEIGHT, IN_SELFOUTNORM_BIAS};
+    selfNormNode.inTensorIds = {INTERMIDATE_SELFADDOUT, IN_SELFOUTNORM_WEIGHT, IN_SELFOUTNORM_BIAS};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 
     FfnParam mlpFfnParam;
@@ -104,7 +121,7 @@ Bloom7BLayerDecoderOperation::Bloom7BLayerDecoderOperation(const Bloom7BLayerPar
     mlpLinearNode.outTensorIds = {INTERMIDATE_MLPLINEAROUT};
 
     mlpResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
-    mlpResidualAddNode.inTensorIds = {INTERMIDATE_MLPLINEAROUT, INTERMIDATE_SELFOUT};
+    mlpResidualAddNode.inTensorIds = {INTERMIDATE_MLPLINEAROUT, INTERMIDATE_SELFADDOUT};
     mlpResidualAddNode.outTensorIds = {OUT_LAYEROUT};
 }
 

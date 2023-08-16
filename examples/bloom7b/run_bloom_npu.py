@@ -21,6 +21,23 @@ torch.npu.set_compile_mode(jit_compile=False)
 tokenizer = AutoTokenizer.from_pretrained("./", use_fast=False)
 model = AutoModelForCausalLM.from_pretrained("./").half().to(device)
 
+# 优化ND NZ排布，消除transdata
+soc_version = torch_npu._C._npu_get_soc_version()
+if soc_version in [104, 220, 221, 222, 223]:
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            module.weight.data = module.weight.data.npu_format_cast(2)
+    print("soc_version:", soc_version, " is 910B, support ND")
+else:
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            module.weight.data = module.weight.data.npu_format_cast(29)
+    print("soc_version:", soc_version, " is not 910B, support NZ")
+
+for name, module in model.named_modules():
+    if isinstance(module, torch.nn.Embedding):
+        module.weight.data = module.weight.data.npu_format_cast(2)
+
 batch_sizes = [1]
 seq_lens = [32]
 test_cases = [(bs, sq) for sq in seq_lens for bs in batch_sizes]

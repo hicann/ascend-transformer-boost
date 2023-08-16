@@ -27,15 +27,10 @@ public:
 private:
     SelfAttentionKvCacheParam param_;
     AsdOps::SVector<int64_t> oriDimA_;
-    AsdOps::SVector<int64_t> oriDimB_;
     AsdOps::SVector<int64_t> oriDimC_;
     AsdOps::SVector<int64_t> oriDimD_;
     AsdOps::SVector<int64_t> oriDimE_;
     AsdOps::SVector<int64_t> oriDimF_;
-    AsdOps::SVector<int64_t> oriDimG_;
-    AsdOps::SVector<int64_t> oriDimH_;   
-    AsdOps::SVector<int64_t> oriDimI_;
-    AsdOps::SVector<int64_t> oriDimJ_;      
     std::size_t oriSize_ = 3;
 };
 
