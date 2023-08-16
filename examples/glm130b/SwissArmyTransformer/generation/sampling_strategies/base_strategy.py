@@ -14,7 +14,32 @@ import random
 import torch
 import torch.nn.functional as F
 
+def top_k_logits_fast(logits, top_k=0, top_p=0.0, filter_value=-65504):
+    # This function has been mostly taken from huggingface conversational ai code at
+    # https://medium.com/huggingface/how-to-build-a-state-of-the-art-conversational-ai-with-transfer-learning-2d818ac26313
+    logits = logits.view(logits.size()[1]).contiguous()
+    if top_k > 0:
+        logits,sorted_indices=torch.topk(logits, top_k)
 
+    if top_p > 0.0:
+        if top_k <=0:
+            logits, sorted_indices = torch.sort(logits, descending=True)
+        cumulative_probs = torch.cumsum(F.softmax(logits, dim=-1), dim=-1)
+        # Remove tokens with cumulative probability above the threshold
+        sorted_indices_to_remove = cumulative_probs > top_p
+        # Shift the indices to the right to keep also the first token above the threshold
+        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[..., 0] = 0
+        logits[sorted_indices_to_remove]= filter_value
+
+    probs = F.softmax(logits.float(), dim=-1)  # float is essetial, due to a bug in Pytorch
+    # if torch.distributed.get_rank() == 0:
+    #     print('fast probs:' + str(probs))
+    pred = torch.multinomial(probs, num_samples=1)
+    if top_k > 0 or top_p > 0.0:
+        pred=sorted_indices[pred]
+    pred = pred.view(1, -1).contiguous()
+    return pred
 def top_k_logits(logits, top_k=0, top_p=0.0, filter_value=-65504):
     # This function has been mostly taken from huggingface conversational ai code at
     # https://medium.com/huggingface/how-to-build-a-state-of-the-art-conversational-ai-with-transfer-learning-2d818ac26313
