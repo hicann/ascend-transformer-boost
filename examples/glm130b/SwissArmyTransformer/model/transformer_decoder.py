@@ -463,7 +463,15 @@ class BaseTransformer(torch.nn.Module):
         self.use_final_layernorm = use_final_layernorm
         if use_final_layernorm:
             self.final_layernorm = layernorm(hidden_size, eps=layernorm_epsilon)
-
+        # gobal sin cos table
+        self.rotary_emb = RotaryEmbedding(
+            self.head_size,
+            base = 10000,
+            precision=torch.half,
+            learnable=False,
+            device=torch.cuda.current_device(),
+        )
+        self.cos, self.sin = self.rotary_emb(torch.ones(1).npu(), seq_len=self.max_sequence_length + 1)
     def forward(self, input_ids, position_ids, attention_mask, *,
                 output_hidden_states=False, **kw_args):
         # sanity check
@@ -589,14 +597,6 @@ class BaseTransformer(torch.nn.Module):
             
             #add acl decoder
             acl_decoder_input = hidden_states.clone()
-            if self.rotary_emb is None:
-                self.rotary_emb = RotaryEmbedding(
-                    self.head_size,
-                    base = 10000,
-                    precision=torch.half,
-                    learnable=False,
-                    device=torch.cuda.current_device(),
-                )
 
             if self.weight_flag:
                 self.acl_weights = []
@@ -629,7 +629,6 @@ class BaseTransformer(torch.nn.Module):
                         pastValueTensors.append(pastv)
                 
                 if mem is not None:                   
-                    cos, sin = self.rotary_emb(acl_decoder_input, seq_len=position_ids.max() + 1)
                     # start = time.time()
                     # acl_decoder_output = self.acl_glm130b_decoder_operation.execute(acl_decoder_input, position_ids,
                     #                                                               cos, sin, attention_mask,
@@ -638,8 +637,8 @@ class BaseTransformer(torch.nn.Module):
                     acl_decoder_v2_input = []
                     acl_decoder_v2_input.append(acl_decoder_input)
                     acl_decoder_v2_input.append(position_ids)
-                    acl_decoder_v2_input.append(cos)
-                    acl_decoder_v2_input.append(sin)
+                    acl_decoder_v2_input.append(self.cos)
+                    acl_decoder_v2_input.append(self.sin)
                     acl_decoder_v2_input.append(attention_mask)
                     acl_decoder_v2_input.extend(pastKeyTensors)
                     acl_decoder_v2_input.extend(pastValueTensors)
