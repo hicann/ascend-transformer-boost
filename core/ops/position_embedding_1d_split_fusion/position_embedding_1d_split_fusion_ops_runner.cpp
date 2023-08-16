@@ -87,7 +87,7 @@ PositionEmbedding1dFusionOpsRunner::PositionEmbedding1dFusionOpsRunner(const Pos
         newDims.at(1) = oldDims.at(2); 
     }; 
 
-    ropeNode.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope({AsdOps::OpParam::Rope::ROPEND, 2})};
+    ropeNode.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope({AsdOps::OpParam::Rope::ROPE, 2})};
     ropeNode.inTensors = {&qLayer, &kLayer, &cos, &sin, &seqLen};
     ropeNode.outTensors = {&qEmbedded, &kEmbedded};
     ropeNode.inTensorViewFuncs.resize(ropeNode.inTensors.size());

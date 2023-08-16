@@ -168,7 +168,7 @@ PositionEmbeddingFusionOpsRunner::PositionEmbeddingFusionOpsRunner(const Positio
     };
 
     const size_t ropeViewSize = 4;
-    rope0Node.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPEND}};
+    rope0Node.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPE}};
     rope0Node.inTensors = {&qLayer, &kLayer, &cos_sum, &sin_sum, &seqLen};
     rope0Node.outTensors = {&qEmbedded, &kEmbedded};
     rope0Node.inTensorViewFuncs.resize(ropeViewSize);
