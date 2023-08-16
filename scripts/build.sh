@@ -238,6 +238,7 @@ function fn_run_unittest()
 {
     cd $OUTPUT_DIR/acltransformer
     source set_env.sh
+    export ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE=0
     echo "run $OUTPUT_DIR/acltransformer/bin/acltransformer_unittest"
     $OUTPUT_DIR/acltransformer/bin/acltransformer_unittest
 }
