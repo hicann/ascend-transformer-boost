@@ -57,7 +57,6 @@
 #include "models/chatglm6b/chatglm6blayer_decoder_first_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_last_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
-#include "models/chatglm6b/chatglm6blayer_decoder_dequant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_dequant_flashattention_operation.h"
 #include "models/glm130b/glm130blayer_decoder_operation.h"
 #include "models/glm130b/glm130blayer_encoder_operation.h"
@@ -500,20 +499,6 @@ static AclTransformer::Operation *ChatGlm6BLayerDecoderOperationCreate(const nlo
     return new AclTransformer::ChatGlm6BLayerDecoderOperation(param);
 }
 
-static AclTransformer::Operation *ChatGlm6BLayerDecoderDequantOperationCreate(const nlohmann::json &paramJson)
-{
-    AclTransformer::ChatGlm6BLayerDequantParam param;
-    param.layerNormEps = paramJson["layerNormEps"].get<double>();
-    param.headNum = paramJson["headNum"].get<int>();
-    param.transKey = paramJson["transKey"].get<bool>();
-    param.dk = paramJson["dk"].get<int>();
-    param.layerId = paramJson["layerId"].get<int>();
-    param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    for (auto item : paramJson["perm"]) {
-        param.perm.push_back(item.get<int>());
-    }
-    return new AclTransformer::ChatGlm6BLayerDecoderDequantOperation(param);
-}
 
 static AclTransformer::Operation *ChatGlm6BLayerDecoderDequantFlashAttentionOperationCreate(const nlohmann::json &paramJson)
 {
@@ -967,7 +952,6 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"BertLayerOperation", &BertLayerOperation},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"DequantOperation",&DequantOperationCreate},
-    {"ChatGlm6BLayerDecoderDequantOperation", &ChatGlm6BLayerDecoderDequantOperationCreate},
     {"ChatGlm6BLayerDecoderDequantFlashAttentionOperation", &ChatGlm6BLayerDecoderDequantFlashAttentionOperationCreate},
     {"ChatGlm6BLayerDecoderQuantOperation", &ChatGlm6BLayerDecoderQuantOperationCreate},
     {"ChatGlm6BLayerDecoderLastQuantOperation", &ChatGlm6BLayerDecoderLastQuantOperationCreate},
