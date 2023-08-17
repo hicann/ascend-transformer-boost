@@ -104,10 +104,10 @@ TEST(TestPositionEmbedding1dSplitOperation, TestPositionEmbedding1dSplit)
 {
     AclTransformer::PositionEmbedding1dSplitParam opParam = {8};
     AclTransformer::PositionEmbedding1dSplitOperation op(opParam);
-    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {8, 8, 64}},
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {8, 8, 64}},
                                             {AsdOps::TENSOR_DTYPE_INT64, AsdOps::TENSOR_FORMAT_ND, {8, 8}},
-                                            {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}},
-                                            {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}}};
+                                            {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}},
+                                            {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}}};
     OpTest opTest;
     opTest.LongRand(LONG_MIN_VALUE,LONG_MAX_VALUE);
     opTest.Golden(std::bind(PosEmb1dSplitGolden, opParam, std::placeholders::_1));
