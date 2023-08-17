@@ -44,6 +44,7 @@
 #include "acltransformer/ops/norm_quant_operation.h"
 #include "acltransformer/ops/rms_norm_quant_operation.h"
 #include "acltransformer/ops/rms_pre_norm_quant_operation.h"
+#include "acltransformer/ops/mlp_quant_operation.h"
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
@@ -342,6 +343,24 @@ static AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &param
         ASD_LOG(INFO) << "MlpParam is empty, default model:" << param.model;
     }
     return new AclTransformer::MlpOperation(param);
+}
+
+static AclTransformer::Operation *MlpQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::MlpQuantParam param;
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+        ASD_LOG(INFO) << "MlpQuantParam model:" << param.model;
+    } else {
+        param.model = "llama7b";
+        ASD_LOG(INFO) << "MlpQuantParam is empty, default model:" << param.model;
+    }
+
+    param.inputScale = paramJson["inputScale"].get<double>();
+    param.inputOffset = paramJson["inputOffset"].get<int>();
+    ASD_LOG(INFO) << "MlpQuantParams: " << ", input_scale:" << param.inputScale
+                  << ", input_offset:" << param.inputOffset;
+    return new AclTransformer::MlpQuantOperation(param);
 }
 
 static AclTransformer::Operation *AnyOperationCreate(const nlohmann::json &paramJson)
@@ -962,6 +981,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"MatmulOperation", &MatmulOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
     {"MlpOperation", &MlpOperationCreate},
+    {"MlpQuantOperation", &MlpQuantOperationCreate},
     {"EmbeddingOperation", &EmbeddingOperationCreate},
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
