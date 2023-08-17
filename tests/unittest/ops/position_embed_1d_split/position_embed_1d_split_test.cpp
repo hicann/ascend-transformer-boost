@@ -42,7 +42,7 @@ TEST(TestPositionEmbedding1dSplitOperation, InferShape)
     ASSERT_EQ(outTensorDescs.size(), 1);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
     EXPECT_EQ(outTensorDescs.at(0).format, AsdOps::TENSOR_FORMAT_ND);
-    AsdOps::SVector<int64_t> expectDims = {4, 8, 8, 64};
+    AsdOps::SVector<int64_t> expectDims = {8, 8, 8, 8};
     ASSERT_EQ(expectDims.size(), outTensorDescs.at(0).dims.size());
     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
@@ -104,10 +104,10 @@ TEST(TestPositionEmbedding1dSplitOperation, TestPositionEmbedding1dSplit)
 {
     AclTransformer::PositionEmbedding1dSplitParam opParam = {8};
     AclTransformer::PositionEmbedding1dSplitOperation op(opParam);
-    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {8, 8, 64}},
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {8, 8, 64}},
                                             {AsdOps::TENSOR_DTYPE_INT64, AsdOps::TENSOR_FORMAT_ND, {8, 8}},
-                                            {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}},
-                                            {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}}};
+                                            {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}},
+                                            {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}}};
     OpTest opTest;
     opTest.LongRand(LONG_MIN_VALUE,LONG_MAX_VALUE);
     opTest.Golden(std::bind(PosEmb1dSplitGolden, opParam, std::placeholders::_1));
