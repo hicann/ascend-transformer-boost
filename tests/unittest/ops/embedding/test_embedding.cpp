@@ -43,8 +43,10 @@ TEST(TestEmbeddingOperation, InferShape)
     EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
 }
 
-AsdOps::Status EmbeddingGolden(const GoldenContext &context) 
+AsdOps::Status EmbeddingGolden(const GoldenContext &context)
 {
+    // define param
+    int paramAxis = 1;
     // get constructed input/output tensors
     const AsdOps::Tensor inTensor = context.hostInTensors.at(0);
     const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
@@ -65,7 +67,6 @@ AsdOps::Status EmbeddingGolden(const GoldenContext &context)
             return Status::FailStatus(1, "unequal");
         }
     }
-
     return Status::OkStatus();
 }
 
@@ -74,7 +75,7 @@ TEST(TestEmbeddingOperation, TestEmbedding)
     AclTransformer::EmbeddingParam param;
     param.axis = 1;
     AclTransformer::EmbeddingOperation op(param);
-    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3}}};
     OpTest opTest;

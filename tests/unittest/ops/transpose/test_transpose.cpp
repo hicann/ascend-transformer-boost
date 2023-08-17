@@ -41,6 +41,9 @@ TEST(TestTransposeOperation, InferShape)
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
 }
 
+/// @brief golden
+/// @param context 
+/// @return 
 AsdOps::Status TransposeGolden(const GoldenContext &context)
 {
     // define param

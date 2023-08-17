@@ -25,9 +25,13 @@ using namespace AsdOps;
 constexpr float ATOL = 0.0001;
 constexpr float RTOL = 0.0001;
 
-TEST(TestSelfAttentionKvCacheOperation, InferShape)
+/// @brief chatglm6b(default) infershape test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheOperation, InferShapeChatglm6b)
 {
     AclTransformer::SelfAttentionKvCacheParam param;
+    AclTransformer::SelfAttentionKvCacheOperation op(param);
     AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
@@ -36,13 +40,10 @@ TEST(TestSelfAttentionKvCacheOperation, InferShape)
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}}};
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
-    AsdOps::SVector<AsdOps::SVector<int64_t>> expectDims;
-    // default(chatglm6b)
-    AclTransformer::SelfAttentionKvCacheOperation op0(param);
-    op0.InferShape(inTensorDescs, outTensorDescs);
+    op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 3);
     EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
-    expectDims = {{1, 2, 12}, {6, 6, 7, 8}, {7, 7, 8, 9}};
+    AsdOps::SVector<AsdOps::SVector<int64_t>> expectDims = {{1, 2, 12}, {6, 6, 7, 8}, {7, 7, 8, 9}};
     ASSERT_EQ(expectDims.at(0).size(), outTensorDescs.at(0).dims.size());
     EXPECT_EQ(expectDims.at(0).at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(0).at(1), outTensorDescs.at(0).dims.at(1));
@@ -57,30 +58,83 @@ TEST(TestSelfAttentionKvCacheOperation, InferShape)
     EXPECT_EQ(expectDims.at(2).at(1), outTensorDescs.at(2).dims.at(1));
     EXPECT_EQ(expectDims.at(2).at(2), outTensorDescs.at(2).dims.at(2));
     EXPECT_EQ(expectDims.at(2).at(3), outTensorDescs.at(2).dims.at(3));
-    // // chatglm2_6b
-    // param.model = "chatglm2_6b";
-    // AclTransformer::SelfAttentionKvCacheOperation op1(param);
-    // op1.InferShape(inTensorDescs, outTensorDescs);
-    // ASSERT_EQ(outTensorDescs.size(), 3);
-    // EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
-    // expectDims = {{1, 2, 12}, {5, 5, 6, 7}, {6, 6, 7, 8}};
-    // ASSERT_EQ(expectDims.at(0).size(), outTensorDescs.at(0).dims.size());
-    // EXPECT_EQ(expectDims.at(0).at(0), outTensorDescs.at(0).dims.at(0));
-    // EXPECT_EQ(expectDims.at(0).at(1), outTensorDescs.at(0).dims.at(1));
-    // EXPECT_EQ(expectDims.at(0).at(2), outTensorDescs.at(0).dims.at(2));
-    // ASSERT_EQ(expectDims.at(1).size(), outTensorDescs.at(1).dims.size());
-    // EXPECT_EQ(expectDims.at(1).at(0), outTensorDescs.at(1).dims.at(0));
-    // EXPECT_EQ(expectDims.at(1).at(1), outTensorDescs.at(1).dims.at(1));
-    // EXPECT_EQ(expectDims.at(1).at(2), outTensorDescs.at(1).dims.at(2));
-    // EXPECT_EQ(expectDims.at(1).at(3), outTensorDescs.at(1).dims.at(3));
-    // ASSERT_EQ(expectDims.at(2).size(), outTensorDescs.at(2).dims.size());
-    // EXPECT_EQ(expectDims.at(2).at(0), outTensorDescs.at(2).dims.at(0));
-    // EXPECT_EQ(expectDims.at(2).at(1), outTensorDescs.at(2).dims.at(1));
-    // EXPECT_EQ(expectDims.at(2).at(2), outTensorDescs.at(2).dims.at(2));
-    // EXPECT_EQ(expectDims.at(2).at(3), outTensorDescs.at(2).dims.at(3));
 }
 
-/// @brief chatglm6b test
+/// @brief chatglm2_6b infershape test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheOperation, InferShapeChatglm2_6b)
+{
+    AclTransformer::SelfAttentionKvCacheParam param;
+    param.model = "chatglm2_6b";
+    AclTransformer::SelfAttentionKvCacheOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}}};
+    AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+    op.InferShape(inTensorDescs, outTensorDescs);
+    ASSERT_EQ(outTensorDescs.size(), 3);
+    EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    AsdOps::SVector<AsdOps::SVector<int64_t>> expectDims = {{1, 2, 12}, {5, 5, 6, 7}, {6, 6, 7, 8}};
+    ASSERT_EQ(expectDims.at(0).size(), outTensorDescs.at(0).dims.size());
+    EXPECT_EQ(expectDims.at(0).at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDims.at(0).at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDims.at(0).at(2), outTensorDescs.at(0).dims.at(2));
+    ASSERT_EQ(expectDims.at(1).size(), outTensorDescs.at(1).dims.size());
+    EXPECT_EQ(expectDims.at(1).at(0), outTensorDescs.at(1).dims.at(0));
+    EXPECT_EQ(expectDims.at(1).at(1), outTensorDescs.at(1).dims.at(1));
+    EXPECT_EQ(expectDims.at(1).at(2), outTensorDescs.at(1).dims.at(2));
+    EXPECT_EQ(expectDims.at(1).at(3), outTensorDescs.at(1).dims.at(3));
+    ASSERT_EQ(expectDims.at(2).size(), outTensorDescs.at(2).dims.size());
+    EXPECT_EQ(expectDims.at(2).at(0), outTensorDescs.at(2).dims.at(0));
+    EXPECT_EQ(expectDims.at(2).at(1), outTensorDescs.at(2).dims.at(1));
+    EXPECT_EQ(expectDims.at(2).at(2), outTensorDescs.at(2).dims.at(2));
+    EXPECT_EQ(expectDims.at(2).at(3), outTensorDescs.at(2).dims.at(3));
+}
+
+/// @brief bloom7b infershape test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheOperation, InferShapeBloom7b)
+{
+    AclTransformer::SelfAttentionKvCacheParam param;
+    param.model = "bloom7b";
+    AclTransformer::SelfAttentionKvCacheOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {7, 8, 9, 10}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {8, 9, 10, 11}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {9, 10, 11, 12}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {10, 11, 12, 13}}};
+    AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
+    op.InferShape(inTensorDescs, outTensorDescs);
+    ASSERT_EQ(outTensorDescs.size(), 3);
+    EXPECT_EQ(outTensorDescs.at(0).dtype, AsdOps::TENSOR_DTYPE_FLOAT);
+    AsdOps::SVector<AsdOps::SVector<int64_t>> expectDims = {{1, 2, 3, 4}, {4, 5, 7}, {5, 7, 7}};
+    ASSERT_EQ(expectDims.at(0).size(), outTensorDescs.at(0).dims.size());
+    EXPECT_EQ(expectDims.at(0).at(0), outTensorDescs.at(0).dims.at(0));
+    EXPECT_EQ(expectDims.at(0).at(1), outTensorDescs.at(0).dims.at(1));
+    EXPECT_EQ(expectDims.at(0).at(2), outTensorDescs.at(0).dims.at(2));
+    EXPECT_EQ(expectDims.at(0).at(3), outTensorDescs.at(0).dims.at(3));
+    ASSERT_EQ(expectDims.at(1).size(), outTensorDescs.at(1).dims.size());
+    EXPECT_EQ(expectDims.at(1).at(0), outTensorDescs.at(1).dims.at(0));
+    EXPECT_EQ(expectDims.at(1).at(1), outTensorDescs.at(1).dims.at(1));
+    EXPECT_EQ(expectDims.at(1).at(2), outTensorDescs.at(1).dims.at(2));
+    ASSERT_EQ(expectDims.at(2).size(), outTensorDescs.at(2).dims.size());
+    EXPECT_EQ(expectDims.at(2).at(0), outTensorDescs.at(2).dims.at(0));
+    EXPECT_EQ(expectDims.at(2).at(1), outTensorDescs.at(2).dims.at(1));
+    EXPECT_EQ(expectDims.at(2).at(2), outTensorDescs.at(2).dims.at(2));
+}
+
+/// @brief chatglm6b golden
 /// @param context
 /// @return
 AsdOps::Status SelfAttentionKvCacheChatglm6bGolden(const GoldenContext &context)
@@ -158,11 +212,10 @@ AsdOps::Status SelfAttentionKvCacheChatglm6bGolden(const GoldenContext &context)
             return Status::FailStatus(1, "unequal");
         }
     }
-
     return Status::OkStatus();
 }
 
-/// @brief llama7b test
+/// @brief llama7b golden
 /// @param context
 /// @return
 AsdOps::Status SelfAttentionKvCacheLlama7bGolden(const GoldenContext &context)
@@ -242,11 +295,88 @@ AsdOps::Status SelfAttentionKvCacheLlama7bGolden(const GoldenContext &context)
     return Status::OkStatus();
 }
 
-TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCache)
+/// @brief chatglm2_6b golden
+/// @param context 
+/// @return 
+AsdOps::Status SelfAttentionKvCacheChatglm2_6bGolden(const GoldenContext &context) 
+{
+    // define param
+
+    // get constructed input/output tensors
+    const AsdOps::Tensor inTensor1 = context.hostInTensors.at(0);
+    const AsdOps::Tensor inTensor2 = context.hostInTensors.at(1);
+    const AsdOps::Tensor inTensor3 = context.hostInTensors.at(2);
+    const AsdOps::Tensor inTensor4 = context.hostInTensors.at(3);
+    const AsdOps::Tensor inTensor5 = context.hostInTensors.at(4);
+    const AsdOps::Tensor inTensor6 = context.hostInTensors.at(5);
+    const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
+    const AsdOps::Tensor outTensor2 = context.hostOutTensors.at(1);
+    const AsdOps::Tensor outTensor3 = context.hostOutTensors.at(2);
+    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // construct ref input tensors
+    at::Tensor atInRefTensor = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kFloat);
+    // get ref output tensor
+    at::Tensor atOutRefTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // compare
+    float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
+    float *atRefOutArray = (float *)atOutRefTensor.storage().data_ptr().get(); // golden
+    for (int i = 0; i < outTensor.Numel(); i++) {
+        float expect = atRefOutArray[i];
+        float actual = atOutArray[i];
+        bool judge = std::abs(expect - actual) <= (ATOL + RTOL * std::abs(actual));
+        EXPECT_EQ(judge, true);
+        if (!judge) {
+            return Status::FailStatus(1, "unequal");
+        }
+    }
+    return Status::OkStatus();
+}
+
+/// @brief bloom7b golden
+/// @param context 
+/// @return 
+AsdOps::Status SelfAttentionKvCacheBloom7bGolden(const GoldenContext &context) 
+{
+    // define param
+
+    // get constructed input/output tensors
+    const AsdOps::Tensor inTensor1 = context.hostInTensors.at(0);
+    const AsdOps::Tensor inTensor2 = context.hostInTensors.at(1);
+    const AsdOps::Tensor inTensor3 = context.hostInTensors.at(2);
+    const AsdOps::Tensor inTensor4 = context.hostInTensors.at(3);
+    const AsdOps::Tensor inTensor5 = context.hostInTensors.at(4);
+    const AsdOps::Tensor inTensor6 = context.hostInTensors.at(5);
+    const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
+    const AsdOps::Tensor outTensor2 = context.hostOutTensors.at(1);
+    const AsdOps::Tensor outTensor3 = context.hostOutTensors.at(2);
+    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // construct ref input tensors
+    at::Tensor atInRefTensor = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kFloat);
+    // get ref output tensor
+    at::Tensor atOutRefTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // compare
+    float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
+    float *atRefOutArray = (float *)atOutRefTensor.storage().data_ptr().get(); // golden
+    for (int i = 0; i < outTensor.Numel(); i++) {
+        float expect = atRefOutArray[i];
+        float actual = atOutArray[i];
+        bool judge = std::abs(expect - actual) <= (ATOL + RTOL * std::abs(actual));
+        EXPECT_EQ(judge, true);
+        if (!judge) {
+            return Status::FailStatus(1, "unequal");
+        }
+    }
+    return Status::OkStatus();
+}
+/// @brief chatglm6b test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheChatglm6b)
 {
     AclTransformer::SelfAttentionKvCacheParam param;
     param.headNum = 1;
     param.layerId = 1;
+    AclTransformer::SelfAttentionKvCacheOperation op(param);
     AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
@@ -255,16 +385,76 @@ TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCache)
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}}};
     OpTest opTest;
-    AsdOps::Status status;
-    // chatglm6b
-    AclTransformer::SelfAttentionKvCacheOperation op0(param);
     opTest.Golden(&SelfAttentionKvCacheChatglm6bGolden);
-    status = opTest.Run(&op0, inTensorDescs);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);
-    // llama7b
+}
+
+/// @brief llama7b test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheLlama7b)
+{
+    AclTransformer::SelfAttentionKvCacheParam param;
     param.model = "llama7b";
-    AclTransformer::SelfAttentionKvCacheOperation op1(param);
+    param.headNum = 1;
+    param.layerId = 1;
+    param.dk = 1;
+    AclTransformer::SelfAttentionKvCacheOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}}};
+    OpTest opTest;
     opTest.Golden(&SelfAttentionKvCacheLlama7bGolden);
-    status = opTest.Run(&op1, inTensorDescs);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
+    ASSERT_EQ(status.Ok(), true);
+}
+
+/// @brief chatglm2_6b test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheChatglm2_6b)
+{
+    AclTransformer::SelfAttentionKvCacheParam param;
+    param.model = "chatglm2_6b";
+    AclTransformer::SelfAttentionKvCacheOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}}};
+    OpTest opTest;
+    opTest.Golden(&SelfAttentionKvCacheChatglm2_6bGolden);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
+    ASSERT_EQ(status.Ok(), true);
+}
+
+/// @brief bloom7b test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheBloom7b)
+{
+    AclTransformer::SelfAttentionKvCacheParam param;
+    param.model = "bloom7b";
+    AclTransformer::SelfAttentionKvCacheOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {7, 8, 9, 10}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {8, 9, 10, 11}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {9, 10, 11, 12}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {10, 11, 12, 13}}};
+    OpTest opTest;
+    opTest.Golden(&SelfAttentionKvCacheBloom7bGolden);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);
 }
