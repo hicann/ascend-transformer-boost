@@ -35,6 +35,8 @@
 #include "acltransformer/kernel_cache.h"
 
 namespace AclTransformer {
+const int ALIGN_INT = 512;
+
 std::string KernelGraph::ToString() const
 {
     std::stringstream ss;
@@ -535,7 +537,7 @@ bool OpsRunner::PlanOneKernelInferShape(AsdOps::Operation *op, KernelGraphNode &
                               << "] is internal tensor, infer shape wrong, not use infer shape desc";
             }
             outTensor->dataSize = TensorUtil::CalcTensorDataSize(outTensor->desc);
-            outTensor->data = memAllocatinSolver_->Malloc(TensorUtil::AlignInt(outTensor->dataSize, 32));
+            outTensor->data = memAllocatinSolver_->Malloc(TensorUtil::AlignInt(outTensor->dataSize, ALIGN_INT));
             ASD_LOG(INFO) << GetName() << " node[" << nodeId << "] " << op->GetName() << " outTensors[" << i
                           << "] is internal tensor, mem solve:" << outTensor->data;
         } else {
