@@ -91,7 +91,6 @@ AsdOps::Status ChatGlm6BDecoderWithoutFusionModel::InferShape(const std::vector<
 
 void ChatGlm6BDecoderWithoutFusionModel::BuildGraph()
 {
-    ASD_LOG(INFO) << "Build Graph Start.";
     const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum; 
     graph_.weightTensors.resize(weightTensorSize);
 
@@ -106,8 +105,6 @@ void ChatGlm6BDecoderWithoutFusionModel::BuildGraph()
     int nodeId = 0;   
 
     AsdOps::Tensor *firstInTensor = &graph_.inTensors.at(0);
-    ASD_LOG(INFO) << "First InTensor Set.";
-
     for (int layerId = 0; layerId < param_.layerNum; ++layerId) {
         auto &layerNode = graph_.nodes.at(nodeId++);
 
@@ -125,24 +122,15 @@ void ChatGlm6BDecoderWithoutFusionModel::BuildGraph()
 
         size_t inTensorId = 0;
         layerNode.inTensors.at(inTensorId++) = firstInTensor;   // hidden states tensor
-
         for (size_t weightTensorId = 0; weightTensorId < WEIGHT_COUNT_PER_LAYER; ++weightTensorId) {
             layerNode.inTensors.at(inTensorId++) = &graph_.weightTensors.at(layerId * WEIGHT_COUNT_PER_LAYER + weightTensorId);
         }
-
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_POSITIONID);       // positionIdTensor
-        
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_COSTABLE);       // costable
-        
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SINTABLE);       // sintable
-        
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK);  // attentionMaskTensor
-        
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_PASTK_V_START + layerId);
-        
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_PASTK_V_START + param_.layerNum + layerId);
-        
-        
         if (layerId != param_.layerNum - 1) {
             layerNode.outTensors = {&graph_.internalTensors.at(layerId),
                                     &graph_.outTensors.at(2 * layerId + 1),
@@ -155,7 +143,6 @@ void ChatGlm6BDecoderWithoutFusionModel::BuildGraph()
 
         firstInTensor = layerNode.outTensors.at(0);
     }
-    ASD_LOG(INFO) << "Build Graph finished.";
 }
 
 AsdOps::Status ChatGlm6BDecoderWithoutFusionModel::ParseVarintPackParam(const std::string &param, int nodeId,
