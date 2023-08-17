@@ -30,6 +30,7 @@
 #include "acltransformer/ops/ffn_operation.h"
 #include "acltransformer/ops/embedding_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
+#include "acltransformer/ops/dequant_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
@@ -57,6 +58,7 @@
 #include "models/chatglm6b/chatglm6blayer_decoder_first_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_last_quant_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
+#include "models/chatglm6b/chatglm6blayer_decoder_dequant_flashattention_operation.h"
 #include "models/glm130b/glm130blayer_decoder_operation.h"
 #include "models/glm130b/glm130blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_operation.h"
@@ -244,6 +246,12 @@ AclTransformer::Operation *RopeOperationCreate(const nlohmann::json &paramJson)
         ASD_LOG(INFO) << "param.headNum: " << param.headNum;
     }
     return new AclTransformer::RopeOperation(param);
+}
+
+AclTransformer::Operation *DequantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::DequantParam param;
+    return new AclTransformer::DequantOperation(param);
 }
 
 AclTransformer::Operation *PositionEmbedding1dSplitFusionOperationCreate(const nlohmann::json &paramJson)
@@ -515,6 +523,28 @@ static AclTransformer::Operation *ChatGlm6BLayerDecoderOperationCreate(const nlo
                   << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
                   << ", residualAddScale:" << param.residualAddScale;
     return new AclTransformer::ChatGlm6BLayerDecoderOperation(param);
+}
+
+
+static AclTransformer::Operation *ChatGlm6BLayerDecoderDequantFlashAttentionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm6BLayerDequantFlashAttentionParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+    }
+    for (auto item : paramJson["perm"]) {
+        param.perm.push_back(item.get<int>());
+    }
+    return new AclTransformer::ChatGlm6BLayerDecoderDequantFlashAttentionOperation(param);
 }
 
 static AclTransformer::Operation *ChatGlm6BLayerDecoderWithoutFusionOperationCreate(const nlohmann::json &paramJson)
@@ -999,6 +1029,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"BertLayerOperation", &BertLayerOperation},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
+    {"DequantOperation",&DequantOperationCreate},
+    {"ChatGlm6BLayerDecoderDequantFlashAttentionOperation", &ChatGlm6BLayerDecoderDequantFlashAttentionOperationCreate},
     {"ChatGlm6BLayerDecoderQuantOperation", &ChatGlm6BLayerDecoderQuantOperationCreate},
     {"ChatGlm6BLayerDecoderLastQuantOperation", &ChatGlm6BLayerDecoderLastQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFirstQuantOperation", &ChatGlm6BLayerDecoderFirstQuantOperationCreate},

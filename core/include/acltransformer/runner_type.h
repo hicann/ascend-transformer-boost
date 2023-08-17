@@ -50,6 +50,7 @@ enum RunnerType {
     RUNNER_TYPE_BROADCAST,
     RUNNER_TYPE_REDUCE_SCATTER,
     RUNNER_TYPE_BARRIER,
+    RUNNER_TYPE_DEQUANT,
     RUNNER_TYPE_MAX
 };
 } // namespace AclTransformer
