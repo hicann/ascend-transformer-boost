@@ -29,34 +29,38 @@ MlpQuantOpsRunner::MlpQuantOpsRunner(const MlpQuantParam &param) : OpsRunner("Ml
     const std::size_t nodeSize = 6;
 
     kernelGraph_.inTensors.resize(inTensorSize);
-    AsdOps::Tensor &hiddenStatus = kernelGraph_.inTensors.at(0);
-    AsdOps::Tensor &weightGate = kernelGraph_.inTensors.at(1);
-    AsdOps::Tensor &deqScaleGate = kernelGraph_.inTensors.at(2);
-    AsdOps::Tensor &biasGate = kernelGraph_.inTensors.at(3);
-    AsdOps::Tensor &weightDown = kernelGraph_.inTensors.at(4);
-    AsdOps::Tensor &deqScaleDown = kernelGraph_.inTensors.at(5);
-    AsdOps::Tensor &biasDown = kernelGraph_.inTensors.at(6);
-    AsdOps::Tensor &weightUp = kernelGraph_.inTensors.at(7);
-    AsdOps::Tensor &deqScaleUp = kernelGraph_.inTensors.at(8);
-    AsdOps::Tensor &biasUp = kernelGraph_.inTensors.at(9);
+    size_t inTensorId = 0;
+    AsdOps::Tensor &hiddenStatus = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &weightGate = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &deqScaleGate = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &biasGate = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &weightDown = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &deqScaleDown = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &biasDown = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &weightUp = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &deqScaleUp = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &biasUp = kernelGraph_.inTensors.at(inTensorId++);
 
     kernelGraph_.outTensors.resize(outTensorSize);
-    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors.at(0);
+    size_t outTensorId = 0;
+    AsdOps::Tensor &resultTensor = kernelGraph_.outTensors.at(outTensorId++);
 
     kernelGraph_.internalTensors.resize(internalTensorSize);
-    AsdOps::Tensor &matmulGateOut = kernelGraph_.internalTensors.at(0);
-    AsdOps::Tensor &matmulUpOut = kernelGraph_.internalTensors.at(1);
-    AsdOps::Tensor &mulOut = kernelGraph_.internalTensors.at(2);
-    AsdOps::Tensor &swishOut = kernelGraph_.internalTensors.at(3);
-    AsdOps::Tensor &quantOut = kernelGraph_.internalTensors.at(4);
+    size_t internalTensorId = 0;
+    AsdOps::Tensor &matmulGateOut = kernelGraph_.internalTensors.at(internalTensorId++);
+    AsdOps::Tensor &matmulUpOut = kernelGraph_.internalTensors.at(internalTensorId++);
+    AsdOps::Tensor &mulOut = kernelGraph_.internalTensors.at(internalTensorId++);
+    AsdOps::Tensor &swishOut = kernelGraph_.internalTensors.at(internalTensorId++);
+    AsdOps::Tensor &quantOut = kernelGraph_.internalTensors.at(internalTensorId++);
 
     kernelGraph_.nodes.resize(nodeSize);
-    auto &matmulGateNode = kernelGraph_.nodes[0];
-    auto &swishNode = kernelGraph_.nodes[1];
-    auto &matmulUpNode = kernelGraph_.nodes[2];
-    auto &mulNode = kernelGraph_.nodes[3];
-    auto &quantNode = kernelGraph_.nodes[4];
-    auto &matmulDownNode = kernelGraph_.nodes[5];
+    size_t nodeId = 0;
+    auto &matmulGateNode = kernelGraph_.nodes[nodeId++];
+    auto &swishNode = kernelGraph_.nodes[nodeId++];
+    auto &matmulUpNode = kernelGraph_.nodes[nodeId++];
+    auto &mulNode = kernelGraph_.nodes[nodeId++];
+    auto &quantNode = kernelGraph_.nodes[nodeId++];
+    auto &matmulDownNode = kernelGraph_.nodes[nodeId++];
 
     matmulGateNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
     matmulGateNode.inTensors = {&hiddenStatus, &weightGate, &biasGate, &deqScaleGate};
