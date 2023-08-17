@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+# set -e
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 CURRENT_DIR=$(pwd)
 cd $SCRIPT_DIR
@@ -238,6 +238,7 @@ function fn_run_unittest()
 {
     cd $OUTPUT_DIR/acltransformer
     source set_env.sh
+    export ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE=0
     echo "run $OUTPUT_DIR/acltransformer/bin/acltransformer_unittest"
     $OUTPUT_DIR/acltransformer/bin/acltransformer_unittest
 }

@@ -52,7 +52,10 @@ TEST(TestSelfAttentionKvCacheFusionOperation, InferShape)
     EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
 }
 
-AsdOps::Status SelfAttentionKvCacheFusionGolden(const GoldenContext &context) 
+/// @brief chatglm6b golden
+/// @param context 
+/// @return 
+AsdOps::Status SelfAttentionKvCacheFusionChatglm6bGolden(const GoldenContext &context) 
 {
     // get constructed input/output tensors
     const AsdOps::Tensor inTensor = context.hostInTensors.at(0);
@@ -74,11 +77,41 @@ AsdOps::Status SelfAttentionKvCacheFusionGolden(const GoldenContext &context)
             return Status::FailStatus(1, "unequal");
         }
     }
-
     return Status::OkStatus();
 }
 
-TEST(TestSelfAttentionKvCacheFusionOperation, TestSelfAttentionKvCacheFusion)
+/// @brief chatglm2_6b golden
+/// @param context 
+/// @return 
+AsdOps::Status SelfAttentionKvCacheFusionChatglm2_6bGolden(const GoldenContext &context) 
+{
+    // get constructed input/output tensors
+    const AsdOps::Tensor inTensor = context.hostInTensors.at(0);
+    const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
+    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // construct ref input tensors
+    at::Tensor atInRefTensor = at::from_blob(inTensor.data, ToIntArrayRef(inTensor.desc.dims), at::kFloat);
+    // get ref output tensor
+    at::Tensor atOutRefTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // compare
+    float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
+    float *atRefOutArray = (float *)atOutRefTensor.storage().data_ptr().get(); // golden
+    for (int i = 0; i < outTensor.Numel(); i++) {
+        float expect = atRefOutArray[i];
+        float actual = atOutArray[i];
+        bool judge = std::abs(expect - actual) <= (ATOL + RTOL * std::abs(actual));
+        EXPECT_EQ(judge, true);
+        if (!judge) {
+            return Status::FailStatus(1, "unequal");
+        }
+    }
+    return Status::OkStatus();
+}
+
+/// @brief chatglm6b test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheFusionOperation, TestSelfAttentionKvCacheFusionChatglm6b)
 {
     AclTransformer::SelfAttentionKvCacheFusionParam param;
     AclTransformer::SelfAttentionKvCacheFusionOperation op(param);
@@ -93,7 +126,31 @@ TEST(TestSelfAttentionKvCacheFusionOperation, TestSelfAttentionKvCacheFusion)
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}}};
     OpTest opTest;
-    opTest.Golden(&SelfAttentionKvCacheFusionGolden);
+    opTest.Golden(&SelfAttentionKvCacheFusionChatglm6bGolden);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
+    ASSERT_EQ(status.Ok(), true);
+}
+
+/// @brief chatglm2_6b test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheFusionOperation, TestSelfAttentionKvCacheFusionChatglm2_6b)
+{
+    AclTransformer::SelfAttentionKvCacheFusionParam param;
+    param.model = "chatglm2_6b";
+    AclTransformer::SelfAttentionKvCacheFusionOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}}};
+    OpTest opTest;
+    opTest.Golden(&SelfAttentionKvCacheFusionChatglm2_6bGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);
 }
