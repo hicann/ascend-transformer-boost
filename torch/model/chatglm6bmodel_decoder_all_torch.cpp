@@ -424,8 +424,9 @@ void ChatGlm6BModelDecoderAllTorch::WaitAsyncPlanExecuteFinish()
 
 std::string ChatGlm6BModelDecoderAllTorch::GetSaveTensorDir()
 {
-    std::string dir = std::to_string(executeCount_) + "/0_ChatGlm6BModelDecoderAllTorch";
-    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
+    const char *envStr = std::getenv("AIT_CMP_TASK_ID");
+    std::string dir = envStr ? std::string(envStr) : std::to_string(executeCount_);
+    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir + "/0_ChatGlm6BModelDecoderAllTorch";
 }
 
 TORCH_LIBRARY(ChatGlm6BModelDecoderAllTorch, m)
