@@ -15,6 +15,7 @@
  */
 #ifndef ACLTRANSFOERM_PARAMS_LINEAR_PARALLEL_H
 #define ACLTRANSFOERM_PARAMS_LINEAR_PARALLEL_H
+
 namespace AclTransformer {
 struct LinearParallelParam {
     bool transWeight = false;
@@ -24,6 +25,8 @@ struct LinearParallelParam {
     std::string bias = "";
     std::string parallelType = "RowParallel";
     std::string backend = "hccl";
+    bool useCommExt = false;
+    void *commExt = nullptr; // only effect when useCommExt is true
 };
 } // namespace AclTransformer
 #endif
