@@ -1,0 +1,133 @@
+ARG UBUNTU_VERSION=18.04
+FROM ubuntu:${UBUNTU_VERSION}
+LABEL maintainer = "jitao jitao12@huawei.com"
+LABEL version = "1.0.0"
+LABEL description = "Image for glm130b 910b based on Ubuntu18.04"
+
+# Config env
+ENV DEBIAN_FRONTEND=noninteractive
+ENV GIT_SSL_NO_VERIFY=1
+ENV ACLTRANSFORMER_TESTDATA=/data/acltransformer_testdata
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Ascend/driver/lib64/driver/
+ENV TMOUT=0
+ENV HISTSIZE=5000
+RUN umask 0022
+ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+ENV HCCL_MTE_ENABLE=1
+ENV ASCEND_SLOG_PRINT_TO_STDOUT=0
+ENV ASCEND_GLOBAL_LOG_LEVEL=3
+ENV ASCEND_GLOBAL_EVENT_ENABLE=0
+ENV COMBINED_ENABLE=1
+ENV HCCL_WHITELIST_DISABLE=1
+ENV HCCL_CONNECT_TIMEOUT=1800
+ENV HCCL_EXEC_TIMEOUT=1200
+
+RUN echo 'source /usr/local/Ascend/ascend-toolkit/set_env.sh' >> ~/.bashrc
+RUN echo 'export HCCL_IF_IP=$(hostname -I |awk "{print \$1}")' >> ~/.bashrc
+
+WORKDIR /home
+
+# Install Required Libraries
+RUN chmod 777 /tmp
+RUN apt-get update
+RUN apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    zlib1g \
+    zlib1g-dev \
+    openssl \
+    git \
+    wget \
+    libsqlite3-dev \
+    libssl-dev \
+    libffi-dev \
+    unzip \
+    pciutils \
+    net-tools \
+    libblas-dev \ 
+    gfortran \
+    libblas3 \
+    libopenblas-dev \
+    libxml2-dev \
+    libxml2 \
+    vim \
+    sudo
+
+COPY tmp/ /home
+# Install CMake
+RUN if [ ! -e cmake-3.27.1-linux-aarch64.sh ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/cmake-3.27.1-linux-aarch64.sh --no-check-certificate; \
+    fi
+RUN yes| bash cmake-3.27.1-linux-aarch64.sh --prefix=/usr/bin \
+    && rm -f cmake-3.27.1-linux-aarch64.sh
+ENV PATH="/usr/bin/cmake-3.27.1-linux-aarch64/bin:${PATH}"
+
+# Install Anaconda & Python3
+RUN if [ ! -e Anaconda3-2023.07-1-Linux-aarch64.sh ]; then \
+        wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/Anaconda3-2023.07-1-Linux-aarch64.sh --no-check-certificate; \
+    fi
+RUN bash Anaconda3-2023.07-1-Linux-aarch64.sh -b -p /opt/conda \
+    && rm -f Anaconda3-2023.07-1-Linux-aarch64.sh
+RUN ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh \
+    && echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
+ENV PATH /opt/conda/bin:/opt/conda/condabin:$PATH
+
+RUN conda create --name py3.7 python=3.7.10 
+RUN echo "conda activate py3.7" >> ~/.bashrc
+ENV PATH /opt/conda/envs/py3.7/bin:$PATH
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/envs/py3.7/lib
+ENV LD_PRELOAD=/opt/conda/envs/py3.7/lib/libgomp.so.1
+RUN pip3 install \
+    attrs \
+    numpy \
+    decorator \
+    sympy \
+    cffi \
+    pyyaml \
+    pathlib2 \
+    psutil \
+    scipy \
+    requests \
+    absl-py \
+    protobuf==3.20.0 \
+    transformers==4.28.1 \
+    icetk \
+    cpm_kernels \
+    gradio \
+    mdtex2html \
+    deepspeed \
+    datasets \
+    tensorboardX \
+    dataclass-wizard
+
+# Install Ascend Cann Library
+RUN if [ ! -e Ascend-cann-toolkit_7.0.RC1_linux-aarch64.run ]; then \
+        wget https://cmc-szver-artifactory.cmc.tools.huawei.com/artifactory/cmc-software-snapshot/CANN/CANN%207/CANN%207.0.RC1.B105-20230816163824-113/run/aarch64-linux/Ascend-cann-toolkit_7.0.RC1_linux-aarch64.run?_t=1692177658963 --no-check-certificate; \
+    fi
+RUN if [ ! -e Ascend-cann-kernels-910b_7.0.RC1_linux.run ]; then \
+        wget https://cmc-szver-artifactory.cmc.tools.huawei.com/artifactory/cmc-software-snapshot/CANN/CANN%207/CANN%207.0.RC1.B105-20230816163824-113/run/Ascend-cann-kernels-910b_7.0.RC1_linux.run?_t=1692177649516 --no-check-certificate; \
+    fi
+RUN chmod +x Ascend-cann*
+RUN ./Ascend-cann-toolkit_7.0.RC1_linux-aarch64.run* --install
+RUN ./Ascend-cann-kernels-910b_7.0.RC1_linux.run* --install \
+    && rm -f Ascend-cann-toolkit_7.0.RC1_linux-aarch64.run* Ascend-cann-kernels-910b_7.0.RC1_linux.run*
+
+# Install Torch, Torch_npu
+RUN if [ ! -e torch-1.11.0-cp37-cp37m-linux_aarch64.whl ]; then \
+        wget https://cmc-szver-artifactory.cmc.tools.huawei.com/artifactory/cmc-sz-inner/FrameworkPTAdapter/FrameworkPTAdapter%205/FrameworkPTAdapter%205.0.RC3.B010/PyTorch1.11.0+Apex%205.0.RC3.B010.zip?_t=1692272833315 --no-check-certificate; \
+        unzip -j PyTorch1.11.0+Apex* \
+    fi
+RUN pip3 install torch-1.11.0-cp37-cp37m-linux_aarch64.whl \
+    && rm -f torch-1.11.0-cp37-cp37m-linux_aarch64.whl
+
+RUN if [ ! -e torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl ]; then \
+        wget https://cmc-szver-artifactory.cmc.tools.huawei.com/artifactory/cmc-sz-inner/FrameworkPTAdapter/FrameworkPTAdapter%205/FrameworkPTAdapter%205.0.RC3.B010/PyTorch1.11.0+Apex%205.0.RC3.B010.zip?_t=1692272833315 --no-check-certificate; \
+        uunzip -j PyTorch1.11.0+Apex* \
+    fi
+RUN pip3 install torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl \
+    && rm -f torch_npu-1.11.0.post1-cp37-cp37m-linux_aarch64.whl
+
+# Config lcal.o & libhccl.so
+RUN cp libhccl.so lcal.o /usr/local/Ascend/ascend-toolkit/7.0.RC1/aarch64-linux/lib64/
+RUN cp libhccl.so lcal.o /usr/local/Ascend/ascend-toolkit/latest/aarch64-linux/lib64/
