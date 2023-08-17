@@ -22,6 +22,7 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/matmul.h"
 #include "matmul_ops_runner_910b.h"
+#include "matmul_ops_runner_910a.h"
 
 namespace AclTransformer {
 class MatmulOpsRunnerBuilder : public RunnerBuilder {
@@ -33,7 +34,11 @@ public:
     virtual ~MatmulOpsRunnerBuilder() = default;
     Runner *Build() override
     {
-        return new MatmulOpsRunner910B(param_);
+        if (AsdOps::GetSingleton<Config>().Is910B()) {
+            return new MatmulOpsRunner910B(param_);
+        } else {
+                return new MatmulOpsRunner910A(param_);
+        }
     }
 
 private:
