@@ -164,7 +164,7 @@ void SelfAttentionKvCacheFusionOpsChatGlm2Runner::SetKernelGrapModifyFunc()
         }
         const SelfAttentionKvCacheFusionVariantPackParam &newParam =
             AsdOps::AnyCast<SelfAttentionKvCacheFusionVariantPackParam>(runnerVariantPack.param);
-        const size_t flashAttentionNodeId = 3;
+        const size_t flashAttentionNodeId = 5;
         auto &flashAttentionNode = kernelGraph_.nodes.at(flashAttentionNodeId);
 
         float tor = (float)(newParam.layerId + 1);
