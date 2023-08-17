@@ -231,7 +231,7 @@ function fn_build()
         fn_copy_examples
     fi
 
-    fn_generate_doxygen
+    #fn_generate_doxygen
 }
 
 function fn_run_unittest()
