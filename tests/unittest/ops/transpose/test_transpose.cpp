@@ -19,6 +19,7 @@
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "tests/unittest/test_util/op_test.h"
+#include <half.hpp>
 
 using namespace AclTransformer;
 using namespace AsdOps;
@@ -51,15 +52,14 @@ AsdOps::Status TransposeGolden(const GoldenContext &context)
     // get constructed input/output tensors
     const AsdOps::Tensor inTensor = context.hostInTensors.at(0);
     const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
-    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kHalf);
     // construct ref input tensors
-    at::Tensor atInRefTensor = at::from_blob(inTensor.data, ToIntArrayRef(inTensor.desc.dims), at::kFloat);
+    at::Tensor atInRefTensor = at::from_blob(inTensor.data, ToIntArrayRef(inTensor.desc.dims), at::kHalf).to(at::kFloat);
     // get ref output tensor
     at::Tensor atOutRefTensor = atInRefTensor.permute(at::IntArrayRef(paramPerm.data(), paramPerm.size())).contiguous();
     // compare
-    float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
-    float *atRefOutArray = (float *)atOutRefTensor.storage().data_ptr().get(); // golden
-    // compare
+    half_float::half *atOutArray = static_cast<half_float::half *>(atOutTensor.storage().data_ptr().get());
+    half_float::half *atRefOutArray = static_cast<half_float::half *>(atOutRefTensor.storage().data_ptr().get()); // golden
     for (int i = 0; i < outTensor.Numel(); i++) {
         float expect = atRefOutArray[i];
         float actual = atOutArray[i];
@@ -77,7 +77,7 @@ TEST(TestTransposeOperation, TestTranspose)
     AclTransformer::TransposeParam param;
     param.perm = {0, 1};
     AclTransformer::TransposeOperation op(param);
-    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
     OpTest opTest;
     opTest.Golden(&TransposeGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
