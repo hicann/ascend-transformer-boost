@@ -12,7 +12,6 @@ class Chatglm6BModelTest(model_test.ModelTest):
     def generate_time_performance(self):
         statistic = model_test.Statistics()
         statistic.model_name = "chatglm6b"
-        self.create_time(statistic)
         
         performance_file_path = os.path.join(CHATGLM6B_PATH, f"zhiputest_{self.device_type}.csv")
         os.system(f"bash {RUN_SHELL_PATH} {MODEL_SCRIPT_PATH} --zhipu")

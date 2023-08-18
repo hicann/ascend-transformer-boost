@@ -12,7 +12,6 @@ class Llama2_7b_ModelTest(model_test.ModelTest):
     def generate_time_performance(self):
         statistic = model_test.Statistics()
         statistic.model_name = "llama2_7b"
-        self.create_time(statistic)
         
         performance_file_path = os.path.join(LLAMA2_7B_PATH, f"zhiputest_{self.device_type}_llama2_7b.csv")
         print("-----llama_test-----")
