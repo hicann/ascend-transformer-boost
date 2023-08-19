@@ -164,20 +164,20 @@ function fn_main()
         shift
     fi
     
-    if [[ ! -z "$1" ]];then
-        TEMP_SCRIPT_PATH="$1"
-        if [[ ! -e $TEMP_SCRIPT_PATH ]];then
-            SCRIPT_PATH=$TEMP_SCRIPT_PATH
-            echo "[MODEL_SCRIPT_PATH]: $SCRIPT_PATH"
-            shift
-        else
-            echo "WRONG dir"
-            exit -1
-        fi
-    fi
+    # if [[ ! -z "$1" ]];then
+    #     TEMP_SCRIPT_PATH="$1"
+    #     if [[ ! -e $TEMP_SCRIPT_PATH ]];then
+    #         SCRIPT_PATH=$TEMP_SCRIPT_PATH
+    #         echo "[MODEL_SCRIPT_PATH]: $SCRIPT_PATH"
+    #         shift
+    #     else
+    #         echo "WRONG dir"
+    #         exit -1
+    #     fi
+    # fi
 
     cd $SCRIPT_DIR
-    echo "[TRANSFORMER_PACKAGE_PATH]: $TRANSFORMER_PACKAGE_PATH"
+    # echo "[TRANSFORMER_PACKAGE_PATH]: $TRANSFORMER_PACKAGE_PATH"
 
     case "${MODEL}" in
         "--llama1-7b")
@@ -202,7 +202,7 @@ function fn_main()
             ;;
     esac
 
-    cp $SCRIPT_PATH $TRANSFORMER_PACKAGE_PATH/models/llama/modeling_llama.py
+    # cp $SCRIPT_PATH $TRANSFORMER_PACKAGE_PATH/models/llama/modeling_llama.py
 
     case "${RUN_OPTION}" in
         "--run")

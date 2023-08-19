@@ -19,7 +19,8 @@ class Llama2_7b_ModelTest(model_test.ModelTest):
         print(f"[MODEL]: llama2_7b")
         print(f"[RUN_SHELL_PATH]: {RUN_SHELL_PATH}")
         print(f"[MODEL_SCRIPT_PATH]: {MODEL_SCRIPT_PATH}")
-        os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama2-7b {MODEL_SCRIPT_PATH} ")
+        # os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama2-7b {MODEL_SCRIPT_PATH} ")
+        os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama2-7b")
         if not os.path.exists(performance_file_path):
             print(f"file {performance_file_path} not exist!")
             return
