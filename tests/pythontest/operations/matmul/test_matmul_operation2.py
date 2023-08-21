@@ -32,8 +32,8 @@ class TetFfn(operation_test.OperationTest):
 
     def test(self):
         self.execute(OP_NAME, PARAM, 
-                     [torch.rand(3, 3).npu().half(),
-                      torch.rand(3, 3).npu().half()])
+                     [torch.rand(2, 3, 3).npu().half(),
+                      torch.rand(2, 3, 3).npu().half()])
 
 
 if __name__ == '__main__':

@@ -23,7 +23,7 @@ import operation_test  # NOQA: E402
 
 
 OP_NAME = "MatmulOperation"
-PARAM = '{"transposeA": false, "transposeB": false, "hasBias": true}'
+PARAM = '{"transposeA": false, "transposeB": false}'
 
 class TetFfn(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
