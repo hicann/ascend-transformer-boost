@@ -28,6 +28,16 @@ os_name = platform.system()
 clear_command = 'cls' if os_name == 'Windows' else 'clear'
 stop_stream = False
 
+# 修改transformers的TopKLogitsWarper
+def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+    top_k = min(self.top_k, scores.size(-1))
+    indices_to_remove = scores < torch.topk(scores, top_k)[0][..., -1, None]
+    filter_value = torch.finfo(scores.dtype).min
+    scores = scores.masked_fill(indices_to_remove, filter_value)
+    # scores = scores.masked_fill(indices_to_remove, self.filter_value)
+    return scores
+
+transformers.generation.TopKLogitsWarper.__call__ = __call__
 
 # 修改transformers的TopPLogitsWarper
 def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
@@ -45,9 +55,10 @@ def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> to
     # scatter sorted tensors to original indexing
     indices_to_remove = sorted_indices_to_remove.scatter(
         1, sorted_indices, sorted_indices_to_remove)
-    scores = scores.masked_fill(indices_to_remove, self.filter_value)
+    filter_value = torch.finfo(scores.dtype).min
+    scores = scores.masked_fill(indices_to_remove, filter_value)
+    # scores = scores.masked_fill(indices_to_remove, self.filter_value)
     return scores
-
 
 transformers.generation.TopPLogitsWarper.__call__ = __call__
 

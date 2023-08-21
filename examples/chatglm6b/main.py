@@ -76,6 +76,8 @@ if soc_version in [104, 220, 221, 222, 223]:
 else:
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.Linear):
+            if name == "lm_head":
+                module.weight = torch.nn.parameter.Parameter(module.weight.data)
             module.weight.data = module.weight.data.npu_format_cast(29)
     print("soc_version:", soc_version, " is not 910B, support NZ")
 
