@@ -17,7 +17,7 @@
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
-#include "acltransformer/ops/position_embedding_1d_split_operation.h"
+#include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
@@ -28,12 +28,8 @@ namespace AclTransformer {
 enum LLaMA7BLayerTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
-    IN_QMIXDWEIGHT,
-    IN_QMIXDBIAS,
-    IN_KMIXDWEIGHT,
-    IN_KMIXDBIAS,
-    IN_VMIXDWEIGHT,
-    IN_VMIXDBIAS,
+    IN_QKVLINEARWEIGHT,
+    IN_QKVLINEARBIAS,
     IN_SELFOUTLINEARWEIGHT,
     IN_SELFOUTLINEARBIAS,
     IN_SELFOUTNORMWEIGHT,
@@ -50,11 +46,10 @@ enum LLaMA7BLayerTensorId {
     OUT_PRESENTKEY,
     OUT_PRESENTVALUE,
     INTERMIDATE_INPUTNORMOUT,
-    INTERMIDATE_MIXEDQ,
-    INTERMIDATE_MIXEDK,
-    INTERMIDATE_MIXEDV,
+    INTERMIDATE_QKVLINEAROUT,
     INTERMIDATE_POSITIONEMBEDQ,
     INTERMIDATE_POSITIONEMBEDK,
+    INTERMIDATE_MIXEDV,
     INTERMIDATE_SELFOUT,
     INTERMIDATE_SELFLINEAROUT,
     INTERMIDATE_SELFRESIDUALADDOUT,
@@ -62,10 +57,10 @@ enum LLaMA7BLayerTensorId {
     INTERMIDATE_MLPOUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 20;
+static const uint64_t IN_TENSOR_COUNT = 16;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
-static const uint64_t NODE_COUNT = 12;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 10;
+static const uint64_t NODE_COUNT = 9;
 
 LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     : GraphOperation("LLaMA7BLayerOperation"), param_(param)
@@ -77,11 +72,8 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
 
     size_t nodeId = 0;
     GraphOperation::Node &inputNormNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &mixdQLinearNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &mixdKLinearNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &mixdVLinearNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &qPositionEmbeddingNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &kPositionEmbeddingNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &qkvLinearNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &positionEmbeddingNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfAttentionKvCacheNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfOutLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfResidualAddNode = opGraph_.nodes.at(nodeId++);
@@ -93,25 +85,16 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORMOUT};
 
-    mixdQLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    mixdQLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QMIXDWEIGHT, IN_QMIXDBIAS};
-    mixdQLinearNode.outTensorIds = {INTERMIDATE_MIXEDQ};
+    qkvLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
+    qkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVLINEARWEIGHT, IN_QKVLINEARBIAS};
+    qkvLinearNode.outTensorIds = {INTERMIDATE_QKVLINEAROUT};
 
-    mixdKLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    mixdKLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_KMIXDWEIGHT, IN_KMIXDBIAS};
-    mixdKLinearNode.outTensorIds = {INTERMIDATE_MIXEDK};
-
-    mixdVLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    mixdVLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_VMIXDWEIGHT, IN_VMIXDBIAS};
-    mixdVLinearNode.outTensorIds = {INTERMIDATE_MIXEDV};
-
-    qPositionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbedding1dSplitOperation({param_.headNum}));
-    qPositionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDQ, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
-    qPositionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ};
-
-    kPositionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbedding1dSplitOperation({param_.headNum}));
-    kPositionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDK, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
-    kPositionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDK};
+    AclTransformer::PositionEmbeddingParam positionEmbeddingParam;
+    positionEmbeddingParam.model = param_.model;
+    positionEmbeddingParam.headNum = param_.headNum;
+    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation(positionEmbeddingParam));
+    positionEmbeddingNode.inTensorIds = {INTERMIDATE_QKVLINEAROUT, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
+    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_MIXEDV};
 
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
     selfAttentionKvCacheParam.dk = param_.dk;
