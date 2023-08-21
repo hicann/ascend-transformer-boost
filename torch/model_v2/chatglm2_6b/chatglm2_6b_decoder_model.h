@@ -22,7 +22,6 @@ class ChatGlm2DecoderModel : public Model {
 public:
     struct Param {
         float rmsNormEps = 0;
-        int headNum = 0;
         int numHeadsPerPartition = 0;
         int hiddenSizePerHead = 0;
         int numGroupsPerPartition = 0;
