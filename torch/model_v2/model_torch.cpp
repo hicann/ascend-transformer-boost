@@ -65,6 +65,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::ChatGlm6BEncoderWithoutFusionModel>(param);
     } else if (modelName_ == "ChatGlm6BDecoderQuantFlashModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderQuantFlashModel>(param);
+    } else if (modelName_ == "ChatGlm2DecoderFlashAttentionModel") {
+        model_ = std::make_shared<AclTransformer::ChatGlm2DecoderFlashAttentionModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
