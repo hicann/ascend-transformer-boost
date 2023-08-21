@@ -213,7 +213,32 @@ function fn_main()
         "--webdemo")
             ;;
         "--zhipu")
-            python3 $SCRIPT_DIR/zhipu_test.py
+            case "${MODEL}" in
+                "--llama1-7b")
+                    echo "start llama1-7b"
+                    python3 $SCRIPT_DIR/zhipu_test.py --model_name llama1-7b
+                    ;;
+                "--llama1-13b")
+                    echo "start llama1-13b"
+                    python3 $SCRIPT_DIR/zhipu_test.py --model_name llama1-13b
+                    ;;
+                "--llama2-7b")
+                    echo "start llama2-7b"
+                    python3 $SCRIPT_DIR/zhipu_test.py --model_name llama2-7b
+                    ;;
+                "--llama2-13b")
+                    echo "start llama2-13b"
+                    python3 $SCRIPT_DIR/zhipu_test.py --model_name llama2-13b
+                    ;;
+                "--help")
+                    echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
+                    ;;
+                *)
+                    echo "unknown build type:${MODEL}"
+                    echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
+                    exit -1
+                    ;;
+            esac
             ;;
         "--profiling")
             ;;
