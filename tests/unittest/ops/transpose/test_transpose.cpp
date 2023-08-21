@@ -72,6 +72,9 @@ AsdOps::Status TransposeGolden(const GoldenContext &context)
     return Status::OkStatus();
 }
 
+/// @brief test
+/// @param  
+/// @param  
 TEST(TestTransposeOperation, TestTranspose)
 {
     AclTransformer::TransposeParam param;

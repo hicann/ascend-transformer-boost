@@ -19,6 +19,7 @@
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "tests/unittest/test_util/op_test.h"
+#include <half.hpp>
 
 using namespace AclTransformer;
 using namespace AsdOps;
@@ -166,42 +167,70 @@ AsdOps::Status SelfAttentionOpenbertGolden(const GoldenContext &context)
     const AsdOps::Tensor inTensor3 = context.hostInTensors.at(2);
     const AsdOps::Tensor inTensor4 = context.hostInTensors.at(3);
     const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
-    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kHalf);
+
     // construct ref input tensors
-    at::Tensor atInRefMixedQuery = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kFloat);
-    at::Tensor atInRefMixedKey = at::from_blob(inTensor2.data, ToIntArrayRef(inTensor2.desc.dims), at::kFloat);
-    at::Tensor atInRefMixedValue = at::from_blob(inTensor3.data, ToIntArrayRef(inTensor3.desc.dims), at::kFloat);
-    at::Tensor atInRefAttentionMask = at::from_blob(inTensor4.data, ToIntArrayRef(inTensor4.desc.dims), at::kFloat);
+    at::Tensor atInRefMixedQuery = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kHalf).to(at::kFloat);
+    at::Tensor atInRefMixedKey = at::from_blob(inTensor2.data, ToIntArrayRef(inTensor2.desc.dims), at::kHalf).to(at::kFloat);
+    at::Tensor atInRefMixedValue = at::from_blob(inTensor3.data, ToIntArrayRef(inTensor3.desc.dims), at::kHalf).to(at::kFloat);
+    at::Tensor atInRefAttentionMask = at::from_blob(inTensor4.data, ToIntArrayRef(inTensor4.desc.dims), at::kHalf).to(at::kFloat);
+    ASD_LOG(INFO) << "inTensor1: " << atInRefMixedQuery.sizes(); // {a, b, c} {2, 2, 3}
+    ASD_LOG(INFO) << "inTensor1: " << atInRefMixedQuery;
+    ASD_LOG(INFO) << "inTensor2: " << atInRefMixedKey.sizes(); // {d, e, f} {1, 2, 3}
+    ASD_LOG(INFO) << "inTensor2: " << atInRefMixedKey;
+    ASD_LOG(INFO) << "inTensor3: " << atInRefMixedValue.sizes(); // {g, h, i} {2, 2, 3}
+    ASD_LOG(INFO) << "inTensor3: " << atInRefMixedValue;
+    ASD_LOG(INFO) << "inTensor4: " << atInRefAttentionMask.sizes(); // {j, k, l} {2, 1, 2}
+    ASD_LOG(INFO) << "inTensor4: " << atInRefAttentionMask;
+    ASD_LOG(INFO) << "outTensor: " << atOutTensor.sizes();
+    ASD_LOG(INFO) << "outTensor: " << atOutTensor;
     // get ref output tensor
     atInRefMixedQuery =
         atInRefMixedQuery.view({atInRefMixedQuery.sizes()[0], atInRefMixedQuery.sizes()[1] * paramHeadNum,
                                 atInRefMixedQuery.sizes()[2] / paramHeadNum});
-    atInRefMixedQuery = atInRefMixedQuery.transpose(0, 1);  // {2, 1, 3}
+    atInRefMixedQuery = atInRefMixedQuery.transpose(0, 1);
+    ASD_LOG(INFO) << atInRefMixedQuery.sizes(); // {a, b, c} {2, 2, 3} // {b * hn, a, c / hn} {a, a, c} {2, 2, 3}
     atInRefMixedKey = atInRefMixedKey.view({atInRefMixedKey.sizes()[0], atInRefMixedKey.sizes()[1] * paramHeadNum,
                                             atInRefMixedKey.sizes()[2] / paramHeadNum});
-    atInRefMixedKey = atInRefMixedKey.permute({1, 2, 0});   // {2, 3, 2}
+    atInRefMixedKey = atInRefMixedKey.permute({1, 2, 0});
+    ASD_LOG(INFO) << atInRefMixedKey.sizes(); // {e * hn, f / hn, d} {a, c, d} {2, 3, 1}
     atInRefMixedValue =
         atInRefMixedValue.view({atInRefMixedValue.sizes()[0], atInRefMixedValue.sizes()[1] * paramHeadNum,
                                 atInRefMixedValue.sizes()[2] / paramHeadNum});
-    atInRefMixedValue = atInRefMixedValue.transpose(0, 1);  // {2, 2, 3}
+    atInRefMixedValue = atInRefMixedValue.transpose(0, 1);
+    ASD_LOG(INFO) << atInRefMixedValue.sizes(); // {b * hn, a, c / hn} {a, a, c} {2, 2, 3}
     double scal = 1 / sqrt(paramDk);
-    at::Tensor attentionScores = atInRefMixedQuery.bmm(atInRefMixedKey).contiguous();    // {2, 1, 2}
-    attentionScores = attentionScores.mul(scal);    // {2, 1, 2}
+    at::Tensor attentionScores = atInRefMixedQuery.bmm(atInRefMixedKey).contiguous();
+    ASD_LOG(INFO) << attentionScores.sizes(); // {b * hn, a, d} {a, a, d} {2, 2, 1}
+    attentionScores = attentionScores.mul(scal);
+    ASD_LOG(INFO) << attentionScores.sizes(); // {b * hn * dk, a * dk, d * dk} {a, a, d} {2, 2, 1}
     attentionScores = attentionScores.view({attentionScores.sizes()[0] / paramHeadNum, paramHeadNum,
-                                            attentionScores.sizes()[1], attentionScores.sizes()[2]});   // {2, 1, 1, 2}
-    attentionScores = attentionScores.add(atInRefAttentionMask);    // {2, 1, 1, 2}
+                                            attentionScores.sizes()[1], attentionScores.sizes()[2]});
+    ASD_LOG(INFO) << attentionScores.sizes(); // {b * dk, hn, a * dk, d * dk} {a, 1, a, d} {2, 1, 2, 1}
+    attentionScores = attentionScores.add(atInRefAttentionMask);
+    ASD_LOG(INFO) << attentionScores.sizes(); // {b * dk + j, k, l, d * dk} {a + j, k, a, d} {2, 1, 2, 2}
     attentionScores = attentionScores.view({attentionScores.sizes()[0] * attentionScores.sizes()[1],
-                                            attentionScores.sizes()[2], attentionScores.sizes()[3]});   // {2, 1, 2}
-    at::Tensor attention_probs = attentionScores.softmax(-1);    // {2, 1, 2}
-    at::Tensor contextLayer = attention_probs.bmm(atInRefMixedValue);    // {2, 1, 3}
-    contextLayer = contextLayer.transpose(0, 1).contiguous();   // {1, 2, 3}
+                                            attentionScores.sizes()[2], attentionScores.sizes()[3]});
+    ASD_LOG(INFO) << attentionScores.sizes(); // {b * k * dk + j * k, l, d * dk} {a * k + j * k, a, d} {2, 2, 2}
+    at::Tensor attention_probs = attentionScores.softmax(-1);
+    ASD_LOG(INFO) << attention_probs.sizes(); // {a, a, a} {2, 2, 2}
+    at::Tensor contextLayer = attention_probs.bmm(atInRefMixedValue);
+    ASD_LOG(INFO) << contextLayer.sizes(); // {b * hn, a, c / hn} {a, a, c} {2, 2, 3}
+    contextLayer = contextLayer.transpose(0, 1).contiguous();
+    ASD_LOG(INFO) << contextLayer.sizes(); // {a, b * hn, c / hn} {a, a, c} {2, 2, 3}
     at::Tensor atOutRefTensor = contextLayer
                                        .view({contextLayer.sizes()[0], contextLayer.sizes()[1] / paramHeadNum,
                                               contextLayer.sizes()[2] * paramHeadNum})
-                                       .contiguous();   // {1, 2, 3}
+                                       .contiguous();
+    ASD_LOG(INFO) << atOutRefTensor.sizes(); // {a, b, c} {2, 2, 3}
     // compare
-    float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
-    float *atRefOutArray = (float *)atOutRefTensor.storage().data_ptr().get(); // golden
+    half_float::half *atOutArray = static_cast<half_float::half *>(atOutTensor.storage().data_ptr().get());
+    half_float::half *atRefOutArray = static_cast<half_float::half *>(atOutRefTensor.storage().data_ptr().get()); // golden
+        for (int i = 0; i < outTensor.Numel(); i++) {
+        float expect = atRefOutArray[i];
+        float actual = atOutArray[i];
+        ASD_LOG(INFO) << "expect: " << expect << "    actual: " << actual;
+    }
     for (int i = 0; i < outTensor.Numel(); i++) {
         float expect = atRefOutArray[i];
         float actual = atOutArray[i];
@@ -317,10 +346,10 @@ TEST(TestSelfAttentionOperation, TestSelfAttentionOpenbert)
     param.headNum = 1;
     AclTransformer::SelfAttentionOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
-        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3}},
-        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 2, 3}},
-        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 2, 3}},
-        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 2}}};
+        {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {2, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {2, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {2, 1, 2, 2}}};
     OpTest opTest;
     opTest.Golden(&SelfAttentionOpenbertGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
