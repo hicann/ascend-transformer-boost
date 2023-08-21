@@ -29,6 +29,7 @@
 #include "torch/model_v2/chatglm2_6b/chatglm2_6b_encoder_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_without_fusion_model.h"
 #include "torch/model_v2/chatglm2_6b/chatglm2_6b_decoder_flashattention_model.h"
+#include "torch/model_v2/chatglm6b/chatglm6b_encoder_without_fusion_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6bmodel_decoder_quant_flash_model.h"
 
 uint64_t GetNewModelId()
@@ -63,6 +64,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderWithoutFusionModel>(param);
     } else if (modelName_ == "ChatGlm2DecoderFlashAttentionModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm2DecoderFlashAttentionModel>(param);
+    } else if (modelName_ == "ChatGlm6BEncoderWithoutFusionModel") {
+        model_ = std::make_shared<AclTransformer::ChatGlm6BEncoderWithoutFusionModel>(param);
     } else if (modelName_ == "ChatGlm6BDecoderQuantFlashModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderQuantFlashModel>(param);
     } else {
