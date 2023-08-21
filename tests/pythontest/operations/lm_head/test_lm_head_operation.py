@@ -25,11 +25,11 @@ import operation_test  # NOQA: E402
 OP_NAME = "LmHeadOperation"
 PARAM = {"headNum": 32}
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/lm_head/intensor0.pth", "intensor0.pth")
+                         "/data/acltransformer_testdata/tensors/operations/lm_head", "intensor0.pth")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/lm_head/intensor1.pth", "intensor1.pth")
+                         "/data/acltransformer_testdata/tensors/operations/lm_head", "intensor1.pth")
 OUTTENSOR0 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/lm_head/outtensor0.pth", "outtensor0.pth")
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/lm_head", "outtensor0.pth")
 
 
 class LmHeadOperation(operation_test.OperationTest):
