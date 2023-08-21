@@ -801,7 +801,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         acl_param = json.dumps({"transKey": True, "dk": self.hidden_size_per_attention_head, "headNum": self.num_attention_heads, "layerNum": self.num_layers,
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers), "beginNormAxis": 2})
 
-        self.acl_encoder_operation = torch.classes.ChatGlm6BModelEncoderWithoutFusionTorch.ChatGlm6BModelEncoderWithoutFusionTorch()
+        self.acl_encoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm6BEncoderWithoutFusionModel")
         self.acl_encoder_operation.set_param(acl_param)
         self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm6BDecoderWithoutFusionModel")
         self.acl_decoder_operation.set_param(acl_param)
