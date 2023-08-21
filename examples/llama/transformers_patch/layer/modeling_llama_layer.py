@@ -374,18 +374,10 @@ class LlamaDecoderLayer(nn.Module):
             if len(self.acl_weights) == 0:
                 weights = list(self.state_dict().values())
                 self.acl_weights.append(weights[8].npu())
-                self.acl_weights.append(weights[0].npu())
-                self.acl_weights.append(torch.zeros(
-                    self.hidden_size).npu().half())
-                self.acl_weights.append(weights[1].npu())
-                self.acl_weights.append(torch.zeros(
-                    self.hidden_size).npu().half())
-                self.acl_weights.append(weights[2].npu())
-                self.acl_weights.append(torch.zeros(
-                    self.hidden_size).npu().half())
+                self.acl_weights.append(torch.cat(weights[:3]).npu())
+                self.acl_weights.append(torch.zeros(self.hidden_size * 3).npu().half())
                 self.acl_weights.append(weights[3].npu())
-                self.acl_weights.append(torch.zeros(
-                    self.hidden_size).npu().half())
+                self.acl_weights.append(torch.zeros(self.hidden_size).npu().half())
                 self.acl_weights.append(weights[9].npu())
                 self.acl_weights.append(weights[5].npu().half())
                 self.acl_weights.append(weights[6].npu())
