@@ -26,7 +26,7 @@
 #include "acltransformer/operation.h"
 
 namespace AclTransformer {
-const int ALIGN_INT = 32;
+const int ALIGN_INT = 512;
 
 std::string GraphRunner::Graph::ToString() const
 {

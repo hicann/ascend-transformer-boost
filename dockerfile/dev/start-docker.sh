@@ -22,6 +22,7 @@ docker run --name $1 -it -d --net=host --shm-size=500g \
 	-v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
 	-v /usr/local/sbin/:/usr/local/sbin \
 	-v /home:/home \
-	-v /tmp/asdops:/tmp/asdops \
+	-v /tmp:/tmp \
 	-v /data/acltransformer_testdata:/data/acltransformer_testdata \
+	-v /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime \
 	acltransformer:v1

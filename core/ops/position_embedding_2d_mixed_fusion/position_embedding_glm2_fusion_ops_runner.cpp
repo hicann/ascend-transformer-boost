@@ -198,7 +198,7 @@ PositionEmbeddingGlm2FusionOpsRunner::PositionEmbeddingGlm2FusionOpsRunner(const
     }; 
 
     int rotDim = hiddenSizePerHead / 2;
-    rope0Node.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPEND, rotDim}};
+    rope0Node.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPE, rotDim}};
     rope0Node.inTensors = {&qChunk0, &kChunk0, &cos1, &sin1, &seqLen};
     rope0Node.outTensors = {&qEmbedded, &kEmbedded};
     rope0Node.inTensorViewFuncs = {ropeView, ropeView, ropeView, ropeView};

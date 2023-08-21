@@ -265,8 +265,9 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
 
 std::string OperationTorch::GetSaveTensorDir()
 {
-    std::string dir = std::to_string(executeCount_) + "/" + std::to_string(opId_) + "_OperationTorch";
-    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir;
+    const char *envStr = std::getenv("AIT_CMP_TASK_ID");
+    std::string dir = envStr ? std::string(envStr) : std::to_string(executeCount_);
+    return AclTransformer::Config::GetSaveTensorDir() + "/" + dir + "/" + std::to_string(opId_) + "_OperationTorch";
 }
 
 TORCH_LIBRARY(OperationTorch, m)

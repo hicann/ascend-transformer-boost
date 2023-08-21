@@ -17,9 +17,8 @@ option = {}
 option["NPU_FUZZY_COMPILE_BLACKLIST"] = "ReduceProd"
 torch.npu.set_option(option)
 
-model_pth = sys.argv[1]
-tokenizer = AutoTokenizer.from_pretrained(model_pth, use_fast=False)
-model = AutoModelForCausalLM.from_pretrained(model_pth).half().npu()
+tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True, use_fast=False)
+model = AutoModelForCausalLM.from_pretrained("./", trust_remote_code=True).half().npu()
 
 # padding
 tokenizer.add_special_tokens({'pad_token': '[PAD]'})

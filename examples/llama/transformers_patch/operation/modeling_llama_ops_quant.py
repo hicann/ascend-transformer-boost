@@ -24,6 +24,7 @@ from typing import List, Optional, Tuple, Union
 import torch
 import torch.utils.checkpoint
 from torch import nn
+from torch.nn.parameter import Parameter
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 from ...activations import ACT2FN
@@ -31,7 +32,17 @@ from ...modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast,
 from ...modeling_utils import PreTrainedModel
 from ...utils import add_start_docstrings, add_start_docstrings_to_model_forward, logging, replace_return_docstrings
 from .configuration_llama import LlamaConfig
+import json
+import time
+import os
 
+ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
+if ACLTRANSFORMER_HOME_PATH is None:
+    raise RuntimeError(
+        "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
+LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
+                        "lib/libacltransformer_torch.so")
+torch.classes.load_library(LIB_PATH)
 
 logger = logging.get_logger(__name__)
 
@@ -138,6 +149,12 @@ class LlamaRotaryEmbedding(torch.nn.Module):
         )
 
 
+x = torch.zeros(1).npu()
+rot_emb_global = LlamaRotaryEmbedding(128, max_position_embeddings=2048)
+cosTable, sinTable = rot_emb_global.forward(x, 2048)
+cosTable = cosTable.npu().half()
+sinTable = sinTable.npu().half()
+
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
     x1 = x[..., : x.shape[-1] // 2]
@@ -226,8 +243,10 @@ class LlamaAttention(nn.Module):
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
         cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
+        global cosTable
+        global sinTable
         query_states, key_states = apply_rotary_pos_emb(
-            query_states, key_states, cos, sin, position_ids)
+            query_states, key_states, cosTable, sinTable, position_ids)
         # [bsz, nh, t, hd]
 
         if past_key_value is not None:
@@ -279,7 +298,16 @@ class LlamaAttention(nn.Module):
 
 
 class LlamaDecoderLayer(nn.Module):
-    def __init__(self, config: LlamaConfig):
+    def __init__(
+            self, config: LlamaConfig,
+            layer_id = None,
+            input_scale_dict = None,
+            input_offset_dict = None,
+            weight_scale_dict = None,
+            deq_scale_dict = None,
+            quant_weight_dict = None,
+            quant_bias_dict = None,
+    ):
         super().__init__()
         self.hidden_size = config.hidden_size
         self.self_attn = LlamaAttention(config=config)
@@ -292,6 +320,171 @@ class LlamaDecoderLayer(nn.Module):
             config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = LlamaRMSNorm(
             config.hidden_size, eps=config.rms_norm_eps)
+
+        # load quant weights and params
+        self.layer_id = layer_id
+        self.input_scale_dict = input_scale_dict
+        self.input_offset_dict = input_offset_dict
+        self.weight_scale_dict = weight_scale_dict
+        self.deq_scale_dict = deq_scale_dict
+        self.quant_weight_dict = quant_weight_dict
+        self.quant_bias_dict = quant_bias_dict
+
+        self.num_heads = config.num_attention_heads
+        self.hidden_size = config.hidden_size
+        self.head_dim = self.hidden_size // self.num_heads
+
+        # get by name
+        q_name = "model.layers.{}.self_attn.q_proj".format(layer_id)
+        k_name = "model.layers.{}.self_attn.k_proj".format(layer_id)
+        v_name = "model.layers.{}.self_attn.v_proj".format(layer_id)
+        o_name = "model.layers.{}.self_attn.o_proj".format(layer_id)
+        gate_name = "model.layers.{}.mlp.gate_proj".format(layer_id)
+        down_name = "model.layers.{}.mlp.down_proj".format(layer_id)
+        up_name = "model.layers.{}.mlp.up_proj".format(layer_id)
+        print('enter init layer, ', layer_id)
+
+        def padding_descale(x):
+            zeros = torch.zeros(x.shape).npu()
+            result = torch.cat((x.unsqueeze(1).npu(), zeros.unsqueeze(1).npu()), dim=1).view(-1).npu()
+            return result
+
+        # load self attention quant weight
+        self.q_weight = Parameter(quant_weight_dict[q_name].to(torch.int8).npu(), requires_grad=False)
+        self.q_deq_scale = Parameter(padding_descale(deq_scale_dict[q_name]).to(torch.float32).npu(), requires_grad=False)
+        self.q_bias = Parameter(quant_bias_dict[q_name].to(torch.int32).npu(), requires_grad=False)
+
+        self.k_weight = Parameter(quant_weight_dict[k_name].to(torch.int8).npu(), requires_grad=False)
+        self.k_deq_scale = Parameter(padding_descale(deq_scale_dict[k_name]).to(torch.float32).npu(), requires_grad=False)
+        self.k_bias = Parameter(quant_bias_dict[k_name].to(torch.int32).npu(), requires_grad=False)
+
+        self.v_weight = Parameter(quant_weight_dict[v_name].to(torch.int8).npu(), requires_grad=False)
+        self.v_deq_scale = Parameter(padding_descale(deq_scale_dict[v_name]).to(torch.float32).npu(), requires_grad=False)
+        self.v_bias = Parameter(quant_bias_dict[v_name].to(torch.int32).npu(), requires_grad=False)
+
+        self.o_weight = Parameter(quant_weight_dict[o_name].to(torch.int8).npu(), requires_grad=False)
+        self.o_deq_scale = Parameter(padding_descale(deq_scale_dict[o_name]).to(torch.float32).npu(), requires_grad=False)
+        self.o_bias = Parameter(quant_bias_dict[o_name].to(torch.int32).npu(), requires_grad=False)
+
+        # load mlp quant weight
+        self.gate_weight = Parameter(quant_weight_dict[gate_name].to(torch.int8).npu(), requires_grad=False)
+        self.gate_deq_scale = Parameter(padding_descale(deq_scale_dict[gate_name]).to(torch.float32).npu(), requires_grad=False)
+        self.gate_bias = Parameter(quant_bias_dict[gate_name].to(torch.int32).npu(), requires_grad=False)
+
+        self.down_weight = Parameter(quant_weight_dict[down_name].to(torch.int8).npu(), requires_grad=False)
+        self.down_deq_scale = Parameter(padding_descale(deq_scale_dict[down_name]).to(torch.float32).npu(), requires_grad=False)
+        self.down_bias = Parameter(quant_bias_dict[down_name].to(torch.int32).npu(), requires_grad=False)
+
+        self.up_weight = Parameter(quant_weight_dict[up_name].to(torch.int8).npu(), requires_grad=False)
+        self.up_deq_scale = Parameter(padding_descale(deq_scale_dict[up_name]).to(torch.float32).npu(), requires_grad=False)
+        self.up_bias = Parameter(quant_bias_dict[up_name].to(torch.int32).npu(), requires_grad=False)
+
+        # use acl operation
+        self.acl_in_norm_quant_operation = torch.classes.OperationTorch.OperationTorch(
+            "RmsNormQuantOperation"
+        )
+        self.acl_in_norm_quant_operation.set_param(
+            json.dumps({
+                "inputScale": float(1 / input_scale_dict[q_name]),
+                "inputOffset": int(input_offset_dict[q_name])
+            })
+        )
+
+        self.acl_q_linear_quant_operation = torch.classes.OperationTorch.OperationTorch(
+            "LinearQuantOperation"
+        )
+        self.acl_q_linear_quant_operation.set_param(
+            '{"transposeA":false,"transposeB":false}'
+        )
+        self.acl_k_linear_quant_operation = torch.classes.OperationTorch.OperationTorch(
+            "LinearQuantOperation"
+        )
+        self.acl_k_linear_quant_operation.set_param(
+            '{"transposeA":false,"transposeB":false}'
+        )
+        self.acl_v_linear_quant_operation = torch.classes.OperationTorch.OperationTorch(
+            "LinearQuantOperation"
+        )
+        self.acl_v_linear_quant_operation.set_param(
+            '{"transposeA":false,"transposeB":false}'
+        )
+
+        self.acl_q_pos_operation = torch.classes.OperationTorch.OperationTorch(
+            "PositionEmbedding1dSplitOperation"
+        )
+        self.acl_q_pos_operation.set_param(
+            json.dumps({"headNum": self.num_heads})
+        )
+        self.acl_k_pos_operation = torch.classes.OperationTorch.OperationTorch(
+            "PositionEmbedding1dSplitOperation"
+        )
+        self.acl_k_pos_operation.set_param(
+            json.dumps({"headNum": self.num_heads})
+        )
+        self.acl_self_attn_operation = torch.classes.OperationTorch.OperationTorch(
+            "SelfAttentionKvCacheOperation"
+        )
+        self.acl_self_attn_operation.set_param(
+            json.dumps({
+                "dk": self.head_dim,
+                "headNum": self.num_heads,
+                "model": "llama7b"
+            })
+        )
+
+        self.acl_o_quant_operation = torch.classes.OperationTorch.OperationTorch(
+            "QuantOperation"
+        )
+        self.acl_o_quant_operation.set_param(
+            json.dumps({
+                "input_scale": float(1 / input_scale_dict[o_name]),
+                "input_offset": int(input_offset_dict[o_name])
+            })
+        )
+        self.acl_o_linear_quant_operation = torch.classes.OperationTorch.OperationTorch(
+            "LinearQuantOperation"
+        )
+        self.acl_o_linear_quant_operation.set_param(
+            '{"transposeA":false,"transposeB":false}'
+        )
+
+        self.alpha = 1.0
+        self.acl_self_attn_add_operation = torch.classes.OperationTorch.OperationTorch(
+            "AddOperation"
+        )
+        self.acl_self_attn_add_operation.set_param(
+            json.dumps({"scale": self.alpha})
+        )
+
+        self.acl_post_norm_quant_operation = torch.classes.OperationTorch.OperationTorch(
+            "RmsNormQuantOperation"
+        )
+        self.acl_post_norm_quant_operation.set_param(
+            json.dumps({
+                "inputScale": float(1 / input_scale_dict[gate_name]),
+                "inputOffset": int(input_offset_dict[gate_name])
+            })
+        )
+        self.acl_mlp_quant_operation = torch.classes.OperationTorch.OperationTorch(
+            "MlpQuantOperation"
+        )
+        self.acl_mlp_quant_operation.set_param(
+            json.dumps({
+                "inputScale": float(1 / input_scale_dict[down_name]),
+                "inputOffset": int(input_offset_dict[down_name])
+            })
+        )
+        self.acl_residual_add_operation = torch.classes.OperationTorch.OperationTorch(
+            "AddOperation"
+        )
+        self.acl_residual_add_operation.set_param(
+            json.dumps({"scale": self.alpha})
+        )
+
+        # initialize quant weight input
+        self.acl_weights = []
+        self.beta_tensor = torch.zeros(self.hidden_size).npu().half()
+
 
     def forward(
         self,
@@ -316,26 +509,152 @@ class LlamaDecoderLayer(nn.Module):
             past_key_value (`Tuple(torch.FloatTensor)`, *optional*): cached past key and value projection states
         """
 
-        residual = hidden_states
+        self_attn_weights = None
 
-        hidden_states = self.input_layernorm(hidden_states)
+        if past_key_value is None:
 
-        # Self Attention
-        hidden_states, self_attn_weights, present_key_value = self.self_attn(
-            hidden_states=hidden_states,
-            attention_mask=attention_mask,
-            position_ids=position_ids,
-            past_key_value=past_key_value,
-            output_attentions=output_attentions,
-            use_cache=use_cache,
-        )
-        hidden_states = residual + hidden_states
+            residual = hidden_states
 
-        # Fully Connected
-        residual = hidden_states
-        hidden_states = self.post_attention_layernorm(hidden_states)
-        hidden_states = self.mlp(hidden_states)
-        hidden_states = residual + hidden_states
+            hidden_states = self.input_layernorm(hidden_states)
+
+            # Self Attention
+            hidden_states, self_attn_weights, present_key_value = self.self_attn(
+                hidden_states=hidden_states,
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+                past_key_value=past_key_value,
+                output_attentions=output_attentions,
+                use_cache=use_cache,
+            )
+            hidden_states = residual + hidden_states
+
+            # Fully Connected
+            residual = hidden_states
+            hidden_states = self.post_attention_layernorm(hidden_states)
+            hidden_states = self.mlp(hidden_states)
+            hidden_states = residual + hidden_states
+        else:
+            global cosTable
+            global sinTable
+            pastKey, pastValue = past_key_value
+            inputs = [hidden_states]
+            if len(self.acl_weights) == 0:
+                self.acl_weights = list(self.state_dict().values())
+                del self.acl_weights[21:29]                 # delete fp16 weight
+            inputs.extend(self.acl_weights)                 # 1-23 quant weight + norm weight
+            inputs.append(position_ids)                     # 24
+            inputs.append(cosTable)                         # 25
+            inputs.append(sinTable)                         # 26
+            inputs.append(attention_mask)                   # 27
+            inputs.append(pastKey.permute(2, 0, 1, 3))      # 28
+            inputs.append(pastValue.permute(2, 0, 1, 3))    # 29
+            inputs.append(self.beta_tensor)                 # 30
+
+            in_norm_out = self.acl_in_norm_quant_operation.execute([
+                inputs[0],                                  # hidden_states
+                inputs[22],                                 # rms norm weight
+                inputs[30]                                  # self.beta_tensor
+            ])
+
+            # q, k, v matmul
+            q_linear_quant_out = self.acl_q_linear_quant_operation.execute([
+                in_norm_out[0],
+                inputs[1],                                  # self.q_weight
+                inputs[3],                                  # self.q_bias
+                inputs[2].to(torch.float32)                 # self.q_deq_scale.to(torch.float32)
+            ])
+            k_linear_quant_out = self.acl_k_linear_quant_operation.execute([
+                in_norm_out[0],
+                inputs[4],                                  # self.k_weight
+                inputs[6],                                  # self.k_bias
+                inputs[5].to(torch.float32)                 # self.k_deq_scale.to(torch.float32)
+            ])
+            v_linear_quant_out = self.acl_v_linear_quant_operation.execute([
+                in_norm_out[0],
+                inputs[7],                                  # self.v_weight
+                inputs[9],                                  # self.v_bias
+                inputs[8].to(torch.float32)                 # self.v_deq_scale.to(torch.float32)
+            ])
+
+            # reshape from (bsz, t, hidden_size) to (bsz, h, t, hd)
+            bsz, q_len, _ = hidden_states.shape
+            value = v_linear_quant_out[0].view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+
+            # position embedding
+            q_pos_out = self.acl_q_pos_operation.execute([
+                q_linear_quant_out[0],
+                inputs[24],             # position_ids
+                inputs[25],             # cosTable
+                inputs[26]              # sinTable
+            ])
+
+            k_pos_out = self.acl_k_pos_operation.execute([
+                k_linear_quant_out[0],
+                inputs[24],             # position_ids
+                inputs[25],             # cosTable
+                inputs[26]              # sinTable
+
+            ])
+
+            # self attn
+            self_out, presentKey, presentValue = self.acl_self_attn_operation.execute([
+                q_pos_out[0].permute(1, 0, 2, 3),  # t, bsz, h, hd
+                k_pos_out[0].permute(1, 0, 2, 3),
+                value.permute(2, 0, 1, 3),
+                inputs[27],             # attention_mask
+                inputs[28],             # pastKey.permute(2, 0, 1, 3)
+                inputs[29]              # pastValue.permute(2, 0, 1, 3)
+            ])
+
+            # o_proj
+            self_quant_out = self.acl_o_quant_operation.execute([
+                self_out
+            ])
+            o_linear_quant_out = self.acl_o_linear_quant_operation.execute([
+                self_quant_out[0],
+                inputs[10],                                 # self.o_weight
+                inputs[12],                                 # self.o_bias
+                inputs[11].to(torch.float32)                # self.o_deq_scale.to(torch.float32)
+            ])
+
+            # self add
+            self_add_out = self.acl_self_attn_add_operation.execute([
+                hidden_states,
+                o_linear_quant_out[0]
+            ])
+
+            # post norm
+            post_norm_out = self.acl_post_norm_quant_operation.execute([
+                self_add_out[0],
+                inputs[23],                     # post attention rms norm weight
+                inputs[30]                      # self.beta_tensor
+            ])
+
+            # mlp
+            down_linear_quant_out = self.acl_mlp_quant_operation.execute([
+                post_norm_out[0],
+                inputs[13],                                         # self.gate_weight,
+                inputs[14].to(torch.float32),                       # self.gate_deq_scale.to(torch.float32),
+                inputs[15],                                         # self.gate_bias,
+                inputs[16],                                         # self.down_weight,
+                inputs[17].to(torch.float32),                       # self.down_deq_scale.to(torch.float32),
+                inputs[18],                                         # self.down_bias,
+                inputs[19],                                         # self.up_weight,
+                inputs[20].to(torch.float32),                       # self.up_deq_scale.to(torch.float32),
+                inputs[21],                                         # self.up_bias,
+            ])
+
+            # residual add
+            residual_add_out = self.acl_residual_add_operation.execute([
+                self_add_out[0],
+                down_linear_quant_out[0]
+            ])
+
+            hidden_states = residual_add_out[0]
+            test_presentKey = presentKey.permute(1, 2, 0, 3)
+            test_presentValue = presentValue.permute(1, 2, 0, 3)
+            present_key_value = (test_presentKey, test_presentValue) if use_cache else None
+
 
         outputs = (hidden_states,)
 
@@ -470,13 +789,33 @@ class LlamaModel(LlamaPreTrainedModel):
 
     def __init__(self, config: LlamaConfig):
         super().__init__(config)
+        # load quant weight
+        quant_param_path = "/home/wmj/dxt/llama_quant_param/llama_13B/"
+        import numpy as np
+        self.input_scale_dict = np.load(quant_param_path + "input_scale.npy", allow_pickle=True).item()
+        self.input_offset_dict = np.load(quant_param_path + "input_offset.npy", allow_pickle=True).item()
+        self.quant_weight_dict = np.load(quant_param_path + "quant_weight.npy", allow_pickle=True).item()
+        self.weight_scale_dict = np.load(quant_param_path + "weight_scale.npy", allow_pickle=True).item()
+        self.deq_scale_dict = np.load(quant_param_path + "deq_scale.npy", allow_pickle=True).item()
+        self.quant_bias_dict = np.load(quant_param_path + "quant_bias.npy", allow_pickle=True).item()
+
+
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
 
         self.embed_tokens = nn.Embedding(
             config.vocab_size, config.hidden_size, self.padding_idx)
         self.layers = nn.ModuleList(
-            [LlamaDecoderLayer(config) for _ in range(config.num_hidden_layers)])
+            [LlamaDecoderLayer(
+                config,
+                layer_id=layer_id,
+                input_scale_dict=self.input_scale_dict,
+                input_offset_dict=self.input_offset_dict,
+                weight_scale_dict=self.weight_scale_dict,
+                deq_scale_dict=self.deq_scale_dict,
+                quant_weight_dict=self.quant_weight_dict,
+                quant_bias_dict=self.quant_bias_dict
+            ) for layer_id in range(config.num_hidden_layers)])
         self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
         self.gradient_checkpointing = False

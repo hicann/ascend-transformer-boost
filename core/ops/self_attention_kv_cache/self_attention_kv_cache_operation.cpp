@@ -34,10 +34,8 @@ SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation(const SelfAttention
 SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() {}
 
 uint64_t SelfAttentionKvCacheOperation::GetInTensorCount() const {
-    if (param_.model == "chatglm2_6b") {
+    if (param_.model == "chatglm2_6b" || param_.model == "bloom7b") {
         return 5;
-    } else if (param_.model == "bloom7b"){
-        return 10;
     } else {
         return 6;
     }
@@ -61,16 +59,17 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVect
         return AsdOps::Status::OkStatus();
     } else if (param_.model == "bloom7b") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
-        outTensorDescs.at(1) = inTensors.at(3).desc;
+        outTensorDescs.at(0).dims.at(2) = outTensorDescs.at(0).dims.at(2) / 3; // qkv
+        outTensorDescs.at(1) = inTensors.at(1).desc;
         outTensorDescs.at(1).dims.clear();
-        outTensorDescs.at(1).dims.push_back(inTensors.at(3).desc.dims.at(0));
-        outTensorDescs.at(1).dims.push_back(inTensors.at(3).desc.dims.at(1));
-        outTensorDescs.at(1).dims.push_back(inTensors.at(3).desc.dims.at(2) + 1);
-        outTensorDescs.at(2) = inTensors.at(4).desc;
+        outTensorDescs.at(1).dims.push_back(inTensors.at(1).desc.dims.at(0));
+        outTensorDescs.at(1).dims.push_back(inTensors.at(1).desc.dims.at(1));
+        outTensorDescs.at(1).dims.push_back(inTensors.at(1).desc.dims.at(2) + 1);
+        outTensorDescs.at(2) = inTensors.at(1).desc;
         outTensorDescs.at(2).dims.clear();
-        outTensorDescs.at(2).dims.push_back(inTensors.at(4).desc.dims.at(0));
-        outTensorDescs.at(2).dims.push_back(inTensors.at(4).desc.dims.at(1) + 1);
-        outTensorDescs.at(2).dims.push_back(inTensors.at(4).desc.dims.at(2));
+        outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(0));
+        outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(1) + 1);
+        outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(2));
         return AsdOps::Status::OkStatus();
     } else {
         // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]

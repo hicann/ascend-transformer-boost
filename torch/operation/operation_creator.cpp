@@ -44,6 +44,7 @@
 #include "acltransformer/ops/norm_quant_operation.h"
 #include "acltransformer/ops/rms_norm_quant_operation.h"
 #include "acltransformer/ops/rms_pre_norm_quant_operation.h"
+#include "acltransformer/ops/mlp_quant_operation.h"
 #include "acltransformer/ops/linear_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
@@ -68,6 +69,7 @@
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
+#include "models/glm130b/glm130b_word_embedding_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -342,6 +344,24 @@ static AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &param
         ASD_LOG(INFO) << "MlpParam is empty, default model:" << param.model;
     }
     return new AclTransformer::MlpOperation(param);
+}
+
+static AclTransformer::Operation *MlpQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::MlpQuantParam param;
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+        ASD_LOG(INFO) << "MlpQuantParam model:" << param.model;
+    } else {
+        param.model = "llama7b";
+        ASD_LOG(INFO) << "MlpQuantParam is empty, default model:" << param.model;
+    }
+
+    param.inputScale = paramJson["inputScale"].get<double>();
+    param.inputOffset = paramJson["inputOffset"].get<int>();
+    ASD_LOG(INFO) << "MlpQuantParams: " << ", input_scale:" << param.inputScale
+                  << ", input_offset:" << param.inputOffset;
+    return new AclTransformer::MlpQuantOperation(param);
 }
 
 static AclTransformer::Operation *AnyOperationCreate(const nlohmann::json &paramJson)
@@ -922,6 +942,30 @@ AclTransformer::Operation *Glm130BLayerEncoderOperationCreate(const nlohmann::js
     return new AclTransformer::Glm130BLayerEncoderOperation(param);
 }
 
+AclTransformer::Operation *Glm130bWordEmbeddingOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Glm130bWordEmbeddingParam param;
+    if (paramJson.contains("axis")) {
+        param.axis = paramJson["axis"].get<int>();
+    }
+    if (paramJson.contains("rank")) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.contains("rankSize")) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.contains("rankRoot")) {
+        param.rankRoot = paramJson["rankRoot"].get<int>();
+    }
+    if (paramJson.contains("backend")) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
+    for (auto item : paramJson["perm"]) {
+        param.perm.push_back(item.get<int>());
+    }
+    return new AclTransformer::Glm130bWordEmbeddingOperation(param);
+}
+
 AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::LmHeadParam param;
@@ -962,6 +1006,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"MatmulOperation", &MatmulOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
     {"MlpOperation", &MlpOperationCreate},
+    {"MlpQuantOperation", &MlpQuantOperationCreate},
     {"EmbeddingOperation", &EmbeddingOperationCreate},
     {"PositionEmbedding1dSplitOperation", &PositionEmbedding1dSplitOperationCreate},
     {"PositionEmbeddingOperation", &PositionEmbeddingOperationCreate},
@@ -995,7 +1040,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
-    {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate}};
+    {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
+    {"Glm130bWordEmbeddingOperation", &Glm130bWordEmbeddingOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {

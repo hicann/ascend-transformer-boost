@@ -15,6 +15,7 @@
  */
 #include "acltransformer/config.h"
 #include <string>
+#include <unistd.h>
 #include <iostream>
 #include <thread>
 #include <asdops/utils/log/log.h>
@@ -64,13 +65,17 @@ Config::~Config() {}
 
 std::string Config::GetSaveTensorDir()
 {
-    std::ostringstream ss;
-    ss << std::this_thread::get_id();
+    std::ostringstream pid;
+    pid << getpid();
+    const char *dumpEnvStr = std::getenv((pid.str() + "_DUMP_PATH").c_str());
     const char *envStr = std::getenv("ACLTRANSFORMER_HOME_PATH");
-    if (envStr) {
-        return std::string(envStr) + "/tensors/thread_" + ss.str();
+    if (!envStr) {
+        return "tensors/thread_" + pid.str();
     }
-    return "tensors/thread_" + ss.str();
+    if (dumpEnvStr) {
+        return std::string(envStr) + "/tensors/" + std::string(dumpEnvStr);
+    }
+    return std::string(envStr) + "/tensors/" + "thread_" + pid.str();
 }
 
 bool Config::IsEnable(const char *env, bool enable)

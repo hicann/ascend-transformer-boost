@@ -76,6 +76,8 @@ if soc_version in [104, 220, 221, 222, 223]:
 else:
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.Linear):
+            if name == "lm_head":
+                module.weight = torch.nn.parameter.Parameter(module.weight.data)
             module.weight.data = module.weight.data.npu_format_cast(29)
     print("soc_version:", soc_version, " is not 910B, support NZ")
 
@@ -143,17 +145,17 @@ def main():
                 if question > 1:
                     if model.count == 1:
                         output_file.write(f"pre_processing: {model.post_processing}ms\n" +
-                                          f"First model time: {model.model_first}ms, input generate: {model.input_generate}ms, " +
-                                          f"post processing: {model.post_processing}ms, First token time: {model.token_first}ms\n")
+                                          f"first_token: input generate: {model.input_generate}ms, model time: {model.model_first}ms, " +
+                                          f"post processing: {model.post_processing}ms, token time: {model.token_first}ms\n")
                         output_file.write("Per token time\n")
                     elif model.count < test_tokens_num:
-                        output_file.write(f"token_{model.count}: model time: {model.model_time}ms, " +
-                                          f"input generate: {model.input_generate}ms, " +
-                                          f"token time: {model.token_time}ms, post processing: {model.post_processing}ms\n")
+                        output_file.write(f"token_{model.count}: input generate: {model.input_generate}ms, " +
+                                          f"model time: {model.model_time}ms, " +
+                                          f"post processing: {model.post_processing}ms, token time: {model.token_time}ms\n")
                     else:
-                        output_file.write(f"token_{model.count}: model time: {model.model_time}ms, " +
-                                          f"input generate: {model.input_generate}ms, " +
-                                          f"token time: {model.token_time}ms, post processing: {model.post_processing}ms\n")
+                        output_file.write(f"token_{model.count}: input generate: {model.input_generate}ms, " +
+                                          f"model time: {model.model_time}ms, " +
+                                          f"post processing: {model.post_processing}ms, token time: {model.token_time}ms\n")
                         output_file.write(
                             "Average time without first token\n")
                         output_file.write(

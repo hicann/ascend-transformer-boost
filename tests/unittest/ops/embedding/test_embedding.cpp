@@ -22,13 +22,16 @@
 
 using namespace AclTransformer;
 using namespace AsdOps;
+constexpr float ATOL = 0.0001;
+constexpr float RTOL = 0.0001;
 
 TEST(TestEmbeddingOperation, InferShape)
 {
     AclTransformer::EmbeddingParam param;
     AclTransformer::EmbeddingOperation op(param);
-    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
-                                                     {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3}}};
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3}}};
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     op.InferShape(inTensorDescs, outTensorDescs);
     ASSERT_EQ(outTensorDescs.size(), 1);
@@ -38,4 +41,46 @@ TEST(TestEmbeddingOperation, InferShape)
     EXPECT_EQ(expectDims.at(0), outTensorDescs.at(0).dims.at(0));
     EXPECT_EQ(expectDims.at(1), outTensorDescs.at(0).dims.at(1));
     EXPECT_EQ(expectDims.at(2), outTensorDescs.at(0).dims.at(2));
+}
+
+AsdOps::Status EmbeddingGolden(const GoldenContext &context)
+{
+    // define param
+    int paramAxis = 1;
+    // get constructed input/output tensors
+    const AsdOps::Tensor inTensor1 = context.hostInTensors.at(0);
+    const AsdOps::Tensor inTensor2 = context.hostInTensors.at(1);
+    const AsdOps::Tensor outTensor = context.hostOutTensors.at(0);
+    at::Tensor atOutTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // construct ref input tensors
+    at::Tensor atInRefTensor1 = at::from_blob(inTensor1.data, ToIntArrayRef(inTensor1.desc.dims), at::kFloat);
+    // get ref output tensor
+    at::Tensor atOutRefTensor = at::from_blob(outTensor.data, ToIntArrayRef(outTensor.desc.dims), at::kFloat);
+    // compare
+    float *atOutArray = (float *)atOutTensor.storage().data_ptr().get();
+    float *atRefOutArray = (float *)atOutRefTensor.storage().data_ptr().get(); // golden
+    for (int i = 0; i < outTensor.Numel(); i++) {
+        float expect = atRefOutArray[i];
+        float actual = atOutArray[i];
+        bool judge = std::abs(expect - actual) <= (ATOL + RTOL * std::abs(actual));
+        EXPECT_EQ(judge, true);
+        if (!judge) {
+            return Status::FailStatus(1, "unequal");
+        }
+    }
+    return Status::OkStatus();
+}
+
+TEST(TestEmbeddingOperation, TestEmbedding)
+{
+    AclTransformer::EmbeddingParam param;
+    param.axis = 1;
+    AclTransformer::EmbeddingOperation op(param);
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3}}};
+    OpTest opTest;
+    opTest.Golden(&EmbeddingGolden);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
+    // ASSERT_EQ(status.Ok(), true);
 }

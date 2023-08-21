@@ -1,27 +1,25 @@
 import model_test
 import os
-import argparse
 
-LLAMA7B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "examples/llama")
-RUN_SHELL_PATH = os.path.join(LLAMA7B_PATH, "run.sh")
-MODEL_SCRIPT_PATH = os.path.join(LLAMA7B_PATH, "transformers_patch/layer/modeling_layer_performance.py")
+LLAMA1_7B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "examples/llama")
+RUN_SHELL_PATH = os.path.join(LLAMA1_7B_PATH, "run.sh")
+MODEL_SCRIPT_PATH = os.path.join(LLAMA1_7B_PATH, "transformers_patch/layer/modeling_layer_performance.py")
 
-class Llama7bModelTest(model_test.ModelTest):
+class Llama1_7b_ModelTest(model_test.ModelTest):
     def __init__(self) -> None:
         super().__init__()
     
-    def generate_time_performance(self, args):
-        print(f"[args.model]: {args.model}")
+    def generate_time_performance(self):
         statistic = model_test.Statistics()
-        statistic.model_name = args.model
-        self.create_time(statistic)
+        statistic.model_name = "llama1_7b"
         
-        performance_file_path = os.path.join(LLAMA7B_PATH, f"zhiputest_{self.device_type}_{args.model}.csv")
+        performance_file_path = os.path.join(LLAMA1_7B_PATH, f"zhiputest_{self.device_type}_llama1_7b.csv")
         print("-----llama_test-----")
-        print(f"[args.model]: {args.model}")
+        print(f"[MODEL]: llama1_7b")
         print(f"[RUN_SHELL_PATH]: {RUN_SHELL_PATH}")
         print(f"[MODEL_SCRIPT_PATH]: {MODEL_SCRIPT_PATH}")
-        os.system(f"bash {RUN_SHELL_PATH} --zhipu --{args.model} {MODEL_SCRIPT_PATH} ")
+        # os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama1-7b {MODEL_SCRIPT_PATH} ")
+        os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama1-7b")
         if not os.path.exists(performance_file_path):
             print(f"file {performance_file_path} not exist!")
             return
@@ -41,16 +39,9 @@ class Llama7bModelTest(model_test.ModelTest):
                 self.append_time(statistic)
                 
         
-def main(args):
-    test_body = Llama7bModelTest()
-    test_body.generate_time_performance(args)
+def main():
+    test_body = Llama1_7b_ModelTest()
+    test_body.generate_time_performance()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--model",
-        type=str,
-        help="Select One LLaMA Model [llama1-7b | llama1-13b | llama2-7b | llama2-13b]",
-    )
-    args = parser.parse_args()
-    main(args)
+    main()

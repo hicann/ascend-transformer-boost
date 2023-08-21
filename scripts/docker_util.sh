@@ -36,7 +36,7 @@ function fn_pull_image()
         mkdir $CACHE_DIR/docker
     fi
     cd docker
-    wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/acltransformer.tar --no-check-certificate
+    wget https://ascend-transformer-acceleration.obs.cn-north-4.myhuaweicloud.com/docker_file/chatglm6b/acltransformer.tar --no-check-certificate
     docker load -i acltransformer.tar
     rm -f acltransformer.tar
 }
@@ -61,7 +61,7 @@ function fn_run_container()
         -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
         -v /usr/local/sbin/:/usr/local/sbin \
         -v /home:/home \
-        -v /usr/local/asdops:/usr/local/asdops \
+        -v /tmp/asdops:/tmp/asdops \
         -v /data/acltransformer_testdata:/data/acltransformer_testdata \
         acltransformer:v1
 }

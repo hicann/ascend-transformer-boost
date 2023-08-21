@@ -25,19 +25,14 @@ namespace AclTransformer {
 SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner(const SelfAttentionKvCacheParam &param)
     : OpsRunner("SelfAttentionKvCacheOpsBloom7bRunner", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param) {
     ASD_LOG(INFO) << "SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner called";
-    const int inTensorSize = 10;
+    const int inTensorSize = 5;
     kernelGraph_.inTensors.resize(inTensorSize);
     int64_t inTensorNum = 0;
     AsdOps::Tensor &hiddenStates = kernelGraph_.inTensors.at(inTensorNum++);
-    AsdOps::Tensor &linear1WeightTensor = kernelGraph_.inTensors.at(inTensorNum++);
-    AsdOps::Tensor &linear1BiasTensor = kernelGraph_.inTensors.at(inTensorNum++);
     AsdOps::Tensor &pastK = kernelGraph_.inTensors.at(inTensorNum++);
     AsdOps::Tensor &pastV = kernelGraph_.inTensors.at(inTensorNum++);
     AsdOps::Tensor &alibi = kernelGraph_.inTensors.at(inTensorNum++);
-    AsdOps::Tensor &linear2WeightTensor = kernelGraph_.inTensors.at(inTensorNum++);
-    AsdOps::Tensor &linear2BiasTensor = kernelGraph_.inTensors.at(inTensorNum++);
     AsdOps::Tensor &attentionMask = kernelGraph_.inTensors.at(inTensorNum++);
-    AsdOps::Tensor &residual = kernelGraph_.inTensors.at(inTensorNum++);
 
     const int outTensorSize = 3;
     kernelGraph_.outTensors.resize(outTensorSize);
@@ -46,16 +41,9 @@ SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner(const
     AsdOps::Tensor &presentK = kernelGraph_.outTensors.at(outTensorNum++);
     AsdOps::Tensor &presentV = kernelGraph_.outTensors.at(outTensorNum++);
 
-    const int internalTensorSize = 35;
+    const int internalTensorSize = 20;
     kernelGraph_.internalTensors.resize(internalTensorSize);
     int64_t internalTensorNum = 0;
-    AsdOps::Tensor &transdata0ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transdata1ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &FusedQKV = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transdatalinearWeight = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &matmul1ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transdata2ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &mixedQkv = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &qLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &kLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &value = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -75,24 +63,11 @@ SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner(const
     AsdOps::Tensor &attentionProbsFP32 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &transdataAttentionProbs = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &contextLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &matmul3ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transdata6ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &mixed2Qkv = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &transdatacontextLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transposedcontextLayer = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transdata26ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transdata27ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &matmul28ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transdata29ResultTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
 
-    const int nodeSize = 32;
+    const int nodeSize = 21;
     kernelGraph_.nodes.resize(nodeSize);
     int64_t nodeNum = 0;
-    auto &transdata0Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &transdata1Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &matmul2Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &transdata3Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &add4Node = kernelGraph_.nodes.at(nodeNum++);
     auto &split5Node = kernelGraph_.nodes.at(nodeNum++);
     auto &transposeQ6Node = kernelGraph_.nodes.at(nodeNum++);
     auto &transposeK7Node = kernelGraph_.nodes.at(nodeNum++);
@@ -114,93 +89,10 @@ SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner(const
     auto &bmmContext23Node = kernelGraph_.nodes.at(nodeNum++);
     auto &transdata24Node = kernelGraph_.nodes.at(nodeNum++);
     auto &transposeQ25Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &transdata26Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &transdata27Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &matmul28Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &transdata29Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &add30Node = kernelGraph_.nodes.at(nodeNum++);
-    auto &add31Node = kernelGraph_.nodes.at(nodeNum++);
-
-    // first linear
-    transdata0Node.opDesc = {
-        0, "TransdataOperation", AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
-    transdata0Node.inTensors = {&hiddenStates};
-    transdata0Node.outTensors = {&transdata0ResultTensor};
-    transdata0Node.inTensorViewFuncs.resize(transdata0Node.inTensors.size());
-    transdata0Node.inTensorViewFuncs.at(
-        0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        ASD_LOG(INFO) << TensorUtil::AsdOpsDimsToString(oldDims);
-        oriDimA_ = oldDims;
-        if (oldDims.size() == 2) {
-            oriSize_ = 2;
-            newDims = {1, oldDims.at(0), oldDims.at(1)};
-        } else {
-            newDims = {1, oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
-        }
-    };
-
-    transdata1Node.opDesc = {
-        0, "TransdataOperation", AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
-    transdata1Node.inTensors = {&linear1WeightTensor};
-    transdata1Node.outTensors = {&transdata1ResultTensor};
-    transdata1Node.inTensorViewFuncs.resize(transdata1Node.inTensors.size());
-    transdata1Node.inTensorViewFuncs.at(
-        0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        oriDimB_ = oldDims;
-        newDims = {1, oldDims.at(0), oldDims.at(1)};
-    };
-
-    matmul2Node.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true, {0, 0}})};
-    matmul2Node.inTensors = {&transdata0ResultTensor, &transdata1ResultTensor};
-    matmul2Node.outTensors = {&matmul1ResultTensor};
-    matmul2Node.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
-        int64_t dim0, dim1, dim2;
-        if (oriSize_ == 3) {
-            dim0 = oriDimA_.at(0) * oriDimA_.at(1);
-            dim1 = oriDimA_.at(2);
-        } else {
-            dim0 = oriDimA_.at(0);
-            dim1 = oriDimA_.at(1);
-        }
-        if (true) {
-            dim2 = oriDimB_.at(0);
-        } else {
-            dim2 = oriDimB_.at(1);
-        }
-        ASD_LOG(FATAL) << dim0 << " " << dim1 << " " << dim2;
-        runInfo.SetOpDesc({0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true, {dim0, dim1, dim2}})});
-    };
-
-    ASD_LOG(INFO) << GetName() << " Transdata orgShape:[" << TensorUtil::AsdOpsDimsToString({0, 0}) << "]";
-    transdata3Node.opDesc = {
-        0, "TransdataOperation", AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
-    transdata3Node.inTensors = {&matmul1ResultTensor};
-    transdata3Node.outTensors = {&transdata2ResultTensor};
-    transdata3Node.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
-        int64_t dim0, dim1;
-        if (oriSize_ == 3) {
-            dim0 = oriDimA_.at(0) * oriDimA_.at(1);
-        } else {
-            dim0 = oriDimA_.at(0);
-        }
-        if (true) {
-            dim1 = oriDimB_.at(0);
-        } else {
-            dim1 = oriDimB_.at(1);
-        }
-        runInfo.SetOpDesc({0,
-            "TransdataOperation",
-            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {dim0, dim1}})});
-    };
-
-    add4Node.opDesc = {
-        0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
-    add4Node.inTensors = {&transdata2ResultTensor, &linear1BiasTensor};
-    add4Node.outTensors = {&mixedQkv};
 
     // split
     split5Node.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{3, 3}};
-    split5Node.inTensors = {&mixedQkv};
+    split5Node.inTensors = {&hiddenStates};
     split5Node.outTensors = {&qLayer, &kLayer, &value};
     split5Node.inTensorViewFuncs.resize(split5Node.inTensors.size());
     split5Node.inTensorViewFuncs[0] = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
@@ -295,9 +187,6 @@ SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner(const
         0, "TransdataOperation", AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
     transdataMMOut14Node.inTensors = {&mmQkOut};
     transdataMMOut14Node.outTensors = {&transdataMMQkOut};
-    transdataMMOut14Node.inTensorViewFuncs.resize(transdataMMOut14Node.inTensors.size());
-    transdataMMOut14Node.inTensorViewFuncs.at(
-        0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) { newDims = oldDims; };
     transdataMMOut14Node.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         runInfo.SetOpDesc({0,
             "TransdataOperation",
@@ -320,17 +209,6 @@ SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner(const
         0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
     addMMOut16Node.inTensors = {&mulMMQkOut, &alibi};
     addMMOut16Node.outTensors = {&attentionScores};
-    addMMOut16Node.inTensorViewFuncs.resize(addMMOut16Node.inTensors.size());
-    addMMOut16Node.inTensorViewFuncs.at(
-        0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        ASD_LOG(FATAL) << oldDims;
-        newDims = oldDims;
-    };
-    addMMOut16Node.inTensorViewFuncs.at(
-        1) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        ASD_LOG(FATAL) << oldDims;
-        newDims = oldDims;
-    };
 
     // masked_fill
     float maskValue = -65504.0;  //`torch.float16` has a minimum value of -65504.0
@@ -342,7 +220,7 @@ SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner(const
     maskFill17Node.inTensorViewFuncs.resize(maskFill17Node.inTensors.size());
     maskFill17Node.inTensorViewFuncs.at(
         0) = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oriDimA_.at(0), param_.headNum, oriDimA_.at(1), oriDimD_.at(2)};
+        newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(1), oldDims.at(2)};
     };
 
     // cast fp16 to fp32
@@ -408,69 +286,12 @@ SelfAttentionKvCacheOpsBloom7bRunner::SelfAttentionKvCacheOpsBloom7bRunner(const
         AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0, 2, 1, 3}};
     transposeQ25Node.opDesc = {0, "TransposeOperation", transposeQ25NodeParam};
     transposeQ25Node.inTensors = {&transdatacontextLayer};
-    transposeQ25Node.outTensors = {&transposedcontextLayer};
+    transposeQ25Node.outTensors = {&operationOutTensor};
     transposeQ25Node.inTensorViewFuncs.resize(transposeQ25Node.inTensors.size());
     transposeQ25Node.inTensorViewFuncs[0] = [&](const AsdOps::SVector<int64_t> &oldDims,
                                                 AsdOps::SVector<int64_t> &newDims) {
-        ASD_LOG(INFO) << TensorUtil::AsdOpsDimsToString(oldDims);
         newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(1), param_.dk};
     };
-
-    // last linear
-    transdata26Node.opDesc = {
-        0, "TransdataOperation", AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
-    transdata26Node.inTensors = {&transposedcontextLayer};
-    transdata26Node.outTensors = {&transdata26ResultTensor};
-    transdata26Node.inTensorViewFuncs.resize(transdata26Node.inTensors.size());
-    transdata26Node.inTensorViewFuncs.at(
-        0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {1, oldDims.at(1) * oldDims.at(0), oldDims.at(2) * oldDims.at(3)};
-        oriDimI_ = {oldDims.at(0), oldDims.at(1), oldDims.at(2) * oldDims.at(3)};
-    };
-
-    transdata27Node.opDesc = {
-        0, "TransdataOperation", AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
-    transdata27Node.inTensors = {&linear2WeightTensor};
-    transdata27Node.outTensors = {&transdata27ResultTensor};
-    transdata27Node.inTensorViewFuncs.resize(transdata27Node.inTensors.size());
-    transdata27Node.inTensorViewFuncs.at(
-        0) = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        oriDimJ_ = oldDims;
-        newDims = {1, oldDims.at(0), oldDims.at(1)};
-    };
-
-    matmul28Node.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true, {0, 0}})};
-    matmul28Node.inTensors = {&transdata26ResultTensor, &transdata27ResultTensor};
-    matmul28Node.outTensors = {&matmul28ResultTensor};
-    matmul28Node.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
-        runInfo.SetOpDesc({0,
-            "MatMulOperation",
-            AsdOps::OpParam::MatMul({false, true, {oriDimI_.at(0) * oriDimI_.at(1), oriDimI_.at(2), oriDimJ_.at(0)}})});
-    };
-
-    transdata29Node.opDesc = {
-        0, "TransdataOperation", AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
-    transdata29Node.inTensors = {&matmul28ResultTensor};
-    transdata29Node.outTensors = {&transdata29ResultTensor};
-    transdata29Node.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
-        int64_t dim0, dim1;
-        dim0 = oriDimI_.at(0) * oriDimI_.at(1);
-        dim1 = oriDimJ_.at(0);
-        runInfo.SetOpDesc({0,
-            "TransdataOperation",
-            AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {dim0, dim1}})});
-    };
-
-    add30Node.opDesc = {
-        0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
-    add30Node.inTensors = {&transdata29ResultTensor, &linear2BiasTensor};
-    add30Node.outTensors = {&mixed2Qkv};
-
-    // last add
-    add31Node.opDesc = {
-        0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
-    add31Node.inTensors = {&mixed2Qkv, &residual};
-    add31Node.outTensors = {&operationOutTensor};
 }
 
 SelfAttentionKvCacheOpsBloom7bRunner::~SelfAttentionKvCacheOpsBloom7bRunner() {

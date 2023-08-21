@@ -42,7 +42,8 @@ RUN apt-get install -y \
     bison \
     libdigest-md5-perl \
     perl* \
-    cpanminus
+    cpanminus \
+    cron
 
 COPY tmp/ /home
 # Install CMake
