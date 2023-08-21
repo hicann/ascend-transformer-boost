@@ -18,7 +18,8 @@ class Llama1_13b_ModelTest(model_test.ModelTest):
         print(f"[MODEL]: llama1_13b")
         print(f"[RUN_SHELL_PATH]: {RUN_SHELL_PATH}")
         print(f"[MODEL_SCRIPT_PATH]: {MODEL_SCRIPT_PATH}")
-        os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama1-13b {MODEL_SCRIPT_PATH} ")
+        # os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama1-13b {MODEL_SCRIPT_PATH} ")
+        os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama1-13b")
         if not os.path.exists(performance_file_path):
             print(f"file {performance_file_path} not exist!")
             return

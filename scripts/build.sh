@@ -196,6 +196,7 @@ function fn_copy_tools()
 
 function fn_copy_examples()
 {
+    rm -r $OUTPUT_DIR/acltransformer/examples
     cp -r $CODE_ROOT/examples $OUTPUT_DIR/acltransformer/examples
 }
 
