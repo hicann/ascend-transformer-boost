@@ -79,12 +79,12 @@ AsdOps::Status ChatGlm6BDecoderWithoutFusionModel::InferShape(const std::vector<
     outTensorDescs.at(0) = inTensors.at(0).desc;
 
     for (size_t keyId = 0; keyId < param_.layerNum; ++keyId) {
-        outTensorDescs.at(1 + 2 * keyId) = keyTensor.desc;
-        outTensorDescs.at(1 + 2 * keyId).dims.at(0) += 1;   
+        outTensorDescs.at(1 + keyId) = keyTensor.desc;
+        outTensorDescs.at(1 + keyId).dims.at(0) += 1;   
     }
     for (size_t valueId = 0; valueId < param_.layerNum; ++valueId) {
-        outTensorDescs.at(2 + 2 * valueId) = valueTensor.desc;
-        outTensorDescs.at(2 + 2 * valueId).dims.at(0) += 1;   
+        outTensorDescs.at(1 + param_.layerNum + valueId) = valueTensor.desc;
+        outTensorDescs.at(1 + param_.layerNum + valueId).dims.at(0) += 1;   
     }
     return AsdOps::Status::OkStatus();
 }
@@ -133,12 +133,12 @@ void ChatGlm6BDecoderWithoutFusionModel::BuildGraph()
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_PASTK_V_START + param_.layerNum + layerId);
         if (layerId != param_.layerNum - 1) {
             layerNode.outTensors = {&graph_.internalTensors.at(layerId),
-                                    &graph_.outTensors.at(2 * layerId + 1),
-                                    &graph_.outTensors.at(2 * layerId + 2)};
+                                    &graph_.outTensors.at(1 + layerId),
+                                    &graph_.outTensors.at(1 + layerId + param_.layerNum)};
         } else {
             layerNode.outTensors = {&graph_.outTensors.at(0),
-                                    &graph_.outTensors.at(2 * layerId + 1),
-                                    &graph_.outTensors.at(2 * layerId + 2)};
+                                    &graph_.outTensors.at(1 + layerId),
+                                    &graph_.outTensors.at(1 + layerId + param_.layerNum)};
         }
 
         firstInTensor = layerNode.outTensors.at(0);
