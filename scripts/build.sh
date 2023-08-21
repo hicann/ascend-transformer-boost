@@ -29,7 +29,7 @@ DEVICE_CODE_PACK_SWITCH=ON
 USE_CXX11_ABI=ON
 USE_VERBOSE=OFF
 BUILD_EXAMPLES=OFF
-BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples"
+BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples coverage"
 BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" 
     "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" )
 
@@ -265,6 +265,7 @@ function fn_build_coverage()
     $LCOV_PATH -c -i -d $GCOV_CACHE_DIR -o $GCOV_INFO_DIR/init.info >> $GCOV_DIR/log.txt
 
     fn_run_unittest
+    fn_run_pythontest
 
     find $CACHE_DIR -name "*.gcda" | xargs -i cp {} $GCOV_CACHE_DIR
     cd $GCOV_CACHE_DIR
@@ -456,7 +457,7 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
             fn_build_3rdparty
             fn_build
-            fn_build_coverage
+            fn_run_unittest
             ;;
         "pythontest")
             fn_build
@@ -474,6 +475,13 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Release"
             fn_build
             fn_make_tar_package
+            ;;
+        "coverage")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
+            fn_build_3rdparty
+            fn_build
+            fn_build_coverage
             ;;
         "help")
             echo "build.sh 3rdparty|unittest|unittest_and_run|pythontest|pythontest_and_run|debug|release --incremental|--gcov|--no_hostbin|--no_devicebin|--output=<dir>|--cache=<dir>|--use_cxx11_abi=0|--use_cxx11_abi=1|--build_config=<path>"
