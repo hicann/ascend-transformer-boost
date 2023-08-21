@@ -1097,8 +1097,12 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         )
 
         hidden_states = transformer_outputs[0]
+        torch.save(hidden_states.cpu(), '/data/acltransformer_testdata/tensors/operations/lm_head/intensor0.pth')
+        torch.save(self.lm_head.weight.cpu(), '/data/acltransformer_testdata/tensors/operations/lm_head/intensor1.pth')
 
         lm_logits = self.lm_head(hidden_states).permute(1, 0, 2).contiguous()
+        
+        torch.save(lm_logits.cpu(), '/data/acltransformer_testdata/tensors/operations/lm_head/outtensor0.pth')
 
         loss = None
         if labels is not None:
