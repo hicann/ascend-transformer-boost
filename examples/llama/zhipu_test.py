@@ -5,6 +5,7 @@ import transformers
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
+import argparse
 
 # 设置跑的卡
 DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
@@ -156,12 +157,26 @@ def full_and_incremental_test(seq_len, batch, test_cycle, model):
     print(f"response time: {first_time + sum_time}ms")
     return first_time, avg_time
 
-
 if __name__ == "__main__":
+    soc_version_map = {-1: "unknown soc version",
+    100: "910PremiumA", 101: "910ProA", 102: "910A", 103: "910ProB", 104: "910B",
+    200: "310P1", 201: "310P2", 202: "310P3", 203: "310P4",
+    220: "910B1", 221: "910B2", 222: "910B3", 223: "910B4",
+    240: "310B1", 241: "310B2", 242: "310B3",
+    250: "910C1", 251: "910C2", 252: "910C3", 253: "910C4"
+    }
+    device_version = soc_version_map[torch_npu._C._npu_get_soc_version()]
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        help="MODEL SELECT [llama1-7b|llama1-13b|llama2-7b|llama2-13b]",
+    )
+    args = parser.parse_args()
     tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True, use_fast=False)
     model = AutoModelForCausalLM.from_pretrained("./", trust_remote_code=True).half().npu()
     nd_nz(model)
-    file = open(f"zhiputest_llama1_7b.csv", 'w')
+    file = open(f"zhiputest_{device_version}_{args.model_name}.csv", 'w')
     file.write(f"Batch,max_seq_token,input_seq_len(Encoding),output_seq_len(Decoding),TokensPerSecond(ms),ResponseTime(ms),FirstTokenTime(ms),TimePerTokens(ms)\n")
     for batch_level in [1]:
         for seq_len_level in range(5, 11):

@@ -13,7 +13,7 @@ class Llama1_13b_ModelTest(model_test.ModelTest):
         statistic = model_test.Statistics()
         statistic.model_name = "llama1_13b"
         
-        performance_file_path = os.path.join(LLAMA1_13B_PATH, f"zhiputest_{self.device_type}_llama1_13b.csv")
+        performance_file_path = os.path.join(LLAMA1_13B_PATH, f"zhiputest_{self.device_type}_llama1-13b.csv")
         print("-----llama_test-----")
         print(f"[MODEL]: llama1_13b")
         print(f"[RUN_SHELL_PATH]: {RUN_SHELL_PATH}")
