@@ -26,29 +26,24 @@ OP_NAME = "RopeOperation"
 PARAM = {"headNum": 32}
 print(11111)
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
-                         "intensor0.pth")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
-                         "intensor1.pth")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after", "inTensor1.bin")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
-                         "intensor2.pth")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after", "inTensor2.bin")
 INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
-                         "intensor3.pth")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after", "inTensor3.bin")
 INTENSOR4 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
-                         "intensor4.pth")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after", "inTensor4.bin")
 print(22222)
 OUTTENSOR0 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after",
                           "outtensor0.pth")
 OUTTENSOR1 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after",
                           "outtensor1.pth")
 OUTTENSOR2 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after",
                           "outtensor2.pth")
 
 print(33333)
