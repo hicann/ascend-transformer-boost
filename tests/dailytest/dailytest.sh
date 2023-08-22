@@ -2,7 +2,7 @@ SCRIPT_DIR=$(cd $(dirname $0); pwd)
 CURRENT_DIR=$(pwd)
 TESTS_DIR=$(cd $SCRIPT_DIR/../; pwd)
 
-BUILD_OPTION_LIST="all performance help"
+BUILD_OPTION_LIST="all performance precision help"
 
 function fn_pre_check()
 {
@@ -12,15 +12,32 @@ function fn_pre_check()
     fi
 }
 
+function fn_prepare()
+{
+    DAILY_TEST_DIR=$TESTS_DIR/dailytest
+    rm -rf $DAILY_TEST_DIR/results
+    python3 $DAILY_TEST_DIR/model_test.py
+}
+
 function fn_performance_test()
 {
     PERFORMANCE_TEST_DIR=$TESTS_DIR/performancetest
-    rm -rf $PERFORMANCE_TEST_DIR/results
     cd $PERFORMANCE_TEST_DIR
-    python3 model_test.py
     for file in $(ls $PERFORMANCE_TEST_DIR);
     do
-        if [[ $file != "model_test.py" ]];then
+        if [[ "$file" =~ py$ ]];then
+            python3 $file
+        fi
+    done
+}
+
+function fn_precision_test()
+{
+    PRECISION_TEST_DIR=$TESTS_DIR/precisiontest 
+    cd $PRECISION_TEST_DIR
+    for file in $(ls $PRECISION_TEST_DIR);
+    do
+        if [[ "$file" =~ py$ ]];then
             python3 $file
         fi
     done
@@ -29,6 +46,8 @@ function fn_performance_test()
 function fn_main()
 {
     fn_pre_check
+
+    fn_prepare
 
     if [[ "$BUILD_OPTION_LIST" =~ "$1" ]];then
         if [[ -z "$1" ]];then
@@ -44,12 +63,16 @@ function fn_main()
     case "${arg1}" in
         "all")
             fn_performance_test
+            fn_precision_test
             ;;
         "performance")
             fn_performance_test
             ;;
+        "precision")
+            fn_precision_test
+            ;;
         "help")
-            echo "build.sh 3rdparty|unittest|unittest_and_run|pythontest|pythontest_and_run|debug|release --incremental|--gcov|--no_hostbin|--no_devicebin|--output=<dir>|--cache=<dir>|--use_cxx11_abi=0|--use_cxx11_abi=1|--build_config=<path>"
+            echo "build.sh all|performance|precision"
             ;;
         *)
             echo "unknown build type:${arg1}";

@@ -1,4 +1,6 @@
-import model_test
+import sys
+sys.path.append('../..')
+import tests.dailytest.model_test as model_test
 import os
 
 CHATGLM6B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "examples/chatglm6b")
@@ -6,12 +8,11 @@ RUN_SHELL_PATH = os.path.join(CHATGLM6B_PATH, "run.sh")
 MODEL_SCRIPT_PATH = os.path.join(CHATGLM6B_PATH, "patches/models/modeling_chatglm_model_flashattention_performance.py")
 
 class Chatglm6BModelTest(model_test.ModelTest):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, model_name) -> None:
+        super().__init__(model_name)
     
     def generate_time_performance(self):
         statistic = model_test.Statistics()
-        statistic.model_name = "chatglm6b"
         
         performance_file_path = os.path.join(CHATGLM6B_PATH, f"zhiputest_{self.device_type}.csv")
         os.system(f"bash {RUN_SHELL_PATH} {MODEL_SCRIPT_PATH} --zhipu")
@@ -35,7 +36,8 @@ class Chatglm6BModelTest(model_test.ModelTest):
                 
         
 def main():
-    test_body = Chatglm6BModelTest()
+    test_body = Chatglm6BModelTest("chatglm6b")
     test_body.generate_time_performance()
 
-main()
+if __name__ == "__main__":
+    main()

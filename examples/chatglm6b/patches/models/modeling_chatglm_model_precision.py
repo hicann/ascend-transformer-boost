@@ -4,7 +4,6 @@ import math
 import copy
 import os
 import warnings
-import json
 
 import torch
 import torch.utils.checkpoint
@@ -32,16 +31,6 @@ from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaL
 from .configuration_chatglm import ChatGLMConfig
 
 import time
-
-ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
-if ACLTRANSFORMER_HOME_PATH is None:
-    raise RuntimeError(
-        "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
-
-LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
-                        "lib/libacltransformer_torch.so")
-torch.classes.load_library(LIB_PATH)
-
 
 # flags required to enable jit fusion kernels
 torch._C._jit_set_profiling_mode(False)
@@ -234,7 +223,6 @@ def attention_fn(
 ):
     if layer_past is not None:
         past_key, past_value = layer_past
-        idScal = layer_id.item()
         key_layer = torch.cat((past_key, key_layer), dim=0)
         value_layer = torch.cat((past_value, value_layer), dim=0)
 
@@ -566,7 +554,6 @@ class GLMBlock(torch.nn.Module):
 
         # Layernorm on the input data.
         self.input_layernorm = layernorm(hidden_size, eps=layernorm_epsilon)
-        self.layernorm_epsilon = layernorm_epsilon
 
         self.position_encoding_2d = position_encoding_2d
 
@@ -611,15 +598,8 @@ class GLMBlock(torch.nn.Module):
         attention_mask: [(1, 1), seq_len, seq_len]
         """
 
-        test_glmBlockOut = None
-        test_presentKey = None
-        test_presentValue = None
-        test_in = None
-
         # Layer norm at the begining of the transformer layer.
         # [seq_len, batch, hidden_size]
-        if layer_past is not None:
-            test_in = hidden_states
         attention_input = self.input_layernorm(hidden_states)
 
         # Self attention.
@@ -636,12 +616,6 @@ class GLMBlock(torch.nn.Module):
         attention_output = attention_outputs[0]
 
         outputs = attention_outputs[1:]
-        # if use_cache:
-        #     if not self.increment_flags[layer_id]:
-        #         self.kv_cache[0, layer_id, 0, :self.token_num, ...] = outputs[0][0].transpose(
-        #             0, 1)  # batch = 1
-        #         self.kv_cache[1, layer_id, 0, :self.layer_id, ...] = outputs[0][1].transpose(
-        #             0, 1)  # batch = 1
 
         # Residual connection.
         alpha = (2 * self.num_layers) ** 0.5
@@ -779,36 +753,6 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         self.hidden_size_per_attention_head = self.hidden_size // self.num_attention_heads
         self.position_encoding_2d = config.position_encoding_2d
 
-        # flash attention init
-        self.kv_cache = torch.zeros(2,
-                                    self.num_layers,
-                                    1,   # batch
-                                    self.max_sequence_length,
-                                    self.num_attention_heads,
-                                    self.hidden_size_per_attention_head,
-                                    device='cpu').npu().half().contiguous()
-
-        self.k_cache_input = torch.as_tensor(
-            self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, 1, self.max_sequence_length, self.hidden_size)
-        self.v_cache_input = torch.as_tensor(
-            self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, 1, self.max_sequence_length, self.hidden_size)
-
-        self.increment_flags = [False] * self.num_layers
-        self.token_num = 0
-        batch_num = 1
-
-        self.token_offset = torch.full(
-            (batch_num,), 0, dtype=torch.int32, device=self.kv_cache.device)
-        self.layer_id_input = []
-
-        self.attention_mask_max = torch.full(
-            (self.max_sequence_length, self.max_sequence_length), 0, dtype=torch.half).npu()
-        self.seq_len = None
-
-        for i in range(self.num_layers):
-            self.layer_id_input.append(
-                torch.tensor([i], dtype=torch.int32).npu())
-
         self.word_embeddings = skip_init(
             torch.nn.Embedding,
             num_embeddings=self.vocab_size, embedding_dim=self.hidden_size,
@@ -836,22 +780,6 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         # Final layer norm before output.
         self.final_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon)
-
-        acl_param = json.dumps({"transKey": True, "dk": self.hidden_size_per_attention_head, "headNum": self.num_attention_heads, "layerNum": self.num_layers,
-                                "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
-
-        self.acl_encoder_operation = torch.classes.ChatGlm6BModelEncoderTorch.ChatGlm6BModelEncoderTorch()
-        self.acl_encoder_operation.set_param(acl_param)
-
-        self.acl_decoder_operation = torch.classes.ChatGlm6BModelDecoderAllTorch.ChatGlm6BModelDecoderAllTorch()
-        acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerNum": self.num_layers,
-                                "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers),
-                                "tokenOffset": [self.token_num], "seqLen": [1], "operationNum": self.num_layers + 3})
-        self.acl_decoder_operation.set_param(acl_param)
-        self.weightFlag = False
-        self.rotary_flag = False
-        self.cos = None
-        self.sin = None
 
     def get_input_embeddings(self):
         return self.word_embeddings
@@ -932,8 +860,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         else:
             raise ValueError(
                 "You have to specify either input_ids or inputs_embeds")
-        full_flag = True if input_ids.numel() > 1 else False
-        if full_flag:
+
+        if past_key_values is None:
             past_key_values = tuple([None] * len(self.layers))
             seq = input_ids[0].tolist()
 
@@ -955,84 +883,54 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
                     device=input_ids.device,
                     gmask=use_gmask
                 )
-        if full_flag:
-            if inputs_embeds is None:
-                inputs_embeds = self.word_embeddings(input_ids)
-            hidden_states = inputs_embeds.transpose(0, 1)
+
+        if inputs_embeds is None:
+            inputs_embeds = self.word_embeddings(input_ids)
 
         # [seq_len, batch, hidden_size]
+        hidden_states = inputs_embeds.transpose(0, 1)
 
         presents = () if use_cache else None
         all_self_attentions = () if output_attentions else None
         all_hidden_states = () if output_hidden_states else None
 
-        # seq_length_with_past = seq_length
-        # past_key_values_length = 0
-        # if past_key_values[0] is not None:
-        #     past_key_values_length = past_key_values[0][0].shape[0]
-        #     seq_length_with_past = seq_length_with_past + past_key_values_length
+        seq_length_with_past = seq_length
+        past_key_values_length = 0
+        if past_key_values[0] is not None:
+            past_key_values_length = past_key_values[0][0].shape[0]
+            seq_length_with_past = seq_length_with_past + past_key_values_length
         if attention_mask is None:
             attention_mask = torch.zeros(1, 1, device=input_ids.device).bool()
 
         else:
             attention_mask = attention_mask.to(input_ids.device)
 
-        if self.weightFlag is False:
-            all_weights = list(self.state_dict().values())
-            weights = [all_weights[0]]
-            for i in range(self.num_layers):
-                weights_t = list(self.layers[i].state_dict().values())
-                del weights_t[2]
-                weights.extend(weights_t)
-            weights.append(all_weights[-2])
-            weights.append(all_weights[-1])
+        for i, layer in enumerate(self.layers):
 
-            self.acl_encoder_operation.set_weight(weights[1:-2])
-            self.acl_decoder_operation.set_weight(weights)
-            self.weightFlag = True
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (hidden_states,)
 
-        if not self.rotary_flag:
-            self.rotary_flag = True
-            temp_global = torch.arange(2048, device='cpu').npu().half()
-            freqs_global = torch.einsum(
-                'i,j->ij', temp_global, self.layers[0].attention.rotary_emb.inv_freq)
-            emb_global = torch.cat((freqs_global, freqs_global), dim=-1)
-            self.cos = emb_global.cos().unsqueeze(1)
-            self.sin = emb_global.sin().unsqueeze(1)
+            layer_ret = layer(
+                hidden_states,
+                position_ids=position_ids,
+                attention_mask=attention_mask,
+                layer_id=torch.tensor(i),
+                layer_past=past_key_values[i],
+                use_cache=use_cache,
+                output_attentions=output_attentions
+            )
 
-        if full_flag:
-            self.token_num = 0
-            self.seq_len = torch.tensor(
-                [hidden_states.shape[0]] * hidden_states.shape[1], device=hidden_states.device)
-            acl_model_out = self.acl_encoder_operation.execute(
-                hidden_states, position_ids, self.cos, self.sin, attention_mask, self.seq_len)
-            # presents = tuple(
-            #     zip(acl_model_out[1:self.num_layers + 1], acl_model_out[self.num_layers + 1:]))
+            hidden_states = layer_ret[0]
 
-            # acl_model_out [57, kvseqlen, batch, hidden]
-            for i in range(self.num_layers):
-                self.kv_cache[0, i, 0, :acl_model_out[1].size()[0], ...] = acl_model_out[i+1].transpose(
-                    0, 1)  # batch = 1
-                self.kv_cache[1, i, 0, :acl_model_out[1].size()[0], ...] = \
-                    acl_model_out[i + 1 +
-                                  self.num_layers].transpose(0, 1)  # batch = 1
-                self.token_num = acl_model_out[1].size()[0]
-            self.seq_len = torch.tensor(
-                [1] * hidden_states.shape[1], device=self.kv_cache.device)
-        else:
-            self.token_num = self.token_num + 1
-            acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerNum": self.num_layers,
-                                    "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers),
-                                    "tokenOffset": [self.token_num], "seqLen": [1]})
-            self.token_offset[0] = self.token_num
-            acl_model_out = self.acl_decoder_operation.execute(
-                input_ids, position_ids, self.cos, self.sin, self.attention_mask_max,
-                self.k_cache_input, self.v_cache_input, self.token_offset, self.seq_len, self.layer_id_input, acl_param)
-        hidden_states = acl_model_out[0]
+            if use_cache:
+                presents = presents + (layer_ret[1],)
+
+            if output_attentions:
+                all_self_attentions = all_self_attentions + \
+                    (layer_ret[2 if use_cache else 1],)
 
         # Final layer norm.
-        if full_flag:
-            hidden_states = self.final_layernorm(hidden_states)
+        hidden_states = self.final_layernorm(hidden_states)
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
@@ -1068,17 +966,15 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             bias=False,
             dtype=torch.half
         )
-
-        self.acl_lm_head = torch.classes.OperationTorch.OperationTorch(
-            "LmHeadOperation")
-        self.acl_lm_head.set_param(json.dumps({}))
-        # self.acl_permute = torch.classes.OperationTorch.OperationTorch(
-        #    "TransposeOperation")
-        # self.acl_permute.set_param(json.dumps({"perm": [1, 0, 2]}))
+        
         self.count = 0
-        self.total = 0
-        self.cur_time = 0
-        self.first = 0
+        self.input_generate = 0
+        self.model_total = 0
+        self.token_total = 0
+        self.model_time = 0
+        self.token_time = 0
+        self.model_first = 0
+        self.token_first = 0
         self.pre_processing = 0
         self.post_processing = 0
 
@@ -1205,11 +1101,9 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         tensor_save_switch = os.getenv('TEMP_TENSOR_SAVE_SWITCH')
         if tensor_save_switch == "ON":
             save_path = os.getenv('TEMP_TENSOR_SAVE_PATH')
-            torch.save(hidden_states.cpu(), save_path + "/hidden_states.pth")
+            torch.save(hidden_states.cpu(), save_path + "/hidden_states_golden.pth")
 
-        lm_logits = self.acl_lm_head.execute(
-            [hidden_states, self.lm_head.weight])
-        lm_logits = lm_logits[0]
+        lm_logits = self.lm_head(hidden_states).permute(1, 0, 2).contiguous()
 
         loss = None
         if labels is not None:
@@ -1278,9 +1172,11 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                     i, old_query, response)
             prompt += "[Round {}]\n问：{}\n答：".format(len(history), query)
         input_ids = tokenizer([prompt], return_tensors="pt", padding=True)
+        # print(input_ids)
         input_ids = input_ids.to(self.device)
         outputs = self.generate(**input_ids, **gen_kwargs)
         outputs = outputs.tolist()[0][len(input_ids["input_ids"][0]):]
+        # print(outputs)
         response = tokenizer.decode(outputs)
         response = response.strip()
         response = response.replace("[[训练时间]]", "2023年")
@@ -1384,16 +1280,17 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
-
+        
         pre_processing_end = time.time()
-        self.pre_processing = (pre_processing_end -
-                               pre_processing_start) * 1000
+        self.pre_processing = (pre_processing_end - pre_processing_start) * 1000
         while True:
+            torch.npu.synchronize()
+            input_start = time.time()
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, **model_kwargs)
             # forward pass to get next token
             torch.npu.synchronize()
-            start = time.time()
+            model_start = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
@@ -1401,15 +1298,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 output_hidden_states=False,
             )
             torch.npu.synchronize()
-            end = time.time()
-            self.count += 1
-            self.cur_time = (end - start) * 1000
-            if self.count == 1:
-                self.first = self.cur_time
-            else:
-                self.total += self.cur_time
-
-            post_processing_start = time.time()
+            model_end = time.time()
+            
             next_token_logits = outputs.logits[:, -1, :]
 
             # pre-process distribution
@@ -1431,9 +1321,21 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             )
             unfinished_sequences = unfinished_sequences.mul(
                 (sum(next_tokens != i for i in eos_token_id)).long())
+            torch.npu.synchronize()
             post_processing_end = time.time()
+            
+            self.count += 1
+            self.input_generate = (model_start - input_start) * 1000
+            self.model_time = (model_end - model_start) * 1000
             self.post_processing = (
-                post_processing_end - post_processing_start) * 1000
+                post_processing_end - model_end) * 1000
+            self.token_time = (post_processing_end - input_start) * 1000
+            if self.count == 1:
+                self.model_first = self.model_time
+                self.token_first = self.token_time
+            else:
+                self.model_total += self.model_time
+                self.token_total += self.token_time
 
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
