@@ -669,6 +669,8 @@ class GLMBlock(torch.nn.Module):
 
             test_glmBlockOut, test_presentKey, test_presentValue = self.acl_encoder_operation.execute(
                 self.input_full)
+            
+            exit()
 
         else:
             pastKey, pastValue = layer_past
