@@ -30,8 +30,6 @@ INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/mlp/chatglm2_6b", "inTensor1.bin")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/mlp/chatglm2_6b", "inTensor2.bin")
-INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/mlp/chatglm2_6b", "inTensor3.bin")
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "tensors/operations/mlp/chatglm2_6b", "outTensor0.bin")
 
@@ -43,8 +41,7 @@ class TestMlpOperation(operation_test.OperationTest):
     def test(self):
         self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
                                       self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu(),
-                                      self.get_tensor(INTENSOR3).npu()])
+                                      self.get_tensor(INTENSOR2).npu()])
 
 
 if __name__ == '__main__':
