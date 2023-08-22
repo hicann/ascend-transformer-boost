@@ -20,15 +20,14 @@
 #include "acltransformer/runner_type.h"
 #ifdef USE_LCCL_RUNNER
 #include <lccl.h>
+#include <hccl/hccl_types.h>
 #endif
 #include <asdops/types.h>
 
-
 namespace AclTransformer {
-class LcclRunner : public Runner{
+class LcclRunner : public Runner {
 public:
-    LcclRunner(const std::string &name, RunnerType runnerType = RUNNER_TYPE_UNDEFINED, 
-        int rank = 0, int rankSize = 0);
+    LcclRunner(const std::string &name, RunnerType runnerType = RUNNER_TYPE_UNDEFINED, int rank = 0, int rankSize = 0);
     virtual ~LcclRunner();
 
 protected:
@@ -38,14 +37,22 @@ protected:
     uint64_t GetWorkspaceBufferSizeImpl() override;
     uint64_t GetIntermediateBufferSizeImpl() override;
     AsdOps::Status ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack) override;
+#ifdef USE_LCCL_RUNNER
+    HcclReduceOp GetAllReduceType(std::string allReduceType);
+#endif
 
 private:
-    uint64_t GetLcclDtype(AsdOps::TensorDType dtype);
+#ifdef USE_LCCL_RUNNER
+    HcclDataType GetLcclDtype(AsdOps::TensorDType dtype);
+#endif
 
 protected:
     RunnerType runnerType_ = RUNNER_TYPE_UNDEFINED;
     int rank_ = 0;
     int rankSize = 0;
+#ifdef USE_LCCL_RUNNER
+    HcclReduceOp allReduceType_ = HCCL_REDUCE_SUM;
+#endif
 };
 } // namespace AclTransformer
 #endif

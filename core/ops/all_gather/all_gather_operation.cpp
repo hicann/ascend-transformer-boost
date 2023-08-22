@@ -18,6 +18,7 @@
 #include <asdops/utils/log/log.h>
 #include "acltransformer/config.h"
 #include "all_gather_hccl_runner_builder.h"
+#include "all_gather_lccl_runner_builder.h"
 
 namespace AclTransformer {
 AllGatherOperation::AllGatherOperation(const AllGatherParam &param) : Operation("AllGatherOperation"), param_(param)
@@ -25,6 +26,8 @@ AllGatherOperation::AllGatherOperation(const AllGatherParam &param) : Operation(
     ASD_LOG(INFO) << "AllGatherOperation::AllGatherOperation called";
     if (param_.backend == "hccl") {
         runnerBuilders_ = {new AllGatherHcclRunnerBuilder(param_)};
+    } else if (param_.backend == "lccl") {
+        runnerBuilders_ = {new AllGatherLcclRunnerBuilder(param_)};
     } else {
         ASD_LOG(FATAL) << "AllGatherOperation::AllGatherOperation backend " << param_.backend << "is not exist.";
     }

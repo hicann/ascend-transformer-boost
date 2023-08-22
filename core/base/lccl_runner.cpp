@@ -20,14 +20,15 @@
 #include <asdops/utils/log/log.h>
 
 namespace AclTransformer {
-LcclRunner::LcclRunner(const std::string &name, RunnerType runnerType, int rank, int rankSize) : Runner(name), runnerType_(runnerType)
+LcclRunner::LcclRunner(const std::string &name, RunnerType runnerType, int rank, int rankSize)
+    : Runner(name), runnerType_(runnerType)
 {
-    #ifdef USE_LCCL_RUNNER
+#ifdef USE_LCCL_RUNNER
     ASD_LOG(INFO) << "LcclRunner::LcclRunner called";
-    std::map<int, Lccl::LcclComm*>& lcclCommPool = AsdOps::GetSingleton<LcclCommPool>().lcclCommPool;
+    std::map<int, Lccl::LcclComm *> &lcclCommPool = AsdOps::GetSingleton<LcclCommPool>().lcclCommPool;
     if (lcclCommPool.find(rank) == lcclCommPool.end()) {
         ASD_LOG(INFO) << "new Lccl Comm of rank begin: " << rank;
-        Lccl::LcclComm* newLcclComm = new Lccl::LcclComm(rank, rankSize);
+        Lccl::LcclComm *newLcclComm = new Lccl::LcclComm(rank, rankSize);
         if (newLcclComm == nullptr) {
             ASD_LOG(ERROR) << "new Lccl Comm of rank fail: " << rank;
         } else {
@@ -39,66 +40,69 @@ LcclRunner::LcclRunner(const std::string &name, RunnerType runnerType, int rank,
         }
     }
     rank_ = rank;
-    #endif
+#endif
 }
 
 LcclRunner::~LcclRunner() {}
 
-AsdOps::Status LcclRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack)
-{
-    return AsdOps::Status::OkStatus();
-}
+AsdOps::Status LcclRunner::SetupImpl(const RunnerVariantPack &runnerVariantPack) { return AsdOps::Status::OkStatus(); }
 
-uint64_t LcclRunner::LcclRunner::GetTilingBufferSizeImpl() 
-{
-    return 0;
-}
+uint64_t LcclRunner::LcclRunner::GetTilingBufferSizeImpl() { return 0; }
 
-void LcclRunner::LcclRunner::FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t tilingBufferSize)
-{
-    
-}
+void LcclRunner::LcclRunner::FillHostTilingBufferSizeImpl(void *hostTilingBuffer, uint64_t tilingBufferSize) {}
 
-uint64_t LcclRunner::LcclRunner::GetWorkspaceBufferSizeImpl()
-{
-    return 0;
-}
+uint64_t LcclRunner::LcclRunner::GetWorkspaceBufferSizeImpl() { return 0; }
 
-uint64_t LcclRunner::LcclRunner::GetIntermediateBufferSizeImpl()
-{
-    return 0;
-}
+uint64_t LcclRunner::LcclRunner::GetIntermediateBufferSizeImpl() { return 0; }
 
-uint64_t LcclRunner::GetLcclDtype(AsdOps::TensorDType dtype)
+#ifdef USE_LCCL_RUNNER
+HcclDataType LcclRunner::GetLcclDtype(AsdOps::TensorDType dtype)
 {
-    #ifdef USE_LCCL_RUNNER
     switch (dtype) {
-        case AsdOps::TENSOR_DTYPE_FLOAT: return Lccl::lcclFloat32;
-        case AsdOps::TENSOR_DTYPE_FLOAT16: return Lccl::lcclFloat16;
-        case AsdOps::TENSOR_DTYPE_INT8: return Lccl::lcclInt8;
-        case AsdOps::TENSOR_DTYPE_INT32: return Lccl::lcclInt32;
-        case AsdOps::TENSOR_DTYPE_UINT8: return Lccl::lcclUint8;
-        default: return -1;
+    case AsdOps::TENSOR_DTYPE_FLOAT: return HCCL_DATA_TYPE_FP32;
+    case AsdOps::TENSOR_DTYPE_FLOAT16: return HCCL_DATA_TYPE_FP16;
+    case AsdOps::TENSOR_DTYPE_INT8: return HCCL_DATA_TYPE_INT8;
+    case AsdOps::TENSOR_DTYPE_INT32: return HCCL_DATA_TYPE_INT32;
+    default: return HCCL_DATA_TYPE_RESERVED;
     }
-    #endif
-    return -1;
 }
+
+HcclReduceOp LcclRunner::GetAllReduceType(std::string allReduceType)
+{
+    if (allReduceType == "sum") {
+        return HCCL_REDUCE_SUM;
+    } else if (allReduceType == "prod") {
+        return HCCL_REDUCE_PROD;
+    } else if (allReduceType == "max") {
+        return HCCL_REDUCE_MAX;
+    } else if (allReduceType == "min") {
+        return HCCL_REDUCE_MIN;
+    } else {
+        return HCCL_REDUCE_RESERVED;
+    }
+}
+#endif
 
 AsdOps::Status LcclRunner::ExecuteImpl(Handle &handle, RunnerVariantPack &runnerVariantPack)
 {
-    #ifdef USE_LCCL_RUNNER
+#ifdef USE_LCCL_RUNNER
     switch (runnerType_) {
-        case RUNNER_TYPE_ALL_REDUCE:
-            AsdOps::GetSingleton<LcclCommPool>().lcclCommPool[rank_]
-                ->Allreduce(runnerVariantPack.inTensors[0].data, runnerVariantPack.outTensors[0].data, 
-                runnerVariantPack.inTensors[0].Numel(), 
-                static_cast<Lccl::lcclDataType_t>(GetLcclDtype(runnerVariantPack.inTensors[0].desc.dtype)),
-                Lccl::lcclSum, handle.stream);
-            break;
-        default:
-            break;
+    case RUNNER_TYPE_ALL_REDUCE:
+        AsdOps::GetSingleton<LcclCommPool>().lcclCommPool[rank_]->Allreduce(
+            runnerVariantPack.inTensors[0].data, runnerVariantPack.outTensors[0].data,
+            runnerVariantPack.inTensors[0].Numel(),
+            static_cast<HcclDataType>(GetLcclDtype(runnerVariantPack.inTensors[0].desc.dtype)), allReduceType_,
+            handle.stream);
+        break;
+    case RUNNER_TYPE_ALL_GATHER:
+        AsdOps::GetSingleton<LcclCommPool>().lcclCommPool[rank_]->AllGather(
+            runnerVariantPack.inTensors[0].data, runnerVariantPack.outTensors[0].data,
+            runnerVariantPack.inTensors[0].Numel(),
+            static_cast<HcclDataType>(GetLcclDtype(runnerVariantPack.inTensors[0].desc.dtype)), handle.stream);
+        break;
+    default: break;
     }
-    #endif
+#endif
     return AsdOps::Status::OkStatus();
 }
-}
+} // namespace AclTransformer

@@ -107,7 +107,7 @@ install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libops_common.so
 if(USE_LCCL_RUNNER)
     install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/lccl/lib/liblccl.so
             DESTINATION lib)
-    install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/lccl/lib/lccl.o
+    install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/lccl/lib/lcal.o
             DESTINATION lib)
 endif()
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/asdops/host DESTINATION .)
