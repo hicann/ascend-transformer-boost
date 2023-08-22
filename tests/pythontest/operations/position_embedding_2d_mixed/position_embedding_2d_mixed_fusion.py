@@ -38,13 +38,13 @@ INTENSOR4 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 print(22222)
 OUTTENSOR0 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after",
-                          "outtensor0.pth")
+                          "outTensor0.bin")
 OUTTENSOR1 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after",
-                          "outtensor1.pth")
+                          "outTensor1.bin")
 OUTTENSOR2 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/after",
-                          "outtensor2.pth")
+                          "outTensor2.bin")
 
 print(33333)
 class RopeOperation(operation_test.OperationTest):
