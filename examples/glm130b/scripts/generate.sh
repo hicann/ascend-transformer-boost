@@ -15,7 +15,8 @@ LENGTH_PENALTY=1.0
 NO_REPEAT_NGRAM=3
 # BaseStrategy args
 TEMP=1.0
-TOPK=0
+TOPK=40
+# TOPK=0
 TOPP=0.7
 
 ARGS="${main_dir}/generate.py \
