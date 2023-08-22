@@ -191,10 +191,10 @@ function fn_init_pytorch_env()
 
 function fn_copy_tools()
 {
-    if [ ! d "$OUTPUT_DIR/acltransformer/tools/python_tools" ]; then
-        mkdir -p $OUTPUT_DIR/acltransformer/tools/python_tools
+    if [ ! -d "$OUTPUT_DIR/acltransformer/tools" ]; then
+        mkdir -p $OUTPUT_DIR/acltransformer/tools
     fi
-    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools/python_tools
+    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
 }
 
 function fn_copy_examples()
