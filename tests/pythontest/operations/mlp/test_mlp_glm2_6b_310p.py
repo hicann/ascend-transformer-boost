@@ -25,20 +25,19 @@ import operation_test  # NOQA: E402
 OP_NAME = "MlpOperation"
 PARAM = '{}'
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/mlp", "intensor0.pth")
+                         "tensors/operations/mlp/chatglm2_6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/mlp", "intensor1.pth")
+                         "tensors/operations/mlp/chatglm2_6b", "inTensor1.bin")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/mlp", "intensor2.pth")
+                         "tensors/operations/mlp/chatglm2_6b", "inTensor2.bin")
 INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/mlp", "intensor3.pth")
+                         "tensors/operations/mlp/chatglm2_6b", "inTensor3.bin")
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                          "tensors/operations/mlp", "outtensor0.pth")
+                          "tensors/operations/mlp/chatglm2_6b", "outTensor0.bin")
 
 
 class TestMlpOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        print(self.get_tensor(OUTTENSOR0))
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
