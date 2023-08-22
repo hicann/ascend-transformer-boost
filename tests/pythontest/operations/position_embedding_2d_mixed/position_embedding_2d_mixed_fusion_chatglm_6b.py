@@ -26,24 +26,24 @@ OP_NAME = "RopeOperation"
 PARAM = {"headNum": 32}
 print(11111)
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm", "inTensor0.bin")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm", "inTensor1.bin")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor1.bin")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm", "inTensor2.bin")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor2.bin")
 INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm", "inTensor3.bin")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor3.bin")
 INTENSOR4 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm", "inTensor4.bin")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor4.bin")
 print(22222)
 OUTTENSOR0 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm",
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b",
                           "outTensor0.bin")
 OUTTENSOR1 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm",
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b",
                           "outTensor1.bin")
 OUTTENSOR2 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm",
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b",
                           "outTensor2.bin")
 
 print(33333)

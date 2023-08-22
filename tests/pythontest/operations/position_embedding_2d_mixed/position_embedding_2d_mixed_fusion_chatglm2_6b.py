@@ -24,18 +24,13 @@ import operation_test  # NOQA: E402
 
 OP_NAME = "RopeOperation"
 PARAM = {"headNum": 32}
-print(11111)
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor1.bin")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor2.bin")
-INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor3.bin")
-INTENSOR4 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor4.bin")
-print(22222)
+
 OUTTENSOR0 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
                           "outTensor0.bin")
@@ -56,9 +51,7 @@ class RopeOperation(operation_test.OperationTest):
     def test(self):
         self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
                                       self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu(),
-                                      self.get_tensor(INTENSOR3).npu(),
-                                      self.get_tensor(INTENSOR4).npu()])
+                                      self.get_tensor(INTENSOR2).npu()])
 
 
 if __name__ == '__main__':
