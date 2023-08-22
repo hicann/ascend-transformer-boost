@@ -41,7 +41,6 @@ OUTTENSOR2 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
                           "outTensor2.bin")
 
-print(33333)
 class RopeOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu(),
