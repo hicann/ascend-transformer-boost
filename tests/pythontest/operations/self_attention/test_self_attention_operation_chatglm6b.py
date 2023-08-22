@@ -20,31 +20,32 @@ import torch_npu
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
+import tensor_file
 
 
 OP_NAME = "SelfAttentionOperation"
-PARAM = '{"transKey": true, "headNum": 32, "layerId": 0, "dk": 128, "model": "chatglm6b"}'
+PARAM = '{"headNum": 32, "layerId": 0, "dk": 128, "model": "chatglm6b"}'
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention", "intensor0.pth")
+                         "tensors/operations/self_attention/chatglm6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention", "intensor1.pth")
+                         "tensors/operations/self_attention/chatglm6b", "inTensor1.bin")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention", "intensor2.pth")
+                         "tensors/operations/self_attention/chatglm6b", "inTensor2.bin")
 INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention", "intensor3.pth")
+                         "tensors/operations/self_attention/chatglm6b", "inTensor3.bin")
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                          "tensors/operations/self_attention", "outtensor0.pth")
+                          "tensors/operations/self_attention/chatglm6b", "outTensor0.bin")
 
 
 class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        return [self.get_tensor(OUTTENSOR0).npu()]
+        return [tensor_file.read_tensor(OUTTENSOR0).npu()]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu(),
-                                      self.get_tensor(INTENSOR3).npu()])
+        self.execute(OP_NAME, PARAM, [tensor_file.read_tensor(INTENSOR0).npu(),
+                                      tensor_file.read_tensor(INTENSOR1).npu(),
+                                      tensor_file.read_tensor(INTENSOR2).npu(),
+                                      tensor_file.read_tensor(INTENSOR3).npu()])
 
 
 if __name__ == '__main__':
