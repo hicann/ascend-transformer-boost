@@ -76,9 +76,9 @@ void SelfAttentionKvCacheFusionOpsChatGlm2Runner::BuildGraphWithMuls()
 
     int64_t np = param_.numHeadsPerPartition;
     int64_t gp = param_.numGroupsPerPartition;
-    InferShapePreFunc expandInferShape = [np, gp](AsdOps::RunInfo &runInfo) {
+    InferShapePreFunc expandInferShape = [=](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), np / gp, dims.at(4)};
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), param_.numHeadsPerPartition / param_.numGroupsPerPartition, dims.at(4)};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2) * dims.at(4), dims.at(2) * dims.at(4), dims.at(4), 0, 1};
         AsdOps::SVector<int64_t> offset = {0};
         runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, offset}});
