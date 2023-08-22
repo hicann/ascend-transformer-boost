@@ -34,7 +34,7 @@ class TestNormOperation(operation_test.OperationTest):
         return [golden_result]
 
     def test_2d_half(self):
-        self.execute(OP_NAME, {"layerNormEps": 1e-12},
+        self.execute(OP_NAME, {"layerNormEps": 1e-5, "beginNormAxis": 1},
                      [torch.rand(1024, 32).npu().half(), torch.rand(32).npu().half(), torch.rand(32).npu().half()])
 
 
