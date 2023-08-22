@@ -23,7 +23,7 @@ import operation_test  # NOQA: E402
 
 
 OP_NAME = "RopeOperation"
-PARAM = {"headNum": 32}
+PARAM = '{"headNum": 32, "numHeadsPerPartition":2, "hiddenSizePerHead":32, "numGroupsPerPartition":128, "model":"chatglm2_6b"}'
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
