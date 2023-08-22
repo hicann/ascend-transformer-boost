@@ -70,6 +70,8 @@
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
 #include "models/glm130b/glm130b_word_embedding_operation.h"
+#include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
+#include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -966,6 +968,36 @@ AclTransformer::Operation *Glm130bWordEmbeddingOperationCreate(const nlohmann::j
     return new AclTransformer::Glm130bWordEmbeddingOperation(param);
 }
 
+static AclTransformer::Operation *GptNeox20BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::GptNeox20BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    ASD_LOG(INFO) << "GptNeox20BLayerParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", rotaryPct:" << param.rotaryPct;
+    return new AclTransformer::GptNeox20BLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *GptNeox20BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::GptNeox20BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    ASD_LOG(INFO) << "GptNeox20BLayerParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", rotaryPct:" << param.rotaryPct;
+    return new AclTransformer::GptNeox20BLayerDecoderOperation(param);
+}
+
 AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::LmHeadParam param;
@@ -1041,7 +1073,9 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
-    {"Glm130bWordEmbeddingOperation", &Glm130bWordEmbeddingOperationCreate}};
+    {"Glm130bWordEmbeddingOperation", &Glm130bWordEmbeddingOperationCreate},
+    {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
+    {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
