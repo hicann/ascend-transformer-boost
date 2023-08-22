@@ -24,6 +24,7 @@ import operation_test  # NOQA: E402
 
 OP_NAME = "RopeOperation"
 PARAM = {"headNum": 32}
+print(11111)
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
                          "intensor0.pth")
@@ -39,7 +40,7 @@ INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 INTENSOR4 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
                          "intensor4.pth")
-
+print(22222)
 OUTTENSOR0 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
                           "outtensor0.pth")
@@ -50,7 +51,7 @@ OUTTENSOR2 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/home/luoyifei/ascend-transformer-acceleration_pytest/output/acltransformer/tensors/thread_301668/0/0_OperationTorch",
                           "outtensor2.pth")
 
-
+print(33333)
 class RopeOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu(),
