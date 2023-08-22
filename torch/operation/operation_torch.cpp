@@ -243,7 +243,7 @@ void OperationTorch::BuildVariantPack(std::vector<torch::Tensor> &atInTensors, s
             variantPack.inTensors.at(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
         if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-            std::string filePath = GetSaveTensorDir() + "/intensor" + std::to_string(i) + ".bin";
+            std::string filePath = GetSaveTensorDir() + "/intensor" + std::to_string(i) + ".pth";
             Utils::SaveTensor(atInTensors.at(i), filePath);
             ASD_LOG(INFO) << operation_->GetName() << " save tensor:" << filePath;
         }

@@ -1100,7 +1100,6 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         lm_logits = self.lm_head(hidden_states).permute(1, 0, 2).contiguous()
 
-
         loss = None
         if labels is not None:
             lm_logits = lm_logits.to(torch.float32)
