@@ -49,6 +49,7 @@
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/lm_head_operation.h"
+#include "acltransformer/ops/lm_head_parallel_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
@@ -972,6 +973,27 @@ AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson
     return new AclTransformer::LmHeadOperation(param);
 }
 
+AclTransformer::Operation *LmHeadParallelOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LmHeadParallelParam param;
+    if (paramJson.contains("rank")) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.contains("rankSize")) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.contains("rankRoot")) {
+        param.rankRoot = paramJson["rankRoot"].get<int>();
+    }
+    if (paramJson.contains("backend")) {
+        param.backend = paramJson["backend"].get<std::string>();
+    }
+    for (auto item : paramJson["perm"]) {
+        param.perm.push_back(item.get<int>());
+    }
+    return new AclTransformer::LmHeadParallelOperation(param);
+}
+
 static AclTransformer::Operation *RmsPreNormQuantOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::RmsPreNormQuantParam param;
@@ -1034,6 +1056,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LLaMA7BLayerEncoderOperation", &LLaMA7BLayerEncoderOperationCreate},
     {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate},
+    {"LmHeadParallelOperation", &LmHeadParallelOperationCreate},
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},
     {"ChatGlm2LayerDecoderOperation", &ChatGlm2LayerDecoderOperationCreate},
     {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate},
