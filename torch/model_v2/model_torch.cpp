@@ -30,6 +30,7 @@
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_without_fusion_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_encoder_without_fusion_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6bmodel_decoder_quant_flash_model.h"
+#include "torch/model_v2/chatglm2_6b/chatglm2_6b_decoder_flashattention_model.h"
 
 uint64_t GetNewModelId()
 {
