@@ -98,11 +98,11 @@ HcclReduceOp HcclRunner::GetAllReduceType(std::string allReduceType)
 {
     if (allReduceType == "sum") {
         return HCCL_REDUCE_SUM;
-    } else if ("prod") {
+    } else if (allReduceType == "prod") {
         return HCCL_REDUCE_PROD;
-    } else if ("max") {
+    } else if (allReduceType == "max") {
         return HCCL_REDUCE_MAX;
-    } else if ("min") {
+    } else if (allReduceType == "min") {
         return HCCL_REDUCE_MIN;
     } else {
         return HCCL_REDUCE_RESERVED;

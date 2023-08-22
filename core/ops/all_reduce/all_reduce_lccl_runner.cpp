@@ -21,6 +21,9 @@ AllReduceLcclRunner::AllReduceLcclRunner(const AllReduceParam &param) :
     LcclRunner("AllReduceLcclRunner", RUNNER_TYPE_ALL_REDUCE, param.rank, param.rankSize), param_(param)
 {
     ASD_LOG(INFO) << "AllReduceLcclRunner::AllReduceLcclRunner called";
+#ifdef USE_LCCL_RUNNER
+    allReduceType_ = GetAllReduceType(param_.allReduceType);
+#endif
 }
 
 AllReduceLcclRunner::~AllReduceLcclRunner() {}
