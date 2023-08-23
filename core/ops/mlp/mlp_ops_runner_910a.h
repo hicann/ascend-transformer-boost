@@ -31,6 +31,7 @@ private:
     AsdOps::SVector<int64_t> weightupdims_;
     AsdOps::SVector<int64_t> muloutdims_;
     AsdOps::SVector<int64_t> weightdowndims_;
+    std::size_t oriSize_ = 3;
 };
 } // namespace AclTransformer
 #endif

@@ -140,7 +140,12 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     selfResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
     selfResidualAddNode.inTensorIds = {IN_HIDDENSTATES, INTERMIDATE_SELFLINEAROUT};
     selfResidualAddNode.outTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT};
-
+    selfResidualAddNode.inTensorViewFuncs.resize(selfResidualAddNode.inTensorIds.size());
+    selfResidualAddNode.inTensorViewFuncs.at(1) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                                           AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(1),  oldDims.at(0), oldDims.at(2)};
+    };
+    
     selfNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};

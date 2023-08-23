@@ -125,17 +125,24 @@ PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const Posit
     cat0Node.outTensors = {&inputRotate};
     cat0Node.inferShapePreFunc = cat0InferShape;
 
+    // [bs, sq, 1, rd]
+    ViewFunc unsqueezeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), 1, oldDims.at(2)};
+    };
+
     mul0Node.opDesc = {0, "BroadcastOperation",
                         AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul0Node.inTensors = {&inputTransposed, &cos};
     mul0Node.outTensors = {&mul0};
     mul0Node.inTensorViewFuncs.resize(mul0Node.inTensors.size());
+    mul0Node.inTensorViewFuncs.at(1) = unsqueezeCosSinView;
 
     mul1Node.opDesc = {0, "BroadcastOperation",
                         AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mul1Node.inTensors = {&inputRotate, &sin};
     mul1Node.outTensors = {&mul1};
     mul1Node.inTensorViewFuncs.resize(mul1Node.inTensors.size());
+    mul1Node.inTensorViewFuncs.at(1) = unsqueezeCosSinView;
 
     addNode.opDesc = {0, "BroadcastOperation",
                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_ADD}};
