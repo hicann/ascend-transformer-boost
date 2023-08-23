@@ -17,7 +17,7 @@
 #define ACLTRANSFOERM_WORD_EMBEDDING_PARALLEL_H
 
 namespace AclTransformer {
-struct Glm130bWordEmbeddingParam {
+struct WordEmbeddingParallelParam {
     int axis = 0;
     int rank = 0;
     int rankSize = 0;

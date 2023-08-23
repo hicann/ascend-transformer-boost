@@ -946,9 +946,9 @@ AclTransformer::Operation *Glm130BLayerEncoderOperationCreate(const nlohmann::js
     return new AclTransformer::Glm130BLayerEncoderOperation(param);
 }
 
-AclTransformer::Operation *Glm130bWordEmbeddingOperationCreate(const nlohmann::json &paramJson)
+AclTransformer::Operation *WordEmbeddingParallelOperationCreate(const nlohmann::json &paramJson)
 {
-    AclTransformer::Glm130bWordEmbeddingParam param;
+    AclTransformer::WordEmbeddingParallelParam param;
     if (paramJson.contains("axis")) {
         param.axis = paramJson["axis"].get<int>();
     }
@@ -967,7 +967,7 @@ AclTransformer::Operation *Glm130bWordEmbeddingOperationCreate(const nlohmann::j
     for (auto item : paramJson["perm"]) {
         param.perm.push_back(item.get<int>());
     }
-    return new AclTransformer::Glm130bWordEmbeddingOperation(param);
+    return new AclTransformer::WordEmbeddingParallelOperation(param);
 }
 
 static AclTransformer::Operation *GptNeox20BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
@@ -1118,7 +1118,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
-    {"Glm130bWordEmbeddingOperation", &Glm130bWordEmbeddingOperationCreate},
+    {"WordEmbeddingParallelOperation", &WordEmbeddingParallelOperationCreate},
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
     {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate},
     {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate}
