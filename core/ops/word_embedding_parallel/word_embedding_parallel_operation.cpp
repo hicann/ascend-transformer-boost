@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "glm130b_word_embedding_operation.h"
+#include "acltransformer/ops/word_embedding_parallel_operation.h"
 #include "acltransformer/ops/embedding_operation.h"
 #include "acltransformer/ops/all_gather_operation.h"
 #include "acltransformer/ops/transpose_operation.h"

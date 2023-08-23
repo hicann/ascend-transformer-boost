@@ -50,6 +50,7 @@
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/lm_head_operation.h"
 #include "acltransformer/ops/lm_head_parallel_operation.h"
+#include "acltransformer/ops/word_embedding_parallel_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
@@ -71,9 +72,9 @@
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
-#include "models/glm130b/glm130b_word_embedding_operation.h"
 #include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
+#include "models/gptneox20b/gptneox20blayer_decoder_flashattention_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -1033,6 +1034,27 @@ static AclTransformer::Operation *GptNeox20BLayerDecoderOperationCreate(const nl
     return new AclTransformer::GptNeox20BLayerDecoderOperation(param);
 }
 
+static AclTransformer::Operation *GptNeox20BLayerDecoderFlashAttentionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::GptNeox20BLayerDecoderFlashAttentionParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.rotaryPct = paramJson["rotaryPct"].get<float>();
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+    }
+    ASD_LOG(INFO) << "GptNeox20BLayerDecoderFlashAttentionParam layerNormEps:" << param.layerNormEps << ", headNum:" << param.headNum
+                  << ", transKey:" << param.transKey << ", dk:" << param.dk << ", layerId:" << param.layerId
+                  << ", rotaryPct:" << param.rotaryPct;
+    return new AclTransformer::GptNeox20BLayerDecoderFlashAttentionOperation(param);
+}
+
 AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::LmHeadParam param;
@@ -1133,7 +1155,9 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
     {"Glm130bWordEmbeddingOperation", &Glm130bWordEmbeddingOperationCreate},
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
-    {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate}};
+    {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate},
+    {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate}
+};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
@@ -1157,8 +1181,9 @@ AsdOps::Any ParseParam(const std::string &opName, const std::string &param)
 {
     nlohmann::json paramJson = nlohmann::json::parse(param);
 
-    if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation" || opName == "LLaMA7BLayerFusionOperation" ||
-        opName == "ChatGlm130BLayerDecoderFusionOperation" || opName == "ChatGlm2LayerDecoderFlashAttentionOperation") {
+    if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation" || opName == "LLaMA7BLayerFusionOperation" || 
+        opName == "ChatGlm2LayerDecoderFlashAttentionOperation" || opName == "ChatGlm130BLayerDecoderFusionOperation"
+        opName == "GptNeox20BLayerDecoderFlashAttentionOperation") {
         AclTransformer::SelfAttentionKvCacheFusionVariantPackParam opParam;
         for (auto item : paramJson["tokenOffset"]) {
             opParam.tokenOffset.push_back(item.get<int>());
