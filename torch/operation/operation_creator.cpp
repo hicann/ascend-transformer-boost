@@ -71,7 +71,6 @@
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
-#include "models/glm130b/glm130b_word_embedding_operation.h"
 #include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
 #include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
