@@ -22,6 +22,9 @@ namespace AclTransformer {
 class AllGatherHcclRunner : public HcclRunner {
 public:
     AllGatherHcclRunner(const AllGatherParam &param);
+#ifdef USE_HCCL_RUNNER
+    AllGatherHcclRunner(const AllGatherParam &param, void *commExt);
+#endif
     virtual ~AllGatherHcclRunner();
 
 private:
