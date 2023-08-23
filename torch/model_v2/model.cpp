@@ -233,6 +233,7 @@ void Model::BuildNodeVariantPack(int nodeId)
 
 void Model::ExecuteNode(int nodeId)
 {
+    ExecuteNodeView(nodeId);
     auto &node = graph_.nodes.at(nodeId);
 
     Plan &plan = *node.plan;
@@ -352,5 +353,15 @@ std::string Model::GetSaveTensorDir()
 {
     std::string dir = std::to_string(executeCount_) + "/0_Model";
     return Config::GetSaveTensorDir() + "/" + dir;
+}
+
+void Model::ExecuteNodeView(int nodeId)
+{
+    auto &node = graph_.nodes.at(nodeId);
+    if (node.inTensorViewFuncs.size() > 0) {
+        for (size_t i = 0; i < node.inTensors.size() && node.inTensorViewFuncs.at(i) != nullptr; i++) {
+            node.inTensorViewFuncs.at(i)(node.inTensors.at(i)->desc.dims, node.inTensors.at(i)->desc.dims);
+        }
+    }
 }
 } // namespace AclTransformer
