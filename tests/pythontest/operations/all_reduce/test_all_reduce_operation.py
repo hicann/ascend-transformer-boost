@@ -7,6 +7,7 @@ import torch.distributed as dist
 # usage:
 # export HCCL_WHITELIST_DISABLE=1
 # torchrun --standalone --nnodes=1 --nproc_per_node=8 test_all_reduce_operation.py
+# Attention: when you use lccl backend, unset HCCL_MTE_ENABLE and copy lcal.o to current directory
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
@@ -17,7 +18,7 @@ LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
 torch.classes.load_library(LIB_PATH)
 
 local_rank = int(os.environ["LOCAL_RANK"])
-world_size = 8
+world_size = int(os.environ["WORLD_SIZE"])
 os.environ["MASTER_ADDR"] = "127.0.0.1"
 os.environ["MASTER_PORT"] = "22345"
 dist.init_process_group(backend="hccl", rank=local_rank, world_size=world_size)
