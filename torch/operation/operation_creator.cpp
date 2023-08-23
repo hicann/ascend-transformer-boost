@@ -50,6 +50,7 @@
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/lm_head_operation.h"
 #include "acltransformer/ops/lm_head_parallel_operation.h"
+#include "acltransformer/ops/word_embedding_parallel_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
