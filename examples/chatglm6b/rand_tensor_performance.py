@@ -200,6 +200,55 @@ def full_and_incremental_test(seq_len, batch, test_cycle, model):
     print(f"response time: {first_time + sum_time}ms")
     return first_time, avg_time
 
+def full_and_incremental_test_with_input(input, batch, test_cycle, model):
+    print("start run.")
+    warm_up(model)
+    
+    model_inputs = {
+        "input_ids": input["input_ids"],
+        "past_key_values": input["past_key_values"],
+        "position_ids": input["position_ids"],
+        "attention_mask": input["attention_mask"]
+    }
+    torch.npu.synchronize()
+    start = time.time()
+    outputs = model(
+        **model_inputs,
+        return_dict=True,
+        output_attentions=False,
+        output_hidden_states=False,
+    )
+    torch.npu.synchronize()
+    end = time.time()
+    first_time = (end - start) * 1000
+    print(f"first token: {first_time}ms")
+    sum_time = 0
+    test_cycle -= 1
+    avg_time = 0
+    for i in range(test_cycle):
+        past_key_values = outputs.past_key_values
+        model_inputs = {
+            "input_ids": input["input_ids"],
+            "past_key_values": past_key_values,
+            "position_ids": input["position_ids"]
+        }
+        torch.npu.synchronize()
+        start = time.time()
+        outputs = model(
+            **model_inputs,
+            return_dict=True,
+            output_attentions=False,
+            output_hidden_states=False,
+        )
+        torch.npu.synchronize()
+        end = time.time()
+        cur_time = (end - start) * 1000
+        sum_time += cur_time
+    if test_cycle != 0:
+        avg_time = sum_time / test_cycle
+    print(f"average token: {avg_time}ms")
+    print(f"response time: {first_time + sum_time}ms")
+    return first_time, avg_time
 
 test_funcs = {"full": full_test, "full_and_incremental": full_and_incremental_test}
 arg_map = {"seq_len": 512, "batch": 8, "test_cycle": 100, "device_id": 0}
