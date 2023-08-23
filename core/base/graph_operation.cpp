@@ -84,6 +84,9 @@ Runner *GraphOperation::CreateBestRunner() const
     for (size_t i = 0; i < runnerGraph.nodes.size(); ++i) {
         const auto &opNode = opGraph_.nodes.at(i);
         GraphRunner::Node &runnerNode = runnerGraph.nodes.at(i);
+        if (!opNode.operation) {
+            ASD_LOG(ERROR) << "GraphRunner Empty Node[ " << i << "]";
+        }
         runnerNode.operation = opNode.operation;
         runnerNode.runner.reset(opNode.operation->CreateBestRunner());
         runnerNode.inTensorViewFuncs = opNode.inTensorViewFuncs;

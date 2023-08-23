@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm6blayer_decoder_flashattention_operation.h"
+#include "glm130blayer_decoder_with_fusion_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
+#include "acltransformer/ops/linear_parallel_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
-#include "acltransformer/ops/ffn_operation.h"
-#include "acltransformer/ops/position_embedding_fusion_operation.h"
-
+#include "acltransformer/ops/mlp_operation.h"
 
 namespace AclTransformer {
 enum Chatglm6BLayerDecoderFlashAttentionTensorId {
@@ -34,13 +33,13 @@ enum Chatglm6BLayerDecoderFlashAttentionTensorId {
     IN_SELFOUTLINEARBIAS_ID,
     IN_SELFOUTNORMWEIGHT_ID,
     IN_SELFOUTNORMBIAS_ID,
-    IN_FFNLINEARWEIGHT_ID,
-    IN_FFNLINEARBIAS_ID,
-    IN_FFNOUTLINEARWEIGHT_ID,
-    IN_FFNOUTLINEARBIAS_ID,
+    IN_MLPLINEARWEIGHT_ID,
+    IN_MLPLINEARBIAS_ID,
+    IN_MLPOUTLINEARWEIGHT_ID,
+    IN_MLPOUTLINEARBIAS_ID,
     IN_POSITIONIDS_ID,
-    IN_COSTABLE_ID,
-    IN_SINTABLE_ID,
+    IN_COS_ID,
+    IN_SIN_ID,
     IN_ATTENTIONMASK_ID,
     IN_CACHEK_ID,
     IN_CACHEV_ID,
@@ -57,8 +56,8 @@ enum Chatglm6BLayerDecoderFlashAttentionTensorId {
     INTERMEDIATE_SELFLINEAROUT_ID,
     INTERMEDIATE_SELFRESIDUALADDOUT_ID,
     INTERMEDIATE_SELFNORMOUT_ID,
-    INTERMEDIATE_FFNOUT,
-    INTERMEDIATE_FFNLINEAROUT_ID,
+    INTERMEDIATE_MLPOUT,
+    INTERMEDIATE_MLPLINEAROUT_ID,
 };
 
 static const uint64_t IN_TENSOR_COUNT = 22;
@@ -66,9 +65,8 @@ static const uint64_t OUT_TENSOR_COUNT = 1;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
 static const uint64_t NODE_COUNT = 10;
 
-ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentionOperation(
-    const ChatGlm6BLayerDecoderFlashAttentionParam &param)
-    : GraphOperation("ChatGlm6BLayerDecoderFlashAttentionOperation"), param_(param)
+ChatGlm130BLayerDecoderFusionOperation::ChatGlm130BLayerDecoderFusionOperation(const Glm130BLayerParam &param)
+    : GraphOperation("ChatGlm130BLayerDecoderFusionOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -83,9 +81,9 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
     auto &selfOutLinearNode = opGraph_.nodes.at(nodeId++);
     auto &selfResidualAddNode = opGraph_.nodes.at(nodeId++);
     auto &selfNormNode = opGraph_.nodes.at(nodeId++);
-    auto &ffnNode = opGraph_.nodes.at(nodeId++);
-    auto &ffnLinearNode = opGraph_.nodes.at(nodeId++);
-    auto &ffnResidualAddNode = opGraph_.nodes.at(nodeId++);
+    auto &mlpNode = opGraph_.nodes.at(nodeId++);
+    auto &mlpLinearParallelNode = opGraph_.nodes.at(nodeId++);
+    auto &mlpResidualAddNode = opGraph_.nodes.at(nodeId++);
 
     AclTransformer::NormParam inputNormParam;
     inputNormParam.layerNormEps = param_.layerNormEps;
@@ -97,14 +95,15 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
     mixdQkvLinearNode.inTensorIds = {INTERMEDIATE_INPUTNORMOUT_ID, IN_QKVMIXEDWEIGHT_ID, IN_QKVMIXEDBIAS_ID};
     mixdQkvLinearNode.outTensorIds = {INTERMEDIATE_MIXEDLINEAROUTQKV_ID};
 
-    positionEmbeddingNode.operation.reset(new AclTransformer::RopeOperation({param_.headNum}));
-    positionEmbeddingNode.inTensorIds = {INTERMEDIATE_MIXEDLINEAROUTQKV_ID, IN_POSITIONIDS_ID, IN_COSTABLE_ID,
-                                         IN_SINTABLE_ID, IN_SEQLEN_ID};
+    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation(
+        {false, param_.headNum / param_.rankSize, 0, 0, 0, 0, 0, "", true}));
+    positionEmbeddingNode.inTensorIds = {INTERMEDIATE_MIXEDLINEAROUTQKV_ID, IN_COS_ID, IN_SIN_ID,
+                                         IN_SEQLEN_ID};
     positionEmbeddingNode.outTensorIds = {INTERMEDIATE_POSITIONEMBEDQ_ID, INTERMEDIATE_POSITIONEMBEDK_ID,
                                           INTERMEDIATE_VALUE_ID};
 
     AclTransformer::SelfAttentionKvCacheFusionParam selfAttentionKvCacheParam;
-    selfAttentionKvCacheParam.headNum = param_.headNum;
+    selfAttentionKvCacheParam.headNum = param_.headNum / param_.rankSize;
     selfAttentionKvCacheParam.layerId = param_.layerId;
     selfAttentionKvCacheParam.dk = param_.dk;
     selfAttentionKvCacheParam.tokenOffset = param_.tokenOffset;
@@ -117,13 +116,14 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
                                             IN_CACHEV_ID,
                                             INTERMEDIATE_POSITIONEMBEDQ_ID,
                                             IN_ATTENTIONMASK_ID,
-                                            IN_SEQLEN_ID,
                                             IN_TOKENOFFSET_ID,
+                                            IN_SEQLEN_ID,
                                             IN_LAYERID_ID};
     selfAttentionKvCacheNode.outTensorIds = {INTERMEDIATE_SELFOUT_ID};
     selfAttentionKvCacheNode.useVariantPackParam = true;
 
-    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation(AclTransformer::LinearParam()));
+    selfOutLinearNode.operation.reset(new AclTransformer::LinearParallelOperation(
+        {false, param_.rank, param_.rankSize, 0, "", "RowParallel", param_.backend}));
     selfOutLinearNode.inTensorIds = {INTERMEDIATE_SELFOUT_ID, IN_SELFOUTLINEARWEIGHT_ID, IN_SELFOUTLINEARBIAS_ID};
     selfOutLinearNode.outTensorIds = {INTERMEDIATE_SELFLINEAROUT_ID};
 
@@ -139,30 +139,29 @@ ChatGlm6BLayerDecoderFlashAttentionOperation::ChatGlm6BLayerDecoderFlashAttentio
     selfNormNode.inTensorIds = {INTERMEDIATE_SELFRESIDUALADDOUT_ID, IN_SELFOUTNORMWEIGHT_ID, IN_SELFOUTNORMBIAS_ID};
     selfNormNode.outTensorIds = {INTERMEDIATE_SELFNORMOUT_ID};
 
-    ffnNode.operation.reset(new AclTransformer::FfnOperation(AclTransformer::FfnParam()));
-    ffnNode.inTensorIds = {INTERMEDIATE_SELFNORMOUT_ID, IN_FFNLINEARWEIGHT_ID, IN_FFNLINEARBIAS_ID};
-    ffnNode.outTensorIds = {INTERMEDIATE_FFNOUT};
+    mlpNode.operation.reset(new AclTransformer::MlpOperation({"glm130b"}));
+    mlpNode.inTensorIds = {INTERMEDIATE_SELFNORMOUT_ID, IN_MLPLINEARWEIGHT_ID, IN_MLPLINEARBIAS_ID};
+    mlpNode.outTensorIds = {INTERMEDIATE_MLPOUT};
 
-    ffnLinearNode.operation.reset(new AclTransformer::LinearOperation(AclTransformer::LinearParam()));
-    ffnLinearNode.inTensorIds = {INTERMEDIATE_FFNOUT, IN_FFNOUTLINEARWEIGHT_ID, IN_FFNOUTLINEARBIAS_ID};
-    ffnLinearNode.outTensorIds = {INTERMEDIATE_FFNLINEAROUT_ID};
+    mlpLinearParallelNode.operation.reset(new AclTransformer::LinearParallelOperation(
+        {false, param_.rank, param_.rankSize, 0, "", "RowParallel", param_.backend}));
+    mlpLinearParallelNode.inTensorIds = {INTERMEDIATE_MLPOUT, IN_MLPOUTLINEARWEIGHT_ID, IN_MLPOUTLINEARBIAS_ID};
+    mlpLinearParallelNode.outTensorIds = {INTERMEDIATE_MLPLINEAROUT_ID};
 
-    AclTransformer::AddParam ffnResidualAddParam;
-    ffnResidualAddParam.scale = param_.residualAddScale;
-    ffnResidualAddNode.operation.reset(new AclTransformer::AddOperation(ffnResidualAddParam));
-    ffnResidualAddNode.inTensorIds = {INTERMEDIATE_SELFNORMOUT_ID, INTERMEDIATE_FFNLINEAROUT_ID};
-    ffnResidualAddNode.outTensorIds = {OUT_LAYEROUT_ID};
+    mlpResidualAddNode.operation.reset(new AclTransformer::AddOperation({param_.residualAddScale}));
+    mlpResidualAddNode.inTensorIds = {INTERMEDIATE_SELFNORMOUT_ID, INTERMEDIATE_MLPLINEAROUT_ID};
+    mlpResidualAddNode.outTensorIds = {OUT_LAYEROUT_ID};
 }
 
-ChatGlm6BLayerDecoderFlashAttentionOperation::~ChatGlm6BLayerDecoderFlashAttentionOperation() {}
+ChatGlm130BLayerDecoderFusionOperation::~ChatGlm130BLayerDecoderFusionOperation() {}
 
-uint64_t ChatGlm6BLayerDecoderFlashAttentionOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t ChatGlm130BLayerDecoderFusionOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t ChatGlm6BLayerDecoderFlashAttentionOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t ChatGlm130BLayerDecoderFusionOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
 AsdOps::Status
-ChatGlm6BLayerDecoderFlashAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                             AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+ChatGlm130BLayerDecoderFusionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                       AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0) = inTensors.at(0).desc;
     return AsdOps::Status::OkStatus();
