@@ -22,29 +22,24 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 
 
-OP_NAME = "PositionEmbedding1dSplitOperation"
-PARAM = {"headNum": 32}
+OP_NAME = "EmbeddingOperation"
+PARAM = {"axis": 0}
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/position_embedding_1d_split", "intensor0.pth")
+                         "tensors/operations/embedding/chatglm6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/position_embedding_1d_split", "intensor1.pth")
-INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/position_embedding_1d_split", "intensor2.pth")
-INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/position_embedding_1d_split", "intensor3.pth")
+                         "tensors/operations/embedding/chatglm6b", "inTensor1.bin")
 OUTTENSOR0 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "tensors/operations/position_embedding_1d_split", "outtensor0.pth")
+    "ACLTRANSFORMER_TESTDATA"), "tensors/operations/embedding/chatglm6b", "outTensor0.bin")
 
 
-class TestPositionEmbeddingOperation(operation_test.OperationTest):
+class TestEmbeddingOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        return [self.get_tensor(OUTTENSOR0).permute(0, 2, 1, 3).npu()]
+        return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
         self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
                                       self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu(),
-                                      self.get_tensor(INTENSOR3).npu()])
+                                    ])
 
 
 if __name__ == '__main__':
