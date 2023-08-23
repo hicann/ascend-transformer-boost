@@ -18,24 +18,24 @@ import torch
 import torch_npu
 
 
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 
-OP_NAME = "LinearOperation"
-PARAM = '{"transposeA": false, "transposeB": false, "hasBias": true}'
 
+OP_NAME = "FfnOperation"
+PARAM = '{"transposeA": false, "transposeB": false, "hasBias": false}'
 
-class TestLinearOperation(operation_test.OperationTest):
+class TetFfn(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        golden_result = torch.matmul(in_tensors[0], torch.transpose(
-            in_tensors[1], 0, 1)) + in_tensors[2]
+        golden_result = torch.fast_gelu(torch.matmul(in_tensors[0], torch.transpose(
+            in_tensors[1], 0, 1)))
         return [golden_result]
 
-    def test_2d_half(self):
-        self.execute(OP_NAME, PARAM,
+    def test(self):
+        self.execute(OP_NAME, PARAM, 
                      [torch.rand(1, 32, 1024).npu().half(),
-                      torch.rand(4096, 1024).npu().half(),
-                      torch.rand(4096).npu().half()])
+                      torch.rand(4096, 1024).npu().half()])
+
 
 if __name__ == '__main__':
     unittest.main()
