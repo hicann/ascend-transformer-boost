@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_GLM130B_WORD_EMBEDDING_PARAM_H
-#define OPS_GLM130B_WORD_EMBEDDING_PARAM_H
+#ifndef ACLTRANSFOERM_PARAMS_EMBEDDING_PARALLEL_H
+#define ACLTRANSFOERM_PARAMS_EMBEDDING_PARALLEL_H
 
 namespace AclTransformer {
-struct Glm130bWordEmbeddingParam {
+struct EmbeddingParallelParam {
     int axis = 0;
     int rank = 0;
     int rankSize = 0;

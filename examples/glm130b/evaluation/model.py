@@ -39,7 +39,8 @@ def batch_filling_sequence(
     # step-by-step generation
     token_num = 0
     token_time = []
-    sample_time = []
+    model_time = []
+    postprocess_time = []
     while counter < seqs.shape[1] - 1:
         start_time = time.time()
         token_num += 1
@@ -48,6 +49,7 @@ def batch_filling_sequence(
         # forward
         tokens = tokens.reshape(batch_size * num_beams, -1)
         mems = mems.reshape(mems.shape[0], batch_size * num_beams, mems.shape[-2], mems.shape[-1]) if mems is not None else None
+        model_start = time.time()
         logits, *output_per_layers = model(
             tokens[:, index:],
             position_ids[..., index: counter+1],
@@ -55,6 +57,8 @@ def batch_filling_sequence(
             mems=mems,
             **kw_args
         )
+        model_time.append(time.time() - model_start)
+        postprocess_start = time.time()
         mem_kv = [o['mem_kv'] for o in output_per_layers]
         mems = update_mems(mem_kv, mems, max_memory_length=max_memory_length)
         if counter == context_length - 1:
@@ -68,10 +72,9 @@ def batch_filling_sequence(
         # sampling
         logits = logits.reshape(batch_size, num_beams, -1)
         tokens = tokens.reshape(batch_size, num_beams, -1)
-        mems = mems.reshape(mems.shape[0], batch_size, num_beams, mems.shape[-2], mems.shape[-1])
-        sample_start = time.time()
+        mems = mems.reshape(mems.shape[0], batch_size, num_beams, mems.shape[-2], mems.shape[-1])        
         tokens, mems = strategy.forward(logits, tokens, mems)
-        sample_time.append(time.time() - sample_start)
+        postprocess_time.append(time.time() - postprocess_start)
         if len(tokens.shape) == 3 and num_beams == 1:
             num_beams = tokens.shape[1]
             position_ids = position_ids.unsqueeze(1).expand(batch_size, num_beams, -1).reshape(batch_size * num_beams, -1)
@@ -84,14 +87,16 @@ def batch_filling_sequence(
     if torch.distributed.get_rank() == 0:
         print('Token num is {}, takes {} second.'.format(
             token_num, round(sum(token_time), 4)))
-        print('First token\'s time consuming is {} second.'.format(
-            round(token_time[0], 4)))
-        print('Non first token\'s average time consuming is {} second.'.format(
-            round((sum(token_time) - token_time[0]) / (token_num - 1), 4)))
-        print('Non first token\'s average sample time consuming is {} second.'.format(
-            round((sum(sample_time) - sample_time[0]) / (token_num - 1), 4)))
-        print('Non first token\'s performance is {} token/second.'.format(
-            round((token_num - 1) / (sum(token_time) - token_time[0]), 4)))
+        print('First token\'s model latency is {} ms.'.format(
+            round(model_time[0] * 1000, 2)))
+        print('Model latency is {} ms.'.format(
+            round((sum(model_time) - model_time[0]) * 1000 / (token_num - 1), 2)))
+        print('PostProcess latency is {} ms.'.format(
+            round((sum(postprocess_time) - postprocess_time[0]) * 1000 / (token_num - 1), 2)))
+        print('Token latency is {} ms.'.format(
+            round((sum(token_time) - token_time[0]) * 1000 / (token_num - 1), 2)))
+        print('E2E performance is {} token/second.'.format(
+            round((token_num) / (sum(token_time)), 4)))
     return strategy.finalize(tokens, mems)
 
 

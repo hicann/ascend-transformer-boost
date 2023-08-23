@@ -18,6 +18,7 @@
 #include <functional>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/linear_parallel_operation.h"
+#include "acltransformer/ops/embedding_parallel_operation.h"
 #include "acltransformer/ops/all_reduce_operation.h"
 #include "acltransformer/ops/all_gather_operation.h"
 #include "acltransformer/ops/add_operation.h"
@@ -70,7 +71,6 @@
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
-#include "models/glm130b/glm130b_word_embedding_operation.h"
 #include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
 
@@ -945,9 +945,9 @@ AclTransformer::Operation *Glm130BLayerEncoderOperationCreate(const nlohmann::js
     return new AclTransformer::Glm130BLayerEncoderOperation(param);
 }
 
-AclTransformer::Operation *Glm130bWordEmbeddingOperationCreate(const nlohmann::json &paramJson)
+AclTransformer::Operation *EmbeddingParallelOperationCreate(const nlohmann::json &paramJson)
 {
-    AclTransformer::Glm130bWordEmbeddingParam param;
+    AclTransformer::EmbeddingParallelParam param;
     if (paramJson.contains("axis")) {
         param.axis = paramJson["axis"].get<int>();
     }
@@ -966,7 +966,7 @@ AclTransformer::Operation *Glm130bWordEmbeddingOperationCreate(const nlohmann::j
     for (auto item : paramJson["perm"]) {
         param.perm.push_back(item.get<int>());
     }
-    return new AclTransformer::Glm130bWordEmbeddingOperation(param);
+    return new AclTransformer::EmbeddingParallelOperation(param);
 }
 
 static AclTransformer::Operation *GptNeox20BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
@@ -1096,7 +1096,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
-    {"Glm130bWordEmbeddingOperation", &Glm130bWordEmbeddingOperationCreate},
+    {"EmbeddingParallelOperation", &EmbeddingParallelOperationCreate},
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
     {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate}};
 
