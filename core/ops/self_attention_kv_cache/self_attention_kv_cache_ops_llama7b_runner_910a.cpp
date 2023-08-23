@@ -115,7 +115,7 @@ SelfAttentionKvCacheOpsLlama7bRunner910a::SelfAttentionKvCacheOpsLlama7bRunner91
     permuteKNode.outTensors = {&permutedK};
     permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
 
-    AsdOps::OpParam::Transpose permuteVParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {1, 2, 0, 3}};
+    AsdOps::OpParam::Transpose permuteVParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0, 2, 1, 3}};
     permuteVNode.opDesc = {0, "TransposeOperation", permuteVParam};
     permuteVNode.inTensors = {&mixedValue};
     permuteVNode.outTensors = {&permutedV};
@@ -220,8 +220,8 @@ SelfAttentionKvCacheOpsLlama7bRunner910a::SelfAttentionKvCacheOpsLlama7bRunner91
     addMaskNode.inTensors = {&attention_mask, &mulsOut};
     addMaskNode.outTensors = {&attentionScores};
     addMaskNode.inTensorViewFuncs.resize(addMaskNode.inTensors.size());
-    addMaskNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    addMaskNode.inTensorViewFuncs[1] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(1), oldDims.at(2)};
     };
 
     castInNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_CAST})};
@@ -245,6 +245,10 @@ SelfAttentionKvCacheOpsLlama7bRunner910a::SelfAttentionKvCacheOpsLlama7bRunner91
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
         orgProbsDims_ = runInfo.GetInTensor(0).desc.dims;
+    };
+    transdataProbsNode.inTensorViewFuncs.resize(transdataProbsNode.inTensors.size());
+    transdataProbsNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
     };
 
     transdataVNode.opDesc = {0, "TransdataOperation",
