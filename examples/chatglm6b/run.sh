@@ -7,7 +7,7 @@
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 MODEL_TARGET_DIR=$SCRIPT_DIR
 TRANSFORMER_PACKAGE_PATH=$(python3 -c 'import transformers; import os; print(os.path.dirname(transformers.__file__))')
-RUN_OPTION_LIST="--run --performance --webdemo --zhipu --profiling"
+RUN_OPTION_LIST="--run --performance --webdemo --zhipu --profiling --prepare"
 RUN_OPTION="--run"
 SCRIPT_PATH=$SCRIPT_DIR/modeling_chatglm.py
 
@@ -50,8 +50,13 @@ function fn_prepare()
 
 function fn_clean()
 {
-    rm $TRANSFORMER_PACKAGE_PATH/modeling_target.py
-    rm $TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py
+    if [ -f "$TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py" ];then
+        rm -rf $TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py
+    fi
+
+    if [ -f "$TRANSFORMER_PACKAGE_PATH/modeling_target.py" ];then
+        rm -rf $TRANSFORMER_PACKAGE_PATH/modeling_target.py
+    fi
 }
 
 function fn_main()
@@ -70,36 +75,50 @@ function fn_main()
     fi
     cd $SCRIPT_DIR
 
-    fn_prepare
-
     case "${RUN_OPTION}" in
         "--run")
+            fn_prepare
             python3 $SCRIPT_DIR/main.py
+            fn_clean
             ;;
         "--performance")
+            fn_prepare
             python3 $SCRIPT_DIR/main_performance.py
+            fn_clean
             ;;
         "--webdemo")
+            fn_prepare
             unset https_proxy
             unset http_proxy
             python3 $SCRIPT_DIR/main_web.py
+            fn_clean
             ;;
         "--zhipu")
+            fn_prepare
             python3 $SCRIPT_DIR/zhipu_test.py
+            fn_clean
             ;;
         "--profiling")
             
             ;;
+        "--prepare")
+            fn_prepare
+            ;;
+        "--precision")
+            fn_prepare
+            export TEMP_TENSOR_SAVE_SWITCH="ON"
+            export TEMP_TENSOR_SAVE_PATH=$SCRIPT_DIR
+            python3 $SCRIPT_DIR/precision_test.py
+            fn_clean
+            ;;
         "--help")
-            echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
+            echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling|--precision]"
             ;;
         *)
             echo "unknown build type:${RUN_OPTION}"
-            echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
+            echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling|--precision]"
             ;;
     esac
-
-    fn_clean
 }
 
 fn_main "$@"

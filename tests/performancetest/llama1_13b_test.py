@@ -1,4 +1,6 @@
-import model_test
+import sys
+sys.path.append('../..')
+import tests.dailytest.model_test as model_test
 import os
 
 LLAMA1_13B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "examples/llama")
@@ -6,12 +8,11 @@ RUN_SHELL_PATH = os.path.join(LLAMA1_13B_PATH, "run.sh")
 MODEL_SCRIPT_PATH = os.path.join(LLAMA1_13B_PATH, "transformers_patch/layer/modeling_layer_performance.py")
 
 class Llama1_13b_ModelTest(model_test.ModelTest):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, model_name) -> None:
+        super().__init__(model_name)
     
     def generate_time_performance(self):
         statistic = model_test.Statistics()
-        statistic.model_name = "llama1_13b"
         
         performance_file_path = os.path.join(LLAMA1_13B_PATH, f"zhiputest_{self.device_type}_llama1-13b.csv")
         print("-----llama_test-----")
@@ -40,7 +41,7 @@ class Llama1_13b_ModelTest(model_test.ModelTest):
                 
         
 def main():
-    test_body = Llama1_13b_ModelTest()
+    test_body = Llama1_13b_ModelTest("llama1_13b")
     test_body.generate_time_performance()
 
 if __name__ == "__main__":

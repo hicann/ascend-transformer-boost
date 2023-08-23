@@ -482,6 +482,8 @@ function fn_main()
         "coverage")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
+            BUILD_EXAMPLES=ON
             fn_build_3rdparty
             fn_build
             fn_build_coverage
