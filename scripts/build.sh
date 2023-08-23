@@ -31,7 +31,7 @@ USE_VERBOSE=OFF
 BUILD_EXAMPLES=OFF
 BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples coverage"
 BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" 
-    "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" )
+    "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" "--doxygen")
 
 function fn_build_googltest()
 {
@@ -199,7 +199,9 @@ function fn_copy_tools()
 
 function fn_copy_examples()
 {
-    rm -r $OUTPUT_DIR/acltransformer/examples
+    if [[ -d $OUTPUT_DIR/acltransformer/examples ]];then
+        rm -rf $OUTPUT_DIR/acltransformer/examples
+    fi
     cp -r $CODE_ROOT/examples $OUTPUT_DIR/acltransformer/examples
 }
 
@@ -235,7 +237,9 @@ function fn_build()
         fn_copy_examples
     fi
 
-    #fn_generate_doxygen
+    if [[ $DOXYGEN_SWITCH == "ON" ]];then
+        fn_generate_doxygen
+    fi
 }
 
 function fn_run_unittest()
@@ -404,6 +408,9 @@ function fn_main()
             ;;
         "--optimize_off")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_OPTIMIZE=OFF"
+            ;;
+        "--doxygen")
+            DOXYGEN_SWITCH=ON
             ;;
         --link_python=*)
             arg2=${arg2#*=}

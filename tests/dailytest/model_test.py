@@ -76,7 +76,7 @@ class ModelTest:
         file_handle = open(self.time_file_name, 'a')
         file_handle.write(f"{self.model_name},{statistic.batch},{statistic.max_seq_len},{statistic.input_seq_len}," +
                           f"{statistic.output_seq_len},{statistic.tokens_per_second},{statistic.response_time}," +
-                          f"{statistic.first_token_time},{statistic.time_per_tokens}\n")
+                          f"{statistic.first_token_time},{statistic.time_per_tokens}")
         file_handle.close()
     
     def create_precision(self):
