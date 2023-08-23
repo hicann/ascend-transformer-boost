@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_GLM130B_WORD_EMBEDDING_OPERATION_H
-#define OPS_GLM130B_WORD_EMBEDDING_OPERATION_H
+#ifndef ACLTRANSFORMER_WORD_EMBEDDING_PARALLEL_OPERATION_H
+#define ACLTRANSFORMER_WORD_EMBEDDING_PARALLEL_OPERATION_H
 
 #include "acltransformer/graph_operation.h"
-#include "glm130b_word_embedding_param.h"
+#include "acltransformer/params/word_embedding_parallel.h"
 
 namespace AclTransformer {
 class Glm130bWordEmbeddingOperation : public GraphOperation {
