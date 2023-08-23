@@ -25,21 +25,25 @@ PositionEmbeddingOpsGptNeox20bRunner::PositionEmbeddingOpsGptNeox20bRunner(const
 {
     ASD_LOG(INFO) << "PositionEmbeddingOpsGptNeox20bRunner::PositionEmbeddingOps20bRunner called, headNum: "
                   << param_.headNum;
+    const int64_t IN_TENSOR_COUNT = 4;
+    const int64_t OUT_TENSOR_COUNT = 3;
+    const int64_t INTERNAL_TENSOR_COUNT = 20;
+    const int64_t NODE_COUNT = 19;
 
-    kernelGraph_.inTensors.resize(4);
+    kernelGraph_.inTensors.resize(IN_TENSOR_COUNT);
     int64_t inTensorId = 0;
     AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(inTensorId++);
     AsdOps::Tensor &positionIds = kernelGraph_.inTensors.at(inTensorId++);
-    AsdOps::Tensor &cosTable = kernelGraph_.inTensors.at(inTensorId++);
-    AsdOps::Tensor &sinTable = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &cosEmbed = kernelGraph_.inTensors.at(inTensorId++);
+    AsdOps::Tensor &sinEmbed = kernelGraph_.inTensors.at(inTensorId++);
 
-    kernelGraph_.outTensors.resize(3);
+    kernelGraph_.outTensors.resize(OUT_TENSOR_COUNT);
     int64_t outTensorId = 0;
     AsdOps::Tensor &qEmbedded = kernelGraph_.outTensors.at(outTensorId++);
     AsdOps::Tensor &kEmbedded = kernelGraph_.outTensors.at(outTensorId++);
     AsdOps::Tensor &value = kernelGraph_.outTensors.at(outTensorId++);
 
-    kernelGraph_.internalTensors.resize(22);
+    kernelGraph_.internalTensors.resize(INTERNAL_TENSOR_COUNT);
     int64_t internalTensorId = 0;
     AsdOps::Tensor &querySplit = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keySplit = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -47,8 +51,6 @@ PositionEmbeddingOpsGptNeox20bRunner::PositionEmbeddingOpsGptNeox20bRunner(const
     AsdOps::Tensor &queryPass = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keyRot = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keyPass = kernelGraph_.internalTensors.at(internalTensorId++);
-    AsdOps::Tensor &cosEmbed = kernelGraph_.internalTensors.at(internalTensorId++);
-    AsdOps::Tensor &sinEmbed = kernelGraph_.internalTensors.at(internalTensorId++);
 
     AsdOps::Tensor &queryRotLeft = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &queryRotRight = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -66,15 +68,13 @@ PositionEmbeddingOpsGptNeox20bRunner::PositionEmbeddingOpsGptNeox20bRunner(const
     AsdOps::Tensor &keyRotSinMul = kernelGraph_.internalTensors.at(internalTensorId++);
     AsdOps::Tensor &keyRotAdd = kernelGraph_.internalTensors.at(internalTensorId++);
 
-    kernelGraph_.nodes.resize(21);
+    kernelGraph_.nodes.resize(NODE_COUNT);
     int64_t nodeId = 0;
     auto &splitQKVNode = kernelGraph_.nodes[nodeId++];
     auto &qRotSliceNode = kernelGraph_.nodes[nodeId++];
     auto &qPassSliceNode = kernelGraph_.nodes[nodeId++];
     auto &kRotSliceNode = kernelGraph_.nodes[nodeId++];
     auto &kPassSliceNode = kernelGraph_.nodes[nodeId++];
-    auto &cosEmbedNode = kernelGraph_.nodes[nodeId++];
-    auto &sinEmbedNode = kernelGraph_.nodes[nodeId++];
     // do rotary embedding for q
     auto &qSliceNode = kernelGraph_.nodes[nodeId++];
     auto &qNegNode = kernelGraph_.nodes[nodeId++];
@@ -119,58 +119,45 @@ PositionEmbeddingOpsGptNeox20bRunner::PositionEmbeddingOpsGptNeox20bRunner(const
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), rotaryNum};
-        AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2) * dims.at(3), dims.at(2) * dims.at(3), dims.at(3),
-                                           1};
-        int64_t offset = 0;
-        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, {offset}}});
+        AsdOps::SVector<int64_t> sliceOffset = {0, 0, 0, 0};
+        AsdOps::SVector<int64_t> sliceSize = {-1, -1, -1, rotaryNum};
+        runInfo.SetOpDesc({0, "SliceOperation",
+                           AsdOps::OpParam::Slice{AsdOps::OpParam::Slice::SLICE, sliceOffset, sliceSize}});
     };
     InferShapePreFunc splitPassPreFunc = [=](AsdOps::RunInfo &runInfo) {
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
             runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
         }
-        AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), passNum};
-        AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2) * dims.at(3), dims.at(2) * dims.at(3), dims.at(3),
-                                           1};
-        int64_t offset = rotaryNum;
-        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, {offset}}});
+        AsdOps::SVector<int64_t> sliceOffset = {0, 0, 0, rotaryNum};
+        AsdOps::SVector<int64_t> sliceSize = {-1, -1, -1, passNum};
+        runInfo.SetOpDesc({0, "SliceOperation",
+                           AsdOps::OpParam::Slice{AsdOps::OpParam::Slice::SLICE, sliceOffset, sliceSize}});
     };
 
     // [bs, sq, hn, rd]
-    qRotSliceNode.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
+    qRotSliceNode.opDesc = {0, "SliceOperation",
+                            AsdOps::OpParam::Slice{AsdOps::OpParam::Slice::SLICE, {}, {}}};
     qRotSliceNode.inTensors = {&querySplit};
     qRotSliceNode.outTensors = {&queryRot};
     qRotSliceNode.inferShapePreFunc = splitRotPreFunc;
 
-    qPassSliceNode.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
+    qPassSliceNode.opDesc = {0, "SliceOperation",
+                               AsdOps::OpParam::Slice{AsdOps::OpParam::Slice::SLICE, {}, {}}};
     qPassSliceNode.inTensors = {&querySplit};
     qPassSliceNode.outTensors = {&queryPass};
     qPassSliceNode.inferShapePreFunc = splitPassPreFunc;
 
-    kRotSliceNode.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
+    kRotSliceNode.opDesc = {0, "SliceOperation",
+                            AsdOps::OpParam::Slice{AsdOps::OpParam::Slice::SLICE, {}, {}}};
     kRotSliceNode.inTensors = {&keySplit};
     kRotSliceNode.outTensors = {&keyRot};
     kRotSliceNode.inferShapePreFunc = splitRotPreFunc;
 
-    kPassSliceNode.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
+    kPassSliceNode.opDesc = {0, "SliceOperation",
+                             AsdOps::OpParam::Slice{AsdOps::OpParam::Slice::SLICE, {}, {}}};
     kPassSliceNode.inTensors = {&keySplit};
     kPassSliceNode.outTensors = {&keyPass};
     kPassSliceNode.inferShapePreFunc = splitPassPreFunc;
-
-    // do embedding // [bs, sq, rd]
-    cosEmbedNode.opDesc = {0, "GatherOperation",
-                           AsdOps::OpParam::Gather{AsdOps::OpParam::Gather::GatherType::GATHER_V2, 0, {0}}};
-    cosEmbedNode.inTensors = {&cosTable, &positionIds};
-    cosEmbedNode.outTensors = {&cosEmbed};
-    cosEmbedNode.inTensorViewFuncs.resize(cosEmbedNode.inTensors.size());
-
-    sinEmbedNode.opDesc = {0, "GatherOperation",
-                           AsdOps::OpParam::Gather{AsdOps::OpParam::Gather::GatherType::GATHER_V2, 0, {0}}};
-    sinEmbedNode.inTensors = {&sinTable, &positionIds};
-    sinEmbedNode.outTensors = {&sinEmbed};
-    sinEmbedNode.inTensorViewFuncs.resize(sinEmbedNode.inTensors.size());
 
     // do query rotary embedding
     // 2 * [bs, sq, hn, rd/2]
