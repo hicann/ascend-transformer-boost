@@ -44,8 +44,7 @@ INTENSOR7 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 INTENSOR8 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/self_attention_kv_cache_fusion/chatglm6b", "inTensor8.bin")
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention_kv_cache_fusion/chatglm6b", "outTensor0.bin")
-
+                          "tensors/operations/self_attention_kv_cache_fusion/chatglm6b", "outTensor0.bin")
 
 
 class TestSelfAttentionKvCacheFusionGlm6b(operation_test.OperationTest):

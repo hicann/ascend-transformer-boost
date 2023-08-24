@@ -23,7 +23,8 @@ import operation_test  # NOQA: E402
 
 
 OP_NAME = "PositionEmbeddingOperation"
-PARAM = {"headNum": 32, "numHeadsPerPartition":32, "hiddenSizePerHead":128, "numGroupsPerPartition":2, "model":"chatglm2_6b"}
+PARAM = {"headNum": 32, "numHeadsPerPartition": 32, "hiddenSizePerHead": 128,
+         "numGroupsPerPartition": 2, "model": "chatglm2_6b"}
 
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/position_embedding_mixed/chatglm2_6b", "inTensor0.bin")
@@ -32,11 +33,12 @@ INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 
 
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/position_embedding_mixed/chatglm2_6b", "outTensor0.bin")
+                          "tensors/operations/position_embedding_mixed/chatglm2_6b", "outTensor0.bin")
 OUTTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/position_embedding_mixed/chatglm2_6b", "outTensor1.bin")
+                          "tensors/operations/position_embedding_mixed/chatglm2_6b", "outTensor1.bin")
 OUTTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/position_embedding_mixed/chatglm2_6b", "outTensor2.bin")
+                          "tensors/operations/position_embedding_mixed/chatglm2_6b", "outTensor2.bin")
+
 
 class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):

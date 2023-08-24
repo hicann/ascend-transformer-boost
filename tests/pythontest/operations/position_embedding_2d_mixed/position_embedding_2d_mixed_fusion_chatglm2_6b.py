@@ -33,13 +33,14 @@ INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 
 OUTTENSOR0 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
-                          "outTensor0.bin")
+    "outTensor0.bin")
 OUTTENSOR1 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
-                          "outTensor1.bin")
+    "outTensor1.bin")
 OUTTENSOR2 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
-                          "outTensor2.bin")
+    "outTensor2.bin")
+
 
 class RopeOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):

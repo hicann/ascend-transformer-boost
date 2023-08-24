@@ -59,4 +59,6 @@ class TestPositionEmbeddingOperation(operation_test.OperationTest):
 
 
 if __name__ == '__main__':
+    os.environ['ACLTRANSFORMER_CONVERT_NCHW_TO_ND'] = '1'
     unittest.main()
+    os.environ['ACLTRANSFORMER_CONVERT_NCHW_TO_ND'] = '0'

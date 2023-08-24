@@ -22,7 +22,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 import tensor_file
 
-
 OP_NAME = "SelfAttentionOperation"
 PARAM = '{"headNum": 32, "layerId": 1, "dk": 128, "model": "chatglm2_6b", "preScale": 1, "postScale": 1, "numHeadPerPartition": 32, "hiddenSizePerHead": 128, "numGroupPerPartition": 2}'
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
