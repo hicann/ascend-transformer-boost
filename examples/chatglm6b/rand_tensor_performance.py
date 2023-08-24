@@ -200,13 +200,13 @@ def full_and_incremental_test(seq_len, batch, test_cycle, model):
     print(f"response time: {first_time + sum_time}ms")
     return first_time, avg_time
 
-def full_and_incremental_test_with_input(input, batch, test_cycle, model):
+def full_and_incremental_test_with_input(input, test_cycle, model):
     print("start run.")
     warm_up(model)
     
     model_inputs = {
         "input_ids": input["input_ids"],
-        "past_key_values": input["past_key_values"],
+        "past_key_values": None,
         "position_ids": input["position_ids"],
         "attention_mask": input["attention_mask"]
     }
@@ -225,13 +225,14 @@ def full_and_incremental_test_with_input(input, batch, test_cycle, model):
     sum_time = 0
     test_cycle -= 1
     avg_time = 0
+    model.count = 0
     for i in range(test_cycle):
-        past_key_values = outputs.past_key_values
         model_inputs = {
             "input_ids": input["input_ids"],
-            "past_key_values": past_key_values,
+            "past_key_values": input["past_key_values"],
             "position_ids": input["position_ids"]
         }
+        model.count = model.count + 1
         torch.npu.synchronize()
         start = time.time()
         outputs = model(
