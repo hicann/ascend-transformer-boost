@@ -115,12 +115,9 @@ SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRu
         }
     };
 
-    int64_t np = param_.numHeadsPerPartition;
-    int64_t hn = param_.hiddenSizePerHead;
-    int64_t gp = param_.numGroupsPerPartition;
-    InferShapePreFunc expandInferShape = [np, gp](AsdOps::RunInfo &runInfo) {
+    InferShapePreFunc expandInferShape = [=](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), np / gp, dims.at(4)};
+        AsdOps::SVector<int64_t> asStridedDims = {dims.at(0), dims.at(1), dims.at(2), param_.numHeadsPerPartition / param_.numGroupsPerPartition, dims.at(4)};
         AsdOps::SVector<int64_t> stride = {dims.at(1) * dims.at(2) * dims.at(4), dims.at(2) * dims.at(4), dims.at(4), 0, 1};
         AsdOps::SVector<int64_t> offset = {0};
         runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided{asStridedDims, stride, offset}});
@@ -139,8 +136,8 @@ SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRu
     permuteKNode.inTensors = {&presentKeyExpand};
     permuteKNode.outTensors = {&transposedK};
     permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
-    permuteKNode.inTensorViewFuncs[0] = [np, hn](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1) * np, hn};
+    permuteKNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1) * param_.numHeadsPerPartition, param_.hiddenSizePerHead};
     };
 
     transdataQNode.opDesc = {0, "TransdataOperation",
@@ -222,8 +219,8 @@ SelfAttentionKvCacheOpsChatGlm26bRunner310P::SelfAttentionKvCacheOpsChatGlm26bRu
     permuteVNode.inTensors = {&presentValueExpand};
     permuteVNode.outTensors = {&transposedV};
     permuteVNode.inTensorViewFuncs.resize(permuteVNode.inTensors.size());
-    permuteVNode.inTensorViewFuncs[0] = [np, hn](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1) * np, hn};
+    permuteVNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1) * param_.numHeadsPerPartition, param_.hiddenSizePerHead};
     };
 
     transdataProbsNode.opDesc = {0, "TransdataOperation",

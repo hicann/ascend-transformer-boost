@@ -104,9 +104,6 @@ PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmb
 
     int64_t qLayerDim = param_.numHeadsPerPartition * param_.hiddenSizePerHead;
     int64_t kLayerDim = param_.numGroupsPerPartition * param_.hiddenSizePerHead;
-    int64_t np = param_.numHeadsPerPartition;
-    int64_t hn = param_.hiddenSizePerHead;
-    int64_t gp = param_.numGroupsPerPartition;
 
     // split qkv
     asStrided0Node.opDesc = {0, "AsStridedOperation", AsdOps::OpParam::AsStrided{{}, {}, {}}};
@@ -151,8 +148,8 @@ PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmb
     muls0Node.inTensors = {&valueIntermediate};
     muls0Node.outTensors = {&value};
     muls0Node.inTensorViewFuncs.resize(muls0Node.inTensors.size());
-    muls0Node.inTensorViewFuncs.at(0) = [gp, hn](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1), gp, hn};
+    muls0Node.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.numGroupsPerPartition, param_.hiddenSizePerHead};
     };
 
     InferShapePreFunc split1InferShape = [](AsdOps::RunInfo &runInfo) {
@@ -164,8 +161,8 @@ PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmb
     split1Node.outTensors = {&qChunk0, &qChunk1};
     split1Node.inferShapePreFunc = split1InferShape;
     split1Node.inTensorViewFuncs.resize(split1Node.inTensors.size());
-    split1Node.inTensorViewFuncs.at(0) = [np, hn](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1), np, hn};
+    split1Node.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.numHeadsPerPartition, param_.hiddenSizePerHead};
     };
 
 
@@ -174,8 +171,8 @@ PositionEmbeddingOpsGlm2Runner::PositionEmbeddingOpsGlm2Runner(const PositionEmb
     split2Node.outTensors = {&kChunk0, &kChunk1};
     split2Node.inferShapePreFunc = split1InferShape;
     split2Node.inTensorViewFuncs.resize(split2Node.inTensors.size());
-    split2Node.inTensorViewFuncs.at(0) = [gp, hn](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1), gp, hn};
+    split2Node.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.numGroupsPerPartition, param_.hiddenSizePerHead};
     };
 
     // slice rope with sq
