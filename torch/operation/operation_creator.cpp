@@ -72,6 +72,7 @@
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
+#include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
 #include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_flashattention_operation.h"
@@ -1004,6 +1005,16 @@ AclTransformer::Operation *WordEmbeddingParallelOperationCreate(const nlohmann::
     return new AclTransformer::WordEmbeddingParallelOperation(param);
 }
 
+static AclTransformer::Operation *GptNeox20BLayerEmbeddingOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::GptNeox20BLayerEmbeddingParam param;
+    if (paramJson.contains("axis")) {
+        param.axis = paramJson["axis"].get<int>();
+    }
+    ASD_LOG(INFO) << "GptNeox20BLayerEmbeddingParam axis:" << param.axis;
+    return new AclTransformer::GptNeox20BLayerEmbeddingOperation(param);
+}
+
 static AclTransformer::Operation *GptNeox20BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::GptNeox20BLayerParam param;
@@ -1154,6 +1165,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
     {"WordEmbeddingParallelOperation", &WordEmbeddingParallelOperationCreate},
+    {"GptNeox20BLayerEmbeddingOperation", &GptNeox20BLayerEmbeddingOperationCreate},
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
     {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate},
     {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate}
