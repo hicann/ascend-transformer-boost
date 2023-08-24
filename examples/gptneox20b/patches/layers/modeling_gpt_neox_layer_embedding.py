@@ -576,7 +576,7 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
         test_sin_embed = torch.nn.functional.embedding(position_ids, sinTable).half()
 
         inputs = []
-        inputs.append(self.state_dict().values()[0])
+        inputs.append(list(self.state_dict().values())[0])
         inputs.append(input_ids)
         inputs.append(cosTable)
         inputs.append(sinTable)
