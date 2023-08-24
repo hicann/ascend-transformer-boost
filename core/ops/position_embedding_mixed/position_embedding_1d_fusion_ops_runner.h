@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_H
-#define ACLTRANSFOERM_PARAMS_POSITION_EMBEDDING_H
+#ifndef POSITIONEMBEDDING_1D_FUSION_OPS_RUNNER_H
+#define POSITIONEMBEDDING_1D_FUSION_OPS_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/position_embedding.h"
+
 namespace AclTransformer {
-struct PositionEmbeddingParam {
-    bool is2d = true;
-    int64_t headNum = 0;
-    int64_t numHeadsPerPartition = 0;
-    int64_t hiddenSizePerHead = 0;
-    int64_t numGroupsPerPartition = 0;
-    int64_t dk = 0;
-    float rotaryPct = 0.25;
-    std::string model = "chatglm";
-    bool isFusion = false;
+class PositionEmbedding1dMixedFusionOpsRunner : public OpsRunner {
+public:
+    PositionEmbedding1dMixedFusionOpsRunner(const PositionEmbeddingParam &param);
+    virtual ~PositionEmbedding1dMixedFusionOpsRunner();
+
+private:
+    PositionEmbeddingParam param_;
 };
 } // namespace AclTransformer
 #endif

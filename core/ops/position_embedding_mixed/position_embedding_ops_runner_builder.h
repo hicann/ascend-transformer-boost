@@ -19,6 +19,7 @@
 #include "acltransformer/params/position_embedding.h"
 #include "position_embedding_ops_runner.h"
 #include "position_embedding_1d_ops_runner.h"
+#include "position_embedding_1d_fusion_ops_runner.h"
 #include "position_embedding_ops_glm2_runner.h"
 #include "position_embedding_ops_gptneox20b_runner.h"
 
@@ -34,8 +35,12 @@ public:
             return new PositionEmbeddingOpsGptNeox20bRunner(param_);
         } else if (param_.is2d) {
             return new PositionEmbeddingOpsRunner(param_);
-        } else {
-            return new PositionEmbedding1dOpsRunner(param_);
+        }  else {
+            if (param_.isFusion) {
+                return new PositionEmbedding1dMixedFusionOpsRunner(param_);
+            } else {
+                return new PositionEmbedding1dOpsRunner(param_);
+            }
         }
     }
 

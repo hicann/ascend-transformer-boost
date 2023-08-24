@@ -27,6 +27,8 @@ struct Glm130BLayerParam {
     float residualAddScale = 0;
     double layerNormEps = 0;
     std::string backend = "hccl";
+    AsdOps::SVector<int32_t> seqLen;
+    AsdOps::SVector<int32_t> tokenOffset;
 };
 } // namespace AclTransformer
 #endif
