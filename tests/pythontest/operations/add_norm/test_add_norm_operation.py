@@ -18,7 +18,7 @@ import torch
 import torch_npu
 
 
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 
 
@@ -30,7 +30,7 @@ class TestAddNormOperation(operation_test.OperationTest):
         layer_norm = torch.nn.LayerNorm([1, 4096], eps=0.00001).npu()
         gamma = in_tensors[2]
         beta = in_tensors[3]
-        res_in =  in_tensors[1] * 0.5
+        res_in = in_tensors[1] * 0.5
         res_in = res_in.half().npu()
         layer_norm.load_state_dict(
             {"weight": gamma, "bias": beta})

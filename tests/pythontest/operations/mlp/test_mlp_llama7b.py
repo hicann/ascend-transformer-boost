@@ -33,7 +33,7 @@ INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/mlp/llama7b/", "inTensor3.bin")
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/mlp/llama7b/", "outTensor0.bin")
+                          "tensors/operations/mlp/llama7b/", "outTensor0.bin")
 
 
 class TestMlpOperation(operation_test.OperationTest):

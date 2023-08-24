@@ -18,7 +18,7 @@ import torch
 import torch_npu
 
 
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 
 OP_NAME = "LinearOperation"
@@ -36,6 +36,7 @@ class TestLinearOperation(operation_test.OperationTest):
                      [torch.rand(1, 32, 1024).npu().half(),
                       torch.rand(4096, 1024).npu().half(),
                       torch.rand(4096).npu().half()])
+
 
 if __name__ == '__main__':
     unittest.main()
