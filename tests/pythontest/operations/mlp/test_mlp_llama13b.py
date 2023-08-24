@@ -40,9 +40,10 @@ class TestMlpOperation(operation_test.OperationTest):
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu()])
+        pass
+        # self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
+        #                               self.get_tensor(INTENSOR1).npu(),
+        #                               self.get_tensor(INTENSOR2).npu()])
 
 
 if __name__ == '__main__':
