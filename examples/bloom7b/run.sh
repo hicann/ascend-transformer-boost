@@ -6,12 +6,14 @@ else
 fi
 TRANSFORMER_PACKAGE_PATH=$(python3 -c 'import transformers; import os; print(os.path.dirname(transformers.__file__))')/models/bloom
 
+MODEL_PATH=/home/bloom/model/bloom
+
 if [ ! -f "$SCRIPT_DIR/flax_model-00001-of-00002.msgpack" ];then
-    ln -s $ACLTRANSFORMER_TESTDATA/weights/bloom7b/flax_model-00001-of-00002.msgpack $SCRIPT_DIR/flax_model-00001-of-00002.msgpack
-    ln -s $ACLTRANSFORMER_TESTDATA/weights/bloom7b/flax_model-00002-of-00002.msgpack $SCRIPT_DIR/flax_model-00002-of-00002.msgpack
-    ln -s $ACLTRANSFORMER_TESTDATA/weights/bloom7b/pytorch_model-00001-of-00002.bin $SCRIPT_DIR/pytorch_model-00001-of-00002.bin
-    ln -s $ACLTRANSFORMER_TESTDATA/weights/bloom7b/pytorch_model-00002-of-00002.bin $SCRIPT_DIR/pytorch_model-00002-of-00002.bin
-    ln -s $ACLTRANSFORMER_TESTDATA/weights/bloom7b/tokenizer.json $SCRIPT_DIR/tokenizer.json
+    ln -s $MODEL_PATH/flax_model-00001-of-00002.msgpack $SCRIPT_DIR/flax_model-00001-of-00002.msgpack
+    ln -s $MODEL_PATH/flax_model-00002-of-00002.msgpack $SCRIPT_DIR/flax_model-00002-of-00002.msgpack
+    ln -s $MODEL_PATH/pytorch_model-00001-of-00002.bin $SCRIPT_DIR/pytorch_model-00001-of-00002.bin
+    ln -s $MODEL_PATH/pytorch_model-00002-of-00002.bin $SCRIPT_DIR/pytorch_model-00002-of-00002.bin
+    ln -s $MODEL_PATH/tokenizer.json $SCRIPT_DIR/tokenizer.json
 fi
 
 if [ -f "$TRANSFORMER_PACKAGE_PATH/modeling_bloom_origin.py" ];then
@@ -30,7 +32,25 @@ fi
 cp $SCRIPT_DIR/modeling_bloom.py $TRANSFORMER_PACKAGE_PATH/modeling_bloom_origin.py
 cp $SCRIPT_PATH $TRANSFORMER_PACKAGE_PATH/modeling_bloom.py
 
-python3 run_bloom_npu.py
+RUN_OPTION="--run"
+if [[ ! -z "$2" ]];then
+    RUN_OPTION=$2
+fi
+cd $SCRIPT_DIR
+echo $RUN_OPTION
+
+case "${RUN_OPTION}" in
+    "--run")
+        python3 $SCRIPT_DIR/run_bloom_npu.py
+        ;;
+    "--zhipu")
+        python3 $SCRIPT_DIR/zhipu_test.py
+        ;;
+    *)
+        echo "unknown build type:${RUN_OPTION}"
+        echo "run.sh [model script path] [--run|--zhipu]"
+        ;;
+esac
 
 rm -f $TRANSFORMER_PACKAGE_PATH/modeling_bloom_origin.py
 if [ -f "$TRANSFORMER_PACKAGE_PATH/modeling_bloom.py.bak" ];then
