@@ -24,7 +24,6 @@ import operation_test  # NOQA: E402
 
 OP_NAME = "RopeOperation"
 PARAM = {"headNum": 32}
-print(11111)
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
@@ -35,7 +34,6 @@ INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor3.bin")
 INTENSOR4 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor4.bin")
-print(22222)
 OUTTENSOR0 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b",
                           "outTensor0.bin")
@@ -46,7 +44,6 @@ OUTTENSOR2 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b",
                           "outTensor2.bin")
 
-print(33333)
 class RopeOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu(),
