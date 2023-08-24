@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "op_test.h"
+#include "operation_test.h"
 #include <half.hpp>
 #include <random>
 #include <asdops/types.h>
@@ -24,15 +24,15 @@
 #include "acltransformer/context/context.h"
 
 namespace AclTransformer {
-OpTest::OpTest()
+OperationTest::OperationTest()
 {
     const char *envStr = std::getenv("SET_NPU_DEVICE");
     deviceId_ = (envStr != nullptr) ? atoi(envStr) : 0;
 }
 
-OpTest::~OpTest() { Cleanup(); }
+OperationTest::~OperationTest() { Cleanup(); }
 
-void OpTest::Cleanup()
+void OperationTest::Cleanup()
 {
     for (auto tensor : goldenContext_.hostInTensors) {
         if (tensor.data) {
@@ -67,7 +67,7 @@ void OpTest::Cleanup()
     }
 }
 
-void OpTest::Init()
+void OperationTest::Init()
 {
     ASD_LOG(INFO) << "AsdRtDeviceSetCurrent " << deviceId_;
     int ret = AsdRtDeviceSetCurrent(deviceId_);
@@ -81,7 +81,7 @@ void OpTest::Init()
     handle_ = {stream};
 }
 
-AsdOps::Status OpTest::Prepare(AclTransformer::Operation *operation,
+AsdOps::Status OperationTest::Prepare(AclTransformer::Operation *operation,
                                const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
 {
     operation_ = operation;
@@ -99,7 +99,7 @@ AsdOps::Status OpTest::Prepare(AclTransformer::Operation *operation,
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Tensor OpTest::CreateHostTensor(const AsdOps::Tensor &tensorIn)
+AsdOps::Tensor OperationTest::CreateHostTensor(const AsdOps::Tensor &tensorIn)
 {
     AsdOps::Tensor tensor;
     tensor.desc = tensorIn.desc;
@@ -111,7 +111,7 @@ AsdOps::Tensor OpTest::CreateHostTensor(const AsdOps::Tensor &tensorIn)
     return tensor;
 }
 
-AsdOps::Tensor OpTest::HostTensor2DeviceTensor(const AsdOps::Tensor &hostTensor)
+AsdOps::Tensor OperationTest::HostTensor2DeviceTensor(const AsdOps::Tensor &hostTensor)
 {
     AsdOps::Tensor deviceTensor;
     deviceTensor.desc = hostTensor.desc;
@@ -129,7 +129,7 @@ AsdOps::Tensor OpTest::HostTensor2DeviceTensor(const AsdOps::Tensor &hostTensor)
     return deviceTensor;
 }
 
-std::string OpTest::TensorToString(const AsdOps::Tensor &tensor)
+std::string OperationTest::TensorToString(const AsdOps::Tensor &tensor)
 {
     const int64_t printMaxCount = 10;
     std::ostringstream ss;
@@ -173,7 +173,7 @@ std::string OpTest::TensorToString(const AsdOps::Tensor &tensor)
     return ss.str();
 }
 
-AsdOps::Tensor OpTest::CreateHostZeroTensor(const AsdOps::TensorDesc &tensorDesc)
+AsdOps::Tensor OperationTest::CreateHostZeroTensor(const AsdOps::TensorDesc &tensorDesc)
 {
     AsdOps::Tensor tensor;
     tensor.desc = tensorDesc;
@@ -202,7 +202,7 @@ AsdOps::Tensor OpTest::CreateHostZeroTensor(const AsdOps::TensorDesc &tensorDesc
     return tensor;
 }
 
-void OpTest::BuildVariantPack(const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
+void OperationTest::BuildVariantPack(const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
 {
     AsdOps::SVector<AsdOps::TensorDesc> outTensorDescs;
     outTensorDescs.resize(operation_->GetOutTensorCount());
@@ -237,7 +237,7 @@ void OpTest::BuildVariantPack(const AsdOps::SVector<AsdOps::Tensor> &inTensorLis
     }
 }
 
-AsdOps::Status OpTest::RunOperation()
+AsdOps::Status OperationTest::RunOperation()
 {
     AsdOps::Status st = plan_.Setup(handle_, variantPack_);
     if (!st.Ok()) {
@@ -260,7 +260,7 @@ AsdOps::Status OpTest::RunOperation()
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status OpTest::CopyDeviceTensorToHostTensor()
+AsdOps::Status OperationTest::CopyDeviceTensorToHostTensor()
 {
     for (size_t i = 0; i < variantPack_.outTensors.size(); ++i) {
         AsdOps::Tensor &deivceTensor = variantPack_.outTensors.at(i);
@@ -279,7 +279,7 @@ AsdOps::Status OpTest::CopyDeviceTensorToHostTensor()
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status OpTest::Run(AclTransformer::Operation *operation,
+AsdOps::Status OperationTest::Run(AclTransformer::Operation *operation,
                            const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs)
 {
     AsdOps::SVector<AsdOps::Tensor> inTensors;
@@ -288,7 +288,7 @@ AsdOps::Status OpTest::Run(AclTransformer::Operation *operation,
     return RunImpl(operation, inTensors);
 }
 
-AsdOps::Status OpTest::Run(AclTransformer::Operation *operation,
+AsdOps::Status OperationTest::Run(AclTransformer::Operation *operation,
                            const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
                            const AsdOps::Any &varaintPackParam)
 {
@@ -298,18 +298,18 @@ AsdOps::Status OpTest::Run(AclTransformer::Operation *operation,
     return RunImpl(operation, inTensors, varaintPackParam);
 }
 
-AsdOps::Status OpTest::Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
+AsdOps::Status OperationTest::Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
 {
     return RunImpl(operation, inTensorLists);
 }
 
-AsdOps::Status OpTest::Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
+AsdOps::Status OperationTest::Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
                            const AsdOps::Any &varaintPackParam)
 {
     return RunImpl(operation, inTensorLists, varaintPackParam);
 }
 
-AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation,
+AsdOps::Status OperationTest::RunImpl(AclTransformer::Operation *operation,
                                const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
                                const AsdOps::Any &varaintPackParam)
 {
@@ -317,6 +317,10 @@ AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation,
     Init();
 
     AsdOps::Status status = Prepare(operation, inTensorLists);
+    if (mockFlag_) {
+        return status;
+    }
+    
     if (!status.Ok()) {
         return status;
     }
@@ -342,13 +346,17 @@ AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation,
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation,
+AsdOps::Status OperationTest::RunImpl(AclTransformer::Operation *operation,
                                const AsdOps::SVector<AsdOps::Tensor> &inTensorLists)
 {
     Cleanup();
     Init();
 
     AsdOps::Status status = Prepare(operation, inTensorLists);
+    if (mockFlag_) {
+        return status;
+    }
+
     if (!status.Ok()) {
         return status;
     }
@@ -373,7 +381,7 @@ AsdOps::Status OpTest::RunImpl(AclTransformer::Operation *operation,
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Status OpTest::RunGolden()
+AsdOps::Status OperationTest::RunGolden()
 {
     if (golden_) {
         return golden_(goldenContext_);
@@ -381,7 +389,7 @@ AsdOps::Status OpTest::RunGolden()
     return AsdOps::Status::OkStatus();
 }
 
-AsdOps::Tensor OpTest::CreateHostRandTensor(const AsdOps::TensorDesc &tensorDesc)
+AsdOps::Tensor OperationTest::CreateHostRandTensor(const AsdOps::TensorDesc &tensorDesc)
 {
     AsdOps::Tensor tensor;
     tensor.desc = tensorDesc;
@@ -443,7 +451,7 @@ AsdOps::Tensor OpTest::CreateHostRandTensor(const AsdOps::TensorDesc &tensorDesc
     return tensor;
 }
 
-void OpTest::GenerateRandomTensors(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
+void OperationTest::GenerateRandomTensors(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
                                    AsdOps::SVector<AsdOps::Tensor> &inTensors)
 {
     if (inTensorDescs.size() != inTensors.size()) {
@@ -455,33 +463,43 @@ void OpTest::GenerateRandomTensors(const AsdOps::SVector<AsdOps::TensorDesc> &in
     }
 }
 
-void OpTest::Golden(OpTestGolden golden) { golden_ = golden; }
+void OperationTest::Golden(OpTestGolden golden) { golden_ = golden; }
 
-void OpTest::FloatRand(float min, float max)
+void OperationTest::FloatRand(float min, float max)
 {
     randFloatMin_ = min;
     randFloatMax_ = max;
     ASD_LOG(INFO) << "randFloatMin:" << randFloatMin_ << ", randFloatMax:" << randFloatMax_;
 }
 
-void OpTest::Int8Rand(int8_t min, int8_t max)
+void OperationTest::Int8Rand(int8_t min, int8_t max)
 {
     randInt8Min_ = min;
     randInt8Max_ = max;
     ASD_LOG(INFO) << "randIntMin:" << randInt8Min_ << ", randIntMax:" << randInt8Max_;
 }
 
-void OpTest::IntRand(int32_t min, int32_t max)
+void OperationTest::IntRand(int32_t min, int32_t max)
 {
     randIntMin_ = min;
     randIntMax_ = max;
     ASD_LOG(INFO) << "randIntMin:" << randIntMin_ << ", randIntMax:" << randIntMax_;
 }
 
-void OpTest::LongRand(int64_t min, int64_t max)
+void OperationTest::LongRand(int64_t min, int64_t max)
 {
     randLongMin_ = min;
     randLongMax_ = max;
     ASD_LOG(INFO) << "randIntMin:" << randLongMin_ << ", randIntMax:" << randLongMax_;
+}
+
+void OperationTest::SetMockFlag(bool flag)
+{
+    mockFlag_ = flag;
+}
+
+bool OperationTest::GetMockFlag()
+{
+    return mockFlag_;
 }
 } // namespace AclTransformer

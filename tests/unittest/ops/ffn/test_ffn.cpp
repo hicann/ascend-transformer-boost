@@ -19,7 +19,7 @@
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/ffn_operation.h"
-#include "tests/unittest/test_util/op_test.h"
+#include "tests/unittest/test_util/operation_test.h"
 
 using namespace AclTransformer;
 using namespace AsdOps;
@@ -80,7 +80,7 @@ TEST(TestFfnOperation, TestFfn)
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&FfnGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     // ASSERT_EQ(status.Ok(), true);
@@ -119,7 +119,7 @@ TEST(TestFfnOperation, TestFfnWithoutBias)
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&FfnWithoutBiasGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     // ASSERT_EQ(status.Ok(), true);

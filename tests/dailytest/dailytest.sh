@@ -2,12 +2,16 @@ SCRIPT_DIR=$(cd $(dirname $0); pwd)
 CURRENT_DIR=$(pwd)
 TESTS_DIR=$(cd $SCRIPT_DIR/../; pwd)
 
-BUILD_OPTION_LIST="all performance precision help"
+BUILD_OPTION_LIST="all performance precision unittest pythontest help"
 
 function fn_pre_check()
 {
     if [ -z $ASCEND_HOME_PATH ];then
         echo "env ASCEND_HOME_PATH not exists, fail"
+        exit -1
+    fi
+    if [ -z $ACLTRANSFORMER_HOME_PATH ];then
+        echo "env ACLTRANSFORMER_HOME_PATH not exists, fail"
         exit -1
     fi
 }
@@ -43,6 +47,20 @@ function fn_precision_test()
     done
 }
 
+function fn_unit_test()
+{
+    export ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE=0
+    echo "run $ACLTRANSFORMER_HOME_PATH/bin/acltransformer_unittest"
+    $ACLTRANSFORMER_HOME_PATH/bin/acltransformer_unittest
+}
+
+function fn_python_test()
+{
+    cd $ACLTRANSFORMER_HOME_PATH/../../tests/pythontest
+    rm -rf ./kernel_meta*
+    bash pythontest.sh
+}
+
 function fn_main()
 {
     fn_pre_check
@@ -64,6 +82,8 @@ function fn_main()
         "all")
             fn_performance_test
             fn_precision_test
+            fn_unit_test
+            fn_python_test
             ;;
         "performance")
             fn_performance_test
@@ -71,8 +91,14 @@ function fn_main()
         "precision")
             fn_precision_test
             ;;
+        "pythontest")
+            fn_python_test
+            ;;
+        "unittest")
+            fn_unit_test
+            ;;
         "help")
-            echo "build.sh all|performance|precision"
+            echo "build.sh all|performance|precision|pythontest|unittest"
             ;;
         *)
             echo "unknown build type:${arg1}";

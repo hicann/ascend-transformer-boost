@@ -18,7 +18,7 @@
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
-#include "tests/unittest/test_util/op_test.h"
+#include "tests/unittest/test_util/operation_test.h"
 #include <ATen/ATen.h>
 #include "acltransformer/torch/torch_util.h"
 using namespace AclTransformer;
@@ -106,7 +106,7 @@ TEST(TestPositionEmbedding1dSplitOperation, TestPositionEmbedding1dSplit)
                                             {AsdOps::TENSOR_DTYPE_INT64, AsdOps::TENSOR_FORMAT_ND, {8, 8}},
                                             {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}},
                                             {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 8, 8}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.LongRand(LONG_MIN_VALUE,LONG_MAX_VALUE);
     opTest.Golden(std::bind(PosEmb1dSplitGolden, opParam, std::placeholders::_1));
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
