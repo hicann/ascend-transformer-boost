@@ -357,7 +357,7 @@ class LlamaDecoderLayer(nn.Module):
             config.hidden_size, eps=config.rms_norm_eps)
         #NEW
         self.acl_llama_layer = torch.classes.OperationTorch.OperationTorch(
-            "LLaMA7BLayerOperation")
+            "LLaMA7BLayerFusionOperation")
         self.headSize = config.hidden_size // config.num_attention_heads
         #NEW
         param = json.dumps({"headNum": config.num_attention_heads, "rmsNormEps": config.rms_norm_eps,
