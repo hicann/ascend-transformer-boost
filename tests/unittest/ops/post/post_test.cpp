@@ -18,7 +18,7 @@
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/post_operation.h"
-#include "tests/unittest/test_util/op_test.h"
+#include "tests/unittest/test_util/operation_test.h"
 #include <ATen/ATen.h>
 #include "acltransformer/torch/torch_util.h"
 using namespace AclTransformer;
@@ -116,7 +116,7 @@ TEST(TestPostOperation, InferShape)
 //     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_INT64, AsdOps::TENSOR_FORMAT_ND, {1,
 //     8}},
 //                                             };
-//     OpTest opTest;
+//     OperationTest opTest;
 //     //opTest.LongRand(LONG_MIN_VALUE,LONG_MAX_VALUE);
 //     opTest.Golden(std::bind(PostGolden, opParam, std::placeholders::_1));
 //     AsdOps::Status status = opTest.Run(&op, inTensorDescs);

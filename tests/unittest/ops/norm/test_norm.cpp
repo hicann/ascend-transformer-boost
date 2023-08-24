@@ -19,7 +19,7 @@
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/norm_operation.h"
-#include "tests/unittest/test_util/op_test.h"
+#include "tests/unittest/test_util/operation_test.h"
 
 using namespace AclTransformer;
 using namespace AsdOps;
@@ -85,7 +85,7 @@ TEST(TestNormOperation, TestNorm)
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 1, 1, 32}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 32}},
         {AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 32}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&NormGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);

@@ -32,10 +32,10 @@ struct GoldenContext {
 
 using OpTestGolden = std::function<AsdOps::Status(const GoldenContext &context)>;
 
-class OpTest {
+class OperationTest {
 public:
-    explicit OpTest();
-    ~OpTest();
+    explicit OperationTest();
+    ~OperationTest();
     void Golden(OpTestGolden golden);
     void FloatRand(float min, float max);
     void Int8Rand(int8_t min, int8_t max);
@@ -47,9 +47,8 @@ public:
                        const AsdOps::Any &varaintPackParam);
     AsdOps::Status Run(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
                        const AsdOps::Any &varaintPackParam);
-    AsdOps::Status RunImpl(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
-                           const AsdOps::Any &varaintPackParam);
-    AsdOps::Status RunImpl(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists);
+    void SetMockFlag(bool flag);
+    bool GetMockFlag();
 
 private:
     void GenerateRandomTensors(const AsdOps::SVector<AsdOps::TensorDesc> &inTensorDescs,
@@ -66,6 +65,9 @@ private:
     AsdOps::Status RunOperation();
     AsdOps::Status RunGolden();
     AsdOps::Tensor CreateHostRandTensor(const AsdOps::TensorDesc &tensorDesc);
+    AsdOps::Status RunImpl(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists,
+                           const AsdOps::Any &varaintPackParam);
+    AsdOps::Status RunImpl(AclTransformer::Operation *operation, const AsdOps::SVector<AsdOps::Tensor> &inTensorLists);
 
 private:
     int deviceId_ = 0;
@@ -75,6 +77,7 @@ private:
     AclTransformer::Plan plan_;
     AclTransformer::Handle handle_;
     AclTransformer::VariantPack variantPack_;
+    bool mockFlag_ = false;
     float randFloatMin_ = 1;
     float randFloatMax_ = 1;
     int8_t randInt8Min_ = 1;

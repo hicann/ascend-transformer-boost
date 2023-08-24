@@ -280,7 +280,7 @@ function fn_build_coverage()
     cd ..
     $LCOV_PATH -c -d $GCOV_CACHE_DIR -o $GCOV_INFO_DIR/cover.info >> $GCOV_DIR/log.txt
     $LCOV_PATH -a $GCOV_INFO_DIR/init.info -a $GCOV_INFO_DIR/cover.info -o $GCOV_INFO_DIR/total.info >> $GCOV_DIR/log.txt
-    $LCOV_PATH --remove $GCOV_INFO_DIR/total.info '*/3rdparty/*' '*torch/*' '*c10/*' '*ATen/*' '*/c++/7*' '*tests/*' '*tools/*' '/usr/*' -o $GCOV_INFO_DIR/final.info >> $GCOV_DIR/log.txt
+    $LCOV_PATH --remove $GCOV_INFO_DIR/total.info '*/3rdparty/*' '*torch/*' '*c10/*' '*ATen/*' '*/c++/7*' '*tests/*' '*tools/*' '/usr/*' '/opt/*' '*models/*' -o $GCOV_INFO_DIR/final.info >> $GCOV_DIR/log.txt
     /usr/local/lcov/bin/genhtml -o cover_result $GCOV_INFO_DIR/final.info >> $GCOV_DIR/log.txt
     tail -n 4 $GCOV_DIR/log.txt
     cd $OUTPUT_DIR/acltransformer
@@ -306,10 +306,8 @@ function fn_generate_doxygen()
 
 function fn_run_pythontest()
 {
-    cd $CODE_ROOT/scripts
-    rm -rf ./kernel_meta*
-    rm -rf __pycache__
     cd $CODE_ROOT/tests/pythontest/
+    rm -rf ./kernel_meta*
     bash pythontest.sh
 }
 

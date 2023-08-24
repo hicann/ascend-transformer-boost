@@ -18,7 +18,7 @@
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/all_reduce_operation.h"
-#include "tests/unittest/test_util/op_test.h"
+#include "tests/unittest/test_util/operation_test.h"
 
 using namespace AclTransformer;
 using namespace AsdOps;
@@ -69,7 +69,7 @@ TEST(TestAllReduceOperation, TestAllReduce)
     AclTransformer::AllReduceOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&AllReduceGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);

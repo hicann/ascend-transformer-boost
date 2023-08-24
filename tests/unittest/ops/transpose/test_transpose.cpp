@@ -18,7 +18,7 @@
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/transpose_operation.h"
-#include "tests/unittest/test_util/op_test.h"
+#include "tests/unittest/test_util/operation_test.h"
 #include <half.hpp>
 
 using namespace AclTransformer;
@@ -81,7 +81,7 @@ TEST(TestTransposeOperation, TestTranspose)
     param.perm = {0, 1};
     AclTransformer::TransposeOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {{AsdOps::TENSOR_DTYPE_FLOAT16, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&TransposeGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     ASSERT_EQ(status.Ok(), true);

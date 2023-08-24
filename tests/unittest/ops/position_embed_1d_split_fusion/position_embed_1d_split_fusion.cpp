@@ -3,7 +3,7 @@
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/position_embedding_1d_fusion_operation.h"
-#include "tests/unittest/test_util/op_test.h"
+#include "tests/unittest/test_util/operation_test.h"
 #include <ATen/ATen.h>
 #include "acltransformer/torch/torch_util.h"
 using namespace AclTransformer;

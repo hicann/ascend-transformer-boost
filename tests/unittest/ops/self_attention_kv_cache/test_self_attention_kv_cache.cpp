@@ -18,7 +18,7 @@
 #include <asdops/utils/log/log.h>
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
-#include "tests/unittest/test_util/op_test.h"
+#include "tests/unittest/test_util/operation_test.h"
 
 using namespace AclTransformer;
 using namespace AsdOps;
@@ -377,7 +377,7 @@ TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheChatglm6b)
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&SelfAttentionKvCacheChatglm6bGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     // ASSERT_EQ(status.Ok(), true);
@@ -401,7 +401,7 @@ TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheLlama7b)
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&SelfAttentionKvCacheLlama7bGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     // ASSERT_EQ(status.Ok(), true);
@@ -421,7 +421,7 @@ TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheChatglm2_6b)
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&SelfAttentionKvCacheChatglm2_6bGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     // ASSERT_EQ(status.Ok(), true);
@@ -441,7 +441,7 @@ TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheBloom7b)
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}}};
-    OpTest opTest;
+    OperationTest opTest;
     opTest.Golden(&SelfAttentionKvCacheBloom7bGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     // ASSERT_EQ(status.Ok(), true);
