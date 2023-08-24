@@ -20,10 +20,10 @@
 #include "acltransformer/params/word_embedding_parallel.h"
 
 namespace AclTransformer {
-class Glm130bWordEmbeddingOperation : public GraphOperation {
+class WordEmbeddingParallelOperation : public GraphOperation {
 public:
-    explicit Glm130bWordEmbeddingOperation(const Glm130bWordEmbeddingParam &param);
-    ~Glm130bWordEmbeddingOperation();
+    explicit WordEmbeddingParallelOperation(const WordEmbeddingParallelParam &param);
+    ~WordEmbeddingParallelOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 
@@ -32,7 +32,7 @@ protected:
                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
 
 private:
-    Glm130bWordEmbeddingParam param_;
+    WordEmbeddingParallelParam param_;
 };
 } // namespace AclTransformer
 #endif
