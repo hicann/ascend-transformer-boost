@@ -65,6 +65,18 @@ function fn_build_googltest()
     fi
 }
 
+function fn_build_stub()
+{
+    if [[ -d "$THIRD_PARTY_DIR/googletest/include/gtest/stub.h" ]];then
+        return $?
+    fi
+    cd $CACHE_DIR
+    rm -rf cpp-stub-master.tar.gz
+    wget --no-check-certificate https://github.com/coolxv/cpp-stub/archive/refs/heads/master.tar.gz
+    tar -zxvf cpp-stub-master.tar.gz
+    cp $CACHE_DIR/cpp-stub-master/cpp-stub-master/src/stub.h $THIRD_PARTY_DIR/googletest/include/gtest
+}
+
 function fn_build_half()
 {
     if [ -d "$THIRD_PARTY_DIR/half/include" ];then
@@ -135,6 +147,7 @@ function fn_build_3rdparty()
     mkdir $CACHE_DIR
     cd $CACHE_DIR
     fn_build_googltest
+    fn_build_stub
     fn_build_half
     fn_build_nlohmann_json
     fn_build_asdops
