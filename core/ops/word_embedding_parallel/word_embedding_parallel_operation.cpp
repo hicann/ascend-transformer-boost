@@ -19,7 +19,7 @@
 #include "acltransformer/ops/transpose_operation.h"
 #include <asdops/utils/log/log.h>
 namespace AclTransformer {
-enum Glm130bWordEmbeddingTensorId {
+enum WordEmbeddingParallelTensorId {
     IN_WORDTABLE = 0,
     IN_INPUTIDS,
     OUT_WORDEMBEDDINGOUT,
@@ -32,10 +32,10 @@ static const uint64_t OUT_TENSOR_COUNT = 1;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 2;
 static const uint64_t NODE_COUNT = 3;
 
-Glm130bWordEmbeddingOperation::Glm130bWordEmbeddingOperation(const Glm130bWordEmbeddingParam &param)
-    : GraphOperation("Glm130bWordEmbeddingOperation"), param_(param)
+WordEmbeddingParallelOperation::WordEmbeddingParallelOperation(const WordEmbeddingParallelParam &param)
+    : GraphOperation("WordEmbeddingParallelOperation"), param_(param)
 {
-    ASD_LOG(INFO) << " Glm130bWordEmbeddingOperation::Glm130bWordEmbeddingOperation called";
+    ASD_LOG(INFO) << " WordEmbeddingParallelOperation::WordEmbeddingParallelOperation called";
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
     opGraph_.intermediateTensorSize = INTERMEDIATE_TENSOR_COUNT;
@@ -59,13 +59,13 @@ Glm130bWordEmbeddingOperation::Glm130bWordEmbeddingOperation(const Glm130bWordEm
     transposeNode.outTensorIds = {OUT_WORDEMBEDDINGOUT};
 }
 
-Glm130bWordEmbeddingOperation::~Glm130bWordEmbeddingOperation() {}
+WordEmbeddingParallelOperation::~WordEmbeddingParallelOperation() {}
 
-uint64_t Glm130bWordEmbeddingOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t WordEmbeddingParallelOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t Glm130bWordEmbeddingOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t WordEmbeddingParallelOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status Glm130bWordEmbeddingOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+AsdOps::Status WordEmbeddingParallelOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                      AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     const AsdOps::Tensor &wordTableTensor = inTensors.at(0);

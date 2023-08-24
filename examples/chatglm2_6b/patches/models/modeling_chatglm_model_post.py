@@ -712,7 +712,7 @@ class GLMTransformer(torch.nn.Module):
                 stream.synchronize()
                 prof.__exit__(None, None, None)
             self.acl_presents = acl_model_out[1:]
-        hidden_states = cl_model_out[0]
+        hidden_states = acl_model_out[0]
 
         return hidden_states, presents, all_hidden_states, all_self_attentions
 

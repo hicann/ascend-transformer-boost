@@ -13,17 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFORMER_WORD_EMBEDDING_PARALLEL_OPERATION_H
-#define ACLTRANSFORMER_WORD_EMBEDDING_PARALLEL_OPERATION_H
-
+#ifndef OPS_CHATGML130B_DECODER_WITH_FUSION_OPERATION_H
+#define OPS_CHATGML130B_DECODER_WITH_FUSION_OPERATION_H
 #include "acltransformer/graph_operation.h"
-#include "acltransformer/params/word_embedding_parallel.h"
+#include "glm130blayer_param.h"
 
 namespace AclTransformer {
-class WordEmbeddingParallelOperation : public GraphOperation {
+class ChatGlm130BLayerDecoderFusionOperation : public GraphOperation {
 public:
-    explicit WordEmbeddingParallelOperation(const WordEmbeddingParallelParam &param);
-    ~WordEmbeddingParallelOperation();
+    explicit ChatGlm130BLayerDecoderFusionOperation(const Glm130BLayerParam &param);
+    ~ChatGlm130BLayerDecoderFusionOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 
@@ -32,7 +31,7 @@ protected:
                                   AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
 
 private:
-    WordEmbeddingParallelParam param_;
+    Glm130BLayerParam param_;
 };
 } // namespace AclTransformer
 #endif

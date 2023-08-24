@@ -25,6 +25,7 @@ struct PositionEmbeddingParam {
     int64_t dk = 0;
     float rotaryPct = 0.25;
     std::string model = "chatglm";
+    bool isFusion = false;
 };
 } // namespace AclTransformer
 #endif

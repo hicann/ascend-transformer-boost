@@ -13,17 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_WORD_EMBEDDING_PARALLEL_H
-#define ACLTRANSFOERM_WORD_EMBEDDING_PARALLEL_H
+#ifndef POSITIONEMBEDDING_1D_FUSION_OPS_RUNNER_H
+#define POSITIONEMBEDDING_1D_FUSION_OPS_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/position_embedding.h"
 
 namespace AclTransformer {
-struct WordEmbeddingParallelParam {
-    int axis = 0;
-    int rank = 0;
-    int rankSize = 0;
-    int rankRoot = 0;
-    std::string backend = "hccl";
-    AsdOps::SVector<int32_t> perm;
+class PositionEmbedding1dMixedFusionOpsRunner : public OpsRunner {
+public:
+    PositionEmbedding1dMixedFusionOpsRunner(const PositionEmbeddingParam &param);
+    virtual ~PositionEmbedding1dMixedFusionOpsRunner();
+
+private:
+    PositionEmbeddingParam param_;
 };
 } // namespace AclTransformer
 #endif

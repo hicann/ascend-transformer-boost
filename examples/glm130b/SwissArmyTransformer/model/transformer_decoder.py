@@ -484,7 +484,7 @@ class BaseTransformer(torch.nn.Module):
                             })
 
         # acl VocabParallelEmbedding
-        self.acl_glm130b_word_embedding = torch.classes.OperationTorch.OperationTorch("Glm130bWordEmbeddingOperation")
+        self.acl_glm130b_word_embedding = torch.classes.OperationTorch.OperationTorch("WordEmbeddingParallelOperation")
         self.acl_glm130b_word_embedding.set_param(acl_param_word)
 
     def forward(self, input_ids, position_ids, attention_mask, *,
