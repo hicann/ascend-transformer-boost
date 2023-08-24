@@ -781,30 +781,20 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         self.position_encoding_2d = config.position_encoding_2d
 
         # flash attention init
-        self.kv_cache = torch.zeros(2,
-                        self.num_layers,
-                        1,   # batch
-                        self.max_sequence_length,
-                        self.num_attention_heads,
-                        self.hidden_size_per_attention_head,
-                        device='cpu').npu().half().contiguous()
+        self.kv_cache = None
 
-        self.k_cache_input = torch.as_tensor(
-            self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, 1, self.max_sequence_length, self.hidden_size)
-        self.v_cache_input = torch.as_tensor(
-            self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, 1, self.max_sequence_length, self.hidden_size)
+        self.k_cache_input = None
+        self.v_cache_input = None
+        self.token_offset = None
 
-        self.increment_flags = [False] * self.num_layers
-        self.token_num = 0
-        batch_num = 1
-
-        self.token_offset = torch.full((batch_num,), 0, dtype=torch.int32, device=self.kv_cache.device) 
-        self.layer_id_input = []
+        self.token_num = [0]
 
         self.attention_mask_max = torch.full(
             (self.max_sequence_length, self.max_sequence_length), 0, dtype=torch.half).npu()
         self.seq_len = None
+        self.batch = 0
 
+        self.layer_id_input = []
         for i in range(self.num_layers):
             self.layer_id_input.append(torch.tensor([i], dtype=torch.int32).npu())
 
@@ -846,7 +836,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         self.acl_decoder_operation = torch.classes.ChatGlm6BModelDecoderFlashattentionTorch.ChatGlm6BModelDecoderFlashattentionTorch()
         acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerNum": self.num_layers,
                                 "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers),
-                                "tokenOffset": [self.token_num], "seqLen": [1]})
+                                "tokenOffset": self.token_num, "seqLen": [1]})
         self.acl_decoder_operation.set_param(acl_param)
         self.weightFlag = False
         self.rotary_flag = False
@@ -932,7 +922,28 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         else:
             raise ValueError(
                 "You have to specify either input_ids or inputs_embeds")
-        full_flag = True if input_ids.numel() > 1 else False
+        
+        # flash attention init
+        if batch_size != self.batch:
+            self.batch = batch_size
+            self.kv_cache = torch.zeros(2,
+                            self.num_layers,
+                            batch_size,   # batch
+                            self.max_sequence_length,
+                            self.num_attention_heads,
+                            self.hidden_size_per_attention_head,
+                            device='cpu').npu().half().contiguous()
+
+            self.k_cache_input = torch.as_tensor(
+                self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, batch_size, self.max_sequence_length, self.hidden_size)
+            self.v_cache_input = torch.as_tensor(
+                self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, batch_size, self.max_sequence_length, self.hidden_size)
+
+            self.token_num = [0] * batch_size
+
+            self.token_offset = torch.full((batch_size,), 0, dtype=torch.int32, device=self.kv_cache.device)
+        
+        full_flag = True if input_ids.size()[1] > 1 else False
         if full_flag:
             past_key_values = tuple([None] * len(self.layers))
             seq = input_ids[0].tolist()
@@ -996,8 +1007,11 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             self.cos = emb_global.cos().unsqueeze(1)
             self.sin = emb_global.sin().unsqueeze(1)
 
+        if batch_size > 1:
+            position_ids = position_ids.repeat(batch_size, 1, 1)
+        
         if full_flag:
-            self.token_num = 0
+            self.token_num = [0] * batch_size
             self.seq_len = torch.tensor([hidden_states.shape[0]] * hidden_states.shape[1], device=hidden_states.device)
             acl_model_out = self.acl_encoder_operation.execute(
                 hidden_states, position_ids, self.cos, self.sin, attention_mask, self.seq_len)
@@ -1006,18 +1020,18 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
        
             # acl_model_out [57, kvseqlen, batch, hidden]
             for i in range(self.num_layers):
-                self.kv_cache[0, i, 0, :acl_model_out[1].size()[0], ...] = acl_model_out[i+1].transpose(
-                        0, 1)  # batch = 1
-                self.kv_cache[1, i, 0, :acl_model_out[1].size()[0], ...] = \
-                    acl_model_out[i + 1 + self.num_layers].transpose(0, 1)  # batch = 1
-                self.token_num = acl_model_out[1].size()[0]
-            self.seq_len = torch.tensor([1] * hidden_states.shape[1], device=self.kv_cache.device) 
+                self.kv_cache[0, i, :, :acl_model_out[1].size()[0], ...] = acl_model_out[i+1].transpose(
+                        0, 1)
+                self.kv_cache[1, i, :, :acl_model_out[1].size()[0], ...] = \
+                    acl_model_out[i + 1 + self.num_layers].transpose(0, 1)
+            self.token_num = [acl_model_out[1].size()[0]] * batch_size
+            self.seq_len = torch.tensor([1] * hidden_states.shape[1], device=self.kv_cache.device)
         else:
-            self.token_num = self.token_num + 1
+            self.token_num = [i + 1 for i in self.token_num]
             acl_param = json.dumps({"transKey": True, "dk": 128, "headNum": 32, "layerNum": self.num_layers,
                                     "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers),
-                                    "tokenOffset": [self.token_num], "seqLen": [1]})
-            self.token_offset[0] =  self.token_num
+                                    "tokenOffset": self.token_num, "seqLen": [1] * batch_size})
+            self.token_offset = torch.full((batch_size,), self.token_num[0], dtype=torch.int32, device=self.kv_cache.device)
             acl_model_out = self.acl_decoder_operation.execute(
                 hidden_states, position_ids, self.cos, self.sin, self.attention_mask_max,
                 self.k_cache_input, self.v_cache_input, self.token_offset, self.seq_len, self.layer_id_input, acl_param)
