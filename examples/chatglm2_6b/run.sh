@@ -83,9 +83,9 @@ function fn_main()
         #     unset http_proxy
         #     python3 $SCRIPT_DIR/main_web.py
         #     ;;
-        # "--zhipu")
-        #     python3 $SCRIPT_DIR/zhipu_test.py
-        #     ;;
+        "--zhipu")
+            python3 $SCRIPT_DIR/zhipu_test.py
+            ;;
         # "--profiling")
             
         #     ;;
