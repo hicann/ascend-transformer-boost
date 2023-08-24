@@ -30,6 +30,7 @@
 namespace AclTransformer {
 class Model {
 public:
+    using ViewFunc = std::function<void(const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims)>;
     enum TensorType {
         INTERMEDIATE_TENSOR = 0,
         NOT_INTERMEDIATE_TENSOR,
@@ -42,6 +43,7 @@ public:
         std::vector<AsdOps::Tensor *> outTensors;
         VariantPack variantPack;
         std::vector<torch::Tensor> torchTensors;
+        AsdOps::SVector<ViewFunc> inTensorViewFuncs;
         AsdOps::SVector<TensorType> inTensorTypes;
         AsdOps::SVector<TensorType> outTensorTypes;
     };
@@ -78,6 +80,7 @@ protected:
     virtual AsdOps::Status ParseVarintPackParam(const std::string &param, int nodeId, AsdOps::Any &variantPackParam);
 
 private:
+    void ExecuteNodeView(int nodeId);
     void BuildNodeVariantPack(int nodeId);
     void ExecuteNode(int nodeId);
     void ThreadProcessTask();

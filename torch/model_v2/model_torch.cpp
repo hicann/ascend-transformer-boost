@@ -26,6 +26,7 @@
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_model.h"
 #include "torch/model_v2/chatglm2_6b/chatglm2_6b_decoder_model.h"
 #include "torch/model_v2/glm130b/glm130b_decoder_model.h"
+#include "torch/model_v2/glm130b/glm130b_decoder_fusion_model.h"
 #include "torch/model_v2/chatglm2_6b/chatglm2_6b_encoder_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_without_fusion_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_encoder_without_fusion_model.h"
@@ -59,6 +60,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::ChatGlm2DecoderModel>(param);
     } else if (modelName_ == "Glm130BDecoderModel") {
         model_ = std::make_shared<AclTransformer::Glm130BDecoderModel>(param);
+    } else if (modelName_ == "Glm130BDecoderModelWithFusion") {
+        model_ = std::make_shared<AclTransformer::Glm130BDecoderFusionModel>(param);
     } else if (modelName_ == "ChatGlm2EncoderModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm2EncoderModel>(param);
     } else if (modelName_ == "ChatGlm6BDecoderWithoutFusionModel") {
