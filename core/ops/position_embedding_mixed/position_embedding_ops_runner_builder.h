@@ -28,14 +28,15 @@ class PositionEmbeddingOpsRunnerBuilder : public RunnerBuilder {
 public:
     PositionEmbeddingOpsRunnerBuilder(const PositionEmbeddingParam &param) : param_(param) {}
     virtual ~PositionEmbeddingOpsRunnerBuilder() = default;
-    Runner *Build() override { 
+    Runner *Build() override
+    {
         if (param_.model == "chatglm2_6b") {
             return new PositionEmbeddingOpsGlm2Runner(param_);
-        } else if(param_.model == "gptneox20b") {
+        } else if (param_.model == "gptneox20b") {
             return new PositionEmbeddingOpsGptNeox20bRunner(param_);
         } else if (param_.is2d) {
             return new PositionEmbeddingOpsRunner(param_);
-        }  else {
+        } else {
             if (param_.isFusion) {
                 return new PositionEmbedding1dMixedFusionOpsRunner(param_);
             } else {
