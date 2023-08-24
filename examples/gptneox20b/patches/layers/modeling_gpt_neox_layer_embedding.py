@@ -127,11 +127,6 @@ class GPTNeoXAttention(nn.Module):
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
 
         self.layer_id = layer_id
-        self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("PositionEmbeddingOperation")
-        self.acl_position_embedding_operation.set_param(
-            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b", "rotaryPct": config.rotary_pct,
-                        "dk": self.head_size})
-        )
 
     def forward(
         self,
@@ -149,7 +144,6 @@ class GPTNeoXAttention(nn.Module):
         # Attention heads [batch, seq_len, hidden_size]
         #   --> [batch, seq_len, (np * 3 * head_size)]
         qkv = self.query_key_value(hidden_states)
-        acl_qkv = qkv.half()
 
         # [batch, seq_len, (num_heads * 3 * head_size)]
         #   --> [batch, seq_len, num_heads, 3 * head_size]
@@ -175,39 +169,6 @@ class GPTNeoXAttention(nn.Module):
         query, key = apply_rotary_pos_emb(query_rot, key_rot, cos, sin, position_ids)
         query = torch.cat((query, query_pass), dim=-1)
         key = torch.cat((key, key_pass), dim=-1)
-
-        # test acl ops
-        test_query = query
-        test_key = key
-        test_value = value
-        acl_cos = cos.squeeze(0)
-        acl_cos = acl_cos.squeeze(0)
-        acl_sin = sin.squeeze(0)
-        acl_sin = acl_sin.squeeze(0)
-
-        acl_cos_embed = torch.nn.functional.embedding(position_ids, acl_cos).half()
-        acl_sin_embed = torch.nn.functional.embedding(position_ids, acl_sin).half()
-
-        acl_query, acl_key, acl_value = self.acl_position_embedding_operation.execute(
-            [acl_qkv, position_ids, acl_cos_embed, acl_sin_embed]
-        )
-        acl_query = acl_query.permute(0, 2, 1, 3)
-        acl_key = acl_key.permute(0, 2, 1, 3)
-        acl_value = acl_value.permute(0, 2, 1, 3)
-
-        if np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02):
-            print("***equal query embed")
-        else:
-            print("!!!not equal embed")
-        if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
-            print("***equal key embed")
-        else:
-            print("!!!not equal key embed")
-        if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02):
-            print("***equal value embed")
-        else:
-            print("!!!not equal value embed")
-
 
         # Cache QKV values
         if has_layer_past:
@@ -335,6 +296,17 @@ class RotaryEmbedding(torch.nn.Module):
             self.sin_cached = emb.sin()[None, None, :, :]
         return self.cos_cached[:seq_len, ...].to(x.device), self.sin_cached[:seq_len, ...].to(x.device)
 
+inv_freq = 1.0 / (10000 ** (torch.arange(0, 24, 2).float() / 24))
+t = torch.arange(2049, device="cpu").npu()
+freqs = torch.einsum("i,j->ij", t, inv_freq.npu())
+emb = torch.cat((freqs, freqs), dim=-1)
+cosTable = emb.cos().half().npu()
+sinTable = emb.sin().half().npu()
+
+biasCache = torch.tril(torch.ones((2049, 2049), dtype=torch.bool)).view(1, 1, 2049, 2049).npu()
+biasCache = ~biasCache
+mask_value = torch.finfo(torch.float32).min
+maskAttenCache = torch.masked_fill(torch.zeros(size=(1, 1, 2049, 2049)).npu(), biasCache, mask_value)
 
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
@@ -491,6 +463,12 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+        acl_param = json.dumps({"axis": 0})
+        self.acl_embedding_operation = torch.classes.OperationTorch.OperationTorch(
+            "GptNeox20BLayerEmbeddingOperation"
+        )
+        self.acl_embedding_operation.set_param(acl_param)
+
     def get_input_embeddings(self):
         return self.embed_in
 
@@ -588,6 +566,38 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
             inputs_embeds = self.embed_in(input_ids)
 
         hidden_states = inputs_embeds
+
+        # test acl
+        global cosTable
+        global sinTable
+        global maskAttenCache
+
+        test_cos_embed = torch.nn.functional.embedding(position_ids, cosTable).half()
+        test_sin_embed = torch.nn.functional.embedding(position_ids, sinTable).half()
+
+        inputs = []
+        inputs.append(list(self.state_dict().values())[0])
+        inputs.append(input_ids)
+        inputs.append(cosTable)
+        inputs.append(sinTable)
+        inputs.append(position_ids)
+
+        acl_embedding, acl_cos_embedding, acl_sin_embedding = self.acl_embedding_operation.execute(inputs)
+
+        print("====================compare result======================")
+        if np.allclose(acl_embedding.cpu(), hidden_states.cpu(), rtol=0.02, atol=0.02):
+            print("****equal embedding output")
+        else:
+            print("!!!!not equal embedding output", "output", acl_embedding, "\ntrue", hidden_states)
+        if np.allclose(acl_cos_embedding.cpu(), test_cos_embed.cpu(), rtol=0.02, atol=0.02):
+            print("****equal layer cos embedding")
+        else:
+            print("!!!!not equal layer cos emebdding", self.layer_id, "cosEmbed", acl_cos_embedding, "\ntrue", test_cos_embed)
+        if np.allclose(acl_sin_embedding.cpu(), test_sin_embed.cpu(), rtol=0.02, atol=0.02):
+            print("****equal layer sin embedding")
+        else:
+            print("!!!!not equal layer sin embedding", "sinEmbed", acl_sin_embedding, "\ntrue",  test_sin_embed)
+
 
         if self.gradient_checkpointing and self.training:
             if use_cache:

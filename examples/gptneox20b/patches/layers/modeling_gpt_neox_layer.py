@@ -127,11 +127,6 @@ class GPTNeoXAttention(nn.Module):
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
 
         self.layer_id = layer_id
-        self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("PositionEmbeddingOperation")
-        self.acl_position_embedding_operation.set_param(
-            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b", "rotaryPct": config.rotary_pct,
-                        "dk": self.head_size})
-        )
 
     def forward(
         self,
@@ -149,7 +144,6 @@ class GPTNeoXAttention(nn.Module):
         # Attention heads [batch, seq_len, hidden_size]
         #   --> [batch, seq_len, (np * 3 * head_size)]
         qkv = self.query_key_value(hidden_states)
-        acl_qkv = qkv.half()
 
         # [batch, seq_len, (num_heads * 3 * head_size)]
         #   --> [batch, seq_len, num_heads, 3 * head_size]
@@ -175,39 +169,6 @@ class GPTNeoXAttention(nn.Module):
         query, key = apply_rotary_pos_emb(query_rot, key_rot, cos, sin, position_ids)
         query = torch.cat((query, query_pass), dim=-1)
         key = torch.cat((key, key_pass), dim=-1)
-
-        # test acl ops
-        test_query = query
-        test_key = key
-        test_value = value
-        acl_cos = cos.squeeze(0)
-        acl_cos = acl_cos.squeeze(0)
-        acl_sin = sin.squeeze(0)
-        acl_sin = acl_sin.squeeze(0)
-
-        acl_cos_embed = torch.nn.functional.embedding(position_ids, acl_cos).half()
-        acl_sin_embed = torch.nn.functional.embedding(position_ids, acl_sin).half()
-
-        acl_query, acl_key, acl_value = self.acl_position_embedding_operation.execute(
-            [acl_qkv, position_ids, acl_cos_embed, acl_sin_embed]
-        )
-        acl_query = acl_query.permute(0, 2, 1, 3)
-        acl_key = acl_key.permute(0, 2, 1, 3)
-        acl_value = acl_value.permute(0, 2, 1, 3)
-
-        if np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02):
-            print("***equal query embed")
-        else:
-            print("!!!not equal embed")
-        if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
-            print("***equal key embed")
-        else:
-            print("!!!not equal key embed")
-        if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02):
-            print("***equal value embed")
-        else:
-            print("!!!not equal value embed")
-
 
         # Cache QKV values
         if has_layer_past:
@@ -335,6 +296,17 @@ class RotaryEmbedding(torch.nn.Module):
             self.sin_cached = emb.sin()[None, None, :, :]
         return self.cos_cached[:seq_len, ...].to(x.device), self.sin_cached[:seq_len, ...].to(x.device)
 
+inv_freq = 1.0 / (10000 ** (torch.arange(0, 24, 2).float() / 24))
+t = torch.arange(2049, device="cpu").npu()
+freqs = torch.einsum("i,j->ij", t, inv_freq.npu())
+emb = torch.cat((freqs, freqs), dim=-1)
+cosTable = emb.cos().half().npu()
+sinTable = emb.sin().half().npu()
+
+biasCache = torch.tril(torch.ones((2049, 2049), dtype=torch.bool)).view(1, 1, 2049, 2049).npu()
+biasCache = ~biasCache
+mask_value = torch.finfo(torch.float32).min
+maskAttenCache = torch.masked_fill(torch.zeros(size=(1, 1, 2049, 2049)).npu(), biasCache, mask_value)
 
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
@@ -377,6 +349,28 @@ class GPTNeoXLayer(nn.Module):
         self.mlp = GPTNeoXMLP(config)
         self.layer_id = layer_id
 
+        acl_param = json.dumps({
+            "transKey": True, "dk": config.hidden_size // config.num_attention_heads,
+            "headNum": config.num_attention_heads, "layerId": self.layer_id,
+            "layerNormEps": config.layer_norm_eps, "rotaryPct": config.rotary_pct
+        })
+
+        self.acl_encoder_operation = torch.classes.OperationTorch.OperationTorch(
+            "GptNeox20BLayerEncoderOperation"
+        )
+        self.acl_encoder_operation.set_name("GptNeox20BLayerEncoderOperation" + str(self.layer_id))
+        self.acl_encoder_operation.set_param(acl_param)
+        self.acl_decoder_operation = torch.classes.OperationTorch.OperationTorch(
+            "GptNeox20BLayerDecoderOperation"
+        )
+        self.acl_decoder_operation.set_name("GptNeox20BLayerDecoderOperation" + str(self.layer_id))
+        self.acl_decoder_operation.set_param(acl_param)
+
+        self.input = []
+        self.input_flag = False
+        self.input_full = []
+        self.input_full_flag = False
+
     def forward(
         self,
         hidden_states: Optional[torch.FloatTensor],
@@ -387,6 +381,77 @@ class GPTNeoXLayer(nn.Module):
         layer_past: Optional[Tuple[torch.Tensor]] = None,
         output_attentions: Optional[bool] = False,
     ):
+        global cosTable
+        global sinTable
+        global maskAttenCache
+
+        acl_cos_embed = torch.nn.functional.embedding(position_ids, cosTable).half()
+        acl_sin_embed = torch.nn.functional.embedding(position_ids, sinTable).half()
+
+        if attention_mask is None:
+            attention_mask = torch.zeros(size=hidden_states.shape, dtype=torch.half).npu()
+
+        if layer_past is None:
+            attention_mask_tmp = maskAttenCache[:, :, :hidden_states.shape[1], :hidden_states.shape[1]] + attention_mask
+            if not self.input_full_flag:
+                self.input_full_flag = True
+                self.input_full = [hidden_states]
+                weights = list(self.state_dict().values())
+                weights = weights[:4] + weights[7:]
+                # del weights[4]
+                self.input_full.extend(weights)
+                self.input_full.append(position_ids)
+                self.input_full.append(acl_cos_embed)
+                self.input_full.append(acl_sin_embed)
+                self.input_full.append(attention_mask_tmp)
+            else:
+                self.input_full[0] = hidden_states
+                self.input_full[13] = position_ids
+                self.input_full[14] = acl_cos_embed
+                self.input_full[15] = acl_sin_embed
+                self.input_full[16] = attention_mask_tmp
+
+            acl_gpt_neox_out, acl_gpt_neox_key, acl_gpt_neox_value = self.acl_encoder_operation.execute(self.input_full)
+            print("===acl_gpt_neox output shape, out", acl_gpt_neox_out.shape, "key", acl_gpt_neox_key.shape, "value", acl_gpt_neox_value.shape)
+            acl_gpt_neox_key = acl_gpt_neox_key.permute(0, 2, 1, 3)
+            acl_gpt_neox_value = acl_gpt_neox_value.permute(0, 2, 1, 3)
+
+        else:
+            pastKey = layer_past[0].half().permute(0, 2, 1, 3)
+            pastValue = layer_past[1].half().permute(0, 2, 1, 3)
+            key_length = hidden_states.shape[1] + pastKey.shape[1]
+            query_length = hidden_states.shape[1]
+
+            attention_mask_tmp = maskAttenCache[:, :, key_length - query_length: key_length, :key_length] + attention_mask
+
+            if not self.input_flag:
+                self.input_flag = True
+                self.input = [hidden_states]
+                weights = list(self.state_dict().values())
+                weights = weights[:4] + weights[7:]
+                # del weights[4]
+                self.input.extend(weights)
+                self.input.append(position_ids)
+                self.input.append(acl_cos_embed)
+                self.input.append(acl_sin_embed)
+                self.input.append(attention_mask_tmp)
+                self.input.append(pastKey)
+                self.input.append(pastValue)
+            else:
+                self.input[0] = hidden_states
+                self.input[13] = position_ids
+                self.input[14] = acl_cos_embed
+                self.input[15] = acl_sin_embed
+                self.input[16] = attention_mask_tmp
+                self.input[17] = pastKey
+                self.input[18] = pastValue
+
+            acl_gpt_neox_out, acl_gpt_neox_key, acl_gpt_neox_value = self.acl_decoder_operation.execute(self.input)
+            print("===acl_gpt_neox output shape, out", acl_gpt_neox_out.shape, "key", acl_gpt_neox_key.shape, "value", acl_gpt_neox_value.shape)
+            acl_gpt_neox_key = acl_gpt_neox_key.permute(0, 2, 1, 3)
+            acl_gpt_neox_value = acl_gpt_neox_value.permute(0, 2, 1, 3)
+
+
         attention_layer_outputs = self.attention(
             self.input_layernorm(hidden_states),
             attention_mask=attention_mask,
@@ -411,6 +476,20 @@ class GPTNeoXLayer(nn.Module):
             attn_output = attn_output + hidden_states
             mlp_output = self.mlp(self.post_attention_layernorm(attn_output))
             hidden_states = mlp_output + attn_output
+
+        print("====================compare result======================")
+        if np.allclose(acl_gpt_neox_out.cpu(), hidden_states.cpu(), rtol=0.02, atol=0.02):
+            print("****equal layer output", self.layer_id)
+        else:
+            print("!!!!not equal layer output", self.layer_id, "output", acl_gpt_neox_out, "\ntrue", hidden_states)
+        if np.allclose(acl_gpt_neox_key.cpu(), outputs[0][0].cpu(), rtol=0.02, atol=0.02):
+            print("****equal layer key", self.layer_id)
+        else:
+            print("!!!!not equal layer key", self.layer_id, "key", acl_gpt_neox_key, "\ntrue", outputs[0][0])
+        if np.allclose(acl_gpt_neox_value.cpu(), outputs[0][1].cpu(), rtol=0.02, atol=0.02):
+            print("****equal layer value", self.layer_id)
+        else:
+            print("!!!!not equal layer value", self.layer_id, "key", acl_gpt_neox_value, "\ntrue",  outputs[0][1])
 
         if use_cache:
             outputs = (hidden_states,) + outputs  # hidden_states, present, (attn_weights)

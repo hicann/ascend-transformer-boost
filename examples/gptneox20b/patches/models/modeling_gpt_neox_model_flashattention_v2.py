@@ -127,11 +127,6 @@ class GPTNeoXAttention(nn.Module):
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
 
         self.layer_id = layer_id
-        self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("PositionEmbeddingOperation")
-        self.acl_position_embedding_operation.set_param(
-            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b", "rotaryPct": config.rotary_pct,
-                        "dk": self.head_size})
-        )
 
     def forward(
         self,
@@ -149,7 +144,6 @@ class GPTNeoXAttention(nn.Module):
         # Attention heads [batch, seq_len, hidden_size]
         #   --> [batch, seq_len, (np * 3 * head_size)]
         qkv = self.query_key_value(hidden_states)
-        acl_qkv = qkv.half()
 
         # [batch, seq_len, (num_heads * 3 * head_size)]
         #   --> [batch, seq_len, num_heads, 3 * head_size]
@@ -175,39 +169,6 @@ class GPTNeoXAttention(nn.Module):
         query, key = apply_rotary_pos_emb(query_rot, key_rot, cos, sin, position_ids)
         query = torch.cat((query, query_pass), dim=-1)
         key = torch.cat((key, key_pass), dim=-1)
-
-        # test acl ops
-        test_query = query
-        test_key = key
-        test_value = value
-        acl_cos = cos.squeeze(0)
-        acl_cos = acl_cos.squeeze(0)
-        acl_sin = sin.squeeze(0)
-        acl_sin = acl_sin.squeeze(0)
-
-        acl_cos_embed = torch.nn.functional.embedding(position_ids, acl_cos).half()
-        acl_sin_embed = torch.nn.functional.embedding(position_ids, acl_sin).half()
-
-        acl_query, acl_key, acl_value = self.acl_position_embedding_operation.execute(
-            [acl_qkv, position_ids, acl_cos_embed, acl_sin_embed]
-        )
-        acl_query = acl_query.permute(0, 2, 1, 3)
-        acl_key = acl_key.permute(0, 2, 1, 3)
-        acl_value = acl_value.permute(0, 2, 1, 3)
-
-        if np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02):
-            print("***equal query embed")
-        else:
-            print("!!!not equal embed")
-        if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
-            print("***equal key embed")
-        else:
-            print("!!!not equal key embed")
-        if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02):
-            print("***equal value embed")
-        else:
-            print("!!!not equal value embed")
-
 
         # Cache QKV values
         if has_layer_past:
@@ -335,6 +296,18 @@ class RotaryEmbedding(torch.nn.Module):
             self.sin_cached = emb.sin()[None, None, :, :]
         return self.cos_cached[:seq_len, ...].to(x.device), self.sin_cached[:seq_len, ...].to(x.device)
 
+
+inv_freq = 1.0 / (10000 ** (torch.arange(0, 24, 2).float() / 24))
+t = torch.arange(2049, device="cpu").npu()
+freqs = torch.einsum("i,j->ij", t, inv_freq.npu())
+emb = torch.cat((freqs, freqs), dim=-1)
+cosTable = emb.cos().half().npu()  # [max_sq, rd]
+sinTable = emb.sin().half().npu()
+
+biasCache = torch.tril(torch.ones((2049, 2049), dtype=torch.bool)).view(1, 1, 2049, 2049).npu()
+biasCache = ~biasCache
+mask_value = torch.finfo(torch.float32).min
+maskAttenCache = torch.masked_fill(torch.zeros(size=(1, 1, 2049, 2049)).npu(), biasCache, mask_value)
 
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
@@ -491,6 +464,72 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+        self.num_layers = config.num_hidden_layers
+        self.max_seq_len = 2048
+        self.batch_num = 1
+        self.head_size = config.hidden_size // config.num_attention_heads
+        self.head_num = config.num_attention_heads
+        self.layer_norm_eps = config.layer_norm_eps
+        self.rotary_pct = config.rotary_pct
+        self.hidden_size = config.hidden_size
+
+        self.kv_cache = torch.zeros(2,
+                                    self.num_layers,
+                                    self.batch_num,  # batch
+                                    self.max_seq_len,
+                                    self.head_num,
+                                    self.head_size,
+                                    device="cpu").half().npu().contiguous()
+        print("==kv cache shape", self.kv_cache.shape)
+        self.k_cache_input = torch.as_tensor(self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(
+            self.num_layers, self.batch_num, self.max_seq_len, self.hidden_size
+        )
+        self.v_cache_input = torch.as_tensor(self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(
+            self.num_layers, self.batch_num, self.max_seq_len, self.hidden_size
+        )
+        self.increment_flags = [False] * self.num_layers
+        self.token_num = 0
+
+        self.token_offset = torch.full((self.batch_num, ), 0, dtype=torch.int32, device=self.kv_cache.device)
+        self.layer_id_input = []
+
+        self.attention_mask_max = torch.full((self.max_seq_len, self.max_seq_len), 0, dtype=torch.half).npu()
+        self.seq_len_tensor = None
+
+        for i in range(self.num_layers):
+            self.layer_id_input.append(torch.tensor([i], dtype=torch.int32).npu())
+
+        # acl_param = json.dumps({
+        #     "transKey": True, "dk": self.head_size,
+        #     "headNum": self.head_num, "layerNum": self.num_layers,
+        #     "layerNormEps": self.layer_norm_eps, "rotaryPct": self.rotary_pct
+        # })
+        # self.acl_encoder_operation = torch.classes.GptNeox20BModelEncoderTorch.GptNeox20BModelEncoderTorch()
+        # self.acl_encoder_operation.set_param(acl_param)
+
+        self.acl_encoder_operation = torch.classes.ModelTorch.ModelTorch(
+            "GptNeox20BEncoderModel")
+        acl_param_en = json.dumps({"transKey": True, "dk": self.head_size,
+                                   "headNum": self.head_num, "layerNum": self.num_layers,
+                                   "layerNormEps": self.layer_norm_eps, "rotaryPct": self.rotary_pct})
+        self.acl_encoder_operation.set_param(acl_param_en)
+
+        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch(
+            "GptNeox20BDecoderModel")
+        acl_param_fa = json.dumps({"transKey": True, "dk": self.head_size,
+                                   "headNum": self.head_num, "layerNum": self.num_layers,
+                                   "layerNormEps": self.layer_norm_eps, "rotaryPct": self.rotary_pct,
+                                   "tokenOffset": [self.token_num] * self.batch_num,
+                                   "seqLen": [1] * self.batch_num, "operationNum": self.num_layers + 2})
+        self.acl_decoder_operation.set_param(acl_param_fa)
+
+        self.weight_flag = False
+
+        self.acl_encoder_operation_inputs = [None] * 6
+        self.acl_decoder_operation_inputs = [None] * (9 + self.num_layers)
+        for i in range(self.num_layers):
+            self.acl_decoder_operation_inputs[9 + i] = torch.tensor([i], dtype=torch.int32).npu()
+
     def get_input_embeddings(self):
         return self.embed_in
 
@@ -549,7 +588,8 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
             past_length = 0
             past_key_values = tuple([None] * self.config.num_hidden_layers)
         else:
-            past_length = past_key_values[0][0].size(-2)
+            # past_length = past_key_values[0][0].size(-2)
+            past_length = self.token_num
 
         if position_ids is None:
             device = input_ids.device if input_ids is not None else inputs_embeds.device
@@ -599,6 +639,85 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
         presents = () if use_cache else None
         all_attentions = () if output_attentions else None
         all_hidden_states = () if output_hidden_states else None
+
+        # acl
+        global cosTable
+        global sinTable
+        global maskAttenCache
+        if self.weight_flag is False:
+            all_weights = list(self.state_dict().values())
+            # print("==all model state_dict is", self.state_dict())
+            weights = [all_weights[0]]
+            for i in range(self.num_layers):
+                weights_t = list(self.layers[i].state_dict().values())
+                weights_t = weights_t[:4] + weights_t[7:]
+                # del weights_t[4]
+                weights.extend(weights_t)
+            weights.append(all_weights[-2])
+            weights.append(all_weights[-1])
+
+            self.acl_encoder_operation.set_weight(weights)
+            self.acl_decoder_operation.set_weight(weights)
+            self.weight_flag = True
+
+        is_prefill = True if past_key_values[0] is None else False
+
+        # if attention_mask is None:
+        #     attention_mask = torch.zeros(size=(batch_size, 1, 1, hidden_states.shape[1]), dtype=torch.half).npu()
+
+        if is_prefill:
+            self.token_num = 0
+            self.seq_len_tensor = torch.tensor([seq_length] * batch_size,
+                                               dtype=torch.int32, device=input_ids.device)
+            attention_mask_tmp = maskAttenCache[:, :, :seq_length, :seq_length]
+
+            self.acl_encoder_operation_inputs[0] = input_ids
+            self.acl_encoder_operation_inputs[1] = position_ids
+            self.acl_encoder_operation_inputs[2] = cosTable
+            self.acl_encoder_operation_inputs[3] = sinTable
+            self.acl_encoder_operation_inputs[4] = attention_mask_tmp
+            self.acl_encoder_operation_inputs[5] = self.seq_len_tensor
+
+            acl_param_encoder = json.dumps({
+                "transKey": True, "dk": self.head_size,
+                "headNum": self.head_num, "layerNum": self.num_layers,
+                "layerNormEps": self.layer_norm_eps, "rotaryPct": self.rotary_pct
+            })
+
+            acl_model_out = self.acl_encoder_operation.execute(self.acl_encoder_operation_inputs, acl_param_encoder)
+
+            for i in range(self.num_layers):
+                token_num_this = acl_model_out[1].size()[1]
+                # print("===token num of layer", i, "is", token_num_this)
+                self.kv_cache[0, i, :batch_size, :token_num_this, ...] = acl_model_out[i+1]
+                self.kv_cache[1, i, :batch_size, :token_num_this, ...] = acl_model_out[i+1+self.num_layers]
+                self.token_num = token_num_this
+            self.seq_len_tensor = torch.tensor([1] * batch_size, dtype=torch.int32, device=self.kv_cache.device)
+        else:
+            self.token_num = self.token_num + 1
+            self.token_offset[:] = self.token_num
+
+            self.acl_decoder_operation_inputs[0] = input_ids
+            self.acl_decoder_operation_inputs[1] = position_ids
+            self.acl_decoder_operation_inputs[2] = cosTable
+            self.acl_decoder_operation_inputs[3] = sinTable
+            self.acl_decoder_operation_inputs[4] = self.attention_mask_max
+            self.acl_decoder_operation_inputs[5] = self.k_cache_input
+            self.acl_decoder_operation_inputs[6] = self.v_cache_input
+            self.acl_decoder_operation_inputs[7] = self.token_offset
+            self.acl_decoder_operation_inputs[8] = self.seq_len_tensor
+
+            acl_param_decoder = json.dumps({
+                "transKey": True, "dk": self.head_size,
+                "headNum": self.head_num, "layerNum": self.num_layers,
+                "layerNormEps": self.layer_norm_eps, "rotaryPct": self.rotary_pct,
+                "tokenOffset": [self.token_num] * batch_size, "seqLen": [1] * batch_size
+            })
+            acl_model_out = self.acl_decoder_operation.execute(self.acl_decoder_operation_inputs, acl_param_decoder)
+        acl_hidden_states = acl_model_out[0]
+        # hidden_states = acl_model_out[0]
+        # presents = (self.k_cache_input, self.v_cache_input)
+
         for i, (layer, layer_past) in enumerate(zip(self.layers, past_key_values)):
             if output_hidden_states:
                 all_hidden_states = all_hidden_states + (hidden_states,)
@@ -636,6 +755,35 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
                 all_attentions = all_attentions + (outputs[2 if use_cache else 1],)
 
         hidden_states = self.final_layer_norm(hidden_states)
+
+        print("\n===========================compare result============================")
+        print("===hidden_states", hidden_states)
+        if np.allclose(acl_hidden_states.cpu(), hidden_states.cpu(), rtol=0.02, atol=0.02):
+            print("****equal hidden states")
+        else:
+            print("!!!!not equal hidden states")
+            print("acl output:", acl_hidden_states)
+            print("output:", hidden_states)
+
+        for i in range(len(presents)):
+            test_key = presents[i][0]
+            test_value = presents[i][1]
+            acl_key = self.kv_cache[0][i][:, :self.token_num].permute(0, 2, 1, 3)
+            acl_value = self.kv_cache[1][i][:, :self.token_num].permute(0, 2, 1, 3)
+            print("==shape of key and value, acl key", acl_key.shape, "acl value", acl_value.shape,
+                  "test key", test_key.shape, "test value", test_value.shape)
+
+            if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
+                print("****equal key of ", i)
+            else:
+                print("!!!!not equal key of", i, "acl", acl_key.shape, "output", test_key.shape)
+            if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02):
+                print("****equal value of ", i)
+            else:
+                print("!!!!not equal value of", i, "acl", acl_value.shape, "output", test_value.shape)
+        
+        hidden_states = acl_hidden_states
+
         # Add last hidden state
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
