@@ -22,13 +22,13 @@
 #include "acltransformer/ops/linear_operation.h"
 #include "tests/unittest/test_util/operation_test.h"
 #include "core/include/acltransformer/config.h"
+#include "tests/unittest/test_util/test_utils.h"
 
 using namespace AclTransformer;
 using namespace AsdOps;
 constexpr float ATOL = 0.0001;
 constexpr float RTOL = 0.0001;
 
-bool Is910BStub(void*);
 AsdOps::Status LinearGolden(const GoldenContext &);
 AsdOps::Status LinearWithoutBiasGolden(const GoldenContext &);
 
@@ -54,7 +54,7 @@ TEST(TestLinearOperationStub, InferShape)
 TEST(TestLinearOperationStub, TestLinear)
 {
     Stub stub;
-    stub.set(ADDR(Config, Is910B), Is910BStub);
+    stub.set(ADDR(Config, Is910B), IsNot910B);
     AclTransformer::LinearParam param;
     AclTransformer::LinearOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
@@ -75,7 +75,7 @@ TEST(TestLinearOperationStub, TestLinear)
 TEST(TestLinearOperationStub, TestLinearWithoutBias)
 {
     Stub stub;
-    stub.set(ADDR(Config, Is910B), Is910BStub);
+    stub.set(ADDR(Config, Is910B), IsNot910B);
     AclTransformer::LinearParam param;
     param.hasBias = 0;
     AclTransformer::LinearOperation op(param);

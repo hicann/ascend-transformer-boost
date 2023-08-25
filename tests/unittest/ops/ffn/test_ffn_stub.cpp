@@ -22,23 +22,15 @@
 #include "acltransformer/ops/ffn_operation.h"
 #include "tests/unittest/test_util/operation_test.h"
 #include "core/include/acltransformer/config.h"
-#include <asdops/utils/rt/rt.h>
+#include "tests/unittest/test_util/test_utils.h"
 
 using namespace AclTransformer;
 using namespace AsdOps;
 constexpr float ATOL = 0.0001;
 constexpr float RTOL = 0.0001;
 
-bool Is910BStub(void* obj){
-    const int versionLen = 32;
-    char version[versionLen] = {0};
-    AsdRtDeviceGetSocVersion(version, versionLen);
-    ASD_LOG(INFO) << "SocVersion:" << std::string(version);
-    return std::string(version).find("Ascend910B") == std::string::npos;
-}
 AsdOps::Status FfnGolden(const GoldenContext &);
 AsdOps::Status FfnWithoutBiasGolden(const GoldenContext &);
-
 
 TEST(TestFfnOperationStub, InferShape)
 {
@@ -62,7 +54,7 @@ TEST(TestFfnOperationStub, InferShape)
 TEST(TestFfnOperationStub, TestFfn)
 {
     Stub stub;
-    stub.set(ADDR(Config, Is910B), Is910BStub);
+    stub.set(ADDR(Config, Is910B), IsNot910B);
     AclTransformer::FfnParam param;
     AclTransformer::FfnOperation op(param);
     AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
@@ -84,7 +76,7 @@ TEST(TestFfnOperationStub, TestFfn)
 TEST(TestFfnOperationStub, TestFfnWithoutBias)
 {
     Stub stub;
-    stub.set(ADDR(Config, Is910B), Is910BStub);
+    stub.set(ADDR(Config, Is910B), IsNot910B);
     AclTransformer::FfnParam param;
     param.hasBias = 0;
     AclTransformer::FfnOperation op(param);
