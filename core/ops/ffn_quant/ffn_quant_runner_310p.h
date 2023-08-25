@@ -13,29 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef FFN_QUANT_OPS_RUNNER_BUILDER_H
-#define FFN_QUANT_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#ifndef FFN_OPS_RUNNER_310P_H
+#define FFN_OPS_RUNNER_310P_H
+#include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/ffn_quant.h"
-#include "ffn_quant_ops_runner.h"
-#include "ffn_quant_runner_310p.h"
 
 namespace AclTransformer {
-class FfnQuantOpsRunnerBuilder : public RunnerBuilder {
+class FfnQuantOpsRunner310P : public OpsRunner {
 public:
-    explicit FfnQuantOpsRunnerBuilder(const FfnQuantParam &param) : param_(param) {}
-    virtual ~FfnQuantOpsRunnerBuilder() = default;
-    Runner *Build() override 
-    { 
-        if (AsdOps::GetSingleton<Config>().Is910B()) {
-            return new FfnQuantOpsRunner(param_);
-        } else {
-            return new FfnQuantOpsRunner310P(param_);
-        } 
-    }
+    FfnQuantOpsRunner310P(const FfnQuantParam &param);
+    virtual ~FfnQuantOpsRunner310P();
+
+protected:
+    AsdOps::Status SetupKernelGraph(const RunnerVariantPack &runnerVariantPack) override;
+
+private:
+    AsdOps::Status SetupKernelGraphNz(const RunnerVariantPack &runnerVariantPack);
+    AsdOps::Status SetupKernelGraphNd(const RunnerVariantPack &runnerVariantPack);
 
 private:
     FfnQuantParam param_;
+    AsdOps::SVector<int64_t> oriDimA_;
+    AsdOps::SVector<int64_t> oriDimB_;
+    std::size_t oriSize_ = 3;
 };
+
 } // namespace AclTransformer
 #endif
