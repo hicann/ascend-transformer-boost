@@ -1,12 +1,15 @@
 import torch
 import random
+import os
 import numpy as np
 import torch_npu
 from transformers import AutoTokenizer
 from configuration_gpt_neox import GPTNeoXConfig
-from patches.operations.modeling_gpt_neox_only_rope_ops import GPTNeoXForCausalLM
 
-device_id = 4
+DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
+device_id = 0
+if DEVICE_ID is not None:
+    device_id = int(DEVICE_ID)
 torch_device = torch.device(f'npu:{device_id}')
 torch.npu.set_device(torch_device)
 
@@ -14,6 +17,8 @@ torch.npu.set_compile_mode(jit_compile=False)
 option = {}
 option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril,SoftmaxV2,LayerNormGrad,ReduceProd"
 torch.npu.set_option(option)
+
+from patches.operations.modeling_gpt_neox_only_rope_ops import GPTNeoXForCausalLM
 
 seed = 128
 def set_random_seed(seed):

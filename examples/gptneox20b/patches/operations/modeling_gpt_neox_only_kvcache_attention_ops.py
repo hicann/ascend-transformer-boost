@@ -127,10 +127,10 @@ class GPTNeoXAttention(nn.Module):
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
 
         self.layer_id = layer_id
-        self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("PositionEmbeddingOperation")
-        self.acl_position_embedding_operation.set_param(
-            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b", "rotaryPct": config.rotary_pct,
-                        "dk": self.head_size})
+        self.acl_self_kv_cache_attention_operation = torch.classes.OperationTorch.OperationTorch("SelfAttentionKvCacheOperation")
+        self.acl_self_kv_cache_attention_operation.set_param(
+            json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b",
+                        "dk": self.head_size, "transKey": True})
         )
 
     def forward(
@@ -149,7 +149,6 @@ class GPTNeoXAttention(nn.Module):
         # Attention heads [batch, seq_len, hidden_size]
         #   --> [batch, seq_len, (np * 3 * head_size)]
         qkv = self.query_key_value(hidden_states)
-        acl_qkv = qkv.half()
 
         # [batch, seq_len, (num_heads * 3 * head_size)]
         #   --> [batch, seq_len, num_heads, 3 * head_size]
@@ -176,38 +175,31 @@ class GPTNeoXAttention(nn.Module):
         query = torch.cat((query, query_pass), dim=-1)
         key = torch.cat((key, key_pass), dim=-1)
 
-        # test acl ops
-        test_query = query
-        test_key = key
-        test_value = value
-        acl_cos = cos.squeeze(0)
-        acl_cos = acl_cos.squeeze(0)
-        acl_sin = sin.squeeze(0)
-        acl_sin = acl_sin.squeeze(0)
+        # do self kv cache attention
+        if has_layer_past:
+            acl_query = query.half().permute(0, 2, 1, 3)
+            acl_key = key.half().permute(0, 2, 1, 3)
+            acl_value = value.half().permute(0, 2, 1, 3)
+            acl_key_pass = layer_past[0].half().permute(0, 2, 1, 3)
+            acl_value_pass = layer_past[1].half().permute(0, 2, 1, 3)
+            acl_key_length = acl_key.shape[1] + acl_key_pass.shape[1]
+            acl_causal_mask = self.bias[:, :, acl_key_length - 1:acl_key_length, :acl_key_length]
+            acl_causal_mask = ~acl_causal_mask
 
-        acl_cos_embed = torch.nn.functional.embedding(position_ids, acl_cos).half()
-        acl_sin_embed = torch.nn.functional.embedding(position_ids, acl_sin).half()
+            mask_value_tmp = torch.zeros(size=acl_causal_mask.shape).npu()
+            # mask_value = torch.finfo(torch.float32).min
+            mask_value = -100000000.0
+            mask_value_tmp = torch.masked_fill(mask_value_tmp, acl_causal_mask, mask_value)
+            if attention_mask is not None:
+                acl_attn_mask = mask_value_tmp + attention_mask
+            else:
+                acl_attn_mask = mask_value_tmp
 
-        acl_query, acl_key, acl_value = self.acl_position_embedding_operation.execute(
-            [acl_qkv, position_ids, acl_cos_embed, acl_sin_embed]
-        )
-        acl_query = acl_query.permute(0, 2, 1, 3)
-        acl_key = acl_key.permute(0, 2, 1, 3)
-        acl_value = acl_value.permute(0, 2, 1, 3)
-
-        if np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02):
-            print("***equal query embed")
-        else:
-            print("!!!not equal embed")
-        if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
-            print("***equal key embed")
-        else:
-            print("!!!not equal key embed")
-        if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02):
-            print("***equal value embed")
-        else:
-            print("!!!not equal value embed")
-
+            acl_result, acl_present_key, acl_present_value = self.acl_self_kv_cache_attention_operation.execute(
+                [acl_query, acl_key, acl_value, acl_attn_mask, acl_key_pass, acl_value_pass]
+            )
+            acl_present_key = acl_present_key.permute(0, 2, 1, 3)
+            acl_present_value = acl_present_value.permute(0, 2, 1, 3)
 
         # Cache QKV values
         if has_layer_past:
@@ -222,7 +214,28 @@ class GPTNeoXAttention(nn.Module):
 
         # Reshape outputs
         attn_output = self._merge_heads(attn_output, self.num_attention_heads, self.head_size)
-        attn_output = self.dense(attn_output)
+
+        if has_layer_past:
+            print("========compare layer:", self.layer_id)
+            if np.allclose(acl_result.cpu(), attn_output.cpu(), rtol=0.02, atol=0.02):
+                print("******equal result")
+            else:
+                print("!!!!!!not equal result", acl_result, "\ntrue", attn_output)
+            if np.allclose(acl_present_key.cpu(), present[0].cpu(), rtol=0.02, atol=0.02):
+                print("******equal key")
+            else:
+                print("!!!!!!not equal key", acl_present_key, "\ntrue", present[0])
+            if np.allclose(acl_present_value.cpu(), present[1].cpu(), rtol=0.02, atol=0.02):
+                print("******equal value")
+            else:
+                print("!!!!!!not equal value", acl_present_value, "\ntrue", present[1])
+
+        if not has_layer_past:
+            attn_output = self.dense(attn_output)
+        else:
+            attn_output = self.dense(acl_result)
+
+        print("===layer id", self.layer_id, "value is", attn_output)
 
         outputs = (attn_output, present)
         if output_attentions:

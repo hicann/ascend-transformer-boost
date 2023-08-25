@@ -127,7 +127,7 @@ class GPTNeoXAttention(nn.Module):
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
 
         self.layer_id = layer_id
-        self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("PositionEmbeddingOperation")
+        self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("RopeOperation")
         self.acl_position_embedding_operation.set_param(
             json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b", "rotaryPct": config.rotary_pct,
                         "dk": self.head_size})
@@ -191,6 +191,7 @@ class GPTNeoXAttention(nn.Module):
         acl_query, acl_key, acl_value = self.acl_position_embedding_operation.execute(
             [acl_qkv, position_ids, acl_cos_embed, acl_sin_embed]
         )
+
         acl_query = acl_query.permute(0, 2, 1, 3)
         acl_key = acl_key.permute(0, 2, 1, 3)
         acl_value = acl_value.permute(0, 2, 1, 3)
