@@ -24,12 +24,11 @@ RmsPreNormQuantOpsRunner::RmsPreNormQuantOpsRunner(const RmsPreNormQuantParam &p
     : OpsRunner("RmsPreNormQuantOpsRunner", RUNNER_TYPE_RMS_PRE_NORM_QUANT), param_(param)
 {
     ASD_LOG(INFO) << "RmsPreNormQuantOpsRunner::RmsPreNormQuantOpsRunner called";
-    kernelGraph_.inTensors.resize(5);
+    kernelGraph_.inTensors.resize(4);
     AsdOps::Tensor &xTensor = kernelGraph_.inTensors[0];
-    AsdOps::Tensor &biasTensor = kernelGraph_.inTensors[1];
-    AsdOps::Tensor &resinTensor = kernelGraph_.inTensors[2];
-    AsdOps::Tensor &gammaTensor = kernelGraph_.inTensors[3];
-    AsdOps::Tensor &betaTensor = kernelGraph_.inTensors[4];
+    AsdOps::Tensor &resinTensor = kernelGraph_.inTensors[1];
+    AsdOps::Tensor &gammaTensor = kernelGraph_.inTensors[2];
+    AsdOps::Tensor &betaTensor = kernelGraph_.inTensors[3];
 
     kernelGraph_.outTensors.resize(2);
     AsdOps::Tensor &zTensor = kernelGraph_.outTensors[0];
@@ -41,9 +40,10 @@ RmsPreNormQuantOpsRunner::RmsPreNormQuantOpsRunner(const RmsPreNormQuantParam &p
     
     normParam.input_scale = param_.inputScale;
     normParam.input_offset = param_.inputOffset;
+    normParam.epsilon = param_.rmsNormEps;
 
     normNode.opDesc = {0, "NormOperation", normParam};
-    normNode.inTensors = {&xTensor, &biasTensor, &resinTensor, &gammaTensor, &betaTensor};
+    normNode.inTensors = {&xTensor, &resinTensor, &gammaTensor, &betaTensor};
     normNode.outTensors = {&zTensor, &resTensor};
 }
 

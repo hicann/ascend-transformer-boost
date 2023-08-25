@@ -40,6 +40,8 @@ RmsNormQuantOpsRunner::RmsNormQuantOpsRunner(const RmsNormQuantParam &param)
     
     rmsNormQuantParam.input_scale = param_.inputScale;
     rmsNormQuantParam.input_offset = param_.inputOffset;
+    rmsNormQuantParam.epsilon = param_.rmsNormEps;
+
 
     rmsNormNode.opDesc = {0, "NormOperation", rmsNormQuantParam};
     rmsNormNode.inTensors = {&xTensor, &gammaTensor, &betaTensor};

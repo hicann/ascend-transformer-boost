@@ -21,6 +21,7 @@ namespace AclTransformer {
 struct RmsPreNormQuantParam {
     int inputOffset = 0;
     float inputScale = 1;
+    float rmsNormEps = 1e-12; // a value added to the denominator for numerical stability
 };
 } // namespace AclTransformer
 #endif
