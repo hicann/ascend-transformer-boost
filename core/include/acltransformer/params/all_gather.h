@@ -21,6 +21,8 @@ struct AllGatherParam {
     int rankSize = 0;
     int rankRoot = 0;
     std::string backend = "hccl";
+    bool useCommExt = false;
+    void *commExt = nullptr; // only effect when useCommExt is true
 };
 } // namespace AclTransformer
 #endif
