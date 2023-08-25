@@ -36,6 +36,7 @@
 #include "torch/model_v2/gptneox20b/gptneox20b_decoder_model.h"
 #include "torch/model_v2/gptneox20b/gptneox20b_encoder_model.h"
 #include "torch/model_v2/bloom7b/bloom7b_decoder_model.h"
+#include "torch/model_v2/chatglm6b/chatglm6b_encoder_quant_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -83,6 +84,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::GptNeox20BEncoderModel>(param);
     } else if (modelName_ == "Bloom7BDecoderModel") {
         model_ = std::make_shared<AclTransformer::Bloom7BDecoderModel>(param);
+    } else if (modelName_ == "ChatGlm6BEncoderQuantTorch") {
+        model_ = std::make_shared<AclTransformer::ChatGlm6BEncoderQuantTorch>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
