@@ -21,10 +21,11 @@
 
 namespace AclTransformer {
 
-const int RMSPRENORMQUANT_INTENSOR_COUNT = 5;
+const int RMSPRENORMQUANT_INTENSOR_COUNT = 4;
 const int RMSPRENORMQUANT_OUTTENSOR_COUNT = 2;
 
-RmsPreNormQuantOperation::RmsPreNormQuantOperation(const RmsPreNormQuantParam &param) : Operation("RmsPreNormQuantOperation"), param_(param)
+RmsPreNormQuantOperation::RmsPreNormQuantOperation(const RmsPreNormQuantParam &param)
+    : Operation("RmsPreNormQuantOperation"), param_(param)
 {
     runnerBuilders_ = {new RmsPreNormQuantOpsRunnerBuilder(param_)};
 }
@@ -36,17 +37,13 @@ uint64_t RmsPreNormQuantOperation::GetInTensorCount() const { return RMSPRENORMQ
 uint64_t RmsPreNormQuantOperation::GetOutTensorCount() const { return RMSPRENORMQUANT_OUTTENSOR_COUNT; }
 
 AsdOps::Status RmsPreNormQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+                                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(1) = inTensors.at(0).desc;
     outTensorDescs.at(0).dtype = AsdOps::TENSOR_DTYPE_INT8;
-    outTensorDescs.at(1).dtype = AsdOps::TENSOR_DTYPE_INT8;
     return AsdOps::Status::OkStatus();
 }
 
-RunnerBuilder *RmsPreNormQuantOperation::FindBestRunnerBuilder() const
-{
-    return runnerBuilders_.at(0);
-}
+RunnerBuilder *RmsPreNormQuantOperation::FindBestRunnerBuilder() const { return runnerBuilders_.at(0); }
 } // namespace AclTransformer
