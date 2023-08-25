@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# set -e
+set -e
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 CURRENT_DIR=$(pwd)
 cd $SCRIPT_DIR
@@ -29,7 +29,7 @@ DEVICE_CODE_PACK_SWITCH=ON
 USE_CXX11_ABI=ON
 USE_VERBOSE=OFF
 BUILD_EXAMPLES=OFF
-BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples coverage"
+BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples python_unittest_and_run"
 BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" 
     "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" "--doxygen")
 
@@ -73,8 +73,8 @@ function fn_build_stub()
     cd $CACHE_DIR
     rm -rf cpp-stub-master.tar.gz
     wget --no-check-certificate https://github.com/coolxv/cpp-stub/archive/refs/heads/master.tar.gz
-    tar -zxvf cpp-stub-master.tar.gz
-    cp $CACHE_DIR/cpp-stub-master/cpp-stub-master/src/stub.h $THIRD_PARTY_DIR/googletest/include/gtest
+    tar -zxvf master.tar.gz
+    cp $CACHE_DIR/cpp-stub-master/src/stub.h $THIRD_PARTY_DIR/googletest/include/gtest
 }
 
 function fn_build_half()
@@ -497,7 +497,7 @@ function fn_main()
             fn_build
             fn_make_tar_package
             ;;
-        "coverage")
+        "python_unittest_and_run")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
