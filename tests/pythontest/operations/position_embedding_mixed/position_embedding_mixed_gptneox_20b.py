@@ -48,14 +48,13 @@ class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
                 self.get_tensor(OUTTENSOR2).npu()]
 
     def test(self):
-        print(self.get_tensor(INTENSOR0).size())
-        print(self.get_tensor(INTENSOR1).size())
-        print(self.get_tensor(INTENSOR2).size())
-        print(self.get_tensor(INTENSOR3).size())
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu(),
-                                      self.get_tensor(INTENSOR3).npu()])
+        mixed_qkv = self.get_tensor(INTENSOR0).npu()
+        position_ids = self.get_tensor(INTENSOR1).npu()
+        cos_table = self.get_tensor(INTENSOR2).npu()
+        sin_table = self.get_tensor(INTENSOR3).npu()
+        acl_cos_embed = torch.nn.functional.embedding(position_ids, cos_table).half()
+        acl_sin_embed = torch.nn.functional.embedding(position_ids, sin_table).half()
+        self.execute(OP_NAME, PARAM, [mixed_qkv, position_ids, acl_cos_embed, acl_sin_embed])
 
 
 if __name__ == '__main__':
