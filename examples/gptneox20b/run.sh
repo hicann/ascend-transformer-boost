@@ -110,6 +110,9 @@ function fn_main()
             ;;
         "--profiling")
             ;;
+        "--precision")
+            python3 $SCRIPT_DIR/run_gptneox.py
+            ;;
         "--help")
             echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
             ;;
