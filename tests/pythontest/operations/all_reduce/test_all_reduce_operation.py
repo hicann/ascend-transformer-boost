@@ -23,7 +23,7 @@ os.environ["MASTER_ADDR"] = "127.0.0.1"
 os.environ["MASTER_PORT"] = "22345"
 dist.init_process_group(backend="hccl", rank=local_rank, world_size=world_size)
 torch_npu.npu.set_device(local_rank)
-print('dist inited ok...')
+# print('dist inited ok...')
 
 acl_allreduce_operation = torch.classes.OperationTorch.OperationTorch(
     "AllReduceOperation")
@@ -35,4 +35,4 @@ oneTensor = torch.zeros(
     [3, 4, 5], device=torch.npu.current_device(), dtype=torch.half)
 oneTensor.add_(0.001)
 outTensors = acl_allreduce_operation.execute([oneTensor])
-print('acl all reduce output is ' + str(outTensors[0]))
+# print('acl all reduce output is ' + str(outTensors[0]))

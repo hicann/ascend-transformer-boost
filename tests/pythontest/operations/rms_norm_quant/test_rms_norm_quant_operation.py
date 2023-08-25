@@ -57,12 +57,12 @@ class TestRmsNormQuantOperation(operation_test.OperationTest):
                       torch.rand(1, 5120).npu().half()])
                       
     def golden_compare(self, out_tensor, golden_out_tensor):
-        print("out_tensor.shape", out_tensor.shape,
-              "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
-        print("out_tensor:", out_tensor,
-              ", \ngolden_oute_tensor:", golden_out_tensor)
+        # print("out_tensor.shape", out_tensor.shape,
+        #       "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        # print("out_tensor:", out_tensor,
+        #       ", \ngolden_oute_tensor:", golden_out_tensor)
         max_error = torch.max(torch.abs(out_tensor - golden_out_tensor))
-        print("max error", max_error)
+        # print("max error", max_error)
         if max_error <= 1:
             return True
         else:
