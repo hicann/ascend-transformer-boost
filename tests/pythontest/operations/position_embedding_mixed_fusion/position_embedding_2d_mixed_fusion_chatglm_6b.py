@@ -23,23 +23,27 @@ import operation_test  # NOQA: E402
 
 
 OP_NAME = "RopeOperation"
-PARAM = '{"headNum": 32, "numHeadsPerPartition":32, "hiddenSizePerHead":128, "numGroupsPerPartition":2, "model":"chatglm2_6b"}'
+PARAM = {"headNum": 32}
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor0.bin")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor1.bin")
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor1.bin")
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b", "inTensor2.bin")
-
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor2.bin")
+INTENSOR3 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor3.bin")
+INTENSOR4 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
+                         "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b", "inTensor4.bin")
 OUTTENSOR0 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
-                          "outTensor0.bin")
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b",
+    "outTensor0.bin")
 OUTTENSOR1 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
-                          "outTensor1.bin")
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b",
+    "outTensor1.bin")
 OUTTENSOR2 = os.path.join(os.getenv(
-    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
-                          "outTensor2.bin")
+    "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm_6b",
+    "outTensor2.bin")
+
 
 class RopeOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
@@ -50,7 +54,9 @@ class RopeOperation(operation_test.OperationTest):
     def test(self):
         self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
                                       self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu()])
+                                      self.get_tensor(INTENSOR2).npu(),
+                                      self.get_tensor(INTENSOR3).npu(),
+                                      self.get_tensor(INTENSOR4).npu()])
 
 
 if __name__ == '__main__':
