@@ -37,11 +37,10 @@ RmsNormQuantOpsRunner::RmsNormQuantOpsRunner(const RmsNormQuantParam &param)
     kernelGraph_.nodes.resize(1);
     auto &rmsNormNode = kernelGraph_.nodes[0];
     AsdOps::OpParam::Norm rmsNormQuantParam = {AsdOps::OpParam::Norm::NORM_RMSNORMQUANT};
-    
+
     rmsNormQuantParam.input_scale = param_.inputScale;
     rmsNormQuantParam.input_offset = param_.inputOffset;
     rmsNormQuantParam.epsilon = param_.rmsNormEps;
-
 
     rmsNormNode.opDesc = {0, "NormOperation", rmsNormQuantParam};
     rmsNormNode.inTensors = {&xTensor, &gammaTensor, &betaTensor};

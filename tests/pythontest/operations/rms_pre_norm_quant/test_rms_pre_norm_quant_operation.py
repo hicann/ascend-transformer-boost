@@ -28,6 +28,8 @@ OP_NAME = "RmsPreNormQuantOperation"
 input_scale = 12.0
 input_offset = -20
 epsilon = 1e-6
+QUANT_MAX = 127.0
+QUANT_MIN = -128.0
 
 
 class TestRmsPreNormQuantOperation(operation_test.OperationTest):
@@ -46,7 +48,7 @@ class TestRmsPreNormQuantOperation(operation_test.OperationTest):
         ref = ref + b
         ref = np.reshape(ref, (-1, 1))
         ref = ref * np.float32(input_scale) + np.float32(input_offset)
-        ref = np.clip(ref, np.float32(-128.0), np.float32(127.0))
+        ref = np.clip(ref, np.float32(QUANT_MIN), np.float32(QUANT_MAX))
         ref = ref.astype(np.float16)
         ref = torch.tensor(np.round(ref).astype(np.int8)).reshape(1, num_row, num_col)
 

@@ -37,7 +37,7 @@ RmsPreNormQuantOpsRunner::RmsPreNormQuantOpsRunner(const RmsPreNormQuantParam &p
     kernelGraph_.nodes.resize(1);
     auto &normNode = kernelGraph_.nodes[0];
     AsdOps::OpParam::Norm normParam = {AsdOps::OpParam::Norm::NORM_RMSPRENORMQUANT};
-    
+
     normParam.input_scale = param_.inputScale;
     normParam.input_offset = param_.inputOffset;
     normParam.epsilon = param_.rmsNormEps;
