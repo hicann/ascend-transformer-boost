@@ -68,7 +68,7 @@ uint64_t Bloom7BDecoderModel::GetOutTensorCount() const
 AsdOps::Status Bloom7BDecoderModel::InferShape(
     const std::vector<AsdOps::Tensor> &inTensors, std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
-    //todo
+    
     if (outTensorDescs.size() != GetOutTensorCount()) {
         return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
     }
@@ -93,10 +93,10 @@ AsdOps::Status Bloom7BDecoderModel::InferShape(
 void Bloom7BDecoderModel::BuildGraph()
 {
     ASD_LOG(INFO) << "Build Graph Start.";
-    //todo
+    
     const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum ;
     graph_.weightTensors.resize(weightTensorSize);
-    //todo
+    
     graph_.inTensors.resize(2 * param_.layerNum + 6);
     graph_.outTensors.resize(2 * param_.layerNum + 1);
     
