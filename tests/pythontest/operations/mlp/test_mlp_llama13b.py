@@ -36,7 +36,6 @@ OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 
 class TestMlpOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        print(self.get_tensor(OUTTENSOR0))
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
