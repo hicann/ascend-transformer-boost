@@ -141,6 +141,43 @@ def full_test(seq_len, batch, test_cycle, model):
     sum_time = sum_time / test_cycle
     print(f"average = {sum_time}ms")
 
+# 增量
+def incremental_test(seq_len, batch, test_cycle, model):
+    print("start run.")
+    warm_up(model)
+    past_key_values = ()
+    input_ids = torch.randint(150000, (batch, 1)).npu()
+    position_ids = torch.randint(2048, (1, 2, 1)).npu()
+    attention_mask = None
+    for i in range(28):
+        k_cache = torch.rand(seq_len, batch, 32, 128)
+        v_cache = torch.rand(seq_len, batch, 32, 128)
+        past_key_values = past_key_values + ((k_cache, v_cache),)
+    sum_time = 0
+    for i in range(test_cycle):
+        model_inputs = {
+            "input_ids": input_ids,
+            "past_key_values": past_key_values,
+            "position_ids": position_ids,
+            "attention_mask": attention_mask
+        }
+        torch.npu.synchronize()
+        start = time.time()
+        outputs = model(
+            **model_inputs,
+            return_dict=True,
+            output_attentions=False,
+            output_hidden_states=False,
+        )
+        torch.npu.synchronize()
+        end = time.time()
+        past_key_values = outputs.past_key_values
+        cur_time = (end - start) * 1000
+        sum_time += cur_time
+        print(f"{cur_time}ms")
+    sum_time = sum_time / test_cycle
+    print(f"average = {sum_time}ms")
+
 
 #全量+增量
 def full_and_incremental_test(seq_len, batch, test_cycle, model):
@@ -250,7 +287,7 @@ def full_and_incremental_test_with_input(input, batch, test_cycle, model):
     print(f"response time: {first_time + sum_time}ms")
     return first_time, avg_time
 
-test_funcs = {"full": full_test, "full_and_incremental": full_and_incremental_test}
+test_funcs = {"full": full_test, "full_and_incremental": full_and_incremental_test, "incremental_test": incremental_test}
 arg_map = {"seq_len": 512, "batch": 8, "test_cycle": 100, "device_id": 0}
 
 if __name__ == "__main__":

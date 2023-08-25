@@ -25,6 +25,9 @@ function fn_prepare()
         ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm6b/pytorch_model-00007-of-00008.bin $MODEL_TARGET_DIR/pytorch_model-00007-of-00008.bin
         ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm6b/pytorch_model-00008-of-00008.bin $MODEL_TARGET_DIR/pytorch_model-00008-of-00008.bin
     fi
+    if [ ! -d "./chatglm_quant_param" ];then
+        ln -s $ACLTRANSFORMER_TESTDATA/quant_param/chatglm6b/no_ft ./chatglm_quant_param
+    fi
 
     if [ -f "$MODEL_TARGET_DIR/modeling_target.py" ];then
         rm -rf $MODEL_TARGET_DIR/modeling_target.py
