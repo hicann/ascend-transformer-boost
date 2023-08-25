@@ -284,8 +284,18 @@ function fn_build_coverage()
     find $UNIT_TEST_DIR -name "*.cpp" | xargs -i cp {} $GCOV_CACHE_DIR
     $LCOV_PATH -c -i -d $GCOV_CACHE_DIR -o $GCOV_INFO_DIR/init.info >> $GCOV_DIR/log.txt
 
-    fn_run_unittest
-    fn_run_pythontest
+    if [[ $COVERAGE_TYPE == "unittest" ]]
+    then
+        fn_run_unittest
+    else
+        if [[ $COVERAGE_TYPE == "pythontest" ]]
+        then
+            fn_run_pythontest
+        else
+            fn_run_unittest
+            fn_run_pythontest
+        fi
+    fi
 
     find $CACHE_DIR -name "*.gcda" | xargs -i cp {} $GCOV_CACHE_DIR
     cd $GCOV_CACHE_DIR
@@ -319,6 +329,8 @@ function fn_generate_doxygen()
 
 function fn_run_pythontest()
 {
+    cd $OUTPUT_DIR/acltransformer
+    source set_env.sh
     cd $CODE_ROOT/tests/pythontest/
     rm -rf ./kernel_meta*
     bash pythontest.sh
@@ -476,16 +488,23 @@ function fn_main()
         "unittest_and_run")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
+            export COVERAGE_TYPE="unittest"
             fn_build_3rdparty
             fn_build
-            fn_run_unittest
+            fn_build_coverage
             ;;
         "pythontest")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
+            BUILD_EXAMPLES=ON
             fn_build
             ;;
         "pythontest_and_run")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
+            BUILD_EXAMPLES=ON
+            export COVERAGE_TYPE="pythontest"
             fn_build
-            fn_run_pythontest
+            fn_build_coverage
             ;;
         "debug")
             COMPILE_OPTIONS="${COMPILE_OPTIONS}"
