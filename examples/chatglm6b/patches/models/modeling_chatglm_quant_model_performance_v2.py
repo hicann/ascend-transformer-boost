@@ -823,6 +823,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         )
         
         self.acl_encoder_operation_inputs = [None] * 6
+        self.acl_decoder_operation_inputs = [None] * (5 + 2 * self.num_layers + 1)
 
         import numpy as np
         self.input_scale_dict = np.load("./chatglm_quant_param/input_scale.npy", allow_pickle=True).item()
@@ -891,9 +892,9 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
                                 "ffnOutInputScale": ffn_out_input_scale, "ffnOutInputOffset": ffn_out_input_offset})
         print("acl_param", acl_param)
 
-        self.acl_encoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm6BEncoderQuantTorch")
+        self.acl_encoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm6BEncoderQuantModel")
         self.acl_encoder_operation.set_param(acl_param)
-        self.acl_decoder_operation = torch.classes.ChatGlm6BModelDecoderQuantTorch.ChatGlm6BModelDecoderQuantTorch()
+        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm6BDecoderQuantModel")
         self.acl_decoder_operation.set_param(acl_param)
         self.weightFlag = False
 
@@ -1064,8 +1065,19 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
                 zip(acl_model_out[1:self.num_layers + 1], acl_model_out[self.num_layers + 1:]))
         else:
             past_keys, past_values = map(list, zip(*past_key_values))
+            acl_param = json.dumps({"transKey": True, "dk": self.hidden_size_per_attention_head, "headNum": self.num_attention_heads, "layerNum": self.num_layers,
+                                "layerNormEps": self.layernorm_epsilon, "residualAddScale": math.sqrt(2 * self.num_layers)})
+            self.acl_decoder_operation_inputs[0] = hidden_states
+            self.acl_decoder_operation_inputs[1] = position_ids
+            self.acl_decoder_operation_inputs[2] = self.cos
+            self.acl_decoder_operation_inputs[3] = self.sin
+            self.acl_decoder_operation_inputs[4] = attention_mask
+            self.acl_decoder_operation_inputs[5:5+self.num_layers] = past_keys
+            self.acl_decoder_operation_inputs[5+self.num_layers:5+2*self.num_layers] = past_values
+            self.acl_decoder_operation_inputs[5+2*self.num_layers] = seq_len
+
             acl_model_out = self.acl_decoder_operation.execute(
-                hidden_states, position_ids, self.cos, self.sin, attention_mask, past_keys, past_values, seq_len)
+                self.acl_decoder_operation_inputs, acl_param)
             presents = tuple(
                 zip(acl_model_out[1:self.num_layers + 1], acl_model_out[self.num_layers + 1:]))
         hidden_states = acl_model_out[0]
