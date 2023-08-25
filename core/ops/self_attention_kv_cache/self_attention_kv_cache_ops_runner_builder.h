@@ -27,6 +27,7 @@
 #include "self_attention_kv_cache_ops_chatglm2_6b_runner_310p.h"
 #include "self_attention_kv_cache_ops_bloom7b_runner.h"
 #include "self_attention_kv_cache_ops_gptneox20b_runner.h"
+#include "self_attention_kv_cache_ops_baichuan1_7b_runner_910a.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
@@ -46,6 +47,13 @@ public:
                 return new SelfAttentionKvCacheOpsLlama7bRunner(param_);
             } else {
                 return new SelfAttentionKvCacheOpsLlama7bRunner910a(param_);
+            }
+        } else if (param_.model == "baichuan1_7b") {
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                ASD_LOG(ERROR) << "invalid param_.model:" << param_.model << " for 910b";
+                return nullptr;
+            } else {
+                return new SelfAttentionKvCacheOpsBaiChuan17bRunner910a(param_);
             }
         } else if (param_.model == "chatglm2_6b") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {

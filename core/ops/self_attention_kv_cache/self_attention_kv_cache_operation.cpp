@@ -69,7 +69,7 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVect
         outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(0));
         outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(1) + 1);
         outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(2));
-    } else if (param_.model == "gptneox20b") {
+    } else if (param_.model == "gptneox20b" || param_.model == "baichuan1_7b") {
         // input [bs, sq, hn, hs]
         // output [bs, sq, hn * hs]
         outTensorDescs.at(0) = inTensors.at(0).desc;

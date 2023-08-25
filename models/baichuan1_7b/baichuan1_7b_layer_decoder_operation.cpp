@@ -99,7 +99,7 @@ BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChua
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
     selfAttentionKvCacheParam.dk = param_.dk;
     selfAttentionKvCacheParam.headNum = param_.headNum;
-    selfAttentionKvCacheParam.model = "llama7b";
+    selfAttentionKvCacheParam.model = "baichuan1_7b";
     selfAttentionKvCacheNode.operation.reset(
         new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam));
     selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,

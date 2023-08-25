@@ -85,6 +85,10 @@ PositionEmbedding1dOpsBaichuan17bRunner::PositionEmbedding1dOpsBaichuan17bRunner
     splitQkvNode.inTensors = {&mixedQkv};
     splitQkvNode.outTensors = {&qLayer, &kLayer, &value};
     splitQkvNode.inTensorViewFuncs.resize(splitQkvNode.inTensors.size());
+    splitQkvNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                               AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
     splitQkvNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, 3}});
@@ -126,18 +130,25 @@ PositionEmbedding1dOpsBaichuan17bRunner::PositionEmbedding1dOpsBaichuan17bRunner
     catkNode.outTensors = {&kRotate};
     catkNode.inferShapePreFunc = cat0InferShape;
 
+    // [bs, sq, 1, hs]
+    ViewFunc unsqueezeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), 1, oldDims.at(2)};
+    };
+
     // q*cos + rot(q)*sin
     mulqcosNode.opDesc = {0, "BroadcastOperation",
                         AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mulqcosNode.inTensors = {&qLayer, &cosEmbed};
     mulqcosNode.outTensors = {&qcos};
     mulqcosNode.inTensorViewFuncs.resize(mulqcosNode.inTensors.size());
+    mulqcosNode.inTensorViewFuncs.at(1) = unsqueezeCosSinView;
 
     mulrotqsinNode.opDesc = {0, "BroadcastOperation",
                         AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mulrotqsinNode.inTensors = {&qRotate, &sinEmbed};
     mulrotqsinNode.outTensors = {&rotqsin};
     mulrotqsinNode.inTensorViewFuncs.resize(mulrotqsinNode.inTensors.size());
+    mulrotqsinNode.inTensorViewFuncs.at(1) = unsqueezeCosSinView;
 
     addqNode.opDesc = {0, "BroadcastOperation",
                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_ADD}};
@@ -150,12 +161,14 @@ PositionEmbedding1dOpsBaichuan17bRunner::PositionEmbedding1dOpsBaichuan17bRunner
     mulkcosNode.inTensors = {&kLayer, &cosEmbed};
     mulkcosNode.outTensors = {&kcos};
     mulkcosNode.inTensorViewFuncs.resize(mulkcosNode.inTensors.size());
+    mulkcosNode.inTensorViewFuncs.at(1) = unsqueezeCosSinView;
 
     mulrotksinNode.opDesc = {0, "BroadcastOperation",
                         AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_MUL}};
     mulrotksinNode.inTensors = {&kRotate, &sinEmbed};
     mulrotksinNode.outTensors = {&rotksin};
     mulrotksinNode.inTensorViewFuncs.resize(mulrotksinNode.inTensors.size());
+    mulrotksinNode.inTensorViewFuncs.at(1) = unsqueezeCosSinView;
 
     addkNode.opDesc = {0, "BroadcastOperation",
                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_ADD}};
