@@ -47,14 +47,18 @@ def main():
         relative_err_tensor = torch.div(abs_tensor, div_tensor)
         max_relative_err = torch.max(relative_err_tensor)
 
-    
+    if absolute_err.item() > 0.001 or max_relative_err.item() > 0.001 :
+        print("NOT EQUAL")
+        print("Absolute error: ")
+        print(absolute_err)
+        print("Average cosine similarity:")
+        print(avg_cosine_similarity)
+        print("Max relative error: ")
+        print(max_relative_err)
+    else:
+        print("EQUAL")
 
-    print("Absolute error: ")
-    print(absolute_err)
-    print("Average cosine similarity:")
-    print(avg_cosine_similarity)
-    print("Max relative error: ")
-    print(max_relative_err)
+    
 
 
 
