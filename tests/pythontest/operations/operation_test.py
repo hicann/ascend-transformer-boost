@@ -39,7 +39,7 @@ torch.classes.load_library(LIB_PATH)
 
 DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
 if DEVICE_ID is not None:
-    print(f"user npu:{DEVICE_ID}")
+    # print(f"user npu:{DEVICE_ID}")
     torch.npu.set_device(torch.device(f"npu:{DEVICE_ID}"))
 
 
@@ -67,10 +67,10 @@ class OperationTest(unittest.TestCase):
         self.__golden_compare_all(out_tensors, golden_out_tensors)
 
     def golden_compare(self, out_tensor, golden_out_tensor):
-        print("out_tensor.shape", out_tensor.shape,
-              "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
-        print("out_tensor:", out_tensor,
-              ", \ngolden_oute_tensor:", golden_out_tensor)
+        # print("out_tensor.shape", out_tensor.shape,
+        #       "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        # print("out_tensor:", out_tensor,
+        #       ", \ngolden_oute_tensor:", golden_out_tensor)
         return torch.allclose(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02)
 
     def get_tensor(self, file_path):
