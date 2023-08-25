@@ -113,6 +113,8 @@ function fn_main()
             ;;
         "--profiling")
             ;;
+        "--precision")
+            ;;
         "--help")
             echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-13b_parallel] [model script path]"
             ;;

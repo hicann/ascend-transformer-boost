@@ -44,6 +44,9 @@ case "${RUN_OPTION}" in
     "--zhipu")
         python3 $SCRIPT_DIR/zhipu_test.py
         ;;
+    "--percision")
+        python3 $SCRIPT_DIR/run_bloom_npu.py
+        ;;
     *)
         echo "unknown build type:${RUN_OPTION}"
         echo "run.sh [model script path] [--run|--zhipu]"
