@@ -59,7 +59,7 @@ AsdOps::Status PositionEmbeddingOperation::InferShapeImpl(const AsdOps::SVector<
         outTensorDescs.at(1).dims.push_back(param_.numGroupsPerPartition);
         outTensorDescs.at(1).dims.push_back(param_.hiddenSizePerHead);
         outTensorDescs.at(2) = outTensorDescs.at(1);
-    } else if (param_.model == "llama7b") {
+    } else if (param_.model == "llama7b" || param_.model == "baichuan17b") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));

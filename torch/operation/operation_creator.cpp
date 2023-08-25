@@ -65,6 +65,7 @@
 #include "models/llama7b/llama7blayer_operation.h"
 #include "models/llama7b/llama7blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_fusion_operation.h"
+#include "models/baichuan1_7b/baichuan1_7b_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_encoder_operation.h"
 #include "models/llama13b/llama13blayer_parallel_operation.h"
@@ -145,6 +146,18 @@ static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohma
     ASD_LOG(INFO) << "LLaMA7BLayerFusionParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
     return new AclTransformer::LLaMA7BLayerFusionOperation(param);
+}
+
+static AclTransformer::Operation *BaiChuan17BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan17BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::BaiChuan17BLayerDecoderOperation(param);
 }
 
 static AclTransformer::Operation *PostOperationCreate(const nlohmann::json &paramJson)
@@ -1171,6 +1184,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
     {"LLaMA7BLayerEncoderOperation", &LLaMA7BLayerEncoderOperationCreate},
     {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
+    {"BaiChuan17BLayerDecoderOperation", &BaiChuan17BLayerDecoderOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate},
     {"LmHeadParallelOperation", &LmHeadParallelOperationCreate},
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},
