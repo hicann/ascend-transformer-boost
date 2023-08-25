@@ -242,6 +242,9 @@ function fn_main()
             ;;
         "--profiling")
             ;;
+        "--precision")
+            python3 $SCRIPT_DIR/run_llama_performance.py
+            ;;
         "--help")
             echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
             ;;

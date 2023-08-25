@@ -68,6 +68,9 @@ function fn_main()
         #     ;;
         # "--profiling")
         #     ;;
+        "--percision")
+            python3 $SCRIPT_DIR/run_baichuan7b.py
+            ;;
         "--help")
             echo "run.sh [--run|--performance|--webdemo|--profiling]"
             ;;

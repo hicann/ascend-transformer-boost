@@ -89,6 +89,9 @@ function fn_main()
         # "--profiling")
             
         #     ;;
+        "--percision")
+            python3 $SCRIPT_DIR/main_performance.py
+            ;;
         "--help")
             echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
             ;;
