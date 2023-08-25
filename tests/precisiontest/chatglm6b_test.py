@@ -15,8 +15,10 @@ class Chatglm6BModelTest(model_test.ModelTest):
     def generate_precision_performance(self):
         os.system(f"bash {RUN_SHELL_PATH} {MODEL_SCRIPT_PATH} --precision")
         os.system(f"bash {RUN_SHELL_PATH} {GOLDEN_SCRIPT_PATH} --precision")
-        self.append_precision_golden(CHATGLM6B_PATH + "/hidden_states_golden.pth")
-        self.append_precision_result(CHATGLM6B_PATH + "/hidden_states.pth")
+        self.append_precision_golden(CHATGLM6B_PATH + "/hidden_states_golden0.pth")
+        self.append_precision_result(CHATGLM6B_PATH + "/hidden_states0.pth")
+        self.append_precision_golden(CHATGLM6B_PATH + "/hidden_states_golden1.pth")
+        self.append_precision_result(CHATGLM6B_PATH + "/hidden_states1.pth")
         self.precision_compare()
 
 def main():
