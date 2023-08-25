@@ -18,6 +18,7 @@ torch.npu.set_device(device)
 # 使用二进制优化，消除动态shape的编译问题
 torch.npu.set_compile_mode(jit_compile=False)
 
+
 def load_model():
     tokenizer = AutoTokenizer.from_pretrained("./", use_fast=False)
     model = AutoModelForCausalLM.from_pretrained("./").half().to(device)
@@ -116,7 +117,7 @@ def full_and_incremental_test(seq_len, batch, test_cycle, model, tokenizer):
 
 
 def main():
-    model, _ = load_model()
+    model, tokenizer = load_model()
 
     batch_sizes = [1]
     seq_lens = [32]
