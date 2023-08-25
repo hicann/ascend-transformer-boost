@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 #include <gtest/gtest.h>
+#include <gtest/stub.h>
 #include <torch/torch.h>
 #include <asdops/utils/log/log.h>
+#include "acltransformer/config.h"
 #include "tests/unittest/test_util/test_common.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "tests/unittest/test_util/operation_test.h"
+#include "tests/unittest/test_util/test_utils.h"
 #include <half.hpp>
 
 using namespace AclTransformer;
@@ -417,4 +420,44 @@ TEST(TestSelfAttentionOperation, TestSelfAttentionLlama7b)
     opTest.Golden(&SelfAttentionLlama7bGolden);
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     // ASSERT_EQ(status.Ok(), true);
+}
+
+/// @brief chatglm6b 910A mock test
+/// @param  
+/// @param  
+TEST(TestSelfAttentionOperation, TestSelfAttentionChatglm6b_910A)
+{
+    AclTransformer::SelfAttentionParam param;
+    param.model = "chatglm6b";
+    AclTransformer::SelfAttentionOperation op(param);
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 2}}};
+    Stub stub;
+    stub.set(ADDR(Config, Is910B), IsNot910B);
+    OperationTest opTest;
+    opTest.SetMockFlag(true);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
+}
+
+/// @brief chatglm2_6b 310P mock test
+/// @param  
+/// @param
+TEST(TestSelfAttentionOperation, TestSelfAttentionChatglm2_6b_310P)
+{
+    AclTransformer::SelfAttentionParam param;
+    param.model = "chatglm2_6b";
+    AclTransformer::SelfAttentionOperation op(param);
+    AsdOps::SVector<AsdOps::TensorDesc> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 2, 3}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 1, 2}}};
+    Stub stub;
+    stub.set(ADDR(Config, Is910B), IsNot910B);
+    OperationTest opTest;
+    opTest.SetMockFlag(true);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
 }
