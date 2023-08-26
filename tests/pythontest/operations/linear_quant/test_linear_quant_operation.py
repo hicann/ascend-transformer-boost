@@ -60,10 +60,10 @@ class TetFfn(operation_test.OperationTest):
         return [golden_result.npu()]
 
     def golden_compare(self, out_tensor, golden_out_tensor):
-        print("out_tensor.shape", out_tensor.shape,
-              "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
-        print("out_tensor:", out_tensor,
-              ", \ngolden_oute_tensor:", golden_out_tensor)
+        # print("out_tensor.shape", out_tensor.shape,
+        #       "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        # print("out_tensor:", out_tensor,
+        #       ", \ngolden_oute_tensor:", golden_out_tensor)
         soc_version = torch_npu._C._npu_get_soc_version()
         if soc_version in [104, 220, 221, 222, 223]:
             return torch.allclose(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02)
