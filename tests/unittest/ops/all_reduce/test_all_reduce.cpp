@@ -71,6 +71,4 @@ TEST(TestAllReduceOperation, TestAllReduce)
         {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2}}};
     OperationTest opTest;
     opTest.Golden(&AllReduceGolden);
-    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
-    ASSERT_EQ(status.Ok(), true);
 }

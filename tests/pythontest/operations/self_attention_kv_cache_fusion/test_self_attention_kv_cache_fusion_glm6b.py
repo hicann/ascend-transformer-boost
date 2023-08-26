@@ -64,7 +64,7 @@ class TestSelfAttentionKvCacheFusionGlm6bOperation(operation_test.OperationTest)
                                           self.get_tensor(INTENSOR7).npu(),
                                           self.get_tensor(INTENSOR8).npu()])
         else:
-            print("310p skip")
+            print("TestSelfAttentionKvCacheFusionGlm6bOperation 310p skip")
 
 
 if __name__ == '__main__':

@@ -5,6 +5,10 @@ import torch_npu
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import unittest
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+import operation_test  # NOQA: E402
 
 # usage:
 # build with option: --use_hccl_runner / --use_lccl_runner
@@ -19,7 +23,6 @@ if ACLTRANSFORMER_HOME_PATH is None:
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "lib/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
-
 
 def main_worker(rank, world_size):
     # init process group
@@ -45,17 +48,25 @@ def main_worker(rank, world_size):
     # assert result
     assert golden_compare(acl_out_tensor, golden_out_tensor)
 
-def golden_compare(out_tensor, golden_out_tensor):
-    print("out_tensor.shape", out_tensor.shape,
-          "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
-    print("out_tensor:", out_tensor,
-          ", \ngolden_oute_tensor:", golden_out_tensor)
-    return torch.allclose(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02)
+def golden_compare(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02):
+    result = torch.allclose(out_tensor, golden_out_tensor, rtol=rtol, atol=atol)
+    if not result:
+        print("out_tensor.shape", out_tensor.shape,
+            "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        print("out_tensor:", out_tensor,
+            ", \ngolden_oute_tensor:", golden_out_tensor)
+    return result
 
-class AllReduceOperationTest(unittest.TestCase):
+class AllReduceOperationTest(operation_test.OperationTest):
     def test_all_reduce(self):
-        world_size = 2
-        mp.spawn(main_worker, nprocs=world_size, args=(world_size,))
+        command = f"nm -D {ACLTRANSFORMER_HOME_PATH}/lib/libacltransformer.so | grep HcclAllReduce > /dev/null"
+        res = os.system(command)
+        if res == 0:
+            world_size = 2
+            mp.spawn(main_worker, nprocs=world_size, args=(world_size,))
+        else:
+            print("hccl_runner is not compiled, skip AllReduceOperationTest")
+
 
 if __name__ == '__main__':
     unittest.main()
