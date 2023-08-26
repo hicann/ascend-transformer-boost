@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CHATGLM6B_ENCODER_QUANT_TORCH_H
-#define CHATGLM6B_ENCODER_QUANT_TORCH_H
+#ifndef CHATGML6B_DECODER_QUANT_MODEL_H
+#define CHATGML6B_DECODER_QUANT_MODEL_H
 #include "torch/model_v2/model.h"
 
 namespace AclTransformer {
-class ChatGlm6BEncoderQuantModel : public Model {
+class ChatGlm6BDecoderQuantModel : public Model {
 public:
     struct Param {
         double layerNormEps = 0;
@@ -35,12 +35,11 @@ public:
         std::vector<int> selfLnInputOffset;
         std::vector<float> ffnOutInputScale;
         std::vector<int> ffnOutInputOffset;
-        
         void FromString(const std::string &param);
     };
 
-    ChatGlm6BEncoderQuantModel(const std::string &param);
-    ~ChatGlm6BEncoderQuantModel();
+    ChatGlm6BDecoderQuantModel(const std::string &param);
+    ~ChatGlm6BDecoderQuantModel();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
     AsdOps::Status InferShape(const std::vector<AsdOps::Tensor> &inTensors,

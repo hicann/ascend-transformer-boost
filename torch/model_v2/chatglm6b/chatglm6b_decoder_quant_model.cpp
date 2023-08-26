@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm6b_encoder_quant_model.h"
+#include "chatglm6b_decoder_quant_model.h"
 #include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/embedding_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/params/self_attention_kv_cache_fusion.h"
-#include "models/chatglm6b/chatglm6blayer_encoder_quant_operation.h"
-#include "models/chatglm6b/chatglm6blayer_encoder_first_quant_operation.h"
-#include "models/chatglm6b/chatglm6blayer_encoder_last_quant_operation.h"
+#include "models/chatglm6b/chatglm6blayer_decoder_quant_operation.h"
+#include "models/chatglm6b/chatglm6blayer_decoder_last_quant_operation.h"
+#include "models/chatglm6b/chatglm6blayer_decoder_first_quant_operation.h"
 
 namespace AclTransformer {
-const size_t WEIGHT_COUNT_PER_LAYER = 16;
+const int WEIGHT_COUNT_PER_LAYER = 16;
 
 enum InTensorId {
     IN_TENSOR_HIDDEN_STATES = 0,
@@ -33,11 +33,13 @@ enum InTensorId {
     IN_TENSOR_COSTABLE,
     IN_TENSOR_SINTABLE,
     IN_TENSOR_ATTENTIONMASK,
+    IN_TENSOR_PASTKEY,
+    IN_TENSOR_PASTVALUE,
     IN_TENSOR_SEQLEN,
     IN_TENSOR_NUMS
 };
 
-void ChatGlm6BEncoderQuantModel::Param::FromString(const std::string &param)
+void ChatGlm6BDecoderQuantModel::Param::FromString(const std::string &param)
 {
     nlohmann::json paramJson = nlohmann::json::parse(param);
     layerNormEps = paramJson["layerNormEps"].get<double>();
@@ -59,44 +61,46 @@ void ChatGlm6BEncoderQuantModel::Param::FromString(const std::string &param)
                   << ", residualAddScale:" << residualAddScale;
 }
 
-ChatGlm6BEncoderQuantModel::ChatGlm6BEncoderQuantModel(const std::string &param) : Model("ChatGlm6BEncoderQuantModel", param)
+ChatGlm6BDecoderQuantModel::ChatGlm6BDecoderQuantModel(const std::string &param) : Model("ChatGlm6BDecoderQuantModel", param)
 {
     param_.FromString(param);
 }
 
-ChatGlm6BEncoderQuantModel::~ChatGlm6BEncoderQuantModel() {}
+ChatGlm6BDecoderQuantModel::~ChatGlm6BDecoderQuantModel() {}
 
-uint64_t ChatGlm6BEncoderQuantModel::GetInTensorCount() const { return graph_.inTensors.size(); }
+uint64_t ChatGlm6BDecoderQuantModel::GetInTensorCount() const { return graph_.inTensors.size(); }
 
-uint64_t ChatGlm6BEncoderQuantModel::GetOutTensorCount() const { return graph_.outTensors.size(); }
+uint64_t ChatGlm6BDecoderQuantModel::GetOutTensorCount() const { return graph_.outTensors.size(); }
 
-AsdOps::Status ChatGlm6BEncoderQuantModel::InferShape(const std::vector<AsdOps::Tensor> &inTensors,
-                                                 std::vector<AsdOps::TensorDesc> &outTensorDescs)
+AsdOps::Status ChatGlm6BDecoderQuantModel::InferShape(const std::vector<AsdOps::Tensor> &inTensors,
+                                                                std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (outTensorDescs.size() != GetOutTensorCount()) {
         return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
     }
 
+    const AsdOps::Tensor &keyTensor = inTensors.at(IN_TENSOR_PASTKEY);
+    const AsdOps::Tensor &valueTensor = inTensors.at(IN_TENSOR_PASTVALUE + param_.layerNum);
+
     outTensorDescs.at(0) = inTensors.at(0).desc;
 
     for (size_t keyId = 0; keyId < param_.layerNum; ++keyId) {
-        outTensorDescs.at(1 + keyId) = inTensors.at(0).desc;
-        outTensorDescs.at(1 + keyId).dims.at(2) = param_.headNum;
-        outTensorDescs.at(1 + keyId).dims.push_back(param_.dk);
+        outTensorDescs.at(1 + keyId) = keyTensor.desc;
+        outTensorDescs.at(1 + keyId).dims.at(0) += 1;   
     }
     for (size_t valueId = 0; valueId < param_.layerNum; ++valueId) {
-        outTensorDescs.at(1 + param_.layerNum + valueId) = outTensorDescs.at(1 + valueId);
+        outTensorDescs.at(1 + param_.layerNum + valueId) = valueTensor.desc;
+        outTensorDescs.at(1 + param_.layerNum + valueId).dims.at(0) += 1;   
     }
-    return AsdOps::Status::OkStatus(); 
+    return AsdOps::Status::OkStatus();
 }
 
-void ChatGlm6BEncoderQuantModel::BuildGraph()
+void ChatGlm6BDecoderQuantModel::BuildGraph()
 {
-    const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum;
+    const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum; 
     graph_.weightTensors.resize(weightTensorSize);
 
-    // to be modified
-    graph_.inTensors.resize(IN_TENSOR_NUMS);
+    graph_.inTensors.resize(IN_TENSOR_PASTKEY + 2 * param_.layerNum + 1);
     graph_.outTensors.resize(1 + 2 * param_.layerNum);
 
     const int nodeSize = param_.layerNum;
@@ -104,7 +108,7 @@ void ChatGlm6BEncoderQuantModel::BuildGraph()
 
     graph_.internalTensors.resize(2 * graph_.nodes.size() - 2);
 
-    int nodeId = 0;
+    int nodeId = 0;   
 
     AsdOps::Tensor *firstInTensor = &graph_.inTensors.at(0);
     AsdOps::Tensor *firstResInTensor = &graph_.inTensors.at(0);
@@ -130,28 +134,31 @@ void ChatGlm6BEncoderQuantModel::BuildGraph()
         opParam.ffnOutInputOffset = param_.ffnOutInputOffset[layerId];
 
         if (layerId == 0) {
-            layerNode.operation = std::make_shared<ChatGlm6BLayerEncoderFirstQuantOperation>(opParam);
+            layerNode.operation = std::make_shared<ChatGlm6BLayerDecoderFirstQuantOperation>(opParam);
         } else {
-            layerNode.operation = std::make_shared<ChatGlm6BLayerEncoderQuantOperation>(opParam);
+            layerNode.operation = std::make_shared<ChatGlm6BLayerDecoderQuantOperation>(opParam);
         }
-        
-        layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
 
+        layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
         size_t inTensorId = 0;
         layerNode.inTensors.at(inTensorId++) = firstInTensor;
+
         for (size_t weightTensorId = 0; weightTensorId < WEIGHT_COUNT_PER_LAYER; ++weightTensorId) {
             layerNode.inTensors.at(inTensorId++) = &graph_.weightTensors.at(layerId * WEIGHT_COUNT_PER_LAYER + weightTensorId);
         }
+
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_POSITIONID);    // positionIdTensor
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_COSTABLE);      // cosTable
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SINTABLE);      // sinTable
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK); // attentionMaskTensor
+        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_PASTKEY + layerId); // past key
+        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_PASTVALUE + param_.layerNum + layerId - 1); // past value
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SEQLEN); // seqLen
         layerNode.inTensors.at(inTensorId++) = firstResInTensor; // inres
 
         layerNode.outTensors = {&graph_.internalTensors.at(2 * layerId), &graph_.outTensors.at(1 + layerId), &graph_.outTensors.at(1 + layerId + param_.layerNum),
                                 &graph_.internalTensors.at(1 + 2 * layerId)};
-
+        
         firstInTensor = layerNode.outTensors.at(0);
         firstResInTensor = layerNode.outTensors.at(3);
         ASD_LOG(INFO) << "Internal InTensor Set. OK ";
@@ -177,7 +184,7 @@ void ChatGlm6BEncoderQuantModel::BuildGraph()
     lastOpParam.ffnOutInputScale = param_.ffnOutInputScale[lastLayerId];
     lastOpParam.ffnOutInputOffset = param_.ffnOutInputOffset[lastLayerId];
 
-    layerNode.operation = std::make_shared<ChatGlm6BLayerEncoderLastQuantOperation>(lastOpParam);
+    layerNode.operation = std::make_shared<ChatGlm6BLayerDecoderLastQuantOperation>(lastOpParam);
 
     layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
     layerNode.inTensors.at(lastInTensorId++) = firstInTensor;
@@ -190,6 +197,8 @@ void ChatGlm6BEncoderQuantModel::BuildGraph()
     layerNode.inTensors.at(lastInTensorId++) = &graph_.inTensors.at(IN_TENSOR_COSTABLE);      // cosTable
     layerNode.inTensors.at(lastInTensorId++) = &graph_.inTensors.at(IN_TENSOR_SINTABLE);      // sinTable
     layerNode.inTensors.at(lastInTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK); // attentionMaskTensor
+    layerNode.inTensors.at(lastInTensorId++) = &graph_.inTensors.at(IN_TENSOR_PASTKEY + lastLayerId); // past key
+    layerNode.inTensors.at(lastInTensorId++) = &graph_.inTensors.at(IN_TENSOR_PASTVALUE + param_.layerNum + lastLayerId - 1); // past value
     layerNode.inTensors.at(lastInTensorId++) = &graph_.inTensors.at(IN_TENSOR_SEQLEN); // seqLen
     layerNode.inTensors.at(lastInTensorId++) = firstResInTensor; // inres
 
@@ -199,7 +208,7 @@ void ChatGlm6BEncoderQuantModel::BuildGraph()
                             &graph_.outTensors.at(1 + lastLayerId), &graph_.outTensors.at(1 + lastLayerId + param_.layerNum)};
 }
 
-AsdOps::Status ChatGlm6BEncoderQuantModel::ParseVarintPackParam(const std::string &param, int nodeId,
+AsdOps::Status ChatGlm6BDecoderQuantModel::ParseVarintPackParam(const std::string &param, int nodeId,
                                                                         AsdOps::Any &variantPackParam)
 {
     return AsdOps::Status::OkStatus();
