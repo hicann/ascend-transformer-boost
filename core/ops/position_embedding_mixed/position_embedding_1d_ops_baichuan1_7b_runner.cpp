@@ -85,10 +85,10 @@ PositionEmbedding1dOpsBaichuan17bRunner::PositionEmbedding1dOpsBaichuan17bRunner
     splitQkvNode.inTensors = {&mixedQkv};
     splitQkvNode.outTensors = {&qLayer, &kLayer, &value};
     splitQkvNode.inTensorViewFuncs.resize(splitQkvNode.inTensors.size());
-    splitQkvNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
-                                               AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
-    };
+//    splitQkvNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+//                                               AsdOps::SVector<int64_t> &newDims) {
+//        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+//    };
     splitQkvNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, 3}});
@@ -98,6 +98,11 @@ PositionEmbedding1dOpsBaichuan17bRunner::PositionEmbedding1dOpsBaichuan17bRunner
     splitqNode.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 2}};
     splitqNode.inTensors = {&qLayer};
     splitqNode.outTensors = {&qSlice0, &qSlice1};
+    splitqNode.inTensorViewFuncs.resize(splitqNode.inTensors.size());
+    splitqNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                               AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
     splitqNode.inferShapePreFunc = split1InferShape;
 
     mulsqNode.opDesc = {0, "ElewiseOperation",
@@ -118,6 +123,11 @@ PositionEmbedding1dOpsBaichuan17bRunner::PositionEmbedding1dOpsBaichuan17bRunner
     splitkNode.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 2}};
     splitkNode.inTensors = {&kLayer};
     splitkNode.outTensors = {&kSlice0, &kSlice1};
+    splitkNode.inTensorViewFuncs.resize(splitkNode.inTensors.size());
+    splitkNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                             AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
     splitkNode.inferShapePreFunc = split1InferShape;
 
     mulskNode.opDesc = {0, "ElewiseOperation",
@@ -141,6 +151,10 @@ PositionEmbedding1dOpsBaichuan17bRunner::PositionEmbedding1dOpsBaichuan17bRunner
     mulqcosNode.inTensors = {&qLayer, &cosEmbed};
     mulqcosNode.outTensors = {&qcos};
     mulqcosNode.inTensorViewFuncs.resize(mulqcosNode.inTensors.size());
+    mulqcosNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                             AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
     mulqcosNode.inTensorViewFuncs.at(1) = unsqueezeCosSinView;
 
     mulrotqsinNode.opDesc = {0, "BroadcastOperation",
@@ -161,6 +175,10 @@ PositionEmbedding1dOpsBaichuan17bRunner::PositionEmbedding1dOpsBaichuan17bRunner
     mulkcosNode.inTensors = {&kLayer, &cosEmbed};
     mulkcosNode.outTensors = {&kcos};
     mulkcosNode.inTensorViewFuncs.resize(mulkcosNode.inTensors.size());
+    mulkcosNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                              AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
     mulkcosNode.inTensorViewFuncs.at(1) = unsqueezeCosSinView;
 
     mulrotksinNode.opDesc = {0, "BroadcastOperation",
