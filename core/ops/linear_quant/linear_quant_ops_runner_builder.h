@@ -23,6 +23,7 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/linear_quant.h"
 #include "linear_quant_ops_runner.h"
+#include "linear_quant_runner_310p.h"
 
 namespace AclTransformer {
 class LinearQuantOpsRunnerBuilder : public RunnerBuilder {
@@ -38,6 +39,7 @@ public:
         } else {
             return new LinearQuantOpsRunner310P(param_);
         }
+    }
 
 private:
     LinearQuantParam param_;
