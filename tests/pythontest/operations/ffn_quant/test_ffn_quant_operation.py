@@ -41,7 +41,7 @@ if soc_version in [104, 220, 221, 222, 223]:
     input3 = torch.randint(low=-128, high=127,size=(4096,),dtype=torch.int).npu()
     input4 = padding_descale(torch.rand(4096).npu().float()/1000)
 
-class TetFfn(operation_test.OperationTest):
+class TestFfnQuantOperation(operation_test.OperationTest):
     
     def golden_calc(self, in_tensors):
         golden_result = torch.randint(low=-128, high=127,size=(1,32, 1024),dtype=torch.int8)

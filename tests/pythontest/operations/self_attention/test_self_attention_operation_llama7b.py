@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import tensor_file
 import sys
 import os
 import unittest
@@ -20,7 +21,6 @@ import torch_npu
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
-import tensor_file
 
 
 OP_NAME = "SelfAttentionOperation"
@@ -40,17 +40,23 @@ OUTTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 OUTTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "tensors/operations/self_attention/llama7b", "outTensor2.bin")
 
-class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
+
+class TestSelfAttentionLlama7BOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [tensor_file.read_tensor(OUTTENSOR0).npu(),
                 tensor_file.read_tensor(OUTTENSOR1).npu(),
                 tensor_file.read_tensor(OUTTENSOR2).npu()]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [tensor_file.read_tensor(INTENSOR0).npu(),
-                                      tensor_file.read_tensor(INTENSOR1).npu(),
-                                      tensor_file.read_tensor(INTENSOR2).npu(),
-                                      tensor_file.read_tensor(INTENSOR3).npu()])
+        soc_version = torch_npu._C._npu_get_soc_version()
+        if soc_version in [104, 220, 221, 222, 223]:
+            self.execute(OP_NAME, PARAM,
+                         [tensor_file.read_tensor(INTENSOR0).npu(),
+                          tensor_file.read_tensor(INTENSOR1).npu(),
+                          tensor_file.read_tensor(INTENSOR2).npu(),
+                          tensor_file.read_tensor(INTENSOR3).npu()])
+        else:
+            print("310p skip")
 
 
 if __name__ == '__main__':

@@ -45,7 +45,7 @@ OUTTENSOR2 = os.path.join(os.getenv(
     "outTensor2.bin")
 
 
-class RopeOperation(operation_test.OperationTest):
+class TestPositionEmbedding2dMixedFusionGlm6B(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu(),
                 self.get_tensor(OUTTENSOR1).npu(),
