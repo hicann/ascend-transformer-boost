@@ -34,7 +34,7 @@ OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/mlp/llama13b", "outTensor0.bin")
 
 
-class TestMlpOperation(operation_test.OperationTest):
+class TestMlpLlmam13BOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu()]
 

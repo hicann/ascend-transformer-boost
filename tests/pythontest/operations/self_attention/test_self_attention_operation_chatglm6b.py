@@ -37,7 +37,7 @@ OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "tensors/operations/self_attention/chatglm6b", "outTensor0.bin")
 
 
-class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
+class TestSelfAttentionGlm6BOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [tensor_file.read_tensor(OUTTENSOR0).npu()]
 
