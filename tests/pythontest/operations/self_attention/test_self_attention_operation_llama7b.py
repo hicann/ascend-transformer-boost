@@ -56,7 +56,7 @@ class TestSelfAttentionLlama7BOperation(operation_test.OperationTest):
                           tensor_file.read_tensor(INTENSOR2).npu(),
                           tensor_file.read_tensor(INTENSOR3).npu()])
         else:
-            print("310p skip")
+            print("TestSelfAttentionLlama7BOperation 310p skip")
 
 
 if __name__ == '__main__':
