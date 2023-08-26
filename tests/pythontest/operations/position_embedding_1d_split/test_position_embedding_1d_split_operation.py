@@ -36,7 +36,7 @@ OUTTENSOR0 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "tensors/operations/position_embedding_1d_split", "outTensor0.bin")
 
 
-class TestPositionEmbeddingOperation(operation_test.OperationTest):
+class TestPositionEmbedding1dSplitOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu()]
 

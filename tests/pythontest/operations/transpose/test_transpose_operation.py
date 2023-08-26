@@ -25,7 +25,7 @@ import operation_test  # NOQA: E402
 OP_NAME = "TransposeOperation"
 
 
-class TestAddOperation(operation_test.OperationTest):
+class TestTransposeOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [in_tensors[0].transpose(0, 1)]
 

@@ -47,7 +47,7 @@ OUTTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "outTensor2.bin")
 
 
-class TestPositionEmbeddingOperation(operation_test.OperationTest):
+class TestPositionEmbedding1dMixedFusion(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu(),
                 self.get_tensor(OUTTENSOR1).npu(),

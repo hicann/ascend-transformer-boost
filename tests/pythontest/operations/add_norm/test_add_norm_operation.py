@@ -38,9 +38,13 @@ class TestAddNormOperation(operation_test.OperationTest):
         return [golden_result]
 
     def test_2d_half(self):
-        self.execute(OP_NAME, {"layerNormEps": 1e-5, "zoom_scale": 0.5},
-                     [torch.rand(10, 1, 4096).npu().half(), torch.rand(10, 1, 4096).npu().half(),
-                      torch.rand(1, 4096).npu().half(), torch.rand(1, 4096).npu().half()])
+        soc_version = torch_npu._C._npu_get_soc_version()
+        if soc_version in [104, 220, 221, 222, 223]:
+            self.execute(OP_NAME, {"layerNormEps": 1e-5, "zoom_scale": 0.5},
+                        [torch.rand(10, 1, 4096).npu().half(), torch.rand(10, 1, 4096).npu().half(),
+                        torch.rand(1, 4096).npu().half(), torch.rand(1, 4096).npu().half()])
+        else:
+            print("310p postlayernorm unsupport")
 
 
 if __name__ == '__main__':
