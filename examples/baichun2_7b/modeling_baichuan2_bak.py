@@ -118,8 +118,8 @@ class LlamaRotaryEmbedding(torch.nn.Module):
             self.cos_cached = emb.cos()[None, None, :, :]
             self.sin_cached = emb.cos()[None, None, :, :]
         return (
-            self.cos_cached[:, :, :seq_len, ...].to(torch.float32).to(dtype=x.dtype),
-            self.sin_cached[:, :, :seq_len, ...].to(torch.float32).to(dtype=x.dtype),
+            self.cos_cached[:, :, :seq_len, ...].to(torch.float32).to(x.device),
+            self.sin_cached[:, :, :seq_len, ...].to(torch.float32).to(x.device),
         )
 
 
@@ -138,7 +138,7 @@ def apply_rotary_pos_emb(q, k, cos_, sin_, position_ids):
     sin = sin[position_ids.to(cos_.device)].unsqueeze(1)  # [bs, 1, seq_len, dim]
     q_embed = (q.float() * cos) + (rotate_half(q.float()) * sin)
     k_embed = (k.float() * cos) + (rotate_half(k.float()) * sin)
-    return q_embed.to(q.type), k_embed.to(k.dtype)
+    return q_embed.to(q.dtype), k_embed.to(k.dtype)
 
 
 class LlamaMLP(nn.Module):
@@ -227,7 +227,8 @@ class LlamaAttention(nn.Module):
                     f"Attention mask should be of size {(bsz, 1, q_len, kv_seq_len)}, but is {attention_mask.size()}"
                 )
             attn_weights = attn_weights + attention_mask
-            attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min))
+            attn_weights = torch.max(attn_weights,
+                                     torch.tensor(torch.finfo(attn_weights.dtype).min).to(attn_weights.device))
 
         # upcast attention to fp32
         attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
