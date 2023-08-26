@@ -25,17 +25,7 @@ LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
 torch.classes.load_library(LIB_PATH)
 
 
-class AllGatherOperationTest(operation_test.OperationTest):
-    def test_all_gather(self):
-        command = f"nm -D {ACLTRANSFORMER_HOME_PATH}/lib/libacltransformer.so | grep HcclAllGather > /dev/null"
-        res = os.system(command)
-        if res == 0:
-            world_size = 2
-            mp.spawn(self.main_worker, nprocs=world_size, args=(world_size,))
-        else:
-            print("hccl_runner is not compiled, skip AllGatherOperationTest")
-    
-    def main_worker(self, rank, world_size):
+def main_worker(rank, world_size):
         # init process group
         os.environ["MASTER_ADDR"] = "127.0.0.1"
         os.environ["MASTER_PORT"] = "12344"
@@ -60,7 +50,28 @@ class AllGatherOperationTest(operation_test.OperationTest):
         acl_out_tensor = acl_allgather_operation.execute([inTensor])[0]
 
         # assert result
-        assert self.golden_compare(acl_out_tensor, golden_out_tensor)
+        assert golden_compare(acl_out_tensor, golden_out_tensor)
+
+def golden_compare(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02):
+    result = torch.allclose(out_tensor, golden_out_tensor, rtol=rtol, atol=atol)
+    if not result:
+        print("out_tensor.shape", out_tensor.shape,
+            "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        print("out_tensor:", out_tensor,
+            ", \ngolden_oute_tensor:", golden_out_tensor)
+    return result
+
+class AllGatherOperationTest(operation_test.OperationTest):
+    def test_all_gather(self):
+        command = f"nm -D {ACLTRANSFORMER_HOME_PATH}/lib/libacltransformer.so | grep HcclAllGather > /dev/null"
+        res = os.system(command)
+        if res == 0:
+            world_size = 2
+            mp.spawn(main_worker, nprocs=world_size, args=(world_size,))
+        else:
+            print("hccl_runner is not compiled, skip AllGatherOperationTest")
+    
+    
 
 
 if __name__ == '__main__':
