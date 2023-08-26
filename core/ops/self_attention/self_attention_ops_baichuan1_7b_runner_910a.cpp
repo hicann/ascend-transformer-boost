@@ -25,7 +25,7 @@
 static const uint64_t IN_TENSOR_COUNT = 4;
 static const uint64_t OUT_TENSOR_COUNT = 3;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 16;
-static const uint64_t NODE_COUNT = 19;
+static const uint64_t NODE_COUNT = 17;
 namespace AclTransformer {
 SelfAttentionOpsBaiChuan17BRunner910a::SelfAttentionOpsBaiChuan17BRunner910a(const SelfAttentionParam &param)
     : OpsRunner("SelfAttentionOpsBaiChuan17BRunner910a", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)

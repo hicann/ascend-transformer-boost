@@ -63,7 +63,7 @@ static const uint64_t INTERMEDIATE_TENSOR_COUNT = 10;
 static const uint64_t NODE_COUNT = 9;
 
 BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChuan17BLayerParam &param)
-    : GraphOperation("BaiChuan17BLayerOperation"), param_(param)
+    : GraphOperation("BaiChuan17BLayerDecoderOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
