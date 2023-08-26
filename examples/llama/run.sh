@@ -1,6 +1,10 @@
-SCRIPT_DIR=$(cd $(dirname $0); pwd)
-MODEL_TARGET_DIR=$SCRIPT_DIR
-SCRIPT_PATH=$SCRIPT_DIR/transformers_patch/layer/modeling_llama_layer_performance.py
+# 如何使用 run.sh
+# bash run.sh --zhipu --llama1-7b modeling_llama_linear.py
+# 第一个参数是选择入口脚本 RUN_OPTION_LIST
+# 第二个参数是选择模型
+# 第三个参数是选择测试的modeling_llama脚本
+
+MODEL_TARGET_DIR=$(cd $(dirname $0); pwd)
 TRANSFORMER_PACKAGE_PATH=$(python3 -c 'import transformers; import os; print(os.path.dirname(transformers.__file__))')
 RUN_OPTION_LIST="--run --performance --webdemo --zhipu --profiling"
 MODEL_LIST="--llama1-7b --llama1-13b --llama2-7b --llama2-13b"
@@ -147,11 +151,25 @@ function fn_clean()
     rm $MODEL_TARGET_DIR/*.model
 }
 
+function fn_modeling_prepare()
+{
+    if [[ $MODELING_SCRIPT_NAME == *"layer"* ]];then
+        echo "modeling_llama_layer.py copy success"
+        cp $MODEL_TARGET_DIR/patches/layer/$MODELING_SCRIPT_NAME $MODEL_TARGET_DIR/modeling_llama.py
+        echo "modeling_llama_layer.py copy success"
+    elif [[ ! -z $MODEL_TARGET_DIR/patches/operation/$MODELING_SCRIPT_NAME ]];then
+        cp $MODEL_TARGET_DIR/patches/operation/$MODELING_SCRIPT_NAME $MODEL_TARGET_DIR/modeling_llama.py
+        echo "modeling_llama_operation.py copy success"
+    else
+        echo "modeling_llama.py unchanged"
+    fi
+    cd $MODEL_TARGET_DIR
+}
+
 function fn_main()
 {
     echo "-----run.sh-----"
-    fn_clean
-    
+
     if [[ ! -z "$1" ]];then
         RUN_OPTION=$1
         echo "[RUN_OPTION]: $RUN_OPTION"
@@ -163,50 +181,19 @@ function fn_main()
         echo "[MODEL]: $MODEL"
         shift
     fi
-    
-    # if [[ ! -z "$1" ]];then
-    #     TEMP_SCRIPT_PATH="$1"
-    #     if [[ ! -e $TEMP_SCRIPT_PATH ]];then
-    #         SCRIPT_PATH=$TEMP_SCRIPT_PATH
-    #         echo "[MODEL_SCRIPT_PATH]: $SCRIPT_PATH"
-    #         shift
-    #     else
-    #         echo "WRONG dir"
-    #         exit -1
-    #     fi
-    # fi
 
-    cd $SCRIPT_DIR
-    # echo "[TRANSFORMER_PACKAGE_PATH]: $TRANSFORMER_PACKAGE_PATH"
+    if [[ ! -z "$1" ]];then
+        MODELING_SCRIPT_NAME=$1
+        echo "[MODELING_SCRIPT_NAME]: $MODELING_SCRIPT_NAME"
+        shift
+    fi
 
-    case "${MODEL}" in
-        "--llama1-7b")
-            fn_prepare_llama1_7b
-            ;;
-        "--llama1-13b")
-            fn_prepare_llama1_13b
-            ;;
-        "--llama2-7b")
-            fn_prepare_llama2_7b
-            ;;
-        "--llama2-13b")
-            fn_prepare_llama2_13b
-            ;;
-        "--help")
-            echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
-            ;;
-        *)
-            echo "unknown build type:${MODEL}"
-            echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
-            exit -1
-            ;;
-    esac
-
-    # cp $SCRIPT_PATH $TRANSFORMER_PACKAGE_PATH/models/llama/modeling_llama.py
+    fn_clean
+    fn_modeling_prepare
 
     case "${RUN_OPTION}" in
         "--run")
-            python3 $SCRIPT_DIR/run_llama_performance.py
+            python3 $MODEL_TARGET_DIR/run_llama_performance.py
             ;;
         "--performance")
             ;;
@@ -215,20 +202,24 @@ function fn_main()
         "--zhipu")
             case "${MODEL}" in
                 "--llama1-7b")
-                    echo "start llama1-7b"
-                    python3 $SCRIPT_DIR/zhipu_test.py --model_name llama1-7b
+                    echo "[START] llama1-7b"
+                    fn_prepare_llama1_7b
+                    python3 $MODEL_TARGET_DIR/zhipu_test.py --model_name llama1-7b
                     ;;
                 "--llama1-13b")
-                    echo "start llama1-13b"
-                    python3 $SCRIPT_DIR/zhipu_test.py --model_name llama1-13b
+                    echo "[START] llama1-13b"
+                    fn_prepare_llama1_13b
+                    python3 $MODEL_TARGET_DIR/zhipu_test.py --model_name llama1-13b
                     ;;
                 "--llama2-7b")
-                    echo "start llama2-7b"
-                    python3 $SCRIPT_DIR/zhipu_test.py --model_name llama2-7b
+                    echo "[START] llama2-7b"
+                    fn_prepare_llama2_7b
+                    python3 $MODEL_TARGET_DIR/zhipu_test.py --model_name llama2-7b
                     ;;
                 "--llama2-13b")
-                    echo "start llama2-13b"
-                    python3 $SCRIPT_DIR/zhipu_test.py --model_name llama2-13b
+                    echo "[START] llama2-13b"
+                    fn_prepare_llama2_13b
+                    python3 $MODEL_TARGET_DIR/zhipu_test.py --model_name llama2-13b
                     ;;
                 "--help")
                     echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
@@ -243,7 +234,7 @@ function fn_main()
         "--profiling")
             ;;
         "--precision")
-            python3 $SCRIPT_DIR/run_llama_performance.py
+            python3 $MODEL_TARGET_DIR/run_llama_performance.py
             ;;
         "--help")
             echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
@@ -254,8 +245,6 @@ function fn_main()
             exit -1
             ;;
     esac
-
-    fn_clean
 }
 
 fn_main "$@"
