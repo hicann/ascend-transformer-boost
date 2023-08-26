@@ -66,12 +66,14 @@ class OperationTest(unittest.TestCase):
         golden_out_tensors = self.golden_calc(in_tensors)
         self.__golden_compare_all(out_tensors, golden_out_tensors)
 
-    def golden_compare(self, out_tensor, golden_out_tensor):
-        # print("out_tensor.shape", out_tensor.shape,
-        #       "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
-        # print("out_tensor:", out_tensor,
-        #       ", \ngolden_oute_tensor:", golden_out_tensor)
-        return torch.allclose(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02)
+    def golden_compare(self, out_tensor, golden_out_tensor, rtol=0.02, atol=0.02):
+        result = torch.allclose(out_tensor, golden_out_tensor, rtol=rtol, atol=atol)
+        if not result:
+            print("out_tensor.shape", out_tensor.shape,
+                "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+            print("out_tensor:", out_tensor,
+                ", \ngolden_oute_tensor:", golden_out_tensor)
+        return result
 
     def get_tensor(self, file_path):
         if not os.path.exists(file_path):
