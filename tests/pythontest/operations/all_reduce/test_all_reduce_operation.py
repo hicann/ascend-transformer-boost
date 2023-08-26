@@ -3,10 +3,13 @@ import json
 import torch
 import torch_npu
 import torch.distributed as dist
+import torch.multiprocessing as mp
+import unittest
 
 # usage:
+# build with option: --use_hccl_runner / --use_lccl_runner
 # export HCCL_WHITELIST_DISABLE=1
-# torchrun --standalone --nnodes=1 --nproc_per_node=8 test_all_reduce_operation.py
+# python3 -m unittest test_all_reduce_operation.py
 # Attention: when you use lccl backend, unset HCCL_MTE_ENABLE and copy lcal.o to current directory
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
@@ -17,22 +20,42 @@ LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "lib/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
 
-local_rank = int(os.environ["LOCAL_RANK"])
-world_size = int(os.environ["WORLD_SIZE"])
-os.environ["MASTER_ADDR"] = "127.0.0.1"
-os.environ["MASTER_PORT"] = "22345"
-dist.init_process_group(backend="hccl", rank=local_rank, world_size=world_size)
-torch_npu.npu.set_device(local_rank)
-# print('dist inited ok...')
 
-acl_allreduce_operation = torch.classes.OperationTorch.OperationTorch(
-    "AllReduceOperation")
-acl_param = json.dumps({"rank": local_rank, "rankSize": world_size,
-                       "rankRoot": 0, "allReduceType": "sum", "backend": "lccl"})
-acl_allreduce_operation.set_param(acl_param)
+def main_worker(rank, world_size):
+    # init process group
+    os.environ["MASTER_ADDR"] = "127.0.0.1"
+    os.environ["MASTER_PORT"] = "12344"
+    dist.init_process_group(backend="hccl", rank=rank, world_size=world_size)
+    torch_npu.npu.set_device(rank)
+    print(f'Process {rank} started, using device npu:{rank}.')
 
-oneTensor = torch.zeros(
-    [3, 4, 5], device=torch.npu.current_device(), dtype=torch.half)
-oneTensor.add_(0.001)
-outTensors = acl_allreduce_operation.execute([oneTensor])
-# print('acl all reduce output is ' + str(outTensors[0]))
+    # init all reduce operation
+    acl_allreduce_operation = torch.classes.OperationTorch.OperationTorch(
+        "AllReduceOperation")
+    acl_param = json.dumps({"rank": rank, "rankSize": world_size,
+                            "rankRoot": 0, "allReduceType": "sum", "backend": "hccl"})
+    acl_allreduce_operation.set_param(acl_param)
+
+    # exec all reduce
+    inTensor = torch.ones(
+        [3, 4, 5], device=torch.npu.current_device(), dtype=torch.half)
+    golden_out_tensor = inTensor * world_size
+    acl_out_tensor = acl_allreduce_operation.execute([inTensor])[0]
+
+    # assert result
+    assert golden_compare(acl_out_tensor, golden_out_tensor)
+
+def golden_compare(out_tensor, golden_out_tensor):
+    print("out_tensor.shape", out_tensor.shape,
+          "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+    print("out_tensor:", out_tensor,
+          ", \ngolden_oute_tensor:", golden_out_tensor)
+    return torch.allclose(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02)
+
+class AllReduceOperationTest(unittest.TestCase):
+    def test_all_reduce(self):
+        world_size = 2
+        mp.spawn(main_worker, nprocs=world_size, args=(world_size,))
+
+if __name__ == '__main__':
+    unittest.main()
