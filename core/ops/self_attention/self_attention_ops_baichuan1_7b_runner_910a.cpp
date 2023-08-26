@@ -23,7 +23,7 @@
 #include <asdops/utils/log/log.h>
 
 static const uint64_t IN_TENSOR_COUNT = 4;
-static const uint64_t OUT_TENSOR_COUNT = 3;
+static const uint64_t OUT_TENSOR_COUNT = 1;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 16;
 static const uint64_t NODE_COUNT = 17;
 namespace AclTransformer {
@@ -48,8 +48,6 @@ SelfAttentionOpsBaiChuan17BRunner910a::SelfAttentionOpsBaiChuan17BRunner910a(con
 
     int64_t outTensorNum = 0;
     AsdOps::Tensor &contextOut = kernelGraph_.outTensors.at(outTensorNum++);
-    AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(outTensorNum++);
-    AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(outTensorNum++);
 
     int64_t internalTensorNum = 0;
     AsdOps::Tensor &qScaledOutND = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -114,7 +112,7 @@ SelfAttentionOpsBaiChuan17BRunner910a::SelfAttentionOpsBaiChuan17BRunner910a(con
     // trans [bs, sq, hn, hs] to [bs, hn, hs, sq]
     AsdOps::OpParam::Transpose permuteSeqHnHsParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0 ,2, 3, 1}};
     permuteKNode.opDesc = {0, "TransposeOperation", permuteSeqHnHsParam};
-    permuteKNode.inTensors = {&presentKey};
+    permuteKNode.inTensors = {&mixedKey};
     permuteKNode.outTensors = {&transposedKND};
 
     // trans to NZ
@@ -205,7 +203,7 @@ SelfAttentionOpsBaiChuan17BRunner910a::SelfAttentionOpsBaiChuan17BRunner910a(con
     };
 
     permuteVNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
-    permuteVNode.inTensors = {&presentValue};
+    permuteVNode.inTensors = {&mixedValue};
     permuteVNode.outTensors = {&transposedV};
 
     transdataVNode.opDesc = {0, "TransdataOperation",
