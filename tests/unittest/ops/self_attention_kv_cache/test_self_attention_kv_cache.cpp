@@ -508,3 +508,29 @@ TEST(TestSelfAttentionKvCacheOperation, llama7b_910a)
     AsdOps::Status status = opTest.Run(&op, inTensorDescs);
     // ASSERT_EQ(status.Ok(), true);
 }
+
+/// @brief llama7b mock test (not 910B)
+/// @param  
+/// @param  
+TEST(TestSelfAttentionKvCacheOperation, TestSelfAttentionKvCacheLlama7b_mock)
+{
+    Stub stub;
+    stub.set(ADDR(Config, Is910B), IsNot910B);
+    AclTransformer::SelfAttentionKvCacheParam param;
+    param.model = "llama7b";
+    param.headNum = 1;
+    param.layerId = 1;
+    param.dk = 1;
+    AclTransformer::SelfAttentionKvCacheOperation op(param);
+    AsdOps::SVector<AsdOps::Tensor> inTensorDescs = {
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {1, 2, 3, 4}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {2, 3, 4, 5}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {3, 4, 5, 6}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {4, 5, 6, 7}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {5, 6, 7, 8}},
+        {AsdOps::TENSOR_DTYPE_FLOAT, AsdOps::TENSOR_FORMAT_ND, {6, 7, 8, 9}}};
+    OperationTest opTest;
+    opTest.Golden(&SelfAttentionKvCacheLlama7bGolden);
+    AsdOps::Status status = opTest.Run(&op, inTensorDescs);
+    // ASSERT_EQ(status.Ok(), true);
+}
