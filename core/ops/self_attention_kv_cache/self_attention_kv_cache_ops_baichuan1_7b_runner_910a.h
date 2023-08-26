@@ -25,9 +25,6 @@ public:
     virtual ~SelfAttentionKvCacheOpsBaiChuan17bRunner910a();
 
 private:
-    void AsStrideKernelInferShapeSet(const AsdOps::SVector<int64_t> &sequence, KernelGraphNode &node);
-
-private:
     SelfAttentionKvCacheParam param_;
     AsdOps::SVector<int64_t> orgQDims_;
     AsdOps::SVector<int64_t> orgKDims_;

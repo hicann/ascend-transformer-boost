@@ -81,7 +81,7 @@ void BaiChuan17BDecoderModel::BuildGraph()
        WORDEMBEDDINGNODE_WEIGHT_COUNT + WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT;
    graph_.weightTensors.resize(weightTensorSize);
 
-   graph_.inTensors.resize(IN_TENSOR_MAX + param_.layerNum);
+   graph_.inTensors.resize(IN_TENSOR_PASTK_V_START + 3 * param_.layerNum);
    graph_.outTensors.resize(1);
 
    const int nodeSize = param_.layerNum + OPERATION_COUNT_BEFORE_LAYER + OPERATION_COUNT_AFTER_LAYER;

@@ -149,9 +149,9 @@ AsdOps::Status BaiChuan17BLayerDecoderOperation::InferShapeImpl(const AsdOps::SV
     const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);
     outTensorDescs.at(0) = inTensors.at(0).desc;
     outTensorDescs.at(1) = keyTensor.desc;
-    outTensorDescs.at(1).dims.at(0) += 1;
+    outTensorDescs.at(1).dims.at(1) += 1;
     outTensorDescs.at(2) = valueTensor.desc;
-    outTensorDescs.at(2).dims.at(0) += 1;
+    outTensorDescs.at(2).dims.at(1) += 1;
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

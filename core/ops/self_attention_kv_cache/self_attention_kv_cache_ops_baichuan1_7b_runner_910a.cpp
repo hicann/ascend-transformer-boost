@@ -24,8 +24,8 @@
 
 static const uint64_t IN_TENSOR_COUNT = 6;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 15;
-static const uint64_t NODE_COUNT = 18;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 16;
+static const uint64_t NODE_COUNT = 19;
 namespace AclTransformer {
 SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17bRunner910a(const SelfAttentionKvCacheParam &param)
     : OpsRunner("SelfAttentionKvCacheOpsBaiChuan17bRunner910a", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
@@ -65,6 +65,7 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
     AsdOps::Tensor &attentionProbsF32 = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &attentionProbsTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &catValueOutTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &bmmVOut = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &bmmVoutTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -86,32 +87,21 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
     auto &softMaxNode = kernelGraph_.nodes.at(nodeId++);
     auto &castOutNode = kernelGraph_.nodes.at(nodeId++);
     auto &transdataProbsNode = kernelGraph_.nodes.at(nodeId++);
+    auto &permuteVNode = kernelGraph_.nodes.at(nodeId++);
     auto &transdataVNode = kernelGraph_.nodes.at(nodeId++);
     auto &bmmVNode = kernelGraph_.nodes.at(nodeId++);
     auto &transdataBmmVNode = kernelGraph_.nodes.at(nodeId++);
     auto &transposeContext1Node = kernelGraph_.nodes.at(nodeId++);
-
-
 
     // cat key
     // key = torch.cat(key, pastKey)
     catKeyNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({1})};
     catKeyNode.inTensors = {&pastKey, &mixedKey};
     catKeyNode.outTensors = {&presentKey};
-    catKeyNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
-        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
-            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
-        }
-    };
 
     catValueNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({1})};
     catValueNode.inTensors = {&pastValue, &mixedValue};
     catValueNode.outTensors = {&presentValue};
-    catValueNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
-        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
-            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
-        }
-    };
 
     // scaling down q
     float scalingAttr = (1.0 / (sqrt(param_.dk)));
@@ -226,9 +216,13 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
     };
 
+    permuteVNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
+    permuteVNode.inTensors = {&presentValue};
+    permuteVNode.outTensors = {&transposedV};
+
     transdataVNode.opDesc = {0, "TransdataOperation",
                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
-    transdataVNode.inTensors = {&presentValue};
+    transdataVNode.inTensors = {&transposedV};
     transdataVNode.outTensors = {&catValueOutTransResult};
     transdataVNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
@@ -273,32 +267,4 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
 }
 
 SelfAttentionKvCacheOpsBaiChuan17bRunner910a::~SelfAttentionKvCacheOpsBaiChuan17bRunner910a() {}
-
-void SelfAttentionKvCacheOpsBaiChuan17bRunner910a::AsStrideKernelInferShapeSet(const AsdOps::SVector<int64_t> &sequence,
-                                                                       KernelGraphNode &node)
-{
-    node.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
-        AsdOps::SVector<int64_t> inputShapeOrig = runInfo.GetInTensor(0).desc.dims;
-        AsdOps::SVector<int64_t> inputStrideOrig;
-        AsdOps::SVector<int64_t> inputShape;
-        AsdOps::SVector<int64_t> inputStride;
-
-        uint64_t size = inputShapeOrig.size();
-        if (sequence.size() != size) {
-            ASD_LOG(ERROR) << "AsStride config size error: " << size << " -> " << sequence.size();
-            return;
-        }
-        inputStrideOrig.resize(size);
-        uint64_t stride = 1;
-        for (size_t i = 0; i < size; i++) {
-            inputStrideOrig.at(size - i - 1) = stride;
-            stride *= inputShapeOrig.at(size - i - 1);
-        }
-        for (size_t i = 0; i < size; i++) {
-            inputShape.push_back(inputShapeOrig[sequence[i]]);
-            inputStride.push_back(inputStrideOrig[sequence[i]]);
-        }
-        runInfo.SetOpDesc({0, "AsStridedOperation", AsdOps::OpParam::AsStrided({inputShape, inputStride, {0}})});
-    };
-}
 } // namespace AclTransformer
