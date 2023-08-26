@@ -74,8 +74,8 @@ SelfAttentionOpsGptNeox20bRunner::SelfAttentionOpsGptNeox20bRunner(const SelfAtt
     auto &bmmVNode = kernelGraph_.nodes.at(nodeId++);
     auto &permuteContextNode = kernelGraph_.nodes.at(nodeId++);
 
-    float scalingFactor = 0.1;
     // scaling down q
+    float scalingFactor = 0.1;
     float scalingAttr0 = (1.0 / (sqrt(param_.dk))) * scalingFactor;
     ASD_LOG(INFO) << "Scaling down for query with scaling factor " << scalingAttr0;
     mulsQNode.opDesc = {0, "ElewiseOperation",
