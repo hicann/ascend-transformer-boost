@@ -32,7 +32,12 @@ public:
         ASD_LOG(INFO) << "LinearOQuantperation::LinearQuantOperation called";
     }
     virtual ~LinearQuantOpsRunnerBuilder() = default;
-    Runner *Build() override { return new LinearQuantOpsRunner(param_); }
+    Runner *Build() override {
+        if (AsdOps::GetSingleton<Config>().Is910B()) {
+            return new LinearQuantOpsRunner(param_);
+        } else {
+            return new LinearQuantOpsRunner310P(param_);
+        }
 
 private:
     LinearQuantParam param_;
