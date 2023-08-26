@@ -42,7 +42,7 @@
 #     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/position_embedding_2d_mixed_fusion/chatglm2_6b",
 #                           "outTensor2.bin")
 
-# class RopeOperation(operation_test.OperationTest):
+# class TestPositionEmbedding2dMixedFusionGlm26B(operation_test.OperationTest):
 #     def golden_calc(self, in_tensors):
 #         return [self.get_tensor(OUTTENSOR0).npu(),
 #                 self.get_tensor(OUTTENSOR1).npu(),

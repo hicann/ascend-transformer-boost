@@ -53,7 +53,7 @@ OUTTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "tensors/operations/self_attention_kv_cache/llama7b", "outTensor2.bin")
 
 
-class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
+class TestSelfAttentionKvCacheLlamaOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [tensor_file.read_tensor(OUTTENSOR0).npu(),
                 tensor_file.read_tensor(OUTTENSOR1).npu(),

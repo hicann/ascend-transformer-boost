@@ -25,7 +25,7 @@ import operation_test  # NOQA: E402
 OP_NAME = "FfnOperation"
 PARAM = '{"transposeA": false, "transposeB": false, "hasBias": true}'
 
-class TetFfn(operation_test.OperationTest):
+class TestFfnOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         golden_result = torch.fast_gelu(torch.matmul(in_tensors[0], torch.transpose(
             in_tensors[1], 0, 1)) + in_tensors[2])

@@ -34,14 +34,21 @@ OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "tensors/operations/mlp/chatglm2_6b", "outTensor0.bin")
 
 
-class TestMlpOperation(operation_test.OperationTest):
+class TestMlpGlm26BOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu()])
+        soc_version = torch_npu._C._npu_get_soc_version()
+        if soc_version in [104, 220, 221, 222, 223]:
+            self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
+                                          self.get_tensor(INTENSOR1).npu(),
+                                          self.get_tensor(INTENSOR2).npu()])
+        else:
+            self.execute(OP_NAME, PARAM,
+                         [self.get_tensor(INTENSOR0).npu(),
+                          self.get_tensor(INTENSOR1).npu().npu_format_cast(29),
+                          self.get_tensor(INTENSOR2).npu().npu_format_cast(29)])
 
 
 if __name__ == '__main__':
