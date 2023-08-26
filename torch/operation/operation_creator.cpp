@@ -51,6 +51,7 @@
 #include "acltransformer/ops/lm_head_operation.h"
 #include "acltransformer/ops/lm_head_parallel_operation.h"
 #include "acltransformer/ops/word_embedding_parallel_operation.h"
+#include "acltransformer/ops/post_sampling_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
@@ -193,6 +194,20 @@ static AclTransformer::Operation *PostOperationCreate(const nlohmann::json &para
     ASD_LOG(INFO) << "PostParam temperature:" << param.temperature;
     ASD_LOG(INFO) << "PostParam min_tokens_to_keep:" << param.min_tokens_to_keep;
     return new AclTransformer::PostOperation(param);
+}
+
+static AclTransformer::Operation *PostSamplingOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::PostSamplingParam param;
+    if (paramJson.contains("topK")) {
+        param.topK = paramJson["topK"].get<int>();
+    }
+    if (paramJson.contains("topP")) {
+        param.topP = paramJson["topP"].get<float>();
+    }
+    ASD_LOG(INFO) << "PostSamplingParam topK:" << param.topK;
+    ASD_LOG(INFO) << "PostSamplingParam topP:" << param.topP;
+    return new AclTransformer::PostSamplingOperation(param);
 }
 
 static AclTransformer::Operation *AllReduceOperationCreate(const nlohmann::json &paramJson)
@@ -1158,6 +1173,7 @@ static AclTransformer::Operation *RmsNormQuantOperationCreate(const nlohmann::js
 
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"PostOperation", &PostOperationCreate},
+    {"PostSamplingOperation", &PostSamplingOperationCreate},
     {"RmsPreNormQuantOperation", &RmsPreNormQuantOperationCreate},
     {"RmsNormQuantOperation", &RmsNormQuantOperationCreate},
     {"AllReduceOperation", &AllReduceOperationCreate},
