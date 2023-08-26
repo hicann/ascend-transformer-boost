@@ -5,7 +5,7 @@ import os
 
 CHATGLM2_6B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "examples/chatglm2_6b")
 RUN_SHELL_PATH = os.path.join(CHATGLM2_6B_PATH, "run.sh")
-MODEL_SCRIPT_PATH = os.path.join(CHATGLM2_6B_PATH, "modeling_chatglm_model_flashattention.py")
+MODEL_SCRIPT_PATH = os.path.join(CHATGLM2_6B_PATH, "modeling_chatglm.py")
 
 class Chatglm2ModelTest(model_test.ModelTest):
     def __init__(self, model_name) -> None:

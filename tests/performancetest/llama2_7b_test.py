@@ -5,7 +5,7 @@ import os
 
 LLAMA2_7B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "examples/llama")
 RUN_SHELL_PATH = os.path.join(LLAMA2_7B_PATH, "run.sh")
-MODEL_SCRIPT_PATH = os.path.join(LLAMA2_7B_PATH, "transformers_patch/layer/modeling_layer_performance.py")
+MODEL_SCRIPT_NAME = os.path.join(LLAMA2_7B_PATH, "transformers_patch/layer/modeling_layer_performance.py")
 
 class Llama2_7b_ModelTest(model_test.ModelTest):
     def __init__(self, model_name) -> None:
@@ -18,9 +18,8 @@ class Llama2_7b_ModelTest(model_test.ModelTest):
         print("-----llama_test-----")
         print(f"[MODEL]: llama2_7b")
         print(f"[RUN_SHELL_PATH]: {RUN_SHELL_PATH}")
-        print(f"[MODEL_SCRIPT_PATH]: {MODEL_SCRIPT_PATH}")
-        # os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama2-7b {MODEL_SCRIPT_PATH} ")
-        os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama2-7b")
+        print(f"[MODEL_SCRIPT_NAME]: {MODEL_SCRIPT_NAME}")
+        os.system(f"bash {RUN_SHELL_PATH} --zhipu --llama2-7b {MODEL_SCRIPT_NAME}")
         if not os.path.exists(performance_file_path):
             print(f"file {performance_file_path} not exist!")
             return
