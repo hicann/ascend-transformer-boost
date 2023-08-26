@@ -27,6 +27,7 @@
 #include "torch/model_v2/chatglm2_6b/chatglm2_6b_decoder_model.h"
 #include "torch/model_v2/glm130b/glm130b_decoder_model.h"
 #include "torch/model_v2/glm130b/glm130b_decoder_fusion_model.h"
+#include "torch/model_v2/glm130b/glm130b_decoder_all_model.h"
 #include "torch/model_v2/chatglm2_6b/chatglm2_6b_encoder_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_without_fusion_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_encoder_without_fusion_model.h"
@@ -86,6 +87,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::Bloom7BDecoderModel>(param);
     } else if (modelName_ == "ChatGlm6BEncoderQuantTorch") {
         model_ = std::make_shared<AclTransformer::ChatGlm6BEncoderQuantTorch>(param);
+    } else if (modelName_ == "Glm130BDecoderAllModel") {
+        model_ = std::make_shared<AclTransformer::Glm130BDecoderAllModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
