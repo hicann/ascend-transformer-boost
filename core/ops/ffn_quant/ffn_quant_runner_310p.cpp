@@ -80,15 +80,11 @@ AsdOps::Status FfnQuantOpsRunner310P::SetupKernelGraphNz(const RunnerVariantPack
 
     ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString({0, 0}) << "]";
     ViewFunc CheckDimB = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        int64_t bLastDim = oldDims.at(oldDims.size() - 1);
-        const int64_t blockDim = 16;
-        if (bLastDim != blockDim || oldDims.size() < dimSize) {
-            newDims = {1, bLastDim / blockDim, oldDims.at(0), blockDim};
-        }
+        newDims = oldDims;
         oriDimB_ = {newDims.at(2), newDims.at(1) * newDims.at(3)};
     };
     matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB, {0, 0}})};
-    matmulNode.inTensors = {&transdata0ResultTensor, &weightTensor, &biasTensor,&scaleTensor};
+    matmulNode.inTensors = {&transdata0ResultTensor, &weightTensor, &biasTensor, &scaleTensor};
     matmulNode.outTensors = {&matmulResultTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     matmulNode.inTensorViewFuncs.at(1) = CheckDimB;
@@ -217,7 +213,7 @@ AsdOps::Status FfnQuantOpsRunner310P::SetupKernelGraphNd(const RunnerVariantPack
     ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString({0, 0}) << "]";
     matmulNode.opDesc = {0, "MatMulOperation",
                          AsdOps::OpParam::MatMul({param_.transposeA, !param_.transposeB, {0, 0}})};
-    matmulNode.inTensors = {&transdata0ResultTensor, &transdata1ResultTensor,&biasTensor,&scaleTensor};
+    matmulNode.inTensors = {&transdata0ResultTensor, &transdata1ResultTensor, &biasTensor, &scaleTensor};
     matmulNode.outTensors = {&matmulResultTensor};
     matmulNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         int64_t dim0, dim1, dim2;
@@ -286,10 +282,10 @@ AsdOps::Status FfnQuantOpsRunner310P::SetupKernelGraphNd(const RunnerVariantPack
 
 AsdOps::Status FfnQuantOpsRunner310P::SetupKernelGraph(const RunnerVariantPack &runnerVariantPack)
 {
-    if (runnerVariantPack.inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ){
-        return SetupKernelGraphNz(runnerVariantPack);  
-    }else{
+    if (runnerVariantPack.inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ) {
+        return SetupKernelGraphNz(runnerVariantPack);
+    } else {
         return SetupKernelGraphNd(runnerVariantPack);
-    } 
+    }
 }
 } // namespace AclTransformer

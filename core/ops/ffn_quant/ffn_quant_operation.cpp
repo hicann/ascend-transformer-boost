@@ -42,8 +42,13 @@ AsdOps::Status FfnQuantOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::T
                                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0).format = inTensors.at(0).desc.format;
-    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
-                                 inTensors.at(1).desc.dims[0]};
+    if (inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ) {
+        outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
+                                    inTensors.at(1).desc.dims[2]}; // to do shape
+    } else {
+        outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
+                                    inTensors.at(1).desc.dims[0]}; // to do shape
+    }
     outTensorDescs.at(0).dtype = AsdOps::TENSOR_DTYPE_FLOAT16;
 
     return AsdOps::Status::OkStatus();
