@@ -45,8 +45,6 @@ enum BaiChuan17BLayerEncoderTensorId {
     INTERMIDATE_INPUTNORMOUT,
     INTERMIDATE_QKVMIXEDLINEAROUT,
     INTERMIDATE_POSITIONEMBEDQ,
-    INTERMIDATE_POSITIONEMBEDK,
-    INTERMIDATE_MIXEDV,
     INTERMIDATE_SELFOUT,
     INTERMIDATE_SELFLINEAROUT,
     INTERMIDATE_SELFRESIDUALADDOUT,
@@ -56,7 +54,7 @@ enum BaiChuan17BLayerEncoderTensorId {
 
 static const uint64_t IN_TENSOR_COUNT = 14;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 10;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 8;
 static const uint64_t NODE_COUNT = 9;
 
 BaiChuan17BLayerEncoderOperation::BaiChuan17BLayerEncoderOperation(const BaiChuan17BLayerParam &param)
@@ -91,7 +89,7 @@ BaiChuan17BLayerEncoderOperation::BaiChuan17BLayerEncoderOperation(const BaiChua
     positionEmbeddingParam.headNum = param_.headNum;
     positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation(positionEmbeddingParam));
     positionEmbeddingNode.inTensorIds = {INTERMIDATE_QKVMIXEDLINEAROUT, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
-    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_MIXEDV};
+    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
     AclTransformer::SelfAttentionParam selfAttentionParam;
     selfAttentionParam.dk = param_.dk;
@@ -109,10 +107,6 @@ BaiChuan17BLayerEncoderOperation::BaiChuan17BLayerEncoderOperation(const BaiChua
     selfResidualAddNode.inTensorIds = {IN_HIDDENSTATES, INTERMIDATE_SELFLINEAROUT};
     selfResidualAddNode.outTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT};
     selfResidualAddNode.inTensorViewFuncs.resize(selfResidualAddNode.inTensorIds.size());
-    selfResidualAddNode.inTensorViewFuncs.at(1) = [=](const AsdOps::SVector<int64_t> &oldDims,
-                                                      AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(1), oldDims.at(0), oldDims.at(2)};
-    };
 
     selfNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT};
