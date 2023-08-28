@@ -6,7 +6,7 @@
 # fi
 export ACLTRANSFORMER_PLAN_EXECUTE_ASYNC=1
 export TASK_QUEUE_ENABLE=1
-cp -f SwissArmyTransformer/model/transformer_decoder.py SwissArmyTransformer/model/transformer.py
+cp -f SwissArmyTransformer/model/transformer_encoder_decoder_fusion_precision.py SwissArmyTransformer/model/transformer.py
 cp -f SwissArmyTransformer/model/official/glm130B_model_decoder.py SwissArmyTransformer/model/official/glm130B_model.py
 cp -f SwissArmyTransformer/generation/autoregressive_sampling_origin.py SwissArmyTransformer/generation/autoregressive_sampling.py
 cp -f evaluation/model_origin.py evaluation/model.py
