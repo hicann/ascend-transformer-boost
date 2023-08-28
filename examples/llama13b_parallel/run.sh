@@ -31,6 +31,8 @@ function fn_prepare_llama1_13b_parallel()
         ln -s /data/acltransformer_testdata/weights/llama/llama-13b-part_model_2/tokenizer/tokenizer_config.json $MODEL_TARGET_DIR/tokenizer/tokenizer_config.json
         ln -s /data/acltransformer_testdata/weights/llama/llama-13b-part_model_2/tokenizer/tokenizer.model $MODEL_TARGET_DIR/tokenizer/tokenizer.model
     fi
+
+    cp $MODEL_TARGET_DIR/modeling_llama_parallel_performance.py $TRANSFORMER_PACKAGE_PATH/models/llama/modeling_llama.py
 }
 
 function fn_clean()
