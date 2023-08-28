@@ -72,7 +72,7 @@ PositionEmbedding1dMixedFusionOpsRunner::PositionEmbedding1dMixedFusionOpsRunner
     };
 
     const size_t ropeViewSize = 4;
-    ropeNode.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPE}};
+    ropeNode.opDesc = {0, "RopeOperation", AsdOps::OpParam::Rope{AsdOps::OpParam::Rope::ROPE, param_.rotaryCoeff}};
     ropeNode.inTensors = {&qLayer, &kLayer, &cos, &sin, &seqLen};
     ropeNode.outTensors = {&qEmbedded, &kEmbedded};
     ropeNode.inTensorViewFuncs.resize(ropeViewSize);
