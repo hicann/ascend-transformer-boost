@@ -66,6 +66,7 @@
 #include "models/llama7b/llama7blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_fusion_operation.h"
 #include "models/baichuan1_7b/baichuan1_7b_layer_decoder_operation.h"
+#include "models/baichuan1_7b/baichuan1_7b_layer_encoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_encoder_operation.h"
 #include "models/llama13b/llama13blayer_parallel_operation.h"
@@ -79,6 +80,17 @@
 #include "models/gptneox20b/gptneox20blayer_decoder_flashattention_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
+
+static AclTransformer::Operation *BaiChuan17BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan17BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::BaiChuan17BLayerEncoderOperation(param);
+}
 
 static AclTransformer::Operation *LLaMA7BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
 {
@@ -1185,6 +1197,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LLaMA7BLayerEncoderOperation", &LLaMA7BLayerEncoderOperationCreate},
     {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
     {"BaiChuan17BLayerDecoderOperation", &BaiChuan17BLayerDecoderOperationCreate},
+    {"BaiChuan17BLayerEncoderOperation", &BaiChuan17BLayerEncoderOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate},
     {"LmHeadParallelOperation", &LmHeadParallelOperationCreate},
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},

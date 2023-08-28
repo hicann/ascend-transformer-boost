@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-export ACLTRANSFORMER_HOME_PATH=`pwd`
-export ASDOPS_HOME_PATH=`pwd`
+CURRENT_DIR=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
+export ACLTRANSFORMER_HOME_PATH=$CURRENT_DIR
+export ASDOPS_HOME_PATH=$CURRENT_DIR
 export ASDOPS_OPS_PATH=$ACLTRANSFORMER_HOME_PATH/ops
 export LD_LIBRARY_PATH=$ACLTRANSFORMER_HOME_PATH/lib:$ACLTRANSFORMER_HOME_PATH/examples:$LD_LIBRARY_PATH
 export PATH=$ACLTRANSFORMER_HOME_PATH/bin:$PATH

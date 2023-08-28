@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "baichuan1_7b_layer_decoder_operation.h"
+#include "baichuan1_7b_layer_encoder_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
-#include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 
 namespace AclTransformer {
-enum BaiChuan17BLayerTensorId {
+enum BaiChuan17BLayerEncoderTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
     IN_QKVMIXEDLINEARWEIGHT,
@@ -40,16 +39,12 @@ enum BaiChuan17BLayerTensorId {
     IN_COSTABLE,
     IN_SINTABLE,
     IN_ATTENTIONMASK,
-    IN_PASTKEY,
-    IN_PASTVALUE,
     OUT_BAICHUAN17BLAYEROUT,
     OUT_PRESENTKEY,
     OUT_PRESENTVALUE,
     INTERMIDATE_INPUTNORMOUT,
     INTERMIDATE_QKVMIXEDLINEAROUT,
     INTERMIDATE_POSITIONEMBEDQ,
-    INTERMIDATE_POSITIONEMBEDK,
-    INTERMIDATE_MIXEDV,
     INTERMIDATE_SELFOUT,
     INTERMIDATE_SELFLINEAROUT,
     INTERMIDATE_SELFRESIDUALADDOUT,
@@ -57,13 +52,13 @@ enum BaiChuan17BLayerTensorId {
     INTERMIDATE_MLPOUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 16;
+static const uint64_t IN_TENSOR_COUNT = 14;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 10;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 8;
 static const uint64_t NODE_COUNT = 9;
 
-BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChuan17BLayerParam &param)
-    : GraphOperation("BaiChuan17BLayerDecoderOperation"), param_(param)
+BaiChuan17BLayerEncoderOperation::BaiChuan17BLayerEncoderOperation(const BaiChuan17BLayerParam &param)
+    : GraphOperation("BaiChuan17BLayerEncoderOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -74,7 +69,7 @@ BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChua
     GraphOperation::Node &inputNormNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &qkvLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &positionEmbeddingNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &selfAttentionKvCacheNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &selfAttentionNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfOutLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfResidualAddNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfNormNode = opGraph_.nodes.at(nodeId++);
@@ -94,21 +89,15 @@ BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChua
     positionEmbeddingParam.headNum = param_.headNum;
     positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation(positionEmbeddingParam));
     positionEmbeddingNode.inTensorIds = {INTERMIDATE_QKVMIXEDLINEAROUT, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
-    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_MIXEDV};
+    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
-    selfAttentionKvCacheParam.dk = param_.dk;
-    selfAttentionKvCacheParam.headNum = param_.headNum;
-    selfAttentionKvCacheParam.model = "baichuan1_7b";
-    selfAttentionKvCacheNode.operation.reset(
-        new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam));
-    selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
-                                            INTERMIDATE_POSITIONEMBEDK,
-                                            INTERMIDATE_MIXEDV,
-                                            IN_ATTENTIONMASK,
-                                            IN_PASTKEY,
-                                            IN_PASTVALUE};
-    selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
+    AclTransformer::SelfAttentionParam selfAttentionParam;
+    selfAttentionParam.dk = param_.dk;
+    selfAttentionParam.headNum = param_.headNum;
+    selfAttentionParam.model = "baichuan1_7b";
+    selfAttentionNode.operation.reset(new AclTransformer::SelfAttentionOperation(selfAttentionParam));
+    selfAttentionNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE, IN_ATTENTIONMASK};
+    selfAttentionNode.outTensorIds = {INTERMIDATE_SELFOUT};
 
     selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
     selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
@@ -117,6 +106,7 @@ BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChua
     selfResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
     selfResidualAddNode.inTensorIds = {IN_HIDDENSTATES, INTERMIDATE_SELFLINEAROUT};
     selfResidualAddNode.outTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT};
+    selfResidualAddNode.inTensorViewFuncs.resize(selfResidualAddNode.inTensorIds.size());
 
     selfNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT};
@@ -131,22 +121,23 @@ BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChua
     mlpResidualAddNode.outTensorIds = {OUT_BAICHUAN17BLAYEROUT};
 }
 
-BaiChuan17BLayerDecoderOperation::~BaiChuan17BLayerDecoderOperation() {}
+BaiChuan17BLayerEncoderOperation::~BaiChuan17BLayerEncoderOperation() {}
 
-uint64_t BaiChuan17BLayerDecoderOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t BaiChuan17BLayerEncoderOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t BaiChuan17BLayerDecoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t BaiChuan17BLayerEncoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status BaiChuan17BLayerDecoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                     AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+AsdOps::Status
+BaiChuan17BLayerEncoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                 AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
-    const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);
     outTensorDescs.at(0) = inTensors.at(0).desc;
-    outTensorDescs.at(1) = keyTensor.desc;
-    outTensorDescs.at(1).dims.at(1) += 1;
-    outTensorDescs.at(2) = valueTensor.desc;
-    outTensorDescs.at(2).dims.at(1) += 1;
+    outTensorDescs.at(1) = inTensors.at(0).desc;
+    outTensorDescs.at(1).dims.at(0) = inTensors.at(0).desc.dims.at(0);
+    outTensorDescs.at(1).dims.at(1) = inTensors.at(0).desc.dims.at(1);
+    outTensorDescs.at(1).dims.at(2) = param_.headNum;
+    outTensorDescs.at(1).dims.push_back(param_.dk);
+    outTensorDescs.at(2) = outTensorDescs.at(1);
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
