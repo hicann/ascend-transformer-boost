@@ -5,4 +5,5 @@ settings.json
 fusion_result.json
 cache
 testdata
-.gitignore 
+.gitignore
+.vscode
