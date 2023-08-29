@@ -100,7 +100,7 @@ void BaiChuan17BDecoderModel::BuildGraph()
    graph_.weightTensors.resize(weightTensorSize);
 
    graph_.inTensors.resize(IN_TENSOR_PASTK_V_START + 2 * param_.layerNum);
-   graph_.outTensors.resize(OUT_TENSOR_MAX);
+   graph_.outTensors.resize(OUT_TENSOR_MAX + 2 * param_.layerNum);
 
    const int nodeSize = param_.layerNum + OPERATION_COUNT_BEFORE_LAYER + OPERATION_COUNT_AFTER_LAYER;
    ASD_LOG(INFO) << "BaiChuan1_7BDecoderModel nodeSize is " << nodeSize;

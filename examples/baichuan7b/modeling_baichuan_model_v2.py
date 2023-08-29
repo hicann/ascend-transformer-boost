@@ -55,7 +55,7 @@ emb = torch.cat((freqs, freqs), dim=-1)
 cosTable = emb.cos().half().npu()
 sinTable = emb.sin().half().npu()
 
-biasCache = torch.tril(torch.ones((4096, 4096), dtype=torch.bool)).view(1, 1, 4096, 2096).npu()
+biasCache = torch.tril(torch.ones((4096, 4096), dtype=torch.bool)).view(1, 1, 4096, 4096).npu()
 biasCache = ~biasCache
 mask_value = torch.finfo(torch.float32).min
 maskAttenCache = torch.masked_fill(torch.zeros(size=(1, 1, 4096, 4096)).npu(), biasCache, mask_value)
