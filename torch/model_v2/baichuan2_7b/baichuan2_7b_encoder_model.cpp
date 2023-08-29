@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "baichuan1_7b_encoder_model.h"
+#include "baichuan2_7b_encoder_model.h"
 #include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/embedding_operation.h"
@@ -27,7 +27,7 @@ const int WEIGHT_COUNT_PER_LAYER = 7;
 const int WORDEMBEDDINGNODE_WEIGHT_COUNT = 1;
 const int FINALNORMNODE_WEIGHT_COUNT = 1;
 const int OPERATION_COUNT_BEFORE_LAYER = 1;
-const int INTERMEDIATETENSOR_COUNT_BEFORE_LAYER = 3;
+const int INTERMEDIATETENSOR_COUNT_BEFORE_LAYER = 1;
 const int OPERATION_COUNT_AFTER_LAYER = 1;
 const int IN_TENSOR_COUNT=6;
 const int OUT_BASE_TENSOR_COUNT=1;
@@ -35,8 +35,8 @@ const int OUT_BASE_TENSOR_COUNT=1;
 enum InTensorId {
     IN_TENSOR_INPUTIDS = 0,
     IN_TENSOR_POSITIONID,
-    IN_TENSOR_COSTABLE,
-    IN_TENSOR_SINTABLE,
+    IN_TENSOR_COSEMBED,
+    IN_TENSOR_SINEMBED,
     IN_TENSOR_ATTENTIONMASK,
     IN_TENSOR_SEQLEN,
 };
@@ -45,29 +45,29 @@ enum OutTensorId {
     OUT_TENSOR_HIDDENSTATES = 0,
 };
 
-void BaiChuan17BEncoderModel::Param::FromString(const std::string &param)
+void BaiChuan27BEncoderModel::Param::FromString(const std::string &param)
 {
     nlohmann::json paramJson = nlohmann::json::parse(param);
     rmsNormEps = paramJson["rmsNormEps"].get<double>();
     headNum = paramJson["headNum"].get<int>();
     dk = paramJson["dk"].get<int>();
     layerNum = paramJson["layerNum"].get<int>();
-    ASD_LOG(INFO) << "BaiChuan17BEncoderModel param rmsNormEps:" << rmsNormEps << ", headNum:" << headNum
+    ASD_LOG(INFO) << "BaiChuan27BEncoderModel param rmsNormEps:" << rmsNormEps << ", headNum:" << headNum
                   << ", dk:" << dk << ", layerNum:" << layerNum;
 }
 
-BaiChuan17BEncoderModel::BaiChuan17BEncoderModel(const std::string &param) : Model("BaiChuan17BEncoderModel", param)
+BaiChuan27BEncoderModel::BaiChuan27BEncoderModel(const std::string &param) : Model("BaiChuan27BEncoderModel", param)
 {
     param_.FromString(param);
 }
 
-BaiChuan17BEncoderModel::~BaiChuan17BEncoderModel() {}
+BaiChuan27BEncoderModel::~BaiChuan27BEncoderModel() {}
 
-uint64_t BaiChuan17BEncoderModel::GetInTensorCount() const { return graph_.inTensors.size(); }
+uint64_t BaiChuan27BEncoderModel::GetInTensorCount() const { return graph_.inTensors.size(); }
 
-uint64_t BaiChuan17BEncoderModel::GetOutTensorCount() const { return graph_.outTensors.size(); }
+uint64_t BaiChuan27BEncoderModel::GetOutTensorCount() const { return graph_.outTensors.size(); }
 
-AsdOps::Status BaiChuan17BEncoderModel::InferShape(const std::vector<AsdOps::Tensor> &inTensors,
+AsdOps::Status BaiChuan27BEncoderModel::InferShape(const std::vector<AsdOps::Tensor> &inTensors,
                                                    std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (outTensorDescs.size() != GetOutTensorCount()) {
@@ -91,7 +91,7 @@ AsdOps::Status BaiChuan17BEncoderModel::InferShape(const std::vector<AsdOps::Ten
     return AsdOps::Status::OkStatus();
 }
 
-void BaiChuan17BEncoderModel::BuildGraph()
+void BaiChuan27BEncoderModel::BuildGraph()
 {
     const int weightTensorSize =
         WORDEMBEDDINGNODE_WEIGHT_COUNT + WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT;
@@ -103,25 +103,18 @@ void BaiChuan17BEncoderModel::BuildGraph()
     graph_.outTensors.resize(OUT_BASE_TENSOR_COUNT + param_.layerNum * 2);
 
     const int nodeSize = param_.layerNum + OPERATION_COUNT_BEFORE_LAYER + OPERATION_COUNT_AFTER_LAYER;
-    ASD_LOG(INFO) << "BaiChuan17BEncoderModel nodeSize is " << nodeSize;
+    ASD_LOG(INFO) << "BaiChuan27BEncoderModel nodeSize is " << nodeSize;
     graph_.nodes.resize(nodeSize);
 
-    graph_.internalTensors.resize(graph_.nodes.size() + 1);
+    graph_.internalTensors.resize(graph_.nodes.size() - 1);
 
     int nodeId = 0;
-    auto &embeddingNode = graph_.nodes.at(nodeId++);
-    embeddingNode.operation = std::make_shared<GptNeox20BLayerEmbeddingOperation>(GptNeox20BLayerEmbeddingParam());
-    embeddingNode.inTensors.resize(embeddingNode.operation->GetInTensorCount());
-    embeddingNode.outTensors.resize(embeddingNode.operation->GetOutTensorCount());
-    embeddingNode.inTensors = {&graph_.weightTensors.at(0), &graph_.inTensors.at(IN_TENSOR_INPUTIDS),
-                               &graph_.inTensors.at(IN_TENSOR_COSTABLE), &graph_.inTensors.at(IN_TENSOR_SINTABLE),
-                               &graph_.inTensors.at(IN_TENSOR_POSITIONID)};
-    embeddingNode.outTensors = {&graph_.internalTensors.at(0), &graph_.internalTensors.at(1),
-                                &graph_.internalTensors.at(2)};
+    auto &wordEmbeddingNode = graph_.nodes.at(nodeId++);
+    wordEmbeddingNode.operation = std::make_shared<EmbeddingOperation>(EmbeddingParam());
+    wordEmbeddingNode.inTensors = {&graph_.weightTensors.at(0), &graph_.inTensors.at(0)};
+    wordEmbeddingNode.outTensors = {&graph_.internalTensors.at(0)};
 
     AsdOps::Tensor *firstInTensor = &graph_.internalTensors.at(0);
-    AsdOps::Tensor *cosEmbedTensor = &graph_.internalTensors.at(1);
-    AsdOps::Tensor *sinEmbedTensor = &graph_.internalTensors.at(2);
 
     for (int layerId = 0; layerId < param_.layerNum; ++layerId) {
         auto &layerNode = graph_.nodes.at(nodeId++);
@@ -142,8 +135,8 @@ void BaiChuan17BEncoderModel::BuildGraph()
                 layerId * WEIGHT_COUNT_PER_LAYER + weightTensorId + WORDEMBEDDINGNODE_WEIGHT_COUNT);
         }
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_POSITIONID);    // positionIdTensor
-        layerNode.inTensors.at(inTensorId++) = cosEmbedTensor;                                // cosEmbed
-        layerNode.inTensors.at(inTensorId++) = sinEmbedTensor;                                // sinEmbed
+        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_COSEMBED);      // cosEmbed
+        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SINEMBED);      // sinEmbed
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK); // attentionMaskTensor
 
         layerNode.outTensors = {&graph_.internalTensors.at(INTERMEDIATETENSOR_COUNT_BEFORE_LAYER + layerId),

@@ -106,7 +106,7 @@ void BaiChuan27BDecoderModel::BuildGraph()
    ASD_LOG(INFO) << "BaiChuan2_7BDecoderModel nodeSize is " << nodeSize;
    graph_.nodes.resize(nodeSize);
 
-   graph_.internalTensors.resize(graph_.nodes.size() + 1);
+   graph_.internalTensors.resize(graph_.nodes.size() - 1);
 
    int nodeId = 0;
    auto &wordEmbeddingNode = graph_.nodes.at(nodeId++);
