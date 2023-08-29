@@ -229,15 +229,15 @@ class LlamaAttention(nn.Module):
         acl_cos_emded = torch.nn.functional.embedding(position_ids, acl_cos)
         acl_sin_emded = torch.nn.functional.embedding(position_ids, acl_sin)
         acl_query, acl_key, acl_value = self.acl_pos_operation.execute([acl_qkv, position_ids, acl_cos_emded, acl_sin_emded])
-        if np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02)
+        if np.allclose(acl_query.cpu(), test_query.cpu(), rtol=0.02, atol=0.02):
             print("==> query embed equal.")
         else:
             print("==>!!!query not equal embed.", acl_query, "true", test_query)
-        if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02)
+        if np.allclose(acl_key.cpu(), test_key.cpu(), rtol=0.02, atol=0.02):
             print("==> key embed equal.")
         else:
             print("==>!!!key not equal embed.", acl_key, "true", test_key)
-        if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02)
+        if np.allclose(acl_value.cpu(), test_value.cpu(), rtol=0.02, atol=0.02):
             print("==> value embed equal.")
         else:
             print("==>!!!value not equal embed.", acl_value, "true", test_value)
