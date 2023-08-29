@@ -5,6 +5,10 @@ import copy
 import warnings
 import re
 import sys
+import os 
+import json
+import time
+import pdb
 
 import torch
 import torch.utils.checkpoint
@@ -24,6 +28,14 @@ from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaList, GenerationConfig, ModelOutput
 
 from .configuration_chatglm import ChatGLMConfig
+
+ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
+if ACLTRANSFORMER_HOME_PATH is None:
+    raise RuntimeError(
+        "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
+LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
+                        "lib/libacltransformer_torch.so")
+torch.classes.load_library(LIB_PATH)
 
 # flags required to enable jit fusion kernels
 
@@ -531,47 +543,82 @@ class GLMBlock(torch.nn.Module):
         # MLP
         self.mlp = MLP(config, device=device)
 
+        # ========================================================================================================
+        self.acl_encoder_operation = torch.classes.OperationTorch.OperationTorch("ChatGlm2LayerEncoderOperation")
+        self.rmsNormEps = config.layernorm_epsilon
+        self.num_attention_heads_per_partition = config.num_attention_heads
+        self.hidden_size = config.hidden_size
+        self.num_attention_heads = config.num_attention_heads
+        self.hidden_size_per_attention_head = self.hidden_size // self.num_attention_heads
+        self.num_multi_query_groups_per_partition = config.multi_query_group_num
+        self.hidden_size = config.hidden_size
+
     def forward(
             self, hidden_states, attention_mask, rotary_pos_emb, kv_cache=None, use_cache=True,
     ):
-        # hidden_states: [s, b, h]
-
-        # Layer norm at the beginning of the transformer layer.
-        layernorm_output = self.input_layernorm(hidden_states)
-        # Self attention.
-        attention_output, kv_cache = self.self_attention(
-            layernorm_output,
-            attention_mask,
-            rotary_pos_emb,
-            kv_cache=kv_cache,
-            use_cache=use_cache
-        )
-
-        # Residual connection.
-        if self.apply_residual_connection_post_layernorm:
-            residual = layernorm_output
+        if hidden_states.shape[0] > 1:
+            acl_param_full = json.dumps({"rmsNormEps": self.rmsNormEps, 
+                                "headNum": self.num_attention_heads, 
+                                "is2d": True, 
+                                "numHeadsPerPartition": self.num_attention_heads, 
+                                "hiddenSizePerHead": self.hidden_size_per_attention_head,
+                                "numGroupsPerPartition": self.num_multi_query_groups_per_partition, 
+                                "transKey": True, 
+                                "dk": self.hidden_size / self.num_attention_heads, 
+                                "residualAddScale": 1, 
+                                "preScale": self.layer_number, 
+                                "postScale": self.layer_number, 
+                                "model": "chatglm2_6b",
+                                "layerId": 0})
+            self.acl_encoder_operation.set_param(acl_param_full)
+            self.input_full = [hidden_states]
+            weights = list(self.state_dict().values())
+            # weights.insert(4, self.bias_acl)
+            self.input_full.extend(weights)
+            self.input_full.append(rotary_pos_emb)
+            self.input_full.append(attention_mask)
+            test_glmBlockOut, test_presentKey, test_presentValue = self.acl_encoder_operation.execute(
+                self.input_full)
+            outputs = (test_glmBlockOut, (test_presentKey, test_presentValue))
+            return outputs
         else:
-            residual = hidden_states
+            # ignore !!!!!!!!!!!!!!!!!!!!!!!!!!
+            # Layer norm at the beginning of the transformer layer.
+            layernorm_output = self.input_layernorm(hidden_states)
+            # Self attention.
+            attention_output, kv_cache = self.self_attention(
+                layernorm_output,
+                attention_mask,
+                rotary_pos_emb,
+                kv_cache=kv_cache,
+                use_cache=use_cache
+            )
 
-        layernorm_input = torch.nn.functional.dropout(attention_output, p=self.hidden_dropout, training=self.training)
-        layernorm_input = residual + layernorm_input
+            # Residual connection.
+            if self.apply_residual_connection_post_layernorm:
+                residual = layernorm_output
+            else:
+                residual = hidden_states
 
-        # Layer norm post the self attention.
-        layernorm_output = self.post_attention_layernorm(layernorm_input)
+            layernorm_input = torch.nn.functional.dropout(attention_output, p=self.hidden_dropout, training=self.training)
+            layernorm_input = residual + layernorm_input
 
-        # MLP.
-        mlp_output = self.mlp(layernorm_output)
+            # Layer norm post the self attention.
+            layernorm_output = self.post_attention_layernorm(layernorm_input)
 
-        # Second residual connection.
-        if self.apply_residual_connection_post_layernorm:
-            residual = layernorm_output
-        else:
-            residual = layernorm_input
+            # MLP.
+            mlp_output = self.mlp(layernorm_output)
 
-        output = torch.nn.functional.dropout(mlp_output, p=self.hidden_dropout, training=self.training)
-        output = residual + output
+            # Second residual connection.
+            if self.apply_residual_connection_post_layernorm:
+                residual = layernorm_output
+            else:
+                residual = layernorm_input
 
-        return output, kv_cache
+            output = torch.nn.functional.dropout(mlp_output, p=self.hidden_dropout, training=self.training)
+            output = residual + output
+
+            return output, kv_cache
 
 
 class GLMTransformer(torch.nn.Module):
@@ -600,6 +647,55 @@ class GLMTransformer(torch.nn.Module):
 
         self.gradient_checkpointing = False
 
+        # ======================================================================================
+        self.max_sequence_length = 2048
+        self.num_attention_heads = config.num_attention_heads
+        self.num_attention_heads_per_partition = config.num_attention_heads
+        self.num_multi_query_groups_per_partition = config.multi_query_group_num
+        self.hidden_size = config.hidden_size
+        self.hidden_size_per_attention_head = self.hidden_size // self.num_attention_heads
+        self.token_num = 0
+        self.rmsNormEps = config.layernorm_epsilon
+
+        self.batch = 1
+
+        self.kv_cache = torch.zeros(2,
+                            self.num_layers,
+                            self.batch,
+                            self.max_sequence_length,
+                            self.num_attention_heads,
+                            self.hidden_size_per_attention_head,
+                            device='cpu').npu().half().contiguous()
+        self.k_cache_input = torch.as_tensor(
+            self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, self.batch, self.max_sequence_length, self.hidden_size)
+        self.v_cache_input = torch.as_tensor(
+            self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, self.batch, self.max_sequence_length, self.hidden_size)
+        
+        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderFlashAttentionModel")
+        self.acl_param = json.dumps({
+                                "rmsNormEps": self.rmsNormEps,
+                                "headNum": self.num_attention_heads,
+                                "numHeadsPerPartition": self.num_attention_heads_per_partition,
+                                "hiddenSizePerHead": self.hidden_size_per_attention_head,
+                                "numGroupsPerPartition": self.num_multi_query_groups_per_partition,
+                                "transKey": True, 
+                                "dk": self.hidden_size / self.num_attention_heads,
+                                "residualAddScale": 1, 
+                                "layerNum": self.num_layers,
+                                "tokenOffset": [self.token_num] * self.batch, 
+                                "seqLen": [1] * self.batch})
+        self.acl_decoder_operation.set_param(self.acl_param)
+
+        self.attention_mask_max = torch.full((self.max_sequence_length, self.max_sequence_length), 0, dtype=torch.half).npu()
+        self.seq_len = None
+        self.token_offset = torch.full((self.batch,), 0, dtype=torch.int32, device=self.kv_cache.device)
+
+        self.acl_decoder_operation_inputs = [None] * (7 + self.num_layers)
+        for i in range(self.num_layers):
+            self.acl_decoder_operation_inputs[7 + i] = torch.tensor([i], dtype=torch.int32).npu()
+
+        self.weightFlag = False
+
     def _get_layer(self, layer_number):
         return self.layers[layer_number]
 
@@ -608,6 +704,8 @@ class GLMTransformer(torch.nn.Module):
             use_cache: Optional[bool] = True,
             output_hidden_states: Optional[bool] = False,
     ):
+        # print("======================= hidden_states init check ========================")
+        # print(hidden_states.shape)
         if not kv_caches:
             kv_caches = [None for _ in range(self.num_layers)]
         presents = () if use_cache else None
@@ -620,41 +718,135 @@ class GLMTransformer(torch.nn.Module):
 
         all_self_attentions = None
         all_hidden_states = () if output_hidden_states else None
-        for index in range(self.num_layers):
-            if output_hidden_states:
-                all_hidden_states = all_hidden_states + (hidden_states,)
 
-            layer = self._get_layer(index)
-            if self.gradient_checkpointing and self.training:
-                layer_ret = torch.utils.checkpoint.checkpoint(
-                    layer,
-                    hidden_states,
-                    attention_mask,
-                    rotary_pos_emb,
-                    kv_caches[index],
-                    use_cache
+        # ========================================================================================================
+        if hidden_states.shape[0] > 1:
+
+            weights = list(self.state_dict().values())
+            self.acl_decoder_operation.set_weight(weights)
+        # else:
+        #     self.token_num = self.token_num + 1
+        #     self.token_offset[0] =  self.token_num
+
+        if hidden_states.shape[0] > 1 and attention_mask is None:
+            # [b, 1, sq, sk] sq==sk when first token
+            attention_mask = torch.ones(hidden_states.size(1), 1, hidden_states.size(0),hidden_states.size(0), dtype=torch.bool, device="npu")
+            attention_mask = attention_mask.tril()
+            attention_mask = ~attention_mask
+
+        if hidden_states.shape[0] > 1:
+            for index in range(self.num_layers):
+                if output_hidden_states:
+                    all_hidden_states = all_hidden_states + (hidden_states,)
+
+                layer = self._get_layer(index)
+                if self.gradient_checkpointing and self.training:
+                    layer_ret = torch.utils.checkpoint.checkpoint(
+                        layer,
+                        hidden_states,
+                        attention_mask,
+                        rotary_pos_emb,
+                        kv_caches[index],
+                        use_cache
+                    )
+                else:
+                    layer_ret = layer(
+                        hidden_states,
+                        attention_mask,
+                        rotary_pos_emb,
+                        kv_cache=kv_caches[index],
+                        use_cache=use_cache
+                    )
+                hidden_states, kv_cache = layer_ret
+                temp_k, temp_v = kv_cache
+                key_layer_acl = temp_k.clone()
+                value_layer_acl = temp_v.clone()
+                key_layer_acl = key_layer_acl.unsqueeze(-2)
+                key_layer_acl = key_layer_acl.expand(
+                    -1, -1, -1, self.num_attention_heads_per_partition // self.num_multi_query_groups_per_partition, -1
                 )
-            else:
-                layer_ret = layer(
-                    hidden_states,
-                    attention_mask,
-                    rotary_pos_emb,
-                    kv_cache=kv_caches[index],
-                    use_cache=use_cache
+                key_layer_acl = key_layer_acl.contiguous().view(
+                    key_layer_acl.size()[:2] + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
                 )
-            hidden_states, kv_cache = layer_ret
-            if use_cache:
-                presents = presents + (kv_cache,)
+                value_layer_acl = value_layer_acl.unsqueeze(-2)
+                value_layer_acl = value_layer_acl.expand(
+                    -1, -1, -1, self.num_attention_heads_per_partition // self.num_multi_query_groups_per_partition, -1
+                )
+                value_layer_acl = value_layer_acl.contiguous().view(
+                    value_layer_acl.size()[:2] + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
+                )
+
+                # [22,1,32,128] sq bs gp head_size
+                self.kv_cache[0, index, 0, :hidden_states.shape[0], ...] = key_layer_acl.permute(1,0,2,3)[0, ...] # batch = 1
+                self.kv_cache[1, index, 0, :hidden_states.shape[0], ...] = value_layer_acl.permute(1,0,2,3)[0, ...] # batch = 1
+                self.token_num = hidden_states.shape[0]
+                self.seq_len = torch.tensor([1], device=self.kv_cache.device)
+                if use_cache:
+                    presents = presents + (kv_cache, )
+        else:
+            self.token_num = self.token_num + 1
+            self.token_offset[0] =  self.token_num
+            acl_param = json.dumps({
+                                    "tokenOffset": [self.token_num], 
+                                    "seqLen": [1]})
+            self.acl_decoder_operation_inputs[0] = hidden_states
+            self.acl_decoder_operation_inputs[1] = rotary_pos_emb
+            self.acl_decoder_operation_inputs[2] = self.k_cache_input
+            self.acl_decoder_operation_inputs[3] = self.v_cache_input
+            self.acl_decoder_operation_inputs[4] = self.attention_mask_max
+            self.acl_decoder_operation_inputs[5] = self.seq_len
+            self.acl_decoder_operation_inputs[6] = self.token_offset
+            # torch.save(hidden_states.cpu(), "./tensor_test/hidden_states.pth")
+            # torch.save(self.k_cache_input.cpu(), "./tensor_test/k_cache.pth")
+            # torch.save(self.v_cache_input.cpu(), "./tensor_test/v_cache.pth")
+
+            hidden_states = self.acl_decoder_operation.execute(self.acl_decoder_operation_inputs, acl_param)[0]
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
-
-        # Final layer norm.
-        if self.post_layer_norm:
-            hidden_states = self.final_layernorm(hidden_states)
+        if hidden_states.shape[0] > 1:
+            # Final layer norm.
+            if self.post_layer_norm:
+                hidden_states = self.final_layernorm(hidden_states)
 
         return hidden_states, presents, all_hidden_states, all_self_attentions
 
+class TopPLogits(torch.nn.Module):
+    def __init__(self, top_p: float, top_k: float, temperature: float, 
+                 filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+        super(TopPLogits, self).__init__()
+        top_p = float(top_p)
+        if top_p < 0 or top_p > 1.0:
+            raise ValueError(f"'top_p' has to be a float > 0 and < 1, but is {top_p}")
+        if not isinstance(min_tokens_to_keep, int) or (min_tokens_to_keep < 0):
+            raise ValueError(f"'min_tokens_to_keep' has to be a non-begative integer, but is {min_tokens_to_keep}")
+        
+        self.top_p = top_p
+        self.filter_value = filter_value
+        self.min_tokens_to_keep = min_tokens_to_keep
+        self.top_k = top_k
+        self.temperature = temperature
+    
+    def __call__(self, scores: torch.FloatTensor):
+        if self.temperature != 0:
+            scores = scores / self.temperature
+        else:
+            raise ValueError(f"'temperature has to be a float != 0 , but is {self.temperature}")
+        top_k = min(self.top_k, scores.size(-1)) # safety check
+        # remove all tokens with a probability less than the last token of the top-k
+         
+        values, indices = torch.topk(scores, top_k)
+        values = torch.flip(values, dims=[1])
+        cumulative_probs = values.softmax(dim=-1).cumsum(dim=-1)
+        
+        sorted_indices_to_remove = cumulative_probs <= (1 - self.top_p)
+        
+        if self.min_tokens_to_keep > 1:
+            sorted_indices_to_remove[..., -self.min_tokens_to_keep:] = 0
+        
+        values = values.masked_fill(sorted_indices_to_remove, self.filter_value)
+
+        return values, indices
 
 class ChatGLMPreTrainedModel(PreTrainedModel):
     """
@@ -854,6 +1046,9 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         self.transformer = ChatGLMModel(config, empty_init=empty_init, device=device)
         self.config = config
         self.quantized = False
+        self.count = 0
+        self.model_total = 0
+        self.token_total = 0
 
         if self.config.quantization_bit:
             self.quantize(self.config.quantization_bit, empty_init=True)
@@ -1014,7 +1209,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         inputs = inputs.to(self.device)
         return inputs
 
-    @torch.inference_mode()
+    @torch.no_grad()
     def chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None, max_length: int = 8192, num_beams=1,
              do_sample=True, top_p=0.8, temperature=0.8, logits_processor=None, **kwargs):
         if history is None:
@@ -1032,7 +1227,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         history = history + [(query, response)]
         return response, history
 
-    @torch.inference_mode()
+    @torch.no_grad()
     def stream_chat(self, tokenizer, query: str, history: List[Tuple[str, str]] = None, past_key_values=None,
                     max_length: int = 8192, do_sample=True, top_p=0.8, temperature=0.8, logits_processor=None,
                     return_past_key_values=False, **kwargs):
@@ -1069,7 +1264,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 else:
                     yield response, new_history
 
-    @torch.inference_mode()
+    @torch.no_grad()
     def stream_generate(
             self,
             input_ids,
@@ -1080,6 +1275,17 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             return_past_key_values=False,
             **kwargs,
     ):
+        pre_prof = False
+        model_prof = False 
+        post_prof = False
+        count = 2
+
+        # if pre_prof and self.count == count:
+        #     stream = torch.npu.current_stream()
+        #     stream.synchronize()
+        #     prof = torch.npu.profile('/home/chengyuan/glm2_check/chatglm2_6b/chatglm2_6b/cy_profiling/pre_process')
+        #     prof.__enter__()
+        pre_processing_start = time.time()
         batch_size, input_ids_seq_length = input_ids.shape[0], input_ids.shape[-1]
 
         if generation_config is None:
@@ -1133,12 +1339,25 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         stopping_criteria = self._get_stopping_criteria(
             generation_config=generation_config, stopping_criteria=stopping_criteria
         )
-        logits_warper = self._get_logits_warper(generation_config)
+        # logits_warper = self._get_logits_warper(generation_config)
 
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
+        tp = TopPLogits(generation_config.top_p, generation_config.top_k, generation_config.temperature)
+
+        # if pre_prof and self.count == count:
+        #     stream = torch.npu.current_stream()
+        #     stream.synchronize()
+        #     prof.__exit__(None,None,None)
+
+        pre_processing_end = time.time()
         while True:
+            torch.npu.synchronize()
+            input_start = time.time()
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
+
+            torch.npu.synchronize()
+            start_time = time.time()
             # forward pass to get next token
             outputs = self(
                 **model_inputs,
@@ -1146,26 +1365,72 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 output_attentions=False,
                 output_hidden_states=False,
             )
+            torch.npu.synchronize()
+            end_time = time.time()
+            # if model_prof and self.count == count:
+            #     stream = torch.npu.current_stream()
+            #     stream.synchronize()
+            #     prof.__exit__(None,None,None)
 
+            # if post_prof and self.count == count:
+            #     stream = torch.npu.current_stream()
+            #     stream.synchronize()
+            #     prof = torch.npu.profile('/home/chengyuan/glm2_check/chatglm2_6b/chatglm2_6b/cy_profiling/post_process')
+            #     prof.__enter__()
             next_token_logits = outputs.logits[:, -1, :]
 
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
-            next_token_scores = logits_warper(input_ids, next_token_scores)
+            # next_token_scores = logits_warper(input_ids, next_token_scores)
 
-            # sample
-            probs = nn.functional.softmax(next_token_scores, dim=-1)
-            if generation_config.do_sample:
-                next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
-            else:
-                next_tokens = torch.argmax(probs, dim=-1)
+            # # sample
+            # probs = nn.functional.softmax(next_token_scores, dim=-1)
+            # if generation_config.do_sample:
+            #     next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+            # else:
+            #     next_tokens = torch.argmax(probs, dim=-1)
 
             # update generated ids, model inputs, and length for next step
+            # ------------------post-processing after optimization--------------------
+            output, indices = tp(next_token_scores)
+            probs_opt = nn.functional.softmax(output, dim=-1)
+            next_tokens = torch.multinomial(probs_opt, num_samples=1)
+            for i in next_tokens:
+                next_tokens = indices[0][len(indices[0])-i-1]
+            next_tokens = next_tokens.npu()
+
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
             unfinished_sequences = unfinished_sequences.mul((sum(next_tokens != i for i in eos_token_id)).long())
+            
+            # if post_prof and self.count == count:
+            #     stream = torch.npu.current_stream()
+            #     stream.synchronize()
+            #     prof.__exit__(None,None,None)
+            torch.npu.synchronize()
+            post_processing_end = time.time()
+            # print(f"=====cy each token forward and post time: {post_processing_end - input_start}")
+
+            self.count += 1
+            self.input_generate_time = (start_time - input_start) * 1000
+            self.model_time = (end_time - start_time) * 1000
+            self.post_processing_time = (post_processing_end - end_time) * 1000
+            self.token_time = (post_processing_end - input_start) * 1000
+            if self.count == 1:
+                self.model_first = self.model_time
+                self.token_first = self.token_time
+                print(f"====cy first model time: {self.model_first}")
+                print(f"====cy first token time: {self.token_first}")
+                print(f"====cy post time: {self.post_processing_time}")
+            else:
+                self.token_total += self.token_time
+                self.model_total += self.model_time
+                print(f"====cy model time: {self.model_time}")
+                print(f"====cy token time: {self.token_time}")
+                print(f"====cy post time: {self.post_processing_time}")
+
             if return_past_key_values:
                 yield input_ids, outputs.past_key_values
             else:
@@ -1173,6 +1438,11 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
                 break
+
+        model_avg = self.model_total / (self.count - 1)
+        token_avg = self.token_total / (self.count - 1)
+        print(f"model average time {model_avg}")
+        print(f"token average time {token_avg}")
 
     def quantize(self, bits: int, empty_init=False, device=None, **kwargs):
         if bits == 0:

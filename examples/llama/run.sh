@@ -191,6 +191,29 @@ function fn_main()
     fn_clean
     fn_modeling_prepare
 
+    case "${MODEL}" in
+        "--llama1-7b")
+            fn_prepare_llama1_7b
+            ;;
+        "--llama1-13b")
+            fn_prepare_llama1_13b
+            ;;
+        "--llama2-7b")
+            fn_prepare_llama2_7b
+            ;;
+        "--llama2-13b")
+            fn_prepare_llama2_13b
+            ;;
+        "--help")
+            echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
+            ;;
+        *)
+            echo "unknown MODEL type:${MODEL}"
+            echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
+            exit -1
+            ;;
+    esac
+
     case "${RUN_OPTION}" in
         "--run")
             python3 $MODEL_TARGET_DIR/run_llama_performance.py
@@ -225,7 +248,7 @@ function fn_main()
                     echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
                     ;;
                 *)
-                    echo "unknown build type:${MODEL}"
+                    echo "unknown MODEL type:${MODEL}"
                     echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
                     exit -1
                     ;;
@@ -240,7 +263,7 @@ function fn_main()
             echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
             ;;
         *)
-            echo "unknown build type:${RUN_OPTION}"
+            echo "unknown RUN_OPTION type:${RUN_OPTION}"
             echo "run.sh [--run|--performance|--webdemo|--zhipu|--profiling] [--llama1-7b|--llama1-13b|--llama2-7b|--llama2-13b] [model script path]"
             exit -1
             ;;
