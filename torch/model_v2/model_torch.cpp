@@ -36,6 +36,7 @@
 #include "torch/model_v2/gptneox20b/gptneox20b_decoder_model.h"
 #include "torch/model_v2/gptneox20b/gptneox20b_encoder_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_decoder_model.h"
+#include "torch/model_v2/baichuan1_7b/baichuan1_7b_encoder_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -83,6 +84,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::GptNeox20BEncoderModel>(param);
     } else if (modelName_ == "BaiChuan17BDecoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan17BDecoderModel>(param);
+    } else if (modelName_ == "BaiChuan17BEncoderModel") {
+        model_ = std::make_shared<AclTransformer::BaiChuan17BEncoderModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
