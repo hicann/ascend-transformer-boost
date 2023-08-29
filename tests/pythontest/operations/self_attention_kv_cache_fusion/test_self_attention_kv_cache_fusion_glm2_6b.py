@@ -45,24 +45,27 @@ INTENSOR7 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 INTENSOR8 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/self_attention_kv_cache_fusion/chatglm2_6b", "intensor8.pth")
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/self_attention_kv_cache_fusion/chatglm2_6b", "outtensor0.pth")
+                          "tensors/operations/self_attention_kv_cache_fusion/chatglm2_6b", "outtensor0.pth")
 
 
-
-class TestSelfAttentionKvCacheFusionGlm26b(operation_test.OperationTest):
+class TestSelfAttentionKvCacheFusionGlm26bOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu(),
-                                      self.get_tensor(INTENSOR3).npu(),
-                                      self.get_tensor(INTENSOR4).npu(),
-                                      self.get_tensor(INTENSOR5).npu(),
-                                      self.get_tensor(INTENSOR6).npu(),
-                                      self.get_tensor(INTENSOR7).npu(),
-                                      self.get_tensor(INTENSOR8).npu()])
+        soc_version = torch_npu._C._npu_get_soc_version()
+        if soc_version in [104, 220, 221, 222, 223]:
+            self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
+                                          self.get_tensor(INTENSOR1).npu(),
+                                          self.get_tensor(INTENSOR2).npu(),
+                                          self.get_tensor(INTENSOR3).npu(),
+                                          self.get_tensor(INTENSOR4).npu(),
+                                          self.get_tensor(INTENSOR5).npu(),
+                                          self.get_tensor(INTENSOR6).npu(),
+                                          self.get_tensor(INTENSOR7).npu(),
+                                          self.get_tensor(INTENSOR8).npu()])
+        else:
+            print("TestSelfAttentionKvCacheFusionGlm26bOperation 310p skip")
 
 
 if __name__ == '__main__':

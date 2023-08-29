@@ -18,14 +18,14 @@ import torch
 import torch_npu
 
 
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 
 OP_NAME = "LinearOperation"
 PARAM = '{"transposeA": false, "transposeB": false, "hasBias": false}'
 
 
-class TestLinearOperation(operation_test.OperationTest):
+class TestLinearWithoutBiasOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         golden_result = torch.matmul(in_tensors[0], torch.transpose(
             in_tensors[1], 0, 1))

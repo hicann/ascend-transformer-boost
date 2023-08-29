@@ -78,8 +78,39 @@
 #include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_flashattention_operation.h"
+#include "models/llama13b/llama13blayer_fusion_quant_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
+
+static AclTransformer::Operation *LLaMA13BLayerFusionQuantOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA13BLayerFusionQuantParam param;
+    param.model = paramJson["model"].get<std::string>();
+    param.inputScale_1 = paramJson["inputScale_1"].get<float>();
+    param.inputOffset_1 = paramJson["inputOffset_1"].get<int>();
+    param.transposeA = paramJson["transposeA"].get<bool>();
+    param.transposeB = paramJson["transposeB"].get<bool>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.inputScale_2 = paramJson["inputScale_2"].get<float>();
+    param.inputOffset_2 = paramJson["inputOffset_2"].get<int>();
+    param.scale = paramJson["scale"].get<float>();
+    param.inputScale_3 = paramJson["inputScale_3"].get<float>();
+    param.inputOffset_3 = paramJson["inputOffset_3"].get<int>();
+    param.inputScale_4 = paramJson["inputScale_4"].get<float>();
+    param.inputOffset_4 = paramJson["inputOffset_4"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.rotaryCoeff = paramJson["rotaryCoeff"].get<int>();
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+    }
+    ASD_LOG(INFO) << "LLaMA13BLayerFusionQuantParam headNum:" << param.headNum
+                  << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
+    return new AclTransformer::LLaMA13BLayerFusionQuantOperation(param);
+}
 
 static AclTransformer::Operation *BaiChuan17BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
 {
@@ -1211,7 +1242,9 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"GptNeox20BLayerEmbeddingOperation", &GptNeox20BLayerEmbeddingOperationCreate},
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
     {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate},
-    {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate}};
+    {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate},
+    {"LLaMA13BLayerFusionQuantOperation", &LLaMA13BLayerFusionQuantOperationCreate}
+};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {

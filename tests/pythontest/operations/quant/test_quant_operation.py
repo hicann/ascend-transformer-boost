@@ -18,7 +18,7 @@ import torch
 import torch_npu
 import numpy as np
 
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 
 
@@ -39,16 +39,16 @@ class TestQuantOperation(operation_test.OperationTest):
         return [ref.to(torch.int8).npu()]
 
     def test_2d_half(self):
-        op = self.get_op(OP_NAME, { "input_scale" : input_scale, "input_offset" : input_offset})
-        self.my_execute(op, [input])
+        self.execute(OP_NAME, {"input_scale" : input_scale, "input_offset" : input_offset}, 
+                     [input])
     
     def golden_compare(self, out_tensor, golden_out_tensor):
-        print("out_tensor.shape", out_tensor.shape,
-                "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
-        print("out_tensor:", out_tensor,
-                ", \ngolden_oute_tensor:", golden_out_tensor)
+        # print("out_tensor.shape", out_tensor.shape,
+        #         "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        # print("out_tensor:", out_tensor,
+        #         ", \ngolden_oute_tensor:", golden_out_tensor)
         max_error = torch.max(torch.abs(out_tensor - golden_out_tensor))
-        print("max error", max_error)
+        # print("max error", max_error)
         if max_error <= 1:
             return True
         else:

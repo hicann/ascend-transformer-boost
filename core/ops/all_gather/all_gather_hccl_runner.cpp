@@ -24,5 +24,14 @@ AllGatherHcclRunner::AllGatherHcclRunner(const AllGatherParam &param)
     ASD_LOG(INFO) << "AllGatherHcclRunner::AllGatherHcclRunner called";
 }
 
+#ifdef USE_HCCL_RUNNER
+AllGatherHcclRunner::AllGatherHcclRunner(const AllGatherParam &param, void *commExt)
+    : HcclRunner("AllGatherHcclRunner", commExt, RUNNER_TYPE_ALL_GATHER),
+      param_(param)
+{
+    ASD_LOG(INFO) << "AllGatherHcclRunner::AllGatherHcclRunner Ext called";
+}
+#endif
+
 AllGatherHcclRunner::~AllGatherHcclRunner() {}
 } // namespace AclTransformer

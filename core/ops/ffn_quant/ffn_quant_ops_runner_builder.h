@@ -18,13 +18,21 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/ffn_quant.h"
 #include "ffn_quant_ops_runner.h"
+#include "ffn_quant_runner_310p.h"
 
 namespace AclTransformer {
 class FfnQuantOpsRunnerBuilder : public RunnerBuilder {
 public:
     explicit FfnQuantOpsRunnerBuilder(const FfnQuantParam &param) : param_(param) {}
     virtual ~FfnQuantOpsRunnerBuilder() = default;
-    Runner *Build() override { return new FfnQuantOpsRunner(param_); }
+    Runner *Build() override 
+    { 
+        if (AsdOps::GetSingleton<Config>().Is910B()) {
+            return new FfnQuantOpsRunner(param_);
+        } else {
+            return new FfnQuantOpsRunner310P(param_);
+        } 
+    }
 
 private:
     FfnQuantParam param_;

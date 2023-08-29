@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import numpy as np
 import sys
 import os
 import unittest
@@ -20,14 +21,14 @@ import torch_npu
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
-import numpy as np
 
 
 OP_NAME = "MlpQuantOperation"
 op_param = np.load(os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                                 "tensors/operations/mlp_quant", "test_mlp_quant_param.npy"))
 
-PARAM = {"model": "llama7b", "inputScale": float(op_param[0]), "inputOffset": int(op_param[1])}
+PARAM = {"model": "llama7b", "inputScale": float(
+    op_param[0]), "inputOffset": int(op_param[1])}
 
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/mlp_quant", "test_hidden_states.pth")
@@ -58,16 +59,20 @@ class TestMlpQuantOperation(operation_test.OperationTest):
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu(),
-                                      self.get_tensor(INTENSOR3).npu(),
-                                      self.get_tensor(INTENSOR4).npu(),
-                                      self.get_tensor(INTENSOR5).npu(),
-                                      self.get_tensor(INTENSOR6).npu(),
-                                      self.get_tensor(INTENSOR7).npu(),
-                                      self.get_tensor(INTENSOR8).npu(),
-                                      self.get_tensor(INTENSOR9).npu()])
+        soc_version = torch_npu._C._npu_get_soc_version()
+        if soc_version in [104, 220, 221, 222, 223]:
+            self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
+                                          self.get_tensor(INTENSOR1).npu(),
+                                          self.get_tensor(INTENSOR2).npu(),
+                                          self.get_tensor(INTENSOR3).npu(),
+                                          self.get_tensor(INTENSOR4).npu(),
+                                          self.get_tensor(INTENSOR5).npu(),
+                                          self.get_tensor(INTENSOR6).npu(),
+                                          self.get_tensor(INTENSOR7).npu(),
+                                          self.get_tensor(INTENSOR8).npu(),
+                                          self.get_tensor(INTENSOR9).npu()])
+        else:
+            print("TestMlpQuantOperation 310p skip")
 
 
 if __name__ == '__main__':

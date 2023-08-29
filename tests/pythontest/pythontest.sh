@@ -19,4 +19,5 @@
 
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 echo $SCRIPT_DIR
+export ACLTRANSFORMER_CONVERT_NCHW_TO_ND=1
 python3 -m unittest discover -s $SCRIPT_DIR -p "*.py"

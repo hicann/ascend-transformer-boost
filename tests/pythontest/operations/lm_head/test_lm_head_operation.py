@@ -32,7 +32,7 @@ OUTTENSOR0 = os.path.join(os.getenv(
     "ACLTRANSFORMER_TESTDATA"), "/data/acltransformer_testdata/tensors/operations/lm_head", "outtensor0.pth")
 
 
-class LmHeadOperation(operation_test.OperationTest):
+class TestLmHeadOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu()]
 

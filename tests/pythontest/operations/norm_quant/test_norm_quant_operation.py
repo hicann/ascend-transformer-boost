@@ -18,7 +18,7 @@ import torch
 import torch_npu
 import numpy as np
 
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 torch.npu.set_device(torch.device("npu:0"))
 
@@ -77,8 +77,8 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
         res = np.add(scale_mul, input_beta)
     else:
         gamma_broadcast = np.broadcast_to(input_gamma, shape_x)
-        print(gamma_broadcast.shape)
-        print(normalize_mul.shape)
+        # print(gamma_broadcast.shape)
+        # print(normalize_mul.shape)
         beta_broadcast = np.broadcast_to(input_beta, shape_x)
         scale_mul = np.multiply(gamma_broadcast, normalize_mul)
         res = np.add(scale_mul, beta_broadcast)
@@ -115,12 +115,12 @@ class TestAddNormQuantOperation(operation_test.OperationTest):
                       bias_data.npu().half()])
 
     def golden_compare(self, out_tensor, golden_out_tensor):
-        print("out_tensor.shape", out_tensor.shape,
-              "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
-        print("out_tensor:", out_tensor,
-              ", \ngolden_oute_tensor:", golden_out_tensor)
+        # print("out_tensor.shape", out_tensor.shape,
+        #       "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        # print("out_tensor:", out_tensor,
+        #       ", \ngolden_oute_tensor:", golden_out_tensor)
         max_error = torch.max(torch.abs(out_tensor - golden_out_tensor))
-        print("max error", max_error)
+        # print("max error", max_error)
         if max_error <= 1:
             return True
         else:

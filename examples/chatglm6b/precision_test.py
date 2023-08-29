@@ -26,6 +26,11 @@ def generate_data(batch, seq_len):
     position_ids = torch.randint(2048, (1, 2, seq_len)).npu()
     position_ids[0][0][0] = 2047
     attention_mask = (torch.randint(4, (1, 1, seq_len, seq_len)) == torch.randint(1, (1, 1, seq_len, seq_len))).npu()
+    past_key_values = ()
+    for i in range(28):
+        k_cache = torch.rand(seq_len, batch, 32, 128)
+        v_cache = torch.rand(seq_len, batch, 32, 128)
+        past_key_values = past_key_values + ((k_cache, v_cache),)
     input = {
         "input_ids":input_ids,
         "past_key_values":past_key_values,
@@ -47,13 +52,23 @@ if __name__ == "__main__":
 
     input_param = {"seq_len": 20,
                     "batch": 1,
-                    "test_cycle": 1}
+                    "test_cycle": 2}
     input_ids_path = os.path.join(CHATGLM6B_PATH, "random_input_ids.pth")
+    past_key_path = []
+    past_values_path = []
+    for i in range(28):
+        past_key_path.append(os.path.join(CHATGLM6B_PATH, f"random_past_key{i}.pth"))
+    for i in range(28):
+        past_values_path.append(os.path.join(CHATGLM6B_PATH, f"random_past_value{i}.pth"))
     position_ids_path = os.path.join(CHATGLM6B_PATH, "random_position_ids.pth")
     attention_mask_path = os.path.join(CHATGLM6B_PATH, "random_attention_mask.pth")
     if os.path.exists(input_ids_path):
         input_ids = torch.load(input_ids_path).npu()
-        past_key_values = None
+        past_key_values = ()
+        for i in range(28):
+            k_cache = torch.load(past_key_path[i]).npu()
+            v_cache = torch.load(past_values_path[i]).npu()
+            past_key_values = past_key_values + ((k_cache, v_cache),)
         position_ids = torch.load(position_ids_path).npu()
         attention_mask = torch.load(attention_mask_path).npu()
         input = {
@@ -65,8 +80,12 @@ if __name__ == "__main__":
     else:
         input = generate_data(input_param["batch"], input_param["seq_len"])
         torch.save(input["input_ids"].cpu(), input_ids_path)
+        for i in range(28):
+            torch.save(input["past_key_values"][i][0].cpu(), past_key_path[i])
+        for i in range(28):
+            torch.save(input["past_key_values"][i][1].cpu(), past_values_path[i])
         torch.save(input["position_ids"].cpu(), position_ids_path)
         torch.save(input["attention_mask"].cpu(), attention_mask_path)
     
     model = load_model()
-    first_time, avg_token = full_and_incremental_test_with_input(input, input_param["batch"], input_param["test_cycle"], model)
+    first_time, avg_token = full_and_incremental_test_with_input(input, input_param["test_cycle"], model)

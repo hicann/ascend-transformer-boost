@@ -25,15 +25,19 @@ import operation_test  # NOQA: E402
 OP_NAME = "MatmulOperation"
 PARAM = '{"transposeA": false, "transposeB": false}'
 
-class TestMatmul3_2(operation_test.OperationTest):
+class TestMatmul3_2Operation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         golden_result = torch.matmul(in_tensors[0], in_tensors[1])
         return [golden_result]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, 
-                     [torch.rand(2, 3, 3).npu().half(),
-                      torch.rand(3, 3).npu().half()])
+        soc_version = torch_npu._C._npu_get_soc_version()
+        if soc_version in [104, 220, 221, 222, 223]:
+            self.execute(OP_NAME, PARAM, 
+                        [torch.rand(2, 3, 3).npu().half(),
+                        torch.rand(3, 3).npu().half()])
+        else:
+            print("TestMatmul3_2 310p skip")
 
 
 if __name__ == '__main__':

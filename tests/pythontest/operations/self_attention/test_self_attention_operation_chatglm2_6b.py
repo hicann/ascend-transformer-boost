@@ -24,7 +24,7 @@ import tensor_file
 
 
 OP_NAME = "SelfAttentionOperation"
-PARAM = '{"headNum": 32, "layerId": 1, "dk": 128, "model": "chatglm2_6b", "preScale": 1, "postScale": 1, "numHeadPerPartition": 32, "hiddenSizePerHead": 128, "numGroupPerPartition": 2}'
+PARAM = '{"headNum": 32, "layerId": 1, "dk": 128, "model": "chatglm2_6b", "preScale": 1, "postScale": 1, "numHeadsPerPartition": 32, "hiddenSizePerHead": 128, "numGroupsPerPartition": 2}'
 INTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/self_attention/chatglm2_6b", "inTensor0.bin")
 INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
@@ -37,7 +37,7 @@ OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                           "tensors/operations/self_attention/chatglm2_6b", "outTensor0.bin")
 
 
-class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
+class TestSelfAttentionGlm26BOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [tensor_file.read_tensor(OUTTENSOR0).npu()]
 
