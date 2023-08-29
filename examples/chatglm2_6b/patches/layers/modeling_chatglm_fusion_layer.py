@@ -610,6 +610,7 @@ class GLMBlock(torch.nn.Module):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++
         # hidden_states: [s, b, h]
         seq_len_tensor = torch.tensor([hidden_states.shape[0] for _ in range(hidden_states.shape[1])]).to("npu")
+        seq_len_decoder_tensor = torch.tensor([1 for _ in range(hidden_states.shape[1])]).to("npu")
         test_glmBlockOut = None
         test_presentKey = None
         test_presentValue = None
@@ -643,7 +644,7 @@ class GLMBlock(torch.nn.Module):
                 self.input.append(rotary_pos_emb)
                 self.input.append(pastKey)
                 self.input.append(pastValue)
-                self.input.append(seq_len_tensor)
+                self.input.append(seq_len_decoder_tensor)
             else:
                 self.input[0] = hidden_states
                 # self.input[-3] = rotary_pos_emb
