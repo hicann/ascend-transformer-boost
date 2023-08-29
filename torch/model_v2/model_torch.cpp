@@ -40,6 +40,7 @@
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_quant_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_decoder_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_encoder_model.h"
+#include "torch/model_v2/baichuan1_7b/baichuan1_7b_encoder_with_bias_model.h"
 #include "torch/model_v2/baichuan2_7b/baichuan2_7b_decoder_model.h"
 
 uint64_t GetNewModelId()
@@ -98,6 +99,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::BaiChuan27BDecoderModel>(param);
     } else if (modelName_ == "BaiChuan17BEncoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan17BEncoderModel>(param);
+    } else if (modelName_ == "BaiChuan17BEncoderWithBiasModel") {
+        model_ = std::make_shared<AclTransformer::BaiChuan17BEncoderWithBiasModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;

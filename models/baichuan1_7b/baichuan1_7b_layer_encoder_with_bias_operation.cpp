@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "baichuan1_7b_layer_encoder_operation.h"
+#include "baichuan1_7b_layer_encoder_with_bias_operation.h"
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
@@ -24,11 +24,13 @@
 #include "acltransformer/ops/transpose_operation.h"
 
 namespace AclTransformer {
-enum BaiChuan17BLayerEncoderTensorId {
+enum BaiChuan17BLayerEncoderWithBiasTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
     IN_QKVMIXEDLINEARWEIGHT,
+    IN_QKVMIXEDLINEARBIAS,
     IN_SELFOUTLINEARWEIGHT,
+    IN_SELFOUTLINEARBIAS,
     IN_SELFOUTNORMWEIGHT,
     IN_MLPGATEWEIGHT,
     IN_MLPDOWNWEIGHT,
@@ -50,13 +52,13 @@ enum BaiChuan17BLayerEncoderTensorId {
     INTERMIDATE_MLPOUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 12;
+static const uint64_t IN_TENSOR_COUNT = 14;
 static const uint64_t OUT_TENSOR_COUNT = 3;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 8;
 static const uint64_t NODE_COUNT = 9;
 
-BaiChuan17BLayerEncoderOperation::BaiChuan17BLayerEncoderOperation(const BaiChuan17BLayerParam &param)
-    : GraphOperation("BaiChuan17BLayerEncoderOperation"), param_(param)
+BaiChuan17BLayerEncoderWithBiasOperation::BaiChuan17BLayerEncoderWithBiasOperation(const BaiChuan17BLayerParam &param)
+    : GraphOperation("BaiChuan17BLayerEncoderWithBiasOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -74,15 +76,12 @@ BaiChuan17BLayerEncoderOperation::BaiChuan17BLayerEncoderOperation(const BaiChua
     GraphOperation::Node &mlpNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mlpResidualAddNode = opGraph_.nodes.at(nodeId++);
 
-    AclTransformer::LinearParam linearParam;
-    linearParam.hasBias = false;
-
     inputNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORMOUT};
 
-    qkvLinearNode.operation.reset(new AclTransformer::LinearOperation(linearParam));
-    qkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXEDLINEARWEIGHT};
+    qkvLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
+    qkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXEDLINEARWEIGHT, IN_QKVMIXEDLINEARBIAS};
     qkvLinearNode.outTensorIds = {INTERMIDATE_QKVMIXEDLINEAROUT};
 
     AclTransformer::PositionEmbeddingParam positionEmbeddingParam;
@@ -100,8 +99,8 @@ BaiChuan17BLayerEncoderOperation::BaiChuan17BLayerEncoderOperation(const BaiChua
     selfAttentionNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ, OUT_PRESENTKEY, OUT_PRESENTVALUE, IN_ATTENTIONMASK};
     selfAttentionNode.outTensorIds = {INTERMIDATE_SELFOUT};
 
-    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation(linearParam));
-    selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT};
+    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
+    selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
     selfOutLinearNode.outTensorIds = {INTERMIDATE_SELFLINEAROUT};
 
     selfResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
@@ -122,14 +121,14 @@ BaiChuan17BLayerEncoderOperation::BaiChuan17BLayerEncoderOperation(const BaiChua
     mlpResidualAddNode.outTensorIds = {OUT_BAICHUAN17BLAYEROUT};
 }
 
-BaiChuan17BLayerEncoderOperation::~BaiChuan17BLayerEncoderOperation() {}
+BaiChuan17BLayerEncoderWithBiasOperation::~BaiChuan17BLayerEncoderWithBiasOperation() {}
 
-uint64_t BaiChuan17BLayerEncoderOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t BaiChuan17BLayerEncoderWithBiasOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t BaiChuan17BLayerEncoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t BaiChuan17BLayerEncoderWithBiasOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
 AsdOps::Status
-BaiChuan17BLayerEncoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+BaiChuan17BLayerEncoderWithBiasOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0) = inTensors.at(0).desc;
