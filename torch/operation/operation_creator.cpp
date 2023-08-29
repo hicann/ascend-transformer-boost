@@ -51,6 +51,7 @@
 #include "acltransformer/ops/lm_head_operation.h"
 #include "acltransformer/ops/lm_head_parallel_operation.h"
 #include "acltransformer/ops/word_embedding_parallel_operation.h"
+#include "acltransformer/ops/transdata_int8_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
@@ -105,8 +106,8 @@ static AclTransformer::Operation *LLaMA13BLayerFusionQuantOperationCreate(const 
     for (auto item : paramJson["seqLen"]) {
         param.seqLen.push_back(item.get<int>());
     }
-    ASD_LOG(INFO) << "LLaMA13BLayerFusionQuantParam headNum:" << param.headNum
-                  << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
+    ASD_LOG(INFO) << "LLaMA13BLayerFusionQuantParam headNum:" << param.headNum << ", dk:" << param.dk
+                  << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
     return new AclTransformer::LLaMA13BLayerFusionQuantOperation(param);
 }
 
@@ -774,6 +775,12 @@ AclTransformer::Operation *QuantOperationCreate(const nlohmann::json &paramJson)
     return new AclTransformer::QuantOperation(param);
 }
 
+static AclTransformer::Operation *TransdataInt8OperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::TransDataInt8Param param;
+    return new AclTransformer::TransDataInt8Operation(param);
+}
+
 AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::SelfAttentionKvCacheFusionParam param;
@@ -1192,6 +1199,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"BertLayerOperation", &BertLayerOperation},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
+    {"TransDataInt8Operation", &TransdataInt8OperationCreate},
     {"ChatGlm6BLayerDecoderQuantOperation", &ChatGlm6BLayerDecoderQuantOperationCreate},
     {"ChatGlm6BLayerDecoderLastQuantOperation", &ChatGlm6BLayerDecoderLastQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFirstQuantOperation", &ChatGlm6BLayerDecoderFirstQuantOperationCreate},
@@ -1216,8 +1224,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
     {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate},
     {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate},
-    {"LLaMA13BLayerFusionQuantOperation", &LLaMA13BLayerFusionQuantOperationCreate}
-};
+    {"LLaMA13BLayerFusionQuantOperation", &LLaMA13BLayerFusionQuantOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
