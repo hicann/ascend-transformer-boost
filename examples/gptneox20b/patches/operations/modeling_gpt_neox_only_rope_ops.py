@@ -101,7 +101,7 @@ class GPTNeoXPreTrainedModel(PreTrainedModel):
 
 
 class GPTNeoXAttention(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, layer_id):
         super().__init__()
         self.num_attention_heads = config.num_attention_heads
         self.hidden_size = config.hidden_size
@@ -126,6 +126,7 @@ class GPTNeoXAttention(nn.Module):
         self.query_key_value = nn.Linear(config.hidden_size, 3 * config.hidden_size)
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
 
+        self.layer_id = layer_id
         self.acl_position_embedding_operation = torch.classes.OperationTorch.OperationTorch("PositionEmbeddingOperation")
         self.acl_position_embedding_operation.set_param(
             json.dumps({"headNum": self.num_attention_heads, "model": "gptneox20b", "rotaryPct": config.rotary_pct,
@@ -184,8 +185,11 @@ class GPTNeoXAttention(nn.Module):
         acl_sin = sin.squeeze(0)
         acl_sin = acl_sin.squeeze(0)
 
+        acl_cos_embed = torch.nn.functional.embedding(position_ids, acl_cos).half()
+        acl_sin_embed = torch.nn.functional.embedding(position_ids, acl_sin).half()
+
         acl_query, acl_key, acl_value = self.acl_position_embedding_operation.execute(
-            [acl_qkv, position_ids, acl_cos.half(), acl_sin.half()]
+            [acl_qkv, position_ids, acl_cos_embed, acl_sin_embed]
         )
         acl_query = acl_query.permute(0, 2, 1, 3)
         acl_key = acl_key.permute(0, 2, 1, 3)
@@ -364,13 +368,14 @@ class GPTNeoXMLP(nn.Module):
 
 
 class GPTNeoXLayer(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, layer_id):
         super().__init__()
         self.use_parallel_residual = config.use_parallel_residual
         self.input_layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.post_attention_layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.attention = GPTNeoXAttention(config)
+        self.attention = GPTNeoXAttention(config, layer_id)
         self.mlp = GPTNeoXMLP(config)
+        self.layer_id = layer_id
 
     def forward(
         self,
@@ -478,7 +483,7 @@ class GPTNeoXModel(GPTNeoXPreTrainedModel):
         self.config = config
 
         self.embed_in = nn.Embedding(config.vocab_size, config.hidden_size)
-        self.layers = nn.ModuleList([GPTNeoXLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layers = nn.ModuleList([GPTNeoXLayer(config, i) for i in range(config.num_hidden_layers)])
         self.final_layer_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         self.gradient_checkpointing = False

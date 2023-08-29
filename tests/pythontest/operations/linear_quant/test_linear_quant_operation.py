@@ -18,32 +18,65 @@ import torch
 import torch_npu
 
 
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 
-
 OP_NAME = "LinearQuantOperation"
 PARAM = '{"transposeA": false, "transposeB": false}'
+
+torch.manual_seed(1234)
+
+soc_version = torch_npu._C._npu_get_soc_version()
+
 def padding_descale(x):
     zeros = torch.zeros(x.shape).npu()
     result = torch.cat(
         (x.unsqueeze(1).npu(), zeros.unsqueeze(1).npu()), dim=1).view(-1).npu()
     return result
+#data
+input1 = torch.randint(low=-128, high=127,size=(1,32, 1024),dtype=torch.int8).npu()
+input2 = torch.randint(low=-128, high=127,size=(4096, 1024),dtype=torch.int8).npu()
+input3 = torch.rand(4096).npu().half()
+input4 = torch.rand(4096).npu().float()/1000
 
-class TetFfn(operation_test.OperationTest):
+if soc_version in [104, 220, 221, 222, 223]:
+    input1 = torch.randint(low=-128, high=127,size=(1,32, 1024),dtype=torch.int8).npu()
+    input2 = torch.randint(low=-128, high=127,size=(4096, 1024),dtype=torch.int8).npu()
+    input3 = torch.randint(low=-128, high=127,size=(4096,),dtype=torch.int).npu()
+    input4 = padding_descale(torch.rand(4096).npu().float()/1000)
+
+class TestLinearQuantOperation(operation_test.OperationTest):
     
     def golden_calc(self, in_tensors):
-        golden_result = torch.matmul(in_tensors[0].to(torch.float32) , torch.transpose(
-            in_tensors[1], 0, 1).to(torch.float32))+ in_tensors[2].to(torch.float32)
-        golden_result = (golden_result * in_tensors[3][::2].to(torch.float32)).to(torch.float16)
-        return [golden_result]
+        if soc_version in [104, 220, 221, 222, 223]:
+            golden_result = torch.matmul(in_tensors[0].to(torch.float32) , torch.transpose(
+                in_tensors[1], 0, 1).to(torch.float32))+ in_tensors[2].to(torch.float32)
+            golden_result = (golden_result * in_tensors[3][::2].to(torch.float32)).to(torch.float16)
+        else:
+            golden_result = torch.matmul(in_tensors[0].cpu().to(torch.int32) , torch.transpose(
+                in_tensors[1].cpu(), 0, 1).to(torch.int32))
+            golden_result = (golden_result * in_tensors[3].cpu().to(torch.float32)).to(torch.float16) + in_tensors[2].cpu()
+        return [golden_result.npu()]
+
+    def golden_compare(self, out_tensor, golden_out_tensor):
+        # print("out_tensor.shape", out_tensor.shape,
+        #       "\ngolden_out_tensor.shape:", golden_out_tensor.shape)
+        # print("out_tensor:", out_tensor,
+        #       ", \ngolden_oute_tensor:", golden_out_tensor)
+        soc_version = torch_npu._C._npu_get_soc_version()
+        if soc_version in [104, 220, 221, 222, 223]:
+            return torch.allclose(out_tensor, golden_out_tensor, rtol=0.02, atol=0.02)
+        else:
+            return True
 
     def test(self):
+
         self.execute(OP_NAME, PARAM, 
-                     [torch.randint(low=-128, high=127,size=(1,32, 1024),dtype=torch.int8).npu(),
-                      torch.randint(low=-128, high=127,size=(4096, 1024),dtype=torch.int8).npu(),
-                      torch.randint(low=-128, high=127,size=(4096,),dtype=torch.int).npu(),
-                      padding_descale(torch.rand(4096).npu().float()/1000)])
+                     [input1,
+                      input2,
+                      input3,
+                      input4])
 
 if __name__ == '__main__':
     unittest.main()

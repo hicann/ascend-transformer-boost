@@ -1101,7 +1101,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         tensor_save_switch = os.getenv('TEMP_TENSOR_SAVE_SWITCH')
         if tensor_save_switch == "ON":
             save_path = os.getenv('TEMP_TENSOR_SAVE_PATH')
-            torch.save(hidden_states.cpu(), save_path + "/hidden_states_golden.pth")
+            torch.save(hidden_states.cpu(), f"{save_path}/hidden_states_golden{self.count}.pth")
 
         lm_logits = self.lm_head(hidden_states).permute(1, 0, 2).contiguous()
 

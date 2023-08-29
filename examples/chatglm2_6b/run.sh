@@ -83,12 +83,15 @@ function fn_main()
         #     unset http_proxy
         #     python3 $SCRIPT_DIR/main_web.py
         #     ;;
-        # "--zhipu")
-        #     python3 $SCRIPT_DIR/zhipu_test.py
-        #     ;;
+        "--zhipu")
+            python3 $SCRIPT_DIR/zhipu_test.py
+            ;;
         # "--profiling")
             
         #     ;;
+        "--percision")
+            python3 $SCRIPT_DIR/main_performance.py
+            ;;
         "--help")
             echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
             ;;

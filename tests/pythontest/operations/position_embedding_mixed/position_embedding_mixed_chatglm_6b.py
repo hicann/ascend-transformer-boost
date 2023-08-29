@@ -41,7 +41,7 @@ OUTTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 OUTTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/position_embedding_mixed/chatglm6b", "outTensor2.bin")
 
-class TestSelfAttentionKvCacheOperation(operation_test.OperationTest):
+class TestPositionEmbeddingMixedGlm6B(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
         return [self.get_tensor(OUTTENSOR0).npu(),
                 self.get_tensor(OUTTENSOR1).npu(),

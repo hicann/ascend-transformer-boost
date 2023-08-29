@@ -31,18 +31,21 @@ INTENSOR1 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
 INTENSOR2 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
                          "tensors/operations/mlp/llama13b", "inTensor2.bin")
 OUTTENSOR0 = os.path.join(os.getenv("ACLTRANSFORMER_TESTDATA"),
-                         "tensors/operations/mlp/llama13b", "outTensor0.bin")
+                          "tensors/operations/mlp/llama13b", "outTensor0.bin")
 
 
-class TestMlpOperation(operation_test.OperationTest):
+class TestMlpLlmam13BOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        print(self.get_tensor(OUTTENSOR0))
         return [self.get_tensor(OUTTENSOR0).npu()]
 
     def test(self):
-        self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
-                                      self.get_tensor(INTENSOR1).npu(),
-                                      self.get_tensor(INTENSOR2).npu()])
+        soc_version = torch_npu._C._npu_get_soc_version()
+        if soc_version in [104, 220, 221, 222, 223]:
+            self.execute(OP_NAME, PARAM, [self.get_tensor(INTENSOR0).npu(),
+                                          self.get_tensor(INTENSOR1).npu(),
+                                          self.get_tensor(INTENSOR2).npu()])
+        else:
+            print("TestMlpLlama13B 310p skip")
 
 
 if __name__ == '__main__':

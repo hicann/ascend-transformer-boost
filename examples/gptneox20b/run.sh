@@ -19,7 +19,6 @@ function fn_prepare()
     echo "$RUN_OPTION $SCRIPT_PATH"
 
     if [ ! -f "$MODEL_TARGET_DIR/pytorch_model-00001-of-00046.bin" ];then
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/config.json $MODEL_TARGET_DIR/config.json
         ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/merges.txt $MODEL_TARGET_DIR/merges.txt
         ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/pytorch_model.bin.index.json $MODEL_TARGET_DIR/pytorch_model.bin.index.json
         ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/special_tokens_map.json $MODEL_TARGET_DIR/special_tokens_map.json
@@ -71,15 +70,19 @@ function fn_prepare()
         ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/pytorch_model-00043-of-00046.bin $MODEL_TARGET_DIR/pytorch_model-00043-of-00046.bin
         ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/pytorch_model-00044-of-00046.bin $MODEL_TARGET_DIR/pytorch_model-00044-of-00046.bin
         ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/pytorch_model-00045-of-00046.bin $MODEL_TARGET_DIR/pytorch_model-00045-of-00046.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/pytorch_model-00046-of-00046.bin $MODEL_TARGET_DIR/pytorch_model-00046-of-00046.bin      
+        ln -s $ACLTRANSFORMER_TESTDATA/weights/gptneox20b/pytorch_model-00046-of-00046.bin $MODEL_TARGET_DIR/pytorch_model-00046-of-00046.bin
     fi
 }
 
 function fn_clean()
 {
     rm $MODEL_TARGET_DIR/pytorch_model*
-    rm $MODEL_TARGET_DIR/*.json
-    rm $MODEL_TARGET_DIR/*.txt
+    rm $MODEL_TARGET_DIR/merges.txt
+    rm $MODEL_TARGET_DIR/pytorch_model.bin.index.json
+    rm $MODEL_TARGET_DIR/special_tokens_map.json
+    rm $MODEL_TARGET_DIR/tokenizer_config.json
+    rm $MODEL_TARGET_DIR/tokenizer.json
+    rm $MODEL_TARGET_DIR/vocab.json
 }
 
 function fn_main()
@@ -103,8 +106,12 @@ function fn_main()
         "--webdemo")
             ;;
         "--zhipu")
+            python3 $SCRIPT_DIR/zhipu_test.py
             ;;
         "--profiling")
+            ;;
+        "--precision")
+            python3 $SCRIPT_DIR/run_gptneox.py
             ;;
         "--help")
             echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"

@@ -29,9 +29,7 @@ enum BaiChuan17BLayerTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
     IN_QKVMIXEDLINEARWEIGHT,
-    IN_QKVMIXEDLINEARBIAS,
     IN_SELFOUTLINEARWEIGHT,
-    IN_SELFOUTLINEARBIAS,
     IN_SELFOUTNORMWEIGHT,
     IN_MLPGATEWEIGHT,
     IN_MLPDOWNWEIGHT,
@@ -57,7 +55,7 @@ enum BaiChuan17BLayerTensorId {
     INTERMIDATE_MLPOUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 16;
+static const uint64_t IN_TENSOR_COUNT = 14;
 static const uint64_t OUT_TENSOR_COUNT = 3;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 10;
 static const uint64_t NODE_COUNT = 9;
@@ -81,12 +79,15 @@ BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChua
     GraphOperation::Node &mlpNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mlpResidualAddNode = opGraph_.nodes.at(nodeId++);
 
+    AclTransformer::LinearParam linearParam;
+    linearParam.hasBias = false;
+
     inputNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORMOUT};
 
-    qkvLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    qkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXEDLINEARWEIGHT, IN_QKVMIXEDLINEARBIAS};
+    qkvLinearNode.operation.reset(new AclTransformer::LinearOperation(linearParam));
+    qkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXEDLINEARWEIGHT};
     qkvLinearNode.outTensorIds = {INTERMIDATE_QKVMIXEDLINEAROUT};
 
     AclTransformer::PositionEmbeddingParam positionEmbeddingParam;
@@ -110,8 +111,8 @@ BaiChuan17BLayerDecoderOperation::BaiChuan17BLayerDecoderOperation(const BaiChua
                                             IN_PASTVALUE};
     selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
+    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation(linearParam));
+    selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT};
     selfOutLinearNode.outTensorIds = {INTERMIDATE_SELFLINEAROUT};
 
     selfResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
