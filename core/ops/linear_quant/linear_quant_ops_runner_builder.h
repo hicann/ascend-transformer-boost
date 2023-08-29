@@ -23,6 +23,7 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/linear_quant.h"
 #include "linear_quant_ops_runner.h"
+#include "linear_quant_runner_310p.h"
 
 namespace AclTransformer {
 class LinearQuantOpsRunnerBuilder : public RunnerBuilder {
@@ -32,7 +33,13 @@ public:
         ASD_LOG(INFO) << "LinearOQuantperation::LinearQuantOperation called";
     }
     virtual ~LinearQuantOpsRunnerBuilder() = default;
-    Runner *Build() override { return new LinearQuantOpsRunner(param_); }
+    Runner *Build() override {
+        if (AsdOps::GetSingleton<Config>().Is910B()) {
+            return new LinearQuantOpsRunner(param_);
+        } else {
+            return new LinearQuantOpsRunner310P(param_);
+        }
+    }
 
 private:
     LinearQuantParam param_;
