@@ -24,7 +24,7 @@
 #include "models/baichuan1_7b/baichuan1_7b_layer_decoder_operation.h"
 
 namespace AclTransformer {
-const int WEIGHT_COUNT_PER_LAYER = 9;
+const int WEIGHT_COUNT_PER_LAYER = 7;
 const int WORDEMBEDDINGNODE_WEIGHT_COUNT = 1;
 const int FINALNORMNODE_WEIGHT_COUNT = 1;
 const int OPERATION_COUNT_BEFORE_LAYER = 1;
@@ -32,12 +32,17 @@ const int INTERMEDIATETENSOR_COUNT_BEFORE_LAYER = 3;
 const int OPERATION_COUNT_AFTER_LAYER = 1;
 
 enum InTensorId {
-   IN_TENSOR_INPUTIDS = 0,
-   IN_TENSOR_POSITIONID,
-   IN_TENSOR_COSTABLE,
-   IN_TENSOR_SINTABLE,
-   IN_TENSOR_ATTENTIONMASK,
+    IN_TENSOR_INPUTIDS = 0,
+    IN_TENSOR_POSITIONID,
+    IN_TENSOR_COSTABLE,
+    IN_TENSOR_SINTABLE,
+    IN_TENSOR_ATTENTIONMASK,
     IN_TENSOR_PASTK_V_START
+};
+
+enum OutTensorId {
+    OUT_TENSOR_HIDDENSTATES = 0,
+    OUT_TENSOR_MAX,
 };
 
 void BaiChuan17BDecoderModel::Param::FromString(const std::string &param)
@@ -47,7 +52,7 @@ void BaiChuan17BDecoderModel::Param::FromString(const std::string &param)
    headNum = paramJson["headNum"].get<int>();
    dk = paramJson["dk"].get<int>();
    layerNum = paramJson["layerNum"].get<int>();
-   ASD_LOG(INFO) << "GptNeox20BDecoderModel param rmsNormEps:" << rmsNormEps << ", headNum:" << headNum
+   ASD_LOG(INFO) << "Baichuan1_7BDecoderModel param rmsNormEps:" << rmsNormEps << ", headNum:" << headNum
                  << ", dk:" << dk << ", layerNum:" << layerNum;
 }
 
@@ -71,7 +76,20 @@ AsdOps::Status BaiChuan17BDecoderModel::InferShape(const std::vector<AsdOps::Ten
 
    outTensorDescs.at(0) = graph_.weightTensors.at(0).desc;
    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
-                                   graph_.weightTensors.at(0).desc.dims[1]};
+                                   param_.dk * param_.headNum};
+
+   const AsdOps::Tensor &keyTensor = inTensors.at(IN_TENSOR_PASTK_V_START);
+   const AsdOps::Tensor &valueTensor = inTensors.at(IN_TENSOR_PASTK_V_START + param_.layerNum);
+
+   for (size_t keyId = 0; keyId < param_.layerNum; ++keyId) {
+       outTensorDescs.at(OUT_TENSOR_MAX + keyId) = keyTensor.desc;
+       outTensorDescs.at(OUT_TENSOR_MAX + keyId).dims.at(1) += 1;
+   }
+   for (size_t valueId = 0; valueId < param_.layerNum; ++valueId) {
+       outTensorDescs.at(OUT_TENSOR_MAX + param_.layerNum + valueId) = valueTensor.desc;
+       outTensorDescs.at(OUT_TENSOR_MAX + param_.layerNum + valueId).dims.at(1) += 1;
+   }
+
    return AsdOps::Status::OkStatus();
 }
 
@@ -81,8 +99,8 @@ void BaiChuan17BDecoderModel::BuildGraph()
        WORDEMBEDDINGNODE_WEIGHT_COUNT + WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT;
    graph_.weightTensors.resize(weightTensorSize);
 
-   graph_.inTensors.resize(IN_TENSOR_PASTK_V_START + 3 * param_.layerNum);
-   graph_.outTensors.resize(1);
+   graph_.inTensors.resize(IN_TENSOR_PASTK_V_START + 2 * param_.layerNum);
+   graph_.outTensors.resize(OUT_TENSOR_MAX);
 
    const int nodeSize = param_.layerNum + OPERATION_COUNT_BEFORE_LAYER + OPERATION_COUNT_AFTER_LAYER;
    ASD_LOG(INFO) << "BaiChuan1_7BDecoderModel nodeSize is " << nodeSize;

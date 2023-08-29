@@ -67,4 +67,4 @@ print(tokenizer.decode(generate_ids[0], skip_special_tokens=True))
 # time analysis
 new_tokens = len(generate_ids[0]) - len(inputs.input_ids[0])
 elapse = end_time - start_time
-print(f"Output generated in {elapse:.2f}s, {(new_tokens/elapse):.2f} tokens/s, {new_tokens} new tokens generated.")                                                                                                                                                                                     ")
+print(f"Output generated in {elapse:.2f}s, {(new_tokens/elapse):.2f} tokens/s, {new_tokens} new tokens generated.")

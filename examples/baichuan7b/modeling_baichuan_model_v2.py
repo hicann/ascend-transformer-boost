@@ -104,14 +104,15 @@ class RMSNorm(nn.Module):
         self.variance_epsilon = eps
 
     def forward(self, hidden_states):
+        input_dtype = hidden_states.dtype
         variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
         hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
 
         # convert into half-precision if necessary
-        if self.weight.dtype in [torch.float16, torch.bfloat16]:
-            hidden_states = hidden_states.to(self.weight.dtype)
+        # if self.weight.dtype in [torch.float16, torch.bfloat16]:
+        #     hidden_states = hidden_states.to(self.weight.dtype)
 
-        return self.weight * hidden_states
+        return (self.weight * hidden_states).to(input_dtype)
 
 
 class RotaryEmbedding(torch.nn.Module):
@@ -252,7 +253,7 @@ class Attention(nn.Module):
                     f"Attention mask should be of size {(bsz, 1, q_len, kv_seq_len)}, but is {attention_mask.size()}"
                 )
             attn_weights = attn_weights + attention_mask
-            attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min))
+            attn_weights = torch.max(attn_weights, torch.tensor(torch.finfo(attn_weights.dtype).min, device=attn_weights.device))
 
         # upcast attention to fp32
         attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
@@ -401,9 +402,7 @@ class Model(PreTrainedModel):
         self.num_layers = config.num_hidden_layers
         self.hidden_size = config.hidden_size
 
-        self.acl_decoder_operation_inputs = [None] * (5 + 3 * self.num_layers)
-        for i in range(self.num_layers):
-            self.acl_decoder_operation_inputs[5 + 2 * self.num_layers + i] = torch.tensor([i], dtype=torch.int32).npu()
+        self.acl_decoder_operation_inputs = [None] * (5 + 2 * self.num_layers)
 
     def get_input_embeddings(self):
         return self.embed_tokens
@@ -486,21 +485,20 @@ class Model(PreTrainedModel):
         global sinTable
         global maskAttenCache
         if self.weight_flag is False:
-            weights = []
+            weights = [self.state_dict()["embed_tokens.weight"]]
             for i in range(self.num_layers):
                 weights_t = []
                 weights_layer = self.layers[i].state_dict()
                 weights_t.append(weights_layer["input_layernorm.weight"])
-                weights_t.append(weights_layer["self.attn.W_pack.weight"])
-                weights_t.append(torch.zeros(3 * self.hidden_size).half().npu())
+                weights_t.append(weights_layer["self_attn.W_pack.weight"])
                 weights_t.append(weights_layer["self_attn.o_proj.weight"])
-                weights_t.append(torch.zeros(self.hidden_size).half().npu())
                 weights_t.append(weights_layer["post_attention_layernorm.weight"])
                 weights_t.append(weights_layer["mlp.gate_proj.weight"])
                 weights_t.append(weights_layer["mlp.down_proj.weight"])
                 weights_t.append(weights_layer["mlp.up_proj.weight"])
 
                 weights.extend(weights_t)
+            weights.append(self.state_dict()["norm.weight"])
             self.acl_decoder_operation.set_weight(weights)
             self.weight_flag = True
 
