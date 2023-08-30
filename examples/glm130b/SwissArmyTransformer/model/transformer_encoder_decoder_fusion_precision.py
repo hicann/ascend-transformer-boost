@@ -532,7 +532,7 @@ class BaseTransformer(torch.nn.Module):
         if position_embeddings is not None:
             print("=========================>bad run")
             hidden_states = hidden_states + position_embeddings
-        hidden_states = self.embedding_dropout(hidden_states)
+        # hidden_states = self.embedding_dropout(hidden_states)
 
         output_per_layers = []
         if self.checkpoint_activations:
