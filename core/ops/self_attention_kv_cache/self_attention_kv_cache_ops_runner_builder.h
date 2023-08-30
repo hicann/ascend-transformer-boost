@@ -28,6 +28,7 @@
 #include "self_attention_kv_cache_ops_bloom7b_runner.h"
 #include "self_attention_kv_cache_ops_gptneox20b_runner.h"
 #include "self_attention_kv_cache_ops_baichuan1_7b_runner_910a.h"
+#include "self_attention_kv_cache_ops_baichuan13b_runner_910a.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
