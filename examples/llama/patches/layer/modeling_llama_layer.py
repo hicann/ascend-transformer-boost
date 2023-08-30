@@ -399,6 +399,7 @@ class LlamaDecoderLayer(nn.Module):
 
             test_llama7bOut, test_presentKey, test_presentValue = self.acl_llama_layer.execute(
                 inputs)
+            torch.save(test_llama7bOut.cpu(), "hidden_states.pth")
 
         residual = hidden_states
         # if test_llama7bOut is not None:
@@ -432,6 +433,8 @@ class LlamaDecoderLayer(nn.Module):
         hidden_states = residual + hidden_states
         # if test_llama7bOut is not None:
         #     torch.save(hidden_states.cpu(), '12_out0.path')
+        if test_llama7bOut is not None:
+            torch.save(hidden_states.cpu(), "hidden_states_golden.pth")
 
         outputs = (hidden_states,)
 

@@ -5,16 +5,14 @@ import os
 
 LLAMA2_7B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "examples/llama")
 RUN_SHELL_PATH = os.path.join(LLAMA2_7B_PATH, "run.sh")
-MODEL_SCRIPT_PATH = os.path.join(LLAMA2_7B_PATH, "transformers_patch/layer/modeling_layer_performance.py")
-# GOLDEN_SCRIPT_PATH = os.path.join(LLAMA2_7B_PATH, "patches/models/modeling_chatglm_model_precision.py")
+MODEL_SCRIPT_NAME = "modeling_llama_layer.py"
 
 class Llama2_7b_ModelTest(model_test.ModelTest):
     def __init__(self, model_name) -> None:
         super().__init__(model_name)
     
     def generate_precision_performance(self):
-        os.system(f"bash {RUN_SHELL_PATH} --precision --llama2-7b")
-        # os.system(f"bash {RUN_SHELL_PATH} {GOLDEN_SCRIPT_PATH} --precision")
+        os.system(f"bash {RUN_SHELL_PATH} --precision --llama2-7b {MODEL_SCRIPT_NAME}")
         self.append_precision_golden(LLAMA2_7B_PATH + "/hidden_states_golden.pth")
         self.append_precision_result(LLAMA2_7B_PATH + "/hidden_states.pth")
         self.precision_compare()

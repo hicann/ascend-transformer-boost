@@ -75,12 +75,9 @@ AsdOps::Status LinearQuantOpsRunner310P::SetupKernelGraphNz(const RunnerVariantP
     transdata0Node.inTensorViewFuncs.at(0) = Squeeze1;
 
     ASD_LOG(INFO) << GetName() << " MatMulOperation orgShape:[" << TensorUtil::AsdOpsDimsToString({0, 0}) << "]";
+
     ViewFunc CheckDimB = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        int64_t bLastDim = oldDims.at(oldDims.size() - 1);
-        const int64_t blockDim = 16;
-        if (bLastDim != blockDim || oldDims.size() < dimSize) {
-            newDims = {1, bLastDim / blockDim, oldDims.at(0), blockDim};
-        }
+        newDims = oldDims;
         oriDimB_ = {newDims.at(2), newDims.at(1) * newDims.at(3)};
     };
     matmulNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({param_.transposeA, param_.transposeB, {0, 0}})};
@@ -235,14 +232,14 @@ AsdOps::Status LinearQuantOpsRunner310P::SetupKernelGraphNd(const RunnerVariantP
     return AsdOps::Status::OkStatus();
 }
 
-
 AsdOps::Status LinearQuantOpsRunner310P::SetupKernelGraph(const RunnerVariantPack &runnerVariantPack)
 {
-    if (runnerVariantPack.inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ){
-        return SetupKernelGraphNz(runnerVariantPack);  
-    }else{
+    if (runnerVariantPack.inTensors.at(1).desc.format == AsdOps::TENSOR_FORMAT_FRACTAL_NZ) {
+        ASD_LOG(INFO) << " MatMulOperation NZ ";
+        return SetupKernelGraphNz(runnerVariantPack);
+    } else {
+        ASD_LOG(INFO) << " MatMulOperation ND ";
         return SetupKernelGraphNd(runnerVariantPack);
     }
-    
 }
 } // namespace AclTransformer
