@@ -20,6 +20,7 @@
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/params/self_attention_kv_cache_fusion.h"
 #include "acltransformer/ops/rms_norm_operation.h"
+#include "acltransformer/ops/linear_operation.h"
 #include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
 #include "models/baichuan2_7b/baichuan2_7b_layer_decoder_operation.h"
 
@@ -27,9 +28,10 @@ namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 7;
 const int WORDEMBEDDINGNODE_WEIGHT_COUNT = 1;
 const int FINALNORMNODE_WEIGHT_COUNT = 1;
+const int OUT_LM_HEAD_WEIGHT_COUNT = 1;
 const int OPERATION_COUNT_BEFORE_LAYER = 1;
 const int INTERMEDIATETENSOR_COUNT_BEFORE_LAYER = 1;
-const int OPERATION_COUNT_AFTER_LAYER = 1;
+const int OPERATION_COUNT_AFTER_LAYER = 2;
 
 enum InTensorId {
     IN_TENSOR_INPUTIDS = 0,
@@ -74,9 +76,10 @@ AsdOps::Status BaiChuan27BDecoderModel::InferShape(const std::vector<AsdOps::Ten
        return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
    }
 
+   const int64_t outDim = graph_.weightTensors.at(graph_.weightTensors.size() - 1).desc.dims[0];
    outTensorDescs.at(0) = graph_.weightTensors.at(0).desc;
    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
-                                   param_.dk * param_.headNum};
+                                outDim};
 
    const AsdOps::Tensor &keyTensor = inTensors.at(IN_TENSOR_PASTK_V_START);
    const AsdOps::Tensor &valueTensor = inTensors.at(IN_TENSOR_PASTK_V_START + param_.layerNum);
@@ -95,8 +98,10 @@ AsdOps::Status BaiChuan27BDecoderModel::InferShape(const std::vector<AsdOps::Ten
 
 void BaiChuan27BDecoderModel::BuildGraph()
 {
-   const int weightTensorSize =
-       WORDEMBEDDINGNODE_WEIGHT_COUNT + WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT;
+   const int weightTensorSize = WORDEMBEDDINGNODE_WEIGHT_COUNT +
+                                WEIGHT_COUNT_PER_LAYER * param_.layerNum +
+                                FINALNORMNODE_WEIGHT_COUNT +
+                                OUT_LM_HEAD_WEIGHT_COUNT;
    graph_.weightTensors.resize(weightTensorSize);
 
    graph_.inTensors.resize(IN_TENSOR_PASTK_V_START + 2 * param_.layerNum);
@@ -106,7 +111,8 @@ void BaiChuan27BDecoderModel::BuildGraph()
    ASD_LOG(INFO) << "BaiChuan2_7BDecoderModel nodeSize is " << nodeSize;
    graph_.nodes.resize(nodeSize);
 
-   graph_.internalTensors.resize(graph_.nodes.size() - 1);
+   const int internalTensorSize = graph_.nodes.size() - 1;
+   graph_.internalTensors.resize(internalTensorSize);
 
    int nodeId = 0;
    auto &wordEmbeddingNode = graph_.nodes.at(nodeId++);
@@ -151,9 +157,20 @@ void BaiChuan27BDecoderModel::BuildGraph()
    auto &finalNormNode = graph_.nodes.at(nodeId++);
    RmsNormParam finalNormParam = {param_.rmsNormEps};
    finalNormNode.operation = std::make_shared<RmsNormOperation>(finalNormParam);
-   const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT;
+   const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT
+                                            - OUT_LM_HEAD_WEIGHT_COUNT;
+   const int finalLayerNormOutTensorId = internalTensorSize - 1;
    finalNormNode.inTensors = {firstInTensor, &graph_.weightTensors.at(finalLayerNormWeightTensorId)};
-   finalNormNode.outTensors = {&graph_.outTensors.at(0)};
+   finalNormNode.outTensors = {&graph_.internalTensors.at(finalLayerNormOutTensorId)};
+
+   auto &outLinearNode = graph_.nodes.at(nodeId++);
+   LinearParam linearParam;
+   linearParam.hasBias = false;
+   outLinearNode.operation = std::make_shared<LinearOperation>(linearParam);
+   const int finalLinearWeightTensorId = graph_.weightTensors.size() - OUT_LM_HEAD_WEIGHT_COUNT;
+   outLinearNode.inTensors = {&graph_.internalTensors.at(finalLayerNormOutTensorId),
+                              &graph_.weightTensors.at(finalLinearWeightTensorId)};
+   outLinearNode.outTensors = {&graph_.outTensors.at(0)};
 }
 
 AsdOps::Status BaiChuan27BDecoderModel::ParseVarintPackParam(const std::string &param, int nodeId,
