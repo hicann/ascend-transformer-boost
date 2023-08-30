@@ -57,7 +57,7 @@ public:
             } else {
                 return new SelfAttentionKvCacheOpsBaiChuan17bRunner910a(param_);
             }
-        } else if (param_.model == "chatglm2_6b") {
+        } else if (param_.model == "chatglm2_6b"  || param_.model == "chatglm2_6b_parallel") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
                     return new SelfAttentionKvCacheOpsChatGlm26bRunner(param_);
                 } else {

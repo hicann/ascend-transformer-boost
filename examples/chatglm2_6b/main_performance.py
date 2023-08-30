@@ -1,18 +1,39 @@
+import argparse
 import transformers
 from transformers import AutoTokenizer, AutoModel
 import platform
 import os
 import torch
 
+# 选项
+parser = argparse.ArgumentParser(
+        description="main performance")
+parser.add_argument(
+    "--parallel",
+    action="store_true",
+    help="Whether test model in parallel",
+)
+args = parser.parse_args()
+
 # 适配昇腾NPU
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
-DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
-device_id = 0
-if DEVICE_ID is not None:
-    device_id = int(DEVICE_ID)
-print(f"user npu:{device_id}")
-torch.npu.set_device(torch.device(f"npu:{device_id}"))
+if args.parallel:
+    torch.distributed.init_process_group("hccl")
+    local_rank = torch.distributed.get_rank()
+    world_size = torch.distributed.get_world_size()
+    if local_rank==0:
+        torch_npu.npu.set_device(0)
+    elif local_rank==1:
+        torch_npu.npu.set_device(1)
+    torch.manual_seed(1)
+else:
+    DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
+    device_id = 0
+    if DEVICE_ID is not None:
+        device_id = int(DEVICE_ID)
+    print(f"user npu:{device_id}")
+    torch.npu.set_device(torch.device(f"npu:{device_id}"))
 
 # 使用二进制优化，消除动态shape的编译问题
 torch.npu.set_compile_mode(jit_compile=False)
@@ -20,9 +41,18 @@ option = {}
 option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril"
 torch.npu.set_option(option)
 
-tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
-model = AutoModel.from_pretrained(
-    "./", trust_remote_code=True).half().npu()
+# 加载模型配置和权重
+if args.parallel:
+    load_path = "./tensor_parallel"
+    tokenizer_path = load_path + "/tokenizer"
+    part_model_path = load_path + "/part_model/" + str(local_rank) + "/"
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
+    model = AutoModel.from_pretrained(part_model_path, trust_remote_code=True).half().npu()
+    model.resize_token_embeddings(len(tokenizer)) 
+else:
+    tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
+    model = AutoModel.from_pretrained(
+        "./", trust_remote_code=True).half().npu()
 
 os_name = platform.system()
 clear_command = 'cls' if os_name == 'Windows' else 'clear'

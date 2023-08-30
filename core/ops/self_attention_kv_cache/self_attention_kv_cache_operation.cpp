@@ -34,7 +34,7 @@ SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() = default;
 
 uint64_t SelfAttentionKvCacheOperation::GetInTensorCount() const
 {
-    if (param_.model == "chatglm2_6b" || param_.model == "bloom7b") {
+    if (param_.model == "chatglm2_6b" || param_.model == "bloom7b" || param_.model == "chatglm2_6b_parallel") {
         return 5;
     } else if (param_.model == "baichuan13b" || param_.model == "baichuan2_13b") {
         return 4;
@@ -48,7 +48,7 @@ uint64_t SelfAttentionKvCacheOperation::GetOutTensorCount() const { return 3; }
 AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    if (param_.model == "chatglm2_6b") {
+    if (param_.model == "chatglm2_6b" || param_.model == "chatglm2_6b_parallel") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));

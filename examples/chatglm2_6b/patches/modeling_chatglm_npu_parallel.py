@@ -32,16 +32,8 @@ import logging as lg
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S %p"
 
-lg.basicConfig(filename=f"glm_model.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+lg.basicConfig(filename=f"glm_npu_parallel.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
-ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
-if ACLTRANSFORMER_HOME_PATH is None:
-    raise RuntimeError(
-        "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
-
-LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
-                        "lib/libacltransformer_torch.so")
-torch.classes.load_library(LIB_PATH)
 
 # flags required to enable jit fusion kernels
 
@@ -233,6 +225,7 @@ class CoreAttention(torch.nn.Module):
         self.coeff = coeff
 
         self.attention_dropout = torch.nn.Dropout(config.attention_dropout)
+        self.world_size = config.world_size
 
     def forward(self, query_layer, key_layer, value_layer, attention_mask):
         pytorch_major_version = int(torch.__version__.split('.')[0])
@@ -267,13 +260,10 @@ class CoreAttention(torch.nn.Module):
             )
 
             # Raw attention scores. [b * np, sq, sk]
-            matmul_result = torch.baddbmm(
-                matmul_input_buffer,
-                query_layer.transpose(0, 1),  # [b * np, sq, hn]
-                key_layer.transpose(0, 1).transpose(1, 2),  # [b * np, hn, sk]
-                beta=0.0,
-                alpha=(1.0 / self.norm_factor),
-            )
+            matmul_result = torch.bmm(
+                query_layer.transpose(0, 1), 
+                key_layer.transpose(0, 1).transpose(1, 2)
+                ) * (1.0 / self.norm_factor)
 
             # change view to [b, np, sq, sk]
             attention_scores = matmul_result.view(*output_size)
@@ -293,7 +283,8 @@ class CoreAttention(torch.nn.Module):
                 attention_mask = attention_mask.tril()
                 attention_mask = ~attention_mask
             if attention_mask is not None:
-                attention_scores = attention_scores.masked_fill(attention_mask, float("-inf"))
+                mask_value = torch.finfo(attention_scores.dtype).min
+                attention_scores = attention_scores.masked_fill(attention_mask, mask_value)
             attention_probs = F.softmax(attention_scores, dim=-1)
             attention_probs = attention_probs.type_as(value_layer)
 
@@ -320,7 +311,7 @@ class CoreAttention(torch.nn.Module):
             # [b, np, sq, hn] --> [sq, b, np, hn]
             context_layer = context_layer.permute(2, 0, 1, 3).contiguous()
             # [sq, b, np, hn] --> [sq, b, hp]
-            new_context_layer_shape = context_layer.size()[:-2] + (self.hidden_size_per_partition,)
+            new_context_layer_shape = context_layer.size()[:-2] + (self.hidden_size_per_partition // self.world_size,)
             context_layer = context_layer.view(*new_context_layer_shape)
 
         return context_layer
@@ -339,18 +330,20 @@ class SelfAttention(torch.nn.Module):
 
         self.projection_size = config.kv_channels * config.num_attention_heads
 
+        self.world_size = config.world_size
+
         # Per attention head and per partition values.
         self.hidden_size_per_attention_head = self.projection_size // config.num_attention_heads
-        self.num_attention_heads_per_partition = config.num_attention_heads
+        self.num_attention_heads_per_partition = config.num_attention_heads // self.world_size
 
         self.multi_query_attention = config.multi_query_attention
         self.qkv_hidden_size = 3 * self.projection_size
         if self.multi_query_attention:
-            self.num_multi_query_groups_per_partition = config.multi_query_group_num
+            self.num_multi_query_groups_per_partition = config.multi_query_group_num // self.world_size
             self.qkv_hidden_size = (
                     self.projection_size + 2 * self.hidden_size_per_attention_head * config.multi_query_group_num
             )
-        self.query_key_value = nn.Linear(config.hidden_size, self.qkv_hidden_size,
+        self.query_key_value = nn.Linear(config.hidden_size, self.qkv_hidden_size // self.world_size,
                                          bias=config.add_bias_linear or config.add_qkv_bias,
                                          device=device, **_config_to_kwargs(config)
                                          )
@@ -358,9 +351,13 @@ class SelfAttention(torch.nn.Module):
         self.core_attention = CoreAttention(config, self.layer_number)
 
         # Output.
-        self.dense = nn.Linear(self.projection_size, config.hidden_size, bias=config.add_bias_linear,
-                               device=device, **_config_to_kwargs(config)
-                               )
+        self.dense = nn.Linear(
+            self.projection_size // self.world_size, 
+            config.hidden_size, 
+            bias=config.add_bias_linear,
+            device=device,
+            **_config_to_kwargs(config)
+        )
 
     def _allocate_memory(self, inference_max_sequence_len, batch_size, device=None, dtype=None):
         if self.multi_query_attention:
@@ -462,6 +459,9 @@ class SelfAttention(torch.nn.Module):
 
         output = self.dense(context_layer)
 
+        if self.world_size >=2:
+            torch.distributed.all_reduce(output, op=torch.distributed.ReduceOp.SUM)
+
         return output, kv_cache
 
 
@@ -484,11 +484,12 @@ class MLP(torch.nn.Module):
         super(MLP, self).__init__()
 
         self.add_bias = config.add_bias_linear
+        self.world_size = config.world_size
 
         # Project to 4h. If using swiglu double the output width, see https://arxiv.org/pdf/2002.05202.pdf
         self.dense_h_to_4h = nn.Linear(
             config.hidden_size,
-            config.ffn_hidden_size * 2,
+            config.ffn_hidden_size * 2 // self.world_size,
             bias=self.add_bias,
             device=device,
             **_config_to_kwargs(config)
@@ -502,7 +503,7 @@ class MLP(torch.nn.Module):
 
         # Project back to h.
         self.dense_4h_to_h = nn.Linear(
-            config.ffn_hidden_size,
+            config.ffn_hidden_size // self.world_size,
             config.hidden_size,
             bias=self.add_bias,
             device=device,
@@ -515,6 +516,10 @@ class MLP(torch.nn.Module):
         intermediate_parallel = self.activation_func(intermediate_parallel)
         # [s, b, h]
         output = self.dense_4h_to_h(intermediate_parallel)
+
+        if self.world_size >= 2:
+            torch.distributed.all_reduce(output, op=torch.distributed.ReduceOp.SUM)
+            
         return output
 
 
@@ -618,37 +623,6 @@ class GLMTransformer(torch.nn.Module):
 
         self.gradient_checkpointing = False
 
-        self.acl_encoder_param = json.dumps({
-            "rmsNormEps": config.layernorm_epsilon,
-            "numHeadsPerPartition": config.num_attention_heads,
-            "hiddenSizePerHead": config.kv_channels,
-            "numGroupsPerPartition": config.multi_query_group_num,
-            "transKey": True,
-            "residualAddScale": 1,
-            "layerNum": config.num_layers,
-        })
-
-        self.acl_decoder_param = json.dumps({
-            "rmsNormEps": config.layernorm_epsilon,
-            "numHeadsPerPartition": config.num_attention_heads,
-            "hiddenSizePerHead": config.kv_channels,
-            "numGroupsPerPartition": config.multi_query_group_num,
-            "transKey": True,
-            "residualAddScale": 1,
-            "layerNum": config.num_layers,
-            "headNum": config.num_attention_heads,
-        })
-
-        self.acl_enconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2EncoderModel")
-        self.acl_enconder_operation.set_param(self.acl_encoder_param)
-        self.acl_deconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderModel")
-        self.acl_deconder_operation.set_param(self.acl_decoder_param)
-
-        self.acl_presents = []
-
-        self.profiling_full = False
-        self.profiling_increment = False
-
     def _get_layer(self, layer_number):
         return self.layers[layer_number]
 
@@ -657,7 +631,8 @@ class GLMTransformer(torch.nn.Module):
             use_cache: Optional[bool] = True,
             output_hidden_states: Optional[bool] = False,
     ):
-        
+        if not kv_caches:
+            kv_caches = [None for _ in range(self.num_layers)]
         presents = () if use_cache else None
         if self.gradient_checkpointing and self.training:
             if use_cache:
@@ -668,53 +643,38 @@ class GLMTransformer(torch.nn.Module):
 
         all_self_attentions = None
         all_hidden_states = () if output_hidden_states else None
-        
-        full_flag = True if hidden_states.shape[0] > 1 else False
-        acl_model_out = None
+        for index in range(self.num_layers):
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (hidden_states,)
 
-        if attention_mask is None and full_flag:
-            # [b, 1, sq, sk], sq == sk when first token
-            attention_mask = torch.ones(hidden_states.shape[1], 1, hidden_states.shape[0], hidden_states.shape[0], device=hidden_states.device, dtype=torch.bool)
-            attention_mask = attention_mask.tril()
-            attention_mask = ~attention_mask
-        
-        if full_flag:
-            encoder_seq_len_tensor = torch.tensor([hidden_states.shape[0] for _ in range(hidden_states.shape[1])]).to("npu")
-            weights = list(self.state_dict().values())
+            layer = self._get_layer(index)
+            if self.gradient_checkpointing and self.training:
+                layer_ret = torch.utils.checkpoint.checkpoint(
+                    layer,
+                    hidden_states,
+                    attention_mask,
+                    rotary_pos_emb,
+                    kv_caches[index],
+                    use_cache
+                )
+            else:
+                layer_ret = layer(
+                    hidden_states,
+                    attention_mask,
+                    rotary_pos_emb,
+                    kv_cache=kv_caches[index],
+                    use_cache=use_cache
+                )
+            hidden_states, kv_cache = layer_ret
+            if use_cache:
+                presents = presents + (kv_cache,)
 
-            self.acl_enconder_operation.set_weight(weights)
-            self.acl_deconder_operation.set_weight(weights)
+        if output_hidden_states:
+            all_hidden_states = all_hidden_states + (hidden_states,)
 
-            input_full = [hidden_states, rotary_pos_emb, attention_mask, encoder_seq_len_tensor]
-
-            if self.profiling_full:
-                stream = torch.npu.current_stream()
-                stream.synchronize()
-                prof = torch.npu.profile("./profiling/full")
-                prof.__enter__()
-            acl_model_out = self.acl_enconder_operation.execute(input_full, self.acl_encoder_param)
-            if self.profiling_full:
-                stream = torch.npu.current_stream()
-                stream.synchronize()
-                prof.__exit__(None, None, None)
-            self.acl_presents = acl_model_out[1:]
-        else:
-            decoder_seq_len_tensor = torch.tensor([1 for _ in range(hidden_states.shape[1])]).to("npu")
-            input_increament = [hidden_states, rotary_pos_emb, decoder_seq_len_tensor]
-            input_increament.extend(self.acl_presents)
-
-            if self.profiling_increment:
-                stream = torch.npu.current_stream()
-                stream.synchronize()
-                prof = torch.npu.profile("./profiling/increament")
-                prof.__enter__()
-            acl_model_out = self.acl_deconder_operation.execute(input_increament, self.acl_decoder_param)
-            if self.profiling_increment:
-                stream = torch.npu.current_stream()
-                stream.synchronize()
-                prof.__exit__(None, None, None)
-            self.acl_presents = acl_model_out[1:]
-        hidden_states = acl_model_out[0]
+        # Final layer norm.
+        if self.post_layer_norm:
+            hidden_states = self.final_layernorm(hidden_states)
 
         return hidden_states, presents, all_hidden_states, all_self_attentions
 
@@ -828,6 +788,9 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
 
     def get_input_embeddings(self):
         return self.embedding.word_embeddings
+    
+    def set_input_embeddings(self, new_embeddings:torch.Tensor):
+        self.embedding.word_embeddings = new_embeddings
 
     def get_prompt(self, batch_size, device, dtype=torch.half):
         prefix_tokens = self.prefix_tokens.unsqueeze(0).expand(batch_size, -1).to(device)
