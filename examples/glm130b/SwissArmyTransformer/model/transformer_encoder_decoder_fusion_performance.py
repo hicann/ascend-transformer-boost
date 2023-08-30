@@ -531,7 +531,7 @@ class BaseTransformer(torch.nn.Module):
             position_embeddings = HOOKS_DEFAULT['position_embedding_forward'](self, position_ids, output_cross_layer=output_cross_layer, **kw_args)
         if position_embeddings is not None:
             hidden_states = hidden_states + position_embeddings
-        hidden_states = self.embedding_dropout(hidden_states)
+        # hidden_states = self.embedding_dropout(hidden_states)
 
         output_per_layers = []
         if self.checkpoint_activations:
@@ -674,23 +674,6 @@ class BaseTransformer(torch.nn.Module):
                 acl_model_out = self.acl_decoder_operation.execute(self.acl_decoder_operation_inputs, acl_param)
                 logits_acl = acl_model_out[0]
 
-                for i in range(self.num_layers):
-                    presentk = self.kv_cache[0, i, 0, :self.token_num, ...]
-                    presentk = presentk.reshape(self.token_num, 1, self.headNum // self.rankSize, self.head_size)
-                    presentv = self.kv_cache[1, i, 0, :self.token_num, ...]
-                    presentv = presentv.reshape(self.token_num, 1, self.headNum // self.rankSize, self.head_size)
-                    seq_len, b, nh, hidden_size = presentk.shape
-                    acl_cache_kv =  (
-                        torch.stack((presentk[-1:], presentv[-1:]))
-                        .permute(2, 1, 0, 3, 4)
-                        .detach()
-                        .contiguous()
-                        .view(b, 1, nh * hidden_size * 2)
-                    )
-
-                    output_this_layer_dict = {}
-                    output_this_layer_dict['mem_kv'] = acl_cache_kv
-                    output_per_layers.append(output_this_layer_dict)
             # 全量
             else:
                 self.seq_lens = torch.tensor([seq_len] * hidden_states.shape[1], device=self.kv_cache.device, dtype=torch.int32)

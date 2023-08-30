@@ -49,6 +49,7 @@ def batch_filling_sequence(
         # forward
         tokens = tokens.reshape(batch_size * num_beams, -1)
         # mems = mems.reshape(mems.shape[0], batch_size * num_beams, mems.shape[-2], mems.shape[-1]) if mems is not None else None
+        torch.npu.synchronize()
         model_start = time.time()
         logits, *output_per_layers = model(
             tokens[:, index:],
@@ -57,6 +58,8 @@ def batch_filling_sequence(
             mems=mems,
             **kw_args
         )
+        # synchronize to make sure the model time is correct.
+        torch.npu.synchronize()
         model_time.append(time.time() - model_start)
         postprocess_start = time.time()
         mem_kv = [o['mem_kv'] for o in output_per_layers]
@@ -84,13 +87,14 @@ def batch_filling_sequence(
         token_time.append(time.time() - start_time)
         if strategy.is_done:
             break
-    if torch.distributed.get_rank() == 0:
+    if torch.distributed.get_rank() == 0 and token_num > 1:
         print('Token num is {}, takes {} second.'.format(
             token_num, round(sum(token_time), 4)))
         print('First token\'s model latency is {} ms.'.format(
             round(model_time[0] * 1000, 2)))
         print('Model latency is {} ms.'.format(
             round((sum(model_time) - model_time[0]) * 1000 / (token_num - 1), 2)))
+        print('Model latency list is:'.format(model_time))
         print('PostProcess latency is {} ms.'.format(
             round((sum(postprocess_time) - postprocess_time[0]) * 1000 / (token_num - 1), 2)))
         print('Token latency is {} ms.'.format(
