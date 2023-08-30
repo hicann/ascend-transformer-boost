@@ -47,6 +47,20 @@ logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "LlamaConfig"
 
+inv_freq = 1.0 / (10000 ** (torch.arange(0, 128, 2).float() / 128))
+# Build here to make `torch.jit.trace` work.
+t = torch.arange(4096, device=inv_freq.device, dtype=inv_freq.dtype)
+freqs = torch.outer(t, inv_freq)
+# Different from paper, but it uses a different permutation in order to obtain the same calculation
+emb = torch.cat((freqs, freqs), dim=-1)
+cosTable = emb.cos().npu()
+sinTable = emb.sin().npu()
+
+biasCache = torch.tril(torch.ones((4096, 4096), dtype=torch.bool)).view(1, 1, 4096, 4096).npu()
+biasCache = ~biasCache
+mask_value = torch.finfo(torch.float32).min
+maskAttenCache = torch.masked_fill(torch.zeros(size=(1, 1, 4096, 4096)).npu(), biasCache, mask_value)
+
 # Copied from transformers.models.bart.modeling_bart._make_causal_mask
 def _make_causal_mask(
         input_ids_shape: torch.Size, dtype: torch.dtype, device: torch.device, past_key_values_length: int = 0
@@ -523,14 +537,16 @@ class LlamaModel(PreTrainedModel):
 
         # do encoder
         is_prefill = True if past_key_values is None else False
+        cos_embed = torch.nn.functional.embedding(position_ids, cosTable)
+        sin_embed = torch.nn.functional.embedding(position_ids, sinTable)
         if is_prefill:
             self.seqlen_tensor = torch.tensor([seq_length] * batch_size,
                                               dtype=torch.int32,
                                               device=input_ids.device)
             self.acl_encoder_operation_inputs[0] = input_ids
             self.acl_encoder_operation_inputs[1] = position_ids
-            self.acl_encoder_operation_inputs[2] = cosTable
-            self.acl_encoder_operation_inputs[3] = sinTable
+            self.acl_encoder_operation_inputs[2] = cos_embed
+            self.acl_encoder_operation_inputs[3] = sin_embed
             self.acl_encoder_operation_inputs[4] = attention_mask
             self.acl_encoder_operation_inputs[5] = self.seqlen_tensor
 
@@ -542,8 +558,8 @@ class LlamaModel(PreTrainedModel):
 
             self.acl_decoder_operation_inputs[0] = input_ids
             self.acl_decoder_operation_inputs[1] = position_ids
-            self.acl_decoder_operation_inputs[2] = cosTable
-            self.acl_decoder_operation_inputs[3] = sinTable
+            self.acl_decoder_operation_inputs[2] = cos_embed
+            self.acl_decoder_operation_inputs[3] = sin_embed
             self.acl_decoder_operation_inputs[4] = attention_mask
             self.acl_decoder_operation_inputs[5:5 + self.num_layers] = past_keys
             self.acl_decoder_operation_inputs[5+self.num_layers: 5+2*self.num_layers] = past_values

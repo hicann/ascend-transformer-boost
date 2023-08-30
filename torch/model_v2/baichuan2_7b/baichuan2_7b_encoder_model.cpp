@@ -20,7 +20,7 @@
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
-#include "models/baichuan1_7b/baichuan1_7b_layer_encoder_operation.h"
+#include "models/baichuan2_7b/baichuan2_7b_layer_encoder_operation.h"
 
 namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 7;
@@ -119,12 +119,12 @@ void BaiChuan27BEncoderModel::BuildGraph()
     for (int layerId = 0; layerId < param_.layerNum; ++layerId) {
         auto &layerNode = graph_.nodes.at(nodeId++);
 
-        BaiChuan17BLayerParam opParam;
+        BaiChuan27BLayerParam opParam;
         opParam.rmsNormEps = param_.rmsNormEps;
         opParam.headNum = param_.headNum;
         opParam.dk = param_.dk;
-        opParam.model = "baichuan1_7b";
-        layerNode.operation = std::make_shared<BaiChuan17BLayerEncoderOperation>(opParam);
+        opParam.model = "baichuan2_7b";
+        layerNode.operation = std::make_shared<BaiChuan27BLayerEncoderOperation>(opParam);
         layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
         layerNode.outTensors.resize(layerNode.operation->GetOutTensorCount());
 
