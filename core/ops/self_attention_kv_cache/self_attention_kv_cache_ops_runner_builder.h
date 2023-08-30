@@ -65,6 +65,8 @@ public:
             return new SelfAttentionKvCacheOpsBloom7bRunner(param_);
         } else if (param_.model == "gptneox20b") {
             return new SelfAttentionKvCacheOpsGptNeox20bRunner(param_);
+        } else if (param_.model == "baichuan13b") {
+            return new SelfAttentionKvCacheOpsBaiChuan13bRunner910a(param_);
         } else {
             ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
             return nullptr;
