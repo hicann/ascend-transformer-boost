@@ -84,7 +84,7 @@ def batch_filling_sequence(
         token_time.append(time.time() - start_time)
         if strategy.is_done:
             break
-    if torch.distributed.get_rank() == 0:
+    if torch.distributed.get_rank() == 0 and token_num > 1:
         print('Token num is {}, takes {} second.'.format(
             token_num, round(sum(token_time), 4)))
         print('First token\'s model latency is {} ms.'.format(

@@ -19,6 +19,8 @@ import argparse
 import os
 import sys
 import torch
+import torch_npu
+from torch_npu.contrib import transfer_to_npu
 import deepspeed
 import json
 import random
@@ -419,16 +421,19 @@ def initialize_distributed(args):
     if torch.distributed.is_initialized():
         return 
     # the automatic assignment of devices has been moved to arguments.py 
-    torch.cuda.set_device(args.device)
+    # torch.cuda.set_device(args.device)
+    torch_npu.npu.set_device(args.local_rank)
     # Call the init process
-    init_method = 'tcp://'
-    args.master_ip = os.getenv('MASTER_ADDR', 'localhost')
-    args.master_port = os.getenv('MASTER_PORT', '6000')
-    init_method += args.master_ip + ':' + args.master_port
+    # init_method = 'tcp://'
+    # args.master_ip = os.getenv('MASTER_ADDR', 'localhost')
+    # args.master_port = os.getenv('MASTER_PORT', '6000')
+    # init_method += args.master_ip + ':' + args.master_port
+    os.environ["MASTER_ADDR"] = "127.0.0.1"
+    os.environ["MASTER_PORT"] = "12345"
+    print('init ddp, local rank = ' + str(args.local_rank))
     torch.distributed.init_process_group(
-        backend=args.distributed_backend,
-        world_size=args.world_size, rank=args.rank,
-        init_method=init_method)
+        backend='hccl',
+        world_size=args.world_size, rank=args.local_rank)
 
     # Set the model-parallel / data-parallel communicators.
     mpu.initialize_model_parallel(args.model_parallel_size)
