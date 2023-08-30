@@ -54,14 +54,14 @@ SelfAttentionKvCacheOpsBaiChuan13bRunner910a::SelfAttentionKvCacheOpsBaiChuan13b
     AsdOps::Tensor &mixedQuery = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &mixedKey = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &mixedValue = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &permuteQ = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &permuteK = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &permuteV = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &permutePastK = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &permutePastV = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedQ = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedK = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedV = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedPastK = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedPastV = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &catKeyOut = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &catValueOut = kernelGraph_.internalTensors.at(internalTensorNum++);
-    AsdOps::Tensor &transposeK = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &transposedK = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &permutedQTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &transposedKTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &bmmQkOut = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -84,7 +84,6 @@ SelfAttentionKvCacheOpsBaiChuan13bRunner910a::SelfAttentionKvCacheOpsBaiChuan13b
     auto &permuteVNode = kernelGraph_.nodes.at(nodeId++);
     auto &permutePastKNode = kernelGraph_.nodes.at(nodeId++);
     auto &permutePastVNode = kernelGraph_.nodes.at(nodeId++);
-    auto &transdataKNode = kernelGraph_.nodes.at(nodeId++);
     auto &catKeyNode = kernelGraph_.nodes.at(nodeId++);
     auto &catValueNode = kernelGraph_.nodes.at(nodeId++);
     auto &permutePresentKNode = kernelGraph_.nodes.at(nodeId++);
@@ -244,9 +243,9 @@ SelfAttentionKvCacheOpsBaiChuan13bRunner910a::SelfAttentionKvCacheOpsBaiChuan13b
     castInNode.inTensors = {&attentionScores};
     castInNode.outTensors = {&attentionScoresF32};
 
-    softMaxNode.opDesc = {0, "NormOperation", AsdOps::OpParam::Norm({AsdOps::OpParam::Norm::NORM_SOFTMAX, {-1}})};
-    softMaxNode.inTensors = {&attentionScoresF32};
-    softMaxNode.outTensors = {&attentionProbsF32};
+    softmaxNode.opDesc = {0, "NormOperation", AsdOps::OpParam::Norm({AsdOps::OpParam::Norm::NORM_SOFTMAX, {-1}})};
+    softmaxNode.inTensors = {&attentionScoresF32};
+    softmaxNode.outTensors = {&attentionProbsF32};
 
     castOutNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_CAST})};
     castOutNode.inTensors = {&attentionProbsF32};
