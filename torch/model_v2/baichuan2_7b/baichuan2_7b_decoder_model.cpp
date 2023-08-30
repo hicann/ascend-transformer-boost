@@ -54,8 +54,11 @@ void BaiChuan27BDecoderModel::Param::FromString(const std::string &param)
    headNum = paramJson["headNum"].get<int>();
    dk = paramJson["dk"].get<int>();
    layerNum = paramJson["layerNum"].get<int>();
+   if (paramJson.contains("transposedWeight")) {
+       transposedWeight = paramJson["transposedWeight"].get<bool>();
+   }
    ASD_LOG(INFO) << "Baichuan2_7BDecoderModel param rmsNormEps:" << rmsNormEps << ", headNum:" << headNum
-                 << ", dk:" << dk << ", layerNum:" << layerNum;
+                 << ", dk:" << dk << ", layerNum:" << layerNum << ", transposedWeight:" << transposedWeight;
 }
 
 BaiChuan27BDecoderModel::BaiChuan27BDecoderModel(const std::string &param): Model("BaiChuan27BDecoderModel", param)
@@ -129,6 +132,7 @@ void BaiChuan27BDecoderModel::BuildGraph()
        opParam.rmsNormEps = param_.rmsNormEps;
        opParam.headNum = param_.headNum;
        opParam.dk = param_.dk;
+       opParam.transposedWeight = param_.transposedWeight;
        opParam.model = "baichuan2_7b";
        layerNode.operation = std::make_shared<BaiChuan27BLayerDecoderOperation>(opParam);
        layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
@@ -165,6 +169,7 @@ void BaiChuan27BDecoderModel::BuildGraph()
 
    auto &outLinearNode = graph_.nodes.at(nodeId++);
    LinearParam linearParam;
+   linearParam.transposeB = param_.transposedWeight;
    linearParam.hasBias = false;
    outLinearNode.operation = std::make_shared<LinearOperation>(linearParam);
    const int finalLinearWeightTensorId = graph_.weightTensors.size() - OUT_LM_HEAD_WEIGHT_COUNT;

@@ -80,7 +80,11 @@ BaiChuan27BLayerDecoderOperation::BaiChuan27BLayerDecoderOperation(const BaiChua
     GraphOperation::Node &mlpResidualAddNode = opGraph_.nodes.at(nodeId++);
 
     AclTransformer::LinearParam linearParam;
+    linearParam.transposeB = param_.transposedWeight;
     linearParam.hasBias = false;
+
+    AclTransformer::MlpParam mlpParam;
+    mlpParam.transposeB = !param_.transposedWeight;
 
     inputNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT};
@@ -123,7 +127,7 @@ BaiChuan27BLayerDecoderOperation::BaiChuan27BLayerDecoderOperation(const BaiChua
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 
-    mlpNode.operation.reset(new AclTransformer::MlpOperation({}));
+    mlpNode.operation.reset(new AclTransformer::MlpOperation(mlpParam));
     mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPGATEWEIGHT, IN_MLPDOWNWEIGHT, IN_MLPUPWEIGHT};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 

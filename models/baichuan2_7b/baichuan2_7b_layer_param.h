@@ -21,6 +21,7 @@ struct BaiChuan27BLayerParam {
     float rmsNormEps = 0;
     int headNum = 0;
     int dk = 0;
+    bool transposedWeight = false;
     std::string model = "baichuan2_7b";
 };
 } // namespace AclTransformer

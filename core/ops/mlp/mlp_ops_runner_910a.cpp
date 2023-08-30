@@ -85,7 +85,7 @@ MlpOpsRunner910A::MlpOpsRunner910A(const MlpParam &param) : OpsRunner("MlpOpsRun
     transdata0Node.inTensorViewFuncs.resize(transdata0Node.inTensors.size());
     transdata0Node.inTensorViewFuncs.at(0) = Squeeze1;
 
-    matmulGateNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
+    matmulGateNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, param_.transposeB})};
     matmulGateNode.inTensors = {&hiddenStatusNZ, &weightGate};
     matmulGateNode.outTensors = {&matmulGateOut};
     matmulGateNode.inTensorViewFuncs.resize(matmulGateNode.inTensors.size());
@@ -131,7 +131,7 @@ MlpOpsRunner910A::MlpOpsRunner910A(const MlpParam &param) : OpsRunner("MlpOpsRun
     swishNode.outTensors = {&swishOut};
     swishNode.inTensorViewFuncs.resize(swishNode.inTensors.size());
 
-    matmulUpNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
+    matmulUpNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, param_.transposeB})};
     matmulUpNode.inTensors = {&hiddenStatusNZ, &weightUp};
     matmulUpNode.outTensors = {&matmulUpOut};
     matmulUpNode.inTensorViewFuncs.resize(matmulUpNode.inTensors.size());
@@ -186,7 +186,7 @@ MlpOpsRunner910A::MlpOpsRunner910A(const MlpParam &param) : OpsRunner("MlpOpsRun
         muloutdims_ = runInfo.GetInTensor(0).desc.dims;
     };
 
-    matmulDownNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
+    matmulDownNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, param_.transposeB})};
     matmulDownNode.inTensors = {&mulOutNZ, &weightDown};
     matmulDownNode.outTensors = {&resultTensorNZ};
     matmulDownNode.inTensorViewFuncs.resize(matmulDownNode.inTensors.size());

@@ -218,8 +218,11 @@ static AclTransformer::Operation *BaiChuan27BLayerEncoderOperationCreate(const n
     param.headNum = paramJson["headNum"].get<int>();
     param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
     param.dk = paramJson["dk"].get<int>();
+    if (paramJson.contains("transposedWeight")) {
+        param.transposedWeight = paramJson["transposedWeight"].get<bool>();
+    }
     ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
-                  << ", dk:" << param.dk;
+                  << ", dk:" << param.dk << ", transposedWeight:" << param.transposedWeight;
     return new AclTransformer::BaiChuan27BLayerEncoderOperation(param);
 }
 
@@ -230,8 +233,11 @@ static AclTransformer::Operation *BaiChuan27BLayerDecoderOperationCreate(const n
     param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
     param.dk = paramJson["dk"].get<int>();
     param.model = paramJson["model"].get<std::string>();
+    if (paramJson.contains("transposedWeight")) {
+        param.transposedWeight = paramJson["transposedWeight"].get<bool>();
+    }
     ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
-                  << ", dk:" << param.dk;
+                  << ", dk:" << param.dk << ", transposedWeight:" << param.transposedWeight;
     return new AclTransformer::BaiChuan27BLayerDecoderOperation(param);
 }
 
@@ -437,6 +443,10 @@ static AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &param
         param.model = "llama7b";
         ASD_LOG(INFO) << "MlpParam is empty, default model:" << param.model;
     }
+    if (paramJson.contains("transposeB")) {
+        param.transposeB = paramJson["transposeB"].get<bool >();
+    }
+    ASD_LOG(INFO) << "MlpParam transposeB:" << param.transposeB;
     return new AclTransformer::MlpOperation(param);
 }
 
