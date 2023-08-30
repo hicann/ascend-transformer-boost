@@ -103,7 +103,7 @@ LLaMA13BLayerFusionQuantOperation::LLaMA13BLayerFusionQuantOperation(const LLaMA
     GraphOperation::Node &mlpNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mlpResidualAddNode = opGraph_.nodes.at(nodeId++);
 
-    inputNormNode.operation.reset(new AclTransformer::RmsNormQuantOperation({param_.inputScale_1, param_.inputOffset_1}));
+    inputNormNode.operation.reset(new AclTransformer::RmsNormQuantOperation({param_.inputOffset_1, param_.inputScale_1, param_.rmsNormEps}));
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT, IN_BETA};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORMOUT};
 
@@ -181,7 +181,7 @@ LLaMA13BLayerFusionQuantOperation::LLaMA13BLayerFusionQuantOperation(const LLaMA
     selfResidualAddNode.inTensorIds = {IN_HIDDENSTATES, INTERMIDATE_SELFLINEAROUT};
     selfResidualAddNode.outTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT};
 
-    selfNormNode.operation.reset(new AclTransformer::RmsNormQuantOperation({param_.inputScale_3, param_.inputOffset_3}));
+    selfNormNode.operation.reset(new AclTransformer::RmsNormQuantOperation({param_.inputOffset_3, param_.inputScale_3, param_.rmsNormEps}));
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT, IN_BETA};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 

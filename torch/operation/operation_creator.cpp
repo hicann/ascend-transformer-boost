@@ -100,6 +100,7 @@ static AclTransformer::Operation *LLaMA13BLayerFusionQuantOperationCreate(const 
     param.inputOffset_4 = paramJson["inputOffset_4"].get<int>();
     param.layerId = paramJson["layerId"].get<int>();
     param.rotaryCoeff = paramJson["rotaryCoeff"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
     for (auto item : paramJson["tokenOffset"]) {
         param.tokenOffset.push_back(item.get<int>());
     }
