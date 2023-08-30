@@ -35,6 +35,31 @@ ARGS="${main_dir}/generate.py \
        $MODEL_ARGS \
        $*"
 
-run_cmd="torchrun --nproc_per_node $MP_SIZE --master_port 12233 ${ARGS}"
-echo ${run_cmd}
-eval ${run_cmd}
+# run_cmd="torchrun --nproc_per_node $MP_SIZE --master_port 12233 ${ARGS}"
+# echo ${run_cmd}
+# eval ${run_cmd}
+
+# 请根据机器上的NUMA亲和性配置每个芯片对应的NUMA node映射,并通过numactl进行绑核
+# 查询NUMA node命令示例：lspci -vs c1:00.0
+declare -A map
+map["0"]="3"
+map["1"]="3"
+map["2"]="2"
+map["3"]="2"
+map["4"]="0"
+map["5"]="0"
+map["6"]="1"
+map["7"]="1"
+
+export HCCL_WHITELIST_DISABLE=1
+RANK_ID_START=0
+WORLD_SIZE=8
+for((RANK_ID=$RANK_ID_START;RANK_ID<$((WORLD_SIZE+RANK_ID_START));RANK_ID++));
+do
+    export LOCAL_RANK=$RANK_ID
+    export WORLD_SIZE=$WORLD_SIZE
+    bind=${map["$RANK_ID"]}
+    echo "Device ID: $RANK_ID, bind to NUMA node: $bind"
+    numactl --cpunodebind=$bind --membind $bind python3 ${ARGS} &
+done
+wait 

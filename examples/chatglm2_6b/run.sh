@@ -53,11 +53,30 @@ function fn_clean()
     rm $TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py
 }
 
+function fn_modeling_prepare()
+{
+    echo "[MODELING_SCRIPT_NAME]: $MODELING_SCRIPT_NAME"
+    if [[ $MODELING_SCRIPT_NAME == *"layer"* ]];then
+        cp $MODEL_TARGET_DIR/patches/layers/$MODELING_SCRIPT_NAME $MODEL_TARGET_DIR/modeling_chatglm.py
+        echo "modeling_chatglm_layer.py copy success"
+    elif [[ $MODELING_SCRIPT_NAME == *"model"* ]];then 
+        cp $MODEL_TARGET_DIR/patches/models/$MODELING_SCRIPT_NAME $MODEL_TARGET_DIR/modeling_chatglm.py
+        echo "modeling_chatglm_model.py copy success"
+    elif [[ ! -z $MODEL_TARGET_DIR/patches/operations/$MODELING_SCRIPT_NAME ]];then
+        cp $MODEL_TARGET_DIR/patches/operations/$MODELING_SCRIPT_NAME $MODEL_TARGET_DIR/modeling_chatglm.py
+        echo "modeling_chatglm_operation.py copy success"
+    else
+        echo "modeling_chatglm.py unchanged"
+    fi
+    cd $MODEL_TARGET_DIR
+}
+
 function fn_main()
 {
     
     if [ ! -z $1 ];then
         TEMP_SCRIPT_PATH=$(cd $(dirname $1); pwd)/$(basename $1)
+        MODELING_SCRIPT_NAME=$(basename $1)
         if [ -f $TEMP_SCRIPT_PATH ];then
             SCRIPT_PATH=$TEMP_SCRIPT_PATH
             shift
@@ -70,6 +89,7 @@ function fn_main()
     cd $SCRIPT_DIR
 
     fn_prepare
+    fn_modeling_prepare
 
     case "${RUN_OPTION}" in
         # "--run")

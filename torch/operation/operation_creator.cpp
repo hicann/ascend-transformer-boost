@@ -51,6 +51,7 @@
 #include "acltransformer/ops/lm_head_operation.h"
 #include "acltransformer/ops/lm_head_parallel_operation.h"
 #include "acltransformer/ops/word_embedding_parallel_operation.h"
+#include "acltransformer/ops/transdata_int8_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_operation.h"
 #include "models/chatglm6b/chatglm6blayer_decoder_without_fusion_operation.h"
 #include "models/chatglm6b/chatglm6blayer_encoder_operation.h"
@@ -218,8 +219,11 @@ static AclTransformer::Operation *BaiChuan27BLayerEncoderOperationCreate(const n
     param.headNum = paramJson["headNum"].get<int>();
     param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
     param.dk = paramJson["dk"].get<int>();
+    if (paramJson.contains("transposedWeight")) {
+        param.transposedWeight = paramJson["transposedWeight"].get<bool>();
+    }
     ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
-                  << ", dk:" << param.dk;
+                  << ", dk:" << param.dk << ", transposedWeight:" << param.transposedWeight;
     return new AclTransformer::BaiChuan27BLayerEncoderOperation(param);
 }
 
@@ -230,8 +234,11 @@ static AclTransformer::Operation *BaiChuan27BLayerDecoderOperationCreate(const n
     param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
     param.dk = paramJson["dk"].get<int>();
     param.model = paramJson["model"].get<std::string>();
+    if (paramJson.contains("transposedWeight")) {
+        param.transposedWeight = paramJson["transposedWeight"].get<bool>();
+    }
     ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
-                  << ", dk:" << param.dk;
+                  << ", dk:" << param.dk << ", transposedWeight:" << param.transposedWeight;
     return new AclTransformer::BaiChuan27BLayerDecoderOperation(param);
 }
 
@@ -449,6 +456,10 @@ static AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &param
         param.model = "llama7b";
         ASD_LOG(INFO) << "MlpParam is empty, default model:" << param.model;
     }
+    if (paramJson.contains("transposeB")) {
+        param.transposeB = paramJson["transposeB"].get<bool >();
+    }
+    ASD_LOG(INFO) << "MlpParam transposeB:" << param.transposeB;
     return new AclTransformer::MlpOperation(param);
 }
 
@@ -841,6 +852,12 @@ AclTransformer::Operation *QuantOperationCreate(const nlohmann::json &paramJson)
     param.inputOffset = paramJson["input_offset"].get<int>();
     ASD_LOG(INFO) << "QuantParam input scale:" << param.inputScale << ", input_offset:" << param.inputOffset;
     return new AclTransformer::QuantOperation(param);
+}
+
+static AclTransformer::Operation *TransdataInt8OperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::TransDataInt8Param param;
+    return new AclTransformer::TransDataInt8Operation(param);
 }
 
 AclTransformer::Operation *SelfAttentionKvCacheFusionOperationCreate(const nlohmann::json &paramJson)
@@ -1261,6 +1278,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"FfnQuantOperation", &FfnQuantOperationCreate},
     {"BertLayerOperation", &BertLayerOperation},
     {"FfnQuantOperation", &FfnQuantOperationCreate},
+    {"TransDataInt8Operation", &TransdataInt8OperationCreate},
     {"ChatGlm6BLayerDecoderQuantOperation", &ChatGlm6BLayerDecoderQuantOperationCreate},
     {"ChatGlm6BLayerDecoderLastQuantOperation", &ChatGlm6BLayerDecoderLastQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFirstQuantOperation", &ChatGlm6BLayerDecoderFirstQuantOperationCreate},

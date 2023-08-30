@@ -679,12 +679,13 @@ class GLMTransformer(torch.nn.Module):
             attention_mask = attention_mask.tril()
             attention_mask = ~attention_mask
         if full_flag:
+            encoder_seq_len_tensor = torch.tensor([hidden_states.shape[0] for _ in range(hidden_states.shape[1])]).to("npu")
             weights = list(self.state_dict().values())
 
             self.acl_enconder_operation.set_weight(weights)
             self.acl_deconder_operation.set_weight(weights)
 
-            input_full = [hidden_states, rotary_pos_emb, attention_mask]
+            input_full = [hidden_states, rotary_pos_emb, attention_mask, encoder_seq_len_tensor]
 
             if self.profiling_full:
                 stream = torch.npu.current_stream()
@@ -698,7 +699,8 @@ class GLMTransformer(torch.nn.Module):
                 prof.__exit__(None, None, None)
             self.acl_presents = acl_model_out[1:]
         else:
-            input_increament = [hidden_states, rotary_pos_emb]
+            decoder_seq_len_tensor = torch.tensor([1 for _ in range(hidden_states.shape[1])]).to("npu")
+            input_increament = [hidden_states, rotary_pos_emb, decoder_seq_len_tensor]
             input_increament.extend(self.acl_presents)
 
             if self.profiling_increment:

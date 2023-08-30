@@ -19,6 +19,7 @@
 #include <vector>
 namespace AclTransformer {
 struct MlpParam {
+    bool transposeB = true;
     std::string model = "llama7b";
 };
 } // namespace AclTransformer

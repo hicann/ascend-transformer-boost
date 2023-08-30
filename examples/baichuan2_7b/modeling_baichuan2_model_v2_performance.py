@@ -47,6 +47,22 @@ logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "LlamaConfig"
 
+inv_freq = 1.0 / (10000 ** (torch.arange(0, 128, 2).float() / 128))
+# Build here to make `torch.jit.trace` work.
+t = torch.arange(4096, device=inv_freq.device, dtype=inv_freq.dtype)
+freqs = torch.outer(t, inv_freq)
+# Different from paper, but it uses a different permutation in order to obtain the same calculation
+emb = torch.cat((freqs, freqs), dim=-1)
+cosTable = emb.cos().npu()
+sinTable = emb.sin().npu()
+
+biasCache = torch.tril(torch.ones((4096, 4096), dtype=torch.bool)).view(1, 1, 4096, 4096).npu()
+biasCache = ~biasCache
+mask_value = torch.finfo(torch.float32).min
+maskAttenCache = torch.masked_fill(torch.zeros(size=(1, 1, 4096, 4096)).npu(), biasCache, mask_value)
+
+lm_head_weight = None
+
 # Copied from transformers.models.bart.modeling_bart._make_causal_mask
 def _make_causal_mask(
         input_ids_shape: torch.Size, dtype: torch.dtype, device: torch.device, past_key_values_length: int = 0
@@ -474,6 +490,7 @@ class LlamaModel(PreTrainedModel):
         global cosTable
         global sinTable
         global maskAttenCache
+        global lm_head_weight
         if self.weight_flag is False:
             weights = [self.state_dict()["embed_tokens.weight"]]
             for i in range(self.num_layers):
@@ -489,6 +506,7 @@ class LlamaModel(PreTrainedModel):
 
                 weights.extend(weights_t)
             weights.append(self.state_dict()["norm.weight"])
+            weights.append(lm_head_weight)
 
             self.acl_encoder_operation.set_weight(weights)
             self.acl_decoder_operation.set_weight(weights)
@@ -523,14 +541,16 @@ class LlamaModel(PreTrainedModel):
 
         # do encoder
         is_prefill = True if past_key_values is None else False
+        cos_embed = torch.nn.functional.embedding(position_ids, cosTable)
+        sin_embed = torch.nn.functional.embedding(position_ids, sinTable)
         if is_prefill:
             self.seqlen_tensor = torch.tensor([seq_length] * batch_size,
                                               dtype=torch.int32,
                                               device=input_ids.device)
             self.acl_encoder_operation_inputs[0] = input_ids
             self.acl_encoder_operation_inputs[1] = position_ids
-            self.acl_encoder_operation_inputs[2] = cosTable
-            self.acl_encoder_operation_inputs[3] = sinTable
+            self.acl_encoder_operation_inputs[2] = cos_embed
+            self.acl_encoder_operation_inputs[3] = sin_embed
             self.acl_encoder_operation_inputs[4] = attention_mask
             self.acl_encoder_operation_inputs[5] = self.seqlen_tensor
 
@@ -542,8 +562,8 @@ class LlamaModel(PreTrainedModel):
 
             self.acl_decoder_operation_inputs[0] = input_ids
             self.acl_decoder_operation_inputs[1] = position_ids
-            self.acl_decoder_operation_inputs[2] = cosTable
-            self.acl_decoder_operation_inputs[3] = sinTable
+            self.acl_decoder_operation_inputs[2] = cos_embed
+            self.acl_decoder_operation_inputs[3] = sin_embed
             self.acl_decoder_operation_inputs[4] = attention_mask
             self.acl_decoder_operation_inputs[5:5 + self.num_layers] = past_keys
             self.acl_decoder_operation_inputs[5+self.num_layers: 5+2*self.num_layers] = past_values
@@ -635,12 +655,6 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
-        self.acl_lm_head_linear_op = torch.classes.OperationTorch("LinearOperation")
-        self.acl_lm_head_linear_op.set_param(
-            json.dumps({"hasBias": False})
-        )
-        self.lm_head_weight = None
-
     def get_input_embeddings(self):
         return self.model.embed_tokens
 
@@ -697,9 +711,10 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "Hey, are you consciours? Can you talk to me?\nI'm not consciours, but I can talk to you."
         ```"""
-
-        if self.lm_head_weight is None:
-            self.lm_head_weight = nn.functional.normalize(self.state_dict()["lm_head.weight"])
+        global lm_head_weight
+        if lm_head_weight is None:
+            lm_head_weight = nn.functional.normalize(self.state_dict()["lm_head.weight"])
+            lm_head_weight.data = lm_head_weight.data.npu_format_cast(29)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -720,9 +735,9 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             return_dict=return_dict,
         )
 
-        hidden_states = outputs[0]
+        logits = outputs[0]
         # logits = self.lm_head(hidden_states)
-        logits = self.acl_lm_head_linear_op.execute(hidden_states, self.lm_head_weight)[0]
+        # logits = self.acl_lm_head_linear_op.execute(hidden_states, self.lm_head_weight)[0]
 
         loss = None
         if labels is not None:

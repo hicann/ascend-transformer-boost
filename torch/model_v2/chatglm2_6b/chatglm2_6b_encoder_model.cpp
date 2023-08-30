@@ -16,7 +16,7 @@
 #include "chatglm2_6b_encoder_model.h"
 #include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
-#include "models/chatglm2_6b/chatglm2_6b_layer_encoder_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
 
 namespace AclTransformer {
@@ -27,6 +27,7 @@ enum InTensorId {
     IN_TENSOR_HIDDENSTATES = 0,
     IN_TENSOR_ROPECACHE,
     IN_TENSOR_ATTENTIONMASK,
+    IN_TENSOR_SEQLEN,
     IN_TENSOR_MAX,
 };
 
@@ -117,7 +118,7 @@ void ChatGlm2EncoderModel::BuildGraph()
         opParam.transKey = param_.transKey;
         opParam.model = "chatglm2_6b";
         
-        layerNode.operation = std::make_shared<ChatGlm2LayerEncoderOperation>(opParam);
+        layerNode.operation = std::make_shared<ChatGlm2FusionLayerEncoderOperation>(opParam);
         layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
         layerNode.outTensors.resize(layerNode.operation->GetOutTensorCount());
 
@@ -129,6 +130,7 @@ void ChatGlm2EncoderModel::BuildGraph()
         }
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ROPECACHE);
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK);
+        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SEQLEN);
 
         layerNode.outTensors = {&graph_.internalTensors.at(layerId), &graph_.outTensors.at(layerId + 1),
                                     &graph_.outTensors.at(layerId + 1 + param_.layerNum)};

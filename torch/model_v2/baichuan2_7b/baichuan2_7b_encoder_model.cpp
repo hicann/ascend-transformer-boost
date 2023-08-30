@@ -19,16 +19,18 @@
 #include "acltransformer/ops/embedding_operation.h"
 #include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
+#include "acltransformer/ops/linear_operation.h"
 #include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
-#include "models/baichuan1_7b/baichuan1_7b_layer_encoder_operation.h"
+#include "models/baichuan2_7b/baichuan2_7b_layer_encoder_operation.h"
 
 namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 7;
 const int WORDEMBEDDINGNODE_WEIGHT_COUNT = 1;
 const int FINALNORMNODE_WEIGHT_COUNT = 1;
+const int OUT_LM_HEAD_WEIGHT_COUNT = 1;
 const int OPERATION_COUNT_BEFORE_LAYER = 1;
 const int INTERMEDIATETENSOR_COUNT_BEFORE_LAYER = 1;
-const int OPERATION_COUNT_AFTER_LAYER = 1;
+const int OPERATION_COUNT_AFTER_LAYER = 2;
 const int IN_TENSOR_COUNT=6;
 const int OUT_BASE_TENSOR_COUNT=1;
 
@@ -52,8 +54,11 @@ void BaiChuan27BEncoderModel::Param::FromString(const std::string &param)
     headNum = paramJson["headNum"].get<int>();
     dk = paramJson["dk"].get<int>();
     layerNum = paramJson["layerNum"].get<int>();
+    if (paramJson.contains("transposedWeight")) {
+        transposedWeight = paramJson["transposedWeight"].get<bool>();
+    }
     ASD_LOG(INFO) << "BaiChuan27BEncoderModel param rmsNormEps:" << rmsNormEps << ", headNum:" << headNum
-                  << ", dk:" << dk << ", layerNum:" << layerNum;
+                  << ", dk:" << dk << ", layerNum:" << layerNum << ", transposedWeight:" << transposedWeight;
 }
 
 BaiChuan27BEncoderModel::BaiChuan27BEncoderModel(const std::string &param) : Model("BaiChuan27BEncoderModel", param)
@@ -74,9 +79,10 @@ AsdOps::Status BaiChuan27BEncoderModel::InferShape(const std::vector<AsdOps::Ten
         return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
     }
 
+    const int64_t outDim = graph_.weightTensors.at(graph_.weightTensors.size() - 1).desc.dims[0];
     outTensorDescs.at(0) = graph_.weightTensors.at(0).desc;
     outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
-                                 param_.headNum * param_.dk};
+                                    outDim};
 
     outTensorDescs.at(1) = outTensorDescs.at(0);
     outTensorDescs.at(1).dims.clear();
@@ -93,8 +99,10 @@ AsdOps::Status BaiChuan27BEncoderModel::InferShape(const std::vector<AsdOps::Ten
 
 void BaiChuan27BEncoderModel::BuildGraph()
 {
-    const int weightTensorSize =
-        WORDEMBEDDINGNODE_WEIGHT_COUNT + WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT;
+    const int weightTensorSize = WORDEMBEDDINGNODE_WEIGHT_COUNT +
+                                 WEIGHT_COUNT_PER_LAYER * param_.layerNum +
+                                 FINALNORMNODE_WEIGHT_COUNT +
+                                 OUT_LM_HEAD_WEIGHT_COUNT;
     graph_.weightTensors.resize(weightTensorSize);
 
     //
@@ -106,7 +114,8 @@ void BaiChuan27BEncoderModel::BuildGraph()
     ASD_LOG(INFO) << "BaiChuan27BEncoderModel nodeSize is " << nodeSize;
     graph_.nodes.resize(nodeSize);
 
-    graph_.internalTensors.resize(graph_.nodes.size() - 1);
+    const int internalTensorSize = graph_.nodes.size() - 1;
+    graph_.internalTensors.resize(internalTensorSize);
 
     int nodeId = 0;
     auto &wordEmbeddingNode = graph_.nodes.at(nodeId++);
@@ -119,12 +128,13 @@ void BaiChuan27BEncoderModel::BuildGraph()
     for (int layerId = 0; layerId < param_.layerNum; ++layerId) {
         auto &layerNode = graph_.nodes.at(nodeId++);
 
-        BaiChuan17BLayerParam opParam;
+        BaiChuan27BLayerParam opParam;
         opParam.rmsNormEps = param_.rmsNormEps;
         opParam.headNum = param_.headNum;
         opParam.dk = param_.dk;
-        opParam.model = "baichuan1_7b";
-        layerNode.operation = std::make_shared<BaiChuan17BLayerEncoderOperation>(opParam);
+        opParam.transposedWeight = param_.transposedWeight;
+        opParam.model = "baichuan2_7b";
+        layerNode.operation = std::make_shared<BaiChuan27BLayerEncoderOperation>(opParam);
         layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
         layerNode.outTensors.resize(layerNode.operation->GetOutTensorCount());
 
@@ -149,8 +159,20 @@ void BaiChuan27BEncoderModel::BuildGraph()
     auto &finalNormNode = graph_.nodes.at(nodeId++);
     RmsNormParam finalNormParam = {param_.rmsNormEps};
     finalNormNode.operation = std::make_shared<RmsNormOperation>(finalNormParam);
-    const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT;
+    const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT
+                                             - OUT_LM_HEAD_WEIGHT_COUNT;
+    const int finalLayerNormOutTensorId = internalTensorSize - 1;
     finalNormNode.inTensors = {firstInTensor, &graph_.weightTensors.at(finalLayerNormWeightTensorId)};
-    finalNormNode.outTensors = {&graph_.outTensors.at(0)};
+    finalNormNode.outTensors = {&graph_.internalTensors.at(finalLayerNormOutTensorId)};
+
+    auto &outLinearNode = graph_.nodes.at(nodeId++);
+    LinearParam linearParam;
+    linearParam.transposeB = param_.transposedWeight;
+    linearParam.hasBias = false;
+    outLinearNode.operation = std::make_shared<LinearOperation>(linearParam);
+    const int finalLinearWeightTensorId = graph_.weightTensors.size() - OUT_LM_HEAD_WEIGHT_COUNT;
+    outLinearNode.inTensors = {&graph_.internalTensors.at(finalLayerNormOutTensorId),
+                               &graph_.weightTensors.at(finalLinearWeightTensorId)};
+    outLinearNode.outTensors = {&graph_.outTensors.at(0)};
 }
 } // namespace AclTransformer

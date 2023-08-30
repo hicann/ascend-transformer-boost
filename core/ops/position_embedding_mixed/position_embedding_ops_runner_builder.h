@@ -39,7 +39,7 @@ public:
             return new PositionEmbeddingOpsGptNeox20bRunner(param_);
         } else if (param_.model == "llama7b") {
             return new PositionEmbedding1dOpsLlama7bRunner(param_);
-        } else if (param_.model == "baichuan2_7b") {
+        }  else if (param_.model == "baichuan2_7b") {
             return new PositionEmbedding1dOpsBaichuan7bRunner(param_);
         }else if (param_.model == "baichuan1_7b") {
             return new PositionEmbedding1dOpsBaichuan17bRunner(param_);
