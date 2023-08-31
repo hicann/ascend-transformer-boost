@@ -72,6 +72,8 @@
 #include "models/baichuan2_7b/baichuan2_7b_layer_decoder_operation.h"
 #include "models/baichuan2_7b/baichuan2_7b_layer_encoder_operation.h"
 #include "models/baichuan13b/baichuan13b_layer_decoder_operation.h"
+#include "models/baichuan2_13b/baichuan2_13b_layer_decoder_operation.h"
+#include "models/baichuan2_13b/baichuan2_13b_layer_encoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_encoder_operation.h"
 #include "models/llama13b/llama13blayer_parallel_operation.h"
@@ -252,6 +254,31 @@ static AclTransformer::Operation *BaiChuan13BLayerDecoderOperationCreate(const n
     ASD_LOG(INFO) << "BaiChuan13BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk;
     return new AclTransformer::BaiChuan13BLayerDecoderOperation(param);
+}
+
+
+static AclTransformer::Operation *BaiChuan213BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan213BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "BaiChuan213BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::BaiChuan213BLayerDecoderOperation(param);
+}
+
+static AclTransformer::Operation *BaiChuan213BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan213BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "BaiChuan213BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::BaiChuan213BLayerEncoderOperation(param);
 }
 
 static AclTransformer::Operation *PostOperationCreate(const nlohmann::json &paramJson)
@@ -1293,7 +1320,9 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"BaiChuan17BLayerEncoderOperation", &BaiChuan17BLayerEncoderOperationCreate},
     {"BaiChuan27BLayerDecoderOperation", &BaiChuan27BLayerDecoderOperationCreate},
     {"BaiChuan27BLayerEncoderOperation", &BaiChuan27BLayerEncoderOperationCreate},
+    {"BaiChuan213BLayerEncoderOperation", &BaiChuan213BLayerEncoderOperationCreate},
     {"BaiChuan13BLayerDecoderOperation", &BaiChuan13BLayerDecoderOperationCreate},
+    {"BaiChuan213BLayerDecoderOperation", &BaiChuan213BLayerDecoderOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate},
     {"LmHeadParallelOperation", &LmHeadParallelOperationCreate},
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},
