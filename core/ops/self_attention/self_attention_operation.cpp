@@ -34,13 +34,21 @@ SelfAttentionOperation::SelfAttentionOperation(const SelfAttentionParam &param)
 #endif
 }
 
-SelfAttentionOperation::~SelfAttentionOperation() {}
+SelfAttentionOperation::~SelfAttentionOperation() = default;
 
-uint64_t SelfAttentionOperation::GetInTensorCount() const { return 4; }
+uint64_t SelfAttentionOperation::GetInTensorCount() const
+{
+    if (param_.model == "baichuan2_13b") {
+        return 2;
+    } else {
+        return 4;
+    }
+}
 
 uint64_t SelfAttentionOperation::GetOutTensorCount() const
 {
-    return (param_.model == "llama7b") ? LLAMA7B_IN_TENSOR_SIZE : DEFAULT_IN_TENSOR_SIZE;
+    return (param_.model == "llama7b" || param_.model == "baichuan2_13b") ? LLAMA7B_IN_TENSOR_SIZE
+                                                                          : DEFAULT_IN_TENSOR_SIZE;
 }
 
 AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
@@ -66,6 +74,26 @@ AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdO
 
         outTensorDescs.at(1) = inTensors.at(1).desc;
         outTensorDescs.at(2) = inTensors.at(2).desc;
+    } else if (param_.model == "baichuan2_13b") {
+        // gptneox20b [bs, sq, hn, hs]
+        // out [bs, sq, hn * hs]
+        // in : QKV attention_mask [seq_len, batch, head_num, head_size]
+        // QKV [BZ ,,HIDDENSIZE*3,HIDDENSIZE]
+        // out : out presentK presentV [seq_len, batch, head_num * head_size]
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / 3);
+
+        outTensorDescs.at(1) = inTensors.at(0).desc;
+        outTensorDescs.at(1).dims.clear();
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(1).dims.push_back(param_.headNum);
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3); // 3=qkv
+
+        outTensorDescs.at(2) = outTensorDescs.at(1);
     }
     return AsdOps::Status::OkStatus();
 }
