@@ -394,7 +394,7 @@ class LlamaModel(PreTrainedModel):
             "headNum": config.num_attention_heads,
             "dk": config.hidden_size // config.num_attention_heads,
             "layerNum": config.num_hidden_layers,
-            "transopsedWeight": True
+            "transposedWeight": True
         })
 
         self.acl_encoder_operation = torch.classes.ModelTorch.ModelTorch("BaiChuan27BEncoderModel")
