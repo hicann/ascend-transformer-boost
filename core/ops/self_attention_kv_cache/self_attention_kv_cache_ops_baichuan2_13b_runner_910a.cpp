@@ -13,25 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "self_attention_kv_cache_ops_baichuan1_7b_runner_910a.h"
-#include <numeric>
+#include "self_attention_kv_cache_ops_baichuan2_13b_runner_910a.h"
 #include <cmath>
 #include <asdops/utils/log/log.h>
 #include <asdops/params/params.h>
 #include <asdops/utils/svector/svector.h>
 #include "acltransformer/utils/tensor_util.h"
-#include <asdops/utils/log/log.h>
 
-static const uint64_t IN_TENSOR_COUNT = 6;
+static const uint64_t IN_TENSOR_COUNT = 4;
 static const uint64_t OUT_TENSOR_COUNT = 3;
-static const uint64_t INTERMEDIATE_TENSOR_COUNT = 16;
-static const uint64_t NODE_COUNT = 19;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 19;
+static const uint64_t NODE_COUNT = 20;
 namespace AclTransformer {
-SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17bRunner910a(
+SelfAttentionKvCacheOpsBaiChuan213BRunner910a::SelfAttentionKvCacheOpsBaiChuan213BRunner910a(
     const SelfAttentionKvCacheParam &param)
-    : OpsRunner("SelfAttentionKvCacheOpsBaiChuan17bRunner910a", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
+    : OpsRunner("SelfAttentionKvCacheOpsBaiChuan213BRunner910a", RUNNER_TYPE_SELF_ATTENTION_KV_CACHE), param_(param)
 {
-    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17bRunner910a "
+    ASD_LOG(INFO) << "SelfAttentionKvCacheOpsBaiChuan213BRunner910a::SelfAttentionKvCacheOpsBaiChuan213BRunner910a "
                      "called, transKey:"
                   << param_.transKey << ", dk: " << param_.dk << ", headNum: " << param_.headNum
                   << ", layerId: " << param_.layerId;
@@ -42,9 +40,8 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
     kernelGraph_.nodes.resize(NODE_COUNT);
 
     int64_t inTensorNum = 0;
-    AsdOps::Tensor &mixedQuery = kernelGraph_.inTensors.at(inTensorNum++);     // [bs, sq, hn, hs]
-    AsdOps::Tensor &mixedKey = kernelGraph_.inTensors.at(inTensorNum++);       // [bs, sq, hn, hs]
-    AsdOps::Tensor &mixedValue = kernelGraph_.inTensors.at(inTensorNum++);     // [bs, sq, hn, hs]
+    // [1, 14, 15360] [batch_size,seq_len,3*hidden_size]
+    AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(inTensorNum++);
     AsdOps::Tensor &attention_mask = kernelGraph_.inTensors.at(inTensorNum++); // [1, 1, 1, seqPast + 1]
     AsdOps::Tensor &pastKey = kernelGraph_.inTensors.at(inTensorNum++);        // [bs, seqPast, hn, hs]
     AsdOps::Tensor &pastValue = kernelGraph_.inTensors.at(inTensorNum++);      // [bs, seqPast, hn, hs]
@@ -55,6 +52,9 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
     AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(outTensorNum++);
 
     int64_t internalTensorNum = 0;
+    AsdOps::Tensor &mixedQuery = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &mixedKey = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &mixedValue = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &qScaledOutND = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &transposedQND = kernelGraph_.internalTensors.at(internalTensorNum++);
     AsdOps::Tensor &transposedKND = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -73,6 +73,7 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
     AsdOps::Tensor &bmmVoutTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     int64_t nodeId = 0;
+    auto &splitQkvNode = kernelGraph_.nodes.at(nodeId++);
     auto &catKeyNode = kernelGraph_.nodes.at(nodeId++);
     auto &catValueNode = kernelGraph_.nodes.at(nodeId++);
     auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
@@ -93,15 +94,34 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
     auto &transdataBmmVNode = kernelGraph_.nodes.at(nodeId++);
     auto &transposeContext1Node = kernelGraph_.nodes.at(nodeId++);
 
+    // split QKV
+    splitQkvNode.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 3}};
+    splitQkvNode.inTensors = {&mixedQkv};
+    splitQkvNode.outTensors = {&mixedQuery, &mixedKey, &mixedValue};
+    splitQkvNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
+        runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, 3}});
+    };
+
     // cat key
     // key = torch.cat(key, pastKey)
     catKeyNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({1})};
     catKeyNode.inTensors = {&pastKey, &mixedKey};
     catKeyNode.outTensors = {&presentKey};
+    catKeyNode.inTensorViewFuncs.resize(catKeyNode.inTensors.size());
+    catKeyNode.inTensorViewFuncs.at(1) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                             AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
 
     catValueNode.opDesc = {0, "ConcatOperation", AsdOps::OpParam::Concat({1})};
     catValueNode.inTensors = {&pastValue, &mixedValue};
     catValueNode.outTensors = {&presentValue};
+    catValueNode.inTensorViewFuncs.resize(catValueNode.inTensors.size());
+    catValueNode.inTensorViewFuncs.at(1) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                               AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
 
     // scaling down q
     float scalingAttr = 1.0 / sqrt(param_.dk);
@@ -122,6 +142,11 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
     permuteQNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
     permuteQNode.inTensors = {&qScaledOutND};
     permuteQNode.outTensors = {&transposedQND};
+    permuteQNode.inTensorViewFuncs.resize(permuteQNode.inTensors.size());
+    permuteQNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                               AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
 
     // trans [bs, sq, hn, hs] to [bs, hn, hs, sq]
     AsdOps::OpParam::Transpose permuteSeqHnHsParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE,
@@ -270,5 +295,5 @@ SelfAttentionKvCacheOpsBaiChuan17bRunner910a::SelfAttentionKvCacheOpsBaiChuan17b
     };
 }
 
-SelfAttentionKvCacheOpsBaiChuan17bRunner910a::~SelfAttentionKvCacheOpsBaiChuan17bRunner910a() {}
+SelfAttentionKvCacheOpsBaiChuan213BRunner910a::~SelfAttentionKvCacheOpsBaiChuan213BRunner910a() {}
 } // namespace AclTransformer

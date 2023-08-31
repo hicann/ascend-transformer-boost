@@ -36,7 +36,7 @@ enum BaiChuan213BLayerTensorId {
     IN_ATTENTIONMASK,
     IN_PASTKEY,
     IN_PASTVALUE,
-    OUT_BAICHUAN13BLAYEROUT,
+    OUT_BAICHUAN213BLAYEROUT,
     OUT_PRESENTKEY,
     OUT_PRESENTVALUE,
     INTERMIDATE_INPUTNORMOUT,
@@ -85,7 +85,7 @@ BaiChuan213BLayerDecoderOperation::BaiChuan213BLayerDecoderOperation(const BaiCh
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
     selfAttentionKvCacheParam.dk = param_.dk;
     selfAttentionKvCacheParam.headNum = param_.headNum;
-    selfAttentionKvCacheParam.model = "baichuan13b";
+    selfAttentionKvCacheParam.model = "baichuan2_13b";
     selfAttentionKvCacheNode.operation.reset(
         new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam));
     selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_QKVMIXEDLINEAROUT,
@@ -112,7 +112,7 @@ BaiChuan213BLayerDecoderOperation::BaiChuan213BLayerDecoderOperation(const BaiCh
 
     mlpResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
     mlpResidualAddNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, INTERMIDATE_MLPOUT};
-    mlpResidualAddNode.outTensorIds = {OUT_BAICHUAN13BLAYEROUT};
+    mlpResidualAddNode.outTensorIds = {OUT_BAICHUAN213BLAYEROUT};
 }
 
 BaiChuan213BLayerDecoderOperation::~BaiChuan213BLayerDecoderOperation() {}
