@@ -25,60 +25,27 @@ function fn_prepare()
         ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00007-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00007-of-00007.bin
     fi
 
-    if [ -f "$MODEL_TARGET_DIR/modeling_target.py" ];then
-        rm -rf $MODEL_TARGET_DIR/modeling_target.py
-    fi
-
-    if [ -f "$TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py" ];then
-        rm -rf $TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py
-    fi
-
-    if [ -f "$TRANSFORMER_PACKAGE_PATH/modeling_target.py" ];then
-        rm -rf $TRANSFORMER_PACKAGE_PATH/modeling_target.py
-    fi
 
     if [ ! -f $SCRIPT_PATH ];then
         echo "cannot find the file to be tested"
         exit 1
     fi
 
-    cp $SCRIPT_PATH $MODEL_TARGET_DIR/modeling_target.py
-    cp $MODEL_TARGET_DIR/modeling_target.py $TRANSFORMER_PACKAGE_PATH/modeling_target.py
     cp $MODEL_TARGET_DIR/configuration_chatglm.py $TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py
 }
 
 function fn_clean()
 {
-    rm $TRANSFORMER_PACKAGE_PATH/modeling_target.py
     rm $TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py
-}
-
-function fn_modeling_prepare()
-{
-    echo "[MODELING_SCRIPT_NAME]: $MODELING_SCRIPT_NAME"
-    if [[ $MODELING_SCRIPT_NAME == *"layer"* ]];then
-        cp $MODEL_TARGET_DIR/patches/layers/$MODELING_SCRIPT_NAME $MODEL_TARGET_DIR/modeling_chatglm.py
-        echo "modeling_chatglm_layer.py copy success"
-    elif [[ $MODELING_SCRIPT_NAME == *"model"* ]];then 
-        cp $MODEL_TARGET_DIR/patches/models/$MODELING_SCRIPT_NAME $MODEL_TARGET_DIR/modeling_chatglm.py
-        echo "modeling_chatglm_model.py copy success"
-    elif [[ ! -z $MODEL_TARGET_DIR/patches/operations/$MODELING_SCRIPT_NAME ]];then
-        cp $MODEL_TARGET_DIR/patches/operations/$MODELING_SCRIPT_NAME $MODEL_TARGET_DIR/modeling_chatglm.py
-        echo "modeling_chatglm_operation.py copy success"
-    else
-        echo "modeling_chatglm.py unchanged"
-    fi
-    cd $MODEL_TARGET_DIR
 }
 
 function fn_main()
 {
-    
+    # check first parameter is a path
     if [ ! -z $1 ];then
         TEMP_SCRIPT_PATH=$(cd $(dirname $1); pwd)/$(basename $1)
-        MODELING_SCRIPT_NAME=$(basename $1)
         if [ -f $TEMP_SCRIPT_PATH ];then
-            SCRIPT_PATH=$TEMP_SCRIPT_PATH
+            cp $TEMP_SCRIPT_PATH $SCRIPT_PATH
             shift
         fi
     fi
@@ -89,7 +56,6 @@ function fn_main()
     cd $SCRIPT_DIR
 
     fn_prepare
-    fn_modeling_prepare
 
     case "${RUN_OPTION}" in
         # "--run")
@@ -109,15 +75,16 @@ function fn_main()
         # "--profiling")
             
         #     ;;
-        "--percision")
-            python3 $SCRIPT_DIR/main_performance.py
+        "--precision")
+            python3 $SCRIPT_DIR/main_precision.py $2
             ;;
         "--help")
-            echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
+            echo "export ACLTRANSFORMER_TESTDATA=<path>"
+            echo "run.sh [model script path] [--performance|--precision <output_name>|--zhipu]"
             ;;
         *)
             echo "unknown build type:${RUN_OPTION}"
-            echo "run.sh [model script path] [--run|--performance|--webdemo|--zhipu|--profiling]"
+            echo "run.sh [model script path] [--performance|--precision <output_name>|--zhipu]"
             ;;
     esac
 

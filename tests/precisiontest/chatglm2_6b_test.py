@@ -3,18 +3,18 @@ sys.path.append('../..')
 import tests.dailytest.model_test as model_test
 import os
 
-CHATGLM2_6B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "examples/chatglm2_6b")
+CHATGLM2_6B_PATH = os.path.join(model_test.ACLTRANSFORMER_HOME_PATH, "../../examples/chatglm2_6b")
 RUN_SHELL_PATH = os.path.join(CHATGLM2_6B_PATH, "run.sh")
-MODEL_SCRIPT_PATH = os.path.join(CHATGLM2_6B_PATH, "patches/models/modeling_chatglm_model_flashattention_temp_performance.py")
-# GOLDEN_SCRIPT_PATH = os.path.join(CHATGLM2_6B_PATH, "patches/models/modeling_chatglm_model_precision.py")
+MODEL_SCRIPT_PATH = os.path.join(CHATGLM2_6B_PATH, "patches/models/modeling_chatglm_model.py")
+GOLDEN_SCRIPT_PATH = os.path.join(CHATGLM2_6B_PATH, "patches/modeling_chatglm_npu.py")
 
 class Chatglm2_6BModelTest(model_test.ModelTest):
     def __init__(self, model_name) -> None:
         super().__init__(model_name)
     
     def generate_precision_performance(self):
-        os.system(f"bash {RUN_SHELL_PATH} {MODEL_SCRIPT_PATH} --precision")
-        # os.system(f"bash {RUN_SHELL_PATH} {GOLDEN_SCRIPT_PATH} --precision")
+        os.system(f"bash {RUN_SHELL_PATH} {MODEL_SCRIPT_PATH} --precision hidden_states.pth")
+        os.system(f"bash {RUN_SHELL_PATH} {GOLDEN_SCRIPT_PATH} --precision hidden_states_golden.pth")
         self.append_precision_golden(CHATGLM2_6B_PATH + "/hidden_states_golden.pth")
         self.append_precision_result(CHATGLM2_6B_PATH + "/hidden_states.pth")
         self.precision_compare()
