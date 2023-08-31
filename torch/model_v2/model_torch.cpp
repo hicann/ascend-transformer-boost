@@ -38,6 +38,7 @@
 #include "torch/model_v2/bloom7b/bloom7b_decoder_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_encoder_quant_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_quant_model.h"
+#include "torch/model_v2/llama7b/llama7b_decoder_without_fusion_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -89,6 +90,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::ChatGlm6BEncoderQuantModel>(param);
     } else if (modelName_ == "ChatGlm6BDecoderQuantModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderQuantModel>(param);
+    } else if (modelName_ == "Llama7BDecoderWithoutFusionModel") {
+        model_ = std::make_shared<AclTransformer::Llama7BDecoderWithoutFusionModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
