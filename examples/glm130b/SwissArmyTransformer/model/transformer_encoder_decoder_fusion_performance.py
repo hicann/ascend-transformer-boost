@@ -474,13 +474,13 @@ class BaseTransformer(torch.nn.Module):
         self.tokens_offset = torch.full(
             (batch_num,), 0, dtype=torch.int32, device=self.kv_cache.device)
         self.seq_lens = None
-        self.acl_decoder_operation_inputs = [None] * (variantInputNum + self.num_layers)
+        self.acl_model_inputs = [None] * (variantInputNum + self.num_layers)
 
         self.attention_mask_max = torch.full(
             (self.max_sequence_length, self.max_sequence_length), 0, dtype=torch.half, device=self.kv_cache.device)
 
         for i in range(self.num_layers):
-            self.acl_decoder_operation_inputs[variantInputNum +
+            self.acl_model_inputs[variantInputNum +
                                               i] = torch.tensor([i], dtype=torch.int32, device=self.kv_cache.device)
 
         acl_param = json.dumps({
@@ -498,6 +498,8 @@ class BaseTransformer(torch.nn.Module):
                             })
         self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("Glm130BDecoderModelWithFusion")
         self.acl_decoder_operation.set_param(acl_param)
+        self.acl_encoder_operation = torch.classes.ModelTorch.ModelTorch("Glm130BDecoderModelWithFusion")
+        self.acl_encoder_operation.set_param(acl_param)
         self.flash_acl_kv = False
         # AclTransformer code---------------------------------------------------------------
 
@@ -641,6 +643,7 @@ class BaseTransformer(torch.nn.Module):
                 self.acl_weights.append(acl_model_weights[-2]) #final norm bias
                 
                 self.acl_decoder_operation.set_weight(self.acl_weights)
+                self.acl_encoder_operation.set_weight(self.acl_weights)
                 self.weight_flag = False
                 
                 self.cos_table, self.sin_table = self.rotary_emb(hidden_states, seq_len=self.max_sequence_length + 1)
@@ -662,16 +665,16 @@ class BaseTransformer(torch.nn.Module):
                                     "tokenOffset": [self.token_num]*batch_size, 
                                     "seqLen": [1]*batch_size
                                     })
-                self.acl_decoder_operation_inputs[0] = hidden_states
-                self.acl_decoder_operation_inputs[1] = position_ids
-                self.acl_decoder_operation_inputs[2] = self.cos_table.squeeze(1)
-                self.acl_decoder_operation_inputs[3] = self.sin_table.squeeze(1)
-                self.acl_decoder_operation_inputs[4] = self.attention_mask_max
-                self.acl_decoder_operation_inputs[5] = self.k_cache_input
-                self.acl_decoder_operation_inputs[6] = self.v_cache_input
-                self.acl_decoder_operation_inputs[7] = self.tokens_offset
-                self.acl_decoder_operation_inputs[8] = self.seq_lens  # keep [1]*batch
-                acl_model_out = self.acl_decoder_operation.execute(self.acl_decoder_operation_inputs, acl_param)
+                self.acl_model_inputs[0] = hidden_states
+                self.acl_model_inputs[1] = position_ids
+                self.acl_model_inputs[2] = self.cos_table.squeeze(1)
+                self.acl_model_inputs[3] = self.sin_table.squeeze(1)
+                self.acl_model_inputs[4] = self.attention_mask_max
+                self.acl_model_inputs[5] = self.k_cache_input
+                self.acl_model_inputs[6] = self.v_cache_input
+                self.acl_model_inputs[7] = self.tokens_offset
+                self.acl_model_inputs[8] = self.seq_lens  # keep [1]*batch
+                acl_model_out = self.acl_decoder_operation.execute(self.acl_model_inputs, acl_param)
                 logits_acl = acl_model_out[0]
 
             # 全量
@@ -695,16 +698,16 @@ class BaseTransformer(torch.nn.Module):
                                     "tokenOffset": [self.token_num]*batch_size, 
                                     "seqLen": [seq_len]*batch_size
                                     })
-                self.acl_decoder_operation_inputs[0] = hidden_states
-                self.acl_decoder_operation_inputs[1] = position_ids
-                self.acl_decoder_operation_inputs[2] = self.cos_table.squeeze(1)
-                self.acl_decoder_operation_inputs[3] = self.sin_table.squeeze(1)
-                self.acl_decoder_operation_inputs[4] = self.attention_mask_max
-                self.acl_decoder_operation_inputs[5] = self.k_cache_input
-                self.acl_decoder_operation_inputs[6] = self.v_cache_input
-                self.acl_decoder_operation_inputs[7] = self.tokens_offset
-                self.acl_decoder_operation_inputs[8] = self.seq_lens  # keep [1]*batch
-                acl_model_out = self.acl_decoder_operation.execute(self.acl_decoder_operation_inputs, acl_param)
+                self.acl_model_inputs[0] = hidden_states
+                self.acl_model_inputs[1] = position_ids
+                self.acl_model_inputs[2] = self.cos_table.squeeze(1)
+                self.acl_model_inputs[3] = self.sin_table.squeeze(1)
+                self.acl_model_inputs[4] = self.attention_mask_max
+                self.acl_model_inputs[5] = self.k_cache_input
+                self.acl_model_inputs[6] = self.v_cache_input
+                self.acl_model_inputs[7] = self.tokens_offset
+                self.acl_model_inputs[8] = self.seq_lens  # keep [1]*batch
+                acl_model_out = self.acl_encoder_operation.execute(self.acl_model_inputs, acl_param)
                 logits_acl = acl_model_out[0]
                 # init for decoder
                 self.token_num = seq_len
