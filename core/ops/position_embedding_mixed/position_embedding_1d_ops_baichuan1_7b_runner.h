@@ -13,14 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_MLP_H
-#define ACLTRANSFOERM_PARAMS_MLP_H
+#ifndef POSITIONEMBEDDING_1D_OPS_BAICHUAN1_7B_RUNNER_H
+#define POSITIONEMBEDDING_1D_OPS_BAICHUAN1_7B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/position_embedding.h"
 
-#include <vector>
 namespace AclTransformer {
-struct MlpParam {
-    bool transposeB = true;
-    std::string model = "llama7b";
+class PositionEmbedding1dOpsBaichuan17bRunner : public OpsRunner {
+public:
+    PositionEmbedding1dOpsBaichuan17bRunner(const PositionEmbeddingParam &param);
+    virtual ~PositionEmbedding1dOpsBaichuan17bRunner();
+
+private:
+    PositionEmbeddingParam param_;
 };
 } // namespace AclTransformer
 #endif
