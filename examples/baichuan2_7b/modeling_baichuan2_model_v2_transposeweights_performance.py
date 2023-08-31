@@ -498,12 +498,12 @@ class LlamaModel(PreTrainedModel):
                 weights_t = []
                 weights_layer = self.layers[i].state_dict()
                 weights_t.append(weights_layer["input_layernorm.weight"])
-                weights_t.append(weights_layer["self_attn.W_pack.weight"].permute(0, 1))
-                weights_t.append(weights_layer["self_attn.o_proj.weight"].permute(0, 1))
+                weights_t.append(weights_layer["self_attn.W_pack.weight"])
+                weights_t.append(weights_layer["self_attn.o_proj.weight"])
                 weights_t.append(weights_layer["post_attention_layernorm.weight"])
-                weights_t.append(weights_layer["mlp.gate_proj.weight"].permute(0, 1))
-                weights_t.append(weights_layer["mlp.down_proj.weight"].permute(0, 1))
-                weights_t.append(weights_layer["mlp.up_proj.weight"].permute(0, 1))
+                weights_t.append(weights_layer["mlp.gate_proj.weight"])
+                weights_t.append(weights_layer["mlp.down_proj.weight"])
+                weights_t.append(weights_layer["mlp.up_proj.weight"])
 
                 weights.extend(weights_t)
             weights.append(self.state_dict()["norm.weight"])
@@ -715,7 +715,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         global lm_head_weight
         if lm_head_weight is None:
             lm_head_weight = nn.functional.normalize(self.state_dict()["lm_head.weight"])
-            lm_head_weight = lm_head_weight.permute(0, 1)
+            lm_head_weight = lm_head_weight.transpose(0, 1).contiguous()
             lm_head_weight.data = lm_head_weight.data.npu_format_cast(29)
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions

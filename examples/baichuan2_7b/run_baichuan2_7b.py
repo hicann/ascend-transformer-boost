@@ -42,6 +42,7 @@ else:
             if name == 'lm_head':
                 # eliminate TransData op before lm_head calculation
                 module.weight.data = torch.nn.parameter.Parameter(module.weight.data)
+            # module.weight.data = module.weight.data.traspose(0, 1).contiguous()
             module.weight.data = module.weight.data.npu_format_cast(29)
     print("soc version: ", soc_version, " is not 910B, support NZ")
 
