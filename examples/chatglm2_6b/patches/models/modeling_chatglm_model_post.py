@@ -33,7 +33,7 @@ import logging as lg
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S %p"
 
-lg.basicConfig(filename=f"log/glm_model_post.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+lg.basicConfig(filename=f"glm_model_post.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:

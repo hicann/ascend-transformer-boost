@@ -27,6 +27,8 @@
 #include "self_attention_kv_cache_ops_chatglm2_6b_runner_310p.h"
 #include "self_attention_kv_cache_ops_bloom7b_runner.h"
 #include "self_attention_kv_cache_ops_gptneox20b_runner.h"
+#include "self_attention_kv_cache_ops_baichuan1_7b_runner_910a.h"
+#include "self_attention_kv_cache_ops_baichuan13b_runner_910a.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheOpsRunnerBuilder : public RunnerBuilder {
@@ -47,6 +49,13 @@ public:
             } else {
                 return new SelfAttentionKvCacheOpsLlama7bRunner910a(param_);
             }
+        } else if (param_.model == "baichuan1_7b") {
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                ASD_LOG(ERROR) << "invalid param_.model:" << param_.model << " for 910b";
+                return nullptr;
+            } else {
+                return new SelfAttentionKvCacheOpsBaiChuan17bRunner910a(param_);
+            }
         } else if (param_.model == "chatglm2_6b") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
                     return new SelfAttentionKvCacheOpsChatGlm26bRunner(param_);
@@ -57,6 +66,8 @@ public:
             return new SelfAttentionKvCacheOpsBloom7bRunner(param_);
         } else if (param_.model == "gptneox20b") {
             return new SelfAttentionKvCacheOpsGptNeox20bRunner(param_);
+        } else if (param_.model == "baichuan13b") {
+            return new SelfAttentionKvCacheOpsBaiChuan13bRunner910a(param_);
         } else {
             ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
             return nullptr;

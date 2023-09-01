@@ -71,15 +71,18 @@ transformers.generation.TopPLogitsWarper.__call__ = __call__
 
 def warm_up(model):
     past_key_values = None
-    input_ids = torch.randint(150000, (1, 4)).npu()
-    input_ids[:, -2] = 150001
-    input_ids[:, -1] = 150004
+    input_ids = torch.randint(3, 65024, (1, 4)).npu()
+    #input_ids[:, -2] = 150001
+    input_ids[:, -4] = 13
+    input_ids[:, -3] = 13
+    input_ids[:, -2] = 55437
+    input_ids[:, -1] = 31211
     position_ids = torch.randint(2048, (1, 2, 4)).npu()
     position_ids[0][0][0] = 2047
     attention_mask = (torch.randint(4, (1, 1, 4, 4)) == torch.randint(1, (1, 1, 4, 4))).npu()
     model_inputs = {
         "input_ids": input_ids,
-        # "past_key_values": past_key_values,
+        "past_key_values": past_key_values,
         # "position_ids": position_ids,
         # "attention_mask": attention_mask
     }
@@ -91,11 +94,11 @@ def warm_up(model):
     )
     for _ in range(5):
         past_key_values = outputs.past_key_values
-        input_ids = torch.randint(150000, (1, 1)).npu()
+        input_ids = torch.randint(3, 65024, (1, 1)).npu()
         position_ids = torch.randint(2048, (1, 2, 1)).npu()
         model_inputs = {
             "input_ids": input_ids,
-            # "past_key_values": past_key_values,
+            "past_key_values": past_key_values,
             # "position_ids": position_ids
         }
         outputs = model(
@@ -113,15 +116,18 @@ def full_test(seq_len, batch, test_cycle, model):
     past_key_values = None
     sum_time = 0
     for i in range(test_cycle):
-        input_ids = torch.randint(150000, (batch, seq_len)).npu()
-        input_ids[:, -2] = 150001
-        input_ids[:, -1] = 150004
+        input_ids = torch.randint(3, 65024, (batch, seq_len)).npu()
+        # input_ids[:, -2] = 150001
+        input_ids[:, -4] = 13
+        input_ids[:, -3] = 13
+        input_ids[:, -2] = 55437
+        input_ids[:, -1] = 31211
         position_ids = torch.randint(2048, (1, 2, seq_len)).npu()
         position_ids[0][0][0] = 2047
         attention_mask = (torch.randint(4, (1, 1, seq_len, seq_len)) == torch.randint(1, (1, 1, seq_len, seq_len))).npu()
         model_inputs = {
             "input_ids": input_ids,
-            # "past_key_values": past_key_values,
+            "past_key_values": past_key_values,
             # "position_ids": position_ids,
             # "attention_mask": attention_mask
         }
@@ -147,15 +153,18 @@ def full_and_incremental_test(seq_len, batch, test_cycle, model):
     print("start run.")
     warm_up(model)
     past_key_values = None
-    input_ids = torch.randint(150000, (batch, seq_len)).npu()
-    input_ids[:, -2] = 150001
-    input_ids[:, -1] = 150004
+    input_ids = torch.randint(3, 65024, (batch, seq_len)).npu()
+    #input_ids[:, -2] = 150001
+    input_ids[:, -4] = 13
+    input_ids[:, -3] = 13
+    input_ids[:, -2] = 55437
+    input_ids[:, -1] = 31211
     position_ids = torch.randint(2048, (1, 2, seq_len)).npu()
     position_ids[0][0][0] = 2047
     attention_mask = (torch.randint(4, (1, 1, seq_len, seq_len)) == torch.randint(1, (1, 1, seq_len, seq_len))).npu()
     model_inputs = {
         "input_ids": input_ids,
-        # "past_key_values": past_key_values,
+        "past_key_values": past_key_values,
         # "position_ids": position_ids,
         # "attention_mask": attention_mask
     }
@@ -175,11 +184,11 @@ def full_and_incremental_test(seq_len, batch, test_cycle, model):
     test_cycle -= 1
     for i in range(test_cycle):
         past_key_values = outputs.past_key_values
-        input_ids = torch.randint(150000, (batch, 1)).npu()
+        input_ids = torch.randint(3, 65024, (batch, 1)).npu()
         position_ids = torch.randint(2048, (1, 2, 1)).npu()
         model_inputs = {
             "input_ids": input_ids,
-            # "past_key_values": past_key_values,
+            "past_key_values": past_key_values,
             # "position_ids": position_ids
         }
         torch.npu.synchronize()

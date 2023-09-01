@@ -66,6 +66,12 @@
 #include "models/llama7b/llama7blayer_operation.h"
 #include "models/llama7b/llama7blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_fusion_operation.h"
+#include "models/baichuan1_7b/baichuan1_7b_layer_decoder_operation.h"
+#include "models/baichuan1_7b/baichuan1_7b_layer_encoder_operation.h"
+#include "models/baichuan1_7b/baichuan1_7b_layer_encoder_with_bias_operation.h"
+#include "models/baichuan2_7b/baichuan2_7b_layer_decoder_operation.h"
+#include "models/baichuan2_7b/baichuan2_7b_layer_encoder_operation.h"
+#include "models/baichuan13b/baichuan13b_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_encoder_operation.h"
 #include "models/llama13b/llama13blayer_parallel_operation.h"
@@ -177,6 +183,75 @@ static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohma
     ASD_LOG(INFO) << "LLaMA7BLayerFusionParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
     return new AclTransformer::LLaMA7BLayerFusionOperation(param);
+}
+
+static AclTransformer::Operation *BaiChuan17BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan17BLayerParam param;
+    bool bias = static_cast<bool>(paramJson.value("bias", false));
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    if (bias) {
+        return new AclTransformer::BaiChuan17BLayerEncoderWithBiasOperation(param);
+    } else {
+        return new AclTransformer::BaiChuan17BLayerEncoderOperation(param);
+    }
+}
+
+static AclTransformer::Operation *BaiChuan17BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan17BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::BaiChuan17BLayerDecoderOperation(param);
+}
+
+static AclTransformer::Operation *BaiChuan27BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan27BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.contains("transposedWeight")) {
+        param.transposedWeight = paramJson["transposedWeight"].get<bool>();
+    }
+    ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", transposedWeight:" << param.transposedWeight;
+    return new AclTransformer::BaiChuan27BLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *BaiChuan27BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan27BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    if (paramJson.contains("transposedWeight")) {
+        param.transposedWeight = paramJson["transposedWeight"].get<bool>();
+    }
+    ASD_LOG(INFO) << "BaiChuan17BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", transposedWeight:" << param.transposedWeight;
+    return new AclTransformer::BaiChuan27BLayerDecoderOperation(param);
+}
+
+static AclTransformer::Operation *BaiChuan13BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan13BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    ASD_LOG(INFO) << "BaiChuan13BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::BaiChuan13BLayerDecoderOperation(param);
 }
 
 static AclTransformer::Operation *PostOperationCreate(const nlohmann::json &paramJson)
@@ -381,6 +456,10 @@ static AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &param
         param.model = "llama7b";
         ASD_LOG(INFO) << "MlpParam is empty, default model:" << param.model;
     }
+    if (paramJson.contains("transposeB")) {
+        param.transposeB = paramJson["transposeB"].get<bool >();
+    }
+    ASD_LOG(INFO) << "MlpParam transposeB:" << param.transposeB;
     return new AclTransformer::MlpOperation(param);
 }
 
@@ -1210,6 +1289,11 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
     {"LLaMA7BLayerEncoderOperation", &LLaMA7BLayerEncoderOperationCreate},
     {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
+    {"BaiChuan17BLayerDecoderOperation", &BaiChuan17BLayerDecoderOperationCreate},
+    {"BaiChuan17BLayerEncoderOperation", &BaiChuan17BLayerEncoderOperationCreate},
+    {"BaiChuan27BLayerDecoderOperation", &BaiChuan27BLayerDecoderOperationCreate},
+    {"BaiChuan27BLayerEncoderOperation", &BaiChuan27BLayerEncoderOperationCreate},
+    {"BaiChuan13BLayerDecoderOperation", &BaiChuan13BLayerDecoderOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate},
     {"LmHeadParallelOperation", &LmHeadParallelOperationCreate},
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},

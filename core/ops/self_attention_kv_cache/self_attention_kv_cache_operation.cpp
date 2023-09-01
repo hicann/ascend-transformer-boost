@@ -36,6 +36,8 @@ SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() {}
 uint64_t SelfAttentionKvCacheOperation::GetInTensorCount() const {
     if (param_.model == "chatglm2_6b" || param_.model == "bloom7b") {
         return 5;
+    } else if (param_.model == "baichuan13b") {
+        return 4;
     } else {
         return 6;
     }
@@ -69,7 +71,7 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVect
         outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(0));
         outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(1) + 1);
         outTensorDescs.at(2).dims.push_back(inTensors.at(2).desc.dims.at(2));
-    } else if (param_.model == "gptneox20b") {
+    } else if (param_.model == "gptneox20b" || param_.model == "baichuan1_7b") {
         // input [bs, sq, hn, hs]
         // output [bs, sq, hn * hs]
         outTensorDescs.at(0) = inTensors.at(0).desc;
@@ -82,6 +84,16 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVect
         outTensorDescs.at(1).dims.at(1) = outTensorDescs.at(1).dims.at(1) + 1;
         outTensorDescs.at(2) = inTensors.at(5).desc;
         outTensorDescs.at(2).dims.at(1) = outTensorDescs.at(2).dims.at(1) + 1;
+    } else if (param_.model == "baichuan13b") {
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) / 3);
+        outTensorDescs.at(1) = inTensors.at(2).desc;
+        outTensorDescs.at(1).dims.at(0) = outTensorDescs.at(1).dims.at(0) + 1;
+        outTensorDescs.at(2) = inTensors.at(3).desc;
+        outTensorDescs.at(2).dims.at(0) = outTensorDescs.at(2).dims.at(0) + 1;
     } else {
         // in : Q K V attention_mast pastK pastV [seq_len, batch, head_num, head_size]
         // out : out presentK presentV [seq_len, batch, head_num * head_size]

@@ -28,11 +28,18 @@ from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList, StoppingCriteriaList, GenerationConfig, ModelOutput
 
 from .configuration_chatglm import ChatGLMConfig
+import logging as lg
+
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S %p"
+
+lg.basicConfig(filename=f"glm_flashattention.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
     raise RuntimeError(
         "env ACLTRANSFORMER_HOME_PATH not exist, source set_env.sh")
+
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "lib/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
@@ -648,7 +655,7 @@ class GLMTransformer(torch.nn.Module):
         self.gradient_checkpointing = False
 
         # ======================================================================================
-        self.max_sequence_length = 2048
+        self.max_sequence_length = 2**14
         self.num_attention_heads = config.num_attention_heads
         self.num_attention_heads_per_partition = config.num_attention_heads
         self.num_multi_query_groups_per_partition = config.multi_query_group_num
@@ -657,19 +664,13 @@ class GLMTransformer(torch.nn.Module):
         self.token_num = 0
         self.rmsNormEps = config.layernorm_epsilon
 
-        self.batch = 1
-
-        self.kv_cache = torch.zeros(2,
-                            self.num_layers,
-                            self.batch,
-                            self.max_sequence_length,
-                            self.num_attention_heads,
-                            self.hidden_size_per_attention_head,
-                            device='cpu').npu().half().contiguous()
-        self.k_cache_input = torch.as_tensor(
-            self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, self.batch, self.max_sequence_length, self.hidden_size)
-        self.v_cache_input = torch.as_tensor(
-            self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(self.num_layers, self.batch, self.max_sequence_length, self.hidden_size)
+        self.batch = 0
+        # ================================= FA init ============================
+        self.kv_cache = None
+        self.k_cache_input = None
+        self.v_cache_input = None
+        self.token_offset = None
+        # ================================= FA init ============================
         
         self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderFlashAttentionModel")
         self.acl_param = json.dumps({
@@ -688,7 +689,6 @@ class GLMTransformer(torch.nn.Module):
 
         self.attention_mask_max = torch.full((self.max_sequence_length, self.max_sequence_length), 0, dtype=torch.half).npu()
         self.seq_len = None
-        self.token_offset = torch.full((self.batch,), 0, dtype=torch.int32, device=self.kv_cache.device)
 
         self.acl_decoder_operation_inputs = [None] * (7 + self.num_layers)
         for i in range(self.num_layers):
@@ -720,6 +720,23 @@ class GLMTransformer(torch.nn.Module):
         all_hidden_states = () if output_hidden_states else None
 
         # ========================================================================================================
+        batch_size = hidden_states.shape[1]
+        if batch_size != self.batch:
+            self.batch = batch_size
+            self.kv_cache = torch.zeros(2,
+                self.num_layers,
+                self.batch,
+                self.max_sequence_length,
+                self.num_attention_heads,
+                self.hidden_size_per_attention_head,
+                device='cpu').npu().half().contiguous()
+            self.k_cache_input = torch.as_tensor(self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(
+                                                self.num_layers, self.batch, self.max_sequence_length, self.hidden_size)
+            self.v_cache_input = torch.as_tensor(self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(
+                                                self.num_layers, self.batch, self.max_sequence_length, self.hidden_size)
+            self.token_offset = torch.full((self.batch,), 0, dtype=torch.int32, device=self.kv_cache.device)
+            
+        
         if hidden_states.shape[0] > 1:
 
             weights = list(self.state_dict().values())
@@ -777,18 +794,18 @@ class GLMTransformer(torch.nn.Module):
                 )
 
                 # [22,1,32,128] sq bs gp head_size
-                self.kv_cache[0, index, 0, :hidden_states.shape[0], ...] = key_layer_acl.permute(1,0,2,3)[0, ...] # batch = 1
-                self.kv_cache[1, index, 0, :hidden_states.shape[0], ...] = value_layer_acl.permute(1,0,2,3)[0, ...] # batch = 1
+                self.kv_cache[0, index, :batch_size, :hidden_states.shape[0], ...] = key_layer_acl.permute(1,0,2,3)[0, ...] # batch = 1
+                self.kv_cache[1, index, :batch_size, :hidden_states.shape[0], ...] = value_layer_acl.permute(1,0,2,3)[0, ...] # batch = 1
                 self.token_num = hidden_states.shape[0]
-                self.seq_len = torch.tensor([1], device=self.kv_cache.device)
+                self.seq_len = torch.tensor([1] * batch_size, dtype=torch.int32, device=self.kv_cache.device)
                 if use_cache:
                     presents = presents + (kv_cache, )
         else:
             self.token_num = self.token_num + 1
-            self.token_offset[0] =  self.token_num
+            self.token_offset[:] =  self.token_num
             acl_param = json.dumps({
-                                    "tokenOffset": [self.token_num], 
-                                    "seqLen": [1]})
+                                    "tokenOffset": [self.token_num] * batch_size, 
+                                    "seqLen": [1] * batch_size})
             self.acl_decoder_operation_inputs[0] = hidden_states
             self.acl_decoder_operation_inputs[1] = rotary_pos_emb
             self.acl_decoder_operation_inputs[2] = self.k_cache_input
@@ -1046,9 +1063,17 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         self.transformer = ChatGLMModel(config, empty_init=empty_init, device=device)
         self.config = config
         self.quantized = False
+
         self.count = 0
+        self.input_generate = 0
         self.model_total = 0
         self.token_total = 0
+        self.model_time = 0
+        self.token_time = 0
+        self.model_first = 0
+        self.token_first = 0
+        self.pre_processing = 0
+        self.post_processing = 0
 
         if self.config.quantization_bit:
             self.quantize(self.config.quantization_bit, empty_init=True)
@@ -1275,16 +1300,6 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             return_past_key_values=False,
             **kwargs,
     ):
-        pre_prof = False
-        model_prof = False 
-        post_prof = False
-        count = 2
-
-        # if pre_prof and self.count == count:
-        #     stream = torch.npu.current_stream()
-        #     stream.synchronize()
-        #     prof = torch.npu.profile('/home/chengyuan/glm2_check/chatglm2_6b/chatglm2_6b/cy_profiling/pre_process')
-        #     prof.__enter__()
         pre_processing_start = time.time()
         batch_size, input_ids_seq_length = input_ids.shape[0], input_ids.shape[-1]
 
@@ -1339,26 +1354,26 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         stopping_criteria = self._get_stopping_criteria(
             generation_config=generation_config, stopping_criteria=stopping_criteria
         )
-        # logits_warper = self._get_logits_warper(generation_config)
 
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
+
+        # initialize the new TopPLogits outside the loop
         tp = TopPLogits(generation_config.top_p, generation_config.top_k, generation_config.temperature)
 
-        # if pre_prof and self.count == count:
-        #     stream = torch.npu.current_stream()
-        #     stream.synchronize()
-        #     prof.__exit__(None,None,None)
-
+        # if you need to test the accuracy, set the variable below to True
+        compare_original = False
+        if compare_original:
+            logits_warper = self._get_logits_warper(generation_config)
+        
         pre_processing_end = time.time()
         while True:
             torch.npu.synchronize()
             input_start = time.time()
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
-
-            torch.npu.synchronize()
-            start_time = time.time()
             # forward pass to get next token
+            torch.npu.synchronize()
+            model_start = time.time()
             outputs = self(
                 **model_inputs,
                 return_dict=True,
@@ -1366,31 +1381,13 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 output_hidden_states=False,
             )
             torch.npu.synchronize()
-            end_time = time.time()
-            # if model_prof and self.count == count:
-            #     stream = torch.npu.current_stream()
-            #     stream.synchronize()
-            #     prof.__exit__(None,None,None)
+            model_end = time.time()
 
-            # if post_prof and self.count == count:
-            #     stream = torch.npu.current_stream()
-            #     stream.synchronize()
-            #     prof = torch.npu.profile('/home/chengyuan/glm2_check/chatglm2_6b/chatglm2_6b/cy_profiling/post_process')
-            #     prof.__enter__()
             next_token_logits = outputs.logits[:, -1, :]
 
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
-            # next_token_scores = logits_warper(input_ids, next_token_scores)
 
-            # # sample
-            # probs = nn.functional.softmax(next_token_scores, dim=-1)
-            # if generation_config.do_sample:
-            #     next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
-            # else:
-            #     next_tokens = torch.argmax(probs, dim=-1)
-
-            # update generated ids, model inputs, and length for next step
             # ------------------post-processing after optimization--------------------
             output, indices = tp(next_token_scores)
             probs_opt = nn.functional.softmax(output, dim=-1)
@@ -1399,37 +1396,51 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 next_tokens = indices[0][len(indices[0])-i-1]
             next_tokens = next_tokens.npu()
 
+            # ------------------post-processing before optimization--------------------
+            if compare_original:
+                next_token_scores = logits_warper(input_ids, next_token_scores)
+
+                # sample
+                probs = nn.functional.softmax(next_token_scores, dim=-1)
+                if generation_config.do_sample:
+                    next_tokens_origin = torch.multinomial(probs, num_samples=1).squeeze(1)
+                else:
+                    next_tokens_origin = torch.argmax(probs, dim=-1)
+                # -----------------------------precision compare-------------------------
+                if torch.allclose(next_tokens_origin, next_tokens, atol=0.02, rtol=0.02):
+                    print(f"{self.count}: equal")
+                else:
+                    print("Post not Equal")
+                    print("next_tokens_origin: ", next_tokens_origin)
+                    print("next_tokens: ", next_tokens)
+                    pdb.set_trace()
+                # -----------------------------------------------------------------------
+
+            # update generated ids, model inputs, and length for next step
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
             )
             unfinished_sequences = unfinished_sequences.mul((sum(next_tokens != i for i in eos_token_id)).long())
-            
-            # if post_prof and self.count == count:
-            #     stream = torch.npu.current_stream()
-            #     stream.synchronize()
-            #     prof.__exit__(None,None,None)
             torch.npu.synchronize()
             post_processing_end = time.time()
-            # print(f"=====cy each token forward and post time: {post_processing_end - input_start}")
 
             self.count += 1
-            self.input_generate_time = (start_time - input_start) * 1000
-            self.model_time = (end_time - start_time) * 1000
-            self.post_processing_time = (post_processing_end - end_time) * 1000
+            self.input_generate = (model_start - input_start) * 1000
+            self.model_time = (model_end - model_start) * 1000
+            self.post_processing = (post_processing_end - model_end) * 1000
             self.token_time = (post_processing_end - input_start) * 1000
             if self.count == 1:
                 self.model_first = self.model_time
                 self.token_first = self.token_time
-                print(f"====cy first model time: {self.model_first}")
-                print(f"====cy first token time: {self.token_first}")
-                print(f"====cy post time: {self.post_processing_time}")
             else:
-                self.token_total += self.token_time
                 self.model_total += self.model_time
-                print(f"====cy model time: {self.model_time}")
-                print(f"====cy token time: {self.token_time}")
-                print(f"====cy post time: {self.post_processing_time}")
+                self.token_total += self.token_time
+
+            lg.info(f"{self.count} tokens model_time: {self.model_time:.4f} ms")
+            lg.info(f"{self.count} tokens token_time: {self.token_time:.4f} ms")
+            lg.info(f"{self.count} tokens input_generate: {self.input_generate:.4f} ms")
+            lg.info(f"{self.count} tokens post_processing: {self.post_processing:.4f} ms")
 
             if return_past_key_values:
                 yield input_ids, outputs.past_key_values
@@ -1438,11 +1449,11 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             # stop when each sentence is finished, or if we exceed the maximum length
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
                 break
-
         model_avg = self.model_total / (self.count - 1)
         token_avg = self.token_total / (self.count - 1)
-        print(f"model average time {model_avg}")
-        print(f"token average time {token_avg}")
+        lg.info(f"{self.count} tokens, avg model_time: {model_avg:.4f} ms, model_total: {self.model_total:.4f} ms")
+        lg.info(f"{self.count} tokens, avg token_time: {token_avg:.4f} m, token_total: {self.token_total:.4f} ms")
+        
 
     def quantize(self, bits: int, empty_init=False, device=None, **kwargs):
         if bits == 0:

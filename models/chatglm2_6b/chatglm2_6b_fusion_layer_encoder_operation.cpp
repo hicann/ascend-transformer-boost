@@ -116,7 +116,9 @@ ChatGlm2FusionLayerEncoderOperation::ChatGlm2FusionLayerEncoderOperation(const C
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 
-    mlpNode.operation.reset(new AclTransformer::MlpOperation({param_.model}));
+    AclTransformer::MlpParam mlpParam;
+    mlpParam.model = param_.model;
+    mlpNode.operation.reset(new AclTransformer::MlpOperation(mlpParam));
     mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPLINEARWEIGHTUP, IN_MLPLINEARWEIGHTDOWN};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 
