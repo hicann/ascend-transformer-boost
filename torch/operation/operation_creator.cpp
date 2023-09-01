@@ -31,6 +31,7 @@
 #include "acltransformer/ops/embedding_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
+#include "acltransformer/ops/self_attention_cross_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/position_embedding_1d_split_operation.h"
@@ -486,6 +487,23 @@ static AclTransformer::Operation *AnyOperationCreate(const nlohmann::json &param
     AclTransformer::AnyParam param;
     param.kernelGraph = paramJson;
     return new AclTransformer::AnyOperation(param);
+}
+
+static AclTransformer::Operation *SelfAttentionCrossOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::SelfAttentionCrossParam param;
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("dk")) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.contains("model")) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "SelfAttentionCrossParam " << "headNum:" << param.headNum
+                  << ", dk:" << param.dk << ", model:" << param.model ;
+    return new AclTransformer::SelfAttentionCrossOperation(param);
 }
 
 static AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::json &paramJson)
@@ -1267,6 +1285,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"SelfAttentionKvCacheOperation", &SelfAttentionKvCacheOperationCreate},
     {"SelfAttentionKvCacheFusionOperation", &SelfAttentionKvCacheFusionOperationCreate},
     {"SelfAttentionOperation", &SelfAttentionOperationCreate},
+    {"SelfAttentionCrossOperation", &SelfAttentionCrossOperationCreate},
     {"AnyOperation", &AnyOperationCreate},
     {"ChatGlm6BLayerDecoderOperation", &ChatGlm6BLayerDecoderOperationCreate},
     {"ChatGlm6BLayerDecoderWithoutFusionOperation", &ChatGlm6BLayerDecoderWithoutFusionOperationCreate},
