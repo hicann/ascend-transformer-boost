@@ -23,6 +23,8 @@
 #include "position_embedding_1d_fusion_ops_runner.h"
 #include "position_embedding_ops_glm2_runner.h"
 #include "position_embedding_ops_gptneox20b_runner.h"
+#include "position_embedding_1d_ops_baichuan1_7b_runner.h"
+#include "position_embedding_1d_ops_baichuan2_7b_runner.h"
 
 namespace AclTransformer {
 class PositionEmbeddingOpsRunnerBuilder : public RunnerBuilder {
@@ -37,6 +39,10 @@ public:
             return new PositionEmbeddingOpsGptNeox20bRunner(param_);
         } else if (param_.model == "llama7b") {
             return new PositionEmbedding1dOpsLlama7bRunner(param_);
+        }  else if (param_.model == "baichuan2_7b") {
+            return new PositionEmbedding1dOpsBaichuan7bRunner(param_);
+        }else if (param_.model == "baichuan1_7b") {
+            return new PositionEmbedding1dOpsBaichuan17bRunner(param_);
         } else if (param_.is2d) {
             return new PositionEmbeddingOpsRunner(param_);
         } else {
