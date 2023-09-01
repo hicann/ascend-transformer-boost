@@ -25,6 +25,7 @@
 #include "self_attention_ops_chatglm6b_runner_910a.h"
 #include "self_attention_ops_llama7b_runner.h"
 #include "self_attention_ops_baichuan1_7b_runner_910a.h"
+#include "self_attention_ops_baichuan2_13b_runner_910a.h"
 #include "self_attention_ops_gptneox20b_runner.h"
 
 namespace AclTransformer {
@@ -59,6 +60,13 @@ public:
                 return nullptr;
             } else {
                 return new SelfAttentionOpsBaiChuan17BRunner910a(param_);
+            }
+        } else if (param_.model == "baichuan2_13b") {
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                ASD_LOG(ERROR) << "invalid param_.model:" << param_.model << " for 910b";
+                return nullptr;
+            } else {
+                return new SelfAttentionOpsBaiChuan213BRunner910a(param_);
             }
         } else if (param_.model == "gptneox20b") {
             return new SelfAttentionOpsGptNeox20bRunner(param_);

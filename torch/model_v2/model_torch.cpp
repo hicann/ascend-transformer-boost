@@ -44,6 +44,8 @@
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_encoder_with_bias_model.h"
 #include "torch/model_v2/baichuan2_7b/baichuan2_7b_decoder_model.h"
 #include "torch/model_v2/baichuan2_7b/baichuan2_7b_encoder_model.h"
+#include "torch/model_v2/baichuan2_13b/baichuan2_13b_encoder_model.h"
+#include "torch/model_v2/baichuan2_13b/baichuan2_13b_decoder_model.h"
 #include "torch/model_v2/llama7b/llama7b_decoder_without_fusion_model.h"
 
 uint64_t GetNewModelId()
@@ -100,7 +102,7 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderQuantModel>(param);
     } else if (modelName_ == "BaiChuan17BDecoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan17BDecoderModel>(param);
-    }  else if (modelName_ == "BaiChuan17BEncoderModel") {
+    } else if (modelName_ == "BaiChuan17BEncoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan17BEncoderModel>(param);
     } else if (modelName_ == "BaiChuan17BEncoderWithBiasModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan17BEncoderWithBiasModel>(param);
@@ -108,6 +110,10 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::BaiChuan27BDecoderModel>(param);
     } else if (modelName_ == "BaiChuan27BEncoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan27BEncoderModel>(param);
+    } else if (modelName_ == "BaiChuan213BEncoderModel") {
+        model_ = std::make_shared<AclTransformer::BaiChuan213BEncoderModel>(param);
+    } else if (modelName_ == "BaiChuan213BDecoderModel") {
+        model_ = std::make_shared<AclTransformer::BaiChuan213BDecoderModel>(param);
     } else if (modelName_ == "Llama7BDecoderWithoutFusionModel") {
         model_ = std::make_shared<AclTransformer::Llama7BDecoderWithoutFusionModel>(param);    
     } else {
