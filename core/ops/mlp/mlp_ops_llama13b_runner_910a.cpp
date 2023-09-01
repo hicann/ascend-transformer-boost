@@ -57,11 +57,13 @@ MlpOpsLlama13bRunner910A::MlpOpsLlama13bRunner910A(const MlpParam &param) : OpsR
     auto &transdata2Node = kernelGraph_.nodes[nodeId++];
     auto &mulNode = kernelGraph_.nodes[nodeId++];
 
-    ViewFunc Unsqueeze0 = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims.resize(oldDims.size() + 1);
-        newDims.at(0) = 1;
-        for (size_t i = 1; i < newDims.size(); i++) {
-            newDims.at(i) = oldDims.at(i - 1);
+    ViewFunc Squeeze1 = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        hiddenStatusDims_ = oldDims;
+        if (oldDims.size() == 2) {
+            oriSize_ = 2;
+            newDims = {1, oldDims.at(0), oldDims.at(1)};
+        } else {
+            newDims = {1, oldDims.at(0) * oldDims.at(1), oldDims.at(2)};
         }
     };
 
@@ -70,10 +72,7 @@ MlpOpsLlama13bRunner910A::MlpOpsLlama13bRunner910A(const MlpParam &param) : OpsR
     transdata0Node.inTensors = {&hiddenStatus};
     transdata0Node.outTensors = {&hiddenStatusNZ};
     transdata0Node.inTensorViewFuncs.resize(transdata0Node.inTensors.size());
-    transdata0Node.inTensorViewFuncs.at(0) = Unsqueeze0;
-    transdata0Node.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
-        hiddenStatusDims_ = runInfo.GetInTensor(0).desc.dims;
-    };
+    transdata0Node.inTensorViewFuncs.at(0) = Squeeze1;
 
     matmulGateNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, true})};
     matmulGateNode.inTensors = {&hiddenStatusNZ, &weightGate};
@@ -81,13 +80,21 @@ MlpOpsLlama13bRunner910A::MlpOpsLlama13bRunner910A(const MlpParam &param) : OpsR
     matmulGateNode.inTensorViewFuncs.resize(matmulGateNode.inTensors.size());
     matmulGateNode.inTensorViewFuncs.at(1) = [=](const AsdOps::SVector<int64_t> &oldDims,
                                                 AsdOps::SVector<int64_t> &newDims) {
+            weightGatedims_ = oldDims;
             newDims = {1, oldDims.at(1)/16, oldDims.at(0), 16};
         };
     matmulGateNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
-        weightGatedims_ = runInfo.GetInTensor(1).desc.dims;
+        int64_t dim0, dim1, dim2;
+        if (oriSize_ == 3) {
+            dim0 = hiddenStatusDims_.at(0) * hiddenStatusDims_.at(1);
+            dim1 = hiddenStatusDims_.at(2);
+        } else {
+            dim0 = hiddenStatusDims_.at(0);
+            dim1 = hiddenStatusDims_.at(1);
+        }
         runInfo.SetOpDesc({0, "MatmulOperation",
                             AsdOps::OpParam::MatMul({false, true, 
-                                {hiddenStatusDims_.at(1), hiddenStatusDims_.at(2), weightGatedims_.at(2)}})});
+                                {dim0, dim1, weightGatedims_.at(0)}})});
     };
 
     transdata1Node.opDesc = {0, "TransdataOperation",
@@ -96,10 +103,16 @@ MlpOpsLlama13bRunner910A::MlpOpsLlama13bRunner910A(const MlpParam &param) : OpsR
     transdata1Node.outTensors = {&matmulGateOutND};
     transdata1Node.inTensorViewFuncs.resize(transdata1Node.inTensors.size());
     transdata1Node.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
+        int64_t dim0, dim1;
+        if (oriSize_ == 3) {
+            dim0 = hiddenStatusDims_.at(0) * hiddenStatusDims_.at(1);
+        } else {
+            dim0 = hiddenStatusDims_.at(0);
+        }
         runInfo.SetOpDesc(
             {0, "TransdataOperation",
              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND,
-             {hiddenStatusDims_.at(1), weightGatedims_.at(2)}})});
+             {dim0, weightGatedims_.at(0)}})});
     };
 
     swishNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_SWISH})};
@@ -112,13 +125,21 @@ MlpOpsLlama13bRunner910A::MlpOpsLlama13bRunner910A(const MlpParam &param) : OpsR
     matmulUpNode.inTensorViewFuncs.resize(matmulUpNode.inTensors.size());
     matmulUpNode.inTensorViewFuncs.at(1) = [=](const AsdOps::SVector<int64_t> &oldDims,
                                                 AsdOps::SVector<int64_t> &newDims) {
+            weightUpdims_ = oldDims;
             newDims = {1, oldDims.at(1)/16, oldDims.at(0), 16};
         };
     matmulUpNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
-        weightUpdims_ = runInfo.GetInTensor(1).desc.dims;
+        int64_t dim0, dim1, dim2;
+        if (oriSize_ == 3) {
+            dim0 = hiddenStatusDims_.at(0) * hiddenStatusDims_.at(1);
+            dim1 = hiddenStatusDims_.at(2);
+        } else {
+            dim0 = hiddenStatusDims_.at(0);
+            dim1 = hiddenStatusDims_.at(1);
+        }
         runInfo.SetOpDesc({0, "MatmulOperation",
                             AsdOps::OpParam::MatMul({false, true, 
-                                {hiddenStatusDims_.at(1), hiddenStatusDims_.at(2), weightUpdims_.at(2)}})});
+                                {dim0, dim1, weightUpdims_.at(0)}})});
     };
 
     transdata2Node.opDesc = {0, "TransdataOperation",
@@ -127,10 +148,16 @@ MlpOpsLlama13bRunner910A::MlpOpsLlama13bRunner910A(const MlpParam &param) : OpsR
     transdata2Node.outTensors = {&matmulUpOutND};
     transdata2Node.inTensorViewFuncs.resize(transdata2Node.inTensors.size());
     transdata2Node.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
+        int64_t dim0, dim1;
+        if (oriSize_ == 3) {
+            dim0 = hiddenStatusDims_.at(0) * hiddenStatusDims_.at(1);
+        } else {
+            dim0 = hiddenStatusDims_.at(0);
+        }
         runInfo.SetOpDesc(
             {0, "TransdataOperation",
              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND,
-             {hiddenStatusDims_.at(1), weightUpdims_.at(2)}})});
+             {dim0, weightUpdims_.at(0)}})});
     };
 
     mulNode.opDesc = {0, "BroadcastOperation", AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_MUL})};

@@ -29,6 +29,7 @@ private:
     AsdOps::SVector<int64_t> hiddenStatusDims_;
     AsdOps::SVector<int64_t> weightGatedims_;
     AsdOps::SVector<int64_t> weightUpdims_;
+    std::size_t oriSize_ = 3;
 };
 
 } // namespace AclTransformer
