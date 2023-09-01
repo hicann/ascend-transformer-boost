@@ -29,13 +29,9 @@ enum LLaMA7BLayerTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
     IN_QMIXDWEIGHT,
-    IN_QMIXDBIAS,
     IN_KMIXDWEIGHT,
-    IN_KMIXDBIAS,
     IN_VMIXDWEIGHT,
-    IN_VMIXDBIAS,
     IN_SELFOUTLINEARWEIGHT,
-    IN_SELFOUTLINEARBIAS,
     IN_SELFOUTNORMWEIGHT,
     IN_MLPGATEWEIGHT,
     IN_MLPDOWNWEIGHT,
@@ -93,16 +89,16 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORMOUT};
 
-    mixdQLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    mixdQLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QMIXDWEIGHT, IN_QMIXDBIAS};
+    mixdQLinearNode.operation.reset(new AclTransformer::LinearOperation({false, false, false}));
+    mixdQLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QMIXDWEIGHT};
     mixdQLinearNode.outTensorIds = {INTERMIDATE_MIXEDQ};
 
-    mixdKLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    mixdKLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_KMIXDWEIGHT, IN_KMIXDBIAS};
+    mixdKLinearNode.operation.reset(new AclTransformer::LinearOperation({false, false, false}));
+    mixdKLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_KMIXDWEIGHT};
     mixdKLinearNode.outTensorIds = {INTERMIDATE_MIXEDK};
 
-    mixdVLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    mixdVLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_VMIXDWEIGHT, IN_VMIXDBIAS};
+    mixdVLinearNode.operation.reset(new AclTransformer::LinearOperation({false, false, false}));
+    mixdVLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_VMIXDWEIGHT};
     mixdVLinearNode.outTensorIds = {INTERMIDATE_MIXEDV};
 
     qPositionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbedding1dSplitOperation({param_.headNum}));
@@ -133,8 +129,8 @@ LLaMA7BLayerOperation::LLaMA7BLayerOperation(const LLaMA7BLayerParam &param)
         newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
     };
 
-    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT, IN_SELFOUTLINEARBIAS};
+    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({false, false, false}));
+    selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT};
     selfOutLinearNode.outTensorIds = {INTERMIDATE_SELFLINEAROUT};
 
     selfResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));

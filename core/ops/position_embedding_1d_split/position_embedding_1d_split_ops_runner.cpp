@@ -127,7 +127,7 @@ PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const Posit
 
     // [bs, sq, 1, rd]
     ViewFunc unsqueezeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), oldDims.at(1), 1, oldDims.at(2)};
+        newDims = {oldDims.at(0), 1, oldDims.at(1), oldDims.at(2)};
     };
 
     mul0Node.opDesc = {0, "BroadcastOperation",
