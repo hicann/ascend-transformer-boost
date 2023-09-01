@@ -88,13 +88,14 @@ def batch_filling_sequence(
         if strategy.is_done:
             break
     if torch.distributed.get_rank() == 0 and token_num > 1:
-        print('Token num is {}, takes {} second.'.format(
-            token_num, round(sum(token_time), 4)))
+        print('Input seqlen = ', context_length)
+        print('Token num is {}, takes {} ms.'.format(
+            token_num, round(sum(token_time) * 1000, 4)))
         print('First token\'s model latency is {} ms.'.format(
             round(model_time[0] * 1000, 2)))
         print('Model latency is {} ms.'.format(
             round((sum(model_time) - model_time[0]) * 1000 / (token_num - 1), 2)))
-        print('Model latency list is:'.format(model_time))
+        print('Model latency list is:{}'.format([round(item * 1000, 2) for item in model_time]))
         print('PostProcess latency is {} ms.'.format(
             round((sum(postprocess_time) - postprocess_time[0]) * 1000 / (token_num - 1), 2)))
         print('Token latency is {} ms.'.format(
