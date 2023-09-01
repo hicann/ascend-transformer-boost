@@ -40,6 +40,7 @@ Config::Config()
     isPositionEmbeddingOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_OPSRUNNER_ENABLE");
     isSelfAttentionKVCacheOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_SELFATTENTIONKVCACHE_OPSRUNNER_ENABLE");
     isSelfAttentionOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_SELFATTENTION_OPSRUNNER_ENABLE");
+    isSelfAttentionCrossOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_SELFATTENTIONCROSS_OPSRUNNER_ENABLE");
     isPositionEmbedding1dSplitOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_POSITIONEMBEDDING_1D_SPLIT_OPSRUNNER_ENABLE");
     isTransposeOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_TRANSPOSE_OPSRUNNER_ENABLE");
     isStreamSyncEveryKernelEnable_ = IsEnable("ACLTRANSFORMER_STREAM_SYNC_EVERY_KERNEL_ENABLE");
@@ -116,6 +117,8 @@ bool Config::IsTransposeOpsRunnerEnable() { return isTransposeOpsRunnerEnable_; 
 bool Config::IsSelfAttentionKVCacheOpsRunnerEnable() { return isSelfAttentionKVCacheOpsRunnerEnable_; }
 
 bool Config::IsSelfAttentionOpsRunnerEnable() { return isSelfAttentionOpsRunnerEnable_; }
+
+bool Config::IsSelfAttentionCrossOpsRunnerEnable() { return isSelfAttentionCrossOpsRunnerEnable_; }
 
 bool Config::IsStreamSyncEveryKernelEnable() { return isStreamSyncEveryKernelEnable_; }
 

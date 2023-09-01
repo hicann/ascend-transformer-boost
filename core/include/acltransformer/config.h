@@ -38,6 +38,7 @@ public:
     bool IsPositionEmbeddingOpsRunnerEnable();
     bool IsSelfAttentionKVCacheOpsRunnerEnable();
     bool IsSelfAttentionOpsRunnerEnable();
+    bool IsSelfAttentionCrossOpsRunnerEnable();
     bool IsPositionEmbedding1dSplitOpsRunnerEnable();
     bool IsTransposeOpsRunnerEnable();
     bool IsStreamSyncEveryKernelEnable();
@@ -73,6 +74,7 @@ private:
     bool isPositionEmbeddingOpsRunnerEnable_ = false;
     bool isSelfAttentionKVCacheOpsRunnerEnable_ = false;
     bool isSelfAttentionOpsRunnerEnable_ = false;
+    bool isSelfAttentionCrossOpsRunnerEnable_ = false;
     bool isPositionEmbedding1dSplitOpsRunnerEnable_ = false;
     bool isTransposeOpsRunnerEnable_ = false;
     bool isStreamSyncEveryKernelEnable_ = false;
