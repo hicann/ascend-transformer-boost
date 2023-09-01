@@ -49,11 +49,20 @@ MatmulOpsRunner910A::MatmulOpsRunner910A(const MatmulParam &param)
     auto &matmulNode = kernelGraph_.nodes[nodeNum++];
     auto &transdata1Node = kernelGraph_.nodes[nodeNum++];
 
+    ViewFunc Unsqueeze0 = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims.resize(oldDims.size() + 1);
+        newDims.at(0) = 1;
+        for (size_t i = 1; i < newDims.size(); i++) {
+            newDims.at(i) = oldDims.at(i - 1);
+        }
+    };
+    
     transdata0Node.opDesc = {0, "TransdataOperation",
                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
     transdata0Node.inTensors = {&inputTensor};
     transdata0Node.outTensors = {&inputTensorNZ};
     transdata0Node.inTensorViewFuncs.resize(transdata0Node.inTensors.size());
+    transdata0Node.inTensorViewFuncs.at(0) = Unsqueeze0;
     transdata0Node.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
         inputTensorDims_ = runInfo.GetInTensor(0).desc.dims;
     };
