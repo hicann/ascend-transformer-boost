@@ -20,6 +20,7 @@
 #include "acltransformer/params/self_attention_cross.h"
 #include <asdops/utils/singleton/singleton.h>
 #include "self_attention_cross_ops_llama7badapter_runner_310p.h"
+#include "self_attention_cross_ops_llama7badapter_runner_encoder_310p.h"
 
 
 namespace AclTransformer {
@@ -31,7 +32,9 @@ public:
     {
         if (param_.model == "llama_adapter") {
             return new SelfAttentionCrossOpsLlama7bAdapterRunner310p(param_);
-        } else {
+        } else if (param_.model == "llama_adapter_encoder") {
+            return new SelfAttentionCrossOpsLlama7bAdapterRunnerEncoder310p(param_);
+        }else {
             ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
             return nullptr;
         }
