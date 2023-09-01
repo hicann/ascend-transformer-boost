@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_MLP_H
-#define ACLTRANSFOERM_PARAMS_MLP_H
+#ifndef OPS_BAICHUAN13B_LAYER_PARAM_H
+#define OPS_BAICHUAN13B_LAYER_PARAM_H
 
-#include <vector>
 namespace AclTransformer {
-struct MlpParam {
-    bool transposeB = true;
-    std::string model = "llama7b";
+struct BaiChuan13BLayerParam {
+    float rmsNormEps = 0;
+    int headNum = 0;
+    int dk = 0;
+    std::string model = "baichuan13b";
 };
 } // namespace AclTransformer
 #endif

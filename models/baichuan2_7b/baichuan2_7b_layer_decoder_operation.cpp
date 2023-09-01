@@ -13,36 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "chatglm2_6b_layer_decoder_operation.h"
+#include "baichuan2_7b_layer_decoder_operation.h"
 #include "acltransformer/ops/add_operation.h"
-#include "acltransformer/ops/rms_norm_operation.h"
+#include "acltransformer/ops/norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
 #include "acltransformer/ops/position_embedding_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
+#include "acltransformer/ops/rms_norm_operation.h"
+#include "acltransformer/ops/transpose_operation.h"
 
 namespace AclTransformer {
-enum Chatglm2LayerDecoderTensorId {
+enum BaiChuan27BLayerTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
-    IN_QKVMIXDWEIGHT,
-    IN_QKVMIXDBIAS,
+    IN_QKVMIXEDLINEARWEIGHT,
     IN_SELFOUTLINEARWEIGHT,
     IN_SELFOUTNORMWEIGHT,
-    IN_MLPLINEARWEIGHTUP,
-    IN_MLPLINEARWEIGHTDOWN,
-    IN_ROPECACHE,
+    IN_MLPGATEWEIGHT,
+    IN_MLPDOWNWEIGHT,
+    IN_MLPUPWEIGHT,
+    IN_POSITIONIDS,
+    IN_COSTABLE,
+    IN_SINTABLE,
+    IN_ATTENTIONMASK,
     IN_PASTKEY,
     IN_PASTVALUE,
-    OUT_GLMLAYEROUT,
+    OUT_BAICHUAN17BLAYEROUT,
     OUT_PRESENTKEY,
     OUT_PRESENTVALUE,
     INTERMIDATE_INPUTNORMOUT,
-    INTERMIDATE_MIXEDLINEAROUTQKV,
+    INTERMIDATE_QKVMIXEDLINEAROUT,
     INTERMIDATE_POSITIONEMBEDQ,
     INTERMIDATE_POSITIONEMBEDK,
-    INTERMIDATE_VALUE,
+    INTERMIDATE_MIXEDV,
     INTERMIDATE_SELFOUT,
     INTERMIDATE_SELFLINEAROUT,
     INTERMIDATE_SELFRESIDUALADDOUT,
@@ -50,13 +55,13 @@ enum Chatglm2LayerDecoderTensorId {
     INTERMIDATE_MLPOUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 11;
+static const uint64_t IN_TENSOR_COUNT = 14;
 static const uint64_t OUT_TENSOR_COUNT = 3;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 10;
 static const uint64_t NODE_COUNT = 9;
 
-ChatGlm2LayerDecoderOperation::ChatGlm2LayerDecoderOperation(const ChatGlm2LayerParam &param)
-    : GraphOperation("ChatGlm2LayerDecoderOperation"), param_(param)
+BaiChuan27BLayerDecoderOperation::BaiChuan27BLayerDecoderOperation(const BaiChuan27BLayerParam &param)
+    : GraphOperation("BaiChuan27BLayerDecoderOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -65,7 +70,7 @@ ChatGlm2LayerDecoderOperation::ChatGlm2LayerDecoderOperation(const ChatGlm2Layer
 
     size_t nodeId = 0;
     GraphOperation::Node &inputNormNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &mixdQkvLinearNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &qkvLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &positionEmbeddingNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfAttentionKvCacheNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfOutLinearNode = opGraph_.nodes.at(nodeId++);
@@ -74,47 +79,47 @@ ChatGlm2LayerDecoderOperation::ChatGlm2LayerDecoderOperation(const ChatGlm2Layer
     GraphOperation::Node &mlpNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &mlpResidualAddNode = opGraph_.nodes.at(nodeId++);
 
+    AclTransformer::LinearParam linearParam;
+    linearParam.transposeB = param_.transposedWeight;
+    linearParam.hasBias = false;
+
+    AclTransformer::MlpParam mlpParam;
+    mlpParam.transposeB = !param_.transposedWeight;
+
     inputNormNode.operation.reset(new AclTransformer::RmsNormOperation({param_.rmsNormEps}));
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORMOUT};
 
-    mixdQkvLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
-    mixdQkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXDWEIGHT, IN_QKVMIXDBIAS};
-    mixdQkvLinearNode.outTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV};
+    qkvLinearNode.operation.reset(new AclTransformer::LinearOperation(linearParam));
+    qkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXEDLINEARWEIGHT};
+    qkvLinearNode.outTensorIds = {INTERMIDATE_QKVMIXEDLINEAROUT};
 
-    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation({true, param_.numHeadsPerPartition,
-        param_.numHeadsPerPartition, param_.hiddenSizePerHead, param_.numGroupsPerPartition, param_.hiddenSizePerHead, 0, param_.model}));
-    positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_ROPECACHE};
-    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_VALUE};
+    AclTransformer::PositionEmbeddingParam positionEmbeddingParam;
+    positionEmbeddingParam.model = param_.model;
+    positionEmbeddingParam.headNum = param_.headNum;
+    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation(positionEmbeddingParam));
+    positionEmbeddingNode.inTensorIds = {INTERMIDATE_QKVMIXEDLINEAROUT, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
+    positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_POSITIONEMBEDK, INTERMIDATE_MIXEDV};
 
     AclTransformer::SelfAttentionKvCacheParam selfAttentionKvCacheParam;
-    selfAttentionKvCacheParam.transKey = param_.transKey;
-    selfAttentionKvCacheParam.dk = param_.hiddenSizePerHead;
-    selfAttentionKvCacheParam.headNum = param_.numHeadsPerPartition;
-    selfAttentionKvCacheParam.layerId = param_.layerId;
-    selfAttentionKvCacheParam.preScale = param_.preScale;
-    selfAttentionKvCacheParam.postScale = param_.postScale;
-    selfAttentionKvCacheParam.numHeadsPerPartition = param_.numHeadsPerPartition;
-    selfAttentionKvCacheParam.hiddenSizePerHead = param_.hiddenSizePerHead;
-    selfAttentionKvCacheParam.numGroupsPerPartition = param_.numGroupsPerPartition;
-    selfAttentionKvCacheParam.model = param_.model;
-
-    selfAttentionKvCacheNode.operation.reset(new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam));
+    selfAttentionKvCacheParam.dk = param_.dk;
+    selfAttentionKvCacheParam.headNum = param_.headNum;
+    selfAttentionKvCacheParam.model = "baichuan1_7b";
+    selfAttentionKvCacheNode.operation.reset(
+        new AclTransformer::SelfAttentionKvCacheOperation(selfAttentionKvCacheParam));
     selfAttentionKvCacheNode.inTensorIds = {INTERMIDATE_POSITIONEMBEDQ,
                                             INTERMIDATE_POSITIONEMBEDK,
-                                            INTERMIDATE_VALUE,
+                                            INTERMIDATE_MIXEDV,
+                                            IN_ATTENTIONMASK,
                                             IN_PASTKEY,
                                             IN_PASTVALUE};
     selfAttentionKvCacheNode.outTensorIds = {INTERMIDATE_SELFOUT, OUT_PRESENTKEY, OUT_PRESENTVALUE};
 
-    AclTransformer::LinearParam selfOutlinearParam;
-    selfOutlinearParam.hasBias = false;
-
-    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation(selfOutlinearParam));
+    selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation(linearParam));
     selfOutLinearNode.inTensorIds = {INTERMIDATE_SELFOUT, IN_SELFOUTLINEARWEIGHT};
     selfOutLinearNode.outTensorIds = {INTERMIDATE_SELFLINEAROUT};
 
-    selfResidualAddNode.operation.reset(new AclTransformer::AddOperation({param_.residualAddScale}));
+    selfResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
     selfResidualAddNode.inTensorIds = {IN_HIDDENSTATES, INTERMIDATE_SELFLINEAROUT};
     selfResidualAddNode.outTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT};
 
@@ -122,40 +127,31 @@ ChatGlm2LayerDecoderOperation::ChatGlm2LayerDecoderOperation(const ChatGlm2Layer
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 
-    AclTransformer::MlpParam mlpParam;
-    mlpParam.model = param_.model;
     mlpNode.operation.reset(new AclTransformer::MlpOperation(mlpParam));
-    mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPLINEARWEIGHTUP, IN_MLPLINEARWEIGHTDOWN};
+    mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPGATEWEIGHT, IN_MLPDOWNWEIGHT, IN_MLPUPWEIGHT};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 
-    mlpResidualAddNode.operation.reset(new AclTransformer::AddOperation({param_.residualAddScale}));
+    mlpResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
     mlpResidualAddNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, INTERMIDATE_MLPOUT};
-    mlpResidualAddNode.outTensorIds = {OUT_GLMLAYEROUT};
+    mlpResidualAddNode.outTensorIds = {OUT_BAICHUAN17BLAYEROUT};
 }
 
-ChatGlm2LayerDecoderOperation::~ChatGlm2LayerDecoderOperation() {}
+BaiChuan27BLayerDecoderOperation::~BaiChuan27BLayerDecoderOperation() {}
 
-uint64_t ChatGlm2LayerDecoderOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t BaiChuan27BLayerDecoderOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t ChatGlm2LayerDecoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t BaiChuan27BLayerDecoderOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
-AsdOps::Status ChatGlm2LayerDecoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
-                                                              AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
+AsdOps::Status BaiChuan27BLayerDecoderOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                                     AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    const AsdOps::Tensor &hiddenStateTensor = inTensors.at(IN_HIDDENSTATES);
     const AsdOps::Tensor &keyTensor = inTensors.at(IN_PASTKEY);
     const AsdOps::Tensor &valueTensor = inTensors.at(IN_PASTVALUE);
-    const size_t glmLayerOutID = 0;
-    const size_t presentKeyID = 1;
-    const size_t presentValueID = 2;
-
-    outTensorDescs.at(glmLayerOutID) = hiddenStateTensor.desc;
-
-    outTensorDescs.at(presentKeyID) = keyTensor.desc;
-    outTensorDescs.at(presentKeyID).dims.at(0) += 1;
-
-    outTensorDescs.at(presentValueID) = valueTensor.desc;
-    outTensorDescs.at(presentValueID).dims.at(0) += 1;
+    outTensorDescs.at(0) = inTensors.at(0).desc;
+    outTensorDescs.at(1) = keyTensor.desc;
+    outTensorDescs.at(1).dims.at(1) += 1;
+    outTensorDescs.at(2) = valueTensor.desc;
+    outTensorDescs.at(2).dims.at(1) += 1;
     return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer

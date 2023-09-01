@@ -13,14 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_MLP_H
-#define ACLTRANSFOERM_PARAMS_MLP_H
+#ifndef SELFATTENTIONKVCACHE_OPS_BAICHUAN1_7B_RUNNER_910A_H
+#define SELFATTENTIONKVCACHE_OPS_BAICHUAN1_7B_RUNNER_910A_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/self_attention_kv_cache.h"
 
-#include <vector>
 namespace AclTransformer {
-struct MlpParam {
-    bool transposeB = true;
-    std::string model = "llama7b";
+class SelfAttentionKvCacheOpsBaiChuan17bRunner910a : public OpsRunner {
+public:
+    SelfAttentionKvCacheOpsBaiChuan17bRunner910a(const SelfAttentionKvCacheParam &param);
+    virtual ~SelfAttentionKvCacheOpsBaiChuan17bRunner910a();
+
+private:
+    SelfAttentionKvCacheParam param_;
+    AsdOps::SVector<int64_t> orgQDims_;
+    AsdOps::SVector<int64_t> orgKDims_;
+    AsdOps::SVector<int64_t> orgProbsDims_;
+    AsdOps::SVector<int64_t> orgVDims_;
 };
+
 } // namespace AclTransformer
 #endif
