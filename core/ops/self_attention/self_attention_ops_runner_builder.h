@@ -25,6 +25,7 @@
 #include "self_attention_ops_chatglm6b_runner_910a.h"
 #include "self_attention_ops_llama7b_runner.h"
 #include "self_attention_ops_gptneox20b_runner.h"
+#include "self_attention_ops_llama7b_runner_910a.h"
 
 namespace AclTransformer {
 class SelfAttentionOpsRunnerBuilder : public RunnerBuilder {
@@ -50,7 +51,7 @@ public:
                 if (AsdOps::GetSingleton<Config>().Is910B()) {
                     return new SelfAttentionOpsLlama7bRunner(param_); 
                 } else {
-                    return nullptr;
+                    return new SelfAttentionOpsLlama7bRunner910a(param_);
                 }
             } else if (param_.model == "gptneox20b") {
                 return new SelfAttentionOpsGptNeox20bRunner(param_);
