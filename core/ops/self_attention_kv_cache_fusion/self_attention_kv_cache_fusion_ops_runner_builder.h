@@ -20,6 +20,7 @@
 #include "acltransformer/params/self_attention_kv_cache_fusion.h"
 #include "self_attention_kv_cache_fusion_ops_chatglm6b_runner.h"
 #include "self_attention_kv_cache_fusion_ops_chatglm2_6b_runner.h"
+#include "self_attention_kv_cache_fusion_ops_baichuan2_runner_910a.h"
 
 namespace AclTransformer {
 class SelfAttentionKvCacheFusionOpsRunnerBuilder : public RunnerBuilder {
@@ -33,6 +34,13 @@ public:
             return new SelfAttentionKvCacheFusionOpsChatGlm6bRunner(param_);
         } else if (param_.model == "chatglm2_6b"){
             return new SelfAttentionKvCacheFusionOpsChatGlm2Runner(param_);
+        } else if (param_.model == "baichuan2_7b") {
+            if (AsdOps::GetSingleton<Config>().Is910B()) {
+                ASD_LOG(ERROR) << "SelfAttentionKvCacheFusionOpsRunner for baichuan2 910B not implemented now";
+                return nullptr;
+            } else {
+                return new SelfAttentionKvCacheFusionOpsBaichuan2Runner910A(param_);
+            }
         } else {
             ASD_LOG(ERROR) << "invalid param_.model: " << param_.model;
             return nullptr;
