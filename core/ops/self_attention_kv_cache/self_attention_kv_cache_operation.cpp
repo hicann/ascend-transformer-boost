@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include "acltransformer/ops/self_attention_kv_cache_operation.h"
-#include <asdops/utils/singleton/singleton.h>
 #include "acltransformer/config.h"
 #include "self_attention_kv_cache_ops_runner_builder.h"
 #include "self_attention_kv_cache_torch_runner_builder.h"
@@ -31,12 +30,13 @@ SelfAttentionKvCacheOperation::SelfAttentionKvCacheOperation(const SelfAttention
 #endif
 }
 
-SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() {}
+SelfAttentionKvCacheOperation::~SelfAttentionKvCacheOperation() = default;
 
-uint64_t SelfAttentionKvCacheOperation::GetInTensorCount() const {
+uint64_t SelfAttentionKvCacheOperation::GetInTensorCount() const
+{
     if (param_.model == "chatglm2_6b" || param_.model == "bloom7b") {
         return 5;
-    } else if (param_.model == "baichuan13b") {
+    } else if (param_.model == "baichuan13b" || param_.model == "baichuan2_13b") {
         return 4;
     } else {
         return 6;
@@ -84,7 +84,7 @@ AsdOps::Status SelfAttentionKvCacheOperation::InferShapeImpl(const AsdOps::SVect
         outTensorDescs.at(1).dims.at(1) = outTensorDescs.at(1).dims.at(1) + 1;
         outTensorDescs.at(2) = inTensors.at(5).desc;
         outTensorDescs.at(2).dims.at(1) = outTensorDescs.at(2).dims.at(1) + 1;
-    } else if (param_.model == "baichuan13b") {
+    } else if (param_.model == "baichuan13b" || param_.model == "baichuan2_13b") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));

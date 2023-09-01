@@ -1,0 +1,309 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "self_attention_ops_baichuan2_13b_runner_910a.h"
+#include <cmath>
+#include <asdops/utils/log/log.h>
+#include <asdops/params/params.h>
+#include <asdops/utils/svector/svector.h>
+#include "acltransformer/utils/tensor_util.h"
+
+static const uint64_t IN_TENSOR_COUNT = 2;
+static const uint64_t OUT_TENSOR_COUNT = 3;
+static const uint64_t INTERMEDIATE_TENSOR_COUNT = 19;
+static const uint64_t NODE_COUNT = 20;
+namespace AclTransformer {
+SelfAttentionOpsBaiChuan213BRunner910a::SelfAttentionOpsBaiChuan213BRunner910a(const SelfAttentionParam &param)
+    : OpsRunner("SelfAttentionOpsBaiChuan213BRunner910a", RUNNER_TYPE_SELF_ATTENTION), param_(param)
+{
+    ASD_LOG(INFO) << "SelfAttentionOpsBaiChuan213BRunner910a::SelfAttentionOpsBaiChuan213BRunner910a called, transKey:"
+                  << param_.transKey << ", dk: " << param_.dk << ", headNum: " << param_.headNum
+                  << ", layerId: " << param_.layerId;
+
+    kernelGraph_.inTensors.resize(IN_TENSOR_COUNT);
+    kernelGraph_.outTensors.resize(OUT_TENSOR_COUNT);
+    kernelGraph_.internalTensors.resize(INTERMEDIATE_TENSOR_COUNT);
+    kernelGraph_.nodes.resize(NODE_COUNT);
+
+    int64_t inTensorNum = 0;
+    // [1, 14, 15360] [batch_size,seq_len,3*hidden_size]
+    AsdOps::Tensor &mixedQkv = kernelGraph_.inTensors.at(inTensorNum++);
+    // [1, 40, 14, 14] [batch_size,num_attention_heads,seq_len,seq_len]
+    AsdOps::Tensor &attention_mask = kernelGraph_.inTensors.at(inTensorNum++);
+
+    int64_t outTensorNum = 0;
+    // [1, 14, 5210] [batch_size,seq_len,hidden_size]
+    AsdOps::Tensor &contextOut = kernelGraph_.outTensors.at(outTensorNum++);
+    // [1,14,40,128] [batch_size,seq_len,num_attention_heads,head_size]
+    AsdOps::Tensor &presentKey = kernelGraph_.outTensors.at(outTensorNum++);
+    // [1,14,40,128] [batch_size,seq_len,num_attention_heads,head_size]
+    AsdOps::Tensor &presentValue = kernelGraph_.outTensors.at(outTensorNum++);
+
+    int64_t internalTensorNum = 0;
+    AsdOps::Tensor &mixedQuery = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &mixedKey = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &mixedValue = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &qScaledOutND = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &transposedQND = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &transposedKND = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &permutedQTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &transposedKTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &bmmQkOutNZ = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &bmmQkOutTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionScores = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionScoresF32 = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionProbsF32 = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionProbs = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &attentionProbsTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &transposedV = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &catValueOutTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &bmmVOut = kernelGraph_.internalTensors.at(internalTensorNum++);
+    AsdOps::Tensor &bmmVoutTransResult = kernelGraph_.internalTensors.at(internalTensorNum++);
+
+    int64_t nodeId = 0;
+    auto &splitQkvNode = kernelGraph_.nodes.at(nodeId++);
+    auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
+    auto &permuteKNodeForOut = kernelGraph_.nodes.at(nodeId++);
+    auto &permuteVNodeForOut = kernelGraph_.nodes.at(nodeId++);
+    auto &permuteQNode = kernelGraph_.nodes.at(nodeId++);
+    auto &permuteKNode = kernelGraph_.nodes.at(nodeId++);
+    auto &transdataQNode = kernelGraph_.nodes.at(nodeId++);
+    auto &transdataKNode = kernelGraph_.nodes.at(nodeId++);
+    auto &bmmQKNode = kernelGraph_.nodes.at(nodeId++);
+    auto &transdataQKNode = kernelGraph_.nodes.at(nodeId++);
+    auto &addMaskNode = kernelGraph_.nodes.at(nodeId++);
+    auto &castInNode = kernelGraph_.nodes.at(nodeId++);
+    auto &softMaxNode = kernelGraph_.nodes.at(nodeId++);
+    auto &castOutNode = kernelGraph_.nodes.at(nodeId++);
+    auto &transdataProbsNode = kernelGraph_.nodes.at(nodeId++);
+    auto &permuteVNode = kernelGraph_.nodes.at(nodeId++);
+    auto &transdataVNode = kernelGraph_.nodes.at(nodeId++);
+    auto &bmmVNode = kernelGraph_.nodes.at(nodeId++);
+    auto &transdataBmmVNode = kernelGraph_.nodes.at(nodeId++);
+    auto &transposeContext1Node = kernelGraph_.nodes.at(nodeId++);
+
+    // split QKV
+    splitQkvNode.opDesc = {0, "SplitOperation", AsdOps::OpParam::Split{0, 3}};
+    splitQkvNode.inTensors = {&mixedQkv};
+    splitQkvNode.outTensors = {&mixedQuery, &mixedKey, &mixedValue};
+    splitQkvNode.inTensorViewFuncs.resize(splitQkvNode.inTensors.size());
+    splitQkvNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
+        runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, 3}});
+    };
+
+    // scaling down q
+    float scalingAttr = 1.0 / sqrt(param_.dk);
+    ASD_LOG(INFO) << "Scaling down for query with scaling factor " << scalingAttr;
+    mulsQNode.opDesc = {0, "ElewiseOperation",
+                        AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, scalingAttr})};
+    mulsQNode.inTensors = {&mixedQuery};
+    mulsQNode.outTensors = {&qScaledOutND};
+    mulsQNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+    };
+
+    AsdOps::OpParam::Transpose permuteKParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0, 1, 2, 3}};
+    permuteKNodeForOut.opDesc = {0, "TransposeOperation", permuteKParam};
+    permuteKNodeForOut.inTensors = {&mixedKey};
+    permuteKNodeForOut.outTensors = {&presentKey};
+    permuteKNodeForOut.inTensorViewFuncs.resize(permuteKNodeForOut.inTensors.size());
+    permuteKNodeForOut.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                                     AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
+
+    AsdOps::OpParam::Transpose permuteVParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0, 1, 2, 3}};
+    permuteVNodeForOut.opDesc = {0, "TransposeOperation", permuteVParam};
+    permuteVNodeForOut.inTensors = {&mixedValue};
+    permuteVNodeForOut.outTensors = {&presentValue};
+    permuteVNodeForOut.inTensorViewFuncs.resize(permuteVNodeForOut.inTensors.size());
+    permuteVNodeForOut.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                                     AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
+
+    // trans [bs, sq, hn, hs] to [bs, hn, sq, hs]
+    AsdOps::OpParam::Transpose permuteSeqHnParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0, 2, 1, 3}};
+    permuteQNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
+    permuteQNode.inTensors = {&qScaledOutND};
+    permuteQNode.outTensors = {&transposedQND};
+    permuteQNode.inTensorViewFuncs.resize(permuteQNode.inTensors.size());
+    permuteQNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                               AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
+
+    // trans [bs, sq, hn, hs] to [bs, hn, hs, sq]
+    AsdOps::OpParam::Transpose permuteSeqHnHsParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE,
+                                                      {0, 2, 3, 1}};
+    permuteKNode.opDesc = {0, "TransposeOperation", permuteSeqHnHsParam};
+    permuteKNode.inTensors = {&mixedKey};
+    permuteKNode.outTensors = {&transposedKND};
+    permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
+    permuteKNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                               AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
+
+    // trans to NZ
+    transdataQNode.opDesc = {0, "TransdataOperation",
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
+    transdataQNode.inTensors = {&transposedQND};
+    transdataQNode.outTensors = {&permutedQTransResult};
+    transdataQNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
+        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+        orgQDims_ = runInfo.GetInTensor(0).desc.dims;
+    };
+    transdataQNode.inTensorViewFuncs.resize(transdataQNode.inTensors.size());
+    transdataQNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                              AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    };
+
+    transdataKNode.opDesc = {0, "TransdataOperation",
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
+    transdataKNode.inTensors = {&transposedKND};
+    transdataKNode.outTensors = {&transposedKTransResult};
+    transdataKNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
+        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+        orgKDims_ = runInfo.GetInTensor(0).desc.dims;
+    };
+    transdataKNode.inTensorViewFuncs.resize(transdataKNode.inTensors.size());
+    transdataKNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                              AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    };
+
+    bmmQKNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
+    bmmQKNode.inTensors = {&permutedQTransResult, &transposedKTransResult};
+    bmmQKNode.outTensors = {&bmmQkOutNZ};
+    bmmQKNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
+        runInfo.SetOpDesc(
+            {0, "MatMulOperation",
+             AsdOps::OpParam::MatMul({false, false, {orgQDims_.at(1), orgQDims_.at(2), orgKDims_.at(2)}})});
+    };
+
+    transdataQKNode.opDesc = {0, "TransdataOperation",
+                              AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
+    transdataQKNode.inTensors = {&bmmQkOutNZ};
+    transdataQKNode.outTensors = {&bmmQkOutTransResult};
+    transdataQKNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
+        AsdOps::SVector<int64_t> transQKTargetDims = {orgQDims_.at(1), orgKDims_.at(2)};
+        runInfo.SetOpDesc(
+            {0, "TransdataOperation",
+             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transQKTargetDims})});
+    };
+
+    addMaskNode.opDesc = {0, "BroadcastOperation",
+                          AsdOps::OpParam::Broadcast({AsdOps::OpParam::Broadcast::BROADCAST_ADD})};
+    addMaskNode.inTensors = {&attention_mask, &bmmQkOutTransResult};
+    addMaskNode.outTensors = {&attentionScores};
+    addMaskNode.inTensorViewFuncs.resize(addMaskNode.inTensors.size());
+    addMaskNode.inTensorViewFuncs[1] = [=](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(1), oldDims.at(2)};
+    };
+
+    castInNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_CAST})};
+    castInNode.inTensors = {&attentionScores};
+    castInNode.outTensors = {&attentionScoresF32};
+
+    softMaxNode.opDesc = {0, "NormOperation", AsdOps::OpParam::Norm({AsdOps::OpParam::Norm::NORM_SOFTMAX, {-1}})};
+    softMaxNode.inTensors = {&attentionScoresF32};
+    softMaxNode.outTensors = {&attentionProbsF32};
+
+    castOutNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_CAST})};
+    castOutNode.inTensors = {&attentionProbsF32};
+    castOutNode.outTensors = {&attentionProbs};
+
+    transdataProbsNode.opDesc = {0, "TransdataOperation",
+                                 AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
+    transdataProbsNode.inTensors = {&attentionProbs};
+    transdataProbsNode.outTensors = {&attentionProbsTransResult};
+    transdataProbsNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
+        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+        orgProbsDims_ = runInfo.GetInTensor(0).desc.dims;
+    };
+    transdataProbsNode.inTensorViewFuncs.resize(transdataProbsNode.inTensors.size());
+    transdataProbsNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                                  AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    };
+
+    permuteVNode.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
+    permuteVNode.inTensors = {&mixedValue};
+    permuteVNode.outTensors = {&transposedV};
+    permuteVNode.inTensorViewFuncs.resize(permuteVNode.inTensors.size());
+    permuteVNode.inTensorViewFuncs.at(0) = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                               AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
+    };
+
+    transdataVNode.opDesc = {0, "TransdataOperation",
+                             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ, {0, 0}})};
+    transdataVNode.inTensors = {&transposedV};
+    transdataVNode.outTensors = {&catValueOutTransResult};
+    transdataVNode.inferShapePreFunc = [&](AsdOps::RunInfo &runInfo) {
+        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+        orgVDims_ = runInfo.GetInTensor(0).desc.dims;
+    };
+    transdataVNode.inTensorViewFuncs.resize(transdataVNode.inTensors.size());
+    transdataVNode.inTensorViewFuncs[0] = [=](const AsdOps::SVector<int64_t> &oldDims,
+                                              AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)};
+    };
+
+    bmmVNode.opDesc = {0, "MatMulOperation", AsdOps::OpParam::MatMul({false, false, {/*oriShape*/}})};
+    bmmVNode.inTensors = {&attentionProbsTransResult, &catValueOutTransResult};
+    bmmVNode.outTensors = {&bmmVOut};
+    bmmVNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
+        runInfo.SetOpDesc(
+            {0, "MatMulOperation",
+             AsdOps::OpParam::MatMul({false, false, {orgProbsDims_.at(1), orgProbsDims_.at(2), orgVDims_.at(2)}})});
+    };
+
+    transdataBmmVNode.opDesc = {0, "TransdataOperation",
+                                AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, {0, 0}})};
+    transdataBmmVNode.inTensors = {&bmmVOut};
+    transdataBmmVNode.outTensors = {&bmmVoutTransResult};
+    transdataBmmVNode.inferShapePreFunc = [=](AsdOps::RunInfo &runInfo) {
+        AsdOps::SVector<int64_t> transBmmTargetDims = {orgProbsDims_.at(1), orgVDims_.at(2)};
+        runInfo.SetOpDesc(
+            {0, "TransdataOperation",
+             AsdOps::OpParam::Transdata({AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND, transBmmTargetDims})});
+    };
+
+    transposeContext1Node.opDesc = {0, "TransposeOperation", permuteSeqHnParam};
+    transposeContext1Node.inTensors = {&bmmVoutTransResult};
+    transposeContext1Node.outTensors = {&contextOut};
+    transposeContext1Node.inTensorViewFuncs.resize(transposeContext1Node.inTensors.size());
+    transposeContext1Node.inTensorViewFuncs[0] = [&](const AsdOps::SVector<int64_t> &oldDims,
+                                                     AsdOps::SVector<int64_t> &newDims) {
+        newDims = {oldDims.at(0) / param_.headNum, param_.headNum, oldDims.at(1), oldDims.at(2)};
+    };
+}
+
+SelfAttentionOpsBaiChuan213BRunner910a::~SelfAttentionOpsBaiChuan213BRunner910a() {}
+} // namespace AclTransformer
