@@ -23,7 +23,7 @@
 #include "acltransformer/ops/mlp_operation.h"
 
 namespace AclTransformer {
-enum Chatglm6BLayerDecoderFlashAttentionTensorId {
+enum Glm130BLayerDecoderFlashAttentionTensorId {
     IN_HIDDENSTATES_ID = 0,
     IN_NORMWEIGHT_ID,
     IN_NORMBIAS_ID,
@@ -65,8 +65,8 @@ static const uint64_t OUT_TENSOR_COUNT = 1;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 11;
 static const uint64_t NODE_COUNT = 10;
 
-ChatGlm130BLayerDecoderFusionOperation::ChatGlm130BLayerDecoderFusionOperation(const Glm130BLayerParam &param)
-    : GraphOperation("ChatGlm130BLayerDecoderFusionOperation"), param_(param)
+Glm130BLayerDecoderFusionOperation::Glm130BLayerDecoderFusionOperation(const Glm130BLayerParam &param)
+    : GraphOperation("Glm130BLayerDecoderFusionOperation"), param_(param)
 {
     opGraph_.inTensorSize = IN_TENSOR_COUNT;
     opGraph_.outTensorSize = OUT_TENSOR_COUNT;
@@ -139,7 +139,9 @@ ChatGlm130BLayerDecoderFusionOperation::ChatGlm130BLayerDecoderFusionOperation(c
     selfNormNode.inTensorIds = {INTERMEDIATE_SELFRESIDUALADDOUT_ID, IN_SELFOUTNORMWEIGHT_ID, IN_SELFOUTNORMBIAS_ID};
     selfNormNode.outTensorIds = {INTERMEDIATE_SELFNORMOUT_ID};
 
-    mlpNode.operation.reset(new AclTransformer::MlpOperation({"glm130b"}));
+    AclTransformer::MlpParam mlpParam;
+    mlpParam.model = "glm130b";
+    mlpNode.operation.reset(new AclTransformer::MlpOperation(mlpParam));
     mlpNode.inTensorIds = {INTERMEDIATE_SELFNORMOUT_ID, IN_MLPLINEARWEIGHT_ID, IN_MLPLINEARBIAS_ID};
     mlpNode.outTensorIds = {INTERMEDIATE_MLPOUT};
 
@@ -153,14 +155,14 @@ ChatGlm130BLayerDecoderFusionOperation::ChatGlm130BLayerDecoderFusionOperation(c
     mlpResidualAddNode.outTensorIds = {OUT_LAYEROUT_ID};
 }
 
-ChatGlm130BLayerDecoderFusionOperation::~ChatGlm130BLayerDecoderFusionOperation() {}
+Glm130BLayerDecoderFusionOperation::~Glm130BLayerDecoderFusionOperation() {}
 
-uint64_t ChatGlm130BLayerDecoderFusionOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t Glm130BLayerDecoderFusionOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
 
-uint64_t ChatGlm130BLayerDecoderFusionOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t Glm130BLayerDecoderFusionOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
 
 AsdOps::Status
-ChatGlm130BLayerDecoderFusionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+Glm130BLayerDecoderFusionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                                                        AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0) = inTensors.at(0).desc;
