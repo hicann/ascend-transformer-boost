@@ -63,7 +63,6 @@
 #include "models/chatglm6b/chatglm6blayer_decoder_flashattention_operation.h"
 #include "models/glm130b/glm130blayer_decoder_operation.h"
 #include "models/glm130b/glm130blayer_decoder_with_fusion_operation.h"
-#include "models/glm130b/glm130blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_operation.h"
 #include "models/llama7b/llama7blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_fusion_operation.h"
@@ -256,7 +255,6 @@ static AclTransformer::Operation *BaiChuan13BLayerDecoderOperationCreate(const n
                   << ", dk:" << param.dk;
     return new AclTransformer::BaiChuan13BLayerDecoderOperation(param);
 }
-
 
 static AclTransformer::Operation *BaiChuan213BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
 {
@@ -485,7 +483,7 @@ static AclTransformer::Operation *MlpOperationCreate(const nlohmann::json &param
         ASD_LOG(INFO) << "MlpParam is empty, default model:" << param.model;
     }
     if (paramJson.contains("transposeB")) {
-        param.transposeB = paramJson["transposeB"].get<bool >();
+        param.transposeB = paramJson["transposeB"].get<bool>();
     }
     ASD_LOG(INFO) << "MlpParam transposeB:" << param.transposeB;
     return new AclTransformer::MlpOperation(param);
@@ -528,8 +526,8 @@ static AclTransformer::Operation *SelfAttentionCrossOperationCreate(const nlohma
     if (paramJson.contains("model")) {
         param.model = paramJson["model"].get<std::string>();
     }
-    ASD_LOG(INFO) << "SelfAttentionCrossParam " << "headNum:" << param.headNum
-                  << ", dk:" << param.dk << ", model:" << param.model ;
+    ASD_LOG(INFO) << "SelfAttentionCrossParam "
+                  << "headNum:" << param.headNum << ", dk:" << param.dk << ", model:" << param.model;
     return new AclTransformer::SelfAttentionCrossOperation(param);
 }
 
@@ -1093,7 +1091,7 @@ AclTransformer::Operation *Glm130BLayerDecoderOperationCreate(const nlohmann::js
     return new AclTransformer::Glm130BLayerDecoderOperation(param);
 }
 
-AclTransformer::Operation *ChatGlm130BLayerDecoderFusionOperationCreate(const nlohmann::json &paramJson)
+AclTransformer::Operation *Glm130BLayerDecoderFusionOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::Glm130BLayerParam param;
     if (paramJson.contains("headNum")) {
@@ -1123,40 +1121,7 @@ AclTransformer::Operation *ChatGlm130BLayerDecoderFusionOperationCreate(const nl
     if (paramJson.contains("layerNormEps")) {
         param.layerNormEps = paramJson["layerNormEps"].get<double>();
     }
-    return new AclTransformer::ChatGlm130BLayerDecoderFusionOperation(param);
-}
-
-AclTransformer::Operation *Glm130BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
-{
-    AclTransformer::Glm130BLayerParam param;
-    if (paramJson.contains("headNum")) {
-        param.headNum = paramJson["headNum"].get<int>();
-    }
-    if (paramJson.contains("dk")) {
-        param.dk = paramJson["dk"].get<int>();
-    }
-    if (paramJson.contains("transKey")) {
-        param.transKey = paramJson["transKey"].get<bool>();
-    }
-    if (paramJson.contains("rank")) {
-        param.rank = paramJson["rank"].get<int>();
-    }
-    if (paramJson.contains("rankSize")) {
-        param.rankSize = paramJson["rankSize"].get<int>();
-    }
-    if (paramJson.contains("backend")) {
-        param.backend = paramJson["backend"].get<std::string>();
-    }
-    if (paramJson.contains("layerId")) {
-        param.layerId = paramJson["layerId"].get<int>();
-    }
-    if (paramJson.contains("residualAddScale")) {
-        param.residualAddScale = paramJson["residualAddScale"].get<float>();
-    }
-    if (paramJson.contains("layerNormEps")) {
-        param.layerNormEps = paramJson["layerNormEps"].get<double>();
-    }
-    return new AclTransformer::Glm130BLayerEncoderOperation(param);
+    return new AclTransformer::Glm130BLayerDecoderFusionOperation(param);
 }
 
 AclTransformer::Operation *WordEmbeddingParallelOperationCreate(const nlohmann::json &paramJson)
@@ -1329,9 +1294,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm6BLayerDecoderLastQuantOperation", &ChatGlm6BLayerDecoderLastQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFirstQuantOperation", &ChatGlm6BLayerDecoderFirstQuantOperationCreate},
     {"ChatGlm6BLayerDecoderFlashAttentionOperation", &ChatGlm6BLayeEncoderFlashAttentionOperationCreate},
-    {"ChatGlm130BLayerDecoderFusionOperation", &ChatGlm130BLayerDecoderFusionOperationCreate},
+    {"Glm130BLayerDecoderFusionOperation", &Glm130BLayerDecoderFusionOperationCreate},
     {"Glm130BLayerDecoderOperation", &Glm130BLayerDecoderOperationCreate},
-    {"Glm130BLayerEncoderOperation", &Glm130BLayerEncoderOperationCreate},
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
     {"LLaMA7BLayerEncoderOperation", &LLaMA7BLayerEncoderOperationCreate},
     {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
@@ -1381,7 +1345,7 @@ AsdOps::Any ParseParam(const std::string &opName, const std::string &param)
     nlohmann::json paramJson = nlohmann::json::parse(param);
 
     if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation" || opName == "LLaMA7BLayerFusionOperation" ||
-        opName == "ChatGlm2LayerDecoderFlashAttentionOperation" || opName == "ChatGlm130BLayerDecoderFusionOperation" ||
+        opName == "ChatGlm2LayerDecoderFlashAttentionOperation" || opName == "Glm130BLayerDecoderFusionOperation" ||
         opName == "GptNeox20BLayerDecoderFlashAttentionOperation") {
         AclTransformer::SelfAttentionKvCacheFusionVariantPackParam opParam;
         for (auto item : paramJson["tokenOffset"]) {

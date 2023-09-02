@@ -33,7 +33,6 @@
 #include "torch/model_v2/chatglm6b/chatglm6b_encoder_without_fusion_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6bmodel_decoder_quant_flash_model.h"
 #include "torch/model_v2/chatglm2_6b/chatglm2_6b_decoder_flashattention_model.h"
-#include "torch/model_v2/glm130b/glm130b_decoder_model_post_operation.h"
 #include "torch/model_v2/gptneox20b/gptneox20b_decoder_model.h"
 #include "torch/model_v2/gptneox20b/gptneox20b_encoder_model.h"
 #include "torch/model_v2/bloom7b/bloom7b_decoder_model.h"
@@ -86,8 +85,6 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::ChatGlm6BDecoderQuantFlashModel>(param);
     } else if (modelName_ == "ChatGlm2DecoderFlashAttentionModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm2DecoderFlashAttentionModel>(param);
-    } else if (modelName_ == "Glm130BDecoderPostOperationModel") {
-        model_ = std::make_shared<AclTransformer::Glm130BDecoderPostOperationModel>(param);
     } else if (modelName_ == "Glm130BDecoderAllModel") {
         model_ = std::make_shared<AclTransformer::Glm130BDecoderAllModel>(param);
     } else if (modelName_ == "GptNeox20BDecoderModel") {

@@ -19,10 +19,10 @@
 #include "glm130blayer_param.h"
 
 namespace AclTransformer {
-class ChatGlm130BLayerDecoderFusionOperation : public GraphOperation {
+class Glm130BLayerDecoderFusionOperation : public GraphOperation {
 public:
-    explicit ChatGlm130BLayerDecoderFusionOperation(const Glm130BLayerParam &param);
-    ~ChatGlm130BLayerDecoderFusionOperation();
+    explicit Glm130BLayerDecoderFusionOperation(const Glm130BLayerParam &param);
+    ~Glm130BLayerDecoderFusionOperation();
     uint64_t GetInTensorCount() const override;
     uint64_t GetOutTensorCount() const override;
 

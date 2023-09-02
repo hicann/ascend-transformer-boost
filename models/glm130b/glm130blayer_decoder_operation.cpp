@@ -121,7 +121,9 @@ Glm130BLayerDecoderOperation::Glm130BLayerDecoderOperation(const Glm130BLayerPar
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT, IN_SELFOUTNORMBIAS};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 
-    mlpNode.operation.reset(new AclTransformer::MlpOperation({"glm130b"}));
+    AclTransformer::MlpParam mlpParam;
+    mlpParam.model = "glm130b";
+    mlpNode.operation.reset(new AclTransformer::MlpOperation(mlpParam));
     mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPLINEARWEIGHT, IN_MLPLINEARBIAS};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 
