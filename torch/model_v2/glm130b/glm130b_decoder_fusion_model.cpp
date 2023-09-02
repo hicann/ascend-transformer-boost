@@ -137,7 +137,7 @@ void Glm130BDecoderFusionModel::BuildGraph()
         opParam.rank = param_.rank;
         opParam.rankSize = param_.rankSize;
         opParam.backend = param_.backend;
-        layerNode.operation = std::make_shared<ChatGlm130BLayerDecoderFusionOperation>(opParam);
+        layerNode.operation = std::make_shared<Glm130BLayerDecoderFusionOperation>(opParam);
         layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
 
         size_t inTensorId = 0;

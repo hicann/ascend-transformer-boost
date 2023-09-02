@@ -441,27 +441,10 @@ class BaseTransformer(torch.nn.Module):
                 })
             )
             return acl_layer_decoder
-        
-        def get_acl_layer_encoder(layer_id):
-            acl_layer_encoder = torch.classes.OperationTorch.OperationTorch("Glm130BLayerEncoderOperation")
-            acl_layer_encoder.set_param(
-                json.dumps({"layerNormEps": layernorm_epsilon,
-                            "transKey": False,
-                            "headNum": num_attention_heads,
-                            "dk": self.head_size,
-                            "layerId": layer_id,
-                            "rank": self.rank,
-                            "rankSize": self.rankSize,
-                            "backend": "hccl",
-                            "residualAddScale": (2 * num_layers) ** 0.5
-                })
-            )
-            return acl_layer_encoder
 
         self.layers = torch.nn.ModuleList(
             [get_layer(layer_id) for layer_id in range(num_layers)])
         self.acl_layers_decoder = [get_acl_layer_decoder(layer_id) for layer_id in range(num_layers)]
-        self.acl_layers_encoder = [get_acl_layer_encoder(layer_id) for layer_id in range(num_layers)]
 
         # Final layer norm before output.
         self.use_final_layernorm = use_final_layernorm

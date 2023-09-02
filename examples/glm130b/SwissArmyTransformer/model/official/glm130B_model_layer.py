@@ -147,9 +147,6 @@ class DeepNormWithGLUMixin(BaseMixin):
         layer = self.transformer.layers[kw_args["layer_id"]]
         #增量decoder
         acl_layer_decoder = self.transformer.acl_layers_decoder[kw_args["layer_id"]]
-        #全量encoder
-        acl_layer_encoder = self.transformer.acl_layers_encoder[kw_args["layer_id"]]
-        # Layer norm at the begining of the transformer layer.
 
         layerId = kw_args["layer_id"]
         weights = list(layer.state_dict().values())
@@ -188,9 +185,6 @@ class DeepNormWithGLUMixin(BaseMixin):
                 acl_outs = acl_layer_decoder.execute(acl_inputs)
 
         if mem is None:
-            # ascend transformer encoder 
-            # all reduce performance not good to run....
-            # acl_outs = acl_layer_encoder.execute(acl_inputs)
 
             attention_input = layer.input_layernorm(hidden_states)
 

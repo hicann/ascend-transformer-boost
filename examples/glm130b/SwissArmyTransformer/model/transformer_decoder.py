@@ -451,9 +451,6 @@ class BaseTransformer(torch.nn.Module):
         # transformer decoder 
         self.acl_glm130b_decoder_operation = torch.classes.Glm130BModelDecoderTorch.Glm130BModelDecoderTorch()
         self.acl_glm130b_decoder_operation.set_param(acl_param)
-        # transformer encoder
-        self.acl_glm130b_encoder_operation = torch.classes.Glm130BModelEncoderTorch.Glm130BModelEncoderTorch()
-        self.acl_glm130b_encoder_operation.set_param(acl_param)
 
         # decoder modelv2
         self.acl_glm130b_decoder_operation_v2 = torch.classes.ModelTorch.ModelTorch("Glm130BDecoderModel")
