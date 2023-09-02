@@ -79,6 +79,7 @@
 #include "models/llama13b/llama13blayer_parallel_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_fusion_layer_decoder_parallel_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
 #include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
@@ -802,6 +803,31 @@ static AclTransformer::Operation *ChatGlm2FusionLayerDecoderOperationCreate(cons
                   << ", preScale:" << param.preScale << ", postScale:" << param.postScale
                   << ", transKey:" << param.transKey << ", model:" << param.model;
     return new AclTransformer::ChatGlm2FusionLayerDecoderOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm2FusionLayerDecoderParallelOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2LayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    param.rank = paramJson["rank"].get<int64_t>();
+    param.rankSize = paramJson["rankSize"].get<int64_t>();
+    ASD_LOG(INFO) << "ChatGlm2LayerEncoderOperationCreate numHeadsPerPartition:" << param.numHeadsPerPartition
+                  << ", numGroupsPerPartition:" << param.numGroupsPerPartition
+                  << ", hiddenSizePerHead:" << param.hiddenSizePerHead << ", rmsNormEps:" << param.rmsNormEps
+                  << ", layerId:" << param.layerId << ", residualAddScale:" << param.residualAddScale
+                  << ", preScale:" << param.preScale << ", postScale:" << param.postScale
+                  << ", transKey:" << param.transKey << ", model:" << param.model
+                  << ", rank:" << param.rank << ", rankSize:" << param.rankSize;
+    return new AclTransformer::ChatGlm2FusionLayerDecoderParallelOperation(param);
 }
 
 static AclTransformer::Operation *ChatGlm2LayerDecoderFlashAttentionOperationCreate(const nlohmann::json &paramJson)

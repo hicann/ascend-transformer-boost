@@ -32,7 +32,7 @@ import logging as lg
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S %p"
 
-lg.basicConfig(filename=f"log/glm_npu.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+lg.basicConfig(filename=f"glm_npu.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
 
 # flags required to enable jit fusion kernels
@@ -259,13 +259,10 @@ class CoreAttention(torch.nn.Module):
             )
 
             # Raw attention scores. [b * np, sq, sk]
-            matmul_result = torch.baddbmm(
-                matmul_input_buffer,
-                query_layer.transpose(0, 1),  # [b * np, sq, hn]
-                key_layer.transpose(0, 1).transpose(1, 2),  # [b * np, hn, sk]
-                beta=0.0,
-                alpha=(1.0 / self.norm_factor),
-            )
+            matmul_result = torch.bmm(
+                query_layer.transpose(0, 1), 
+                key_layer.transpose(0, 1).transpose(1, 2)
+                ) * (1.0 / self.norm_factor)
 
             # change view to [b, np, sq, sk]
             attention_scores = matmul_result.view(*output_size)

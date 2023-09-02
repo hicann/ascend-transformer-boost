@@ -33,16 +33,16 @@ class SelfAttentionOpsRunnerBuilder : public RunnerBuilder {
 public:
     SelfAttentionOpsRunnerBuilder(const SelfAttentionParam &param) : param_(param) {}
     virtual ~SelfAttentionOpsRunnerBuilder() = default;
-    Runner *Build() override {
+    Runner *Build() override { 
         if (param_.model == "openbert") {
             return new SelfAttentionOpsOpenbertRunner(param_);
         } else if (param_.model == "chatglm6b" || param_.model == "glm130b") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
-                return new SelfAttentionOpsChatglm6bRunner(param_);
+                return new SelfAttentionOpsChatglm6bRunner(param_); 
             } else {
                 return new SelfAttentionOpsChatglm6bRunner910a(param_);
             }
-        } else if (param_.model == "chatglm2_6b") {
+        } else if (param_.model == "chatglm2_6b" || param_.model == "chatglm2_6b_parallel") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
                 return new SelfAttentionOpsChatglm26bRunner(param_);
             } else {
@@ -50,7 +50,7 @@ public:
             }
         } else if (param_.model == "llama7b") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
-                return new SelfAttentionOpsLlama7bRunner(param_);
+                return new SelfAttentionOpsLlama7bRunner(param_); 
             } else {
                 return nullptr;
             }
