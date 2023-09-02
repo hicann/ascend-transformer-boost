@@ -42,7 +42,7 @@ void Llama7BDecoderWithoutFusionModel::Param::FromString(const std::string &para
     layerNum = paramJson["layerNum"].get<int>();
     rank = paramJson["rank"].get<int>();
     rankSize = paramJson["rankSize"].get<int>();
-    ASD_LOG(INFO) << "ChatGlm2DecoderModel param rmsNormEps:" << rmsNormEps
+    ASD_LOG(INFO) << "Llama7BDecoderWithoutFusionModel param rmsNormEps:" << rmsNormEps
                   << ", headNum:" << headNum  
                   << ", dk:" << dk
                   << ", layerNum:" << layerNum
@@ -50,7 +50,7 @@ void Llama7BDecoderWithoutFusionModel::Param::FromString(const std::string &para
                   << ", rankSize:" << rankSize;
 }
 
-Llama7BDecoderWithoutFusionModel::Llama7BDecoderWithoutFusionModel(const std::string &param) : Model("ChatGlm2DecoderModel", param)
+Llama7BDecoderWithoutFusionModel::Llama7BDecoderWithoutFusionModel(const std::string &param) : Model("Llama7BDecoderWithoutFusionModel", param)
 {
     param_.FromString(param);
 }
