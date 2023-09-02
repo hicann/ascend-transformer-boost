@@ -20,6 +20,7 @@
 #include "mlp_ops_runner_builder.h"
 
 static constexpr int64_t GLM2_6B_IN_TENSOR_SIZE = 3;
+static constexpr int64_t GLM2_6B_IN_TENSOR_PARALLEL_SIZE = 2;
 static constexpr int64_t GLM130B_IN_TENSOR_SIZE = 3;
 static constexpr int64_t LLAMA13B_IN_TENSOR_SIZE = 3;
 static constexpr int64_t DEFAULT_IN_TENSOR_SIZE = 4;
@@ -41,6 +42,8 @@ uint64_t MlpOperation::GetInTensorCount() const
         return GLM130B_IN_TENSOR_SIZE;
     } else if (param_.model == "chatglm2_6b") {
         return GLM2_6B_IN_TENSOR_SIZE;
+    } else if (param_.model == "chatglm2_6b_parallel") {
+        return GLM2_6B_IN_TENSOR_PARALLEL_SIZE;
     } else if (param_.model == "llama13b") {
         return LLAMA13B_IN_TENSOR_SIZE;
     } else {
@@ -60,7 +63,7 @@ AsdOps::Status MlpOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor
         auto outTensorDim1 = inTensors.at(0).desc.dims[1];
         auto outTensorDim2 = inTensors.at(1).desc.dims[0] / 2;
         outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
-    } else if (param_.model == "chatglm2_6b") {
+    } else if (param_.model == "chatglm2_6b" || param_.model == "chatglm2_6b_parallel") {
         auto outTensorDim0 = inTensors.at(0).desc.dims[0];
         auto outTensorDim1 = inTensors.at(0).desc.dims[1];
         auto outTensorDim2 = inTensors.at(0).desc.dims[2];

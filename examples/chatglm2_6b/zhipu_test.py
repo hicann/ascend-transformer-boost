@@ -1,7 +1,9 @@
-from rand_tensor_performance import full_and_incremental_test, load_model
-import torch_npu
+import argparse
 import torch
 import os
+
+import torch_npu
+from rand_tensor_performance import full_and_incremental_test, load_model
 
 soc_version_map = {-1: "unknown soc version",
     100: "910PremiumA", 101: "910ProA", 102: "910A", 103: "910ProB", 104: "910B",
@@ -12,19 +14,35 @@ soc_version_map = {-1: "unknown soc version",
 }
 
 if __name__ == "__main__":
-    # change running NPU, please use "export SET_NPU_DEVICE=3"
-    DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
-    device_id = 0
-    if DEVICE_ID is not None:
-        device_id = int(DEVICE_ID)
-    print(f"user npu:{device_id}")
-    torch.npu.set_device(torch.device(f"npu:{device_id}"))
+    # parse arguments
+    parser = argparse.ArgumentParser(
+        description="zhipu_test")
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Whether test model in parallel",
+    )
+    args = parser.parse_args()
+
+    if args.parallel:
+        pass
+    else:
+        # change running NPU, please use "export SET_NPU_DEVICE=3"
+        DEVICE_ID = os.environ.get("SET_NPU_DEVICE")
+        device_id = 0
+        if DEVICE_ID is not None:
+            device_id = int(DEVICE_ID)
+        print(f"user npu:{device_id}")
+        torch.npu.set_device(torch.device(f"npu:{device_id}"))
     
     device_version = soc_version_map[torch_npu._C._npu_get_soc_version()]
 
     file = open(f"zhiputest_{device_version}.csv", 'w')
-    file.write(f"Batch,MaxSeqLen,InputSeqLen(Encoding),OutputSeqLen(Decoding),TokensPerSecond(ms),ResponseTime(ms),FirstTokenTime(ms),TimePerTokens(ms)\n")
-    model = load_model()
+    file.write(f"Batch,MaxSeqLen,InputSeqLen(Encoding),OutputSeqLen(Decoding),TokensPerSecond(tps),ResponseTime(ms),FirstTokenTime(ms),TimePerTokens(ms)\n")
+    if args.parallel:
+        model = load_model(parallel=True)
+    else:
+        model = load_model(parallel=False)
     for batch_level in [1]:
         for seq_len_level in range(5,11):
             for test_cycle_level in range(5, 11):

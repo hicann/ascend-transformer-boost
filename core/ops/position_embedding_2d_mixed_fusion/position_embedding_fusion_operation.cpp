@@ -31,7 +31,7 @@ RopeOperation::~RopeOperation() {}
 
 uint64_t RopeOperation::GetInTensorCount() const 
 { 
-    return (param_.model == "chatglm2_6b") ? GLM2_IN_TENSOR_SIZE : inTensorSize; 
+    return (param_.model == "chatglm2_6b" || param_.model == "chatglm2_6b_parallel") ? GLM2_IN_TENSOR_SIZE : inTensorSize; 
 }
 
 uint64_t RopeOperation::GetOutTensorCount() const { return outTensorSize; }
@@ -40,7 +40,7 @@ AsdOps::Status
 RopeOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    if (param_.model == "chatglm2_6b") {
+    if (param_.model == "chatglm2_6b" || param_.model == "chatglm2_6b_parallel") {
         outTensorDescs.at(0).format = inTensors.at(0).desc.format;
         outTensorDescs.at(0).dtype = inTensors.at(0).desc.dtype;
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);

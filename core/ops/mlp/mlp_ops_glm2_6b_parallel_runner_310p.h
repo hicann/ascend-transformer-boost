@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OPS_CHATGML2_6B_LAYER_PARAM_H
-#define OPS_CHATGML2_6B_LAYER_PARAM_H
+#ifndef MLP_OPS_GLM2_PARALLEL_RUNNER_310P_H
+#define MLP_OPS_GLM2_PARALLEL_RUNNER_310P_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/mlp.h"
 
 namespace AclTransformer {
-struct ChatGlm2LayerParam {
-    int64_t numHeadsPerPartition;
-    int64_t numGroupsPerPartition;
-    int64_t hiddenSizePerHead;
-    int64_t layerId;
-    float rmsNormEps = 0;
-    float residualAddScale = 0;
-    float preScale = 0;
-    float postScale = 0;
-    bool transKey = false;
-    std::string model = "chatglm2_6b";
-    int rank = 0;
-    int rankSize = 1;
+class MlpOpsGlm2ParallelRunner310P : public OpsRunner {
+public:
+    explicit MlpOpsGlm2ParallelRunner310P(const MlpParam &param);
+    virtual ~MlpOpsGlm2ParallelRunner310P();
+
+private:
+    MlpParam param_;
+    AsdOps::SVector<int64_t> oriADims_;
+    AsdOps::SVector<int64_t> oriBDims_;
+    std::size_t oriSize_ = 3;
 };
 } // namespace AclTransformer
 #endif

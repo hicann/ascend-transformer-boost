@@ -27,7 +27,7 @@ public:
     virtual ~PositionEmbeddingFusionOpsRunnerBuilder() = default;
     Runner *Build() override 
     { 
-        if (param_.model == "chatglm2_6b"){
+        if (param_.model == "chatglm2_6b" || param_.model == "chatglm2_6b_parallel"){
             return new PositionEmbeddingGlm2FusionOpsRunner(param_);
         }
         return new PositionEmbeddingFusionOpsRunner(param_);
