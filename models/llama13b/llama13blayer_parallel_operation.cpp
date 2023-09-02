@@ -150,7 +150,7 @@ LLaMA13BLayerOperation::LLaMA13BLayerOperation(const LLaMA13BLayerParam &param)
     selfNormNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, IN_SELFOUTNORMWEIGHT};
     selfNormNode.outTensorIds = {INTERMIDATE_SELFNORMOUT};
 
-    mlpNode.operation.reset(new AclTransformer::MlpOperation({"llama13b"}));
+    mlpNode.operation.reset(new AclTransformer::MlpOperation({true, "llama13b"}));
     mlpNode.inTensorIds = {INTERMIDATE_SELFNORMOUT, IN_MLPGATEWEIGHT, IN_MLPUPWEIGHT};
     mlpNode.outTensorIds = {INTERMIDATE_MLPOUT};
 
