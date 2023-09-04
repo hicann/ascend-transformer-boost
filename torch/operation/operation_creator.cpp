@@ -87,6 +87,7 @@
 #include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_flashattention_operation.h"
 #include "models/llama13b/llama13blayer_fusion_quant_operation.h"
+#include "models/llama65b/llama65blayer_encoder_parallel_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -166,6 +167,32 @@ static AclTransformer::Operation *LLaMA13BLayerOperationCreate(const nlohmann::j
     ASD_LOG(INFO) << "LLaMA13BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk;
     return new AclTransformer::LLaMA13BLayerOperation(param);
+}
+
+static AclTransformer::Operation *LLaMA65BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA65BLayerParam param;
+    if (paramJson.find("rmsNormEps") != paramJson.end()) {
+        param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    }
+    if (paramJson.find("headNum") != paramJson.end()) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.find("dk") != paramJson.end()) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.find("rank") != paramJson.end()) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.find("rankSize") != paramJson.end()) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMA65BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::LLaMA65BLayerEncoderOperation(param);
 }
 
 static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohmann::json &paramJson)
@@ -1337,6 +1364,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},
     {"ChatGlm2LayerDecoderOperation", &ChatGlm2LayerDecoderOperationCreate},
     {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate},
+    {"LLaMA65BLayerEncoderOperation", &LLaMA65BLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},

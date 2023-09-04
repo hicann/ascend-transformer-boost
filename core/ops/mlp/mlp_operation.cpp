@@ -44,7 +44,7 @@ uint64_t MlpOperation::GetInTensorCount() const
         return GLM2_6B_IN_TENSOR_SIZE;
     } else if (param_.model == "chatglm2_6b_parallel") {
         return GLM2_6B_IN_TENSOR_PARALLEL_SIZE;
-    } else if (param_.model == "llama13b") {
+    } else if (param_.model == "llama13b" || param_.model == "llama65b") {
         return LLAMA13B_IN_TENSOR_SIZE;
     } else {
         return DEFAULT_IN_TENSOR_SIZE;
@@ -68,7 +68,7 @@ AsdOps::Status MlpOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor
         auto outTensorDim1 = inTensors.at(0).desc.dims[1];
         auto outTensorDim2 = inTensors.at(0).desc.dims[2];
         outTensorDescs.at(0).dims = {outTensorDim0, outTensorDim1, outTensorDim2};
-    } else if (param_.model == "llama13b") {
+    } else if (param_.model == "llama13b" || param_.model == "llama65b") {
         auto outTensorDim0 = inTensors.at(0).desc.dims[0];
         auto outTensorDim1 = inTensors.at(0).desc.dims[1];
         auto outTensorDim2 = inTensors.at(1).desc.dims[0];
