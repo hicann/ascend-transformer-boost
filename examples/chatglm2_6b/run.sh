@@ -10,19 +10,21 @@ TRANSFORMER_PACKAGE_PATH=$(python3 -c 'import transformers; import os; print(os.
 RUN_OPTION_LIST="--run --performance --webdemo --zhipu --profiling"
 RUN_OPTION="--run"
 SCRIPT_PATH=$SCRIPT_DIR/modeling_chatglm.py
-
+export ACLTRANSFORMER_CONVERT_NCHW_TO_ND=1
+export ACLTRANSFORMER_PLAN_EXECUTE_ASYNC=1
+export TASK_QUEUE_ENABLE=1
 function fn_prepare()
 {
     echo "$RUN_OPTION $SCRIPT_PATH"
 
     if [ ! -f "$MODEL_TARGET_DIR/pytorch_model-00001-of-00007.bin" ];then
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00001-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00001-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00002-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00002-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00003-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00003-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00004-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00004-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00005-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00005-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00006-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00006-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00007-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00007-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00001-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00001-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00002-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00002-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00003-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00003-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00004-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00004-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00005-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00005-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00006-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00006-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00007-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00007-of-00007.bin
     fi
 
 
@@ -58,23 +60,33 @@ function fn_main()
     fn_prepare
 
     case "${RUN_OPTION}" in
-        # "--run")
-        #     python3 $SCRIPT_DIR/main.py
-        #     ;;
+
         "--performance")
             python3 $SCRIPT_DIR/main_performance.py
             ;;
+        "--quant")
+            python3 $SCRIPT_DIR/main_quant_performance.py
+            ;;
+
+        "--multi-batch")
+            python3 $SCRIPT_DIR/main_batch_performance.py
+            ;;
+
+        # TODO
         # "--webdemo")
         #     unset https_proxy
         #     unset http_proxy
         #     python3 $SCRIPT_DIR/main_web.py
         #     ;;
+
         "--zhipu")
             python3 $SCRIPT_DIR/zhipu_test.py
             ;;
+
+        # TODO
         # "--profiling")
-            
         #     ;;
+
         "--precision")
             python3 $SCRIPT_DIR/main_precision.py $2
             ;;

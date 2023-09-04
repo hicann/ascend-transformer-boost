@@ -37,18 +37,25 @@
 #include "torch/model_v2/gptneox20b/gptneox20b_decoder_model.h"
 #include "torch/model_v2/gptneox20b/gptneox20b_encoder_model.h"
 #include "torch/model_v2/bloom7b/bloom7b_decoder_model.h"
+#include "torch/model_v2/bloom7b/bloom7b_encoder_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_encoder_quant_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_quant_model.h"
-#include "torch/model_v2/chatglm6b/chatglm6b_encoder_quant_mix_model.h"
-#include "torch/model_v2/chatglm6b/chatglm6b_decoder_quant_mix_model.h"
+#include "torch/model_v2/chatglm2_6b/chatglm2_6b_encoder_quant_model.h"
+#include "torch/model_v2/chatglm2_6b/chatglm2_6b_decoder_quant_model.h"
+#include "torch/model_v2/chatglm2_6b/chatglm2_6b_encoder_quant_mix_model.h"
+#include "torch/model_v2/chatglm2_6b/chatglm2_6b_decoder_quant_mix_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_decoder_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_encoder_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_encoder_with_bias_model.h"
 #include "torch/model_v2/baichuan2_7b/baichuan2_7b_decoder_model.h"
 #include "torch/model_v2/baichuan2_7b/baichuan2_7b_encoder_model.h"
+#include "torch/model_v2/baichuan2_7b/baichuan2_7b_decoder_parallel_model.h"
+#include "torch/model_v2/baichuan2_7b/baichuan2_7b_encoder_parallel_model.h"
 #include "torch/model_v2/baichuan2_13b/baichuan2_13b_encoder_model.h"
 #include "torch/model_v2/baichuan2_13b/baichuan2_13b_decoder_model.h"
 #include "torch/model_v2/llama7b/llama7b_decoder_without_fusion_model.h"
+#include "torch/model_v2/llama_adapter_7b/llama_adapter_7b_encoder_model.h"
+#include "torch/model_v2/llama_adapter_7b/llama_adapter_7b_decoder_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -98,6 +105,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::GptNeox20BEncoderModel>(param);
     } else if (modelName_ == "Bloom7BDecoderModel") {
         model_ = std::make_shared<AclTransformer::Bloom7BDecoderModel>(param);
+    } else if (modelName_ == "Bloom7BEncoderModel") {
+        model_ = std::make_shared<AclTransformer::Bloom7BEncoderModel>(param);
     } else if (modelName_ == "ChatGlm6BEncoderQuantModel") {
         model_ = std::make_shared<AclTransformer::ChatGlm6BEncoderQuantModel>(param);
     } else if (modelName_ == "ChatGlm6BDecoderQuantModel") {
@@ -112,6 +121,10 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::BaiChuan27BDecoderModel>(param);
     } else if (modelName_ == "BaiChuan27BEncoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan27BEncoderModel>(param);
+    } else if (modelName_ == "BaiChuan27BDecoderParallelModel") {
+        model_ = std::make_shared<AclTransformer::BaiChuan27BDecoderParallelModel>(param);
+    } else if (modelName_ == "BaiChuan27BEncoderParallelModel") {
+        model_ = std::make_shared<AclTransformer::BaiChuan27BEncoderParallelModel>(param);
     } else if (modelName_ == "BaiChuan213BEncoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan213BEncoderModel>(param);
     } else if (modelName_ == "BaiChuan213BDecoderModel") {
@@ -121,11 +134,15 @@ void ModelTorch::SetParam(std::string param)
     } else if (modelName_ == "ChatGlm2QuantEncoderModel"){
         model_ = std::make_shared<AclTransformer::ChatGlm2QuantEncoderModel>(param);
     } else if (modelName_ == "ChatGlm2QuantDecoderModel"){
-        model_ = std::make_shared<AclTransformer::ChatGlm2QuantEncoderModel>(param);
+        model_ = std::make_shared<AclTransformer::ChatGlm2QuantDecoderModel>(param);
     } else if (modelName_ == "ChatGlm2QuantMixEncoderModel"){
         model_ = std::make_shared<AclTransformer::ChatGlm2QuantMixEncoderModel>(param);
     } else if (modelName_ == "ChatGlm2QuantMixDecoderModel"){
-        model_ = std::make_shared<AclTransformer::ChatGlm2QuantMixEncoderModel>(param);
+        model_ = std::make_shared<AclTransformer::ChatGlm2QuantMixDecoderModel>(param);
+    } else if (modelName_ == "LlamaAdapter7BEncoderModel") {
+        model_ = std::make_shared<AclTransformer::LlamaAdapter7BEncoderModel>(param);
+    } else if (modelName_ == "LlamaAdapter7BDecoderModel") {
+        model_ = std::make_shared<AclTransformer::LlamaAdapter7BDecoderModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
@@ -158,6 +175,21 @@ void ModelTorch::SetWeight(std::vector<torch::Tensor> atWeightTensors)
 
 std::vector<torch::Tensor> ModelTorch::Execute(std::vector<torch::Tensor> atInTensors, std::string param)
 {
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensorByRange()) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMinNum() >
+            AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            ASD_LOG(ERROR) << "TensorMinNum should less than TensorMaxNum!";
+            AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        } else {
+            if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMinNum() &&
+                executeCount_ <= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+                AsdOps::GetSingleton<AclTransformer::Config>().EnableSaveTensor();
+            } else {
+                AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+            }
+        }
+    }
+
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         const torch::Tensor &atTensor = atInTensors.at(i);
         ASD_LOG(INFO) << "ModelTorch atInTensors[" << i << "]"

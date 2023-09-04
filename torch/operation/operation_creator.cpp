@@ -29,6 +29,7 @@
 #include "acltransformer/ops/matmul_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 #include "acltransformer/ops/embedding_operation.h"
+#include "acltransformer/ops/apply_rotary_emb_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/self_attention_cross_operation.h"
@@ -74,6 +75,8 @@
 #include "models/baichuan13b/baichuan13b_layer_decoder_operation.h"
 #include "models/baichuan2_13b/baichuan2_13b_layer_decoder_operation.h"
 #include "models/baichuan2_13b/baichuan2_13b_layer_encoder_operation.h"
+#include "models/baichuan2_7b/baichuan2_7b_layer_decoder_parallel_operation.h"
+#include "models/baichuan2_7b/baichuan2_7b_layer_encoder_parallel_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_layer_encoder_operation.h"
 #include "models/llama13b/llama13blayer_parallel_operation.h"
@@ -81,6 +84,9 @@
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_decoder_parallel_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
+#include "models/bloom7b/bloom7blayer_encoder_operation.h"
+#include "models/bloom7b/bloom7blayer_parallel_decoder_operation.h"
+#include "models/bloom7b/bloom7blayer_parallel_encoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
 #include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
 #include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
@@ -89,8 +95,80 @@
 #include "models/llama13b/llama13blayer_fusion_quant_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_quant_layer_decoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_quant_layer_encoder_operation.h"
+#include "models/llama65b/llama65blayer_encoder_parallel_operation.h"
+#include "models/llama_adapter7b/llama_adapter_7b_layer_decoder_operation.h"
+#include "models/llama_adapter7b/llama_adapter_7b_layer_decoder_adapter_operation.h"
+#include "models/llama_adapter7b/llama_adapter_7b_layer_encoder_operation.h"
+#include "models/llama_adapter7b/llama_adapter_7b_layer_encoder_adapter_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
+
+static AclTransformer::Operation *LLaMAAdapter7BLayerOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMAAdapter7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMAAdapter7BLayerOperationCreate LLaMAAdapter7BLayerParam headNum:" 
+                  << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model;
+    return new AclTransformer::LLaMAAdapter7BLayerOperation(param);
+}
+
+static AclTransformer::Operation *LLaMAAdapter7BLayerAdapterOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMAAdapter7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMAAdapter7BLayerAdapterOperationCreate LLaMAAdapter7BLayerParam headNum:" 
+                  << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model;
+    return new AclTransformer::LLaMAAdapter7BLayerAdapterOperation(param);
+}
+
+static AclTransformer::Operation *LLaMAAdapter7BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMAAdapter7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMAAdapter7BLayerEncoderOperationCreate LLaMAAdapter7BLayerParam headNum:" 
+                  << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model;
+    return new AclTransformer::LLaMAAdapter7BLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *LLaMAAdapter7BLayerEncoderAdapterOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMAAdapter7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMAAdapter7BLayerEncoderAdapterOperationCreate LLaMAAdapter7BLayerParam headNum:" 
+                  << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model;
+    return new AclTransformer::LLaMAAdapter7BLayerEncoderAdapterOperation(param);
+}
+
+static AclTransformer::Operation *ApplyRotaryEmbOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ApplayRotaryEmbParam param;
+    ASD_LOG(INFO) << "ApplayRotaryEmbParam Enter";
+    return new AclTransformer::ApplyRotaryEmbOperation(param);
+}
 
 static AclTransformer::Operation *LLaMA13BLayerFusionQuantOperationCreate(const nlohmann::json &paramJson)
 {
@@ -170,6 +248,32 @@ static AclTransformer::Operation *LLaMA13BLayerOperationCreate(const nlohmann::j
     return new AclTransformer::LLaMA13BLayerOperation(param);
 }
 
+static AclTransformer::Operation *LLaMA65BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA65BLayerParam param;
+    if (paramJson.find("rmsNormEps") != paramJson.end()) {
+        param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    }
+    if (paramJson.find("headNum") != paramJson.end()) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.find("dk") != paramJson.end()) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.find("rank") != paramJson.end()) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.find("rankSize") != paramJson.end()) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMA65BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::LLaMA65BLayerEncoderOperation(param);
+}
+
 static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::LLaMA7BLayerFusionParam param;
@@ -188,6 +292,58 @@ static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohma
     ASD_LOG(INFO) << "LLaMA7BLayerFusionParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
     return new AclTransformer::LLaMA7BLayerFusionOperation(param);
+}
+
+static AclTransformer::Operation *BaiChuan27BLayerDecoderParallelOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan27BLayerParallelParam param;
+    if (paramJson.find("rmsNormEps") != paramJson.end()) {
+        param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    }
+    if (paramJson.find("headNum") != paramJson.end()) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.find("dk") != paramJson.end()) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.find("rank") != paramJson.end()) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.find("rankSize") != paramJson.end()) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "BaiChuan27BLayerParallelParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", rank:" << param.rank << ", rankSize:" << param.rankSize;
+    return new AclTransformer::BaiChuan27BLayerDecoderParallelOperation(param);
+}
+
+static AclTransformer::Operation *BaiChuan27BLayerEncoderParallelOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::BaiChuan27BLayerParallelParam param;
+    if (paramJson.find("rmsNormEps") != paramJson.end()) {
+        param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    }
+    if (paramJson.find("headNum") != paramJson.end()) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.find("dk") != paramJson.end()) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.find("rank") != paramJson.end()) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.find("rankSize") != paramJson.end()) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "BaiChuan27BLayerParallelParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", rank:" << param.rank << ", rankSize:" << param.rankSize;
+    return new AclTransformer::BaiChuan27BLayerEncoderParallelOperation(param);
 }
 
 static AclTransformer::Operation *BaiChuan17BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
@@ -567,6 +723,9 @@ static AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::j
     if (paramJson.contains("numGroupsPerPartition")) {
         param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
     }
+    if (paramJson.contains("invNormFactorvarAttr")) {
+        param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
                   << ", layerId:" << param.layerId << ", dk:" << param.dk << ", preScale" << param.preScale
                   << ", postScale" << param.postScale << ", model" << param.model << ", hiddenSizePerHead"
@@ -827,8 +986,8 @@ static AclTransformer::Operation *ChatGlm2FusionLayerDecoderParallelOperationCre
                   << ", hiddenSizePerHead:" << param.hiddenSizePerHead << ", rmsNormEps:" << param.rmsNormEps
                   << ", layerId:" << param.layerId << ", residualAddScale:" << param.residualAddScale
                   << ", preScale:" << param.preScale << ", postScale:" << param.postScale
-                  << ", transKey:" << param.transKey << ", model:" << param.model
-                  << ", rank:" << param.rank << ", rankSize:" << param.rankSize;
+                  << ", transKey:" << param.transKey << ", model:" << param.model << ", rank:" << param.rank
+                  << ", rankSize:" << param.rankSize;
     return new AclTransformer::ChatGlm2FusionLayerDecoderParallelOperation(param);
 }
 
@@ -922,6 +1081,57 @@ static AclTransformer::Operation *Bloom7BLayerDecoderOperationCreate(const nlohm
                   << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
                   << ", activationFuncType:" << param.activationFuncType;
     return new AclTransformer::Bloom7BLayerDecoderOperation(param);
+}
+
+static AclTransformer::Operation *Bloom7BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Bloom7BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    param.activationFuncType = paramJson["activationFuncType"].get<int>();
+    ASD_LOG(INFO) << "Bloom7BLayerEncoderOperationCreate layerNormEps:" << param.layerNormEps
+                  << ", headNum:" << param.headNum << ", dk:" << param.dk
+                  << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
+                  << ", activationFuncType:" << param.activationFuncType;
+    return new AclTransformer::Bloom7BLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *Bloom7BLayerParallelDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Bloom7BLayerParallelParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    param.activationFuncType = paramJson["activationFuncType"].get<int>();
+    param.rank = paramJson["rank"].get<int>();
+    param.rankSize = paramJson["rankSize"].get<int>();
+    ASD_LOG(INFO) << "Bloom7BLayerParallelDecoderOperationCreate layerNormEps:" << param.layerNormEps
+                  << ", headNum:" << param.headNum << ", dk:" << param.dk
+                  << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
+                  << ", activationFuncType:" << param.activationFuncType
+                  << ", rank" << param.rank << ", rankSize" << param.rankSize;
+    return new AclTransformer::Bloom7BLayerParallelDecoderOperation(param);
+}
+
+static AclTransformer::Operation *Bloom7BLayerParallelEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Bloom7BLayerParallelParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    param.activationFuncType = paramJson["activationFuncType"].get<int>();
+    param.rank = paramJson["rank"].get<int>();
+    param.rankSize = paramJson["rankSize"].get<int>();
+    ASD_LOG(INFO) << "Bloom7BLayerParallelEncoderOperationCreate layerNormEps:" << param.layerNormEps
+                  << ", headNum:" << param.headNum << ", dk:" << param.dk
+                  << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
+                  << ", activationFuncType:" << param.activationFuncType
+                  << ", rank" << param.rank << ", rankSize" << param.rankSize;
+    return new AclTransformer::Bloom7BLayerParallelEncoderOperation(param);
 }
 
 AclTransformer::Operation *FfnQuantOperationCreate(const nlohmann::json &paramJson)
@@ -1346,6 +1556,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddNormOperation", &AddNormOperationCreate},
     {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
+    {"ApplyRotaryEmbOperation", &ApplyRotaryEmbOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
     {"MatmulOperation", &MatmulOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
@@ -1386,14 +1597,21 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"BaiChuan213BLayerEncoderOperation", &BaiChuan213BLayerEncoderOperationCreate},
     {"BaiChuan13BLayerDecoderOperation", &BaiChuan13BLayerDecoderOperationCreate},
     {"BaiChuan213BLayerDecoderOperation", &BaiChuan213BLayerDecoderOperationCreate},
+    {"BaiChuan27BLayerDecoderParallelOperation", &BaiChuan27BLayerDecoderParallelOperationCreate},
+    {"BaiChuan27BLayerEncoderParallelOperation", &BaiChuan27BLayerEncoderParallelOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate},
     {"LmHeadParallelOperation", &LmHeadParallelOperationCreate},
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},
     {"ChatGlm2LayerDecoderOperation", &ChatGlm2LayerDecoderOperationCreate},
     {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate},
+    {"LLaMA65BLayerEncoderOperation", &LLaMA65BLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
+    {"ChatGlm2FusionLayerDecoderParallelOperation", &ChatGlm2FusionLayerDecoderParallelOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
+    {"Bloom7BLayerEncoderOperation", &Bloom7BLayerEncoderOperationCreate},
+    {"Bloom7BLayerParallelDecoderOperation", &Bloom7BLayerParallelDecoderOperationCreate},
+    {"Bloom7BLayerParallelEncoderOperation", &Bloom7BLayerParallelEncoderOperationCreate},
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
     {"WordEmbeddingParallelOperation", &WordEmbeddingParallelOperationCreate},
     {"GptNeox20BLayerEmbeddingOperation", &GptNeox20BLayerEmbeddingOperationCreate},
@@ -1402,7 +1620,11 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate},
     {"LLaMA13BLayerFusionQuantOperation", &LLaMA13BLayerFusionQuantOperationCreate},
     {"ChatGlm2QuantLayerEncoderOperation", &ChatGlm2QuantLayerEncoderOperationCreate},
-    {"ChatGlm2QuantLayerDecoderOperation", &ChatGlm2QuantLayerDecoderOperationCreate}};
+    {"ChatGlm2QuantLayerDecoderOperation", &ChatGlm2QuantLayerDecoderOperationCreate};
+    {"LLaMAAdapter7BLayerOperation", &LLaMAAdapter7BLayerOperationCreate},
+    {"LLaMAAdapter7BLayerAdapterOperation", &LLaMAAdapter7BLayerAdapterOperationCreate},
+    {"LLaMAAdapter7BLayerEncoderOperation", &LLaMAAdapter7BLayerEncoderOperationCreate},
+    {"LLaMAAdapter7BLayerEncoderAdapterOperation", &LLaMAAdapter7BLayerEncoderAdapterOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {
