@@ -4,12 +4,13 @@ import sys
 import time
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 
 from launcher import BaseLauncher
 
 
 class BaichuanLM(BaseLauncher):
+
     def init_model(self):
         """
         模型初始化
@@ -20,11 +21,8 @@ class BaichuanLM(BaseLauncher):
         tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
         model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True).half().npu()
         model.eval()
-        tokenizer.pad_token_id = 0 if tokenizer.pad_token_id is None else tokenizer.pad_token_id  # set as the token
-        if tokenizer.pad_token_id == 64000:
-            tokenizer.pad_token_id = 0  # for baichuan model (need fix)
-        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        # model.resize_token_embeddings(len(tokenizer))
+        model.generation_config = self.remove_part_of_generation_config(model.generation_config)
+        print(model.generation_config)
         print("##########")
         print(f"load model from {os.path.basename(inspect.getmodule(model).__file__)}")
         print("##########")
@@ -38,12 +36,15 @@ class BaichuanLM(BaseLauncher):
         :return:
         """
         inputs = self.tokenizer(query, return_tensors='pt')
+        # {'input_ids': [6508], 'attention_mask': [1]}
+
         for k, v in inputs.items():
             inputs[k] = v.npu()
         with torch.no_grad():
             start_time = time.time()
-            # pred = self.model.generate(**inputs, max_new_tokens=64, repetition_penalty=1.1) # CANN7.0算子缺失，不能开启
-            pred = self.model.generate(**inputs, max_new_tokens=64)
+            gen_kwargs = {"max_new_tokens": 64}
+
+            pred = self.model.generate(**inputs, **gen_kwargs)
             end_time = time.time()
             time_cost = end_time - start_time
         output = self.tokenizer.decode(pred.cpu()[0], skip_special_tokens=True)
@@ -51,11 +52,31 @@ class BaichuanLM(BaseLauncher):
         print(f"cost {time_cost}s")
         new_tokens = len(pred[0]) - len(inputs.input_ids[0])
         print(f"generate {new_tokens} new tokens，({new_tokens / time_cost:.2f} tokens/s")
+        print(f"generate {len(output) - len(query)} new chars，({(len(output) - len(query)) / time_cost:.2f} tokens/s")
         return output
+
+    @staticmethod
+    def remove_part_of_generation_config(generation_config):
+        """
+        移除部分后处理相关参数，当前不支持
+        :param generation_config:
+        :return:
+        """
+        ori_gen = GenerationConfig()
+        diff_dict = generation_config.to_diff_dict()
+        print(diff_dict)
+        for key in diff_dict:
+            if key.endswith("_id"):
+                continue
+            ori_value = getattr(ori_gen, key, None)
+            if ori_value is not None:
+                setattr(generation_config, key, getattr(ori_gen, key))
+                print(f"replace {key}")
+        return generation_config
 
 
 if __name__ == '__main__':
-    baichuan = BaichuanLM(device_ids="2", using_acl_transformers=True)
+    baichuan = BaichuanLM(device_ids="1", using_acl_transformers=True)
     print("---------------warm-up---------------")
     baichuan.infer('Hamlet->Shakespeare\nOne Hundred Years of Solitude->')
 
