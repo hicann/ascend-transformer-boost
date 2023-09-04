@@ -62,4 +62,4 @@ do
     echo "Device ID: $RANK_ID, bind to NUMA node: $bind"
     numactl --cpunodebind=$bind --membind $bind python3 ${ARGS} &
 done
-wait 
+wait
