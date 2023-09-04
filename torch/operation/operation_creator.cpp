@@ -87,6 +87,8 @@
 #include "models/gptneox20b/gptneox20blayer_decoder_operation.h"
 #include "models/gptneox20b/gptneox20blayer_decoder_flashattention_operation.h"
 #include "models/llama13b/llama13blayer_fusion_quant_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_quant_layer_decoder_operation.h"
+#include "models/chatglm2_6b/chatglm2_6b_quant_layer_encoder_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
 
@@ -855,6 +857,58 @@ static AclTransformer::Operation *ChatGlm2LayerDecoderFlashAttentionOperationCre
     return new AclTransformer::ChatGlm2LayerDecoderFlashAttentionOperation(param);
 }
 
+static AclTransformer::Operation *ChatGlm2QuantLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2QuantLayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    param.qkvInputScale = paramJson["qkvInputScale"].get<float>();
+    param.qkvInputOffset = paramJson["qkvInputOffset"].get<int>();
+    param.denseInputScale = paramJson["denseInputScale"].get<float>();
+    param.denseInputOffset = paramJson["denseInputOffset"].get<int>();
+    param.selfLnInputScale = paramJson["selfLnInputScale"].get<float>();
+    param.selfLnInputOffset = paramJson["selfLnInputOffset"].get<int>();
+    param.ffnOutInputScale = paramJson["ffnOutInputScale"].get<float>();
+    param.ffnOutInputOffset = paramJson["ffnOutInputOffset"].get<int>();
+
+    ASD_LOG(INFO) << "ChatGlm2QuantLayerEncoderOperation" << param.model;
+    return new AclTransformer::ChatGlm2QuantLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *ChatGlm2QuantLayerDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ChatGlm2QuantLayerParam param;
+    param.numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int64_t>();
+    param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
+    param.hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int64_t>();
+    param.layerId = paramJson["layerId"].get<int64_t>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.residualAddScale = paramJson["residualAddScale"].get<float>();
+    param.preScale = paramJson["preScale"].get<float>();
+    param.postScale = paramJson["postScale"].get<float>();
+    param.transKey = paramJson["transKey"].get<bool>();
+    param.model = paramJson["model"].get<std::string>();
+    param.qkvInputScale = paramJson["qkvInputScale"].get<float>();
+    param.qkvInputOffset = paramJson["qkvInputOffset"].get<int>();
+    param.denseInputScale = paramJson["denseInputScale"].get<float>();
+    param.denseInputOffset = paramJson["denseInputOffset"].get<int>();
+    param.selfLnInputScale = paramJson["selfLnInputScale"].get<float>();
+    param.selfLnInputOffset = paramJson["selfLnInputOffset"].get<int>();
+    param.ffnOutInputScale = paramJson["ffnOutInputScale"].get<float>();
+    param.ffnOutInputOffset = paramJson["ffnOutInputOffset"].get<int>();
+
+    ASD_LOG(INFO) << "ChatGlm2QuantLayerDecoderOperation" << param.model;
+    return new AclTransformer::ChatGlm2QuantLayerDecoderOperation(param);
+}
+
 static AclTransformer::Operation *Bloom7BLayerDecoderOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::Bloom7BLayerParam param;
@@ -1346,7 +1400,9 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
     {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate},
     {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate},
-    {"LLaMA13BLayerFusionQuantOperation", &LLaMA13BLayerFusionQuantOperationCreate}};
+    {"LLaMA13BLayerFusionQuantOperation", &LLaMA13BLayerFusionQuantOperationCreate},
+    {"ChatGlm2QuantLayerEncoderOperation", &ChatGlm2QuantLayerEncoderOperationCreate},
+    {"ChatGlm2QuantLayerDecoderOperation", &ChatGlm2QuantLayerDecoderOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {

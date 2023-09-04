@@ -39,6 +39,8 @@
 #include "torch/model_v2/bloom7b/bloom7b_decoder_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_encoder_quant_model.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_quant_model.h"
+#include "torch/model_v2/chatglm6b/chatglm6b_encoder_quant_mix_model.h"
+#include "torch/model_v2/chatglm6b/chatglm6b_decoder_quant_mix_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_decoder_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_encoder_model.h"
 #include "torch/model_v2/baichuan1_7b/baichuan1_7b_encoder_with_bias_model.h"
@@ -116,6 +118,14 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::BaiChuan213BDecoderModel>(param);
     } else if (modelName_ == "Llama7BDecoderWithoutFusionModel") {
         model_ = std::make_shared<AclTransformer::Llama7BDecoderWithoutFusionModel>(param);    
+    } else if (modelName_ == "ChatGlm2QuantEncoderModel"){
+        model_ = std::make_shared<AclTransformer::ChatGlm2QuantEncoderModel>(param);
+    } else if (modelName_ == "ChatGlm2QuantDecoderModel"){
+        model_ = std::make_shared<AclTransformer::ChatGlm2QuantEncoderModel>(param);
+    } else if (modelName_ == "ChatGlm2QuantMixEncoderModel"){
+        model_ = std::make_shared<AclTransformer::ChatGlm2QuantMixEncoderModel>(param);
+    } else if (modelName_ == "ChatGlm2QuantMixDecoderModel"){
+        model_ = std::make_shared<AclTransformer::ChatGlm2QuantMixEncoderModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;

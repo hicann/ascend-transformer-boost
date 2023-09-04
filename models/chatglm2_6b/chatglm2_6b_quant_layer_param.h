@@ -13,15 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_RMSNORMQUANT_H
-#define ACLTRANSFOERM_PARAMS_RMSNORMQUANT_H
+#ifndef OPS_CHATGML2_6B_QUANT_LAYER_PARAM_H
+#define OPS_CHATGML2_6B_QUANT_LAYER_PARAM_H
 
-#include <vector>
 namespace AclTransformer {
-struct RmsNormQuantParam {
-    float inputScale = 1;
-    int inputOffset = 0;
-    float rmsNormEps = 1e-12; // a value added to the denominator for numerical stability
+struct ChatGlm2QuantLayerParam {
+    int64_t numHeadsPerPartition;
+    int64_t numGroupsPerPartition;
+    int64_t hiddenSizePerHead;
+    int64_t layerId;
+    float rmsNormEps = 0;
+    float residualAddScale = 0;
+    float preScale = 0;
+    float postScale = 0;
+    bool transKey = false;
+    std::string model = "chatglm2_6b";
+    float qkvInputScale = 1;
+    int qkvInputOffset = 0;
+    float denseInputScale = 1;
+    int denseInputOffset = 0;
+    float selfLnInputScale = 1;
+    int selfLnInputOffset = 0;
+    float ffnOutInputScale = 1;
+    int ffnOutInputOffset = 0;
 };
 } // namespace AclTransformer
 #endif

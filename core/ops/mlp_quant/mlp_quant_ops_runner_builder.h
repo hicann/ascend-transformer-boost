@@ -19,6 +19,7 @@
 #include "acltransformer/runner_builder.h"
 #include "acltransformer/params/mlp_quant.h"
 #include "mlp_quant_ops_runner.h"
+#include "mlp_quant_ops_glm2_6b_runner_310p.h"
 
 namespace AclTransformer {
 class MlpQuantOpsRunnerBuilder : public RunnerBuilder {
@@ -27,7 +28,11 @@ public:
     virtual ~MlpQuantOpsRunnerBuilder() = default;
     Runner *Build() override
     {
-        return new MlpQuantOpsRunner(param_);
+        if (param_.model == "chatglm2_6b") {
+            return new MlpQuantOpsGlm2Runner310P(param_);
+        } else {
+            return new MlpQuantOpsRunner(param_);
+        }
     }
 
 private:
