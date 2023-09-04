@@ -36,7 +36,7 @@ public:
     {
         if (param_.model == "glm130b") {
             return new MlpOpsGlm130bRunner(param_);
-        } else if (param_.model == "llama13b") {
+        } else if (param_.model == "llama13b" || param_.model == "llama65b") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
                 return new MlpOpsLlama13bRunner(param_);
             } else {

@@ -44,7 +44,7 @@ public:
             } else {
                 return new SelfAttentionKvCacheOpsChatGlm6bRunner910a(param_);
             }
-        } else if (param_.model == "llama7b" || param_.model == "llama13b") {
+        } else if (param_.model == "llama7b" || param_.model == "llama13b" || param_.model == "llama65b") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
                 return new SelfAttentionKvCacheOpsLlama7bRunner(param_);
             } else {

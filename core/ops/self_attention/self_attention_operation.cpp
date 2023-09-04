@@ -47,7 +47,7 @@ uint64_t SelfAttentionOperation::GetInTensorCount() const
 
 uint64_t SelfAttentionOperation::GetOutTensorCount() const
 {
-    return (param_.model == "llama7b" || param_.model == "baichuan2_13b") ? LLAMA7B_IN_TENSOR_SIZE
+    return (param_.model == "llama7b" || param_.model == "llama13b" || param_.model == "llama65b" || param_.model == "baichuan2_13b") ? LLAMA7B_IN_TENSOR_SIZE
                                                                           : DEFAULT_IN_TENSOR_SIZE;
 }
 
@@ -65,7 +65,7 @@ AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdO
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(1));
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
-    } else if (param_.model == "llama7b") {
+    } else if (param_.model == "llama7b" || param_.model == "llama13b" || param_.model == "llama65b") {
         outTensorDescs.at(0) = inTensors.at(0).desc;
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(0));
