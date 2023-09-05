@@ -377,13 +377,17 @@ void OpsRunner::RunAllKernel(Handle &handle)
             std::string dirPath = tensorDir_ + "/" + std::to_string(i) + "_" + kernel->GetName();
             TensorUtil::SaveRunInfo(handle, kernelRunInfo, dirPath + "/before");
             ASD_LOG(INFO) << GetName() << " " << kernel->GetName() << " SaveRunInfo " << dirPath;
+            void *deviceTiling = nullptr;
+            uint32_t launchBufferSize = 0;
+            kernelRunInfo.GetDeviceLaunchBuffer(deviceTiling, launchBufferSize);
+            WriteDeviceTilingData(deviceTiling, launchBufferSize, dirPath + "/before");
         }
 
         AsdOps::Timer timer;
 
-        const uint64_t beginTime = AsdOps::GetSingleton<Config>().IsUsingProfiling() 
-                                        ? AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime()
-                                        : 0;
+        const uint64_t beginTime = AsdOps::GetSingleton<Config>().IsUsingProfiling()
+                                       ? AsdOps::GetSingleton<AsdProfiling>().AsdSysCycleTime()
+                                       : 0;
 
         AsdOps::Status st = kernel->Run(kernelRunInfo);
 
@@ -634,6 +638,26 @@ void OpsRunner::WriteTilingData(const char *tilingData, size_t len, const std::s
     fd.write(tilingData, len);
     fd.close();
     ASD_LOG(INFO) << "write tiling success";
+}
+
+void OpsRunner::WriteDeviceTilingData(const void *tilingData, size_t len, const std::string &dirPath)
+{
+    std::vector<char> hostData(len);
+    int st = AsdRtMemCopy(hostData.data(), len, tilingData, len, ASDRT_MEMCOPY_DEVICE_TO_HOST);
+    ASD_LOG_IF(st != 0, ERROR) << "AsdRtMemCopy device to host fail for save tensor, ret:" << st;
+
+    AsdOps::FileSystem::Makedirs(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    std::string filePath = dirPath + "/" + "device_tilingdata.bin";
+
+    std::ofstream fd(filePath.c_str(), std::ios::binary);
+    if (!fd.is_open()) {
+        ASD_LOG(ERROR) << "write tiling file fail, path:" << filePath;
+        return;
+    }
+    fd.write((char *)hostData.data(), len);
+    fd.close();
+    ASD_LOG(INFO) << "write tiling success, file:" << filePath;
 }
 
 void OpsRunner::InitTensorMaxNodeMap()

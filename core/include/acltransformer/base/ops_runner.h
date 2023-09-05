@@ -87,7 +87,8 @@ private:
     void CalcTilingBufferSize(const RunnerVariantPack &runnerVariantPack);
     void InitTensorMaxNodeMap();
     bool IsInternalTensor(const AsdOps::Tensor *tensor);
-    void WriteTilingData(const char *tilingData, size_t len, const std::string &filePath);
+    void WriteTilingData(const char *tilingData, size_t len, const std::string &dirPath);
+    void WriteDeviceTilingData(const void *tilingData, size_t len, const std::string &dirPath);
     void UpdateRunInfoTensorData(RunnerVariantPack &runnerVariantPack);
     AsdOps::Status UpdateRunInfoTiling(RunnerVariantPack &runnerVariantPack);
     void UpdateRunInfoWorkspace(RunnerVariantPack &runnerVariantPack);
