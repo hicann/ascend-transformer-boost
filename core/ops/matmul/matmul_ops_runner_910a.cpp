@@ -50,10 +50,16 @@ MatmulOpsRunner910A::MatmulOpsRunner910A(const MatmulParam &param)
     auto &transdata1Node = kernelGraph_.nodes[nodeNum++];
 
     ViewFunc Unsqueeze0 = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims.resize(oldDims.size() + 1);
-        newDims.at(0) = 1;
-        for (size_t i = 1; i < newDims.size(); i++) {
-            newDims.at(i) = oldDims.at(i - 1);
+        if (oldDims.size() == 2) {
+            newDims.resize(oldDims.size() + 1);
+            newDims.at(0) = 1;
+            for (size_t i = 1; i < newDims.size(); i++) {
+                newDims.at(i) = oldDims.at(i - 1);
+            }
+        } else {
+            for (size_t i = 1; i < newDims.size(); i++) {
+                newDims.at(i) = oldDims.at(i);
+            }
         }
     };
     
