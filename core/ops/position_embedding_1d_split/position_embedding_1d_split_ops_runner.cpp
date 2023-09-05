@@ -125,7 +125,7 @@ PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const Posit
     cat0Node.outTensors = {&inputRotate};
     cat0Node.inferShapePreFunc = cat0InferShape;
 
-    // [bs, sq, 1, rd]
+    // [bs, 1, sq, rd]
     ViewFunc unsqueezeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
         newDims = {oldDims.at(0), 1, oldDims.at(1), oldDims.at(2)};
     };

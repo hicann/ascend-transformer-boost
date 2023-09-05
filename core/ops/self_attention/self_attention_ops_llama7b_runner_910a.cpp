@@ -105,7 +105,7 @@ SelfAttentionOpsLlama7bRunner910a::SelfAttentionOpsLlama7bRunner910a(const SelfA
     permuteKNode.outTensors = {&permutedK};
     permuteKNode.inTensorViewFuncs.resize(permuteKNode.inTensors.size());
 
-    AsdOps::OpParam::Transpose permuteVParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {1, 2, 0, 3}};
+    AsdOps::OpParam::Transpose permuteVParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {0, 2, 1, 3}};
     permuteVNode.opDesc = {0, "TransposeOperation", permuteVParam};
     permuteVNode.inTensors = {&mixedValue};
     permuteVNode.outTensors = {&permutedV};
