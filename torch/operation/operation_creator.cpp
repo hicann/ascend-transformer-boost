@@ -83,6 +83,7 @@
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_decoder_parallel_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
+#include "models/bloom7b/bloom7blayer_encoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
 #include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
 #include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
@@ -646,6 +647,9 @@ static AclTransformer::Operation *SelfAttentionOperationCreate(const nlohmann::j
     if (paramJson.contains("numGroupsPerPartition")) {
         param.numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int64_t>();
     }
+    if (paramJson.contains("invNormFactorvarAttr")) {
+        param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    }
     ASD_LOG(INFO) << "SelfAttentionKvCacheParam transKey:" << param.transKey << ", headNum:" << param.headNum
                   << ", layerId:" << param.layerId << ", dk:" << param.dk << ", preScale" << param.preScale
                   << ", postScale" << param.postScale << ", model" << param.model << ", hiddenSizePerHead"
@@ -949,6 +953,21 @@ static AclTransformer::Operation *Bloom7BLayerDecoderOperationCreate(const nlohm
                   << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
                   << ", activationFuncType:" << param.activationFuncType;
     return new AclTransformer::Bloom7BLayerDecoderOperation(param);
+}
+
+static AclTransformer::Operation *Bloom7BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Bloom7BLayerParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    param.activationFuncType = paramJson["activationFuncType"].get<int>();
+    ASD_LOG(INFO) << "Bloom7BLayerEncoderOperationCreate layerNormEps:" << param.layerNormEps
+                  << ", headNum:" << param.headNum << ", dk:" << param.dk
+                  << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
+                  << ", activationFuncType:" << param.activationFuncType;
+    return new AclTransformer::Bloom7BLayerEncoderOperation(param);
 }
 
 AclTransformer::Operation *FfnQuantOperationCreate(const nlohmann::json &paramJson)
@@ -1424,6 +1443,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
+    {"Bloom7BLayerEncoderOperation", &Bloom7BLayerEncoderOperationCreate},
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
     {"WordEmbeddingParallelOperation", &WordEmbeddingParallelOperationCreate},
     {"GptNeox20BLayerEmbeddingOperation", &GptNeox20BLayerEmbeddingOperationCreate},

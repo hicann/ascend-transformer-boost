@@ -28,6 +28,7 @@
 #include "self_attention_ops_baichuan2_13b_runner_910a.h"
 #include "self_attention_ops_gptneox20b_runner.h"
 #include "self_attention_ops_llama7b_runner_910a.h"
+#include "self_attention_ops_bloom7b_runner.h"
 
 namespace AclTransformer {
 class SelfAttentionOpsRunnerBuilder : public RunnerBuilder {
@@ -49,6 +50,8 @@ public:
             } else {
                 return new SelfAttentionOpsChatglm26bRunner310P(param_);
             }
+        } else if (param_.model == "bloom7b") {
+            return new SelfAttentionOpsBloom7bRunner(param_);
         } else if (param_.model == "llama7b" || param_.model == "llama13b" || param_.model == "llama65b") {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
                 return new SelfAttentionOpsLlama7bRunner(param_); 
