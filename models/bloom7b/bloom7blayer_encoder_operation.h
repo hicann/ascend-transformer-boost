@@ -13,21 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_SELFATTENTION_H
-#define ACLTRANSFOERM_PARAMS_SELFATTENTION_H
+#ifndef OPS_BLOOM7B_BLOOM7BLAYER_ENCODER_OPERATION_H
+#define OPS_BLOOM7B_BLOOM7BLAYER_ENCODER_OPERATION_H
+#include "acltransformer/graph_operation.h"
+#include "bloom7blayer_param.h"
+
 namespace AclTransformer {
-struct SelfAttentionParam {
-    bool transKey = false;
-    int64_t dk = 0;
-    int64_t headNum = 0;
-    int64_t layerId = 0;
-    float preScale = 0;
-    float postScale = 0;
-    int64_t numHeadsPerPartition = 0;
-    int64_t hiddenSizePerHead = 0;
-    int64_t numGroupsPerPartition = 0;
-    float invNormFactorvarAttr = 1.0f;
-    std::string model = "openbert";
+class Bloom7BLayerEncoderOperation : public GraphOperation {
+public:
+    explicit Bloom7BLayerEncoderOperation(const Bloom7BLayerParam &param);
+    ~Bloom7BLayerEncoderOperation();
+    uint64_t GetInTensorCount() const override;
+    uint64_t GetOutTensorCount() const override;
+
+protected:
+    AsdOps::Status InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
+                                  AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const override;
+
+private:
+    Bloom7BLayerParam param_;
 };
 } // namespace AclTransformer
 #endif

@@ -14,6 +14,8 @@
 # limitations under the License.
 """PyTorch BLOOM model."""
 
+import os
+import json
 import math
 import warnings
 from typing import Optional, Tuple, Union
@@ -54,8 +56,6 @@ BLOOM_PRETRAINED_MODEL_ARCHIVE_LIST = [
 ]
 
 # add model op
-import json
-import os
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
     raise RuntimeError(
@@ -64,7 +64,6 @@ if ACLTRANSFORMER_HOME_PATH is None:
 LIB_PATH = os.path.join(ACLTRANSFORMER_HOME_PATH,
                         "lib/libacltransformer_torch.so")
 torch.classes.load_library(LIB_PATH)
-
 
 
 def _make_causal_mask(
@@ -231,7 +230,7 @@ class BloomAttention(nn.Module):
 
         self.hidden_size = config.hidden_size
         self.num_heads = config.n_head
-        self.head_dim = self.hidden_size // self.num_heads # config.hidden_size // config.n_head
+        self.head_dim = self.hidden_size // self.num_heads
         self.split_size = self.hidden_size
         self.hidden_dropout = config.hidden_dropout
 
@@ -655,17 +654,6 @@ class BloomModel(BloomPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
-        #add model op
-        self.num_hidden_layers = config.num_hidden_layers
-        self.inputs_acl = [None] * 63
-        self.param = json.dumps({"layerNormEps": config.layer_norm_epsilon, "headNum": self.num_heads, "dk": config.hidden_size // config.n_head,
-                                 "invNormFactorvarAttr": 1.0 / math.sqrt(self.embed_dim // self.num_heads), "activationFuncType": 1,
-                                 "layerNum": self.num_hidden_layers})
-        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch(
-            "Bloom7BDecoderModel")
-        self.acl_decoder_operation.set_param(self.param)
-        self.weightFlag = False
-
     def get_input_embeddings(self):
         return self.word_embeddings
 
@@ -776,78 +764,51 @@ class BloomModel(BloomPreTrainedModel):
             input_shape=(batch_size, seq_length),
             past_key_values_length=past_key_values_length,
         )
-        if not past_key_values[0]:
-            for i, (block, layer_past) in enumerate(zip(self.h, past_key_values)):
+        for i, (block, layer_past) in enumerate(zip(self.h, past_key_values)):
 
-                if output_hidden_states:
-                    all_hidden_states = all_hidden_states + (hidden_states,)
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (hidden_states,)
 
-                if self.gradient_checkpointing and self.training:
+            if self.gradient_checkpointing and self.training:
 
-                    if use_cache:
-                        logger.warning(
-                            "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
-                        )
-                        use_cache = False
-
-                    def create_custom_forward(module):
-                        def custom_forward(*inputs):
-                            # None for past_key_value
-                            return module(*inputs, use_cache=use_cache, output_attentions=output_attentions)
-
-                        return custom_forward
-
-                    outputs = torch.utils.checkpoint.checkpoint(
-                        create_custom_forward(block),
-                        hidden_states,
-                        alibi,
-                        causal_mask,
-                        head_mask[i],
+                if use_cache:
+                    logger.warning(
+                        "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
                     )
-                else:
-                    outputs = block(
-                        hidden_states,
-                        layer_past=layer_past,
-                        attention_mask=causal_mask,
-                        head_mask=head_mask[i],
-                        use_cache=use_cache,
-                        output_attentions=output_attentions,
-                        alibi=alibi,
-                    )
+                    use_cache = False
+
+                def create_custom_forward(module):
+                    def custom_forward(*inputs):
+                        # None for past_key_value
+                        return module(*inputs, use_cache=use_cache, output_attentions=output_attentions)
+
+                    return custom_forward
+
+                outputs = torch.utils.checkpoint.checkpoint(
+                    create_custom_forward(block),
+                    hidden_states,
+                    alibi,
+                    causal_mask,
+                    head_mask[i],
+                )
+            else:
+                outputs = block(
+                    hidden_states,
+                    layer_past=layer_past,
+                    attention_mask=causal_mask,
+                    head_mask=head_mask[i],
+                    use_cache=use_cache,
+                    output_attentions=output_attentions,
+                    alibi=alibi,
+                )
                     
 
-                hidden_states = outputs[0]
-                if use_cache is True: #true
-                    presents = presents + (outputs[1],)
+            hidden_states = outputs[0]
+            if use_cache is True: #true
+                presents = presents + (outputs[1],)
 
-                if output_attentions: #false
-                    all_self_attentions = all_self_attentions + (outputs[2 if use_cache else 1],)
-        # add model op
-        if self.weightFlag is False:
-            weights = []
-            for block in self.h:
-                weights_t = list(block.state_dict().values())
-                weights.extend(weights_t)
-            self.acl_decoder_operation.set_weight(weights)
-            self.weightFlag = True
-
-        if past_key_values[0]:
-            self.inputs_acl[0:3] = [hidden_states, alibi, causal_mask]
-            (past_keys, past_values) = map(list, zip(*past_key_values))
-            self.inputs_acl[3:3+self.num_hidden_layers]= past_keys
-            self.inputs_acl[3+self.num_hidden_layers:3+self.num_hidden_layers*2] = past_values
-            outputs_acl = self.acl_decoder_operation.execute(self.inputs_acl, self.param)
-            # assert torch.allclose(outputs_acl[0], outputs[0],
-                                # atol=0.02, rtol=0.02), "Not equal"
-            presents_acl = ()
-            pastkv_acl = (outputs_acl[1], outputs_acl[1+self.num_hidden_layers],)
-            presents_acl += (pastkv_acl,)
-            for i in range(self.num_hidden_layers - 1 ):
-                pastkv_acl = (outputs_acl[i+2], outputs_acl[i+2+self.num_hidden_layers])
-                presents_acl += (pastkv_acl,)
-            hidden_states_acl = outputs_acl[0]
-            presents = presents_acl
-            hidden_states = hidden_states_acl
+            if output_attentions: #false
+                all_self_attentions = all_self_attentions + (outputs[2 if use_cache else 1],)
 
         # Add last hidden state
         hidden_states = self.ln_f(hidden_states)
@@ -884,6 +845,22 @@ class BloomForCausalLM(BloomPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+        #add model op
+        self.num_hidden_layers = config.num_hidden_layers
+        self.inputs_acl = [None] * (self.num_hidden_layers + 3)
+        self.param = json.dumps({"layerNormEps": config.layer_norm_epsilon, "headNum": config.n_head, "dk": config.hidden_size // config.n_head,
+                                 "invNormFactorvarAttr": 1.0 / math.sqrt(config.hidden_size // config.n_head), "activationFuncType": 1,
+                                 "layerNum": self.num_hidden_layers})
+        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("Bloom7BDecoderModel")
+        self.acl_decoder_operation.set_param(self.param)
+        self.acl_encoder_operation = torch.classes.ModelTorch.ModelTorch("Bloom7BEncoderModel")
+        self.acl_encoder_operation.set_param(self.param)
+
+        self.num_heads = config.n_head
+        
+        self.weightFlag = True
+        self.encoderFlag = True
+        self.acc_test = False
 
     def get_output_embeddings(self):
         return self.lm_head
@@ -952,20 +929,94 @@ class BloomForCausalLM(BloomPreTrainedModel):
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        transformer_outputs = self.transformer(
-            input_ids,
-            past_key_values=past_key_values,
-            attention_mask=attention_mask,
-            head_mask=head_mask,
-            inputs_embeds=inputs_embeds,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-        hidden_states = transformer_outputs[0]
-        lm_logits = self.lm_head(hidden_states)
+        if self.acc_test:
+            transformer_outputs = self.transformer(
+                input_ids,
+                past_key_values=past_key_values,
+                attention_mask=attention_mask,
+                head_mask=head_mask,
+                inputs_embeds=inputs_embeds,
+                use_cache=use_cache,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+                return_dict=return_dict,
+            )
+            hidden_states_to_comp = transformer_outputs[0]
+            lm_logits_to_comp = self.lm_head(hidden_states_to_comp)
 
+        batch_size, seq_length = input_ids.shape
+
+        inputs_embeds = self.transformer.word_embeddings(input_ids)
+
+        hidden_states = self.transformer.word_embeddings_layernorm(inputs_embeds)
+
+        seq_length_with_past = seq_length
+        past_key_values_length = 0
+        if past_key_values is not None:
+            past_key_values_length = past_key_values[0][0].shape[2]
+            seq_length_with_past = seq_length_with_past + past_key_values_length
+        if attention_mask is None:
+            attention_mask = torch.ones((batch_size, seq_length_with_past), device=hidden_states.device)
+        else:
+            attention_mask = attention_mask.to(hidden_states.device)
+
+        alibi = build_alibi_tensor(attention_mask, self.num_heads, dtype=hidden_states.dtype)
+
+        causal_mask = self.transformer._prepare_attn_mask(
+            attention_mask,
+            input_shape=(batch_size, seq_length),
+            past_key_values_length=past_key_values_length,
+        )
+
+        # add model op
+        if self.weightFlag:
+            weights = []
+            for block in self.transformer.h:
+                weights_t = list(block.state_dict().values())
+                weights.extend(weights_t)
+            weights.append(self.transformer.ln_f.weight)
+            weights.append(self.transformer.ln_f.bias)
+            weights.append(self.lm_head.weight)
+            self.acl_decoder_operation.set_weight(weights)
+            self.acl_encoder_operation.set_weight(weights)
+            self.weightFlag = False
+
+        if not past_key_values:
+            inputs_acl = [hidden_states, alibi, causal_mask]
+            outputs_acl = self.acl_encoder_operation.execute(inputs_acl, self.param)
+            presents_acl = ()
+            pastkv_acl = (outputs_acl[1], outputs_acl[1+self.num_hidden_layers],)
+            presents_acl += (pastkv_acl,)
+            for i in range(self.num_hidden_layers - 1 ):
+                pastkv_acl = (outputs_acl[i+2], outputs_acl[i+2+self.num_hidden_layers])
+                presents_acl += (pastkv_acl,)
+            hidden_states = outputs_acl[0]
+            lm_logits = outputs_acl[-1]
+            presents = presents_acl
+            output_attentions = None
+
+            self.encoderFlag = False
+        
+        else:
+            self.inputs_acl[0:3] = [hidden_states, alibi, causal_mask]
+            (past_keys, past_values) = map(list, zip(*past_key_values))
+            self.inputs_acl[3:3+self.num_hidden_layers]= past_keys
+            self.inputs_acl[3+self.num_hidden_layers:3+self.num_hidden_layers*2] = past_values
+            outputs_acl = self.acl_decoder_operation.execute(self.inputs_acl, self.param)
+
+            presents_acl = ()
+            pastkv_acl = (outputs_acl[1], outputs_acl[1+self.num_hidden_layers],)
+            presents_acl += (pastkv_acl,)
+            for i in range(self.num_hidden_layers - 1 ):
+                pastkv_acl = (outputs_acl[i+2], outputs_acl[i+2+self.num_hidden_layers])
+                presents_acl += (pastkv_acl,)
+            hidden_states = outputs_acl[0]
+            lm_logits = outputs_acl[-1]
+            presents = presents_acl
+        
+        if self.acc_test:
+            torch.allclose(lm_logits, lm_logits_to_comp, rtol=0.02, atol=0.02)
+            
         loss = None
         if labels is not None:
             # Shift so that tokens < n predict n
@@ -985,9 +1036,9 @@ class BloomForCausalLM(BloomPreTrainedModel):
         return CausalLMOutputWithCrossAttentions(
             loss=loss,
             logits=lm_logits,
-            past_key_values=transformer_outputs.past_key_values,
-            hidden_states=transformer_outputs.hidden_states,
-            attentions=transformer_outputs.attentions,
+            past_key_values=presents,
+            hidden_states=hidden_states,
+            attentions=output_attentions,
         )
 
     def _reorder_cache(
