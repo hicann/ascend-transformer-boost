@@ -45,6 +45,7 @@
 #include "torch/model_v2/baichuan2_7b/baichuan2_7b_decoder_model.h"
 #include "torch/model_v2/baichuan2_7b/baichuan2_7b_encoder_model.h"
 #include "torch/model_v2/baichuan2_7b/baichuan2_7b_decoder_parallel_model.h"
+#include "torch/model_v2/baichuan2_7b/baichuan2_7b_encoder_parallel_model.h"
 #include "torch/model_v2/baichuan2_13b/baichuan2_13b_encoder_model.h"
 #include "torch/model_v2/baichuan2_13b/baichuan2_13b_decoder_model.h"
 #include "torch/model_v2/llama7b/llama7b_decoder_without_fusion_model.h"
@@ -113,12 +114,14 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::BaiChuan27BEncoderModel>(param);
     } else if (modelName_ == "BaiChuan27BDecoderParallelModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan27BDecoderParallelModel>(param);
+    } else if (modelName_ == "BaiChuan27BEncoderParallelModel") {
+        model_ = std::make_shared<AclTransformer::BaiChuan27BEncoderParallelModel>(param);
     } else if (modelName_ == "BaiChuan213BEncoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan213BEncoderModel>(param);
     } else if (modelName_ == "BaiChuan213BDecoderModel") {
         model_ = std::make_shared<AclTransformer::BaiChuan213BDecoderModel>(param);
     } else if (modelName_ == "Llama7BDecoderWithoutFusionModel") {
-        model_ = std::make_shared<AclTransformer::Llama7BDecoderWithoutFusionModel>(param);    
+        model_ = std::make_shared<AclTransformer::Llama7BDecoderWithoutFusionModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;

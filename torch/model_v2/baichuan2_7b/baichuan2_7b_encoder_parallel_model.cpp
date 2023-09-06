@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "baichuan2_7b_decoder_parallel_model.h"
+#include "baichuan2_7b_encoder_parallel_model.h"
 #include <nlohmann/json.hpp>
 #include <asdops/utils/log/log.h>
 #include "acltransformer/ops/embedding_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
-#include "models/baichuan2_7b/baichuan2_7b_layer_decoder_parallel_operation.h"
+#include "models/baichuan2_7b/baichuan2_7b_layer_encoder_parallel_operation.h"
 
 namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 7;
@@ -29,6 +29,8 @@ const int OUT_LM_HEAD_WEIGHT_COUNT = 1;
 const int OPERATION_COUNT_BEFORE_LAYER = 1;
 const int INTERMEDIATETENSOR_COUNT_BEFORE_LAYER = 1;
 const int OPERATION_COUNT_AFTER_LAYER = 2;
+const int IN_TENSOR_COUNT=6;
+const int OUT_BASE_TENSOR_COUNT=1;
 
 enum InTensorId {
     IN_TENSOR_INPUTIDS = 0,
@@ -36,15 +38,14 @@ enum InTensorId {
     IN_TENSOR_COSEMBED,
     IN_TENSOR_SINEMBED,
     IN_TENSOR_ATTENTIONMASK,
-    IN_TENSOR_PASTK_V_START
+    IN_TENSOR_SEQLEN,
 };
 
 enum OutTensorId {
     OUT_TENSOR_HIDDENSTATES = 0,
-    OUT_TENSOR_MAX,
 };
 
-void BaiChuan27BDecoderParallelModel::Param::FromString(const std::string &param)
+void BaiChuan27BEncoderParallelModel::Param::FromString(const std::string &param)
 {
     nlohmann::json paramJson = nlohmann::json::parse(param);
     rmsNormEps = paramJson["rmsNormEps"].get<double>();
@@ -56,25 +57,23 @@ void BaiChuan27BDecoderParallelModel::Param::FromString(const std::string &param
     if (paramJson.contains("transposedWeight")) {
         transposedWeight = paramJson["transposedWeight"].get<bool>();
     }
-    ASD_LOG(INFO) << "BaiChuan2_7BDecoderParallelModel param rmsNormEps:" << rmsNormEps << ", headNum:" << headNum
-                  << ", dk:" << dk << ", layerNum:" << layerNum << ", transposedWeight:" << transposedWeight
-                  << ", rank:" << rank << ", rankSize:" << rankSize;
+    ASD_LOG(INFO) << "BaiChuan27BEncoderParallelModel param rmsNormEps:" << rmsNormEps << ", headNum:" << headNum
+                  << ", dk:" << dk << ", layerNum:" << layerNum << ", transposedWeight:" << transposedWeight;
 }
 
-BaiChuan27BDecoderParallelModel::BaiChuan27BDecoderParallelModel(const std::string &param)
-    : Model("BaiChuan27BDecoderParallelModel", param)
+BaiChuan27BEncoderParallelModel::BaiChuan27BEncoderParallelModel(const std::string &param) : Model("BaiChuan27BEncoderParallelModel", param)
 {
     param_.FromString(param);
 }
 
-BaiChuan27BDecoderParallelModel::~BaiChuan27BDecoderParallelModel() {}
+BaiChuan27BEncoderParallelModel::~BaiChuan27BEncoderParallelModel() {}
 
-uint64_t BaiChuan27BDecoderParallelModel::GetInTensorCount() const { return graph_.inTensors.size(); }
+uint64_t BaiChuan27BEncoderParallelModel::GetInTensorCount() const { return graph_.inTensors.size(); }
 
-uint64_t BaiChuan27BDecoderParallelModel::GetOutTensorCount() const { return graph_.outTensors.size(); }
+uint64_t BaiChuan27BEncoderParallelModel::GetOutTensorCount() const { return graph_.outTensors.size(); }
 
-AsdOps::Status BaiChuan27BDecoderParallelModel::InferShape(const std::vector<AsdOps::Tensor> &inTensors,
-                                                           std::vector<AsdOps::TensorDesc> &outTensorDescs)
+AsdOps::Status BaiChuan27BEncoderParallelModel::InferShape(const std::vector<AsdOps::Tensor> &inTensors,
+                                                   std::vector<AsdOps::TensorDesc> &outTensorDescs)
 {
     if (outTensorDescs.size() != GetOutTensorCount()) {
         return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
@@ -82,34 +81,37 @@ AsdOps::Status BaiChuan27BDecoderParallelModel::InferShape(const std::vector<Asd
 
     const int64_t outDim = graph_.weightTensors.at(graph_.weightTensors.size() - 1).desc.dims[0];
     outTensorDescs.at(0) = graph_.weightTensors.at(0).desc;
-    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1], outDim};
+    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1],
+                                    outDim};
 
-    const AsdOps::Tensor &keyTensor = inTensors.at(IN_TENSOR_PASTK_V_START);
-    const AsdOps::Tensor &valueTensor = inTensors.at(IN_TENSOR_PASTK_V_START + param_.layerNum);
+    outTensorDescs.at(1) = outTensorDescs.at(0);
+    outTensorDescs.at(1).dims.clear();
+    outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(0));
+    outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(1));
+    outTensorDescs.at(1).dims.push_back(param_.headNum);
+    outTensorDescs.at(1).dims.push_back(param_.dk);
 
-    for (size_t keyId = 0; keyId < param_.layerNum; ++keyId) {
-        outTensorDescs.at(OUT_TENSOR_MAX + keyId) = keyTensor.desc;
-        outTensorDescs.at(OUT_TENSOR_MAX + keyId).dims.at(1) += 1;
+    for (size_t i = 2; i < outTensorDescs.size(); ++i) {
+        outTensorDescs.at(i) = outTensorDescs.at(1);
     }
-    for (size_t valueId = 0; valueId < param_.layerNum; ++valueId) {
-        outTensorDescs.at(OUT_TENSOR_MAX + param_.layerNum + valueId) = valueTensor.desc;
-        outTensorDescs.at(OUT_TENSOR_MAX + param_.layerNum + valueId).dims.at(1) += 1;
-    }
-
     return AsdOps::Status::OkStatus();
 }
 
-void BaiChuan27BDecoderParallelModel::BuildGraph()
+void BaiChuan27BEncoderParallelModel::BuildGraph()
 {
-    const int weightTensorSize = WORDEMBEDDINGNODE_WEIGHT_COUNT + WEIGHT_COUNT_PER_LAYER * param_.layerNum +
-                                 FINALNORMNODE_WEIGHT_COUNT + OUT_LM_HEAD_WEIGHT_COUNT;
+    const int weightTensorSize = WORDEMBEDDINGNODE_WEIGHT_COUNT +
+                                 WEIGHT_COUNT_PER_LAYER * param_.layerNum +
+                                 FINALNORMNODE_WEIGHT_COUNT +
+                                 OUT_LM_HEAD_WEIGHT_COUNT;
     graph_.weightTensors.resize(weightTensorSize);
 
-    graph_.inTensors.resize(IN_TENSOR_PASTK_V_START + 2 * param_.layerNum);
-    graph_.outTensors.resize(OUT_TENSOR_MAX + 2 * param_.layerNum);
+    //
+    graph_.inTensors.resize(IN_TENSOR_COUNT);
+    // param_.layerNum * 2 (one for presentK, one for presentV)
+    graph_.outTensors.resize(OUT_BASE_TENSOR_COUNT + param_.layerNum * 2);
 
     const int nodeSize = param_.layerNum + OPERATION_COUNT_BEFORE_LAYER + OPERATION_COUNT_AFTER_LAYER;
-    ASD_LOG(INFO) << "BaiChuan2_7BDecoderModel nodeSize is " << nodeSize;
+    ASD_LOG(INFO) << "BaiChuan27BEncoderParallelModel nodeSize is " << nodeSize;
     graph_.nodes.resize(nodeSize);
 
     const int internalTensorSize = graph_.nodes.size() - 1;
@@ -134,8 +136,9 @@ void BaiChuan27BDecoderParallelModel::BuildGraph()
         opParam.model = "baichuan2_7b";
         opParam.rank = param_.rank;
         opParam.rankSize = param_.rankSize;
-        layerNode.operation = std::make_shared<BaiChuan27BLayerDecoderParallelOperation>(opParam);
+        layerNode.operation = std::make_shared<BaiChuan27BLayerEncoderParallelOperation>(opParam);
         layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
+        layerNode.outTensors.resize(layerNode.operation->GetOutTensorCount());
 
         size_t inTensorId = 0;
         layerNode.inTensors.at(inTensorId++) = firstInTensor;
@@ -148,13 +151,9 @@ void BaiChuan27BDecoderParallelModel::BuildGraph()
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SINEMBED);      // sinEmbed
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK); // attentionMaskTensor
 
-        layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_PASTK_V_START + layerId);
-        layerNode.inTensors.at(inTensorId++) =
-            &graph_.inTensors.at(IN_TENSOR_PASTK_V_START + param_.layerNum + layerId);
-
         layerNode.outTensors = {&graph_.internalTensors.at(INTERMEDIATETENSOR_COUNT_BEFORE_LAYER + layerId),
-                                &graph_.outTensors.at(OUT_TENSOR_MAX + layerId),
-                                &graph_.outTensors.at(OUT_TENSOR_MAX + layerId + param_.layerNum)};
+                                &graph_.outTensors.at(1 + layerId),
+                                &graph_.outTensors.at(1 + layerId + param_.layerNum)};
 
         firstInTensor = layerNode.outTensors.at(0);
     }
@@ -162,8 +161,8 @@ void BaiChuan27BDecoderParallelModel::BuildGraph()
     auto &finalNormNode = graph_.nodes.at(nodeId++);
     RmsNormParam finalNormParam = {param_.rmsNormEps};
     finalNormNode.operation = std::make_shared<RmsNormOperation>(finalNormParam);
-    const int finalLayerNormWeightTensorId =
-        graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT - OUT_LM_HEAD_WEIGHT_COUNT;
+    const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT
+                                             - OUT_LM_HEAD_WEIGHT_COUNT;
     const int finalLayerNormOutTensorId = internalTensorSize - 1;
     finalNormNode.inTensors = {firstInTensor, &graph_.weightTensors.at(finalLayerNormWeightTensorId)};
     finalNormNode.outTensors = {&graph_.internalTensors.at(finalLayerNormOutTensorId)};
@@ -177,11 +176,5 @@ void BaiChuan27BDecoderParallelModel::BuildGraph()
     outLinearNode.inTensors = {&graph_.internalTensors.at(finalLayerNormOutTensorId),
                                &graph_.weightTensors.at(finalLinearWeightTensorId)};
     outLinearNode.outTensors = {&graph_.outTensors.at(0)};
-}
-
-AsdOps::Status BaiChuan27BDecoderParallelModel::ParseVarintPackParam(const std::string &param, int nodeId,
-                                                                     AsdOps::Any &variantPackParam)
-{
-    return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
