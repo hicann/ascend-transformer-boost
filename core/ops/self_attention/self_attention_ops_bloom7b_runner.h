@@ -13,21 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_SELFATTENTION_H
-#define ACLTRANSFOERM_PARAMS_SELFATTENTION_H
+#ifndef SELFATTENTION_OPS_BLOOM7B_RUNNER_H
+#define SELFATTENTION_OPS_BLOOM7B_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
+#include "acltransformer/params/self_attention.h"
+
 namespace AclTransformer {
-struct SelfAttentionParam {
-    bool transKey = false;
-    int64_t dk = 0;
-    int64_t headNum = 0;
-    int64_t layerId = 0;
-    float preScale = 0;
-    float postScale = 0;
-    int64_t numHeadsPerPartition = 0;
-    int64_t hiddenSizePerHead = 0;
-    int64_t numGroupsPerPartition = 0;
-    float invNormFactorvarAttr = 1.0f;
-    std::string model = "openbert";
+class SelfAttentionOpsBloom7bRunner : public OpsRunner {
+public:
+    SelfAttentionOpsBloom7bRunner(const SelfAttentionParam &param);
+    virtual ~SelfAttentionOpsBloom7bRunner();
+
+private:
+    SelfAttentionParam param_;
+    AsdOps::SVector<int64_t> oriDimA_;
+    AsdOps::SVector<int64_t> oriDimC_;
+    AsdOps::SVector<int64_t> oriDimD_;
+    AsdOps::SVector<int64_t> oriDimE_;
+    AsdOps::SVector<int64_t> oriDimF_;
+    std::size_t oriSize_ = 3;
 };
+
 } // namespace AclTransformer
 #endif

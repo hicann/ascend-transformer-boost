@@ -18,9 +18,13 @@
 #include <asdops/utils/log/log.h>
 #include "models/bloom7b/bloom7blayer_param.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
+#include "acltransformer/ops/norm_operation.h"
+#include "acltransformer/ops/linear_operation.h"
 
 namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 12;
+const int FINAL_LINEAR_WEIGHT_COUNT = 1;
+const int FINAL_NORM_WEIGHT_COUNT = 2;
 
 enum InTensorId { IN_HIDDEN_STATES = 0, IN_ALIBI, IN_ATTENTION_MASK, IN_PAST_KEY };
 
@@ -77,6 +81,10 @@ AsdOps::Status Bloom7BDecoderModel::InferShape(
         outTensorDescs.at(1 + param_.layerNum + valueId).dims.at(1) += 1;
     }
 
+    outTensorDescs.at(outTensorDescs.size() - 1) = hiddenState.desc;
+    outTensorDescs.at(outTensorDescs.size() - 1).dims.clear();
+    outTensorDescs.at(outTensorDescs.size() - 1).dims = {hiddenState.desc.dims.at(0),hiddenState.desc.dims.at(1), 250880}; 
+
     return AsdOps::Status::OkStatus();
 }
 
@@ -84,13 +92,14 @@ void Bloom7BDecoderModel::BuildGraph()
 {
     ASD_LOG(INFO) << "Build Graph Start.";
 
-    const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum;
+    const int weightTensorSize =
+        WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINAL_LINEAR_WEIGHT_COUNT + FINAL_NORM_WEIGHT_COUNT;
     graph_.weightTensors.resize(weightTensorSize);
 
     graph_.inTensors.resize(2 * param_.layerNum + 3);
-    graph_.outTensors.resize(2 * param_.layerNum + 1);
+    graph_.outTensors.resize(2 * param_.layerNum + 2);
 
-    const int nodeSize = param_.layerNum;
+    const int nodeSize = param_.layerNum + 2;
     graph_.nodes.resize(nodeSize);
 
     graph_.internalTensors.resize(graph_.nodes.size() - 1);
@@ -141,7 +150,28 @@ void Bloom7BDecoderModel::BuildGraph()
                 &graph_.outTensors.at(layerId + param_.layerNum + 1)};
         }
         firstInTensor = layerNode.outTensors.at(0);
+        ASD_LOG(INFO) << "firstInTensor Set.";
     }
+    
+    auto &finalNormNode = graph_.nodes.at(nodeId++);
+    NormParam finalNormParam;
+    finalNormParam.layerNormEps = param_.layerNormEps;
+    finalNormNode.operation = std::make_shared<NormOperation>(finalNormParam);
+    const int finalLayerNormWeightTensorId = 
+        graph_.weightTensors.size() - FINAL_LINEAR_WEIGHT_COUNT - FINAL_NORM_WEIGHT_COUNT;
+    finalNormNode.inTensors = {firstInTensor,
+        &graph_.weightTensors.at(finalLayerNormWeightTensorId),
+        &graph_.weightTensors.at(finalLayerNormWeightTensorId + 1)};
+    finalNormNode.outTensors = {&graph_.internalTensors.at(graph_.internalTensors.size() - 1)};
+
+    auto &finalLinearNode = graph_.nodes.at(nodeId++);
+    LinearParam finalLinearParam;
+    finalLinearParam.hasBias = false;
+    finalLinearNode.operation = std::make_shared<LinearOperation>(finalLinearParam);
+    const int finalLinearNodeWeightTensorId = graph_.weightTensors.size() - FINAL_LINEAR_WEIGHT_COUNT;
+    finalLinearNode.inTensors = {&graph_.internalTensors.at(graph_.internalTensors.size() - 1),
+        &graph_.weightTensors.at(finalLinearNodeWeightTensorId)};
+    finalLinearNode.outTensors = {&graph_.outTensors.at(graph_.outTensors.size() - 1)};
     ASD_LOG(INFO) << "Build Graph finished.";
 }
 

@@ -40,6 +40,8 @@ uint64_t SelfAttentionOperation::GetInTensorCount() const
 {
     if (param_.model == "baichuan2_13b") {
         return 2;
+    } else if (param_.model == "bloom7b") {
+        return 3;
     } else {
         return 4;
     }
@@ -47,7 +49,7 @@ uint64_t SelfAttentionOperation::GetInTensorCount() const
 
 uint64_t SelfAttentionOperation::GetOutTensorCount() const
 {
-    return (param_.model == "llama7b" || param_.model == "llama13b" || param_.model == "llama65b" || param_.model == "baichuan2_13b") ? LLAMA7B_IN_TENSOR_SIZE
+    return (param_.model == "llama7b" || param_.model == "llama13b" || param_.model == "llama65b" || param_.model == "baichuan2_13b" || param_.model == "bloom7b") ? LLAMA7B_IN_TENSOR_SIZE
                                                                           : DEFAULT_IN_TENSOR_SIZE;
 }
 
@@ -94,6 +96,19 @@ AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdO
         outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims.at(2) / param_.headNum / 3); // 3=qkv
 
         outTensorDescs.at(2) = outTensorDescs.at(1);
+    } else if (param_.model == "bloom7b") {
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims = {
+            inTensors.at(0).desc.dims[0], inTensors.at(0).desc.dims[1], param_.headNum * param_.dk};
+        outTensorDescs.at(1) = inTensors.at(0).desc;
+        outTensorDescs.at(1).dims = {
+            inTensors.at(0).desc.dims[0] * param_.headNum, param_.dk, inTensors.at(0).desc.dims[1]};
+        outTensorDescs.at(2) = inTensors.at(1).desc;
+        outTensorDescs.at(2).dims = {
+            inTensors.at(0).desc.dims[0] * param_.headNum,
+            inTensors.at(0).desc.dims[1],
+            param_.dk
+        };
     }
     return AsdOps::Status::OkStatus();
 }
