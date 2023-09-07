@@ -13,21 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ACLTRANSFOERM_PARAMS_LINEAR_PARALLEL_H
-#define ACLTRANSFOERM_PARAMS_LINEAR_PARALLEL_H
+#ifndef OPS_BLOOM7B_BLOOM7BLAYER_PARALLEL_PARAM_H
+#define OPS_BLOOM7B_BLOOM7BLAYER_PARALLEL_PARAM_H
 
 namespace AclTransformer {
-struct LinearParallelParam {
-    bool transWeight = false;
+struct Bloom7BLayerParallelParam {
+    double layerNormEps = 0;
+    int headNum = 0;
+    int dk = 0;
+    float invNormFactorvarAttr = 0;
+    int activationFuncType = 1;
     int rank = 0;
-    int rankSize = 0;
-    int rankRoot = 0;
-    std::string bias = "";
-    std::string parallelType = "RowParallel";
-    std::string backend = "hccl";
-    bool useCommExt = false;
-    void *commExt = nullptr; // only effect when useCommExt is true
-    bool allReduceAfterLinear = false;
+    int rankSize = 1;
+    std::string model = "bloom7b";
 };
 } // namespace AclTransformer
 #endif
