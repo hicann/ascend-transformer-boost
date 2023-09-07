@@ -33,7 +33,7 @@ import logging as lg
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S %p"
 
-lg.basicConfig(filename=f"glm_flashattention.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+lg.basicConfig(filename=f"glm_mqa_rope.log", level=lg.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
 ACLTRANSFORMER_HOME_PATH = os.environ.get("ACLTRANSFORMER_HOME_PATH")
 if ACLTRANSFORMER_HOME_PATH is None:
@@ -671,6 +671,18 @@ class GLMTransformer(torch.nn.Module):
         self.v_cache_input = None
         self.token_offset = None
         # ================================= FA init ============================
+
+        self.acl_encoder_param = json.dumps({
+            "rmsNormEps": config.layernorm_epsilon,
+            "numHeadsPerPartition": config.num_attention_heads,
+            "hiddenSizePerHead": config.kv_channels,
+            "numGroupsPerPartition": config.multi_query_group_num,
+            "transKey": True,
+            "residualAddScale": 1,
+            "layerNum": config.num_layers,
+        })
+        self.acl_enconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2EncoderModel")
+        self.acl_enconder_operation.set_param(self.acl_encoder_param)
         
         self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderFlashAttentionModel")
         self.acl_param = json.dumps({
@@ -737,16 +749,7 @@ class GLMTransformer(torch.nn.Module):
                                                 self.num_layers, self.batch, self.max_sequence_length, 
                                                 self.num_multi_query_groups_per_partition * self.hidden_size_per_attention_head)
             self.token_offset = torch.full((self.batch,), 0, dtype=torch.int32, device=self.kv_cache.device)
-
-        
-        if hidden_states.shape[0] > 1:
-
-            weights = list(self.state_dict().values())
-            self.acl_decoder_operation.set_weight(weights)
-        # else:
-        #     self.token_num = self.token_num + 1
-        #     self.token_offset[0] =  self.token_num
-
+            
         if hidden_states.shape[0] > 1 and attention_mask is None:
             # [b, 1, sq, sk] sq==sk when first token
             attention_mask = torch.ones(hidden_states.size(1), 1, hidden_states.size(0),hidden_states.size(0), dtype=torch.bool, device="npu")
@@ -754,40 +757,20 @@ class GLMTransformer(torch.nn.Module):
             attention_mask = ~attention_mask
 
         if hidden_states.shape[0] > 1:
-            for index in range(self.num_layers):
-                if output_hidden_states:
-                    all_hidden_states = all_hidden_states + (hidden_states,)
-
-                layer = self._get_layer(index)
-                if self.gradient_checkpointing and self.training:
-                    layer_ret = torch.utils.checkpoint.checkpoint(
-                        layer,
-                        hidden_states,
-                        attention_mask,
-                        rotary_pos_emb,
-                        kv_caches[index],
-                        use_cache
-                    )
-                else:
-                    layer_ret = layer(
-                        hidden_states,
-                        attention_mask,
-                        rotary_pos_emb,
-                        kv_cache=kv_caches[index],
-                        use_cache=use_cache
-                    )
-                hidden_states, kv_cache = layer_ret
-                temp_k, temp_v = kv_cache
-                key_layer_acl = temp_k.clone()
-                value_layer_acl = temp_v.clone()
-
-                # [22,1,32,128] sq bs gp head_size
-                self.kv_cache[0, index, :batch_size, :hidden_states.shape[0], ...] = key_layer_acl.permute(1,0,2,3)[0, ...] # batch = 1
-                self.kv_cache[1, index, :batch_size, :hidden_states.shape[0], ...] = value_layer_acl.permute(1,0,2,3)[0, ...] # batch = 1
-                self.token_num = hidden_states.shape[0]
-                self.seq_len = torch.tensor([1] * batch_size, dtype=torch.int32, device=self.kv_cache.device)
-                if use_cache:
-                    presents = presents + (kv_cache, )
+            encoder_seq_len_tensor = torch.tensor([hidden_states.shape[0] for _ in range(hidden_states.shape[1])]).to("npu")
+            weights = list(self.state_dict().values())
+            self.acl_enconder_operation.set_weight(weights)
+            self.acl_decoder_operation.set_weight(weights)
+            
+            input_full = [hidden_states, rotary_pos_emb, attention_mask, encoder_seq_len_tensor]
+            acl_model_out = self.acl_enconder_operation.execute(input_full, self.acl_encoder_param)
+            hidden_states = acl_model_out[0]
+            self.acl_presents = acl_model_out[1:]
+            for i in range(self.num_layers):
+                self.kv_cache[0, i, :batch_size, :acl_model_out[1].size()[0], ...] = acl_model_out[i+1].transpose(0, 1)
+                self.kv_cache[1, i, :batch_size, :acl_model_out[1].size()[0], ...] = acl_model_out[i + 1 + self.num_layers].transpose(0, 1)
+            self.token_num = acl_model_out[1].size()[0]
+            self.seq_len = torch.tensor([1] * batch_size, dtype=torch.int32, device=self.kv_cache.device)
         else:
             self.token_num = self.token_num + 1
             self.token_offset[:] =  self.token_num
