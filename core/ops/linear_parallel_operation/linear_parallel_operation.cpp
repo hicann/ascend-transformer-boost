@@ -36,70 +36,105 @@ static uint64_t NODE_COUNT = 3;
 LinearParallelOperation::LinearParallelOperation(const LinearParallelParam &param)
     : GraphOperation("LinearParallelOperation"), param_(param)
 {
-    if (param_.bias != "None") {
-        opGraph_.inTensorSize = IN_TENSOR_COUNT;
-        opGraph_.outTensorSize = OUT_TENSOR_COUNT;
-        opGraph_.intermediateTensorSize = INTERMEDIATE_TENSOR_COUNT;
-        opGraph_.nodes.resize(NODE_COUNT);
+    if (!param_.allReduceAfterLinear):
+        if (param_.bias != "None") {
+            opGraph_.inTensorSize = IN_TENSOR_COUNT;
+            opGraph_.outTensorSize = OUT_TENSOR_COUNT;
+            opGraph_.intermediateTensorSize = INTERMEDIATE_TENSOR_COUNT;
+            opGraph_.nodes.resize(NODE_COUNT);
 
-        size_t nodeId = 0;
-        GraphOperation::Node &matmulNode = opGraph_.nodes.at(nodeId++);
-        GraphOperation::Node &allReduceNode = opGraph_.nodes.at(nodeId++);
-        GraphOperation::Node &addNode = opGraph_.nodes.at(nodeId++);
+            size_t nodeId = 0;
+            GraphOperation::Node &matmulNode = opGraph_.nodes.at(nodeId++);
+            GraphOperation::Node &allReduceNode = opGraph_.nodes.at(nodeId++);
+            GraphOperation::Node &addNode = opGraph_.nodes.at(nodeId++);
 
-        matmulNode.operation.reset(new AclTransformer::MatmulOperation({false, !param_.transWeight}));
-        matmulNode.inTensorIds = {IN_INPUT, IN_WEIGHT};
-        matmulNode.outTensorIds = {INTERMIDATE_MATMULOUT};
-        matmulNode.inTensorViewFuncs.resize(matmulNode.inTensorIds.size());
-        matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
-                                             AsdOps::SVector<int64_t> &newDims) {
-            // weight dimension suported: only 2
-            int64_t dim0 = 1;
-            for (size_t i = 0; i < oldDims.size() - 1; i++) {
-                dim0 *= oldDims.at(i);
-            }
-            int64_t dim1 = oldDims.at(oldDims.size() - 1);
-            newDims = {dim0, dim1};
-        };
+            matmulNode.operation.reset(new AclTransformer::MatmulOperation({false, !param_.transWeight}));
+            matmulNode.inTensorIds = {IN_INPUT, IN_WEIGHT};
+            matmulNode.outTensorIds = {INTERMIDATE_MATMULOUT};
+            matmulNode.inTensorViewFuncs.resize(matmulNode.inTensorIds.size());
+            matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
+                                                AsdOps::SVector<int64_t> &newDims) {
+                // weight dimension suported: only 2
+                int64_t dim0 = 1;
+                for (size_t i = 0; i < oldDims.size() - 1; i++) {
+                    dim0 *= oldDims.at(i);
+                }
+                int64_t dim1 = oldDims.at(oldDims.size() - 1);
+                newDims = {dim0, dim1};
+            };
 
-        allReduceNode.operation.reset(
-            new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend, param_.useCommExt, param_.commExt}));
-        allReduceNode.inTensorIds = {INTERMIDATE_MATMULOUT};
-        allReduceNode.outTensorIds = {INTERMIDATE_ALLREDUCEOUT};
+            allReduceNode.operation.reset(
+                new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend, param_.useCommExt, param_.commExt}));
+            allReduceNode.inTensorIds = {INTERMIDATE_MATMULOUT};
+            allReduceNode.outTensorIds = {INTERMIDATE_ALLREDUCEOUT};
 
-        addNode.operation.reset(new AclTransformer::AddOperation({1}));
-        addNode.inTensorIds = {INTERMIDATE_ALLREDUCEOUT, IN_BIAS};
-        addNode.outTensorIds = {OUT_LINEAROUT};
-    } else {
-        opGraph_.inTensorSize = IN_TENSOR_COUNT - 1;
-        opGraph_.outTensorSize = OUT_TENSOR_COUNT;
-        opGraph_.intermediateTensorSize = INTERMEDIATE_TENSOR_COUNT - 1;
-        opGraph_.nodes.resize(NODE_COUNT - 1);
+            addNode.operation.reset(new AclTransformer::AddOperation({1}));
+            addNode.inTensorIds = {INTERMIDATE_ALLREDUCEOUT, IN_BIAS};
+            addNode.outTensorIds = {OUT_LINEAROUT};
+        } else {
+            opGraph_.inTensorSize = IN_TENSOR_COUNT - 1;
+            opGraph_.outTensorSize = OUT_TENSOR_COUNT;
+            opGraph_.intermediateTensorSize = INTERMEDIATE_TENSOR_COUNT - 1;
+            opGraph_.nodes.resize(NODE_COUNT - 1);
 
-        size_t nodeId = 0;
-        GraphOperation::Node &matmulNode = opGraph_.nodes.at(nodeId++);
-        GraphOperation::Node &allReduceNode = opGraph_.nodes.at(nodeId++);
+            size_t nodeId = 0;
+            GraphOperation::Node &matmulNode = opGraph_.nodes.at(nodeId++);
+            GraphOperation::Node &allReduceNode = opGraph_.nodes.at(nodeId++);
 
-        matmulNode.operation.reset(new AclTransformer::MatmulOperation({false, !param_.transWeight}));
-        matmulNode.inTensorIds = {IN_INPUT, IN_WEIGHT};
-        matmulNode.outTensorIds = {INTERMIDATE_MATMULOUT - 1};
-        matmulNode.inTensorViewFuncs.resize(matmulNode.inTensorIds.size());
-        matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
-                                             AsdOps::SVector<int64_t> &newDims) {
-            // weight dimension suported: only 2
-            int64_t dim0 = 1;
-            for (size_t i = 0; i < oldDims.size() - 1; i++) {
-                dim0 *= oldDims.at(i);
-            }
-            int64_t dim1 = oldDims.at(oldDims.size() - 1);
-            newDims = {dim0, dim1};
-        };
+            matmulNode.operation.reset(new AclTransformer::MatmulOperation({false, !param_.transWeight}));
+            matmulNode.inTensorIds = {IN_INPUT, IN_WEIGHT};
+            matmulNode.outTensorIds = {INTERMIDATE_MATMULOUT - 1};
+            matmulNode.inTensorViewFuncs.resize(matmulNode.inTensorIds.size());
+            matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
+                                                AsdOps::SVector<int64_t> &newDims) {
+                // weight dimension suported: only 2
+                int64_t dim0 = 1;
+                for (size_t i = 0; i < oldDims.size() - 1; i++) {
+                    dim0 *= oldDims.at(i);
+                }
+                int64_t dim1 = oldDims.at(oldDims.size() - 1);
+                newDims = {dim0, dim1};
+            };
 
-        allReduceNode.operation.reset(
-            new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend, param_.useCommExt, param_.commExt}));
-        allReduceNode.inTensorIds = {INTERMIDATE_MATMULOUT - 1};
-        allReduceNode.outTensorIds = {OUT_LINEAROUT - 1};
-    }
+            allReduceNode.operation.reset(
+                new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend, param_.useCommExt, param_.commExt}));
+            allReduceNode.inTensorIds = {INTERMIDATE_MATMULOUT - 1};
+            allReduceNode.outTensorIds = {OUT_LINEAROUT - 1};
+        } else {
+            opGraph_.inTensorSize = IN_TENSOR_COUNT;
+            opGraph_.outTensorSize = OUT_TENSOR_COUNT;
+            opGraph_.intermediateTensorSize = INTERMEDIATE_TENSOR_COUNT;
+            opGraph_.nodes.resize(NODE_COUNT);
+
+            size_t nodeId = 0;
+            GraphOperation::Node &matmulNode = opGraph_.nodes.at(nodeId++);
+            GraphOperation::Node &addNode = opGraph_.nodes.at(nodeId++);
+            GraphOperation::Node &allReduceNode = opGraph_.nodes.at(nodeId++);
+
+            matmulNode.operation.reset(new AclTransformer::MatmulOperation({false, !param_.transWeight}));
+            matmulNode.inTensorIds = {IN_INPUT, IN_WEIGHT};
+            matmulNode.outTensorIds = {INTERMIDATE_MATMULOUT};
+            matmulNode.inTensorViewFuncs.resize(matmulNode.inTensorIds.size());
+            matmulNode.inTensorViewFuncs[0] = [](const AsdOps::SVector<int64_t> &oldDims,
+                                                AsdOps::SVector<int64_t> &newDims) {
+                // weight dimension suported: only 2
+                int64_t dim0 = 1;
+                for (size_t i = 0; i < oldDims.size() - 1; i++) {
+                    dim0 *= oldDims.at(i);
+                }
+                int64_t dim1 = oldDims.at(oldDims.size() - 1);
+                newDims = {dim0, dim1};
+            };
+
+            addNode.operation.reset(new AclTransformer::AddOperation({1}));
+            addNode.inTensorIds = {INTERMIDATE_MATMULOUT, IN_BIAS};
+            addNode.outTensorIds = {INTERMIDATE_ADDOUT};
+
+            allReduceNode.operation.reset(
+                new AclTransformer::AllReduceOperation({param_.rank, param_.rankSize, param_.rankRoot, "sum", param_.backend, param_.useCommExt, param_.commExt}));
+            allReduceNode.inTensorIds = {INTERMIDATE_ADDOUT};
+            allReduceNode.outTensorIds = {OUT_LINEAROUT};            
+        }
 }
 
 LinearParallelOperation::~LinearParallelOperation() {}
