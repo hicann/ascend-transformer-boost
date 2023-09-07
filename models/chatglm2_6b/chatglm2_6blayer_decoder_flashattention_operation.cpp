@@ -17,7 +17,7 @@
 #include "acltransformer/ops/add_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/linear_operation.h"
-#include "acltransformer/ops/position_embedding_operation.h"
+#include "acltransformer/ops/position_embedding_fusion_operation.h"
 #include "acltransformer/ops/self_attention_kv_cache_fusion_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
 
@@ -84,9 +84,9 @@ ChatGlm2LayerDecoderFlashAttentionOperation::ChatGlm2LayerDecoderFlashAttentionO
     mixdQkvLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXDWEIGHT, IN_QKVMIXDBIAS};
     mixdQkvLinearNode.outTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV};
 
-    positionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbeddingOperation({true, param_.numHeadsPerPartition,
-        param_.numHeadsPerPartition, param_.hiddenSizePerHead, param_.numGroupsPerPartition, param_.hiddenSizePerHead, 0, param_.model}));
-    positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_ROPECACHE};
+    positionEmbeddingNode.operation.reset(new AclTransformer::RopeOperation({param_.numHeadsPerPartition,
+        param_.numHeadsPerPartition, param_.hiddenSizePerHead, param_.numGroupsPerPartition, param_.model}));
+    positionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDLINEAROUTQKV, IN_ROPECACHE, IN_SEQLEN};
     positionEmbeddingNode.outTensorIds = {INTERMIDATE_POSITIONEMBEDQ, INTERMIDATE_PRESENTKEY, INTERMIDATE_PRESENTVALUE};
 
     AclTransformer::SelfAttentionKvCacheFusionParam selfAttentionKvCacheParam;

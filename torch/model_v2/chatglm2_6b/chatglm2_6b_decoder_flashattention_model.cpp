@@ -62,7 +62,8 @@ void ChatGlm2DecoderFlashAttentionModel::Param::FromString(const std::string &pa
                   << "hiddenSizePerHead: "<< hiddenSizePerHead
                   << "numGroupsPerPartition: "<< numGroupsPerPartition
                   << "transKey: " << transKey
-                  << "residualAddScale: " << residualAddScale;
+                  << "residualAddScale: " << residualAddScale
+                  << ", tokenOffset:" << tokenOffset << ", seqLen:" << seqLen;;
 }
 
 ChatGlm2DecoderFlashAttentionModel::ChatGlm2DecoderFlashAttentionModel(const std::string &param) : Model("ChatGlm2DecoderModel", param)
