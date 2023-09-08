@@ -157,6 +157,21 @@ void ModelTorch::SetWeight(std::vector<torch::Tensor> atWeightTensors)
 
 std::vector<torch::Tensor> ModelTorch::Execute(std::vector<torch::Tensor> atInTensors, std::string param)
 {
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensorByRange()) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMinNum() >
+            AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            ASD_LOG(ERROR) << "TensorMinNum should less than TensorMaxNum!";
+            AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        } else {
+            if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMinNum() &&
+                executeCount_ <= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+                AsdOps::GetSingleton<AclTransformer::Config>().EnableSaveTensor();
+            } else {
+                AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+            }
+        }
+    }
+
     for (size_t i = 0; i < atInTensors.size(); ++i) {
         const torch::Tensor &atTensor = atInTensors.at(i);
         ASD_LOG(INFO) << "ModelTorch atInTensors[" << i << "]"
