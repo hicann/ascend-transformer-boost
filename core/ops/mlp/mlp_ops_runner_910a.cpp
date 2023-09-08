@@ -218,7 +218,7 @@ MlpOpsRunner910A::MlpOpsRunner910A(const MlpParam &param) : OpsRunner("MlpOpsRun
     permuteResultNode.outTensors = {&transposedResult};
     permuteResultNode.inTensorViewFuncs.resize(permuteResultNode.inTensors.size());
     permuteResultNode.inTensorViewFuncs[0] = [&](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {hiddenstatusdims_.at(0), oldDims.at(1) / hiddenstatusdims_.at(0), oldDims.at(0), oldDims.at(2)};
+        newDims = {hiddenstatusdims_.at(0), oldDims.at(1) / hiddenstatusdims_.at(0), oldDims.at(2)};
     };
 }
 
