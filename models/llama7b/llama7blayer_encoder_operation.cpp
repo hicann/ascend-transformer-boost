@@ -125,7 +125,7 @@ LLaMA7BLayerEncoderOperation::LLaMA7BLayerEncoderOperation(const LLaMA7BLayerPar
     selfAttentionNode.inTensorViewFuncs.resize(selfAttentionNode.inTensorIds.size());
     selfAttentionNode.inTensorViewFuncs.at(2) = [=](const AsdOps::SVector<int64_t> &oldDims,
                                                            AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(1), oldDims.at(0), param_.headNum, oldDims.at(2) / param_.headNum};
+        newDims = {oldDims.at(0), oldDims.at(1), param_.headNum, oldDims.at(2) / param_.headNum};
     };
 
     selfOutLinearNode.operation.reset(new AclTransformer::LinearOperation({}));
