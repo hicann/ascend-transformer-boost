@@ -9,14 +9,15 @@ import torch_npu
 from torch_npu.contrib import transfer_to_npu
 import argparse
 def setup_model_parallel():
-    torch.distributed.init_process_group("hccl")
-    local_rank = torch.distributed.get_rank()
-    world_size = torch.distributed.get_world_size()
-    # torch_npu.npu.set_device(local_rank+2)
-    if local_rank==0:
-        torch_npu.npu.set_device(4)
-    elif local_rank==1:
-        torch_npu.npu.set_device(5)
+    os.environ["MASTER_ADDR"] = "127.0.0.1"
+    os.environ["MASTER_PORT"] = "12345"
+    local_rank = int(os.getenv("LOCAL_RANK", '0'))
+    world_size = int(os.getenv("WORLD_SIZE", '0'))
+    torch_npu.npu.set_device(local_rank)
+    torch.distributed.init_process_group(
+        backend='hccl',
+        world_size=world_size, rank=local_rank)
+
     # seed must be the same in all processes
     torch.manual_seed(1)
     return local_rank, world_size
@@ -38,15 +39,15 @@ if __name__ == "__main__":
     option["NPU_FUZZY_COMPILE_BLACKLIST"] = "Tril,SoftmaxV2,LayerNormGrad,ReduceProd"
     torch.npu.set_option(option)
 
-    SEQ_LEN_IN = 128
-    SEQ_LEN_OUT = 128
+    SEQ_LEN_IN = 16
+    SEQ_LEN_OUT = 16
 
     tokenizer_path = args.load_path+'/tokenizer'
     tokenizer = LlamaTokenizer.from_pretrained(tokenizer_path, use_fast=False)
     tokenizer.add_special_tokens({'pad_token': '[PAD]'})  # pad or not
     part_model_path=args.load_path+'/part_model/'+str(local_rank)+'/'
     model = LlamaForCausalLM.from_pretrained(part_model_path, torch_dtype=torch.float16).npu()
-    model.resize_token_embeddings(len(tokenizer))  # pad or not
+    # model.resize_token_embeddings(len(tokenizer))  # pad or not
 
     print('***********************model_device*******************')
     print(model.device)
@@ -54,10 +55,8 @@ if __name__ == "__main__":
     test_prompt = "Common sense questions and answers\n\nQuestion: Why do people need sleep\nFactual answer:"
     inputs_warm_up = tokenizer(test_prompt, return_tensors="pt", max_length=SEQ_LEN_IN, truncation=True)
 
-    _ = model.generate(
-        inputs_warm_up.input_ids.npu(),
-        max_new_tokens=SEQ_LEN_OUT
-    )
+    with torch.no_grad():
+        _ = model.generate(inputs_warm_up.input_ids.npu(), max_new_tokens=SEQ_LEN_OUT)
 
     print("---------------inference---------------")
     prompt = ["Common sense questions and answers\n\nQuestion: What is the capital of France\nFactual answer:"]
