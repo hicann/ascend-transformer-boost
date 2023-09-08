@@ -1442,6 +1442,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LLaMA65BLayerEncoderOperation", &LLaMA65BLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
+    {"ChatGlm2FusionLayerDecoderParallelOperation", &ChatGlm2FusionLayerDecoderParallelOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
     {"Bloom7BLayerEncoderOperation", &Bloom7BLayerEncoderOperationCreate},
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},

@@ -22,6 +22,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether test model in parallel",
     )
+    parser.add_argument(
+        "--model_path",
+        type=str,
+        default="tensor_parallel",
+        help="the path to cutted model weights",
+    )
     args = parser.parse_args()
 
     if args.parallel:
@@ -39,10 +45,7 @@ if __name__ == "__main__":
 
     file = open(f"zhiputest_{device_version}.csv", 'w')
     file.write(f"Batch,MaxSeqLen,InputSeqLen(Encoding),OutputSeqLen(Decoding),TokensPerSecond(tps),ResponseTime(ms),FirstTokenTime(ms),TimePerTokens(ms)\n")
-    if args.parallel:
-        model = load_model(parallel=True)
-    else:
-        model = load_model(parallel=False)
+    model = load_model(parallel=args.parallel)
     for batch_level in [1]:
         for seq_len_level in range(5,11):
             for test_cycle_level in range(5, 11):
