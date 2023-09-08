@@ -26,8 +26,11 @@ public:
     ~Config();
     static std::string GetSaveTensorDir();
     bool IsSaveTensor();
+    bool IsSaveTensorByRange();
     void DisableSaveTensor();
+    void EnableSaveTensor();
     uint64_t GetSaveTensorMaxNum();
+    uint64_t GetSaveTensorMinNum();
     bool IsAddOpsRunnerEnable();
     bool IsAddNormOpsRunnerEnable();
     bool IsRmsNormOpsRunnerEnable();
@@ -63,7 +66,9 @@ private:
 
 private:
     bool isSaveTensor_ = false;
+    bool isSaveTensorByRange_ = false;
     uint64_t saveTensorMaxNum_ = 1;
+    uint64_t saveTensorMinNum_ = 1;
     bool isAddOpsRunnerEnable_ = false;
     bool isAddNormOpsRunnerEnable_ = false;
     bool isRmsNormOpsRunnerEnable_ = false;
