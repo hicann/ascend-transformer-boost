@@ -30,6 +30,7 @@ Config::Config()
     InitIs910B();
     InitSaveTensor();
     isSaveTensor_ = IsEnable("ACLTRANSFORMER_SAVE_TENSOR");
+    isSaveTensorByRange_ = IsEnable("ACLTRANSFORMER_SAVE_TENSOR_BY_RANGE");
     isAddOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADD_OPSRUNNER_ENABLE");
     isAddNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_ADDNORM_OPSRUNNER_ENABLE");
     isRmsNormOpsRunnerEnable_ = IsEnable("ACLTRANSFORMER_RMSNORM_OPSRUNNER_ENABLE");
@@ -90,9 +91,15 @@ bool Config::IsEnable(const char *env, bool enable)
 
 bool Config::IsSaveTensor() { return isSaveTensor_; }
 
+bool Config::IsSaveTensorByRange() { return isSaveTensorByRange_; }
+
 void Config::DisableSaveTensor() { isSaveTensor_ = false; }
 
+void Config::EnableSaveTensor() { isSaveTensor_ = true; }
+
 uint64_t Config::GetSaveTensorMaxNum() { return saveTensorMaxNum_; }
+
+uint64_t Config::GetSaveTensorMinNum() { return saveTensorMinNum_; }
 
 bool Config::IsAddOpsRunnerEnable() { return isAddOpsRunnerEnable_; }
 
@@ -192,6 +199,10 @@ void Config::InitSaveTensor()
     const char *envStr = std::getenv("ACLTRANSFORMER_SAVE_TENSOR_MAX");
     if (envStr) {
         saveTensorMaxNum_ = atoll(envStr);
+    }
+    const char *envStr1 = std::getenv("ACLTRANSFORMER_SAVE_TENSOR_MIN");
+    if (envStr1) {
+        saveTensorMinNum_ = atoll(envStr1);
     }
 }
 

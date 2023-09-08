@@ -134,9 +134,18 @@ void ChatGlm6BModelEncoderWithoutFusionTorch::ExecuteOutImpl(
                        << ", presentValueTensors.size:" << presentValueTensors.size();
         return;
     }
-    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensor()) {
-        if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+    if (AsdOps::GetSingleton<AclTransformer::Config>().IsSaveTensorByRange()) {
+        if (AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMinNum() >
+            AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+            ASD_LOG(ERROR) << "TensorMinNum should less than TensorMaxNum!";
             AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+        } else {
+            if (executeCount_ >= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMinNum() &&
+                executeCount_ <= AsdOps::GetSingleton<AclTransformer::Config>().GetSaveTensorMaxNum()) {
+                AsdOps::GetSingleton<AclTransformer::Config>().EnableSaveTensor();
+            } else {
+                AsdOps::GetSingleton<AclTransformer::Config>().DisableSaveTensor();
+            }
         }
     }
     handle_ = {Utils::GetCurrentStream()};
