@@ -84,6 +84,8 @@
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_decoder_parallel_operation.h"
 #include "models/bloom7b/bloom7blayer_decoder_operation.h"
 #include "models/bloom7b/bloom7blayer_encoder_operation.h"
+#include "models/bloom7b/bloom7blayer_parallel_decoder_operation.h"
+#include "models/bloom7b/bloom7blayer_parallel_encoder_operation.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
 #include "models/gptneox20b/gptneox20blayer_embedding_operation.h"
 #include "models/gptneox20b/gptneox20blayer_encoder_operation.h"
@@ -970,6 +972,42 @@ static AclTransformer::Operation *Bloom7BLayerEncoderOperationCreate(const nlohm
     return new AclTransformer::Bloom7BLayerEncoderOperation(param);
 }
 
+static AclTransformer::Operation *Bloom7BLayerParallelDecoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Bloom7BLayerParallelParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    param.activationFuncType = paramJson["activationFuncType"].get<int>();
+    param.rank = paramJson["rank"].get<int>();
+    param.rankSize = paramJson["rankSize"].get<int>();
+    ASD_LOG(INFO) << "Bloom7BLayerParallelDecoderOperationCreate layerNormEps:" << param.layerNormEps
+                  << ", headNum:" << param.headNum << ", dk:" << param.dk
+                  << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
+                  << ", activationFuncType:" << param.activationFuncType
+                  << ", rank" << param.rank << ", rankSize" << param.rankSize;
+    return new AclTransformer::Bloom7BLayerParallelDecoderOperation(param);
+}
+
+static AclTransformer::Operation *Bloom7BLayerParallelEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::Bloom7BLayerParallelParam param;
+    param.layerNormEps = paramJson["layerNormEps"].get<double>();
+    param.headNum = paramJson["headNum"].get<int>();
+    param.dk = paramJson["dk"].get<int>();
+    param.invNormFactorvarAttr = paramJson["invNormFactorvarAttr"].get<float>();
+    param.activationFuncType = paramJson["activationFuncType"].get<int>();
+    param.rank = paramJson["rank"].get<int>();
+    param.rankSize = paramJson["rankSize"].get<int>();
+    ASD_LOG(INFO) << "Bloom7BLayerParallelEncoderOperationCreate layerNormEps:" << param.layerNormEps
+                  << ", headNum:" << param.headNum << ", dk:" << param.dk
+                  << ", invNormFactorvarAttr:" << param.invNormFactorvarAttr
+                  << ", activationFuncType:" << param.activationFuncType
+                  << ", rank" << param.rank << ", rankSize" << param.rankSize;
+    return new AclTransformer::Bloom7BLayerParallelEncoderOperation(param);
+}
+
 AclTransformer::Operation *FfnQuantOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::FfnQuantParam param;
@@ -1445,6 +1483,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2FusionLayerDecoderParallelOperation", &ChatGlm2FusionLayerDecoderParallelOperationCreate},
     {"Bloom7BLayerDecoderOperation", &Bloom7BLayerDecoderOperationCreate},
     {"Bloom7BLayerEncoderOperation", &Bloom7BLayerEncoderOperationCreate},
+    {"Bloom7BLayerParallelDecoderOperation", &Bloom7BLayerParallelDecoderOperationCreate},
+    {"Bloom7BLayerParallelEncoderOperation", &Bloom7BLayerParallelEncoderOperationCreate},
     {"ChatGlm2LayerDecoderFlashAttentionOperation", &ChatGlm2LayerDecoderFlashAttentionOperationCreate},
     {"WordEmbeddingParallelOperation", &WordEmbeddingParallelOperationCreate},
     {"GptNeox20BLayerEmbeddingOperation", &GptNeox20BLayerEmbeddingOperationCreate},
