@@ -118,7 +118,7 @@ void ChatGlm2DecoderParallelModel::BuildGraph()
 
         layerNode.operation = std::make_shared<ChatGlm2FusionLayerDecoderParallelOperation>(opParam);
         layerNode.inTensors.resize(layerNode.operation->GetInTensorCount());
-        layerNode.outTensors.resize(layerNode.operation->GetInTensorCount());
+        layerNode.outTensors.resize(layerNode.operation->GetOutTensorCount());
 
         size_t inTensorId = 0;
         layerNode.inTensors.at(inTensorId++) = firstInTensor;

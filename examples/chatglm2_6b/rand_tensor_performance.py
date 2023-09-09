@@ -1,4 +1,5 @@
 import time
+import os
 import sys
 import torch
 import transformers
@@ -12,28 +13,25 @@ def setup_model_parallel():
     torch.distributed.init_process_group("hccl")
     local_rank = torch.distributed.get_rank()
     world_size = torch.distributed.get_world_size()
-    # torch_npu.npu.set_device(local_rank+2)
     if local_rank==0:
         torch_npu.npu.set_device(0)
     elif local_rank==1:
         torch_npu.npu.set_device(1)
-    # seed must be the same in all processes
     torch.manual_seed(1)
     return local_rank, world_size
 
-def load_model(parallel=False):
+def load_model(model_path, parallel=False):
     # 加载权重
     if parallel:
         local_rank, world_size = setup_model_parallel()
-        load_path = "./tensor_parallel"
-        tokenizer_path = load_path + "/tokenizer"
-        part_model_path = load_path + "/part_model/" + str(local_rank) + "/"
+        tokenizer_path = os.path.join(model_path, "tokenizer")
+        part_model_path = os.path.join(model_path, "part_model", str(local_rank))
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
         model = AutoModel.from_pretrained(part_model_path, trust_remote_code=True).half().npu()
         model.resize_token_embeddings(len(tokenizer))
     else:
-        tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
-        model = AutoModel.from_pretrained("./", trust_remote_code=True).half().npu()
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        model = AutoModel.from_pretrained(model_path, trust_remote_code=True).half().npu()
     
     # 量化模型适配
     for name, mod in model.named_modules():
