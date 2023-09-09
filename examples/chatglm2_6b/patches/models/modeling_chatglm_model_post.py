@@ -642,8 +642,8 @@ class GLMTransformer(torch.nn.Module):
 
         self.acl_enconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2EncoderModel")
         self.acl_enconder_operation.set_param(self.acl_encoder_param)
-        self.acl_deconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderModel")
-        self.acl_deconder_operation.set_param(self.acl_decoder_param)
+        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderModel")
+        self.acl_decoder_operation.set_param(self.acl_decoder_param)
 
         self.acl_presents = []
 
@@ -683,7 +683,7 @@ class GLMTransformer(torch.nn.Module):
             weights = list(self.state_dict().values())
 
             self.acl_enconder_operation.set_weight(weights)
-            self.acl_deconder_operation.set_weight(weights)
+            self.acl_decoder_operation.set_weight(weights)
 
             input_full = [hidden_states, rotary_pos_emb, attention_mask, encoder_seq_len_tensor]
 
@@ -697,25 +697,30 @@ class GLMTransformer(torch.nn.Module):
                 stream = torch.npu.current_stream()
                 stream.synchronize()
                 prof.__exit__(None, None, None)
-            self.acl_presents = acl_model_out[1:]
+
         else:
             decoder_seq_len_tensor = torch.tensor([1 for _ in range(hidden_states.shape[1])]).to("npu")
             input_increament = [hidden_states, rotary_pos_emb, decoder_seq_len_tensor]
-            input_increament.extend(self.acl_presents)
+            past_keys, past_values = map(list, zip(*kv_caches))
+            input_increament.extend(past_keys)
+            input_increament.extend(past_values)
 
             if self.profiling_increment:
                 stream = torch.npu.current_stream()
                 stream.synchronize()
                 prof = torch.npu.profile("./profiling/increament")
                 prof.__enter__()
-            acl_model_out = self.acl_deconder_operation.execute(input_increament, self.acl_decoder_param)
+            acl_model_out = self.acl_decoder_operation.execute(input_increament, self.acl_decoder_param)
             if self.profiling_increment:
                 stream = torch.npu.current_stream()
                 stream.synchronize()
                 prof.__exit__(None, None, None)
-            self.acl_presents = acl_model_out[1:]
-        hidden_states = acl_model_out[0]
 
+        
+        hidden_states = acl_model_out[0]
+        for i in range(self.num_layers):
+            presents += ((acl_model_out[i+1], acl_model_out[i+self.num_layers+1]),)
+            
         return hidden_states, presents, all_hidden_states, all_self_attentions
 
 

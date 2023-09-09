@@ -24,7 +24,7 @@ MlpOpsGlm2ParallelRunner310P::MlpOpsGlm2ParallelRunner310P(const MlpParam &param
     : OpsRunner("MlpOpsGlm2ParallelRunner310P", RUNNER_TYPE_MLP), param_(param)
 {
     ASD_LOG(INFO) << "MlpOpsGlm2ParallelRunner310P::MlpOpsGlm2ParallelRunner310P called";
-    const std::size_t inTensorSize = 3;
+    const std::size_t inTensorSize = 2;
     const std::size_t outTensorSize = 1;
     const std::size_t internalTensorSize = 6;
     const std::size_t nodeSize = 6;
@@ -34,7 +34,6 @@ MlpOpsGlm2ParallelRunner310P::MlpOpsGlm2ParallelRunner310P(const MlpParam &param
     size_t inTensorId = 0;
     AsdOps::Tensor &hiddenStates = kernelGraph_.inTensors.at(inTensorId++);
     AsdOps::Tensor &weightUp = kernelGraph_.inTensors.at(inTensorId++);
-    AsdOps::Tensor &weightDown = kernelGraph_.inTensors.at(inTensorId++);
 
     kernelGraph_.internalTensors.resize(internalTensorSize);
     size_t internalTensorId = 0;

@@ -661,8 +661,8 @@ class GLMTransformer(torch.nn.Module):
 
         self.acl_enconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2EncoderModel")
         self.acl_enconder_operation.set_param(self.acl_encoder_param)
-        self.acl_deconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderParallelModel")
-        self.acl_deconder_operation.set_param(self.acl_decoder_param)
+        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderParallelModel")
+        self.acl_decoder_operation.set_param(self.acl_decoder_param)
 
         self.acl_presents = []
 
@@ -701,7 +701,7 @@ class GLMTransformer(torch.nn.Module):
         if full_flag:
             weights = list(self.state_dict().values())
             # self.acl_enconder_operation.set_weight(weights)
-            self.acl_deconder_operation.set_weight(weights)
+            self.acl_decoder_operation.set_weight(weights)
             for index in range(self.num_layers):
                 layer = self._get_layer(index)
                 layer_ret = layer(
@@ -718,26 +718,26 @@ class GLMTransformer(torch.nn.Module):
         else:
             decoder_seq_len_tensor = torch.tensor([1 for _ in range(hidden_states.shape[1])]).to("npu")
             input_increament = [hidden_states, rotary_pos_emb, decoder_seq_len_tensor]
-            if kv_caches[0]:
-                past_keys, past_values = map(list, zip(*kv_caches))
-                input_increament.extend(past_keys)
-                input_increament.extend(past_values)
-            else:
-                input_increament.extend(self.acl_presents)
+
+            past_keys, past_values = map(list, zip(*kv_caches))
+            input_increament.extend(past_keys)
+            input_increament.extend(past_values)
 
             if self.profiling_increment:
                 stream = torch.npu.current_stream()
                 stream.synchronize()
                 prof = torch.npu.profile("./profiling/increament")
                 prof.__enter__()
-            acl_model_out = self.acl_deconder_operation.execute(input_increament, self.acl_decoder_param)
+            acl_model_out = self.acl_decoder_operation.execute(input_increament, self.acl_decoder_param)
             if self.profiling_increment:
                 stream = torch.npu.current_stream()
                 stream.synchronize()
                 prof.__exit__(None, None, None)
-            self.acl_presents = acl_model_out[1:]
+            
             hidden_states = acl_model_out[0]
-
+            for i in range(self.num_layers):
+                presents += ((acl_model_out[i+1], acl_model_out[i+self.num_layers+1]),)
+        
         return hidden_states, presents, all_hidden_states, all_self_attentions
 
 
@@ -932,6 +932,43 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         from .quantization import quantize
         quantize(self.encoder, weight_bit_width)
         return self
+
+class TopPLogits(torch.nn.Module):
+    def __init__(self, top_p: float, top_k: float, temperature: float, 
+                 filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+        super(TopPLogits, self).__init__()
+        top_p = float(top_p)
+        if top_p < 0 or top_p > 1.0:
+            raise ValueError(f"'top_p' has to be a float > 0 and < 1, but is {top_p}")
+        if not isinstance(min_tokens_to_keep, int) or (min_tokens_to_keep < 0):
+            raise ValueError(f"'min_tokens_to_keep' has to be a non-begative integer, but is {min_tokens_to_keep}")
+        
+        self.top_p = top_p
+        self.filter_value = filter_value
+        self.min_tokens_to_keep = min_tokens_to_keep
+        self.top_k = top_k
+        self.temperature = temperature
+    
+    def __call__(self, scores: torch.FloatTensor):
+        if self.temperature != 0:
+            scores = scores / self.temperature
+        else:
+            raise ValueError(f"'temperature has to be a float != 0 , but is {self.temperature}")
+        top_k = min(self.top_k, scores.size(-1)) # safety check
+        # remove all tokens with a probability less than the last token of the top-k
+         
+        values, indices = torch.topk(scores, top_k)
+        values = torch.flip(values, dims=[1])
+        cumulative_probs = values.softmax(dim=-1).cumsum(dim=-1)
+        
+        sorted_indices_to_remove = cumulative_probs <= (1 - self.top_p)
+        
+        if self.min_tokens_to_keep > 1:
+            sorted_indices_to_remove[..., -self.min_tokens_to_keep:] = 0
+        
+        values = values.masked_fill(sorted_indices_to_remove, self.filter_value)
+
+        return values, indices
 
 
 class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
@@ -1238,6 +1275,9 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         scores = None
 
+        # initialize the new TopPLogits outside the loop
+        tp = TopPLogits(generation_config.top_p, generation_config.top_k, generation_config.temperature)
+
         pre_processing_end = time.time()
         while True:
             torch.npu.synchronize()
@@ -1259,14 +1299,14 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
-            next_token_scores = logits_warper(input_ids, next_token_scores)
 
-            # sample
-            probs = nn.functional.softmax(next_token_scores, dim=-1)
-            if generation_config.do_sample:
-                next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
-            else:
-                next_tokens = torch.argmax(probs, dim=-1)
+            # ------------------post-processing optimization--------------------
+            output, indices = tp(next_token_scores)
+            probs_opt = nn.functional.softmax(output, dim=-1)
+            next_tokens = torch.multinomial(probs_opt, num_samples=1)
+            for i in next_tokens:
+                next_tokens = indices[0][len(indices[0])-i-1]
+            next_tokens = next_tokens.npu()
 
             # update generated ids, model inputs, and length for next step
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)

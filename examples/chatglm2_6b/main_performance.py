@@ -13,6 +13,12 @@ parser.add_argument(
     action="store_true",
     help="Whether test model in parallel",
 )
+parser.add_argument(
+    "--model_path",
+    type=str,
+    default="./",
+    help="the path to model weights",
+)
 args = parser.parse_args()
 
 # 适配昇腾NPU
@@ -43,16 +49,15 @@ torch.npu.set_option(option)
 
 # 加载模型配置和权重
 if args.parallel:
-    load_path = "./tensor_parallel"
-    tokenizer_path = load_path + "/tokenizer"
-    part_model_path = load_path + "/part_model/" + str(local_rank) + "/"
+    tokenizer_path = os.path.join(args.model_path, "tokenizer")
+    part_model_path = os.path.join(args.model_path, "part_model", str(local_rank))
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
     model = AutoModel.from_pretrained(part_model_path, trust_remote_code=True).half().npu()
-    model.resize_token_embeddings(len(tokenizer)) 
 else:
-    tokenizer = AutoTokenizer.from_pretrained("./", trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path, trust_remote_code=True)
     model = AutoModel.from_pretrained(
-        "./", trust_remote_code=True).half().npu()
+        args.model_path, trust_remote_code=True).half().npu()
 
 os_name = platform.system()
 clear_command = 'cls' if os_name == 'Windows' else 'clear'
