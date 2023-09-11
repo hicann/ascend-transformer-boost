@@ -23,15 +23,14 @@
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/linear_parallel_operation.h"
+#include "acltransformer/ops/multi_layer_linear_operation.h"
 #include <asdops/utils/log/log.h>
 
 namespace AclTransformer {
 enum LLaMA65BLayerEncoderTensorId {
     IN_HIDDENSTATES = 0,
     IN_NORMWEIGHT,
-    IN_QMIXDWEIGHT,
-    IN_KMIXDWEIGHT,
-    IN_VMIXDWEIGHT,
+    IN_QKVMIXDWEIGHT,
     IN_SELFOUTLINEARWEIGHT,
     IN_SELFOUTNORMWEIGHT,
     IN_MLPGATEWEIGHT,
@@ -58,10 +57,10 @@ enum LLaMA65BLayerEncoderTensorId {
     INTERMIDATE_MLPLINEARPARALLELOUT,
 };
 
-static const uint64_t IN_TENSOR_COUNT = 14;
+static const uint64_t IN_TENSOR_COUNT = 12;
 static const uint64_t OUT_TENSOR_COUNT = 3;
 static const uint64_t INTERMEDIATE_TENSOR_COUNT = 12;
-static const uint64_t NODE_COUNT = 13;
+static const uint64_t NODE_COUNT = 11;
 
 LLaMA65BLayerEncoderOperation::LLaMA65BLayerEncoderOperation(const LLaMA65BLayerParam &param)
     : GraphOperation("LLaMA65BLayerEncoderOperation"), param_(param)
@@ -73,9 +72,7 @@ LLaMA65BLayerEncoderOperation::LLaMA65BLayerEncoderOperation(const LLaMA65BLayer
 
     size_t nodeId = 0;
     GraphOperation::Node &inputNormNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &mixdQLinearNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &mixdKLinearNode = opGraph_.nodes.at(nodeId++);
-    GraphOperation::Node &mixdVLinearNode = opGraph_.nodes.at(nodeId++);
+    GraphOperation::Node &mixdQKVLinearNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &qPositionEmbeddingNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &kPositionEmbeddingNode = opGraph_.nodes.at(nodeId++);
     GraphOperation::Node &selfAttentionNode = opGraph_.nodes.at(nodeId++);
@@ -90,17 +87,9 @@ LLaMA65BLayerEncoderOperation::LLaMA65BLayerEncoderOperation(const LLaMA65BLayer
     inputNormNode.inTensorIds = {IN_HIDDENSTATES, IN_NORMWEIGHT};
     inputNormNode.outTensorIds = {INTERMIDATE_INPUTNORMOUT};
 
-    mixdQLinearNode.operation.reset(new AclTransformer::LinearOperation({false, false, false}));
-    mixdQLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QMIXDWEIGHT};
-    mixdQLinearNode.outTensorIds = {INTERMIDATE_MIXEDQ};
-
-    mixdKLinearNode.operation.reset(new AclTransformer::LinearOperation({false, false, false}));
-    mixdKLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_KMIXDWEIGHT};
-    mixdKLinearNode.outTensorIds = {INTERMIDATE_MIXEDK};
-
-    mixdVLinearNode.operation.reset(new AclTransformer::LinearOperation({false, false, false}));
-    mixdVLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_VMIXDWEIGHT};
-    mixdVLinearNode.outTensorIds = {INTERMIDATE_MIXEDV};
+    mixdQKVLinearNode.operation.reset(new AclTransformer::MultiLayerLinearOperation({}));
+    mixdQKVLinearNode.inTensorIds = {INTERMIDATE_INPUTNORMOUT, IN_QKVMIXDWEIGHT};
+    mixdQKVLinearNode.outTensorIds = {INTERMIDATE_MIXEDQ, INTERMIDATE_MIXEDK, INTERMIDATE_MIXEDV};
 
     qPositionEmbeddingNode.operation.reset(new AclTransformer::PositionEmbedding1dSplitOperation({param_.headNum}));
     qPositionEmbeddingNode.inTensorIds = {INTERMIDATE_MIXEDQ, IN_POSITIONIDS, IN_COSTABLE, IN_SINTABLE};
