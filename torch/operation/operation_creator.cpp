@@ -67,6 +67,7 @@
 #include "models/llama7b/llama7blayer_operation.h"
 #include "models/llama7b/llama7blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_fusion_operation.h"
+#include "models/llama70b/llama70blayer_parallel_operation.h"
 #include "models/baichuan1_7b/baichuan1_7b_layer_decoder_operation.h"
 #include "models/baichuan1_7b/baichuan1_7b_layer_encoder_operation.h"
 #include "models/baichuan1_7b/baichuan1_7b_layer_encoder_with_bias_operation.h"
@@ -270,6 +271,35 @@ static AclTransformer::Operation *LLaMA65BLayerEncoderOperationCreate(const nloh
     ASD_LOG(INFO) << "LLaMA65BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk;
     return new AclTransformer::LLaMA65BLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *LLaMA70BLayerOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA70BLayerParam param;
+    if (paramJson.find("rmsNormEps") != paramJson.end()) {
+        param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    }
+    if (paramJson.find("headNum") != paramJson.end()) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.find("kvHeadNum") != paramJson.end()) {
+        param.kvHeadNum = paramJson["kvHeadNum"].get<int>();
+    }
+    if (paramJson.find("dk") != paramJson.end()) {
+        param.dk = paramJson["dk"].get<int>();
+    }
+    if (paramJson.find("rank") != paramJson.end()) {
+        param.rank = paramJson["rank"].get<int>();
+    }
+    if (paramJson.find("rankSize") != paramJson.end()) {
+        param.rankSize = paramJson["rankSize"].get<int>();
+    }
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMA70BLayerParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk;
+    return new AclTransformer::LLaMA70BLayerOperation(param);
 }
 
 static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohmann::json &paramJson)
@@ -1551,6 +1581,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ChatGlm2LayerDecoderOperation", &ChatGlm2LayerDecoderOperationCreate},
     {"LLaMA13BLayerOperation", &LLaMA13BLayerOperationCreate},
     {"LLaMA65BLayerEncoderOperation", &LLaMA65BLayerEncoderOperationCreate},
+    {"LLaMA70BLayerOperation", &LLaMA70BLayerOperationCreate},
     {"ChatGlm2FusionLayerEncoderOperation", &ChatGlm2FusionLayerEncoderOperationCreate},
     {"ChatGlm2FusionLayerDecoderOperation", &ChatGlm2FusionLayerDecoderOperationCreate},
     {"ChatGlm2FusionLayerDecoderParallelOperation", &ChatGlm2FusionLayerDecoderParallelOperationCreate},
