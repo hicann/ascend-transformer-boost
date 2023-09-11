@@ -29,6 +29,7 @@
 #include "acltransformer/ops/matmul_operation.h"
 #include "acltransformer/ops/ffn_operation.h"
 #include "acltransformer/ops/embedding_operation.h"
+#include "acltransformer/ops/apply_rotary_emb_operation.h"
 #include "acltransformer/ops/mlp_operation.h"
 #include "acltransformer/ops/self_attention_operation.h"
 #include "acltransformer/ops/self_attention_cross_operation.h"
@@ -93,8 +94,79 @@
 #include "models/gptneox20b/gptneox20blayer_decoder_flashattention_operation.h"
 #include "models/llama13b/llama13blayer_fusion_quant_operation.h"
 #include "models/llama65b/llama65blayer_encoder_parallel_operation.h"
+#include "models/llama_adapter7b/llama_adapter_7b_layer_decoder_operation.h"
+#include "models/llama_adapter7b/llama_adapter_7b_layer_decoder_adapter_operation.h"
+#include "models/llama_adapter7b/llama_adapter_7b_layer_encoder_operation.h"
+#include "models/llama_adapter7b/llama_adapter_7b_layer_encoder_adapter_operation.h"
 
 using OperationCreateFunc = std::function<AclTransformer::Operation *(const nlohmann::json &paramJson)>;
+
+static AclTransformer::Operation *LLaMAAdapter7BLayerOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMAAdapter7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMAAdapter7BLayerOperationCreate LLaMAAdapter7BLayerParam headNum:" 
+                  << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model;
+    return new AclTransformer::LLaMAAdapter7BLayerOperation(param);
+}
+
+static AclTransformer::Operation *LLaMAAdapter7BLayerAdapterOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMAAdapter7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMAAdapter7BLayerAdapterOperationCreate LLaMAAdapter7BLayerParam headNum:" 
+                  << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model;
+    return new AclTransformer::LLaMAAdapter7BLayerAdapterOperation(param);
+}
+
+static AclTransformer::Operation *LLaMAAdapter7BLayerEncoderOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMAAdapter7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMAAdapter7BLayerEncoderOperationCreate LLaMAAdapter7BLayerParam headNum:" 
+                  << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model;
+    return new AclTransformer::LLaMAAdapter7BLayerEncoderOperation(param);
+}
+
+static AclTransformer::Operation *LLaMAAdapter7BLayerEncoderAdapterOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMAAdapter7BLayerParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    if (paramJson.find("model") != paramJson.end()) {
+        param.model = paramJson["model"].get<std::string>();
+    }
+    ASD_LOG(INFO) << "LLaMAAdapter7BLayerEncoderAdapterOperationCreate LLaMAAdapter7BLayerParam headNum:" 
+                  << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model;
+    return new AclTransformer::LLaMAAdapter7BLayerEncoderAdapterOperation(param);
+}
+
+static AclTransformer::Operation *ApplyRotaryEmbOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::ApplayRotaryEmbParam param;
+    ASD_LOG(INFO) << "ApplayRotaryEmbParam Enter";
+    return new AclTransformer::ApplyRotaryEmbOperation(param);
+}
 
 static AclTransformer::Operation *LLaMA13BLayerFusionQuantOperationCreate(const nlohmann::json &paramJson)
 {
@@ -1430,6 +1502,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AddNormOperation", &AddNormOperationCreate},
     {"RmsNormOperation", &RmsNormOperationCreate},
     {"TransposeOperation", &TransposeOperationCreate},
+    {"ApplyRotaryEmbOperation", &ApplyRotaryEmbOperationCreate},
     {"LinearOperation", &LinearOperationCreate},
     {"MatmulOperation", &MatmulOperationCreate},
     {"FfnOperation", &FfnOperationCreate},
@@ -1491,7 +1564,11 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"GptNeox20BLayerEncoderOperation", &GptNeox20BLayerEncoderOperationCreate},
     {"GptNeox20BLayerDecoderOperation", &GptNeox20BLayerDecoderOperationCreate},
     {"GptNeox20BLayerDecoderFlashAttentionOperation", &GptNeox20BLayerDecoderFlashAttentionOperationCreate},
-    {"LLaMA13BLayerFusionQuantOperation", &LLaMA13BLayerFusionQuantOperationCreate}};
+    {"LLaMA13BLayerFusionQuantOperation", &LLaMA13BLayerFusionQuantOperationCreate},
+    {"LLaMAAdapter7BLayerOperation", &LLaMAAdapter7BLayerOperationCreate},
+    {"LLaMAAdapter7BLayerAdapterOperation", &LLaMAAdapter7BLayerAdapterOperationCreate},
+    {"LLaMAAdapter7BLayerEncoderOperation", &LLaMAAdapter7BLayerEncoderOperationCreate},
+    {"LLaMAAdapter7BLayerEncoderAdapterOperation", &LLaMAAdapter7BLayerEncoderAdapterOperationCreate}};
 
 AclTransformer::Operation *CreateOperation(const std::string &opName, const std::string &param)
 {

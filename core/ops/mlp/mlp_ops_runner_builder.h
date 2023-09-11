@@ -26,6 +26,7 @@
 #include "mlp_ops_llama13b_runner.h"
 #include "mlp_ops_llama13b_runner_910a.h"
 #include "mlp_ops_runner_910a.h"
+#include "mlp_ops_llama_adapter_runner_310p.h"
 
 namespace AclTransformer {
 class MlpOpsRunnerBuilder : public RunnerBuilder {
@@ -50,6 +51,8 @@ public:
             }
         } else if(param_.model == "chatglm2_6b_parallel") {
             return new MlpOpsGlm2ParallelRunner310P(param_);
+        } else if(param_.model == "llama_adapter") {
+            return new MlpOpsLlamaAdapterRunner310P(param_);
         } else {
             if (AsdOps::GetSingleton<Config>().Is910B()) {
                 return new MlpOpsRunner(param_);
