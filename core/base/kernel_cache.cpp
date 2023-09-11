@@ -106,6 +106,7 @@ bool KernelCache::IsRunInfoEqual(const AsdOps::RunInfo &runInfo1, const AsdOps::
         return it->second(opDesc1.specificParam, opDesc2.specificParam);
     } else {
         ASD_LOG(WARN) << "Can not compare param of " << opDesc1.opName;
+        return false;
     }
 
     return true;
