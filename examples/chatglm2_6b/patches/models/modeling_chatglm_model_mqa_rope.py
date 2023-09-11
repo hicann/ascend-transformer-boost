@@ -792,10 +792,6 @@ class GLMTransformer(torch.nn.Module):
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
-        if hidden_states.shape[0] > 1:
-            # Final layer norm.
-            if self.post_layer_norm:
-                hidden_states = self.final_layernorm(hidden_states)
 
         return hidden_states, presents, all_hidden_states, all_self_attentions
 
