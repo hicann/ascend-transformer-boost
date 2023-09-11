@@ -50,6 +50,8 @@
 #include "torch/model_v2/baichuan2_13b/baichuan2_13b_encoder_model.h"
 #include "torch/model_v2/baichuan2_13b/baichuan2_13b_decoder_model.h"
 #include "torch/model_v2/llama7b/llama7b_decoder_without_fusion_model.h"
+#include "torch/model_v2/llama_adapter_7b/llama_adapter_7b_encoder_model.h"
+#include "torch/model_v2/llama_adapter_7b/llama_adapter_7b_decoder_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -125,6 +127,10 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::BaiChuan213BDecoderModel>(param);
     } else if (modelName_ == "Llama7BDecoderWithoutFusionModel") {
         model_ = std::make_shared<AclTransformer::Llama7BDecoderWithoutFusionModel>(param);
+    } else if (modelName_ == "LlamaAdapter7BEncoderModel") {
+        model_ = std::make_shared<AclTransformer::LlamaAdapter7BEncoderModel>(param);
+    } else if (modelName_ == "LlamaAdapter7BDecoderModel") {
+        model_ = std::make_shared<AclTransformer::LlamaAdapter7BDecoderModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
