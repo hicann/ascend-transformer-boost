@@ -1,0 +1,1 @@
+cp operation/modeling_llama70b_position_embedding_1d_split.py /usr/local/python3.7.5/lib/python3.7/site-packages/transformers/models/llama/modeling_llama.py
