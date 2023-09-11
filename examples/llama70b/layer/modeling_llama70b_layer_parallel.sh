@@ -1,0 +1,1 @@
+cp layer/modeling_llama70b_layer_parallel.py /usr/local/python3.7.5/lib/python3.7/site-packages/transformers/models/llama/modeling_llama.py
