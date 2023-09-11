@@ -21,6 +21,7 @@
 #include <asdops/utils/singleton/singleton.h>
 #include "self_attention_kv_cache_ops_chatglm6b_runner.h"
 #include "self_attention_kv_cache_ops_llama7b_runner.h"
+#include "self_attention_kv_cache_ops_llama70b_runner.h"
 #include "self_attention_kv_cache_ops_chatglm6b_runner_910a.h"
 #include "self_attention_kv_cache_ops_chatglm2_6b_runner.h"
 #include "self_attention_kv_cache_ops_llama7b_runner_910a.h"
@@ -76,6 +77,8 @@ public:
             } else {
                 return new SelfAttentionKvCacheOpsBaiChuan213BRunner910a(param_);
             }
+        } else if (param_.model == "llama70b") {
+            return new SelfAttentionKvCacheOpsLlama70bRunner(param_);
         } else {
             ASD_LOG(ERROR) << "invalid param_.model:" << param_.model;
             return nullptr;
