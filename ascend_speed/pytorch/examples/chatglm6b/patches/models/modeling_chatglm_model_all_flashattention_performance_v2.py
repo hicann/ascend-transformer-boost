@@ -207,7 +207,7 @@ class RotaryEmbedding(torch.nn.Module):
 def rotate_half(x):
     x1, x2 = x[..., :x.shape[-1] // 2], x[..., x.shape[-1] // 2:]
     # dim=-1 triggers a bug in earlier torch versions
-    return tor ch.cat((-x2, x1), dim=x1.ndim - 1)
+    return torch.cat((-x2, x1), dim=x1.ndim - 1)
 
 
 @torch.jit.script
