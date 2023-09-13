@@ -1,6 +1,6 @@
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 RESULT_DIR=$SCRIPT_DIR/test_results
-PYTHON_TOOL_PATH=$ACLTRANSFORMER_HOME_PATH/tools/python_tools
+PYTHON_TOOL_PATH=$ACLTRANSFORMER_HOME_PATH/ascend_speed/tools/python_tools
 export TEMP_COMPARE_MODEL_PRICISION=ON
 
 if [ -d $RESULT_DIR ];then

@@ -67,6 +67,6 @@ python3 $SCRIPT_DIR/main_performance.py
 rm $TRANSFORMER_PACKAGE_PATH/modeling_target.py
 rm $TRANSFORMER_PACKAGE_PATH/configuration_chatglm.py
 if [[ $OPTION_ARG == "--profiling" ]];then
-    python3 $ASCEND_HOME_PATH/tools/profiler/profiler_tool/analysis/msprof/msprof.py export timeline -dir $SCRIPT_DIR/PROF_*
-    python3 $ASCEND_HOME_PATH/tools/profiler/profiler_tool/analysis/msprof/msprof.py export summary -dir $SCRIPT_DIR/PROF_*
+    python3 $ASCEND_HOME_PATH/ascend_speed/tools/profiler/profiler_tool/analysis/msprof/msprof.py export timeline -dir $SCRIPT_DIR/PROF_*
+    python3 $ASCEND_HOME_PATH/ascend_speed/tools/profiler/profiler_tool/analysis/msprof/msprof.py export summary -dir $SCRIPT_DIR/PROF_*
 fi
