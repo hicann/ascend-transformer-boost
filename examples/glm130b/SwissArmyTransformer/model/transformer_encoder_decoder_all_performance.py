@@ -683,9 +683,11 @@ class BaseTransformer(torch.nn.Module):
                 self.seq_lens = torch.tensor([seq_len] * hidden_states.shape[1], device=self.kv_cache.device, dtype=torch.int32)
                 self.token_num = seq_len
                 self.tokens_offset.fill_(self.token_num)
-                self.attention_mask_max.fill_(-10000)
-                self.attention_mask_max.triu_()
-                self.attention_mask_max[..., :seq_len-1] = 0
+                mask_temp = torch.ones((self.max_sequence_length, self.max_sequence_length), device=self.kv_cache.device) # 暂未支持多batch
+                mask_temp.tril_()
+                mask_temp[..., :seq_len - 1] = 1
+                mask_temp = (mask_temp < 0.5).bool()
+                self.attention_mask_max.masked_fill_(mask_temp, -10000.0)
                 acl_param = json.dumps({
                                     "transKey": False,
                                     "layerNum": self.num_layers,

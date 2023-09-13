@@ -75,8 +75,8 @@ MlpOpsGlm130bRunner::MlpOpsGlm130bRunner(const MlpParam &param)
         runInfo.SetOpDesc({ 0, "SplitOperation", AsdOps::OpParam::Split { int(dims.size()) - 1, 2 } });
     };
 
-    geluNode.opDesc = { 0, "ElewiseOperation", AsdOps::OpParam::Elewise({
-        AsdOps::OpParam::Elewise::ELEWISE_FASTGELU }) };
+    geluNode.opDesc = {0, "ActivationOperation",
+                       AsdOps::OpParam::Activation({AsdOps::OpParam::Activation::ACTIVATION_GELU})};
     geluNode.inTensors = { &chunkOutB };
     geluNode.outTensors = { &geluOut };
 
