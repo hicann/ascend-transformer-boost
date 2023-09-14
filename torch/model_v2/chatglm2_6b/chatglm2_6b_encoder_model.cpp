@@ -18,13 +18,18 @@
 #include <asdops/utils/log/log.h>
 #include "models/chatglm2_6b/chatglm2_6b_fusion_layer_encoder_operation.h"
 #include "acltransformer/ops/rms_norm_operation.h"
+#include "acltransformer/ops/transpose_operation.h"
+#include "acltransformer/ops/embedding_operation.h"
 
 namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 7;
+const int WORDEMBEDDINGNODE_WEIGHT_COUNT = 1;
 const int FINALNORMNODE_WEIGHT_COUNT = 1;
+const int OPERATION_COUNT_BEFORE_LAYER = 2;
+const int OPERATION_COUNT_AFTER_LAYER = 1;
 
 enum InTensorId {
-    IN_TENSOR_HIDDENSTATES = 0,
+    IN_TENSOR_INPUTIDS = 0,
     IN_TENSOR_ROPECACHE,
     IN_TENSOR_ATTENTIONMASK,
     IN_TENSOR_SEQLEN,
@@ -71,15 +76,13 @@ AsdOps::Status ChatGlm2EncoderModel::InferShape(const std::vector<AsdOps::Tensor
     if (outTensorDescs.size() != GetOutTensorCount()) {
         return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
     }
-
-    outTensorDescs.at(0) = inTensors.at(IN_TENSOR_HIDDENSTATES).desc;
+    outTensorDescs.at(0) = graph_.weightTensors.at(0).desc;
+    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[1], inTensors.at(0).desc.dims[0],
+                                 graph_.weightTensors.at(0).desc.dims[1]};
     
-    outTensorDescs.at(1) = inTensors.at(IN_TENSOR_HIDDENSTATES).desc;
-    outTensorDescs.at(1).dims.clear();
-    outTensorDescs.at(1).dims.push_back(inTensors.at(IN_TENSOR_HIDDENSTATES).desc.dims.at(0));
-    outTensorDescs.at(1).dims.push_back(inTensors.at(IN_TENSOR_HIDDENSTATES).desc.dims.at(1));
-    outTensorDescs.at(1).dims.push_back(param_.numGroupsPerPartition);
-    outTensorDescs.at(1).dims.push_back(param_.hiddenSizePerHead);
+    outTensorDescs.at(1) = graph_.weightTensors.at(0).desc;
+    outTensorDescs.at(1).dims = {inTensors.at(0).desc.dims[1], inTensors.at(0).desc.dims[0],
+                                 param_.numGroupsPerPartition, param_.hiddenSizePerHead};
 
     for (size_t i = 2; i < outTensorDescs.size(); ++i) {
         outTensorDescs.at(i) = outTensorDescs.at(1);
@@ -89,19 +92,32 @@ AsdOps::Status ChatGlm2EncoderModel::InferShape(const std::vector<AsdOps::Tensor
 
 void ChatGlm2EncoderModel::BuildGraph()
 {
-    const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT;
+    const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT + WORDEMBEDDINGNODE_WEIGHT_COUNT;
     graph_.weightTensors.resize(weightTensorSize);
 
     // param_.layerNum * 2 (one for pastK, one for pastV)
     graph_.inTensors.resize(IN_TENSOR_MAX);
     graph_.outTensors.resize(OUT_TENSOR_MAX + param_.layerNum * 2);
-    graph_.nodes.resize(param_.layerNum + FINALNORMNODE_WEIGHT_COUNT);
+
+    const int nodeSize = param_.layerNum + OPERATION_COUNT_BEFORE_LAYER + OPERATION_COUNT_AFTER_LAYER;
+    graph_.nodes.resize(nodeSize);
 
     graph_.internalTensors.resize(graph_.nodes.size() - 1);
 
     int nodeId = 0;
+    
+    auto &wordEmbeddingNode = graph_.nodes.at(nodeId++);
+    wordEmbeddingNode.operation = std::make_shared<EmbeddingOperation>(EmbeddingParam());
+    wordEmbeddingNode.inTensors = {&graph_.weightTensors.at(0), &graph_.inTensors.at(0)};
+    wordEmbeddingNode.outTensors = {&graph_.internalTensors.at(0)};
 
-    AsdOps::Tensor *firstInTensor = &graph_.inTensors.at(IN_TENSOR_HIDDENSTATES);
+    auto &transposeNode = graph_.nodes.at(nodeId++);
+    TransposeParam transposeParam = {{1, 0, 2}};
+    transposeNode.operation = std::make_shared<TransposeOperation>(transposeParam);
+    transposeNode.inTensors = {&graph_.internalTensors.at(0)};
+    transposeNode.outTensors = {&graph_.internalTensors.at(1)};
+
+    AsdOps::Tensor *firstInTensor = &graph_.internalTensors.at(1);
 
     for (int layerId = 0; layerId < param_.layerNum; ++layerId) {
         auto &layerNode = graph_.nodes.at(nodeId++);
@@ -126,13 +142,13 @@ void ChatGlm2EncoderModel::BuildGraph()
         layerNode.inTensors.at(inTensorId++) = firstInTensor;
         for (size_t weightTensorId = 0; weightTensorId < WEIGHT_COUNT_PER_LAYER; ++weightTensorId) {
             layerNode.inTensors.at(inTensorId++) = 
-                &graph_.weightTensors.at(layerId * WEIGHT_COUNT_PER_LAYER + weightTensorId);
+                &graph_.weightTensors.at(layerId * WEIGHT_COUNT_PER_LAYER + weightTensorId + WORDEMBEDDINGNODE_WEIGHT_COUNT);
         }
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ROPECACHE);
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK);
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_SEQLEN);
 
-        layerNode.outTensors = {&graph_.internalTensors.at(layerId), &graph_.outTensors.at(layerId + 1),
+        layerNode.outTensors = {&graph_.internalTensors.at(OPERATION_COUNT_BEFORE_LAYER + layerId), &graph_.outTensors.at(layerId + 1),
                                     &graph_.outTensors.at(layerId + 1 + param_.layerNum)};
         firstInTensor = layerNode.outTensors.at(0);
     }
