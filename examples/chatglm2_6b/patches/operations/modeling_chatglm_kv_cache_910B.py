@@ -346,7 +346,8 @@ class SelfAttention(torch.nn.Module):
         self.projection_size = config.kv_channels * config.num_attention_heads
 
         # Per attention head and per partition values.
-        self.hi        self.num_attention_heads_per_partition = config.num_attention_heads
+        self.hidden_size_per_attention_head = self.projection_size // config.num_attention_heads
+        self.num_attention_heads_per_partition = config.num_attention_heads
 
         self.multi_query_attention = config.multi_query_attention
         self.qkv_hidden_size = 3 * self.projection_size
