@@ -53,6 +53,7 @@ Config::Config()
     isConvertNCHWToND_ = IsEnable("ACLTRANSFORMER_CONVERT_NCHW_TO_ND");
     isTorchTensorFormatCast_= IsEnable("ACLTRANSFORMER_TORCH_TENSOR_FORMAT_CAST");
     isUsingProfiling_ = IsEnable("ACLTRANSFORMER_PROFILING_ENABLE");
+    isTilingCopyStreamEnable_ = IsEnable("ACLTRANSFORMER_TILING_COPY_STREAM_ENABLE");
     ASD_LOG(FATAL) << "Config:\nIsSaveTensor:" << isSaveTensor_
                    << "\nIsStreamSyncEveryRunnerEnable:" << isStreamSyncEveryRunnerEnable_
                    << "\nIsStreamSyncEveryKernelEnable:" << isStreamSyncEveryKernelEnable_
@@ -136,6 +137,8 @@ bool Config::IsStreamSyncEveryPlanEnable() { return isStreamSyncEveryPlanEnable_
 bool Config::IsTorchTensorFormatCast() { return isTorchTensorFormatCast_; };
 
 bool Config::IsUsingProfiling() { return isUsingProfiling_; };
+
+bool Config::IsTilingCopyStreamEnable() { return isTilingCopyStreamEnable_; };
 
 bool Config::IsSkipKernel(const std::string &kernelName)
 {

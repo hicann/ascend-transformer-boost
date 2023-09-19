@@ -19,6 +19,7 @@
 #include <vector>
 #include <torch/script.h>
 #include <torch/custom_class.h>
+#include "acl/acl.h"
 #include "acltransformer/operation.h"
 #include "acltransformer/plan.h"
 
@@ -52,6 +53,8 @@ private:
     std::unique_ptr<AclTransformer::Operation> operation_;
     AclTransformer::Plan plan_;
     uint64_t executeCount_ = 0;
+    aclrtStream streamCopy_ = nullptr;
+    aclrtEvent copyEvent_ = nullptr;
 };
 
 #endif

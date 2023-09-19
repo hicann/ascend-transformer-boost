@@ -31,7 +31,7 @@ USE_VERBOSE=OFF
 BUILD_EXAMPLES=OFF
 BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples python_unittest_and_run"
 BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" 
-    "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" "--doxygen")
+    "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" "--doxygen" "--use_tiling_stream")
 
 function fn_build_googltest()
 {
@@ -464,6 +464,9 @@ function fn_main()
             ;;
         "--use_hccl_runner")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_HCCL_RUNNER=ON"
+            ;;
+        "--use_tiling_stream")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TILING_STREAM=ON"
             ;;
         esac
         shift

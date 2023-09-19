@@ -47,6 +47,10 @@ OperationTorch::OperationTorch(std::string opName) : opName_(opName), name_(opNa
                   << ", opId:" << opId_;
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
+#ifdef USE_DOUBLE_STREAM
+    aclrtCreateStream(&streamCopy_);
+    aclrtCreateEvent(&copyEvent_);
+#endif
 }
 
 OperationTorch::~OperationTorch() {}
@@ -153,7 +157,7 @@ void OperationTorch::ExecuteOutImpl(std::vector<torch::Tensor> &atInTensors, std
         }
     }
 
-    AclTransformer::Handle handle = {Utils::GetCurrentStream()};
+    AclTransformer::Handle handle = {Utils::GetCurrentStream(), streamCopy_, copyEvent_};
 
     AclTransformer::VariantPack variantPack;
     if (varaintPackParam != "") {
