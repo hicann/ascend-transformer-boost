@@ -818,59 +818,6 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             self.prefix_tokens = torch.arange(self.pre_seq_len).long()
             self.prefix_encoder = PrefixEncoder(config)
             self.dropout = torch.nn.Dropout(0.1)
-        # ======================================================================================
-        self.max_sequence_length = 2**13 + 2**10
-        self.num_attention_heads = config.num_attention_heads
-        self.num_attention_heads_per_partition = config.num_attention_heads
-        self.num_multi_query_groups_per_partition = config.multi_query_group_num
-        self.hidden_size = config.hidden_size
-        self.hidden_size_per_attention_head = self.hidden_size // self.num_attention_heads
-        self.token_num = 0
-        self.rmsNormEps = config.layernorm_epsilon
-
-        self.batch = 0
-        # ================================= FA init ============================
-        self.kv_cache = None
-        self.k_cache_input = None
-        self.v_cache_input = None
-        self.token_offset = None
-        # ================================= FA init ============================
-
-        self.acl_encoder_param = json.dumps({
-            "rmsNormEps": config.layernorm_epsilon,
-            "numHeadsPerPartition": config.num_attention_heads,
-            "hiddenSizePerHead": config.kv_channels,
-            "numGroupsPerPartition": config.multi_query_group_num,
-            "transKey": True,
-            "residualAddScale": 1,
-            "layerNum": config.num_layers,
-        })
-        self.acl_enconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2EncoderModel")
-        self.acl_enconder_operation.set_param(self.acl_encoder_param)
-        
-        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderFlashAttentionModel")
-        self.acl_param = json.dumps({
-                                "rmsNormEps": self.rmsNormEps,
-                                "headNum": self.num_attention_heads,
-                                "numHeadsPerPartition": self.num_attention_heads_per_partition,
-                                "hiddenSizePerHead": self.hidden_size_per_attention_head,
-                                "numGroupsPerPartition": self.num_multi_query_groups_per_partition,
-                                "transKey": True, 
-                                "dk": self.hidden_size / self.num_attention_heads,
-                                "residualAddScale": 1, 
-                                "layerNum": self.num_layers,
-                                "tokenOffset": [self.token_num] * self.batch, 
-                                "seqLen": [1] * self.batch})
-        self.acl_decoder_operation.set_param(self.acl_param)
-
-        self.attention_mask_max = torch.full((self.max_sequence_length, self.max_sequence_length), 0, dtype=torch.half).npu()
-        self.seq_len = None
-
-        self.acl_decoder_operation_inputs = [None] * (7 + self.num_layers)
-        for i in range(self.num_layers):
-            self.acl_decoder_operation_inputs[7 + i] = torch.tensor([i], dtype=torch.int32).npu()
-
-        self.weightFlag = False
 
     def get_input_embeddings(self):
         return self.embedding.word_embeddings
@@ -902,6 +849,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             output_hidden_states: Optional[bool] = None,
             return_dict: Optional[bool] = None,
     ):
+        if inputs_embeds is None:
+            inputs_embeds = self.embedding(input_ids)
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
@@ -931,84 +880,11 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         rotary_pos_emb = rotary_pos_emb.transpose(0, 1).contiguous()
 
         # Run encoder.
-        presents = () 
-        all_self_attentions = ()
-        all_hidden_states = () 
-
-        full_flag = True if seq_length > 1 else False
-        if batch_size != self.batch:
-            self.batch = batch_size
-            self.kv_cache = torch.zeros(2,
-                self.num_layers,
-                self.batch,
-                self.max_sequence_length,
-                self.num_multi_query_groups_per_partition,
-                self.hidden_size_per_attention_head,
-                device='cpu').npu().half().contiguous()
-            self.k_cache_input = torch.as_tensor(self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(
-                                                self.num_layers, self.batch, self.max_sequence_length, 
-                                                self.num_multi_query_groups_per_partition * self.hidden_size_per_attention_head)
-            self.v_cache_input = torch.as_tensor(self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(
-                                                self.num_layers, self.batch, self.max_sequence_length, 
-                                                self.num_multi_query_groups_per_partition * self.hidden_size_per_attention_head)
-            self.token_offset = torch.full((self.batch,), 0, dtype=torch.int32, device=self.kv_cache.device)
-
-            self.attention_mask_acl = torch.ones(self.batch, 1, self.max_sequence_length, self.max_sequence_length, dtype=torch.bool, device="npu")
-            self.attention_mask_acl = self.attention_mask_acl.tril()
-            self.attention_mask_acl = ~self.attention_mask_acl
-        
-        if full_flag:
-            attention_mask_acl = self.attention_mask_acl[:batch_size, : , :seq_length, :seq_length]
-            encoder_seq_len_tensor = torch.tensor([seq_length for _ in range(batch_size)]).to("npu")
-            weights = list(self.embedding.state_dict().values())
-            weights.extend(list(self.encoder.state_dict().values()))
-            
-            self.acl_enconder_operation.set_weight(weights)
-            self.acl_decoder_operation.set_weight(weights)
-            
-            input_full = [input_ids, rotary_pos_emb, attention_mask_acl, encoder_seq_len_tensor]
-            acl_model_out = self.acl_enconder_operation.execute(input_full, self.acl_encoder_param)
-            hidden_states = acl_model_out[0]
-            self.acl_presents = acl_model_out[1:]
-            for i in range(self.num_layers):
-                self.kv_cache[0, i, :batch_size, :acl_model_out[1].size()[0], ...] = acl_model_out[i+1].transpose(0, 1)
-                self.kv_cache[1, i, :batch_size, :acl_model_out[1].size()[0], ...] = acl_model_out[i + 1 + self.num_layers].transpose(0, 1)
-            self.token_num = acl_model_out[1].size()[0]
-            self.seq_len = torch.tensor([1] * batch_size, dtype=torch.int32, device=self.kv_cache.device)
-        else:
-            self.token_num = self.token_num + 1
-            self.token_offset[:] =  self.token_num
-            acl_param = json.dumps({
-                                    "tokenOffset": [self.token_num] * batch_size, 
-                                    "seqLen": [1] * batch_size})
-            self.acl_decoder_operation_inputs[0] = input_ids
-            self.acl_decoder_operation_inputs[1] = rotary_pos_emb
-            self.acl_decoder_operation_inputs[2] = self.k_cache_input
-            self.acl_decoder_operation_inputs[3] = self.v_cache_input
-            self.acl_decoder_operation_inputs[4] = self.attention_mask_max
-            self.acl_decoder_operation_inputs[5] = self.seq_len
-            self.acl_decoder_operation_inputs[6] = self.token_offset
-            hidden_states = self.acl_decoder_operation.execute(self.acl_decoder_operation_inputs, acl_param)[0]
-        
-        if output_hidden_states:
-            all_hidden_states = all_hidden_states + (hidden_states,)
         # ========== original ================
-        compare_original = False
-        if compare_original:
-            if inputs_embeds is None:
-                inputs_embeds = self.embedding(input_ids)
-            hidden_states_original, presents_original, all_hidden_states_original, all_self_attentions_original = self.encoder(
-                inputs_embeds, full_attention_mask, rotary_pos_emb=rotary_pos_emb,
-                kv_caches=past_key_values, use_cache=use_cache, output_hidden_states=output_hidden_states
-            )
-            # -----------------------------precision compare-------------------------
-            if torch.allclose(hidden_states_original, hidden_states, atol=0.05, rtol=0.05):
-                print(f"{self.count}: equal")
-            else:
-                print("hidden_states not Equal")
-                print("hidden_states_original: ", hidden_states_original)
-                print("hidden_states: ", hidden_states)
-            # -----------------------------------------------------------------------
+        hidden_states, presents, all_hidden_states, all_self_attentions = self.encoder(
+            inputs_embeds, full_attention_mask, rotary_pos_emb=rotary_pos_emb,
+            kv_caches=past_key_values, use_cache=use_cache, output_hidden_states=output_hidden_states
+        )
         # ========================================================================================================
 
         if not return_dict:
@@ -1049,6 +925,64 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
 
         if self.config.quantization_bit:
             self.quantize(self.config.quantization_bit, empty_init=True)
+        
+        # ======================================================================================
+        self.max_sequence_length = 2**13 + 2**10
+        self.model_rotary_pos_emb = None
+        self.num_attention_heads = config.num_attention_heads
+        self.num_attention_heads_per_partition = config.num_attention_heads
+        self.num_multi_query_groups_per_partition = config.multi_query_group_num
+        self.hidden_size = config.hidden_size
+        self.hidden_size_per_attention_head = self.hidden_size // self.num_attention_heads
+        self.token_num = 0
+        self.rmsNormEps = config.layernorm_epsilon
+
+        self.batch = 0
+        self.num_layers = config.num_layers
+        # ================================= FA init ============================
+        self.kv_cache = None
+        self.k_cache_input = None
+        self.v_cache_input = None
+        self.token_offset = None
+        # ================================= FA init ============================
+
+        
+        self.acl_enconder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2EncoderModel")
+        self.acl_encoder_param = json.dumps({
+            "rmsNormEps": config.layernorm_epsilon,
+            "numHeadsPerPartition": config.num_attention_heads,
+            "hiddenSizePerHead": config.kv_channels,
+            "numGroupsPerPartition": config.multi_query_group_num,
+            "transKey": True,
+            "residualAddScale": 1,
+            "layerNum": config.num_layers,
+            "seqLen":0,
+        })
+        self.acl_enconder_operation.set_param(self.acl_encoder_param)
+
+        self.acl_decoder_operation = torch.classes.ModelTorch.ModelTorch("ChatGlm2DecoderFlashAttentionModel")
+        self.acl_param = json.dumps({
+                                "rmsNormEps": self.rmsNormEps,
+                                "headNum": self.num_attention_heads,
+                                "numHeadsPerPartition": self.num_attention_heads_per_partition,
+                                "hiddenSizePerHead": self.hidden_size_per_attention_head,
+                                "numGroupsPerPartition": self.num_multi_query_groups_per_partition,
+                                "transKey": True, 
+                                "dk": self.hidden_size / self.num_attention_heads,
+                                "residualAddScale": 1, 
+                                "layerNum": self.num_layers,
+                                "tokenOffset": [self.token_num] * self.batch, 
+                                "seqLen": [1] * self.batch})
+        self.acl_decoder_operation.set_param(self.acl_param)
+
+        self.attention_mask_max = torch.full((self.max_sequence_length, self.max_sequence_length), 0, dtype=torch.half).npu()
+        self.seq_len = None
+
+        self.acl_decoder_operation_inputs = [None] * (7 + self.num_layers)
+        for i in range(self.num_layers):
+            self.acl_decoder_operation_inputs[7 + i] = torch.tensor([i], dtype=torch.int32).npu()
+
+        self.weightFlag = False
 
     def _update_model_kwargs_for_generation(
             self,
@@ -1120,23 +1054,110 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
     ):
         use_cache = use_cache if use_cache is not None else self.config.use_cache
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        
+        # ===================================== optimize ============================== 
+        batch_size, seq_length = input_ids.shape
 
-        transformer_outputs = self.transformer(
-            input_ids=input_ids,
-            position_ids=position_ids,
-            attention_mask=attention_mask,
-            past_key_values=past_key_values,
-            inputs_embeds=inputs_embeds,
-            use_cache=use_cache,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
+        # Rotary positional embeddings
+        if self.model_rotary_pos_emb is None:
+            self.model_rotary_pos_emb = self.transformer.rotary_pos_emb(self.max_sequence_length)
+        if position_ids is not None:
+            rotary_pos_emb = self.model_rotary_pos_emb[position_ids]
+        else:
+            rotary_pos_emb = self.model_rotary_pos_emb[None, :seq_length]
+        rotary_pos_emb = rotary_pos_emb.transpose(0, 1).contiguous()
 
-        hidden_states = transformer_outputs[0]
-        if return_last_logit:
-            hidden_states = hidden_states[-1:]
-        lm_logits = self.transformer.output_layer(hidden_states)
-        lm_logits = lm_logits.transpose(0, 1).contiguous()
+        full_flag = True if seq_length > 1 else False
+        if batch_size != self.batch:
+            self.batch = batch_size
+            self.kv_cache = torch.zeros(2,
+                self.num_layers,
+                self.batch,
+                self.max_sequence_length,
+                self.num_multi_query_groups_per_partition,
+                self.hidden_size_per_attention_head,
+                device='cpu').npu().half().contiguous()
+            self.k_cache_input = torch.as_tensor(self.kv_cache[0], dtype=torch.half, device=self.kv_cache.device).view(
+                                                self.num_layers, self.batch, self.max_sequence_length, 
+                                                self.num_multi_query_groups_per_partition * self.hidden_size_per_attention_head)
+            self.v_cache_input = torch.as_tensor(self.kv_cache[1], dtype=torch.half, device=self.kv_cache.device).view(
+                                                self.num_layers, self.batch, self.max_sequence_length, 
+                                                self.num_multi_query_groups_per_partition * self.hidden_size_per_attention_head)
+            self.token_offset = torch.full((self.batch,), 0, dtype=torch.int32, device=self.kv_cache.device)
+
+            self.attention_mask_acl = torch.ones(self.batch, 1, self.max_sequence_length, self.max_sequence_length, dtype=torch.bool, device="npu")
+            self.attention_mask_acl = self.attention_mask_acl.tril()
+            self.attention_mask_acl = ~self.attention_mask_acl
+        
+        if full_flag:
+            attention_mask_acl = self.attention_mask_acl[:batch_size, : , :seq_length, :seq_length]
+            encoder_seq_len_tensor = torch.tensor([seq_length for _ in range(batch_size)]).to("npu")
+            weights = list(self.transformer.embedding.state_dict().values())
+            weights.extend(list(self.transformer.encoder.state_dict().values()))
+            weights.extend(list(self.transformer.output_layer.state_dict().values()))
+            
+            acl_param = json.dumps({"seqLen": seq_length})
+            
+            self.acl_enconder_operation.set_weight(weights)
+            self.acl_decoder_operation.set_weight(weights)
+            
+            input_full = [input_ids, rotary_pos_emb, attention_mask_acl, encoder_seq_len_tensor]
+            acl_model_out = self.acl_enconder_operation.execute(input_full, acl_param)
+            lm_logits = acl_model_out[0]
+            for i in range(self.num_layers):
+                self.kv_cache[0, i, :batch_size, :acl_model_out[1].size()[0], ...] = acl_model_out[i+1].transpose(0, 1)
+                self.kv_cache[1, i, :batch_size, :acl_model_out[1].size()[0], ...] = acl_model_out[i + 1 + self.num_layers].transpose(0, 1)
+            self.token_num = acl_model_out[1].size()[0]
+            self.seq_len = torch.tensor([1] * batch_size, dtype=torch.int32, device=self.kv_cache.device)
+        else:
+            self.token_num = self.token_num + 1
+            self.token_offset[:] =  self.token_num
+            acl_param = json.dumps({
+                                    "tokenOffset": [self.token_num] * batch_size, 
+                                    "seqLen": [1] * batch_size})
+            self.acl_decoder_operation_inputs[0] = input_ids
+            self.acl_decoder_operation_inputs[1] = rotary_pos_emb
+            self.acl_decoder_operation_inputs[2] = self.k_cache_input
+            self.acl_decoder_operation_inputs[3] = self.v_cache_input
+            self.acl_decoder_operation_inputs[4] = self.attention_mask_max
+            self.acl_decoder_operation_inputs[5] = self.seq_len
+            self.acl_decoder_operation_inputs[6] = self.token_offset
+            lm_logits = self.acl_decoder_operation.execute(self.acl_decoder_operation_inputs, acl_param)[0]
+        
+        # ========================= original ====================================
+        compare_original = False
+        if compare_original:
+            transformer_outputs = self.transformer(
+                input_ids=input_ids,
+                position_ids=position_ids,
+                attention_mask=attention_mask,
+                past_key_values=past_key_values,
+                inputs_embeds=inputs_embeds,
+                use_cache=use_cache,
+                output_hidden_states=output_hidden_states,
+                return_dict=return_dict,
+            )
+
+            hidden_states_original = transformer_outputs[0]
+
+            if return_last_logit:
+                hidden_states_original = hidden_states_original[-1:]
+            lm_logits_original = self.transformer.output_layer(hidden_states_original)
+            lm_logits_original = lm_logits_original.transpose(0, 1).contiguous()
+            #  ================================================================================
+            # -----------------------------precision compare-------------------------
+            print("============================================================")
+            if torch.allclose(lm_logits_original, lm_logits, atol=0.05, rtol=0.05):
+                print(f"{self.count}: equal")
+            else:
+                print(f"{self.count}: not equal")
+                print("lm_logits not Equal")
+                print("lm_logits_original: ", lm_logits_original)
+                print("lm_logits_original shape: ", lm_logits_original.shape)
+                print("--------------------------")
+                print("lm_logits: ", lm_logits)
+                print("lm_logits shape: ", lm_logits.shape)
+            # -----------------------------------------------------------------------
 
         loss = None
         if labels is not None:
@@ -1156,12 +1177,20 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
             output = (lm_logits,) + transformer_outputs[1:]
             return ((loss,) + output) if loss is not None else output
 
+        if compare_original:
+            return CausalLMOutputWithPast(
+                loss=loss,
+                logits=lm_logits,
+                past_key_values=transformer_outputs.past_key_values,
+                hidden_states=transformer_outputs.hidden_states,
+                attentions=transformer_outputs.attentions,
+            )
         return CausalLMOutputWithPast(
             loss=loss,
             logits=lm_logits,
-            past_key_values=transformer_outputs.past_key_values,
-            hidden_states=transformer_outputs.hidden_states,
-            attentions=transformer_outputs.attentions,
+            past_key_values=None,
+            hidden_states=None,
+            attentions=None,
         )
 
     @staticmethod
@@ -1445,4 +1474,3 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                                             **kwargs)
         return self
 
-        

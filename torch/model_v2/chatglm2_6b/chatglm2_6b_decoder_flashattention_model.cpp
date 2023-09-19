@@ -21,13 +21,14 @@
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/params/self_attention_kv_cache_fusion.h"
 #include "models/chatglm2_6b/chatglm2_6blayer_decoder_flashattention_operation.h"
+#include "acltransformer/ops/linear_operation.h"
 
 namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 7;
 const int WORDEMBEDDINGNODE_WEIGHT_COUNT = 1;
-const int FINALNORMNODE_WEIGHT_COUNT = 1;
+const int WEIGHT_COUNT_AFTER_LAYER = 2;
 const int OPERATION_COUNT_BEFORE_LAYER = 2;
-const int OPERATION_COUNT_AFTER_LAYER = 1;
+const int OPERATION_COUNT_AFTER_LAYER = 3;
 
 enum InTensorId {
     IN_TENSOR_HIDDENSTATES = 0,
@@ -85,16 +86,16 @@ AsdOps::Status ChatGlm2DecoderFlashAttentionModel::InferShape(const std::vector<
     if (outTensorDescs.size() != GetOutTensorCount()) {
         return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
     }
-
+    const int lastWeightTensorId = graph_.weightTensors.size() - 1;
     outTensorDescs.at(0) = graph_.weightTensors.at(0).desc;
-    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[1], inTensors.at(0).desc.dims[0],
-                                 graph_.weightTensors.at(0).desc.dims[1]};
+    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], 1,
+                                 graph_.weightTensors.at(lastWeightTensorId).desc.dims[0]};
     return AsdOps::Status::OkStatus();
 }
 
 void ChatGlm2DecoderFlashAttentionModel::BuildGraph()
 {
-    const int weightTensorSize = WORDEMBEDDINGNODE_WEIGHT_COUNT + WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT;
+    const int weightTensorSize = WORDEMBEDDINGNODE_WEIGHT_COUNT + WEIGHT_COUNT_PER_LAYER * param_.layerNum + WEIGHT_COUNT_AFTER_LAYER;
     graph_.weightTensors.resize(weightTensorSize);
 
     graph_.inTensors.resize(IN_TENSOR_MAX + param_.layerNum);
@@ -158,12 +159,27 @@ void ChatGlm2DecoderFlashAttentionModel::BuildGraph()
         firstInTensor = layerNode.outTensors.at(0); 
     }
 
+    int internalTensorId = OPERATION_COUNT_BEFORE_LAYER + param_.layerNum;
+
     auto &finalNormNode = graph_.nodes.at(nodeId++);
     RmsNormParam finalNormParam = {param_.rmsNormEps};
     finalNormNode.operation = std::make_shared<RmsNormOperation>(finalNormParam);
-    const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT;
+    const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - WEIGHT_COUNT_AFTER_LAYER;
     finalNormNode.inTensors = {firstInTensor, &graph_.weightTensors.at(finalLayerNormWeightTensorId)};
-    finalNormNode.outTensors = {&graph_.outTensors.at(0)};
+    finalNormNode.outTensors = {&graph_.internalTensors.at(internalTensorId)};
+
+    auto &lmNode = graph_.nodes.at(nodeId++);
+    LinearParam lmParam;
+    lmParam.hasBias = false;
+    lmNode.operation = std::make_shared<LinearOperation>(lmParam);
+    const int lastWeightTensorId = graph_.weightTensors.size() - 1;
+    lmNode.inTensors = {&graph_.internalTensors.at(internalTensorId++), &graph_.weightTensors.at(lastWeightTensorId)};
+    lmNode.outTensors = {&graph_.internalTensors.at(internalTensorId)};
+
+    auto &transposeNode1 = graph_.nodes.at(nodeId++);
+    transposeNode1.operation = std::make_shared<TransposeOperation>(transposeParam);
+    transposeNode1.inTensors = {&graph_.internalTensors.at(internalTensorId)};
+    transposeNode1.outTensors = {&graph_.outTensors.at(0)};
 }
 
 AsdOps::Status ChatGlm2DecoderFlashAttentionModel::ParseVarintPackParam(const std::string &param, int nodeId, AsdOps::Any &variantPackParam)

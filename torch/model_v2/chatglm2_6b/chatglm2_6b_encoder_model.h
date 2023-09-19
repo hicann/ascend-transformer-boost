@@ -28,6 +28,7 @@ public:
         int numHeadsPerPartition = 0;
         int hiddenSizePerHead = 0;
         int numGroupsPerPartition = 0;
+        int seqLen = 0;
         void FromString(const std::string &param);
     };
 
@@ -40,6 +41,7 @@ public:
 
 private:
     void BuildGraph() override;
+    AsdOps::Status ParseVarintPackParam(const std::string &param, int nodeId, AsdOps::Any &VariantPackParam) override;
 
 private:
     Param param_;
