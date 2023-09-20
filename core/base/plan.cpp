@@ -15,6 +15,7 @@
  */
 #include "acltransformer/plan.h"
 #include <unistd.h>
+#include "acl/acl.h"
 #include <cstring>
 #include <syscall.h>
 #include <asdops/utils/log/log.h>
@@ -132,6 +133,11 @@ AsdOps::Status Plan::Execute(Handle handle, VariantPack &variantPack)
     if (!st.Ok()) {
         return st;
     }
+#ifdef USE_TILING_STREAM
+    aclrtRecordEvent(handle.copyEvent, handle.copyStream);
+    aclrtStreamWaitEvent(handle.stream, handle.copyEvent);
+    aclrtResetEvent(handle.copyEvent, handle.stream);
+#endif
 
     st = runner_->Execute(handle, runnerVariantPack_);
     if (!st.Ok()) {
@@ -163,9 +169,13 @@ AsdOps::Status Plan::CopyHostTilingToDevice(Handle handle)
         ASD_LOG(INFO) << name_ << " copy host tiling to device start, totalTilingBufferSize:"
                       << runnerVariantPack_.tilingBufferSize;
         AsdOps::Timer timer;
+        void *stream = handle.stream;
+#ifdef USE_TILING_STREAM
+        stream = handle.copyStream;
+#endif
         int ret = AsdRtMemCopyAsync(runnerVariantPack_.tilingBuffer, runnerVariantPack_.tilingBufferSize,
                                     hostTilingBuffer_.data(), runnerVariantPack_.tilingBufferSize,
-                                    ASDRT_MEMCOPY_HOST_TO_DEVICE, handle.stream);
+                                    ASDRT_MEMCOPY_HOST_TO_DEVICE, stream);
         AsdOps::GetSingleton<Statistic>().tillingCopyTime += timer.ElapsedMicroSecond();
         if (ret != 0) {
             ASD_LOG(ERROR) << name_ << " copy host tiling to device fail, ret:" << ret;

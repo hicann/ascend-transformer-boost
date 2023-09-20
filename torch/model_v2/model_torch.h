@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "acl/acl.h"
 #include <torch/script.h>
 #include <torch/custom_class.h>
 #include <asdops/utils/time/timer.h>
@@ -44,6 +45,8 @@ private:
     std::shared_ptr<AclTransformer::Model> model_;
     uint64_t executeCount_ = 0;
     uint64_t modelId_ = 0;
+    aclrtStream streamCopy_ = nullptr;
+    aclrtEvent copyEvent_ = nullptr;
 };
 
 #endif

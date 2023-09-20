@@ -18,6 +18,8 @@
 namespace AclTransformer {
 struct Handle {
     void *stream = nullptr;
+    void *copyStream = nullptr;
+    void *copyEvent = nullptr;
 };
 } // namespace AclTransformer
 #endif
