@@ -75,7 +75,7 @@ AsdOps::Status SelfAttentionOperation::InferShapeImpl(const AsdOps::SVector<AsdO
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims.at(2) * inTensors.at(0).desc.dims.at(3));
 
         outTensorDescs.at(1) = inTensors.at(1).desc;
-        outTensorDescs.at(2) = inTensors.at(2).desc;
+        outTensorDescs.at(2) = inTensors.at(1).desc;
     } else if (param_.model == "baichuan2_13b") {
         // gptneox20b [bs, sq, hn, hs]
         // out [bs, sq, hn * hs]
