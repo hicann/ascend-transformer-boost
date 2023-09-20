@@ -21,6 +21,7 @@
 #include "acltransformer/utils/tensor_util.h"
 #include "acltransformer/statistic.h"
 #include "acltransformer/config.h"
+#include "acl/acl.h"
 #include "model.h"
 #include "torch/utils/utils.h"
 #include "torch/model_v2/chatglm6b/chatglm6b_decoder_model.h"
@@ -65,6 +66,10 @@ ModelTorch::ModelTorch(std::string modelName) : modelName_(modelName)
     std::vector<AsdOps::Operation *> ops;
     AsdOps::Ops::Instance().GetAllOperations(ops);
     modelId_ = GetNewModelId();
+#ifdef USE_TILING_STREAM
+    aclrtCreateStream(&streamCopy_);
+    aclrtCreateEvent(&copyEvent_);
+#endif
     ASD_LOG(INFO) << "ModelTorch new modelName:" << modelName_ << ", modelId:" << modelId_;
 }
 
@@ -237,7 +242,7 @@ void ModelTorch::ExecuteOut(std::vector<torch::Tensor> atInTensors, std::vector<
 void ModelTorch::ExecuteOutImpl(std::vector<AsdOps::Tensor> &inTensors, std::vector<AsdOps::Tensor> &outTensors,
                                 const std::string &param)
 {
-    AclTransformer::Handle handle = {Utils::GetCurrentStream()};
+    AclTransformer::Handle handle = {Utils::GetCurrentStream(), streamCopy_, copyEvent_};
     model_->Execute(handle, inTensors, outTensors, param);
     executeCount_++;
 }
