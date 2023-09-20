@@ -13,33 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef MLP_QUANT_OPS_RUNNER_BUILDER_H
-#define MLP_QUANT_OPS_RUNNER_BUILDER_H
-#include <asdops/utils/log/log.h>
-#include "acltransformer/runner_builder.h"
+#ifndef MLP_QUANT_OPS_GLM2_RUNNER_910B_H
+#define MLP_QUANT_OPS_GLM2_RUNNER_910B_H
+#include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/mlp_quant.h"
-#include "mlp_quant_ops_runner.h"
-#include "mlp_quant_ops_glm2_6b_runner_910b.h"
 
 namespace AclTransformer {
-class MlpQuantOpsRunnerBuilder : public RunnerBuilder {
+class MlpQuantOpsGlm2Runner910b : public OpsRunner {
 public:
-    MlpQuantOpsRunnerBuilder(const MlpQuantParam &param) : param_(param) {}
-    virtual ~MlpQuantOpsRunnerBuilder() = default;
-    Runner *Build() override
-    {
-        if (param_.model == "chatglm2_6b") {
-            if (AsdOps::GetSingleton<Config>().Is910B()) {
-                return new MlpQuantOpsGlm2Runner910b(param_);
-            }
-        } else {
-            return new MlpQuantOpsRunner(param_);
-        }
-    }
+    explicit MlpQuantOpsGlm2Runner910b(const MlpQuantParam &param);
+    virtual ~MlpQuantOpsGlm2Runner910b();
 
 private:
     MlpQuantParam param_;
 };
-
 } // namespace AclTransformer
 #endif
