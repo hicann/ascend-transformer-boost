@@ -51,6 +51,7 @@
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/ffn_quant_operation.h"
 #include "acltransformer/ops/lm_head_operation.h"
+#include "acltransformer/ops/lm_head_slice_operation.h"
 #include "acltransformer/ops/lm_head_parallel_operation.h"
 #include "acltransformer/ops/word_embedding_parallel_operation.h"
 #include "acltransformer/ops/transdata_int8_operation.h"
@@ -1451,6 +1452,15 @@ AclTransformer::Operation *LmHeadOperationCreate(const nlohmann::json &paramJson
     return new AclTransformer::LmHeadOperation(param);
 }
 
+AclTransformer::Operation *LmHeadSliceOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LmHeadSliceParam param;
+    if (paramJson.contains("seqLen")) {
+        param.seqLen = paramJson["seqLen"].get<int>();
+    }
+    return new AclTransformer::LmHeadSliceOperation(param);
+}
+
 AclTransformer::Operation *LmHeadParallelOperationCreate(const nlohmann::json &paramJson)
 {
     AclTransformer::LmHeadParallelParam param;
@@ -1546,6 +1556,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"BaiChuan27BLayerDecoderParallelOperation", &BaiChuan27BLayerDecoderParallelOperationCreate},
     {"BaiChuan27BLayerEncoderParallelOperation", &BaiChuan27BLayerEncoderParallelOperationCreate},
     {"LmHeadOperation", &LmHeadOperationCreate},
+    {"LmHeadSliceOperation", &LmHeadSliceOperationCreate},
     {"LmHeadParallelOperation", &LmHeadParallelOperationCreate},
     {"ChatGlm2LayerEncoderOperation", &ChatGlm2LayerEncoderOperationCreate},
     {"ChatGlm2LayerDecoderOperation", &ChatGlm2LayerDecoderOperationCreate},

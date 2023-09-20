@@ -54,6 +54,7 @@ enum RunnerType {
     RUNNER_TYPE_BARRIER,
     RUNNER_TYPE_TRANSDATA_INT8,
     RUNNER_TYPE_APPLY_ROTARY_EMB,
+    RUNNER_TYPE_LMHEAD_SLICE,
     RUNNER_TYPE_MAX
 };
 } // namespace AclTransformer
