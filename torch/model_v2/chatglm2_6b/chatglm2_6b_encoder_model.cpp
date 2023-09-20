@@ -20,13 +20,15 @@
 #include "acltransformer/ops/rms_norm_operation.h"
 #include "acltransformer/ops/transpose_operation.h"
 #include "acltransformer/ops/embedding_operation.h"
+#include "acltransformer/ops/linear_operation.h"
+#include "acltransformer/ops/lm_head_slice_operation.h"
 
 namespace AclTransformer {
 const int WEIGHT_COUNT_PER_LAYER = 7;
 const int WORDEMBEDDINGNODE_WEIGHT_COUNT = 1;
-const int FINALNORMNODE_WEIGHT_COUNT = 1;
+const int WEIGHT_COUNT_AFTER_LAYER = 2;
 const int OPERATION_COUNT_BEFORE_LAYER = 2;
-const int OPERATION_COUNT_AFTER_LAYER = 1;
+const int OPERATION_COUNT_AFTER_LAYER = 4;
 
 enum InTensorId {
     IN_TENSOR_INPUTIDS = 0,
@@ -51,6 +53,7 @@ void ChatGlm2EncoderModel::Param::FromString(const std::string &param)
     numHeadsPerPartition = paramJson["numHeadsPerPartition"].get<int>();
     hiddenSizePerHead = paramJson["hiddenSizePerHead"].get<int>();
     numGroupsPerPartition = paramJson["numGroupsPerPartition"].get<int>();
+    seqLen = paramJson["seqLen"].get<int>();
    
 
     ASD_LOG(INFO) << "ChatGlm2EncoderModel param rmsNormEps:" << rmsNormEps 
@@ -76,9 +79,10 @@ AsdOps::Status ChatGlm2EncoderModel::InferShape(const std::vector<AsdOps::Tensor
     if (outTensorDescs.size() != GetOutTensorCount()) {
         return AsdOps::Status::FailStatus(1, "outTensorDescs size not equal graph outTensors size");
     }
+    const int lastWeightTensorId = graph_.weightTensors.size() - 1;
     outTensorDescs.at(0) = graph_.weightTensors.at(0).desc;
-    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[1], inTensors.at(0).desc.dims[0],
-                                 graph_.weightTensors.at(0).desc.dims[1]};
+    outTensorDescs.at(0).dims = {inTensors.at(0).desc.dims[0], 1,
+                                 graph_.weightTensors.at(lastWeightTensorId).desc.dims[0]};
     
     outTensorDescs.at(1) = graph_.weightTensors.at(0).desc;
     outTensorDescs.at(1).dims = {inTensors.at(0).desc.dims[1], inTensors.at(0).desc.dims[0],
@@ -92,7 +96,7 @@ AsdOps::Status ChatGlm2EncoderModel::InferShape(const std::vector<AsdOps::Tensor
 
 void ChatGlm2EncoderModel::BuildGraph()
 {
-    const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum + FINALNORMNODE_WEIGHT_COUNT + WORDEMBEDDINGNODE_WEIGHT_COUNT;
+    const int weightTensorSize = WEIGHT_COUNT_PER_LAYER * param_.layerNum + WEIGHT_COUNT_AFTER_LAYER + WORDEMBEDDINGNODE_WEIGHT_COUNT;
     graph_.weightTensors.resize(weightTensorSize);
 
     // param_.layerNum * 2 (one for pastK, one for pastV)
@@ -153,11 +157,48 @@ void ChatGlm2EncoderModel::BuildGraph()
         firstInTensor = layerNode.outTensors.at(0);
     }
 
+    int internalTensorId = OPERATION_COUNT_BEFORE_LAYER + param_.layerNum;
+
     auto &finalNormNode = graph_.nodes.at(nodeId++);
     RmsNormParam finalNormParam = {param_.rmsNormEps};
     finalNormNode.operation = std::make_shared<RmsNormOperation>(finalNormParam);
-    const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - FINALNORMNODE_WEIGHT_COUNT;
+    const int finalLayerNormWeightTensorId = graph_.weightTensors.size() - WEIGHT_COUNT_AFTER_LAYER;
     finalNormNode.inTensors = {firstInTensor, &graph_.weightTensors.at(finalLayerNormWeightTensorId)};
-    finalNormNode.outTensors = {&graph_.outTensors.at(0)};
+    finalNormNode.outTensors = {&graph_.internalTensors.at(internalTensorId)};
+
+    auto &sliceNode = graph_.nodes.at(nodeId++);
+    LmHeadSliceParam sliceParam = {param_.seqLen};
+    sliceNode.operation = std::make_shared<LmHeadSliceOperation>(sliceParam);
+    sliceNode.inTensors = {&graph_.internalTensors.at(internalTensorId++)};
+    sliceNode.outTensors = {&graph_.internalTensors.at(internalTensorId)};
+
+    auto &lmNode = graph_.nodes.at(nodeId++);
+    LinearParam lmParam;
+    lmParam.hasBias = false;
+    lmNode.operation = std::make_shared<LinearOperation>(lmParam);
+    const int lastWeightTensorId = graph_.weightTensors.size() - 1;
+    lmNode.inTensors = {&graph_.internalTensors.at(internalTensorId++), &graph_.weightTensors.at(lastWeightTensorId)};
+    lmNode.outTensors = {&graph_.internalTensors.at(internalTensorId)};
+
+    auto &transposeNode1 = graph_.nodes.at(nodeId++);
+    transposeNode1.operation = std::make_shared<TransposeOperation>(transposeParam);
+    transposeNode1.inTensors = {&graph_.internalTensors.at(internalTensorId)};
+    transposeNode1.outTensors = {&graph_.outTensors.at(0)};
+}
+
+AsdOps::Status ChatGlm2EncoderModel::ParseVarintPackParam(const std::string &param, int nodeId, AsdOps::Any &variantPackParam)
+{
+    if (nodeId != 31) {
+        return AsdOps::Status::OkStatus();
+    }
+    LmHeadSliceParam opParam;
+    nlohmann::json paramJson = nlohmann::json::parse(param);
+    opParam.seqLen = paramJson["seqLen"].get<int>();
+
+    ASD_LOG(INFO) << "ChatGlm2EncoderModel::ParseVarintPackParam seqLen: " << opParam.seqLen;
+
+    variantPackParam = opParam;
+
+    return AsdOps::Status::OkStatus();
 }
 } // namespace AclTransformer
