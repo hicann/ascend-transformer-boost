@@ -52,6 +52,7 @@
 #include "torch/model_v2/llama7b/llama7b_decoder_without_fusion_model.h"
 #include "torch/model_v2/llama_adapter_7b/llama_adapter_7b_encoder_model.h"
 #include "torch/model_v2/llama_adapter_7b/llama_adapter_7b_decoder_model.h"
+#include "torch/model_v2/llama70b/llama70b_decoder_model.h"
 
 uint64_t GetNewModelId()
 {
@@ -131,6 +132,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::LlamaAdapter7BEncoderModel>(param);
     } else if (modelName_ == "LlamaAdapter7BDecoderModel") {
         model_ = std::make_shared<AclTransformer::LlamaAdapter7BDecoderModel>(param);
+    } else if (modelName_ == "Llama70BDecoderModel") {
+        model_ = std::make_shared<AclTransformer::Llama70BDecoderModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
