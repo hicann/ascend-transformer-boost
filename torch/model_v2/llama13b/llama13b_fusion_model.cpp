@@ -120,7 +120,8 @@ void Llama13BFusionModel::BuildGraph()
     const int nodeSize = OPERATION_COUNT_BEFORE_LAYER + param_.layerNum + OPERATION_COUNT_AFTER_LAYER;
     graph_.nodes.resize(nodeSize);
 
-    graph_.internalTensors.resize(graph_.nodes.size() + 1);
+    const int internalTensorSize = graph_.nodes.size() + 1
+    graph_.internalTensors.resize(internalTensorSize);
 
     int nodeId = 0;
     auto &embeddingNode = graph_.nodes.at(nodeId++);
@@ -149,7 +150,7 @@ void Llama13BFusionModel::BuildGraph()
         modelParam.rmsNormEps = param_.rmsNormEps;
         modelParam.headNum = param_.headNum;
         modelParam.dk = param_.dk;
-        modelParam.layerId = param_.layerId;
+        modelParam.layerId = layerId;
         modelParam.tokenOffset = param_.tokenOffset;
         modelParam.seqLen = param_.seqLen;
         modelParam.rotaryCoeff = param_.rotaryCoeff;
@@ -164,8 +165,8 @@ void Llama13BFusionModel::BuildGraph()
             layerNode.inTensors.at(inTensorId++) = &graph_.weightTensors.at(
                 layerId * WEIGHT_COUNT_PER_LAYER + weightTensorId + WORDEMBEDDINGNODE_WEIGHT_COUNT);
         }
-        layerNode.inTensors.at(inTensorId++) = cosEmbedTensor
-        layerNode.inTensors.at(inTensorId++) = sinEmbedTensor
+        layerNode.inTensors.at(inTensorId++) = cosEmbedTensor;
+        layerNode.inTensors.at(inTensorId++) = sinEmbedTensor;
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_ATTENTIONMASK);
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_PAST_KEY);
         layerNode.inTensors.at(inTensorId++) = &graph_.inTensors.at(IN_TENSOR_PAST_VALUE);

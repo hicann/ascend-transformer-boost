@@ -26,7 +26,7 @@ public:
         int dk = 0;
         int layerNum = 0;
         AsdOps::SVector<int32_t> tokenOffset = {};
-        AsdOps::SVector<int32_t> seq_len = {};
+        AsdOps::SVector<int32_t> seqLen = {};
         int rotaryCoeff = 2;
         std::string model = "llama13b";
         void FromString(const std::string &param);

@@ -53,7 +53,7 @@
 #include "torch/model_v2/llama7b/llama7b_decoder_without_fusion_model.h"
 #include "torch/model_v2/llama_adapter_7b/llama_adapter_7b_encoder_model.h"
 #include "torch/model_v2/llama_adapter_7b/llama_adapter_7b_decoder_model.h"
-#include "torch/model_v2/llama13b/llama13b_decoder_fusion_model.h"
+#include "torch/model_v2/llama13b/llama13b_fusion_model.h"
 
 uint64_t GetNewModelId()
 {
