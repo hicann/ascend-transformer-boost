@@ -54,7 +54,7 @@ def batch_filling_sequence(
         logits, *output_per_layers = model(
             tokens[:, index:],
             position_ids[..., index: counter+1],
-            attention_mask[..., index: counter+1, :counter+1], # TODO memlen
+            attention_mask, # TODO memlen
             mems=mems,
             **kw_args
         )
@@ -78,12 +78,12 @@ def batch_filling_sequence(
         # mems = mems.reshape(mems.shape[0], batch_size, num_beams, mems.shape[-2], mems.shape[-1])        
         tokens, mems = strategy.forward(logits, tokens, mems)
         postprocess_time.append(time.time() - postprocess_start)
-        if len(tokens.shape) == 3 and num_beams == 1:
-            num_beams = tokens.shape[1]
-            position_ids = position_ids.unsqueeze(1).expand(batch_size, num_beams, -1).reshape(batch_size * num_beams, -1)
-            attention_mask_shape = attention_mask.shape[-3:]
-            attention_mask = attention_mask.unsqueeze(1).expand(batch_size, num_beams, -1, -1, -1).reshape(
-                batch_size * num_beams, *attention_mask_shape)
+        # if len(tokens.shape) == 3 and num_beams == 1:
+        #     num_beams = tokens.shape[1]
+        #     position_ids = position_ids.unsqueeze(1).expand(batch_size, num_beams, -1).reshape(batch_size * num_beams, -1)
+        #     attention_mask_shape = attention_mask.shape[-3:]
+        #     attention_mask = attention_mask.unsqueeze(1).expand(batch_size, num_beams, -1, -1, -1).reshape(
+        #         batch_size * num_beams, *attention_mask_shape)
         token_time.append(time.time() - start_time)
         if strategy.is_done:
             break
