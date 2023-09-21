@@ -120,7 +120,7 @@ void Llama13BFusionModel::BuildGraph()
     const int nodeSize = OPERATION_COUNT_BEFORE_LAYER + param_.layerNum + OPERATION_COUNT_AFTER_LAYER;
     graph_.nodes.resize(nodeSize);
 
-    const int internalTensorSize = graph_.nodes.size() + 1
+    const int internalTensorSize = graph_.nodes.size() + 1;
     graph_.internalTensors.resize(internalTensorSize);
 
     int nodeId = 0;

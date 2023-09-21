@@ -137,8 +137,8 @@ void ModelTorch::SetParam(std::string param)
         model_ = std::make_shared<AclTransformer::LlamaAdapter7BEncoderModel>(param);
     } else if (modelName_ == "LlamaAdapter7BDecoderModel") {
         model_ = std::make_shared<AclTransformer::LlamaAdapter7BDecoderModel>(param);
-    } else if (modelName_ == "Llama13BDecoderFusionModel") {
-        model_ = std::make_shared<AclTransformer::Llama13BDecoderFusionModel>(param);
+    } else if (modelName_ == "Llama13BFusionModel") {
+        model_ = std::make_shared<AclTransformer::Llama13BFusionModel>(param);
     } else {
         ASD_LOG(FATAL) << "not support modelName:" << modelName_;
         return;
