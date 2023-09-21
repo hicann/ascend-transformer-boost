@@ -192,8 +192,8 @@ void Llama13BFusionModel::BuildGraph()
     linearParam.hasBias = false;
     outLinearNode.operation = std::make_shared<LinearOperation>(linearParam);
     const int finalLinearWeightTensorId = graph_.weightTensors.size() - OUT_LM_HEAD_WEIGHT_COUNT;
-    outLinearNode.inTensors = {&graph_.internalTensors.at(finalLayerNormOutTensorId,
-                                &graph_.weightTensors.at(finalLinearWeightTensorId))};
+    outLinearNode.inTensors = {&graph_.internalTensors.at(finalLayerNormOutTensorId),
+                                &graph_.weightTensors.at(finalLinearWeightTensorId)};
     outLinearNode.outTensors = {&graph_.outTensors.at(0)};
 }
 
