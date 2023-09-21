@@ -159,7 +159,7 @@ LLaMA13BLayerFusionOperation::LLaMA13BLayerFusionOperation(const LLaMA13BLayerFu
 
     mlpResidualAddNode.operation.reset(new AclTransformer::AddOperation({}));
     mlpResidualAddNode.inTensorIds = {INTERMIDATE_SELFRESIDUALADDOUT, INTERMIDATE_MLPOUT};
-    mlpResidualAddNode.outTensorIds = {OUT_LLAMA7BLAYEROUT};
+    mlpResidualAddNode.outTensorIds = {OUT_LLAMA13BLAYEROUT};
 }
 
 LLaMA13BLayerFusionOperation::~LLaMA13BLayerFusionOperation() {}
