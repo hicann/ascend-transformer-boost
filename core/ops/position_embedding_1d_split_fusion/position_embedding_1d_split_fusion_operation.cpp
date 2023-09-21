@@ -23,6 +23,9 @@ namespace AclTransformer {
 static const uint64_t IN_TENSOR_COUNT = 6;
 static const uint64_t OUT_TENSOR_COUNT = 2;
 
+static const uint64_t LLAMA_IN_TENSOR_COUNT = 4;
+static const uint64_t LLAMA_OUT_TENSOR_COUNT = 3;
+
 PositionEmbedding1dSplitFusionOperation::PositionEmbedding1dSplitFusionOperation(const PositionEmbedding1dFusionParam &param)
     : Operation("PositionEmbedding1dSplitFusionOperation"), param_(param)
 {
@@ -31,23 +34,45 @@ PositionEmbedding1dSplitFusionOperation::PositionEmbedding1dSplitFusionOperation
 
 PositionEmbedding1dSplitFusionOperation::~PositionEmbedding1dSplitFusionOperation() {}
 
-uint64_t PositionEmbedding1dSplitFusionOperation::GetInTensorCount() const { return IN_TENSOR_COUNT; }
+uint64_t PositionEmbedding1dSplitFusionOperation::GetInTensorCount() const
+{
+    return (param_.model == "llama13b") ? LLAMA_IN_TENSOR_COUNT : IN_TENSOR_COUNT;
+}
 
-uint64_t PositionEmbedding1dSplitFusionOperation::GetOutTensorCount() const { return OUT_TENSOR_COUNT; }
+uint64_t PositionEmbedding1dSplitFusionOperation::GetOutTensorCount() const
+{
+    return (param_.model == "llama13b") ? LLAMA_OUT_TENSOR_COUNT : OUT_TENSOR_COUNT;
+}
 
 AsdOps::Status
 PositionEmbedding1dSplitFusionOperation::InferShapeImpl(const AsdOps::SVector<AsdOps::Tensor> &inTensors,
                               AsdOps::SVector<AsdOps::TensorDesc> &outTensorDescs) const
 {
-    outTensorDescs.resize(GetOutTensorCount());
-    outTensorDescs.at(0) = inTensors.at(0).desc;
-    outTensorDescs.at(0).dims.clear();
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
-    outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
-    outTensorDescs.at(1) = inTensors.at(1).desc;
-    outTensorDescs.at(1).dims.clear();
-    outTensorDescs.at(1).dims.push_back(inTensors.at(1).desc.dims[0]);
-    outTensorDescs.at(1).dims.push_back(inTensors.at(1).desc.dims[1]);
+    if (param_.model == "llama13b") {
+        outTensorDescs.resize(GetOutTensorCount());
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1] / 3);
+        outTensorDescs.at(1) = inTensors.at(0).desc;
+        outTensorDescs.at(1).dims.clear();
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims[0]);
+        outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims[1] / 3);
+        outTensorDescs.at(2) = inTensors.at(0).desc;
+        outTensorDescs.at(2).dims.clear();
+        outTensorDescs.at(2).dims.push_back(inTensors.at(0).desc.dims[0]);
+        outTensorDescs.at(2).dims.push_back(inTensors.at(0).desc.dims[1] / 3);
+    } else {
+        outTensorDescs.resize(GetOutTensorCount());
+        outTensorDescs.at(0) = inTensors.at(0).desc;
+        outTensorDescs.at(0).dims.clear();
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
+        outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1]);
+        outTensorDescs.at(1) = inTensors.at(1).desc;
+        outTensorDescs.at(1).dims.clear();
+        outTensorDescs.at(1).dims.push_back(inTensors.at(1).desc.dims[0]);
+        outTensorDescs.at(1).dims.push_back(inTensors.at(1).desc.dims[1]);
+    }
 
     return AsdOps::Status::OkStatus();
 }
