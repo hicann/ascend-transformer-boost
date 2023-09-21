@@ -54,10 +54,11 @@ PositionEmbedding1dSplitFusionOperation::InferShapeImpl(const AsdOps::SVector<As
         outTensorDescs.at(0).dims.clear();
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[0]);
         outTensorDescs.at(0).dims.push_back(inTensors.at(0).desc.dims[1] / 3);
-        outTensorDescs.at(1) = inTensors.at(1).desc;
+        outTensorDescs.at(1) = inTensors.at(0).desc;
         outTensorDescs.at(1).dims.clear();
         outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims[0]);
         outTensorDescs.at(1).dims.push_back(inTensors.at(0).desc.dims[1] / 3);
+        outTensorDescs.at(2) = inTensors.at(0).desc;
         outTensorDescs.at(2).dims.clear();
         outTensorDescs.at(2).dims.push_back(inTensors.at(0).desc.dims[0]);
         outTensorDescs.at(2).dims.push_back(inTensors.at(0).desc.dims[1] / 3);
