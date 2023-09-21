@@ -68,6 +68,7 @@
 #include "models/llama7b/llama7blayer_operation.h"
 #include "models/llama7b/llama7blayer_encoder_operation.h"
 #include "models/llama7b/llama7blayer_fusion_operation.h"
+#include "models/llama13b/llama13blayer_fusion_operation.h"
 #include "models/baichuan1_7b/baichuan1_7b_layer_decoder_operation.h"
 #include "models/baichuan1_7b/baichuan1_7b_layer_encoder_operation.h"
 #include "models/baichuan1_7b/baichuan1_7b_layer_encoder_with_bias_operation.h"
@@ -291,6 +292,26 @@ static AclTransformer::Operation *LLaMA7BLayerFusionOperationCreate(const nlohma
     ASD_LOG(INFO) << "LLaMA7BLayerFusionParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
                   << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
     return new AclTransformer::LLaMA7BLayerFusionOperation(param);
+}
+
+static AclTransformer::Operation *LLaMA13BLayerFusionOperationCreate(const nlohmann::json &paramJson)
+{
+    AclTransformer::LLaMA13BLayerFusionParam param;
+    param.headNum = paramJson["headNum"].get<int>();
+    param.rmsNormEps = paramJson["rmsNormEps"].get<float>();
+    param.dk = paramJson["dk"].get<int>();
+    param.layerId = paramJson["layerId"].get<int>();
+    param.model = paramJson["model"].get<std::string>();
+    param.rotaryCoeff = paramJson["rotaryCoeff"].get<int>();
+    for (auto item : paramJson["tokenOffset"]) {
+        param.tokenOffset.push_back(item.get<int>());
+    }
+    for (auto item : paramJson["seqLen"]) {
+        param.seqLen.push_back(item.get<int>());
+    }
+    ASD_LOG(INFO) << "LLaMA13BLayerFusionParam headNum:" << param.headNum << ", rmsNormEps:" << param.rmsNormEps
+                  << ", dk:" << param.dk << ", model:" << param.model << ", rotaryCoeff:" << param.rotaryCoeff;
+    return new AclTransformer::LLaMA13BLayerFusionOperation(param);
 }
 
 static AclTransformer::Operation *BaiChuan27BLayerDecoderParallelOperationCreate(const nlohmann::json &paramJson)
@@ -1546,6 +1567,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"LLaMA7BLayerOperation", &LLaMA7BLayerOperationCreate},
     {"LLaMA7BLayerEncoderOperation", &LLaMA7BLayerEncoderOperationCreate},
     {"LLaMA7BLayerFusionOperation", &LLaMA7BLayerFusionOperationCreate},
+    {"LLaMA13BLayerFusionOperation", &LLaMA13BLayerFusionOperationCreate},
     {"BaiChuan17BLayerDecoderOperation", &BaiChuan17BLayerDecoderOperationCreate},
     {"BaiChuan17BLayerEncoderOperation", &BaiChuan17BLayerEncoderOperationCreate},
     {"BaiChuan27BLayerDecoderOperation", &BaiChuan27BLayerDecoderOperationCreate},
@@ -1605,7 +1627,7 @@ AsdOps::Any ParseParam(const std::string &opName, const std::string &param)
 
     if (opName == "ChatGlm6BLayerDecoderFlashAttentionOperation" || opName == "LLaMA7BLayerFusionOperation" ||
         opName == "ChatGlm2LayerDecoderFlashAttentionOperation" || opName == "Glm130BLayerDecoderFusionOperation" ||
-        opName == "GptNeox20BLayerDecoderFlashAttentionOperation") {
+        opName == "GptNeox20BLayerDecoderFlashAttentionOperation" || opName == "LLaMA13BLayerFusionOperation") {
         AclTransformer::SelfAttentionKvCacheFusionVariantPackParam opParam;
         for (auto item : paramJson["tokenOffset"]) {
             opParam.tokenOffset.push_back(item.get<int>());

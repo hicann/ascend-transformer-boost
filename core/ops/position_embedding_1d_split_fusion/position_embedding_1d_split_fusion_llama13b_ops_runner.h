@@ -13,26 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef POSITIONEMBEDDING_1D_FUSION_OPS_RUNNER_BUILDER_H
-#define POSITIONEMBEDDING_1D_FUSION_OPS_RUNNER_BUILDER_H
-#include "acltransformer/runner_builder.h"
+#ifndef POSITIONEMBEDDING_1D_FUSION_LLAMA13B_OPS_RUNNER_H
+#define POSITIONEMBEDDING_1D_FUSION_LLAMA13B_OPS_RUNNER_H
+#include "acltransformer/base/ops_runner.h"
 #include "acltransformer/params/position_embedding_1d_fusion.h"
-#include "position_embedding_1d_split_fusion_ops_runner.h"
-#include "position_embedding_1d_split_fusion_llama13b_ops_runner.h"
 
 namespace AclTransformer {
-class PositionEmbedding1dFusionOpsRunnerBuilder : public RunnerBuilder {
+class PositionEmbedding1dFusionLlama13bOpsRunner : public OpsRunner {
 public:
-    explicit PositionEmbedding1dFusionOpsRunnerBuilder(const PositionEmbedding1dFusionParam &param) : param_(param) {}
-    virtual ~PositionEmbedding1dFusionOpsRunnerBuilder() = default;
-    Runner *Build() override 
-    {
-        if (param_.model == "llama13b") {
-            return new PositionEmbedding1dFusionLlama13bOpsRunner(param_);
-        } else {
-            return new PositionEmbedding1dFusionOpsRunner(param_); 
-        }
-    }
+    explicit PositionEmbedding1dFusionLlama13bOpsRunner(const PositionEmbedding1dFusionParam &param);
+    virtual ~PositionEmbedding1dFusionLlama13bOpsRunner();
 
 private:
     PositionEmbedding1dFusionParam param_;
