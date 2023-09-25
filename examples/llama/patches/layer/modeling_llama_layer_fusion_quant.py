@@ -443,7 +443,8 @@ class LlamaDecoderLayer(nn.Module):
             "inputOffset_3": int(self.input_offset_dict[self.gate_name]),
             "inputScale_4": float(1 / self.input_scale_dict[self.down_name]),
             "inputOffset_4": int(self.input_offset_dict[self.down_name]),
-            "tokenOffset": [self.token_num], "seqLen": [1], "layerId": self.layerId, "model": "llama7b", "rotaryCoeff": 2
+            "tokenOffset": [self.token_num], "seqLen": [1], "layerId": self.layerId, "model": "llama7b", "rotaryCoeff": 2,
+            "rmsNormEps": 1e-12,
         })
         # print(param)
         self.acl_llama_layer.set_param(param)
@@ -541,7 +542,8 @@ class LlamaDecoderLayer(nn.Module):
                 "inputOffset_3": int(self.input_offset_dict[self.gate_name]),
                 "inputScale_4": float(1 / self.input_scale_dict[self.down_name]),
                 "inputOffset_4": int(self.input_offset_dict[self.down_name]),
-                "tokenOffset": [self.token_num], "seqLen": [1], "layerId": self.layerId, "model": "llama7b", "rotaryCoeff": 2
+                "tokenOffset": [self.token_num], "seqLen": [1], "layerId": self.layerId, "model": "llama7b", "rotaryCoeff": 2,
+                "rmsNormEps": 1e-12,
             })
             # self.acl_llama_layer.set_param(acl_param)
             #NEW

@@ -36,6 +36,7 @@ struct LLaMA13BLayerFusionQuantParam {
     AsdOps::SVector<int> seqLen;
     AsdOps::SVector<int> tokenOffset;
     int rotaryCoeff = 2;
+    float rmsNormEps = 1e-12;
 };
 } // namespace AclTransformer
 #endif
