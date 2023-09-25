@@ -103,6 +103,7 @@ PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const Posit
     embedding1Node.inTensorViewFuncs.at(0) = Squeeze01;
 
     InferShapePreFunc split1InferShape = [](AsdOps::RunInfo &runInfo) {
+        runInfo.GetInTensor(0).desc.format = AsdOps::TENSOR_FORMAT_ND;
         AsdOps::SVector<int64_t> dims = runInfo.GetInTensor(0).desc.dims;
         runInfo.SetOpDesc({0, "SplitOperation", AsdOps::OpParam::Split{int(dims.size()) - 1, 2}});
     };
@@ -127,7 +128,7 @@ PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const Posit
 
     // [bs, 1, sq, rd]
     ViewFunc unsqueezeCosSinView = [](const AsdOps::SVector<int64_t> &oldDims, AsdOps::SVector<int64_t> &newDims) {
-        newDims = {oldDims.at(0), 1, oldDims.at(1), oldDims.at(2)};
+        newDims = {oldDims.at(0), oldDims.at(1), 1, oldDims.at(2)};
     };
 
     mul0Node.opDesc = {0, "BroadcastOperation",
@@ -148,6 +149,11 @@ PositionEmbedding1dSplitOpsRunner::PositionEmbedding1dSplitOpsRunner(const Posit
                        AsdOps::OpParam::Broadcast{AsdOps::OpParam::Broadcast::BroadcastType::BROADCAST_ADD}};
     addNode.inTensors = {&mul0, &mul1};
     addNode.outTensors = {&inputEmbedded};
+    addNode.inferShapePreFunc = [](AsdOps::RunInfo &runInfo) {
+        for (size_t i = 0; i < runInfo.GetInTensorCount(); i++) {
+            runInfo.GetInTensor(i).desc.format = AsdOps::TENSOR_FORMAT_ND;
+        }
+    };
 
     AsdOps::OpParam::Transpose permuteNodeParam = {AsdOps::OpParam::Transpose::TransposeType::TRANSPOSE, {2, 0, 1, 3}};
     permuteNode.opDesc = {0, "TransposeOperation", permuteNodeParam};
