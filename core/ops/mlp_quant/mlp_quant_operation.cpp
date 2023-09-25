@@ -20,6 +20,7 @@
 #include "mlp_quant_ops_runner_builder.h"
 
 static constexpr int64_t DEFAULT_IN_TENSOR_SIZE = 10;
+static constexpr int64_t CHATGLM26B_IN_TENSOR_SIZE = 7;
 static constexpr int64_t DEFAULT_OUT_TENSOR_SIZE = 1;
 
 namespace AclTransformer {
@@ -32,7 +33,11 @@ MlpQuantOperation::~MlpQuantOperation() {}
 
 uint64_t MlpQuantOperation::GetInTensorCount() const
 {
-    return DEFAULT_IN_TENSOR_SIZE;
+    if (param_.model == "chatglm2_6b"){
+        return CHATGLM26B_IN_TENSOR_SIZE;
+    }else{
+        return DEFAULT_IN_TENSOR_SIZE;
+    }
 }
 
 uint64_t MlpQuantOperation::GetOutTensorCount() const { return DEFAULT_OUT_TENSOR_SIZE; }
