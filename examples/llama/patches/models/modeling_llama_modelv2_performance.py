@@ -51,7 +51,7 @@ position_ids_cache = torch.arange(2048, device='cpu').long().unsqueeze(0).npu()
 biasCache = torch.tril(torch.ones((2048, 2048), dtype=torch.bool)).view(2048, 2048).npu()
 biasCache = ~biasCache
 mask_value = torch.finfo(torch.float32).min
-maskAttenCache = torch.masked_fill(torch.zeros(size=(2048, 2048)).npu(), biasCache, mask_value).unqueeze(0).half()
+maskAttenCache = torch.masked_fill(torch.zeros(size=(2048, 2048)).npu(), biasCache, mask_value).unsqueeze(0).half()
 maskAttenCache_incre = torch.full((1, 2048, 2048), 0, dtype=torch.half).npu()
 lm_head_weight = None
 
@@ -688,7 +688,7 @@ class LlamaModel(LlamaPreTrainedModel):
                 self.num_layers, self.batch_num, self.max_sequence_length, self.hidden_size)
             maskAttenCache = torch.masked_fill(torch.zeros(size=(2048, 2048)).npu(), biasCache, mask_value).unsqueeze(0).half()
             maskAttenCache = torch.concat([maskAttenCache] * self.batch_num, dim=0)
-            maskAttenCache_incre = torch.full((self.batch_num, 2048, 2048), 0, dtype=torch.half()).npu()
+            maskAttenCache_incre = torch.full((self.batch_num, 2048, 2048), 0, dtype=torch.half).npu()
 
         seq_length_with_past = seq_length
         past_key_values_length = 0
