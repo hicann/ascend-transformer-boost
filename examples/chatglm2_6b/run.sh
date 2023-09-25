@@ -18,13 +18,13 @@ function fn_prepare()
     echo "$RUN_OPTION $SCRIPT_PATH"
 
     if [ ! -f "$MODEL_TARGET_DIR/pytorch_model-00001-of-00007.bin" ];then
-        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00001-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00001-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00002-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00002-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00003-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00003-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00004-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00004-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00005-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00005-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00006-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00006-of-00007.bin
-        ln -s $ACLTRANSFORMER_TESTDATA/pytorch_model-00007-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00007-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00001-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00001-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00002-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00002-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00003-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00003-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00004-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00004-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00005-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00005-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00006-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00006-of-00007.bin
+        ln -s $ACLTRANSFORMER_TESTDATA/weights/chatglm2_6b/pytorch_model-00007-of-00007.bin $MODEL_TARGET_DIR/pytorch_model-00007-of-00007.bin
     fi
 
 
