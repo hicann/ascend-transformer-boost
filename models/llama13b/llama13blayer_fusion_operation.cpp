@@ -113,6 +113,7 @@ LLaMA13BLayerFusionOperation::LLaMA13BLayerFusionOperation(const LLaMA13BLayerFu
     selfAttentionKvCacheParam.dk = param_.dk;
     selfAttentionKvCacheParam.tokenOffset = param_.tokenOffset;
     selfAttentionKvCacheParam.seqLen = param_.seqLen;
+    selfAttentionKvCacheParam.model = param_.model;
     selfAttentionKvCacheNode.operation.reset(
         new AclTransformer::SelfAttentionKvCacheFusionOperation(selfAttentionKvCacheParam));
     
