@@ -1,0 +1,272 @@
+//! \struct atb::infer::AllReduceParam 
+//! <table class="ct">
+//! <caption id="AllReduceParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16<br>"lccl": float16/float/int8/int16/int32/bf16        <td class="cc">ND           <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束                               <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16<br>"lccl": float16/float/int8/int16/int32/bf16      <td class="cc">ND        <td class="cc">输出tensor
+//! </table>
+//! <table class="ct">
+//! <caption id="AllReduceQuantPerTensor">AllReduce quantType为QUANT_PER_Tensor的输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1,…,-1,n]-1表示当前维度的大小没有约束        <td class="cc">int8                                  <td class="cc">ND      <td class="cc">输入向量，最后一维n的大小是16的整数倍。
+//! <tr><td class="cc">scale              <td class="cc">[1]                     <td class="cc">float16                                  <td class="cc">ND      <td class="cc">scale中元素要求为标量。
+//! <tr><td class="cc">offset             <td class="cc">[1]                     <td class="cc">float16                                     <td class="cc">ND      <td class="cc">offset中元素要求为标量。
+//! <tr><td class="cc">y                  <td class="cc">[-1,…,-1,n]-1表示当前维度的大小没有约束        <td class="cc">float16                                     <td class="cc">ND      <td class="cc">量化输出结果；x和y的shape一致。
+//! </table>
+//! <table class="ct">
+//! <caption id="AllReduceQuantPerChannel">AllReduce quantType为QUANT_PER_Cannel的输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1,…,-1,n]-1表示当前维度的大小没有约束        <td class="cc">int8                                  <td class="cc">ND      <td class="cc">输入向量，最后一维n的大小是16的整数倍。
+//! <tr><td class="cc">scale              <td class="cc">[1, n] 或 [n]                     <td class="cc">float16                                  <td class="cc">ND      <td class="cc">scale中元素要求不为0，最后一维n的大小是16的整数倍。
+//! <tr><td class="cc">offset             <td class="cc">[1]                     <td class="cc">float16                                     <td class="cc">ND      <td class="cc">offset中元素要求为标量。
+//! <tr><td class="cc">y                  <td class="cc">[-1,…,-1,n]-1表示当前维度的大小没有约束        <td class="cc">float16                                     <td class="cc">ND      <td class="cc">量化输出结果;x和y的shape一致。
+//! </table>
+//!
+
+//! \struct atb::infer::BlockCopyParam
+//! <table class="ct">
+//! <caption id="BlockCopyParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数            <th class="ch">维度                                            <th class="ch">数据类型          <th class="ch">格式    <th class="ch">描述
+//! <tr><td class="cc">keyCache        <td class="cc">[num_blocks, block_size, num_head, head_size]  <td class="cc">float16/bf16/int8 <td class="cc">ND     <td class="cc">key矩阵（既是输入，也是输出，即原地修改）
+//! <tr><td class="cc">valueCache      <td class="cc">[num_blocks, block_size, num_head, head_size]  <td class="cc">float16/bf16/int8 <td class="cc">ND     <td class="cc">value矩阵（既是输入，也是输出，即原地修改）
+//! <tr><td class="cc">srcBlockIndices <td class="cc">[src_count]，最长为num_blocks                  <td class="cc">int32             <td class="cc">ND     <td class="cc">keyCache、valueCache源位置block索引，值域范围[0,num_blocks)
+//! <tr><td class="cc">dstBlockIndices <td class="cc">[dst_count]，最长为num_blocks                  <td class="cc">int32             <td class="cc">ND     <td class="cc">keyCache、valueCache目标位置block索引，dstBlockIndices[cumSum[i-1]:cumSum[i]-1]为srcBlockIndices[i]对应的目标位置List <br>（特殊的，dstBlockIndices[0:cumSum[0]-1]为srcBlockIndices[0]对应的目标位置List）， <br>值域范围[0,num_blocks)
+//! <tr><td class="cc">cumSum          <td class="cc">[src_count]                                    <td class="cc">int32             <td class="cc">ND     <td class="cc">cumSum[i]为源位置srcBlockIndices[i]对应的目标位置List在dstBlockIndices中的结束位置
+//! </table>
+//! 若干约束：<br>
+//! 1. 一个block index不可能同时出现在srcBlockIndices和dstBlockIndices中；<br>
+//! 2. dstBlockIndices中的block index不重复，即不可能有两个不同的block拷贝到同一个block中。
+//!
+
+//! \struct atb::infer::BroadcastParam 
+//! <table class="ct">
+//! <caption id="BroadcastParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16<br>"lccl": float16/float/int8/int16/int32/int64/bf16        <td class="cc">ND           <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束                               <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16<br>"lccl": float16/float/int8/int16/int32/int64/bf16      <td class="cc">ND        <td class="cc">输出tensor
+//! </table>
+//!
+
+//! \struct atb::infer::ReduceScatterParam 
+//! <table class="ct">
+//! <caption id="ReduceScatterParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[rankSize*n,-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">"lccl": float16/float/int8/int16/int32/bf16        <td class="cc">ND           <td class="cc">输入tensor,维度小于等于8，第一维的大小为rankSize的n倍(n为正整数)。
+//! <tr><td class="cc">output       <td class="cc">[n,-1,…,-1]-1表示当前维度的大小没有约束                               <td class="cc">"lccl": float16/float/int8/int16/int32/bf16      <td class="cc">ND        <td class="cc">输出tensor，维度小于等于8，第一维的大小n=x[0]/rankSize，从第二维开始输出output的维数与输入x的维度以及维度值相等，数据类型也相同。
+//!
+
+//! \struct atb::infer::PagedAttentionParam 
+//! <table class="ct">
+//! <caption id="PagedAttention">函数输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                  <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">设备    <th class="ch">描述
+//! <tr><td class="cc">query             <td class="cc">[num_tokens, num_head, head_size]                     <td class="cc">float16/bf16/int8                     <td class="cc">ND           <td class="cc">npu    <td class="cc">各batch的query在num_tokens轴合并
+//! <tr><td class="cc">keyCache          <td class="cc">Atlas 800I A2推理产品：[num_blocks, block_size, kv_head_num, head_size] <br>[Atlas 推理系列产品：[num_blocks, head_size *num_heads / 16 ,block_size, 16]       <td class="cc">float16/bf16/int8                     <td class="cc">Atlas 800I A2推理产品：NDAtlas 推理系列产品：NZ    <td class="cc">npu    <td class="cc">cache好的key;当开启反量化融合功能时，只支持int8
+//! <tr><td class="cc">valueCache        <td class="cc">Atlas 800I A2推理产品：[num_blocks, block_size, kv_head_num, head_size_v] <br>[Atlas 推理系列产品：[num_blocks, head_size *num_heads / 16 ,block_size, 16]       <td class="cc">float16/bf16/int8                     <td class="cc">Atlas 800I A2推理产品：NDAtlas 推理系列产品：NZ    <td class="cc">npu    <td class="cc">cache好的value;当开启反量化融合功能时，只支持int8;当开启MLA合并kvcache功能时不传入
+//! <tr><td class="cc">blockTables       <td class="cc">[num_tokens, max_num_blocks_per_query]                <td class="cc">int32                                     <td class="cc">ND      <td class="cc">npu    <td class="cc">每个query的kvcache的block table，第一维是token索引，第二维表示block索引
+//! <tr><td class="cc">contextLens       <td class="cc">[batch]                                          <td class="cc">int32                                     <td class="cc">ND      <td class="cc">cpu    <td class="cc">每个query对应的key/value的token数量，token数量 // block_size == block_num + 1
+//! <tr><td class="cc">mask              <td class="cc">较复杂，见下文详细说明                                  <td class="cc">float16/bf16                 <td class="cc">Atlas 800I A2推理产品：ND Atlas 推理系列产品：NZ   <td class="cc">npu   <td class="cc">Atlas 800I A2推理产品：当maskType不为UNDEFINED时输入
+//! <tr><td class="cc">batchRunStatus    <td class="cc">[batch]                                               <td class="cc">int32                                     <td class="cc">ND      <td class="cc">cpu    <td class="cc">当开启动态batch功能时需要传此tensor以作为哪些batch参与计算的标志位
+//! <tr><td class="cc">kDescale          <td class="cc">[k_head_num*head_size]；quantType=2或3时，[head_num]                                <td class="cc">int64/float；quantType=2或3时，float                                <td class="cc">ND      <td class="cc">npu    <td class="cc">当量化类型为反量化时，步长tensor；数据类型需与vDescale保持一致
+//! <tr><td class="cc">kOffset           <td class="cc">[k_head_num*head_size]                                <td class="cc">int32                                     <td class="cc">ND      <td class="cc">npu    <td class="cc">当量化类型为反量化，且hasQuantOffset为true时，输入k的偏移量；全量化场景无此tensor（即quantType=2或3）。
+//! <tr><td class="cc">vDescale          <td class="cc">[v_head_num*head_size]；quantType=2或3时，[head_num]                                <td class="cc">int64/float；quantType=2或3时，float                                <td class="cc">ND      <td class="cc">npu    <td class="cc">当量化类型为反量化时，步长tensor
+//! <tr><td class="cc">vOffset           <td class="cc">[v_head_num*head_size]                                <td class="cc">int32                                     <td class="cc">ND      <td class="cc">npu    <td class="cc">当量化类型为反量化，且hasQuantOffset为true时，输入v的偏移量；全量化场景无此tensor（即quantType=2或3）。
+//! <tr><td class="cc">qSeqLens          <td class="cc">[batch]                                               <td class="cc">int32                                     <td class="cc">ND      <td class="cc">cpu    <td class="cc">当开启并行解码功能时需要传此tensor，每个batch对应的seqLen
+//! <tr><td class="cc">razorOffset       <td class="cc">[num_blocks, block_size]                              <td class="cc">float                                      <td class="cc">ND      <td class="cc">npu    <td class="cc">当开启Razor Rope功能时需要传此tensor
+//! <tr><td class="cc">pScale            <td class="cc">[head_num]                                            <td class="cc">float                                      <td class="cc">ND      <td class="cc">npu    <td class="cc">当开启离线全量化时需要传此tensor（即quantType=2时）
+//! <tr><td class="cc">logN              <td class="cc">[batch]                                               <td class="cc">float                                      <td class="cc">ND      <td class="cc">npu    <td class="cc">各batch增量请求对应的logN <br>当logN功能开启时需要传此tensor
+//! <tr><td class="cc">attnOut           <td class="cc">[num_tokens, num_head, head_size_v]                     <td class="cc">float16/bf16                     <td class="cc">ND           <td class="cc">npu    <td class="cc">经过计算输出的query
+//! </table>
+//! 若干约束：
+//! 因硬件限制，block_size %16 == 0 推荐 block_size = 128
+//! 开启并行解码功能时，blockSize <= 128
+//! blockTables中元素的值须在[0, num_blocks)之间
+//! query  keyCache valueCache  maskTensor  四个入参在Atlas 推理系列产品上 只支持float16
+//! Atlas 推理系列产品上 0<batch<=2000
+//! 并行解码场景，量化场景，注意力使用logN缩放场景，以及Atlas 推理系列产品上，keyCache,valueCache的headsize等长，范围为（0, 256]，且block_size * head_size ≤ 128 * 128，否则keyCache,valueCache的head_size可以不相同，范围为（0, 576]，当keyCache或valueCache的head_size > 256时，block_size小于等于128 <br>
+//! logN功能与量化、并行解码、多头压缩场景不支持同时开启 <br>
+//! 令mlaVHeadSize > 0可开启MLA合并kvcache功能，将valueCache合并到keyCache中一起传入，不再分成两个tensor传入。此时mlaVHeadSize代表传入的keyCache中valueCache的head_size，需要大于0，小于等于576 <br>
+//! MLA合并kvcache功能不支持Atlas 推理系列产品，不支持alibi mask，多头自适应压缩，并行解码，logN缩放，BNSD输入排布。开启MLA合并kvcache功能后query和keyCache的head_size范围为（0, 576]，当keyCache或valueCache的head_size > 256时，block_size小于等于128，mlaVHeadSize不能大于query和keyCache的head_size <br>
+//! MLA合并kvcache功能支持全量化场景，一起开启时query和key的head_size范围为（0, 576]，mlaVHeadSize不能大于query和key的head_size，当keyCache或valueCache的head_size > 256时，block_size小于等于128。
+//!
+//! 当inputLayout为TYPE_BNSD时
+//! <table class="ct">
+//! <caption id="PagedAttentionBNSD">函数输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                  <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">设备    <th class="ch">描述
+//! <tr><td class="cc">query             <td class="cc">[num_tokens, num_head, head_size]                     <td class="cc">float16/bf16                     <td class="cc">ND           <td class="cc">npu    <td class="cc">各batch的query在num_tokens轴合并
+//! <tr><td class="cc">keyCache          <td class="cc">Atlas 800I A2推理产品：[num_blocks, k_head_num, block_size, head_size] <br>[Atlas 推理系列产品：[num_blocks, head_size *num_heads / 16 ,block_size, 16]       <td class="cc">float16/bf16                     <td class="cc">Atlas 800I A2推理产品：NDAtlas 推理系列产品：NZ    <td class="cc">npu    <td class="cc">在Atlas 推理系列产品中，客户需要将keyCache转成[num_blocks, head_size*num_heads/16 ,block_size, 16]的nz格式。
+//! <tr><td class="cc">valueCache        <td class="cc">Atlas 800I A2推理产品：[num_blocks, v_head_num, block_size, head_size] <br>[Atlas 推理系列产品：[num_blocks, head_size *num_heads / 16 ,block_size, 16]       <td class="cc">float16/bf16                     <td class="cc">Atlas 800I A2推理产品：NDAtlas 推理系列产品：NZ    <td class="cc">npu    <td class="cc">在Atlas 推理系列产品中，客户需要将valueCache转成[num_blocks, head_size*num_heads/16 ,block_size, 16]的nz格式。
+//! <tr><td class="cc">blockTables       <td class="cc">[num_tokens, max_num_blocks_per_query]                <td class="cc">int32                                     <td class="cc">ND      <td class="cc">npu    <td class="cc">每个query的kvcache的block table，第一维是token索引，第二维表示block索引
+//! <tr><td class="cc">contextLens       <td class="cc">[batch]                                          <td class="cc">int32                                     <td class="cc">ND      <td class="cc">cpu    <td class="cc">每个query对应的key/value的token数量，token数量 // block_size == block_num + 1
+//! <tr><td class="cc">mask              <td class="cc">较复杂，见下文详细说明                                  <td class="cc">float16/bf16                 <td class="cc">Atlas 800I A2推理产品：ND Atlas 推理系列产品：NZ   <td class="cc">npu   <td class="cc">Atlas 800I A2推理产品：当maskType不为UNDEFINED时输入
+//! <tr><td class="cc">attnOut           <td class="cc">[num_tokens, num_head, head_size_v]                     <td class="cc">float16/bf16                     <td class="cc">ND           <td class="cc">npu    <td class="cc">经过计算输出的query
+//! </table>
+//! 当inputLayout为TYPE_BNSD时，calcType必须为CALC_TYPE_UNDEFINED（默认值）；quantType必须为TYPE_QUANT_UNDEFINED（默认值）；compressType必须为COMPRESS_TYPE_UNDEFINED（默认值）；scaleType必须为SCALE_TYPE_TOR（默认值）
+//!
+//! 关于mask的维度，见下表：
+//! <table class="ct">
+//! <caption id="PagedAttentionMask">mask配置描述</caption>
+//! <tr><th class="ch">maskType               <th class="ch">硬件类型                                       <th class="ch">维度
+//! <tr><td class="cc">UNDEFINED              <td class="cc">不传mask                                   <td class="cc">不传mask
+//! <tr><td class="cc">MASK_TYPE_NORM         <td class="cc">Atlas 800I A2推理产品                             <td class="cc">[batch, 1, max_seq_len] 或 [1, max_seq_len] 或 [max_seq_len, max_seq_len]
+//! <tr><td class="cc">MASK_TYPE_NORM         <td class="cc">Atlas 推理系列产品                            <td class="cc">[batch, max_seq_len / 16, 16, 16] 或 [1, max_seq_len / 16, 16, 16]
+//! <tr><td class="cc">MASK_TYPE_ALIBI        <td class="cc">Atlas 800I A2推理产品                             <td class="cc">[batch, num_head, 1, max_seq_len] 或 [num_head, 1, max_seq_len]
+//! <tr><td class="cc">MASK_TYPE_ALIBI        <td class="cc">Atlas 推理系列产品                            <td class="cc">[batch * num_head, max_seq_len / 16, 16, 16] 或 [num_head, max_seq_len / 16, 16, 16]
+//! <tr><td class="cc">MASK_TYPE_SPEC         <td class="cc">Atlas 800I A2推理产品                             <td class="cc">[num_tokens, max_seq_len]
+//! <tr><td class="cc">MASK_TYPE_SPEC         <td class="cc">Atlas 推理系列产品                            <td class="cc">[1, max_seq_len / 16, num_tokens, 16]
+//! </table>
+//!上表中Atlas 推理系列产品上max_seq_len应16对齐，且维度描述中的除法均为ceil div
+
+//! \struct atb::infer::DynamicNTKParam 
+//! <table class="ct">
+//! <caption id="DynamicNTKParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数                 <th class="ch">维度                                                  <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">positionIds          <td class="cc">[ntokens]                                <td class="cc">int32                                <td class="cc">ND      <td class="cc">多个batch的token位置序列，格式如下：[0,1,2,…,batch1_len-1,0,1,2…batch2_len-1,0,1,2…]
+//! <tr><td class="cc">InvFreqIn            <td class="cc">[batch, headDim / 2]                     <td class="cc">float                                <td class="cc">ND      <td class="cc">每个batch的位置逆频，由以下公式计算能得到: inv_freqs[batch] = 1.0 / base[batch] ** (torch.arange(0, dim, 2).float() / dim)
+//! <tr><td class="cc">seqlens              <td class="cc">[batch]                                      <td class="cc">int32                                <td class="cc">ND      <td class="cc">每个batch的序列长度
+//! <tr><td class="cc">sin                  <td class="cc">[ntokens, headDim]                                <td class="cc">float16/bf16                    <td class="cc">ND   <td class="cc">输出的Rotary embedding的sin矩阵
+//! <tr><td class="cc">cos                  <td class="cc">[ntokens, headDim]                                <td class="cc">float16/bf16                    <td class="cc">ND   <td class="cc">输出的cos矩阵，数据类型及shape与输出sin保持一致
+//! </table>
+//!headDim（即输出tensor的最后一维）小于等于2048，并且是32的倍数 <br>
+//!batch小于等于16 <br>
+//!ntokens（即输入positionIds的维度）小于等于256000 <br>
+//!InvFreqIn数组数据范围：[0,1), seqlens数组中数据大于0, 且数组和为ntokens <br>
+
+
+//! \struct atb::infer::ElewiseParam 
+//! <table class="ct">
+//! <caption id="ElewiseCast">ELEWISE_CAST输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16/float/int64/int32                <td class="cc">ND      <td class="cc">被转换类型的输入
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">float16/float/int64/int32	                <td class="cc">ND      <td class="cc">被转换类型的输出。在Atlas 800I A2推理产品上，支持float16和float、int32和int64数据类型互相转化。在Atlas推理系列产品上，支持float16和float数据类型互相转化。
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseMuls">ELEWISE_MULS输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16/float/bf16                             <td class="cc">ND      <td class="cc">输入
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                             <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseCos">ELEWISE_COS输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16/float                             <td class="cc">ND      <td class="cc">输入
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                             <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseSin">ELEWISE_SIN输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16/float                             <td class="cc">ND      <td class="cc">输入
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                             <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseNeg">ELEWISE_NEG输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16                                  <td class="cc">ND      <td class="cc">输入
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">float16                                  <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseQuant">ELEWISE_QUANT输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16                                  <td class="cc">ND      <td class="cc">输入
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseLogicalNot">ELEWISE_LOGICAL_NOT输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输入
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseAdd">ELEWISE_ADD输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16/float/bf16                    <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                    <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                    <td class="cc">ND      <td class="cc">输出；输出，输入1，输入2数据类型需保证一致
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseMul">ELEWISE_MUL输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16/bf16                                  <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                                  <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                                  <td class="cc">ND      <td class="cc">输出；输出，输入1，输入2数据类型需保证一致
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseRealdiv">ELEWISE_REALDIV输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16/float/bf16                            <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                            <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                            <td class="cc">ND      <td class="cc">输出；输出，输入1，输入2数据类型需保证一致
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseLogicalAnd">ELEWISE_LOGICAL_AND输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                      <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseLogicalOr">ELEWISE_LOGICAL_OR输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseLess">ELEWISE_LESS输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">int64/float/float16                       <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                      <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输出；输入1，输入2数据类型需保证一致
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseGreater">ELEWISE_GREATER输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">int64/float/float16                       <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                      <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输出；输入1，输入2数据类型需保证一致
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseSub">ELEWISE_SUB输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">int64/float16                            <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                             <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                             <td class="cc">ND      <td class="cc">输出；输出，输入1，输入2数据类型需保证一致
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseEqual">ELEWISE_EQUAL输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float/float16                            <td class="cc">ND      <td class="cc">输入1
+//! <tr><td class="cc">y                  <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                             <td class="cc">ND      <td class="cc">输入2
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输出；输入1，输入2数据类型需保证一致
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseQuantPerChannel">ELEWISE_QUANT_PER_CHANNEL输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[b1, ..., bx, n1, ..., ny]        <td class="cc">float16/bf16                                  <td class="cc">ND      <td class="cc">输入向量
+//! <tr><td class="cc">scale              <td class="cc">[n1, ..., ny]                     <td class="cc">与x一致                                  <td class="cc">ND      <td class="cc">scale中元素要求不为0。可以为标量
+//! <tr><td class="cc">offset             <td class="cc">[n1, ..., ny]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">offset可以为空Tensor。可以为标量
+//! <tr><td class="cc">y                  <td class="cc">[b1, ..., bx, n1, ..., ny]        <td class="cc">int8                                     <td class="cc">ND      <td class="cc">量化输出结果；输入1，输入2数据类型需保证一致
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseDeQuantPerChannel">ELEWISE_DEQUANT_PER_CHANNEL输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式    <th class="ch">描述
+//! <tr><td class="cc">y                  <td class="cc">[b1, ..., bx, n1, ..., ny]        <td class="cc">int8                                     <td class="cc">ND      <td class="cc">输入向量
+//! <tr><td class="cc">scale              <td class="cc">[n1, ..., ny]                     <td class="cc">float16                                  <td class="cc">ND      <td class="cc">可以为标量
+//! <tr><td class="cc">offset             <td class="cc">[n1, ..., ny]                     <td class="cc">int8                                     <td class="cc">ND      <td class="cc">offset可以为空Tensor。可以为标量
+//! <tr><td class="cc">x                  <td class="cc">[b1, ..., bx, n1, ..., ny]        <td class="cc">float16                                  <td class="cc">ND      <td class="cc">反量化输出结果
+//! </table>
+//! ElewiseDeQuantPerChannel 只支持Atlas 800I A2推理产品
+//! <table class="ct">
+//! <caption id="ElewiseDynamicQuant">ELEWISE_DYNAMIC_QUANT输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式    <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[n1, ..., ny, H]                  <td class="cc">float16                                  <td class="cc">ND      <td class="cc">输入向量，n>1，且不支持数据类型为bf16。最后一维H小于等于24576。若为Atlas 推理系列产品，最后一维H小于或等于4096，并为32的倍数。
+//! <tr><td class="cc">z                  <td class="cc">[n1, ..., ny, H]                  <td class="cc">int8                                     <td class="cc">ND      <td class="cc">量化输出结果
+//! <tr><td class="cc">scale              <td class="cc">[n1, ..., ny]                     <td class="cc">float                                    <td class="cc">ND      <td class="cc">反量化所需的scale
+//! <tr><td class="cc">offset             <td class="cc">[n1, ..., ny]                     <td class="cc">float                                    <td class="cc">ND      <td class="cc">反量化所需的offset，在asymmetric为true时才返回。当前不支持asymmetric为true的场景。
+//! </table>
+//! <table class="ct">
+//! <caption id="ElewiseTanh">ELEWISE_TANH输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                               <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x                  <td class="cc">[-1, ..., -1]                     <td class="cc">float16/bf16                             <td class="cc">ND      <td class="cc">输入
+//! <tr><td class="cc">out                <td class="cc">[-1, ..., -1]                     <td class="cc">与x一致                             <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! 
