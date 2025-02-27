@@ -1,380 +1,500 @@
 #!/bin/bash
-# Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# This file is a part of the CANN Open Software.
+# Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
 #
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 set -e
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
-CURRENT_DIR=$(pwd)
-cd $SCRIPT_DIR
-cd ..
-export CODE_ROOT=`pwd`
-export CACHE_DIR=$CODE_ROOT/build
-export OUTPUT_DIR=$CODE_ROOT/output
+cd $SCRIPT_DIR/..
+CODE_ROOT=$(pwd)
+CACHE_DIR=$CODE_ROOT/build
+OUTPUT_DIR=$CODE_ROOT/output
 THIRD_PARTY_DIR=$CODE_ROOT/3rdparty
+
+ARCH=$(arch)
 COMPILE_OPTIONS=""
-INCREMENTAL_SWITCH=OFF
-HOST_CODE_PACK_SWITCH=ON
-DEVICE_CODE_PACK_SWITCH=ON
-USE_CXX11_ABI=ON
-USE_VERBOSE=OFF
-BUILD_EXAMPLES=OFF
-BUILD_OPTION_LIST="3rdparty download_testdata unittest unittest_and_run pythontest pythontest_and_run debug release help examples python_unittest_and_run"
-BUILD_CONFIGURE_LIST=("--output=.*" "--cache=.*" "--verbose" "--incremental" "--gcov" "--no_hostbin" "--no_devicebin" "--use_cxx11_abi=0" 
-    "--use_cxx11_abi=1" "--build_config=.*" "--optimize_off" "--use_torch_runner" "--use_lccl_runner" "--use_hccl_runner" "--doxygen" "--use_tiling_stream")
+COMPILE_VERBOSE=""
+CMAKE_BUILD_TYPE=Release
+USE_CXX11_ABI=""
+USE_ASAN=OFF
+USE_MSSANITIZER=OFF
+USE_MSDEBUG=OFF
+SKIP_BUILD=OFF
+CSVOPSTEST_OPTIONS=""
+BUILD_PYBIND=OFF
+MKI_BUILD_MODE=Test
 
-function fn_build_googltest()
+BUILD_OPTION_LIST="help default testframework unittest pythontest mixpythontest csvopstest fuzztest infratest hitest alltest clean gendoc"
+BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
+    "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind")
+
+function fn_build_googletest()
 {
-    if [ -d "$THIRD_PARTY_DIR/googletest/lib" -a -d "$THIRD_PARTY_DIR/googletest/include" ];then
-        return $?
+    if [ -d "$THIRD_PARTY_DIR/googletest/lib" ]; then
+        return 0
     fi
-    cd $CACHE_DIR
-    rm -rf v1.13.0.tar.gz
-    if [ -f "$CODE_ROOT/3rdparty/googletest-1.13.0.tar.gz" ];then
-        cp $CODE_ROOT/3rdparty/googletest-1.13.0.tar.gz ./v1.13.0.tar.gz
-    else
-        wget --no-check-certificate https://github.com/google/googletest/archive/refs/tags/v1.13.0.tar.gz
-    fi
-
-    tar -xf v1.13.0.tar.gz
-    cd googletest-1.13.0
-    mkdir build
-    cd build
+    cd $THIRD_PARTY_DIR
+    [[ ! -d "googletest" ]] && git clone --branch v1.13.0 --depth 1 https://github.com/google/googletest.git
+    cd googletest
+    sed -i '34d' CMakeLists.txt
+    rm -rf build && mkdir build && cd build
     if [ "$USE_CXX11_ABI" == "ON" ]
     then
-        sed -i '4 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)' ../CMakeLists.txt
+        sed -i '33 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)' ../CMakeLists.txt
     else
-        sed -i '4 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)' ../CMakeLists.txt
+        sed -i '33 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)' ../CMakeLists.txt
     fi
-    cmake -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/googletest -DBUILD_SHARED_LIBS=ON ../
-    make -j
-    make install
-    cd ../../
-    if [ -d "$THIRD_PARTY_DIR/googletest/lib64" ];then
-        mv $THIRD_PARTY_DIR/googletest/lib64 $THIRD_PARTY_DIR/googletest/lib
-    fi
+    cmake .. -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/googletest -DCMAKE_SKIP_RPATH=TRUE -DCMAKE_CXX_FLAGS="-fPIC"
+    cmake --build . --parallel $(nproc)
+    cmake --install . > /dev/null
+    [[ -d "$THIRD_PARTY_DIR/googletest/lib64" ]] && cp -rf $THIRD_PARTY_DIR/googletest/lib64 $THIRD_PARTY_DIR/googletest/lib
+    echo "Googletest is successfully installed to $THIRD_PARTY_DIR/googletest"
 }
 
 function fn_build_stub()
 {
-    if [[ -d "$THIRD_PARTY_DIR/googletest/include/gtest/stub.h" ]];then
-        return $?
+    if [ -f "$THIRD_PARTY_DIR/cpp-stub/src/stub.h" ]; then
+        return 0
     fi
-    cd $CACHE_DIR
-    rm -rf cpp-stub-master.tar.gz
-    wget --no-check-certificate https://github.com/coolxv/cpp-stub/archive/refs/heads/master.tar.gz
-    tar -zxvf master.tar.gz
-    cp $CACHE_DIR/cpp-stub-master/src/stub.h $THIRD_PARTY_DIR/googletest/include/gtest
+    cd $THIRD_PARTY_DIR
+    git clone --depth 1 https://github.com/coolxv/cpp-stub.git
 }
 
-function fn_build_half()
+function fn_build_doxygen()
 {
-    if [ -d "$THIRD_PARTY_DIR/half/include" ];then
-        echo "half exist in $THIRD_PARTY_DIR, not build it"
-        return
+    if [[ -d "$THIRD_PARTY_DIR/doxygen" ]]; then
+        return 0
     fi
-    cd $CACHE_DIR
-    rm -rf half-2.2.0.zip
-    if [ -f "$CODE_ROOT/3rdparty/half-2.2.0.zip" ];then
-        cp $CODE_ROOT/3rdparty/half-2.2.0.zip ./
-    else
-        wget --no-check-certificate https://netcologne.dl.sourceforge.net/project/half/half/2.2.0/half-2.2.0.zip
+    sys_info=$(awk -F= '/^NAME/{print $2}' /etc/os-release)
+    if [[ "$sys_info" == *"EulerOS"* ]]; then
+        yum -y install flex bison
+    elif [[ "$sys_info" == *"Ubuntu"* ]]; then
+        apt-get -y install flex bison
     fi
+    cd $THIRD_PARTY_DIR
+    rm -rf doxygen-1.9.3.src.tar.gz
+    wget --no-check-certificate https://github.com/doxygen/doxygen/releases/download/Release_1_9_3/doxygen-1.9.3.src.tar.gz
+    tar -xzvf doxygen-1.9.3.src.tar.gz
+    cd doxygen-1.9.3
+    rm -rf build && mkdir build && cd build
+    cmake .. -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/doxygen
+    cmake --build . --parallel $(nproc)
+    cmake --install . > /dev/null
+    rm -rf $THIRD_PARTY_DIR/doxygen-1.9.3
+}
 
-    unzip half-2.2.0.zip
-    mkdir -p $THIRD_PARTY_DIR/half/include
-    cp include/half.hpp $THIRD_PARTY_DIR/half/include
+function fn_gen_doc()
+{
+    cd $CODE_ROOT
+    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+    [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
+    export LD_LIBRARY_PATH=$CODE_ROOT/3rdparty/graphviz/lib:$LD_LIBRARY_PATH
+    local doxyfile=$CODE_ROOT/docs/Doxyfile
+    local output_dir=$CODE_ROOT/docs/$branch
+    [[ -f "$doxyfile" ]] && rm -rf $doxyfile
+    [[ -d "$output_dir" ]] && rm -rf $output_dir
+    mkdir -p $output_dir
+    $THIRD_PARTY_DIR/doxygen/bin/doxygen -g $doxyfile
+    sed -i "s#PROJECT_NAME           =.*#PROJECT_NAME           = "AscendTransformerBoost"#g" $doxyfile
+    sed -i "s#PROJECT_NUMBER         =.*#PROJECT_NUMBER         = $branch#g" $doxyfile
+    sed -i "s#OUTPUT_DIRECTORY       =.*#OUTPUT_DIRECTORY       = $output_dir#g" $doxyfile
+    sed -i "s#OUTPUT_LANGUAGE        =.*#OUTPUT_LANGUAGE        = Chinese#g" $doxyfile
+    sed -i "s#INPUT                  =.*#INPUT                  = $CODE_ROOT/include/atb $CODE_ROOT/docs/atb_document.txt#g" $doxyfile
+    sed -i "s#RECURSIVE              =.*#RECURSIVE              = YES#g" $doxyfile
+    sed -i "s#USE_MDFILE_AS_MAINPAGE =.*#USE_MDFILE_AS_MAINPAGE = $CODE_ROOT/README.md#g" $doxyfile
+    sed -i "s#HTML_EXTRA_STYLESHEET  =.*#HTML_EXTRA_STYLESHEET  = $CODE_ROOT/docs/custom.css#g" $doxyfile
+    sed -i "s#GENERATE_LATEX         =.*#GENERATE_LATEX         = NO#g" $doxyfile
+    sed -i "s#HAVE_DOT               =.*#HAVE_DOT               = NO#g" $doxyfile
+    sed -i "s#USE_MATHJAX            =.*#USE_MATHJAX            = YES#g" $doxyfile
+    sed -i "s#WARN_NO_PARAMDOC       =.*#WARN_NO_PARAMDOC       = YES#g" $doxyfile
+    sed -i "s#GENERATE_TREEVIEW      =.*#GENERATE_TREEVIEW      = YES#g" $doxyfile
+    sed -i "s#WARN_AS_ERROR          =.*#WARN_AS_ERROR          = YES#g" $doxyfile
+    $THIRD_PARTY_DIR/doxygen/bin/doxygen $doxyfile
 }
 
 function fn_build_asdops()
 {
-    if [ -d "$THIRD_PARTY_DIR/asdops/include" ];then
-        echo "asdops exist in $THIRD_PARTY_DIR, not build it"
-        return
+    if [ -d "$THIRD_PARTY_DIR/asdops/include" ]; then
+        return 0
     fi
-
-    cd $CACHE_DIR
-    git clone https://gitee.com/ascend/ascend-op-common-lib.git
+    cd $THIRD_PARTY_DIR
+    rm -rf ascend-op-common-lib
+    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_release_cann_8.0.0_20250521
+    echo  "current branch for atb and asdops: $branch"
+    git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
-    ASD_OPP_PATH=/usr/local/Ascend/ascend-toolkit/6.0.2/opp
-     
-    if [ -d "$ASD_OPP_PATH/built-in/op_impl/ai_core/tbe/kernel" ]; then
-        build_options="--ascend_opp_path=$ASD_OPP_PATH/6.0.2/opp"
-    fi
-    if [ $USE_CXX11_ABI == "ON" ];then
+    echo  "current commid id of ascend-op-common-lib: $(git rev-parse HEAD)"
+    [[ -d "$THIRD_PARTY_DIR/Mind-KernelInfra" ]] && mkdir -p 3rdparty && cp -r $THIRD_PARTY_DIR/Mind-KernelInfra 3rdparty
+    if [ "$USE_CXX11_ABI" == "ON" ]; then
         build_options="$build_options --use_cxx11_abi=1"
     else
         build_options="$build_options --use_cxx11_abi=0"
     fi
+    if [ "$CMAKE_BUILD_TYPE" == "Debug" ]; then
+        build_type=debug
+    else
+        build_type=dev
+    fi
+    build_options="$build_options --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
+    bash scripts/build.sh $build_type $build_options
+}
 
-    build_options="$build_options --output=$THIRD_PARTY_DIR"
-    echo "bash scripts/build.sh dev $build_options"
-    bash scripts/build.sh dev $build_options
-    cd $CACHE_DIR
-    sudo rm -rf ascend-op-common-lib
+function fn_build_mki()
+{
+    if [ "$MKI_BUILD_MODE" == "Test" -a -d "$THIRD_PARTY_DIR/mki/tests" ]; then
+        return 0
+    fi
+    if [ "$MKI_BUILD_MODE" == "Dev" -a -d "$THIRD_PARTY_DIR/mki/include" ]; then
+        return 0
+    fi
+    cd $THIRD_PARTY_DIR
+    rm -rf Mind-KernelInfra
+    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_release_cann_8.0.0_20250521
+    echo  "current branch for mki: $branch"
+    git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/Mind-KernelInfra.git
+    cd Mind-KernelInfra
+    echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"
+    if [ "$USE_CXX11_ABI" == "ON" ];then
+        build_options="$build_options --use_cxx11_abi=1"
+    else
+        build_options="$build_options --use_cxx11_abi=0"
+    fi
+    if [ "$MKI_BUILD_MODE" == "Test" ]; then
+        echo "mki build by Test mode"
+        mkdir -p $THIRD_PARTY_DIR/Mind-KernelInfra/3rdparty
+        cp -r $THIRD_PARTY_DIR/nlohmannJson $THIRD_PARTY_DIR/Mind-KernelInfra/3rdparty
+        build_type=testframework
+    elif [ "$CMAKE_BUILD_TYPE" == "Release" ]; then
+        echo "mki build by Develop mode"
+        build_type=dev
+    else
+        echo "mki build by Debug mode"
+        build_type=debug
+    fi
+    if [ "$USE_MSDEBUG" == "ON" ]; then
+        build_options="$build_options --msdebug"
+    fi
+    build_options="$build_options --namespace=AtbOps --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
+    bash scripts/build.sh $build_type $build_options
 }
 
 function fn_build_nlohmann_json()
 {
-    NLOHMANN_DIR=$THIRD_PARTY_DIR/nlohmannJson/include
-    if [ ! -d "$NLOHMANN_DIR" ];then
-        cd $CACHE_DIR
-        rm -rf nlohmann
-        mkdir nlohmann
-        cd nlohmann
-        wget --no-check-certificate https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/include.zip
-        unzip include.zip
-        mkdir -p $THIRD_PARTY_DIR/nlohmannJson
-        cp -r ./include $THIRD_PARTY_DIR/nlohmannJson
-        cd $CACHE_DIR
-        rm -rf nlohmann
+    if [ -d "$THIRD_PARTY_DIR/nlohmannJson" ]; then
+        return 0
+    fi
+    cd $THIRD_PARTY_DIR
+    git clone --branch v3.11.3 --depth 1 https://github.com/nlohmann/json.git
+    mv json nlohmannJson
+}
+
+function fn_build_pybind11()
+{
+    if [ -d "$THIRD_PARTY_DIR/pybind11" ]; then
+        return 0
+    fi
+    cd $THIRD_PARTY_DIR
+    git clone --branch v2.10.3 --depth 1 https://github.com/pybind/pybind11.git
+}
+
+function fn_build_secodefuzz()
+{
+    FUZZ_DEST_PATH=$THIRD_PARTY_DIR/secodefuzz
+    if [ -d "$FUZZ_DEST_PATH/lib/" ]; then
+        return 0
+    fi
+    cd $CACHE_DIR
+    rm -rf secodefuzz
+    git clone -b v2.4.5 --depth=1 https://szv-open.codehub.huawei.com/innersource/Fuzz/secodefuzz.git
+    cd secodefuzz
+    mkdir build && cd build
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    cmake --build . --target Secodefuzz --parallel $(nproc)
+    mkdir -p $FUZZ_DEST_PATH/include
+    mkdir -p $FUZZ_DEST_PATH/lib
+    mv ../Secodefuzz/secodeFuzz.h $FUZZ_DEST_PATH/include
+    mv libSecodefuzz.a $FUZZ_DEST_PATH/lib
+}
+
+function fn_build_cann_dependency()
+{
+    [[ -d "$THIRD_PARTY_DIR/compiler" ]] && rm -rf $THIRD_PARTY_DIR/compiler
+    mkdir -p $THIRD_PARTY_DIR/compiler
+    CCEC_COMPILER_DIR=$THIRD_PARTY_DIR/compiler/ccec_compiler
+    TIKCPP_DIR=$THIRD_PARTY_DIR/compiler/tikcpp
+    ln -s $ASCEND_HOME_PATH/compiler/ccec_compiler $CCEC_COMPILER_DIR
+    ln -s $ASCEND_HOME_PATH/compiler/tikcpp $TIKCPP_DIR
+}
+
+function fn_build_3rdparty_for_test()
+{
+    if [ "${SKIP_BUILD}" == "ON" ]; then
+        echo "info: skip atb test 3rdparty because SKIP_BUILD is on."
+        return 0
+    fi
+    fn_build_googletest
+    fn_build_stub
+}
+
+function fn_build_3rdparty_for_compile()
+{
+    fn_build_nlohmann_json
+    fn_build_mki
+    fn_build_asdops
+    fn_build_cann_dependency
+    if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
+        fn_build_pybind11
     fi
 }
 
-function fn_build_3rdparty()
+function fn_build_3rdparty_for_doc()
 {
-    rm -rf $CACHE_DIR
-    mkdir $CACHE_DIR
-    cd $CACHE_DIR
-    fn_build_googltest
-    fn_build_stub
-    fn_build_half
-    fn_build_nlohmann_json
-    fn_build_asdops
-    cd ..
+    fn_build_doxygen
 }
 
-function fn_build_release_3rdparty()
+function export_atb_env()
 {
-    rm -rf $CACHE_DIR
-    mkdir $CACHE_DIR
-    cd $CACHE_DIR
-    fn_build_nlohmann_json
-    fn_build_asdops
-    cd $CODE_ROOT
+    cd $OUTPUT_DIR/atb
+    sed -i '/ASDOPS_LOG_LEVEL/d' set_env.sh
+    sed -i '/ASDOPS_LOG_TO_STDOUT/d' set_env.sh
+    sed -i '/ASDOPS_LOG_TO_FILE/d' set_env.sh
+    sed -i '/ASDOPS_LOG_TO_FILE_FLUSH/d' set_env.sh
+    source set_env.sh
 }
 
-function fn_download_testdata()
+function export_atb_hitest_env()
 {
-    echo "git clone -b testdata https://gitee.com/ascend/ascend-transformer-acceleration.git $CODE_ROOT/testdata"
-    git clone -b testdata https://gitee.com/ascend/ascend-transformer-acceleration.git $CODE_ROOT/testdata
-    mv $CODE_ROOT/testdata/testdatas/* $CODE_ROOT/testdata/
-    rm -rf $CODE_ROOT/testdata/testdatas
+    export isOverlappedCompile=0
+    export PlatformToken=BOARD
+    export gcovmode=0
+    export TimerPolicy=1         #是否开启线程定时器采集覆盖率数据, 1: 开启, 0: 不开启
+    export TimeInterval=60       #线程定时器，各隔多少秒采集一次数据，60表示60秒
+    export SignalPolicy=1        #是否开启发信号采集覆盖率，1: 开启, 0: 不开启
+    export SignalNUM=34          #kill -34 pid 采覆盖率， kill -44 pid 重置覆盖率
+    export lltwrapper_cfg=0      # 0: 普通模式，4: 无OS极简模式(单模块), 5: 无OS通用模式
+    export HITEST_AGENT_INSIDE=1 # 1: 使用内嵌agent.o, 0: 不使用内嵌agent.o
+    export USE_HLLT_COVERAGE=1
+    export USE_HLLT_TESTCASE=0
+    export simplemode=0	                  # 0: 非精简模式, 1: 精简模式
+    export ncs_coverage_stub_mold=1       # 0: 非计数模式, 1: 计数模式
+    export hitest_disable_cfg=0           # 是否需要导出CFG控制流图, 默认导出 0:导出  1:不导出
+    export hitest_disable_dfg=1           # 是否需要导出污点数据, 默认不导出 0:导出  1:不导出
+    export lltcovRootpath=/opt/covdata	  #(测试执行环境中，覆盖率数据保存的根目录)
+    export PATH=/home/slave1/hitest/linux_avatar_${ARCH}:$PATH	        #(添加工具包到PATH环境变量)
+    export LD_LIBRARY_PATH=/home/slave1/hitest/linux_avatar_${ARCH}:$LD_LIBRARY_PATH	    #(添加工具包到LD_LIBRARY_PATH环境变量)
+    export LLT_INCLUDEPATH=${CODE_ROOT}/core  #(指定需要插桩的代码目录，用冒号:间隔，可指定多个代码目录)
+    export LLT_EXCLUDEPATH=${CODE_ROOT}/tests #指定需要排除不插桩的路径，即，指定的路径下的所有源码都不会被插桩 
+    #清空上一次构建的模型数据
+    rm -rf /home/slave1/hitest/linux_avatar_${ARCH}/apache-tomcat-8.0.39/webapps/base/covstub
+    rm -rf /home/slave1/hitest/linux_avatar_${ARCH}/apache-tomcat-8.0.39/webapps/base/covdata
 }
 
-function fn_init_pytorch_env()
+function generate_atb_version_info()
 {
+    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo $branch)
+    commit_id=$(git rev-parse HEAD)
+    touch $OUTPUT_DIR/version.info
+    cat>$OUTPUT_DIR/version.info<<EOF
+    Platform : ${ARCH}
+    branch : ${branch}
+    commit id : ${commit_id}
+EOF
+}
+
+function fn_init_env()
+{
+    res=$(python3 -c "import torch" &> /dev/null || echo "torch_not_exist")
+    if [ "$res" == "torch_not_exist" ]; then
+        echo "Warning: Torch is not installed!"
+        [[ "$USE_CXX11_ABI" == "" ]] && USE_CXX11_ABI=ON
+    fi
+    if [ "$USE_CXX11_ABI" == "" ]; then
+        if [ $(python3 -c 'import torch; print(torch.compiled_with_cxx11_abi())') == "True" ]; then
+            USE_CXX11_ABI=ON
+        else
+            USE_CXX11_ABI=OFF
+        fi
+    fi
     export PYTHON_INCLUDE_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
     export PYTHON_LIB_PATH="$(python3 -c 'from sysconfig import get_paths; print(get_paths()["include"])')"
     export PYTORCH_INSTALL_PATH="$(python3 -c 'import torch, os; print(os.path.dirname(os.path.abspath(torch.__file__)))')"
-    if [ -z "${PYTORCH_NPU_INSTALL_PATH}" ];then
-        export PYTORCH_NPU_INSTALL_PATH="$(python3 -c 'import torch, torch_npu, os; print(os.path.dirname(os.path.abspath(torch_npu.__file__)))')"
-    fi
+    export PYTORCH_NPU_INSTALL_PATH="$(python3 -c 'import torch, torch_npu, os; print(os.path.dirname(os.path.abspath(torch_npu.__file__)))')"
+    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/../torch.libs:$LD_LIBRARY_PATH
+
     echo "PYTHON_INCLUDE_PATH=$PYTHON_INCLUDE_PATH"
     echo "PYTHON_LIB_PATH=$PYTHON_LIB_PATH"
     echo "PYTORCH_INSTALL_PATH=$PYTORCH_INSTALL_PATH"
     echo "PYTORCH_NPU_INSTALL_PATH=$PYTORCH_NPU_INSTALL_PATH"
-
-    COUNT=`grep get_tensor_npu_format ${PYTORCH_NPU_INSTALL_PATH}/include/torch_npu/csrc/framework/utils/CalcuOpUtil.h | wc -l`
-    if [ "$COUNT" == "1" ];then
-        echo "use get_tensor_npu_format"
-        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_GET_TENSOR_NPU_FORMAT_OLD=ON"
-    else
-        echo "use GetTensorNpuFormat"
-    fi
-
-    COUNT=`grep SetCustomHandler ${PYTORCH_NPU_INSTALL_PATH}/include/torch_npu/csrc/framework/OpCommand.h | wc -l`
-    if [ $COUNT -ge 1 ];then
-        echo "use SetCustomHandler"
-        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_SETCUSTOMHANDLER=ON"
-    else
-        echo "not use SetCustomHandler"
-    fi
+    echo "USE_CXX11_ABI=$USE_CXX11_ABI"
 }
 
-function fn_copy_tools()
+function fn_gen_atb_whl()
 {
-    if [ ! -d "$OUTPUT_DIR/acltransformer/tools" ]; then
-        mkdir -p $OUTPUT_DIR/acltransformer/tools
-    fi
-    cp -r $CODE_ROOT/tools/python_tools $OUTPUT_DIR/acltransformer/tools
-}
-
-function fn_copy_examples()
-{
-    if [[ -d $OUTPUT_DIR/acltransformer/examples ]];then
-        rm -rf $OUTPUT_DIR/acltransformer/examples
-    fi
-    cp -r $CODE_ROOT/examples $OUTPUT_DIR/acltransformer/examples
+    cd $CODE_ROOT/output
+    cp -rf $CODE_ROOT/pyproject.toml .
+    cp -rf $CODE_ROOT/torch_atb/* ./torch_atb
+    cp -rf ./atb/cxx_abi_0/* ./torch_atb
+    pip wheel --no-deps --no-build-isolation --wheel-dir ./whl .
+    rm -rf ./torch_atb
 }
 
 function fn_build()
 {
-    fn_build_release_3rdparty
-    if [ ! -d "$OUTPUT_DIR" ];then
-        mkdir -p $OUTPUT_DIR
+    if [ "${ASCEND_HOME_PATH}" == "" ]; then
+        echo "error: build failed because ASCEND_HOME_PATH is null, please source cann set_env.sh first."
+        exit 1
     fi
-    if [ "$INCREMENTAL_SWITCH" == "OFF" ];then
-        rm -rf $CACHE_DIR
+    if [ "${SKIP_BUILD}" == "ON" ]; then
+        echo "info: skip atb build because SKIP_BUILD is on."
+        return 0
     fi
-    if [ ! -d "$CACHE_DIR" ];then
-        mkdir $CACHE_DIR
-    fi
+    fn_build_3rdparty_for_compile
     cd $CACHE_DIR
-    COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_INSTALL_PREFIX=$OUTPUT_DIR/acltransformer"
+    if [ "$CMAKE_CXX_COMPILER_LAUNCHER" == "" -a command -v ccache &> /dev/null ]; then
+        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    fi
     echo "COMPILE_OPTIONS:$COMPILE_OPTIONS"
     cmake $CODE_ROOT $COMPILE_OPTIONS
-    if [ "$INCREMENTAL_SWITCH" == "OFF" ];then
-        make clean
-    fi
-    if [ "$USE_VERBOSE" == "ON" ];then
-        VERBOSE=1 make -j
-    else
-        make -j
-    fi
-    make install
-    chmod +x $OUTPUT_DIR/acltransformer/bin/*
-    fn_copy_tools
-    
-    if [ $BUILD_EXAMPLES == "ON" ];then
-        fn_copy_examples
-    fi
+    cmake --build . --parallel $COMPILE_VERBOSE
+    cmake --install .
 
-    if [[ $DOXYGEN_SWITCH == "ON" ]];then
-        fn_generate_doxygen
+    if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
+        fn_gen_atb_whl
     fi
+}
+
+function pack_testframework()
+{
+    cd $CODE_ROOT/output
+    rm -f atb_testframework*.tar.gz
+    pack_name=atb_testframework_${ARCH}_$(date +%Y%m%d%H%M).tar.gz
+    tar -zcf $pack_name ./atb
+    echo "$pack_name is generated in path $CODE_ROOT/output"
+}
+
+function pack_hitest()
+{
+    mkdir -p opt/HiTest/apache-tomcat-8.0.39/webapps/covroot
+    cp -rf /home/slave1/hitest/linux_avatar_${ARCH}/apache-tomcat-8.0.39/webapps/base/covstub opt/HiTest/apache-tomcat-8.0.39/webapps/covroot
+    tar -zcf hitest_atb-${ARCH}_"$(date +%Y%m%d%H)".tgz opt/HiTest/apache-tomcat-8.0.39/webapps/covroot/covstub
+    rm -rf opt
+    mkdir -p $CODE_ROOT/output/HiTest
+    mv hitest_atb-${ARCH}_"$(date +%Y%m%d%H)".tgz $CODE_ROOT/output/HiTest
+    mv atb_testframework*.tar.gz $CODE_ROOT/output/HiTest
+    tar -zcf high_level_test.tar.gz $CODE_ROOT/tests/high_level_test
+    mv high_level_test.tar.gz $CODE_ROOT/output/HiTest
 }
 
 function fn_run_unittest()
 {
-    cd $OUTPUT_DIR/acltransformer
-    source set_env.sh
-    export ACLTRANSFORMER_OPSRUNNER_KERNEL_CACHE_ENABLE=0
-    echo "run $OUTPUT_DIR/acltransformer/bin/acltransformer_unittest"
-    $OUTPUT_DIR/acltransformer/bin/acltransformer_unittest
+    export_atb_env
+    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+    echo "run $ATB_HOME_PATH/bin/atb_unittest"
+    $ATB_HOME_PATH/bin/atb_unittest --gtest_output=xml:test_detail.xml
+}
+
+function fn_run_fuzztest()
+{
+    export_atb_env
+    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+    echo "run $ATB_HOME_PATH/bin/atb_fuzztest"
+    $ATB_HOME_PATH/bin/atb_fuzztest
 }
 
 function fn_build_coverage()
 {
-    GCOV_DIR=$OUTPUT_DIR/acltransformer/gcov
-    GCOV_CACHE_DIR=$OUTPUT_DIR/acltransformer/gcov/cache
-    GCOV_INFO_DIR=$OUTPUT_DIR/acltransformer/gcov/cov_info
-    UNIT_TEST_DIR=$CODE_ROOT/tests/unittest
+    GCOV_DIR=$CACHE_DIR/gcov
+    PYYTHON_FILTER_TOOL=$CODE_ROOT/tests/framework/python/GcovFilterTool.py
     LCOV_PATH=/usr/local/lcov/bin/lcov
-    FIND_IGNORE_PATH=$CACHE_DIR/core/CMakeFiles/acltransformer_static.dir/*
 
-    rm -rf $GCOV_DIR
-    mkdir $GCOV_DIR
-    mkdir $GCOV_CACHE_DIR
-    mkdir $GCOV_INFO_DIR
-
-    $LCOV_PATH -d $GCOV_CACHE_DIR --zerocounters >> $GCOV_DIR/log.txt
-
-    find $CACHE_DIR -not -path "$FIND_IGNORE_PATH" -name "*.gcno" | xargs -i cp {} $GCOV_CACHE_DIR
-    find $UNIT_TEST_DIR -name "*.cpp" | xargs -i cp {} $GCOV_CACHE_DIR
-    $LCOV_PATH -c -i -d $GCOV_CACHE_DIR -o $GCOV_INFO_DIR/init.info >> $GCOV_DIR/log.txt
-
-    if [[ $COVERAGE_TYPE == "unittest" ]]
+    if [ -d "$GCOV_DIR" ]
     then
+        rm -rf $GCOV_DIR
+    fi
+    mkdir $GCOV_DIR
+
+    if [ "$COVERAGE_TYPE" == "ALLTEST" ];then
+        fn_run_csvopstest
         fn_run_unittest
-    else
-        if [[ $COVERAGE_TYPE == "pythontest" ]]
-        then
-            fn_run_pythontest
-        else
-            fn_run_unittest
-            fn_run_pythontest
-        fi
+        fn_run_pythontest
+    fi
+    if [ "$COVERAGE_TYPE" == "FUZZTEST" ];then
+        fn_run_fuzztest
     fi
 
-    find $CACHE_DIR -name "*.gcda" | xargs -i cp {} $GCOV_CACHE_DIR
-    cd $GCOV_CACHE_DIR
-    find . -name "*.cpp" | xargs -i gcov {} >> $GCOV_DIR/log.txt
-    cd ..
-    $LCOV_PATH -c -d $GCOV_CACHE_DIR -o $GCOV_INFO_DIR/cover.info >> $GCOV_DIR/log.txt
-    $LCOV_PATH -a $GCOV_INFO_DIR/init.info -a $GCOV_INFO_DIR/cover.info -o $GCOV_INFO_DIR/total.info >> $GCOV_DIR/log.txt
-    $LCOV_PATH --remove $GCOV_INFO_DIR/total.info '*/3rdparty/*' '*torch/*' '*c10/*' '*ATen/*' '*/c++/7*' '*tests/*' '*tools/*' '/usr/*' '/opt/*' '*models/*' -o $GCOV_INFO_DIR/final.info >> $GCOV_DIR/log.txt
-    /usr/local/lcov/bin/genhtml -o cover_result $GCOV_INFO_DIR/final.info >> $GCOV_DIR/log.txt
+    cd $GCOV_DIR
+    $LCOV_PATH -c --directory ./.. --output-file tmp_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
+    $LCOV_PATH -r tmp_coverage.info '*/3rdparty/*' '*torch/*' '*c10/*' '*ATen/*' '*/c++/7*' '*tests/*' '*tools/*' '/usr/*' '/opt/*' '*models/*' '*build/*' '*output/*' -output-file test_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
+    $LCOV_PATH -a test_coverage.info -o main_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
+    python3 $PYYTHON_FILTER_TOOL --input ./main_coverage.info --output ./final.info --root $CACHE_DIR --debug 1 >> $GCOV_DIR/log.txt
+    /usr/local/lcov/bin/genhtml --branch-coverage final.info -o cover_result --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
     tail -n 4 $GCOV_DIR/log.txt
-    cd $OUTPUT_DIR/acltransformer
+    cd ..
     tar -czf gcov.tar.gz gcov
-    rm -rf gcov
-}
-
-function fn_generate_doxygen()
-{
-    rm -rf $OUTPUT_DIR/acltransformer/doc
-    mkdir $OUTPUT_DIR/acltransformer/doc
-
-    cd $CODE_ROOT
-    if [[ $OUTPUT_DIR != $CODE_ROOT/output ]];then
-        sed -i 's|OUTPUT_DIRECTORY       =.\/output\/acltransformer\/doc|OUTPUT_DIRECTORY       ='"$OUTPUT_DIR"'\/acltransformer\/doc|g' $CODE_ROOT/Doxyfile
-    fi
-    if [ -f "/usr/local/doxygen/bin/doxygen" ];then
-        /usr/local/doxygen/bin/doxygen $CODE_ROOT/Doxyfile
-    else
-        echo "/usr/local/doxygen/bin/doxygen not exist, not generate doc"
-    fi
+    mv gcov.tar.gz $OUTPUT_DIR/atb/
+    cd $OUTPUT_DIR/atb/
+    tar -zcf csvopstest.tar.gz csvopstest
 }
 
 function fn_run_pythontest()
 {
-    cd $OUTPUT_DIR/acltransformer
-    source set_env.sh
-    cd $CODE_ROOT/tests/pythontest/
+    export_atb_env
+    cd $CODE_ROOT/tests/apitest/opstest/python/
     rm -rf ./kernel_meta*
-    bash pythontest.sh
+    python3 -m unittest discover -s . -p "*.py"
 }
 
-function fn_make_tar_package()
+function fn_run_mixops_pythontest()
 {
-    cd $OUTPUT_DIR
-    tar -czf acltransformer.tar.gz acltransformer
-    rm -rf acltransformer
+    export_atb_env
+    cd $CODE_ROOT/tests/apitest/mixopstest/
+    rm -rf ./kernel_meta*
+    bash optest.sh
+}
+
+function fn_run_csvopstest()
+{
+    export_atb_env
+    cd $CODE_ROOT/tests/framework/python/CsvOpsTestTool
+    python3 ./atb_csv_ops_test.py $CSVOPSTEST_OPTIONS
+}
+
+function fn_run_infratest()
+{
+    export_atb_env
+    find $CODE_ROOT/tests/infratest -type f -name "*.py" -exec python3 {} \;
 }
 
 function fn_main()
 {
-    if [ -z $ASCEND_HOME_PATH ];then
-        echo "env ASCEND_HOME_PATH not exists, build fail"
-        exit -1
-    fi
-
-    PYTORCH_VERSION="$(python3 -c 'import torch; print(torch.__version__)')"
-    if [ ${PYTORCH_VERSION:0:5} == "1.8.0" ] || [ ${PYTORCH_VERSION:0:4} == "1.11" ];then
-        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DTORCH_18=ON"
-    fi
-
-    if [[ "$BUILD_OPTION_LIST" =~ "$1" ]];then
-        if [[ -z "$1" ]];then
-            arg1="release"
+    if [[ "$BUILD_OPTION_LIST" =~ "$1" ]]; then
+        if [[ -z "$1" ]]; then
+            arg1="default"
         else
             arg1=$1
             shift
         fi
     else
         cfg_flag=0
-        for item in ${BUILD_CONFIGURE_LIST[*]};do
-            if [[ $1 =~ $item ]];then
+        for item in ${BUILD_CONFIGURE_LIST[*]}; do
+            if [[ "$1" =~ $item ]]; then
                 cfg_flag=1
                 break 1
             fi
         done
-        if [[ $cfg_flag == 1 ]];then
-            arg1="release"
+        if [[ "$cfg_flag" == 1 ]]; then
+            arg1="default"
         else
             echo "argument $1 is unknown, please type build.sh help for more imformation"
-            exit -1
+            exit 1
         fi
     fi
 
@@ -382,157 +502,139 @@ function fn_main()
     do {
         arg2=$1
         case "${arg2}" in
-        --output=*)
-            arg2=${arg2#*=}
-            if [ -z $arg2 ];then
-                echo "the output directory is not set. This should be set like --output=<outputDir>"
-            else
-                cd $CURRENT_DIR
-                if [ ! -d "$arg2" ];then
-                    mkdir -p $arg2
-                fi
-                export OUTPUT_DIR=$(cd $arg2; pwd)
-            fi
-            ;;
-        --cache=*)
-            arg2=${arg2#*=}
-            if [ -z $arg2 ];then
-                echo "the cache directory is not set. This should be set like --cache=<cacheDir>"
-            else
-                cd $CURRENT_DIR
-                if [ ! -d "$arg2" ];then
-                    mkdir -p $arg2
-                fi
-                export CACHE_DIR=$(cd $arg2; pwd)
-            fi
-            ;;
         "--use_cxx11_abi=1")
             USE_CXX11_ABI=ON
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=ON"
             ;;
         "--use_cxx11_abi=0")
             USE_CXX11_ABI=OFF
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=OFF"
-            ;;
-        "--gcov")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
             ;;
         "--verbose")
-            USE_VERBOSE=ON
+            COMPILE_VERBOSE="--verbose"
             ;;
-        "--incremental")
-            INCREMENTAL_SWITCH=ON
+        "--asan")
+            USE_ASAN=ON
+            CMAKE_BUILD_TYPE=Debug
             ;;
-        "--no_hostbin")
-            HOST_CODE_PACK_SWITCH=OFF
+        "--skip_build")
+            SKIP_BUILD=ON
             ;;
-        "--no_devicebin")
-            DEVICE_CODE_PACK_SWITCH=OFF
-            ;;
-        "--optimize_off")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_OPTIMIZE=OFF"
-            ;;
-        "--doxygen")
-            DOXYGEN_SWITCH=ON
-            ;;
-        --link_python=*)
+        --csvopstest_options=*)
             arg2=${arg2#*=}
-            if [ -z $arg2 ];then
-                echo "the python version is not set. This should be set like --link_python=python3.7|python3.8|python3.9"
-            else
-                COMPILE_OPTIONS="${COMPILE_OPTIONS} -DLINK_PYTHON=$arg2"
+            if [ ! -z "$arg2" ];then
+                CSVOPSTEST_OPTIONS=$arg2
             fi
             ;;
-        --build_config=*)
-            arg2=${arg2#*=}
-            if [ -z $arg2 ];then
-                echo "the config file is not set. This should be set like --build_config=<configFilePath>"
-            else
-                firstChar=${arg2: 0: 1}
-                if [[ "$firstChar" == "/" ]];then
-                    export BUILD_CONFIG_FILE=$arg2
-                else
-                    export BUILD_CONFIG_FILE=$CURRENT_DIR"/"$arg2
-                fi
-            fi
+        "--debug")
+            CMAKE_BUILD_TYPE=Debug
             ;;
-        "--use_torch_runner")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TORCH_RUNNER=ON"
+        "--msdebug")
+            USE_MSDEBUG=ON
+            CHIP_TYPE=$(npu-smi info -m | grep -oE 'Ascend\s*\S+' | head -n 1 | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_MSDEBUG=ON -DCHIP_TYPE=${CHIP_TYPE}"
             ;;
-        "--use_lccl_runner")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_LCCL_RUNNER=ON"
+        "--mssanitizer")
+            USE_MSSANITIZER=ON
             ;;
-        "--use_hccl_runner")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_HCCL_RUNNER=ON"
+        "--clean-first")
+            [[ -d "$CACHE_DIR" ]] && rm -rf $CACHE_DIR
+            [[ -d "$OUTPUT_DIR" ]] && rm -rf $OUTPUT_DIR
+            [[ -d "$THIRD_PARTY_DIR" ]] && rm -rf $THIRD_PARTY_DIR
             ;;
-        "--use_tiling_stream")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TILING_STREAM=ON"
+        "--no-pybind")
+            BUILD_PYBIND=OFF
             ;;
         esac
         shift
     }
     done
 
-    fn_init_pytorch_env
+    [[ ! -d "$CACHE_DIR" ]] && mkdir $CACHE_DIR
+    [[ ! -d "$OUTPUT_DIR" ]] && mkdir $OUTPUT_DIR
+    [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
+    fn_init_env
+
+    COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_MSSANITIZER=$USE_MSSANITIZER -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND"
     case "${arg1}" in
-        "download_testdata")
-            fn_download_testdata
-            ;;
-        "examples")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
-            BUILD_EXAMPLES=ON
+        "default")
+            MKI_BUILD_MODE=Dev
             fn_build
+            ;;
+        "testframework")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TEST_FRAMEWORK=ON"
+            fn_build
+            generate_atb_version_info
+            pack_testframework
             ;;
         "unittest")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
-            fn_build_3rdparty
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UNIT_TEST=ON"
+            fn_build_3rdparty_for_test
             fn_build
-            ;;
-        "unittest_and_run")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
-            export COVERAGE_TYPE="unittest"
-            fn_build_3rdparty
-            fn_build
-            fn_build_coverage
+            fn_run_unittest
             ;;
         "pythontest")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
-            BUILD_EXAMPLES=ON
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_PYTHON_TEST=ON"
             fn_build
+            fn_run_pythontest
             ;;
-        "pythontest_and_run")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
-            BUILD_EXAMPLES=ON
-            export COVERAGE_TYPE="pythontest"
+        "mixpythontest")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_PYTHON_TEST=ON"
+            fn_build
+            fn_run_mixops_pythontest
+            ;;
+        "csvopstest")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CSV_OPS_TEST=ON"
+            fn_build
+            fn_run_csvopstest
+            ;;
+        "infratest")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_INFRA_TEST=ON"
+            fn_build
+            fn_run_infratest
+            ;;
+        "hitest")
+            export_atb_hitest_env
+            export CMAKE_CXX_COMPILER_LAUNCHER=hitestwrapper
+            export CMAKE_CXX_LINKER_LAUNCHER=hitestwrapper
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TEST_FRAMEWORK=ON"
+            fn_build
+            generate_atb_version_info
+            pack_testframework
+            pack_hitest
+            ;;
+        "fuzztest")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_FUZZ_TEST=ON"
+            COVERAGE_TYPE="FUZZTEST"
+            RANDOM_SEED=0
+            TEST_TIME=30
+            python3 $CODE_ROOT/tests/apitest/fuzztest/generate_operation_fuzz_test.py $CODE_ROOT $RANDOM_SEED $TEST_TIME
+            fn_build_3rdparty_for_test
+            fn_build_secodefuzz
             fn_build
             fn_build_coverage
             ;;
-        "debug")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS}"
-            fn_build
-            fn_make_tar_package
-            ;;
-        "release")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Release"
-            fn_build
-            fn_make_tar_package
-            ;;
-        "python_unittest_and_run")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UT_TEST=ON"
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_GCOV=ON"
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_EXAMPLES=ON"
-            BUILD_EXAMPLES=ON
-            fn_build_3rdparty
+        "alltest")
+            fn_build_3rdparty_for_doc
+            fn_gen_doc
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_ALL_TEST=ON"
+            CSVOPSTEST_OPTIONS="-i $CODE_ROOT/tests/apitest/opstest/csv/ -o $CODE_ROOT/output/atb/csvopstest -tt Function"
+            COVERAGE_TYPE="ALLTEST"
+            fn_build_3rdparty_for_test
             fn_build
             fn_build_coverage
             ;;
-        "help")
-            echo "build.sh 3rdparty|unittest|unittest_and_run|pythontest|pythontest_and_run|debug|release --incremental|--gcov|--no_hostbin|--no_devicebin|--output=<dir>|--cache=<dir>|--use_cxx11_abi=0|--use_cxx11_abi=1|--build_config=<path>"
+        "clean")
+            [[ -d "$CACHE_DIR" ]] && rm -rf $CACHE_DIR
+            [[ -d "$OUTPUT_DIR" ]] && rm -rf $OUTPUT_DIR
+            [[ -d "$THIRD_PARTY_DIR" ]] && rm -rf $THIRD_PARTY_DIR
+            echo "clean all build history"
+            ;;
+        "gendoc")
+            fn_build_3rdparty_for_doc
+            fn_gen_doc
             ;;
         *)
-            echo "unknown build type:${arg1}";
+            echo "Usage: "
+            echo "run build.sh help|default|testframework|unittest|pythontest|mixpythontest|csvopstest|infratest|fuzztest|alltest|clean|gendoc --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
             ;;
     esac
 }
