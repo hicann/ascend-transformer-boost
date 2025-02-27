@@ -1,0 +1,380 @@
+//! \struct atb::infer::RepeatParam 
+//! <table class="ct">
+//! <caption id="RepeatParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数            <th class="ch">维度                                            <th class="ch">数据类型        <th class="ch">格式   <th class="ch">描述
+//! <tr><td class="cc">x               <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/bf16        <td class="cc">ND    <td class="cc">输入
+//! <tr><td class="cc">output          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/bf16        <td class="cc">ND    <td class="cc">输出，和输入的数据类型一致
+//! </table>
+
+//! \struct atb::infer::SplitParam 
+//! <table class="ct">
+//! <caption id="SplitParamBinOutput">splitNum=2时输入输出</caption>
+//! <tr><th class="ch">参数             <th class="ch">维度                                            <th class="ch">数据类型                   <th class="ch">格式    <th class="ch">描述
+//! <tr><td class="cc">x                <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/int64/bf16        <td class="cc">ND      <td class="cc">输入， 最高支持8维
+//! <tr><td class="cc">output1          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/int64/bf16        <td class="cc">ND      <td class="cc">输出
+//! <tr><td class="cc">output2          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/int64/bf16        <td class="cc">ND      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="SplitParamTriOutput">splitNum=3时输入输出</caption>
+//! <tr><th class="ch">参数             <th class="ch">维度                                            <th class="ch">数据类型             <th class="ch">格式    <th class="ch">描述
+//! <tr><td class="cc">x                <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/bf16        <td class="cc">ND     <td class="cc">输入， 最高支持8维
+//! <tr><td class="cc">output1          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/bf16        <td class="cc">ND     <td class="cc">输出
+//! <tr><td class="cc">output2          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/bf16        <td class="cc">ND     <td class="cc">输出
+//! <tr><td class="cc">output3          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16/bf16        <td class="cc">ND     <td class="cc">输出
+//! </table>
+//!
+//! 等长切分示例用法：
+//! \code
+//! atb::infer::SplitParam param;
+//! param.splitDim = 0;
+//! param.splitNum = 2;
+//! >>> input
+//! tensor([6, 6])
+//! >>> output
+//! tensor([[3, 6],
+//!         [3, 6]])
+//! \endcode
+//! 不等长切分示例用法：
+//! \code
+//! atb::infer::SplitParam param;
+//! param.splitDim = 1;
+//! param.splitNum = 3;
+//! param.splitSizes = {1,2,3};
+//! >>> input
+//! tensor([6, 6])
+//! >>> output
+//! tensor([[6, 1],
+//!         [6, 2],
+//!         [6, 3]])
+//! \endcode
+//!
+
+ 
+//! \struct atb::infer::WhereParam 
+//! <table class="ct">
+//! <caption id="WhereParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数       <th class="ch">维度                                            <th class="ch">数据类型     <th class="ch">格式
+//! <tr><td class="cc">cond       <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">int8     <td class="cc">ND
+//! <tr><td class="cc">x          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16     <td class="cc">ND
+//! <tr><td class="cc">y          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16     <td class="cc">ND
+//! <tr><td class="cc">z          <td class="cc">[-1,....,-1]<br>-1表示当前维度的大小没有约束      <td class="cc">float16     <td class="cc">ND
+//! </table>
+ 
+//! \struct atb::infer::TransdataParam 
+//! <table class="ct">
+//! <caption id="TransdataParamND-NZ">ND转NZ</caption>
+//! <tr><th class="ch">参数     <th class="ch">维度                              <th class="ch">数据类型         <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x        <td class="cc">1.[batch, m, n]<br>2.[m, n]      <td class="cc">float16/int8     <td class="cc">ND      <td class="cc">输入
+//! <tr><td class="cc">y        <td class="cc">[batch, n1, m1m0, n0]            <td class="cc">float16/int8     <td class="cc">NZ      <td class="cc">输出
+//! </table>
+//! <table class="ct">
+//! <caption id="TransdataParamNZ-ND">NZ转ND</caption>
+//! <tr><th class="ch">参数     <th class="ch">维度                              <th class="ch">数据类型         <th class="ch">格式   <th class="ch">描述
+//! <tr><td class="cc">x        <td class="cc">[batch, n1, m1m0, n0]          <td class="cc">float16          <td class="cc">NZ    <td class="cc">输入
+//! <tr><td class="cc">y        <td class="cc">[batch, m, n]                    <td class="cc">float16          <td class="cc">ND    <td class="cc">输出
+//! </table>
+
+//! \struct atb::infer::IndexAddParam 
+//! <table class="ct">
+//! <caption id="IndexAddParam-INDEX_ADD">函数输入输出描述</caption>
+//! <tr><th class="ch">参数     <th class="ch">维度             <th class="ch">数据类型  <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">var      <td class="cc">[d_0, ..., d_n]  <td class="cc">float16  <td class="cc">ND   <td class="cc">输入Tensor。被加数，输入为零，原地被加后作为输出。
+//! <tr><td class="cc">indices  <td class="cc">[d_x]            <td class="cc">int32    <td class="cc">ND   <td class="cc">输入Tensor。指定固定维度的指定下标。d_min = min(d_x, d_axis)，值域为[0, d_min)，且前d_min个值不重复。
+//! <tr><td class="cc">updates  <td class="cc">[d_0, ..., d_n]  <td class="cc">float16  <td class="cc">ND   <td class="cc">输入Tensor。加数，根据indices的值加到var对应位置。维度数与var一致。索引为axis的维度为d_x，即d_axis == d_x。
+//! <tr><td class="cc">alpha    <td class="cc">[1]              <td class="cc">float16  <td class="cc">ND   <td class="cc">输入Tensor。累加次数。
+//! <tr><td class="cc">output   <td class="cc">[d_0, ..., d_n]  <td class="cc">float16  <td class="cc">ND   <td class="cc">输出Tensor。与var为同一个Tensor，即二者数据类型、数据格式和地址等所有属性均相同。
+//! <tr><td class="cc">min(x, y)表示取x和y两个数中的较小值。<br>d_axis表示var、updates和output在索引为axis的维度大小，即，若axis为0，d_axis对应第0维大小d_0。
+//! </table>
+//! <table class="ct">
+//! <caption id="IndexAddParam-INDEX_ADD_VALID">函数输入输出描述</caption>
+//! <tr><th class="ch">参数             <th class="ch">维度         <th class="ch">数据类型  <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">var              <td class="cc">[d_1, d_2]   <td class="cc">float16  <td class="cc">ND   <td class="cc">输入tensor。被加数，输入为零，原地被加后作为输出。
+//! <tr><td class="cc">indices          <td class="cc">[d_0]        <td class="cc">int32    <td class="cc">ND   <td class="cc">输入tensor。指定固定维度的指定下标。指定固定维度的指定下标。值域范围为[0, d_1)。
+//! <tr><td class="cc">updates          <td class="cc">[d_0, d_2]   <td class="cc">float16  <td class="cc">ND   <td class="cc">输入tensor。加数，根据indices的值加到var对应位置。
+//! <tr><td class="cc">validIndicesNum  <td class="cc">[1]          <td class="cc">int32    <td class="cc">ND   <td class="cc">输入tensor。indices的有效长度。值域范围为[0, d_0]。
+//! <tr><td class="cc">output           <td class="cc">[d_1, d_2]   <td class="cc">float16  <td class="cc">ND   <td class="cc">输出tensor。与var为同一个Tensor，即二者数据类型、数据格式和地址等所有属性均相同。
+//! <tr><td class="cc">d_2取值范围为(0, 8192]。
+//! </table>
+//!
+//! \code
+//! >>> var
+//! tensor([[2, 3, 4],
+//!         [1, 1, 1],
+//!         [8, 9, 10],
+//!         [1, 1, 1],
+//!         [5, 6, 7]])
+//! >>> indices
+//! tensor([0, 1])
+//! >>> updates
+//! tensor([[1, 1, 1],
+//!         [2, 2, 2]])
+//! >>> alpha
+//! tensor([1])
+//! atb::infer::IndexAddParam = {"indexType":1, "axis": 0};
+//! >>> output
+//! tensor([[3, 4, 5],
+//!         [3, 3, 3],
+//!         [8, 9, 10],
+//!         [1, 1, 1],
+//!         [5, 6, 7]])
+//! \endcode
+//!
+
+//! \struct atb::infer::GatingParam
+//! <table class="ct">
+//! <caption id="GatingParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数             <th class="ch">维度                         <th class="ch">数据类型  <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">topk             <td class="cc">[tokenNum * topkExpertNum]   <td class="cc">int32    <td class="cc">ND   <td class="cc">输入tensor。每个token选中的专家的index。值域为[0, cumSumNum - 1]；当cumSumNum为0时，值域为[0, 11300)。
+//! <tr><td class="cc">idxArr           <td class="cc">[tokenNum * topkExpertNum]   <td class="cc">int32    <td class="cc">ND   <td class="cc">输入tensor。每个token原始的index，具体的值为[0,1,2,3,...]。
+//! <tr><td class="cc">tokenIndex       <td class="cc">[tokenNum * topkExpertNum]   <td class="cc">int32    <td class="cc">ND   <td class="cc">输出tensor。token重排以后原始的索引值。
+//! <tr><td class="cc">cumSum           <td class="cc">[expertNum]                  <td class="cc">int32/int64    <td class="cc">ND   <td class="cc">输出tensor。每个专家被选中的次数。当cumSumNum为0时，expertNum值为1；当deviceExpert不为空时，expertNum值为deviceExpert的元素个数，否则，expertNum值为cumSumNum，当cumSumInt64为True时，输出为int64类型。
+//! <tr><td class="cc">originalIndex    <td class="cc">[tokenNum * topkExpertNum]   <td class="cc">int32    <td class="cc">ND   <td class="cc">输出tensor。token重排以后token的索引值。
+//! <tr><td class="cc">validIndex       <td class="cc">[1]                          <td class="cc">int32    <td class="cc">ND   <td class="cc">输出tensor。当deviceExpert不为空时输出。
+//! </table>
+//! tokenNum表示token个数，tokenNum = batch * seqlen。
+
+//! \struct atb::train::FastSoftMaxParam
+//! \f[ nSquareTokens = headNum \sum_{i=0}^{\text{batchSize} - 1} (qSeqLen[i])^2 \f] 
+//! <table class="ct">
+//! <caption id="FastSoftMaxParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数       <th class="ch">维度                  <th class="ch">数据类型     <th class="ch">格式  <th class="ch">描述
+//! <tr><td class="cc">input       <td class="cc">[nSquareTokens]      <td class="cc">float16     <td class="cc">ND    <td class="cc">输入向量，随机tensor
+//! <tr><td class="cc">output          <td class="cc">[nSquareTokens]      <td class="cc">float16     <td class="cc">ND <td class="cc">结果向量，范围在[0, 1]的概率tensor。
+//! </table>
+
+//! \struct atb::train::FastSoftMaxGradParam
+//! \f[ nSquareTokens = headNum \sum_{i=0}^{\text{batchSize} - 1} (qSeqLen[i])^2 \f] 
+//! <table class="ct">
+//! <caption id="FastSoftMaxGradParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数       <th class="ch">维度                  <th class="ch">数据类型     <th class="ch">格式  <th class="ch">描述
+//! <tr><td class="cc">yInput       <td class="cc">[nSquareTokens]      <td class="cc">float16     <td class="cc">ND    <td class="cc">SoftMax算子前向计算的结果。
+//! <tr><td class="cc">yGrad          <td class="cc">[nSquareTokens]      <td class="cc">float16     <td class="cc">ND <td class="cc">下一个算子传入的梯度数据。排列方式与yInput相同。
+//! <tr><td class="cc">output          <td class="cc">[nSquareTokens]      <td class="cc">float16     <td class="cc">ND <td class="cc">结果向量。排列方式与yInput相同
+//! </table>
+
+//! \struct atb::train::GenAttentionMaskParam
+//! \f[ nSquareTokens = headNum \sum_{i=0}^{\text{batchSize} - 1} (qSeqLen[i])^2 \f]  
+//! <table class="ct">
+//! <caption id="GenAttentionMaskParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数       <th class="ch">维度                                      <th class="ch">数据类型     <th class="ch">格式  <th class="ch">描述
+//! <tr><td class="cc">x         <td class="cc">[batchSize, 1, maxSeqLen, maxseqlen]      <td class="cc">float16     <td class="cc">ND    <td class="cc">用于attentionmask计算的随机矩阵。
+//! <tr><td class="cc">output     <td class="cc">[nSquareTokens]                          <td class="cc">float16     <td class="cc">ND     <td class="cc">attentionmask计算的结果矩阵。
+//! </table>
+
+//! \struct atb::train::PadWithHiddenStateParam
+//! \f[ nTokens = \sum_{i=0}^{\text{batchSize} - 1} qSeqLen[i] \f] 
+//! <table class="ct">
+//! <caption id="PadWithHiddenStateParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数       <th class="ch">维度                                 <th class="ch">数据类型     <th class="ch">格式  <th class="ch">描述
+//! <tr><td class="cc">x       <td class="cc">[nTokens, hiddenSize]                  <td class="cc">float16     <td class="cc">ND    <td class="cc">pad前不带冗余的tensor。与unpad输出shape一致。
+//! <tr><td class="cc">output  <td class="cc">[batchSize, maxSeqLen, hiddenSize]      <td class="cc">float16     <td class="cc">ND   <td class="cc">pad后带冗余的tensor。与unpad输入shape一致。
+//! </table>
+
+//! \struct atb::train::RmsNormBackwardParam
+//! <table class="ct">
+//! <caption id="RmsNormBackwardParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数             <th class="ch">维度                    <th class="ch">数据类型                    <th class="ch">格式          <th class="ch">描述
+//! <tr><td class="cc">dy              <td class="cc">[-1,…,-1]               <td class="cc">float16/float/bf16      <td class="cc">ND           <td class="cc">输入梯度。维度与x相同。数据类型与x一致。
+//! <tr><td class="cc">x               <td class="cc">[-1,…,-1]                <td class="cc">float16/float/bf16          <td class="cc">ND     <td class="cc">正向计算输入。
+//! <tr><td class="cc">rstd           <td class="cc">[-1,…,-1]                 <td class="cc">float                       <td class="cc">ND        <td class="cc">正向计算中间结果。
+//! <tr><td class="cc">gamma          <td class="cc">[-1,…,-1]                <td class="cc">float16/float/bf16           <td class="cc">ND     <td class="cc">数据类型与x一致。维度数需要大于0，并小于x的维度数，gamma的维度从最后一维向前，每一维都需要和x保持一致。
+//! <tr><td class="cc">dx             <td class="cc">[-1,…,-1]                <td class="cc">float16/float/bf16          <td class="cc">ND     <td class="cc">正向输入x的梯度。维度与x一致。数据类型与x一致。
+//! <tr><td class="cc">dgamma         <td class="cc">[-1,…,-1]                 <td class="cc">float                          <td class="cc">ND     <td class="cc">正向输入gamma的梯度。维度与gamma一致。
+//! </table>
+
+//! \struct atb::train::RopeGradParam
+//! \f[ nTokens = \sum_{i=0}^{\text{batchSize} - 1} qSeqLen[i] \f] 
+//! <table class="ct">
+//! <caption id="RopeGradParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数             <th class="ch">维度                                <th class="ch">数据类型      <th class="ch">格式          <th class="ch">描述
+//! <tr><td class="cc">ropeQ_grad1      <td class="cc">[nTokens, hiddenSize]               <td class="cc">float16      <td class="cc">ND           <td class="cc">ropeQ_grad矩阵。
+//! <tr><td class="cc">ropeQ_grad2      <td class="cc">[nTokens, hiddenSize]                <td class="cc">float16     <td class="cc">ND     <td class="cc">ropeQ_grad矩阵。
+//! <tr><td class="cc">cos              <td class="cc">[maxSeqLen, headDim]                 <td class="cc">float16     <td class="cc">ND        <td class="cc">cos矩阵，maxSeqLen为qSeqLen中的最大元素，headDim为128。
+//! <tr><td class="cc">sin              <td class="cc">[maxSeqLen, headDim]                <td class="cc">float16      <td class="cc">ND     <td class="cc">sin矩阵。
+//! <tr><td class="cc">q_grad           <td class="cc">[nTokens, hiddenSize]               <td class="cc">float16      <td class="cc">ND     <td class="cc">q_grad矩阵。
+//! <tr><td class="cc">k_grad           <td class="cc">[nTokens, hiddenSize]                <td class="cc">float16     <td class="cc">ND     <td class="cc">k_grad矩阵。
+//! </table>
+
+//! \struct atb::train::StridedBatchMatmulParam
+//! <table class="ct">
+//! <caption id="StridedBatchMatmulParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数       <th class="ch">维度                  <th class="ch">数据类型     <th class="ch">格式  <th class="ch">描述
+//! <tr><td class="cc">A      <td class="cc">bmm1、bmm1_grad2、bmm2_grad1：[nTokens, hiddenSize]<br>bmm1_grad1、bmm2、bmm2_grad2：[nSquareTokens]      <td class="cc">float16     <td class="cc">ND    <td class="cc">输入向量
+//! <tr><td class="cc">B          <td class="cc">bmm1、bmm1_grad2、bmm2_grad1：[nTokens, hiddenSize]<br>bmm1_grad1、bmm2、bmm2_grad2：[nSquareTokens]      <td class="cc">float16     <td class="cc">ND <td class="cc">输入向量
+//! <tr><td class="cc">output         <td class="cc">[outdims]                                                                                          <td class="cc">float16     <td class="cc">ND <td class="cc">结果向量
+//! </table>
+
+//! \struct atb::train::UnpadWithHiddenStateParam 
+//! <table class="ct">
+//! <caption id="UnpadWithHiddenStateParam ">函数输入输出描述</caption>
+//! <tr><th class="ch">参数       <th class="ch">维度                  <th class="ch">数据类型     <th class="ch">格式  <th class="ch">描述
+//! <tr><td class="cc">x       <td class="cc">[batchSize, maxSeqLen, hiddenSize]      <td class="cc">float16     <td class="cc">ND    <td class="cc">unpad前，带冗余的tensor，与pad输出shape一致。
+//! <tr><td class="cc">output          <td class="cc">[nTokens, hiddenSize]     <td class="cc">float16     <td class="cc">ND <td class="cc">unpad后，不带冗余的tensor，与pad输入shape一致。nTokens为qSeqlen数组的元素和
+//! </table>
+
+//! \struct atb::infer::SendParam 
+//! <table class="ct">
+//! <caption id="SendParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16       <td class="cc">ND           <td class="cc">输入tensor
+//! </table>
+//!
+
+//! \struct atb::infer::RecvParam 
+//! <table class="ct">
+//! <caption id="RecvParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16        <td class="cc">ND           <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束                               <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16     <td class="cc">ND        <td class="cc">输出tensor,与输入维度相同
+//! </table>
+//!
+
+//! \struct atb::infer::AllToAllParam 
+//! <table class="ct">
+//! <caption id="AllToAllParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16        <td class="cc">ND           <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束                               <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16     <td class="cc">ND        <td class="cc">输出tensor,与输入维度相同
+//! </table>
+//!
+
+//! \struct atb::infer::AllToAllVParam 
+//! <table class="ct">
+//! <caption id="AllToAllVParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16        <td class="cc">ND           <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">[1,sum(recvCounts)]                               <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16     <td class="cc">ND        <td class="cc">输出tensor,最后一维的shape为参数recvCounts的所有元素之和
+//! </table>
+//!
+
+//! \struct atb::train::LaserAttentionParam
+//! <table class="ct">
+//! <caption id="LaserAttentionParam">LaserAttentionOperation输入输出描述</caption>
+//! <tr><th class="ch">参数             <th class="ch">维度                                                                                                     <th class="ch">数据类型          <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">query            <td class="cc">[batch, q_num_head, seq_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor。
+//! <tr><td class="cc">key              <td class="cc">[batch, kv_num_head, kv_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">value            <td class="cc">[batch, kv_num_head, kv_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">pseShift         <td class="cc">[batch, q_num_head, seq_size, seq_size]/[batch, q_num_head, 1, kv_size]/[q_num_head, seq_size, seq_size] <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">dropMask         <td class="cc">[batch * q_num_head * seq_size * kv_size / 8]                                                            <td class="cc">uint8    <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。
+//! <tr><td class="cc">paddingMask      <td class="cc">-                                                                                                        <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">attenMask        <td class="cc">[seq_size, kv_size]                                                                                      <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor。attention范围。<br/>只支持下三角形。当preTokens < seq_size时，算子内部当做梯形处理。
+//! <tr><td class="cc">prefix           <td class="cc">[batch]                                                                                                  <td class="cc">int64    <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。
+//! <tr><td class="cc">actualSeqQLen    <td class="cc">[batch]                                                                                                  <td class="cc">int64    <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。
+//! <tr><td class="cc">actualSeqKVLen   <td class="cc">[batch]                                                                                                  <td class="cc">int64    <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。
+//! <tr><td class="cc">softmaxMax       <td class="cc">[batch, q_num_head, seq_size]                                                                            <td class="cc">float    <td class="cc">ND   <td class="cc">输出Tensor。
+//! <tr><td class="cc">softmaxSum       <td class="cc">[batch, q_num_head, seq_size]                                                                            <td class="cc">float    <td class="cc">ND   <td class="cc">输出Tensor。
+//! <tr><td class="cc">softmaxOut       <td class="cc">[...]                                                                                                    <td class="cc">bf16     <td class="cc">ND   <td class="cc">输出Tensor，可选，不使用时shape可任意配置，当前不支持使用。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">attentionOut     <td class="cc">[batch, q_num_head, seq_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输出Tensor。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc" colspan="5">可选：表示根据使用场景，可选择是否需要使用该Tensor。当不使用Tensor时：若为输入Tensor，则传入空Tensor作为占位符，维度、数据类型等不受表中配置约束；若为输出Tensor，shape可任意配置，维度、数据类型受表中配置约束。空Tensor为Tensor的默认初始状态，可参考Tensor接口说明，其维度数为0。
+//! <tr><td class="cc" colspan="5">q_num_head的值与参数headNum的值相同。
+//! <tr><td class="cc" colspan="5">seq_size的值大于等于参数preTokens的值。
+//! <tr><td class="cc" colspan="5">q_num_head的值为kv_num_head的值的整数倍。
+//! <tr><td class="cc" colspan="5">seq_size和kv_size的值是256的整数倍；当attenMask不为空Tensor时，seq_size和kv_size的值必须相同。
+//! <tr><td class="cc" colspan="5">head_dim的值必须为128。
+//! <tr><td class="cc" colspan="5">构造query/key/value时，若值域配置在[-100, 100]以内，采取uniform均匀分布方式生成数据；否则，采取normal正态分布，均值在[-100, 100]内随机选取，标准差在[1, 25]内随机选取。
+//! </table>
+//!
+
+//! \struct atb::train::LaserAttentionGradParam
+//! <table class="ct">
+//! <caption id="LaserAttentionGradParam">LaserAttentionGradOperation输入输出描述</caption>
+//! <tr><th class="ch">参数             <th class="ch">维度                                                                                                     <th class="ch">数据类型          <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">query            <td class="cc">[batch, q_num_head, seq_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor。
+//! <tr><td class="cc">key              <td class="cc">[batch, kv_num_head, kv_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">value            <td class="cc">[batch, kv_num_head, kv_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">attentionOutGrad <td class="cc">[batch, q_num_head, seq_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor。<br/>数据类型与query的数据类型相同。<br/>值域为[-0.5, 0.5]。
+//! <tr><td class="cc">pseShift         <td class="cc">[batch, q_num_head, seq_size, seq_size]/[batch, q_num_head, 1, kv_size]/[q_num_head, seq_size, seq_size] <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">dropMask         <td class="cc">[batch * q_num_head * seq_size * seq_size / 8]                                                           <td class="cc">uint8    <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。
+//! <tr><td class="cc">paddingMask      <td class="cc">-                                                                                                        <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">attenMask        <td class="cc">[seq_size, kv_size]                                                                                      <td class="cc">float16  <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor。attention范围。<br/>只支持下三角形。当preTokens < seq_size时，算子内部当做梯形处理。
+//! <tr><td class="cc">softmaxMax       <td class="cc">[batch, q_num_head, seq_size]                                                                            <td class="cc">float    <td class="cc">ND   <td class="cc">输入Tensor，为前向输出。
+//! <tr><td class="cc">softmaxSum       <td class="cc">[batch, q_num_head, seq_size]                                                                            <td class="cc">float    <td class="cc">ND   <td class="cc">输入Tensor，为前向输出。
+//! <tr><td class="cc">softmaxIn        <td class="cc">[...]                                                                                                    <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor，为前向输出，可选，不使用时shape可任意配置，当前不支持使用。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">attentionIn      <td class="cc">[batch, q_num_head, seq_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输入Tensor，为前向输出。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">prefix           <td class="cc">[batch]                                                                                                  <td class="cc">int64    <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。
+//! <tr><td class="cc">actualSeqQLen    <td class="cc">[batch]                                                                                                  <td class="cc">int64    <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。
+//! <tr><td class="cc">actualSeqKVLen   <td class="cc">[batch]                                                                                                  <td class="cc">int64    <td class="cc">ND   <td class="cc">输入Tensor，可选，不使用时传入空Tensor，当前不支持使用。
+//! <tr><td class="cc">queryGrad        <td class="cc">[batch, q_num_head, seq_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输出Tensor。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">keyGrad          <td class="cc">[batch, kv_num_head, kv_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输出Tensor。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">valueGrad        <td class="cc">[batch, kv_num_head, kv_size, head_dim]                                                                  <td class="cc">bf16     <td class="cc">ND   <td class="cc">输出Tensor。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc">dpse             <td class="cc">[...]                                                                                                    <td class="cc">bf16     <td class="cc">ND   <td class="cc">输出Tensor，可选，不使用时shape可任意配置，当前不支持使用。<br/>数据类型与query的数据类型相同。
+//! <tr><td class="cc" colspan="5">可选：表示根据使用场景，可选择是否需要使用该Tensor。当不使用Tensor时：若为输入Tensor，则传入空Tensor作为占位符，维度、数据类型等不受表中配置约束；若为输出Tensor，shape可任意配置，维度、数据类型受表中配置约束。空Tensor为Tensor的默认初始状态，可参考Tensor接口说明，其维度数为0。
+//! <tr><td class="cc" colspan="5">q_num_head的值与参数headNum的值相同。
+//! <tr><td class="cc" colspan="5">seq_size的值大于等于参数preTokens的值。
+//! <tr><td class="cc" colspan="5">q_num_head的值为kv_num_head的值的整数倍。
+//! <tr><td class="cc" colspan="5">seq_size和kv_size的值是256的整数倍；当attenMask不为空Tensor时，seq_size和kv_size的值必须相同。
+//! <tr><td class="cc" colspan="5">head_dim的值必须为128。
+//! <tr><td class="cc" colspan="5">构造query/key/value时，若值域配置在[-100, 100]以内，采取uniform均匀分布方式生成数据；否则，采取normal正态分布，均值在[-100, 100]内随机选取，标准差在[1, 25]内随机选取。
+//! </table>
+//!
+
+//!
+//! \struct atb::infer::GroupTopkParam
+//! <table class="ct">
+//! <caption id="GroupTopkParam">GroupTopkOperation典型场景描述</caption>
+//! <tr><th class="ch">参数    <th class="ch">维度           <th class="ch">数据类型      <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">token   <td class="cc">[tokenNum,expertNum]  <td class="cc">float16/bf16 <td class="cc">ND   <td class="cc">输入inTensor0， 二维Tensor，维度0为token数，维度1为专家总数。
+//! <tr><td class="cc">idxArr   <td class="cc">[1024]  <td class="cc">int32 <td class="cc">ND   <td class="cc">输入inTensor1， 一维Tensor，用于辅助计算，固定长度1024，[0,1,2,...,1023]的等差序列。
+//! <tr><td class="cc">output0  <td class="cc">[tokenNum,expertNum]  <td class="cc">float16/bf16 <td class="cc">ND   <td class="cc">输出outTensor0，只有一个输出Tensor，是对inTensor0原地写的输出。与inTensor1数据类型保持一致。
+//! <tr><td class="cc" colspan="5">补充说明：<br/>1.groupNum需要保证可以被inTensor0Desc.shape.dims[1]整除；<br/>2.需要保证k <= groupNum。
+//! </table>
+//!
+//! 示例用法：
+//! \code
+//! atb::infer::GroupTopkParam param;
+//! param.groupNum = 2;
+//! param.k = 1;
+//! >>> input0
+//! inTensor0 = tensor([[0.1, 0.2, 0.3, 0.4],[0.5, 0.6, 0.7, 0.8]])
+//! >>> input1
+//! inTensor0 = [0,1,2,...,1023]
+//! >>> output
+//! tensor([[0.0, 0.0, 0.3, 0.4],[0.0, 0.0, 0.7, 0.8]])
+//! \endcode
+//!
+
+//! 
+//! \struct atb::infer::GroupedMatmulWithRoutingParam
+//! <table class="ct">
+//! <caption id="GroupedMatmulWithRoutingUpNoQuant">Up非量化场景输入输出描述</caption>
+//! <tr><th class="ch">参数 <th class="ch">维度 <th class="ch">数据类型 <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">AcTensor <td class="cc">[num_tokens, hidden_size_out] <td class="cc">float16/bf16 <td class="cc">ND <td class="cc">输入，激活值。
+//! <tr><td class="cc">ExpertWeight <td class="cc">[num_experts, hidden_size_in, hidden_size_out] <td class="cc">float16/bf16 <td class="cc">ND <td class="cc">输入，专家权重，num_experts需要大于等于参数topK。数据类型和AcTensor一致。
+//! <tr><td class="cc">ExpertCount <td class="cc">[num_experts] <td class="cc">int32 <td class="cc">ND <td class="cc">输入，专家对应Token数量的前缀和。
+//! <tr><td class="cc">Expertindex <td class="cc">[num_tokens*topK] <td class="cc">int32 <td class="cc">ND <td class="cc">输入，专家 Token 索引。
+//! <tr><td class="cc">Result <td class="cc">[num_tokens*Topk, hidden_size_in] <td class="cc">float16/bf16 <td class="cc">ND <td class="cc">输出。数据类型和AcTensor一致。
+//! </table>
+//!
+//! <table class="ct">
+//! <caption id="GroupedMatmulWithRoutingUpQuant">Up量化场景输入输出描述</caption>
+//! <tr><th class="ch">参数 <th class="ch">维度 <th class="ch">数据类型 <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">AcTensor <td class="cc">[num_tokens, hidden_size_out] <td class="cc">int8 <td class="cc">ND <td class="cc">输入，激活值。
+//! <tr><td class="cc">ExpertWeight <td class="cc">[num_experts, hidden_size_in, hidden_size_out] <td class="cc">int8 <td class="cc">ND / NZ <td class="cc">输入，专家权重，num_experts需要大于等于参数topK。
+//! <tr><td class="cc">ExpertCount <td class="cc">[num_experts] <td class="cc">int32 <td class="cc">ND <td class="cc">输入，专家对应Token数量的前缀和。
+//! <tr><td class="cc">Expertindex <td class="cc">[num_tokens*topK] <td class="cc">int32 <td class="cc">ND <td class="cc">输入，专家 Token 索引。
+//! <tr><td class="cc">nscale <td class="cc">[num_experts, hidden_size_in] <td class="cc">float <td class="cc">ND <td class="cc">输入，ExpertWeight 方向反量化系数。
+//! <tr><td class="cc">mscale <td class="cc">[num_tokens] <td class="cc">float <td class="cc">ND <td class="cc">输入，AcTensor 方向反量化系数。
+//! <tr><td class="cc">Result <td class="cc">[num_tokens*Topk, hidden_size_in] <td class="cc">float16/bf16 <td class="cc">ND <td class="cc">输出。数据类型为参数outDataType指定的类型。
+//! </table>
+//!
+//! <table class="ct">
+//! <caption id="GroupedMatmulWithRoutingDowmNoQuant">Down非量化场景输入输出描述</caption>
+//! <tr><th class="ch">参数 <th class="ch">维度 <th class="ch">数据类型 <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">AcTensor <td class="cc">[num_tokens*topK, hidden_size_in] <td class="cc">float16/bf16 <td class="cc">ND <td class="cc">输入，激活值。
+//! <tr><td class="cc">ExpertWeight <td class="cc">[num_experts, hidden_size_out, hidden_size_in] <td class="cc">float16/bf16 <td class="cc">ND <td class="cc">输入，专家权重，num_experts需要大于等于参数topK。数据类型和AcTensor一致。
+//! <tr><td class="cc">ExpertCount <td class="cc">[num_experts] <td class="cc">int32 <td class="cc">ND <td class="cc">输入，专家对应Token数量的前缀和。
+//! <tr><td class="cc">Expertindex <td class="cc">[num_tokens*topK] <td class="cc">int32 <td class="cc">ND <td class="cc">输入，专家 Token 索引。
+//! <tr><td class="cc">Result <td class="cc">[num_tokens, hidden_size_out] <td class="cc">float16/bf16 <td class="cc">ND <td class="cc">输出。数据类型和AcTensor一致。
+//! </table>
+//!
+//! <table class="ct">
+//! <caption id="GroupedMatmulWithRoutingDowmQuant">Down量化场景输入输出描述</caption>
+//! <tr><th class="ch">参数 <th class="ch">维度 <th class="ch">数据类型 <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">AcTensor <td class="cc">[num_tokens*Topk, hidden_size_in] <td class="cc">int8 <td class="cc">ND <td class="cc">输入，激活值。
+//! <tr><td class="cc">ExpertWeight <td class="cc">[num_experts, hidden_size_out, hidden_size_in] <td class="cc">int8 <td class="cc">ND / NZ <td class="cc">输入，专家权重，num_experts需要大于等于参数topK。
+//! <tr><td class="cc">ExpertCount <td class="cc">[num_experts] <td class="cc">int32 <td class="cc">ND <td class="cc">输入，专家对应Token数量的前缀和。
+//! <tr><td class="cc">Expertindex <td class="cc">[num_tokens*Topk] <td class="cc">int32 <td class="cc">ND <td class="cc">输入，专家 Token 索引。
+//! <tr><td class="cc">nscale <td class="cc">[num_experts, hidden_size_in] <td class="cc">float <td class="cc">ND <td class="cc">输入，ExpertWeight 方向反量化系数。
+//! <tr><td class="cc">mscale <td class="cc">[num_tokens*Topk] <td class="cc">float <td class="cc">ND <td class="cc">输入，AcTensor 方向反量化系数。
+//! <tr><td class="cc">Result <td class="cc">[num_tokens, hidden_size_out] <td class="cc">float16/bf16 <td class="cc">ND <td class="cc">输出。数据类型为参数outDataType指定的类型。
+//! </table>
