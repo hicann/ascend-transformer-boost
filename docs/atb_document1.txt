@@ -1,0 +1,118 @@
+//! \struct atb::infer::SelfAttentionParam 
+//! SelfAttentionParam内包含枚举CalcType：当calcType为PA_ENCODER时，为pa相应的全量阶段；其他为fa。其中，fa的tensor列表如下：
+//! <table class="ct">
+//! <caption id="SelfAttention">函数输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                       <th class="ch">数据类型                                  <th class="ch">格式        <th class="ch">设备            <th class="ch">描述
+//! <tr><td class="cc">query              <td class="cc">[nTokens, qHiddenSize]                    <td class="cc">float16/bf16                          <td class="cc">ND          <td class="cc">npu  <td class="cc">query矩阵
+//! <tr><td class="cc">key                <td class="cc">[nTokens, khiddenSize]                     <td class="cc">float16/bf16                          <td class="cc">ND          <td class="cc">npu   <td class="cc">key矩阵,当kvcacheCfg配置为K_BYPASS_V_BYPASS,不传入
+//! <tr><td class="cc">value              <td class="cc">[nTokens, vhiddenSize]                     <td class="cc">float16/bf16                          <td class="cc">ND          <td class="cc">npu    <td class="cc">value矩阵,当kvcacheCfg配置为K_BYPASS_V_BYPASS,不传入
+//! <tr><td class="cc">cacheK             <td class="cc">[layerNum, batch, maxSeqLen, khiddenSize] 当开启动态batch功能时，shape为 [batch, maxSeqLen, hiddenSize]    <td class="cc">float16/bf16                          <td class="cc">ND/NZ       <td class="cc">npu/cpu   <td class="cc">NPU:存储之前所有的k，本次执行时将key刷新到cacheK上 CPU：输入为已经准备好的cacheK，输入时根据分成batch个tensor作为std::vector<Tensor>传入，此时layer维度要求为1
+//! <tr><td class="cc">cacheV             <td class="cc">[layerNum, batch, maxSeqLen, vhiddenSize] 当开启动态batch功能时，shape为 [batch, maxSeqLen, hiddenSize]    <td class="cc">float16/bf16                          <td class="cc">ND/NZ       <td class="cc">npu/cpu    <td class="cc">NPU:存储之前所有的v，本次执行时将value刷新到cacheV上 CPU:输入为已经准备好的cacheV，输入时根据分成batch个tensor作为std::vector<Tensor>传入，此时layer维度要求为1
+//! <tr><td class="cc">attentionMask      <td class="cc">[maxSeqLen, maxSeqLen] <br>[batch, maxSeqLen, maxSeqLen] <br>[batch, 1, maxSeqLen] <br>[batch, headNum, maxSeqLen, maxSeqLen]     <td class="cc">float16/bf16                          <td class="cc">ND/NZ   <td class="cc">npu  <td class="cc">1.所有batch相同，方阵；2. batch不同时的方阵；3. batch不同时的向量;4. alibi场景
+//! <tr><td class="cc">tokenOffset        <td class="cc">[batch]                                   <td class="cc">int32/uint32                              <td class="cc">ND          <td class="cc">cpu    <td class="cc">计算完成后的token偏移
+//! <tr><td class="cc">seqLen             <td class="cc">[batch]                                   <td class="cc">int32/uint32                              <td class="cc">ND          <td class="cc">cpu    <td class="cc">等于1时，为增量或全量；大于1时，为全量
+//! <tr><td class="cc">layerId            <td class="cc">[1]                                       <td class="cc">int32/uint32                              <td class="cc">ND          <td class="cc">npu    <td class="cc">取cache的kv中哪一个kv进行计算
+//! <tr><td class="cc">batchStatus        <td class="cc">[batch]                                   <td class="cc">int32/uint32                              <td class="cc">ND          <td class="cc">cpu    <td class="cc">开启动态batch功能时，通过标志位控制具体需要运算的batch
+//! <tr><td class="cc">logN               <td class="cc">[batch]                                   <td class="cc">Atlas 800I A2推理产品: float Atlas 推理系列产品: float16                              <td class="cc">ND          <td class="cc">npu    <td class="cc">增量阶段为为长度batch的logN序列，各batch增量请求对应的logN <br>当logN功能开启时需要传此tensor
+//! <tr><td class="cc">out              <td class="cc">[nTokens, vHiddenSize]                    <td class="cc">float16/bf16                          <td class="cc">ND            <td class="cc">npu     <td class="cc">输出
+//! </table>
+//!当在Atlas 推理系列产品上运行时，cacheK，cacheV的格式为NZ格式，相应的维度为[layer, batch, hiddenSize/16, maxSeqLen, 16]，且maxSeqLen应16对齐 <br>
+//!当在Atlas 推理系列产品上运行时，mask的格式可以为NZ格式，相应的维度为[batch, kvMaxSeqLen / 16, qMaxSeqLen, 16], [1, kvMaxSeqLen / 16, qMaxSeqLen, 16], [batch * head, kvMaxSeqLen / 16, qMaxSeqLen, 16], [head, kvMaxSeqLen / 16, qMaxSeqLen, 16]，
+//!且kvMaxSeqLen，qMaxSeqLen应16对齐 <br>
+//!以上维度说明中，涉及除法的均为ceil div <br>
+//!cacheK与cacheV只有在kvcacheCfg配置为K_BYPASS_V_BYPASS时才支持传入CPU类型的Tensor。 <br>
+//!表中qHiddenSize = q_head_num * head_size, khiddenSize = kv_head_num * head_size, vHiddenSize = kv_head_num * head_size_v, 当开启量化或注意力使用logN缩放特性或inputLayout为TYPE_BNSD时，或是在Atlas 推理系列产品上运行时，head_size = head_size_v, 范围为（0，256]，Atlas 800I A2上head_size可以不等于head_size_v，二者的范围为（0，576] <br>
+//!开启Sliding Window Attention（SWA）特性必须满足两个条件：maskType必须为MASK_TYPE_SLIDING_WINDOW_NORM或MASK_TYPE_SLIDING_WINDOW_COMPRESS，且windowSize>0。这两个条件要么都满足（开启SWA）,要么都不满足（不开启SWA），不能只满足一个条件 <br>
+//!开启Sliding Window Attention特性后cacheType可以为 CACHE_TYPE_NORM 或 CACHE_TYPE_SWA, 不开启特性cacheType只能为 CACHE_TYPE_NORM <br>
+//!Sliding Window Attention特性不支持动态batch，高精度，clamp缩放，qkv全量化，mla，logN缩放特性，BNSD数据排布 <br>
+//!Sliding Window Attention特性在calcType=DECODER场景下，maskType不能为MASK_TYPE_SLIDING_WINDOW_COMPRESS，且不传attentionMask <br>
+//! 高精度功能只在Atlas 800I A2推理产品上才能生效 <br>
+//! clamp缩放不支持Atlas 推理系列产品 <br>
+//!
+//! PA_ENCODER在非全量化场景下的tensor列表如下：
+//! <table class="ct">
+//! <caption id="SelfAttentionEncoder">函数输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                     <th class="ch">数据类型                                  <th class="ch">格式        <th class="ch">设备    <th class="ch">描述
+//! <tr><td class="cc">query              <td class="cc">[nTokens, head_num, head_size]                    <td class="cc">float16/bf16                          <td class="cc">ND         <td class="cc">npu    <td class="cc">query矩阵, nTokens情况较复杂，见下文
+//! <tr><td class="cc">key                <td class="cc">[nTokens, head_num, head_size]                    <td class="cc">float16/bf16                          <td class="cc">ND         <td class="cc">npu    <td class="cc">key矩阵
+//! <tr><td class="cc">value              <td class="cc">[nTokens, head_num, head_size]                    <td class="cc">float16/bf16                          <td class="cc">ND         <td class="cc">npu    <td class="cc">value矩阵，当mlaVHeadSize > 0时不传此tensor
+//! <tr><td class="cc">mask               <td class="cc">同FA, 开启mask压缩功能时与FA有所不同，见下文           <td class="cc">float16/bf16                          <td class="cc">ND/NZ      <td class="cc">npu     <td class="cc">同FA，当maskType为undefined时不传此tensor
+//! <tr><td class="cc">seqLen             <td class="cc">[batch]                                                 <td class="cc">int32                                     <td class="cc">ND         <td class="cc">cpu     <td class="cc">等于1时，为增量或全量；大于1时，为全量
+//! <tr><td class="cc">slopes             <td class="cc">[head_num]                                              <td class="cc">Atlas 800I A2推理产品: float16 Atlas 推理系列产品: float                 <td class="cc">ND         <td class="cc">npu    <td class="cc">当maskType为alibi压缩，且mask为[256,256]时需传入此tensor，为alibi mask每个head的系数
+//! <tr><td class="cc">logN               <td class="cc">[maxSeqLen]                                   <td class="cc">Atlas 800I A2推理产品: float Atlas 推理系列产品: float16                              <td class="cc">ND          <td class="cc">npu    <td class="cc">全量阶段为长度maxSeqLen的logN序列，batch内每条请求根据自己的序列长度seqlen从该向量中取值 <br>当logN功能开启时需要传此tensor
+//! <tr><td class="cc">output             <td class="cc">[nTokens, head_num, head_size]                    <td class="cc">float16/bf16                          <td class="cc">ND         <td class="cc">npu     <td class="cc">输出
+//! </table>
+//! PA_ENCODER在全量化场景下（即quantType=2或3）的tensor列表如下：
+//! <table class="ct">
+//! <caption id="SelfAttentionEncoderQKVQuant">函数输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                     <th class="ch">数据类型                                  <th class="ch">格式        <th class="ch">设备    <th class="ch">描述
+//! <tr><td class="cc">query              <td class="cc">[nTokens, head_num, head_size]                    <td class="cc">int8                          <td class="cc">ND         <td class="cc">npu    <td class="cc">query矩阵, nTokens情况较复杂，见下文
+//! <tr><td class="cc">key                <td class="cc">[nTokens, head_num, head_size]                    <td class="cc">int8                          <td class="cc">ND         <td class="cc">npu    <td class="cc">key矩阵
+//! <tr><td class="cc">value              <td class="cc">[nTokens, head_num, head_size]                    <td class="cc">int8                          <td class="cc">ND         <td class="cc">npu    <td class="cc">value矩阵
+//! <tr><td class="cc">mask               <td class="cc">同FA, 开启mask压缩功能时与FA有所不同，见下文           <td class="cc">float16/bf16                          <td class="cc">ND/NZ      <td class="cc">npu     <td class="cc">同FA，当maskType为undefined时不传此tensor
+//! <tr><td class="cc">seqLen             <td class="cc">[batch]                                                 <td class="cc">int32                                     <td class="cc">ND         <td class="cc">cpu     <td class="cc">等于1时，为增量或全量；大于1时，为全量
+//! <tr><td class="cc">slopes             <td class="cc">[head_num]                                              <td class="cc">Atlas 800I A2推理产品: float16 Atlas 推理系列产品: float                 <td class="cc">ND         <td class="cc">npu    <td class="cc">当maskType为alibi压缩，且mask为[256,256]时需传入此tensor，为alibi mask每个head的系数
+//! <tr><td class="cc">qkDescale          <td class="cc">[head_num]                                <td class="cc">float                                <td class="cc">ND      <td class="cc">npu    <td class="cc">为Q*K^T的反量化scale参数。
+//! <tr><td class="cc">qkOffset           <td class="cc">[head_num]                                <td class="cc">int32                                     <td class="cc">ND      <td class="cc">npu    <td class="cc">作为Q*K^T的反量化offset参数。预留tensor，需传任意非空tensor，实际暂未使用。
+//! <tr><td class="cc">vpvDescale          <td class="cc">[head_num]                                <td class="cc">float                                <td class="cc">ND      <td class="cc">npu    <td class="cc">quantType=2时，为P*V的反量化scale参数；<br>quantType=3时，为V的反量化scale参数。
+//! <tr><td class="cc">vpvOffset           <td class="cc">[head_num]                                <td class="cc">int32                                     <td class="cc">ND      <td class="cc">npu    <td class="cc">仅全量化场景传此tensor（即quantType=2或3）。<br>quantType=2时，为P*V的反量化offset参数；<br>quantType=3时，为V的反量化offset参数。<br>预留tensor，需传任意非空tensor，实际暂未使用。
+//! <tr><td class="cc">pScale            <td class="cc">[head_num]                                            <td class="cc">float                                      <td class="cc">ND      <td class="cc">npu    <td class="cc">P的离线量化scale参数，当开启离线全量化时需要传此tensor（即quantType=2）。当开启在线全量化时不传此tensor（即quantType=3）。
+//! <tr><td class="cc">output             <td class="cc">[nTokens, head_num, head_size]                    <td class="cc">float16/bf16                          <td class="cc">ND         <td class="cc">npu     <td class="cc">输出
+//! </table>
+//! 在非PA_ENCODER下，Atlas 800I A2推理产品上的query，key，value可传二维[nTokens, hiddenSize]或四维[batch, seq_len, head_num, head_size]，在PA_ENCODER下，Atlas 800I A2推理产品上的query，key，value可传二维[nTokens, hiddenSize]或三维[nTokens, head_num, head_size] <br>
+//! 当开启高精度功能且maskType为NORM或NORM_COMPRESS时，mask值需传1<br>
+//! 若干约束：<br>
+//! Atlas 推理系列产品上 0<batch<=2000 <br>
+//! 若想使用GQA模式，需满足headNum > kvHeadNum，且headNum和kvHeadNum均不为零，且headNum整除kvHeadNum。<br>
+//! 当开启量化或注意力使用logN缩放特性或inputLayout为TYPE_BNSD时，或是在Atlas 推理系列产品上运行时，head_size = head_size_v, 范围为（0，256]，Atlas 800I A2推理产品上head_size可以不等于head_size_v，二者的范围为（0，576]<br>
+//! Atlas 推理系列产品上的mask大小必须使用真实的max_seq_len<br>
+//! 当maskType为MASK_TYPE_ALIBI_COMPRESS, MASK_TYPE_ALIBI_COMPRESS_SQRT或MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN时, query, key, value的head_size需要都小于等于128
+//! Atlas 推理系列产品上的q_seq_len必须等于kv_seq_len<br>
+//! 关于tensor维度中的nTokens：Atlas 800I A2推理产品上为各batch上seq_len之和；Atlas 推理系列产品上：PA_ENCODER下为所有batch的seq_len之和向上对齐到16的整数倍，其余情况下为所有batch上的seq_len先向上对齐到16的整数倍，再求和<br>
+//! 开启压缩mask功能,maskType为MASK_TYPE_ALIBI_COMPRESS，MASK_TYPE_ALIBI_COMPRESS_SQRT或MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN时，mask的维度：在Atlas 800I A2推理产品上为[head_num, seqlen, 128]或[256, 256]；Atlas 推理系列产品上为[head_num,128//16,maxSeqlen,16]或[1,256//16,256,16]<br>
+//! 开启压缩mask功能,maskType为MASK_TYPE_NORM_COMPRESS时，mask的维度：在Atlas 800I A2推理产品上为[128， 128]；Atlas 推理系列产品上为[1,128//16,128,16]<br>
+//! 开启logN功能,scaleType需为SCALE_TYPE_LOGN，calcType需为DECODER或PA_ENCODER，分别对应增量阶段和全量阶段；Atlas 800I A2推理产品上calcType为PA_ENCODER时额外需要kernelType为KERNELTYPE_HIGH_PRECISION<br>
+//! logN功能与量化场景不支持同时开启；logN功能不支持MLA场景，需要满足keyCache,valueCache的headsize等长<br>
+//! 在PA_ENCODER下，令mlaVHeadSize > 0可开启MLA合并kvcache功能，将value合并到key中一起传入，不再分成两个tensor传入。此时mlaVHeadSize代表传入的key中value的head_size，需要大于0，小于等于576 <br>
+//! MLA合并kvcache功能不支持Atlas 推理系列产品，不支持alibi mask，压缩mask，clamp缩放，logN缩放，反量化融合，BNSD输入排布。开启MLA合并kvcache功能后query和key的head_size范围为（0, 576]，mlaVHeadSize不能大于query和key的head_size。 <br>
+//! MLA合并kvcache功能支持全量化场景，一起开启时query和key的head_size范围为（0, 576]，mlaVHeadSize不能大于query和key的head_size。<br>
+//! 在PA_ENCODER下，qScale不生效。<br>
+//! Atlas 训练系列产品只支持PA_ENCODER，仅支持基础功能，不支持动态batch，全量/增量分离，高精度，clamp缩放，压缩mask，kv-bypass，logN缩放，qkv全量化，BNSD维度输入，kv tensorlist格式输入，MLA合并输入kvcache功能，Sliding Window Attention <br>
+//! 动态batch不支持PA_ENCODER <br>
+//! 
+//! 当在Atlas 推理系列产品上运行时，且kvcacheCfg配置为K_BYPASS_V_BYPASS时，且inputLayout为TYPE_BNSD时
+//! ENCODER和DECODER的tensor列表如下：
+//! <table class="ct">
+//! <caption id="SelfAttentionEncoderAndDecoder310P">函数输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                     <th class="ch">数据类型                                  <th class="ch">格式        <th class="ch">设备    <th class="ch">描述
+//! <tr><td class="cc">query              <td class="cc">[batch, head_num, seq_len, head_size]                    <td class="cc">float16/bfloat16                          <td class="cc">ND         <td class="cc">npu    <td class="cc">query矩阵
+//! <tr><td class="cc">keyCache                <td class="cc">[batch, head_num, embedim / 16, kv_max_seq, 16]           <td class="cc">float16/bfloat16                          <td class="cc">NZ         <td class="cc">npu    <td class="cc">key矩阵
+//! <tr><td class="cc">valueCache              <td class="cc">[batch, head_num, embedim / 16, kv_max_seq, 16]           <td class="cc">float16/bfloat16                          <td class="cc">NZ         <td class="cc">npu    <td class="cc">value矩阵
+//! <tr><td class="cc">mask               <td class="cc">同FA, 开启mask压缩功能时与FA有所不同，见下文           <td class="cc">float16/bfloat16                          <td class="cc">NZ      <td class="cc">npu     <td class="cc">同FA，当maskType为undefined时不传此tensor
+//! <tr><td class="cc">seqLen             <td class="cc">[batch]                                                 <td class="cc">int32                                     <td class="cc">ND         <td class="cc">cpu     <td class="cc">等于1时，为增量或全量；大于1时，为全量
+//! <tr><td class="cc">slopes             <td class="cc">[head_num]                                              <td class="cc">float                 <td class="cc">ND         <td class="cc">npu    <td class="cc">当maskType为alibi压缩，且mask为[256,256]时需传入此tensor，为alibi mask每个head的系数
+//! <tr><td class="cc">layerId            <td class="cc">[1]                                       <td class="cc">int32/uint32                              <td class="cc">ND          <td class="cc">npu    <td class="cc">取cache的kv中哪一个kv进行计算
+//! <tr><td class="cc">output             <td class="cc">[batch, head_num, seq_len, head_size]                    <td class="cc">float16/bfloat16                          <td class="cc">ND         <td class="cc">npu     <td class="cc">输出
+//! </table>
+//! 当inputLayout为TYPE_BNSD时，calcType不能为PA_ENCODER；ScaleType必须为SCALE_TYPE_TOR（默认值，表示不支持LogN缩放）；quantType必须为TYPE_QUANT_UNDEFINED（默认值，不与量化融合）<br>
+//! 开启压缩mask功能,maskType为MASK_TYPE_ALIBI_COMPRESS时，mask的维度：Atlas 推理系列产品上为[head_num,128//16,maxSeqlen,16]或[1,256//16,256,16]<br>
+//! 开启压缩mask功能,maskType为MASK_TYPE_NORM_COMPRESS时，mask的维度：Atlas 推理系列产品上为[1,128//16,128,16]<br>
+//!
+//! 当在Atlas 800I A2推理产品上运行时，且kvcacheCfg配置为K_BYPASS_V_BYPASS时，且inputLayout为TYPE_BNSD时
+//! ENCODER和DECODER的tensor列表如下：
+//! <table class="ct">
+//! <caption id="SelfAttentionEncoderAndDecoder910B">函数输入输出描述</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                     <th class="ch">数据类型                                  <th class="ch">格式        <th class="ch">设备    <th class="ch">描述
+//! <tr><td class="cc">query              <td class="cc">[batch, head_num, seq_len, head_size]                  <td class="cc">float16/bfloat16                          <td class="cc">ND         <td class="cc">npu    <td class="cc">query矩阵
+//! <tr><td class="cc">keyCache                <td class="cc">[layer, batch, head_num, seq_len, head_size]             <td class="cc">float16/bfloat16                          <td class="cc">ND         <td class="cc">npu    <td class="cc">key矩阵
+//! <tr><td class="cc">valueCache              <td class="cc">[layer, batch, head_num, seq_len, head_size]             <td class="cc">float16/bfloat16                          <td class="cc">ND         <td class="cc">npu    <td class="cc">value矩阵
+//! <tr><td class="cc">mask               <td class="cc">同FA, 开启mask压缩功能时与FA有所不同，见下文           <td class="cc">float16/bfloat16                          <td class="cc">ND      <td class="cc">npu     <td class="cc">同FA，当maskType为undefined时不传此tensor
+//! <tr><td class="cc">seqLen             <td class="cc">[batch]                                                 <td class="cc">int32                                     <td class="cc">ND         <td class="cc">cpu     <td class="cc">等于1时，为增量或全量；大于1时，为全量
+//! <tr><td class="cc">slopes             <td class="cc">[head_num]                                              <td class="cc">float16                 <td class="cc">ND         <td class="cc">npu    <td class="cc">当maskType为alibi压缩时需传入此tensor，为alibi mask每个head的系数
+//! <tr><td class="cc">layerId            <td class="cc">[1]                                       <td class="cc">int32/uint32                              <td class="cc">ND          <td class="cc">npu    <td class="cc">取cache的kv中哪一个kv进行计算
+//! <tr><td class="cc">output             <td class="cc">[batch, head_num, seq_len, head_size]                    <td class="cc">float16/bfloat16                          <td class="cc">ND         <td class="cc">npu     <td class="cc">输出
+//! </table>
+//! 当inputLayout为TYPE_BNSD时，calcType不能为PA_ENCODER；ScaleType必须为SCALE_TYPE_TOR（不支持LogN缩放）；quantType必须为TYPE_QUANT_UNDEFINED（不与量化融合）<br>
+//! 开启压缩mask功能,maskType为MASK_TYPE_ALIBI_COMPRESS时，mask的维度：在Atlas 800I A2推理产品上为[head_num, seqlen, 128]或[256, 256]<br>
+//! 开启压缩mask功能,maskType为MASK_TYPE_NORM_COMPRESS时，mask的维度：在Atlas 800I A2推理产品上为[128， 128]<br>
+//!
