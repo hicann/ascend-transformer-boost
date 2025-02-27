@@ -1,0 +1,143 @@
+//! \struct atb::infer::ReshapeAndCacheParam 
+//! <table class="ct">
+//! <caption id="ReshapeAndCacheOperationKVhead不等长">当不开启多头压缩功能，即compressType为COMPRESS_TYPE_UNDEFINED时，算子的输入输出列表如下：</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                  <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">key               <td class="cc">[num_tokens, num_head, k_head_size]                   <td class="cc">float16/bf16/int8                     <td class="cc">ND      <td class="cc">当前step多个token的key,不开启多头压缩功能时支持key和value最后一维不同
+//! <tr><td class="cc">value             <td class="cc">[num_tokens, num_head, v_head_size]                   <td class="cc">float16/bf16/int8                     <td class="cc">ND      <td class="cc">当前step多个token的value，不开启多头压缩功能时支持key和value最后一维不同
+//! <tr><td class="cc">keyCache          <td class="cc">[num_blocks, block_size, num_head, k_head_size]       <td class="cc">float16/bf16/int8                     <td class="cc">ND/NZ   <td class="cc">当前layer所有的key cache，不开启多头压缩功能时支持keyCache和valueCache最后一维不同
+//! <tr><td class="cc">valueCache        <td class="cc">[num_blocks, block_size, num_head, v_head_size]       <td class="cc">float16/bf16/int8                     <td class="cc">ND/NZ   <td class="cc">当前layer所有的value cache，不开启多头压缩功能时支持keyCache和valueCache最后一维不同
+//! <tr><td class="cc">slotMapping       <td class="cc">[num_tokens]                                          <td class="cc">int32                                     <td class="cc">ND       <td class="cc">每个token key或value在cache中的存储偏移，即（block_id * block_size + offset_in_block）<br>值域范围为(-num_blocks * block_size, num_blocks * block_size)且不存在重复数值
+//! <tr><td class="cc">keyCacheOut       <td class="cc">[num_blocks, block_size, num_head, k_head_size]       <td class="cc">float16/bf16/int8                     <td class="cc">ND/NZ   <td class="cc">所有的key cache
+//! <tr><td class="cc">valueCacheOut     <td class="cc">[num_blocks, block_size, num_head, v_head_size]       <td class="cc">float16/bf16/int8                     <td class="cc">ND/NZ   <td class="cc">所有的value cache
+//! </table>
+//! 注意：以上ir在key和value最后一维不同的情况下只支持Atlas 800I A2推理产品， 即keyCache, valueCache, keyCacheOut, valueCacheOut只支持ND格式。<br>
+//! Atlas 推理系列产品上keyCache和valueCache的维度需为[num_blocks, num_head*head_size/16, block_size, 16]，其中最后一维必须为16，block_size需16对齐。<br>
+//!
+//! <table class="ct">
+//! <caption id="ReshapeAndCacheOperationAlibi">当开启alibi场景下的多头压缩功能，即compressType为COMPRESS_TYPE_KVHEAD时，算子的输入输出列表如下：</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                <th class="ch">数据类型                                   <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">key               <td class="cc">[num_tokens, num_head, head_size]                   <td class="cc">float16/bf16/int8                     <td class="cc">ND       <td class="cc">当前step多个token的key
+//! <tr><td class="cc">value             <td class="cc">[num_tokens, num_head, head_size]                   <td class="cc">float16/bf16/int8                     <td class="cc">ND       <td class="cc">当前step多个token的value
+//! <tr><td class="cc">keyCache          <td class="cc">[num_blocks, block_size, 1, head_size]              <td class="cc">float16/bf16/int8                     <td class="cc">ND    <td class="cc">当前layer所有的key cache
+//! <tr><td class="cc">valueCache        <td class="cc">[num_blocks, block_size, 1, head_size]              <td class="cc">float16/bf16/int8                     <td class="cc">ND    <td class="cc">当前layer所有的value cache
+//! <tr><td class="cc">slotMapping       <td class="cc">[batch*num_head]                                    <td class="cc">int32                                     <td class="cc">ND       <td class="cc">每个token key或value在cache中的存储偏移，即（block_id * block_size + offset_in_block）
+//! <tr><td class="cc">wins              <td class="cc">[batch*num_head]                                    <td class="cc">int32                                     <td class="cc">ND       <td class="cc">压缩量
+//! <tr><td class="cc">seqLens           <td class="cc">[batch]                                             <td class="cc">int32                                     <td class="cc">ND       <td class="cc">每个batch的实际seqLen
+//! <tr><td class="cc">keyCacheOut       <td class="cc">[num_blocks, block_size, 1, head_size]       <td class="cc">float16/bf16/int8                     <td class="cc">ND   <td class="cc">所有的key cache
+//! <tr><td class="cc">valueCacheOut     <td class="cc">[num_blocks, block_size, 1, head_size]       <td class="cc">float16/bf16/int8                     <td class="cc">ND   <td class="cc">所有的value cache
+//! </table>
+//!
+//! <table class="ct">
+//! <caption id="ReshapeAndCacheOperationRope">当开启rope场景下的多头压缩功能，即compressType为COMPRESS_TYPE_KVHEAD_ROPE时，算子的输入输出列表如下：</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                <th class="ch">数据类型                                   <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">key               <td class="cc">[num_tokens, num_head, head_size]                   <td class="cc">float16/bf16                     <td class="cc">ND       <td class="cc">当前step多个token的key
+//! <tr><td class="cc">value             <td class="cc">[num_tokens, num_head, head_size]                   <td class="cc">float16/bf16                     <td class="cc">ND       <td class="cc">当前step多个token的value
+//! <tr><td class="cc">keyCache          <td class="cc">[num_blocks, block_size, 1, head_size]              <td class="cc">float16/bf16                     <td class="cc">ND    <td class="cc">当前layer所有的key cache
+//! <tr><td class="cc">valueCache        <td class="cc">[num_blocks, block_size, 1, head_size]              <td class="cc">float16/bf16                     <td class="cc">ND    <td class="cc">当前layer所有的value cache
+//! <tr><td class="cc">slotMapping       <td class="cc">[batch*num_head]                                    <td class="cc">int32                                     <td class="cc">ND       <td class="cc">每个token key或value在cache中的存储偏移，即（block_id * block_size + offset_in_block）
+//! <tr><td class="cc">wins              <td class="cc">[batch*num_head]                                    <td class="cc">int32                                     <td class="cc">ND       <td class="cc">压缩量
+//! <tr><td class="cc">seqLens           <td class="cc">[batch]                                             <td class="cc">int32                                     <td class="cc">ND       <td class="cc">每个batch的实际seqLen
+//! <tr><td class="cc">offsetIndex       <td class="cc">[batch*num_head]                                    <td class="cc">int32                                     <td class="cc">ND       <td class="cc">每个batch每个head的压缩起点
+//! <tr><td class="cc">keyCacheOut       <td class="cc">[num_blocks, block_size, 1, head_size]       <td class="cc">float16/bf16                     <td class="cc">ND   <td class="cc">所有的key cache
+//! <tr><td class="cc">valueCacheOut     <td class="cc">[num_blocks, block_size, 1, head_size]       <td class="cc">float16/bf16                     <td class="cc">ND   <td class="cc">所有的value cache
+//! </table>
+//!
+//! <table class="ct">
+//! <caption id="ReshapeAndCacheOperationSISO">当开启key_cache单进单出功能，即kvCacheCfg为K_CACHE_V_BYPASS时，算子的输入输出列表如下：</caption>
+//! <tr><th class="ch">参数               <th class="ch">维度                                                <th class="ch">数据类型                                   <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">key               <td class="cc">[num_tokens, k_num_head, k_head_size]                   <td class="cc">float16/bf16/int8                     <td class="cc">ND      <td class="cc">当前step多个token的key
+//! <tr><td class="cc">keyCache          <td class="cc">[num_blocks, block_size, k_num_head, k_head_size]       <td class="cc">float16/bf16/int8                     <td class="cc">ND      <td class="cc">当前layer所有的key cache
+//! <tr><td class="cc">slotMapping       <td class="cc">[num_tokens]                                            <td class="cc">int32                                 <td class="cc">ND       <td class="cc">每个token key在cache中的存储偏移，即（block_id * block_size + offset_in_block）<br>值域范围为(-num_blocks * block_size, num_blocks * block_size)且不存在重复数值
+//! <tr><td class="cc">keyCacheOut       <td class="cc">[num_blocks, block_size, k_num_head, k_head_size]       <td class="cc">float16/bf16/int8                     <td class="cc">ND      <td class="cc">所有的key cache
+//! </table>
+//! 该场景不支持Atlas 推理系列产品推理产品。<br>
+//! 该场景不支持多头压缩功能，compressType需为COMPRESS_TYPE_UNDEFINED。<br>
+//!
+
+//! \struct atb::infer::LinearParam
+//! <table class="ct">
+//! <caption id="Linear">浮点场景Linear输入输出描述</caption>
+//! <tr><th class="ch">参数     <th class="ch">维度                     <th class="ch">数据类型              <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x        <td class="cc">[m, k]/[batch, m, k]     <td class="cc">float16/bf16         <td class="cc">ND       <td class="cc">输入Tensor。矩阵乘的A矩阵。
+//! <tr><td class="cc">weight   <td class="cc">[k, n]/[batch, k, n]     <td class="cc">float16/bf16         <td class="cc">ND/NZ    <td class="cc">输入Tensor。矩阵乘的B矩阵，权重。<br/>数据类型与x的数据类型相同。<br/>数据格式为NZ时，可扩展支持对应的4维shape[batch, n / 16, k, 16]，这种情况下，n和k的值均为16的整数倍。<br/>shape为3维时，x的shape为3维。<br/>当transposeA为true时，batch值与x的batch值相同。
+//! <tr><td class="cc">bias     <td class="cc">[1, n]/[n]/[batch, n]    <td class="cc">float16/bf16/float   <td class="cc">ND       <td class="cc">输入Tensor。叠加的偏置矩阵。<br/>hasBias为true时输入。<br/>当数据类型为float16/bf16时，数据类型与x的数据类型相同；当数据类型为float时，触发matmul+add融合场景，仅Atlas 800I A2推理产品支持该场景，weight必须为ND格式。<br/>batch值与weight的batch值相同。
+//! <tr><td class="cc">output   <td class="cc">[m, n]/[batch, m, n]     <td class="cc">float16/bf16         <td class="cc">ND       <td class="cc">输出tensor。<br/>维度数与x一致。<br/>数据类型与x的数据类型相同。
+//! <tr><td class="cc">x/weight为2维时，对应的batch值为1；bias为1维时，对应的batch为1。
+//! <tr><td class="cc">当transposeB为true时，weight支持对应的4维shape[batch, k / 16, n, 16]。
+//! </table>
+//! <table class="ct">
+//! <caption id="LinearInplaceAddFusion">浮点场景Linear+InplaceAdd融合算子输入输出描述，enAccum == true时触发该场景</caption>
+//! <tr><th class="ch">参数     <th class="ch">维度                     <th class="ch">数据类型          <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">x        <td class="cc">[m, k]/[batch, m, k]     <td class="cc">float16/bf16     <td class="cc">ND   <td class="cc">输入Tensor。矩阵乘的A矩阵。
+//! <tr><td class="cc">weight   <td class="cc">[k, n]/[batch, k, n]     <td class="cc">float16/bf16     <td class="cc">ND   <td class="cc">输入Tensor。矩阵乘的B矩阵，权重。<br/>数据类型与x的数据类型相同。<br>shape为3维时，x的shape为3维。<br/>当transposeA为true时，batch值与x的batch值相同。
+//! <tr><td class="cc">accum    <td class="cc">[m, n]/[batch, m, n]     <td class="cc">float            <td class="cc">ND   <td class="cc">输入Tensor。累加矩阵，与matmul的结果做原地加。<br/>维度数与x的维度数相同。<br/>batch值与x的batch值相同。
+//! <tr><td class="cc">output   <td class="cc">[m, n]/[batch, m, n]     <td class="cc">float            <td class="cc">ND   <td class="cc">输出tensor。与accum为同一个Tensor，即二者数据类型、数据格式和地址等所有属性均相同。
+//! <tr><td class="cc">该场景不支持Atlas 推理系列产品推理产品。
+//! <tr><td class="cc">x/weight/accum为2维时，对应的batch值为1。
+//! </table>
+//! <table class="ct">
+//! <caption id="LinearDequant">量化场景Linear输入输出描述</caption>
+//! <tr><th class="ch">参数     <th class="ch">维度                     <th class="ch">数据类型              <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">x        <td class="cc">[m, k]/[batch, m, k]     <td class="cc">int8                 <td class="cc">ND       <td class="cc">输入Tensor。矩阵乘的A矩阵。
+//! <tr><td class="cc">weight   <td class="cc">[k, n]/[batch, k, n]     <td class="cc">int8                 <td class="cc">ND/NZ    <td class="cc">输入Tensor。矩阵乘的B矩阵，权重。<br/>Atlas 800I A2推理产品不支持数据格式为NZ。<br/>数据格式为NZ时，可扩展支持对应的4维shape[batch, n / 32, k, 32]，这种情况下，k为16的整数倍，n为32的整数倍。<br>shape为3维时，x的shape为3维。<br/>当transposeA为true时，batch值与x的batch值相同。
+//! <tr><td class="cc">bias     <td class="cc">[1, n]/[n]/[batch, n]    <td class="cc">int32                <td class="cc">ND       <td class="cc">输入Tensor。叠加的偏置矩阵。hasBias为true时输入。<br/>batch值与weight的batch值相同。
+//! <tr><td class="cc">deqScale <td class="cc">[1, n]/[n]/[batch, n]    <td class="cc">int64/uint64/float   <td class="cc">ND       <td class="cc">输入Tensor。反量化的scale。<br/>batch值与weight的batch值相同。<br/>当output数据类型为float16时，数据类型为int64/uint64；当output数据类型为bfloat16时，数据类型为float。
+//! <tr><td class="cc">output   <td class="cc">[m, n]/[batch, m, n]     <td class="cc">float16/bf16         <td class="cc">ND       <td class="cc">输出tensor。<br/>数据类型与参数outDataType值相同。<br/>维度数与x的维度数相同。
+//! <tr><td class="cc">x/weight为2维时，对应的batch值为1；bias/deqScale为1维时，对应的batch为1。
+//! <tr><td class="cc">当transposeB为true时，weight支持对应的4维shape[batch, k / 32, n, 32]，这种情况下，k为32的整数倍，n为16的整数倍。
+//! </table>
+//!
+
+//! \struct atb::infer::LinearSparseParam 
+//! <table class="ct">
+//! <caption id="LinearSparseParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[m, k]                     <td class="cc">int8       <td class="cc">ND           <td class="cc">矩阵乘运算的A矩阵。m需小于等于256，k为64的整数倍且大于256
+//! <tr><td class="cc">weight       <td class="cc">[c]                        <td class="cc">int8       <td class="cc">ND/NZ        <td class="cc">权重，矩阵乘的B矩阵。通过压缩工具压缩后的权重，shape大小c的值大于0且不大于k * n
+//! <tr><td class="cc">bias         <td class="cc">[1, n] 或 [n]              <td class="cc">int32      <td class="cc">ND           <td class="cc">叠加的偏置矩阵。n为64的整数倍且大于等于128。
+//! <tr><td class="cc">deqScale     <td class="cc">[1, n] 或 [n]                        <td class="cc">int64/uint64       <td class="cc">ND        <td class="cc">反量化的scale。量化时输入。
+//! <tr><td class="cc">compressIdx  <td class="cc">[x]                     <td class="cc">int8        <td class="cc">ND           <td class="cc">压缩权重时同时生成的压缩索引
+//! <tr><td class="cc">output       <td class="cc">[m, n] 或 [batch, m, n]                         <td class="cc">float16       <td class="cc">ND        <td class="cc">输出tensor,维度数与x一致。
+//! </table>
+//!
+
+//! \struct atb::infer::LinearParallelParam
+//! <table class="ct">
+//! <caption id="LinearParallelParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数          <th class="ch">维度                                    <th class="ch">数据类型                                                <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">input        <td class="cc">[m, k]/[batch, m, k]                    <td class="cc">浮点:float16/bf16 量化:float16/bf16/int8        <td class="cc">ND        <td class="cc">矩阵乘运算的A矩阵。k为32的整数倍
+//! <tr><td class="cc">weight       <td class="cc">[k, n] NZ:浮点额外支持[1, n/16, k, 16]   <td class="cc">浮点:float16/bf16 量化:int8                         <td class="cc">浮点:ND/NZ 量化:ND         <td class="cc">权重，矩阵乘的B矩阵。通过压缩工具压缩后的权重，shape大小c的值大于0且不大于k * n
+//! <tr><td class="cc">bias         <td class="cc">quantType为per_tensor支持:[1];<br>quantType为per_channel支持:[1, n]/[n];<br>quantType为per_group支持:[k/quantGroupSize, n]    <td class="cc">浮点:float16/bf16 量化:int32   <td class="cc">ND        <td class="cc">叠加的偏置矩阵。n为16的整数倍
+//! <tr><td class="cc">deqScale     <td class="cc">quantType为per_tensor支持:[1];<br>quantType为per_channel支持:[1, n]/[n];<br>quantType为per_group支持:[k/quantGroupSize, n]    <td class="cc">量化场景W8A16:float16/bf16 量化场景W8A8:int64   <td class="cc">ND        <td class="cc">反量化的scale。量化时输入。
+//! <tr><td class="cc">residual     <td class="cc">[n]                                     <td class="cc">float16/bf16                                       <td class="cc">ND        <td class="cc">残差，用于叠加到最后的输出结果上。
+//! <tr><td class="cc">output                   <td class="cc">当type为linear_all_reduce/pure_linear：[m, n]/[batch, m, n];<br> 当type为linear_reduce_scatter：[m/rankSize, n]/[batch/rankSize, m, n];<br>当type为all_gather_linear：[m*rankSize, n]/[batch*rankSize, m, n];   <td class="cc">float16/bf16                                       <td class="cc">ND        <td class="cc">输出tensor,维度数与x一致。
+//! <tr><td class="cc">intermediateOutput       <td class="cc">[m*rankSize, n]/[batch*rankSize, m, n]                    <td class="cc">float16/bf16                                       <td class="cc">ND        <td class="cc">输出tensor,维度数与x一致。
+//! </table>
+//!
+
+//! \struct atb::infer::AllGatherParam 
+//! <table class="ct">
+//! <caption id="AllGatherParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16<br>"lccl": float16/float/int8/int16/int32/int64/bf16        <td class="cc">ND           <td class="cc">输入tensor,维度小于8。
+//! <tr><td class="cc">output       <td class="cc">[rankSize, -1,…,-1]-1表示当前维度的大小没有约束                     <td class="cc">"hccl": float16/float/int8/int16/int32/int64/bf16<br>"lccl": float16/float/int8/int16/int32/int64/bf16      <td class="cc">ND        <td class="cc">输出tensor,维度小于等于8。输出output的维数比输入x的维数多一维。
+//! </table>
+//! \code
+//! >>> rank0 input 
+//! tensor([[2, 1 ,8],
+            [4, 3, 7]], device='npu:0')  shape[2,3]
+//!  >>> rank1 input
+//! tensor([[2, 4, 3],
+            [3, 2, 8]], device='npu:1')  shape[2,3]
+//!  >>> rank0 output
+//! tensor([[[2, 1, 8],
+             [4, 3, 7]],
+             [[2, 4, 3],
+             [3, 2, 8]]], device='npu:0')  shape[2,2,3]
+//!  >>> rank1 output
+//! tensor([[[2, 1, 8],
+             [4, 3, 7]],
+             [[2, 4, 3],
+             [3, 2, 8]]], device='npu:1')  shape[2,2,3]
+//! \endcode
+//!
