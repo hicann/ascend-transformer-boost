@@ -1,0 +1,851 @@
+//!
+//! \struct LinearSparseParam
+//!
+//! \brief 稀疏量化linear
+//!
+//! 该算子实现功能与量化linear类似。不同点在于稀疏量化算子会使用压缩工具提前对weight输入进行压缩，
+//! 以此提升算子性能。参数tilingK和tilingN由压缩算法决定，目前均只支持取值为8.
+//! 目前该算子仅支持在Atlas 推理系列产品中进行运算。
+//!
+struct LinearSparseParam {
+    //! \brief 是否转置A矩阵，默认不转置。当前仅支持transposeA = false。
+    bool transposeA = false;
+    //! \brief 是否转置B矩阵，默认转置。当前仅支持transposeB = true。
+    bool transposeB = true;
+    //! \brief 压缩参数，由外部压缩算法决定，默认为1，目前仅支持取值为8。
+    uint32_t tilingK = 1;
+    //! \brief 压缩参数，由外部压缩算法决定，默认为1，目前仅支持取值为8。
+    uint32_t tilingN = 1;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[12] = {0};
+};
+
+//!
+//! \brief 旋转位置编码。hiddenSizeQ必须是hiddenSizeK的整数倍且满足hiddenSizeQ = headDim * headNum。
+//!
+struct RopeParam {
+    //! \brief rope，旋转系数，对半旋转是2，支持配置2、4或headDim / 2。
+    int32_t rotaryCoeff = 4;
+    //! \brief 训练用参数，支持配置0或1
+    int32_t cosFormat = 0;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \brief 判断参数是否相同
+//!
+//! \param left
+//! \param right
+//! \return bool
+//!
+inline bool operator==(const RopeParam &left, const RopeParam &right)
+{
+    return left.rotaryCoeff == right.rotaryCoeff && left.cosFormat == right.cosFormat;
+}
+
+//!
+//! \brief KVCache+KVCache+Muls+FlashAttention.
+//!
+struct SelfAttentionParam {
+    //!
+    //! \enum CalcType
+    //!
+    //! \brief 计算类型
+    //!
+    enum CalcType : int {
+        UNDEFINED = 0, //!< decoder&encoder for flashAttention
+        ENCODER,       //!< encoder for flashAttention
+        DECODER,       //!< decoder for flashAttention
+        PA_ENCODER     //!< encoder for pagedAttention
+    };
+    //!
+    //! \enum KernelType
+    //!
+    //! \brief 算子内核精度类型
+    //!
+    enum KernelType : int {
+        KERNELTYPE_DEFAULT = 0,   //!< i:float16, bmm:float16, o:float16
+        KERNELTYPE_HIGH_PRECISION //!< i:float16, bmm:float, o:float16
+    };
+    //!
+    //! \enum ClampType
+    //!
+    //! \brief clamp类型
+    //!
+    enum ClampType : int {
+        CLAMP_TYPE_UNDEFINED = 0, //!< 不做clamp
+        CLAMP_TYPE_MIN_MAX        //!< 做clamp，同时指定最大最小值
+    };
+    //!
+    //! \enum MaskType
+    //!
+    //! \brief mask类型
+    //!
+    enum MaskType : int {
+        MASK_TYPE_UNDEFINED = 0,             //!< 默认值，全0mask
+        MASK_TYPE_NORM,                      //!< 倒三角mask
+        MASK_TYPE_ALIBI,                     //!< alibi mask
+        MASK_TYPE_NORM_COMPRESS,             //!< 倒三角压缩mask
+        MASK_TYPE_ALIBI_COMPRESS,            //!< alibi压缩mask
+        MASK_TYPE_ALIBI_COMPRESS_SQRT,       //!< alibi压缩开平方mask
+        MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN, //!< alibi压缩mask左对齐,只支持Atlas 800I A2推理产品
+        MASK_TYPE_SLIDING_WINDOW_NORM,       //!< sliding window attention mask
+        MASK_TYPE_SLIDING_WINDOW_COMPRESS    //!< sliding window attention压缩mask
+    };
+    //!
+    //! \enum KvCacheCfg
+    //!
+    //! \brief KvCache配置,不支持calcType为PA_ENCODER
+    //!
+    enum KvCacheCfg : int {
+        K_CACHE_V_CACHE = 0, //!< 默认值,进行kvcache处理
+        K_BYPASS_V_BYPASS,   //!< 直接传入kvcache
+    };
+    //!
+    //! \enum ScaleType
+    //!
+    //! \brief The type values of ScaleType.
+    //!
+    enum ScaleType : int {
+        SCALE_TYPE_TOR = 0, //!< 默认值，不开启LogN缩放
+        SCALE_TYPE_LOGN,    //!< 注意力使用LogN缩放，quantType只能是0
+        SCALE_TYPE_MAX      //!< 边界值，仅用于判断是否出界
+    };
+
+    //! \enum QuantType
+    //!
+    //! \brief quant类型
+    //!
+    enum QuantType : int {
+        TYPE_QUANT_UNDEFINED = 0, //!< 默认值，不与量化融合，此时q，k，v为bf16/float16
+        TYPE_DEQUANT_FUSION,      //!< 与反量化融合, 预留类型，当前不能够取此值。
+        TYPE_QUANT_QKV_OFFLINE,   //!< 离线INT8量化, 只支持Atlas 800I A2推理产品
+        TYPE_QUANT_QKV_ONLINE     //!< 在线INT8量化, 只支持Atlas 800I A2推理产品
+    };
+    //!
+    //! \enum CacheType
+    //!
+    //! \brief cache内部排布类型, 为CACHE_TYPE_SWA开启SWA KVCache优化，只储存后windowSize个token的KVCache，
+    //!  控制KVCache的长度不超过windowSize, 以此减少显存占用
+    //!
+    enum CacheType : int8_t {
+        CACHE_TYPE_NORM = 0, //!< 正常cache
+        CACHE_TYPE_SWA = 1   //!< 固定长度cache
+    };
+    //!
+    //! 量化类型(只支持PA_ENCODER)：
+    //! 当值为TYPE_QUANT_QKV_OFFLINE或TYPE_QUANT_QKV_ONLINE时q，k，v为int8。key,value的headsize等长，范围为（0, 256]，
+    //! 且32对齐。outdatatype需要配置，只能是ACL_FLOAT16或ACL_BF16。inputLayout只支持TYPE_BSND，calcType只能为PA_ENCODER。
+    QuantType quantType = TYPE_QUANT_UNDEFINED;
+
+    //! output数据类型：只支持PA_ENCODER,且QuantType不为TYPE_QUANT_UNDEFINED（格式为aclDataType）
+    aclDataType outDataType = ACL_DT_UNDEFINED;
+
+    //! query头大小, 需大于0
+    int32_t headNum = 0;
+    //! kv头数量, 该值需要用户根据使用的模型实际情况传入
+    //! kvHeadNum = 0时，keyCache的k_head_num，valueCache的v_head_num与query的num_heads一致，均为num_heads的数值
+    //! kvHeadNum != 0时，keyCache的k_head_num， valueCache的v_head_num与kvHeadNum值相同
+    int32_t kvHeadNum = 0;
+    //! query缩放系数
+    float qScale = 1;
+    //! 算子tor值, 在Q*K^T后乘
+    float qkScale = 1;
+    //! 是否开启动态batch
+    bool batchRunStatusEnable = false;
+    //! 是否开启倒三角优化, 只有mask为倒三角的时候才能开启优化
+    uint32_t isTriuMask = 0;
+    //! 计算类型
+    CalcType calcType = UNDEFINED;
+    //! 内核精度类型
+    KernelType kernelType = KERNELTYPE_DEFAULT;
+    //! clamp类型
+    ClampType clampType = CLAMP_TYPE_UNDEFINED;
+    //! clamp功能最小值
+    float clampMin = 0;
+    //! clamp功能最大值
+    float clampMax = 0;
+    //! mask类型
+    MaskType maskType = MASK_TYPE_UNDEFINED;
+    //! kvcache配置
+    KvCacheCfg kvcacheCfg = K_CACHE_V_CACHE;
+    //! scale类型
+    ScaleType scaleType = SCALE_TYPE_TOR;
+    //! 数据排布格式默认为BSND
+    InputLayout inputLayout = TYPE_BSND;
+    //! \brief 大于0时开启MLA合并kvcache功能，表示kv合并传入时v的head_size
+    //! \note 默认值为0
+    //! \warning 取值范围为[0,576]
+    uint32_t mlaVHeadSize = 0;
+    //! \brief cache内部排布，开启SWA特性并设置为CACHE_TYPE_SWA可以开启SWA cache优化
+    //! \note 默认值为CACHE_TYPE_NORM
+    //! \warning 只有开启SWA特性后才可以是CACHE_TYPE_SWA
+    CacheType cacheType = CACHE_TYPE_NORM;
+    //! \brief windowSize大于0时开启SWA特性，开启SWA特性后表示sliding window 大小
+    //! \note 默认值为0
+    //! \warning windowSize大于0时需要将maskType设置为MASK_TYPE_SLIDING_WINDOW_NORM或MASK_TYPE_SLIDING_WINDOW_COMPRESS
+    uint32_t windowSize = 0;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[64] = {0};
+};
+
+//!
+//! \brief PagedAttention.
+//!
+//! 一个Q有多个token，一个token对应多个KV的token，以token0为例，block_table代表其对应的KV的block_id，-1代表截止，
+//! 所以第二行和第四行为其目标block，context_lens则表示KV有多少个token，则代表仅有block_id为(3,4,5,9,10)是需要与Q进行计算的。
+//!
+struct PagedAttentionParam {
+    //! query 头大小
+    int32_t headNum = 0;
+    //! 算子tor值, 在Q*K^T后乘
+    float qkScale = 1.0;
+    //! kv头数量
+    int32_t kvHeadNum = 0;
+    //!
+    //! \enum MaskType
+    //!
+    //! \brief The type values of MaskType.
+    //!
+    enum MaskType : int {
+        UNDEFINED = 0,   //!< 默认值，全0的mask
+        MASK_TYPE_NORM,  //!< 倒三角mask
+        MASK_TYPE_ALIBI, //!< alibi mask
+        MASK_TYPE_SPEC   //!< 并行解码mask
+    };
+    //! mask类型
+    MaskType maskType = UNDEFINED;
+    //! 是否开启动态batch
+    bool batchRunStatusEnable = false;
+    //!
+    //! \enum QuantType
+    //!
+    //! \brief quant类型
+    //!
+    enum QuantType : int {
+        TYPE_QUANT_UNDEFINED = 0, //!< 默认值，不与量化融合，此
+        TYPE_DEQUANT_FUSION,      //!< 与反量化融合, 只支持Atlas 800I A2推理产品
+        TYPE_QUANT_QKV_OFFLINE,   //!< 离线INT8量化, 只支持Atlas 800I A2推理产品
+        TYPE_QUANT_QKV_ONLINE     //!< 在线INT8量化, 只支持Atlas 800I A2推理产品
+    };
+    //!
+    //! 量化类型：
+    //! 为TYPE_QUANT_UNDEFINED时q，keyCache，valueCache为bf16/float16。
+    //! 为TYPE_DEQUANT_FUSION时q为bf16/float16，keyCache，valueCache为int8。
+    //! 为TYPE_QUANT_QKV_OFFLINE或TYPE_QUANT_QKV_ONLINE时q，keyCache，valueCache为int8。
+    //! keyCache,valueCache的headsize等长，范围为（0, 256]，且block_size * head_size ≤ 128 * 128。
+    //! outdatatype需要配置，只能是ACL_FLOAT16或ACL_BF16。inputLayout只支持TYPE_BSND。
+    QuantType quantType = TYPE_QUANT_UNDEFINED;
+
+    //! output数据类型（格式为aclDataType）
+    aclDataType outDataType = ACL_DT_UNDEFINED;
+
+    //! 开启量化功能后是否使用offset
+    bool hasQuantOffset = false;
+    //!
+    //! \enum CompressType
+    //!
+    //! \brief 压缩类型
+    //!
+    enum CompressType : int {
+        COMPRESS_TYPE_UNDEFINED = 0, //!< 默认值，不压缩
+        COMPRESS_TYPE_KVHEAD, //!< 压缩key_cache, value_cache的kvHead维度, 只支持Atlas 800I A2推理产品。
+        COMPRESS_TYPE_KVHEAD_ROPE, //!< rope场景压缩key_cache, value_cache的kvHead维度, 只支持Atlas 800I A2推理产品。
+        COMPRESS_TYPE_MAX //!< 压缩类型边界值，仅用于判断是否出界，所有情况不能取该值。
+    };
+    //!
+    //! 压缩方式
+    //! 为COMPRESS_TYPE_KVHEAD时，不支持quanttype为2和3。
+    //! 为COMPRESS_TYPE_KVHEAD_ROPE时, maskType需传0。不支持quanttype为2和3。
+    CompressType compressType = COMPRESS_TYPE_UNDEFINED;
+    //!
+    //! \enum CalcType
+    //!
+    //! \brief The type values of CalcType.
+    //!
+    enum CalcType : int {
+        CALC_TYPE_UNDEFINED = 0, //!< 默认值，不开启并行解码
+        CALC_TYPE_SPEC           //!< 并行解码功能，此时只支持quantType = 0
+    };
+    //! 计算类型
+    CalcType calcType = CALC_TYPE_UNDEFINED;
+
+    //!
+    //! \enum ScaleType
+    //!
+    //! \brief The type values of ScaleType.
+    //!
+    enum ScaleType : int {
+        SCALE_TYPE_TOR = 0, //!< 默认值，不开启LogN缩放
+        SCALE_TYPE_LOGN,    //!< 注意力使用LogN缩放
+        SCALE_TYPE_MAX      //!< 边界值，仅用于判断是否出界
+    };
+    //! scale类型
+    //! 为SCALE_TYPE_LOGN时，不支持quanttype为2和3。
+    ScaleType scaleType = SCALE_TYPE_TOR;
+
+    //! 数据排布格式默认为BSND
+    InputLayout inputLayout = TYPE_BSND;
+    //! \brief 大于0时开启MLA合并kvcache功能，表示kv合并传入时v的head_size
+    //! \note 默认值为0
+    //! \warning 取值范围为[0,576]
+    uint32_t mlaVHeadSize = 0;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[68] = {0};
+};
+
+//!
+//! \brief 数据格式转换处理。
+//!
+//! 使用的NZ的dims约定表示方式：{b, n1, m1m0, n0}，对应的ND的dims是{b, m, n}，
+//! 其中：b表示batch，如果batch为1，该维度为1，不可省略。如果batch有多个，该维度为所有batch维度合轴的结果。
+//! m0/n0表示对齐位，float16时，n0与m0都为16, int8时，n0为32，m0为16，m1m0表示原始ND的m维度经过对齐位向上对齐，
+//! n1表示原始ND的n维度经过对齐位向上对齐后，除以n0的商。例如原始ND的dims为{8, 100, 30}，则其对应的NZ的dims为{8, 2, 112, 16}。
+//!
+//! \warning outCrops的长度要求是2，其值须满足以下要求：
+//! - 如果m0m1落在区间(k1 × 16, (k1 + 1) × 16]（其中k1为正整数）内，那么该区间即为outCrops[0]的取值范围要求。
+//! - 如果n0*n1落在区间(k2 × 16, (k2 + 1) × 16]（其中k2为正整数）内，那么该区间即为outCrops[1]的取值范围要求。
+//!
+struct TransdataParam {
+    //!
+    //! \enum TransdataType
+    //!
+    //! \brief TransdataType类型值
+    //!
+    enum TransdataType : int {
+        UNDEFINED = 0,    //!< 默认
+        FRACTAL_NZ_TO_ND, //!< FRACTAL_NZ转ND
+        ND_TO_FRACTAL_NZ  //!< ND转FRACTAL_NZ
+    };
+    //! \brief 数据格式转换类型，支持FRACTAL_NZ和ND互相转换。
+    TransdataType transdataType = UNDEFINED;
+    //! \brief 仅当FRACTAL_NZ转ND时使用，表示原ND数据格式Shape的最后两维。
+    SVector<int64_t> outCrops = {0, 0};
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \brief 三目运算。
+//!
+//! 输入张量为cond,x,y, 输出张量 z = cond ? x : y;
+//! 输入cond的元素只能是0或者1
+//! 输出z的维度为输入x与y广播后的结果。要求cond, x, y必须是可广播的。
+//!
+struct WhereParam {
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \brief 将输入Tensor的Shape，按指定轴扩展指定的倍数。
+//!
+//! \warning 输出y的维度和multiples维度一致，每个维度大小为输入x广播到multiples维度后和multiples对应维度的乘积。
+//!
+struct RepeatParam {
+    //!
+    //! \brief 每一维度上扩展的倍数。
+    //!
+    //! \warning
+    //! - 支持在不超过两个维度上进行扩展
+    //! - multiples的维度小于等于8且需大于或等于输入x的维度，每一个元素要求大于0。
+    //!
+    SVector<int64_t> multiples;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \struct SetValueParam
+//!
+//! \brief 将输入源张量中的内容拷贝到输入目标张量指定位置中.
+//!
+//! 该拷贝为原地拷贝，最终结果修改在输入目标张量中.<br>
+//! 输入目标张量 dst: [a,b,c], 输入源张量src: [d,e,f].
+//! dst[starts[0]: ends[0], starts[1]: ends[1], starts[2]: ends[2]] = src.<br>
+//! 其中 ends[0]-starts[0]需为src第0维的维度大小,ends[1]-starts[1]需为为src第1维的维度大小,ends[2]-starts[2]需为src第2维的维度大小。
+//!
+//! \warning 输入src和输入dst的维数须相同.<br>
+//! 输入src的各维度大小要求小于或等于输入dst对应维度大小.<br>
+//! 输入src和输入dst的各维度要求有一个或两个维度不相同，且需要满足：
+//!   - 如果有一个维度不相同，则这个维度不能是最高维（第0维）。
+//!   - 如果有两个维度不相同，则其中一个不同的维度必须是最高维（第0维）。
+//
+struct SetValueParam {
+    //! \brief 每一维拷贝起始位置
+    SVector<int64_t> starts;
+    //! \brief 每一维拷贝结束位置后一个位置，拷贝到该位置前一个位置为止
+    SVector<int64_t> ends;
+    //! \brief 每一维拷贝步长，当前仅支持strides为全1.
+    SVector<int64_t> strides;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \brief 在指定维度上求和、取最大值或最小值，并消除这个维度。
+//!
+struct ReduceParam {
+    //!
+    //! \enum ReduceType
+    //!
+    //! \brief ReduceType支持的值
+    //!
+    enum ReduceType {
+        REDUCE_UNDEFINED = 0, //!< 未定义。
+        REDUCE_MAX,           //!< 求最大值。
+        REDUCE_MIN,           //!< 求最小值。
+        REDUCE_SUM,           //!< 求和。
+    };
+    //! \brief reduceType
+    ReduceType reduceType = REDUCE_UNDEFINED;
+    //!
+    //! \brief 指定轴（维度）。
+    //!
+    //! \warning axis不能为空且长度要求小于等于输入x的维度。<br>
+    //! axis可以支持多个轴上进行处理，各元素要求小于x的维度且大于等于0
+    //!
+    SVector<int64_t> axis;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \brief 依据给定的词表概率以及top-p，设置随机种子及top-k保留词数，选择最合适的词及对应概率作为输出。
+//!  支持batch级别随机种子、top-k取样，支持exponential取样
+//! \warning probs必须是两维张量。
+//!
+struct TopkToppSamplingParam {
+    //! \brief 取样处理类型
+    enum TopkToppSamplingType {
+        SAMPLING_UNDEFINED = -1,         //!< 未定义
+        SINGLE_TOPK_SAMPLING,            //!< 非batch级别随机种子、Topk的取样
+        BATCH_TOPK_MULTINOMIAL_SAMPLING, //!< batch级别随机种子、Topk的multinomial取样
+        BATCH_TOPK_EXPONENTIAL_SAMPLING, //!< batch级别随机种子、Topk的exponential取样
+        SAMPLING_MAX,                    //!< 枚举最大值
+    };
+    //! \brief 采样类型，默认为非batch级别随机种子、Topk的取样
+    TopkToppSamplingType topkToppSamplingType = SINGLE_TOPK_SAMPLING;
+    //! \brief 当 topkToppSamplingType为BATCH_TOPK_MULTINOMIAL_SAMPLING时使用
+    //! \brief 每个batch下top-p阶段随机抽样使用的随机数种子。
+    //! \brief 维度与batch大小一致。
+    std::vector<uint32_t> randSeeds;
+    //! \brief 当 topkToppSamplingType为SINGLE_TOPK_SAMPLING时使用
+    //! \brief top-p阶段随机抽样使用的随机数种子。
+    uint32_t randSeed = 0;
+    //! \brief 当 topkToppSamplingType为SINGLE_TOPK_SAMPLING时使用
+    //! \brief top-k阶段保留的词的个数,需要小于词表的词数。
+    //! \brief top-k必须大于0且小于或等于输入probs最后一维的大小。
+    uint32_t topk = 100;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[16] = {0};
+};
+
+
+//!
+//! \struct PadParam
+//!
+//! \brief 对于输入input_ids，取出每个batch最后一个有效token的embedding向量
+//!
+struct PadParam {
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \struct UnpadParam
+//!
+//! \brief 对于输入input_ids，把所有有效的token拼接在一起，并在最后补0
+//!
+struct UnpadParam {
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \struct SortParam
+//!
+//! \brief 后处理计算功能。实现输入tensor在最后一维上降序排列，并保留最大的num个元素，输出排序后的tensor及各元素对应的索引。
+//!
+struct SortParam {
+    //!
+    //! \brief 排序后保留的最大的元素的数量。
+    //!
+    //! \warning num是一个仅含有一个值的SVector，该值需大于0且小于等于输入x最后一维的大小。
+    //!
+    SVector<int32_t> num;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \struct NonzeroParam
+//!
+//! \brief 输出非零值索引。
+//!
+//! \warning 仅在Atlas 800I A2推理产品上支持
+//!
+struct NonzeroParam {
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \struct OnehotParam
+//!
+//! \brief onehot编码。
+//!
+struct OnehotParam {
+    //! \brief depth所在下标。可为负数。
+    int64_t axis = 0;
+    //! \brief 类别数。
+    int64_t depth = 0;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
+//! \struct IndexAddParam
+//!
+//! \brief 固定维度的指定下标加上某个特定值。
+//!
+struct IndexAddParam {
+    //!
+    //! \enum IndexType
+    //!
+    //! \brief 指定下标需要执行的操作类型。
+    //!
+    enum IndexType {
+        INDEX_UNDEFINED = 0, //!< 默认值。不支持。
+        INDEX_ADD,           //!< 加
+        INDEX_ADD_VALID,     //!< 有效长度内加。不支持Atlas 推理系列产品。
+    };
+    //!
+    //! \brief 指定下标需要执行的操作类型。
+    //!
+    //! \note 默认值为INDEX_UNDEFINED。
+    //!
+    //! \warning 目前支持取值为INDEX_ADD/INDEX_ADD_VALID。
+    //!
+    IndexType indexType = INDEX_UNDEFINED;
+    //!
+    //! \brief 输入Tensor需加上updates更新值的轴。
+    //!
+    //! \note 默认值为0。
+    //!
+    //! \warning 当indexType为INDEX_ADD时，可为负数，取值范围为[-varDimNum, varDimNum - 1]。varDimNum为inTensor0的维度数。
+    //!
+    //! \warning 当indexType为INDEX_ADD_VALID时，仅支持取值为0。
+    //!
+    int64_t axis = 0;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[16] = {0};
+};
+
+//!
+//! \struct SendParam
+//!
+//! \brief 将当前通信卡的输入发送至指定通信卡上,当前只支持仅Atlas 800I A2推理产品.Send和Recv需要配套使用
+//!
+//! rank、rankSize、rankRoot需满足以下条件:
+//! 0 ≤ rank < rankSize, 0 ≤ rankRoot < rankSize, 0 ≤ destRank < rankSize
+//!
+//! \note 1、多用户使用时需要使用ATB_SHARE_MEMORY_NAME_SUFFIX环境变量进行共享内存的区分，以进行初始化信息同步.
+//! \note 2、当使用加速库的通信算子异常退出时，需要清空残留数据，避免影响之后的使用，命令参考如下：
+//!
+//! \code
+//!         rm -rf /dev/shm/sem.lccl*
+//!         rm -rf /dev/shm/sem.hccl*
+//!         ipcrm -a
+//! \endcode
+//!
+struct SendParam {
+    //! \brief 当前卡所属通信编号
+    int rank = 0;
+    //! \brief 通信的卡的数量
+    int rankSize = 0;
+    //! \brief 主通信编号
+    int rankRoot = 0;
+    //! \brief 通信域内数据接收端的rank编号.
+    uint32_t destRank = 1;
+    //! \brief 通信后端指示，仅支持"hccl".
+    std::string backend = "hccl";
+    //! \brief HCCL通信域指针
+    //! 默认为空，加速库为用户创建;若用户想要自己管理通信域,则需要传入该通信域指针,加速库使用传入的通信域指针来执行通信算子
+    HcclComm hcclComm = nullptr;
+    //! \brief 通信模式，CommMode类型枚举值。hccl多线程只支持外部传入通信域方式
+    CommMode commMode = COMM_MULTI_PROCESS;
+    //!
+    //! \brief 集群信息的配置文件路径，适用单机以及多机通信场景，当前仅支持hccl后端场景,若单机配置了rankTable，则以ranktable来初始化通信域。
+    //!
+    std::string rankTableFile;
+    //! \brief 通信device组用通信域名标识，多通信域时使用，当前仅支持hccl
+    std::string commDomain;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[64] = {0};
+};
+
+//!
+//! \struct RecvParam
+//!
+//! \brief 从当前通信卡接收来自指定通信卡的数据,当前只支持仅Atlas 800I A2推理产品,Send和Recv需要配套使用
+//!
+//! rank、rankSize、rankRoot需满足以下条件:
+//! 0 ≤ rank < rankSize, 0 ≤ rankRoot < rankSize, 0 ≤ srcRank < rankSize
+//!
+//! \note 1、多用户使用时需要使用ATB_SHARE_MEMORY_NAME_SUFFIX环境变量进行共享内存的区分，以进行初始化信息同步.
+//! \note 2、当使用加速库的通信算子异常退出时，需要清空残留数据，避免影响之后的使用，命令参考如下：
+//!
+//! \code
+//!         rm -rf /dev/shm/sem.lccl*
+//!         rm -rf /dev/shm/sem.hccl*
+//!         ipcrm -a
+//! \endcode
+//!
+struct RecvParam {
+    //! \brief 当前卡所属通信编号
+    int rank = 0;
+    //! \brief 通信的卡的数量
+    int rankSize = 0;
+    //! \brief 主通信编号
+    int rankRoot = 0;
+    //! \brief 通信域内数据发送端的rank编号.
+    uint32_t srcRank = 1;
+    //! \brief 通信后端指示，仅支持"hccl".
+    std::string backend = "hccl";
+    //! \brief HCCL通信域指针
+    //! 默认为空，加速库为用户创建;若用户想要自己管理通信域,则需要传入该通信域指针,加速库使用传入的通信域指针来执行通信算子
+    HcclComm hcclComm = nullptr;
+    //! \brief 通信模式，CommMode类型枚举值。hccl多线程只支持外部传入通信域方式
+    CommMode commMode = COMM_MULTI_PROCESS;
+    //!
+    //! \brief 集群信息的配置文件路径，适用单机以及多机通信场景，当前仅支持hccl后端场景,若单机配置了rankTable，则以ranktable来初始化通信域。
+    //!
+    std::string rankTableFile;
+    //! \brief 通信device组用通信域名标识，多通信域时使用，当前仅支持hccl
+    std::string commDomain;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[64] = {0};
+};
+
+//!
+//! \struct AllToAllParam
+//!
+//! \brief 向通信域内所有通信卡发送相同数据量(输入切分成ranksize份)的数据，并从所有通信卡接收相同数据量的数据，当前只支持仅Atlas 800I A2推理产品.
+//!
+struct AllToAllParam {
+    //! \brief 当前卡所属通信编号.
+    int rank = 0;
+    //! \brief 通信的卡的数量.
+    int rankSize = 0;
+    //! \brief 主通信编号.
+    int rankRoot = 0;
+    //!
+    //! \brief 通信计算类型,仅支持"hccl"。
+    //!
+    std::string backend = "hccl";
+    //! \brief HCCL通信域指针.
+    //! 默认为空，加速库为用户创建;若用户想要自己管理通信域,则需要传入该通信域指针,加速库使用传入的通信域指针来执行通信算子
+    HcclComm hcclComm = nullptr;
+    //! \brief 通信模式，CommMode类型枚举值.hccl多线程只支持外部传入通信域方式
+    CommMode commMode = COMM_MULTI_PROCESS;
+    //!
+    //! \brief 集群信息的配置文件路径，适用单机以及多机通信场景，当前仅支持hccl后端场景,若单机配置了rankTable，则以ranktable来初始化通信域。
+    //!
+    std::string rankTableFile;
+    //! \brief 通信device组用通信域名标识，多通信域时使用，当前仅支持hccl
+    std::string commDomain;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[64] = {0};
+};
+
+//!
+//! \struct AllToAllVParam
+//!
+//! \brief 向通信域内所有通信卡发送数据（数据量可以定制），并从所有通信卡接收数据，当前只支持仅Atlas 800I A2推理产品.
+//!
+struct AllToAllVParam {
+    //! \brief 当前卡所属通信编号.
+    int rank = 0;
+    //! \brief 通信的卡的数量.
+    int rankSize = 0;
+    //! \brief 主通信编号.
+    int rankRoot = 0;
+    //! \brief 表示发送数据量的数组.
+    //! 例如，若发送的数据类型为float32，sendCounts[i] = n 表示本rank发给rank i n个float32数据。
+    std::vector<int64_t> sendCounts;
+    //! \brief 表示发送偏移量的数组.
+    //! sdispls[i] = n表示本rank从相对于输入起始位置的的偏移量为n的位置开始发送数据给rank i
+    std::vector<int64_t> sdispls;
+    //! \brief 表示接收数据量的数组.
+    //! 例如，若发送的数据类型为float32，recvCounts[i] = n 表示本rank从rank i收到n个float32数据。
+    std::vector<int64_t> recvCounts;
+    //! \brief 表示接收偏移量的数组.
+    // rdispls[i] = n表示本rank从相对于输出起始位置的的偏移量为n的位置开始接收rank i的数据
+    std::vector<int64_t> rdispls;
+    //!
+    //! \brief 通信计算类型，仅支持"hccl".
+    //!
+    std::string backend = "hccl";
+    //! \brief HCCL通信域指针.
+    //! 默认为空，加速库为用户创建;若用户想要自己管理通信域,则需要传入该通信域指针,加速库使用传入的通信域指针来执行通信算子
+    HcclComm hcclComm = nullptr;
+    //! \brief 通信模式，CommMode类型枚举值.hccl多线程只支持外部传入通信域方式
+    CommMode commMode = COMM_MULTI_PROCESS;
+    //!
+    //! \brief 集群信息的配置文件路径，适用单机以及多机通信场景，当前仅支持hccl后端场景,若单机配置了rankTable，则以ranktable来初始化通信域。
+    //!
+    std::string rankTableFile;
+    //! \brief 通信device组用通信域名标识，多通信域时使用，当前仅支持hccl
+    std::string commDomain;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[64] = {0};
+};
+
+//!
+//! \struct GroupTopkParam
+//!
+//! \brief GroupTopk算子超参数。将输入inTensor0中维度1（inTensor0有2个维度：维度0和维度1）数据分groupNum个组，每组取最大值，然后选出每组最大值中前k个，最后将非前k个组的数据全部置零。
+//!
+//! \note
+//!
+//! \warning
+//!
+struct GroupTopkParam {
+    //!
+    //! \brief 每个token分组数量。注：“专家总数”为inTensor0Desc.shape.dims[1]的值。
+    //!
+    //! \note 必传，默认值为1，取值范围为[1, 专家总数]。
+    //!
+    //! \warning groupNum需要保证可以被inTensor0Desc.shape.dims[1]整除。
+    //!
+    int32_t groupNum = 1;
+    //!
+    //! \brief 选择top K专家数量。
+    //!
+    //! \note 必传，默认值为0，取值范围为[1, groupNum]。
+    //!
+    //! \warning
+    //!
+    int32_t k = 0;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[16] = {0};
+};
+
+//!
+//! \struct GroupedMatmulWithRoutingParam
+//!
+//! \brief 实现了GroupedMatmulWithRouting算子的Up和Down方法,将topK个专家权重与token激活值做矩阵乘法计算。
+//!
+//! \warning 仅Atlas 800I A2推理产品支持该算子
+//!
+
+struct GroupedMatmulWithRoutingParam {
+    //!
+    //! \enum GroupedMatmulType
+    //!
+    //! \brief 指定GroupedMatmulWithRouting算子需要执行的操作类型。
+    //!
+    enum GroupedMatmulType : int {
+        GROUPED_MATMUL_UP = 0, //!< 默认值。up类型。
+        GROUPED_MATMUL_DOWN    //!< down类型。
+    };
+    //! \brief 是否转置B矩阵（专家权重）。
+    bool transposeB = true;
+    //! \brief 选取的topK专家个数
+    int32_t topK = 0;
+    //!
+    //! \brief 指定GroupedMatmulWithRouting算子需要执行的操作类型。
+    //!
+    //! \note 默认值为GROUPED_MATMUL_UP。
+    //!
+    //! \warning 目前支持取值为GROUPED_MATMUL_UP/GROUPED_MATMUL_DOWN。
+    //!
+    GroupedMatmulType groupedMatmulType = GROUPED_MATMUL_UP;
+    //!
+    //! \brief 指定输出值的反量化类型。
+    //!
+    //! \note 默认值为ACL_DT_UNDEFINED。
+    //!
+    //! \warning 非量化场景下：仅支持配置为ACL_DT_UNDEFINED。量化场景下支持ACL_FLOAT16/ACL_BF16
+    //!
+    aclDataType outDataType = ACL_DT_UNDEFINED;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[16] = {0};
+};
+
+//!
+//! \struct GroupedMatmulInplaceAddParam
+//!
+//! \brief 将A、B两个矩阵按照规则进行分组矩阵乘运算，并累加在矩阵C上作为输出。
+//!
+//! \note 算子本质上是接收x和weight两个输入tensor作为A矩阵和B矩阵进行分组矩阵乘运算并累加在矩阵C上，可通过参数transposeA与transposeB控制做矩
+//! 阵乘前是否需要对A矩阵和B矩阵进行行列转置，根据参数转置后的A矩阵和B矩阵需满足矩阵乘维度关系。例如，当transposeA为false，
+//! transposeB为true时，x和weight的shape可以分别为[m, k]和[n, k]。
+//!
+struct GroupedMatmulInplaceAddParam {
+    //!
+    //! \brief 是否转置A矩阵。
+    //!
+    //! \note 默认值为false，不转置。
+    //!
+    bool transposeA = false;
+    //!
+    //! \brief 是否转置B矩阵。
+    //!
+    //! \note 默认值为false，不转置，当前仅支持false。
+    //!
+    bool transposeB = false;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[22] = {0};
+};
+} // namespace infer
+} // namespace atb
+#endif
