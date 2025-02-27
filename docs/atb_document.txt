@@ -1,0 +1,156 @@
+//! \struct atb::infer::AsStridedParam 
+//! <table class="ct">
+//! <caption id="astride">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">float16/int64        <td class="cc">ND           <td class="cc">输入tensor
+//! <tr><td class="cc">y            <td class="cc">与传入的AsStridedParam中的size一致                                 <td class="cc">float16/int64       <td class="cc">ND        <td class="cc">输出tensor
+//! </table>
+//!
+//! 示例用法：
+//! \code
+//! >>> x
+//! tensor([[1, 2, 3],
+//!         [4, 5, 6],
+//!         [7, 8, 9]])
+//! atb::infer::AsStridedParam asStridedParam = {{3, 3}, {0, 1}, {0}};
+//! >>> output
+//! tensor([[1, 2, 3],
+//!         [1, 2, 3],
+//!         [1, 2, 3]])
+//!
+//! \endcode
+//!
+
+//! \struct atb::infer::MultinomialParam 
+//! <table class="ct">
+//! <caption id="MultinomialParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                        <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[batch, vocSize]                                                 <td class="cc">float16                      <td class="cc">ND         <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">[batch, numSamples]                                              <td class="cc">int32                          <td class="cc">ND        <td class="cc">采数数据下标</td>
+//! </table>
+//!
+//! 示例用法：
+//! \code
+//! >>> x
+//! tensor([[0.0701, 0.1021, 0.1010, 0.1005],
+//!         [0.1101, 0.1020, 0.1017, 0.0990],
+//!         [0.0592, 0.1006, 0.1006, 0.1002]])
+//! atb::infer::MultinomialParam multinomialParam = {1, 0};
+//! >>> output
+//! tensor([[3],
+//!         [3],
+//!         [3]])
+//!
+//! \endcode
+//!
+
+//! \struct atb::infer::NonzeroParam 
+//! <table class="ct">
+//! <caption id="NonzeroParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                        <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">int64                        <td class="cc">ND         <td class="cc">输入tensor
+//! <tr><td class="cc">output1      <td class="cc">[inputDimNum, inputTensorSize]                                    <td class="cc">int64                          <td class="cc">ND        <td class="cc">非零元素下标</td>
+//! <tr><td class="cc">output2      <td class="cc">[1]                                                               <td class="cc">int64                          <td class="cc">ND        <td class="cc">非零元素个数</td>
+//! </table>
+//!
+
+//! \struct atb::infer::OnehotParam 
+//! <table class="ct">
+//! <caption id="OnehotParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                        <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">int32/int64                    <td class="cc">ND         <td class="cc">输入tensor
+//! <tr><td class="cc">one          <td class="cc">[1]                                                              <td class="cc">int32/int64                     <td class="cc">ND        <td class="cc">标量0</td>
+//! <tr><td class="cc">zero         <td class="cc">[1]                                                               <td class="cc">int32/int64                     <td class="cc">ND        <td class="cc">标量1</td>
+//! <tr><td class="cc">output       <td class="cc">和x相比，在axis上多一个depth维度                                    <td class="cc">int32/int64                     <td class="cc">ND        <td class="cc">输出tensor</td>
+//! </table>
+//!
+
+
+//! \struct atb::infer::RopeParam 
+//! <table class="ct">
+//! <caption id="RopeParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数                 <th class="ch">维度                                                  <th class="ch">数据类型                                  <th class="ch">格式     <th class="ch">描述
+//! <tr><td class="cc">query                <td class="cc">[num_tokens, hiddenSizeQ]                   <td class="cc">float16/bf16                     <td class="cc">ND      <td class="cc">当前step多个token的query。
+//! <tr><td class="cc">key                  <td class="cc">[num_tokens, hiddenSizeK]                   <td class="cc">float16/bf16                     <td class="cc">ND      <td class="cc">当前step多个token的key。
+//! <tr><td class="cc">cos                  <td class="cc">[ntokens, headDim] / [ntokens, headDim / 2]       <td class="cc">float16/bf16/float                     <td class="cc">ND   <td class="cc"> 当cos的第二个维度与参数rotaryCoeff相等时，其值为headDim/2。当cos的第二个维度与参数rotaryCoeff不相等时，其值为headDim。
+//! <tr><td class="cc">sin                  <td class="cc">[ntokens, headDim] / [ntokens, headDim/ 2]       <td class="cc">float16/bf16/float                     <td class="cc">ND   <td class="cc">当sin的第二个维度与参数rotaryCoeff相等时，其值为headDim/2。当sin的第二个维度与参数rotaryCoeff不相等时，其值为headDim。
+//! <tr><td class="cc">seqlen               <td class="cc">[batch]                                          <td class="cc">uint32/int32                                     <td class="cc">ND      <td class="cc">
+//! <tr><td class="cc">ropeQ                <td class="cc">[ntokens, hiddenSizeQ]                           <td class="cc">float16/bf16                                     <td class="cc">ND      <td class="cc">输出tensor，旋转后的query。
+//! <tr><td class="cc">ropeK                <td class="cc">[ntokens, hiddenSizeK]                           <td class="cc">float16/bf16                                     <td class="cc">ND      <td class="cc">输出tensor，旋转后的key。
+//! </table>
+//!
+
+//! \struct atb::infer::ReduceParam 
+//! <table class="ct">
+//! <caption id="ReduceParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                        <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">REDUCE_MAX,REDUCE_MIN:int32/REDUCE_SUM:float16/bf16                         <td class="cc">ND         <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">基于输入“x”的维度，消除axis要求的维度                               <td class="cc">REDUCE_MAX,REDUCE_MIN:int32/REDUCE_SUM:float16/bf16                         <td class="cc">ND        <td class="cc">输出tensor</td>
+//! </table>
+//!
+
+//! \struct atb::infer::SliceParam 
+//! <table class="ct">
+//! <caption id="SliceParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                                    <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">float16/float/int8/bool/int32/uint32/bf16 <td class="cc">ND         <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束                               <td class="cc">float16/float/int8/bool/int32/uint32/bf16 <td class="cc">ND         <td class="cc">输出tensor,维度的大小为size指定的大小</td>
+//! </table>
+//!
+
+//! \struct atb::infer::SoftmaxParam 
+//! <table class="ct">
+//! <caption id="SoftmaxParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                        <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">float16/float/bf16                  <td class="cc">ND         <td class="cc">输入tensor
+//! <tr><td class="cc">output       <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束                               <td class="cc">float16/float/bf16                  <td class="cc">ND         <td class="cc">输出tensor</td>
+//! </table>
+//!
+
+//! \struct atb::infer::CumsumParam 
+//! <table class="ct">
+//! <caption id="cumsum">函数输入输出描述</caption>
+//! <tr><th class="ch">参数         <th class="ch">维度                                                              <th class="ch">数据类型                      <th class="ch">格式       <th class="ch">描述
+//! <tr><td class="cc">x            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                             <td class="cc">float16        <td class="cc">ND           <td class="cc">输入tensor
+//! <tr><td class="cc">y            <td class="cc">[-1,…,-1]-1表示当前维度的大小没有约束。                                 <td class="cc">float16       <td class="cc">ND        <td class="cc">输出tensor
+//! </table>
+//!
+//! \struct atb::infer::GatherParam 
+//! <table class="ct">
+//! <caption id="GatherParam">函数输入输出描述</caption>
+//! <tr><th class="ch">参数   <th class="ch">维度        <th class="ch">数据类型        <th class="ch">格式  <th class="ch">描述
+//! <tr><td class="cc">x       <td class="cc">[-1,…,-1]<br>-1表示当前维度的大小没有约束    <td class="cc">float16/float/bf16/int32/uint32 <td class="cc">ND <td class="cc">输入tensor
+//! <tr><td class="cc">indexs  <td class="cc">[-1,…,-1]<br>-1表示当前维度的大小没有约束    <td class="cc">int64/int32/uint32 <td class="cc">ND <td class="cc">索引表,值必须在[0, x.shape[axis]]范围内,x与indexs的维数之和小于等于9,indexs的维数必须大于等于batchdims
+//! <tr><td class="cc">output  <td class="cc">[-1,…,-1]<br>-1表示当前维度的大小没有约束    <td class="cc">float16/float/bf16/int32/uint32 <td class="cc">ND <td class="cc">输出tensor
+//! </table>
+//! 
+//! 示例用法：
+//! \code
+//! atb::infer::GatherParam param;
+//! param.axis = 0;
+//! param.batchDims = 0;
+//! >>> x
+//! tensor([[3, 7, 1, 8],
+//!         [2, 6, 5, 0],
+//!         [1, 4, 6, 9]])
+//! >>> indices
+//! tensor([[1, 0],
+//!         [0, 2],
+//!         [2, 1]])
+//! >>> output
+//! tensor([[[2, 6, 5, 0],
+//!          [3, 7, 1, 8]],
+//!         [[3, 7, 1, 8],
+//!          [1, 4, 6, 9]],
+//!         [[1, 4, 6, 9],
+//!         [2, 6, 5, 0]]])
+//! atb::infer::GatherParam param;
+//! param.axis = 1;
+//! param.batchDims = 1;
+//! >>> output
+//! tensor([[7, 3],
+//!         [2, 5],
+//!         [6, 4]])
+//!
+//! \endcode
+//!
