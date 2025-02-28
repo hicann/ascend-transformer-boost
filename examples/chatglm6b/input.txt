@@ -1,4 +1,0 @@
-nihao
-clear
-Five straight lines intersect, and there can be up to several intersections?
-stop

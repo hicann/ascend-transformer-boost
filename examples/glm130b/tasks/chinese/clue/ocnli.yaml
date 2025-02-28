@@ -1,4 +1,0 @@
-name: 'OCNLI_50K'
-type: 'mul'
-path: 'CLUE/ocnli'
-micro_batch_size: 24
