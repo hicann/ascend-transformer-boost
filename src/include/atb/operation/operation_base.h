@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+#ifndef ATB_OPERATIONBASE_H
+#define ATB_OPERATIONBASE_H
+#include <vector>
+#include <string>
+#include <memory>
+#include <atomic>
+#include <nlohmann/json.hpp>
+#include "mki/utils/operationir/operation_ir_cfg.h"
+#include "atb/operation.h"
+#include "atb/runner/runner.h"
+#include "atb/core/runner_variant_pack.h"
+#include "atb/context.h"
+
+namespace atb {
+enum ProfilingFuncName : int {
+    OPERATION_UNDEFINED = -1,
+    OPERATION_SETUP,
+    OPERATION_EXECUTE,
+    OPERATION_MAX
+};
+
+class OperationBase : public Operation {
+public:
+    explicit OperationBase(const std::string &name);
+    ~OperationBase() override;
+    std::string GetName() const override;
+    Status InferShape(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
+    Status Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context) override;
+    Status Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                   Context *context) override;
+    Status SetOperationBaseIds(const std::vector<int64_t> &operationBaseIds, const int64_t nodeId);
+    virtual nlohmann::json GetParamJson() const;
+    const std::vector<int64_t> &GetOperationBaseIds();
+    virtual std::shared_ptr<Runner> CreateRunner(Context &context) const = 0;
+
+protected:
+    virtual Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
+                                  SVector<TensorDesc> &outTensorDescs) const = 0;
+    virtual Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const;
+    virtual Status SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
+    void InitEmptyInTensorPerms() const;
+    virtual SVector<bool> GetEmptyInTensorPermissions() const;
+    std::string GetLogPrefix() const;
+    virtual Status SetNodeOperationIds();
+    nlohmann::json GetGraphInfo() const;
+    virtual void GetGraphInfoImpl(nlohmann::json &graphJson) const;
+    friend class GraphOperation;
+
+protected:
+    std::string name_;
+    std::vector<int64_t> operationBaseIds_;
+    Mki::OperationIr *operationIr_ = nullptr;
+    mutable SVector<bool> emptyInTensorPerms_;
+    RunnerVariantPack runnerVariantPack_;
+    std::shared_ptr<Runner> runner_;
+
+private:
+    void Reset();
+    Status InferShapeCheck(const SVector<TensorDesc> &inTensorDescs) const;
+    Status InferShapeThrow(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
+    Status SetupCheck(const VariantPack &variantPack, Context *context);
+    Status SetupPrepare();
+    Status SetupThrowPrepare(uint64_t &workspaceSize, Context *context);
+    Status SetupThrow(const VariantPack &variantPack, uint64_t &workspaceSize);
+    Status ExecuteCheck(const VariantPack &variantPack, const uint8_t *workspace, uint64_t workspaceSize,
+                        const Context *context);
+    Status ExecuteVariantPackCheck(const VariantPack &variantPack);
+    Status ExecuteThrow(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize);
+    void InitRunnerVariantPack(const VariantPack &variantPack);
+    Status CopyHostTilingToDevice(aclrtStream stream);
+    Status CopyTilingToDevice();
+    void ReportApiInfo(const uint64_t beginTime, ProfilingFuncName type);
+    std::string GetSaveTensorRootDir() const;
+    void FillHostTilingBuffer();
+    Status CheckVariantPack(const VariantPack &variantPack) const;
+    template <typename TensorType> Status CheckInTensor(const SVector<TensorType> &inTensors) const;
+    bool CheckIniMatch(const SVector<TensorDesc> &inTensorDescs) const;
+    bool CheckIniMatch(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
+    void SetSaveTensorDir();
+    void UpdateTensorData(const VariantPack &variantPack, uint8_t *workspace);
+    std::string VariantPackToString(const VariantPack &variantPack) const;
+    Status CreateRunnerFunc(Context *context);
+    void ResetLogPrefix();
+
+private:
+    std::string logPrefix_;
+    std::atomic_bool setUpSuccess_{false};
+    uint8_t *hostTilingBuffer_ = nullptr;
+    std::vector<uint64_t> hashIdArray_;
+    std::vector<uint32_t> typeIdArray_;
+    size_t executeCount_ = 0;
+    uint64_t workspaceSize_ = 0;
+    bool isProfArrayInited_ = false;
+};
+} // namespace atb
+#endif
