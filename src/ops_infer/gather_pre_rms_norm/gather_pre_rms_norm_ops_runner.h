@@ -10,7 +10,7 @@
 #ifndef ATB_GATHER_PRE_RMS_NORM_OPS_RUNNER_H
 #define ATB_GATHER_PRE_RMS_NORM_OPS_RUNNER_H
 
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/infer_op_params.h"
 #include "atb/runner/ops_runner.h"
 
@@ -22,8 +22,8 @@ public:
 
 private:
     void SetGatherPreRMSNormParam(const infer::GatherPreRmsNormParam &inferParam,
-                                           AsdOps::OpParam::Norm &asdopsParam) const;
-    void BuildGatherPreRMSNormGraph(const AsdOps::OpParam::Norm &rmsNormParam);
+                                           AtbOps::OpParam::Norm &asdopsParam) const;
+    void BuildGatherPreRMSNormGraph(const AtbOps::OpParam::Norm &rmsNormParam);
 
 private:
     infer::GatherPreRmsNormParam param_;

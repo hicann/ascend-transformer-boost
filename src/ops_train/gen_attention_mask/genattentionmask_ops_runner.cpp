@@ -11,7 +11,6 @@
 #include "genattentionmask_ops_runner.h"
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
-#include <atbops/params/params.h>
 
 namespace atb {
 GenAttentionMaskOpsRunner::GenAttentionMaskOpsRunner(const train::GenAttentionMaskParam &param)
@@ -32,7 +31,7 @@ Status GenAttentionMaskOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTenso
     kernelGraph_.nodes.resize(1);
     auto &genAttentionMaskNode = kernelGraph_.nodes.at(0);
 
-    AtbOps::OpParam::GenAttentionMask genAttentionMaskParam;
+    AsdOps::OpParam::GenAttentionMask genAttentionMaskParam;
     genAttentionMaskParam.headNum = param_.headNum;
     for (std::size_t i = 0; i < param_.seqLen.size(); ++i) {
         genAttentionMaskParam.qSeqLen.push_back(param_.seqLen[i]);

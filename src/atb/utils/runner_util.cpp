@@ -9,7 +9,7 @@
  */
 #include "atb/utils/runner_util.h"
 #include <map>
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/utils/log.h"
 
 static constexpr size_t DIM_2 = 2;
@@ -19,23 +19,23 @@ static constexpr size_t SIZE_3 = 3;
 namespace atb {
 Mki::OpDesc RunnerUtil::GetActivationNodeOpDesc(infer::ActivationParam activationParam)
 {
-    std::map<infer::ActivationType, AsdOps::OpParam::Activation::ActivationType> typeTable = {
-        {infer::ActivationType::ACTIVATION_RELU, AsdOps::OpParam::Activation::ACTIVATION_RELU},
-        {infer::ActivationType::ACTIVATION_GELU, AsdOps::OpParam::Activation::ACTIVATION_GELU},
-        {infer::ActivationType::ACTIVATION_FAST_GELU, AsdOps::OpParam::Activation::ACTIVATION_FAST_GELU},
-        {infer::ActivationType::ACTIVATION_SWISH, AsdOps::OpParam::Activation::ACTIVATION_SWISH},
-        {infer::ActivationType::ACTIVATION_LOG, AsdOps::OpParam::Activation::ACTIVATION_LOG},
-        {infer::ActivationType::ACTIVATION_SWIGLU_FORWARD, AsdOps::OpParam::Activation::ACTIVATION_SWIGLU_FORWARD},
-        {infer::ActivationType::ACTIVATION_SWIGLU_BACKWARD, AsdOps::OpParam::Activation::ACTIVATION_SWIGLU_BACKWARD},
-        {infer::ActivationType::ACTIVATION_SIGMOID, AsdOps::OpParam::Activation::ACTIVATION_SIGMOID},
+    std::map<infer::ActivationType, AtbOps::OpParam::Activation::ActivationType> typeTable = {
+        {infer::ActivationType::ACTIVATION_RELU, AtbOps::OpParam::Activation::ACTIVATION_RELU},
+        {infer::ActivationType::ACTIVATION_GELU, AtbOps::OpParam::Activation::ACTIVATION_GELU},
+        {infer::ActivationType::ACTIVATION_FAST_GELU, AtbOps::OpParam::Activation::ACTIVATION_FAST_GELU},
+        {infer::ActivationType::ACTIVATION_SWISH, AtbOps::OpParam::Activation::ACTIVATION_SWISH},
+        {infer::ActivationType::ACTIVATION_LOG, AtbOps::OpParam::Activation::ACTIVATION_LOG},
+        {infer::ActivationType::ACTIVATION_SWIGLU_FORWARD, AtbOps::OpParam::Activation::ACTIVATION_SWIGLU_FORWARD},
+        {infer::ActivationType::ACTIVATION_SWIGLU_BACKWARD, AtbOps::OpParam::Activation::ACTIVATION_SWIGLU_BACKWARD},
+        {infer::ActivationType::ACTIVATION_SIGMOID, AtbOps::OpParam::Activation::ACTIVATION_SIGMOID},
         {infer::ActivationType::ACTIVATION_FASTER_GELU_FORWARD,
-         AsdOps::OpParam::Activation::ACTIVATION_FASTER_GELU_FORWARD},
+         AtbOps::OpParam::Activation::ACTIVATION_FASTER_GELU_FORWARD},
     };
 
-    std::map<infer::ActivationType, AsdOps::OpParam::Activation::ActivationType>::const_iterator it =
+    std::map<infer::ActivationType, AtbOps::OpParam::Activation::ActivationType>::const_iterator it =
         typeTable.find(activationParam.activationType);
-    AsdOps::OpParam::Activation param = {};
-    param.activationType = (it == typeTable.end()) ? AsdOps::OpParam::Activation::ACTIVATION_UNDEFINED : it->second;
+    AtbOps::OpParam::Activation param = {};
+    param.activationType = (it == typeTable.end()) ? AtbOps::OpParam::Activation::ACTIVATION_UNDEFINED : it->second;
     param.scale = activationParam.scale;
     param.dim = activationParam.dim;
     param.approx = activationParam.geluMode;

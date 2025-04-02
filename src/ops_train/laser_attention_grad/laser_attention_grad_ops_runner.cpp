@@ -55,7 +55,7 @@ Status LaserAttentionGradOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTen
     kernelGraph_.nodes.resize(1);
     KernelGraphNode &laserAttentionNode = kernelGraph_.nodes.at(0);
 
-    AtbOps::OpParam::LaserAttentionGrad laserAttentionGradParam;
+    AsdOps::OpParam::LaserAttentionGrad laserAttentionGradParam;
     laserAttentionGradParam.headNum = param_.headNum;
     laserAttentionGradParam.inputLayout = param_.inputLayout;
     laserAttentionGradParam.scaleValue = param_.scaleValue;

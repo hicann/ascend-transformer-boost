@@ -17,6 +17,8 @@ file(GLOB_RECURSE INFER_OP_SOURCE "${ops_infer_directory}/*.cpp")
 file(GLOB_RECURSE TRAIN_OP_SOURCE "${ops_train_directory}/*.cpp")
 file(GLOB_RECURSE COMMON_OP_SOURCE "${ops_common_directory}/*.cpp")
 file(GLOB_RECURSE ATB_FRAMEWORK_SOURCE "${atb_directory}/*.cpp")
+
+add_subdirectory(ops)
 if(BUILD_PYBIND AND NOT USE_CXX11_ABI)
     add_subdirectory(torch_atb)
 endif()

@@ -194,7 +194,7 @@ Status SelfAttentionFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &o
     // muls
     auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
     mulsQNode.opDesc = {0, "ElewiseOperation",
-                        AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
+                        AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
     mulsQNode.inTensors = {&transposeQResultTensor};
     mulsQNode.inTensorViewFuncs.resize(mulsQNode.inTensors.size());
     mulsQNode.inTensorViewFuncs[0] = [](const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims) {

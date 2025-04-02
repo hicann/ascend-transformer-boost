@@ -9,7 +9,7 @@
  */
 
 #include "fastsoftmax_ops_runner.h"
-#include <atbops/params/params.h>
+#include <asdops/params/params.h>
 #include "atb/utils/log.h"
 
 namespace atb {
@@ -33,7 +33,7 @@ Status FastSoftMaxOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack
 
     kernelGraph_.nodes.resize(1);
     auto &fastSoftMaxNode = kernelGraph_.nodes.at(0);
-    AtbOps::OpParam::FastSoftMax fastSoftMaxParam;
+    AsdOps::OpParam::FastSoftMax fastSoftMaxParam;
     fastSoftMaxParam.headNum = param_.headNum;
     fastSoftMaxParam.qSeqLen = param_.qSeqLen;
     fastSoftMaxNode.opDesc = {0, "FastSoftMaxOperation", fastSoftMaxParam};

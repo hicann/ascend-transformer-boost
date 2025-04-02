@@ -127,7 +127,7 @@ Status SelfAttentionFusionBypassOpsRunnerBNSD910A::SetupKernelGraph(const OpsTen
     // muls
     auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
     mulsQNode.opDesc = {0, "ElewiseOperation",
-                        AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
+                        AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_MULS, param_.qScale})};
     mulsQNode.inTensors = {&transdataQResultTensor};
     mulsQNode.outTensors = {&divOut};
 

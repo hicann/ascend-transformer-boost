@@ -98,7 +98,7 @@ Status PagedAttentionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &opsTen
 
     // muls
     auto &mulsQNode = kernelGraph_.nodes.at(nodeId++);
-    mulsQNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_MULS, 1.0})};
+    mulsQNode.opDesc = {0, "ElewiseOperation", AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_MULS, 1.0})};
     mulsQNode.inTensors = {&transdataQResultTensor};
     mulsQNode.inTensorViewFuncs.resize(mulsQNode.inTensors.size());
     mulsQNode.outTensors = {&mulQTensor};

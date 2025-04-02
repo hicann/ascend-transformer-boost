@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "index_add_ops_runner.h"
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include <atb/utils/log.h>
 
 namespace atb {
@@ -58,9 +58,9 @@ Status IndexAddOpsRunner::SetupKernelGraphIndexAdd()
     size_t nodeId = 0;
     KernelGraphNode &indexAddNode = kernelGraph_.nodes.at(nodeId++);
 
-    AsdOps::OpParam::Index indexParam;
+    AtbOps::OpParam::Index indexParam;
     indexParam.axis = param_.axis;
-    indexParam.indexType = AsdOps::OpParam::Index::INDEX_ADD;
+    indexParam.indexType = AtbOps::OpParam::Index::INDEX_ADD;
     indexAddNode.opDesc = {0, "IndexOperation", indexParam};
     indexAddNode.inTensors = {&varTensor, &indicesTensor, &updatesTensor, &alphaTensor};
     indexAddNode.outTensors = {&outTensor};
@@ -84,9 +84,9 @@ Status IndexAddOpsRunner::SetupKernelGraphIndexAddValid()
     size_t nodeId = 0;
     KernelGraphNode &indexAddValidNode = kernelGraph_.nodes.at(nodeId++);
 
-    AsdOps::OpParam::Index indexParam;
+    AtbOps::OpParam::Index indexParam;
     indexParam.axis = param_.axis;
-    indexParam.indexType = AsdOps::OpParam::Index::INDEX_ADD_VALID;
+    indexParam.indexType = AtbOps::OpParam::Index::INDEX_ADD_VALID;
     indexAddValidNode.opDesc = {0, "IndexOperation", indexParam};
     indexAddValidNode.inTensors = {&varTensor, &indicesTensor, &updatesTensor, &validIndicesTensor};
     indexAddValidNode.outTensors = {&outTensor};

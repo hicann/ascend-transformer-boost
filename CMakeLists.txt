@@ -74,6 +74,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src/include
+    ${PROJECT_SOURCE_DIR}/src/ops/include
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
     ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
@@ -110,9 +111,7 @@ install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./..)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_configs DESTINATION ./configs)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/mki/lib/libmki.so DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libatb_mixops.so DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops_static.a DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libatb_mixops_static.a DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/liblcal.so DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/liblcal_static.a DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops_aicpu_kernels.so DESTINATION lib OPTIONAL)

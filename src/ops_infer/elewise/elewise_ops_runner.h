@@ -9,7 +9,7 @@
  */
 #ifndef OPS_ELEWISE_ELEWISEOPSRUNNER_H
 #define OPS_ELEWISE_ELEWISEOPSRUNNER_H
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/runner/ops_runner.h"
 #include "atb/infer_op_params.h"
 
@@ -25,7 +25,7 @@ private:
     bool SetIntensor(KernelGraphNode &elewiseNode);
     void SetOuttensor(KernelGraphNode &elewiseNode);
     uint32_t GetIntensorSize() const;
-    AsdOps::OpParam::Elewise::ElewiseType GetOpElwiseType() const;
+    AtbOps::OpParam::Elewise::ElewiseType GetOpElwiseType() const;
     Mki::TensorDType GetOutTensorType(const aclDataType outType) const;
 };
 } // namespace atb

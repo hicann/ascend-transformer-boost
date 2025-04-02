@@ -9,7 +9,7 @@
  */
 
 #include "pad_with_hidden_state_ops_runner.h"
-#include <atbops/params/params.h>
+#include <asdops/params/params.h>
 #include "atb/utils/log.h"
 
 namespace atb {
@@ -31,7 +31,7 @@ Status PadWithHiddenStateOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTen
 
     kernelGraph_.nodes.resize(1);
     auto &trainPadNode = kernelGraph_.nodes.at(0);
-    AtbOps::OpParam::PadWithHiddenState padWithHiddenStateParam;
+    AsdOps::OpParam::PadWithHiddenState padWithHiddenStateParam;
     padWithHiddenStateParam.qSeqLen = param_.qSeqLen;
     padWithHiddenStateParam.maxSeqLen = static_cast<uint32_t>(param_.maxSeqLen);
     trainPadNode.opDesc = {0, "PadWithHiddenStateOperation", padWithHiddenStateParam};

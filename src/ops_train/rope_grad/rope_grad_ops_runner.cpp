@@ -44,7 +44,7 @@ Status RopeGradOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     kernelGraph_.nodes.resize(1);
     auto &ropeGradNode = kernelGraph_.nodes.at(0);
 
-    AtbOps::OpParam::RopeGrad ropeGradParam;
+    AsdOps::OpParam::RopeGrad ropeGradParam;
     ropeGradParam.qSeqLen = param_.qSeqLen;
     ropeGradNode.opDesc = {0, "RopeGradOperation", ropeGradParam};
     ropeGradNode.inTensors = {&qEmbeddedGrad, &kEmbeddedGrad, &cos, &sin};

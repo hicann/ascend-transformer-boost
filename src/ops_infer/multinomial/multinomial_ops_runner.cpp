@@ -10,7 +10,7 @@
 
 #include "multinomial_ops_runner.h"
 #include <atb/utils/log.h>
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 
 namespace atb {
 MultinomialOpsRunner::MultinomialOpsRunner(const infer::MultinomialParam &param)
@@ -26,7 +26,7 @@ MultinomialOpsRunner::MultinomialOpsRunner(const infer::MultinomialParam &param)
     kernelGraph_.nodes.resize(1);
     auto &multiNomialNode = kernelGraph_.nodes.at(0);
 
-    AsdOps::OpParam::Multinomial asdParam;
+    AtbOps::OpParam::Multinomial asdParam;
     asdParam.numSamples = param_.numSamples;
     asdParam.randSeed = param_.randSeed;
 

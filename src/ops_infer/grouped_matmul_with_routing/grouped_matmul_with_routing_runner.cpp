@@ -49,14 +49,14 @@ Status GroupedMatmulWithRoutingRunner::SetupKernelGraph(const OpsTensorPack &ops
     Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
     kernelGraph_.nodes.resize(1);
     auto &moeGmmNode = kernelGraph_.nodes.at(0);
-    AtbOps::OpParam::MoeGmm opParam;
-    opParam.moeGmmDequantType = AtbOps::OpParam::MoeGmm::NO_DEQUANT;
+    AsdOps::OpParam::MoeGmm opParam;
+    opParam.moeGmmDequantType = AsdOps::OpParam::MoeGmm::NO_DEQUANT;
     if (param_.outDataType == ACL_BF16) {
-        opParam.moeGmmDequantType = AtbOps::OpParam::MoeGmm::DEQ_BF16;
+        opParam.moeGmmDequantType = AsdOps::OpParam::MoeGmm::DEQ_BF16;
     } else if (param_.outDataType == ACL_FLOAT16) {
-        opParam.moeGmmDequantType = AtbOps::OpParam::MoeGmm::DEQ_FP16;
+        opParam.moeGmmDequantType = AsdOps::OpParam::MoeGmm::DEQ_FP16;
     }
-    opParam.moeGmmMode = static_cast<AtbOps::OpParam::MoeGmm::MoeGmmMode>(param_.groupedMatmulType);
+    opParam.moeGmmMode = static_cast<AsdOps::OpParam::MoeGmm::MoeGmmMode>(param_.groupedMatmulType);
     opParam.transposeB = param_.transposeB ? 1 : 0;
     opParam.topK = static_cast<uint32_t>(param_.topK);
     opParam.hiddenSize.at(0) = inputTensor.desc.dims.at(1);

@@ -9,7 +9,7 @@
  */
 
 #include "rms_norm_backward_ops_runner.h"
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include <atb/utils/log.h>
 #include <atb/utils/tensor_util.h>
 
@@ -37,7 +37,7 @@ RmsNormBackwardOpsRunner::RmsNormBackwardOpsRunner(const train::RmsNormBackwardP
     kernelGraph_.nodes.resize(1);
     auto &rmsNormBackwardNode = kernelGraph_.nodes.at(0);
 
-    AsdOps::OpParam::Norm rmsNormBackwardParam = {AsdOps::OpParam::Norm::RMS_NORM_BACKWARD};
+    AtbOps::OpParam::Norm rmsNormBackwardParam = {AtbOps::OpParam::Norm::RMS_NORM_BACKWARD};
 
     rmsNormBackwardNode.opDesc = {0, "NormOperation", rmsNormBackwardParam};
     rmsNormBackwardNode.inTensors = {&tensorDy, &tensorX, &tensorRSTD, &tensorGamma};

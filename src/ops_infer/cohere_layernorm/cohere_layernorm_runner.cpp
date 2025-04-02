@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "cohere_layernorm_runner.h"
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/utils/log.h"
 
 namespace atb {
@@ -19,7 +19,7 @@ static const uint64_t NODE_SIZE_ONE = 1;
 CohereLayerNormRunner::CohereLayerNormRunner(const infer::CohereLayerNormParam &param)
     : OpsRunner("CohereLayerNormRunner", RUNNER_TYPE_COHERE_LAYER_NORM), param_(param)
 {
-    AsdOps::OpParam::Norm layerNormParam = {AsdOps::OpParam::Norm::LAYER_NORM};
+    AtbOps::OpParam::Norm layerNormParam = {AtbOps::OpParam::Norm::LAYER_NORM};
     layerNormParam.inGamma = true;
     layerNormParam.inBeta = false;
     layerNormParam.inRes = false;

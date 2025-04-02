@@ -9,6 +9,7 @@
  */
 #include "where_ops_runner.h"
 #include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/log.h"
 
@@ -45,7 +46,7 @@ WhereOpsRunner::WhereOpsRunner(const infer::WhereParam &param)
     auto &addNode = kernelGraph_.nodes.at(nodeNum++);
 
     logicalNotNode.opDesc = {0, "ElewiseOperation",
-                             AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_LOGICAL_NOT})};
+                             AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_LOGICAL_NOT})};
     logicalNotNode.inTensors = {&conditionTensor};
     logicalNotNode.outTensors = {&condLogicalNotTensor};
 
@@ -61,7 +62,7 @@ WhereOpsRunner::WhereOpsRunner(const infer::WhereParam &param)
     otherMaskedFillNode.inTensors = {&otherTensor, &conditionTensor};
     otherMaskedFillNode.outTensors = {&otherMaskedFillTensor};
 
-    addNode.opDesc = {0, "ElewiseOperation", AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_ADD})};
+    addNode.opDesc = {0, "ElewiseOperation", AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_ADD})};
     addNode.inTensors = {&inputMaskedFillTensor, &otherMaskedFillTensor};
     addNode.outTensors = {&operationOutTensor};
 }

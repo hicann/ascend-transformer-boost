@@ -10,6 +10,7 @@
 #ifndef ATB_LINEAR_OPS_RUNNER_H
 #define ATB_LINEAR_OPS_RUNNER_H
 #include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/infer_op_params.h"
 #include "atb/runner/ops_runner.h"
 
@@ -46,7 +47,7 @@ private:
     bool xNeedMergeAxis_ = false;
     bool weightNeedMergeAxis_ = false;
     AsdOps::OpParam::MatMul matmulParam_;
-    AsdOps::OpParam::Elewise elewiseAddParam_;
+    AtbOps::OpParam::Elewise elewiseAddParam_;
     AsdOps::OpParam::Transdata transdataNdToNzParam_;
     AsdOps::OpParam::Transdata transdataNzToNdParam_;
     Mki::Tensor nullTensor_ = {};

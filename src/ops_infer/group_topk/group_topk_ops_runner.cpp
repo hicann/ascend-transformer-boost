@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "group_topk_ops_runner.h"
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include <atb/utils/log.h>
 
 namespace atb {
@@ -45,7 +45,7 @@ Status GroupTopkOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     size_t nodeId = 0;
     KernelGraphNode &groupTopkNode = kernelGraph_.nodes.at(nodeId++);
 
-    AsdOps::OpParam::GroupTopk groupTopkParam;
+    AtbOps::OpParam::GroupTopk groupTopkParam;
     groupTopkParam.groupNum = param_.groupNum;
     groupTopkParam.k = param_.k;
     if (param_.groupMultiFlag == infer::GroupTopkParam::GroupMultiFlag::SUM_MULTI_MAX) {

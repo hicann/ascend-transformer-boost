@@ -10,7 +10,7 @@
 #ifndef LAYER_NORM_OPS_RUNNER_H
 #define LAYER_NORM_OPS_RUNNER_H
 
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/infer_op_params.h"
 #include "atb/runner/ops_runner.h"
 
@@ -21,17 +21,17 @@ public:
     ~LayerNormOpsRunner() override;
 
 private:
-    void SetLayerNormParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetLayerNormQuantParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetPreLayerNormParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetPostLayerNormParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetPostLayerNormQuantParam(const infer::LayerNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void BuildLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam);
-    void BuildLayerNormQuantGraph(const AsdOps::OpParam::Norm &layerNormParam);
-    void BuildLayerNormDynamicQuantGraph(const AsdOps::OpParam::Norm &layerNormParam);
-    void BuildPreLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam);
-    void BuildPostLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam);
-    void BuildPostLayerNormQuantGraph(const AsdOps::OpParam::Norm &layerNormParam);
+    void SetLayerNormParam(const infer::LayerNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetLayerNormQuantParam(const infer::LayerNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetPreLayerNormParam(const infer::LayerNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetPostLayerNormParam(const infer::LayerNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetPostLayerNormQuantParam(const infer::LayerNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void BuildLayerNormGraph(const AtbOps::OpParam::Norm &layerNormParam);
+    void BuildLayerNormQuantGraph(const AtbOps::OpParam::Norm &layerNormParam);
+    void BuildLayerNormDynamicQuantGraph(const AtbOps::OpParam::Norm &layerNormParam);
+    void BuildPreLayerNormGraph(const AtbOps::OpParam::Norm &layerNormParam);
+    void BuildPostLayerNormGraph(const AtbOps::OpParam::Norm &layerNormParam);
+    void BuildPostLayerNormQuantGraph(const AtbOps::OpParam::Norm &layerNormParam);
 
 private:
     infer::LayerNormParam param_;

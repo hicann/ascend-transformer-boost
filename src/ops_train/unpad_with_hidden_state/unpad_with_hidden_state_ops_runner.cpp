@@ -9,7 +9,7 @@
  */
 
 #include "unpad_with_hidden_state_ops_runner.h"
-#include <atbops/params/params.h>
+#include <asdops/params/params.h>
 #include "atb/utils/log.h"
 
 
@@ -34,7 +34,7 @@ Status UnpadWithHiddenStateOpsRunner::SetupKernelGraph(const OpsTensorPack &opsT
 
     kernelGraph_.nodes.resize(1);
     auto &trainUnpadNode = kernelGraph_.nodes.at(0);
-    AtbOps::OpParam::UnpadWithHiddenState unpadWithHiddenStateParam;
+    AsdOps::OpParam::UnpadWithHiddenState unpadWithHiddenStateParam;
     unpadWithHiddenStateParam.qSeqLen = param_.qSeqLen;
     unpadWithHiddenStateParam.maxSeqLen = static_cast<uint32_t>(param_.maxSeqLen);
     trainUnpadNode.opDesc = {0, "UnpadWithHiddenStateOperation", unpadWithHiddenStateParam};

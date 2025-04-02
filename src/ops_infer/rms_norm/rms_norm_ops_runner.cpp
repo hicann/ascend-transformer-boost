@@ -20,7 +20,7 @@ static const uint64_t OUT_TENSOR_COUNT_TWO = 2;
 static const uint64_t OUT_TENSOR_COUNT_THREE = 3;
 static const uint32_t GEMMA_MODE = 1;
 
-void RmsNormOpsRunner::SetRmsNormParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const
+void RmsNormOpsRunner::SetRmsNormParam(const infer::RmsNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.epsilon = inferParam.normParam.epsilon;
@@ -31,7 +31,7 @@ void RmsNormOpsRunner::SetRmsNormParam(const infer::RmsNormParam &inferParam, As
 }
 
 void RmsNormOpsRunner::SetRmsNormQuantParam(const infer::RmsNormParam &inferParam,
-                                            AsdOps::OpParam::Norm &asdopsParam) const
+                                            AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inBeta = true;
@@ -41,7 +41,7 @@ void RmsNormOpsRunner::SetRmsNormQuantParam(const infer::RmsNormParam &inferPara
 }
 
 void RmsNormOpsRunner::SetPreRmsNormQuantParam(const infer::RmsNormParam &inferParam,
-                                               AsdOps::OpParam::Norm &asdopsParam) const
+                                               AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inRes = true;
@@ -51,7 +51,7 @@ void RmsNormOpsRunner::SetPreRmsNormQuantParam(const infer::RmsNormParam &inferP
 }
 
 void RmsNormOpsRunner::SetPreRmsNormParam(const infer::RmsNormParam &inferParam,
-                                          AsdOps::OpParam::Norm &asdopsParam) const
+                                          AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inBeta = true;
@@ -61,7 +61,7 @@ void RmsNormOpsRunner::SetPreRmsNormParam(const infer::RmsNormParam &inferParam,
 }
 
 void RmsNormOpsRunner::SetPostRmsNormQuantParam(const infer::RmsNormParam &inferParam,
-                                                AsdOps::OpParam::Norm &asdopsParam) const
+                                                AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inRes = true;
@@ -70,7 +70,7 @@ void RmsNormOpsRunner::SetPostRmsNormQuantParam(const infer::RmsNormParam &infer
 }
 
 void RmsNormOpsRunner::SetPostRmsNormParam(const infer::RmsNormParam &inferParam,
-                                           AsdOps::OpParam::Norm &asdopsParam) const
+                                           AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inBeta = true;
@@ -78,7 +78,7 @@ void RmsNormOpsRunner::SetPostRmsNormParam(const infer::RmsNormParam &inferParam
     asdopsParam.epsilon = inferParam.postNormParam.epsilon;
 }
 
-void RmsNormOpsRunner::BuildRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void RmsNormOpsRunner::BuildRmsNormGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     // 2 in -> 1 out, RmsNorm, -1
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_TWO);
@@ -96,7 +96,7 @@ void RmsNormOpsRunner::BuildRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormPar
     rmsNormNode.outTensors = {&resultTensor};
 }
 
-void RmsNormOpsRunner::BuildRmsNormForwardGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void RmsNormOpsRunner::BuildRmsNormForwardGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     // 2 in -> 2 out, RmsNormForward
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_TWO);
@@ -116,7 +116,7 @@ void RmsNormOpsRunner::BuildRmsNormForwardGraph(const AsdOps::OpParam::Norm &rms
     rmsNormNode.outTensors = {&resultTensor, &rstd};
 }
 
-void RmsNormOpsRunner::BuildRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void RmsNormOpsRunner::BuildRmsNormQuantGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     // 3 in -> 1 out, RmsNormQuant, dim -1
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_FIVE);
@@ -138,7 +138,7 @@ void RmsNormOpsRunner::BuildRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNo
     rmsNormNode.inTensors = {&inputXTensor, &gammaTensor, &betaTensor, &scaleTensor, &offsetTensor};
 }
 
-void RmsNormOpsRunner::BuildRmsNormDynamicQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void RmsNormOpsRunner::BuildRmsNormDynamicQuantGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_THREE);
     size_t inTensorId = 0;
@@ -161,7 +161,7 @@ void RmsNormOpsRunner::BuildRmsNormDynamicQuantGraph(const AsdOps::OpParam::Norm
     rmsNormNode.outTensors = {&yTensor, &scaleTensor, &offsetTensor};
 }
 
-void RmsNormOpsRunner::BuildPreRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void RmsNormOpsRunner::BuildPreRmsNormQuantGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     // 6 in -> 2 out, preRmsNormQuant, dim -1
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_SIX);
@@ -186,7 +186,7 @@ void RmsNormOpsRunner::BuildPreRmsNormQuantGraph(const AsdOps::OpParam::Norm &rm
     rmsNormNode.outTensors = {&resQuant, &resultTensor};
 }
 
-void RmsNormOpsRunner::BuildPreRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void RmsNormOpsRunner::BuildPreRmsNormGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     // 4 in -> 2 out, preRmsNormQuant, dim -1
     uint64_t inTensorNum = param_.preNormParam.hasBias ? IN_TENSOR_COUNT_FOUR : IN_TENSOR_COUNT_THREE;
@@ -209,7 +209,7 @@ void RmsNormOpsRunner::BuildPreRmsNormGraph(const AsdOps::OpParam::Norm &rmsNorm
     rmsNormNode.outTensors = {&yTensor, &resOut};
 }
 
-void RmsNormOpsRunner::BuildPostRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void RmsNormOpsRunner::BuildPostRmsNormQuantGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     // 5 in -> 2 out
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_FIVE);
@@ -232,7 +232,7 @@ void RmsNormOpsRunner::BuildPostRmsNormQuantGraph(const AsdOps::OpParam::Norm &r
     rmsNormNode.outTensors = {&resQuant, &resultTensor};
 }
 
-void RmsNormOpsRunner::BuildPostRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void RmsNormOpsRunner::BuildPostRmsNormGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     uint64_t inTensorNum = param_.postNormParam.hasBias ? IN_TENSOR_COUNT_FOUR : IN_TENSOR_COUNT_THREE;
     kernelGraph_.inTensors.resize(inTensorNum);
@@ -256,11 +256,11 @@ void RmsNormOpsRunner::BuildPostRmsNormGraph(const AsdOps::OpParam::Norm &rmsNor
 RmsNormOpsRunner::RmsNormOpsRunner(const infer::RmsNormParam &param)
     : OpsRunner("RmsNormOpsRunner", RUNNER_TYPE_RMS_NORM), param_(param)
 {
-    AsdOps::OpParam::Norm rmsNormParam = {AsdOps::OpParam::Norm::RMS_NORM};
+    AtbOps::OpParam::Norm rmsNormParam = {AtbOps::OpParam::Norm::RMS_NORM};
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM) {
         if (param_.normParam.quantType == infer::QUANT_UNQUANT) {
-            rmsNormParam = {param_.normParam.rstd ? AsdOps::OpParam::Norm::RMS_NORM_FORWARD :
-                                                    AsdOps::OpParam::Norm::RMS_NORM};
+            rmsNormParam = {param_.normParam.rstd ? AtbOps::OpParam::Norm::RMS_NORM_FORWARD :
+                                                    AtbOps::OpParam::Norm::RMS_NORM};
             SetRmsNormParam(param_, rmsNormParam);
             param_.normParam.rstd ? BuildRmsNormForwardGraph(rmsNormParam) : BuildRmsNormGraph(rmsNormParam);
         } else {

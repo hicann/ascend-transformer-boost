@@ -20,7 +20,7 @@ static const uint64_t OUT_TENSOR_COUNT_TWO = 2;
 static const uint64_t OUT_TENSOR_COUNT_ONE = 1;
 
 void LayerNormOpsRunner::SetLayerNormParam(const infer::LayerNormParam &inferParam,
-                                           AsdOps::OpParam::Norm &asdopsParam) const
+                                           AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inBeta = true;
@@ -32,7 +32,7 @@ void LayerNormOpsRunner::SetLayerNormParam(const infer::LayerNormParam &inferPar
 }
 
 void LayerNormOpsRunner::SetLayerNormQuantParam(const infer::LayerNormParam &inferParam,
-                                                AsdOps::OpParam::Norm &asdopsParam) const
+                                                AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inBeta = true;
@@ -43,7 +43,7 @@ void LayerNormOpsRunner::SetLayerNormQuantParam(const infer::LayerNormParam &inf
 }
 
 void LayerNormOpsRunner::SetPreLayerNormParam(const infer::LayerNormParam &inferParam,
-                                              AsdOps::OpParam::Norm &asdopsParam) const
+                                              AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inBeta = true;
@@ -55,7 +55,7 @@ void LayerNormOpsRunner::SetPreLayerNormParam(const infer::LayerNormParam &infer
 }
 
 void LayerNormOpsRunner::SetPostLayerNormParam(const infer::LayerNormParam &inferParam,
-                                               AsdOps::OpParam::Norm &asdopsParam) const
+                                               AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inBeta = true;
@@ -66,7 +66,7 @@ void LayerNormOpsRunner::SetPostLayerNormParam(const infer::LayerNormParam &infe
 }
 
 void LayerNormOpsRunner::SetPostLayerNormQuantParam(const infer::LayerNormParam &inferParam,
-                                                    AsdOps::OpParam::Norm &asdopsParam) const
+                                                    AtbOps::OpParam::Norm &asdopsParam) const
 {
     asdopsParam.inGamma = true;
     asdopsParam.inBeta = true;
@@ -76,7 +76,7 @@ void LayerNormOpsRunner::SetPostLayerNormQuantParam(const infer::LayerNormParam 
     asdopsParam.opsMode = inferParam.postNormParam.opMode;
 }
 
-void LayerNormOpsRunner::BuildLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam)
+void LayerNormOpsRunner::BuildLayerNormGraph(const AtbOps::OpParam::Norm &layerNormParam)
 {
     // 3 in -> 3 out, layerNorm, any dim
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_THREE);
@@ -100,7 +100,7 @@ void LayerNormOpsRunner::BuildLayerNormGraph(const AsdOps::OpParam::Norm &layerN
     layerNormNode.outTensors = {&resultTensor, &meanTensor, &variencetTensor};
 }
 
-void LayerNormOpsRunner::BuildLayerNormQuantGraph(const AsdOps::OpParam::Norm &layerNormParam)
+void LayerNormOpsRunner::BuildLayerNormQuantGraph(const AtbOps::OpParam::Norm &layerNormParam)
 {
     // 3 in -> 2 out, layerNormQuant, dim -1
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_FIVE);
@@ -122,7 +122,7 @@ void LayerNormOpsRunner::BuildLayerNormQuantGraph(const AsdOps::OpParam::Norm &l
     layerNormNode.outTensors = {&resQuant};
 }
 
-void LayerNormOpsRunner::BuildLayerNormDynamicQuantGraph(const AsdOps::OpParam::Norm &layerNormParam)
+void LayerNormOpsRunner::BuildLayerNormDynamicQuantGraph(const AtbOps::OpParam::Norm &layerNormParam)
 {
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_THREE);
     size_t inTensorId = 0;
@@ -145,7 +145,7 @@ void LayerNormOpsRunner::BuildLayerNormDynamicQuantGraph(const AsdOps::OpParam::
     layerNormNode.outTensors = {&resQuant, &scaleTensor, &offsetTensor};
 }
 
-void LayerNormOpsRunner::BuildPreLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam)
+void LayerNormOpsRunner::BuildPreLayerNormGraph(const AtbOps::OpParam::Norm &layerNormParam)
 {
     // 4 in -> 2 out, preLayerNorm, dim -1
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_FOUR);
@@ -167,7 +167,7 @@ void LayerNormOpsRunner::BuildPreLayerNormGraph(const AsdOps::OpParam::Norm &lay
     layerNormNode.outTensors = {&resultZTensor, &resultTensor};
 }
 
-void LayerNormOpsRunner::BuildPostLayerNormGraph(const AsdOps::OpParam::Norm &layerNormParam)
+void LayerNormOpsRunner::BuildPostLayerNormGraph(const AtbOps::OpParam::Norm &layerNormParam)
 {
     // 4 in -> 1 out, postLayerNorm, dim -1
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_FOUR);
@@ -188,7 +188,7 @@ void LayerNormOpsRunner::BuildPostLayerNormGraph(const AsdOps::OpParam::Norm &la
     layerNormNode.outTensors = {&resultTensor};
 }
 
-void LayerNormOpsRunner::BuildPostLayerNormQuantGraph(const AsdOps::OpParam::Norm &layerNormParam)
+void LayerNormOpsRunner::BuildPostLayerNormQuantGraph(const AtbOps::OpParam::Norm &layerNormParam)
 {
     // 6 in -> 2 out, postLayerNormQuant, dim -1
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_SIX);
@@ -215,7 +215,7 @@ void LayerNormOpsRunner::BuildPostLayerNormQuantGraph(const AsdOps::OpParam::Nor
 LayerNormOpsRunner::LayerNormOpsRunner(const infer::LayerNormParam &param)
     : OpsRunner("LayerNormOpsRunner", RUNNER_TYPE_LAYER_NORM), param_(param)
 {
-    AsdOps::OpParam::Norm layerNormParam = {AsdOps::OpParam::Norm::LAYER_NORM};
+    AtbOps::OpParam::Norm layerNormParam = {AtbOps::OpParam::Norm::LAYER_NORM};
     if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM) {
         if (param_.normParam.quantType == infer::QUANT_UNQUANT) {
             SetLayerNormParam(param_, layerNormParam);

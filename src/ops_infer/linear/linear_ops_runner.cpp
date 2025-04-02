@@ -30,7 +30,7 @@ LinearOpsRunner::LinearOpsRunner(const infer::LinearParam &param)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::LinearOpsRunner";
 
-    elewiseAddParam_.elewiseType = AsdOps::OpParam::Elewise::ELEWISE_ADD;
+    elewiseAddParam_.elewiseType = AtbOps::OpParam::Elewise::ELEWISE_ADD;
     transdataNdToNzParam_.transdataType = AsdOps::OpParam::Transdata::ND_TO_FRACTAL_NZ;
     transdataNzToNdParam_.transdataType = AsdOps::OpParam::Transdata::FRACTAL_NZ_TO_ND;
 

@@ -10,7 +10,7 @@
 #ifndef ATB_RMS_NORM_OPS_RUNNER_H
 #define ATB_RMS_NORM_OPS_RUNNER_H
 
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/infer_op_params.h"
 #include "atb/runner/ops_runner.h"
 
@@ -21,20 +21,20 @@ public:
     ~RmsNormOpsRunner() override;
 
 private:
-    void SetRmsNormParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetRmsNormQuantParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetPreRmsNormQuantParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetPreRmsNormParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetPostRmsNormQuantParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void SetPostRmsNormParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
-    void BuildRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormParam);
-    void BuildRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam);
-    void BuildRmsNormDynamicQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam);
-    void BuildPreRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam);
-    void BuildPreRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormParam);
-    void BuildPostRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormParam);
-    void BuildPostRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam);
-    void BuildRmsNormForwardGraph(const AsdOps::OpParam::Norm &rmsNormParam);
+    void SetRmsNormParam(const infer::RmsNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetRmsNormQuantParam(const infer::RmsNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetPreRmsNormQuantParam(const infer::RmsNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetPreRmsNormParam(const infer::RmsNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetPostRmsNormQuantParam(const infer::RmsNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void SetPostRmsNormParam(const infer::RmsNormParam &inferParam, AtbOps::OpParam::Norm &asdopsParam) const;
+    void BuildRmsNormGraph(const AtbOps::OpParam::Norm &rmsNormParam);
+    void BuildRmsNormQuantGraph(const AtbOps::OpParam::Norm &rmsNormParam);
+    void BuildRmsNormDynamicQuantGraph(const AtbOps::OpParam::Norm &rmsNormParam);
+    void BuildPreRmsNormQuantGraph(const AtbOps::OpParam::Norm &rmsNormParam);
+    void BuildPreRmsNormGraph(const AtbOps::OpParam::Norm &rmsNormParam);
+    void BuildPostRmsNormGraph(const AtbOps::OpParam::Norm &rmsNormParam);
+    void BuildPostRmsNormQuantGraph(const AtbOps::OpParam::Norm &rmsNormParam);
+    void BuildRmsNormForwardGraph(const AtbOps::OpParam::Norm &rmsNormParam);
 
 private:
     infer::RmsNormParam param_;

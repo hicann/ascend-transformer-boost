@@ -14,13 +14,13 @@ namespace atb {
 static const uint64_t IN_TENSOR_COUNT_FOUR = 4;
 
 void GatherPreRmsNormOpsRunner::SetGatherPreRMSNormParam(const infer::GatherPreRmsNormParam &inferParam,
-                                                         AsdOps::OpParam::Norm &asdopsParam) const
+                                                         AtbOps::OpParam::Norm &asdopsParam) const
 {
-    asdopsParam.normType = AsdOps::OpParam::Norm::GATHER_PRE_RMS_NORM;
+    asdopsParam.normType = AtbOps::OpParam::Norm::GATHER_PRE_RMS_NORM;
     asdopsParam.epsilon = inferParam.epsilon;
 }
 
-void GatherPreRmsNormOpsRunner::BuildGatherPreRMSNormGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+void GatherPreRmsNormOpsRunner::BuildGatherPreRMSNormGraph(const AtbOps::OpParam::Norm &rmsNormParam)
 {
     kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_FOUR);
     size_t inId = 0;
@@ -44,7 +44,7 @@ void GatherPreRmsNormOpsRunner::BuildGatherPreRMSNormGraph(const AsdOps::OpParam
 GatherPreRmsNormOpsRunner::GatherPreRmsNormOpsRunner(const infer::GatherPreRmsNormParam &param)
     : OpsRunner("GatherPreRmsNormOpsRunner", RUNNER_TYPE_GATHER_PRE_RMS_NORM), param_(param)
 {
-    AsdOps::OpParam::Norm rmsNormParam = {AsdOps::OpParam::Norm::RMS_NORM};
+    AtbOps::OpParam::Norm rmsNormParam = {AtbOps::OpParam::Norm::RMS_NORM};
     SetGatherPreRMSNormParam(param_, rmsNormParam);
     BuildGatherPreRMSNormGraph(rmsNormParam);
     ATB_LOG(INFO) << GetName() << " GatherPreRmsNormOperation opDesc GatherPreRmsNormParam epsilon:"

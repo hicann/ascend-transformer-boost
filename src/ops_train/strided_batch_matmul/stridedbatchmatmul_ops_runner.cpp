@@ -9,7 +9,7 @@
  */
 #include "stridedbatchmatmul_ops_runner.h"
 #include <atb/utils/log.h>
-#include <atbops/params/params.h>
+#include <asdops/params/params.h>
 #include "atb/core/param_compare.h"
 
 
@@ -38,7 +38,7 @@ Status StridedBatchMatmulOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTen
     kernelGraph_.nodes.resize(1);
     auto &stridedBatchMatmulNode = kernelGraph_.nodes.at(0);
 
-    AtbOps::OpParam::StridedBatchMatmul asdParam;
+    AsdOps::OpParam::StridedBatchMatmul asdParam;
     asdParam.transA = param_.transposeA;
     asdParam.transB = param_.transposeB;
     asdParam.batch = param_.batch;

@@ -64,8 +64,8 @@ bool ElewiseOpsRunner::SetIntensor(KernelGraphNode &elewiseNode)
 
 void ElewiseOpsRunner::SetOuttensor(KernelGraphNode &elewiseNode)
 {
-    AsdOps::OpParam::Elewise::ElewiseType opElewiseType = GetOpElwiseType();
-    AsdOps::OpParam::Elewise elsewiseParam = {opElewiseType};
+    AtbOps::OpParam::Elewise::ElewiseType opElewiseType = GetOpElwiseType();
+    AtbOps::OpParam::Elewise elsewiseParam = {opElewiseType};
 
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT) {
         // atb outtensor num, asymmetric:true=>3 false=>2
@@ -127,35 +127,35 @@ uint32_t ElewiseOpsRunner::GetIntensorSize() const
     return it == inTensorNumTable.end() ? 0 : it->second;
 }
 
-AsdOps::OpParam::Elewise::ElewiseType ElewiseOpsRunner::GetOpElwiseType() const
+AtbOps::OpParam::Elewise::ElewiseType ElewiseOpsRunner::GetOpElwiseType() const
 {
-    static std::map<infer::ElewiseParam::ElewiseType, AsdOps::OpParam::Elewise::ElewiseType> typeTable = {
-        {infer::ElewiseParam::ElewiseType::ELEWISE_CAST, AsdOps::OpParam::Elewise::ELEWISE_CAST},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_MULS, AsdOps::OpParam::Elewise::ELEWISE_MULS},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_COS, AsdOps::OpParam::Elewise::ELEWISE_COS},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_SIN, AsdOps::OpParam::Elewise::ELEWISE_SIN},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_NEG, AsdOps::OpParam::Elewise::ELEWISE_NEG},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT, AsdOps::OpParam::Elewise::ELEWISE_QUANT},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT, AsdOps::OpParam::Elewise::ELEWISE_LOGICAL_NOT},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_ADD, AsdOps::OpParam::Elewise::ELEWISE_ADD},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_SUB, AsdOps::OpParam::Elewise::ELEWISE_SUB},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_MUL, AsdOps::OpParam::Elewise::ELEWISE_MUL},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV, AsdOps::OpParam::Elewise::ELEWISE_REALDIV},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_AND, AsdOps::OpParam::Elewise::ELEWISE_LOGICAL_AND},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_OR, AsdOps::OpParam::Elewise::ELEWISE_LOGICAL_OR},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_LESS, AsdOps::OpParam::Elewise::ELEWISE_LESS},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_GREATER, AsdOps::OpParam::Elewise::ELEWISE_GREATER},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, AsdOps::OpParam::Elewise::ELEWISE_EQUAL},
+    static std::map<infer::ElewiseParam::ElewiseType, AtbOps::OpParam::Elewise::ElewiseType> typeTable = {
+        {infer::ElewiseParam::ElewiseType::ELEWISE_CAST, AtbOps::OpParam::Elewise::ELEWISE_CAST},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_MULS, AtbOps::OpParam::Elewise::ELEWISE_MULS},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_COS, AtbOps::OpParam::Elewise::ELEWISE_COS},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_SIN, AtbOps::OpParam::Elewise::ELEWISE_SIN},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_NEG, AtbOps::OpParam::Elewise::ELEWISE_NEG},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT, AtbOps::OpParam::Elewise::ELEWISE_QUANT},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_NOT, AtbOps::OpParam::Elewise::ELEWISE_LOGICAL_NOT},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_ADD, AtbOps::OpParam::Elewise::ELEWISE_ADD},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_SUB, AtbOps::OpParam::Elewise::ELEWISE_SUB},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_MUL, AtbOps::OpParam::Elewise::ELEWISE_MUL},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_REALDIV, AtbOps::OpParam::Elewise::ELEWISE_REALDIV},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_AND, AtbOps::OpParam::Elewise::ELEWISE_LOGICAL_AND},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_LOGICAL_OR, AtbOps::OpParam::Elewise::ELEWISE_LOGICAL_OR},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_LESS, AtbOps::OpParam::Elewise::ELEWISE_LESS},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_GREATER, AtbOps::OpParam::Elewise::ELEWISE_GREATER},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, AtbOps::OpParam::Elewise::ELEWISE_EQUAL},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL,
-         AsdOps::OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL},
+         AtbOps::OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL,
-         AsdOps::OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT, AsdOps::OpParam::Elewise::ELEWISE_DYNAMIC_QUANT},
-        {infer::ElewiseParam::ElewiseType::ELEWISE_TANH, AsdOps::OpParam::Elewise::ELEWISE_TANH},
+         AtbOps::OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT, AtbOps::OpParam::Elewise::ELEWISE_DYNAMIC_QUANT},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_TANH, AtbOps::OpParam::Elewise::ELEWISE_TANH},
     };
-    std::map<infer::ElewiseParam::ElewiseType, AsdOps::OpParam::Elewise::ElewiseType>::const_iterator it =
+    std::map<infer::ElewiseParam::ElewiseType, AtbOps::OpParam::Elewise::ElewiseType>::const_iterator it =
         typeTable.find(param_.elewiseType);
-    return it == typeTable.end() ? AsdOps::OpParam::Elewise::ELEWISE_CAST : it->second;
+    return it == typeTable.end() ? AtbOps::OpParam::Elewise::ELEWISE_CAST : it->second;
 }
 
 Mki::TensorDType ElewiseOpsRunner::GetOutTensorType(const aclDataType outType) const

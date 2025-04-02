@@ -96,7 +96,7 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKExponentialSampling()
     };
 
     topKGreaterNode.opDesc = {0, "ElewiseOperation",
-                              AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_LESS})};
+                              AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_LESS})};
     topKGreaterNode.inTensors = {&probsSortedTensor, &topKGatherLogitsTensor};
     topKGreaterNode.outTensors = {&topKGreaterMaskTensor};
 
@@ -113,7 +113,7 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKExponentialSampling()
     };
 
     topPGreaterNode.opDesc = {0, "ElewiseOperation",
-                              AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_GREATER})};
+                              AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_GREATER})};
     topPGreaterNode.inTensors = {&cumsumedProbsTensor, &topPTensor};
     topPGreaterNode.outTensors = {&topPGreaterMaskTensor};
 
@@ -122,7 +122,7 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKExponentialSampling()
     topPFillNode.outTensors = {&topPProbsFilledTensor};
 
     expDivisionNode.opDesc = {0, "ElewiseOperation",
-                              AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_REALDIV})};
+                              AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_REALDIV})};
     expDivisionNode.inTensors = {&topPProbsFilledTensor, &expTensor};
     expDivisionNode.outTensors = {&probsDividedTensor};
 
@@ -200,7 +200,7 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKMultinomialSampling()
     };
 
     topKGreaterNode.opDesc = {0, "ElewiseOperation",
-                              AsdOps::OpParam::Elewise({AsdOps::OpParam::Elewise::ELEWISE_LESS})};
+                              AtbOps::OpParam::Elewise({AtbOps::OpParam::Elewise::ELEWISE_LESS})};
     topKGreaterNode.inTensors = {&probsSortedTensor, &topKGatherLogitsTensor};
     topKGreaterNode.outTensors = {&topKGreaterMaskTensor};
 

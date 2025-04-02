@@ -9,7 +9,7 @@
  */
 #ifndef OPS_DYNAMICNTK_RUNNER_H
 #define OPS_DYNAMICNTK_RUNNER_H
-#include <asdops/params/params.h>
+#include <atbops/params/params.h>
 #include "atb/runner/ops_runner.h"
 #include "atb/infer_op_params.h"
 
@@ -21,7 +21,7 @@ public:
 
 private:
     infer::DynamicNTKParam param_;
-    AsdOps::OpParam::DynamicNTK asdopsParam_;
+    AtbOps::OpParam::DynamicNTK asdopsParam_;
 };
 } // namespace atb
 #endif
