@@ -17,5 +17,5 @@ doctrees
 Doxyfile
 makeself
 op_list.yaml
-op_desc_json.cpp
+op_desc_json_*.cpp
 *.bin

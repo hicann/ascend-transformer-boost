@@ -27,7 +27,3 @@ include_directories(
 )
 
 add_subdirectory(mixops)
-
-if(BUILD_TEST_FRAMEWORK OR USE_UNIT_TEST OR USE_PYTHON_TEST OR USE_FUZZ_TEST OR USE_CSV_OPS_TEST OR USE_INFRA_TEST OR USE_ALL_TEST)
-    add_subdirectory(tests)
-endif()

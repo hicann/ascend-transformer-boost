@@ -8,11 +8,14 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "atbops/ops.h"
+#include "asdops/ops.h"
 #include "mki_loader/op_schedule_base.h"
 #include "mki_loader/op_register.h"
 
 namespace AtbOps {
-Ops::Ops() : opSchedule_(std::make_unique<OpSchedule>()) {}
+Ops::Ops() : opSchedule_(std::make_unique<OpSchedule>()) {
+    (void)AsdOps::Ops::Instance();
+}
 
 Ops::~Ops() {}
 
