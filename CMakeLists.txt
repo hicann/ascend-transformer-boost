@@ -75,10 +75,11 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src/include
     ${PROJECT_SOURCE_DIR}/src/ops/include
+    ${PROJECT_SOURCE_DIR}/src/ops/include/lcal
+    ${PROJECT_SOURCE_DIR}/src/ops/include/lcal/lcoc
+    ${PROJECT_SOURCE_DIR}/src/ops/include/lcal/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
-    ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
-    ${PROJECT_SOURCE_DIR}/3rdparty/asdops/include/lcal
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{PYTHON_INCLUDE_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/include
