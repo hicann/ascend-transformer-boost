@@ -71,7 +71,7 @@ function fn_build_stub()
 
 function fn_build_doxygen()
 {
-    if [ -d "$THIRD_PARTY_DIR/doxygen" ]; then
+    if [ -d "$THIRD_PARTY_DIR/doxygen/bin" ]; then
         return 0
     fi
     sys_info=$(awk -F= '/^NAME/{print $2}' /etc/os-release)
@@ -81,15 +81,16 @@ function fn_build_doxygen()
         apt-get -y install flex bison
     fi
     cd $THIRD_PARTY_DIR
-    rm -rf doxygen-1.9.3.src.tar.gz
-    wget --no-check-certificate https://github.com/doxygen/doxygen/releases/download/Release_1_9_3/doxygen-1.9.3.src.tar.gz
-    tar -xzvf doxygen-1.9.3.src.tar.gz
-    cd doxygen-1.9.3
+    if [! -d "$THIRD_PARTY_DIR/doxygen" ]; then
+        [[ ! -f "doxygen-1.9.3.src.tar.gz" ]] && wget --no-check-certificate https://github.com/doxygen/doxygen/releases/download/Release_1_9_3/doxygen-1.9.3.src.tar.gz
+        tar -xzvf doxygen-1.9.3.src.tar.gz
+        mv doxygen-1.9.3 doxygen
+    fi
+    cd doxygen
     rm -rf build && mkdir build && cd build
     cmake .. -DCMAKE_INSTALL_PREFIX=$THIRD_PARTY_DIR/doxygen
     cmake --build . --parallel $(nproc)
     cmake --install . > /dev/null
-    rm -rf $THIRD_PARTY_DIR/doxygen-1.9.3
 }
 
 function fn_build_sphinx()
@@ -298,6 +299,7 @@ function export_atb_env()
     sed -i '/ASDOPS_LOG_TO_STDOUT/d' set_env.sh
     sed -i '/ASDOPS_LOG_TO_FILE/d' set_env.sh
     sed -i '/ASDOPS_LOG_TO_FILE_FLUSH/d' set_env.sh
+    export LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver:${LD_LIBRARY_PATH}
     source set_env.sh
 }
 
