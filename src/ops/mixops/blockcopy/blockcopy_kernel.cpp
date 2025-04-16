@@ -22,6 +22,11 @@ using namespace Mki;
 static constexpr uint32_t TENSOR_INPUT_NUM = 5;
 static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
 
+
+
+
+
+
 class BlockCopyKernel : public KernelBase {
 public:
     explicit BlockCopyKernel(const std::string &kernelName, const BinHandle *handle) noexcept
