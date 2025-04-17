@@ -23,6 +23,7 @@ import math
 from precision_calcu import *
 np.random.seed(1)
 torch.manual_seed(1)
+random.seed(1)
 
 torch.set_printoptions(precision=4, sci_mode=False)
 # torch_npu.npu.set_device()
@@ -37,11 +38,12 @@ class TestUnpadPagedAttention(op_test.OpTest):
         len = out.shape[0]
         diff = torch.abs(golden - out)
         max_diff = diff.max().item()
+        max_pos = diff.argmax().item()
         limit_error = torch.maximum(torch.abs(golden * ratios[0]), torch.tensor(ratios[1]))
         strict_limit_error = torch.maximum(torch.abs(golden * ratios[2]), torch.tensor(ratios[3]))
         error_count = torch.gt(diff, limit_error).sum().item()
         strict_error_count = torch.gt(diff, strict_limit_error).sum().item()
-        logging.info(f"maxDiff {max_diff}")
+        logging.info(f"maxDiff {max_diff} golden {golden[max_pos]} out {out[max_pos]}")
         logging.info("1/1000 Accuracy is %f",  1 - float(error_count) / len)
         logging.info("5/1000 Accuracy is %f",  1 - float(strict_error_count) / len)
         if self.data_type == torch.bfloat16:
@@ -170,6 +172,20 @@ class TestUnpadPagedAttention(op_test.OpTest):
             output[cu_seqlen: cu_seqlen + q_seqlen, :, :] = out
             true_out[cu_seqlen: cu_seqlen + q_seqlen, :, :] = out_high
             cu_seqlen += q_seqlen_list[i]
+    def shape_nd_to_nz(self, shape, dtype='float16'):
+        assert len(shape) >= 2
+        batch = shape[:-2]  # 最后两维nd->nz
+        a, b = shape[-2], shape[-1]
+        a0, b0 = 16, 16
+        return list(batch) + [math.ceil(b / b0), math.ceil(a / a0), a0, b0]
+
+    def gen_axes_for_transpose(self,offset, base):
+        return [x for x in range(offset)] + [x + offset for x in base]
+    def convert_nd_to_nz(self, x):
+        array_trans = self.gen_axes_for_transpose(len(x.shape) - 2, [2, 0, 1, 3])  # (m1, m0, n1, n0) -> (n1, m1, m0, n0)
+        x_shape = self.shape_nd_to_nz(x.shape, dtype=x.dtype)
+        *_, n1, m1, m0, n0 = x_shape
+        return x.reshape(x_shape[:-4] + [m1, m0, n1, n0]).permute(*array_trans)  # x原始需要对齐，才能reshape
 
     def calc_data(self,
                   num_heads: int,
@@ -181,7 +197,8 @@ class TestUnpadPagedAttention(op_test.OpTest):
                   q_seqlen_list: int,
                   k_seqlen_list: int,
                   mask_type,
-                  dtype = torch.float16
+                  dtype = torch.float16,
+                  is_nz_in = False
     ):
         self.data_type = dtype
         self.head_size_qk = head_size_qk
@@ -255,6 +272,15 @@ class TestUnpadPagedAttention(op_test.OpTest):
 
         self.q_split1, self.q_split2 = torch.split(query, [512, 64], dim=2)
         self.key_cache_split1, self.key_cache_split2 = torch.split(key_cache, [512, 64], dim=3)
+
+        if (is_nz_in):
+            key_cache_split1, key_cache_split2 = torch.split(key_cache, [512, 64], dim=3)
+            key_cache_split1 = key_cache_split1.reshape(num_blocks, block_size, -1)
+            key_cache_split2 = key_cache_split2.reshape(num_blocks, block_size, -1)
+            key_cache_split1_nz = self.convert_nd_to_nz(key_cache_split1)
+            key_cache_split2_nz = self.convert_nd_to_nz(key_cache_split2)
+            self.key_cache_split1 = key_cache_split1_nz.to(dtype).reshape(num_blocks, -1, block_size, 16)
+            self.key_cache_split2 = key_cache_split2_nz.to(dtype).reshape(num_blocks, -1, block_size, 16)
 
         self.q = query
         self.num_tokens = num_tokens
@@ -776,12 +802,12 @@ class TestUnpadPagedAttention(op_test.OpTest):
         head_size_qk = 576
         head_size_vo = 512
         num_blocks = 64
- 
+
         tor = 1.0 / (head_size_qk ** 0.5)
         mask_type = 3
         dtype = torch.float16
         self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype)
- 
+
         OP_NAME = "MLAOperation"
         OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
         "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": mask_type}
@@ -794,7 +820,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
               f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
         shape_out = ((num_tokens, num_heads, head_size_vo))
         attention_out = torch.zeros(shape_out, dtype=torch.float16)
- 
+
         for i in range (1):
             self.execute(
             [
@@ -812,6 +838,55 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 attention_out, torch.tensor([])
             ]
         )
+    @op_test.only_910b
+    def test_paged_mla_seq2_head128_mtp_fp16(self):
+        self.set_support_910b_only()
+        batch = 24 # batch = 10, num_heads=128 bug
+        q_seqlen_list = [2] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [256] * batch
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+        is_nz_in = True
+        mask_type = 3
 
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype, is_nz_in)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+        "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": mask_type}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        # logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+            f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=torch.float16)
+
+        for i in range (1):
+            self.execute(
+            [
+                self.q_split1,
+                self.q_split2,
+                self.key_cache_split1,
+                self.key_cache_split2,
+                torch.tensor(self.block_tables).int(),
+                self.mask,
+                torch.tensor([1], dtype=torch.float),
+                torch.tensor([1], dtype=torch.float)
+                # torch.tensor([], dtype=torch.float16)
+            ],
+            [
+                attention_out, torch.tensor([])
+            ]
+        )
 if __name__ == '__main__':
     unittest.main()

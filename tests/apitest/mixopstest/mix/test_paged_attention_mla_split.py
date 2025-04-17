@@ -977,10 +977,10 @@ class TestPagedAttentionMLA(op_test.OpTest):
         is_kv_combined = True
         is_nz_in = False
         self.is_ring = 0
- 
+
         self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, torch.float16,
                         is_kv_combined = is_kv_combined, is_nz_in = is_nz_in)
- 
+
         OP_NAME = "MLAOperation"
         OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads, "tor": tor, "kvSeqLen": self.contex_lens.tolist()}
         self.set_param(OP_NAME, OP_PARAM)

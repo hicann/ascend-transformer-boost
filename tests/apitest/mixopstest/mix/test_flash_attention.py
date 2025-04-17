@@ -5760,7 +5760,7 @@ class TestFlashAttention(op_test.OpTest):
         self.set_input_formats([self.format_nd] * 12)
         self.set_output_formats([self.format_nd])
         data_type = torch.float16
- 
+
         self.set_data_params(dynamic_batch = dynamic_batch,
                              is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
                              embeddim = embeddim, embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
@@ -5776,7 +5776,7 @@ class TestFlashAttention(op_test.OpTest):
         logging.debug(f"v shape: {self.v.shape}")
         logging.debug(f"layer_id shape: {self.layer_id.shape}")
         logging.debug(f"mask shape: {self.mask.shape}")
- 
+
         attention_out = np.zeros_like(self.golden_out.to(torch.float16))
         return self.execute([self.q, self.k, self.v, self.layer_id, self.mask.to(data_type), torch.tensor([], dtype=torch.float),
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),

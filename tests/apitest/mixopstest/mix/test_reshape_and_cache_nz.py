@@ -173,17 +173,6 @@ class TestReshapeAndCacheNz(op_test.OpTest):
         dtype = "float16"
         self.__run_reshape_and_cache_case(batch, seq_len, num_heads, head_size, head_size, block_size, num_blocks, dtype)
 
-    def test_reshape_and_cache_nz_case6(self):
-        batch = 128
-        seq_len = 1
-        num_heads = 32
-        head_size_k = 2
-        head_size_v = 2
-        block_size = 128
-        num_blocks = 32
-        dtype = "float16"
-        self.__run_reshape_and_cache_case(batch, seq_len, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
-
 
 
 

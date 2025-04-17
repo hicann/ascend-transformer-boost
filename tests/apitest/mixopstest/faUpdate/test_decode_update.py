@@ -148,14 +148,6 @@ class TestDecodeUpdate(op_test.OpTest):
         different_element_results = torch.isclose(output, golden, rtol=rtol, atol=atol, equal_nan=True)
         different_element_indexes = torch.nonzero(different_element_results == False)
 
-        for index in range(len(different_element_indexes)):
-            real_index = different_element_indexes[index]
-            golden_data = golden[real_index]
-            output_data = output[real_index]
-            print(
-                "data index: %06d, expected: %-.9f, actual: %-.9f, rdiff: %-.6f" %
-                (real_index, golden_data, output_data,
-                 abs(output_data - golden_data) / golden_data))
         error_ratio = float(different_element_indexes.nelement()) / golden.nelement()
         logging.info("error ratio: %.4f, tolrence: %.4f \n\n\n\n\n" % (error_ratio, etol))
         return error_ratio <= etol
@@ -171,10 +163,6 @@ class TestDecodeUpdate(op_test.OpTest):
         shape0 = (sp, b*s*hc) # sp, b*s*hc   320
         shape2 = (sp, b*s*hc, hDim) # sp, b*s*hc,hdim
         shape4 = (b*s*hc, hDim)
-
-        maxUbSize = 188 * 1024
-        maxTileLength = (maxUbSize - 8 * 4) / (4 * 8 * 2 * (2 * (1 + hDim) + hDim / 8) + hDim * 8 * 4)
-        print("maxTileLength",maxTileLength)
     
         #input0: lse   input2: in
         input0 = torch.rand(shape0, dtype=torch.float32)

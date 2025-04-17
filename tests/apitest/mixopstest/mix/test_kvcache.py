@@ -367,7 +367,7 @@ class TestKvcache(op_test.OpTest):
         layer_id = 4
         batch = 158
         max_seqlen = 2048
-        hidden_size = 52 * 64
+        hidden_size = 52*64
 
         OP_NAME = "KVCacheOperation"
         OP_PARAM = {"type": 3}
@@ -404,6 +404,7 @@ class TestKvcache(op_test.OpTest):
         return self.execute([torch.tensor(newkv).half(), torch.tensor(layer_id), torch.tensor(cache_in).half(),
                              torch.tensor(token_offset), torch.tensor(seqlen)],
                             [2])
+
 
 if __name__ == '__main__':
     unittest.main()
