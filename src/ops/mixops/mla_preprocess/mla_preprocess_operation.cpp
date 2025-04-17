@@ -30,10 +30,13 @@ public:
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MlaPreprocess), "Invalid Op Param.", return nullptr);
         auto inDtype = launchParam.GetInTensor(0).desc.dtype;
-        if (inDtype == TENSOR_DTYPE_BF16) {
-            return GetKernelByName("MLAPreprocessBF16Kernel");
+        auto param = AnyCast<OpParam::MlaPreprocess>(launchParam.GetParam());
+        bool deqOnTheFly = inDtype == TENSOR_DTYPE_FLOAT16 &&
+                        param.quantMode == OpParam::MlaPreprocess::QuantMode::PER_TENSOR_ASYMM_QUANT;
+        if (deqOnTheFly) {
+            return GetKernelByName("MLAPreprocessKernel");
         }
-        return GetKernelByName("MLAPreprocessKernel");
+        return GetKernelByName("MLAPreprocessBF16Kernel");
     }
  
     int64_t GetInputNum(const Any &specificParam) const override

@@ -79,6 +79,7 @@ template <typename T = uint32_t> inline T Min(const T a, const T b) { return a <
 namespace AtbOps {
 
 using namespace Mki;
+using QuantMode = OpParam::MlaPreprocess::QuantMode;
 class PpMatmulTilingApi {
 public:
     PpMatmulTilingApi(uint32_t numBatch, uint32_t m, uint32_t k, uint32_t n, bool transA, bool transB, bool enDequant)
@@ -349,14 +350,16 @@ void  MlaPreprocessTiling::EinSumQuantTiling(const OpParam::MlaPreprocess &param
     uint32_t esqHeadPerLoop = 0;  // ub每次计算的head行数
     uint32_t repeatMask = 0;
 
-    if (inDtype == TENSOR_DTYPE_BF16) {
+    if (inDtype == TENSOR_DTYPE_BF16 || param.quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
         // bf16 input [H', colNum](f16*2 + fp32 + int8) + [H', 1](f16 + fp32) + [H', 8](fp32)
-        splitFactor = esqColNum * (NUM2 * NUM2 + NUM4 + NUM1) + (NUM2 + NUM4) + (NUM8 * NUM4);
+        splitFactor = esqColNum * (NUM2 * sizeof(uint16_t) + sizeof(float) + sizeof(uint8_t)) +
+                      (sizeof(uint16_t) + sizeof(float)) + (NUM8 * sizeof(float));
         esqHeadPerLoop = ubSize / splitFactor;
         repeatMask = FP32_REPEAT_MASK;
     } else {
         // fp16 input [H', cloNum](fp16*2 + int8) + [H', 1](fp16) + [H', 16](fp16)
-        splitFactor = esqColNum * (2 * 2 + 1) + 2 + (16 * 2);
+        splitFactor =
+            esqColNum * (NUM2 * sizeof(uint16_t) + sizeof(uint8_t)) + sizeof(uint16_t) + (CONST_16 * sizeof(uint16_t));
         esqHeadPerLoop = ubSize / splitFactor;
         repeatMask = FP16_REPEAT_MASK;
     }
@@ -426,12 +429,12 @@ void MlaPreprocessTiling::SetTilingKey(const Mki::LaunchParam &launchParam, Mki:
     TensorFormat formatWeight1 = launchParam.GetInTensor(INDEX_WDQKV).desc.format;
     TensorFormat formatWeight2 = launchParam.GetInTensor(INDEX_WUQ).desc.format;
     TensorFormat formatWeight3 = launchParam.GetInTensor(INDEX_WUK).desc.format;
-    uint64_t tilingKey = param.cacheMode;
-    if (launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16) {
-        tilingKey = (tilingKey << 1) + static_cast<uint64_t>(formatWeight1 == TENSOR_FORMAT_FRACTAL_NZ);
-        tilingKey = (tilingKey << 1) + static_cast<uint64_t>(formatWeight2 == TENSOR_FORMAT_FRACTAL_NZ);
-        tilingKey = (tilingKey << 1) + static_cast<uint64_t>(formatWeight3 == TENSOR_FORMAT_FRACTAL_NZ);
-    }
+    uint64_t tilingKey = static_cast<uint64_t>(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16);
+    tilingKey = (tilingKey << 2) + static_cast<uint64_t>(param.cacheMode); // 2bit for cacheMode.
+    tilingKey = (tilingKey << 1) + static_cast<uint64_t>(formatWeight1 == TENSOR_FORMAT_FRACTAL_NZ);
+    tilingKey = (tilingKey << 1) + static_cast<uint64_t>(formatWeight2 == TENSOR_FORMAT_FRACTAL_NZ);
+    tilingKey = (tilingKey << 1) + static_cast<uint64_t>(formatWeight3 == TENSOR_FORMAT_FRACTAL_NZ);
+    tilingKey = (tilingKey << 2) + static_cast<uint64_t>(param.quantMode); // 2bit for quantMode.
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG_INFO << "tilingKey = " << tilingKey;
 }
@@ -509,10 +512,18 @@ void MlaPreprocessTiling::SetMlapoWorkSpace(const TensorDType inDtype, const OpP
     uint64_t workSizeS3 = static_cast<uint64_t>(tilingData.n) * HIDDEN_STRATE_MM * sizeof(uint16_t);
     uint64_t workSizeS4 = static_cast<uint64_t>(tilingData.n) *
                           std::max(param.headNum * HIDDEN_STRATE_ROPE, HIDDEN_STRATE_MM) * sizeof(uint32_t);
-    if (inDtype == TENSOR_DTYPE_BF16) {
-        kernelInfo.GetScratchSizes() = {workSizeS1, workSizeS2, workSizeS3, workSizeS4};
+    uint64_t pertokenWorkspace = static_cast<uint64_t>(tilingData.n) * sizeof(float) * 2;
+    uint64_t maxWorkspaceSize = 0;
+    maxWorkspaceSize = std::max(maxWorkspaceSize, workSizeS1);
+    maxWorkspaceSize = std::max(maxWorkspaceSize, workSizeS2);
+    maxWorkspaceSize = std::max(maxWorkspaceSize, workSizeS3);
+    maxWorkspaceSize = std::max(maxWorkspaceSize, workSizeS4);
+    if (inDtype == TENSOR_DTYPE_BF16 || param.quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
+        kernelInfo.GetScratchSizes() = {
+            maxWorkspaceSize, maxWorkspaceSize, maxWorkspaceSize, maxWorkspaceSize, pertokenWorkspace};
     } else {
-        kernelInfo.GetScratchSizes() = {workSizeS1, workSizeS2, workSizeS3};
+        kernelInfo.GetScratchSizes() = {
+            maxWorkspaceSize, maxWorkspaceSize, maxWorkspaceSize};
     }
 }
 

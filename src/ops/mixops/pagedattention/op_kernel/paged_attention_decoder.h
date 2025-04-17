@@ -8,10 +8,10 @@
 * See LICENSE in the root of the software repository for the full text of the License.
 */
 
-#include "mixops/include/common.h"
-#include "mixops/include/common_func.h"
-#include "mixops/include/simd.h"
-#include "mixops/include/iterator.h"
+#include "ops/utils/kernel/common.h"
+#include "ops/utils/kernel/common_func.h"
+#include "ops/utils/kernel/simd.h"
+#include "ops/utils/kernel/iterator.h"
 #include "kernel_operator.h"
 
 namespace {

@@ -7,11 +7,11 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-#include "mixops/include/common_func.h"
-#include "mixops/include/simd.h"
-#include "mixops/include/iterator.h"
-#include "mixops/include/mma.h"
-#include "mixops/include/utils.h"
+#include "ops/utils/kernel/common_func.h"
+#include "ops/utils/kernel/simd.h"
+#include "ops/utils/kernel/iterator.h"
+#include "ops/utils/kernel/mma.h"
+#include "ops/utils/kernel/utils.h"
 #include "kernel_operator.h"
 #include "unpad_flash_attention_common.h"
 
@@ -90,7 +90,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<float, half, PrecType::BMM1_FP1
         WAIT_FLAG(MTE1, MTE2, Pingflag);
         WAIT_FLAG(MTE1, MTE2, Pongflag);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], 1, ntokensQ, 1, fk, fk, fk);
+            l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], 1, 1, ntokensQ, fk, fk, fk);
         SET_FLAG(MTE2, MTE1, Pingflag);
         if (__n1 != -1) {
             SET_FLAG(MTE2, MTE1, Pongflag);
@@ -101,8 +101,8 @@ __aicore__ inline void UnpadFlashAttentionCommon<float, half, PrecType::BMM1_FP1
         // load mask ping gm -> l1
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(l1maskPingBuf_tensor, // Nz load
-                                                                              gmSrcm_tensor[srcmOffset0], 1, maskStride,
-                                                                              1, fn, fn, fn);
+                                                                              gmSrcm_tensor[srcmOffset0], 1, 1, maskStride,
+                                                                              fn, fn, fn);
         SET_FLAG(MTE2, MTE1, Pingflag + 2);
         WAIT_FLAG(MTE2, MTE1, Pingflag + 2);
         // load mask ping l1 -> ub
@@ -119,7 +119,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<float, half, PrecType::BMM1_FP1
             WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
                 l1maskPongBuf_tensor, // Nz load
-                gmSrcm_tensor[srcmOffset0 + maskStride * pp_n_scalar], 1, maskStride, 1, bn, bn, bn);
+                gmSrcm_tensor[srcmOffset0 + maskStride * pp_n_scalar], 1, 1, maskStride, bn, bn, bn);
             SET_FLAG(MTE2, MTE1, Pongflag + 2);
             WAIT_FLAG(MTE2, MTE1, Pongflag + 2);
             // load mask pong l1 -> ub
@@ -149,7 +149,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<float, half, PrecType::BMM1_FP1
     SET_FLAG(MTE1, M, Pingflag);
     WAIT_FLAG(MTE1, MTE2, Pingflag + 4);
     gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-        l1kPingBuf_tensor, gmSrck_tensor[(int64_t)srckOffset], fn, kvCopyStride, fn, fk, fk, fk);
+        l1kPingBuf_tensor, gmSrck_tensor[(int64_t)srckOffset], fn, fn, kvCopyStride, fk, fk, fk);
     SET_FLAG(MTE2, MTE1, Pingflag);
     WAIT_FLAG(MTE2, MTE1, Pingflag);
     WAIT_FLAG(M, MTE1, Pingflag + 2);
@@ -181,8 +181,8 @@ __aicore__ inline void UnpadFlashAttentionCommon<float, half, PrecType::BMM1_FP1
         SET_FLAG(MTE1, M, Pongflag);
         WAIT_FLAG(MTE1, MTE2, Pongflag + 4);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1kPongBuf_tensor, gmSrck_tensor[(int64_t)srckOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn,
-            kvCopyStride, bn, fk, fk, fk);
+            l1kPongBuf_tensor, gmSrck_tensor[(int64_t)srckOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn, bn,
+            kvCopyStride, fk, fk, fk);
         SET_FLAG(MTE2, MTE1, Pongflag);
         WAIT_FLAG(MTE2, MTE1, Pongflag);
         WAIT_FLAG(M, MTE1, Pongflag + 2);
@@ -200,8 +200,8 @@ __aicore__ inline void UnpadFlashAttentionCommon<float, half, PrecType::BMM1_FP1
     // v preload
     WAIT_FLAG(MTE1, MTE2, Pingflag + 6);
     gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(l1vPingBuf_tensor, // load V Nz
-                                                                          gmSrcv_tensor[(int64_t)srcvOffset], fn,
-                                                                          kvCopyStride, fn, fk, fk, fk);
+                                                                          gmSrcv_tensor[(int64_t)srcvOffset], fn, fn,
+                                                                          kvCopyStride, fk, fk, fk);
     SET_FLAG(MTE2, MTE1, Pingflag + 4);
     // bmm1 ping
     WAIT_FLAG(MTE1, M, Pingflag + 2);
@@ -244,7 +244,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<float, half, PrecType::BMM1_FP1
         WAIT_FLAG(MTE1, MTE2, Pongflag + 6);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
             l1vPongBuf_tensor, // load V Nz
-            gmSrcv_tensor[(int64_t)srcvOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn, kvCopyStride, bn, fk, fk, fk);
+            gmSrcv_tensor[(int64_t)srcvOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn, bn, kvCopyStride, fk, fk, fk);
         SET_FLAG(MTE2, MTE1, Pongflag + 4);
         // bmm1 pong
         WAIT_FLAG(MTE1, M, Pongflag + 2);

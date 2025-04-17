@@ -13,7 +13,7 @@
 
 #include "fused_add_topk_div_assist.h"
 #include "mixops/fused_add_topk_div/tiling/tiling_data.h"
-#include "mixops/include/common.h"
+#include "ops/utils/kernel/common.h"
 #include "kernel_operator.h"
 
 using namespace AscendC;

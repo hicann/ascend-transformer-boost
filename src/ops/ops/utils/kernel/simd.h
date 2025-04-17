@@ -14,6 +14,20 @@
 #include "kernel_operator.h"
 
 /////////////////////////////////////////////////////
+// vcgadd
+/////////////////////////////////////////////////////
+template <ArchType ArchTag, typename DType>
+__aicore__ inline void cgadd_v(AscendC::LocalTensor<DType> dst,
+                               AscendC::LocalTensor<DType> src,
+                               const int32_t repeat,
+                               const int32_t dstRepStride,
+                               const int32_t srcBlkStride,
+                               const int32_t srcRepStride)
+{
+    AscendC::BlockReduceSum<DType, false>(dst, src, repeat, 0, dstRepStride, srcBlkStride, srcRepStride);
+}
+
+/////////////////////////////////////////////////////
 // vadd
 /////////////////////////////////////////////////////
 template <ArchType ArchTag, typename DType>
@@ -175,73 +189,23 @@ __aicore__ inline void conv_v(AscendC::LocalTensor<DTypeOut> dst,
                               uint16_t dstRepeatStride,
                               uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
-    AscendC::Cast<DTypeOut, DTypeIn, false>(
-        dst,
-        src,
-        AscendC::RoundMode::CAST_NONE,
-        (uint64_t)0,
-        repeat,
-        AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    if constexpr (std::is_same<DTypeIn, __bf16>::value && std::is_same<DTypeOut, float>::value) {
-        vconv_bf162f32((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                       (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                       repeat,
-                       dstBlockStride,
-                       srcBlockStride,
-                       dstRepeatStride,
-                       srcRepeatStride);
-    } else if constexpr (std::is_same<DTypeIn, half>::value && std::is_same<DTypeOut, float>::value) {
-        vconv_f162f32((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                      (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                      repeat,
-                      dstBlockStride,
-                      srcBlockStride,
-                      dstRepeatStride,
-                      srcRepeatStride);
-    } else if constexpr (std::is_same<DTypeIn, float>::value && std::is_same<DTypeOut, half>::value) {
-        vconv_f322f16((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                      (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                      repeat,
-                      dstBlockStride,
-                      srcBlockStride,
-                      dstRepeatStride,
-                      srcRepeatStride);
-    } else if constexpr (std::is_same<DTypeIn, float>::value && std::is_same<DTypeOut, __bf16>::value) {
-        vconv_f322bf16r((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                        (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                        repeat,
-                        dstBlockStride,
-                        srcBlockStride,
-                        dstRepeatStride,
-                        srcRepeatStride);
-    } else if constexpr (std::is_same<DTypeIn, int8_t>::value && std::is_same<DTypeOut, half>::value) {
-        vconv_s82f16((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                     (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                     repeat,
-                     dstBlockStride,
-                     srcBlockStride,
-                     dstRepeatStride,
-                     srcRepeatStride);
-    } else if constexpr (std::is_same<DTypeIn, int32_t>::value && std::is_same<DTypeOut, float>::value) {
-        vconv_s322f32((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                      (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                      repeat,
-                      dstBlockStride,
-                      srcBlockStride,
-                      dstRepeatStride,
-                      srcRepeatStride);
-    } else if constexpr (std::is_same<DTypeIn, half>::value && std::is_same<DTypeOut, int8_t>::value) {
-        vconv_f162s8((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                      (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                      repeat,
-                      dstBlockStride,
-                      srcBlockStride,
-                      dstRepeatStride,
-                      srcRepeatStride);
+    if constexpr (std::is_same<DTypeIn, float>::value && std::is_same<DTypeOut, __bf16>::value) {
+        AscendC::Cast<DTypeOut, DTypeIn, false>(
+            dst,
+            src,
+            AscendC::RoundMode::CAST_RINT,
+            (uint64_t)0,
+            repeat,
+            AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
+    } else {
+        AscendC::Cast<DTypeOut, DTypeIn, false>(
+            dst,
+            src,
+            AscendC::RoundMode::CAST_NONE,
+            (uint64_t)0,
+            repeat,
+            AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
     }
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -256,7 +220,6 @@ __aicore__ inline void convr_v(AscendC::LocalTensor<DTypeOut> dst,
                                uint16_t dstRepeatStride,
                                uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Cast<DTypeOut, DTypeIn, false>(
         dst,
         src,
@@ -264,26 +227,6 @@ __aicore__ inline void convr_v(AscendC::LocalTensor<DTypeOut> dst,
         (uint64_t)0,
         repeat,
         AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    if constexpr (std::is_same<DTypeIn, float>::value && std::is_same<DTypeOut, __bf16>::value) {
-        vconv_f322bf16r((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                        (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                        repeat,
-                        dstBlockStride,
-                        srcBlockStride,
-                        dstRepeatStride,
-                        srcRepeatStride);
-    } else if constexpr (std::is_same<DTypeIn, half>::value && std::is_same<DTypeOut, int32_t>::value) {
-        vconv_f162s32r((__ubuf__ DTypeOut *)dst.GetPhyAddr(),
-                       (__ubuf__ DTypeIn *)src.GetPhyAddr(),
-                       repeat,
-                       dstBlockStride,
-                       srcBlockStride,
-                       dstRepeatStride,
-                       srcRepeatStride);
-    }
-
-#endif
 }
 
 /////////////////////////////////////////////////////

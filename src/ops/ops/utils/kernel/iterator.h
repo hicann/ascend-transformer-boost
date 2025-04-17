@@ -97,7 +97,8 @@ struct l0c_to_gm {
                          uint32_t mTileActual,
                          uint32_t nTileActual,
                          uint32_t mTileCeil,
-                         uint32_t nActual) {};
+                         uint32_t nActual,
+                         uint8_t  unitFlag = 0) {};
 };
 
 /////////////////////////////////////////////////////

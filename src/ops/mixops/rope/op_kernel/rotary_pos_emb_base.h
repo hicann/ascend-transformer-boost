@@ -11,7 +11,7 @@
 #define ROTARY_POS_EMB_BASE
 
 #include "mixops/rope/tiling/tiling_data.h"
-#include "mixops/include/simd.h"
+#include "ops/utils/kernel/simd.h"
 #include "common_val.h"
 #include "kernel_operator.h"
 

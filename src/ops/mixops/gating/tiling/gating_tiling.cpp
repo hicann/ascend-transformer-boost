@@ -28,7 +28,7 @@ constexpr uint64_t INT64_SIZE = sizeof(int64_t);
 constexpr uint64_t INT32_SIZE = sizeof(int32_t);
 static constexpr int32_t GATING_TILING_SIZE_310P = 512;
 static constexpr int32_t GATING_TILING_SIZE_910B = 2048;
-static constexpr uint16_t WORKSPACE_SIZE_FACTOR_310P = 8;
+static constexpr uint16_t WORKSPACE_SIZE_FACTOR_310P = 16;
 static constexpr uint16_t WORKSPACE_SIZE_FACTOR_910B = 8;
 
 
@@ -209,7 +209,7 @@ Status GatingTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t cumSumWorkspaceSize = static_cast<uint64_t>(tilingDataPointer->cumSumNum32BytesPadded
         * tilingDataPointer->actualCoreNum);
     cumSumWorkspaceSize *= (tilingDataPointer->cumSumInt64 != 0) ? INT64_SIZE : INT32_SIZE;
-    uint64_t threshold = 2048;
+    uint64_t threshold = 2048 * 4;
     cumSumWorkspaceSize = cumSumWorkspaceSize > threshold ? cumSumWorkspaceSize : threshold;
 
     // 打印tiling信息

@@ -61,10 +61,10 @@ bool checkNCT(const LaunchParam &launchParam)
 {
     uint32_t rowStrideNum = 2;
     const auto& xStrides = launchParam.GetInTensor(0).desc.strides;
-    const SVector<int64_t>& xShapes = launchParam.GetInTensor(0).desc.dims;
-    if (xStrides.empty() || xStrides.size() <= 1) {
+    if (xStrides.empty()) {
         return false;
     }
+    const SVector<int64_t>& xShapes = launchParam.GetInTensor(0).desc.dims;
     uint32_t dimNum = xStrides.size();
     return (xStrides[dimNum - rowStrideNum] == xShapes[dimNum - 1]) ? false : true;
 }

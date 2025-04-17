@@ -9,7 +9,7 @@
 */
  
 #include "kernel_operator.h"
-#include "mixops/include/simd.h"
+#include "ops/utils/kernel/simd.h"
 #include "../tiling/rms_norm_and_rope_and_reshape_and_cache_tiling_data.h"
 
 namespace RmsNormAndRopeAndReshapeAndCacheFusion {

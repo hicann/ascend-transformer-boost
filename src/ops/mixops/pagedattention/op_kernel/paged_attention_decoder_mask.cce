@@ -7,12 +7,12 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-#include "mixops/include/common.h"
-#include "mixops/include/common_func.h"
-#include "mixops/include/simd.h"
-#include "mixops/include/iterator.h"
-#include "mixops/include/utils.h"
-#include "mixops/include/mma.h"
+#include "ops/utils/kernel/common.h"
+#include "ops/utils/kernel/common_func.h"
+#include "ops/utils/kernel/simd.h"
+#include "ops/utils/kernel/iterator.h"
+#include "ops/utils/kernel/utils.h"
+#include "ops/utils/kernel/mma.h"
 #include "kernel_operator.h"
 
 #ifdef __CCE_KT_TEST__
@@ -83,10 +83,10 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(l1qBufAddr_tensor[qOffset],
                                                                               gmSrcq_tensor[srcqOffset],
                                                                               1,        // nTileActual
-                                                                              ntokensQ, // nTileCeil
-                                                                              1,        // nVal
+                                                                              1,        // nTileActual
+                                                                              ntokensQ,        // nTileCeil
                                                                               fk,       // dTileActual
-                                                                              fk,       // dTileCeil
+                                                                              fk,       // dTileActual
                                                                               fk        // dVal
         );
         SET_FLAG(MTE2, MTE1, Pingflag);
@@ -100,7 +100,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
             l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], // Nz load
-            gmSrcm_tensor[srcmOffset], 1, maskStride, 1,
+            gmSrcm_tensor[srcmOffset], 1, 1, maskStride,
             fn, // lenBurst
             fn, fn);
         SET_FLAG(MTE2, MTE1, Pingflag + 2);
@@ -117,7 +117,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
             WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
                 l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], // Nz load
-                gmSrcm_tensor[srcmOffset + maskStride * blockSize], 1, maskStride, 1,
+                gmSrcm_tensor[srcmOffset + maskStride * blockSize],1, 1, maskStride,
                 bn, // lenBurst
                 bn, bn);
             SET_FLAG(MTE2, MTE1, Pongflag + 2);
@@ -146,7 +146,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
 #endif
     if (initKV) {
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1kPingBuf_tensor, gmSrck_tensor[srckOffset], fn, blockSize, fn,
+            l1kPingBuf_tensor, gmSrck_tensor[srckOffset], fn, fn, blockSize,
             fk, // (fn, fk) double buffer
             fk, fk);
     }
@@ -179,7 +179,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
 #endif
         if (initKV) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1kPongBuf_tensor, gmSrck_tensor[srckOffset1], bn, blockSize, bn,
+                l1kPongBuf_tensor, gmSrck_tensor[srckOffset1], bn, bn, blockSize,
                 fk, // (fn, fk) double buffer
                 fk, fk);
         }
@@ -205,8 +205,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
 #endif
     if (initKV) {
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(l1vPingBuf_tensor, // load V Nz
-                                                                              gmSrcv_tensor[srcvOffset], fn,
-                                                                              blockSize, fn, fk, fk, fk);
+                                                                              gmSrcv_tensor[srcvOffset], fn, fn,
+                                                                              blockSize, fk, fk, fk);
     }
 #if __CCE_AICORE__ == 100
     SET_FLAG(MTE2, MTE1, Pingflag + 2);
@@ -261,7 +261,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
         if (initKV) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(l1vPongBuf_tensor, // load V Nz
                                                                                   gmSrcv_tensor[srcvOffset1],
-                                                                                  bn, blockSize, bn, fk, fk, fk);
+                                                                                  bn, bn, blockSize, fk, fk, fk);
         }
 #if __CCE_AICORE__ == 100
         SET_FLAG(MTE2, MTE1, Pongflag + 2);
@@ -865,7 +865,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
         WAIT_FLAG(MTE1, MTE2, Pongflag);
         if (ntokensQ <= STRIDE_UPPER_BOUND + fm) { // (fm, fk)
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1qBufAddr_tensor, gmSrcq_tensor[(int64_t)srcqOffset], fm, ntokensQ, fm, fk, fk, fk);
+                l1qBufAddr_tensor, gmSrcq_tensor[(int64_t)srcqOffset], fm, fm, ntokensQ, fk, fk, fk);
         } else {
             for (int32_t l1qBurstIdx = 0; l1qBurstIdx < (fk / BLOCK_SIZE); ++l1qBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -885,7 +885,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
             l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], // Nz load
-            gmSrcm_tensor[srcmOffset], fm, maskStride, fm,
+            gmSrcm_tensor[srcmOffset], fm, fm, maskStride,
             fn, // lenBurst
             fn, fn);
         SET_FLAG(MTE2, MTE1, Pingflag + 2);
@@ -902,7 +902,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
             WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
                 l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], // Nz load
-                gmSrcm_tensor[srcmOffset + maskStride * blockSize], fm, maskStride, fm,
+                gmSrcm_tensor[srcmOffset + maskStride * blockSize], fm, fm, maskStride,
                 bn, // lenBurst
                 bn, bn);
             SET_FLAG(MTE2, MTE1, Pongflag + 2);
@@ -946,7 +946,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
     SET_FLAG(MTE1, M, Pingflag);
     WAIT_FLAG(MTE1, MTE2, Pingflag + 4);
     gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-        l1kPingBuf_tensor, gmSrck_tensor[(int64_t)srckOffset], fn, blockSize, fn,
+        l1kPingBuf_tensor, gmSrck_tensor[(int64_t)srckOffset], fn, fn, blockSize,
         fk, // (fn, fk) double buffer
         fk, fk);
     SET_FLAG(MTE2, MTE1, Pingflag);
@@ -989,7 +989,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
         SET_FLAG(MTE1, M, Pongflag);
         WAIT_FLAG(MTE1, MTE2, Pongflag + 4);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1kPongBuf_tensor, gmSrck_tensor[(int64_t)srckOffset1], bn, blockSize, bn,
+            l1kPongBuf_tensor, gmSrck_tensor[(int64_t)srckOffset1], bn, bn, blockSize,
             fk, // (fn, fk) double buffer
             fk, fk);
         SET_FLAG(MTE2, MTE1, Pongflag);
@@ -1005,8 +1005,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
     // v preload
     WAIT_FLAG(MTE1, MTE2, Pingflag + 6);
     gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(l1vPingBuf_tensor, // load V Nz
-                                                                          gmSrcv_tensor[(int64_t)srcvOffset], fn,
-                                                                          blockSize, fn, fk, fk, fk);
+                                                                          gmSrcv_tensor[(int64_t)srcvOffset], fn, fn,
+                                                                          blockSize, fk, fk, fk);
     SET_FLAG(MTE2, MTE1, Pingflag + 4);
     // bmm1 ping
     WAIT_FLAG(MTE1, M, Pingflag + 2);
@@ -1042,8 +1042,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
         // v preload
         WAIT_FLAG(MTE1, MTE2, Pongflag + 6);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(l1vPongBuf_tensor, // load V Nz
-                                                                              gmSrcv_tensor[(int64_t)srcvOffset1], bn,
-                                                                              blockSize, bn, fk, fk, fk);
+                                                                              gmSrcv_tensor[(int64_t)srcvOffset1], bn, bn,
+                                                                              blockSize, fk, fk, fk);
         SET_FLAG(MTE2, MTE1, Pongflag + 4);
         // bmm1 pong
         WAIT_FLAG(MTE1, M, Pongflag + 2);
@@ -1795,10 +1795,10 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
         WAIT_FLAG(MTE1, MTE2, Pongflag);
         if (m_actual == 1) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], 1, ntokensQ, 1, fk, fk, fk);
+                l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], 1, 1, ntokensQ, fk, fk, fk);
         } else if (ntokensQ <= STRIDE_UPPER_BOUND + fm) { // (fm, fk)
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], fm, ntokensQ, fm, fk, fk, fk);
+                l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], fm, fm, ntokensQ, fk, fk, fk);
         } else {
             for (int32_t l1qBurstIdx = 0; l1qBurstIdx < (fk / BLOCK_SIZE); ++l1qBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -1816,14 +1816,14 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
     if (maskType != 0) {
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset], fm, maskStride, fm, fn,
+            l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset], fm, fm, maskStride, fn,
             fn, fn);
         SET_FLAG(MTE2, MTE1, Pingflag + 2);
         if (n1_actual != -1) {
             WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
                 l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
-                gmSrcm_tensor[srcmOffset + maskStride * blockSize], fm, maskStride, fm, bn, bn,
+                gmSrcm_tensor[srcmOffset + maskStride * blockSize], fm, fm, maskStride, bn, bn,
                 bn);
             SET_FLAG(MTE2, MTE1, Pongflag + 2);
         }
@@ -1868,7 +1868,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
     WAIT_FLAG(MTE1, MTE2, Pingflag + 4);
     if (blockSize <= STRIDE_UPPER_BOUND + fn) {
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1kPingBuf_tensor, gmSrck_tensor[(int64_t)srckOffset], fn, blockSize, fn, fk, fk, fk);
+            l1kPingBuf_tensor, gmSrck_tensor[(int64_t)srckOffset], fn, fn, blockSize, fk, fk, fk);
     } else {
         for (int32_t l1kBurstIdx = 0; l1kBurstIdx < (fk / BLOCK_SIZE); ++l1kBurstIdx) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -1895,7 +1895,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
     WAIT_FLAG(MTE1, MTE2, Pingflag + 6);
     if (blockSize <= STRIDE_UPPER_BOUND + fn) {
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1vPingBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset], fn, blockSize, fn, fk, fk, fk);
+            l1vPingBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset],  fn, fn, blockSize, fk, fk, fk);
     } else {
         for (int32_t l1vBurstIdx = 0; l1vBurstIdx < (fk / BLOCK_SIZE); ++l1vBurstIdx) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -1960,8 +1960,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
         WAIT_FLAG(MTE1, MTE2, Pongflag + 4);
         if (blockSize <= STRIDE_UPPER_BOUND + bn) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1kPongBuf_tensor, gmSrck_tensor[(int64_t)srckOffset1], bn,
-                blockSize, bn, fk, fk, fk);
+                l1kPongBuf_tensor, gmSrck_tensor[(int64_t)srckOffset1], bn, bn,
+                blockSize, fk, fk, fk);
         } else {
             for (int32_t l1kBurstIdx = 0; l1kBurstIdx < (fk / BLOCK_SIZE); ++l1kBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -1986,8 +1986,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
         WAIT_FLAG(MTE1, MTE2, Pongflag + 6);
         if (blockSize <= STRIDE_UPPER_BOUND + bn) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1vPongBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset1], bn,
-                blockSize, bn, fk, fk, fk);
+                l1vPongBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset1], bn, bn,
+                blockSize, fk, fk, fk);
         } else {
             for (int32_t l1vBurstIdx = 0; l1vBurstIdx < (fk / BLOCK_SIZE); ++l1vBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(

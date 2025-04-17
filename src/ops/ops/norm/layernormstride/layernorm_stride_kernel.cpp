@@ -38,6 +38,7 @@ public:
             "norm: param type invalid", return false);
         AsdOps::OpParam::Norm param = AnyCast<OpParam::Norm>(launchParam.GetParam());
         AsdOps::OpParam::Norm::NormType type = param.normType;
+        MKI_LOG(DEBUG) << "norm type: " << type;
         MKI_CHECK(type == OpParam::Norm::LAYER_NORM, "layernorm: param type invalid", return false);
         MKI_CHECK(param.epsilon >= THRESHOLD, "epsilon invalid", return false);
         auto inTensor0 = launchParam.GetInTensor(0);
@@ -52,15 +53,16 @@ public:
                   "outTensor0 shape not same as inTensor0", return false);
         MKI_CHECK(inTensor0.desc.dtype == TENSOR_DTYPE_FLOAT16 || inTensor0.desc.dtype == TENSOR_DTYPE_BF16,
                   "input0 dtype invalid", return false);
-        MKI_CHECK(inTensor1.desc.dtype == inTensor0.desc.dtype, "inTensor1 dtype unsupported", return false);
-        MKI_CHECK(inTensor2.desc.dtype == inTensor0.desc.dtype, "inTensor2 dtype unsupported", return false);
+        MKI_CHECK(inTensor1.desc.dtype == inTensor0.desc.dtype,
+                  "inTensor1 dtype unsupported", return false);
+        MKI_CHECK(inTensor2.desc.dtype == inTensor0.desc.dtype,
+                  "inTensor2 dtype unsupported", return false);
         MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == inTensor0.desc.dtype,
                   "outTensor0 dtype unsupported", return false);
         const auto& xStrides = inTensor0.desc.strides;
         const auto& shape = inTensor0.desc.dims;
         auto inTensor0Row = shape.size();
         MKI_CHECK(!xStrides.empty(), "xStrides should not be empty", return false);
-        MKI_CHECK(xStrides.size() > 1, "xStrides should be more than one dim", return false);
         MKI_CHECK(xStrides.size() == shape.size(), "mismatch in length of strides and shape", return false);
         MKI_CHECK(xStrides[inTensor0Row - 1] == 1,
                 "the last dimension of strides should be 1", return false);

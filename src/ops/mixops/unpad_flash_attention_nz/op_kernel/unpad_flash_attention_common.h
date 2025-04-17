@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "kernel_operator.h"
-#include "mixops/include/common.h"
-#include "mixops/include/iterator.h"
+#include "ops/utils/kernel/common.h"
+#include "ops/utils/kernel/iterator.h"
 #ifndef UNPAD_FLASH_ATTENTION_COMMON_H
 #define UNPAD_FLASH_ATTENTION_COMMON_H
 

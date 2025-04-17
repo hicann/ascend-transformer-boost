@@ -23,6 +23,7 @@
 #include "atbops/params/pad_with_hidden_state.h"
 #include "atbops/params/pagedattention.h"
 #include "atbops/params/reshape_and_cache.h"
+#include "atbops/params/paged_cache_load.h"
 #include "atbops/params/rope_grad.h"
 #include "atbops/params/rope.h"
 #include "atbops/params/stridedbatchmatmul.h"

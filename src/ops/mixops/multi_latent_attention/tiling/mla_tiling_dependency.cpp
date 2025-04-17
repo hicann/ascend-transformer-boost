@@ -176,23 +176,36 @@ Status GetNdMLATiling(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilin
 
     return AtbOps::Status::OkStatus();
 }
-
 void GetNdMLAMtpTilingTP1(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam,
                           const OpParam::MLA &param)
 {
+    bool isFP16 = static_cast<int32_t>(mmInfo.type) < NUM2;
+    int32_t maxQPerJob = isFP16 ? NUM2 : NUM1;
     int32_t prevTaskNum = 0;
+    int32_t qRowIdx = 0;
+    int32_t totalTaskNum = mmInfo.totalTaskNum;
     for (int32_t seqIdx = 0; seqIdx < mmInfo.batch; seqIdx++) {
         int32_t qSeqLen = mmInfo.qSeqLen == nullptr ? 1 : *(mmInfo.qSeqLen + seqIdx);
         int32_t kvSeqlen = *(mmInfo.kvSeqLen + seqIdx);
-        for (int32_t qSeq = 0; qSeq < qSeqLen; qSeq++) {
+        int32_t curKvSeq = kvSeqlen - qSeqLen;
+        for (int32_t qSeq = 0; qSeq < qSeqLen; qSeq += maxQPerJob) {
+            if (totalTaskNum <= static_cast<int32_t>(blockDim) && (prevTaskNum % static_cast<int32_t>(blockDim) == 0)) {
+                maxQPerJob = NUM1;
+            }
             int32_t tilingOffset = TILING_HEAD_SIZE + TILING_PARA_SIZE_TP1 * prevTaskNum;
+            int32_t curQLen = ((qSeqLen - qSeq) > maxQPerJob) ? maxQPerJob : (qSeqLen - qSeq);
+            curKvSeq += curQLen;
             tilingParam[tilingOffset] = seqIdx;
-            tilingParam[tilingOffset + NUM1] = prevTaskNum;
-            tilingParam[tilingOffset + NUM2] = kvSeqlen - qSeqLen + qSeq + 1;
+            tilingParam[tilingOffset + NUM1] = qRowIdx;
+            tilingParam[tilingOffset + NUM2] = curKvSeq;
+            tilingParam[tilingOffset + NUM3] = curQLen;
             prevTaskNum++;
+            qRowIdx += curQLen;
+            totalTaskNum -= curQLen;
             MKI_LOG(INFO) << "seqIdx = " << tilingParam[tilingOffset];
-            MKI_LOG(INFO) << "prevTaskNum = " << tilingParam[tilingOffset + NUM1];
+            MKI_LOG(INFO) << "qRowIdx = " << tilingParam[tilingOffset + NUM1];
             MKI_LOG(INFO) << "kvSeqlen = " << tilingParam[tilingOffset + NUM2];
+            MKI_LOG(INFO) << "curQLen = " << tilingParam[tilingOffset + NUM3];
             MKI_LOG(INFO) << "TILING_BATCH = " << tilingParam[TILING_BATCH];
         }
     }

@@ -18,7 +18,9 @@ constexpr int32_t INT32_SIZE = sizeof(int32_t);
 constexpr int32_t INT64_SIZE = sizeof(int64_t);
 constexpr int32_t BUFFER_NUM = 1;
 constexpr int64_t DOUBLE = 2;
-constexpr int64_t EIGHTFLOD = 8;
+constexpr int64_t TRIPLE = 3; // Index of sorting queue
+constexpr int64_t MAX_SORT_QUEUE_NUM = 4;
+constexpr int64_t SORT_STRUCT_MULTIPLE = 8; // Sorting structure size is calculated as 8 times of tile size
 constexpr int32_t SYNC_UB_BYTES = 32 * 32;
 constexpr int64_t TILE_NUM = 512;
 constexpr int64_t STRUCT_TILE_NUM = 8 * TILE_NUM;
@@ -42,7 +44,9 @@ public:
         idxArrGm.SetGlobalBuffer((__gm__ int32_t *)idxArr, topKNum);
         tokenIndexGm.SetGlobalBuffer((__gm__ int32_t *)tokenIndex, topKNum);
         cumSumGm.SetGlobalBuffer((__gm__ CumSumNumType *)CumSum, cumSumNum);
-        globalSortBlock.SetGlobalBuffer((__gm__ float *)globalSortWorkspace, 2 * topKNumPadded);
+        globalSortBlock.SetGlobalBuffer((__gm__ float *)globalSortWorkspace, SORT_STRUCT_MULTIPLE * topKNumPadded);
+        globalSortBlock2.SetGlobalBuffer((__gm__ float *)globalSortWorkspace + SORT_STRUCT_MULTIPLE * topKNumPadded,
+                                          SORT_STRUCT_MULTIPLE * topKNumPadded);
         cumSumBlock.SetGlobalBuffer((__gm__ int32_t *)cumSumWorkspace, actualCoreNum * cumSumNum32BytesPadded);
         syncGm.SetGlobalBuffer((__gm__ int32_t *)syncWorkspace, syncSize);
 
@@ -98,19 +102,38 @@ public:
                     syncTQue.FreeTensor(sync_buf);
                 }
             }
-            GlobalSort();
+            GlobalTensor<float> resultGlobalSortBlock = GlobalSort();
             // 输出original_index，把数据从globalSortBlock拷贝到tokenIndexGm
-            CopyGm2Gm(globalSortBlock, originalGm);
+            CopyGm2Gm(resultGlobalSortBlock, originalGm);
         }
     }
 
 private:
+
+    // 全局排序的参数结构体
+    struct GmsParams {
+        // 每一个队列需要排序的长度
+        int (&gmsLengths)[MAX_SORT_QUEUE_NUM];
+        // 每一个队列的排序初始元素在workspace上的起始位置
+        int (&gmsCurrentHead)[MAX_SORT_QUEUE_NUM];
+        // 队列的总长度(<=4)
+        int &queueNum;
+        // ub上数据加载的tensor（input，会切成四部分使用）
+        LocalTensor<float> &srcLocalTensor;
+        // ub上排序的结果（output）
+        LocalTensor<float> &dstLocalTensor;
+        // 数据在gm上存放的位置
+        bool &gmTensorIndex;
+        // Two possible position for data in GM
+        GlobalTensor<float> (&buffLocal)[DOUBLE];
+    };
+
     __aicore__ inline void InitPipe()
     {
         pipe.InitBuffer(syncTQue, BUFFER_NUM, SYNC_UB_BYTES);
         pipe.InitBuffer(inQueueTopK, BUFFER_NUM, TILE_NUM * INT32_SIZE);
         pipe.InitBuffer(inQueueIdxArr, BUFFER_NUM, TILE_NUM * INT32_SIZE);
-        pipe.InitBuffer(inQueueWorkspace, BUFFER_NUM, DOUBLE * STRUCT_TILE_NUM * INT32_SIZE);
+        pipe.InitBuffer(inQueueWorkspace, BUFFER_NUM, MAX_SORT_QUEUE_NUM * STRUCT_TILE_NUM * INT32_SIZE);
         pipe.InitBuffer(outQueueWorkspace, BUFFER_NUM, DOUBLE * STRUCT_TILE_NUM * INT32_SIZE);
         pipe.InitBuffer(outQueueTopK, BUFFER_NUM, STRUCT_TILE_NUM * INT32_SIZE);
 
@@ -122,7 +145,7 @@ private:
         pipe.InitBuffer(tileNumTempBuf, TILE_NUM * INT32_SIZE);
         pipe.InitBuffer(structTileNumTempBuf, STRUCT_TILE_NUM * INT32_SIZE);
         pipe.InitBuffer(expertNumTempBuf, cumSumNum32BytesPadded * sizeof(CumSumNumType));
-        pipe.InitBuffer(CopyUb2GmPadtemp, EIGHTFLOD * INT32_SIZE);
+        pipe.InitBuffer(CopyUb2GmPadtemp, SORT_STRUCT_MULTIPLE * INT32_SIZE);
     }
 
     __aicore__ inline void InitParams(AtbOps::GatingTilingData *tiling_data)
@@ -164,18 +187,175 @@ private:
         // 单核计算局部cum_sum
         if (cumSumNum > 0) {
             ComputeCumSumPart();
-            PipeBarrier<PIPE_ALL>();
         }
     }
 
-    __aicore__ inline void GlobalSort()
+    __aicore__ inline GlobalTensor<float> GlobalSort()
     {
-        int32_t orderBlock = (topKNum + TILE_NUM - 1) / TILE_NUM;
-        for (int i = orderBlock - 1; i > 0; i--) {
-            for (int j = 0; j < i; j++) {
-                FinalCopyIn(j, j + 1);
-                FinalCompute(j, j + 1);
-                FinalCopyOut(j, j + 1);
+        // Mark the globalSortBlock in use
+        bool switchFlag = false;
+
+        // 申请中间用于排序的tensor
+        LocalTensor<float> srcLocalTensor = inQueueWorkspace.AllocTensor<float>();
+        LocalTensor<float> dstLocalTensor = outQueueWorkspace.AllocTensor<float>();
+        GlobalTensor<float> sortedGlobal[2] = {globalSortBlock, globalSortBlock2};
+
+        // 目前已经有多少块tile已经有序
+        int32_t orderBlock = topKNumPadded / TILE_NUM;
+        // 每次把4个有序的队列合成一块
+        int32_t globalSortBlockCount = MAX_SORT_QUEUE_NUM;
+
+        int32_t length[MAX_SORT_QUEUE_NUM];
+        int32_t currentHead[MAX_SORT_QUEUE_NUM];
+
+        // blockSize代表每次排序多少块Tile
+        for (int32_t blockSize = 1; blockSize < orderBlock; blockSize *= globalSortBlockCount) {
+            for (int32_t tileIndex = 0; tileIndex < orderBlock; tileIndex += blockSize * globalSortBlockCount) {
+                int32_t mrgTileNum = orderBlock - tileIndex < blockSize * globalSortBlockCount ?
+                                    (orderBlock - tileIndex) : (blockSize * globalSortBlockCount);
+                int32_t queueNum = (mrgTileNum + blockSize - 1) / blockSize;
+                uint16_t lastQueTileNum = mrgTileNum % blockSize == 0 ? blockSize : mrgTileNum % blockSize;
+                for (int i = 0; i < queueNum; i++) {
+                    currentHead[i] = TILE_NUM * (tileIndex + i * blockSize);
+                }
+                for (int i = 0; i < queueNum - 1; i++) {
+                    length[i] = TILE_NUM * blockSize;
+                }
+                length[queueNum-1] = TILE_NUM * lastQueTileNum;
+
+                // 构建GMSParams
+                GmsParams params{length, currentHead, queueNum,
+                                 srcLocalTensor, dstLocalTensor, switchFlag, sortedGlobal};
+                GlobalMrgSort(params);
+                PipeBarrier<PIPE_V>();
+            }
+            switchFlag = !switchFlag;
+        }
+
+        inQueueWorkspace.FreeTensor(srcLocalTensor);
+        outQueueWorkspace.FreeTensor(dstLocalTensor);
+
+        return switchFlag ? globalSortBlock2 : globalSortBlock;
+    }
+
+    struct MrgQueue {
+        int32_t queueNum[MAX_SORT_QUEUE_NUM]; // 每个队列还需要排序的数据有多长
+        int32_t queueLength; // 有效队列的数量
+        int32_t currentHead[MAX_SORT_QUEUE_NUM]; // 每个队列里面要排序数的起始位置
+        int32_t totalMrgLen; // 已经有多少个数完成排序了
+        int32_t originalPosition; // 这次排序的数据在gm上的起始位置
+    };
+
+    __aicore__ inline void GlobalMrgSort(GmsParams &params)
+    {
+        // 得到tensor的指针
+        LocalTensor<float> srcLocalTensor {params.srcLocalTensor};
+        LocalTensor<float> dstLocalTensor {params.dstLocalTensor};
+        GlobalTensor<float> srcGmTensor = params.buffLocal[params.gmTensorIndex];
+        GlobalTensor<float> dstGmTensor = params.buffLocal[!params.gmTensorIndex];
+
+        MrgQueue queueToMrg{
+            {params.gmsLengths[0], params.gmsLengths[1], params.gmsLengths[2], params.gmsLengths[3]},
+            params.queueNum,
+            {params.gmsCurrentHead[0], params.gmsCurrentHead[1], params.gmsCurrentHead[2], params.gmsCurrentHead[3]},
+            0,
+            params.gmsCurrentHead[0]
+        };
+
+        if (queueToMrg.queueLength == 1) {
+            HandleSingleQueue(queueToMrg, dstLocalTensor, srcGmTensor, dstGmTensor);
+            return;
+        }
+
+        while (queueToMrg.queueLength > 1) {
+            PerformMergeSortStep(queueToMrg, srcLocalTensor, dstLocalTensor, srcGmTensor, dstGmTensor);
+            PipeBarrier<PIPE_ALL>();
+        }
+
+        // 处理尾部数据
+        // 最后只会有一个队列还剩余值，因而直接拷贝queueNum[0]即可
+        if (queueToMrg.queueNum[0] > 0) {
+            HandleSingleQueue(queueToMrg, dstLocalTensor, srcGmTensor, dstGmTensor);
+        }
+    }
+
+    __aicore__ inline void HandleSingleQueue(MrgQueue &queueToMrg, LocalTensor<float> &dstLocalTensor,
+                                             GlobalTensor<float> &srcGmTensor, GlobalTensor<float> &dstGmTensor)
+    {
+        int32_t repeatTimes = (queueToMrg.queueNum[0] + TILE_NUM - 1) / TILE_NUM;
+        int32_t tailNum = queueToMrg.queueNum[0] % TILE_NUM == 0 ? TILE_NUM : queueToMrg.queueNum[0] % TILE_NUM;
+        for (int i = 0; i < repeatTimes; i++) {
+            int32_t executeNum = i == repeatTimes - 1 ? tailNum : TILE_NUM;
+
+            DataCopy(dstLocalTensor,
+                     srcGmTensor[SORT_STRUCT_MULTIPLE * queueToMrg.currentHead[0] +
+                                 SORT_STRUCT_MULTIPLE * i * TILE_NUM],
+                     static_cast<uint32_t>(SORT_STRUCT_MULTIPLE * executeNum));
+            PipeBarrier<PIPE_ALL>();
+            DataCopy(dstGmTensor[SORT_STRUCT_MULTIPLE * queueToMrg.originalPosition +
+                                 SORT_STRUCT_MULTIPLE * queueToMrg.totalMrgLen +
+                                 SORT_STRUCT_MULTIPLE * i * TILE_NUM],
+                     dstLocalTensor,
+                     static_cast<uint32_t>(SORT_STRUCT_MULTIPLE * executeNum));
+        }
+    }
+
+    __aicore__ inline void PerformMergeSortStep(MrgQueue &queueToMrg, LocalTensor<float> &srcLocalTensor,
+                                                LocalTensor<float> &dstLocalTensor, GlobalTensor<float> &srcGmTensor,
+                                                GlobalTensor<float> &dstGmTensor)
+    {
+        // 本轮排序实际排序的数量
+        uint16_t tmpSortLen[MAX_SORT_QUEUE_NUM];
+
+        // 把srcLocalTensor切成4份，每份的起始地址都是i *  TILE_NUM * SORT_STRUCT_MULTIPLE
+        for (int i = 0; i < queueToMrg.queueLength; i++) {
+            uint16_t sortLength = queueToMrg.queueNum[i] < maxSortLengthArr[i] ? queueToMrg.queueNum[i] :
+                                                                                 maxSortLengthArr[i];
+            tmpSortLen[i] = sortLength;
+            int32_t gmStartPosition = queueToMrg.currentHead[i];
+            DataCopy(srcLocalTensor[i * STRUCT_TILE_NUM], srcGmTensor[SORT_STRUCT_MULTIPLE * gmStartPosition],
+                     static_cast<uint32_t>(SORT_STRUCT_MULTIPLE * sortLength));
+        }
+
+        // 排序
+        MrgSort4Info mrgParams(tmpSortLen, true, validQueueArr[queueToMrg.queueLength], 1);
+
+        MrgSortSrcList<float> srcList(srcLocalTensor[0], srcLocalTensor[STRUCT_TILE_NUM],
+                                      srcLocalTensor[DOUBLE * STRUCT_TILE_NUM],
+                                      srcLocalTensor[TRIPLE * STRUCT_TILE_NUM]);
+        SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
+        WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
+
+        MrgSort4<float>(dstLocalTensor, srcList, mrgParams);
+        PipeBarrier<PIPE_ALL>();
+
+        // 排序排了多少数
+        uint16_t sortedLen[MAX_SORT_QUEUE_NUM];
+        GetMrgSortResult(sortedLen[0], sortedLen[1], sortedLen[2], sortedLen[3]);  // 2 3 为队列下标
+        const uint16_t localMrgLen = sortedLen[0] + sortedLen[1] + sortedLen[2] + sortedLen[3];  // 2 3 为队列下标
+
+        // 将排序的结果拷贝到dstGm上
+        DataCopy(dstGmTensor[SORT_STRUCT_MULTIPLE * queueToMrg.originalPosition +
+                             SORT_STRUCT_MULTIPLE * queueToMrg.totalMrgLen],
+                 dstLocalTensor, static_cast<uint32_t>(SORT_STRUCT_MULTIPLE * localMrgLen));
+
+        queueToMrg.totalMrgLen += localMrgLen;
+
+        // 根据此次排序的结果更新排序的数据
+        for (int i = 0; i < queueToMrg.queueLength; i++) {
+            queueToMrg.queueNum[i] -= sortedLen[i];
+            queueToMrg.currentHead[i] += sortedLen[i];
+        }
+
+        for (int i = 0; i < queueToMrg.queueLength; i++) {
+            if (queueToMrg.queueNum[i] == 0) {
+                for (int j = i; j < 3; j++) {  // 3 Sort排序队列为4个
+                    queueToMrg.queueNum[j] = queueToMrg.queueNum[j + 1];
+                    queueToMrg.currentHead[j] = queueToMrg.currentHead[j + 1];
+                }
+                queueToMrg.queueNum[queueToMrg.queueLength - 1] = 0;
+                queueToMrg.queueLength -= 1;
+                break;
             }
         }
     }
@@ -272,53 +452,10 @@ private:
         LocalTensor<float> sortLocal = outQueueWorkspace.DeQue<float>();
 
         // 拷贝到gm
-        DataCopy(globalSortBlock[offSet * EIGHTFLOD + processIndex * STRUCT_TILE_NUM], sortLocal, STRUCT_TILE_NUM);
+        DataCopy(globalSortBlock[offSet * SORT_STRUCT_MULTIPLE + processIndex * STRUCT_TILE_NUM], sortLocal,
+                 STRUCT_TILE_NUM);
 
         // 释放本地local
-        outQueueWorkspace.FreeTensor(sortLocal);
-    }
-
-    __aicore__ inline void FinalCopyIn(uint32_t processIndex1, uint32_t processIndex2)
-    {
-        LocalTensor<float> groupSortLocal = inQueueWorkspace.AllocTensor<float>();
-        DataCopy(groupSortLocal, globalSortBlock[processIndex1 * STRUCT_TILE_NUM], STRUCT_TILE_NUM);
-        DataCopy(groupSortLocal[STRUCT_TILE_NUM], globalSortBlock[processIndex2 * STRUCT_TILE_NUM],
-                 STRUCT_TILE_NUM);
-        inQueueWorkspace.EnQue(groupSortLocal);
-    }
-
-    __aicore__ inline void FinalCompute(uint32_t processIndex1, uint32_t processIndex2)
-    {
-        LocalTensor<float> groupSortLocal = inQueueWorkspace.DeQue<float>();
-        LocalTensor<float> sortLocal = outQueueWorkspace.AllocTensor<float>();
-
-        const uint8_t QUEUE_TWO = 3;
-        MrgSort4Info params;
-        params.elementLengths[0] = TILE_NUM;
-        params.elementLengths[1] = TILE_NUM;
-        params.validBit = QUEUE_TWO;
-        params.repeatTimes = 1;
-        params.ifExhaustedSuspension = false;
-        MrgSortSrcList<float> srcList;
-        srcList.src1 = groupSortLocal[0];
-        srcList.src2 = groupSortLocal[STRUCT_TILE_NUM];
-        SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
-        WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
-        MrgSort4<float>(sortLocal, srcList, params);
-
-        outQueueWorkspace.EnQue(sortLocal);
-        inQueueWorkspace.FreeTensor(groupSortLocal);
-    }
-
-    __aicore__ inline void FinalCopyOut(uint32_t processIndex1, uint32_t processIndex2)
-    {
-        // 结果出队
-        LocalTensor<float> sortLocal = outQueueWorkspace.DeQue<float>();
-        DataCopy(globalSortBlock[processIndex1 * STRUCT_TILE_NUM], sortLocal, STRUCT_TILE_NUM);
-        DataCopy(globalSortBlock[processIndex2 * STRUCT_TILE_NUM],
-                 sortLocal[STRUCT_TILE_NUM], STRUCT_TILE_NUM);
-        SetFlag<HardEvent::MTE3_S>(EVENT_ID0);
-        WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);
         outQueueWorkspace.FreeTensor(sortLocal);
     }
 
@@ -335,7 +472,7 @@ private:
             // 利用tmpLocal做中转实现gm2gm的拷贝
             DataCopy(tmpLocal, srcGlobal[i * STRUCT_TILE_NUM], STRUCT_TILE_NUM);
             PipeBarrier<PIPE_ALL>();
-            ProposalExtract(originIndex, tmpLocal, TILE_NUM / (DOUBLE * EIGHTFLOD), IDX_PROPOSAL_IDX);
+            ProposalExtract(originIndex, tmpLocal, TILE_NUM / (DOUBLE * SORT_STRUCT_MULTIPLE), IDX_PROPOSAL_IDX);
 
             LocalTensor<int32_t> originIndexLocalInt = originIndex.ReinterpretCast<int32_t>();
             SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
@@ -373,25 +510,25 @@ private:
 
     __aicore__ inline void MergeSort4Queue(LocalTensor<float> &sortBuf, LocalTensor<float> &tmpBuf)
     {
-        const uint16_t mergeCount = 4;
+        const uint16_t mergeCount = MAX_SORT_QUEUE_NUM;
         LocalTensor<float> sortedQue[2] = {tmpBuf, sortBuf};
         int switchFlag = 0;
-        const uint16_t proposalSize = 8; // 单个 proposal 的32位元素个数
+        const uint16_t proposalSize = SORT_STRUCT_MULTIPLE; // 单个 proposal 的32位元素个数 8
         uint16_t singleQueSize = 16; // 每条队列的 proposal 数量 每次乘 4
         while (singleQueSize < TILE_NUM) {
-            uint16_t QueNum = (TILE_NUM / singleQueSize) % 4;
-            uint16_t repeatTimes = TILE_NUM / singleQueSize / 4;
+            uint16_t QueNum = (TILE_NUM / singleQueSize) % MAX_SORT_QUEUE_NUM;
+            uint16_t repeatTimes = TILE_NUM / singleQueSize / MAX_SORT_QUEUE_NUM;
             if (QueNum != 0) {
                 repeatTimes++;
             }
-            uint16_t validBit = (1 << (4 - QueNum)) - 1;
+            uint16_t validBit = (1 << (MAX_SORT_QUEUE_NUM - QueNum)) - 1;
             struct MrgSortSrcList<float> srcList{
                 sortedQue[switchFlag][0],
                 sortedQue[switchFlag][singleQueSize * proposalSize],
-                sortedQue[switchFlag][singleQueSize * proposalSize * 2],
-                sortedQue[switchFlag][singleQueSize * proposalSize * 3]
+                sortedQue[switchFlag][singleQueSize * proposalSize * DOUBLE],
+                sortedQue[switchFlag][singleQueSize * proposalSize * TRIPLE]
             };
-            uint16_t elementLengths[4]{
+            uint16_t elementLengths[MAX_SORT_QUEUE_NUM]{
                 singleQueSize,
                 singleQueSize,
                 singleQueSize,
@@ -431,12 +568,12 @@ private:
         LocalTensor<int32_t> src1 = outQueueCumsumPartAddSrc1.AllocTensor<int32_t>();
 
         DataCopy(accumulator, cumSumBlock, cumSumNum32BytesPadded);
-        PipeBarrier<PIPE_ALL>();
 
         for (int i = 1; i < actualCoreNum; i++) {
             // src0
             DataCopy(src0, cumSumBlock[i * cumSumNum32BytesPadded], cumSumNum32BytesPadded);
-            PipeBarrier<PIPE_ALL>();
+            SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
+            WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
             // src1
             // DataCopyPad不支持localTensor->localTensor，已32字节对齐，因此可用DataCopy
             DataCopy(src1, accumulator, cumSumNum32BytesPadded);
@@ -449,7 +586,6 @@ private:
 
         // 将聚合计算binCount结果累加并搬运到cumSumGm输出
         PipeBarrier<PIPE_ALL>();
-
         LocalTensor<CumSumNumType> cumSumLocalTensor = expertNumTempBuf.Get<CumSumNumType>();
         CumSumNumType acc = 0;
         for (int i = 0; i < cumSumNum; i++) {
@@ -458,7 +594,6 @@ private:
         }
         PipeBarrier<PIPE_ALL>();
         CopyUb2GmPad(cumSumGm, cumSumLocalTensor, cumSumNum);
-        PipeBarrier<PIPE_ALL>();
 
         inQueueCumsumPart.FreeTensor(accumulator);
 
@@ -498,6 +633,7 @@ private:
     GlobalTensor<int32_t> originalGm;
     GlobalTensor<CumSumNumType> cumSumGm;
     GlobalTensor<float> globalSortBlock; // workspace
+    GlobalTensor<float> globalSortBlock2; // workspace2
     GlobalTensor<int32_t> cumSumBlock; // workspace
     GlobalTensor<int32_t> syncGm; // workspace
 
@@ -532,6 +668,8 @@ private:
     int32_t blockIdx = 0;
     // 每个专家被多少个token选中
     int32_t selectedExpertCount[1025] = {0};
+    int maxSortLengthArr[MAX_SORT_QUEUE_NUM] = {512, 512, 512, 512};
+    uint16_t validQueueArr[5] = {0, 0, 0b11, 0b111, 0b1111};
 };
 
 __aicore__ inline void InitGatingTilingData(const __gm__ uint8_t *tiling,
@@ -559,7 +697,6 @@ __aicore__ inline void InitGatingTilingData(const __gm__ uint8_t *tiling,
         tilingData->offSetPerCore[i] = tilingDataPointer->offSetPerCore[i];
     }
     tilingData->cumSumInt64 = tilingDataPointer->cumSumInt64;
-    PipeBarrier<PIPE_ALL>();
 }
 
 // implementation of kernel function

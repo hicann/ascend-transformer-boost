@@ -190,9 +190,9 @@ Status ReshapeAndCacheTilingNz(const LaunchParam &launchParam, KernelInfo &kerne
 
     TensorDType inDtypeV = launchParam.GetInTensor(1).desc.dtype;
     uint32_t typeByteV = static_cast<uint32_t>(GetTensorElementSize(inDtypeV));
-    bool isAlign = ((tilingDataPtr->numHeads * tilingDataPtr->headSizeK * tilingDataPtr->typeByte) % ALIGN == 0
-        && (tilingDataPtr->numHeads * tilingDataPtr->headSizeV * typeByteV) % ALIGN == 0);
-    MKI_CHECK(isAlign, "numHeads * headSize should be align to 32.", return Status::FailStatus(ERROR_INVALID_VALUE));
+    bool isAlign = ((tilingDataPtr->headSizeK * tilingDataPtr->typeByte) % ALIGN == 0
+        && (tilingDataPtr->headSizeV * typeByteV) % ALIGN == 0);
+    MKI_CHECK(isAlign, "headSize should be align to 32.", return Status::FailStatus(ERROR_INVALID_VALUE));
     uint64_t ubSize = PlatformInfo::Instance().GetUbSize();
 
     if (PlatformInfo::Instance().GetPlatformType() != PlatformType::ASCEND_910B) {

@@ -26,7 +26,6 @@ constexpr int64_t FP16_OTHER_USED = 6;
 constexpr uint32_t SCALAR_USED = 50;
 constexpr uint32_t NUM_TEMP_BUF = 32;
 constexpr uint32_t MEAN_AND_VAR_SIZE = 64;
-constexpr uint32_t ROM_STRIDE_NUM = 2;
 
 void LayerNormStridePrintLog(LayerNormStrideTilingData &tilingData)
 {
@@ -123,8 +122,7 @@ Status LayerNormStrideTiling(const LaunchParam &launchParam, KernelInfo &kernelI
     const auto& xStrides = launchParam.GetInTensor(0).desc.strides;
     const auto& xShapes = launchParam.GetInTensor(0).desc.dims;
     uint32_t dimNum = xStrides.size();
-    bool isNCT = (xStrides.empty() || xStrides.size() <= 1 ||
-                  xStrides[dimNum - ROM_STRIDE_NUM] == xShapes[dimNum - 1]) ? false : true;
+    bool isNCT = (xStrides.empty() || xStrides[dimNum - 2] == xShapes[dimNum - 1]) ? false : true;
     if (!isNCT) {
         tilingDataPtr->xDimNum = 0;
     } else {

@@ -7,11 +7,11 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-#include "mixops/include/common_func.h"
-#include "mixops/include/simd.h"
-#include "mixops/include/iterator.h"
-#include "mixops/include/mma.h"
-#include "mixops/include/utils.h"
+#include "ops/utils/kernel/common_func.h"
+#include "ops/utils/kernel/simd.h"
+#include "ops/utils/kernel/iterator.h"
+#include "ops/utils/kernel/mma.h"
+#include "ops/utils/kernel/utils.h"
 #include "kernel_operator.h"
 #include "unpad_flash_attention_common.h"
 
@@ -2247,7 +2247,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<float, half, PrecType::BMM1_FP1
     WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
     if (kvCopyStride <= STRIDE_UPPER_BOUND + fn) {
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1vPingBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset], fn, kvCopyStride, fn, fk, fk, fk);
+            l1vPingBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset], fn, fn, kvCopyStride, fk, fk, fk);
     } else {
         for (int32_t l1vBurstIdx = 0; l1vBurstIdx < (fk / BLOCK_SIZE); ++l1vBurstIdx) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -2971,10 +2971,10 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
         WAIT_FLAG(MTE1, MTE2, Pongflag);
         if (__m0 == 1) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], 1, ntokensQ, 1, fk, fk, fk);
+                l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], 1, 1, ntokensQ, fk, fk, fk);
         } else if (ntokensQ <= STRIDE_UPPER_BOUND + fm) { // (fm, fk)
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], fm, ntokensQ, fm, fk, fk, fk);
+                l1qBuf_tensor, gmSrcq_tensor[(int64_t)srcqOffset], fm, fm, ntokensQ, fk, fk, fk);
         } else {
             for (int32_t l1qBurstIdx = 0; l1qBurstIdx < (fk / BLOCK_SIZE); ++l1qBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -2994,7 +2994,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
         if (add_mask_n0 == 1) {
             WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset0], fm, maskStride, fm, fn,
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset0], fm, fm, maskStride,  fn,
                 fn, fn);
             SET_FLAG(MTE2, MTE1, Pingflag + 2);
         }
@@ -3002,7 +3002,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
             if (add_mask_n1 == 1) {
                 WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset1], fm, maskStride, fm,
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset1], fm, fm, maskStride,
                     bn, bn, bn);
                 SET_FLAG(MTE2, MTE1, Pongflag + 2);
             }
@@ -3055,7 +3055,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
 #endif
     if (kvCopyStride <= STRIDE_UPPER_BOUND + fn) {
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1kPingBuf_tensor, gmSrck_tensor[(int64_t)srckOffset], fn, kvCopyStride, fn, fk, fk, fk);
+            l1kPingBuf_tensor, gmSrck_tensor[(int64_t)srckOffset], fn, fn, kvCopyStride, fk, fk, fk);
     } else {
         for (int32_t l1kBurstIdx = 0; l1kBurstIdx < (fk / BLOCK_SIZE); ++l1kBurstIdx) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -3088,7 +3088,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
     WAIT_FLAG(MTE1, MTE2, Pingflag + 6);
     if (kvCopyStride <= STRIDE_UPPER_BOUND + fn) {
         gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-            l1vPingBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset], fn, kvCopyStride, fn, fk, fk, fk);
+            l1vPingBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset], fn, fn, kvCopyStride, fk, fk, fk);
     } else {
         for (int32_t l1vBurstIdx = 0; l1vBurstIdx < (fk / BLOCK_SIZE); ++l1vBurstIdx) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -3157,8 +3157,8 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
 #endif
         if (kvCopyStride <= STRIDE_UPPER_BOUND + bn) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1kPongBuf_tensor, gmSrck_tensor[(int64_t)srckOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn,
-                kvCopyStride, bn, fk, fk, fk);
+                l1kPongBuf_tensor, gmSrck_tensor[(int64_t)srckOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn, bn,
+                kvCopyStride, fk, fk, fk);
         } else {
             for (int32_t l1kBurstIdx = 0; l1kBurstIdx < (fk / BLOCK_SIZE); ++l1kBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -3190,8 +3190,8 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
         WAIT_FLAG(MTE1, MTE2, Pongflag + 6);
         if (kvCopyStride <= STRIDE_UPPER_BOUND + bn) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1vPongBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn,
-                kvCopyStride, bn, fk, fk, fk);
+                l1vPongBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn, bn,
+                kvCopyStride, fk, fk, fk);
         } else {
             for (int32_t l1vBurstIdx = 0; l1vBurstIdx < (fk / BLOCK_SIZE); ++l1vBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -3221,7 +3221,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
         if (add_mask_n0 == 1) {
             WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset0], fm, maskStride, fm, fn,
+                l1maskBufAddr_tensor[Pingflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset0], fm, fm, maskStride, fn,
                 fn, fn);
             SET_FLAG(MTE2, MTE1, Pingflag + 2);
             WAIT_FLAG(MTE2, MTE1, Pingflag + 2);
@@ -3230,7 +3230,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
             if (add_mask_n1 == 1) {
                 WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset1], fm, maskStride, fm,
+                    l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE], gmSrcm_tensor[srcmOffset1], fm, fm, maskStride,
                     bn, bn, bn); //maskStride
                 SET_FLAG(MTE2, MTE1, Pongflag + 2);
                 WAIT_FLAG(MTE2, MTE1, Pongflag + 2);
@@ -3252,7 +3252,7 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
         WAIT_FLAG(MTE1, MTE2, Pingflag + 2);
         if (kvCopyStride <= STRIDE_UPPER_BOUND + fn) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1vPingBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset], fn, kvCopyStride, fn, fk, fk, fk);
+                l1vPingBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset], fn, fn, kvCopyStride, fk, fk, fk);
         } else {
             for (int32_t l1vBurstIdx = 0; l1vBurstIdx < (fk / BLOCK_SIZE); ++l1vBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
@@ -3371,8 +3371,8 @@ __aicore__ inline void UnpadFlashAttentionCommon<T, SType, prec_type1, prec_type
         WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
         if (kvCopyStride <= STRIDE_UPPER_BOUND + bn) {
             gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
-                l1vPongBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn,
-                kvCopyStride, bn, fk, fk, fk);
+                l1vPongBuf_tensor, gmSrcv_tensor[(int64_t)srcvOffset + Pongflag * pp_n_scalar * BLOCK_SIZE], bn, bn,
+                kvCopyStride, fk, fk, fk);
         } else {
             for (int32_t l1vBurstIdx = 0; l1vBurstIdx < (fk / BLOCK_SIZE); ++l1vBurstIdx) {
                 gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(

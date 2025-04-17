@@ -11,7 +11,7 @@
 #define ROPR_Q_CONCAT_BASE
 
 #include "mixops/rope_q_concat/tiling/tiling_data.h"
-#include "mixops/include/simd.h"
+#include "ops/utils/kernel/simd.h"
 #include "mixops/rope/op_kernel/common_val.h"
 #include "kernel_operator.h"
 using AscendC::Duplicate;

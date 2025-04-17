@@ -520,7 +520,7 @@ Status InitInfo(UnpadFlashAttentionInfo &mmInfo, OpParam::UnpadFlashAttention &p
     batch = param.qSeqLen.size();
     OP_TILING_CHECK_STATUS_RETURN(InitMaxKVSeqlen(batch, kcacheShape, mmInfo, param));
     FlashAttentionFillInfo(mmInfo, param, batch, embed);
-    bool optEnable = mmInfo.maskType == 0 && mmInfo.embeddingSize <= 128 &&
+    bool optEnable = mmInfo.maskType == 0 && mmInfo.embeddingSize <= 128 && !mmInfo.isMLA &&
                      mmInfo.scaleType == OpParam::UnpadFlashAttention::SCALE_TOR;
     if (optEnable) {
         GetSpecTilingKey(mmInfo, param);

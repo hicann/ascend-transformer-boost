@@ -55,7 +55,7 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.kvHeads = param.kvHead;
     mmInfo.numHeads = static_cast<int32_t>(param.headSize);
     mmInfo.maskType = static_cast<int32_t>(param.maskType);
-    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT) && (static_cast<int32_t>(mmInfo.type) < NUM2); // quant not support
+    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT); // quant not support
     if (mmInfo.mtpTp1Flag) {
         mmInfo.maskType = 0;
     }
@@ -120,14 +120,19 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t basicWorkSpaceFloat = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenFloat;
     uint64_t basicWorkSpaceInt8 = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenInt;
     bool isQuant = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
-    uint64_t pWorkSpaceSize = isQuant ? basicWorkSpaceInt8 : basicWorkSpaceHalf * 2;
-    uint64_t oTempWorkSpcaceSize = isQuant ? basicWorkSpaceInt8 * 2 : basicWorkSpaceFloat * 2;
     if (isQuant) {
-        kernelInfo.GetScratchSizes() = {basicWorkSpaceFloat, basicWorkSpaceFloat, pWorkSpaceSize, oTempWorkSpcaceSize,
-                                        basicWorkSpaceFloat};
+        uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
+        uint64_t pWorkSpaceSize = basicWorkSpaceInt8;
+        uint64_t oTempWorkSpcaceSize = basicWorkSpaceInt8 * 2;
+        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, sWorkSpaceSize, pWorkSpaceSize,
+                                        oTempWorkSpcaceSize, basicWorkSpaceFloat};
     } else {
-        kernelInfo.GetScratchSizes() = {basicWorkSpaceFloat * 2, NUM512, pWorkSpaceSize, oTempWorkSpcaceSize,
-                                        basicWorkSpaceFloat};
+        uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
+        uint64_t pWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceHalf * 4 : basicWorkSpaceHalf * 2;
+        uint64_t oTempWorkSpcaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
+        uint64_t goWorkSpcaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
+        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, NUM512, pWorkSpaceSize, oTempWorkSpcaceSize,
+                                        goWorkSpcaceSize};
     }
     Status ret2 = GenTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret2);

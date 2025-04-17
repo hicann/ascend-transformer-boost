@@ -17,7 +17,7 @@ namespace AtbOps {
 constexpr int32_t BLOCK_SIZE = 16;
 constexpr int32_t BLOCK_SIZE_32 = 32;
 constexpr int32_t TILING_PARA_SIZE = 8;
-constexpr int32_t TILING_PARA_SIZE_TP1 = 4;
+constexpr int32_t TILING_PARA_SIZE_TP1 = 5;
 constexpr int32_t TILING_HEAD_SIZE = 15;
 constexpr int32_t M_LIMIT = 128;
 constexpr int32_t FLOAT_LIMIT = 64;

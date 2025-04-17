@@ -37,7 +37,6 @@ constexpr int32_t MM2QUANT = 6;
 constexpr int32_t BMM3 = 7;
 constexpr int32_t BMM3SPLIT = 8;
 constexpr int32_t MM2OUT = 9;
-constexpr int32_t MTE2WAIT = 10;
 constexpr int32_t EINSUMOUT = 11;
 constexpr int32_t EINSUMQUANT = 12;
 
@@ -517,9 +516,6 @@ public:
                 SET_FLAG(MTE2, V, EVENT_ID0);
             }
             WAIT_FLAG(MTE2, V, EVENT_ID0);
-            if (pid == row_work_ - 1) {
-                AscendC::CrossCoreSetFlag<0x2, PIPE_MTE2>(MTE2WAIT);
-            }
 
             // 修改输入
             Cast(fp32_xy,
@@ -1458,20 +1454,20 @@ public:
                                           uint32_t mode);
     __aicore__ __force_inline__ uint64_t GetOffsetA(const uint64_t batchIdx, const uint64_t mIdx, uint64_t kIdx);
     __aicore__ __force_inline__ uint64_t GetOffsetB(const uint64_t batchIdx, const uint64_t kIdx, uint64_t nIdx);
-    __aicore__ __force_inline__ void CopyTileA(AscendC::LocalTensor<InDtype> &dstTensor,
+    __aicore__ __force_inline__ void CopyTileA(const AscendC::LocalTensor<InDtype> &dstTensor,
                                                const AscendC::GlobalTensor<InDtype> &srcTensor,
                                                const uint64_t m_actual,
                                                const uint64_t m_round,
                                                const uint64_t k_actual,
                                                const uint64_t k_round);
-    __aicore__ __force_inline__ void CopyTileB(AscendC::LocalTensor<InDtype> &dstTensor,
+    __aicore__ __force_inline__ void CopyTileB(const AscendC::LocalTensor<InDtype> &dstTensor,
                                                const AscendC::GlobalTensor<InDtype> &srcTensor,
                                                const uint64_t k_actual,
                                                const uint64_t k_round,
                                                const uint64_t n_actual,
                                                const uint64_t n_round);
     __aicore__ __force_inline__ void Process();
-    __aicore__ __force_inline__ void PreloadB();
+    __aicore__ __force_inline__ void PreloadDoubleWeight();
 
 private:
     __aicore__ __force_inline__ void InitBuffer();
@@ -1598,7 +1594,7 @@ __aicore__ __force_inline__ uint64_t PpMatmulW8a8<transA, transB, withBias, swiz
 
 template <bool transA, bool transB, bool withBias, uint32_t swizzleDir, DataFormat formatA, DataFormat formatB>
 __aicore__ __force_inline__ void PpMatmulW8a8<transA, transB, withBias, swizzleDir, formatA, formatB>::CopyTileA(
-    AscendC::LocalTensor<InDtype> &dstTensor,
+    const AscendC::LocalTensor<InDtype> &dstTensor,
     const AscendC::GlobalTensor<InDtype> &srcTensor,
     const uint64_t m_actual,
     const uint64_t m_round,
@@ -1639,7 +1635,7 @@ __aicore__ __force_inline__ void PpMatmulW8a8<transA, transB, withBias, swizzleD
 
 template <bool transA, bool transB, bool withBias, uint32_t swizzleDir, DataFormat formatA, DataFormat formatB>
 __aicore__ __force_inline__ void PpMatmulW8a8<transA, transB, withBias, swizzleDir, formatA, formatB>::CopyTileB(
-    AscendC::LocalTensor<InDtype> &dstTensor,
+    const AscendC::LocalTensor<InDtype> &dstTensor,
     const AscendC::GlobalTensor<InDtype> &srcTensor,
     const uint64_t k_actual,
     const uint64_t k_round,
@@ -1747,32 +1743,28 @@ __aicore__ __force_inline__ void PpMatmulW8a8<transA, transB, withBias, swizzleD
 }
 
 template <bool transA, bool transB, bool withBias, uint32_t swizzleDir, DataFormat formatA, DataFormat formatB>
-__aicore__ __force_inline__ void PpMatmulW8a8<transA, transB, withBias, swizzleDir, formatA, formatB>::PreloadB()
+__aicore__ __force_inline__ void PpMatmulW8a8<transA, transB, withBias, swizzleDir, formatA, formatB>::PreloadDoubleWeight()
 {
 #ifdef __DAV_C220_CUBE__
-    if (core_idx >= core_num) {
-        return;
+    if (core_idx < core_num) {
+        uint64_t m_idx = 0;
+        uint64_t n_idx = 0;
+        GetBaseBlockIdx(core_idx, m_idx, n_idx);
+        uint64_t shuffle_k = en_shuffle_k ? core_idx % k_loop : 0;
+        uint64_t offset_b = GetOffsetB(0, shuffle_k, n_idx);
+        uint64_t n_actual = (n_idx == (n_loop - 1)) ? (n - n_idx * n0) : n0;
+        uint64_t n_round = RoundUp<BLOCK_SIZE_16>(n_actual);
+        uint64_t k_actual = (shuffle_k == k_loop - 1) ? k - shuffle_k * k0 : k0;
+        uint64_t k_round = RoundUp<BLOCK_SIZE_32>(k_actual);
+        CopyTileB(l1_base_b, gm_b[offset_b], k_actual, k_round, n_actual, n_round);
+        if (k_loop > 1) {
+            uint64_t shuffle_k = en_shuffle_k ? (core_idx + 1) % k_loop : 1;
+            uint64_t offset_b = GetOffsetB(0, shuffle_k, n_idx);
+            uint64_t k_actual = (shuffle_k == k_loop - 1) ? k - shuffle_k * k0 : k0;
+            uint64_t k_round = RoundUp<BLOCK_SIZE_32>(k_actual);
+            CopyTileB(l1_base_b[L1_PINGPONG_BUFFER_LEN], gm_b[offset_b], k_actual, k_round, n_actual, n_round);
+        }
     }
-    using LocalTensor = AscendC::LocalTensor<InDtype>;
-    LocalTensor l1_buf_b = ping_flag ? l1_base_b : l1_base_b[L1_PINGPONG_BUFFER_LEN];
-    uint64_t batch_idx = core_idx / n_loop / m_loop;
-    uint64_t shuffle_k = en_shuffle_k ? core_idx % k_loop : 0;
-    uint64_t m_idx = 0;
-    uint64_t n_idx = 0;
-    GetBaseBlockIdx(core_idx, m_idx, n_idx);
-    uint64_t offset_b = GetOffsetB(batch_idx, shuffle_k, n_idx);
-    uint64_t k_actual = (shuffle_k == k_loop - 1) ? k - shuffle_k * k0 : k0;
-    uint64_t k_round = RoundUp<BLOCK_SIZE_32>(k_actual);
-    uint64_t n_actual = (n_idx == (n_loop - 1)) ? (n - n_idx * n0) : n0;
-    uint64_t n_round = 0;
-    if constexpr (transB) {
-        n_round = RoundUp<BLOCK_SIZE_16>(n_actual);
-    } else {
-        n_round = RoundUp<BLOCK_SIZE_32>(n_actual);
-    }
-    SET_FLAG(MTE1, MTE2, EVENT_ID0);
-    WAIT_FLAG(MTE1, MTE2, EVENT_ID0);
-    CopyTileB(l1_buf_b, gm_b[offset_b], k_actual, k_round, n_actual, n_round);
 #endif
 }
 
@@ -1903,7 +1895,9 @@ __aicore__ __force_inline__ void PpMatmulW8a8<transA, transB, withBias, swizzleD
                 SET_FLAG(MTE2, MTE1, event_id_next);
 
                 WAIT_FLAG(MTE1, MTE2, event_id_next + CONST_2);
-                CopyTileB(l1_buf_b_next, gm_b[offset_b_next], k_actual_next, k_round_next, n_actual, n_round);
+                if (loop_idx != core_idx || k_idx != 0) { // 第二个权重矩阵预加载
+                    CopyTileB(l1_buf_b_next, gm_b[offset_b_next], k_actual_next, k_round_next, n_actual, n_round);
+                }
                 SET_FLAG(MTE2, MTE1, event_id_next + CONST_2);
             }
 
@@ -2116,12 +2110,21 @@ public:
                                 GM_ADDR s2Gm,
                                 GM_ADDR s3Gm)
     {
+        s1GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int8_t *>(s1Gm));
+        wdqkvGmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int8_t *>(wdqkvGm));
+        bias1gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(bias1Gm));
+        descale1gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ uint64_t *>(descale1Gm));
+        s3GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(s3Gm));
+
+#ifdef __DAV_C220_CUBE__
+        mm_w8a8_1.Init(s1GmTensor, wdqkvGmTensor, bias1gmTensor, descale1gmTensor, s3GmTensor, mlaParams, 0);
+        mm_w8a8_1.PreloadDoubleWeight();
+#endif
         hiddenStateGmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(hiddenStateGm));
         gamma1GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(gamma1Gm));
         quantScale1GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(quantScale1Gm));
         quantOffset1GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int8_t *>(quantOffset1Gm));
 
-        wdqkvGmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int8_t *>(wdqkvGm));
         gamma2GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(gamma2Gm));
         quantScale2GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(quantScale2Gm));
         quantScale3GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(gmCtkvScale));
@@ -2136,21 +2139,15 @@ public:
         slotMappingGmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(slotMappingGm));
         wuqGmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int8_t *>(wuqGm));
         wukGmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(wukGm));
-        descale1gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ uint64_t *>(descale1Gm));
         descale2gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ uint64_t *>(descale2Gm));
-        s1GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int8_t *>(s1Gm));
         s2GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(s2Gm));
-        s3GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(s3Gm));
         qGmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ qOutDtype *>(qGm));
         qGmTensor2.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(qGm2));
-        bias1gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(bias1Gm));
         bias2gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(bias2Gm));
 
         beta1GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(beta1Gm));
         beta2GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(beta2Gm));
-
 #ifdef __DAV_C220_CUBE__
-        mm_w8a8_1.Init(s1GmTensor, wdqkvGmTensor, bias1gmTensor, descale1gmTensor, s3GmTensor, mlaParams, 0);
         mm_w8a8_2.Init(s1GmTensor, wuqGmTensor, bias2gmTensor, descale2gmTensor, s2GmTensor, mlaParams, 1);
         if constexpr (cacheMode == CACHE_MODE_INT8_NZCACHE){
             mm_ein_sum.Init(s2Gm, wukGm, s1Gm, mlaParams);
@@ -2474,16 +2471,13 @@ template<int8_t cacheMode, DataFormat weightFormat1, DataFormat weightFormat2, D
 __aicore__ inline void MLAOperation<cacheMode, weightFormat1, weightFormat2, weightFormat3>::ProcessCube()
 {
 #ifdef __DAV_C220_CUBE__
-    WaitFlagDev(MTE2WAIT);
-    mm_w8a8_1.PreloadB();
     WaitFlagDev(MM1);
     mm_w8a8_1.Process();
     FftsCrossCoreSync<PIPE_FIX, 0>(RMSNORMQUANT2);
     WaitFlagDev(RMSNORMQUANT2);
     AscendC::CrossCoreSetFlag<0x2, PIPE_FIX>(MM1QUANT);
 
-    WaitFlagDev(MTE2WAIT);
-    mm_w8a8_2.PreloadB();
+    mm_w8a8_2.PreloadDoubleWeight();
     WaitFlagDev(MM2QUANT);
     mm_w8a8_2.Process();
     FftsCrossCoreSync<PIPE_FIX, 0>(MM2OUT);
@@ -2530,8 +2524,6 @@ __aicore__ inline void MLAOperation<cacheMode, weightFormat1, weightFormat2, wei
                              offset_tensor,
                              res1_tensor,
                              res3_tensor);
-    } else {
-        AscendC::CrossCoreSetFlag<0x2, PIPE_MTE2>(MTE2WAIT);
     }
     FftsCrossCoreSync<PIPE_MTE3, 0>(RMSNORMQUANT1);
     WaitFlagDev(RMSNORMQUANT1);
@@ -2565,8 +2557,6 @@ __aicore__ inline void MLAOperation<cacheMode, weightFormat1, weightFormat2, wei
                              offset_tensor,
                              res1_tensor,
                              res3_tensor);
-    } else {
-        AscendC::CrossCoreSetFlag<0x2, PIPE_MTE3>(MTE2WAIT);
     }
     FftsCrossCoreSync<PIPE_MTE3, 0>(MM2);
     WaitFlagDev(MM2);
@@ -2771,7 +2761,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(1)) {
+    } else if (TILING_KEY_IS(4)) {
         MLAOperation<CACHE_MODE_KVCACHE, DataFormat::ND, DataFormat::ND, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2779,7 +2769,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(2)) {
+    } else if (TILING_KEY_IS(8)) {
         MLAOperation<CACHE_MODE_KVCACHE, DataFormat::ND, DataFormat::NZ, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2787,7 +2777,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(3)) {
+    } else if (TILING_KEY_IS(12)) {
         MLAOperation<CACHE_MODE_KVCACHE, DataFormat::ND, DataFormat::NZ, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2795,7 +2785,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(4)) {
+    } else if (TILING_KEY_IS(16)) {
         MLAOperation<CACHE_MODE_KVCACHE, DataFormat::NZ, DataFormat::ND, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2803,7 +2793,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(5)) {
+    } else if (TILING_KEY_IS(20)) {
         MLAOperation<CACHE_MODE_KVCACHE, DataFormat::NZ, DataFormat::ND, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2811,7 +2801,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(6)) {
+    } else if (TILING_KEY_IS(24)) {
         MLAOperation<CACHE_MODE_KVCACHE, DataFormat::NZ, DataFormat::NZ, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2819,7 +2809,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(7)) {
+    } else if (TILING_KEY_IS(28)) {
         MLAOperation<CACHE_MODE_KVCACHE, DataFormat::NZ, DataFormat::NZ, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2827,7 +2817,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(8)) {
+    } else if (TILING_KEY_IS(32)) {
         MLAOperation<CACHE_MODE_KROPE_CTKV, DataFormat::ND, DataFormat::ND, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2835,7 +2825,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(9)) {
+    } else if (TILING_KEY_IS(36)) {
         MLAOperation<CACHE_MODE_KROPE_CTKV, DataFormat::ND, DataFormat::ND, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2843,7 +2833,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(10)) {
+    } else if (TILING_KEY_IS(40)) {
         MLAOperation<CACHE_MODE_KROPE_CTKV, DataFormat::ND, DataFormat::NZ, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2851,7 +2841,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(11)) {
+    } else if (TILING_KEY_IS(44)) {
         MLAOperation<CACHE_MODE_KROPE_CTKV, DataFormat::ND, DataFormat::NZ, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2859,7 +2849,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(12)) {
+    } else if (TILING_KEY_IS(48)) {
         MLAOperation<CACHE_MODE_KROPE_CTKV, DataFormat::NZ, DataFormat::ND, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2867,7 +2857,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(13)) {
+    } else if (TILING_KEY_IS(52)) {
         MLAOperation<CACHE_MODE_KROPE_CTKV, DataFormat::NZ, DataFormat::ND, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2875,7 +2865,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(14)) {
+    } else if (TILING_KEY_IS(56)) {
         MLAOperation<CACHE_MODE_KROPE_CTKV, DataFormat::NZ, DataFormat::NZ, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2883,7 +2873,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(15)) {
+    } else if (TILING_KEY_IS(60)) {
         MLAOperation<CACHE_MODE_KROPE_CTKV, DataFormat::NZ, DataFormat::NZ, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2891,7 +2881,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(16)) {
+    } else if (TILING_KEY_IS(64)) {
         MLAOperation<CACHE_MODE_INT8_NZCACHE, DataFormat::ND, DataFormat::ND, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2899,7 +2889,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(17)) {
+    } else if (TILING_KEY_IS(68)) {
         MLAOperation<CACHE_MODE_INT8_NZCACHE, DataFormat::ND, DataFormat::ND, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2907,7 +2897,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(18)) {
+    } else if (TILING_KEY_IS(72)) {
         MLAOperation<CACHE_MODE_INT8_NZCACHE, DataFormat::ND, DataFormat::NZ, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2915,7 +2905,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(19)) {
+    } else if (TILING_KEY_IS(76)) {
         MLAOperation<CACHE_MODE_INT8_NZCACHE, DataFormat::ND, DataFormat::NZ, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2923,7 +2913,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(20)) {
+    } else if (TILING_KEY_IS(80)) {
         MLAOperation<CACHE_MODE_INT8_NZCACHE, DataFormat::NZ, DataFormat::ND, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2931,7 +2921,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(21)) {
+    } else if (TILING_KEY_IS(84)) {
         MLAOperation<CACHE_MODE_INT8_NZCACHE, DataFormat::NZ, DataFormat::ND, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2939,7 +2929,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(22)) {
+    } else if (TILING_KEY_IS(88)) {
         MLAOperation<CACHE_MODE_INT8_NZCACHE, DataFormat::NZ, DataFormat::NZ, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2947,7 +2937,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(23)) {
+    } else if (TILING_KEY_IS(92)) {
         MLAOperation<CACHE_MODE_INT8_NZCACHE, DataFormat::NZ, DataFormat::NZ, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2955,7 +2945,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(24)) {
+    } else if (TILING_KEY_IS(96)) {
         MLAOperation<CACHE_MODE_NZCACHE, DataFormat::ND, DataFormat::ND, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2963,7 +2953,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(25)) {
+    } else if (TILING_KEY_IS(100)) {
         MLAOperation<CACHE_MODE_NZCACHE, DataFormat::ND, DataFormat::ND, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2971,7 +2961,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(26)) {
+    } else if (TILING_KEY_IS(104)) {
         MLAOperation<CACHE_MODE_NZCACHE, DataFormat::ND, DataFormat::NZ, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2979,7 +2969,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(27)) {
+    } else if (TILING_KEY_IS(108)) {
         MLAOperation<CACHE_MODE_NZCACHE, DataFormat::ND, DataFormat::NZ, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2987,7 +2977,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(28)) {
+    } else if (TILING_KEY_IS(112)) {
         MLAOperation<CACHE_MODE_NZCACHE, DataFormat::NZ, DataFormat::ND, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -2995,7 +2985,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(29)) {
+    } else if (TILING_KEY_IS(116)) {
         MLAOperation<CACHE_MODE_NZCACHE, DataFormat::NZ, DataFormat::ND, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -3003,7 +2993,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(30)) {
+    } else if (TILING_KEY_IS(120)) {
         MLAOperation<CACHE_MODE_NZCACHE, DataFormat::NZ, DataFormat::NZ, DataFormat::ND> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,
@@ -3011,7 +3001,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention(GM_ADDR sync,
                 qGm, keycacheOutGm, qGm2, keycacheOutGm2, s1Gm, s2Gm, s3Gm);
         op.ProcessCube();
         op.ProcessVector();
-    } else if (TILING_KEY_IS(31)) {
+    } else if (TILING_KEY_IS(124)) {
         MLAOperation<CACHE_MODE_NZCACHE, DataFormat::NZ, DataFormat::NZ, DataFormat::NZ> op(mlaTilingData, tilingGm);
         op.Init(hiddenStateGm, gamma1Gm, beta1Gm, quantScale1Gm, quantOffset1Gm, wdqkvGm, bias1Gm, gamma2Gm, beta2Gm,
                 quantScale2Gm, quantOffset2Gm, gamma3Gm, sin1Gm, cos1Gm, sin2Gm, cos2Gm, keycacheGm, slotMappingGm,

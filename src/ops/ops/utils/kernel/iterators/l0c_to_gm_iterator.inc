@@ -9,6 +9,9 @@
  */
 #include "../iterator.h"
 
+constexpr uint32_t BLOCK_NUM = 16;
+constexpr uint32_t BLOCK_SIZE_INT8 = 32;
+
 template <>
 struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, half, float> {
     /**
@@ -26,9 +29,10 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, half, float> {
                          uint32_t mTileActual,
                          uint32_t nTileActual,
                          uint32_t srcStride,
-                         uint32_t dstStride)
+                         uint32_t dstStride,
+                         uint8_t  unitFlag = 0)
     {
-#ifdef USE_ASCENDC
+#ifdef __DAV_C220_CUBE__
         auto intriParams = AscendC::FixpipeParamsV220(nTileActual, // nSize
                                                       mTileActual, // mSize
                                                       srcStride,   // srcStride
@@ -36,37 +40,17 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, half, float> {
                                                       false);      // enRelu
 
         intriParams.quantPre = QuantMode_t::F322F16;
+        intriParams.unitFlag = unitFlag;
         AscendC::Fixpipe<half, float, AscendC::CFG_ROW_MAJOR>(gmTensor, l0cTensor, intriParams);
 #else
-#if (__CCE_AICORE__ == 300)
-        copy_matrix_cc_to_gm((__gm__ half *)gmTensor.GetPhyAddr(),     // dst
-                             (__cc__ float *)l0cTensor.GetPhyAddr(),   // src
-                             0,                                        // sid
-                             nTileActual,                              // NSize
-                             mTileActual,                              // MSize
-                             dstStride,                                // dstStride_dst_D
-                             srcStride,                                // srcStride
-                             0,
-                             0,                                        // UnitFlagMode
-                             F322F16,                                  // QuantPRE
-                             0,                                        // ReLUPRE
-                             false,                                    // channelSplit
-                             true,                                     // NZ2ND_EN
-                             false);
-#else
-        copy_matrix_cc_to_gm((__gm__ half *)gmTensor.GetPhyAddr(),   // dst
-                             (__cc__ float *)l0cTensor.GetPhyAddr(), // src
-                             0,                                      // sid
-                             nTileActual,                            // NSize
-                             mTileActual,                            // MSize
-                             dstStride,                              // dstStride_dst_D
-                             srcStride,                              // srcStride
-                             0,                                      // UnitFlagMode
-                             F322F16,                                // QuantPRE
-                             0,                                      // ReLUPRE
-                             false,                                  // channelSplit
-                             true);                                  // NZ2ND_EN
-#endif
+        AscendC::FixpipeParams<float> intriParams(
+            (nTileActual + BLOCK_NUM - 1) / AscendC::BLOCK_CUBE,
+            static_cast<uint16_t>(mTileActual * BLOCK_NUM * sizeof(float) / BLOCK_SIZE_INT8),
+            0,
+            dstStride);
+        intriParams.nz2ndParams = {true, 1, 0, 0, static_cast<uint16_t>(nTileActual)};
+        intriParams.quantParams = {QuantMode_t::F322F16};
+        AscendC::Fixpipe(gmTensor, l0cTensor, intriParams);
 #endif
     };
 };
@@ -78,9 +62,10 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, half, int32_t> {
                          uint32_t mTileActual,
                          uint32_t nTileActual,
                          uint32_t srcStride,
-                         uint32_t dstStride)
+                         uint32_t dstStride,
+                         uint8_t  unitFlag = 0)
     {
-#ifdef USE_ASCENDC
+#ifdef __DAV_C220_CUBE__
         auto intriParams = AscendC::FixpipeParamsV220(nTileActual, // nSize
                                                       mTileActual, // mSize
                                                       srcStride,   // srcStride
@@ -88,38 +73,17 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, half, int32_t> {
                                                       false);      // enRelu
 
         intriParams.quantPre = QuantMode_t::VDEQF16;
+        intriParams.unitFlag = unitFlag;
         AscendC::Fixpipe<half, int32_t, AscendC::CFG_ROW_MAJOR>(gmTensor, l0cTensor, intriParams);
 #else
-#if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
-        copy_matrix_cc_to_gm((__gm__ half *)gmTensor.GetPhyAddr(),     // dst
-                             (__cc__ int32_t *)l0cTensor.GetPhyAddr(), // src
-                             0,                                        // sid
-                             nTileActual,                              // NSize
-                             mTileActual,                              // MSize
-                             dstStride,                                // dstStride_dst_D
-                             srcStride,                                // srcStride
-                             0,                                        // UnitFlagMode
-                             VDEQF16,                                  // QuantPRE
-                             0,                                        // ReLUPRE
-                             false,                                    // channelSplit
-                             true);                                    // NZ2ND_EN
-
-#elif defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 300)
-        copy_matrix_cc_to_gm((__gm__ half *)gmTensor.GetPhyAddr(),     // dst
-                             (__cc__ int32_t *)l0cTensor.GetPhyAddr(), // src
-                             0,                                        // sid
-                             nTileActual,                              // NSize
-                             mTileActual,                              // MSize
-                             dstStride,                                // dstStride_dst_D
-                             srcStride,                                // srcStride
-                             0,
-                             0,                                        // UnitFlagMode
-                             VDEQF16,                                  // QuantPRE
-                             0,                                        // ReLUPRE
-                             false,                                    // channelSplit
-                             true,                                    // NZ2ND_EN
-                             false);
-#endif
+        AscendC::FixpipeParams<int32_t> intriParams(
+            (nTileActual + BLOCK_NUM - 1) / AscendC::BLOCK_CUBE,
+            static_cast<uint16_t>(mTileActual * BLOCK_NUM * sizeof(float) / BLOCK_SIZE_INT8),
+            0,
+            dstStride);
+        intriParams.nz2ndParams = {true, 1, 0, 0, static_cast<uint16_t>(nTileActual)};
+        intriParams.quantParams = {QuantMode_t::VDEQF16};
+        AscendC::Fixpipe(gmTensor, l0cTensor, intriParams);
 #endif
     };
 };
@@ -131,9 +95,10 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, __bf16, float> {
                          uint32_t mTileActual,
                          uint32_t nTileActual,
                          uint32_t srcStride,
-                         uint32_t dstStride)
+                         uint32_t dstStride,
+                         uint8_t  unitFlag = 0)
     {
-#ifdef USE_ASCENDC
+#ifdef __DAV_C220_CUBE__
         auto intriParams = AscendC::FixpipeParamsV220(nTileActual, // nSize
                                                       mTileActual, // mSize
                                                       srcStride,   // srcStride
@@ -141,20 +106,17 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, __bf16, float> {
                                                       false);      // enRelu
 
         intriParams.quantPre = QuantMode_t::F322BF16;
+        intriParams.unitFlag = unitFlag;
         AscendC::Fixpipe<__bf16, float, AscendC::CFG_ROW_MAJOR>(gmTensor, l0cTensor, intriParams);
 #else
-        copy_matrix_cc_to_gm((__gm__ __bf16 *)gmTensor.GetPhyAddr(), // dst
-                             (__cc__ float *)l0cTensor.GetPhyAddr(), // src
-                             0,                                      // sid
-                             nTileActual,                            // NSize
-                             mTileActual,                            // MSize
-                             dstStride,                              // dstStride_dst_D
-                             srcStride,                              // srcStride
-                             0,                                      // UnitFlagMode
-                             F322BF16,                               // QuantPRE
-                             0,                                      // ReLUPRE
-                             false,                                  // channelSplit
-                             true);                                  // NZ2ND_EN
+        AscendC::FixpipeParams<float> intriParams(
+            (nTileActual + BLOCK_NUM - 1) / AscendC::BLOCK_CUBE,
+            static_cast<uint16_t>(mTileActual * BLOCK_NUM * sizeof(float) / BLOCK_SIZE_INT8),
+            0,
+            dstStride);
+        intriParams.nz2ndParams = {true, 1, 0, 0, static_cast<uint16_t>(nTileActual)};
+        intriParams.quantParams = {QuantMode_t::F322BF16};
+        AscendC::Fixpipe(gmTensor, l0cTensor, intriParams);
 #endif
     };
 };
@@ -167,9 +129,10 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float> {
                          uint32_t mTileActual,
                          uint32_t nTileActual,
                          uint32_t srcStride,
-                         uint32_t dstStride)
+                         uint32_t dstStride,
+                         uint8_t  unitFlag = 0)
     {
-#ifdef USE_ASCENDC
+#ifdef __DAV_C220_CUBE__
         auto intriParams = AscendC::FixpipeParamsV220(nTileActual, // nSize
                                                       mTileActual, // mSize
                                                       srcStride,   // srcStride
@@ -177,20 +140,17 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float> {
                                                       false);      // enRelu
 
         intriParams.quantPre = QuantMode_t::NoQuant;
+        intriParams.unitFlag = unitFlag;
         AscendC::Fixpipe<float, float, AscendC::CFG_ROW_MAJOR>(gmTensor, l0cTensor, intriParams);
 #else
-        copy_matrix_cc_to_gm((__gm__ float *)gmTensor.GetPhyAddr(),  // dst
-                             (__cc__ float *)l0cTensor.GetPhyAddr(), // src
-                             0,                                      // sid
-                             nTileActual,                            // NSize
-                             mTileActual,                            // MSize
-                             dstStride,                              // dstStride_dst_D
-                             srcStride,                              // srcStride
-                             0,                                      // UnitFlagMode
-                             NoQuant,                                // QuantPRE
-                             0,                                      // ReLUPRE
-                             false,                                  // channelSplit
-                             true);                                  // NZ2ND_EN
+        AscendC::FixpipeParams<float> intriParams(
+            (nTileActual + BLOCK_NUM - 1) / AscendC::BLOCK_CUBE,
+            static_cast<uint16_t>(mTileActual * BLOCK_NUM * sizeof(float) / BLOCK_SIZE_INT8),
+            0,
+            dstStride);
+        intriParams.nz2ndParams = {true, 1, 0, 0, static_cast<uint16_t>(nTileActual)};
+        intriParams.quantParams = {QuantMode_t::NoQuant};
+        AscendC::Fixpipe(gmTensor, l0cTensor, intriParams);
 #endif
     };
 };
@@ -202,9 +162,10 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::NZ, half, float> {
                          uint32_t mTileActual,
                          uint32_t nTileActual,
                          uint32_t srcStride,
-                         uint32_t dstStride)
+                         uint32_t dstStride,
+                         uint8_t  unitFlag = 0)
     {
-#ifdef USE_ASCENDC
+#ifdef __DAV_C220_CUBE__
         auto intriParams = AscendC::FixpipeParamsV220(nTileActual, // nSize
                                                       mTileActual, // mSize
                                                       srcStride,   // srcStride
@@ -212,20 +173,16 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::NZ, half, float> {
                                                       false);      // enRelu
 
         intriParams.quantPre = QuantMode_t::F322F16;
+        intriParams.unitFlag = unitFlag;
         AscendC::Fixpipe<half, float, AscendC::CFG_NZ>(gmTensor, l0cTensor, intriParams);
 #else
-        copy_matrix_cc_to_gm((__gm__ float *)gmTensor.GetPhyAddr(),  // dst
-                             (__cc__ float *)l0cTensor.GetPhyAddr(), // src
-                             0,                                      // sid
-                             nTileActual,                            // NSize
-                             mTileActual,                            // MSize
-                             dstStride,                              // dstStride_dst_D
-                             srcStride,                              // srcStride
-                             0,                                      // UnitFlagMode
-                             NoQuant,                                // QuantPRE
-                             0,                                      // ReLUPRE
-                             false,                                  // channelSplit
-                             false);                                 // NZ2ND_EN
+        AscendC::FixpipeParams<float> intriParams(
+            (nTileActual + BLOCK_NUM - 1) / AscendC::BLOCK_CUBE,
+            static_cast<uint16_t>(mTileActual * BLOCK_NUM * sizeof(float) / BLOCK_SIZE_INT8),
+            0,
+            dstStride - (nTileActual * sizeof(half) / sizeof(float)));
+        intriParams.quantParams = {QuantMode_t::F322F16};
+        AscendC::Fixpipe(gmTensor, l0cTensor, intriParams);
 #endif
     };
 };
@@ -237,9 +194,10 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, int32_t, int32_t> {
                          uint32_t mTileActual,
                          uint32_t nTileActual,
                          uint32_t srcStride,
-                         uint32_t dstStride)
+                         uint32_t dstStride,
+                         uint8_t  unitFlag = 0)
     {
-#ifdef USE_ASCENDC
+#ifdef __DAV_C220_CUBE__
         auto intriParams = AscendC::FixpipeParamsV220(nTileActual, // nSize
                                                       mTileActual, // mSize
                                                       srcStride,   // srcStride
@@ -247,20 +205,17 @@ struct l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, int32_t, int32_t> {
                                                       false);      // enRelu
 
         intriParams.quantPre = QuantMode_t::NoQuant;
+        intriParams.unitFlag = unitFlag;
         AscendC::Fixpipe<int32_t, int32_t, AscendC::CFG_ROW_MAJOR>(gmTensor, l0cTensor, intriParams);
 #else
-        copy_matrix_cc_to_gm((__gm__ int32_t *)gmTensor.GetPhyAddr(),  // dst
-                             (__cc__ int32_t *)l0cTensor.GetPhyAddr(), // src
-                             0,                                        // sid
-                             nTileActual,                              // NSize
-                             mTileActual,                              // MSize
-                             dstStride,                                // dstStride_dst_D
-                             srcStride,                                // srcStride
-                             0,                                        // UnitFlagMode
-                             NoQuant,                                  // QuantPRE
-                             0,                                        // ReLUPRE
-                             false,                                    // channelSplit
-                             true);                                    // NZ2ND_EN
+        AscendC::FixpipeParams<int32_t> intriParams(
+            (nTileActual + BLOCK_NUM - 1) / AscendC::BLOCK_CUBE,
+            static_cast<uint16_t>(mTileActual * BLOCK_NUM * sizeof(float) / BLOCK_SIZE_INT8),
+            0,
+            dstStride);
+        intriParams.nz2ndParams = {true, 1, 0, 0, static_cast<uint16_t>(nTileActual)};
+        intriParams.quantParams = {QuantMode_t::VDEQF16};
+        AscendC::Fixpipe(gmTensor, l0cTensor, intriParams);
 #endif
     };
 };
