@@ -48,7 +48,7 @@ HcclDataType GetHcclDtype(const aclDataType dtype)
             return HCCL_DATA_TYPE_BFP16;
         default:
             ATB_LOG(ERROR) << "not support dtype:" << dtype;
-            return HCCL_DATA_TYPE_RESERVED;
+            return static_cast<HcclDataType>(255); // RESERVED TYPE
     }
 }
 
