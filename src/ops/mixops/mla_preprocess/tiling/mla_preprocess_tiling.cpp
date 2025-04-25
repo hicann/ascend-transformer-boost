@@ -26,8 +26,10 @@ constexpr uint32_t CONST_32 = 32;
 constexpr uint32_t CONST_128 = 128;
 constexpr uint32_t CONST_256 = 256;
 constexpr uint32_t CONST_512 = 512;
-constexpr uint32_t L1AB_PINGPONG_BUFFER_LEN = 262144;
+constexpr uint32_t L1_BUFFER_SIZE = 524288;
 constexpr uint32_t L0AB_PINGPONG_BUFFER_LEN = 131072;
+constexpr uint32_t L1_SCALE_SIZE = 4096;
+constexpr uint32_t L1_BIAS_SIZE = 2048;
 constexpr uint32_t L0C_SIZE = 128 * 1024;
 constexpr uint32_t CONCAT_SIZE = 512;
 constexpr uint32_t HIDDEN_STRATE = 7168;
@@ -85,6 +87,7 @@ public:
     PpMatmulTilingApi(uint32_t numBatch, uint32_t m, uint32_t k, uint32_t n, bool transA, bool transB, bool enDequant)
         : numBatch_(numBatch), m_(m), k_(k), n_(n), transA_(transA), transB_(transB), enDequant_(enDequant)
     {
+        inDataSize_ = enDequant ? sizeof(uint8_t) : sizeof(uint16_t);
     }
     void GetTilingData(AtbOps::PpMatmulTilingData &tiling);
 
@@ -109,6 +112,7 @@ private:
     uint32_t swizzleCount_{0};
     uint32_t blockDim_{0};
     uint32_t swizzleDirect_{0};
+    uint32_t inDataSize_{0};
     bool transA_{false};
     bool transB_{false};
     bool enDequant_{false};
@@ -142,10 +146,7 @@ void PpMatmulTilingApi::GetTileSize()
     uint32_t priAxes = RoundUp(priFlag ? m_ : n_, CONST_16);
     uint32_t subAxes = RoundUp(priFlag ? n_ : m_, roundBase);
     float minCost = __FLT_MAX__;
-    uint32_t maxAxes0 = AXES_ALIGN_SIZE / sizeof(int8_t);
-    if (!enDequant_) {
-        maxAxes0 = AXES_ALIGN_SIZE / sizeof(uint16_t);
-    }
+    uint32_t maxAxes0 = AXES_ALIGN_SIZE;
     uint32_t maxPriAxes0 = Min(maxAxes0, priAxes);
     uint32_t maxSubAxes0 = Min(maxAxes0, subAxes);
     for (uint32_t priAxes0 = CONST_16; priAxes0 <= maxPriAxes0; priAxes0 *= BASE_BLOCK_STEP) {
@@ -166,8 +167,8 @@ void PpMatmulTilingApi::GetTileSize()
         }
     }
     Swizzle();
-    uint32_t k0Max =
-        static_cast<uint32_t>(static_cast<float>(L1AB_PINGPONG_BUFFER_LEN) / ((m0_ + n0_) * sizeof(uint16_t)));
+    uint32_t l1AbSize = enDequant_ ? L1_BUFFER_SIZE - L1_BIAS_SIZE - L1_SCALE_SIZE : L1_BUFFER_SIZE;
+    uint32_t k0Max = static_cast<uint32_t>(static_cast<float>(l1AbSize / DIM_2) / ((m0_ + n0_) * inDataSize_));
     if (enDequant_) {
         k0_ = k0Max < CONST_512 ? RoundDown(k0Max, CONST_32) : RoundDown(k0Max, CONST_512);
     } else {
@@ -226,7 +227,7 @@ void PpMatmulTilingApi::UpdateTileSize(const uint32_t m0, const uint32_t n0)
         uint32_t y = CeilDiv(x, maxN0);
         uint32_t tmpN0 = RoundUp(CeilDiv(x, y), CONST_16);
         uint32_t rqdL0cSize = tmpM0 * tmpN0 * sizeof(float);
-        if (rqdL0cSize < L0C_SIZE && (tmpM0 + tmpN0) * CONST_256 * sizeof(uint16_t) < L1AB_PINGPONG_BUFFER_LEN) {
+        if (rqdL0cSize < L0C_SIZE && (tmpM0 + tmpN0) * CONST_256 * inDataSize_ < L1_BUFFER_SIZE) {
             m0_ = tmpM0;
             n0_ = tmpN0;
             nLoop_ = CeilDiv(n_, n0_);
@@ -265,7 +266,7 @@ class MlaPreprocessTiling {
 public:
     AtbOps::MlaTilingData tilingData;
     Mki::Status Init(const Mki::LaunchParam &launchParam, Mki::KernelInfo &kernelInfo);
-    void RmsNormQuantTiling(OpParam::MlaPreprocess &param, const uint32_t &aicNum);
+    void RmsNormQuantTiling(const uint32_t numTokens);
     void RopeConcatTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum);
     void EinSumQuantTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum, const TensorDType inDtype);
     void SetTiling(AtbOps::MlaTilingData *tilingParam);
@@ -273,15 +274,16 @@ public:
     void SetMlapoWorkSpace(const TensorDType inDtype, const OpParam::MlaPreprocess &param, Mki::KernelInfo &kernelInfo);
 };
 
-void MlaPreprocessTiling::RmsNormQuantTiling(OpParam::MlaPreprocess &param, const uint32_t &aicNum)
+void MlaPreprocessTiling::RmsNormQuantTiling(const uint32_t numTokens)
 {
-    tilingData.rmsNumCore1 = aicNum * NUM2;
+    const uint32_t numVectorCore = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR);
+    tilingData.rmsNumCore1 = numVectorCore;
     tilingData.rmsNumCol1 = HIDDEN_STRATE;
-    tilingData.rmsNumRow1 = param.N;
+    tilingData.rmsNumRow1 = numTokens;
     tilingData.rmsQuantMin1 = -CONST_128;
-    tilingData.rmsNumCore2 = aicNum * NUM2;
+    tilingData.rmsNumCore2 = numVectorCore;
     tilingData.rmsNumCol2 = HIDDEN_STRATE_MM;
-    tilingData.rmsNumRow2 = param.N;
+    tilingData.rmsNumRow2 = numTokens;
     tilingData.rmsQuantMin2 = -CONST_128;
 }
 
@@ -536,7 +538,7 @@ Mki::Status MlaPreprocessTiling::Init(const Mki::LaunchParam &launchParam, Mki::
     tilingData.numCore = aicNum;
     MKI_LOG(INFO) << "tilingSize: " << kernelInfo.GetTilingSize();
     auto tilingParam = reinterpret_cast<AtbOps::MlaTilingData *>(kernelInfo.GetTilingHostAddr());
-    RmsNormQuantTiling(param, aicNum);
+    RmsNormQuantTiling(param.N);
     RopeConcatTiling(param, aicNum);
     EinSumQuantTiling(param, aicNum, inDtype);
     PpMatmulTilingApi mm1TilingApi(1,                // numBatch
