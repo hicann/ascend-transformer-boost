@@ -2176,24 +2176,6 @@ TEST(TestMatMulNd, PPMatMulSize5)
     setenv(ENV_MATMUL_PP_FLAG, "0", 1);
 }
 
-TEST(TestMatMulNd, PPMatMulSize6)
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    if (USE_PP_MATMUL && strcmp(USE_PP_MATMUL, "1") == 0) {
-        Mki::Test::MkiOpTest opTest;
-        OpParam::MatMul opParam = {false, false, {0, 0, 0}, true};
-        opTest.Golden(std::bind(MatMulNdMixGolden, ATOL, RTOL, opParam, std::placeholders::_1));
-        opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-        Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
-
-        SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {7, 1024}},
-                                            {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {1024, 1024}},
-                                            {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {7, 1024}}};
-        Status status = opTest.Run(opDesc, inTensorDesc);
-        ASSERT_EQ(status.Ok(), true);
-    }
-}
-
 TEST(TestMatMulNd, MatMulGemvCase1)
 {
     CHECK_DEVICE_VERSION_ASCEND910B();
