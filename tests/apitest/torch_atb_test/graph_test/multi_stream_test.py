@@ -5,8 +5,7 @@ import acl
 import unittest
 import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
 from utils import ret_check
 
 def create_streams():
@@ -59,22 +58,16 @@ def graph_build_add_mul():
 
     def graph_run():
         res = Graph.forward(tensors_npu)
-        # print("add1 streamid: ", add1.get_stream_id())
-        # print("add2 streamid: ", add2.get_stream_id())
-        # print("mul streamid: ", mul.get_stream_id())
         assert add1.get_stream_id() == 0
         assert add2.get_stream_id() == 1
         assert mul.get_stream_id() == 1
         return res
 
     npu_outputs = graph_run()
-    print("npu_outputs: ", npu_outputs)
     print("----------- graph forward success ------------")
 
 class TestMultiStream(unittest.TestCase):
     def test(self):
-        # ret = acl.rt.set_device(0)
-        # ret_check(ret)
         torch_npu.npu.set_device(0)
         graph_build_add_mul()
 

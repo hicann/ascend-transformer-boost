@@ -1571,3 +1571,19 @@
 //! <tr><td class="cc">value_cache_out <td class="cc">[num_blocks, block_size, 1, D] <td class="cc">float16/bfloat16 <td class="cc">ND <td class="cc">所有的value cache
 //! </table>
 //! 该算子仅支持Atlas 800I A2产品
+
+//!
+//! \struct atb::infer::PagedCacheLoadParam
+//! <table class="ct">
+//! <caption id="PagedCacheLoadOperation">PagedCacheLoadOperation输入输出描述</caption>
+//! <tr><th class="ch">参数 <th class="ch">维度 <th class="ch">数据类型 <th class="ch">格式 <th class="ch">描述
+//! <tr><td class="cc">keycache <td class="cc">[num_blocks, num_heads * head size.k// elenum_aligned, block size, elenum_aligned] <td class="cc">float16/bfloat16/int8 <td class="cc">NZ <td class="cc">keycache
+//! <tr><td class="cc">valuecache <td class="cc">[num_blocks, num_heads * head sizev// elenum_aligned, block size, elenum_aligned] <td class="cc">float16/bfloat16/int8 <td class="cc">NZ <td class="cc">valuecache
+//! <tr><td class="cc">blocktable <td class="cc">[len(contextLlens), (max(contextLens)-1)/block_size +1] <td class="cc">int32 <td class="cc">ND <td class="cc">blocktable
+//! <tr><td class="cc">contextlens <td class="cc">[len(contextLlens)] <td class="cc">int32 <td class="cc">ND <td class="cc">contexlens
+//! <tr><td class="cc">key<td class="cc">[sum(contextLens), num_heads * head _size_ k] <td class="cc">float16/bfloat16/int8 <td class="cc">ND <td class="cc">
+//! <tr><td class="cc">value <td class="cc">[sum(contextLens), num_heads * head _size_ v] <td class="cc">float16/bfloat16/int8 <td class="cc">ND <td class="cc">
+//! <tr><td class="cc">key_out <td class="cc">[sum(contextLens), num_heads * head _size_ k] <td class="cc">float16/bfloat16/int8 <td class="cc">ND <td class="cc">key out 该值和输入的key为同一地址
+//! <tr><td class="cc">value_out <td class="cc">[sum(contextLens), num_heads * head _size_ v] <td class="cc">float16/bfloat16/int8 <td class="cc">ND <td class="cc">key out 该值和输入的value为同一地址
+//! </table>
+//! 该算子仅支持Atlas 800I A2产品

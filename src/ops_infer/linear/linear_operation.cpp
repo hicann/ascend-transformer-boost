@@ -123,36 +123,44 @@ bool MatmulUndefindCheck(const infer::LinearParam &opParam, ExternalError &error
 {
     switch (opParam.outDataType) {
         case ACL_DT_UNDEFINED:
-            if (!MatmulParamCheck(opParam, error)) {
-                return false;
+            {
+                if (!MatmulParamCheck(opParam, error)) {
+                    return false;
+                }
+                break;
             }
-            break;
         case ACL_FLOAT16:
-            if (opParam.enAccum) {
-                error.errorDesc = "outDataType is not ACL_DT_UNDEFINED, enAccum should be false.";
-                error.errorData = OperationUtil::ConcatInfo(error.errorData, ", enAccum = ", opParam.enAccum);
-                ATB_LOG(ERROR) << error;
-                return false;
+            {
+                if (opParam.enAccum) {
+                    error.errorDesc = "outDataType is not ACL_DT_UNDEFINED, enAccum should be false.";
+                    error.errorData = OperationUtil::ConcatInfo(error.errorData, ", enAccum = ", opParam.enAccum);
+                    ATB_LOG(ERROR) << error;
+                    return false;
+                }
+                if (!MatmulDequantFloat16ParamCheck(opParam, error)) {
+                    return false;
+                }
+                break;
             }
-            if (!MatmulDequantFloat16ParamCheck(opParam, error)) {
-                return false;
-            }
-            break;
         case ACL_BF16:
-            if (opParam.enAccum) {
-                error.errorDesc = "outDataType is not ACL_DT_UNDEFINED, enAccum should be false.";
-                error.errorData = OperationUtil::ConcatInfo(error.errorData, ", enAccum = ", opParam.enAccum);
+            {
+                if (opParam.enAccum) {
+                    error.errorDesc = "outDataType is not ACL_DT_UNDEFINED, enAccum should be false.";
+                    error.errorData = OperationUtil::ConcatInfo(error.errorData, ", enAccum = ", opParam.enAccum);
+                    ATB_LOG(ERROR) << error;
+                    return false;
+                }
+                if (!MatmulDequantBf16ParamCheck(opParam, error)) {
+                    return false;
+                }
+                break;
+            }
+        default:
+            {
+                error.errorDesc = "outDataType should be ACL_DT_UNDEFINED/ACL_FLOAT16/ACL_BF16.";
                 ATB_LOG(ERROR) << error;
                 return false;
             }
-            if (!MatmulDequantBf16ParamCheck(opParam, error)) {
-                return false;
-            }
-            break;
-        default:
-            error.errorDesc = "outDataType should be ACL_DT_UNDEFINED/ACL_FLOAT16/ACL_BF16.";
-            ATB_LOG(ERROR) << error;
-            return false;
     }
     return true;
 }
@@ -522,7 +530,7 @@ Status LinearOperation::OutTensorCheck(const SVector<TensorDesc> &inTensorDescs,
     int64_t weightN = OperationUtil::GetYTensorN(weightTensorDesc, param_.transposeB);
     if (outN != weightN) {
         error.errorType = ERROR_INVALID_TENSOR_DIM;
-        error.errorDesc = "value of outTensor m and inTensor1 m should be equal,";
+        error.errorDesc = "value of outTensor n and inTensor1 n should be equal,";
         error.errorData = OperationUtil::ConcatInfo("outTensor n = ", outN, ", inTensor1 n = ", weightN);
         error.solutionDesc = "Please check shape of outTensor.";
         ATB_LOG(ERROR) << GetLogPrefix() << error;
@@ -557,8 +565,13 @@ bool LinearOperation::XWeightDimNumCheck(const TensorDesc &xTensorDesc, const Te
             return false;
         }
     } else if (weightTensorDesc.format == ACL_FORMAT_FRACTAL_NZ) {
-        if (weightTensorDesc.shape.dimNum != DIM_NUM_2 && weightTensorDesc.shape.dimNum != DIM_NUM_3 &&
-            weightTensorDesc.shape.dimNum != DIM_NUM_4) {
+        if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM && weightTensorDesc.shape.dimNum != DIM_NUM_4) {
+            error.errorDesc = "When EIN is used inTensor1 dim num should be 4,";
+            error.errorData = OperationUtil::ConcatInfo("inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
+            ATB_LOG(ERROR) << GetLogPrefix() << error;
+            return false;
+        } else if (weightTensorDesc.shape.dimNum != DIM_NUM_2 && weightTensorDesc.shape.dimNum != DIM_NUM_3 &&
+                   weightTensorDesc.shape.dimNum != DIM_NUM_4) {
             error.errorDesc = "inTensor1 dim num should be 2 or 3 or 4,";
             error.errorData = OperationUtil::ConcatInfo("inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
             ATB_LOG(ERROR) << GetLogPrefix() << error;

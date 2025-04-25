@@ -21,6 +21,8 @@ public:
     explicit GraphBuilder(const std::string &graphName);
     std::string AddInput(const std::string &name);
     GraphNode &AddNode(const std::vector<std::string> &inputs, atb::Operation *operation);
+    template <typename OpParam>
+    GraphNode &AddNodeByParamType(const std::vector<std::string> &inputs, const OpParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::LinearParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::LayerNormParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::ElewiseParam &param);
@@ -36,6 +38,20 @@ public:
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::CumsumParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::DynamicNTKParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::MultinomialParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::ConcatParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::SliceParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::TransposeParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::GatingParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::ReshapeAndCacheParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::FillParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::RazorFusionAttentionParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::AllReduceParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::BroadcastParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::ReduceScatterParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::ReduceScatterVParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::LinearParallelParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::LinearSparseParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::RelayAttentionParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, OperationWrapper &opWrapper);
     GraphBuilder &Reshape(const std::string &srcTensorName, const ReshapeHandler &reshapeHandler,
                                 const std::string &reshapedTensorName);

@@ -6,8 +6,7 @@ import unittest
 import sys
 import os
 import torch.multiprocessing as mp
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
 from utils import ret_check
 
 rank_size = 2
@@ -17,7 +16,6 @@ def create_streams():
     for i in range(2):
         stream, ret = acl.rt.create_stream()
         ret_check(ret)
-        # print(stream)
         streams.append(stream)
     return streams
 
@@ -63,16 +61,12 @@ def graph_build():
 
     def graph_run():
         res = Graph.forward(tensors_npu)
-        # print("add1 streamid: ", add1.get_stream_id())
-        # print("add2 streamid: ", add2.get_stream_id())
-        # print("mul streamid: ", mul.get_stream_id())
         assert add1.get_stream_id() == 0
         assert add2.get_stream_id() == 1
         assert mul.get_stream_id() == 1
         return res
 
     npu_outputs = graph_run()
-    print("npu_outputs: ", npu_outputs)
     print("----------- graph forward success ------------")
 
 def worker(rank):

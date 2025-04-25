@@ -485,7 +485,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  self.key_cache_split2.npu(),
                                  torch.tensor(self.block_tables).int().npu(),
                                  torch.tensor(self.contex_lens).int().npu()])
-
     def test_paged_mla_combine_kv_numTokens32_numHeads128(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
@@ -516,6 +515,5 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  self.key_cache_split2.npu(),
                                  torch.tensor(self.block_tables).int().npu(),
                                  torch.tensor(self.contex_lens).int().npu()])
-
 if __name__ == '__main__':
     unittest.main()

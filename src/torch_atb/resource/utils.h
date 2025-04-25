@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 #include "atb/atb_infer.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <torch/torch.h>
 #pragma GCC diagnostic pop
 

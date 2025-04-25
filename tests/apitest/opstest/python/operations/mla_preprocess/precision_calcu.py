@@ -130,6 +130,7 @@ def compare_cv(golden:torch.Tensor, gpu:torch.Tensor, actual:torch.Tensor):
     EB = get_eb(gpu, actual)
     result = (mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2) and (EB < eb_threshold)
 
+    print(f"eb_threshold:{eb_threshold} err_threshold:{err_threshold}")
     print(f"mare_npu:{mare_npu} mare_gpu:{mare_gpu}")
     print(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")
     print(f"rmse_npu:{rmse_npu} rmse_gpu:{rmse_gpu}")

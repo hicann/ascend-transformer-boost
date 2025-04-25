@@ -26,8 +26,8 @@ namespace atb {
 static const int32_t IN_TENSOR_NUM = 1;
 static const int32_t OUT_TENSOR_NUM = 1;
 static const int32_t TRANSPOSE_IN_TENSOR_DIM_NUM = 2;
-static const uint64_t MAX_W_SIZE = 90LL * 1024LL;                 // 90KB
-static const uint64_t MAX_TENSOR_SIZE = 190LL * 1024LL * 1024LL; // 190MB
+static const int64_t MAX_W_SIZE = 90LL * 1024LL;                // 90KB
+static const int64_t MAX_TENSOR_SIZE = 190LL * 1024LL * 1024LL; // 190MB
 
 template <> Status CreateOperation(const infer::AllToAllParam &opParam, Operation **operation)
 {
@@ -112,14 +112,13 @@ Status AllToAllOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTenso
                        << inTensorDescs.at(0).shape.dims[1] << ", rankSize: " << param_.rankSize;
         return ERROR_INVALID_TENSOR_DIM;
     }
-    uint64_t wSize =
-        inTensorDescs.at(0).shape.dims[TRANSPOSE_IN_TENSOR_DIM_NUM - 1] * sizeof(inTensorDescs.at(0).dtype);
+    int64_t wSize = inTensorDescs.at(0).shape.dims[TRANSPOSE_IN_TENSOR_DIM_NUM - 1] * sizeof(inTensorDescs.at(0).dtype);
     if (wSize / param_.rankSize >= MAX_W_SIZE) {
         ATB_LOG(ERROR) << "intensors[0].dims[1] / rankSize must be no greater than 90K, but got bytes: " << wSize;
         return ERROR_INVALID_TENSOR_DIM;
     }
-    uint64_t tensorSize = Utils::GetTensorSize(inTensorDescs.at(0));
-    if (tensorSize >= MAX_TENSOR_SIZE) {
+    int64_t tensorSize = Utils::GetTensorSize(inTensorDescs.at(0));
+    if (tensorSize > MAX_TENSOR_SIZE) {
         ATB_LOG(ERROR) << "intensors[0] total tensor size must be no greater than 190MB, but got bytes: " << tensorSize;
         return ERROR_INVALID_TENSOR_DIM;
     }

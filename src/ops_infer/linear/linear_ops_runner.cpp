@@ -687,31 +687,45 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNzNot910B()
 
 void LinearOpsRunner::SetupMatmulOriShape(const Mki::Tensor &xTensor, const Mki::Tensor &weightTensor)
 {
+    if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
+        SetupMatmulOriShapeEin(xTensor, weightTensor);
+    } else {
+        int64_t &m = matmulParam_.oriShape.at(0);
+        int64_t &k = matmulParam_.oriShape.at(1);
+        int64_t &n = matmulParam_.oriShape.at(DIM_2);
+        if (xTensor.desc.dims.size() == SIZE_2) {
+            m = param_.transposeA ? xTensor.desc.dims.at(1) : xTensor.desc.dims.at(0);
+            k = param_.transposeA ? xTensor.desc.dims.at(0) : xTensor.desc.dims.at(1);
+        } else if (xTensor.desc.dims.size() == SIZE_3) {
+            m = param_.transposeA ? xTensor.desc.dims.at(DIM_2) : xTensor.desc.dims.at(1);
+            if (xNeedMergeAxis_) {
+                m *= xTensor.desc.dims.at(0);
+            }
+            k = param_.transposeA ? xTensor.desc.dims.at(1) : xTensor.desc.dims.at(DIM_2);
+        }
+        if (weightTensor.desc.dims.size() == SIZE_2) {
+            n = param_.transposeB ? weightTensor.desc.dims.at(0) : weightTensor.desc.dims.at(1);
+        } else if (weightTensor.desc.dims.size() == SIZE_3) {
+            n = param_.transposeB ? weightTensor.desc.dims.at(1) : weightTensor.desc.dims.at(DIM_2);
+        } else if (weightTensor.desc.dims.size() == SIZE_4) {
+            n = param_.transposeB ? weightTensor.desc.dims.at(DIM_2) :
+                                    weightTensor.desc.dims.at(1) * weightTensor.desc.dims.at(DIM_3);
+        }
+    }
+}
+
+void LinearOpsRunner::SetupMatmulOriShapeEin(const Mki::Tensor &xTensor, const Mki::Tensor &weightTensor)
+{
     int64_t &m = matmulParam_.oriShape.at(0);
     int64_t &k = matmulParam_.oriShape.at(1);
     int64_t &n = matmulParam_.oriShape.at(DIM_2);
-    if (xTensor.desc.dims.size() == SIZE_2) {
-        m = param_.transposeA ? xTensor.desc.dims.at(1) : xTensor.desc.dims.at(0);
-        k = param_.transposeA ? xTensor.desc.dims.at(0) : xTensor.desc.dims.at(1);
-    } else if (xTensor.desc.dims.size() == SIZE_3) {
-        m = param_.transposeA ? xTensor.desc.dims.at(DIM_2) : xTensor.desc.dims.at(1);
-        if (xNeedMergeAxis_) {
-            m *= xTensor.desc.dims.at(0);
-        }
-        k = param_.transposeA ? xTensor.desc.dims.at(1) : xTensor.desc.dims.at(DIM_2);
-    }
-    if (weightTensor.desc.dims.size() == SIZE_2) {
-        n = param_.transposeB ? weightTensor.desc.dims.at(0) : weightTensor.desc.dims.at(1);
-    } else if (weightTensor.desc.dims.size() == SIZE_3) {
+    m = param_.transposeA ? xTensor.desc.dims.at(DIM_2) : xTensor.desc.dims.at(0);
+    k = param_.transposeA ? xTensor.desc.dims.at(0) : xTensor.desc.dims.at(DIM_2);
+    if (weightTensor.desc.format == Mki::TensorFormat::TENSOR_FORMAT_ND) {
         n = param_.transposeB ? weightTensor.desc.dims.at(1) : weightTensor.desc.dims.at(DIM_2);
-    } else if (weightTensor.desc.dims.size() == SIZE_4) {
+    } else if (weightTensor.desc.format == Mki::TensorFormat::TENSOR_FORMAT_FRACTAL_NZ) {
         n = param_.transposeB ? weightTensor.desc.dims.at(DIM_2) :
                                 weightTensor.desc.dims.at(1) * weightTensor.desc.dims.at(DIM_3);
-    }
-    if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
-        m = param_.transposeA ? xTensor.desc.dims.at(DIM_2) : xTensor.desc.dims.at(0);
-        k = param_.transposeA ? xTensor.desc.dims.at(0) : xTensor.desc.dims.at(DIM_2);
-        n = param_.transposeB ? weightTensor.desc.dims.at(1) : weightTensor.desc.dims.at(DIM_2);
     }
 }
 

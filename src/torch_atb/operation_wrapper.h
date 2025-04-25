@@ -15,7 +15,6 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <torch/torch.h>
 #include <torch/extension.h>
 #include <torch_npu/csrc/framework/OpCommand.h>
@@ -46,8 +45,21 @@ public:
     explicit OperationWrapper(const atb::infer::CumsumParam &param);
     explicit OperationWrapper(const atb::infer::DynamicNTKParam &param);
     explicit OperationWrapper(const atb::infer::MultinomialParam &param);
+    explicit OperationWrapper(const atb::infer::ConcatParam &param);
+    explicit OperationWrapper(const atb::infer::SliceParam &param);
+    explicit OperationWrapper(const atb::infer::TransposeParam &param);
+    explicit OperationWrapper(const atb::infer::GatingParam &param);
+    explicit OperationWrapper(const atb::infer::ReshapeAndCacheParam &param);
+    explicit OperationWrapper(const atb::infer::FillParam &param);
     explicit OperationWrapper(const atb::infer::RazorFusionAttentionParam &param);
+    explicit OperationWrapper(const atb::infer::AllReduceParam &param);
+    explicit OperationWrapper(const atb::infer::BroadcastParam &param);
+    explicit OperationWrapper(const atb::infer::ReduceScatterParam &param);
+    explicit OperationWrapper(const atb::infer::ReduceScatterVParam &param);
     explicit OperationWrapper(const atb::infer::FaUpdateParam &param);
+    explicit OperationWrapper(const atb::infer::LinearParallelParam &param);
+    explicit OperationWrapper(const atb::infer::LinearSparseParam &param);
+    explicit OperationWrapper(const atb::infer::RelayAttentionParam &param);
     explicit OperationWrapper(const atb::GraphParam &param);
     atb::Operation *ReleaseOperation();
     std::string GetName() const;

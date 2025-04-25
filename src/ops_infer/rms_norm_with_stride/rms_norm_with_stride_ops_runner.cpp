@@ -70,11 +70,10 @@ RmsNormWithStrideOpsRunner::RmsNormWithStrideOpsRunner(const infer::RmsNormWithS
 Status RmsNormWithStrideOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
 {
     Mki::Tensor &tensor = kernelGraph_.inTensors.at(0);
-    size_t strideSize =  static_cast<size_t>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_TWO).Numel());
+    size_t strideSize = static_cast<size_t>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_TWO).Numel());
     tensor.desc.strides.resize(strideSize);
     for (size_t i = 0; i < strideSize; ++i) {
-        tensor.desc.strides.at(i) =
-            static_cast<int64_t *>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_TWO).hostData)[i];
+        tensor.desc.strides.at(i) = static_cast<int64_t *>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_TWO).hostData)[i];
     }
     tensor.desc.offset = static_cast<int64_t *>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_THREE).hostData)[0];
     ATB_LOG(INFO) << "" << tensor.desc.offset;

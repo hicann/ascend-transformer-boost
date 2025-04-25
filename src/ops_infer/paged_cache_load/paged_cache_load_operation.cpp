@@ -1,0 +1,183 @@
+/*
+* Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+* This file is a part of the CANN Open Software.
+* Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+* Please refer to the License for details. You may not use this file except in compliance with the License.
+* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+* See LICENSE in the root of the software repository for the full text of the License.
+*/
+
+#include "paged_cache_load_operation.h"
+#include "paged_cache_load_ops_runner.h"
+#include "atb/utils/tensor_check.h"
+#include "atb/utils/tensor_util.h"
+#include "atb/utils/config.h"
+#include "atb/utils/singleton.h"
+#include "atb/utils/param_to_json.h"
+#include "atb/core/atb_operation_ir_cfg.h"
+#include "atb/core/op_param_funcs.h"
+
+namespace atb {
+static const uint32_t IN_TENSOR_0_KEYCACHE = 0;
+static const uint32_t IN_TENSOR_1_VALUECACHE = 1;
+static const uint32_t IN_TENSOR_2_BLOCKTABLE = 2;
+static const uint32_t IN_TENSOR_3_CONTEXTLENS = 3;
+static const uint32_t IN_TENSOR_4_KEY = 4;
+static const uint32_t IN_TENSOR_5_VALUE = 5;
+static const uint32_t OUT_TENSOR_NUM = 2;
+static const uint32_t IN_TENSOR_NUM = 6;
+static const uint32_t INPUTKEY_DIM = 4;
+static const uint32_t INPUTVALUE_DIM = 4;
+static const uint32_t INPUTCONTEXTLENS_DIM = 1;
+static const uint32_t INPUTBLOCK_DIM = 2;
+static const uint32_t OUT_DIM = 3;
+static const uint32_t SIXTEEN = 16;
+static const uint32_t THIRTYTWO = 32;
+static const uint32_t MAX_SEQ_LEN = 2048;
+static const uint32_t MAX_k = 147456;
+static const uint32_t MAX_v = 147456;
+static const uint32_t BLOCKSIZEINDEX = 2;
+static constexpr int64_t ZERO = 0;
+template <> Status CreateOperation(const infer::PagedCacheLoadParam &opParam, Operation **operation)
+{
+    if (operation == nullptr) {
+        return ERROR_INVALID_PARAM;
+    }
+    OP_PARAM_RSV_CHECK(opParam);
+    if (!GetSingleton<Config>().Is910B()) {
+        ATB_LOG(ERROR) << "key_cache SISO only support Atlas 800I A2 inference product";
+        return ERROR_INVALID_PARAM;
+    }
+    *operation = new (std::nothrow) PagedCacheLoadOperation(opParam);
+    if (*operation == nullptr) {
+        ATB_LOG(ERROR) << "failed to new operation";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
+    return NO_ERROR;
+}
+
+PagedCacheLoadOperation::PagedCacheLoadOperation(const infer::PagedCacheLoadParam &param)
+    : OperationBase("PagedCacheLoadOperation"), param_(param)
+{
+    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("PagedCacheLoadOperation");
+}
+
+PagedCacheLoadOperation::~PagedCacheLoadOperation() {}
+
+uint32_t PagedCacheLoadOperation::GetInputNum() const
+{
+    return IN_TENSOR_NUM;
+}
+
+uint32_t PagedCacheLoadOperation::GetOutputNum() const
+{
+    return OUT_TENSOR_NUM;
+}
+
+Status PagedCacheLoadOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
+    SVector<TensorDesc> &outTensorDescs) const
+{
+    outTensorDescs.at(0) = inTensorDescs.at(IN_TENSOR_4_KEY);
+    outTensorDescs.at(1) = inTensorDescs.at(IN_TENSOR_5_VALUE);
+    return NO_ERROR;
+}
+
+Status PagedCacheLoadOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
+{
+    return DimCheck(inTensorDescs);
+}
+
+Status PagedCacheLoadOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
+    const SVector<Tensor> &outTensors) const
+{
+    SVector<TensorDesc> inTensorDescs;
+    for (size_t i = 0; i < inTensors.size(); i++) {
+        inTensorDescs.push_back(inTensors.at(i).desc);
+    }
+    Status st = DimCheck(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    if (outTensors.at(0).desc.shape.dims[1] !=
+        inTensorDescs.at(0).shape.dims[1] * inTensorDescs.at(0).shape.dims[OUT_DIM] ||
+        outTensors.at(1).desc.shape.dims[1] !=
+        inTensorDescs.at(1).shape.dims[1] * inTensorDescs.at(1).shape.dims[OUT_DIM]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
+Status PagedCacheLoadOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
+{
+    if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dimNum != INPUTKEY_DIM ||         // 0: keyCache
+        inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dimNum != INPUTVALUE_DIM ||       // 1: value Cache
+        inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dimNum != INPUTBLOCK_DIM ||
+        inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dimNum != INPUTCONTEXTLENS_DIM ||
+        inTensorDescs.at(IN_TENSOR_4_KEY).shape.dimNum != INPUTBLOCK_DIM ||
+        inTensorDescs.at(IN_TENSOR_5_VALUE).shape.dimNum != INPUTBLOCK_DIM) {      // 2: blocktables
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    int64_t numBlocks = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[0]; // 0: keyCache
+    int64_t blockSize = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX]; // 1: keyCache
+    int64_t lencontext = inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dims[0]; // 2: blocktable
+    int64_t sumcontext = inTensorDescs.at(IN_TENSOR_4_KEY).shape.dims[0]; // 4: key
+    if (numBlocks != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[0]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "numBlocks should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (blockSize != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[BLOCKSIZEINDEX]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "blockSizes should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (blockSize == ZERO) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "blockSize cannot be zero";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (sumcontext != inTensorDescs.at(IN_TENSOR_5_VALUE).shape.dims[0]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "sumcontextlens should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "lenscontextlens should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return KVCacheDimCheck910B(inTensorDescs);
+}
+
+Status PagedCacheLoadOperation::KVCacheDimCheck910B(const SVector<TensorDesc> &inTensorDescs) const
+{
+    if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).dtype == ACL_INT8) {
+        if (THIRTYTWO != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
+                THIRTYTWO!= inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
+            ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 32";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (MAX_k < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * THIRTYTWO ||
+                MAX_v < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * THIRTYTWO) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    } else {
+        if (SIXTEEN != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
+                SIXTEEN!= inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
+            ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 16";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (MAX_k < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * SIXTEEN ||
+                MAX_v < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * SIXTEEN) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    return NO_ERROR;
+}
+
+std::shared_ptr<Runner> PagedCacheLoadOperation::CreateRunner(Context &context) const
+{
+    (void)context;
+     return std::make_shared<PagedCacheLoadOpsRunner>(param_);
+}
+}

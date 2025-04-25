@@ -51,7 +51,8 @@ GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, atb::Op
     return graphNodes_.back();
 }
 
-GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::LinearParam &param)
+template <typename OpParam>
+GraphNode &GraphBuilder::AddNodeByParamType(const std::vector<std::string> &inputs, const OpParam &param)
 {
     atb::Operation *operation = nullptr;
     atb::Status st = CreateOperation(param, &operation);
@@ -59,146 +60,152 @@ GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const a
         throw std::runtime_error("CreateOperation failed!");
     }
     return AddNode(inputs, operation);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::LinearParam &param)
+{
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::LayerNormParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::ElewiseParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::SoftmaxParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::SelfAttentionParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::RopeParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::SplitParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::GatherParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::ActivationParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::RmsNormParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::AllGatherParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::AsStridedParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::CumsumParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::DynamicNTKParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::MultinomialParam &param)
 {
-    atb::Operation *operation = nullptr;
-    atb::Status st = CreateOperation(param, &operation);
-    if (st != atb::NO_ERROR) {
-        throw std::runtime_error("CreateOperation failed!");
-    }
-    return AddNode(inputs, operation);
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::ConcatParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::SliceParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::TransposeParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::GatingParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::ReshapeAndCacheParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::FillParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs,
+                                 const atb::infer::RazorFusionAttentionParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::AllReduceParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::BroadcastParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::ReduceScatterParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::ReduceScatterVParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::LinearParallelParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::LinearSparseParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::RelayAttentionParam &param)
+{
+    return AddNodeByParamType(inputs, param);
 }
 
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, OperationWrapper &opWrapper)

@@ -292,7 +292,6 @@ Status TopkToppSamplingOperation::TopkToppLogProbsOutTensorCheck(const SVector<T
     return NO_ERROR;
 }
 
-
 Status TopkToppSamplingOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
                                                  const SVector<Tensor> &outTensors) const
 {
@@ -319,9 +318,9 @@ Status TopkToppSamplingOperation::SetupCheckImpl(const SVector<Tensor> &inTensor
     atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
     param_.topkToppSamplingType ==
     atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
-        Status logProbsOutTensorCheckRes = TopkToppLogProbsOutTensorCheck(outTensorDescs);
-        if (logProbsOutTensorCheckRes != NO_ERROR) {
-            return logProbsOutTensorCheckRes;
+        Status LogProbsOutTensorCheckRes = TopkToppLogProbsOutTensorCheck(outTensorDescs);
+        if (LogProbsOutTensorCheckRes != NO_ERROR) {
+            return LogProbsOutTensorCheckRes;
         }
     }
     return CheckIntensorAndParam(inTensorDescs);

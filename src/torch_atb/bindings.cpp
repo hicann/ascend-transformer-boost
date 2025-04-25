@@ -8,12 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
-#pragma GCC diagnostic pop
 #include <sstream>
 #include <atb/utils/param_to_json.h>
 #include "operation_wrapper.h"
@@ -60,8 +57,21 @@ PYBIND11_MODULE(_C, m)
         .def(py::init<const CumsumParam &>())
         .def(py::init<const DynamicNTKParam &>())
         .def(py::init<const MultinomialParam &>())
+        .def(py::init<const ConcatParam &>())
+        .def(py::init<const SliceParam &>())
+        .def(py::init<const TransposeParam &>())
+        .def(py::init<const GatingParam &>())
+        .def(py::init<const ReshapeAndCacheParam &>())
+        .def(py::init<const FillParam &>())
         .def(py::init<const RazorFusionAttentionParam &>())
+        .def(py::init<const AllReduceParam &>())
+        .def(py::init<const BroadcastParam &>())
+        .def(py::init<const ReduceScatterParam &>())
+        .def(py::init<const ReduceScatterVParam &>())
         .def(py::init<const FaUpdateParam &>())
+        .def(py::init<const LinearParallelParam &>())
+        .def(py::init<const LinearSparseParam &>())
+        .def(py::init<const RelayAttentionParam &>())
         .def(py::init<const GraphParam &>())
         .def_property_readonly("name", &TorchAtb::OperationWrapper::GetName)
         .def_property_readonly("input_num", &TorchAtb::OperationWrapper::GetInputNum)
@@ -117,6 +127,35 @@ PYBIND11_MODULE(_C, m)
         .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::DynamicNTKParam &>(
                              &TorchAtb::GraphBuilder::AddNode))
         .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::MultinomialParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::ConcatParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::SliceParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::TransposeParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::GatingParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::ReshapeAndCacheParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::FillParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node",
+             py::overload_cast<const std::vector<std::string> &, const atb::infer::RazorFusionAttentionParam &>(
+                 &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::AllReduceParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::BroadcastParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::ReduceScatterParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::ReduceScatterVParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::LinearParallelParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::LinearSparseParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::RelayAttentionParam &>(
                              &TorchAtb::GraphBuilder::AddNode))
         .def("add_node", py::overload_cast<const std::vector<std::string> &, TorchAtb::OperationWrapper &>(
                              &TorchAtb::GraphBuilder::AddNode))
@@ -255,14 +294,13 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("op_mode", &LayerNormParam::PostNormParam::opMode)
         .def_readwrite("zoom_scale_value", &LayerNormParam::PostNormParam::zoomScaleValue);
 
-    layerNorm.def(py::init<LayerNormParam::LayerNormType,
-                           LayerNormParam::NormParam,
-                           LayerNormParam::PreNormParam,
-                           LayerNormParam::PostNormParam>(),
-                  py::arg("layer_type") = LayerNormParam::LayerNormType::LAYER_NORM_UNDEFINED,
-                  py::arg("norm_param") = LayerNormParam::NormParam(),
-                  py::arg("pre_norm_param") = LayerNormParam::PreNormParam(),
-                  py::arg("post_norm_param") = LayerNormParam::PostNormParam())
+    layerNorm
+        .def(py::init<LayerNormParam::LayerNormType, LayerNormParam::NormParam, LayerNormParam::PreNormParam,
+                      LayerNormParam::PostNormParam>(),
+             py::arg("layer_type") = LayerNormParam::LayerNormType::LAYER_NORM_UNDEFINED,
+             py::arg("norm_param") = LayerNormParam::NormParam(),
+             py::arg("pre_norm_param") = LayerNormParam::PreNormParam(),
+             py::arg("post_norm_param") = LayerNormParam::PostNormParam())
         .def_readwrite("layer_type", &LayerNormParam::layerType)
         .def_readwrite("norm_param", &LayerNormParam::normParam)
         .def_readwrite("pre_norm_param", &LayerNormParam::preNormParam)
@@ -308,14 +346,12 @@ PYBIND11_MODULE(_C, m)
              py::arg("var_attr") = 0.0f)
         .def_readwrite("var_attr", &ElewiseParam::MulsParam::varAttr);
 
-    elewise.def(py::init<ElewiseParam::ElewiseType,
-                         ElewiseParam::QuantParam,
-                         ElewiseParam::MulsParam,
-                         aclDataType>(),
-                py::arg("elewise_type") = ElewiseParam::ElewiseType::ELEWISE_UNDEFINED,
-                py::arg("quant_param") = ElewiseParam::QuantParam(),
-                py::arg("muls_param") = ElewiseParam::MulsParam(),
-                py::arg("out_tensor_type") = aclDataType::ACL_DT_UNDEFINED)
+    elewise
+        .def(py::init<ElewiseParam::ElewiseType, ElewiseParam::QuantParam, ElewiseParam::MulsParam, aclDataType>(),
+             py::arg("elewise_type") = ElewiseParam::ElewiseType::ELEWISE_UNDEFINED,
+             py::arg("quant_param") = ElewiseParam::QuantParam(),
+             py::arg("muls_param") = ElewiseParam::MulsParam(),
+             py::arg("out_tensor_type") = aclDataType::ACL_DT_UNDEFINED)
         .def_readwrite("elewise_type", &ElewiseParam::elewiseType)
         .def_readwrite("quant_param", &ElewiseParam::quantParam)
         .def_readwrite("muls_param", &ElewiseParam::mulsParam)
@@ -327,14 +363,15 @@ PYBIND11_MODULE(_C, m)
     py::enum_<LinearParam::MatmulType>(linear, "MatmulType")
         .value("MATMUL_UNDEFINED", LinearParam::MatmulType::MATMUL_UNDEFINED)
         .value("MATMUL_EIN_SUM", LinearParam::MatmulType::MATMUL_EIN_SUM);
-    
-    linear.def(py::init<bool, bool, bool, aclDataType, bool, LinearParam::MatmulType>(),
-               py::arg("transpose_a") = false,
-               py::arg("transpose_b") = true,
-               py::arg("has_bias") = true,
-               py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
-               py::arg("en_accum") = false,
-               py::arg("matmul_type") = LinearParam::MatmulType::MATMUL_UNDEFINED)
+
+    linear
+        .def(py::init<bool, bool, bool, aclDataType, bool, LinearParam::MatmulType>(),
+             py::arg("transpose_a") = false,
+             py::arg("transpose_b") = true,
+             py::arg("has_bias") = true,
+             py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
+             py::arg("en_accum") = false,
+             py::arg("matmul_type") = LinearParam::MatmulType::MATMUL_UNDEFINED)
         .def_readwrite("transpose_a", &LinearParam::transposeA)
         .def_readwrite("transpose_b", &LinearParam::transposeB)
         .def_readwrite("has_bias", &LinearParam::hasBias)
@@ -414,46 +451,31 @@ PYBIND11_MODULE(_C, m)
         .value("CACHE_TYPE_NORM", SelfAttentionParam::CACHE_TYPE_NORM)
         .value("CACHE_TYPE_SWA", SelfAttentionParam::CACHE_TYPE_SWA);
 
-    selfAttention.def(py::init<SelfAttentionParam::QuantType,
-                               aclDataType,
-                               int32_t,
-                               int32_t,
-                               float,
-                               float,
-                               bool,
-                               uint32_t,
-                               SelfAttentionParam::CalcType,
-                               SelfAttentionParam::KernelType,
-                               SelfAttentionParam::ClampType,
-                               float,
-                               float,
-                               SelfAttentionParam::MaskType,
-                               SelfAttentionParam::KvCacheCfg,
-                               SelfAttentionParam::ScaleType,
-                               InputLayout,
-                               uint32_t,
-                               SelfAttentionParam::CacheType,
-                               uint32_t>(),
-                      py::arg("quant_type") = SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT,
-                      py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
-                      py::arg("head_num") = 0,
-                      py::arg("kv_head_num") = 0,
-                      py::arg("q_scale") = 1,
-                      py::arg("qk_scale") = 1,
-                      py::arg("batch_run_status_enable") = false,
-                      py::arg("is_triu_mask") = 0,
-                      py::arg("calc_type") = SelfAttentionParam::CalcType::UNDEFINED,
-                      py::arg("kernel_type") = SelfAttentionParam::KernelType::KERNELTYPE_DEFAULT,
-                      py::arg("clamp_type") = SelfAttentionParam::ClampType::CLAMP_TYPE_UNDEFINED,
-                      py::arg("clamp_min") = 0,
-                      py::arg("clamp_max") = 0,
-                      py::arg("mask_type") = SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED,
-                      py::arg("kvcache_cfg") = SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE,
-                      py::arg("scale_type") = SelfAttentionParam::ScaleType::SCALE_TYPE_TOR,
-                      py::arg("input_layout") = InputLayout::TYPE_BSND,
-                      py::arg("mla_v_head_size") = 0,
-                      py::arg("cache_type") = SelfAttentionParam::CacheType::CACHE_TYPE_NORM,
-                      py::arg("window_size") = 0)
+    selfAttention
+        .def(py::init<SelfAttentionParam::QuantType, aclDataType, int32_t, int32_t, float, float, bool, uint32_t,
+                      SelfAttentionParam::CalcType, SelfAttentionParam::KernelType, SelfAttentionParam::ClampType,
+                      float, float, SelfAttentionParam::MaskType, SelfAttentionParam::KvCacheCfg,
+                      SelfAttentionParam::ScaleType, InputLayout, uint32_t, SelfAttentionParam::CacheType, uint32_t>(),
+             py::arg("quant_type") = SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT,
+             py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
+             py::arg("head_num") = 0,
+             py::arg("kv_head_num") = 0,
+             py::arg("q_scale") = 1,
+             py::arg("qk_scale") = 1,
+             py::arg("batch_run_status_enable") = false,
+             py::arg("is_triu_mask") = 0,
+             py::arg("calc_type") = SelfAttentionParam::CalcType::UNDEFINED,
+             py::arg("kernel_type") = SelfAttentionParam::KernelType::KERNELTYPE_DEFAULT,
+             py::arg("clamp_type") = SelfAttentionParam::ClampType::CLAMP_TYPE_UNDEFINED,
+             py::arg("clamp_min") = 0,
+             py::arg("clamp_max") = 0,
+             py::arg("mask_type") = SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED,
+             py::arg("kvcache_cfg") = SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE,
+             py::arg("scale_type") = SelfAttentionParam::ScaleType::SCALE_TYPE_TOR,
+             py::arg("input_layout") = InputLayout::TYPE_BSND,
+             py::arg("mla_v_head_size") = 0,
+             py::arg("cache_type") = SelfAttentionParam::CacheType::CACHE_TYPE_NORM,
+             py::arg("window_size") = 0)
         .def_readwrite("quant_type", &SelfAttentionParam::quantType)
         .def_readwrite("out_data_type", &SelfAttentionParam::outDataType)
         .def_readwrite("head_num", &SelfAttentionParam::headNum)
@@ -506,30 +528,22 @@ PYBIND11_MODULE(_C, m)
         .value("TYPE_QUANT_QKV_OFFLINE", PagedAttentionParam::QuantType::TYPE_QUANT_QKV_OFFLINE)
         .value("TYPE_QUANT_QKV_ONLINE", PagedAttentionParam::QuantType::TYPE_QUANT_QKV_ONLINE);
 
-    pageAttention.def(py::init<int32_t,
-                               float,
-                               int32_t,
-                               PagedAttentionParam::MaskType,
-                               bool,
-                               PagedAttentionParam::QuantType,
-                               aclDataType,
-                               bool,
-                               PagedAttentionParam::CompressType,
-                               PagedAttentionParam::CalcType,
-                               PagedAttentionParam::ScaleType,
-                               InputLayout>(),
-                      py::arg("head_num") = 0,
-                      py::arg("qk_scale") = 1.0,
-                      py::arg("kv_head_num") = 0,
-                      py::arg("mask_type") = PagedAttentionParam::MaskType::UNDEFINED,
-                      py::arg("batch_run_status_enable") = false,
-                      py::arg("quant_type") = PagedAttentionParam::QuantType::TYPE_QUANT_UNQUANT,
-                      py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
-                      py::arg("has_quant_offset") = false,
-                      py::arg("compress_type") = PagedAttentionParam::CompressType::COMPRESS_TYPE_UNDEFINED,
-                      py::arg("calc_type") = PagedAttentionParam::CalcType::CALC_TYPE_UNDEFINED,
-                      py::arg("scale_type") = PagedAttentionParam::ScaleType::SCALE_TYPE_TOR,
-                      py::arg("input_layout") = InputLayout::TYPE_BSND)
+    pageAttention
+        .def(py::init<int32_t, float, int32_t, PagedAttentionParam::MaskType, bool, PagedAttentionParam::QuantType,
+                      aclDataType, bool, PagedAttentionParam::CompressType, PagedAttentionParam::CalcType,
+                      PagedAttentionParam::ScaleType, InputLayout>(),
+             py::arg("head_num") = 0,
+             py::arg("qk_scale") = 1.0,
+             py::arg("kv_head_num") = 0,
+             py::arg("mask_type") = PagedAttentionParam::MaskType::UNDEFINED,
+             py::arg("batch_run_status_enable") = false,
+             py::arg("quant_type") = PagedAttentionParam::QuantType::TYPE_QUANT_UNQUANT,
+             py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
+             py::arg("has_quant_offset") = false,
+             py::arg("compress_type") = PagedAttentionParam::CompressType::COMPRESS_TYPE_UNDEFINED,
+             py::arg("calc_type") = PagedAttentionParam::CalcType::CALC_TYPE_UNDEFINED,
+             py::arg("scale_type") = PagedAttentionParam::ScaleType::SCALE_TYPE_TOR,
+             py::arg("input_layout") = InputLayout::TYPE_BSND)
         .def_readwrite("head_num", &PagedAttentionParam::headNum)
         .def_readwrite("qk_scale", &PagedAttentionParam::qkScale)
         .def_readwrite("kv_head_num", &PagedAttentionParam::kvHeadNum)
@@ -596,11 +610,12 @@ PYBIND11_MODULE(_C, m)
         .value("TANH_MODE", ActivationParam::TANH_MODE)
         .value("NONE_MODE", ActivationParam::NONE_MODE);
 
-    activation.def(py::init<ActivationType, float, int32_t, ActivationParam::GeLUMode>(),
-                   py::arg("activation_type") = ActivationType::ACTIVATION_UNDEFINED,
-                   py::arg("scale") = 1.0f,
-                   py::arg("dim") = -1,
-                   py::arg("gelu_mode") = ActivationParam::GeLUMode::TANH_MODE)
+    activation
+        .def(py::init<ActivationType, float, int32_t, ActivationParam::GeLUMode>(),
+             py::arg("activation_type") = ActivationType::ACTIVATION_UNDEFINED,
+             py::arg("scale") = 1.0f,
+             py::arg("dim") = -1,
+             py::arg("gelu_mode") = ActivationParam::GeLUMode::TANH_MODE)
         .def_readwrite("activation_type", &ActivationParam::activationType)
         .def_readwrite("scale", &ActivationParam::scale)
         .def_readwrite("dim", &ActivationParam::dim)
@@ -625,12 +640,7 @@ PYBIND11_MODULE(_C, m)
         .value("GEMMA_MODEL", RmsNormParam::GEMMA_MODEL);
 
     py::class_<RmsNormParam::NormParam>(rmsNorm, "NormParam")
-        .def(py::init<QuantType,
-                      float,
-                      double,
-                      bool,
-                      RmsNormParam::PrecisionMode,
-                      RmsNormParam::ModelType,
+        .def(py::init<QuantType, float, double, bool, RmsNormParam::PrecisionMode, RmsNormParam::ModelType,
                       DynamicQuantType>(),
              py::arg("quant_type") = QuantType::QUANT_UNQUANT,
              py::arg("epsilon") = 1e-5,
@@ -665,14 +675,13 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("epsilon", &RmsNormParam::PostNormParam::epsilon)
         .def_readwrite("has_bias", &RmsNormParam::PostNormParam::hasBias);
 
-    rmsNorm.def(py::init<RmsNormParam::RmsNormType,
-                         RmsNormParam::NormParam,
-                         RmsNormParam::PreNormParam,
-                         RmsNormParam::PostNormParam>(),
-                py::arg("layer_type") = RmsNormParam::RmsNormType::RMS_NORM_UNDEFINED,
-                py::arg("norm_param") = RmsNormParam::NormParam(),
-                py::arg("pre_norm_param") = RmsNormParam::PreNormParam(),
-                py::arg("post_norm_param") = RmsNormParam::PostNormParam())
+    rmsNorm
+        .def(py::init<RmsNormParam::RmsNormType, RmsNormParam::NormParam, RmsNormParam::PreNormParam,
+                      RmsNormParam::PostNormParam>(),
+             py::arg("layer_type") = RmsNormParam::RmsNormType::RMS_NORM_UNDEFINED,
+             py::arg("norm_param") = RmsNormParam::NormParam(),
+             py::arg("pre_norm_param") = RmsNormParam::PreNormParam(),
+             py::arg("post_norm_param") = RmsNormParam::PostNormParam())
         .def_readwrite("layer_type", &RmsNormParam::layerType)
         .def_readwrite("norm_param", &RmsNormParam::normParam)
         .def_readwrite("pre_norm_param", &RmsNormParam::preNormParam)
@@ -790,17 +799,175 @@ PYBIND11_MODULE(_C, m)
         .def("__repr__", [](const CumsumParam &param) { return "CumsumParam: " + OpParamToJson(param).dump(); });
 
     py::class_<DynamicNTKParam>(m, "DynamicNTKParam")
-        .def(py::init<aclDataType>(), py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED)
+        .def(py::init<aclDataType>(),
+             py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED)
         .def_readwrite("out_data_type", &DynamicNTKParam::outDataType)
         .def("__repr__",
              [](const DynamicNTKParam &param) { return "DynamicNTKParam: " + OpParamToJson(param).dump(); });
 
     py::class_<MultinomialParam>(m, "MultinomialParam")
-        .def(py::init<uint32_t, uint32_t>(), py::arg("num_samples") = 1, py::arg("rand_seed") = 0)
+        .def(py::init<uint32_t, uint32_t>(),
+             py::arg("num_samples") = 1,
+             py::arg("rand_seed") = 0)
         .def_readwrite("num_samples", &MultinomialParam::numSamples)
         .def_readwrite("rand_seed", &MultinomialParam::randSeed)
         .def("__repr__",
              [](const MultinomialParam &param) { return "MultinomialParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<ConcatParam>(m, "ConcatParam")
+        .def(py::init<int>(),
+             py::arg("concat_dim") = 0)
+        .def_readwrite("concat_dim", &ConcatParam::concatDim)
+        .def("__repr__", [](const ConcatParam &param) { return "ConcatParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<SliceParam>(m, "SliceParam")
+        .def(py::init([](const std::vector<int64_t> &offsets, const std::vector<int64_t> &size) {
+                 SliceParam param;
+                 AddElements(offsets, param.offsets);
+                 AddElements(size, param.size);
+                 return param;
+                 }),
+             py::arg("offsets") = py::list(),
+             py::arg("size") = py::list())
+        .def_readwrite("offsets", &SliceParam::offsets)
+        .def_readwrite("size", &SliceParam::size)
+        .def_property(
+            "offsets",
+            [](SliceParam &param) -> std::vector<int64_t> {
+                std::vector<int64_t> offsetsVec;
+                offsetsVec.resize(param.offsets.size());
+                for (size_t i = 0; i < param.offsets.size(); i++) {
+                    offsetsVec.at(i) = param.offsets.at(i);
+                }
+                return offsetsVec;
+            },
+            [](SliceParam &param, const std::vector<int64_t> &offsets) {
+                param.offsets.clear();
+                AddElements(offsets, param.offsets);
+            })
+        .def_property(
+            "size",
+            [](SliceParam &param) -> std::vector<int64_t> {
+                std::vector<int64_t> sizeVec;
+                sizeVec.resize(param.size.size());
+                for (size_t i = 0; i < param.size.size(); i++) {
+                    sizeVec.at(i) = param.size.at(i);
+                }
+                return sizeVec;
+            },
+            [](SliceParam &param, const std::vector<int64_t> &size) {
+                param.size.clear();
+                AddElements(size, param.size);
+            })
+        .def("__repr__", [](const SliceParam &param) { return "SliceParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<TransposeParam>(m, "TransposeParam")
+        .def(py::init([](const std::vector<int32_t> &perm) {
+                 TransposeParam param;
+                 AddElements(perm, param.perm);
+                 return param;
+                 }),
+             py::arg("perm") = py::list())
+        .def_readwrite("perm", &TransposeParam::perm)
+        .def_property(
+            "perm",
+            [](TransposeParam &param) -> std::vector<int32_t> {
+                std::vector<int32_t> vec;
+                vec.resize(param.perm.size());
+                for (size_t i = 0; i < param.perm.size(); i++) {
+                    vec.at(i) = param.perm.at(i);
+                }
+                return vec;
+            },
+            [](TransposeParam &param, const std::vector<int32_t> &perm) {
+                param.perm.clear();
+                AddElements(perm, param.perm);
+            })
+        .def("__repr__", [](const TransposeParam &param) { return "TransposeParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<GatingParam>(m, "GatingParam")
+        .def(py::init([](int32_t topkExpertNum, int32_t cumSumNum, bool cumSumInt64,
+                         const std::vector<int32_t> &deviceExpert) {
+                GatingParam param;
+                param.topkExpertNum = topkExpertNum;
+                param.cumSumNum = cumSumNum;
+                param.cumSumInt64 = cumSumInt64;
+                AddElements(deviceExpert, param.deviceExpert);
+                return param;
+                }),
+             py::arg("topk_expert_num") = 0,
+             py::arg("cum_sum_num") = 0,
+             py::arg("cum_sum_int64") = false,
+             py::arg("device_expert") = py::list())
+        .def_readwrite("topk_expert_num", &GatingParam::topkExpertNum)
+        .def_readwrite("cum_sum_num", &GatingParam::cumSumNum)
+        .def_readwrite("cum_sum_int64", &GatingParam::cumSumInt64)
+        .def_readwrite("device_expert", &GatingParam::deviceExpert)
+        .def("__repr__", [](const GatingParam &param) { return "GatingParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<ReshapeAndCacheParam> reshapeAndCache(m, "ReshapeAndCacheParam");
+
+    py::enum_<ReshapeAndCacheParam::CompressType>(reshapeAndCache, "CompressType")
+        .value("COMPRESS_TYPE_UNDEFINED", ReshapeAndCacheParam::COMPRESS_TYPE_UNDEFINED)
+        .value("COMPRESS_TYPE_KVHEAD", ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD)
+        .value("COMPRESS_TYPE_KVHEAD_ROPE", ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD_ROPE);
+
+    py::enum_<ReshapeAndCacheParam::KvCacheCfg>(reshapeAndCache, "KvCacheCfg")
+        .value("K_CACHE_V_CACHE", ReshapeAndCacheParam::K_CACHE_V_CACHE)
+        .value("K_CACHE_V_BYPASS", ReshapeAndCacheParam::K_CACHE_V_BYPASS);
+
+    reshapeAndCache
+        .def(py::init<ReshapeAndCacheParam::CompressType, ReshapeAndCacheParam::KvCacheCfg>(),
+             py::arg("compress_type") = ReshapeAndCacheParam::CompressType::COMPRESS_TYPE_UNDEFINED,
+             py::arg("kv_cache_cfg") = ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_CACHE)
+        .def_readwrite("compress_type", &ReshapeAndCacheParam::compressType)
+        .def_readwrite("kv_cache_cfg", &ReshapeAndCacheParam::kvCacheCfg)
+        .def("__repr__",
+             [](const ReshapeAndCacheParam &param) { return "ReshapeAndCacheParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<FillParam>(m, "FillParam")
+        .def(py::init([](bool withMask, const std::vector<float> &value, const std::vector<int64_t> &outDim) {
+                 FillParam param;
+                 param.withMask = withMask;
+                 AddElements(value, param.value);
+                 AddElements(outDim, param.outDim);
+                 return param;
+                 }),
+             py::arg("with_mask") = true,
+             py::arg("value") = py::list(),
+             py::arg("out_dim") = py::list())
+        .def_readwrite("with_mask", &FillParam::withMask)
+        .def_readwrite("value", &FillParam::value)
+        .def_readwrite("out_dim", &FillParam::outDim)
+        .def_property(
+            "value",
+            [](FillParam &param) -> std::vector<float> {
+                std::vector<float> valueVec;
+                valueVec.resize(param.value.size());
+                for (size_t i = 0; i < param.value.size(); i++) {
+                    valueVec.at(i) = param.value.at(i);
+                }
+                return valueVec;
+            },
+            [](FillParam &param, const std::vector<float> &value) {
+                param.value.clear();
+                AddElements(value, param.value);
+            })
+        .def_property(
+            "out_dim",
+            [](FillParam &param) -> std::vector<int64_t> {
+                std::vector<int64_t> outDimVec;
+                outDimVec.resize(param.outDim.size());
+                for (size_t i = 0; i < param.outDim.size(); i++) {
+                    outDimVec.at(i) = param.outDim.at(i);
+                }
+                return outDimVec;
+            },
+            [](FillParam &param, const std::vector<float> &outDim) {
+                param.outDim.clear();
+                AddElements(outDim, param.outDim);
+            })
+        .def("__repr__", [](const FillParam &param) { return "FillParam: " + OpParamToJson(param).dump(); });
 
     py::class_<RazorFusionAttentionParam>(m, "RazorFusionAttentionParam")
         .def(py::init<int32_t, int32_t, float, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t>(),
@@ -829,6 +996,133 @@ PYBIND11_MODULE(_C, m)
                  return "RazorFusionAttentionParam: " + OpParamToJson(param).dump();
              });
 
+    py::class_<AllReduceParam> allReduce(m, "AllReduceParam");
+
+    py::enum_<AllReduceParam::QuantType>(reshapeAndCache, "QuantType")
+        .value("QUANT_TYPE_UNQUANT", AllReduceParam::QuantType::QUANT_TYPE_UNQUANT)
+        .value("QUANT_TYPE_UNDEFINED", AllReduceParam::QuantType::QUANT_TYPE_UNDEFINED)
+        .value("QUANT_TYPE_PER_TENSOR", AllReduceParam::QuantType::QUANT_TYPE_PER_TENSOR)
+        .value("QUANT_TYPE_PER_CHANNEL", AllReduceParam::QuantType::QUANT_TYPE_PER_CHANNEL)
+        .value("QUANT_TYPE_MAX", AllReduceParam::QuantType::QUANT_TYPE_MAX);
+
+    allReduce
+        .def(py::init<int, int, int, std::string, std::string, HcclComm, CommMode, std::string, std::string,
+                      AllReduceParam::QuantType, aclDataType>(),
+             py::arg("rank") = 0,
+             py::arg("rank_size") = 0,
+             py::arg("rank_root") = 0,
+             py::arg("all_reduce_type") = "sum",
+             py::arg("backend") = "hccl",
+             py::arg("hccl_comm") = nullptr,
+             py::arg("comm_mode") = CommMode::COMM_MULTI_PROCESS,
+             py::arg("rank_table_file") = "",
+             py::arg("comm_domain") = "",
+             py::arg("quant_type") = AllReduceParam::QuantType::QUANT_TYPE_UNQUANT,
+             py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED)
+        .def_readwrite("rank", &AllReduceParam::rank)
+        .def_readwrite("rank_size", &AllReduceParam::rankSize)
+        .def_readwrite("rank_root", &AllReduceParam::rankRoot)
+        .def_readwrite("all_reduce_type", &AllReduceParam::allReduceType)
+        .def_readwrite("backend", &AllReduceParam::backend)
+        .def_readwrite("hccl_comm", &AllReduceParam::hcclComm)
+        .def_readwrite("comm_mode", &AllReduceParam::commMode)
+        .def_readwrite("rank_table_file", &AllReduceParam::rankTableFile)
+        .def_readwrite("comm_domain", &AllReduceParam::commDomain)
+        .def_readwrite("quant_type", &AllReduceParam::quantType)
+        .def_readwrite("out_data_type", &AllReduceParam::outDataType)
+        .def("__repr__", [](const AllReduceParam &param) { return "AllReduceParam: " + OpParamToJson(param).dump(); });
+    
+    py::class_<BroadcastParam>(m, "BroadcastParam")
+        .def(py::init<int, int, int, HcclComm, CommMode, std::string, std::string, std::string>(),
+             py::arg("rank") = 0,
+             py::arg("rank_size") = 0,
+             py::arg("rank_root") = 0,
+             py::arg("hccl_comm") = nullptr,
+             py::arg("comm_mode") = CommMode::COMM_MULTI_PROCESS,
+             py::arg("backend") = "hccl",
+             py::arg("rank_table_file") = "",
+             py::arg("comm_domain") = "")
+        .def_readwrite("rank", &BroadcastParam::rank)
+        .def_readwrite("rank_size", &BroadcastParam::rankSize)
+        .def_readwrite("rank_root", &BroadcastParam::rankRoot)
+        .def_readwrite("hccl_comm", &BroadcastParam::hcclComm)
+        .def_readwrite("comm_mode", &BroadcastParam::commMode)
+        .def_readwrite("backend", &BroadcastParam::backend)
+        .def_readwrite("rank_table_file", &BroadcastParam::rankTableFile)
+        .def_readwrite("comm_domain", &BroadcastParam::commDomain)
+        .def("__repr__",
+             [](const BroadcastParam &param) { return "BroadcastParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<ReduceScatterParam>(m, "ReduceScatterParam")
+        .def(py::init<int, int, int, std::string, HcclComm, CommMode, std::string, std::string, std::string>(),
+             py::arg("rank") = 0,
+             py::arg("rank_size") = 0,
+             py::arg("rank_root") = 0,
+             py::arg("reduce_type") = "sum",
+             py::arg("hccl_comm") = nullptr,
+             py::arg("comm_mode") = CommMode::COMM_MULTI_PROCESS,
+             py::arg("backend") = "lccl",
+             py::arg("rank_table_file") = "",
+             py::arg("comm_domain") = "")
+        .def_readwrite("rank", &ReduceScatterParam::rank)
+        .def_readwrite("rank_size", &ReduceScatterParam::rankSize)
+        .def_readwrite("rank_root", &ReduceScatterParam::rankRoot)
+        .def_readwrite("reduce_type", &ReduceScatterParam::reduceType)
+        .def_readwrite("hccl_comm", &ReduceScatterParam::hcclComm)
+        .def_readwrite("comm_mode", &ReduceScatterParam::commMode)
+        .def_readwrite("backend", &ReduceScatterParam::backend)
+        .def_readwrite("rank_table_file", &ReduceScatterParam::rankTableFile)
+        .def_readwrite("comm_domain", &ReduceScatterParam::commDomain)
+        .def("__repr__",
+             [](const ReduceScatterParam &param) { return "ReduceScatterParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<ReduceScatterVParam>(m, "ReduceScatterVParam")
+        .def(py::init([](int rank, int rankSize, int rankRoot, const std::vector<int64_t> &sendCounts,
+                         const std::vector<int64_t> &sdispls, std::int64_t recvCount, std::string reduceType,
+                         HcclComm hcclComm, CommMode commMode, std::string backend, std::string rankTableFile,
+                         std::string commDomain) {
+                ReduceScatterVParam param;
+                param.rank = rank;
+                param.rankSize = rankSize;
+                param.rankRoot = rankRoot;
+                AddElements(sendCounts, param.sendCounts);
+                AddElements(sdispls, param.sdispls);
+                param.recvCount = recvCount;
+                param.reduceType = reduceType;
+                param.hcclComm = hcclComm;
+                param.commMode = commMode;
+                param.backend = backend;
+                param.rankTableFile = rankTableFile;
+                param.commDomain = commDomain;
+                return param;
+                }),
+             py::arg("rank") = 0,
+             py::arg("rank_size") = 0,
+             py::arg("rank_root") = 0,
+             py::arg("send_counts") = py::list(),
+             py::arg("sdispls") = py::list(),
+             py::arg("recv_count") = 0,
+             py::arg("reduce_type") = "sum",
+             py::arg("hccl_comm") = nullptr,
+             py::arg("comm_mode") = CommMode::COMM_MULTI_PROCESS,
+             py::arg("backend") = "hccl",
+             py::arg("rank_table_file") = "",
+             py::arg("comm_domain") = "")
+        .def_readwrite("rank", &ReduceScatterVParam::rank)
+        .def_readwrite("rank_size", &ReduceScatterVParam::rankSize)
+        .def_readwrite("rank_root", &ReduceScatterVParam::rankRoot)
+        .def_readwrite("send_counts", &ReduceScatterVParam::sendCounts)
+        .def_readwrite("sdispls", &ReduceScatterVParam::sdispls)
+        .def_readwrite("recv_count", &ReduceScatterVParam::recvCount)
+        .def_readwrite("reduce_type", &ReduceScatterVParam::reduceType)
+        .def_readwrite("hccl_comm", &ReduceScatterVParam::hcclComm)
+        .def_readwrite("comm_mode", &ReduceScatterVParam::commMode)
+        .def_readwrite("backend", &ReduceScatterVParam::backend)
+        .def_readwrite("rank_table_file", &ReduceScatterVParam::rankTableFile)
+        .def_readwrite("comm_domain", &ReduceScatterVParam::commDomain)
+        .def("__repr__",
+             [](const ReduceScatterVParam &param) { return "ReduceScatterVParam: " + OpParamToJson(param).dump(); });
+
     py::class_<FaUpdateParam> faUpdate(m, "FaUpdateParam");
 
     py::enum_<FaUpdateParam::FaUpdateType>(faUpdate, "FaUpdateType")
@@ -840,4 +1134,103 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("fa_update_type", &FaUpdateParam::faUpdateType)
         .def_readwrite("sp", &FaUpdateParam::sp)
         .def("__repr__", [](const FaUpdateParam &param) { return "FaUpdateParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<LinearParallelParam> linearParallel(m, "LinearParallelParam");
+
+    py::enum_<LinearParallelParam::ParallelType>(linearParallel, "ParallelType")
+        .value("UNDEFINED", LinearParallelParam::ParallelType::UNDEFINED)
+        .value("LINEAR_ALL_REDUCE", LinearParallelParam::ParallelType::LINEAR_ALL_REDUCE)
+        .value("LINEAR_REDUCE_SCATTER", LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER)
+        .value("ALL_GATHER_LINEAR", LinearParallelParam::ParallelType::ALL_GATHER_LINEAR)
+        .value("PURE_LINEAR", LinearParallelParam::ParallelType::PURE_LINEAR)
+        .value("ALL_GATHER_LINEAR_REDUCE_SCATTER", LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER)
+        .value("MAX", LinearParallelParam::ParallelType::MAX);
+
+    py::enum_<LinearParallelParam::QuantType>(linearParallel, "QuantType")
+        .value("QUANT_TYPE_UNDEFINED", LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED)
+        .value("QUANT_TYPE_UNQUANT", LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT)
+        .value("QUANT_TYPE_PER_TENSOR", LinearParallelParam::QuantType::QUANT_TYPE_PER_TENSOR)
+        .value("QUANT_TYPE_PER_CHANNEL", LinearParallelParam::QuantType::QUANT_TYPE_PER_CHANNEL)
+        .value("QUANT_TYPE_PER_GROUP", LinearParallelParam::QuantType::QUANT_TYPE_PER_GROUP)
+        .value("QUANT_TYPE_MAX", LinearParallelParam::QuantType::QUANT_TYPE_MAX);
+
+    py::class_<LinearParallelParam::TwoDimTPInfo>(linearParallel, "TwoDimTPInfo")
+        .def(py::init<uint16_t, uint16_t, uint8_t>(),
+             py::arg("ag_dim") = 0,
+             py::arg("rs_dim") = 0,
+             py::arg("inner_dim_is_ag") = 1)
+        .def_readwrite("ag_dim", &LinearParallelParam::TwoDimTPInfo::agDim)
+        .def_readwrite("rs_dim", &LinearParallelParam::TwoDimTPInfo::rsDim)
+        .def_readwrite("inner_dim_is_ag", &LinearParallelParam::TwoDimTPInfo::innerDimIsAg);
+
+    linearParallel
+        .def(py::init<bool, int, int, int, bool, std::string, HcclComm, CommMode, std::string,
+                      LinearParallelParam::ParallelType, bool, LinearParallelParam::QuantType, int32_t, aclDataType,
+                      std::string, LinearParallelParam::TwoDimTPInfo>(),
+             py::arg("trans_weight") = true,
+             py::arg("rank") = 0,
+             py::arg("rank_size") = 0,
+             py::arg("rank_root") = 0,
+             py::arg("has_residual") = false,
+             py::arg("backend") = "hccl",
+             py::arg("hccl_comm") = nullptr,
+             py::arg("comm_mode") = CommMode::COMM_MULTI_PROCESS,
+             py::arg("rank_table_file") = "",
+             py::arg("type") = LinearParallelParam::ParallelType::LINEAR_ALL_REDUCE,
+             py::arg("keep_intermediate") = false,
+             py::arg("quant_type") = LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT,
+             py::arg("quant_group_size") = 0,
+             py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
+             py::arg("comm_domain") = "",
+             py::arg("two_dim_TP_info") = LinearParallelParam::TwoDimTPInfo())
+        .def_readwrite("trans_weight", &LinearParallelParam::transWeight)
+        .def_readwrite("rank", &LinearParallelParam::rank)
+        .def_readwrite("rank_size", &LinearParallelParam::rankSize)
+        .def_readwrite("rank_root", &LinearParallelParam::rankRoot)
+        .def_readwrite("has_residual", &LinearParallelParam::hasResidual)
+        .def_readwrite("backend", &LinearParallelParam::backend)
+        .def_readwrite("hccl_comm", &LinearParallelParam::hcclComm)
+        .def_readwrite("comm_mode", &LinearParallelParam::commMode)
+        .def_readwrite("rank_table_file", &LinearParallelParam::rankTableFile)
+        .def_readwrite("type", &LinearParallelParam::type)
+        .def_readwrite("keep_intermediate", &LinearParallelParam::keepIntermediate)
+        .def_readwrite("quant_type", &LinearParallelParam::quantType)
+        .def_readwrite("quant_group_size", &LinearParallelParam::quantGroupSize)
+        .def_readwrite("out_data_type", &LinearParallelParam::outDataType)
+        .def_readwrite("comm_domain", &LinearParallelParam::commDomain)
+        .def_readwrite("two_dim_TP_info", &LinearParallelParam::twoDimTPInfo)
+        .def("__repr__",
+             [](const LinearParallelParam &param) { return "LinearParallelParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<LinearSparseParam>(m, "LinearSparseParam")
+        .def(py::init<bool, bool, uint32_t, uint32_t>(),
+             py::arg("transpose_a") = false,
+             py::arg("transpose_b") = true,
+             py::arg("tiling_k") = 8,
+             py::arg("tiling_n") = 8)
+        .def_readwrite("transpose_a", &LinearSparseParam::transposeA)
+        .def_readwrite("transpose_b", &LinearSparseParam::transposeB)
+        .def_readwrite("tiling_k", &LinearSparseParam::tilingK)
+        .def_readwrite("tiling_n", &LinearSparseParam::tilingN)
+        .def("__repr__",
+             [](const LinearSparseParam &param) { return "LinearSparseParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<RelayAttentionParam> relayAttention(m, "RelayAttentionParam");
+
+    py::enum_<RelayAttentionParam::MaskType>(relayAttention, "MaskType")
+        .value("MASK_TYPE_UNDEFINED", RelayAttentionParam::MaskType::MASK_TYPE_UNDEFINED)
+        .value("MASK_TYPE_NORM", RelayAttentionParam::MaskType::MASK_TYPE_NORM);
+
+    relayAttention
+        .def(py::init<int32_t, float, int32_t, RelayAttentionParam::MaskType>(),
+             py::arg("head_num") = 0,
+             py::arg("qk_scale") = 1,
+             py::arg("expected_kv_head_num") = 0,
+             py::arg("mask_type") = RelayAttentionParam::MaskType::MASK_TYPE_UNDEFINED)
+        .def_readwrite("head_num", &RelayAttentionParam::headNum)
+        .def_readwrite("qk_scale", &RelayAttentionParam::qkScale)
+        .def_readwrite("kv_head_num", &RelayAttentionParam::kvHeadNum)
+        .def_readwrite("mask_type", &RelayAttentionParam::maskType)
+        .def("__repr__",
+             [](const RelayAttentionParam &param) { return "RelayAttentionParam: " + OpParamToJson(param).dump(); });
 }

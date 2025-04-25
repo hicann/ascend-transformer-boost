@@ -12,6 +12,7 @@
 #include <cfloat>
 #include "atb/runner/ops_runner.h"
 #include "atb/infer_op_params.h"
+#include "atb/utils/utils_internal.h"
 
 namespace atb {
 class MlaPreprocessOpsRunner : public OpsRunner {
@@ -34,7 +35,7 @@ namespace infer {
 inline bool operator==(const MlaPreprocessParam &left, const MlaPreprocessParam &right)
 {
     return left.wdqDim == right.wdqDim && left.qRopeDim == right.qRopeDim && left.kRopeDim == right.kRopeDim &&
-           std::abs(left.epsilon - right.epsilon) < FLT_EPSILON && left.qRotaryCoeff == right.qRotaryCoeff &&
+           UtilsInternal::IsFloatEqual(left.epsilon, right.epsilon) && left.qRotaryCoeff == right.qRotaryCoeff &&
            left.kRotaryCoeff == right.kRotaryCoeff && left.transposeWdq == right.transposeWdq &&
            left.transposeWuq == right.transposeWuq && left.transposeWuk == right.transposeWuk &&
            left.cacheMode == right.cacheMode;

@@ -280,15 +280,15 @@ op_param:
    - key: axis
      values: [0, 1, 2]
    - key: indexType
-     values: [1]
+     values: [1, 2]
 in_num: [4]
 in_dtype: ["float16", "int32", "float16", "float16"]
 in_format: ["nd", "nd", "nd", "nd"]
 in_shape:
   dim_numbers: [1, 2, 3, 4]
-  dim_number_weights: [0.4, 0.3, 0.2, 0.1]
-  dim_values: [[1, 20]]
-  dim_value_weights: [1]
+  dim_number_weights: [0.2, 0.5, 0.2, 0.1]
+  dim_values: [[1],[16],[128],[256]]
+  dim_value_weights: [0.2,0.2,0.2,0.2]
 data_gen_range: ["1, 10"]
 
 ---
@@ -1140,5 +1140,40 @@ in_format: ["nd"]
 in_shape:
   dim_numbers: [2]
   dim_number_weights: [1]
+  dim_values: [[16],[32],[64],[128],[256],[320],[512],[768],[1024],[5120]]
+  dim_value_weights: [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
+
+
+---
+
+op_name: SwigluQuantOperation
+op_param:
+  - key: quantType
+    values: [0]
+in_num: [1]
+in_dtype: ["float16","bf16"]
+in_format: ["nd"]
+in_shape:
+  dim_numbers: [2]
+  dim_number_weights: [1]
+  dim_values: [ [ 1 ],[ 2 ],[ 16 ],[ 128 ],[ 2048 ],[ 4096 ],[5120]]
+  dim_value_weights: [ 0.1,0.1,0.2,0.2,0.2,0.1,0.1]
+data_gen_range: ["-100,100"]
+
+
+---
+
+op_name: FaUpdateOperation
+op_param:
+  - key: faUpdateType
+    values: [0]
+  - key: sp
+    values: [2, 4, 8]
+in_num: [2]
+in_dtype: ["float"]
+in_format: ["nd"]
+in_shape:
+  dim_numbers: [2, 3]
+  dim_number_weights: [0.5,0.5]
   dim_values: [[16],[32],[64],[128],[256],[320],[512],[768],[1024],[5120]]
   dim_value_weights: [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]

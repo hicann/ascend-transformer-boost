@@ -79,7 +79,7 @@ ReshapeAndCacheWithStrideOpsRunner::ReshapeAndCacheWithStrideOpsRunner(
 Status ReshapeAndCacheWithStrideOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
 {
     Mki::Tensor &keytensor = kernelGraph_.inTensors.at(0);
-    uint64_t kstrideSize = static_cast<size_t>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_FIVE).Numel());
+    size_t kstrideSize = static_cast<size_t>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_FIVE).Numel());
     keytensor.desc.strides.resize(kstrideSize);
     for (size_t i = 0; i < kstrideSize; ++i) {
         keytensor.desc.strides.at(i) =
@@ -91,7 +91,7 @@ Status ReshapeAndCacheWithStrideOpsRunner::SetupKernelGraph(const OpsTensorPack 
     ATB_LOG(INFO) << "koffset: " << keytensor.desc.offset;
 
     Mki::Tensor &valuetensor = kernelGraph_.inTensors.at(1);
-    uint64_t vstrideSize = static_cast<size_t>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_SIX).Numel());
+    size_t vstrideSize = static_cast<size_t>(opsTensorPack.inTensors.at(IN_TENSOR_COUNT_SIX).Numel());
     valuetensor.desc.strides.resize(vstrideSize);
     for (size_t i = 0; i < vstrideSize; ++i) {
         valuetensor.desc.strides.at(i) =

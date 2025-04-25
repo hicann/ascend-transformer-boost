@@ -26,6 +26,7 @@ TEST(TestOpParamSize, TestOpParamCompatibility)
     EXPECT_EQ(sizeof(infer::ElewiseParam::QuantParam), 32);
     EXPECT_EQ(sizeof(infer::ElewiseParam::MulsParam), 16);
     EXPECT_EQ(sizeof(infer::FillParam), 848);
+    EXPECT_EQ(sizeof(infer::FusedAddTopkDivParam), 56);
     EXPECT_EQ(sizeof(infer::GatherParam), 32);
     EXPECT_EQ(sizeof(infer::GatingParam), 56);
     EXPECT_EQ(sizeof(infer::GroupTopkParam), 24);

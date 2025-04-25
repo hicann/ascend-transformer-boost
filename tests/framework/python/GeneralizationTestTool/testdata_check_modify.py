@@ -378,49 +378,55 @@ class NonzeroOperation(OperationValidation):
 
 class IndexAddOperation(OperationValidation):
     @staticmethod
-    def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
+    def op_param_check_modify(op_param):
         axis, indexType = op_param['axis'], op_param['indexType']
-        tensor_desc.dtypes[0] = 'float16'
-        tensor_desc.dtypes[1] = 'int32'
-        tensor_desc.dtypes[2] = 'float16'
-        tensor_desc.dtypes[3] = 'float16'
-        tensor_desc.shapes[3] = [1]
-        tensor_desc.data_gen_types = ["random", "customize", "random", "random"]
-        if axis >= len(tensor_desc.shapes[0]) or axis < -len(tensor_desc.shapes[0]):
-            return False
-        if len(tensor_desc.shapes[1]) != 1:
-            return False
-        if len(tensor_desc.shapes[0]) != len(tensor_desc.shapes[2]):
-            return False
-
-        dim = tensor_desc.shapes[0][axis]
-        if tensor_desc.shapes[1][0] > dim:
-            return False
-
-        for i in range(len(tensor_desc.shapes[2])):
-            if i == axis:
-                tensor_desc.shapes[2][i] = tensor_desc.shapes[1][0]
-            else:
-                tensor_desc.shapes[2][i] = tensor_desc.shapes[0][i]
-
+        if indexType == 2:
+            if axis != 0:
+                return False
         return True
-
-
-class SoftmaxOperation(OperationValidation):
-    soc_version = get_soc_version()
 
     @staticmethod
-    def in_shape_check_modify(op_param, in_shape):
-        axes = op_param['axes']
-        for axs in axes:
-            if axs >= len(in_shape):
+    def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
+        axis, indexType = op_param['axis'], op_param['indexType']
+        tensor_desc.shapes[3] = [1]
+        tensor_desc.data_gen_types = ["random", "customize", "random", "random"]
+        if indexType == 1:
+            tensor_desc.dtypes[0] = 'float16'
+            tensor_desc.dtypes[1] = 'int32'
+            tensor_desc.dtypes[2] = 'float16'
+            tensor_desc.dtypes[3] = 'float16'
+            # tensor_desc.shapes[3] = [1]
+            # tensor_desc.data_gen_types = ["random", "customize", "random", "random"]
+            if axis >= len(tensor_desc.shapes[0]) or axis < -len(tensor_desc.shapes[0]):
                 return False
-        logging.debug("op_param: {}, in_shape: {}".format(op_param, in_shape))
-        return True
+            if len(tensor_desc.shapes[1]) != 1:
+                return False
+            if len(tensor_desc.shapes[0]) != len(tensor_desc.shapes[2]):
+                return False
 
-    def in_dtype_check_modify(op_param, in_dtype, soc_version=soc_version):
-        if soc_version == 'Ascend310P' and in_dtype == 'bf16':
-            return False
+            dim = tensor_desc.shapes[0][axis]
+            if tensor_desc.shapes[1][0] > dim:
+                return False
+
+            for i in range(len(tensor_desc.shapes[2])):
+                if i == axis:
+                    tensor_desc.shapes[2][i] = tensor_desc.shapes[1][0]
+                else:
+                    tensor_desc.shapes[2][i] = tensor_desc.shapes[0][i]
+        if indexType == 2:
+            if len(tensor_desc.shapes[0]) != len(tensor_desc.shapes[2]) or len(tensor_desc.shapes[0]) != 2:
+                return False
+            if len(tensor_desc.shapes[1]) != 1:
+                return False
+            if tensor_desc.dtypes[1] != 'int32':
+                return False
+            tensor_desc.dtypes[0] = tensor_desc.dtypes[2] = random.choice(["float16","bf16"])
+            if tensor_desc.dtypes[1] != tensor_desc.dtypes[3]:
+                return False
+            tensor_desc.shapes[0][1] = tensor_desc.shapes[2][1]
+            tensor_desc.shapes[1][0] = tensor_desc.shapes[2][0]
+            tensor_desc.data_gen_ranges[1] = "0,0"
+            tensor_desc.data_gen_ranges[3] = "0,0"
         return True
 
 
@@ -2641,4 +2647,31 @@ class CohereLayerNormOperation(OperationValidation):
             return False
         tensor_desc.dtypes[0] = tensor_desc.dtypes[1]
         tensor_desc.shapes[1][:] = tensor_desc.shapes[0][-2:]
+        return True
+
+
+class SwigluQuantOperation(OperationValidation):
+
+    @staticmethod
+    def op_param_check_modify(op_param):
+        return True
+
+    @staticmethod
+    def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
+        if tensor_desc.shapes[0][1] == 1:
+            return False
+        return True
+
+
+class FaUpdateOperation(OperationValidation):
+
+    @staticmethod
+    def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
+        faUpdateType, sp = op_param['faUpdateType'], op_param['sp']
+        tensor_desc.shapes[0][0] = tensor_desc.shapes[1][0] = sp
+        tensor_desc.shapes[0][1] = tensor_desc.shapes[1][1]
+        if len(tensor_desc.shapes[0]) != 2 or len(tensor_desc.shapes[1]) != 3:
+            return False
+        if tensor_desc.shapes[1][2] > 512:
+            return False
         return True

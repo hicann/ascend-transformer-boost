@@ -147,16 +147,26 @@ void OpsRunner::SetupCacheGetCachedTiling(uint8_t *kernelHostTilingBuffer, uint6
     }
 }
 
+bool OpsRunner::SetupCanSkipCheck(const VariantPack &variantPack)
+{
+    if (isParamUpdated_ || setupCount_ == 0) {
+        isVariantPackEqual_ = false;
+        return false;
+    }
+    isVariantPackEqual_ = IsRunnerVariantPackEqual(variantPack, lastRunnerVariantPack_);
+    return isVariantPackEqual_;
+}
+
 bool OpsRunner::SetupCanReuse(RunnerVariantPack &runnerVariantPack, bool &kernelGraphTopoChanged)
 {
     GetOpSetupStatistic().setupTotalCount++;
     kernelGraphTopoChanged = true;
     if (GetSingleton<Config>().IsOpsRunnerSetupCacheEnable()) {
         if (needKernelGraphModify_ && !skipSetUpKernelGraphWhenCacheHit_) {
+            lastRunnerVariantPack_ = runnerVariantPack;
             return false;
         }
-        if (!isParamUpdated_ && setupCount_ != 0 &&
-            IsRunnerVariantPackInputEqual(runnerVariantPack, lastRunnerVariantPack_)) {
+        if (!isParamUpdated_ && setupCount_ != 0 && isVariantPackEqual_) {
             ATB_LOG(INFO) << GetLogPrefix() << " runnerVariantPack input is not change, setup do nothing";
             kernelGraphTopoChanged = false;
             GetOpSetupStatistic().setupCacheHitCount++;
@@ -698,6 +708,11 @@ Status OpsRunner::PlanKernel(size_t nodeId, uint8_t *kernelHostTilingBuffer, uin
         node.impl->ResetLogPrefix(logPrefix_, nodeId);
         ATB_LOG(DEBUG) << GetLogPrefix() << " node[" << nodeId << "] create implement success";
     }
+    if (isVariantPackEqual_) {
+        node.impl->needInferShape_ = false;
+    } else {
+        node.impl->needInferShape_ = true;
+    }
 
     if (!node.impl->BuildLaunchParam(node.inTensors, node.inTensorViewFuncs, node.opDesc, node.outTensors.size())) {
         ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] build launchParam fail";
@@ -911,8 +926,8 @@ Status OpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
     return NO_ERROR;
 }
 
-bool OpsRunner::IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
-                                              const RunnerVariantPack &runnerVariantPack2) const
+bool OpsRunner::IsRunnerVariantPackEqual(const VariantPack &runnerVariantPack1,
+                                         const RunnerVariantPack &runnerVariantPack2) const
 {
     if (runnerVariantPack1.inTensors.size() != runnerVariantPack2.inTensors.size()) {
         return false;
@@ -920,6 +935,16 @@ bool OpsRunner::IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVar
     for (size_t i = 0; i < runnerVariantPack1.inTensors.size(); ++i) {
         if (!TensorUtil::TensorDescEqual(runnerVariantPack1.inTensors.at(i).desc,
                                          runnerVariantPack2.inTensors.at(i).desc)) {
+            return false;
+        }
+    }
+
+    if (runnerVariantPack1.outTensors.size() != runnerVariantPack2.outTensors.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < runnerVariantPack1.outTensors.size(); ++i) {
+        if (!TensorUtil::TensorDescEqual(runnerVariantPack1.outTensors.at(i).desc,
+                                         runnerVariantPack2.outTensors.at(i).desc)) {
             return false;
         }
     }

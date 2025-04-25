@@ -32,6 +32,7 @@ public:
     virtual void SetParam(const Mki::Any &param);
     virtual bool IsSupportGlbWorkspace();
     aclrtStream GetExecuteStream(Context *context) const;
+    virtual bool SetupCanSkipCheck(const VariantPack &variantPack);
 
 protected:
     virtual void SetSaveTensorDir(const std::string &tensorDir);

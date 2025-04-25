@@ -169,7 +169,7 @@ function fn_build_asdops()
     cd $THIRD_PARTY_DIR
     rm -rf ascend-op-common-lib
     branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_release_cann_8.1.RC1_20250925
+    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
     echo  "current branch for atb and asdops: $branch"
     git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
@@ -189,7 +189,7 @@ function fn_build_asdops()
     if [ "$USE_MSSANITIZER" == "ON" ]; then
         build_options="$build_options --mssanitizer"
     fi
-    build_options="$build_options --output=$THIRD_PARTY_DIR $COMPILE_VERBOSE"
+    build_options="$build_options --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
     bash scripts/build.sh $build_type $build_options
 }
 
@@ -204,7 +204,7 @@ function fn_build_mki()
     cd $THIRD_PARTY_DIR
     if [ ! -d "Mind-KernelInfra" ]; then
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_release_cann_8.1.RC1_20250925
+        [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
         git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
     fi
@@ -230,7 +230,7 @@ function fn_build_mki()
     if [ "$USE_MSDEBUG" == "ON" ]; then
         build_options="$build_options --msdebug"
     fi
-    build_options="$build_options --output=$THIRD_PARTY_DIR $COMPILE_VERBOSE"
+    build_options="$build_options --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
     bash scripts/build.sh $build_type $build_options
 }
 
@@ -553,8 +553,12 @@ function fn_run_torchatbtest()
     export_atb_env
     fn_install_torch_atb
     cd $CODE_ROOT/tests/apitest/torch_atb_test
-    python3 -m unittest discover -s op_test -p "*_test.py"
-    python3 -m unittest discover -s graph_test -p "*_test.py" -b
+    for testfile in $(find op_test -name "*_test.py"); do
+        python3 -m unittest "$testfile"
+    done
+    for testfile in $(find graph_test -name "*_test.py"); do
+        python3 -m unittest "$testfile"
+    done
 }
 
 function fn_run_pythontest()
@@ -569,7 +573,7 @@ function fn_run_pythontest()
     cd $CODE_ROOT/tests/apitest/opstest/python/
     rm -rf ./kernel_meta*
     for i in $(ls -d operations/*/); do
-        if [[ $(find $i -name __init__.py) != "" ]];then
+        if [[ `find $i -name __init__.py` != "" ]];then
             python3 -m unittest discover -s ./$i -p "*test*.py"; 
         fi
     done

@@ -102,16 +102,17 @@ OperationWrapper::OperationWrapper(const AllGatherParam &param)
 {
     CreateOpUniquePtr(param);
 }
+
 OperationWrapper::OperationWrapper(const AsStridedParam &param)
 {
     CreateOpUniquePtr(param);
 }
- 
+
 OperationWrapper::OperationWrapper(const CumsumParam &param)
 {
     CreateOpUniquePtr(param);
 }
- 
+
 OperationWrapper::OperationWrapper(const DynamicNTKParam &param)
 {
     CreateOpUniquePtr(param);
@@ -122,12 +123,77 @@ OperationWrapper::OperationWrapper(const MultinomialParam &param)
     CreateOpUniquePtr(param);
 }
 
+OperationWrapper::OperationWrapper(const ConcatParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const SliceParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const TransposeParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const GatingParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const ReshapeAndCacheParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const FillParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
 OperationWrapper::OperationWrapper(const RazorFusionAttentionParam &param)
 {
     CreateOpUniquePtr(param);
 }
 
+OperationWrapper::OperationWrapper(const AllReduceParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const BroadcastParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const ReduceScatterParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const ReduceScatterVParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
 OperationWrapper::OperationWrapper(const FaUpdateParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const LinearParallelParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const LinearSparseParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(const RelayAttentionParam &param)
 {
     CreateOpUniquePtr(param);
 }

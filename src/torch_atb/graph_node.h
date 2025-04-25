@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -9,6 +9,7 @@
  */
 #ifndef TORCH_ATB_GRAPH_NODE_H
 #define TORCH_ATB_GRAPH_NODE_H
+#include <acl/acl_rt.h>
 #include "atb/core/context_base.h"
 #include "atb/operation.h"
 #include "atb/operation/operation_base.h"
@@ -21,8 +22,8 @@ public:
     void SetOperation(atb::Operation *op);
     std::string GetOutput(size_t index) const;
     bool FindOutput(const std::string &id) const;
-    void SetStreamId(uint32_t streamId) const;
-    uint32_t GetStreamId() const;
+    void SetStreamId(uint32_t streamId);
+    uint32_t GetStreamId();
 
     std::vector<std::string> inTensorIds;
     std::vector<std::string> outTensorIds;

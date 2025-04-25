@@ -56,6 +56,11 @@ template <> Status CreateOperation(const infer::MlaPreprocessParam &opParam, Ope
         ATB_LOG(ERROR) << "invalid cacheMode";
         return ERROR_INVALID_PARAM;
     }
+    if (opParam.quantMode == infer::MlaPreprocessParam::QuantMode::PER_TOKEN_QUANT_ASYMM ||
+        opParam.quantMode == infer::MlaPreprocessParam::QuantMode::UNQUANT) {
+        ATB_LOG(ERROR) << "invalid quantMode,dont support PER_TOKEN_ASYMM_QUANT and UNQUANT yet";
+        return ERROR_INVALID_PARAM;
+    }
     OP_PARAM_RSV_CHECK(opParam);
     *operation = new (std::nothrow) MlaPreprocessOperation(opParam);
     if (*operation == nullptr) {
@@ -68,15 +73,21 @@ template <> Status CreateOperation(const infer::MlaPreprocessParam &opParam, Ope
 MlaPreprocessOperation::MlaPreprocessOperation(const infer::MlaPreprocessParam &param)
     : OperationBase("MlaPreprocessOperation"), param_(param)
 {
+    std::string opIrKeyStr;
+    opIrKeyStr += "MlaPreprocessOperation";
     if (param.cacheMode == infer::MlaPreprocessParam::CacheMode::KROPE_CTKV) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("MlaPreprocessOperationSplit");
-    } else if (param.cacheMode == infer::MlaPreprocessParam::CacheMode::INT8_NZCACHE) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("MlaPreprocessOperationINT8NZ");
-    } else if (param.cacheMode == infer::MlaPreprocessParam::CacheMode::NZCACHE) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("MlaPreprocessOperationNZ");
-    } else {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("MlaPreprocessOperation");
+        opIrKeyStr += "Split";
     }
+    if (param.cacheMode == infer::MlaPreprocessParam::CacheMode::INT8_NZCACHE) {
+        opIrKeyStr += "INT8NZ";
+    }
+    if (param.cacheMode == infer::MlaPreprocessParam::CacheMode::NZCACHE) {
+        opIrKeyStr += "NZ";
+    }
+    if (param.quantMode == infer::MlaPreprocessParam::QuantMode::PER_TOKEN_QUANT_SYMM) {
+        opIrKeyStr += "Pertoken";
+    }
+    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKeyStr);
 }
 
 MlaPreprocessOperation::~MlaPreprocessOperation() {}
@@ -328,9 +339,7 @@ Status MlaPreprocessOperation::BlockSizeCheck(const SVector<TensorDesc> &inTenso
         ATB_LOG(ERROR) << "blockSize should > 0 and <= 128 or == 256";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if ((param_.cacheMode == infer::MlaPreprocessParam::CacheMode::INT8_NZCACHE ||
-         param_.cacheMode == infer::MlaPreprocessParam::CacheMode::NZCACHE) &&
-        blockSize != 128) { // 128: blocksize
+    if (isNz && blockSize != 128) { // 128: blocksize
         ATB_LOG(ERROR) << "blockSize should be 128 with INT8_NZCACHE or NZCACHE";
         return ERROR_INVALID_TENSOR_DIM;
     }

@@ -39,13 +39,14 @@ class TestToppOperation(operation_test.OperationTest):
             topk = self.op_param["topk"]
             probs_sorted = np.sort(probs, axis=-1)[..., ::-1][..., :topk]
             indices_sorted = np.argsort(-probs, kind='mergesort', axis=-1)[..., :topk]
-            probs_sorted_sumed = np.cumsum(probs_sorted, axis=-1, dtype=np.float16).astype(np.float32)
+            # 转npu计算以提高精度
+            probs_sorted_sumed = torch.cumsum(torch.from_numpy(probs_sorted.copy()).npu().to(in_tensors[0].dtype), dim=-1).cpu().to(torch.float32).numpy()
             bool_judge = (probs_sorted_sumed < topp)
             sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
             sum_val[sum_val < 0] = 0
             topp_v = np.take_along_axis(probs_sorted_sumed, sum_val, axis=-1)
             topp_v *= np.array(rand_list).reshape(-1, 1)[0:probs.shape[0]]
-            bool_judge_one = probs_sorted_sumed < topp_v
+            bool_judge_one = probs_sorted_sumed <= topp_v
             res = np.sum(bool_judge_one, axis=-1, keepdims=True)
             res[res < 0] = 0
             indices_sampled = np.take_along_axis(indices_sorted, res, axis=-1)
@@ -84,8 +85,7 @@ class TestToppOperation(operation_test.OperationTest):
                     logprobs_output = probs_sorted[:, :logProbsSize]
                     logprobs_output = logprobs_output.div(torch.from_numpy(topp_v)).log()
                     logprobs_output = logprobs_output.masked_fill(mask=mask_tensor[:, :logProbsSize], value=-9999.0)
-                    return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16),
-                            logprobs_output.to(torch.float32)]
+                    return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16), logprobs_output.to(torch.float32)]
 
                 return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16)]
             if topkToppSamplingType == 1 or topkToppSamplingType == 3:

@@ -775,7 +775,6 @@ class TestMLAPrepross(operation_test.OperationTest):
         print("accuracy is correct: %r", (float(strict_error_count) / out_len) <= 0.001)
 
     def golden_compare(self, out_tensors, golden_tensors):
-        # self.compare_data(out_tensors.npu(), golden_tensors.npu())
         if self.cacheMode == 1:
             if self.compare_count == 0:
                 self.compare_count += 1
@@ -787,12 +786,14 @@ class TestMLAPrepross(operation_test.OperationTest):
                 self.compare_count += 1
                 return compare_cv(self.qOut_npu[..., 512:576].npu(), self.qOut[..., 512:576].npu(), out_tensors.npu())
             elif self.compare_count == 3:
+                self.compare_count = 0
                 return compare_cv(self.keyout_npu[..., 512:576].npu(), self.keyOut1[..., 512:576].npu(), out_tensors.npu())
         else:
             if self.compare_count == 0:
                 self.compare_count += 1
                 return compare_cv(self.qOut_npu.npu(), self.qOut.npu(), out_tensors.npu())
             else:
+                self.compare_count = 0
                 return compare_cv(self.keyout_npu.npu(), self.keyOut1.npu(), out_tensors.npu())
  
     def test_mla_preprocess_split_block128_headNum32(self):
@@ -809,7 +810,7 @@ class TestMLAPrepross(operation_test.OperationTest):
         self.calc_vec_mm_atb_data(N,headNum,data_type)
         self.keyCache = self.keyCache.npu()
         for _ in range(100):
-            self.execute_out(OP_NAME, PARAM,
+            self.execute_out(OP_NAME, PARAM, 
                     [self.input1.npu(),
                     self.gamma1.npu(),
                     self.beta1.npu(),
@@ -829,8 +830,11 @@ class TestMLAPrepross(operation_test.OperationTest):
                     self.cos1.npu(),
                     self.sin1.npu(),
                     self.wuk.npu(),
-                    self.keyCache.npu(),
-                    self.slotMapping.npu()],
+                    self.keyCache[..., 0:512].npu(),
+                    self.keyCache[..., 512:576].npu(),
+                    self.slotMapping.npu(),
+                    torch.tensor([]).npu(),
+                    torch.tensor([]).npu()],
                     [torch.zeros((N, headNum, 512), dtype=data_type).npu(),
                     self.keyCache[..., 0:512].npu(),
                     torch.zeros((N, headNum, 64), dtype=data_type).npu(),
@@ -840,7 +844,6 @@ class TestMLAPrepross(operation_test.OperationTest):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
-        self.compare_count = 0
         self.cacheMode = 1
         N = 1024
         headNum = 128
@@ -870,8 +873,11 @@ class TestMLAPrepross(operation_test.OperationTest):
                     self.cos1.npu(),
                     self.sin1.npu(),
                     self.wuk.npu(),
-                    self.keyCache.npu(),
-                    self.slotMapping.npu()],
+                    self.keyCache[..., 0:512].npu(),
+                    self.keyCache[..., 512:576].npu(),
+                    self.slotMapping.npu(),
+                    torch.tensor([]).npu(),
+                    torch.tensor([]).npu()],
                     [torch.zeros((N, headNum, 512), dtype=data_type).npu(),
                     self.keyCache[..., 0:512].npu(),
                     torch.zeros((N, headNum, 64), dtype=data_type).npu(),

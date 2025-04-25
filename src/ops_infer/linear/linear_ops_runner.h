@@ -37,6 +37,7 @@ private:
     Status SetupKernelGraphMatmulDequantWeightNdNot910B();
     Status SetupKernelGraphMatmulDequantWeightNzNot910B();
     void SetupMatmulOriShape(const Mki::Tensor &xTensor, const Mki::Tensor &weightTensor);
+    void SetupMatmulOriShapeEin(const Mki::Tensor &xTensor, const Mki::Tensor &weightTensor);
     void InitKernelGraph(size_t inTensorNum, size_t outTensorNum, size_t internalTensorNum, size_t nodeNum);
     void SetupNeedMergeAxis(const Mki::Tensor &xTensor, const Mki::Tensor &weightTensor);
 

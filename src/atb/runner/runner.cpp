@@ -271,6 +271,12 @@ aclrtStream Runner::GetExecuteStream(Context *context) const
     return nullptr;
 }
 
+bool Runner::SetupCanSkipCheck(const VariantPack &variantPack)
+{
+    (void)variantPack;
+    return false;
+}
+
 void Runner::ChangeWorkspaceBufferByExecuteStream(RunnerVariantPack &runnerVariantPack)
 {
     uint32_t streamId = GetExecuteStreamId(operation_);

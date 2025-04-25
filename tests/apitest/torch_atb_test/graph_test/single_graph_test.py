@@ -4,8 +4,7 @@ import acl
 import unittest
 import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
 from utils import ret_check
 
 s = 128 # Sequence Length
@@ -27,7 +26,6 @@ def single_graph_build():
     self_attention_param.head_num = 16
     self_attention_param.kv_head_num = 16
     self_attention_param.calc_type = torch_atb.SelfAttentionParam.CalcType.PA_ENCODER
-    print("self_attention_param: ", self_attention_param)
 
     # float16: query, key, value,
     # int32: seqLen
@@ -37,7 +35,6 @@ def single_graph_build():
 
     input_0 = graph.add_input("input_0")
     elewise_add_param = torch_atb.ElewiseParam(elewise_type = torch_atb.ElewiseParam.ElewiseType.ELEWISE_ADD)
-    print("elewise_add_param: ", elewise_add_param)
 
     elewise_add_0 = graph.add_node([self_attention_out, input_0], elewise_add_param)
     elewise_add_0_out = elewise_add_0.get_output(0)
@@ -47,7 +44,6 @@ def single_graph_build():
     layernorm_param = torch_atb.LayerNormParam(layer_type = torch_atb.LayerNormParam.LayerNormType.LAYER_NORM_NORM)
     layernorm_param.norm_param.begin_norm_axis = 0
     layernorm_param.norm_param.begin_params_axis = 0
-    print("layernorm_param: ", layernorm_param)
 
     # # Just for reshape test
     # graph.reshape(gamma, reshape_transpose, "gamma_")
@@ -59,7 +55,6 @@ def single_graph_build():
     weight_0 = graph.add_input("weight_0") # weight in linear
     bias_0 = graph.add_input("bias_0") # bias in linear
     linear_param = torch_atb.LinearParam(out_data_type=torch_atb.AclDataType.ACL_DT_UNDEFINED)
-    print("linear_param: ", linear_param)
 
     # x, weight, bias， float 16 -> float16
     linear_0 = graph.add_node([layernorm_0_out, weight_0, bias_0], linear_param) 
@@ -83,9 +78,7 @@ def single_graph_build():
     return Graph
 
 def reshape_transpose(old_shape):
-    print(f"Old shape: {old_shape}")
     new_shape = [old_shape[1], old_shape[0]]
-    print(f"New shape: {new_shape}")
     return new_shape 
 
 def get_inputs():
@@ -119,8 +112,9 @@ def get_inputs():
 def run():
     Graph = single_graph_build()
     inputs = get_inputs()
+    print("----------- single graph forward begin -----------")
     results = Graph.forward(inputs)
-    print(results)
+    print("----------- single graph forward success -----------")
 
 class TestSingleGraph(unittest.TestCase):
     def test(self):

@@ -59,6 +59,7 @@ public:
     virtual uint32_t GetBlockDim() const = 0;
     virtual void ResetLogPrefix(const std::string &prefix, size_t kernelId) = 0;
     virtual bool GetTilingFilledFlag() const = 0;
+    bool needInferShape_ = true;
 };
 } // namespace atb
 #endif

@@ -17,7 +17,7 @@ function fn_build_mki()
         [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
         cd $THIRD_PARTY_DIR
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=br_release_cann_8.1.RC1_20250925
+        [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
         echo  "current branch for atb and mki: $branch"
         git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/Mind-KernelInfra.git
     else
@@ -46,7 +46,7 @@ function fn_build_asdops()
         [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
         cd $THIRD_PARTY_DIR
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=br_release_cann_8.1.RC1_20250925
+        [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
         echo  "current branch for atb and asdops: $branch"
         git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
     else
@@ -67,7 +67,7 @@ function fn_build_asdops()
     fi
 
     build_options="$build_options --output=$THIRD_PARTY_DIR"
-    bash scripts/build.sh release $build_options
+    bash scripts/build.sh release $build_options --no_werror
     cd $THIRD_PARTY_DIR
     tar -xf asdops.tar.gz
     rm -f asdops.tar.gz

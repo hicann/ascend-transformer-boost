@@ -2339,6 +2339,18 @@ static atb::Status FaUpdateOperationCreate(const nlohmann::json &paramJson, atb:
     return CreateOperation(param, op);
 }
 
+static atb::Status PagedCacheLoadOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    ATB_LOG(INFO) << "PagedCacheLoadOperationCreate";
+    atb::infer::PagedCacheLoadParam param;
+    if (paramJson.contains("rsv")) {
+        for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
+            param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
+        }
+    }
+    return CreateOperation(param, op);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AllReduceOperation", &AllReduceOperationCreate},
     {"BroadcastOperation", &BroadcastOperationCreate},
@@ -2423,6 +2435,7 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"ReshapeAndCacheWithStrideOperation", &ReshapeAndCacheWithStrideOperationCreate},
     {"RazorFusionAttentionOperation", &RazorFusionAttentionOperationCreate},
     {"FaUpdateOperation", &FaUpdateOperationCreate},
+    {"PagedCacheLoadOperation", &PagedCacheLoadOperationCreate},
 };
 
 atb::Status CreateOperation(const std::string &opName, const std::string &param, atb::Operation **operation)

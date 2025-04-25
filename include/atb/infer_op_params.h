@@ -2982,6 +2982,18 @@ struct FaUpdateParam {
     //!
     uint8_t rsv[64] = {0};
 };
+
+//!
+//! \struct PagedCacheLoadParam
+//!
+//! \brief reshapeandcache反向
+//!
+struct PagedCacheLoadParam {
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[64] = {0};
+};
 } // namespace infer
 } // namespace atb
 #endif

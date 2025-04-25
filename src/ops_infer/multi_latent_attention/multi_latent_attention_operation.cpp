@@ -87,11 +87,6 @@ static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "headNum should be {8,16,32,64,128}";
         return false;
     }
-    if (opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE &&
-        opParam.headNum == 128) { // 128: headNum
-        ATB_LOG(ERROR) << "headNum should not be 128 with INT8_NZCACHE";
-        return false;
-    }
     if (opParam.qkScale <= 0 || opParam.qkScale > 1) {
         ATB_LOG(ERROR) << "qkScale should > 0 and <= 1";
         return false;

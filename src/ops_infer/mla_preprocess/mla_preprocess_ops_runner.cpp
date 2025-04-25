@@ -82,6 +82,7 @@ Status MlaPreprocessOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorP
     asdParam.N = static_cast<uint32_t>(tokenNum);
     asdParam.headNum = static_cast<uint32_t>(headNum);
     asdParam.cacheMode = param_.cacheMode;
+    asdParam.quantMode = static_cast<AtbOps::OpParam::MlaPreprocess::QuantMode>(param_.quantMode);
     auto &mlaPreprocessNode = kernelGraph_.nodes.at(0);
     mlaPreprocessNode.opDesc = {0, "MlaPreprocessOperation", asdParam};
     return NO_ERROR;

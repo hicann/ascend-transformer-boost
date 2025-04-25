@@ -4,8 +4,7 @@ import acl
 import unittest
 import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
 from utils import ret_check, check_float
 
 def run_test():
@@ -37,10 +36,8 @@ def run_test():
         return [result]
 
     cpu_goldens = golden()
-    print("cpu_goldens: ", cpu_goldens)
 
     npu_outputs = graph_run()
-    print("npu_outputs: ", npu_outputs)
     
     assert check_float(npu_outputs, cpu_goldens), "Test failed"
     print("----------- graph test success ------------")

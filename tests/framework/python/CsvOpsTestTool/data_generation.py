@@ -448,7 +448,10 @@ class LinearOperation(DataGen):
             x = x.to(torch.int32)
             weight = weight.to(torch.int32)
         if matmultype == 1:
-            golden_result = torch.einsum('mbk,bkn->mbn', x, weight)
+            if len(weight.shape) == 2:
+                golden_result = torch.einsum('mbk,kn->mbn', x, weight)
+            else:
+                golden_result = torch.einsum('mbk,bkn->mbn', x, weight)
             if bias is not None:
                 bias_expanded = bias.unsqueeze(0)
                 golden_result = golden_result + bias_expanded
@@ -1124,49 +1127,46 @@ class GatherOperation(DataGen):
         json_data = json.loads(op_params)
         axis = json_data["axis"]
         batchDims = json_data["batchDims"]
-        if in_tensors[1].ndim == 1:
-            golden_result = torch.index_select(in_tensors[0], axis, in_tensors[1].to(torch.int64))
-        else:
-            if batchDims == 0:
-                if axis == 0:
-                    if in_tensors[0].ndim == 2 and in_tensors[1].ndim == 2:
-                        embedding = torch.nn.Embedding(in_tensors[0].shape[0], in_tensors[0].shape[1])
-                        embedding.weight.data.copy_(in_tensors[0])
-                        embedding.weight.requires_grad = False
-                        golden_result = embedding(in_tensors[1]).detach()
-                        return [golden_result]
-                outputSize = []
-                dim0 = 1
-                for i in range(0, axis):
-                    outputSize.append(in_tensors[0].shape[i])
-                    dim0 *= in_tensors[0].shape[i]
-                dim1 = in_tensors[0].shape[axis]
-                for i in range(0, in_tensors[1].ndim):
-                    outputSize.append(in_tensors[1].shape[i])
-                dim2 = 1
-                for i in range(axis + 1, in_tensors[0].ndim):
-                    outputSize.append(in_tensors[0].shape[i])
-                    dim2 *= in_tensors[0].shape[i]
-                # inputFlatten = in_tensors[0].clone().reshape(-1)
-                indicesFlatten = in_tensors[1].clone().reshape(-1)
-                logging.debug("outputSize", outputSize)
-
-                golden_result = torch.zeros(outputSize, dtype=in_tensors[0].dtype, device=in_tensors[0].device).reshape(-1)
-                idx = 0
-                for i in range(0, dim0):
-                    inputIdx = i * dim1 * dim2
-                    for indice in indicesFlatten:
-                        for k in range(0, dim2):
-                            golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
-                            idx += 1
-                golden_result = golden_result.reshape(outputSize)
-            elif batchDims > 0:
-                # 使用 torch.gather 进行批量维度的处理
-                golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
+        if batchDims == 0:
+            if axis == 0:
+                if in_tensors[0].ndim == 2 and in_tensors[1].ndim == 2:
+                    embedding = torch.nn.Embedding(in_tensors[0].shape[0],in_tensors[0].shape[1])
+                    embedding.weight.data.copy_(in_tensors[0])
+                    embedding.weight.requires_grad = False
+                    golden_result = embedding(in_tensors[1]).detach()
+                    return [golden_result]
+            outputSize = []
+            dim0 = 1
+            for i in range(0,axis):
+                outputSize.append(in_tensors[0].shape[i])
+                dim0 *= in_tensors[0].shape[i]
+            dim1 = in_tensors[0].shape[axis]
+            for i in range(0,in_tensors[1].ndim):
+                outputSize.append(in_tensors[1].shape[i])
+            dim2 = 1
+            for i in range(axis + 1,in_tensors[0].ndim):
+                outputSize.append(in_tensors[0].shape[i])
+                dim2 *= in_tensors[0].shape[i]
+            # inputFlatten = in_tensors[0].clone().reshape(-1)
+            indicesFlatten = in_tensors[1].clone().reshape(-1)
+            logging.debug("outputSize",outputSize)
+            
+            golden_result = torch.zeros(outputSize, dtype=in_tensors[0].dtype, device=in_tensors[0].device).reshape(-1)
+            idx = 0
+            for i in range(0, dim0):
+                inputIdx = i * dim1 * dim2
+                for indice in indicesFlatten:
+                    for k in range(0, dim2):
+                        golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
+                        idx += 1
+            golden_result = golden_result.reshape(outputSize)
+        elif batchDims > 0:
+            # 使用 torch.gather 进行批量维度的处理
+            golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
 
         # 返回结果
         return [golden_result.cpu()]
-
+    
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
@@ -2095,13 +2095,14 @@ class TopkToppSamplingOperation(DataGen):
             topp = in_tensors[1].cpu().to(torch.float32).numpy()
             probs_sorted = np.sort(probs, axis=-1)[..., ::-1][..., :topk]
             indices_sorted = np.argsort(-probs, kind='mergesort', axis=-1)[..., :topk]
-            probs_sorted_sumed = np.cumsum(probs_sorted, axis=-1, dtype=np.float16).astype(np.float32)
+            # 转npu计算以提高精度
+            probs_sorted_sumed = torch.cumsum(torch.from_numpy(probs_sorted.copy()).npu().to(in_tensors[0].dtype), dim=-1).cpu().to(torch.float32).numpy()
             bool_judge = (probs_sorted_sumed < topp)
             sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
             sum_val[sum_val < 0] = 0
             topp_v = np.take_along_axis(probs_sorted_sumed, sum_val, axis=-1)
             topp_v *= np.array(rand_list).reshape(-1, 1)[0:probs.shape[0]]
-            bool_judge_one = probs_sorted_sumed < topp_v
+            bool_judge_one = probs_sorted_sumed <= topp_v
             res = np.sum(bool_judge_one, axis=-1, keepdims=True)
             res[res < 0] = 0
             indices_sampled = np.take_along_axis(indices_sorted, res, axis=-1)
@@ -2109,7 +2110,6 @@ class TopkToppSamplingOperation(DataGen):
             return [torch.from_numpy(indices_sampled.astype(np.int32)),
                     torch.from_numpy(probs_sampled).to(in_tensors[0].dtype)]
         else:
-
             probs = in_tensors[0].cpu().to(torch.float32)
             topk = in_tensors[1].cpu().to(torch.int64)
             topp = in_tensors[2].cpu().to(torch.float32)
@@ -2120,9 +2120,8 @@ class TopkToppSamplingOperation(DataGen):
             probs_masked_topk = probs_masked_topk.numpy()
             if in_tensors[0].dtype == torch.float16:
                 probs_cumsumed = np.cumsum(probs_masked_topk, axis=-1, dtype=np.float16).astype(np.float32)
-            elif in_tensors[0].dtype == torch.bfloat16:
-                probs_cumsumed = torch.cumsum(torch.from_numpy(probs_masked_topk.copy()).bfloat16(), dim=-1).to(
-                    torch.float32).numpy()
+            elif in_tensors[0].dtype == torch.bfloat16:    
+                probs_cumsumed = torch.cumsum(torch.from_numpy(probs_masked_topk.copy()).bfloat16(), dim=-1).to(torch.float32).numpy()
             probs_cumsumed = torch.from_numpy(probs_cumsumed)
             probs_masked_topk = torch.from_numpy(probs_masked_topk)
             if topktopp_sampling_type == 2 or topktopp_sampling_type == 4:
@@ -6905,3 +6904,105 @@ class MultiLatentAttentionOperation(DataGen):
     @staticmethod
     def get_op_type(op_params) -> OpTypes:
         return OpTypes.COMPUTE_FLOAT
+class PagedCacheLoadOperation(DataGen):
+    @staticmethod
+    def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
+        if i != 0:
+            return torch_npu.npu_format_cast(PagedCacheLoadOperation.in_tensors[i], format_dict[format])
+        datatype_dict = {"float16": "float16", "bf16": "float32", "int8": "int8"}
+        dtype = datatype_dict[datatype]
+        soc_version = get_soc_version()
+        MAX_SEQ_LEN = 1024
+        batch = shapes[3][0]
+        context_lens = [random.randint(128, 128) for _ in range(batch)]
+        num_tokens = len(context_lens)
+        max_context_len = max(context_lens)
+        block_size = shapes[0][2]
+        num_blocks = shapes[0][0]
+        num_blocksv = shapes[1][0]
+        elenum_aligned = shapes[0][3]
+        num_heads_sizek = shapes[0][1]
+        num_heads_sizev = shapes[1][1]
+        num_heads_sizek16 = shapes[4][1]
+        num_heads_sizev16 = shapes[5][1]
+        sumcontext = shapes[4][0]
+        key_cache = np.random.randint(1, 11, size=(num_blocks, num_heads_sizek, block_size, elenum_aligned)).astype(
+            dtype)
+        value_cache = np.random.randint(1, 11, size=(num_blocksv, num_heads_sizev, block_size, elenum_aligned)).astype(
+            dtype)
+
+        max_num_blocks_per_req = (max_context_len + block_size - 1) // block_size
+        block_tables = []  # [num_tokens, max_num_blocks_per_seq]
+        for _ in range(num_tokens):
+            block_table = [
+                random.randint(0, num_blocks - 1) for _ in range(max_num_blocks_per_req)
+            ]
+            block_tables.append(block_table)
+
+        context_lens = np.array(context_lens).astype(np.int32)
+        block_tables = np.array(block_tables).astype(np.int32)
+
+        key = np.zeros((sumcontext, num_heads_sizek16)).astype(dtype)
+        value = np.zeros((sumcontext, num_heads_sizev16)).astype(dtype)
+
+        ret_data = key_cache, value_cache, block_tables, context_lens, key, value
+        in_tensors = [torch.from_numpy(tensor) for tensor in ret_data]
+        in_tensors = [tensor.npu() for tensor in in_tensors]
+        PagedCacheLoadOperation.in_tensors = in_tensors
+
+        return torch_npu.npu_format_cast(PagedCacheLoadOperation.in_tensors[i], format_dict[format])
+
+    @staticmethod
+    def golden(in_tensors, op_params):
+        MAX_SEQ_LEN = 1024
+        context_lens = in_tensors[3].numpy()
+        sum_context_lens = sum(context_lens)
+        max_context_len = max(context_lens)
+        num_tokens = len(context_lens)
+        num_blocks, num_heads_sizek_aligend, block_size, elenum_aligned = in_tensors[0].shape
+        num_blocks, num_heads_sizev_aligend, block_size, elenum_aligned = in_tensors[1].shape
+        num_heads_sizek = num_heads_sizek_aligend * elenum_aligned
+        num_heads_sizev = num_heads_sizev_aligend * elenum_aligned
+        data_type = in_tensors[0].dtype
+        datatype_dictkv = {"torch.float16": "float16", "torch.bfloat16": "float32", "torch.int8": "int8"}
+        dtypekv = datatype_dictkv[str(data_type)]
+        key_expect = np.zeros((sum_context_lens, num_heads_sizek)).astype(dtypekv)
+        value_expect = np.zeros((sum_context_lens, num_heads_sizev)).astype(dtypekv)
+
+        key_cache = in_tensors[0].numpy()
+        value_cache = in_tensors[1].numpy()
+        block_tables = in_tensors[2].numpy()  # [num_tokens, max_num_blocks_per_seq]
+        kv_rslt_id = 0
+        for i in range(num_tokens):
+            block_table = block_tables[i]
+            context_len = int(context_lens[i])
+
+            for j in range(context_len):
+                block_id = int(block_table[j // block_size])
+                block_offset = j % block_size
+
+                if block_id < 0:
+                    continue
+
+                temp_k = np.zeros((num_heads_sizek))
+                temp_v = np.zeros((num_heads_sizev))
+
+                for k in range(num_heads_sizek // elenum_aligned):
+                    temp_k[k * elenum_aligned: k * elenum_aligned + elenum_aligned] = key_cache[block_id][k][
+                                                                                          block_offset][:]
+
+                for k in range(num_heads_sizev // elenum_aligned):
+                    temp_v[k * elenum_aligned: k * elenum_aligned + elenum_aligned] = value_cache[block_id][k][
+                                                                                          block_offset][:]
+
+                key_expect[kv_rslt_id] = temp_k
+                value_expect[kv_rslt_id] = temp_v
+                kv_rslt_id += 1
+        res_data = key_expect, value_expect
+        out_tensors = [torch.from_numpy(tensor) for tensor in res_data]
+        return out_tensors
+
+    @staticmethod
+    def get_op_type(op_params):
+        return OpTypes.MOVE
+

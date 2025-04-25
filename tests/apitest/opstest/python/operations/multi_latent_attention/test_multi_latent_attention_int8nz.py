@@ -634,6 +634,40 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  torch.tensor(self.de_scale1_fp32).npu(),
                                  torch.tensor(self.de_scale2_fp32).npu()])
 
+    def test_mla_split_quant_nz_head128(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        num_tokens = 32
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+        k_seqlen = 256
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_dim = 0
+        dtype = torch.float16
+        is_kv_combined = True
+        is_nz_in = True
+        is_quant_flag = True
+        self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, dtype,
+                        is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag)
+
+        OP_NAME = "MultiLatentAttentionOperation"
+        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "maskType": 0, "cacheMode": 2})
+        RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist()})
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
+                                [self.q_split1.npu(),
+                                 self.q_split2.npu(),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split1).contiguous().npu(), 29),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split2).contiguous().npu(), 29),
+                                 torch.tensor(self.block_tables).int().npu(),
+                                 torch.tensor(self.contex_lens).int().npu(),
+                                 torch.tensor(self.de_scale1_fp32).npu(),
+                                 torch.tensor(self.de_scale2_fp32).npu()])
+
     def test_mla_split_quant_nz_bf16(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")

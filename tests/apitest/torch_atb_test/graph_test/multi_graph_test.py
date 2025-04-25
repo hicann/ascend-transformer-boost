@@ -4,8 +4,7 @@ import acl
 import unittest
 import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
 from utils import ret_check
 
 s = 128 # Sequence Length
@@ -82,9 +81,7 @@ def single_graph_build(n):
     return Graph
 
 def reshape_transpose(old_shape):
-    print(f"Old shape: {old_shape}")
     new_shape = [old_shape[1], old_shape[0]]
-    print(f"New shape: {new_shape}")
     return new_shape 
 
 def get_inputs():
@@ -153,7 +150,6 @@ def run():
     x = (torch.ones((128, 16, 128), dtype=torch.float16)).npu()
     inputs.append(x)
     result = BiggerGraph.forward(inputs)
-    print(result)
     print("------------ bigger graph forward success ------------")
 
 class TestMultiGraph(unittest.TestCase):

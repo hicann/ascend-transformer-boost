@@ -1,5 +1,6 @@
 import torch
 import torch_atb
+import unittest
 
 def run_test():
     layer_norm_param = torch_atb.LayerNormParam()

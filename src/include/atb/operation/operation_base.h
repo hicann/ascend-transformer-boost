@@ -72,12 +72,13 @@ private:
     void Reset();
     Status InferShapeCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeThrow(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
-    Status SetupCheck(const VariantPack &variantPack, Context *context);
-    Status SetupPrepare();
+    Status SetupCheck(const VariantPack &variantPack);
+    Status SetupPrepare(Context *context);
     Status SetupThrowPrepare(uint64_t &workspaceSize, Context *context);
     Status PreExecuteThrow(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize);
     Status PreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize, Context *context);
     Status Launch();
+    Status CreateRunner(Context *context);
     Status SetupThrow(const VariantPack &variantPack, uint64_t &workspaceSize);
     Status ExecuteCheck(const VariantPack &variantPack, const uint8_t *workspace, uint64_t workspaceSize,
                         Context *context);

@@ -91,6 +91,7 @@ static const std::map<std::size_t, ParamCompareFunc> ASDOPS_PARAM_COMPARE_MAP = 
     {typeid(AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache).hash_code(),
      ParamCompareFuncImpl<AtbOps::OpParam::RmsNormAndRopeAndReshapeAndCache>},
     {typeid(AsdOps::OpParam::FaUpdate).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::FaUpdate>},
+    {typeid(AtbOps::OpParam::PagedCacheLoad).hash_code(), ParamCompareFuncImpl<AtbOps::OpParam::PagedCacheLoad>},
 };
 
 bool IsLaunchParamEqual(const Mki::LaunchParam &launchParam1, const Mki::LaunchParam &launchParam2)
