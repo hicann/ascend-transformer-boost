@@ -560,7 +560,6 @@ TEST(TestReshapeAndCacheWithStrideOperation, TestReshapeAndCacheWithStrideSISO)
         return;
     }
     // 设置卡号、创建context、设置stream
-    aclInit(nullptr);
     int32_t deviceId = 0;
     aclrtSetDevice(deviceId);
     atb::Context *context = nullptr;
@@ -629,7 +628,6 @@ TEST(TestReshapeAndCacheWithStrideOperation, TestReshapeAndCacheWithStrideSISO)
     atb::DestroyOperation(reshapeAndCacheOp);  // operation，对象概念，先释放
     aclrtDestroyStream(stream);
     atb::DestroyContext(context);  // context，全局资源，后释放
-    aclFinalize();
     ASSERT_EQ(resultSt, atb::NO_ERROR);
 }
 
@@ -640,7 +638,6 @@ TEST(TestReshapeAndCacheWithStrideOperation, TestReshapeAndCacheWithStrideND)
         return;
     }
     // 设置卡号、创建context、设置stream
-    aclInit(nullptr);
     int32_t deviceId = 0;
     aclrtSetDevice(deviceId);
     atb::Context *context = nullptr;
@@ -731,6 +728,5 @@ TEST(TestReshapeAndCacheWithStrideOperation, TestReshapeAndCacheWithStrideND)
     atb::DestroyOperation(reshapeAndCacheOp);  // operation，对象概念，先释放
     aclrtDestroyStream(stream);
     atb::DestroyContext(context);  // context，全局资源，后释放
-    aclFinalize();
     ASSERT_EQ(resultSt, atb::NO_ERROR);
 }
