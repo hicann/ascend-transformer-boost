@@ -83,7 +83,7 @@ function fn_build_doxygen()
         apt-get -y install flex bison
     fi
     cd $THIRD_PARTY_DIR
-    if [! -d "$THIRD_PARTY_DIR/doxygen" ]; then
+    if [ ! -d "$THIRD_PARTY_DIR/doxygen" ]; then
         [[ ! -f "doxygen-1.9.3.src.tar.gz" ]] && wget --no-check-certificate https://github.com/doxygen/doxygen/releases/download/Release_1_9_3/doxygen-1.9.3.src.tar.gz
         tar -xzvf doxygen-1.9.3.src.tar.gz
         mv doxygen-1.9.3 doxygen
