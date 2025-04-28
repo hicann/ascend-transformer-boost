@@ -47,35 +47,15 @@ struct mmad<ArchTag, ElementA, ElementB, AccDTypeC, false> {
                     bool initC,
                     uint8_t unitFlag = 0)
     {
-#ifdef USE_ASCENDC
-        AscendC::Mmad(l0cTensor,
-                      l0aTensor,
-                      l0bTensor,
-                      AscendC::MmadParams(mTileActual, nTileActual, kPartActual, unitFlag, false, initC));
-#else
-#if defined(__DAV_C220_CUBE__)
-        mad((__cc__ AccDTypeC *)l0cTensor.GetPhyAddr(),
-            (__ca__ ElementA *)l0aTensor.GetPhyAddr(),
-            (__cb__ ElementB *)l0bTensor.GetPhyAddr(),
-            mTileActual, // m
-            kPartActual, // k
-            nTileActual, // n
-            unitFlag,    // unitFlag
-            0,           // kDirectionAlign
-            0,           // cmatrixSource
-            initC        // cmatrixInitVal
-        );
-#else
-        mad((__cc__ AccDTypeC *)l0cTensor.GetPhyAddr(),
-            (__ca__ ElementA *)l0aTensor.GetPhyAddr(),
-            (__cb__ ElementB *)l0bTensor.GetPhyAddr(),
-            mTileActual, // m
-            kPartActual, // k
-            nTileActual, // n
-            initC        // cmatrixInitVal
-        );
-#endif
-#endif
+        AscendC::Mmad(l0cTensor,                       // C
+                      l0aTensor,                       // A
+                      l0bTensor,                       // B
+                      AscendC::MmadParams(mTileActual, // m
+                                          nTileActual, // n
+                                          kPartActual, // k
+                                          unitFlag,    // unitFlag
+                                          false,       // cmatrixSource
+                                          initC));     // cmatrixInitVal
     };
 
     __aicore__ mmad(AscendC::LocalTensor<AccDTypeC> l0cTensor,
@@ -88,29 +68,19 @@ struct mmad<ArchTag, ElementA, ElementB, AccDTypeC, false> {
                     bool initC,
                     uint8_t unitFlag = 0)
     {
-#ifdef USE_ASCENDC
-        AscendC::LocalTensor<ElementA> biasTensor;
-        biasTensor.InitBuffer(biasBt, mTileActual);
+        AscendC::LocalTensor<AccDTypeC> biasTensor;
+        biasTensor.InitBuffer(biasBt, nTileActual);
         biasTensor.address_.logicPos = static_cast<uint8_t>(AscendC::TPosition::C2);
-        AscendC::Mmad(l0cTensor,
-                      l0aTensor,
-                      l0bTensor,
-                      biasTensor,
-                      AscendC::MmadParams(mTileActual, nTileActual, kPartActual, unitFlag, true, false));
-#else
-        mad((__cc__ AccDTypeC *)l0cTensor.GetPhyAddr(),
-            (__ca__ ElementA *)l0aTensor.GetPhyAddr(),
-            (__cb__ ElementB *)l0bTensor.GetPhyAddr(),
-            biasBt,
-            mTileActual, // m
-            kPartActual, // k
-            nTileActual, // n
-            unitFlag,    // unitFlag
-            0,           // kDirectionAlign
-            1,           // cmatrixSource
-            0            // cmatrixInitVal
-        );
-#endif
+        AscendC::Mmad(l0cTensor,                       // C
+                      l0aTensor,                       // A
+                      l0bTensor,                       // B
+                      biasTensor,                      // bt
+                      AscendC::MmadParams(mTileActual, // m
+                                          nTileActual, // n
+                                          kPartActual, // k
+                                          unitFlag,    // unitFlag
+                                          true,        // cmatrixSource
+                                          false));     // cmatrixInitVal
     };
 };
 

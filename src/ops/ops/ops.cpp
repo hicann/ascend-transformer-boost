@@ -37,4 +37,9 @@ Mki::Kernel *Ops::GetKernelInstance(const std::string &kernelName) const
     return opSchedule_->GetKernelInstance(kernelName);
 }
 
+void Ops::UpdateSchedule()
+{
+    opSchedule_->UpdateLoader();
+}
+
 } // namespace AsdOps

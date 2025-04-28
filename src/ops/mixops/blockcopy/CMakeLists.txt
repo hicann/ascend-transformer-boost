@@ -9,3 +9,7 @@ add_operation(BlockCopyOperation "${blockcopy_srcs}")
 add_kernel(blockcopy ascend910b vector
     op_kernel/blockcopy.cpp
     BlockCopyKernel)
+
+add_kernel(blockcopy ascend310p vector
+    op_kernel/blockcopy_310p.cpp
+    BlockCopyKernel)

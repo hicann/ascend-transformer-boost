@@ -432,8 +432,13 @@ private:
         WAIT_FLAG(MTE1, M, event_id + 2);
 
         if (bias_flag) {
-            CopyCbufToBt<int32_t>(((uint64_t)bias_tb), bias_l1_tensor, (uint16_t)0ULL, 1,
-                            (head_actual * CONST_4 + CONST_64 - 1) / CONST_64, 0, 0);
+            l1_to_bt<ArchType::ASCEND_V220, int32_t>(bias_tb,                                          // dst
+                                                     bias_l1_tensor,                                   // src
+                                                     0,                                                // convControl
+                                                     1,                                                // nBurst
+                                                     CeilDiv<CONST_64>(head_actual * sizeof(int32_t)), // lenBurst
+                                                     0,                                                // srcGap
+                                                     0);                                               // dstGap
             SET_FLAG(MTE1, M, EVENT_ID7);
             WAIT_FLAG(MTE1, M, EVENT_ID7); // wait move bias fron L1 to BT
             mmad<ArchType::ASCEND_V220, int8_t, int8_t, int32_t, false>(
@@ -461,8 +466,12 @@ private:
         WAIT_FLAG(M, FIX, EVENT_ID0);
 
         //step3: move bias
-        CopyCbufToFbuf<uint64_t>(scale_fb_tensor, l1kscale_int8_addr_tensor, 1,
-                            (head_actual * CONST_4 * CONST_2 + CONST_128 - 1) / CONST_128, 0, 0);
+        l1_to_fb<ArchType::ASCEND_V220, TDESCALE>(scale_fb_tensor,                                    // dst
+                                                  l1kscale_int8_addr_tensor,                          // src
+                                                  1,                                                  // nBurst
+                                                  CeilDiv<CONST_128>(head_actual * sizeof(TDESCALE)), // lenBurst
+                                                  0,                                                  // srcGap
+                                                  0);                                                 // dstGap
         PIPE_BARRIER(FIX);
         SetFpc<uint64_t>(scale_fb_tensor, false);
         l0c_to_l1<ArchType::ASCEND_V220, DataFormat::ZN, half, int32_t>(

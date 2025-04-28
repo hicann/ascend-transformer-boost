@@ -68,8 +68,8 @@ class TestPpMatmul310p(op_test.OpTest):
             logging.debug(str(self.op_desc["specificParam"]))
         return torch.allclose(out_tensors[0].half(), golden_out_tensors[0].half(), rtol=0.001, atol=0.001)
 
+    @op_test.only_310p
     def testcase0(self):
-        self.set_support_310p_only()
         self.trans_A, self.trans_B = False, True
         bsize, msize, ksize, nsize = 1, 512, 512, 512
         self.set_param(

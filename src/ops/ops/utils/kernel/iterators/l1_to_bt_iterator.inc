@@ -14,16 +14,24 @@
 /////////////////////////////////////////////////////
 
 // Partial specialization for V220
-template <ArchType ArchTag, typename DataType>
-struct l1_to_bt {
-    using HardwareParams = HardwareInfo<ArchTag>;
-    static constexpr uint32_t BLOCK_SIZE = HardwareParams::btBlockSize / sizeof(DataType);
-
-    __aicore__ l1_to_bt(AscendC::LocalTensor<DataType> biasTableTensor,
-                        AscendC::LocalTensor<DataType> biasL1Tensor,
-                        uint32_t ntileActual)
+template <typename DataType>
+struct l1_to_bt<ArchType::ASCEND_V220, DataType> {
+    __aicore__ l1_to_bt(uint64_t dst,
+                        const AscendC::LocalTensor<DataType> &src,
+                        uint16_t convControl,
+                        uint16_t nBurst,
+                        uint16_t lenBurst,
+                        uint16_t srcGap,
+                        uint16_t dstGap)
     {
-        AscendC::DataCopy(
-            biasTableTensor, biasL1Tensor, {1, static_cast<uint16_t>(CeilDiv<BLOCK_SIZE>(ntileActual)), 0, 0});
-    };
+        AscendC::LocalTensor<DataType> dstTensor;
+        dstTensor.InitBuffer(dst, nBurst * lenBurst);
+        dstTensor.address_.logicPos = static_cast<uint8_t>(AscendC::TPosition::C2);
+        AscendC::DataCopy(dstTensor,
+                          src,
+                          AscendC::DataCopyParams(nBurst,   // nBurst
+                                                  lenBurst, // lenBurst
+                                                  srcGap,   // srcGap
+                                                  dstGap)); // dstGap
+    }
 };

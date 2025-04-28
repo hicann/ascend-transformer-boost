@@ -236,11 +236,33 @@ class TestPpMatmulAccum(op_test.OpTest):
             [2],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
-        
+
     @op_test.only_910b
     def testcase_matmul_accum_atomic_fp16_tt(self):
         bsize, msize, ksize, nsize = 1, 28, 8192, 3072
         ta, tb = True, True
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": ta,
+                "transposeB": tb,
+                "oriShape": [msize, ksize, nsize],
+                "matmulType": MATMUL_ACCUM_ATOMIC,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nd])
+        self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.float16)
+        self.execute(
+            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
+            [2],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
+    @op_test.only_910b
+    def testcase_matmul_accum_atomic_fp16_gemv(self):
+        bsize, msize, ksize, nsize = 1, 1, 8192, 3072
+        ta, tb = False, True
         self.set_param(
             "MatMulOperation",
             {

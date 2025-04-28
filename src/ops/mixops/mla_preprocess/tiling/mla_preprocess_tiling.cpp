@@ -27,6 +27,7 @@ constexpr uint32_t CONST_128 = 128;
 constexpr uint32_t CONST_256 = 256;
 constexpr uint32_t CONST_512 = 512;
 constexpr uint32_t L1_BUFFER_SIZE = 524288;
+constexpr uint32_t L1_PINGPONG_BUFFER_LEN = 262144;
 constexpr uint32_t L0AB_PINGPONG_BUFFER_LEN = 131072;
 constexpr uint32_t L1_SCALE_SIZE = 4096;
 constexpr uint32_t L1_BIAS_SIZE = 2048;
@@ -84,8 +85,10 @@ using namespace Mki;
 using QuantMode = OpParam::MlaPreprocess::QuantMode;
 class PpMatmulTilingApi {
 public:
-    PpMatmulTilingApi(uint32_t numBatch, uint32_t m, uint32_t k, uint32_t n, bool transA, bool transB, bool enDequant)
-        : numBatch_(numBatch), m_(m), k_(k), n_(n), transA_(transA), transB_(transB), enDequant_(enDequant)
+    PpMatmulTilingApi(uint32_t numBatch, uint32_t m, uint32_t k, uint32_t n, bool transA, bool transB, bool enDequant,
+        bool deqOnTheFly)
+        : numBatch_(numBatch), m_(m), k_(k), n_(n), transA_(transA), transB_(transB), enDequant_(enDequant),
+          deqOnTheFly_(deqOnTheFly)
     {
         inDataSize_ = enDequant ? sizeof(uint8_t) : sizeof(uint16_t);
     }
@@ -96,6 +99,10 @@ private:
     float GetCost(const uint32_t m0, const uint32_t n0);
     void UpdateTileSize(const uint32_t m0, const uint32_t n0);
     void Swizzle();
+    uint32_t ComputeL1AbSize();
+    uint32_t ComputeK0ForABpingpong(uint32_t l1AbSize);
+    bool IsLoadAllAmat(uint32_t l1AbSize);
+    uint32_t ComputeK0ForOnlyBpingpong(uint32_t l1AbSize);
 
 private:
     uint32_t numBatch_{0};
@@ -113,10 +120,13 @@ private:
     uint32_t blockDim_{0};
     uint32_t swizzleDirect_{0};
     uint32_t inDataSize_{0};
+    uint32_t b0matPingPongBufferLen_{L1_PINGPONG_BUFFER_LEN};
     bool transA_{false};
     bool transB_{false};
     bool enDequant_{false};
     bool enShuffleK_{false};
+    bool enLoadAllAmat_{false};
+    bool deqOnTheFly_{false};
 };
 
 void PpMatmulTilingApi::GetTilingData(AtbOps::PpMatmulTilingData &tiling)
@@ -137,6 +147,8 @@ void PpMatmulTilingApi::GetTilingData(AtbOps::PpMatmulTilingData &tiling)
     tiling.swizzleDirect = swizzleDirect_;
     tiling.enShuffleK = static_cast<uint32_t>(enShuffleK_);
     tiling.blockDim = blockDim_;
+    tiling.enLoadAllAmat = static_cast<uint32_t>(enLoadAllAmat_);
+    tiling.b0matPingPongBufferLen = b0matPingPongBufferLen_;
 }
 
 void PpMatmulTilingApi::GetTileSize()
@@ -166,18 +178,57 @@ void PpMatmulTilingApi::GetTileSize()
             }
         }
     }
+
     Swizzle();
-    uint32_t l1AbSize = enDequant_ ? L1_BUFFER_SIZE - L1_BIAS_SIZE - L1_SCALE_SIZE : L1_BUFFER_SIZE;
-    uint32_t k0Max = static_cast<uint32_t>(static_cast<float>(l1AbSize / DIM_2) / ((m0_ + n0_) * inDataSize_));
-    if (enDequant_) {
-        k0_ = k0Max < CONST_512 ? RoundDown(k0Max, CONST_32) : RoundDown(k0Max, CONST_512);
-    } else {
-        k0_ = k0Max < CONST_256 ? RoundDown(k0Max, CONST_16) : RoundDown(k0Max, CONST_256);
-    }
-    if (k0_ > CONST_512) {
-        k0_ = RoundDown(k0_, CONST_512);
-    }
+
+    uint32_t l1AbSize = ComputeL1AbSize();
+    k0_ = ComputeK0ForABpingpong(l1AbSize);
     kLoop_ = CeilDiv(k_, k0_);
+    // 对于MM1和MM2, 如果一个核一轮跑不完, 选择全载A, 并更新k0
+    if (IsLoadAllAmat(l1AbSize)) {
+        k0_ = ComputeK0ForOnlyBpingpong(l1AbSize);
+        kLoop_ = CeilDiv(k_, k0_);
+    }
+}
+
+uint32_t PpMatmulTilingApi::ComputeK0ForOnlyBpingpong(uint32_t l1AbSize)
+{
+    enLoadAllAmat_ = true;
+    b0matPingPongBufferLen_ = static_cast<uint32_t>(
+        static_cast<float>((l1AbSize - RoundUp(m_, CONST_16) * RoundUp(k_, CONST_32) * inDataSize_) / DIM_2));
+    uint32_t k0MaxB0 =
+        static_cast<uint32_t>(static_cast<float>(b0matPingPongBufferLen_ / (RoundUp(n0_, CONST_16) * inDataSize_)));
+    uint32_t k0B0 = k0MaxB0 < CONST_512 ? RoundDown(k0MaxB0, CONST_32) : RoundDown(k0MaxB0, CONST_512);
+    return k0B0 > CONST_512 ? RoundDown(k0B0, CONST_512) : k0B0;
+}
+
+bool PpMatmulTilingApi::IsLoadAllAmat(uint32_t l1AbSize)
+{
+    return (coreLoop_ > blockDim_) && enDequant_ && (kLoop_ > 1) &&
+           (l1AbSize > RoundUp(m_, CONST_16) * RoundUp(k_, CONST_32) * inDataSize_) && (mLoop_ == 1);
+}
+
+uint32_t PpMatmulTilingApi::ComputeK0ForABpingpong(uint32_t l1AbSize)
+{
+    uint32_t k0Max = static_cast<uint32_t>(static_cast<float>(l1AbSize / DIM_2) / ((m0_ + n0_) * inDataSize_));
+    uint32_t tmpK0;
+    if (enDequant_) {
+        tmpK0 = k0Max < CONST_512 ? RoundDown(k0Max, CONST_32) : RoundDown(k0Max, CONST_512);
+    } else {
+        tmpK0 = k0Max < CONST_256 ? RoundDown(k0Max, CONST_16) : RoundDown(k0Max, CONST_256);
+    }
+    if (tmpK0 > CONST_512) {
+        tmpK0 = RoundDown(tmpK0, CONST_512);
+    }
+    return tmpK0;
+}
+
+uint32_t PpMatmulTilingApi::ComputeL1AbSize()
+{
+    if (enDequant_ && deqOnTheFly_) {
+        return L1_BUFFER_SIZE;
+    }
+    return enDequant_ ? (L1_BUFFER_SIZE - L1_BIAS_SIZE - L1_SCALE_SIZE) : L1_BUFFER_SIZE;
 }
 
 float PpMatmulTilingApi::GetCost(const uint32_t m0, const uint32_t n0)
@@ -329,17 +380,16 @@ void MlaPreprocessTiling::RopeConcatTiling(const OpParam::MlaPreprocess &param, 
     tilingData.lastCoreLoopNLast = lastCoreLoopNLast;
 }
 
-void  MlaPreprocessTiling::EinSumQuantTiling(const OpParam::MlaPreprocess &param,
-                                             const uint32_t &aicNum,
-                                             const TensorDType inDtype)
+void MlaPreprocessTiling::EinSumQuantTiling(const OpParam::MlaPreprocess &param, const uint32_t &aicNum,
+                                            const TensorDType inDtype)
 {
     uint32_t aivCore = aicNum * 2;
-    uint32_t ubSize = UB_SIZE - 8 * 1024;
+    uint32_t ubSize = UB_SIZE - 1024;
 
     // input shape
-    uint32_t esqBatch = param.N;  // tokenNum
+    uint32_t esqBatch = param.N;          // tokenNum
     uint32_t esqHeadNum = param.headNum;  // headNum
-    uint32_t esqColNum = AXES_ALIGN_SIZE;  // 512
+    uint32_t esqColNum = AXES_ALIGN_SIZE; // 512
 
     // split core
     uint32_t esqFrontCore = esqBatch % aivCore;
@@ -349,14 +399,16 @@ void  MlaPreprocessTiling::EinSumQuantTiling(const OpParam::MlaPreprocess &param
 
     // split ub --> calc H' <-- 一次ub循环中搬运处理的行数
     uint32_t splitFactor = 0;
-    uint32_t esqHeadPerLoop = 0;  // ub每次计算的head行数
+    uint32_t esqHeadPerLoop = 0; // ub每次计算的head行数
     uint32_t repeatMask = 0;
 
     if (inDtype == TENSOR_DTYPE_BF16 || param.quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
-        // bf16 input [H', colNum](f16*2 + fp32 + int8) + [H', 1](f16 + fp32) + [H', 8](fp32)
-        splitFactor = esqColNum * (NUM2 * sizeof(uint16_t) + sizeof(float) + sizeof(uint8_t)) +
-                      (sizeof(uint16_t) + sizeof(float)) + (NUM8 * sizeof(float));
-        esqHeadPerLoop = ubSize / splitFactor;
+        // 将scale一次性搬入、广播、缓存 H * 32bytes
+        uint32_t scaleUb = RoundUp(esqHeadNum) * CONST_32;
+        // bf16 input [H', colNum](f16 + fp32 + int8), ub reuse
+        splitFactor = esqColNum * (sizeof(uint16_t) + sizeof(float) + sizeof(uint8_t));
+        splitFactor *= NUM2;
+        esqHeadPerLoop = (ubSize - scaleUb) / splitFactor;  // 26
         repeatMask = FP32_REPEAT_MASK;
     } else {
         // fp16 input [H', cloNum](fp16*2 + int8) + [H', 1](fp16) + [H', 16](fp16)
@@ -364,13 +416,13 @@ void  MlaPreprocessTiling::EinSumQuantTiling(const OpParam::MlaPreprocess &param
             esqColNum * (NUM2 * sizeof(uint16_t) + sizeof(uint8_t)) + sizeof(uint16_t) + (CONST_16 * sizeof(uint16_t));
         esqHeadPerLoop = ubSize / splitFactor;
         repeatMask = FP16_REPEAT_MASK;
+        esqHeadPerLoop = RoundDown(esqHeadPerLoop);           // 向下16对齐
     }
-    esqHeadPerLoop = RoundDown(esqHeadPerLoop);  // 向下16对齐
-    uint32_t esqUbHeadLoop = esqHeadNum / esqHeadPerLoop;  // ub完整循环次数
-    uint32_t esqHeadTail = esqHeadNum % esqHeadPerLoop;  // ub最后一次处理head的行数
-    uint32_t esqColLoop = esqColNum / repeatMask;  // 每行按列计算要循环处理的次数
-    uint32_t esqColTail = esqColNum % repeatMask;  // colNum非64/128对齐时，最后一次计算列数
-    
+    uint32_t esqUbHeadLoop = esqHeadNum / esqHeadPerLoop; // ub完整循环次数
+    uint32_t esqHeadTail = esqHeadNum % esqHeadPerLoop;   // ub最后一次处理head的行数
+    uint32_t esqColLoop = esqColNum / repeatMask;         // 每行按列计算要循环处理的次数
+    uint32_t esqColTail = esqColNum % repeatMask;         // colNum非64/128对齐时，最后一次计算列数
+
     tilingData.esqFrontCore = esqFrontCore;
     tilingData.esqTailCore = esqTailCore;
     tilingData.esqFrontCoreBatch = esqFrontCoreBatch;
@@ -536,34 +588,41 @@ Mki::Status MlaPreprocessTiling::Init(const Mki::LaunchParam &launchParam, Mki::
     const uint32_t &aicNum = Mki::PlatformInfo::Instance().GetCoreNum(Mki::CoreType::CORE_TYPE_CUBE);
     tilingData.n = param.N;
     tilingData.numCore = aicNum;
+    bool deqOnTheFly = false;
+    if (inDtype == TENSOR_DTYPE_BF16 || param.quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
+        deqOnTheFly = true;
+    }
     MKI_LOG(INFO) << "tilingSize: " << kernelInfo.GetTilingSize();
     auto tilingParam = reinterpret_cast<AtbOps::MlaTilingData *>(kernelInfo.GetTilingHostAddr());
     RmsNormQuantTiling(param.N);
     RopeConcatTiling(param, aicNum);
     EinSumQuantTiling(param, aicNum, inDtype);
-    PpMatmulTilingApi mm1TilingApi(1,                // numBatch
-                                   param.N,          // m
-                                   HIDDEN_STRATE,    // k
-                                   HIDDEN_STRATE_MM, // n
-                                   false,            // transA
-                                   true,             // transB
-                                   true);            // enDequant
+    PpMatmulTilingApi mm1TilingApi(1,  // numBatch
+        param.N,                       // m
+        HIDDEN_STRATE,                 // k
+        HIDDEN_STRATE_MM,              // n
+        false,                         // transA
+        true,                          // transB
+        true,                          // enDequant
+        deqOnTheFly);                     // in bf16.cce?
     mm1TilingApi.GetTilingData(tilingParam->mm1);
-    PpMatmulTilingApi mm2TilingApi(1,                                  // numBatch
-                                   param.N,                            // m
-                                   HIDDEN_STRATE_RMS,                  // k
-                                   param.headNum * HIDDEN_STRATE_ROPE, // n
-                                   false,                              // transA
-                                   true,                               // transB
-                                   true);                              // enDequant
+    PpMatmulTilingApi mm2TilingApi(1,        // numBatch
+        param.N,                             // m
+        HIDDEN_STRATE_RMS,                   // k
+        param.headNum * HIDDEN_STRATE_ROPE,  // n
+        false,                               // transA
+        true,                                // transB
+        true,                                // enDequant
+        deqOnTheFly);                           // in bf16.cce?
     mm2TilingApi.GetTilingData(tilingParam->mm2);
-    PpMatmulTilingApi mm3TilingApi(param.headNum, // numBatch
-                                   param.N,       // m
-                                   CONST_128,     // k
-                                   CONCAT_SIZE,   // n
-                                   false,         // transA
-                                   false,         // transB
-                                   false);        // enDequant
+    PpMatmulTilingApi mm3TilingApi(param.headNum,  // numBatch
+        param.N,                                   // m
+        CONST_128,                                 // k
+        CONCAT_SIZE,                               // n
+        false,                                     // transA
+        false,                                     // transB
+        false,                                     // enDequant
+        deqOnTheFly);                                 // in bf16.cce?
     mm3TilingApi.GetTilingData(tilingParam->mm3);
     SetTiling(tilingParam);
     MKI_LOG(INFO) << *tilingParam;

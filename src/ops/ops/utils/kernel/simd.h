@@ -42,7 +42,6 @@ __aicore__ inline void add_v(AscendC::LocalTensor<DType> dst,
                              uint8_t src0RepeatStride,
                              uint8_t src1RepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Add<DType, false>(
         dst,
         src0,
@@ -51,18 +50,6 @@ __aicore__ inline void add_v(AscendC::LocalTensor<DType> dst,
         repeat,
         AscendC::BinaryRepeatParams(
             dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride));
-#else
-    vadd((__ubuf__ DType *)dst.GetPhyAddr(),
-         (__ubuf__ DType *)src0.GetPhyAddr(),
-         (__ubuf__ DType *)src1.GetPhyAddr(),
-         repeat,
-         dstBlockStride,
-         src0BlockStride,
-         src1BlockStride,
-         dstRepeatStride,
-         src0RepeatStride,
-         src1RepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -78,7 +65,6 @@ __aicore__ inline void adds_v(AscendC::LocalTensor<DType> dst,
                               uint8_t dstRepeatStride,
                               uint8_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Adds<DType, false>(
         dst,
         src,
@@ -86,16 +72,6 @@ __aicore__ inline void adds_v(AscendC::LocalTensor<DType> dst,
         (uint64_t)0,
         repeat,
         AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    vadds((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src.GetPhyAddr(),
-          scalarValue,
-          repeat,
-          dstBlockStride,
-          srcBlockStride,
-          dstRepeatStride,
-          srcRepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -109,26 +85,7 @@ __aicore__ inline void cadd_v(AscendC::LocalTensor<DType> dst,
                               uint16_t srcBlockStride,
                               uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::RepeatReduceSum<DType, false>(dst, src, repeat, 0, 0, srcBlockStride, dstRepeatStride, srcRepeatStride);
-#else
-#if defined(__DAV_C220_VEC__)
-    vcadd((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src.GetPhyAddr(),
-          repeat,
-          dstRepeatStride,
-          srcBlockStride,
-          srcRepeatStride,
-          0);
-#else
-    vcadd((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src.GetPhyAddr(),
-          repeat,
-          dstRepeatStride,
-          srcBlockStride,
-          srcRepeatStride);
-#endif
-#endif
 }
 /////////////////////////////////////////////////////
 // vbrcb
@@ -154,27 +111,8 @@ __aicore__ inline void cmax_v(AscendC::LocalTensor<DType> dst,
                               uint16_t srcBlockStride,
                               uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::WholeReduceMax<DType, false>(
         dst, src, (int32_t)0, repeat, dstRepeatStride, srcBlockStride, srcRepeatStride, OrderType);
-#else
-#if defined(__DAV_C220_VEC__)
-    vcmax((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src.GetPhyAddr(),
-          repeat,
-          dstRepeatStride,
-          srcBlockStride,
-          srcRepeatStride,
-          ONLY_VALUE);
-#else
-    vcmax((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src.GetPhyAddr(),
-          repeat,
-          dstRepeatStride,
-          srcBlockStride,
-          srcRepeatStride);
-#endif
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -244,7 +182,6 @@ __aicore__ inline void div_v(AscendC::LocalTensor<DType> dst,
                              uint8_t src0RepeatStride,
                              uint8_t src1RepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Div<DType, false>(
         dst,
         src0,
@@ -253,18 +190,6 @@ __aicore__ inline void div_v(AscendC::LocalTensor<DType> dst,
         repeat,
         AscendC::BinaryRepeatParams(
             dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride));
-#else
-    vdiv((__ubuf__ DType *)dst.GetPhyAddr(),
-         (__ubuf__ DType *)src0.GetPhyAddr(),
-         (__ubuf__ DType *)src1.GetPhyAddr(),
-         repeat,
-         dstBlockStride,
-         src0BlockStride,
-         src1BlockStride,
-         dstRepeatStride,
-         src0RepeatStride,
-         src1RepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -279,22 +204,12 @@ __aicore__ inline void exp_v(AscendC::LocalTensor<DType> dst,
                              uint16_t dstRepeatStride,
                              uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Exp<DType, false>(
         dst,
         src,
         (uint64_t)0,
         repeat,
         AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    vexp((__ubuf__ DType *)dst.GetPhyAddr(),
-         (__ubuf__ DType *)src.GetPhyAddr(),
-         repeat,
-         dstBlockStride,
-         srcBlockStride,
-         dstRepeatStride,
-         srcRepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -312,7 +227,6 @@ __aicore__ inline void max_v(AscendC::LocalTensor<DType> dst,
                              uint8_t src0RepeatStride,
                              uint8_t src1RepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Max<DType, false>(
         dst,
         src0,
@@ -321,18 +235,6 @@ __aicore__ inline void max_v(AscendC::LocalTensor<DType> dst,
         repeat,
         AscendC::BinaryRepeatParams(
             dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride));
-#else
-    vmax((__ubuf__ DType *)dst.GetPhyAddr(),
-         (__ubuf__ DType *)src0.GetPhyAddr(),
-         (__ubuf__ DType *)src1.GetPhyAddr(),
-         repeat,
-         dstBlockStride,
-         src0BlockStride,
-         src1BlockStride,
-         dstRepeatStride,
-         src0RepeatStride,
-         src1RepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -350,7 +252,6 @@ __aicore__ inline void mul_v(AscendC::LocalTensor<DType> dst,
                              uint8_t src0RepeatStride,
                              uint8_t src1RepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Mul<DType, false>(
         dst,
         src0,
@@ -359,18 +260,6 @@ __aicore__ inline void mul_v(AscendC::LocalTensor<DType> dst,
         repeat,
         AscendC::BinaryRepeatParams(
             dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride));
-#else
-    vmul((__ubuf__ DType *)dst.GetPhyAddr(),
-         (__ubuf__ DType *)src0.GetPhyAddr(),
-         (__ubuf__ DType *)src1.GetPhyAddr(),
-         repeat,
-         dstBlockStride,
-         src0BlockStride,
-         src1BlockStride,
-         dstRepeatStride,
-         src0RepeatStride,
-         src1RepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -386,7 +275,6 @@ __aicore__ inline void muls_v(AscendC::LocalTensor<DType> dst,
                               uint16_t dstRepeatStride,
                               uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Muls<DType, false>(
         dst,
         src0,
@@ -394,16 +282,6 @@ __aicore__ inline void muls_v(AscendC::LocalTensor<DType> dst,
         (uint64_t)0,
         repeat,
         AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    vmuls((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src0.GetPhyAddr(),
-          src1,
-          repeat,
-          dstBlockStride,
-          srcBlockStride,
-          dstRepeatStride,
-          srcRepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -421,7 +299,6 @@ __aicore__ inline void sub_v(AscendC::LocalTensor<DType> dst,
                              uint8_t src0RepeatStride,
                              uint8_t src1RepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Sub<DType, false>(
         dst,
         src0,
@@ -430,18 +307,6 @@ __aicore__ inline void sub_v(AscendC::LocalTensor<DType> dst,
         repeat,
         AscendC::BinaryRepeatParams(
             dstBlockStride, src0BlockStride, src1BlockStride, dstRepeatStride, src0RepeatStride, src1RepeatStride));
-#else
-    vsub((__ubuf__ DType *)dst.GetPhyAddr(),
-         (__ubuf__ DType *)src0.GetPhyAddr(),
-         (__ubuf__ DType *)src1.GetPhyAddr(),
-         repeat,
-         dstBlockStride,
-         src0BlockStride,
-         src1BlockStride,
-         dstRepeatStride,
-         src0RepeatStride,
-         src1RepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -457,7 +322,6 @@ __aicore__ inline void maxs_v(AscendC::LocalTensor<DType> dst,
                               uint16_t dstRepeatStride,
                               uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Maxs<DType, false>(
         dst,
         src0,
@@ -465,16 +329,6 @@ __aicore__ inline void maxs_v(AscendC::LocalTensor<DType> dst,
         (uint64_t)0,
         repeat,
         AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    vmaxs((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src0.GetPhyAddr(),
-          src1,
-          repeat,
-          dstBlockStride,
-          srcBlockStride,
-          dstRepeatStride,
-          srcRepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -490,7 +344,6 @@ __aicore__ inline void mins_v(AscendC::LocalTensor<DType> dst,
                               uint16_t dstRepeatStride,
                               uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Mins<DType, false>(
         dst,
         src0,
@@ -498,16 +351,6 @@ __aicore__ inline void mins_v(AscendC::LocalTensor<DType> dst,
         (uint64_t)0,
         repeat,
         AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    vmins((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src0.GetPhyAddr(),
-          src1,
-          repeat,
-          dstBlockStride,
-          srcBlockStride,
-          dstRepeatStride,
-          srcRepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -522,22 +365,12 @@ __aicore__ inline void sqrt_v(AscendC::LocalTensor<DType> dst,
                               uint16_t dstRepeatStride,
                               uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Sqrt<DType, false>(
         dst,
         src,
         (uint64_t)0,
         repeat,
         AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    vsqrt((__ubuf__ DType *)dst.GetPhyAddr(),
-          (__ubuf__ DType *)src.GetPhyAddr(),
-          repeat,
-          dstBlockStride,
-          srcBlockStride,
-          dstRepeatStride,
-          srcRepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -552,22 +385,12 @@ __aicore__ inline void ln_v(AscendC::LocalTensor<DType> dst,
                             uint16_t dstRepeatStride,
                             uint16_t srcRepeatStride)
 {
-#ifdef USE_ASCENDC
     AscendC::Ln<DType, false>(
         dst,
         src,
         (uint64_t)0,
         repeat,
         AscendC::UnaryRepeatParams(dstBlockStride, srcBlockStride, dstRepeatStride, srcRepeatStride));
-#else
-    vln((__ubuf__ DType *)dst.GetPhyAddr(),
-        (__ubuf__ DType *)src.GetPhyAddr(),
-        repeat,
-        dstBlockStride,
-        srcBlockStride,
-        dstRepeatStride,
-        srcRepeatStride);
-#endif
 }
 
 /////////////////////////////////////////////////////
@@ -590,16 +413,6 @@ __aicore__ inline void cgmax_v(AscendC::LocalTensor<DType> dst,
                                const int32_t srcBlkStride,
                                const int32_t srcRepStride)
 {
-#ifdef USE_ASCENDC
     AscendC::BlockReduceMax<DType, false>(dst, src, repeat, 0, dstRepStride, srcBlkStride, srcRepStride);
-#else
-    vcgmax((__ubuf__ DType *)dst.GetPhyAddr(),
-           (__ubuf__ DType *)src.GetPhyAddr(),
-           repeat,
-           dstRepStride,
-           srcBlkStride,
-           srcRepStride);
-#endif
 }
-
 #endif

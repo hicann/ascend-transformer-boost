@@ -52,6 +52,16 @@ std::string FastSoftMaxToJson(const Any &param)
     return paramsJson.dump();
 }
 
+std::string FusionToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::Fusion specificParam = AnyCast<OpParam::Fusion>(param);
+
+    paramsJson["fusion"] = specificParam.fusionType;
+
+    return paramsJson.dump();
+}
+
 std::string GatingToJson(const Any &param)
 {
     nlohmann::json paramsJson;
@@ -173,6 +183,14 @@ std::string RopeGradToJson(const Any &param)
 
     paramsJson["qSeqLen"] = specificParam.qSeqLen;
 
+    return paramsJson.dump();
+}
+
+std::string BlockCopyToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::BlockCopy specificParam = AnyCast<OpParam::BlockCopy>(param);
+    paramsJson["type"] = specificParam.type;
     return paramsJson.dump();
 }
 
@@ -314,7 +332,7 @@ std::string UnpadToJson(const Any &param)
     (void)param;
     return "{}";
 }
-
+REG_STRINGIFY(OpParam::BlockCopy, BlockCopyToJson);
 REG_STRINGIFY(OpParam::FastSoftMaxGrad, FastSoftMaxGradToJson);
 REG_STRINGIFY(OpParam::FastSoftMax, FastSoftMaxToJson);
 REG_STRINGIFY(OpParam::Gating, GatingToJson);

@@ -13,12 +13,7 @@ template <ArchType ArchTag, typename DType> struct gm_to_ub {
     __aicore__ inline gm_to_ub(AscendC::LocalTensor<DType> dstTensor, AscendC::GlobalTensor<DType> srcTensor,
                                uint8_t sid, uint16_t nBurst, uint16_t lenBurst, uint16_t srcStride, uint16_t dstStride)
     {
-#ifdef USE_ASCENDC
         AscendC::DataCopy(dstTensor, srcTensor, AscendC::DataCopyParams(nBurst, lenBurst, srcStride, dstStride));
-#else
-        copy_gm_to_ubuf((__ubuf__ DType *)dstTensor.GetPhyAddr(), (__gm__ DType *)srcTensor.GetPhyAddr(), 0, nBurst,
-                        lenBurst, srcStride, dstStride);
-#endif
     };
 };
 
@@ -27,21 +22,8 @@ template <ArchType ArchTag, typename DType> struct gm_to_ub_align {
                                      uint8_t sid, uint16_t nBurst, uint32_t lenBurst, uint8_t leftPaddingNum,
                                      uint8_t rightPaddingNum, uint32_t srcGap, uint32_t dstGap)
     {
-#ifdef USE_ASCENDC
         AscendC::DataCopyPad(dstTensor, srcTensor, AscendC::DataCopyExtParams(nBurst, lenBurst, srcGap, dstGap, 0),
                              AscendC::DataCopyPadExtParams<DType>(false, leftPaddingNum, rightPaddingNum, 0));
-#else
-        if constexpr (sizeof(DType) == 1) {
-            copy_gm_to_ubuf_align_b8((__ubuf__ DType *)dstTensor.GetPhyAddr(), (__gm__ DType *)srcTensor.GetPhyAddr(),
-                                     sid, nBurst, lenBurst, leftPaddingNum, rightPaddingNum, srcGap, dstGap);
-        } else if constexpr (sizeof(DType) == 2) {
-            copy_gm_to_ubuf_align_b16((__ubuf__ DType *)dstTensor.GetPhyAddr(), (__gm__ DType *)srcTensor.GetPhyAddr(),
-                                      sid, nBurst, lenBurst, leftPaddingNum, rightPaddingNum, srcGap, dstGap);
-        } else if constexpr (sizeof(DType) == 4) {
-            copy_gm_to_ubuf_align_b32((__ubuf__ DType *)dstTensor.GetPhyAddr(), (__gm__ DType *)srcTensor.GetPhyAddr(),
-                                      sid, nBurst, lenBurst, leftPaddingNum, rightPaddingNum, srcGap, dstGap);
-        }
-#endif
     };
 };
 
@@ -100,19 +82,6 @@ template <ArchType ArchTag, typename DType> struct ub_to_gm_align {
                                      uint8_t sid, uint16_t nBurst, uint32_t lenBurst, uint8_t leftPaddingNum,
                                      uint8_t rightPaddingNum, uint32_t srcGap, uint32_t dstGap)
     {
-#ifdef USE_ASCENDC
         AscendC::DataCopyPad(dstTensor, srcTensor, AscendC::DataCopyExtParams(nBurst, lenBurst, srcGap, dstGap, 0));
-#else
-        if constexpr (sizeof(DType) == 1) {
-            copy_ubuf_to_gm_align_b8((__gm__ DType *)dstTensor.GetPhyAddr(), (__ubuf__ DType *)srcTensor.GetPhyAddr(),
-                                     sid, nBurst, lenBurst, leftPaddingNum, rightPaddingNum, srcGap, dstGap);
-        } else if constexpr (sizeof(DType) == 2) {
-            copy_ubuf_to_gm_align_b16((__gm__ DType *)dstTensor.GetPhyAddr(), (__ubuf__ DType *)srcTensor.GetPhyAddr(),
-                                      sid, nBurst, lenBurst, leftPaddingNum, rightPaddingNum, srcGap, dstGap);
-        } else if constexpr (sizeof(DType) == 4) {
-            copy_ubuf_to_gm_align_b32((__gm__ DType *)dstTensor.GetPhyAddr(), (__ubuf__ DType *)srcTensor.GetPhyAddr(),
-                                      sid, nBurst, lenBurst, leftPaddingNum, rightPaddingNum, srcGap, dstGap);
-        }
-#endif
     };
 };

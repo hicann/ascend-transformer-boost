@@ -21,10 +21,12 @@ import os
 
 DRANGE = (-5, 5)
 
+
 def round_up(val: int, align: int) -> int:
     if align == 0:
         return 0
     return -(val // -align) * align
+
 
 def transdata(nd_mat, block_size: tuple = (16, 16)):
     r = round_up(nd_mat.shape[0], block_size[0])
@@ -37,6 +39,7 @@ def transdata(nd_mat, block_size: tuple = (16, 16)):
     )
     nz_mat = torch.reshape(nz_mat, (nz_mat.shape[0], nz_mat.shape[1] * nz_mat.shape[2], nz_mat.shape[3]))
     return nz_mat
+
 
 def get_eb(golden: torch.Tensor, actual: torch.Tensor):
     golden_nmax = torch.clamp(torch.abs(golden), min=1)
@@ -98,7 +101,7 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeA": self.trans_A,
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
-                "matmulType": 4
+                "matmulType": 4,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nd])
@@ -121,7 +124,7 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeA": self.trans_A,
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
-                "matmulType": 4
+                "matmulType": 4,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nd])
@@ -144,7 +147,7 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeA": self.trans_A,
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
-                "matmulType": 4
+                "matmulType": 4,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nd])
@@ -167,7 +170,7 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeA": self.trans_A,
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
-                "matmulType": 4
+                "matmulType": 4,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nd])
@@ -190,7 +193,7 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeA": self.trans_A,
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
-                "matmulType": 4
+                "matmulType": 4,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nd])
@@ -213,7 +216,7 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeA": self.trans_A,
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
-                "matmulType": 4
+                "matmulType": 4,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nd])
@@ -237,7 +240,7 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
                 "matmulType": 4,
-                "enShuffleK":True
+                "enShuffleK": True,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nz])
@@ -261,7 +264,7 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
                 "matmulType": 4,
-                "enShuffleK": True
+                "enShuffleK": True,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nz])
@@ -285,7 +288,31 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "transposeB": self.trans_B,
                 "oriShape": [msize, ksize, nsize],
                 "matmulType": 4,
-                "enShuffleK":True
+                "enShuffleK": True,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_output_formats([self.format_nd])
+        self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
+        self.execute(
+            [self.bat_A, self.bat_B],
+            [torch.zeros(self.bat_C.shape).to(dtype)],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
+    @op_test.only_910b
+    def testcase_einsum_gemv(self):
+        self.trans_A, self.trans_B = False, True
+        bsize, msize, ksize, nsize = 32, 1, 456, 789
+        dtype = torch.float16
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "oriShape": [msize, ksize, nsize],
+                "matmulType": 4,
+                "enShuffleK": True,
             },
         )
         self.set_input_formats([self.format_nd, self.format_nz])

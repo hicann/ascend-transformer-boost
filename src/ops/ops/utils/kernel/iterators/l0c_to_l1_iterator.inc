@@ -25,7 +25,6 @@ struct l0c_to_l1<ArchTag, DataFormat::ZN, half, int32_t> {
                          uint32_t mTileCeil,
                          uint32_t nActual)
     {
-#ifdef USE_ASCENDC
         constexpr uint32_t BLOCK_NUM = 16;
         constexpr uint32_t BLOCK_SIZE = 32;
         AscendC::FixpipeParams<ElementIn> intriParams(
@@ -37,20 +36,5 @@ struct l0c_to_l1<ArchTag, DataFormat::ZN, half, int32_t> {
         intriParams.nz2ndParams = {false, 1, 0, 0, static_cast<uint16_t>(nTileActual)};
         intriParams.quantParams = {QuantMode_t::VDEQF16};
         AscendC::Fixpipe(l1Tensor, l0cTensor, deqTensor, intriParams);
-#else
-        copy_matrix_cc_to_cbuf((__cbuf__ ElementOut *)l1Tensor.GetPhyAddr(),
-                               (__cc__ ElementIn *)l0cTensor.GetPhyAddr(),
-                               0,           // sid
-                               nTileActual, // NSize
-                               mTileActual, // MSize
-                               mTileCeil,   // dstStride_dst_D
-                               mTileCeil,   // srcStride
-                               0,           // UnitFlagMode
-                               VDEQF16,     // QuantPRE VDEQF16, NoQuant
-                               0,           // ReLUPRE
-                               false,       // channelSplit
-                               false        // NZ2ND_EN
-        );
-#endif
     };
 };

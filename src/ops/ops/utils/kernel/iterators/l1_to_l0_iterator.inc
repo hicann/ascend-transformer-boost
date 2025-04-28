@@ -203,7 +203,6 @@ struct l1_to_l0_b<ArchTag, int8_t, true, DataFormat::NZ, DataFormat::ZN> {
                           uint32_t kDstStride)
     {
         for (uint32_t i = 0; i < nTileCeil / BLOCK_SIZE; i++) {
-#ifdef USE_ASCENDC
             AscendC::LoadDataWithTranspose(l0Tensor[i * kPartCeil * BLOCK_SIZE],
                                            l1Tensor[i * BLOCK_SIZE * BLOCK_SIZE],
                                            AscendC::LoadData2dTransposeParams(0,                      // startIndexIn
@@ -213,16 +212,6 @@ struct l1_to_l0_b<ArchTag, int8_t, true, DataFormat::NZ, DataFormat::ZN> {
                                                                               0,                      // dstfracGapIn
                                                                               0)                      // addrModeIn
             );
-#else
-            load_cbuf_to_cb_transpose((__cb__ DataType *)l0Tensor.GetPhyAddr() + i * kPartCeil * BLOCK_SIZE,
-                                      (__cbuf__ DataType *)l1Tensor.GetPhyAddr() + i * BLOCK_SIZE * BLOCK_SIZE,
-                                      0,                      // baseIdx
-                                      kPartCeil / BLOCK_SIZE, // repeat
-                                      nTileCeil / BLOCK_SIZE, // srcStride
-                                      1,                      // dstStride
-                                      0,                      // addrmode
-                                      0);                     // dstFracStride
-#endif
         }
     };
 };

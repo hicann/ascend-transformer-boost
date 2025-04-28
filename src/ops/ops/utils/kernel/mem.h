@@ -33,65 +33,6 @@ __aicore__ constexpr AscendC::TPosition GetPosition()
     return AscendC::TPosition::GM;
 }
 
-#ifdef USE_ASCENDC
-template <ArchType ArchTag>
-struct AsdopsBuffer {
-public:
-    __aicore__ AsdopsBuffer()
-    {
-        constexpr uint32_t bufferSize[(uint32_t)BufferType::ASCEND_MAX] = {HardwareInfo<ArchTag>::ubSize,
-                                                                           HardwareInfo<ArchTag>::l1Size,
-                                                                           HardwareInfo<ArchTag>::l0ASize,
-                                                                           HardwareInfo<ArchTag>::l0BSize,
-                                                                           HardwareInfo<ArchTag>::l0CSize};
-#ifdef __DAV_C220_VEC__
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_UB>()> tbufUb;
-        pipe.InitBuffer(tbufUb, bufferSize[(uint32_t)BufferType::ASCEND_UB]);
-        tensor[(uint32_t)BufferType::ASCEND_UB] = tbufUb.Get<uint8_t>();
-#elif __DAV_C220_CUBE__
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_CB>()> tbufCb;
-        pipe.InitBuffer(tbufCb, bufferSize[(uint32_t)BufferType::ASCEND_CB]);
-        tensor[(uint32_t)BufferType::ASCEND_CB] = tbufCb.Get<uint8_t>();
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_L0A>()> tbufL0a;
-        pipe.InitBuffer(tbufL0a, bufferSize[(uint32_t)BufferType::ASCEND_L0A]);
-        tensor[(uint32_t)BufferType::ASCEND_L0A] = tbufL0a.Get<uint8_t>();
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_L0B>()> tbufL0b;
-        pipe.InitBuffer(tbufL0b, bufferSize[(uint32_t)BufferType::ASCEND_L0B]);
-        tensor[(uint32_t)BufferType::ASCEND_L0B] = tbufL0b.Get<uint8_t>();
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_L0C>()> tbufL0c;
-        pipe.InitBuffer(tbufL0c, bufferSize[(uint32_t)BufferType::ASCEND_L0C]);
-        tensor[(uint32_t)BufferType::ASCEND_L0C] = tbufL0c.Get<uint8_t>();
-#else
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_UB>()> tbufUb;
-        pipe.InitBuffer(tbufUb, bufferSize[(uint32_t)BufferType::ASCEND_UB]);
-        tensor[(uint32_t)BufferType::ASCEND_UB] = tbufUb.Get<uint8_t>();
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_CB>()> tbufCb;
-        pipe.InitBuffer(tbufCb, bufferSize[(uint32_t)BufferType::ASCEND_CB]);
-        tensor[(uint32_t)BufferType::ASCEND_CB] = tbufCb.Get<uint8_t>();
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_L0A>()> tbufL0a;
-        pipe.InitBuffer(tbufL0a, bufferSize[(uint32_t)BufferType::ASCEND_L0A]);
-        tensor[(uint32_t)BufferType::ASCEND_L0A] = tbufL0a.Get<uint8_t>();
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_L0B>()> tbufL0b;
-        pipe.InitBuffer(tbufL0b, bufferSize[(uint32_t)BufferType::ASCEND_L0B]);
-        tensor[(uint32_t)BufferType::ASCEND_L0B] = tbufL0b.Get<uint8_t>();
-        AscendC::TBuf<GetPosition<BufferType::ASCEND_L0C>()> tbufL0c;
-        pipe.InitBuffer(tbufL0c, bufferSize[(uint32_t)BufferType::ASCEND_L0C]);
-        tensor[(uint32_t)BufferType::ASCEND_L0C] = tbufL0c.Get<uint8_t>();
-#endif
-        pipe.Destroy();
-    };
-
-    template <BufferType BufferType_, typename DstDataType = half>
-    __aicore__ AscendC::LocalTensor<DstDataType> GetBuffer(const uint32_t offset) const
-    {
-        return tensor[(uint32_t)BufferType_][offset].template ReinterpretCast<DstDataType>();
-    }
-
-public:
-    AscendC::LocalTensor<uint8_t> tensor[(uint32_t)BufferType::ASCEND_MAX];
-    AscendC::TPipe pipe;
-};
-#else
 template <ArchType ArchTag>
 struct AsdopsBuffer {
 public:
@@ -105,7 +46,7 @@ public:
 #ifdef __DAV_C220_VEC__
         tensor[(uint32_t)BufferType::ASCEND_UB].InitBuffer(0, bufferSize[(uint32_t)BufferType::ASCEND_UB]);
         tensor[(uint32_t)BufferType::ASCEND_UB].address_.logicPos = static_cast<uint8_t>(AscendC::TPosition::VECIN);
-#elif __DAV_C220_CUBE__
+#elif defined(__DAV_C220_CUBE__)
         tensor[(uint32_t)BufferType::ASCEND_CB].InitBuffer(0, bufferSize[(uint32_t)BufferType::ASCEND_CB]);
         tensor[(uint32_t)BufferType::ASCEND_CB].address_.logicPos = static_cast<uint8_t>(AscendC::TPosition::A1);
         tensor[(uint32_t)BufferType::ASCEND_L0A].InitBuffer(0, bufferSize[(uint32_t)BufferType::ASCEND_L0A]);
@@ -138,5 +79,4 @@ public:
     AscendC::LocalTensor<uint8_t> tensor[(uint32_t)BufferType::ASCEND_MAX];
 };
 
-#endif
 #endif

@@ -29,6 +29,8 @@ struct PpMatmulTilingData {
     uint32_t swizzleDirect{0};
     uint32_t enShuffleK{0};
     uint32_t blockDim{0};
+    uint32_t enLoadAllAmat{0};
+    uint32_t b0matPingPongBufferLen{0};
 };
 
 struct MlaTilingData {

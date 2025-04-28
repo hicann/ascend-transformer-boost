@@ -42,6 +42,7 @@ constexpr int32_t EINSUMQUANT = 12;
 constexpr uint32_t ELE_NUM_FP16 = 16;        // 一个block fp16元素个数
 constexpr uint32_t ELE_NUM_FP32 = 8;         // 一个block字节数 fp32元素个数
 constexpr uint8_t DEFAULT_REPEAT_STRIDE = 8; // 默认stride, 8 * 32 = 256
+constexpr uint32_t NUM_BUFFER = 2;
 
 // rmsNormQuant
 constexpr int32_t NUM_PER_REP_FP32 = 64; // ONE_REPEAT_BYTE_SIZE / sizeof(float);
@@ -334,51 +335,41 @@ private:
     uint64_t outLineOffset{0};
 };
 
-#if __CCE_AICORE__ != 300
-__aicore__ inline void ReduceSumFP32(const AscendC::LocalTensor<float> &dst_local,
-                                     const AscendC::LocalTensor<float> &src_local,
-                                     const AscendC::LocalTensor<float> &work_local, int32_t count)
-{
-    // count need smaller than 255 repeat
-    if (g_coreType == AscendC::AIV) {
-        uint64_t mask = NUM_PER_REP_FP32;
-        int32_t repeatTimes = count / NUM_PER_REP_FP32;
-        int32_t tailCount = count % NUM_PER_REP_FP32;
-        int32_t bodyCount = repeatTimes * NUM_PER_REP_FP32;
-        AscendC::BinaryRepeatParams repeatParams;
-        repeatParams.src0RepStride = AscendC::ONE_REPEAT_BYTE_SIZE / AscendC::ONE_BLK_SIZE;
-        repeatParams.src0BlkStride = 1;
-        repeatParams.src1RepStride = 0;
-        repeatParams.src1BlkStride = 1;
-        repeatParams.dstRepStride = 0;
-        repeatParams.dstBlkStride = 1;
-        Duplicate(work_local, ZERO, NUM_PER_REP_FP32);
-        pipe_barrier(PIPE_V);
-        if (likely(repeatTimes > 0)) {
-            Add(work_local, src_local, work_local, mask, repeatTimes, repeatParams);
-            pipe_barrier(PIPE_V);
-        }
-        if (unlikely(tailCount != 0)) {
-            Add(work_local, src_local[bodyCount], work_local, tailCount, 1, repeatParams);
-            pipe_barrier(PIPE_V);
-        }
-        AscendC::AscendCUtils::SetMask<float>(NUM_PER_REP_FP32);
-        vcadd((__ubuf__ float *)dst_local.GetPhyAddr(), (__ubuf__ float *)work_local.GetPhyAddr(), 1, 0, 1, 0, false);
-        pipe_barrier(PIPE_V);
-    }
-}
-#endif
-
 __aicore__ inline void ReduceSumCustom(const AscendC::LocalTensor<float> &dst_local,
                                        const AscendC::LocalTensor<float> &src_local,
-                                       const AscendC::LocalTensor<float> &work_local, int32_t count)
+                                       const AscendC::LocalTensor<float> &work_local,
+                                       int32_t count)
 {
-#if __CCE_AICORE__ == 220
-    ReduceSumFP32(dst_local, src_local, work_local, count);
-#elif __CCE_AICORE__ == 300
-    ReduceSum(dst_local, src_local, work_local, count);
-#else
-    ReduceSum(dst_local, src_local, dst_local, count);
+#ifdef __DAV_C220_VEC__
+    uint64_t mask = NUM_PER_REP_FP32;
+    int32_t repeatTimes = count / NUM_PER_REP_FP32;
+    int32_t tailCount = count % NUM_PER_REP_FP32;
+    int32_t bodyCount = repeatTimes * NUM_PER_REP_FP32;
+    AscendC::BinaryRepeatParams repeatParams;
+    repeatParams.src0RepStride = AscendC::ONE_REPEAT_BYTE_SIZE / AscendC::ONE_BLK_SIZE;
+    repeatParams.src0BlkStride = 1;
+    repeatParams.src1RepStride = 0;
+    repeatParams.src1BlkStride = 1;
+    repeatParams.dstRepStride = 0;
+    repeatParams.dstBlkStride = 1;
+    Duplicate(work_local, ZERO, NUM_PER_REP_FP32);
+    AscendC::PipeBarrier<PIPE_V>();
+    if (likely(repeatTimes > 0)) {
+        Add(work_local, src_local, work_local, mask, repeatTimes, repeatParams);
+        AscendC::PipeBarrier<PIPE_V>();
+    }
+    if (unlikely(tailCount != 0)) {
+        Add(work_local, src_local[bodyCount], work_local, tailCount, 1, repeatParams);
+        AscendC::PipeBarrier<PIPE_V>();
+    }
+    AscendC::AscendCUtils::SetMask<float>(NUM_PER_REP_FP32);
+    cadd_v<ArchType::ASCEND_V220, float>(dst_local,  // dst
+                                         work_local, // src
+                                         1,          // repeat
+                                         0,          // dstRepeatStride
+                                         1,          // srcBlockStride
+                                         0);         // srcRepeatStride
+    AscendC::PipeBarrier<PIPE_V>();
 #endif
 }
 
@@ -691,8 +682,8 @@ template <typename InDtype, typename ScaleDtype> class EinSumQuant {
 public:
     __aicore__ explicit EinSumQuant() {}
 
-    __aicore__ inline void Init(GM_ADDR einSumOutGm, GM_ADDR scaleGm, GM_ADDR quantOutGm,
-                                const AtbOps::MlaTilingData &tilingData)
+    __aicore__ __force_inline__ void Init(GM_ADDR einSumOutGm, GM_ADDR scaleGm, GM_ADDR quantOutGm,
+                                          const AtbOps::MlaTilingData &tilingData)
     {
         einSumOutGm_.SetGlobalBuffer(reinterpret_cast<__gm__ InDtype *>(einSumOutGm));
         scaleGm_.SetGlobalBuffer(reinterpret_cast<__gm__ InDtype *>(scaleGm));
@@ -716,172 +707,151 @@ public:
                                       (currentIdx - tilingData.esqFrontCore) * tilingData.esqTailCoreBatch) *
                                      headNum * colNum;
         }
+        calcRepeatStride = static_cast<uint8_t>(colNum / ELE_NUM_FP32);
+        padLen = RoundUp(headNum, ELE_NUM_FP16);
+        calcLength = headPerLoop * colNum;
 
-        // calc tensors' data szie(bytes)
-        inputDataSize = headPerLoop * colNum *
-                        sizeof(InDtype); // 当ubLoopIdx小于ubHeadLoop时 TODO: headTail最后一次要在计算时特殊处理
-        scaleDataSize = headPerLoop * sizeof(InDtype);
-        inputFp32DataSize = headPerLoop * colNum * sizeof(float);
-        scaleFp32DataSize = headPerLoop * sizeof(float);
-        scaleBrcbFp32DataSize = headPerLoop * ELE_NUM_FP32 * sizeof(float);
-        tempQuantFp16DataSize = inputDataSize;
-        int8OutDataSize = headPerLoop * colNum;
-        headTailDataSize = headTail * colNum * sizeof(InDtype);
-        int8TailOutDataSize = headTail * colNum;
+        // calc tensors' data szie(bytes) and block
+        scaleBrcbFp32DataSize = padLen * ELE_NUM_FP32 * sizeof(float);
+        inputDataSize = calcLength * sizeof(InDtype);
+        inputDataBlock = calcLength * sizeof(InDtype) / BLOCK_SIZE_32;
+        inputFp32DataSize = calcLength * sizeof(float);
+        int8OutDataBlcok = calcLength / BLOCK_SIZE_32;
+        headTailDataBlock = headTail * colNum * sizeof(InDtype) / BLOCK_SIZE_32;
+        int8TailOutDataBlock = headTail * colNum / BLOCK_SIZE_32;
+        if (padLen > headNum) {
+            scaleCopyParams = AscendC::DataCopyExtParams(1, static_cast<uint32_t>(headNum * sizeof(InDtype)), 0, 0, 0);
+            scalePadParams = AscendC::DataCopyPadExtParams<InDtype>(true, 0, static_cast<uint8_t>(padLen - headNum), 0);
+        }
     }
 
-    __aicore__ inline void Process()
+    __aicore__ __force_inline__ void Process()
     {
         if (batchNum == 0) {
             return;
         }
         // init local tensor
-        inputTensor_ = buf.GetBuffer<BufferType::ASCEND_UB, InDtype>(0);
-        scaleTensor_ = buf.GetBuffer<BufferType::ASCEND_UB, ScaleDtype>(inputDataSize);
-        inputFp32_ = buf.GetBuffer<BufferType::ASCEND_UB, float>(inputDataSize + scaleDataSize);
-        scaleFp32_ = buf.GetBuffer<BufferType::ASCEND_UB, float>(inputDataSize + scaleDataSize + inputFp32DataSize);
-        scaleBrcbFp32_ = buf.GetBuffer<BufferType::ASCEND_UB, float>(inputDataSize + scaleDataSize + inputFp32DataSize +
-                                                                     scaleFp32DataSize);
-        tempQuantFp16_ = buf.GetBuffer<BufferType::ASCEND_UB, half>(inputDataSize + scaleDataSize + inputFp32DataSize +
-                                                                    scaleFp32DataSize + scaleBrcbFp32DataSize);
-        int8OutTensor_ = buf.GetBuffer<BufferType::ASCEND_UB, int8_t>(inputDataSize + scaleDataSize +
-                                                                      inputFp32DataSize + scaleFp32DataSize +
-                                                                      scaleBrcbFp32DataSize + tempQuantFp16DataSize);
+        scaleBrcbFp32_ = buf.GetBuffer<BufferType::ASCEND_UB, float>(0);
+        inputTensor_ = buf.GetBuffer<BufferType::ASCEND_UB, InDtype>(scaleBrcbFp32DataSize);
+        inputFp32_ = buf.GetBuffer<BufferType::ASCEND_UB, float>(scaleBrcbFp32DataSize + inputDataSize * NUM_BUFFER);
+        int8OutTensor_ = buf.GetBuffer<BufferType::ASCEND_UB, int8_t>(
+            scaleBrcbFp32DataSize + (inputDataSize + inputFp32DataSize) * NUM_BUFFER);
 
-        uint64_t inputLoopOffset = 0;
-        uint32_t scaleLoopOffset = 0;
-        uint64_t batchOffset = 0;
-        uint64_t calcStartOffset = 0;
-        uint64_t colOffset = 0;
-        uint8_t calcRepeatStride = static_cast<uint8_t>(colNum / ELE_NUM_FP32);
+        // scale copyin, cast, brcb[H, 1] --> [H, 8], use input ub space
+        if (headNum == padLen) {
+            AscendC::DataCopy(inputTensor_, scaleGm_, headNum);
+        } else {
+            AscendC::DataCopyPad(inputTensor_, scaleGm_, scaleCopyParams, scalePadParams);
+        }
+        SET_FLAG(MTE2, V, EVENT_ID0);
+        WAIT_FLAG(MTE2, V, EVENT_ID0);
+        AscendC::Cast(inputFp32_, inputTensor_, AscendC::RoundMode::CAST_NONE, padLen);
+        AscendC::PipeBarrier<PIPE_V>();
+        AscendC::Brcb(scaleBrcbFp32_, inputFp32_, padLen / ELE_NUM_FP32, {1, 8});
+        AscendC::PipeBarrier<PIPE_V>();
 
-        SET_FLAG(MTE3, MTE2, EVENT_ID1);
-        for (uint32_t ubLoopIdx = 0; ubLoopIdx < ubHeadLoop; ubLoopIdx++) {
-            // scale CopyIn + cast
-            scaleLoopOffset = ubLoopIdx * headPerLoop;
-            WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
-            AscendC::DataCopy(scaleTensor_, scaleGm_[scaleLoopOffset], headPerLoop);
-            SET_FLAG(MTE2, V, EVENT_ID1);
-            WAIT_FLAG(MTE2, V, EVENT_ID1);
-            AscendC::Cast(scaleFp32_, scaleTensor_, AscendC::RoundMode::CAST_NONE, headPerLoop);
-            AscendC::PipeBarrier<PIPE_V>();
-            // scale broadcast [H', 1] --> [H', 8]
-            AscendC::Brcb(scaleBrcbFp32_, scaleFp32_, headPerLoop / 8, {1, 8});
-            AscendC::PipeBarrier<PIPE_V>();
-
-            inputLoopOffset = ubLoopIdx * headPerLoop * colNum;
-            SET_FLAG(MTE3, MTE2, EVENT_ID1);
-            for (uint32_t batchIdx = 0; batchIdx < batchNum; batchIdx++) {
-                batchOffset = batchIdx * headNum * colNum;
+        uint8_t pingFlag = 0;
+        // batch Loop
+        SET_FLAG(V, MTE2, EVENT_ID0);  // input copyin wait vector release ub
+        SET_FLAG(V, MTE2, EVENT_ID1);
+        SET_FLAG(MTE3, V, EVENT_ID0);  // quant calc wait last result copyout
+        SET_FLAG(MTE3, V, EVENT_ID1);
+        for (uint32_t batchIdx = 0; batchIdx < batchNum; batchIdx++) {
+            batchOffset = batchIdx * headNum * colNum;
+            // ub Loop
+            for (uint32_t ubLoopIdx = 0; ubLoopIdx < ubHeadLoop; ubLoopIdx++) {
+                scaleBrcbOffset = ubLoopIdx * headPerLoop * ELE_NUM_FP32;
+                inputLoopOffset = ubLoopIdx * headPerLoop * colNum;
                 calcStartOffset = currentCoreStartOffset + batchOffset + inputLoopOffset;
-                // input CopyIn and Cast
-                WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
-                AscendC::DataCopy(inputTensor_, einSumOutGm_[calcStartOffset],
-                                  {1, static_cast<uint16_t>(inputDataSize / BLOCK_SIZE_32), 0, 0});
-                SET_FLAG(MTE2, V, EVENT_ID1);
-                WAIT_FLAG(MTE2, V, EVENT_ID1);
-                AscendC::Cast(inputFp32_, inputTensor_, AscendC::RoundMode::CAST_NONE, headPerLoop * colNum);
-                AscendC::PipeBarrier<PIPE_V>();
+                calcTmpOffset = pingFlag * calcLength;
 
+                // input CopyIn and Cast
+                WAIT_FLAG(V, MTE2, pingFlag);
+                AscendC::DataCopy(inputTensor_[calcTmpOffset], einSumOutGm_[calcStartOffset],
+                                  {1, inputDataBlock, 0, 0});
+                SET_FLAG(MTE2, V, pingFlag);
+                WAIT_FLAG(MTE2, V, pingFlag);
+                AscendC::Cast(inputFp32_[calcTmpOffset], inputTensor_[calcTmpOffset],
+                              AscendC::RoundMode::CAST_NONE, calcLength);
+                AscendC::PipeBarrier<PIPE_V>();
+                SET_FLAG(V, MTE2, pingFlag);
                 // quant calc
                 for (uint32_t colIdx = 0; colIdx < colLoop; colIdx++) {
                     colOffset = colIdx * CONST_64;
-                    AscendC::Mul(inputFp32_[colOffset], inputFp32_[colOffset], scaleBrcbFp32_, CONST_64, headPerLoop,
+                    AscendC::Mul(inputFp32_[calcTmpOffset + colOffset],
+                                 inputFp32_[calcTmpOffset + colOffset],
+                                 scaleBrcbFp32_[scaleBrcbOffset],
+                                 CONST_64, headPerLoop,
                                  {1, 1, 0, calcRepeatStride, calcRepeatStride, 1});
-                    AscendC::PipeBarrier<PIPE_V>();
                 }
-                if (colTail > 0) {
-                    colOffset = colLoop * CONST_64;
-                    AscendC::Mul(inputFp32_[colOffset], inputFp32_[colOffset], scaleBrcbFp32_, colTail, headPerLoop,
-                                 {1, 1, 0, calcRepeatStride, calcRepeatStride, 1});
-                    AscendC::PipeBarrier<PIPE_V>();
-                }
-
+                AscendC::PipeBarrier<PIPE_V>();
                 // quant fp32 --> fp16 --> int8
-                CastFrom32To16(tempQuantFp16_, inputFp32_, headPerLoop * colNum);
+                CastFrom32To16(inputFp32_[calcTmpOffset].template ReinterpretCast<half>(),
+                               inputFp32_[calcTmpOffset], calcLength);
                 AscendC::PipeBarrier<PIPE_V>();
-                CastFromF16ToI8(int8OutTensor_, tempQuantFp16_, quantMin_, headPerLoop * colNum);
+                WAIT_FLAG(MTE3, V, pingFlag); // wait last result copy out
+                CastFromF16ToI8(int8OutTensor_[calcTmpOffset],
+                                inputFp32_[calcTmpOffset].template ReinterpretCast<half>(),
+                                quantMin_, calcLength);
                 AscendC::PipeBarrier<PIPE_V>();
-                SET_FLAG(V, MTE3, EVENT_ID1);
-                WAIT_FLAG(V, MTE3, EVENT_ID1);
-
+                SET_FLAG(V, MTE3, pingFlag);
+                WAIT_FLAG(V, MTE3, pingFlag);
                 // int8 CopyOut
-                AscendC::DataCopy(quantOutGm_[calcStartOffset], int8OutTensor_,
-                                  {1, static_cast<uint16_t>(int8OutDataSize / BLOCK_SIZE_32), 0, 0});
-                SET_FLAG(MTE3, MTE2, EVENT_ID1);
+                AscendC::DataCopy(quantOutGm_[calcStartOffset], int8OutTensor_[calcTmpOffset],
+                                  {1, int8OutDataBlcok, 0, 0});
+                SET_FLAG(MTE3, V, pingFlag);
+                pingFlag = 1 - pingFlag;
             }
-            WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
-            SET_FLAG(MTE3, MTE2, EVENT_ID1);
-        }
-        WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
 
-        // deal with headTail
-        padLen = (headTail + ELE_NUM_FP16 - 1) / ELE_NUM_FP16 * ELE_NUM_FP16;
-        SET_FLAG(MTE3, MTE2, EVENT_ID1);
-        if (headTail > 0) {
-            // scale CopyIn + cast
-            scaleLoopOffset = ubHeadLoop * headPerLoop;
-            WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
-            if (headTail == padLen) {
-                AscendC::DataCopy(scaleTensor_, scaleGm_[scaleLoopOffset], headTail);
-            } else {
-                AscendC::DataCopyExtParams copyParams{1, static_cast<uint32_t>(headTail * sizeof(InDtype)), 0, 0, 0};
-                AscendC::DataCopyPadExtParams<InDtype> padParams{true, 0, static_cast<uint8_t>(padLen - headTail), 0};
-                AscendC::DataCopyPad(scaleTensor_, scaleGm_[scaleLoopOffset], copyParams, padParams);
-            }
-            SET_FLAG(MTE2, V, EVENT_ID1);
-            WAIT_FLAG(MTE2, V, EVENT_ID1);
-            AscendC::Cast(scaleFp32_, scaleTensor_, AscendC::RoundMode::CAST_NONE, headTail);
-            AscendC::PipeBarrier<PIPE_V>();
-            // scale broadcast [H', 1] --> [H', 8]
-            AscendC::Brcb(scaleBrcbFp32_, scaleFp32_, padLen / ELE_NUM_FP32, {1, 8});
-            AscendC::PipeBarrier<PIPE_V>();
-
-            inputLoopOffset = ubHeadLoop * headPerLoop * colNum;
-            SET_FLAG(MTE3, MTE2, EVENT_ID1);
-            for (uint32_t batchIdx = 0; batchIdx < batchNum; batchIdx++) {
-                batchOffset = batchIdx * headNum * colNum;
+            // deal with head tail
+            if (headTail > 0) {
+                scaleBrcbOffset = ubHeadLoop * headPerLoop * ELE_NUM_FP32;
+                inputLoopOffset = ubHeadLoop * headPerLoop * colNum;
                 calcStartOffset = currentCoreStartOffset + batchOffset + inputLoopOffset;
-                // input CopyIn and Cast
-                WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
-                AscendC::DataCopy(inputTensor_, einSumOutGm_[calcStartOffset],
-                                  {1, static_cast<uint16_t>(headTailDataSize / BLOCK_SIZE_32), 0, 0});
-                SET_FLAG(MTE2, V, EVENT_ID1);
-                WAIT_FLAG(MTE2, V, EVENT_ID1);
-                AscendC::Cast(inputFp32_, inputTensor_, AscendC::RoundMode::CAST_NONE, headTail * colNum);
-                AscendC::PipeBarrier<PIPE_V>();
+                calcTmpOffset = pingFlag * calcLength;
 
+                // input CopyIn and Cast
+                WAIT_FLAG(V, MTE2, pingFlag);
+                AscendC::DataCopy(inputTensor_[calcTmpOffset], einSumOutGm_[calcStartOffset],
+                                  {1, headTailDataBlock, 0, 0});
+                SET_FLAG(MTE2, V, pingFlag);
+                WAIT_FLAG(MTE2, V, pingFlag);
+                AscendC::Cast(inputFp32_[calcTmpOffset], inputTensor_[calcTmpOffset],
+                              AscendC::RoundMode::CAST_NONE, headTail * colNum);
+                AscendC::PipeBarrier<PIPE_V>();
+                SET_FLAG(V, MTE2, pingFlag);
                 // quant calc
                 for (uint32_t colIdx = 0; colIdx < colLoop; colIdx++) {
                     colOffset = colIdx * CONST_64;
-                    AscendC::Mul(inputFp32_[colOffset], inputFp32_[colOffset], scaleBrcbFp32_, CONST_64, headTail,
+                    AscendC::Mul(inputFp32_[calcTmpOffset + colOffset],
+                                 inputFp32_[calcTmpOffset + colOffset],
+                                 scaleBrcbFp32_[scaleBrcbOffset],
+                                 CONST_64, headTail,
                                  {1, 1, 0, calcRepeatStride, calcRepeatStride, 1});
-                    AscendC::PipeBarrier<PIPE_V>();
                 }
-                if (colTail > 0) {
-                    colOffset = colLoop * CONST_64;
-                    AscendC::Mul(inputFp32_[colOffset], inputFp32_[colOffset], scaleBrcbFp32_, colTail, headTail,
-                                 {1, 1, 0, calcRepeatStride, calcRepeatStride, 1});
-                    AscendC::PipeBarrier<PIPE_V>();
-                }
-
+                AscendC::PipeBarrier<PIPE_V>();
                 // quant fp32 --> fp16 --> int8
-                CastFrom32To16(tempQuantFp16_, inputFp32_, headTail * colNum);
+                CastFrom32To16(inputFp32_[calcTmpOffset].template ReinterpretCast<half>(),
+                               inputFp32_[calcTmpOffset], headTail * colNum);
                 AscendC::PipeBarrier<PIPE_V>();
-                CastFromF16ToI8(int8OutTensor_, tempQuantFp16_, quantMin_, headTail * colNum);
+                WAIT_FLAG(MTE3, V, pingFlag); // wait last result copy out
+                CastFromF16ToI8(int8OutTensor_[calcTmpOffset],
+                                inputFp32_[calcTmpOffset].template ReinterpretCast<half>(),
+                                quantMin_, headTail * colNum);
                 AscendC::PipeBarrier<PIPE_V>();
-                SET_FLAG(V, MTE3, EVENT_ID1);
-                WAIT_FLAG(V, MTE3, EVENT_ID1);
-
+                SET_FLAG(V, MTE3, pingFlag);
+                WAIT_FLAG(V, MTE3, pingFlag);
                 // int8 CopyOut
-                AscendC::DataCopy(quantOutGm_[calcStartOffset], int8OutTensor_,
-                                  {1, static_cast<uint16_t>(int8TailOutDataSize / BLOCK_SIZE_32), 0, 0});
-                SET_FLAG(MTE3, MTE2, EVENT_ID1);
+                AscendC::DataCopy(quantOutGm_[calcStartOffset], int8OutTensor_[calcTmpOffset],
+                                  {1, int8TailOutDataBlock, 0, 0});
+                SET_FLAG(MTE3, V, pingFlag);
+                pingFlag = 1 - pingFlag;
             }
-            WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
-            SET_FLAG(MTE3, MTE2, EVENT_ID1);
         }
-        WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
+        WAIT_FLAG(V, MTE2, EVENT_ID0);
+        WAIT_FLAG(V, MTE2, EVENT_ID1);
+        WAIT_FLAG(MTE3, V, EVENT_ID0);
+        WAIT_FLAG(MTE3, V, EVENT_ID1);
     }
 
 private:
@@ -891,13 +861,13 @@ private:
     AscendC::GlobalTensor<ScaleDtype> scaleGm_;
     AscendC::GlobalTensor<int8_t> quantOutGm_;
 
-    AscendC::LocalTensor<InDtype> inputTensor_;
-    AscendC::LocalTensor<ScaleDtype> scaleTensor_;
-    AscendC::LocalTensor<float> inputFp32_;
-    AscendC::LocalTensor<float> scaleFp32_;
     AscendC::LocalTensor<float> scaleBrcbFp32_;
-    AscendC::LocalTensor<half> tempQuantFp16_;
+    AscendC::LocalTensor<InDtype> inputTensor_;
+    AscendC::LocalTensor<float> inputFp32_;
     AscendC::LocalTensor<int8_t> int8OutTensor_;
+
+    AscendC::DataCopyExtParams scaleCopyParams;
+    AscendC::DataCopyPadExtParams<InDtype> scalePadParams;
 
     // 单核处理数据量[batchNum, headNum, colNum]
     uint32_t batchNum; // 每个核处理的batch数量
@@ -914,17 +884,25 @@ private:
     uint32_t currentIdx;
     uint64_t currentCoreStartOffset;
     uint32_t inputDataSize; // 每次搬运输入的大小，bytes
-    uint32_t scaleDataSize;
     uint32_t inputFp32DataSize;
-    uint32_t scaleFp32DataSize;
     uint32_t scaleBrcbFp32DataSize;
-    uint32_t tempQuantFp16DataSize;
-    uint32_t int8OutDataSize;
-    uint32_t headTailDataSize;
-    uint32_t int8TailOutDataSize;
+    uint16_t inputDataBlock; // 每次搬运输入的block数，bytes
+    uint16_t int8OutDataBlcok;
+    uint16_t headTailDataBlock;
+    uint16_t int8TailOutDataBlock;
+    // gm offset
+    uint64_t inputLoopOffset{0};
+    uint64_t batchOffset{0};
+    uint64_t calcStartOffset{0};
+    // double buffer tmp tensor length
+    uint32_t scaleBrcbOffset{0};
+    uint32_t calcLength{0};
+    uint32_t calcTmpOffset{0};
 
     half quantMin_{-128};
+    uint32_t colOffset{0};
     uint32_t padLen;
+    uint8_t calcRepeatStride;
 };
 
 #ifdef __DAV_C220_CUBE__
@@ -990,6 +968,7 @@ public:
     {
 #ifdef __DAV_C220_CUBE__
         if (block_idx >= num_core) {
+            WaitFlagDev(AIC_MM3_START);
             return;
         }
         using LocalTensor = AscendC::LocalTensor<InDtype>;
@@ -1023,6 +1002,8 @@ public:
             event_t event_id = ping_flag ? EVENT_ID0 : EVENT_ID1;
 
             if (loop_idx == core_idx) {
+                WaitFlagDev(AIC_MM3_START);
+
                 // Copy A from gm to l1 buffer
                 uint64_t offset_a = GetOffsetA(batch_idx, tidx.m, shuffle_k);
                 wait_flag(PIPE_MTE1, PIPE_MTE2, event_id);
@@ -1403,7 +1384,7 @@ public:
     __aicore__ PpMatmulW8a8Aic() {};
 
     __aicore__ __force_inline__ void
-    Init(GM_ADDR gmA, GM_ADDR gmB, GM_ADDR gmC, AtbOps::PpMatmulTilingData &tilingdata)
+    Init(GM_ADDR gmA, GM_ADDR gmB, GM_ADDR gmC, AtbOps::PpMatmulTilingData &tilingdata, uint32_t mode)
     {
         gm_a.SetGlobalBuffer(reinterpret_cast<__gm__ InDtype *>(gmA));
         gm_b.SetGlobalBuffer(reinterpret_cast<__gm__ InDtype *>(gmB));
@@ -1423,9 +1404,12 @@ public:
         swizzle_cnt = tilingdata.swizzleCount;
         en_shuffle_k = tilingdata.enShuffleK;
         core_num = tilingdata.blockDim;
+        load_all_Amat_flag = tilingdata.enLoadAllAmat;
+        b0mat_pingpong_buffer_len = tilingdata.b0matPingPongBufferLen;
 
         core_idx = AscendC::GetBlockIdx();
         ping_flag = 1;
+        MM1_MM2_mode = mode;  // 区分MM1 or MM2
 
         InitBuffer();
         return;
@@ -1525,7 +1509,7 @@ public:
             uint64_t k_round = RoundUp<BLOCK_SIZE_32>(k_actual);
             uint64_t n_actual = (n_idx == (n_loop - 1)) ? (n - n_idx * n0) : n0;
             uint64_t n_round = RoundUp<BLOCK_SIZE_16>(n_actual);
-            CopyTileB(l1_base_b[L1_PINGPONG_BUFFER_LEN], gm_b[offset_b], k_actual, k_round, n_actual, n_round);
+            CopyTileB(l1_base_b[b0mat_pingpong_buffer_len], gm_b[offset_b], k_actual, k_round, n_actual, n_round);
         }
     }
 
@@ -1536,7 +1520,13 @@ private:
     {
         AsdopsBuffer<ArchType::ASCEND_V220> buf;
         l1_base_a = buf.template GetBuffer<BufferType::ASCEND_CB, InDtype>(0);
-        uint32_t a_l1_size = RoundUp<CUBE_MATRIX_SIZE_512>(m0 * k0);
+
+        // try load all A matrix
+        uint32_t a_l1_size = RoundUp<BLOCK_SIZE_16>(m) * RoundUp<BLOCK_SIZE_32>(k);
+        if (!load_all_Amat_flag) {
+            a_l1_size = RoundUp<CUBE_MATRIX_SIZE_512>(m0 * k0);
+        }
+
         l1_base_b = l1_base_a[a_l1_size];
         l0a_base = buf.template GetBuffer<BufferType::ASCEND_L0A, InDtype>(0);
         l0b_base = buf.template GetBuffer<BufferType::ASCEND_L0B, InDtype>(0);
@@ -1606,6 +1596,9 @@ private:
     uint32_t ping_flag{0};
     uint32_t swizzle_cnt{1};
     uint32_t en_shuffle_k{0};
+    uint32_t MM1_MM2_mode{0};
+    uint64_t b0mat_pingpong_buffer_len{0};
+    bool load_all_Amat_flag{false};
 };
 
 template <bool withSyncAll, uint32_t swizzleDir, DataFormat formatA, DataFormat formatB>
@@ -1613,6 +1606,11 @@ __aicore__ __force_inline__ void PpMatmulW8a8Aic<withSyncAll, swizzleDir, format
 {
     using LocalTensor = AscendC::LocalTensor<InDtype>;
     if (core_idx >= core_num) {
+        if (MM1_MM2_mode == 0) {
+            WaitFlagDev(AIC_MM1_START);
+        } else if (MM1_MM2_mode == 1) {
+            WaitFlagDev(AIC_MM2_START);
+        }
         return;
     }
     SET_FLAG(MTE1, MTE2, EVENT_ID0);
@@ -1649,19 +1647,38 @@ __aicore__ __force_inline__ void PpMatmulW8a8Aic<withSyncAll, swizzleDir, format
         uint64_t k_part_len = 0;
         k_part_len = L0_PINGPONG_BUFFER_LEN / mn_max / BLOCK_SIZE_32 * BLOCK_SIZE_32;
 
-        offset_a = GetOffsetA(batch_idx, m_idx, shuffle_k);
         offset_b = GetOffsetB(batch_idx, shuffle_k, n_idx);
         offset_bias = batch_idx * n + n_idx * n0;
 
         uint64_t k_actual = (shuffle_k == k_loop - 1) ? k - shuffle_k * k0 : k0;
         uint64_t k_round = RoundUp<BLOCK_SIZE_32>(k_actual);
 
-        LocalTensor l1_buf_a = ping_flag ? l1_base_a : l1_base_a[L1_PINGPONG_BUFFER_LEN];
-        LocalTensor l1_buf_b = ping_flag ? l1_base_b : l1_base_b[L1_PINGPONG_BUFFER_LEN];
         auto event_id = ping_flag ? EVENT_ID0 : EVENT_ID1;
 
+        // Wait after Scalar
+        if (loop_idx == core_idx) {
+            if (MM1_MM2_mode == 0) {
+                WaitFlagDev(AIC_MM1_START);
+            } else if (MM1_MM2_mode == 1) {
+                WaitFlagDev(AIC_MM2_START);
+            }
+        }
+
         WAIT_FLAG(MTE1, MTE2, event_id);
-        CopyTileA(l1_buf_a, gm_a[offset_a], m_actual, m_round, k_actual, k_round);
+        LocalTensor l1_buf_a =
+            load_all_Amat_flag ? l1_base_a : (ping_flag ? l1_base_a : l1_base_a[L1_PINGPONG_BUFFER_LEN]);
+        LocalTensor l1_buf_b = ping_flag ? l1_base_b : l1_base_b[b0mat_pingpong_buffer_len];
+        if (load_all_Amat_flag) {
+            if (loop_idx == core_idx) {
+                offset_a = GetOffsetA(batch_idx, m_idx, 0);
+                uint64_t k_actual_first = k;
+                uint64_t k_round_first = RoundUp<BLOCK_SIZE_32>(k_actual_first);
+                CopyTileA(l1_buf_a, gm_a[offset_a], m_actual, m_round, k_actual_first, k_round_first);
+            }
+        } else {
+            offset_a = GetOffsetA(batch_idx, m_idx, shuffle_k);
+            CopyTileA(l1_buf_a, gm_a[offset_a], m_actual, m_round, k_actual, k_round);
+        }
         SET_FLAG(MTE2, MTE1, event_id);
 
         WAIT_FLAG(MTE1, MTE2, event_id + CONST_2);
@@ -1677,23 +1694,27 @@ __aicore__ __force_inline__ void PpMatmulW8a8Aic<withSyncAll, swizzleDir, format
             uint32_t k_round = RoundUp<BLOCK_SIZE_32>(k_actual);
             uint32_t k_part_loop = (k_actual + k_part_len - 1) / k_part_len;
 
-            LocalTensor l1_buf_a = ping_flag ? l1_base_a : l1_base_a[L1_PINGPONG_BUFFER_LEN];
-            LocalTensor l1_buf_b = ping_flag ? l1_base_b : l1_base_b[L1_PINGPONG_BUFFER_LEN];
+            // --------- load whole A in l1a addr chanege -------------
+            LocalTensor l1_buf_a = load_all_Amat_flag ? (l1_base_a[k_idx * m0 * k0 * sizeof(int8_t)]) : (ping_flag ? l1_base_a : l1_base_a[L1_PINGPONG_BUFFER_LEN]) ;
+            LocalTensor l1_buf_b = ping_flag ? l1_base_b : l1_base_b[b0mat_pingpong_buffer_len] ;
             auto event_id = ping_flag ? EVENT_ID0 : EVENT_ID1;
 
             if (k_idx < k_loop - 1) {
                 uint64_t shuffle_k_next = en_shuffle_k ? (core_idx + k_idx + 1) % k_loop : k_idx + 1;
-                offset_a_next = GetOffsetA(batch_idx, m_idx, shuffle_k_next);
+
                 offset_b_next = GetOffsetB(batch_idx, shuffle_k_next, n_idx);
                 uint32_t k_actual_next = (shuffle_k_next == (k_loop - 1)) ? (k - shuffle_k_next * k0) : k0;
                 uint32_t k_round_next = RoundUp<BLOCK_SIZE_32>(k_actual_next);
 
-                LocalTensor l1_buf_a_next = (1 - ping_flag) ? l1_base_a : l1_base_a[L1_PINGPONG_BUFFER_LEN];
-                LocalTensor l1_buf_b_next = (1 - ping_flag) ? l1_base_b : l1_base_b[L1_PINGPONG_BUFFER_LEN];
+                LocalTensor l1_buf_a_next = load_all_Amat_flag ? l1_base_a : ((1 - ping_flag) ? l1_base_a : l1_base_a[L1_PINGPONG_BUFFER_LEN]);
+                LocalTensor l1_buf_b_next = (1 - ping_flag) ? l1_base_b : l1_base_b[b0mat_pingpong_buffer_len];
                 auto event_id_next = (1 - ping_flag) ? EVENT_ID0 : EVENT_ID1;
 
                 WAIT_FLAG(MTE1, MTE2, event_id_next);
-                CopyTileA(l1_buf_a_next, gm_a[offset_a_next], m_actual, m_round, k_actual_next, k_round_next);
+                if (!load_all_Amat_flag) {
+                    offset_a_next = GetOffsetA(batch_idx, m_idx, shuffle_k_next);
+                    CopyTileA(l1_buf_a_next, gm_a[offset_a_next], m_actual, m_round, k_actual_next, k_round_next);
+                }
                 SET_FLAG(MTE2, MTE1, event_id_next);
 
                 WAIT_FLAG(MTE1, MTE2, event_id_next + CONST_2);
@@ -2233,13 +2254,13 @@ public:
         s5GmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(s5Gm));
 
 #ifdef __DAV_C220_CUBE__
-        mm_w8a8_aic_1.Init(s1Gm, wdqkvGm, s2Gm, mlaParams.mm1);
+        mm_w8a8_aic_1.Init(s1Gm, wdqkvGm, s2Gm, mlaParams.mm1, 0);
         mm_w8a8_aic_1.PreloadWeight();
         if constexpr (quantMode == QuantMode::PER_TENSOR_ASYMM_QUANT) {
-            mm_w8a8_aic_2.Init(s1Gm, wuqGm, s2Gm, mlaParams.mm2);
+            mm_w8a8_aic_2.Init(s1Gm, wuqGm, s2Gm, mlaParams.mm2, 1);
         } else {
             // quantMode == QuantMode::PER_TOKEN_SYMM_QUANT
-            mm_w8a8_aic_2.Init(s1Gm, wuqGm, s3Gm, mlaParams.mm2);
+            mm_w8a8_aic_2.Init(s1Gm, wuqGm, s3Gm, mlaParams.mm2, 1);
         }
         if constexpr (CACHE_MODE == CACHE_MODE_INT8_NZCACHE) {
             mm_ein_sum.Init(s4Gm, wukGm, s1Gm, mlaParams);
@@ -2592,7 +2613,6 @@ __aicore__ inline void
 MLAOperation<InDtype, CACHE_MODE, weightFormat1, weightFormat2, weightFormat3, quantMode>::ProcessCube()
 {
 #ifdef __DAV_C220_CUBE__
-    WaitFlagDev(AIC_MM1_START);
     mm_w8a8_aic_1.Process();
     if constexpr (quantMode == QuantMode::PER_TOKEN_SYMM_QUANT) {
         FftsCrossCoreSync<PIPE_FIX, 0>(MMAIC);
@@ -2601,9 +2621,7 @@ MLAOperation<InDtype, CACHE_MODE, weightFormat1, weightFormat2, weightFormat3, q
     }
 
     mm_w8a8_aic_2.PreloadWeight();
-    WaitFlagDev(AIC_MM2_START);
     mm_w8a8_aic_2.Process();
-    WaitFlagDev(AIC_MM3_START);
     mm_ein_sum.Process();
     if constexpr (CACHE_MODE == CACHE_MODE_INT8_NZCACHE) {
         FftsCrossCoreSync<PIPE_FIX, 0>(EINSUMOUT);
@@ -2751,6 +2769,7 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention_bf16(
     GM_ADDR descale2Gm, GM_ADDR gmCtkvScale, GM_ADDR gmQnopeScale, GM_ADDR qGm, GM_ADDR keycacheOutGm, GM_ADDR qGm2,
     GM_ADDR keycacheOutGm2, GM_ADDR s1Gm, GM_ADDR s2Gm, GM_ADDR s3Gm, GM_ADDR s4Gm, GM_ADDR s5Gm, GM_ADDR tilingGm)
 {
+    PRELOAD(2);
     SetFftsBaseAddr((unsigned long)sync);
     SetAtomicnone();
     SetMasknorm();
@@ -2776,6 +2795,8 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention_bf16(
     mlaTilingData.mm1.swizzleCount = gmMlaTilingData->mm1.swizzleCount;
     mlaTilingData.mm1.enShuffleK = gmMlaTilingData->mm1.enShuffleK;
     mlaTilingData.mm1.blockDim = gmMlaTilingData->mm1.blockDim;
+    mlaTilingData.mm1.enLoadAllAmat = gmMlaTilingData->mm1.enLoadAllAmat;
+    mlaTilingData.mm1.b0matPingPongBufferLen = gmMlaTilingData->mm1.b0matPingPongBufferLen;
 
     mlaTilingData.mm2.numBatch = gmMlaTilingData->mm2.numBatch;
     mlaTilingData.mm2.m = gmMlaTilingData->mm2.m;
@@ -2791,6 +2812,8 @@ extern "C" __global__ __aicore__ void MLA_preprocess_attention_bf16(
     mlaTilingData.mm2.swizzleCount = gmMlaTilingData->mm2.swizzleCount;
     mlaTilingData.mm2.enShuffleK = gmMlaTilingData->mm2.enShuffleK;
     mlaTilingData.mm2.blockDim = gmMlaTilingData->mm2.blockDim;
+    mlaTilingData.mm2.enLoadAllAmat = gmMlaTilingData->mm2.enLoadAllAmat;
+    mlaTilingData.mm2.b0matPingPongBufferLen = gmMlaTilingData->mm2.b0matPingPongBufferLen;
 
     mlaTilingData.mm3.numBatch = gmMlaTilingData->mm3.numBatch;
     mlaTilingData.mm3.m = gmMlaTilingData->mm3.m;

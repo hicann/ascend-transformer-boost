@@ -14,19 +14,21 @@
 /////////////////////////////////////////////////////
 
 // Partial specialization for V220
-template <ArchType ArchTag, typename DataType>
-struct l1_to_fb {
-    using HardwareParams = HardwareInfo<ArchTag>;
-    static constexpr uint32_t BLOCK_SIZE = HardwareParams::fbBlockSize / sizeof(DataType);
-
-    __aicore__
-    l1_to_fb(AscendC::LocalTensor<DataType> fbTensor, AscendC::LocalTensor<DataType> l1Tensor, uint32_t ntileActual)
+template <typename DataType>
+struct l1_to_fb<ArchType::ASCEND_V220, DataType> {
+    __aicore__ l1_to_fb(AscendC::LocalTensor<DataType> &dst,
+                        AscendC::LocalTensor<DataType> &src,
+                        uint16_t burstNum,
+                        uint16_t burstLen,
+                        uint16_t srcGap,
+                        uint16_t dstGap)
     {
-        copy_cbuf_to_fbuf((__fbuf__ DataType *)fbTensor.GetPhyAddr(),
-                          (__cbuf__ DataType *)l1Tensor.GetPhyAddr(),
-                          1,
-                          CeilDiv<BLOCK_SIZE>(ntileActual),
-                          0,
-                          0);
-    };
+        dst.address_.logicPos = static_cast<uint8_t>(AscendC::TPosition::C2PIPE2GM);
+        AscendC::DataCopy(dst,
+                          src,
+                          AscendC::DataCopyParams(burstNum, // nBurst
+                                                  burstLen, // lenBurst
+                                                  srcGap,   // srcGap
+                                                  dstGap)); // dstGap);
+    }
 };

@@ -110,7 +110,7 @@ class TestPpMatmulBf16(op_test.OpTest):
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+                    [self.bat_A, self.bat_B],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                     {"ASDOPS_MATMUL_PP_FLAG": "1"},
                 )
@@ -128,7 +128,7 @@ class TestPpMatmulBf16(op_test.OpTest):
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+                    [self.bat_A, self.bat_B],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                     {"ASDOPS_MATMUL_PP_FLAG": "1"},
                 )
@@ -146,7 +146,7 @@ class TestPpMatmulBf16(op_test.OpTest):
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+                    [self.bat_A, self.bat_B],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                     {"ASDOPS_MATMUL_PP_FLAG": "1"},
                 )
@@ -163,7 +163,7 @@ class TestPpMatmulBf16(op_test.OpTest):
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+            [self.bat_A, self.bat_B],
             [torch.zeros(self.bat_C.shape).bfloat16()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
@@ -180,7 +180,7 @@ class TestPpMatmulBf16(op_test.OpTest):
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+            [self.bat_A, self.bat_B],
             [torch.zeros(self.bat_C.shape).bfloat16()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
@@ -197,7 +197,7 @@ class TestPpMatmulBf16(op_test.OpTest):
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+            [self.bat_A, self.bat_B],
             [torch.zeros(self.bat_C.shape).bfloat16()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
@@ -214,7 +214,7 @@ class TestPpMatmulBf16(op_test.OpTest):
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+            [self.bat_A, self.bat_B],
             [torch.zeros(self.bat_C.shape).bfloat16()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
@@ -231,7 +231,7 @@ class TestPpMatmulBf16(op_test.OpTest):
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+            [self.bat_A, self.bat_B],
             [torch.zeros(self.bat_C.shape).bfloat16()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
@@ -248,7 +248,7 @@ class TestPpMatmulBf16(op_test.OpTest):
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+            [self.bat_A, self.bat_B],
             [torch.zeros(self.bat_C.shape).bfloat16()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
@@ -265,7 +265,7 @@ class TestPpMatmulBf16(op_test.OpTest):
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+            [self.bat_A, self.bat_B],
             [torch.zeros(self.bat_C.shape).bfloat16()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
@@ -282,7 +282,7 @@ class TestPpMatmulBf16(op_test.OpTest):
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+            [self.bat_A, self.bat_B],
             [torch.zeros(self.bat_C.shape).bfloat16()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
@@ -300,7 +300,7 @@ class TestPpMatmulBf16(op_test.OpTest):
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+                    [self.bat_A, self.bat_B],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                     {"ASDOPS_MATMUL_PP_FLAG": "1"},
                 )
@@ -318,7 +318,7 @@ class TestPpMatmulBf16(op_test.OpTest):
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+                    [self.bat_A, self.bat_B],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                     {"ASDOPS_MATMUL_PP_FLAG": "1"},
                 )
@@ -336,7 +336,7 @@ class TestPpMatmulBf16(op_test.OpTest):
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [torch.tensor(self.bat_A).bfloat16(), torch.tensor(self.bat_B).bfloat16()],
+                    [self.bat_A, self.bat_B],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                     {"ASDOPS_MATMUL_PP_FLAG": "1"},
                 )

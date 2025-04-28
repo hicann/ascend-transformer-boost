@@ -41,4 +41,5 @@
 #include "atbops/params/rms_norm_and_rope_and_reshape_and_cache.h"
 #include "atbops/params/mla_preprocess.h"
 #include "atbops/params/mla.h"
+#include "atbops/params/fusion.h"
 #endif

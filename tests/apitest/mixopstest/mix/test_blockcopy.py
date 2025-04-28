@@ -377,6 +377,72 @@ class TestBlockCopy(op_test.OpTest):
         self.vCache = input1.cpu().numpy().copy()
         self.blockCount = blockCount
         self.execute([input0, input1, input2, input3, input4], [0, 1])
-    
+
+    @op_test.only_310p
+    def test_blockcopy_float16_case_small_310(self):
+        blockCount = 15
+        blockSize = 2
+        numHead = 2
+        headSize = 16
+        srcCount = 3
+        dstCount = 10
+        self.set_param(OP_NAME, OP_PARAM0)
+        # 构造随机输入和占位输出
+        input0, input1, input2, input3, input4 =  create_input(blockCount, blockSize, numHead, headSize, srcCount, dstCount, "float16")
+        self.kCache = input0.cpu().numpy().copy()
+        self.vCache = input1.cpu().numpy().copy()
+        self.blockCount = blockCount
+        self.execute([input0, input1, input2, input3, input4], [0, 1])
+
+    @op_test.only_310p
+    def test_blockcopy_float16_case_big_310(self):
+        blockCount = 20000
+        blockSize = 2
+        numHead = 2
+        headSize = 16
+        srcCount = 2000
+        dstCount = 2000
+        self.set_param(OP_NAME, OP_PARAM0)
+        # 构造随机输入和占位输出
+        input0, input1, input2, input3, input4 =  create_input(blockCount, blockSize, numHead, headSize, srcCount, dstCount, "float16")
+        self.kCache = input0.cpu().numpy().copy()
+        self.vCache = input1.cpu().numpy().copy()
+        self.blockCount = blockCount
+        self.execute([input0, input1, input2, input3, input4], [0, 1])
+
+    @op_test.only_310p
+    def test_blockcopy_int8_case_aligned_310(self):
+        blockCount = 200
+        blockSize = 8
+        numHead = 16
+        headSize = 16
+        srcCount = 30
+        dstCount = 60
+        self.set_param(OP_NAME, OP_PARAM0)
+        # 构造随机输入和占位输出
+        input0, input1, input2, input3, input4 =  create_input(blockCount, blockSize, numHead, headSize, srcCount, dstCount, "int8")
+        self.kCache = input0.cpu().numpy().copy()
+        self.vCache = input1.cpu().numpy().copy()
+        self.blockCount = blockCount
+        self.execute([input0, input1, input2, input3, input4], [0, 1])
+
+
+    @op_test.only_310p
+    def test_blockcopy_int8_case_aligned_big_310(self):
+        blockCount = 20000
+        blockSize = 8
+        numHead = 16
+        headSize = 32
+        srcCount = 2000
+        dstCount = 2001
+        self.set_param(OP_NAME, OP_PARAM0)
+        # 构造随机输入和占位输出
+        input0, input1, input2, input3, input4 =  create_input(blockCount, blockSize, numHead, headSize, srcCount, dstCount, "int8")
+        self.kCache = input0.cpu().numpy().copy()
+        self.vCache = input1.cpu().numpy().copy()
+        self.blockCount = blockCount
+        self.execute([input0, input1, input2, input3, input4], [0, 1])
+
+
 if __name__ == '__main__':
     unittest.main()

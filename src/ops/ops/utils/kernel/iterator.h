@@ -61,32 +61,6 @@ struct l1_to_l0_b {
                           uint32_t kDstStride) {};
 };
 
-// l1_to_l0_a
-/////////////////////////////////////////////////////
-template <ArchType ArchTag, typename DataType, bool IsTransPose, bool IsVectore>
-struct l1_to_l0_a_v1 {
-    __aicore__ l1_to_l0_a_v1(AscendC::LocalTensor<DataType> l0_tensor,
-                             AscendC::LocalTensor<DataType> l1_tensor,
-                             uint32_t m_tile_ceil,
-                             uint32_t k_tile_ceil,
-                             uint32_t k_part,
-                             uint32_t k_part_ceil,
-                             uint32_t k_part_idx) {};
-};
-
-/////////////////////////////////////////////////////
-// l1_to_l0_b
-/////////////////////////////////////////////////////
-template <ArchType ArchTag, typename DataType, bool IsTransPose, bool IsVectore>
-struct l1_to_l0_b_v1 {
-    __aicore__ l1_to_l0_b_v1(AscendC::LocalTensor<DataType> l0_tensor,
-                             AscendC::LocalTensor<DataType> l1_tensor,
-                             int32_t n_tile_ceil,
-                             int32_t k_tile_ceil,
-                             int32_t k_part_ceil,
-                             int32_t k_part_idx) {};
-};
-
 /////////////////////////////////////////////////////
 // l0c_to_gm
 /////////////////////////////////////////////////////
@@ -113,6 +87,27 @@ struct l0c_to_l1 {
                          uint32_t nTileActual,
                          uint32_t mTileCeil,
                          uint32_t nActual) {};
+};
+
+template <ArchType ArchTag, typename DataType>
+struct l1_to_bt {
+    __aicore__ l1_to_bt(uint64_t dst,
+                        const AscendC::LocalTensor<DataType> &src,
+                        uint16_t convControl,
+                        uint16_t nBurst,
+                        uint16_t lenBurst,
+                        uint16_t srcGap,
+                        uint16_t dstGap) {};
+};
+
+template <ArchType ArchTag, typename DataType>
+struct l1_to_fb {
+    __aicore__ l1_to_fb(AscendC::LocalTensor<DataType> &dst,
+                        AscendC::LocalTensor<DataType> &src,
+                        uint16_t burstNum,
+                        uint16_t burstLen,
+                        uint16_t srcGap,
+                        uint16_t dstGap) {};
 };
 
 #include "iterators/gm_to_l1_iterator.inc"

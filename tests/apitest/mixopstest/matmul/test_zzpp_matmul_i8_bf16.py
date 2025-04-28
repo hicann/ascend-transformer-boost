@@ -13,14 +13,17 @@ import torch
 import logging
 import op_test
 
+
 def process_deq_scale(deq_scale) -> np.ndarray:
     new_deq_scale = np.frombuffer(deq_scale.tobytes(), dtype=np.uint32)
     return new_deq_scale.astype(np.int64)
+
 
 def round_up(val: int, align: int) -> int:
     if align == 0:
         return 0
     return -(val // -align) * align
+
 
 def cvt_nd_to_nz(nd_mat: np.ndarray, block_size: tuple = (16, 16)) -> np.ndarray:
     r = round_up(nd_mat.shape[0], block_size[0])
@@ -33,6 +36,7 @@ def cvt_nd_to_nz(nd_mat: np.ndarray, block_size: tuple = (16, 16)) -> np.ndarray
     )
     nz_mat = np.reshape(nz_mat, (nz_mat.shape[0], nz_mat.shape[1] * nz_mat.shape[2], nz_mat.shape[3]))
     return nz_mat
+
 
 class TestPpMatmulI8(op_test.OpTest):
     def __gen_test_data(self, shpae: tuple) -> None:
@@ -77,103 +81,103 @@ class TestPpMatmulI8(op_test.OpTest):
         curesult = torch.allclose(out_tensors[0], golden_out_tensors[0], rtol=0.002, atol=0.002)
         logging.debug("SUCCESS" if curesult else "FAIL!!")
         return curesult
-    
+
     @op_test.only_910b
     def testcase0(self):
         self.trans_A, self.trans_B = False, False
         bsize, msize, ksize, nsize = 1, 128, 2560, 5120
         self.bias_flag = True
-        self.set_param("MatMulOperation",
-                       {"transposeA": self.trans_A,
-                        "transposeB": self.trans_B,
-                        "withBias": self.bias_flag,
-                        "enDequant": True,
-                        "outDtype":27})
-        self.set_input_formats([self.format_nd,
-                                self.format_nd,
-                                self.format_nd,
-                                self.format_nd])
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "withBias": self.bias_flag,
+                "enDequant": True,
+                "outDtype": 27,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
-        self.execute([self.bat_A,
-                      self.bat_B,
-                      self.bat_bias,
-                      self.bat_scale],
-                     [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+        self.execute(
+            [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+            [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
     @op_test.only_910b
     def testcase1(self):
         self.trans_A, self.trans_B = False, True
         bsize, msize, ksize, nsize = 1, 128, 2560, 5120
         self.bias_flag = True
-        self.set_param("MatMulOperation",
-                       {"transposeA": self.trans_A,
-                        "transposeB": self.trans_B,
-                        "withBias": self.bias_flag,
-                        "enDequant": True,
-                        "outDtype":27})
-        self.set_input_formats([self.format_nd,
-                                self.format_nd,
-                                self.format_nd,
-                                self.format_nd])
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "withBias": self.bias_flag,
+                "enDequant": True,
+                "outDtype": 27,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
-        self.execute([self.bat_A,
-                      self.bat_B,
-                      self.bat_bias,
-                      self.bat_scale],
-                     [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+        self.execute(
+            [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+            [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
     @op_test.only_910b
     def testcase2(self):
         self.trans_A, self.trans_B = True, False
         bsize, msize, ksize, nsize = 1, 128, 2560, 5120
         self.bias_flag = True
-        self.set_param("MatMulOperation",
-                       {"transposeA": self.trans_A,
-                        "transposeB": self.trans_B,
-                        "withBias": self.bias_flag,
-                        "enDequant": True,
-                        "outDtype":27})
-        self.set_input_formats([self.format_nd,
-                                self.format_nd,
-                                self.format_nd,
-                                self.format_nd])
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "withBias": self.bias_flag,
+                "enDequant": True,
+                "outDtype": 27,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
-        self.execute([self.bat_A,
-                      self.bat_B,
-                      self.bat_bias,
-                      self.bat_scale],
-                     [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+        self.execute(
+            [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+            [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
     @op_test.only_910b
     def testcase3(self):
         self.trans_A, self.trans_B = True, True
         bsize, msize, ksize, nsize = 1, 128, 2560, 5120
         self.bias_flag = True
-        self.set_param("MatMulOperation",
-                       {"transposeA": self.trans_A,
-                        "transposeB": self.trans_B,
-                        "withBias": self.bias_flag,
-                        "enDequant": True,
-                        "outDtype":27})
-        self.set_input_formats([self.format_nd,
-                                self.format_nd,
-                                self.format_nd,
-                                self.format_nd])
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "withBias": self.bias_flag,
+                "enDequant": True,
+                "outDtype": 27,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
-        self.execute([self.bat_A,
-                      self.bat_B,
-                      self.bat_bias,
-                      self.bat_scale],
-                     [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+        self.execute(
+            [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+            [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
     @op_test.only_910b
     def testcase_nobiascase1(self):
         transFlag = [[False, False], [False, True], [True, False], [True, True]]
@@ -181,24 +185,25 @@ class TestPpMatmulI8(op_test.OpTest):
             self.trans_A, self.trans_B = trans[0], trans[1]
             self.bias_flag = False
             bsize, msize, ksize, nsize = 1, 128, 2560, 5120
-            self.set_param("MatMulOperation",
-                        {"transposeA": self.trans_A,
-                            "transposeB": self.trans_B,
-                            "withBias": self.bias_flag,
-                            "enDequant": True,
-                            "outDtype":27})
-            self.set_input_formats([self.format_nd,
-                                    self.format_nd,
-                                    self.format_nd,
-                                    self.format_nd])
+            self.set_param(
+                "MatMulOperation",
+                {
+                    "transposeA": self.trans_A,
+                    "transposeB": self.trans_B,
+                    "withBias": self.bias_flag,
+                    "enDequant": True,
+                    "outDtype": 27,
+                },
+            )
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
-            self.execute([self.bat_A,
-                          self.bat_B,
-                          self.bat_bias,
-                          self.bat_scale],
-                        [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                        {"ASDOPS_MATMUL_PP_FLAG": "1"})
+            self.execute(
+                [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+                [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+                {"ASDOPS_MATMUL_PP_FLAG": "1"},
+            )
+
     @op_test.only_910b
     def testcase_nobias_case2(self):
         transFlag = [[False, False], [False, True], [True, False], [True, True]]
@@ -206,185 +211,204 @@ class TestPpMatmulI8(op_test.OpTest):
             self.trans_A, self.trans_B = trans[0], trans[1]
             self.bias_flag = False
             bsize, msize, ksize, nsize = 1, 1, 1024, 8192
-            self.set_param("MatMulOperation",
-                        {"transposeA": self.trans_A,
-                            "transposeB": self.trans_B,
-                            "withBias": self.bias_flag,
-                            "enDequant": True,
-                            "outDtype":27})
-            self.set_input_formats([self.format_nd,
-                                    self.format_nd,
-                                    self.format_nd,
-                                    self.format_nd])
+            self.set_param(
+                "MatMulOperation",
+                {
+                    "transposeA": self.trans_A,
+                    "transposeB": self.trans_B,
+                    "withBias": self.bias_flag,
+                    "enDequant": True,
+                    "outDtype": 27,
+                },
+            )
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
-            self.execute([self.bat_A,
-                          self.bat_B,
-                          self.bat_bias,
-                          self.bat_scale],
-                        [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                        {"ASDOPS_MATMUL_PP_FLAG": "1"})
+            self.execute(
+                [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+                [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+                {"ASDOPS_MATMUL_PP_FLAG": "1"},
+            )
+
     @op_test.only_910b
     def testcase_bias_case3(self):
-        transFlag =  [[False, False], [False, True], [True, False], [True, True]]
+        transFlag = [[False, False], [False, True], [True, False], [True, True]]
         for trans in transFlag:
             self.trans_A, self.trans_B = trans[0], trans[1]
             self.bias_flag = True
             bsize, msize, ksize, nsize = 1, 8, 32, 64
-            self.set_param("MatMulOperation",
-                        {"transposeA": self.trans_A,
-                            "transposeB": self.trans_B,
-                            "withBias": self.bias_flag,
-                            "enDequant": True,
-                            "outDtype":27})
-            self.set_input_formats([self.format_nd,
-                                    self.format_nd,
-                                    self.format_nd,
-                                    self.format_nd])
+            self.set_param(
+                "MatMulOperation",
+                {
+                    "transposeA": self.trans_A,
+                    "transposeB": self.trans_B,
+                    "withBias": self.bias_flag,
+                    "enDequant": True,
+                    "outDtype": 27,
+                },
+            )
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
-            self.execute([self.bat_A,
-                          self.bat_B,
-                          self.bat_bias,
-                          self.bat_scale],
-                        [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                        {"ASDOPS_MATMUL_PP_FLAG": "1"})
+            self.execute(
+                [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+                [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+                {"ASDOPS_MATMUL_PP_FLAG": "1"},
+            )
+
     @op_test.only_910b
     def testcase4(self):
         self.trans_A, self.trans_B = False, False
         bsize, msize, ksize, nsize = 1, 128, 128, 65664
         self.bias_flag = True
         logging.debug(f"run case:*** m {msize} k {ksize} n {nsize} ****")
-        self.set_param("MatMulOperation",
-                       {"transposeA": self.trans_A,
-                        "transposeB": self.trans_B,
-                        "withBias": self.bias_flag,
-                        "enDequant": True,
-                        "outDtype":27})
-        self.set_input_formats([self.format_nd,
-                                self.format_nd,
-                                self.format_nd,
-                                self.format_nd])
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "withBias": self.bias_flag,
+                "enDequant": True,
+                "outDtype": 27,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
-        self.execute([self.bat_A,
-                      self.bat_B,
-                      self.bat_bias,
-                      self.bat_scale],
-                     [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
+        self.execute(
+            [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+            [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
     @op_test.only_910b
     def testcase5(self):
         self.trans_A, self.trans_B = True, False
         bsize, msize, ksize, nsize = 1, 4096, 5120, 2560
         self.bias_flag = True
         logging.debug(f"run case:*** m {msize} k {ksize} n {nsize} ****")
-        self.set_param("MatMulOperation",
-                       {"transposeA": self.trans_A,
-                        "transposeB": self.trans_B,
-                        "withBias": self.bias_flag,
-                        "enDequant": True,
-                        "outDtype":27})
-        self.set_input_formats([self.format_nd,
-                                self.format_nd,
-                                self.format_nd,
-                                self.format_nd])
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "withBias": self.bias_flag,
+                "enDequant": True,
+                "outDtype": 27,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
-        self.execute([self.bat_A,
-                      self.bat_B,
-                      self.bat_bias,
-                      self.bat_scale],
-                     [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+        self.execute(
+            [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+            [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
     @op_test.only_910b
     def testcase_bias_case4(self):
         test_case_all = [
-                        [1,4096,5120,32001,0,1],
+            [1, 4096, 5120, 32001, 0, 1],
         ]
         idx = 0
         for bsize, msize, ksize, nsize, ta, tb in test_case_all:
             self.trans_A = True if ta == 1 else False
             self.trans_B = True if tb == 1 else False
-            self.bias_flag = True 
-            self.set_param("MatMulOperation",
-                            {"transposeA": self.trans_A,
-                            "transposeB": self.trans_B,
-                            "withBias": self.bias_flag,
-                            "enDequant": True,
-                            "outDtype":27})  
-            self.set_input_formats([self.format_nd,
-                                self.format_nd,
-                                self.format_nd,
-                                self.format_nd])
-            self.set_output_formats([self.format_nd])         
-            logging.debug(f"run case{idx}:*** bsize:{bsize} m {msize} k {ksize} n {nsize} ta:{self.trans_A} tb:{self.trans_B} ****")
-            idx +=1
+            self.bias_flag = True
+            self.set_param(
+                "MatMulOperation",
+                {
+                    "transposeA": self.trans_A,
+                    "transposeB": self.trans_B,
+                    "withBias": self.bias_flag,
+                    "enDequant": True,
+                    "outDtype": 27,
+                },
+            )
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+            self.set_output_formats([self.format_nd])
+            logging.debug(
+                f"run case{idx}:*** bsize:{bsize} m {msize} k {ksize} n {nsize} ta:{self.trans_A} tb:{self.trans_B} ****"
+            )
+            idx += 1
             self.__gen_test_data((bsize, msize, ksize, nsize))
-            self.execute([self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
-                         [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                        {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+            self.execute(
+                [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+                [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+                {"ASDOPS_MATMUL_PP_FLAG": "1"},
+            )
+
     @op_test.only_910b
     def testcase_bias_corners_case(self):
         test_case_all = [
-                            [1,16,1024,6144,1,1],
-                            [1,33,1024,6144,1,1],
-                            [1,129,1024,8192,1,1],
-                        ]
+            [1, 16, 1024, 6144, 1, 1],
+            [1, 33, 1024, 6144, 1, 1],
+            [1, 129, 1024, 8192, 1, 1],
+        ]
         idx = 0
         for bsize, msize, ksize, nsize, ta, tb in test_case_all:
             self.trans_A = True if ta == 1 else False
             self.trans_B = True if tb == 1 else False
-            self.bias_flag = True 
-            self.set_param("MatMulOperation",
-                            {"transposeA": self.trans_A,
-                            "transposeB": self.trans_B,
-                            "withBias": self.bias_flag,
-                            "enDequant": True,
-                            "outDtype":27})  
-            self.set_input_formats([self.format_nd,
-                                    self.format_nd,
-                                    self.format_nd,
-                                    self.format_nd])
-            self.set_output_formats([self.format_nd])       
-            logging.debug(f"run case{idx}:*** bsize:{bsize} m {msize} k {ksize} n {nsize} ta:{self.trans_A} tb:{self.trans_B} ****")
-            idx +=1
+            self.bias_flag = True
+            self.set_param(
+                "MatMulOperation",
+                {
+                    "transposeA": self.trans_A,
+                    "transposeB": self.trans_B,
+                    "withBias": self.bias_flag,
+                    "enDequant": True,
+                    "outDtype": 27,
+                },
+            )
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+            self.set_output_formats([self.format_nd])
+            logging.debug(
+                f"run case{idx}:*** bsize:{bsize} m {msize} k {ksize} n {nsize} ta:{self.trans_A} tb:{self.trans_B} ****"
+            )
+            idx += 1
             self.__gen_test_data((bsize, msize, ksize, nsize))
-            self.execute([self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
-                         [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                        {"ASDOPS_MATMUL_PP_FLAG": "1"})
+            self.execute(
+                [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+                [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+                {"ASDOPS_MATMUL_PP_FLAG": "1"},
+            )
 
     @op_test.only_910b
     def testcase_bias_corners_b_nz_case(self):
         test_case_all = [
-                            [1,16,1024,6144,1,1],
-                            [1,33,1024,6144,1,1],
-                        ]
+            [1, 16, 1024, 6144, 1, 1],
+            [1, 33, 1024, 6144, 1, 1],
+        ]
         idx = 0
         for bsize, msize, ksize, nsize, ta, tb in test_case_all:
             self.trans_A = True if ta == 1 else False
             self.trans_B = True if tb == 1 else False
-            self.bias_flag = True 
-            self.set_param("MatMulOperation",
-                            {"transposeA": self.trans_A,
-                            "transposeB": self.trans_B,
-                            "withBias": self.bias_flag,
-                            "oriShape": [msize, ksize, nsize],
-                            "enDequant": True,
-                            "outDtype":27})  
-            self.set_input_formats([self.format_nd,
-                                    self.format_nz,
-                                    self.format_nd,
-                                    self.format_nd])
-            self.set_output_formats([self.format_nd])       
-            logging.debug(f"run case{idx}:*** bsize:{bsize} m {msize} k {ksize} n {nsize} ta:{self.trans_A} tb:{self.trans_B} ****")
-            idx +=1
+            self.bias_flag = True
+            self.set_param(
+                "MatMulOperation",
+                {
+                    "transposeA": self.trans_A,
+                    "transposeB": self.trans_B,
+                    "withBias": self.bias_flag,
+                    "oriShape": [msize, ksize, nsize],
+                    "enDequant": True,
+                    "outDtype": 27,
+                },
+            )
+            self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
+            self.set_output_formats([self.format_nd])
+            logging.debug(
+                f"run case{idx}:*** bsize:{bsize} m {msize} k {ksize} n {nsize} ta:{self.trans_A} tb:{self.trans_B} ****"
+            )
+            idx += 1
             self.__gen_test_data((bsize, msize, ksize, nsize))
-            self.execute([self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
-                         [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                        {"ASDOPS_MATMUL_PP_FLAG": "1"})
+            self.execute(
+                [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale],
+                [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
+                {"ASDOPS_MATMUL_PP_FLAG": "1"},
+            )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
