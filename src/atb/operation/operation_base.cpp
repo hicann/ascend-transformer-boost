@@ -816,7 +816,7 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
     if (executeType == EXECUTE_NORMAL || executeType == EXECUTE_LAUNCH) {
         st = Launch();
         if (st != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "PreLaunch fail, error code: " << st;
+            ATB_LOG(ERROR) << GetLogPrefix() << "Launch fail, error code: " << st;
             return st;
         }
     }
