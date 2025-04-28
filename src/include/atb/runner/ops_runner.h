@@ -41,7 +41,6 @@ public:
     ~OpsRunner() override;
     void ReserveSvector(RunnerVariantPack &runnerPack);
     bool IsSupportGlbWorkspace() override;
-    bool SetupCanSkipCheck(const VariantPack &variantPack) override;
 
 protected:
     virtual Status SetupKernelGraph(const OpsTensorPack &opsTensorPack);
@@ -81,7 +80,7 @@ private:
     Status UpdateRunInfoTiling(RunnerVariantPack &runnerVariantPack);
     void UpdateRunInfoWorkspace(RunnerVariantPack &runnerVariantPack);
     Status RunAllKernel(ContextBase *context);
-    bool IsRunnerVariantPackEqual(const VariantPack &runnerVariantPack1,
+    bool IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
                                        const RunnerVariantPack &runnerVariantPack2) const;
     void InitTensorFromRunnerPack(const RunnerVariantPack &runnerVariantPack);
     void InitKernelGraph();
@@ -153,7 +152,6 @@ private:
     std::vector<uint8_t> globalTilingAfterKernelRun_;
     std::vector<std::pair<KernelCache *, bool>> kernelCaches_;
     std::vector<bool> nodesSaveTensorFlag_;
-    bool isVariantPackEqual_ = false;
 };
 } // namespace atb
 #endif

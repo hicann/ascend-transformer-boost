@@ -112,7 +112,6 @@ bool GraphRunner::Graph::SearchTensorInNodeOutTensor(const Tensor *tensor, uint6
 
 void GraphRunner::ReserveSvector(GraphRunner::Node &node)
 {
-    workspaceBufferSizes_.reserve(runnerGraph_.nodes.size());
     tilingBufferSizes_.reserve(runnerGraph_.nodes.size());
     intermediateBufferSizes_.reserve(runnerGraph_.nodes.size());
     node.runnerVariantPack.inTensors.reserve(node.inTensors.size());
@@ -442,7 +441,6 @@ void GraphRunner::Reset()
     selfIntermediateBufferSize_ = 0;
     totalTilingBufferSize_ = 0;
     tilingBufferSizes_.clear();
-    workspaceBufferSizes_.clear();
     maxIntermediateBufferSize_ = 0;
     intermediateBufferSizes_.clear();
     if (!GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
@@ -856,8 +854,6 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         node.runnerVariantPack.workspaceBuffer = runnerVariantPack.workspaceBuffer;
-        node.runnerVariantPack.workspaceBufferSize =
-            (nodeId < workspaceBufferSizes_.size()) ? workspaceBufferSizes_.at(nodeId) : 0;
     }
 
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
@@ -925,11 +921,6 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
                       << ", variantPack:\n"
                       << node.runnerVariantPack.ToString();
         node.runnerVariantPack.context = runnerVariantPack.context;
-        // 此处将GraphRunner Setup阶段得到的multiStreamWorkspaceSizes_赋值给其图内的各个node
-        // 让图内各个node可以拥有GraphRunner中计算好的各个streamId的workspaceBufferSize
-        for (size_t i = 0; i < multiStreamWorkspaceSizes_.size(); ++i) {
-            node.runner->multiStreamWorkspaceSizes_.at(i) = multiStreamWorkspaceSizes_.at(i);
-        }
         Status st = node.runner->Execute(node.runnerVariantPack);
         if (st != 0) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId
@@ -948,6 +939,11 @@ Status GraphRunner::PreExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
         ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId
                       << "] PreExecute start, runner:" << node.runner->GetName();
         node.runnerVariantPack.context = runnerVariantPack.context;
+        // 此处将GraphRunner Setup阶段得到的multiStreamWorkspaceSizes_赋值给其图内的各个node
+        // 让图内各个node可以拥有GraphRunner中计算好的各个streamId的workspaceBufferSize
+        for (size_t i = 0; i < multiStreamWorkspaceSizes_.size(); ++i) {
+            node.runner->multiStreamWorkspaceSizes_.at(i) = multiStreamWorkspaceSizes_.at(i);
+        }
         Status st = node.runner->PreExecute(node.runnerVariantPack);
         if (st != 0) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId

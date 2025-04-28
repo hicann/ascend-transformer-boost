@@ -442,7 +442,7 @@ class LinearOperation(DataGen):
         if out_data_type == -1:
             x = x.to(torch.float32)
             weight = weight.to(torch.float32)
-            if bias is not None:
+            if bias is not None and MatmulCommon.input_golden.dtype != torch.float16:
                 bias = bias.to(torch.float32)
         else:
             x = x.to(torch.int32)
@@ -472,6 +472,7 @@ class LinearOperation(DataGen):
         else:
             golden_result = torch.matmul(x, weight)
             if bias is not None:
+                golden_result = golden_result.to(bias.dtype)
                 golden_result = golden_result + bias
             if deq_scale is not None:
                 golden_result = golden_result * deq_scale
@@ -3210,6 +3211,12 @@ class RopeOperation(DataGen):
             if batch == 0:
                 batch = 1
                 seqlen = ntoken
+            dtype = in_tensors[0].dtype
+            if dtype == torch.bfloat16:
+                in_tensors[0] = in_tensors[0].to(torch.float32)
+                in_tensors[1] = in_tensors[1].to(torch.float32)
+                in_tensors[2] = in_tensors[2].to(torch.float32)
+                in_tensors[3] = in_tensors[3].to(torch.float32)
             q = in_tensors[0]
             k = in_tensors[1]
             qshaped = q.reshape(batch, -1, q_head_num, rot_dim // 2, 2)

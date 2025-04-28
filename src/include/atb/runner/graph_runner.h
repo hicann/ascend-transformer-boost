@@ -114,7 +114,6 @@ private:
     uint64_t selfIntermediateBufferSize_ = 0;
     uint64_t totalTilingBufferSize_ = 0;
     SVector<uint64_t> tilingBufferSizes_;
-    SVector<uint64_t> workspaceBufferSizes_;
     uint64_t maxIntermediateBufferSize_ = 0;
     SVector<uint64_t> intermediateBufferSizes_;
     std::shared_ptr<MemAllocationSolver> memAllocationSolver_;

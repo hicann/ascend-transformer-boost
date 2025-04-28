@@ -322,11 +322,8 @@ Status OperationBase::CheckVariantPack(const VariantPack &variantPack) const
     return NO_ERROR;
 }
 
-Status OperationBase::SetupCheck(const VariantPack &variantPack)
+Status OperationBase::SetupCheck(const VariantPack &variantPack, Context *context)
 {
-    if (runner_ && runner_->SetupCanSkipCheck(variantPack)) {
-        return NO_ERROR;
-    }
     Status st = CheckVariantPack(variantPack);
     if (st != NO_ERROR) {
         return st;
@@ -344,6 +341,17 @@ Status OperationBase::SetupCheck(const VariantPack &variantPack)
     st = SetupCheckImpl(variantPack.inTensors, variantPack.outTensors);
     if (st != NO_ERROR) {
         return st;
+    }
+
+    if (!context) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "context is null, setup fail";
+        return ERROR_INVALID_PARAM;
+    }
+
+    runnerVariantPack_.context = dynamic_cast<ContextBase *>(context);
+    if (!runnerVariantPack_.context) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "context is not ContextBase, setup fail";
+        return ERROR_INVALID_PARAM;
     }
 
     return NO_ERROR;
@@ -386,19 +394,11 @@ Status OperationBase::CreateRunnerFunc(Context *context)
     return NO_ERROR;
 }
 
-Status OperationBase::CreateRunner(Context *context)
+Status OperationBase::SetupThrowPrepare(uint64_t &workspaceSize, Context *context)
 {
-    if (!context) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "context is null, setup fail";
-        return ERROR_INVALID_PARAM;
-    }
+    workspaceSize = 0;
 
-    runnerVariantPack_.context = dynamic_cast<ContextBase *>(context);
-    if (!runnerVariantPack_.context) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "context is not ContextBase, setup fail";
-        return ERROR_INVALID_PARAM;
-    }
-    Status st = CreateRunnerFunc(runnerVariantPack_.context);
+    Status st = CreateRunnerFunc(context);
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << "CreateRunnerFunc failed";
         return st;
@@ -428,7 +428,13 @@ void OperationBase::InitRunnerVariantPack(const VariantPack &variantPack)
 
 Status OperationBase::SetupThrow(const VariantPack &variantPack, uint64_t &workspaceSize)
 {
-    workspaceSize = 0;
+    Mki::Timer runnerCreateTimer;
+    Status st = SetupThrowPrepare(workspaceSize, runnerVariantPack_.context);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    GetOpSetupStatistic().runnerCreateTime += runnerCreateTimer.ElapsedMicroSecond();
+
     InitRunnerVariantPack(variantPack);
     // step1 runner setup
     Mki::Timer runnerSetupTimer;
@@ -450,7 +456,7 @@ Status OperationBase::SetupThrow(const VariantPack &variantPack, uint64_t &works
                   << ", size:" << runnerVariantPack_.context->GetTilingBufferBlockSize();
 #endif
 
-    Status st = runner_->Setup(runnerVariantPack_);
+    st = runner_->Setup(runnerVariantPack_);
     GetOpSetupStatistic().runnerSetupTime += runnerSetupTimer.ElapsedMicroSecond();
     if (st != 0) {
         ATB_LOG(ERROR) << GetLogPrefix() << "runner setup fail";
@@ -489,7 +495,7 @@ Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceS
     const uint64_t beginTime = GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status() ?
                                    GetSingleton<Mki::ProfilingFuncs>().ProfSysCycleTime() :
                                    0;
-    Status st = SetupPrepare(context);
+    Status st = SetupPrepare();
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << "setup fail, error code: " << st;
         return st;
@@ -503,7 +509,7 @@ Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceS
 #endif
 
     try {
-        st = SetupCheck(variantPack);
+        st = SetupCheck(variantPack, context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "invalid param, setup check fail, error code: " << st;
             return st;
@@ -547,7 +553,7 @@ void OperationBase::RegProfArray(ProfilingFuncName profFuncType, std::string pro
                                                            profName);
 }
 
-Status OperationBase::SetupPrepare(Context *context)
+Status OperationBase::SetupPrepare()
 {
     setUpSuccess_ = false;
     if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
@@ -562,12 +568,6 @@ Status OperationBase::SetupPrepare(Context *context)
             return st;
         }
     }
-    Mki::Timer runnerCreateTimer;
-    Status st = CreateRunner(context);
-    if (st != NO_ERROR) {
-        return st;
-    }
-    GetOpSetupStatistic().runnerCreateTime += runnerCreateTimer.ElapsedMicroSecond();
     return NO_ERROR;
 }
 
@@ -816,7 +816,7 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
     if (executeType == EXECUTE_NORMAL || executeType == EXECUTE_LAUNCH) {
         st = Launch();
         if (st != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "PreLaunch fail, error code: " << st;
+            ATB_LOG(ERROR) << GetLogPrefix() << "Launch fail, error code: " << st;
             return st;
         }
     }

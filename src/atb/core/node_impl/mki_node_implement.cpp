@@ -50,6 +50,7 @@ bool MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors,
 {
     launchParam_.SetParam(opDesc.specificParam);
     launchParam_.GetInTensors().clear();
+    launchParam_.GetOutTensors().clear();
     kernelCacheValid_ = false; // launchParam改变，kernel cache失效
 
     for (size_t i = 0; i < inTensors.size(); ++i) {
@@ -74,12 +75,9 @@ bool MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors,
             launchParam_.AddInTensor(*tensor);
         }
     }
-    if (needInferShape_) {
-        launchParam_.GetOutTensors().clear();
-        for (size_t i = 0; i < outTensorNum; ++i) {
-            Mki::Tensor tensor;
-            launchParam_.AddOutTensor(tensor);
-        }
+    for (size_t i = 0; i < outTensorNum; ++i) {
+        Mki::Tensor tensor;
+        launchParam_.AddOutTensor(tensor);
     }
 
     ATB_LOG(DEBUG) << GetLogPrefix() << " launchParam:\n" << launchParam_.ToString();
@@ -113,13 +111,12 @@ bool MkiNodeImplement::PlanKernelInferShape()
                        << " call inferShapePreFunc, new launchParam:\n"
                        << launchParam_.ToString();
     }
-    if (needInferShape_) {
-        Mki::Status st = operation_->InferShape(launchParam_);
-        if (!st.Ok()) {
-            ATB_LOG(ERROR) << GetLogPrefix() << " " << operation_->GetName()
-                        << " mki node infer shape fail, error:" << st.Message();
-            return false;
-        }
+
+    Mki::Status st = operation_->InferShape(launchParam_);
+    if (!st.Ok()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << " " << operation_->GetName()
+                       << " mki node infer shape fail, error:" << st.Message();
+        return false;
     }
     ATB_LOG(INFO) << GetLogPrefix() << " " << operation_->GetName() << " mki node infer shape success, launchParam:\n"
                   << launchParam_.ToString();

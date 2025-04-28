@@ -61,11 +61,6 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
         ATB_LOG(ERROR) << "only mtp(CALC_TYPE_SPEC) support mask";
         return ERROR_INVALID_PARAM;
     }
-    if (opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_UNDEFINED &&
-        opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
-        ATB_LOG(ERROR) << "mtp(CALC_TYPE_SPEC) and ring dont support quant";
-        return ERROR_INVALID_PARAM;
-    }
     if (opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING &&
         opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
         ATB_LOG(ERROR) << "mtp(CALC_TYPE_RING) only support krppe ctkv";
@@ -198,37 +193,38 @@ Status MultiLatentAttentionOperation::QKVDimCheck(const SVector<TensorDesc> &inT
     int64_t numBlocks = inTensorDesc.at(KVCACHE_INDEX).shape.dims[0];
     int64_t blockSize = inTensorDesc.at(KVCACHE_INDEX).shape.dims[1];
     if (blockSize > 128) { // 128 : maxblocksize
-        ATB_LOG(ERROR) << "blockSize shoule <= 128";
+        ATB_LOG(ERROR) << GetLogPrefix() << "blockSize shoule <= 128";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[0] != numTokens) {
-        ATB_LOG(ERROR) << "dim 0 of query(intensor0) and queryRope(intensor1) should be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of query(intensor0) and queryRope(intensor1) should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[0] != numBlocks ||
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[1] != blockSize) {
-        ATB_LOG(ERROR) << "dim 0 and dim 1 of kvCache(intensor2) and kvCacheRope(intensor3) should be same";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "dim 0 and dim 1 of kvCache(intensor2) and kvCacheRope(intensor3) should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(KVCACHE_INDEX).shape.dims[2] != param_.kvHeadNum ||      // 2: dim 2
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[2] != param_.kvHeadNum) { // 2: dim 2
-        ATB_LOG(ERROR) << "dim 1 of kvCache(intensor2) and kvCacheRope(intensor3) equal to kvHeadNum";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of kvCache(intensor2) and kvCacheRope(intensor3) equal to kvHeadNum";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
     if (inTensorDesc.at(0).shape.dims[1] != param_.headNum || inTensorDesc.at(1).shape.dims[1] != param_.headNum) {
-        ATB_LOG(ERROR) << "dim 1 of query(intensor0) and queryRope(intensor1) equal to headNum";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of query(intensor0) and queryRope(intensor1) equal to headNum";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
     if (inTensorDesc.at(0).shape.dims[2] != INNER_DIM_512 ||             // 2: dim 2
         inTensorDesc.at(KVCACHE_INDEX).shape.dims[3] != INNER_DIM_512) { // 3: dim 3
-        ATB_LOG(ERROR) << "head_size of query(intensor0) and kvCache(intensor2) should be 512";
+        ATB_LOG(ERROR) << GetLogPrefix() << "head_size of query(intensor0) and kvCache(intensor2) should be 512";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[2] != INNER_DIM_64 ||                  // 2: dim 2
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[3] != INNER_DIM_64) { // 3: dim 3
-        ATB_LOG(ERROR) << "head_size of queryRope(intensor1) and kvCacheRope(intensor3) should be 64";
+        ATB_LOG(ERROR) << GetLogPrefix() << "head_size of queryRope(intensor1) and kvCacheRope(intensor3) should be 64";
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
@@ -240,37 +236,40 @@ Status MultiLatentAttentionOperation::QKVDimCheckNz(const SVector<TensorDesc> &i
     int64_t numBlocks = inTensorDesc.at(KVCACHE_INDEX).shape.dims[0];
     int64_t blockSize = inTensorDesc.at(KVCACHE_INDEX).shape.dims[2]; // 2: dim 2
     if (blockSize > 128) {                                            // 128 : maxblocksize
-        ATB_LOG(ERROR) << "blockSize shoule <= 128";
+        ATB_LOG(ERROR) << GetLogPrefix() << "blockSize shoule <= 128";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[0] != numTokens) {
-        ATB_LOG(ERROR) << "dim 0 of query(intensor0) and queryRope(intensor1) should be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of query(intensor0) and queryRope(intensor1) should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[0] != numBlocks ||
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[2] != blockSize) { // 2: dim 2
-        ATB_LOG(ERROR) << "dim 0 and dim 2 of kvCache(intensor2) and kvCacheRope(intensor3) should be same";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "dim 0 and dim 2 of kvCache(intensor2) and kvCacheRope(intensor3) should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(KVCACHE_INDEX).shape.dims[3] != NZ_ALIGN_16 ||      // 3: dim 3
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[3] != NZ_ALIGN_16) { // 3: dim 3
-        ATB_LOG(ERROR) << "dim 3 of kvCache(intensor2) and kvCacheRope(intensor3) should be 16";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 3 of kvCache(intensor2) and kvCacheRope(intensor3) should be 16";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
     if (inTensorDesc.at(0).shape.dims[1] != param_.headNum || inTensorDesc.at(1).shape.dims[1] != param_.headNum) {
-        ATB_LOG(ERROR) << "dim 1 of query(intensor0) and queryRope(intensor1) equal to headNum";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of query(intensor0) and queryRope(intensor1) equal to headNum";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
     if (inTensorDesc.at(0).shape.dims[2] != INNER_DIM_512 ||            // 2: dim 2
         inTensorDesc.at(KVCACHE_INDEX).shape.dims[1] != INNER_DIM_32) { // 1: dim 1
-        ATB_LOG(ERROR) << "head_size of query(intensor0) should be 512, dim 1 of kvCache(intensor2) should be 32";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "head_size of query(intensor0) should be 512, dim 1 of kvCache(intensor2) should be 32";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[2] != INNER_DIM_64 ||                 // 2: dim 2
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[1] != INNER_DIM_4) { // 1: dim 1
-        ATB_LOG(ERROR) << "head_size of queryRope(intensor1) should be 64, dim 1 of kvCacheRope(intensor3) should be 4";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "head_size of queryRope(intensor1) should be 64, dim 1 of kvCacheRope(intensor3) should be 4";
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
@@ -282,37 +281,41 @@ Status MultiLatentAttentionOperation::QKVDimCheckInt8Nz(const SVector<TensorDesc
     int64_t numBlocks = inTensorDesc.at(KVCACHE_INDEX).shape.dims[0];
     int64_t blockSize = inTensorDesc.at(KVCACHE_INDEX).shape.dims[2]; // 2: dim 2
     if (blockSize > 128) {                                            // 128 : maxblocksize
-        ATB_LOG(ERROR) << "blockSize shoule <= 128";
+        ATB_LOG(ERROR) << GetLogPrefix() << "blockSize shoule <= 128";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[0] != numTokens) {
-        ATB_LOG(ERROR) << "dim 0 of query(intensor0) and queryRope(intensor1) should be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of query(intensor0) and queryRope(intensor1) should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[0] != numBlocks ||
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[2] != blockSize) { // 2: dim 2
-        ATB_LOG(ERROR) << "dim 0 and dim 2 of kvCache(intensor2) and kvCacheRope(intensor3) should be same";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "dim 0 and dim 2 of kvCache(intensor2) and kvCacheRope(intensor3) should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(KVCACHE_INDEX).shape.dims[3] != NZ_ALIGN_32 ||      // 3: dim 3
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[3] != NZ_ALIGN_16) { // 3: dim 3
-        ATB_LOG(ERROR) << "dim 3 of kvCache(intensor2) should be 32 and kvCacheRope(intensor3) should be 16";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "dim 3 of kvCache(intensor2) should be 32 and kvCacheRope(intensor3) should be 16";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
     if (inTensorDesc.at(0).shape.dims[1] != param_.headNum || inTensorDesc.at(1).shape.dims[1] != param_.headNum) {
-        ATB_LOG(ERROR) << "dim 1 of query(intensor0) and queryRope(intensor1) equal to headNum";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of query(intensor0) and queryRope(intensor1) equal to headNum";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
     if (inTensorDesc.at(0).shape.dims[2] != INNER_DIM_512 || // 2: dim 2
         inTensorDesc.at(KVCACHE_INDEX).shape.dims[1] != INNER_DIM_16) {
-        ATB_LOG(ERROR) << "head_size of query(intensor0) should be 512, dim 1 of kvCache(intensor2) should be 16";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "head_size of query(intensor0) should be 512, dim 1 of kvCache(intensor2) should be 16";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(1).shape.dims[2] != INNER_DIM_64 || // 2: dim 2
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dims[1] != INNER_DIM_4) {
-        ATB_LOG(ERROR) << "head_size of queryRope(intensor1) should be 64, dim 1 of kvCacheRope(intensor3) should be 4";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "head_size of queryRope(intensor1) should be 64, dim 1 of kvCacheRope(intensor3) should be 4";
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
@@ -326,21 +329,22 @@ Status MultiLatentAttentionOperation::DimCheck(const SVector<TensorDesc> &inTens
         inTensorDesc.at(KVCACHE_ROPE_INDEX).shape.dimNum != 4 || // 4: 4 dims
         inTensorDesc.at(BLOCK_TABLES_INDEX).shape.dimNum != 2 || // 2: 2 dims
         inTensorDesc.at(CONTEXTLENS_INDEX).shape.dimNum != 1) {  // 1: 1 dim
-        ATB_LOG(ERROR) << "invalid intensor dimNum";
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     int64_t numTokens = inTensorDesc.at(0).shape.dims[0];
     int64_t batch = inTensorDesc.at(BLOCK_TABLES_INDEX).shape.dims[0];
     if (batch > MAX_BATCH_SIZE_8192) {
-        ATB_LOG(ERROR) << "batch should <= " << MAX_BATCH_SIZE_8192;
+        ATB_LOG(ERROR) << GetLogPrefix() << "batch should be <= " << MAX_BATCH_SIZE_8192;
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_UNDEFINED && numTokens != batch) {
-        ATB_LOG(ERROR) << "numTokens and batch should be same in decoder stage";
+        ATB_LOG(ERROR) << GetLogPrefix() << "numTokens and batch should be same in decoder stage";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(CONTEXTLENS_INDEX).shape.dims[0] != batch) {
-        ATB_LOG(ERROR) << "dim 0 of block_tables(intensor4) and contextLens(intensor5) should be same";
+        ATB_LOG(ERROR) << GetLogPrefix()
+                       << "dim 0 of block_tables(intensor4) and contextLens(intensor5) should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     Status st = NO_ERROR;
