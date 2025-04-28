@@ -277,7 +277,7 @@ class TestFlashAttention(op_test.OpTest):
 
     def gen_razor_fusion_mask(self, razorLen, tileQ, tileKv, textQLen, textKvLen, preTokens, nextTokens, baseM):
         np.set_printoptions(threshold=np.inf)
-        
+
         mask_sizeQ = razorLen * tileQ + textQLen
         mask_sizeK = razorLen * tileKv + textKvLen
         print("generate razor mask:", razorLen, tileQ, tileKv, textQLen, textKvLen, preTokens, nextTokens, baseM)
@@ -1515,7 +1515,7 @@ class TestFlashAttention(op_test.OpTest):
         self.set_input_formats([self.format_nd] * 12)
         self.set_output_formats([self.format_nd])
         data_type = torch.float16
-        
+
         self.set_data_params(dynamic_batch = dynamic_batch,
                              is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
                              embeddim = embeddim, max_seq = max_seq, kv_seqLen = kv_seqLen,
@@ -1681,7 +1681,7 @@ class TestFlashAttention(op_test.OpTest):
         self.set_output_formats([self.format_nd])
 
         data_type = torch.bfloat16
-        
+
         self.set_data_params(dynamic_batch = dynamic_batch,
                              is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
                              embeddim = embeddim, max_seq = max_seq, kv_seqLen = kv_seqLen,
@@ -4937,7 +4937,7 @@ class TestFlashAttention(op_test.OpTest):
         return self.execute([self.q, self.k_cache, self.v_cache, self.block_tables,
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
                             [torch.tensor(attention_out, dtype=torch.float16)])
-    
+
     @op_test.only_910b
     def test_flash_attention_case_fa_encoder_withcache_bf16_nomask(self):
         # [b,ms,ms]
@@ -5283,7 +5283,7 @@ class TestFlashAttention(op_test.OpTest):
         return self.execute([self.q, self.k_cache, self.v_cache, self.block_tables,
                              self.mask.to(data_type), torch.tensor([], dtype=torch.float)],
                             [torch.tensor(attention_out, dtype=torch.float16)])
-    
+
     @op_test.only_910b
     def test_flash_attention_case_fa_encoder_withcache_bf16_alibi_sqrt_multi_batch_with_tail_block(self):
         # [b,ms,ms]
@@ -5710,13 +5710,13 @@ class TestFlashAttention(op_test.OpTest):
         nextTokens = 256
         q_seqLen = [tileQ * razorLen + textQLen] * batch
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
-        
+
         dynamic_batch = False
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "UnpadFlashAttentionOperation"
         OP_PARAM = {"type": 2014, "qSeqLen": kv_seqLen, "kvSeqLen": kv_seqLen, "qSeqLen": q_seqLen,  "headSize": heads, "tor": tor,
                     "tileQ": tileQ,  "tileKv": tileKv,  "razorLen": razorLen,  "textQLen": textQLen,  "textKvLen": textKvLen,
-                    "preTokens": preTokens, "nextTokens": nextTokens, 
+                    "preTokens": preTokens, "nextTokens": nextTokens,
                     "isClamp" : is_clamp, "clampMin" : clamp_min, "clampMax" : clamp_max, "maskType": 0, "kvHead": kv_head,
                     "isTriuMask" : 0}
         self.set_param(OP_NAME, OP_PARAM)
@@ -5727,7 +5727,7 @@ class TestFlashAttention(op_test.OpTest):
         self.set_data_params(dynamic_batch = dynamic_batch,
                              is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
                              embeddim = embeddim, max_seq = max_seq, kv_seqLen = kv_seqLen, is_razor_fusion = is_razor_fusion,
-                             baseM = baseM, razorLen = razorLen, textQLen = textQLen, textKvLen = textKvLen, 
+                             baseM = baseM, razorLen = razorLen, textQLen = textQLen, textKvLen = textKvLen,
                              tileQ = tileQ, tileKv = tileKv, preTokens = preTokens, nextTokens = nextTokens,
                              is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
                              data_type = data_type, is_alibi = True, is_mask = False, q_seqlens=q_seqLen,
@@ -5760,7 +5760,7 @@ class TestFlashAttention(op_test.OpTest):
         self.set_input_formats([self.format_nd] * 12)
         self.set_output_formats([self.format_nd])
         data_type = torch.float16
- 
+
         self.set_data_params(dynamic_batch = dynamic_batch,
                              is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
                              embeddim = embeddim, embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
@@ -5776,7 +5776,7 @@ class TestFlashAttention(op_test.OpTest):
         logging.debug(f"v shape: {self.v.shape}")
         logging.debug(f"layer_id shape: {self.layer_id.shape}")
         logging.debug(f"mask shape: {self.mask.shape}")
- 
+
         attention_out = np.zeros_like(self.golden_out.to(torch.float16))
         return self.execute([self.q, self.k, self.v, self.layer_id, self.mask.to(data_type), torch.tensor([], dtype=torch.float),
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
