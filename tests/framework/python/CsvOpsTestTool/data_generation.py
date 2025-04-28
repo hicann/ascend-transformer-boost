@@ -2077,7 +2077,8 @@ class TopkToppSamplingOperation(DataGen):
         if i == 0:
             return torch_npu.npu_format_cast(probs, format_dict[format])
         else:
-            exp_div = torch.empty_like(probs).exponential_(1).npu()
+            exp_div = torch.empty_like(probs.cpu()).exponential_(1)
+            exp_div = exp_div.npu()
             return torch_npu.npu_format_cast(exp_div, format_dict[format])
 
     @staticmethod
