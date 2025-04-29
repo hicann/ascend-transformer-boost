@@ -45,6 +45,33 @@ inline bool CheckAsdOpsND(const LaunchParam &launchParam, size_t size)
     return true;
 }
 
+inline bool CheckAsdOpsWeightNZ(const LaunchParam &launchParam, size_t size)
+{
+    MKI_CHECK(launchParam.GetInTensorCount() == size, "inTensor count invalid", return false);
+    MKI_CHECK(launchParam.GetOutTensorCount() == 1, "outTensor count invalid", return false);
+    MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MatMul), "check param type failed!", return false);
+
+    const auto &inTensor0 = launchParam.GetInTensor(0);
+    const auto &inTensor1 = launchParam.GetInTensor(1);
+    const auto &outTensor = launchParam.GetOutTensor(0);
+    MKI_CHECK(inTensor0.desc.format == TENSOR_FORMAT_ND, "tensor format invalid", return false);
+    MKI_CHECK(inTensor0.desc.dtype == TENSOR_DTYPE_FLOAT16 || inTensor0.desc.dtype == TENSOR_DTYPE_BF16 ||
+                  inTensor0.desc.dtype == TENSOR_DTYPE_INT8,
+              "tensor dtype invalid", return false);
+    MKI_CHECK(inTensor0.desc.dims.size() == 2 || inTensor0.desc.dims.size() == 3, "tensor dims invalid", return false);
+    MKI_CHECK(inTensor1.desc.format == TENSOR_FORMAT_FRACTAL_NZ, "tensor format invalid", return false);
+    MKI_CHECK(inTensor1.desc.dtype == TENSOR_DTYPE_FLOAT16 || inTensor1.desc.dtype == TENSOR_DTYPE_BF16 ||
+                  inTensor1.desc.dtype == TENSOR_DTYPE_INT8,
+              "tensor dtype invalid", return false);
+    MKI_CHECK(inTensor1.desc.dims.size() == 4, "tensor dims invalid", return false);
+    MKI_CHECK(outTensor.desc.format == TENSOR_FORMAT_ND, "tensor format invalid", return false);
+    MKI_CHECK(outTensor.desc.dtype == TENSOR_DTYPE_FLOAT16 || outTensor.desc.dtype == TENSOR_DTYPE_BF16 ||
+                  outTensor.desc.dtype == TENSOR_DTYPE_INT8,
+              "tensor dtype invalid", return false);
+    MKI_CHECK(outTensor.desc.dims.size() == 2 || outTensor.desc.dims.size() == 3, "tensor dims invalid", return false);
+    return true;
+}
+
 template <typename T>
 inline uint64_t GetMatmulTilingSizeCommon(const LaunchParam &launchParam)
 {

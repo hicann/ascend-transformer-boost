@@ -30,7 +30,12 @@ public:
         MKI_CHECK(attr.Type() == typeid(OpParam::MatMul), "Invalid launch param type.", return false);
         auto mmType = AnyCast<OpParam::MatMul>(attr).matmulType;
         MKI_CHECK(mmType == OpParam::MatMul::MatMulType::MATMUL_EIN_SUM, "Invalid matmul type.", return false);
-        return CheckAsdOpsND(launchParam, 2); // 输入参数数量为2
+        const auto &inTensor1 = launchParam.GetInTensor(1);
+        if (inTensor1.desc.format == TENSOR_FORMAT_FRACTAL_NZ) {
+            return CheckAsdOpsWeightNZ(launchParam, 2); // 输入参数数量为2
+        } else {
+            return CheckAsdOpsND(launchParam, 2); // 输入参数数量为2
+        }
     }
 
     uint64_t GetTilingSize(const LaunchParam &launchParam) const override

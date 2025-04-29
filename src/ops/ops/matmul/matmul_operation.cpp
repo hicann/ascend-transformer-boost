@@ -282,23 +282,42 @@ protected:
         const auto &inTensorDims0 = launchParam.GetInTensor(0).desc.dims;
         const auto &inTensorDims1 = launchParam.GetInTensor(1).desc.dims;
         auto &outTensorDesc = outTensors.at(0).desc;
+        auto inTensorDescA = launchParam.GetInTensor(0).desc;
+        auto inTensorDescB = launchParam.GetInTensor(1).desc;
         auto opParam = AnyCast<OpParam::MatMul>(launchParam.GetParam());
         outTensorDesc.dtype = launchParam.GetInTensor(0).desc.dtype;
         auto &outTensorDims = outTensorDesc.dims;
         uint64_t bSize = GetTensorBatchB(launchParam.GetInTensor(1).desc);
         uint64_t mSize = opParam.transposeA ? inTensorDims0.at(DIM_2) : inTensorDims0.at(DIM_0);
         uint64_t kSizeA = opParam.transposeA ? inTensorDims0.at(DIM_0) : inTensorDims0.at(DIM_2);
-        uint64_t kSizeB = opParam.transposeB ? inTensorDims1.at(DIM_2) : inTensorDims1.at(DIM_1);
-        uint64_t nSize = opParam.transposeB ? inTensorDims1.at(DIM_1) : inTensorDims1.at(DIM_2);
-
-        MKI_CHECK(kSizeA == kSizeB, "Invalid input shape: KA != KB.",
+        uint64_t kSizeB = 0;
+        uint64_t nSize = 0;
+        if (inTensorDescB.format == TENSOR_FORMAT_FRACTAL_NZ) {
+            kSizeB = opParam.transposeB ? inTensorDims1.at(DIM_1) *  inTensorDims1.at(DIM_3): inTensorDims1.at(DIM_2);
+            nSize = opParam.transposeB ? inTensorDims1.at(DIM_2) : inTensorDims1.at(DIM_1) *  inTensorDims1.at(DIM_3);
+        } else {
+            kSizeB = opParam.transposeB ? inTensorDims1.at(DIM_2) : inTensorDims1.at(DIM_1);
+            nSize = opParam.transposeB ? inTensorDims1.at(DIM_1) : inTensorDims1.at(DIM_2);
+        }
+        switch (inTensorDescB.format) {
+            case TENSOR_FORMAT_ND: {
+                MKI_CHECK(kSizeA == kSizeB, "Invalid input shape: KA != KB.",
                   return AsdOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-
-        outTensorDims.clear();
-        outTensorDims.emplace_back(mSize); // m
-        outTensorDims.emplace_back(bSize); // batch
-        outTensorDims.emplace_back(nSize); // n
-        return AsdOps::Status::OkStatus();
+                outTensorDims.clear();
+                outTensorDims.emplace_back(mSize); // m
+                outTensorDims.emplace_back(bSize); // batch
+                outTensorDims.emplace_back(nSize); // n
+                return AsdOps::Status::OkStatus();
+            }
+            case TENSOR_FORMAT_FRACTAL_NZ: {
+                outTensorDims.clear();
+                outTensorDims.emplace_back(opParam.oriShape[0]); // 0: M
+                outTensorDims.emplace_back(bSize);
+                outTensorDims.emplace_back(opParam.oriShape[2]); // 2: N
+                return Status::OkStatus();
+            }
+            default: return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Invalid infershape format");
+        }
     }
 
     Status InferShapeCheck(const LaunchParam &launchParam) const
