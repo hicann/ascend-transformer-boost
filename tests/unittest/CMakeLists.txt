@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 #
 
-add_subdirectory(mixops)
+add_subdirectory(kernels)
 
 file(GLOB_RECURSE CORE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/core/*.cpp")
 file(GLOB_RECURSE NORMAL_SOURCE "${CMAKE_CURRENT_LIST_DIR}/normal/*.cpp")
