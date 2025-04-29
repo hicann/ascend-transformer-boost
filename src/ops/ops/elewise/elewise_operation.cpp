@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -7,57 +7,79 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <optional>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+
 #include <mki/base/operation_base.h>
-#include <mki_loader/op_register.h>
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/log/log.h>
 #include <mki/utils/platform/platform_info.h>
+#include <mki_loader/op_register.h>
+
 #include "asdops/params/elewise.h"
 
 namespace AsdOps {
 using namespace Mki;
+static const std::unordered_map<TensorDType, std::string> DTYPE_SHORT_NAME = {
+    {TENSOR_DTYPE_FLOAT, "F32"}, {TENSOR_DTYPE_FLOAT16, "F16"}, {TENSOR_DTYPE_BF16, "BF16"},
+    {TENSOR_DTYPE_INT32, "I32"}, {TENSOR_DTYPE_INT64, "I64"},   {TENSOR_DTYPE_INT8, "I8"}};
+std::optional<std::string> GetDTypeShortName(TensorDType dtype)
+{
+    auto iter = DTYPE_SHORT_NAME.find(dtype);
+    if (iter == DTYPE_SHORT_NAME.end()) {
+        MKI_LOG(ERROR) << "No kernel for ELEWISE_CAST dtype: " << GetStrWithDType(dtype);
+        return std::nullopt;
+    }
+    return iter->second;
+}
+
 class ElewiseOperation : public OperationBase {
 public:
     explicit ElewiseOperation(const std::string &opName) noexcept : OperationBase(opName) {}
+
+    Kernel *GetCastKernel(const LaunchParam &launchParam) const
+    {
+        TensorDType inDType = launchParam.GetInTensor(0).desc.dtype;
+        OpParam::Elewise param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
+        TensorDType outDType = param.outTensorType;
+        if (outDType == TENSOR_DTYPE_UNDEFINED) {
+            outDType = launchParam.GetOutTensor(0).desc.dtype;
+        }
+
+        std::stringstream ss;
+        ss << "Cast";
+        auto inDTypeShortName = GetDTypeShortName(inDType);
+        if (!inDTypeShortName) {
+            MKI_LOG(ERROR) << "Cast does not support input type: " << GetStrWithDType(inDType);
+            return nullptr;
+        }
+        ss << *inDTypeShortName;
+        auto outDTypeShortName = GetDTypeShortName(outDType);
+        if (!outDTypeShortName) {
+            MKI_LOG(ERROR) << "Cast does not support input type: " << GetStrWithDType(outDType);
+            return nullptr;
+        }
+        ss << *outDTypeShortName;
+        ss << "Kernel";
+        std::string castKernelName = ss.str();
+        Kernel *castKernel = GetKernelByName(castKernelName);
+        if (castKernel == nullptr) {
+            MKI_LOG(ERROR) << "No such cast kernel: " << castKernelName;
+        }
+        return castKernel;
+    }
 
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
         auto inDtype = launchParam.GetInTensor(0).desc.dtype;
-        auto outDtype = launchParam.GetOutTensor(0).desc.dtype;
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise),
-            "OpParam is invalid", return nullptr);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise), "OpParam is invalid", return nullptr);
         OpParam::Elewise param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
         switch (param.elewiseType) {
             case OpParam::Elewise::ELEWISE_CAST:
-                if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_FLOAT) {
-                    return GetKernelByName("CastF16toF32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_FLOAT && outDtype == TENSOR_DTYPE_FLOAT16) {
-                    return GetKernelByName("CastF32toF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_INT64 && outDtype == TENSOR_DTYPE_INT32 &&
-                            PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B) {
-                    return GetKernelByName("CastI64toI32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_INT32 && outDtype == TENSOR_DTYPE_FLOAT16 &&
-                            PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B) {
-                    return GetKernelByName("CastI32toF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_INT32 && outDtype == TENSOR_DTYPE_INT64 &&
-                            PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B) {
-                    return GetKernelByName("CastI32toI64Kernel");
-                } else {
-                    if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_310P) {
-                        if (inDtype == TENSOR_DTYPE_INT32 && outDtype == TENSOR_DTYPE_INT64) {
-                            MKI_LOG(ERROR) << "310p not support int32 to int64";
-                            return nullptr;
-                        } else if (inDtype == TENSOR_DTYPE_INT64 && outDtype == TENSOR_DTYPE_INT32) {
-                            MKI_LOG(ERROR) << "310p not support int64 to int32";
-                            return nullptr;
-                        }
-                    }
-                    return GetKernelByName("CastWideKernel");
-                }
-                MKI_LOG(ERROR) << "No kernel for ELEWISE_CAST inDtype: " << GetStrWithDType(inDtype)
-                    << "outDtype: " << GetStrWithDType(outDtype);
-                return nullptr;
+                return GetCastKernel(launchParam);
             case OpParam::Elewise::ELEWISE_MULS:
                 if (inDtype == TENSOR_DTYPE_FLOAT) {
                     return GetKernelByName("MulsF32Kernel");
@@ -217,14 +239,14 @@ public:
                 return GetKernelByName("QuantPerChannelKernel");
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL:
                 return GetKernelByName("DequantPerChannelKernel");
-            default: return nullptr;
+            default:
+                return nullptr;
         }
     }
 
     int64_t GetInputNum(const Any &specificParam) const override
     {
-        MKI_CHECK(specificParam.Type() == typeid(OpParam::Elewise),
-            "OpParam is invalid", return 0);
+        MKI_CHECK(specificParam.Type() == typeid(OpParam::Elewise), "OpParam is invalid", return 0);
         auto param = AnyCast<OpParam::Elewise>(specificParam);
         const int64_t inTensorNumOne = 1;
         const int64_t inTensorNumTwo = 2;
@@ -252,14 +274,14 @@ public:
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL:
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL:
                 return 3; // 3: x + scale + offset
-            default: return 0;
+            default:
+                return 0;
         }
     }
 
     int64_t GetOutputNum(const Any &specificParam) const override
     {
-        MKI_CHECK(specificParam.Type() == typeid(OpParam::Elewise),
-            "OpParam is invalid", return 0);
+        MKI_CHECK(specificParam.Type() == typeid(OpParam::Elewise), "OpParam is invalid", return 0);
         auto param = AnyCast<OpParam::Elewise>(specificParam);
         switch (param.elewiseType) {
             case OpParam::Elewise::ELEWISE_DYNAMIC_QUANT:
@@ -347,36 +369,23 @@ protected:
         TensorDType dtype = launchParam.GetInTensor(0).desc.dtype;
         TensorFormat format = launchParam.GetInTensor(0).desc.format;
         SVector<int64_t> dims = launchParam.GetInTensor(0).desc.dims;
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise),
-            "transpose: no match param type", return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise), "transpose: no match param type",
+                  return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
         OpParam::Elewise param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
         OpParam::Elewise::ElewiseType type = param.elewiseType;
-        bool is910B = PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B ? true : false;
         switch (type) {
             case OpParam::Elewise::ELEWISE_CAST:
-                if (dtype == TENSOR_DTYPE_FLOAT && param.outTensorType == TENSOR_DTYPE_UNDEFINED) {
+                if (param.outTensorType == TENSOR_DTYPE_UNDEFINED) {
                     // for Compatibility
-                    outTensors[0].desc = {TENSOR_DTYPE_FLOAT16, format, dims, {}, 0};
-                    return Status::OkStatus();
-                } else if (dtype == TENSOR_DTYPE_FLOAT16 && param.outTensorType == TENSOR_DTYPE_UNDEFINED) {
-                    // for Compatibility
-                    outTensors[0].desc = {TENSOR_DTYPE_FLOAT, format, dims, {}, 0};
-                    return Status::OkStatus();
-                } else if ((dtype == TENSOR_DTYPE_FLOAT16 && param.outTensorType == TENSOR_DTYPE_FLOAT) ||
-                           (dtype == TENSOR_DTYPE_FLOAT16 && param.outTensorType == TENSOR_DTYPE_INT32) ||
-                           (dtype == TENSOR_DTYPE_INT32 && param.outTensorType == TENSOR_DTYPE_FLOAT16) ||
-                           (dtype == TENSOR_DTYPE_FLOAT && param.outTensorType == TENSOR_DTYPE_INT32)   ||
-                           (dtype == TENSOR_DTYPE_FLOAT && param.outTensorType == TENSOR_DTYPE_FLOAT16) ||
-                           (dtype == TENSOR_DTYPE_INT32 && param.outTensorType == TENSOR_DTYPE_INT64 && is910B) ||
-                           (dtype == TENSOR_DTYPE_INT64 && param.outTensorType == TENSOR_DTYPE_INT32 && is910B) ||
-                           (dtype == TENSOR_DTYPE_BF16 && param.outTensorType == TENSOR_DTYPE_FLOAT && is910B)  ||
-                           (dtype == TENSOR_DTYPE_FLOAT && param.outTensorType == TENSOR_DTYPE_BF16 && is910B)) {
-                    outTensors[0].desc = {param.outTensorType, format, dims, {}, 0};
+                    if (dtype == TENSOR_DTYPE_FLOAT) {
+                        outTensors[0].desc = {TENSOR_DTYPE_FLOAT16, format, dims, {}, 0};
+                    } else if (dtype == TENSOR_DTYPE_FLOAT16) {
+                        outTensors[0].desc = {TENSOR_DTYPE_FLOAT, format, dims, {}, 0};
+                    }
                     return Status::OkStatus();
                 } else {
-                    MKI_LOG(ERROR) << "Not Support for ELEWISE_CAST inDtype: " << GetStrWithDType(dtype) << " -> "
-                                   << "outDtype: " << GetStrWithDType(param.outTensorType);
-                    return Status::FailStatus(ERROR_INVALID_VALUE, "no matched input desc");
+                    outTensors[0].desc = {param.outTensorType, format, dims, {}, 0};
+                    return Status::OkStatus();
                 }
             case OpParam::Elewise::ELEWISE_MULS:
             case OpParam::Elewise::ELEWISE_TANH:
@@ -402,7 +411,6 @@ protected:
                     outTensors[0].desc.format = format;
                     outTensors[0].desc.dtype = TENSOR_DTYPE_INT8;
                     outTensors[0].desc.dims = dims;
-
                     outTensors[1].desc.format = format;
                     outTensors[1].desc.dtype = TENSOR_DTYPE_FLOAT;
                     SVector<int64_t> outTensorDims;
@@ -420,7 +428,8 @@ protected:
             case OpParam::Elewise::ELEWISE_ADD:
             case OpParam::Elewise::ELEWISE_MUL:
             case OpParam::Elewise::ELEWISE_REALDIV:
-            case OpParam::Elewise::ELEWISE_SUB: return InferShapeCommon(launchParam, outTensors);
+            case OpParam::Elewise::ELEWISE_SUB:
+                return InferShapeCommon(launchParam, outTensors);
             case OpParam::Elewise::ELEWISE_LESS:
             case OpParam::Elewise::ELEWISE_GREATER:
             case OpParam::Elewise::ELEWISE_EQUAL:
@@ -442,7 +451,8 @@ protected:
                 outTensors[0].desc.dtype = TENSOR_DTYPE_FLOAT16;
                 return status;
             }
-            default: return Status::FailStatus(ERROR_INVALID_VALUE, "no matched elewiseType");
+            default:
+                return Status::FailStatus(ERROR_INVALID_VALUE, "no matched elewiseType");
         }
     }
 };

@@ -24,7 +24,8 @@ static constexpr size_t BYTES_32BITS = 4;
 static constexpr size_t BYTES_16BITS = 2;
 static constexpr size_t BYTES_8BITS = 1;
 
-template <size_t ELEM_SIZE> class TransposeKernel : public KernelBase {
+template <size_t ELEM_SIZE>
+class TransposeKernel : public KernelBase {
 public:
     explicit TransposeKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : KernelBase(kernelName, handle)

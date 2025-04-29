@@ -4,30 +4,38 @@
 - **PARAM**
 **Param Type**：OpParam::Elewise
 
-| 名称  | 类型  | 描述 |
-| ------------ | ------------ | ------------ |
-|elewiseType | enum  | ELEWISE_CAST |
-|roundMode|enum|0:CAST_NONE,1:CAST_RINT,2:CAST_FLOOR|
-|outTensorType|enum|输出类型|
+| 名称          | 类型 | 描述                                 |
+| ------------- | ---- | ------------------------------------ |
+| elewiseType   | enum | ELEWISE_CAST                         |
+| roundMode     | enum | 0:CAST_NONE,1:CAST_RINT,2:CAST_FLOOR |
+| outTensorType | enum | 输出类型                             |
 - **In/Out Tensor**
 
-|名称 | 类型  | dims  | dtype  |format|
-| ------------ | ------------ | ------------ | ------------ |------------ |
-|  x|In  |  [$d_0$, $d_1$, ..., $d_n$]|参考对照表|ND|
-| y|Out  |  [$d_0$, $d_1$, ..., $d_n$]|参考对照表|ND|
+| 名称 | 类型 | dims                       | dtype      | format |
+| ---- | ---- | -------------------------- | ---------- | ------ |
+| x    | In   | [$d_0$, $d_1$, ..., $d_n$] | 参考对照表 | ND     |
+| y    | Out  | [$d_0$, $d_1$, ..., $d_n$] | 参考对照表 | ND     |
 
 ## 功能描述
 - 算子功能：转化数据类型。
 - 计算公式：$y=cast(x)$
-- 支持转化数据类型对照表
 
-|输入输出对照表|
-| ------------ |
-|float16<====>float|
-|float16<====>int32|
-|float ======>int32|
-|int32 <=====>int64|
-|bf16 <=====> float|
+### 输入输出对照图
+```mermaid
+graph LR
+A[float16]
+B[float]
+C[bf16]
+D[int32]
+E[int64]
+F[int8]
+A<-->B
+A<-->D
+B<-->D
+D<-->E
+B<--Ascend910B-->C
+A<-->F
+```
 ## 示例
 ```
 输入：
@@ -49,7 +57,7 @@
 
 ## 支持芯片型号
 
-|芯片名称|约束 | 
-| ------------ | ------------ | 
-|  ascend910b|无 |
-|  ascend310p|仅支持float16互转float |
+| 芯片名称   | 约束               |
+| ---------- | ------------------ |
+| ascend910b | 无                 |
+| ascend310p | 不支持bf16数据类型 |

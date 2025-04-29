@@ -27,7 +27,8 @@ static constexpr size_t BYTES_64BITS = 8;
 static constexpr size_t BYTES_32BITS = 4;
 static constexpr size_t BYTES_16BITS = 2;
 // static constexpr size_t BYTES_8BITS = 1;
-template <size_t ELEM_SIZE, TensorDType INDICE_TYPE> class GatherKernel : public KernelBase {
+template <size_t ELEM_SIZE, TensorDType INDICE_TYPE>
+class GatherKernel : public KernelBase {
 public:
     explicit GatherKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : KernelBase(kernelName, handle)

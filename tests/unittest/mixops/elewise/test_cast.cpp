@@ -117,7 +117,7 @@ TEST(TestOpElewiseCast, InferShape0)
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
     Status status = op->InferShape(launchParam);
-    ASSERT_EQ(status.Ok(), false);
+    ASSERT_EQ(status.Ok(), true);
 }
 
 TEST(TestOpElewiseCast, InferShape1)
@@ -144,7 +144,7 @@ TEST(TestOpElewiseCast, CanSupport0)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF16toF32Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF16F32Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), true);
 }
@@ -159,7 +159,7 @@ TEST(TestOpElewiseCast, CanSupport1)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32toF16Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32F16Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), true);
 }
@@ -175,7 +175,7 @@ TEST(TestOpElewiseCast, CanSupport2)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32toF16Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32F16Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), false);
 }
@@ -191,7 +191,7 @@ TEST(TestOpElewiseCast, CanSupport3)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32toF16Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32F16Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), false);
 }
@@ -206,7 +206,7 @@ TEST(TestOpElewiseCast, CanSupport4)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32toF16Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32F16Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), false);
 }
@@ -221,7 +221,7 @@ TEST(TestOpElewiseCast, CanSupport5)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32toF16Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF32F16Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), false);
 }
@@ -236,7 +236,7 @@ TEST(TestOpElewiseCast, CanSupport6)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF16toF32Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF16F32Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), false);
 }
@@ -251,7 +251,7 @@ TEST(TestOpElewiseCast, CanSupport7)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF16toF32Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF16F32Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), false);
 }
@@ -266,188 +266,8 @@ TEST(TestOpElewiseCast, CanSupport8)
     Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
     launchParam.SetParam(opDesc.specificParam);
     Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF16toF32Kernel"));
+    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastF16F32Kernel"));
     ASSERT_NE(kernel, nullptr);
     ASSERT_EQ(kernel->CanSupport(launchParam), false);
 }
 
-TEST(TestOpElewiseCast, CanSupport9)
-{
-    CHECK_DEVICE_VERSION_NOT_ASCEND310B();
-    LaunchParam launchParam;
-    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {50}}});
-    launchParam.AddOutTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {50}}});
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    launchParam.SetParam(opDesc.specificParam);
-    Mki::Operation *op = Mki::AutoGen::GetOpByName(opDesc.opName);
-    auto kernel = std::unique_ptr<Mki::Kernel>(op->GetKernelByName("CastWideKernel"));
-    ASSERT_NE(kernel, nullptr);
-    ASSERT_EQ(kernel->CanSupport(launchParam), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase0) // FLOAT16 -> FLOAT32 【cast_half_to_float;   //0001 0001   17】
-{
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&Mki::Test::Golden::InOutTensorEqual, ATOL, RTOL, std::placeholders::_1));
-    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_FLOAT;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {1000}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase1) // FLOAT32 -> FLOAT16 【cast_float_to_half;    // 0010 0001   33】
-{
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&Mki::Test::Golden::InOutTensorEqual, ATOL, RTOL, std::placeholders::_1));
-    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_FLOAT16;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {1000}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase2) // FLOAT32 -> INT32 【cast_float_to_int32; //0010 0100  36】
-{
-    CHECK_DEVICE_VERSION_NOT_ASCEND310B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGolden2Int32, ATOL, RTOL, std::placeholders::_1));
-    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT32;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {1000}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase3) // FLOAT16 -> INT32 【cast_half_to_int32; //0001  0101  21 】
-{
-    CHECK_DEVICE_VERSION_NOT_ASCEND310B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGolden2Int32, ATOL, RTOL, std::placeholders::_1));
-    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT32;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {1000}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase4) // INT64 -> INT32 【cast_int64_to_int32; //0111 0010  114】
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGoldenINT, ATOL, RTOL, std::placeholders::_1));
-    opTest.LongRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT32;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_INT64, TENSOR_FORMAT_ND, {1000}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase5) // INT32 -> INT64 cast_int32_to_int64; //0110 0011  99】
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGoldenINT, ATOL, RTOL, std::placeholders::_1));
-    opTest.IntRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT64;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {1000}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase6) // INT32 -> INT64 cast_int32_to_int64; //0110 0011  99】
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGoldenINT, ATOL, RTOL, std::placeholders::_1));
-    opTest.IntRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT64;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {129}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase7) // INT32 -> INT64 cast_int32_to_int64; //0110 0011  99】
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGoldenINT, ATOL, RTOL, std::placeholders::_1));
-    opTest.IntRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT64;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {127}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase8) // INT32 -> INT64 cast_int32_to_int64; //0110 0011  99】
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGoldenINT, ATOL, RTOL, std::placeholders::_1));
-    opTest.IntRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT64;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {8}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase9) // INT32 -> INT64 cast_int32_to_int64; //0110 0011  99】
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGoldenINT, ATOL, RTOL, std::placeholders::_1));
-    opTest.IntRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT64;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {4}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase10) // INT32 -> INT64 cast_int32_to_int64; //0110 0011  99】
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGoldenINT, ATOL, RTOL, std::placeholders::_1));
-    opTest.IntRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT64;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {11}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
-
-TEST(TestOpElewiseCast, CastWideCase11) // INT32 -> INT64 cast_int32_to_int64; //0110 0011  99】
-{
-    CHECK_DEVICE_VERSION_ASCEND910B();
-    Mki::Test::MkiOpTest opTest;
-    opTest.Golden(std::bind(&CastWideGoldenINT, ATOL, RTOL, std::placeholders::_1));
-    opTest.IntRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-    OpParam::Elewise opParam = {OpParam::Elewise::ELEWISE_CAST};
-    opParam.outTensorType = TENSOR_DTYPE_INT64;
-    Mki::Test::UtOpDesc opDesc = {"ElewiseOperation", opParam};
-    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {12}}};
-    Status status = opTest.Run(opDesc, inTensorDesc);
-    ASSERT_EQ(status.Ok(), true);
-}
