@@ -515,7 +515,8 @@ function fn_build_coverage()
 {
     GCOV_DIR=$CACHE_DIR/gcov
     PYYTHON_FILTER_TOOL=$CODE_ROOT/tests/framework/python/GcovFilterTool.py
-    LCOV_PATH=/usr/local/lcov/bin/lcov
+    LCOV_PATH=$(which lcov)
+    GENHTML_PATH=$(which genhtml)
 
     if [ -d "$GCOV_DIR" ]
     then
@@ -538,7 +539,7 @@ function fn_build_coverage()
     $LCOV_PATH -r tmp_coverage.info '*/3rdparty/*' '*torch/*' '*c10/*' '*ATen/*' '*/c++/7*' '*tests/*' '*tools/*' '/usr/*' '/opt/*' '*models/*' '*build/*' '*output/*' -output-file test_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
     $LCOV_PATH -a test_coverage.info -o main_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
     python3 $PYYTHON_FILTER_TOOL --input ./main_coverage.info --output ./final.info --root $CACHE_DIR --debug 1 >> $GCOV_DIR/log.txt
-    /usr/local/lcov/bin/genhtml --branch-coverage final.info -o cover_result --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
+    $GENHTML_PATH --branch-coverage final.info -o cover_result --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
     tail -n 4 $GCOV_DIR/log.txt
     cd ..
     tar -czf gcov.tar.gz gcov
