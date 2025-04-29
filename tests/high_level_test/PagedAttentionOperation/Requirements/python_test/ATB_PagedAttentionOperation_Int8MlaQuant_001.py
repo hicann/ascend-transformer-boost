@@ -18,7 +18,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../../../"))
 import operation_test  # NOQA: E402
 import json
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../apitest/mixopstest/"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../apitest/kernelstest/"))
 from precision_calcu import *
 import torch
 import random
