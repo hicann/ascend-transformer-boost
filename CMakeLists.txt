@@ -74,10 +74,10 @@ include_directories(
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src/include
-    ${PROJECT_SOURCE_DIR}/src/ops/include
-    ${PROJECT_SOURCE_DIR}/src/ops/include/lcal
-    ${PROJECT_SOURCE_DIR}/src/ops/include/lcal/lcoc
-    ${PROJECT_SOURCE_DIR}/src/ops/include/lcal/tiling
+    ${PROJECT_SOURCE_DIR}/src/kernels/include
+    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal
+    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal/lcoc
+    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
     $ENV{ASCEND_HOME_PATH}/include

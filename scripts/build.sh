@@ -34,7 +34,7 @@ VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
 
-BUILD_OPTION_LIST="help default testframework unittest pythontest torchatbtest mixpythontest csvopstest fuzztest infratest hitest alltest clean gendoc"
+BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
     "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
     "--src-only")
@@ -496,11 +496,16 @@ function fn_run_unittest()
 {
     export_atb_env
     export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
-    echo "run $ATB_HOME_PATH/bin/ops_unittest"
-    $ATB_HOME_PATH/bin/ops_unittest --gtest_output=xml:ops_test_detail.xml
-
     echo "run $ATB_HOME_PATH/bin/atb_unittest"
     $ATB_HOME_PATH/bin/atb_unittest --gtest_output=xml:test_detail.xml
+}
+
+function fn_run_kernel_unittest()
+{
+    export_atb_env
+    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+    echo "run $ATB_HOME_PATH/bin/kernels_unittest"
+    $ATB_HOME_PATH/bin/kernels_unittest --gtest_output=xml:kernel_test_detail.xml
 }
 
 function fn_run_fuzztest()
@@ -564,18 +569,22 @@ function fn_run_torchatbtest()
 function fn_run_pythontest()
 {
     export_atb_env
-    cd $CODE_ROOT/tests/apitest/mixopstest/
-    rm -rf ./kernel_meta*
-    for i in $(ls -d */); do
-        python3 -m unittest discover -s ./$i -p "*test*.py"
-    done
-
     cd $CODE_ROOT/tests/apitest/opstest/python/
     rm -rf ./kernel_meta*
     for i in $(ls -d operations/*/); do
         if [[ `find $i -name __init__.py` != "" ]];then
             python3 -m unittest discover -s ./$i -p "*test*.py"; 
         fi
+    done
+}
+
+function fn_run_kernel_pythontest()
+{
+    export_atb_env
+    cd $CODE_ROOT/tests/apitest/kernelstest/
+    rm -rf ./kernel_meta*
+    for i in $(ls -d */); do
+        python3 -m unittest discover -s ./$i -p "*test*.py"
     done
 }
 
@@ -725,10 +734,21 @@ function fn_main()
             fn_build
             fn_run_unittest
             ;;
+        "kernelunittest")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UNIT_TEST=ON"
+            fn_build_3rdparty_for_test
+            fn_build
+            fn_run_kernel_unittest
+            ;;
         "pythontest")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_PYTHON_TEST=ON"
             fn_build
             fn_run_pythontest
+            ;;
+        "kernelpythontest")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_PYTHON_TEST=ON"
+            fn_build
+            fn_run_kernel_pythontest
             ;;
         "torchatbtest")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_TORCH_ATB_TEST=ON"
@@ -788,7 +808,7 @@ function fn_main()
             ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|pythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
             ;;
     esac
 }
