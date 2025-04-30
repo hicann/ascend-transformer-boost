@@ -520,8 +520,22 @@ function fn_build_coverage()
 {
     GCOV_DIR=$CACHE_DIR/gcov
     PYYTHON_FILTER_TOOL=$CODE_ROOT/tests/framework/python/GcovFilterTool.py
-    LCOV_PATH=$(which lcov)
-    GENHTML_PATH=$(which genhtml)
+    LCOV_PATH=$CACHE_DIR
+    GENHTML_PATH=$CACHE_DIR
+
+    if command -v lcov &> /dev/null; then
+        LCOV_PATH=$(which lcov)
+    else
+        echo "Cannot access lcov from commandline, try /usr/local/lcov/bin/lcov"
+        LCOV_PATH=/usr/local/lcov/bin/lcov
+    fi
+
+    if command -v genhtml &> /dev/null; then
+        GENHTML_PATH=$(which genhtml)
+    else
+        echo "Cannot access genhtml from commandline, try /usr/local/lcov/bin/genhtml"
+        GENHTML_PATH=/usr/local/lcov/bin/genhtml
+    fi
 
     if [ -d "$GCOV_DIR" ]
     then
