@@ -1,9 +1,9 @@
 execute_process(COMMAND python3 ${CMAKE_CURRENT_LIST_DIR}/op_desc_json_auto.py
                                 --namespace AtbOps
-                                --params_path ${PROJECT_SOURCE_DIR}/src/ops/include/atbops)
+                                --params_path ${PROJECT_SOURCE_DIR}/src/kernels/include/atbops)
 execute_process(COMMAND python3 ${CMAKE_CURRENT_LIST_DIR}/op_desc_json_auto.py
                                 --namespace AsdOps
-                                --params_path ${PROJECT_SOURCE_DIR}/src/ops/include/asdops)
+                                --params_path ${PROJECT_SOURCE_DIR}/src/kernels/include/asdops)
 add_library(mki_test_autogen SHARED
             ${CMAKE_CURRENT_LIST_DIR}/op_desc_json_atbops.cpp
             ${CMAKE_CURRENT_LIST_DIR}/op_desc_json_asdops.cpp
