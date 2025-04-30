@@ -257,7 +257,7 @@ Status EncoderFillTilingParam(const UnpadFlashAttentionInfo &mmInfo, const uint3
         OP_TILING_CHECK_STATUS_RETURN(ret1);
         tilingParam[TILING_HEAD_SIZE + seqIdx * TILING_PARA_SIZE] = static_cast<uint32_t>(qSeqlen);
         tilingParam[TILING_HEAD_SIZE + seqIdx * TILING_PARA_SIZE + 1] = static_cast<uint32_t>(kvSeqlen);
-        
+
         FillTilingOffsetParam(seqIdx, addrOffsets, tilingParam);
         tilingParam[TILING_HEAD_SIZE + seqIdx * TILING_PARA_SIZE + INDEX13] =
             static_cast<uint32_t>(addrOffsets.totalQBlkNum);
@@ -279,16 +279,16 @@ void FillAddrOffsets(const AtbOps::UnpadFlashAttentionInfo &mmInfo, AtbOps::Addr
         MKI_LOG(INFO) << "addrOffsets mmInfo.maxKvSeqLen" << mmInfo.maxKvSeqLen << "kvRealHeads"
                       << mmInfo.innerBatchSize << "mmInfo.embeddingSize" << mmInfo.embeddingSize;
         addrOffsets.addrQSeqOffset +=
-            static_cast<uint64_t>(mmInfo.maxQSeqLen * mmInfo.innerBatchSize * mmInfo.embeddingSize);
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen * kvRealHeads * mmInfo.embeddingSize);
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen * kvRealHeads * mmInfo.embeddingSizeV);
+            static_cast<uint64_t>(mmInfo.maxQSeqLen) * mmInfo.innerBatchSize * mmInfo.embeddingSize;
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * kvRealHeads * mmInfo.embeddingSize;
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * kvRealHeads * mmInfo.embeddingSizeV;
         addrOffsets.addrOSeqOffset +=
-            static_cast<uint64_t>(mmInfo.maxQSeqLen  * mmInfo.innerBatchSize * mmInfo.embeddingSizeV);
+            static_cast<uint64_t>(mmInfo.maxQSeqLen) * mmInfo.innerBatchSize * mmInfo.embeddingSizeV;
     } else {
-        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen * mmInfo.innerBatchSize * mmInfo.embeddingSize);
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeads * mmInfo.embeddingSize);
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeads * mmInfo.embeddingSizeV);
-        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen * mmInfo.innerBatchSize * mmInfo.embeddingSizeV);
+        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.innerBatchSize * mmInfo.embeddingSize;
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSize;
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
+        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.innerBatchSize * mmInfo.embeddingSizeV;
     }
 }
 
@@ -584,7 +584,7 @@ Status DecoderFillTilingParam(const UnpadFlashAttentionInfo &mmInfo, const uint3
                       << " ,innerBatchSize :" << mmInfo.innerBatchSize << " ,embeddingSize :" << mmInfo.embeddingSize
                       << " ,embeddingSizeV :" << mmInfo.embeddingSizeV << ",maxKvSeqLen" << mmInfo.maxKvSeqLen
                       << ",kvRealHeads" << kvRealHeads;
- 
+
         FillAddr(addrOffsets, qSeqlen, mmInfo, kvRealHeads);
     }
     return Status::OkStatus();

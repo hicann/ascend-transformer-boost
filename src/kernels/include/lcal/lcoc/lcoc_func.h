@@ -26,7 +26,8 @@ namespace Lcal {
     void PrintErrorLog(LcalType lcalType, const std::string &log);
     bool CheckParamPowerOfTwo(const std::string &name, int value);
     WorkspaceDetail GetWorkspaceDetail(LcalType lcalType, CoCDataTypeDesc dataType,
-                                       const MatMulInfo &mmInfo, const QuantInfo &quantInfo, int32_t rankSize);
+                                       const MatMulInfo &mmInfo, const QuantInfo &quantInfo, int32_t rankSize,
+                                       bool isDeterministic = false);
 }
 
 #endif // LCAL_LCOC_FUNC_H
