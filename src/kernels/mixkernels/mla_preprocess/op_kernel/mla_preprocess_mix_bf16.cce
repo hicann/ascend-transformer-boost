@@ -25,9 +25,6 @@
 #include "kernels/utils/kernel/utils.h"
 #include "kernels/utils/kernel/kernel_utils.h"
 
-#include "kernels/norm/common/common_tiling_data.h"
-#include "kernels/norm/common/op_kernel/common_quant.h"
-
 // sync
 constexpr int32_t RMSNORMQUANT1 = 1;
 constexpr int32_t MM1 = 2;
@@ -345,96 +342,36 @@ private:
     uint64_t outLineOffset{0};
 };
 
-#if __CCE_AICORE__ != 300
-__aicore__ inline void ReduceSumFP32(const AscendC::LocalTensor<float> &dst_local,
-                                     const AscendC::LocalTensor<float> &src_local,
-                                     const AscendC::LocalTensor<float> &work_local,
-                                     int32_t count)
-{
-    // count need smaller than 255 repeat
-    if (g_coreType == AscendC::AIV) {
-        uint64_t mask = NUM_PER_REP_FP32;
-        int32_t repeatTimes = count / NUM_PER_REP_FP32;
-        int32_t tailCount = count % NUM_PER_REP_FP32;
-        int32_t bodyCount = repeatTimes * NUM_PER_REP_FP32;
-        AscendC::BinaryRepeatParams repeatParams;
-        repeatParams.src0RepStride = AscendC::ONE_REPEAT_BYTE_SIZE / AscendC::ONE_BLK_SIZE;
-        repeatParams.src0BlkStride = 1;
-        repeatParams.src1RepStride = 0;
-        repeatParams.src1BlkStride = 1;
-        repeatParams.dstRepStride = 0;
-        repeatParams.dstBlkStride = 1;
-        Duplicate(work_local, ZERO, NUM_PER_REP_FP32);
-        pipe_barrier(PIPE_V);
-        if (likely(repeatTimes > 0)) {
-            Add(work_local, src_local, work_local, mask, repeatTimes, repeatParams);
-            pipe_barrier(PIPE_V);
-        }
-        if (unlikely(tailCount != 0)) {
-            Add(work_local, src_local[bodyCount], work_local, tailCount, 1, repeatParams);
-            pipe_barrier(PIPE_V);
-        }
-        AscendC::AscendCUtils::SetMask<float>(NUM_PER_REP_FP32);
-        vcadd((__ubuf__ float *)dst_local.GetPhyAddr(), (__ubuf__ float *)work_local.GetPhyAddr(), 1, 0, 1, 0, false);
-        pipe_barrier(PIPE_V);
-    }
-}
-#endif
-
 __aicore__ inline void ReduceSumCustom(const AscendC::LocalTensor<float> &dst_local,
                                        const AscendC::LocalTensor<float> &src_local,
                                        const AscendC::LocalTensor<float> &work_local,
                                        int32_t count)
 {
-#if __CCE_AICORE__ == 220
-    ReduceSumFP32(dst_local, src_local, work_local, count);
-#elif __CCE_AICORE__ == 100
-    float sum = 0;
-    int32_t elementNumPerRep = AscendC::ONE_REPEAT_BYTE_SIZE / sizeof(float);
-    AscendC::LocalTensor<float> src = src_local;
-    while (count > elementNumPerRep) {
-        int32_t repeatTimes = count / elementNumPerRep;
-        int32_t tailCount = count % elementNumPerRep;
-        int32_t bodyCount = repeatTimes * elementNumPerRep;
-        if (repeatTimes > 0) {
-            AscendC::AscendCUtils::SetMask<float>(elementNumPerRep);
-            vcadd((__ubuf__ float *)work_local.GetPhyAddr(), (__ubuf__ float *)src.GetPhyAddr(), repeatTimes, 1, 1, 8);
-            AscendC::SetFlag<HardEvent::V_S>(EVENT_ID0);
-            AscendC::WaitFlag<HardEvent::V_S>(EVENT_ID0);
-        }
-
-        if (tailCount != 0) {
-            AscendC::AscendCUtils::SetMask<float>(tailCount);
-            vcadd((__ubuf__ float *)work_local[bodyCount].GetPhyAddr(),
-                  (__ubuf__ float *)src[bodyCount].GetPhyAddr(),
-                  1,
-                  1,
-                  1,
-                  8);
-            AscendC::SetFlag<HardEvent::V_S>(EVENT_ID0);
-            AscendC::WaitFlag<HardEvent::V_S>(EVENT_ID0);
-            sum += work_local.GetValue(bodyCount);
-        }
-
-        count = repeatTimes;
-        src = work_local;
+#ifdef __DAV_C220_VEC__
+    uint64_t mask = NUM_PER_REP_FP32;
+    int32_t repeatTimes = count / NUM_PER_REP_FP32;
+    int32_t tailCount = count % NUM_PER_REP_FP32;
+    int32_t bodyCount = repeatTimes * NUM_PER_REP_FP32;
+    AscendC::BinaryRepeatParams repeatParams;
+    repeatParams.src0RepStride = AscendC::ONE_REPEAT_BYTE_SIZE / AscendC::ONE_BLK_SIZE;
+    repeatParams.src0BlkStride = 1;
+    repeatParams.src1RepStride = 0;
+    repeatParams.src1BlkStride = 1;
+    repeatParams.dstRepStride = 0;
+    repeatParams.dstBlkStride = 1;
+    Duplicate(work_local, ZERO, NUM_PER_REP_FP32);
+    pipe_barrier(PIPE_V);
+    if (likely(repeatTimes > 0)) {
+        Add(work_local, src_local, work_local, mask, repeatTimes, repeatParams);
+        pipe_barrier(PIPE_V);
     }
-
-    if (count > 1) {
-        AscendC::AscendCUtils::SetMask<float>(count);
-        vcadd((__ubuf__ float *)work_local.GetPhyAddr(), (__ubuf__ float *)work_local.GetPhyAddr(), 1, 1, 1, 8);
-        AscendC::SetFlag<HardEvent::V_S>(EVENT_ID0);
-        AscendC::WaitFlag<HardEvent::V_S>(EVENT_ID0);
+    if (unlikely(tailCount != 0)) {
+        Add(work_local, src_local[bodyCount], work_local, tailCount, 1, repeatParams);
+        pipe_barrier(PIPE_V);
     }
-
-    sum += work_local.GetValue(0);
-    AscendC::SetFlag<HardEvent::S_V>(EVENT_ID0);
-    AscendC::WaitFlag<HardEvent::S_V>(EVENT_ID0);
-    Duplicate(dst_local, sum, count);
-#elif __CCE_AICORE__ == 300
-    ReduceSum(dst_local, src_local, work_local, count);
-#else
-    ReduceSum(dst_local, src_local, dst_local, count);
+    AscendC::AscendCUtils::SetMask<float>(NUM_PER_REP_FP32);
+    vcadd((__ubuf__ float *)dst_local.GetPhyAddr(), (__ubuf__ float *)work_local.GetPhyAddr(), 1, 0, 1, 0, false);
+    pipe_barrier(PIPE_V);
 #endif
 }
 
@@ -1124,13 +1061,13 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
     using LoadCbufToCb = l1_to_l0_b<ArchType::ASCEND_V220, InDtype, transB, DataFormat::ZN, DataFormat::NZ>;
     using Mad = mmad<ArchType::ASCEND_V220, InDtype, InDtype, float, false>;
     using CopyCcToGm = l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, OutDtype, float>;
-    set_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID0);
-    set_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID1);
-    set_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID2);
-    set_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID3);
-    set_flag(PIPE_FIX, PIPE_M, EVENT_ID0);
-    set_flag(PIPE_M, PIPE_MTE1, EVENT_ID0);
-    set_flag(PIPE_M, PIPE_MTE1, EVENT_ID1);
+    SET_FLAG(MTE1, MTE2, EVENT_ID0);
+    SET_FLAG(MTE1, MTE2, EVENT_ID1);
+    SET_FLAG(MTE1, MTE2, EVENT_ID2);
+    SET_FLAG(MTE1, MTE2, EVENT_ID3);
+    SET_FLAG(FIX, M, EVENT_ID0);
+    SET_FLAG(M, MTE1, EVENT_ID0);
+    SET_FLAG(M, MTE1, EVENT_ID1);
 
     for (uint64_t loop_idx = core_idx; loop_idx < core_loop; loop_idx += num_core) {
         uint64_t batch_idx = loop_idx / tdim.n / tdim.m;
@@ -1161,7 +1098,7 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
         event_t event_id = ping_flag ? EVENT_ID0 : EVENT_ID1;
 
         if (loop_idx == core_idx) {
-            wait_flag(PIPE_MTE1, PIPE_MTE2, event_id);
+            WAIT_FLAG(MTE1, MTE2, event_id);
             // *** load matrix A to L1
             if ((m == 1) || (m_actual == 1)) {
                 CopyGmToCbuf(l1_buf_a,       // dst
@@ -1182,9 +1119,9 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                                   k_round,                       // dTileCeil
                                   (k + splitGapA) * batch_size); // dVal
             }
-            set_flag(PIPE_MTE2, PIPE_MTE1, event_id);
+            SET_FLAG(MTE2, MTE1, event_id);
             // *** load matrix B to L1
-            wait_flag(PIPE_MTE1, PIPE_MTE2, event_id + 2);
+            WAIT_FLAG(MTE1, MTE2, event_id + 2);
             if (transB) {
                 CopyGmToCbufNd2Nz(l1_buf_b,       // dst
                                   gm_b[offset_b], // src
@@ -1204,7 +1141,7 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                                   n_round,        // dTileCeil
                                   n);             // dVal
             }
-            set_flag(PIPE_MTE2, PIPE_MTE1, event_id + 2);
+            SET_FLAG(MTE2, MTE1, event_id + 2);
         }
 
         for (tidx.k = 0; tidx.k < tdim.k; ++tidx.k) {
@@ -1235,7 +1172,7 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                 LocalTensor l1_buf_b_next = (1 - ping_flag) ? l1_base_b : l1_base_b[L1_PINGPONG_BUFFER_LEN];
                 event_t event_id_next = (1 - ping_flag) ? EVENT_ID0 : EVENT_ID1;
 
-                wait_flag(PIPE_MTE1, PIPE_MTE2, event_id_next);
+                WAIT_FLAG(MTE1, MTE2, event_id_next);
                 // *** load matrix A to L1
                 if ((m == 1) || (m_actual == 1)) {
                     CopyGmToCbuf(l1_buf_a_next,       // dst
@@ -1256,10 +1193,10 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                                       k_round_next,                  // dTileCeil
                                       (k + splitGapA) * batch_size); // dVal
                 }
-                set_flag(PIPE_MTE2, PIPE_MTE1, event_id_next);
+                SET_FLAG(MTE2, MTE1, event_id_next);
 
                 // *** load matrix B to L1
-                wait_flag(PIPE_MTE1, PIPE_MTE2, event_id_next + 2);
+                WAIT_FLAG(MTE1, MTE2, event_id_next + 2);
                 if constexpr (transB) {
                     CopyGmToCbufNd2Nz(l1_buf_b_next,       // dst
                                       gm_b[offset_b_next], // src
@@ -1279,7 +1216,7 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                                       n_round,             // dTileCeil
                                       n);                  // dVal
                 }
-                set_flag(PIPE_MTE2, PIPE_MTE1, event_id_next + 2);
+                SET_FLAG(MTE2, MTE1, event_id_next + 2);
             }
 
             if (tidx.k == tdim.k - 1 && loop_idx + num_core < core_loop) {
@@ -1305,7 +1242,7 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                 LocalTensor l1_buf_b_next = (1 - ping_flag) ? l1_base_b : l1_base_b[L1_PINGPONG_BUFFER_LEN];
                 event_t event_id_next = (1 - ping_flag) ? EVENT_ID0 : EVENT_ID1;
 
-                wait_flag(PIPE_MTE1, PIPE_MTE2, event_id_next);
+                WAIT_FLAG(MTE1, MTE2, event_id_next);
                 // *** load matrix A to L1
                 if (m == 1 || m_actual_next == 1) {
                     CopyGmToCbuf(l1_buf_a_next,       // dst
@@ -1326,10 +1263,10 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                                       k_round_next,                  // dTileCeil
                                       (k + splitGapA) * batch_size); // dVal
                 }
-                set_flag(PIPE_MTE2, PIPE_MTE1, event_id_next);
+                SET_FLAG(MTE2, MTE1, event_id_next);
 
                 // *** load matrix B to L1
-                wait_flag(PIPE_MTE1, PIPE_MTE2, event_id_next + 2);
+                WAIT_FLAG(MTE1, MTE2, event_id_next + 2);
                 if constexpr (transB) {
                     CopyGmToCbufNd2Nz(l1_buf_b_next,       // dst
                                       gm_b[offset_b_next], // src
@@ -1349,7 +1286,7 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                                       n_round_next,        // dTileCeil
                                       n);                  // dVal
                 }
-                set_flag(PIPE_MTE2, PIPE_MTE1, event_id_next + 2);
+                SET_FLAG(MTE2, MTE1, event_id_next + 2);
             }
 
             MatCoord fidx{0};
@@ -1364,20 +1301,19 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
 
                 // *** load matrix A from L1 to L0A
                 if (fidx.k == 0) {
-                    wait_flag(PIPE_MTE2, PIPE_MTE1, event_id);
+                    WAIT_FLAG(MTE2, MTE1, event_id);
                 }
-                wait_flag(PIPE_M, PIPE_MTE1, mte1_mad_event_id);
+                WAIT_FLAG(M, MTE1, mte1_mad_event_id);
                 if ((m == 1) || (m_actual == 1)) {
-                    load_cbuf_to_ca((__ca__ InDtype *)l0a_buf.GetPhyAddr(),
-                                    (__cbuf__ InDtype *)l1_buf_a[fidx.k * k_part_len].GetPhyAddr(),
-                                    0,                                      // baseIdx
-                                    (k0_round + CONST_256 - 1) / CONST_256, // repeat
-                                    1,                                      // srcStride
-                                    0,                                      // dstStride
-                                    0,                                      // sid
-                                    false,                                  // transpose
-                                    inc                                     // addr_cal_mode_t
-                    );
+                    l1_to_l0_a<ArchType::ASCEND_V220, InDtype, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                        l0a_buf,                       // dst
+                        l1_buf_a[fidx.k * k_part_len], // src
+                        0,                             // mTileCeil
+                        CeilDiv<CONST_256>(k0_round),  // kPartCeil
+                        0,                             // mSrcStride
+                        1,                             // kSrcStride
+                        0,                             // mDstStride
+                        0);                            // kDstStride
                 } else {
                     LoadCbufToCa(l0a_buf,                                 // l0Tensor
                                  l1_buf_a[fidx.k * k_part_len * m_round], // l1Tensor
@@ -1389,12 +1325,12 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                                  1);                                      // kDstStride
                 }
                 if (fidx.k == fdim.k - 1) {
-                    set_flag(PIPE_MTE1, PIPE_MTE2, event_id);
+                    SET_FLAG(MTE1, MTE2, event_id);
                 }
 
                 // *** load matrix B from L1 to L0B
                 if (fidx.k == 0) {
-                    wait_flag(PIPE_MTE2, PIPE_MTE1, event_id + 2);
+                    WAIT_FLAG(MTE2, MTE1, event_id + 2);
                 }
                 if constexpr (transB) {
                     LoadCbufToCb(l0b_buf,                                 // l0Tensor
@@ -1416,15 +1352,15 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                                  n_round / CONST_16);                      // kDstStride
                 }
                 if (fidx.k == fdim.k - 1) {
-                    set_flag(PIPE_MTE1, PIPE_MTE2, event_id + 2);
+                    SET_FLAG(MTE1, MTE2, event_id + 2);
                 }
 
-                set_flag(PIPE_MTE1, PIPE_M, mte1_mad_event_id);
-                wait_flag(PIPE_MTE1, PIPE_M, mte1_mad_event_id);
+                SET_FLAG(MTE1, M, mte1_mad_event_id);
+                WAIT_FLAG(MTE1, M, mte1_mad_event_id);
 
                 bool init_c = (tidx.k == 0 && fidx.k == 0);
                 if (init_c) {
-                    wait_flag(PIPE_FIX, PIPE_M, EVENT_ID0);
+                    WAIT_FLAG(FIX, M, EVENT_ID0);
                 }
 
                 Mad(l0c_buf,   // c
@@ -1435,15 +1371,15 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                     k0_actual, // kTileActual
                     init_c);   // initC
 
-                pipe_barrier(PIPE_M);
-                set_flag(PIPE_M, PIPE_MTE1, mte1_mad_event_id);
+                PIPE_BARRIER(M);
+                SET_FLAG(M, MTE1, mte1_mad_event_id);
             }
 
             ping_flag = 1 - ping_flag;
         }
 
-        set_flag(PIPE_M, PIPE_FIX, EVENT_ID0);
-        wait_flag(PIPE_M, PIPE_FIX, EVENT_ID0);
+        SET_FLAG(M, FIX, EVENT_ID0);
+        WAIT_FLAG(M, FIX, EVENT_ID0);
 
         // copy from L0C to gm
         CopyCcToGm(gm_c[offset_c],                // dst
@@ -1452,17 +1388,17 @@ __aicore__ __force_inline__ void PpMatmulEinSum<transB, swizzleDirect, splitGapA
                    n_actual,                      // nTileActual
                    m_round,                       // mTileCeil
                    (n + splitGapC) * batch_size); // nActual
-        set_flag(PIPE_FIX, PIPE_M, EVENT_ID0);
+        SET_FLAG(FIX, M, EVENT_ID0);
     }
 
-    wait_flag(PIPE_M, PIPE_MTE1, EVENT_ID0);
-    wait_flag(PIPE_M, PIPE_MTE1, EVENT_ID1);
-    wait_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID0);
-    wait_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID1);
-    wait_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID2);
-    wait_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID3);
-    wait_flag(PIPE_FIX, PIPE_M, EVENT_ID0);
-    pipe_barrier(PIPE_ALL);
+    WAIT_FLAG(M, MTE1, EVENT_ID0);
+    WAIT_FLAG(M, MTE1, EVENT_ID1);
+    WAIT_FLAG(MTE1, MTE2, EVENT_ID0);
+    WAIT_FLAG(MTE1, MTE2, EVENT_ID1);
+    WAIT_FLAG(MTE1, MTE2, EVENT_ID2);
+    WAIT_FLAG(MTE1, MTE2, EVENT_ID3);
+    WAIT_FLAG(FIX, M, EVENT_ID0);
+    PIPE_BARRIER(ALL);
 #endif
 }
 
