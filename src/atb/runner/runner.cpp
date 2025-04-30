@@ -88,11 +88,6 @@ Status Runner::PreExecute(RunnerVariantPack &runnerVariantPack)
         ATB_LOG(ERROR) << GetLogPrefix() << " runnerVariantPack.stream is null";
         return ERROR_INVALID_PARAM;
     }
-    if (IsSaveTensor() && Probe::IsSaveTensorBefore()) {
-        std::string tensorDir = tensorDir_ + "/before";
-        StoreUtil::SaveVariantPack(GetExecuteStream(runnerVariantPack.context), runnerVariantPack, tensorDir);
-        ATB_LOG(INFO) << GetLogPrefix() << " save variant pack at " << tensorDir;
-    }
     // 根据不同的流设置其的runnerVariantPack.workspaceBuffer起始地址
     ChangeWorkspaceBufferByExecuteStream(runnerVariantPack);
     Status st = PreExecuteImpl(runnerVariantPack);
@@ -105,6 +100,11 @@ Status Runner::PreExecute(RunnerVariantPack &runnerVariantPack)
 
 Status Runner::Execute(RunnerVariantPack &runnerVariantPack)
 {
+    if (IsSaveTensor() && Probe::IsSaveTensorBefore()) {
+        std::string tensorDir = tensorDir_ + "/before";
+        StoreUtil::SaveVariantPack(GetExecuteStream(runnerVariantPack.context), runnerVariantPack, tensorDir);
+        ATB_LOG(INFO) << GetLogPrefix() << " save variant pack at " << tensorDir;
+    }
     Status st = ExecuteImpl(runnerVariantPack);
     if (IsSaveTensor() && Probe::IsSaveTensorAfter()) {
         std::string tensorDir = tensorDir_ + "/after";

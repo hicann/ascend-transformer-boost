@@ -189,7 +189,7 @@ function fn_build_asdops()
     if [ "$USE_MSSANITIZER" == "ON" ]; then
         build_options="$build_options --mssanitizer"
     fi
-    build_options="$build_options --output=$THIRD_PARTY_DIR $COMPILE_VERBOSE"
+    build_options="$build_options --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
     bash scripts/build.sh $build_type $build_options
 }
 

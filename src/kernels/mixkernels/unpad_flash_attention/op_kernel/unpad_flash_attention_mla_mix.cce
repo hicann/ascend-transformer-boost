@@ -107,7 +107,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
         stride_k = embd;
         stride_v = embdv;
     }
-    
+
     uint64_t batch_stride_k = batch_size * max_kv_seqlen * kv_heads * embd * 2;
     uint64_t batch_stride_v = batch_size * max_kv_seqlen * kv_heads * embdv * 2;
     if (layerID_gm != nullptr) {
@@ -199,15 +199,15 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
         uint32_t pingpong_flag = 0;
         uint32_t offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
 
-        uint64_t q_offset = addr_q_scalar + head_idx * embd + m_idx * pp_m_scalar * stride_qo;
+        uint64_t q_offset = addr_q_scalar + head_idx * embd + (uint64_t)m_idx * pp_m_scalar * stride_qo;
         uint64_t k_offset = addr_k_scalar + (head_idx / group_num) * embd;
-        
+
         if (data_shape_type == 1)
         {
-            q_offset = addr_q_scalar + head_idx * embd * max_seqlen + m_idx * stride_qo * pp_m_scalar;
+            q_offset = addr_q_scalar + head_idx * embd * max_seqlen + (uint64_t)m_idx * pp_m_scalar * stride_qo;
             k_offset = addr_k_scalar + (head_idx / group_num) * embd * max_kv_seqlen;
         }
-        
+
 
         uint32_t sv_n = n_loop == 1 ? kv_seqlen : pp_n_scalar;
         uint32_t sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
@@ -362,8 +362,8 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
                     qk_round_m,  // srcStride
                     sv_round_n  // dstStride_dst_D
                 );
-                SET_FLAG(FIX, M, EVENT_ID0);  
-                SET_FLAG(FIX, M, EVENT_ID1);  
+                SET_FLAG(FIX, M, EVENT_ID0);
+                SET_FLAG(FIX, M, EVENT_ID1);
                 FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY);
             }
             if (n_idx >= launch_delay) {
@@ -497,7 +497,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
                         qk_round_m,  // srcStride
                         qk_round_k     // dstStride_dst_D
                     );
-                    SET_FLAG(FIX, M, l0c_pingpong_flag);  
+                    SET_FLAG(FIX, M, l0c_pingpong_flag);
                 }
                 FftsCrossCoreSync<PIPE_FIX, 2>(UPDATE_READY);
                 v_offset += sv_n * stride_v;
@@ -611,7 +611,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
     const uint32_t go_ubuf_offset = 9 * UB_UINT8_BLOCK_SIZE;
 
     AsdopsBuffer<ArchType::ASCEND_V220> buf;
- 
+
     AscendC::LocalTensor<half> ls_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(ls_ubuf_offset);
     AscendC::LocalTensor<half> lp_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(lp_ubuf_offset);
     AscendC::LocalTensor<float> ls32_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(ls32_ubuf_offset);
@@ -629,7 +629,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
     AscendC::LocalTensor<half> tv16_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(tv_ubuf_offset);
     AscendC::LocalTensor<uint8_t> tv_u8_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, uint8_t>(tv_ubuf_offset);
     AscendC::LocalTensor<float> go_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(go_ubuf_offset);
- 
+
     AscendC::GlobalTensor<half> mask_gm_tensor;
     AscendC::GlobalTensor<uint8_t> mask_u8_gm_tensor;
     AscendC::GlobalTensor<half> o_gm_tensor;
@@ -637,7 +637,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
     AscendC::GlobalTensor<half> p_gm_tensor;
     AscendC::GlobalTensor<float> o_tmp_gm_tensor;
     AscendC::GlobalTensor<float> upo_gm_tensor;
- 
+
     mask_u8_gm_tensor.SetGlobalBuffer(mask_gm);
     mask_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(mask_gm));
     o_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(o_gm));
@@ -685,7 +685,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
     SET_FLAG(V, MTE2, EVENT_ID4);
     SET_FLAG(MTE3, V, EVENT_ID0);
     SET_FLAG(MTE3, V, EVENT_ID1);
- 
+
     uint64_t cur_batch = 0;
     uint32_t pre_total_q_blk_num = 0;
     uint32_t offset_tiling = tiling_head_size + tiling_para_size * cur_batch;
@@ -740,7 +740,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
         uint64_t mask_head_offset = head_idx * ((uint64_t)head_stride) * max_seqlen;
         uint64_t mask_offset = mask_batch_offset + mask_head_offset;
         if (long_seq == 0) {
-            mask_offset += m_idx * pp_m_scalar * max_seqlen;
+            mask_offset += (uint64_t)m_idx * pp_m_scalar * max_seqlen;
         } else {
             gm_to_ub<ArchType::ASCEND_V220, half>(
                 mask_ubuf_tensor,
@@ -755,10 +755,10 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
             WAIT_FLAG(MTE2, V, EVENT_ID0);
         }
 
-        uint64_t o_offset = addr_o_scalar + head_idx * embdv + m_idx * pp_m_scalar * stride_qo;
+        uint64_t o_offset = addr_o_scalar + head_idx * embdv + (uint64_t)m_idx * pp_m_scalar * stride_qo;
 
         if(data_shape_type == 1){
-            o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + m_idx * pp_m_scalar * stride_qo;
+            o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + (uint64_t)m_idx * pp_m_scalar * stride_qo;
         }
 
         uint32_t n_end = n_loop;
@@ -820,11 +820,11 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
                     pingpong_flag = n_idx % 2;
                     offset = pingpong_flag * UB_HALF_BUF_SIZE;
                     if (sub_m > 0) {
-                        // int32_t 
+                        // int32_t
                         WAIT_FLAG(MTE3, MTE2, pingpong_flag);
                         if (s_block_stack == 2) {
                             WAIT_FLAG(MTE3, MTE2, 1 - pingpong_flag);
-                        }   
+                        }
                         // input QK
                         gm_to_ub<ArchType::ASCEND_V220, half>(
                             ls_ubuf_tensor[offset],
@@ -892,7 +892,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
                              } else if (pp_n_scalar == FLOAT_VECTOR_SIZE && s_block_stack == 2 && n_idx == n_end - 2) {
                                 __set_mask(qk_n - FLOAT_VECTOR_SIZE);
                                 add_v<ArchType::ASCEND_V220, half>(
-                                    ls_ubuf_tensor[offset + FLOAT_VECTOR_SIZE], 
+                                    ls_ubuf_tensor[offset + FLOAT_VECTOR_SIZE],
                                     ls_ubuf_tensor[offset + FLOAT_VECTOR_SIZE],
                                     mask_ubuf_tensor,
                                     sub_m, // repeat
@@ -1245,7 +1245,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
                 } else {
                     bool last_n_loop = n_idx + s_block_stack > n_end - 1;
                     if (sub_m > 0) {
-                        WAIT_FLAG(MTE3, MTE2, EVENT_ID0); 
+                        WAIT_FLAG(MTE3, MTE2, EVENT_ID0);
                         // input QK
                         gm_to_ub<ArchType::ASCEND_V220, half>(
                             ls_ubuf_tensor,
@@ -1666,7 +1666,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
             }
             if (n_idx >= launch_delay) {
                 // *** 更新 L 和 O
-                WaitFlagDev(UPDATE_READY); 
+                WaitFlagDev(UPDATE_READY);
                 for(uint32_t k_idx = 0; k_idx < loopV; k_idx++){
                     uint64_t o_offsetk = o_offset + k_idx * BLOCK_QK;
                     if (sub_m > 0) {
@@ -1774,7 +1774,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
                                 SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
                             }
                             PIPE_BARRIER(V);
-                            
+
                             WAIT_FLAG(MTE2, V, EVENT_ID4);
                             // *** go = lo + go
                             add_v<ArchType::ASCEND_V220, float>(go_ubuf_tensor,

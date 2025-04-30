@@ -25,7 +25,6 @@ constexpr uint32_t CONST_16 = 16;
 constexpr uint32_t CONST_32 = 32;
 constexpr uint32_t CONST_256 = 256;
 constexpr uint32_t CONST_512 = 512;
-constexpr uint32_t TRANS_B_MASK = 0b1000;
 
 const std::map<TensorDType, uint32_t> G_DTYPE_MAP = {
     {TENSOR_DTYPE_INT8, 0u}, {TENSOR_DTYPE_FLOAT16, 1u}, {TENSOR_DTYPE_BF16, 2u}, {TENSOR_DTYPE_FLOAT, 3u}};
@@ -108,6 +107,10 @@ uint32_t PpTilingData::End(const MatMulInfo &mmInfo)
                          ? L1AB_PINGPONG_BUFFER_LEN
                          : static_cast<uint32_t>(static_cast<float>(L1AB_PINGPONG_BUFFER_LEN - scaleBlockSize) /
                                                  (shapeSum * mmInfo.inDtype));
+    if (mmInfo.mmType == OpParam::MatMul::MatMulType::MATMUL_WITH_BIAS) {
+        uint32_t l1AbSize = L1AB_PINGPONG_BUFFER_LEN - opShape.n0 * sizeof(float);
+        k0Max = l1AbSize / (shapeSum * mmInfo.inDtype);
+    }
     MKI_LOG(INFO) << "k0Max, shapeSum " << k0Max << "," << shapeSum;
     opShape.k0 = k0Max < cubeBlockSize ? RoundDown(k0Max, kBlockSize) : RoundDown(k0Max, cubeBlockSize);
     if (opShape.k0 > CONST_512) {

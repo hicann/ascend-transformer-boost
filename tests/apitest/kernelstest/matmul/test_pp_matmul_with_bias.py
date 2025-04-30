@@ -250,6 +250,28 @@ class TestPpMatmulF16(op_test.OpTest):
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
+    @op_test.only_910b
+    def testcase_matmul_with_bias_bf16_gemv(self):
+        self.trans_A, self.trans_B = False, True
+        bsize, msize, ksize, nsize = 1, 1, 3072, 1024
+        self.set_param(
+            "MatMulOperation",
+            {
+                "transposeA": self.trans_A,
+                "transposeB": self.trans_B,
+                "oriShape": [msize, ksize, nsize],
+                "matmulType": MATMUL_WITH_BIAS,
+            },
+        )
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nd])
+        self.__gen_test_data((bsize, msize, ksize, nsize), dtype=torch.bfloat16)
+        self.execute(
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
+            [torch.zeros(self.bat_C.shape).bfloat16()],
+            {"ASDOPS_MATMUL_PP_FLAG": "1"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -64,11 +64,14 @@ namespace Lcal {
         int64_t matrixWeightSize{ 0 };
         int64_t matrixIntermediateSize{ 0 };
         int64_t formatDequantParamSize{ 0 };
-
+        int64_t reducebufSize{0};
         int64_t GetSize() const
         {
-            return matrixActivationSize + matrixWeightSize + matrixIntermediateSize +
-                   formatDequantParamSize + WORKSPACE_REDUCE_SIZE;
+            return matrixActivationSize
+                    + matrixWeightSize
+                    + matrixIntermediateSize
+                    + formatDequantParamSize
+                    + reducebufSize;
         }
     };
 
