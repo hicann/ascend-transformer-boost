@@ -187,7 +187,9 @@ Status PpMatmulTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
               return Status::FailStatus(ERROR_INVALID_VALUE));
     const auto &descA = launchParam.GetInTensor(0).desc;
     const auto &descB = launchParam.GetInTensor(1).desc;
-    PpMatMulOriShapeCheck(attrs);
+    if (descB.format == TENSOR_FORMAT_FRACTAL_NZ) {
+        PpMatMulOriShapeCheck(attrs);
+    }
     MKI_CHECK(ValidNdMatrix(descA), "Invalid input [0].", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(ValidNdMatrix(descB) || ValidNzMatrix(descB), "Invalid input [1].",
               return Status::FailStatus(ERROR_INVALID_VALUE));
