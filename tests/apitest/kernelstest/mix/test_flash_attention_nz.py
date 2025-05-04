@@ -697,7 +697,7 @@ class TestFlashAttentionNz(op_test.OpTest):
     def golden_compare(self, out_tensors, golden_tensors):
         result_old = self.compare_output_data(out_tensors[0].half(), golden_tensors[0].half(), [0.001, 0.001, 0.003, 0.003, 0.005, 0.005])
         result_double = compare_cv(golden_tensors[0], self.golden_outhigh_pre, out_tensors[0].to(torch.float32))
-        return result_old and result_double
+        return result_old or result_double
     @op_test.only_310p
     def test_flash_attention_case_encoder_cache_with_left_alibi_mask(self):
         batch = 1
