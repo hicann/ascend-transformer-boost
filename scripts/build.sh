@@ -813,6 +813,7 @@ function fn_main()
             echo "clean all build history"
             ;;
         "gendoc")
+            COVERAGE_TYPE=""
             fn_build_3rdparty_for_doc
             fn_gen_doc
             ;;
