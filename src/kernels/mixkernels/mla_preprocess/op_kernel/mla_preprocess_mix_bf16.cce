@@ -973,13 +973,13 @@ public:
         }
         using LocalTensor = AscendC::LocalTensor<InDtype>;
 
-        set_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID0);
-        set_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID1);
-        set_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID2);
-        set_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID3);
-        set_flag(PIPE_FIX, PIPE_M, EVENT_ID0);
-        set_flag(PIPE_M, PIPE_MTE1, EVENT_ID0);
-        set_flag(PIPE_M, PIPE_MTE1, EVENT_ID1);
+        SET_FLAG(MTE1, MTE2, EVENT_ID0);
+        SET_FLAG(MTE1, MTE2, EVENT_ID1);
+        SET_FLAG(MTE1, MTE2, EVENT_ID2);
+        SET_FLAG(MTE1, MTE2, EVENT_ID3);
+        SET_FLAG(FIX, M, EVENT_ID0);
+        SET_FLAG(M, MTE1, EVENT_ID0);
+        SET_FLAG(M, MTE1, EVENT_ID1);
 
         for (uint64_t loop_idx = core_idx; loop_idx < core_loop; loop_idx += num_core) {
             uint64_t batch_idx = loop_idx / tdim.n / tdim.m;
@@ -1006,15 +1006,15 @@ public:
 
                 // Copy A from gm to l1 buffer
                 uint64_t offset_a = GetOffsetA(batch_idx, tidx.m, shuffle_k);
-                wait_flag(PIPE_MTE1, PIPE_MTE2, event_id);
+                WAIT_FLAG(MTE1, MTE2, event_id);
                 CopyTileA(l1_buf_a, gm_a[offset_a], m_actual, m_round, k_actual, k_round);
-                set_flag(PIPE_MTE2, PIPE_MTE1, event_id);
+                SET_FLAG(MTE2, MTE1, event_id);
 
                 // Copy B from gm to l1 buffer
                 uint64_t offset_b = GetOffsetB(batch_idx, shuffle_k, tidx.n);
-                wait_flag(PIPE_MTE1, PIPE_MTE2, event_id + 2);
+                WAIT_FLAG(MTE1, MTE2, event_id + 2);
                 CopyTileB(l1_buf_b, gm_b[offset_b], k_actual, k_round, n_actual, n_round);
-                set_flag(PIPE_MTE2, PIPE_MTE1, event_id + 2);
+                SET_FLAG(MTE2, MTE1, event_id + 2);
             }
 
             for (tidx.k = 0; tidx.k < tdim.k; ++tidx.k) {
@@ -1040,14 +1040,14 @@ public:
                     event_t event_id_next = (1 - ping_flag) ? EVENT_ID0 : EVENT_ID1;
 
                     // Preload A from gm to l1 buffer.
-                    wait_flag(PIPE_MTE1, PIPE_MTE2, event_id_next);
+                    WAIT_FLAG(MTE1, MTE2, event_id_next);
                     CopyTileA(l1_buf_a_next, gm_a[offset_a_next], m_actual, m_round, k_actual_next, k_round_next);
-                    set_flag(PIPE_MTE2, PIPE_MTE1, event_id_next);
+                    SET_FLAG(MTE2, MTE1, event_id_next);
 
                     // Preload B from gm to l1 buffer.
-                    wait_flag(PIPE_MTE1, PIPE_MTE2, event_id_next + 2);
+                    WAIT_FLAG(MTE1, MTE2, event_id_next + 2);
                     CopyTileB(l1_buf_b_next, gm_b[offset_b_next], k_actual_next, k_round_next, n_actual, n_round);
-                    set_flag(PIPE_MTE2, PIPE_MTE1, event_id_next + 2);
+                    SET_FLAG(MTE2, MTE1, event_id_next + 2);
                 }
 
                 if (tidx.k == tdim.k - 1 && loop_idx + num_core < core_loop) {
@@ -1069,16 +1069,16 @@ public:
                     event_t event_id_next = (1 - ping_flag) ? EVENT_ID0 : EVENT_ID1;
 
                     // Preload A from gm to l1 buffer.
-                    wait_flag(PIPE_MTE1, PIPE_MTE2, event_id_next);
+                    WAIT_FLAG(MTE1, MTE2, event_id_next);
                     CopyTileA(l1_buf_a_next, gm_a[offset_a_next], m_actual_next, m_round_next, k_actual_next,
                               k_round_next);
-                    set_flag(PIPE_MTE2, PIPE_MTE1, event_id_next);
+                    SET_FLAG(MTE2, MTE1, event_id_next);
 
                     // Preload B from gm to l1 buffer.
-                    wait_flag(PIPE_MTE1, PIPE_MTE2, event_id_next + 2);
+                    WAIT_FLAG(MTE1, MTE2, event_id_next + 2);
                     CopyTileB(l1_buf_b_next, gm_b[offset_b_next], k_actual_next, k_round_next, n_actual_next,
                               n_round_next);
-                    set_flag(PIPE_MTE2, PIPE_MTE1, event_id_next + 2);
+                    SET_FLAG(MTE2, MTE1, event_id_next + 2);
                 }
 
                 MatCoord fidx{0};
@@ -1093,20 +1093,19 @@ public:
 
                     // *** load matrix A from L1 to L0A
                     if (fidx.k == 0) {
-                        wait_flag(PIPE_MTE2, PIPE_MTE1, event_id);
+                        WAIT_FLAG(MTE2, MTE1, event_id);
                     }
-                    wait_flag(PIPE_M, PIPE_MTE1, mte1_mad_event_id);
+                    WAIT_FLAG(M, MTE1, mte1_mad_event_id);
                     if ((m == 1) || (m_actual == 1)) {
-                        load_cbuf_to_ca((__ca__ InDtype *)l0a_buf.GetPhyAddr(),
-                                        (__cbuf__ InDtype *)l1_buf_a[fidx.k * k_part_len].GetPhyAddr(),
-                                        0,                                      // baseIdx
-                                        (k0_round + CONST_256 - 1) / CONST_256, // repeat
-                                        1,                                      // srcStride
-                                        0,                                      // dstStride
-                                        0,                                      // sid
-                                        false,                                  // transpose
-                                        inc                                     // addr_cal_mode_t
-                        );
+                        l1_to_l0_a<ArchType::ASCEND_V220, InDtype, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                            l0a_buf,                       // dst
+                            l1_buf_a[fidx.k * k_part_len], // src
+                            0,                             // mTileCeil
+                            CeilDiv<CONST_256>(k0_round),  // kPartCeil
+                            0,                             // mSrcStride
+                            1,                             // kSrcStride
+                            0,                             // mDstStride
+                            0);                            // kDstStride
                     } else {
                         LoadCbufToCa(l0a_buf,                                 // l0Tensor
                                      l1_buf_a[fidx.k * k_part_len * m_round], // l1Tensor
@@ -1118,12 +1117,12 @@ public:
                                      1);                                      // kDstStride
                     }
                     if (fidx.k == fdim.k - 1) {
-                        set_flag(PIPE_MTE1, PIPE_MTE2, event_id);
+                        SET_FLAG(MTE1, MTE2, event_id);
                     }
 
                     // *** load matrix B from L1 to L0B
                     if (fidx.k == 0) {
-                        wait_flag(PIPE_MTE2, PIPE_MTE1, event_id + 2);
+                        WAIT_FLAG(MTE2, MTE1, event_id + 2);
                     }
                     if constexpr (transB) {
                         LoadCbufToCb(l0b_buf,                                 // l0Tensor
@@ -1145,15 +1144,15 @@ public:
                                      n_round / CONST_16);                      // kDstStride
                     }
                     if (fidx.k == fdim.k - 1) {
-                        set_flag(PIPE_MTE1, PIPE_MTE2, event_id + 2);
+                        SET_FLAG(MTE1, MTE2, event_id + 2);
                     }
 
-                    set_flag(PIPE_MTE1, PIPE_M, mte1_mad_event_id);
-                    wait_flag(PIPE_MTE1, PIPE_M, mte1_mad_event_id);
+                    SET_FLAG(MTE1, M, mte1_mad_event_id);
+                    WAIT_FLAG(MTE1, M, mte1_mad_event_id);
 
                     bool init_c = (tidx.k == 0 && fidx.k == 0);
                     if (init_c) {
-                        wait_flag(PIPE_FIX, PIPE_M, EVENT_ID0);
+                        WAIT_FLAG(FIX, M, EVENT_ID0);
                     }
 
                     Mad(l0c_buf,   // c
@@ -1164,15 +1163,15 @@ public:
                         k0_actual, // kTileActual
                         init_c);   // initC
 
-                    pipe_barrier(PIPE_M);
-                    set_flag(PIPE_M, PIPE_MTE1, mte1_mad_event_id);
+                    PIPE_BARRIER(M);
+                    SET_FLAG(M, MTE1, mte1_mad_event_id);
                 }
 
                 ping_flag = 1 - ping_flag;
             }
 
-            set_flag(PIPE_M, PIPE_FIX, EVENT_ID0);
-            wait_flag(PIPE_M, PIPE_FIX, EVENT_ID0);
+            SET_FLAG(M, FIX, EVENT_ID0);
+            WAIT_FLAG(M, FIX, EVENT_ID0);
 
             // copy from L0C to gm
             CopyCcToGm(gm_c[offset_c],                // dst
@@ -1181,16 +1180,16 @@ public:
                        n_actual,                      // nTileActual
                        m_round,                       // mTileCeil
                        (n + splitGapC) * batch_size); // nActual
-            set_flag(PIPE_FIX, PIPE_M, EVENT_ID0);
+            SET_FLAG(FIX, M, EVENT_ID0);
         }
 
-        wait_flag(PIPE_M, PIPE_MTE1, EVENT_ID0);
-        wait_flag(PIPE_M, PIPE_MTE1, EVENT_ID1);
-        wait_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID0);
-        wait_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID1);
-        wait_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID2);
-        wait_flag(PIPE_MTE1, PIPE_MTE2, EVENT_ID3);
-        wait_flag(PIPE_FIX, PIPE_M, EVENT_ID0);
+        WAIT_FLAG(M, MTE1, EVENT_ID0);
+        WAIT_FLAG(M, MTE1, EVENT_ID1);
+        WAIT_FLAG(MTE1, MTE2, EVENT_ID0);
+        WAIT_FLAG(MTE1, MTE2, EVENT_ID1);
+        WAIT_FLAG(MTE1, MTE2, EVENT_ID2);
+        WAIT_FLAG(MTE1, MTE2, EVENT_ID3);
+        WAIT_FLAG(FIX, M, EVENT_ID0);
 #endif
     }
 
@@ -1792,7 +1791,7 @@ __aicore__ __force_inline__ void PpMatmulW8a8Aic<withSyncAll, swizzleDir, format
                      n_actual,  // n
                      k0_actual, // k
                      init_c);   // cmatrixInitVal
-                AscendC::PipeBarrier<PIPE_M>();
+                PIPE_BARRIER(M);
                 SET_FLAG(M, MTE1, mte1_mad_event_id);
             }
 
