@@ -47,16 +47,8 @@ fi
 if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     atb_path=$(cd $(dirname $set_env_path); pwd)
     get_cxx_abi_option "$@"
-    # export ATB_HOME_PATH="${atb_path}/cxx_abi_${cxx_abi}"
-    # export LD_LIBRARY_PATH=$ATB_HOME_PATH/lib:$ATB_HOME_PATH/examples:$ATB_HOME_PATH/tests/atbopstest:$LD_LIBRARY_PATH
-    # export PATH=$ATB_HOME_PATH/bin:$PATH
-
-    export PYTORCH_INSTALL_PATH="$(python3 -c 'import torch, os; print(os.path.dirname(os.path.abspath(torch.__file__)))')"
-    export PYTORCH_NPU_INSTALL_PATH="$(python3 -c 'import importlib.util; spec=importlib.util.find_spec("torch_npu"); \
-                                                   print(spec.submodule_search_locations[0])')"
     export ATB_HOME_PATH="${atb_path}/cxx_abi_${cxx_abi}"
     export LD_LIBRARY_PATH=$ATB_HOME_PATH/lib:$ATB_HOME_PATH/examples:$ATB_HOME_PATH/tests/atbopstest:$LD_LIBRARY_PATH
-    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
     export PATH=$ATB_HOME_PATH/bin:$PATH
 
     #加速库环境变量
