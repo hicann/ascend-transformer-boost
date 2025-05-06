@@ -176,6 +176,16 @@ std::string ReshapeAndCacheToJson(const Any &param)
     return paramsJson.dump();
 }
 
+std::string PagedCacheLoadToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::PagedCacheLoad specificParam = AnyCast<OpParam::PagedCacheLoad>(param);
+
+    paramsJson["type"] = specificParam.type;
+
+    return paramsJson.dump();
+}
+
 std::string RopeGradToJson(const Any &param)
 {
     nlohmann::json paramsJson;
@@ -343,6 +353,7 @@ REG_STRINGIFY(OpParam::Pad, PadToJson);
 REG_STRINGIFY(OpParam::PagedAttention, PagedAttentionToJson);
 REG_STRINGIFY(OpParam::MLA, MLAToJson);
 REG_STRINGIFY(OpParam::ReshapeAndCache, ReshapeAndCacheToJson);
+REG_STRINGIFY(OpParam::PagedCacheLoad, PagedCacheLoadToJson);
 REG_STRINGIFY(OpParam::RopeGrad, RopeGradToJson);
 REG_STRINGIFY(OpParam::Rope, RopeToJson);
 REG_STRINGIFY(OpParam::StridedBatchMatmul, StridedBatchMatmulToJson);
