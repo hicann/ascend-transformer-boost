@@ -48,6 +48,7 @@ public:
     explicit OperationWrapper(const atb::infer::MultinomialParam &param);
     explicit OperationWrapper(const atb::infer::RazorFusionAttentionParam &param);
     explicit OperationWrapper(const atb::infer::FaUpdateParam &param);
+    explicit OperationWrapper(const atb::infer::TopkToppSamplingParam &param);
     explicit OperationWrapper(const atb::GraphParam &param);
     atb::Operation *ReleaseOperation();
     std::string GetName() const;

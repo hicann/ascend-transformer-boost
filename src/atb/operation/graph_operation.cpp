@@ -222,6 +222,7 @@ GraphOperation::GraphOperation(const std::string &name) : OperationBase(name)
 {
     UsePluginOperations();
     InitEmptyInTensorPerms();
+    InitEmptyOutTensorPerms();
 }
 
 GraphOperation::GraphOperation(const std::string &name, const GraphParam &opGraph)
@@ -229,6 +230,7 @@ GraphOperation::GraphOperation(const std::string &name, const GraphParam &opGrap
 {
     UsePluginOperations();
     InitEmptyInTensorPerms();
+    InitEmptyOutTensorPerms();
 }
 
 GraphOperation::~GraphOperation()
@@ -500,6 +502,53 @@ void GraphOperation::InitEmptyInTensorPerms()
         }
     }
     ATB_LOG(INFO) << GetLogPrefix() << "emptyInTensorPerms:" << emptyInTensorPerms_;
+}
+
+SVector<bool> GraphOperation::GetEmptyOutTensorPermissions() const
+{
+    return emptyOutTensorPerms_;
+}
+
+void GraphOperation::InitEmptyOutTensorPerms()
+{
+    emptyOutTensorPerms_.reserve(opGraph_.outTensorNum);
+    emptyOutTensorPerms_.resize(opGraph_.outTensorNum);
+    for (size_t i = 0; i < emptyOutTensorPerms_.size(); ++i) {
+        emptyOutTensorPerms_.at(i) = false;
+    }
+ 
+    for (size_t nodeId = 0; nodeId < opGraph_.nodes.size(); ++nodeId) {
+        auto &node = opGraph_.nodes.at(nodeId);
+        if (!node.operation) {
+            ATB_LOG(WARN) << GetLogPrefix() << "node[" << nodeId << "] operation is null";
+            continue;
+        }
+        OperationBase *opBase = dynamic_cast<OperationBase *>(node.operation);
+        if (!opBase) {
+            ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] operation is not OperationBase";
+            continue;
+        }
+ 
+        SVector<bool> childOpEmptyOutTensorPerms = opBase->GetEmptyOutTensorPermissions();
+        if (childOpEmptyOutTensorPerms.size() != node.outTensorIds.size()) {
+            ATB_LOG(WARN) << GetLogPrefix() << "node[" << nodeId
+                          << "] childOpEmptyOutTensorPerms.size:" << childOpEmptyOutTensorPerms.size()
+                          << " != outTensorIds.size:" << node.outTensorIds.size();
+            continue;
+        }
+ 
+        for (size_t i = 0; i < childOpEmptyOutTensorPerms.size(); ++i) {
+            uint32_t outTensorId = node.outTensorIds.at(i);
+            // graph out tensor id in range [inTensorNum, inTensorNum + outTensorNum)
+            if (childOpEmptyOutTensorPerms.at(i) && outTensorId >= opGraph_.inTensorNum &&
+                outTensorId < opGraph_.inTensorNum + opGraph_.outTensorNum) {
+                emptyOutTensorPerms_.at(outTensorId - opGraph_.inTensorNum) = true;
+                ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] " << node.operation->GetName()
+                              << " outTensor[" << i << "] is allow empty";
+            }
+        }
+    }
+    ATB_LOG(INFO) << GetLogPrefix() << "emptyOutTensorPerms:" << emptyOutTensorPerms_;
 }
 
 void GraphOperation::GetGraphInfoImpl(nlohmann::json &graphJson) const

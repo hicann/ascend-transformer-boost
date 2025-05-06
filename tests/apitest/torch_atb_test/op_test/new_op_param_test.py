@@ -257,6 +257,21 @@ class Test(unittest.TestCase):
  
         self.assertEqual(multinomial_param.num_samples, expected_num_samples)
         self.assertEqual(multinomial_param.rand_seed, expected_rand_seed)
+    
+        def test_topk_topp_sampling(self):
+            test_topk_topp_sampling_param = torch_atb.TopkToppSamplingParam()
+    
+            expected_topk_topp_sampling_type = 0
+            expected_rand_seeds = []
+            expected_rand_seed = 0
+            expected_topk = 100
+            expected_log_probs_size = 0
+    
+            self.assertEqual(test_topk_topp_sampling_param.topk_topp_sampling_type, expected_topk_topp_sampling_type)
+            self.assertEqual(test_topk_topp_sampling_param.rand_seeds, expected_rand_seeds)
+            self.assertEqual(test_topk_topp_sampling_param.rand_seed, expected_rand_seed)
+            self.assertEqual(test_topk_topp_sampling_param.topk, expected_topk)
+            self.assertEqual(test_topk_topp_sampling_param.log_probs_size, expected_log_probs_size)
  
 if __name__ == "__main__":
     unittest.main()

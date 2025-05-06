@@ -572,8 +572,13 @@ function fn_run_torchatbtest()
     export_atb_env
     fn_install_torch_atb
     cd $CODE_ROOT/tests/apitest/torch_atb_test
-    python3 -m unittest discover -s op_test -p "*_test.py"
-    python3 -m unittest discover -s graph_test -p "*_test.py" -b
+    for testdir in $(ls -d *_test); do
+        echo "Running tests in $testdir"
+        for testfile in $(find "$testdir" -name "*_test.py"); do
+            echo "Running $testfile"
+            python3 -m unittest "$testfile"
+        done
+    done
 }
 
 function fn_run_pythontest()

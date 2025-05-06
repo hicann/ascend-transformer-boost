@@ -62,6 +62,7 @@ PYBIND11_MODULE(_C, m)
         .def(py::init<const MultinomialParam &>())
         .def(py::init<const RazorFusionAttentionParam &>())
         .def(py::init<const FaUpdateParam &>())
+        .def(py::init<const TopkToppSamplingParam &>())
         .def(py::init<const GraphParam &>())
         .def_property_readonly("name", &TorchAtb::OperationWrapper::GetName)
         .def_property_readonly("input_num", &TorchAtb::OperationWrapper::GetInputNum)
@@ -840,4 +841,45 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("fa_update_type", &FaUpdateParam::faUpdateType)
         .def_readwrite("sp", &FaUpdateParam::sp)
         .def("__repr__", [](const FaUpdateParam &param) { return "FaUpdateParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<TopkToppSamplingParam> topkToppSampling(m, "TopkToppSamplingParam");
+ 
+    py::enum_<TopkToppSamplingParam::TopkToppSamplingType>(topkToppSampling, "TopkToppSamplingType")
+        .value("SAMPLING_UNDEFINED", TopkToppSamplingParam::TopkToppSamplingType::SAMPLING_UNDEFINED)
+        .value("SINGLE_TOPK_SAMPLING", TopkToppSamplingParam::TopkToppSamplingType::SINGLE_TOPK_SAMPLING)
+        .value("BATCH_TOPK_MULTINOMIAL_SAMPLING",
+               TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_SAMPLING)
+        .value("BATCH_TOPK_EXPONENTIAL_SAMPLING",
+               TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_SAMPLING)
+        .value("BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING",
+               TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING)
+        .value("BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING",
+               TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING)
+        .value("SAMPLING_MAX", TopkToppSamplingParam::TopkToppSamplingType::SAMPLING_MAX);
+ 
+    topkToppSampling
+        .def(py::init([](TopkToppSamplingParam::TopkToppSamplingType topkToppSamplingType,
+                         const std::vector<uint32_t> &randSeeds, uint32_t randSeed, uint32_t topk,
+                         int32_t logProbsSize) {
+                TopkToppSamplingParam param;
+                param.topkToppSamplingType = topkToppSamplingType;
+                AddElements(randSeeds, param.randSeeds);
+                param.randSeed = randSeed;
+                param.topk = topk;
+                param.logProbsSize = logProbsSize;
+                return param;
+                }),
+             py::arg("topk_topp_sampling_type") = TopkToppSamplingParam::TopkToppSamplingType::SINGLE_TOPK_SAMPLING,
+             py::arg("rand_seeds") = py::list(),
+             py::arg("rand_seed") = 0,
+             py::arg("topk") = 100,
+             py::arg("log_probs_size") = 0)
+        .def_readwrite("topk_topp_sampling_type", &TopkToppSamplingParam::topkToppSamplingType)
+        .def_readwrite("rand_seeds", &TopkToppSamplingParam::randSeeds)
+        .def_readwrite("rand_seed", &TopkToppSamplingParam::randSeed)
+        .def_readwrite("topk", &TopkToppSamplingParam::topk)
+        .def_readwrite("log_probs_size", &TopkToppSamplingParam::logProbsSize)
+        .def("__repr__", [](const TopkToppSamplingParam &param) {
+            return "TopkToppSamplingParam: " + OpParamToJson(param).dump();
+        });
 }

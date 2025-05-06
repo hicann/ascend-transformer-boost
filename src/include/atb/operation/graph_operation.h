@@ -35,6 +35,7 @@ protected:
     Status SetNodeOperationIds() override;
     void InitEmptyInTensorPerms();
     SVector<bool> GetEmptyInTensorPermissions() const override;
+    SVector<bool> GetEmptyOutTensorPermissions() const override;
     void GetGraphInfoImpl(nlohmann::json &graphJson) const override;
 
 protected:

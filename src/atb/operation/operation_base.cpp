@@ -114,6 +114,46 @@ SVector<bool> OperationBase::GetEmptyInTensorPermissions() const
     return emptyInTensorPerms_;
 }
 
+void OperationBase::InitEmptyOutTensorPerms() const
+{
+    if (!operationIr_) {
+        ATB_LOG(DEBUG) << GetLogPrefix() << "operationIr_ is null.";
+        return;
+    }
+    if (!operationIr_->IsValid()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "operationIr_ is invalid";
+        return;
+    }
+    ATB_LOG(DEBUG) << GetLogPrefix() << "operationIr_ : " << operationIr_->ToString();
+    const Mki::SVector<Mki::TensorInfoIr> &outTensorInfoIrs = operationIr_->GetOutTensorInfoIrs();
+    if (GetOutputNum() != 0 && outTensorInfoIrs.size() != GetOutputNum()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetOutTensorInfoIrs size: " << outTensorInfoIrs.size()
+                       << " is not equal with GetOutputNum  : " << GetOutputNum();
+        return;
+    }
+    emptyOutTensorPerms_.reserve(outTensorInfoIrs.size());
+    emptyOutTensorPerms_.resize(outTensorInfoIrs.size());
+    for (size_t outTensorId = 0; outTensorId < outTensorInfoIrs.size(); outTensorId++) {
+        if (outTensorInfoIrs[outTensorId].isOptional) {
+            emptyOutTensorPerms_.at(outTensorId) = true;
+            ATB_LOG(INFO) << GetLogPrefix() << "emptyOutTensorPerms init outTensor[" << outTensorId
+                          << "] is isOptional";
+        } else {
+            emptyOutTensorPerms_.at(outTensorId) = false;
+        }
+    }
+    ATB_LOG(INFO) << GetLogPrefix() << "InitEmptyOutTensorPerms finished:" << emptyOutTensorPerms_;
+
+}
+ 
+SVector<bool> OperationBase::GetEmptyOutTensorPermissions() const
+{
+    if (emptyOutTensorPerms_.size() == 0) {
+        InitEmptyOutTensorPerms();
+    }
+    return emptyOutTensorPerms_;
+}
+
 template <typename TensorType> Status OperationBase::CheckInTensor(const SVector<TensorType> &inTensors) const
 {
     Status st = NO_ERROR;
@@ -128,6 +168,27 @@ template <typename TensorType> Status OperationBase::CheckInTensor(const SVector
         st = TensorCheck::CheckTensorShape(inTensor);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "inTensor [" << inTensorId
+                           << "] CheckTensorShape failed. ErrorType: " << st;
+            return st;
+        }
+    }
+    return NO_ERROR;
+}
+
+template <typename TensorType> Status OperationBase::CheckOutTensor(const SVector<TensorType> &outTensors) const
+{
+    Status st = NO_ERROR;
+    SVector<bool> emptyTensorPerms = GetEmptyOutTensorPermissions();
+    for (size_t outTensorId = 0; outTensorId < outTensors.size(); outTensorId++) {
+        const auto &outTensor = outTensors.at(outTensorId);
+        if (outTensorId < emptyTensorPerms.size() && emptyTensorPerms.at(outTensorId) &&
+            TensorCheck::IsEmptyTensor(outTensor)) {
+            ATB_LOG(INFO) << GetLogPrefix() << "outTensor [" << outTensorId << "] is allowed empty";
+            continue;
+        }
+        st = TensorCheck::CheckTensorShape(outTensor);
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "outTensor [" << outTensorId
                            << "] CheckTensorShape failed. ErrorType: " << st;
             return st;
         }
@@ -300,6 +361,10 @@ Status OperationBase::CheckVariantPack(const VariantPack &variantPack) const
     }
     Status st = NO_ERROR;
     st = CheckInTensor(variantPack.inTensors);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    st = CheckOutTensor(variantPack.outTensors);
     if (st != NO_ERROR) {
         return st;
     }
@@ -606,45 +671,55 @@ Status OperationBase::CopyTilingToDevice()
     return st;
 }
 
-Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
+template <typename TensorType>
+Status OperationBase::ExecuteVariantPackInTensorCheck(const SVector<TensorType> &inTensors) const
 {
     std::string Prefix = GetLogPrefix();
-    if (variantPack.inTensors.size() != runnerVariantPack_.inTensors.size()) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "execute inTensors.size:" << variantPack.inTensors.size()
+    if (inTensors.size() != runnerVariantPack_.inTensors.size()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "execute inTensors.size:" << inTensors.size()
                        << " != setup inTensors.size:" << runnerVariantPack_.inTensors.size();
         return ERROR_INVALID_PARAM;
     }
-    if (variantPack.outTensors.size() != runnerVariantPack_.outTensors.size()) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "execute outTensors.size:" << variantPack.outTensors.size()
-                       << " != setup outTensors.size:" << runnerVariantPack_.outTensors.size();
-        return ERROR_INVALID_PARAM;
-    }
-    SVector<bool> emptyTensorPerms = GetEmptyInTensorPermissions();
-    for (size_t i = 0; i < variantPack.inTensors.size(); i++) {
-        const Tensor &variantPackInTensor = variantPack.inTensors.at(i);
-        // If the oepration name contains WithStride, it indicates that the operation supports non continuous tensors
-        if (Prefix.find("WithStride") == std::string::npos &&
+    SVector<bool> emptyInTensorPerms = GetEmptyInTensorPermissions();
+    for (size_t i = 0; i < inTensors.size(); i++) {
+        const Tensor &variantPackInTensor = inTensors.at(i);
+        if (Prefix.find("WithStride") == std::string::npos && // "WithStride" indicates non continuous tensors
             variantPackInTensor.dataSize != Utils::GetTensorSize(runnerVariantPack_.inTensors.at(i).desc)) {
             ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.inTensors(" << i
                            << ").dataSize is Not equal to the setup dataSize";
             return ERROR_INVALID_PARAM;
         }
-        if (i < emptyTensorPerms.size() && emptyTensorPerms.at(i) && TensorCheck::IsEmptyTensor(variantPackInTensor)) {
+        if (i < emptyInTensorPerms.size() && emptyInTensorPerms.at(i) &&
+            TensorCheck::IsEmptyTensor(variantPackInTensor)) {
             continue;
         }
         if (!variantPackInTensor.deviceData && !variantPackInTensor.hostData) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.inTensors(" << i
-                           << ") deviceData&hostData is null";
             return ERROR_INVALID_PARAM;
         }
     }
+    return NO_ERROR;
+}
 
-    for (size_t i = 0; i < variantPack.outTensors.size(); i++) {
-        const Tensor &variantPackOutTensor = variantPack.outTensors.at(i);
+template <typename TensorType>
+Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType> &outTensors) const
+{
+    std::string Prefix = GetLogPrefix();
+    if (outTensors.size() != runnerVariantPack_.outTensors.size()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "execute outTensors.size:" << outTensors.size()
+                       << " != setup outTensors.size:" << runnerVariantPack_.outTensors.size();
+        return ERROR_INVALID_PARAM;
+    }
+    SVector<bool> emptyOutTensorPerms = GetEmptyOutTensorPermissions();
+    for (size_t i = 0; i < outTensors.size(); i++) {
+        const Tensor &variantPackOutTensor = outTensors.at(i);
         if (variantPackOutTensor.dataSize != Utils::GetTensorSize(runnerVariantPack_.outTensors.at(i).desc)) {
             ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.outTensors(" << i
                            << ").dataSize is Not equal to the setup dataSize";
             return ERROR_INVALID_PARAM;
+        }
+        if (i < emptyOutTensorPerms.size() && emptyOutTensorPerms.at(i) &&
+            TensorCheck::IsEmptyTensor(variantPackOutTensor)) {
+            continue;
         }
         if (!variantPackOutTensor.deviceData && !variantPackOutTensor.hostData) {
             ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.outTensors(" << i
@@ -652,8 +727,23 @@ Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
             return ERROR_INVALID_PARAM;
         }
     }
-
     return NO_ERROR;
+}
+
+Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
+{
+    Status st = NO_ERROR;
+    st = ExecuteVariantPackInTensorCheck(variantPack.inTensors);
+    if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "ExecuteVariantPackCheck for inTensor failed, error code: " << st;
+            return st;
+        }
+    st = ExecuteVariantPackOutTensorCheck(variantPack.outTensors);
+    if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "ExecuteVariantPackCheck for outTensor failed, error code: " << st;
+            return st;
+        }
+    return st;
 }
 
 Status OperationBase::ExecuteCheck(const VariantPack &variantPack, const uint8_t *workspace, uint64_t workspaceSize,
