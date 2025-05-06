@@ -34,6 +34,7 @@ namespace Lcal {
     constexpr int32_t COMM_DATA_DIRECT = 0;
     constexpr int32_t COMM_NPU_DIRECT = 1;
     constexpr int32_t COMMNPUSPLIT_ONE = 1;
+    constexpr int32_t COMMNPUSPLIT_TWO = 2;
     constexpr int32_t COMMNPUSPLIT_THREE = 3;
     constexpr int32_t COMMNPUSPLIT_EIGHT = 8;
     constexpr int32_t COMMNPUSPLIT_FOUR = 4;
