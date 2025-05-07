@@ -25,7 +25,7 @@ const uint32_t TENSOR_IDX_ONE = 1;
 const uint32_t TENSOR_IDX_TWO = 2;
 const uint32_t MAX_VALUE1 = 26624;
 const uint32_t MAX_VALUE2 = 7552;
-const uint32_t MAX_VALUE3 = 4096;
+const uint32_t MAX_VALUE3 = 4096; 
 
 template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation **operation)
 {
