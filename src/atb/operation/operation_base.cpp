@@ -143,7 +143,6 @@ void OperationBase::InitEmptyOutTensorPerms() const
         }
     }
     ATB_LOG(INFO) << GetLogPrefix() << "InitEmptyOutTensorPerms finished:" << emptyOutTensorPerms_;
-
 }
  
 SVector<bool> OperationBase::GetEmptyOutTensorPermissions() const
