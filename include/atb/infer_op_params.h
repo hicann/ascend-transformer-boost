@@ -2873,6 +2873,7 @@ struct MultiLatentAttentionParam {
         CALC_TYPE_UNDEFINED = 0, // 默认值
         CALC_TYPE_SPEC,          // 支持传入大于1的qseqlen
         CALC_TYPE_RING,          // ringAttention
+        CALC_TYPE_PREFILL,       // 全量场景
     };
     //!
     //! \brief CalcType类型
