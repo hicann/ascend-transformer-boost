@@ -36,6 +36,7 @@
 #include "atb/utils/acl_kernel.h"
 #include "atb/operation/operation_base.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/mstx_mem_register.h"
 
 namespace atb {
 const int ALIGN_INT = 512;
@@ -578,15 +579,34 @@ void OpsRunner::ReportMsprofInfo(const uint64_t timeStamp, const char *opName, c
     }
 }
 
-Status OpsRunner::RunAllKernel(ContextBase *context)
+Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(DEBUG) << GetLogPrefix() << " start run all kernel, kernel count:" << kernelGraph_.nodes.size();
-    aclrtStream stream = GetExecuteStream(context);
+    aclrtStream stream = GetExecuteStream(runnerVariantPack.context);
     for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
-
+        if (runnerVariantPack.mstxMemRegister != nullptr) {
+            runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
+            auto &inTensors = node.impl->GetInTensors();
+            for (uint64_t tensorId = 0; tensorId < inTensors.size(); tensorId++) {
+                Mki::Tensor &tensor = inTensors.at(tensorId);
+                if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
+                    tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
+                }
+                }
+            auto &outTensors = node.impl->GetOutTensors();
+            for (uint64_t tensorId = 0; tensorId < outTensors.size(); tensorId++) {
+                Mki::Tensor &tensor = outTensors.at(tensorId);
+                if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
+                    tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
+                }
+            }
+            runnerVariantPack.mstxMemRegister->MstxMemRegionsRegister();
+        }
         RunKernelPreProcess(node, nodeId, stream);
-        Status st = RunKernel(node, nodeId, context);
+        Status st = RunKernel(node, nodeId, runnerVariantPack.context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << "RunKernel failed! ret:" << st;
             return st;
@@ -594,6 +614,9 @@ Status OpsRunner::RunAllKernel(ContextBase *context)
             ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] " << node.GetName() << " run end";
         }
         RunKernelPostProcess(node, nodeId, stream);
+        if (runnerVariantPack.mstxMemRegister != nullptr) {
+            runnerVariantPack.mstxMemRegister->MstxMemRegionsUnregister();
+        }
     }
     ATB_LOG(INFO) << GetLogPrefix() << " finish run all kernel";
     return NO_ERROR;
