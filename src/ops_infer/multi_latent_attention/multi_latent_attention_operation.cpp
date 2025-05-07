@@ -424,15 +424,15 @@ Status MultiLatentAttentionOperation::DimCheck(const SVector<TensorDesc> &inTens
 }
 Status MultiLatentAttentionOperation::InTensorDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const
 {
-    if ((inTensorDesc.at(IN_TENSOR_0).shape.dimNum != 2 &&  // 0: query 2: 2 dims
-         inTensorDesc.at(IN_TENSOR_0).shape.dimNum != 3) || // 0: query 3: 3 dims
-        (inTensorDesc.at(IN_TENSOR_1).shape.dimNum !=
-         inTensorDesc.at(IN_TENSOR_0).shape.dimNum) ||    // 1: queryRope 0: query
-        inTensorDesc.at(IN_TENSOR_2).shape.dimNum != 3 || // 2: key        3: 3 dims
-        inTensorDesc.at(IN_TENSOR_3).shape.dimNum != 3 || // 3: keyRope    3: 3 dims
-        inTensorDesc.at(IN_TENSOR_4).shape.dimNum != 3 || // 4: value      3: 3 dims
-        inTensorDesc.at(IN_TENSOR_5).shape.dimNum != 1 || // 5: qSeqLen    1: 1 dims
-        inTensorDesc.at(IN_TENSOR_6).shape.dimNum != 1 || // 6: kvSeqLen   1: 1 dims
+    if ((inTensorDesc.at(IN_TENSOR_0).shape.dimNum != 2 &&  // 0: query 2:   2 dims
+         inTensorDesc.at(IN_TENSOR_0).shape.dimNum != 3) || // 0: query 3:   3 dims
+        (inTensorDesc.at(IN_TENSOR_1).shape.dimNum !=       // 1: queryRope
+         inTensorDesc.at(IN_TENSOR_0).shape.dimNum) ||      // 0: query
+        inTensorDesc.at(IN_TENSOR_2).shape.dimNum != 3 ||   // 2: key        3: 3 dims
+        inTensorDesc.at(IN_TENSOR_3).shape.dimNum != 3 ||   // 3: keyRope    3: 3 dims
+        inTensorDesc.at(IN_TENSOR_4).shape.dimNum != 3 ||   // 4: value      3: 3 dims
+        inTensorDesc.at(IN_TENSOR_5).shape.dimNum != 1 ||   // 5: qSeqLen    1: 1 dims
+        inTensorDesc.at(IN_TENSOR_6).shape.dimNum != 1 ||   // 6: kvSeqLen   1: 1 dims
         (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE &&
          inTensorDesc.at(IN_TENSOR_7).shape.dimNum != 2)) { // 7: mask 2: 2 dims
         ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
