@@ -16,20 +16,18 @@
 #include "atb/utils/singleton.h"
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/core/op_param_funcs.h"
-
-namespace atb {
+namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 2;
-
-template <> Status CreateOperation(const infer::SortParam &opParam, Operation **operation)
+bool ParamCheck(const atb::infer::SortParam &opParam)
 {
-    if (operation == nullptr) {
-        return ERROR_INVALID_PARAM;
-    }
-    OP_PARAM_RSV_CHECK(opParam);
-    *operation = new SortOperation(opParam);
-    return NO_ERROR;
+    (void)opParam;
+    return true;
 }
+} // namespace
+
+namespace atb {
+OPERATION_PARAM_FUNCS(SortOperation, infer::SortParam)
 
 SortOperation::SortOperation(const infer::SortParam &param) : OperationBase("SortOperation"), param_(param)
 {
@@ -107,4 +105,16 @@ nlohmann::json SortOperation::GetParamJson() const
 {
     return OpParamToJson(param_);
 }
+
+infer::SortParam SortOperation::GetParam() const
+{
+    return param_;
+}
+
+void SortOperation::SetParam(const infer::SortParam &param)
+{
+    param_ = param;
+    runner_ = nullptr;
+}
+
 } // namespace atb

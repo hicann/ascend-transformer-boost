@@ -227,8 +227,9 @@ static atb::Status AllGatherVOperationCreate(const nlohmann::json &paramJson, at
     if (paramJson.find("commDomain") != paramJson.end()) {
         param.commDomain = paramJson["commDomain"].get<std::string>();
     }
-    ATB_LOG(INFO) << "AllGatherParam rank:" << param.rank << ", rankSize:" << param.rankSize << ", rankRoot:" <<
-        param.rankRoot << ", backend:" << param.backend << ", commDomain:" << param.commDomain;
+    ATB_LOG(INFO) << "AllGatherParam rank:" << param.rank << ", rankSize:" << param.rankSize
+                  << ", rankRoot:" << param.rankRoot << ", backend:" << param.backend
+                  << ", commDomain:" << param.commDomain;
     return CreateOperation(param, op);
 }
 
@@ -613,7 +614,7 @@ static atb::Status SetValueOperationCreate(const nlohmann::json &paramJson, atb:
     return CreateOperation(param, op);
 }
 
-static atb::Status SortOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::infer::SortParam SortParamFromJson(const nlohmann::json &paramJson)
 {
     atb::infer::SortParam param;
     for (auto item : paramJson["num"]) {
@@ -625,7 +626,17 @@ static atb::Status SortOperationCreate(const nlohmann::json &paramJson, atb::Ope
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
         }
     }
-    return CreateOperation(param, op);
+    return param;
+}
+
+static atb::Status SortOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return CreateOperation(SortParamFromJson(paramJson), op);
+}
+
+static atb::Status SortOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return UpdateOperationParam(SortParamFromJson(paramJson), op);
 }
 
 static atb::Status TransposeOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -810,10 +821,12 @@ static atb::Status ReshapeAndCacheWithStrideOperationCreate(const nlohmann::json
 {
     atb::infer::ReshapeAndCacheWithStrideParam param;
     if (paramJson.contains("compressType")) {
-        param.compressType = atb::infer::ReshapeAndCacheWithStrideParam::CompressType(paramJson["compressType"].get<int32_t>());
+        param.compressType =
+            atb::infer::ReshapeAndCacheWithStrideParam::CompressType(paramJson["compressType"].get<int32_t>());
     }
     if (paramJson.contains("kvCacheCfg")) {
-        param.kvCacheCfg = atb::infer::ReshapeAndCacheWithStrideParam::KvCacheCfg(paramJson["kvCacheCfg"].get<int32_t>());
+        param.kvCacheCfg =
+            atb::infer::ReshapeAndCacheWithStrideParam::KvCacheCfg(paramJson["kvCacheCfg"].get<int32_t>());
     }
     ATB_LOG(INFO) << "ReshapeAndCacheWithStrideOperation Create compressType:" << param.compressType
                   << ", kvCacheCfg:" << param.kvCacheCfg;
@@ -824,8 +837,7 @@ static atb::Status ReshapeAndCacheWithStrideOperationCreate(const nlohmann::json
     }
     return CreateOperation(param, op);
 }
-
-static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::infer::FillParam FillParamFromJson(const nlohmann::json &paramJson)
 {
     atb::infer::FillParam param;
     if (paramJson.contains("withMask")) {
@@ -848,7 +860,17 @@ static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Ope
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
         }
     }
-    return CreateOperation(param, op);
+    return param;
+}
+
+static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return CreateOperation(GetGenAttentionMaskParamFromJson(paramJson), op);
+}
+
+static atb::Status FillOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return UpdateOperationParam(GetGenAttentionMaskParamFromJson(paramJson), op);
 }
 
 static atb::Status RepeatOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -957,7 +979,7 @@ static atb::Status ElewiseOperationCreate(const nlohmann::json &paramJson, atb::
     return CreateOperation(param, op);
 }
 
-static atb::Status TopkToppSamplingOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::infer::TopkToppSamplingParam TopkToppSamplingParamFromJson(const nlohmann::json &paramJson)
 {
     atb::infer::TopkToppSamplingParam param;
     if (paramJson.contains("topkToppSamplingType")) {
@@ -983,7 +1005,17 @@ static atb::Status TopkToppSamplingOperationCreate(const nlohmann::json &paramJs
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
         }
     }
-    return CreateOperation(param, op);
+    return param;
+}
+
+static atb::Status TopkToppSamplingOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return CreateOperation(TopkToppSamplingParamFromJson(paramJson), op);
+}
+
+static atb::Status TopkToppSamplingOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return UpdateOperationParam(TopkToppSamplingParamFromJson(paramJson), op);
 }
 
 static atb::Status PadOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -1355,7 +1387,8 @@ static atb::Status RmsNormWithStrideOperationCreate(const nlohmann::json &paramJ
             param.normParam.rstd = normParam["rstd"].get<bool>();
         }
         if (normParam.contains("precisionMode")) {
-            param.normParam.precisionMode = normParam["precisionMode"].get<atb::infer::RmsNormWithStrideParam::PrecisionMode>();
+            param.normParam.precisionMode =
+                normParam["precisionMode"].get<atb::infer::RmsNormWithStrideParam::PrecisionMode>();
         }
         if (normParam.contains("modelType")) {
             param.normParam.modelType = normParam["modelType"].get<atb::infer::RmsNormWithStrideParam::ModelType>();
@@ -1964,8 +1997,9 @@ static atb::Status all_to_allvv2_operationCreate(const nlohmann::json &paramJson
     if (paramJson.find("commDomain") != paramJson.end()) {
         param.commDomain = paramJson["commDomain"].get<std::string>();
     }
-    ATB_LOG(INFO) << "AllToAllVV2Param rank:" << param.rank << ", rankSize:" << param.rankSize << ", rankRoot:" <<
-        param.rankRoot << ", backend:" << param.backend << ", commDomain:" << param.commDomain;
+    ATB_LOG(INFO) << "AllToAllVV2Param rank:" << param.rank << ", rankSize:" << param.rankSize
+                  << ", rankRoot:" << param.rankRoot << ", backend:" << param.backend
+                  << ", commDomain:" << param.commDomain;
     return CreateOperation(param, op);
 }
 
