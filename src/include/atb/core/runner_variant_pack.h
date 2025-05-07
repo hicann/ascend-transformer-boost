@@ -29,6 +29,8 @@ struct RunnerVariantPack {
     uint64_t workspaceBufferSize = 0;
     uint8_t *intermediateBuffer = nullptr;
     uint64_t intermediateBufferSize = 0;
+    uint8_t *argsDeviceBuffer = nullptr;
+    uint8_t *argsHostBuffer = nullptr;
     ContextBase *context = nullptr;
     std::string ToString() const;
 };

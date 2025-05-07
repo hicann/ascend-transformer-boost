@@ -67,6 +67,9 @@ public:
     Graph &GetGraph();
     void ReserveSvector(GraphRunner::Node &node);
     bool IsSupportGlbWorkspace() override;
+    uint64_t GetArgsSize() override;
+    Status BuildArgs() override;
+    Status UpdateTensorAddr(RunnerVariantPack &runnerVariantPack) override;
 
 protected:
     Status SetupImpl(RunnerVariantPack &runnerVariantPack) override;
