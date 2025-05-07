@@ -636,7 +636,7 @@ static atb::Status SortOperationCreate(const nlohmann::json &paramJson, atb::Ope
 
 static atb::Status SortOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
 {
-    return UpdateOperationParam(SortParamFromJson(paramJson), op);
+    return UpdateOperationParam(op, SortParamFromJson(paramJson));
 }
 
 static atb::Status TransposeOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -870,7 +870,7 @@ static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Ope
 
 static atb::Status FillOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
 {
-    return UpdateOperationParam(GetGenAttentionMaskParamFromJson(paramJson), op);
+    return UpdateOperationParam(op, GetGenAttentionMaskParamFromJson(paramJson));
 }
 
 static atb::Status RepeatOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -1015,7 +1015,7 @@ static atb::Status TopkToppSamplingOperationCreate(const nlohmann::json &paramJs
 
 static atb::Status TopkToppSamplingOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
 {
-    return UpdateOperationParam(TopkToppSamplingParamFromJson(paramJson), op);
+    return UpdateOperationParam(op, TopkToppSamplingParamFromJson(paramJson));
 }
 
 static atb::Status PadOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -2502,6 +2502,9 @@ std::map<std::string, OperationUpdateFunc> g_update_funcMap = {
     {"UnpadWithHiddenStateOperation", &UnpadWithHiddenStateOperationUpdate},
     {"LaserAttentionOperation", &LaserAttentionOperationUpdate},
     {"LaserAttentionGradOperation", &LaserAttentionGradOperationUpdate},
+    {"FillOperation", &FillOperationUpdate},
+    {"SortOperation", &SortOperationUpdate},
+    {"TopkToppSamplingOperation", &TopkToppSamplingOperationUpdate},
 };
 
 atb::Status UpdateOperationParam(const std::string &opName, const std::string &param, atb::Operation *operation)
