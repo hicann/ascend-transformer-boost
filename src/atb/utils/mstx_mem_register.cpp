@@ -89,7 +89,7 @@ int32_t MstxMemRegister::GetMstxDevice()
 
 void MstxMemRegister::AddTensorMemRegions(void *ptr, uint64_t size)
 {
-    if(GetMstxDevice() >= 0) {
+    if (GetMstxDevice() >= 0) {
         mstxMemVirtualRangeDesc_t tensorInfo;
         tensorInfo.deviceId = static_cast<uint32_t>(GetMstxDevice());
         tensorInfo.ptr = ptr;
@@ -97,4 +97,4 @@ void MstxMemRegister::AddTensorMemRegions(void *ptr, uint64_t size)
         rangesDesc_.push_back(tensorInfo);
     }
 }
-}  //namespace atb
+}  // namespace atb
