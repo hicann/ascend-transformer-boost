@@ -514,6 +514,10 @@ Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceS
     const uint64_t beginTime = GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status() ?
                                    GetSingleton<Mki::ProfilingFuncs>().ProfSysCycleTime() :
                                    0;
+    if (!context) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "context is null, setup fail";
+        return ERROR_INVALID_PARAM;
+    }
     if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
         ATB_LOG(INFO) << GetLogPrefix() << "run in GRAPH_LAUNCH_MODE";
         st = GraphModeSetup(variantPack, workspaceSize, context);
@@ -781,6 +785,10 @@ Status OperationBase::PreExecuteThrow(const VariantPack &variantPack, uint8_t *w
 Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
                                 Context *context)
 {
+    if (!context) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "context is null, PreLaunch fail";
+        return ERROR_INVALID_PARAM;
+    }
     if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
         return GraphModePreLaunch(variantPack, workspace, workspaceSize, context);
     } else {
