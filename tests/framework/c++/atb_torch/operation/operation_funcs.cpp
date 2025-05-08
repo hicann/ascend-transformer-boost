@@ -634,7 +634,7 @@ static atb::Status SortOperationCreate(const nlohmann::json &paramJson, atb::Ope
     return CreateOperation(SortParamFromJson(paramJson), op);
 }
 
-static atb::Status SortOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::Status SortOperationUpdate(const nlohmann::json &paramJson, atb::Operation *op)
 {
     return UpdateOperationParam(op, SortParamFromJson(paramJson));
 }
@@ -868,7 +868,7 @@ static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Ope
     return CreateOperation(GetGenAttentionMaskParamFromJson(paramJson), op);
 }
 
-static atb::Status FillOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::Status FillOperationUpdate(const nlohmann::json &paramJson, atb::Operation *op)
 {
     return UpdateOperationParam(op, GetGenAttentionMaskParamFromJson(paramJson));
 }
@@ -1013,7 +1013,7 @@ static atb::Status TopkToppSamplingOperationCreate(const nlohmann::json &paramJs
     return CreateOperation(TopkToppSamplingParamFromJson(paramJson), op);
 }
 
-static atb::Status TopkToppSamplingOperationUpdate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::Status TopkToppSamplingOperationUpdate(const nlohmann::json &paramJson, atb::Operation *op)
 {
     return UpdateOperationParam(op, TopkToppSamplingParamFromJson(paramJson));
 }
