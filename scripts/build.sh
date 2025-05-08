@@ -618,28 +618,37 @@ function fn_run_infratest()
 
 function fn_install_torch_atb()
 {
-    if ! pip show torch_atb > /dev/null 2>&1; then
-        py_version=$(python -c 'import sys; print(sys.version_info[0], ".", sys.version_info[1])' | tr -d ' ')
-        py_major_version=${py_version%%.*}
-        py_minor_version=${py_version##*.}
+    py_version=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    py_major_version=${py_version%%.*}
+    py_minor_version=${py_version##*.}
 
-        if [ "$py_major_version" == "3" ] && { [ "$py_minor_version" == "9" ] || [ "$py_minor_version" == "10" ] || [ "$py_minor_version" == "11" ]; }; then
-            wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
-            wheel_path="${OUTPUT_DIR}/whl/$wheel_file"
+    if [ "$py_major_version" != "3" ] || { [ "$py_minor_version" != "9" ] && [ "$py_minor_version" != "10" ] && [ "$py_minor_version" != "11" ]; }; then
+        echo "ERROR: Unsupported Python version. Only Python 3.9, 3.10, and 3.11 are supported."
+        exit 1
+    fi
 
-            if [ -f "$wheel_path" ]; then
-                if ! [ $(pip install "$wheel_path" > /dev/null 2>&1; echo $?) -eq 0 ]; then
-                    echo "ERROR: torch_atb installation failed!"
-                    exit 1
-                else
-                    echo "INFO: torch_atb installation succeeded!"
-                fi
-            else
-                echo "ERROR: Wheel file ${wheel_file} not found."
-                exit 1
-            fi
+    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
+    wheel_path="${OUTPUT_DIR}/whl/${wheel_file}"
+
+    if [ ! -f "$wheel_path" ]; then
+        echo "ERROR: Wheel file ${wheel_file} not found at ${wheel_path}."
+        exit 1
+    fi
+
+    if pip show torch_atb > /dev/null 2>&1; then
+        echo "INFO: torch_atb is already installed, force-reinstalling..."
+        if pip install --force-reinstall "$wheel_path" > /dev/null 2>&1; then
+            echo "INFO: torch_atb reinstallation succeeded!"
         else
-            echo "ERROR: Unsupported Python version. Only Python 3.9, 3.10, and 3.11 are supported."
+            echo "ERROR: torch_atb reinstallation failed!"
+            exit 1
+        fi
+    else
+        echo "INFO: torch_atb not found, installing..."
+        if pip install "$wheel_path" > /dev/null 2>&1; then
+            echo "INFO: torch_atb installation succeeded!"
+        else
+            echo "ERROR: torch_atb installation failed!"
             exit 1
         fi
     fi
