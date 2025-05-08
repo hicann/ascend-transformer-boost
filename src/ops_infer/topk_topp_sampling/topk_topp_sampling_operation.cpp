@@ -41,7 +41,7 @@ static const uint32_t LOG_PROBS_OUT_TENSOR_INDEX = 2;
 static const uint32_t LOG_PROBS_OUT_TENSOR_DIM = 2;
 static const uint32_t LAST_DIM = 1;
 
-bool ParamCheck(const infer::TopkToppSamplingParam &opParam)
+bool ParamCheck(const atb::infer::TopkToppSamplingParam &opParam)
 {
     if (opParam.topkToppSamplingType <= atb::infer::TopkToppSamplingParam::SAMPLING_UNDEFINED ||
         opParam.topkToppSamplingType >= atb::infer::TopkToppSamplingParam::SAMPLING_MAX) {
