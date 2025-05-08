@@ -861,6 +861,28 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
         node.runnerVariantPack.intermediateBuffer = runnerVariantPack.intermediateBuffer + selfIntermediateBufferSize_;
         node.runnerVariantPack.intermediateBufferSize = intermediateBufferSizes_.at(nodeId);
     }
+
+    if (runnerVariantPack.argsDeviceBuffer != nullptr) {
+        uint64_t offset = 0;
+        for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
+            auto &node = runnerGraph_.nodes.at(nodeId);
+            node.runnerVariantPack.argsDeviceBuffer = runnerVariantPack.argsDeviceBuffer + offset;
+            offset += node.runner->GetArgsSize();
+            ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsDeviceAddr is "
+                << (void*)node.runnerVariantPack.argsDeviceBuffer;
+        }
+    }
+
+    if (runnerVariantPack.argsHostBuffer != nullptr) {
+        uint64_t offset = 0;
+        for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
+            auto &node = runnerGraph_.nodes.at(nodeId);
+            node.runnerVariantPack.argsHostBuffer = runnerVariantPack.argsHostBuffer + offset;
+            offset += node.runner->GetArgsSize();
+            ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsHostAddr is "
+                << (void*)node.runnerVariantPack.argsHostBuffer;
+        }
+    }
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's buffer end";
 }
 
@@ -963,5 +985,42 @@ bool GraphRunner::IsSupportGlbWorkspace()
 void GraphRunner::ChangeWorkspaceBufferByExecuteStream(RunnerVariantPack &runnerVariantPack)
 {
     (void)runnerVariantPack;
+}
+
+uint64_t GraphRunner::GetArgsSize()
+{
+    uint64_t argsSize = 0;
+    for (size_t i = 0; i < runnerGraph_.nodes.size(); i++) {
+        argsSize += runnerGraph_.nodes.at(i).runner->GetArgsSize();
+    }
+    return argsSize;
+}
+
+Status GraphRunner::BuildArgs()
+{
+    Status st = NO_ERROR;
+    for (size_t i = 0; i < runnerGraph_.nodes.size(); i++) {
+        st = runnerGraph_.nodes.at(i).runner->BuildArgs();
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "BuildArgs failed!";
+            return st;
+        }
+    }
+    return st;
+}
+
+Status GraphRunner::UpdateTensorAddr(RunnerVariantPack &runnerVariantPack)
+{
+    TensorUtil::FastCopyTensors(runnerVariantPack.inTensors, runnerGraph_.inTensors);
+    TensorUtil::FastCopyTensors(runnerVariantPack.outTensors, runnerGraph_.outTensors);
+
+    UpdateVariantPackTensorData(runnerVariantPack);
+
+    for (size_t i = 0; i < runnerGraph_.nodes.size(); i++) {
+        auto &node = runnerGraph_.nodes.at(i);
+        node.runnerVariantPack.intermediateBuffer = runnerVariantPack.intermediateBuffer;
+        node.runner->UpdateTensorAddr(node.runnerVariantPack);
+    }
+    return NO_ERROR;
 }
 } // namespace atb
