@@ -1491,7 +1491,8 @@ struct LinearParallelParam {
         QUANT_TYPE_PER_TENSOR = 0,  //!< 对整个张量进行量化
         QUANT_TYPE_PER_CHANNEL = 1, //!< 对张量中每个channel分别进行量化
         QUANT_TYPE_PER_GROUP = 2,   //!< 将张量按quantGroupSize划分后，分别进行量化
-        QUANT_TYPE_MAX = 3,         //!< 枚举类型最大值
+        QUANT_TYPE_FLOAT32_SCALE_PER_CHANNEL = 4, //!< 对张量中每个token分别进行量化, bf16数据类型的quantScale为float
+        QUANT_TYPE_MAX = 5,         //!< 枚举类型最大值
     };
     //! \brief 权重是否需要转置，默认为true。
     bool transWeight = true;

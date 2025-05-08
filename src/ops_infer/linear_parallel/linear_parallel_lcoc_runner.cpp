@@ -31,10 +31,14 @@ LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelPa
             break;
         case infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER:
             lcalType_ = Lcal::LcalType::MATMUL_REDUCE_SCATTER;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR:
             lcalType_ =
                 param_.keepIntermediate ? Lcal::LcalType::ALL_GATHER_MATMUL_V2 : Lcal::LcalType::ALL_GATHER_MATMUL;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                    param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             lcalType_ = Lcal::LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER;
@@ -192,6 +196,9 @@ Status LinearParallelLcocRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPac
     if (isQuant_) {
         inputPkg.dequantOffset = inTensors.at(inTensorId++).deviceData;
         inputPkg.dequantScale = inTensors.at(inTensorId++).deviceData;
+        if (param_.quantType == infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+            inputPkg.quantScale = inTensors.at(inTensorId++).deviceData;
+        }
     }
     inputPkg.bias = param_.hasResidual ? inTensors.at(inTensorId++).deviceData : nullptr;
     Lcal::CoCOutputPkg outputPkg = {runnerVariantPack.outTensors[0].deviceData,

@@ -58,7 +58,9 @@ struct MatmulCommonCheckParam {
         this->isQuant =
             linearParallelParam.backend == "lcoc" &&
             (linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::LINEAR_ALL_REDUCE ||
-             linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::PURE_LINEAR) &&
+             linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::PURE_LINEAR ||
+             linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER ||
+             linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR) &&
             (linearParallelParam.quantType > atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
              linearParallelParam.quantType < atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX);
         this->hasBias = this->isQuant;
