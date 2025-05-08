@@ -382,7 +382,7 @@ Status OpsRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
 
 Status OpsRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 {
-    Status st = RunAllKernel(runnerVariantPack.context);
+    Status st = RunAllKernel(runnerVariantPack);
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << "RunAllKernel failed! ret:" << st;
         return st;
