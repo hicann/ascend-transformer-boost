@@ -13,12 +13,12 @@
 #include <pybind11/functional.h>
 #include <sstream>
 #include <atb/utils/param_to_json.h>
-#include "operation_wrapper.h"
 #include "graph_operation_builder.h"
 #include "enger_graph_builder.h"
 #include "graph_node.h"
 #include "resource/memory_manager.h"
 #include "prof/prof_stats.h"
+#include "operation_wrapper.h"
 
 namespace py = pybind11;
 using namespace atb;
