@@ -15,6 +15,7 @@
 #include "atb/types.h"
 #include "atb/svector.h"
 #include "atb/core/context_base.h"
+#include "atb/utils/mstx_mem_register.h"
 
 namespace atb {
 struct RunnerVariantPack {
@@ -30,6 +31,7 @@ struct RunnerVariantPack {
     uint8_t *intermediateBuffer = nullptr;
     uint64_t intermediateBufferSize = 0;
     ContextBase *context = nullptr;
+    MstxMemRegister *mstxMemRegister = nullptr;
     std::string ToString() const;
 };
 } // namespace atb
