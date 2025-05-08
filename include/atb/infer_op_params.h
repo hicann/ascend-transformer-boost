@@ -15,6 +15,7 @@
 #include <hccl/hccl_types.h>
 #include <acl/acl.h>
 #include "atb/svector.h"
+#include "atb/utils/utils_internal.h"
 
 //!
 //! \file infer_op_params.h
