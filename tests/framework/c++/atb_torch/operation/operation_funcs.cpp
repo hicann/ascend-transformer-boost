@@ -865,12 +865,12 @@ static atb::infer::FillParam FillParamFromJson(const nlohmann::json &paramJson)
 
 static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
 {
-    return CreateOperation(GetGenAttentionMaskParamFromJson(paramJson), op);
+    return CreateOperation(FillParamFromJson(paramJson), op);
 }
 
 static atb::Status FillOperationUpdate(const nlohmann::json &paramJson, atb::Operation *op)
 {
-    return UpdateOperationParam(op, GetGenAttentionMaskParamFromJson(paramJson));
+    return UpdateOperationParam(op, FillParamFromJson(paramJson));
 }
 
 static atb::Status RepeatOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
