@@ -27,7 +27,8 @@ OP_NAME = "SortOperation"
 
 class TestSortOperation(operation_test.OperationTest):    
     def golden_calc(self, in_tensors):
-        values, indices = torch.topk(in_tensors[0].npu(), k=3000, largest=True)
+        num = self.op_param['num']
+        values, indices = torch.topk(in_tensors[0].npu(), k=num[0], largest=True)
         print(values.size())
         print(indices.int().size())
         return [values,indices.int()]
@@ -39,6 +40,8 @@ class TestSortOperation(operation_test.OperationTest):
             return True
         PARAM = {"num": [3000]}
         self.execute(OP_NAME, PARAM, [torch.randint(-65504, 65504, (10, 22, 4096)).float().npu().half()])
+        PARAM = {"num": [1500]}
+        self.execute_update_param(OP_NAME,PARAM,[torch.randint(-65504, 65504, (10, 22, 4096)).float().npu().half()])
 
 if __name__ == '__main__':
     unittest.main()
