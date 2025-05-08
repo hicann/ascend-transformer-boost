@@ -11,6 +11,7 @@
 #define OPS_FILL_FILLOPSRUNNER_H
 #include "atb/runner/ops_runner.h"
 #include "atb/infer_op_params.h"
+#include "atb/utils/utils_internal.h"
 
 namespace atb {
 class FillOpsRunner : public OpsRunner {
@@ -24,5 +25,24 @@ private:
 
     infer::FillParam param_;
 };
+
+namespace infer {
+inline bool operator==(const FillParam &left, const FillParam &right)
+{
+    return left.withMask == right.withMask &&
+           [](const SVector<float> &v1, const SVector<float> &v2) {
+               if (v1.size() != v2.size()) {
+                   return false;
+               }
+               for (size_t i = 0; i < v1.size(); ++i) {
+                   if (!UtilsInternal::IsFloatEqual(v1[i], v2[i])) {
+                       return false;
+                   }
+               }
+               return true;
+           }(left.value, right.value) &&
+           left.outDim == right.outDim;
+}
+} // namespace infer
 } // namespace atb
 #endif
