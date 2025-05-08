@@ -25,10 +25,10 @@ bool ParamCheck(const atb::infer::FillParam &opParam)
         ATB_LOG(ERROR) << "fillParam value size should be 1, actually: ", opParam.value.size();
         return false;
     }
-    // if (!opParam.withMask && !atb::TensorCheck::IsDimNumValid(opParam.outDim.size())) {
-    //     ATB_LOG(ERROR) << "fillParam withMask is false, outDim.size() should >0 && <= MAX_DIM(8)";
-    //     return false;
-    // }
+    if (!opParam.withMask && !atb::TensorCheck::IsDimNumValid(opParam.outDim.size())) {
+        ATB_LOG(ERROR) << "fillParam withMask is false, outDim.size() should >0 && <= MAX_DIM(8)";
+        return false;
+    }
     return true;
 }
 } // namespace
