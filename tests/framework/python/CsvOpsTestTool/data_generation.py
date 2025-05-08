@@ -5065,6 +5065,8 @@ class PagedAttentionOperation(DataGen):
         return OpTypes.CV_FUSION
 
 class SelfAttentionOperation(DataGen):
+    MASK_TYPE_UNDEFINED == 0
+
     def gen_mask(batch, heads, max_seq,data_type, mask_type,is_decoder=False,is_triu_mask=False,is_alibi=False,dynamic_batch=False,long_seq=False):
         import random
         q_max_seq = max_seq
@@ -5346,17 +5348,22 @@ class SelfAttentionOperation(DataGen):
             return SelfAttentionOperation.in_tensors[i]
         # TODO: change this
         if json_data["calcType"] == 3:
-            if i == 0:
-                kv_head = 32
-                data = SelfAttentionOperation.calc_expect_func(16, 128, 32, 128, group_num=kv_head)
-                param_seqlen = data[4].tolist()
-                in_tensors = [torch.from_numpy(tensor) for tensor in data]
-                SelfAttentionOperation.in_tensors_encoder = [tensor.npu() for tensor in in_tensors]
-                for tensor in in_tensors:
-                    logging.debug(tensor.dtype, tensor.shape)
-                return SelfAttentionOperation.in_tensors_encoder[0]
-            else:
+            print("here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            if i != 0:
                 return SelfAttentionOperation.in_tensors_encoder[i]
+            seqLenIdx = 3
+            if op_params.maskType != SelfAttentionOperation.MASK:
+                maskIndex = 3
+                seqLenIdx += 1
+            kv_head = 32
+            # calc_expect_func(batch, seqlen, heads, embed, group_num=32)
+            data = SelfAttentionOperation.calc_expect_func(16, 128, 32, 128, group_num=kv_head)
+            param_seqlen = data[4].tolist()
+            in_tensors = [torch.from_numpy(tensor) for tensor in data]
+            SelfAttentionOperation.in_tensors_encoder = [tensor.npu() for tensor in in_tensors]
+            for tensor in in_tensors:
+                logging.debug(tensor.dtype, tensor.shape)
+            return SelfAttentionOperation.in_tensors_encoder[0]
         elif json_data["clampType"] == 1:
             if i != 0:
                 return SelfAttentionOperation.in_tensors_clamp[i]
@@ -5553,6 +5560,7 @@ class SelfAttentionOperation(DataGen):
             k_slice = torch.permute(k_slice, (1, 0, 2))
             k_slice_t =torch.permute(k_slice, (0, 2, 1))   # get K^T (kv_heads, embed, k_seq)
             v_slice = v[v_offset:v_offset + kv_s][:]
+            # TODO(ivan): slicing error: [1, 16, 192], invaid for input of size 2048
             v_slice = v_slice.view(kv_s, kv_head, embed)
             v_slice = torch.permute(v_slice, (1, 0, 2))
             score = SelfAttentionOperation.group_mm_torch_encoder(head_num, kv_head, q_slice, k_slice_t)
