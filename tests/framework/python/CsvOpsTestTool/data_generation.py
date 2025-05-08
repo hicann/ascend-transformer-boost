@@ -5344,6 +5344,7 @@ class SelfAttentionOperation(DataGen):
             SelfAttentionOperation.clamp_max = clamp_max
             SelfAttentionOperation.in_tensors = [q,k,v,attention_mask.to(data_type).npu(),torch.tensor(kv_seqLen).to(torch.int32).npu(),torch.tensor(q_seqlen).to(torch.int32).npu(),layer_id]
             return SelfAttentionOperation.in_tensors[i]
+        # TODO: change this
         if json_data["calcType"] == 3:
             if i == 0:
                 kv_head = 32
