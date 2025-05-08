@@ -290,4 +290,25 @@ ExecuteType ContextBase::GetExecuteType()
     return executeType_;
 }
 
+Status ContextBase::SetL2CacheBuffer(const void *l2CacheBuffer, size_t bufferSize)
+{
+    if (!l2CacheBuffer) {
+        ATB_LOG(INFO) << "SetL2CacheBuffer failed! l2CacheBuffer is nullptr";
+        return ERROR_INVALID_PARAM;
+    }
+    l2CacheBuffer_ = l2CacheBuffer;
+    l2CacheBufferSize_ = bufferSize;
+    return NO_ERROR;
+}
+
+void *GetL2CacheBuffer() const
+{
+    return l2CacheBuffer_;
+}
+
+size_t GetL2CacheBufferSize() const
+{
+    return l2CacheBufferSize_;
+}
+
 } // namespace atb

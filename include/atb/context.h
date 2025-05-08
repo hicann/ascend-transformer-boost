@@ -114,6 +114,8 @@ public:
     //!
     //! \return 获取到的ExecuteType类型
     virtual ExecuteType GetExecuteType() = 0;
+
+    virtual Status SetL2CacheBuffer(const void *l2CacheBuffer, size_t bufferSize) = 0;
 };
 
 //!
