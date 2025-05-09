@@ -870,7 +870,7 @@ private:
 
         SET_FLAG(MTE2, MTE1, EVENT_ID0);
         WAIT_FLAG(MTE2, MTE1, EVENT_ID0);
-        uint32_t q_load_coeff = 128;//m;
+        uint32_t q_load_coeff = q_heads;//m;
         uint32_t l0a_pingpong_size = L0AB_UINT8_BUF_SIZE / sizeof(int8_t);
         uint32_t l0b_pingpong_size = L0AB_UINT8_BUF_SIZE / sizeof(int8_t);
         uint32_t l0c_pingpong_size = L0C_FLOAT_BUF_SIZE;
