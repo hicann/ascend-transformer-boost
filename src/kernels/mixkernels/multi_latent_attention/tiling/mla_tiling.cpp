@@ -59,8 +59,8 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
     mmInfo.flashDecodingTaskNum = mmInfo.quantFlag ? mmInfo.tailTaskNum : mmInfo.tailBatch;
     auto minKVSeqlen = std::min_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     auto maxKVSeqlen = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
-    auto minQSeqlen = mmInfo.qSeqLen != nullptr ? std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
-    auto maxQSeqlen = mmInfo.qSeqLen != nullptr ? std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+    auto minQSeqlen = mmInfo.qSeqLen != nullptr ? *std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+    auto maxQSeqlen = mmInfo.qSeqLen != nullptr ? *std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
     mmInfo.flashDecoding = mmInfo.flashDecodingTaskNum != 0 && param.isRing == 0 &&
                            *minKVSeqlen >= SPLITKV_SEQLEN &&
                            ((minQSeqlen == NUM2 && maxQSeqlen == NUM2) ||
@@ -160,7 +160,7 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MLAInfo mmInfo = {0};
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
-    Status ret1  = GetMLAInfo(launchParam, mmInfo, param, blockDim);
+    Status ret1 = GetMLAInfo(launchParam, mmInfo, param, blockDim);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     Status ret = GetMLATilingParam(launchParam, mmInfo, blockDim, tilingParam, tilingSize);
