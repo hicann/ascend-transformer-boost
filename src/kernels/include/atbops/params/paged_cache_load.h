@@ -20,6 +20,8 @@ struct PagedCacheLoad {
         PAGED_CACHE_LOAD_NZ = 1,
     };
     Type type = PAGED_CACHE_LOAD_ND;
+    bool cuSeqLens = false;
+    bool hasSeqStarts = false;
 
     bool operator==(const PagedCacheLoad &other) const
     {
