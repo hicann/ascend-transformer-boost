@@ -747,7 +747,6 @@ Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspa
             ATB_LOG(ERROR) << GetLogPrefix() << "execute fail, error code: " << st;
             return st;
         }
-        // 将算子的workspaceBuffer从使用HBM替换成使用L2Cache
 
     } catch (const std::exception &e) {
         ATB_LOG(ERROR) << GetLogPrefix() << "execute throw an exception: " << e.what();

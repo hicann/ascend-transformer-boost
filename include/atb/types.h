@@ -108,8 +108,6 @@ struct Tensor {
     void *hostData = nullptr;
     //! \brief “deviceData”或“hostData”指向内容的内存大小。
     uint64_t dataSize = 0;
-    //! \brief TensorNPUL2Cache内存地址
-    void *l2CacheDeviceData = nullptr;
 };
 
 //!
