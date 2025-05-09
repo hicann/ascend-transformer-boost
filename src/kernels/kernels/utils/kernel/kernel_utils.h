@@ -353,7 +353,7 @@ __aicore__ inline void ComputeHighPrecisionFp32ToI8Quant(const AscendC::LocalTen
     CastFromF16ToI8(out, tmp, quantMin, count);
 }
 
-__aicore__ inline void CopyGmTilingToUb(__ubuf__ uint8_t *tilingInUb, const __gm__ uint8_t *tilingInGm,
+__aicore__ inline void CopyGmTilingToUb(__ubuf__ uint8_t *&tilingInUb, const __gm__ uint8_t *tilingInGm,
                                         size_t tilingSize, AscendC::TPipe *pipe)
 {
     uint32_t roundTilingSize = RoundUp(tilingSize, 32);
