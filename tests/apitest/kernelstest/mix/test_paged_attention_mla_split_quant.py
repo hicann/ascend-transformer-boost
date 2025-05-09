@@ -632,7 +632,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                     "kvSeqLen": k_seqlen_list, "qSeqLen": q_seqlen_list, "maskType": 0, "isRing": 0}
 
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nd] * 8)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
         logging.debug(f"blcok_tables shape: {self.block_tables}")
         logging.debug(f"contex_lens shape: {self.contex_lens}")
@@ -690,7 +690,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                     "kvSeqLen": k_seqlen_list, "qSeqLen": q_seqlen_list, "maskType": 0, "isRing": 0}
 
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nd] * 8)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
         logging.debug(f"blcok_tables shape: {self.block_tables}")
         logging.debug(f"contex_lens shape: {self.contex_lens}")
@@ -749,7 +749,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                     "kvSeqLen": k_seqlen_list, "qSeqLen": q_seqlen_list, "maskType": 0, "isRing": 0}
 
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nd] * 8)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
         logging.debug(f"blcok_tables shape: {self.block_tables}")
         logging.debug(f"contex_lens shape: {self.contex_lens}")
@@ -806,7 +806,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                     "kvSeqLen": k_seqlen_list, "qSeqLen": q_seqlen_list, "maskType": 0, "isRing": 0}
 
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nd] * 8)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
         logging.debug(f"blcok_tables shape: {self.block_tables}")
         logging.debug(f"contex_lens shape: {self.contex_lens}")
@@ -863,7 +863,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                     "kvSeqLen": k_seqlen_list, "qSeqLen": q_seqlen_list, "maskType": 0, "isRing": 0}
 
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nd] * 8)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
         logging.debug(f"blcok_tables shape: {self.block_tables}")
         logging.debug(f"contex_lens shape: {self.contex_lens}")
@@ -920,7 +920,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                     "kvSeqLen": k_seqlen_list, "qSeqLen": q_seqlen_list, "maskType": 0, "isRing": 0}
 
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nd] * 8)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
         logging.debug(f"blcok_tables shape: {self.block_tables}")
         logging.debug(f"contex_lens shape: {self.contex_lens}")
@@ -977,7 +977,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                     "kvSeqLen": k_seqlen_list, "qSeqLen": q_seqlen_list, "maskType": 0, "isRing": 0}
 
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nd] * 8)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
         logging.debug(f"blcok_tables shape: {self.block_tables}")
         logging.debug(f"contex_lens shape: {self.contex_lens}")
@@ -1034,7 +1034,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                     "kvSeqLen": k_seqlen_list, "qSeqLen": q_seqlen_list, "maskType": 0, "isRing": 0}
 
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nd] * 8)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
         logging.debug(f"blcok_tables shape: {self.block_tables}")
         logging.debug(f"contex_lens shape: {self.contex_lens}")

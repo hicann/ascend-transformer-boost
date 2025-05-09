@@ -21,16 +21,68 @@ const int32_t NUM2 = 2;
 const int32_t NUM3 = 3;
 const int32_t NUM4 = 4;
 const int32_t NUM5 = 5;
+const int32_t NUM6 = 6;
+const int32_t NUM8 = 8;
 const int32_t NUM16 = 16;
 const int32_t NUM32 = 32;
 const int32_t NUM64 = 64;
 const int32_t NUM256 = 256;
 const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
-const float SPLITKV_RATION = 0.8;
+const float SPLITKV_SEQLEN = 2048;
+
+int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int32_t maxKVSeqlen, int32_t blockSize)
+{
+    if (blockDim - mmInfo.flashDecodingTaskNum <= NUM4 || mmInfo.quantFlag) {
+        return NUM1;
+    }
+    int32_t maxKVBlocks = (maxKVSeqlen + blockSize - 1) / blockSize;
+    for (int32_t splitNum = 2; splitNum <= NUM6; splitNum++) {
+        if ((mmInfo.flashDecodingTaskNum * splitNum) % blockDim != 0) {
+            continue;
+        }
+        int32_t repeatTimesPerBlock = mmInfo.flashDecodingTaskNum * splitNum / blockDim;
+        if (minKVSeqlen / splitNum >= blockSize &&
+            repeatTimesPerBlock + NUM6 <= maxKVBlocks - (maxKVBlocks + splitNum - 1) / splitNum * repeatTimesPerBlock) {
+            return splitNum;
+        } else {
+            return NUM1;
+        }
+    }
+    return NUM1;
+}
+
+Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t blockDim)
+{
+    mmInfo.tailBatch = mmInfo.batch % blockDim;
+    mmInfo.tailTaskNum = mmInfo.totalTaskNum % blockDim;
+    mmInfo.flashDecodingTaskNum = mmInfo.quantFlag ? mmInfo.tailTaskNum : mmInfo.tailBatch;
+    auto minKVSeqlen = std::min_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
+    auto maxKVSeqlen = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
+    auto minQSeqlen = mmInfo.qSeqLen != nullptr ? std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+    auto maxQSeqlen = mmInfo.qSeqLen != nullptr ? std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+    mmInfo.flashDecoding = mmInfo.flashDecodingTaskNum != 0 && param.isRing == 0 &&
+                           *minKVSeqlen >= SPLITKV_SEQLEN &&
+                           ((minQSeqlen == NUM2 && maxQSeqlen == NUM2) ||
+                           (minQSeqlen == 1 && maxQSeqlen == 1));
+    if (!mmInfo.flashDecoding) {
+        return Status::OkStatus();
+    }
+    mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
+                        CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, *maxKVSeqlen, mmInfo.blockSize);
+    mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
+    if (mmInfo.flashDecoding) {
+        for (int32_t batchIdx = 0; batchIdx < mmInfo.batch; batchIdx++) {
+            mmInfo.batchList.push_back(BatchNode(batchIdx, *(mmInfo.kvSeqLen + batchIdx)));
+        }
+        std::sort(mmInfo.batchList.begin(), mmInfo.batchList.end());
+    }
+    MKI_LOG(INFO) << "mmInfo.flashDecoding is = " << mmInfo.flashDecoding;
+    return Status::OkStatus();
+}
 
 Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
-                    OpParam::MLA &param)
+                    OpParam::MLA &param, uint32_t blockDim)
 {
     auto kcacheShape = launchParam.GetInTensor(DIM_2).desc.dims;
     auto KDims = kcacheShape.size();
@@ -55,24 +107,23 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.kvHeads = param.kvHead;
     mmInfo.numHeads = static_cast<int32_t>(param.headSize);
     mmInfo.maskType = static_cast<int32_t>(param.maskType);
-    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT); // quant not support
+    mmInfo.quantFlag = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
+    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT);
+    if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
+        mmInfo.maskType = 0;
+    }
+    mmInfo.totalTaskNum = mmInfo.qSeqLen != nullptr ?
+                          std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
+                          mmInfo.batch;
     if (mmInfo.mtpTp1Flag) {
-        mmInfo.maskType = 0;
-    }
-    if (static_cast<int32_t>(mmInfo.type) >= NUM2) {
-        mmInfo.maskType = 0;
-    }
-    if (mmInfo.qSeqLen != nullptr) {
-        mmInfo.totalTaskNum = std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0));
-    } else {
-        mmInfo.totalTaskNum = mmInfo.batch;
+        GetFlashDecodingInfo(mmInfo, param, blockDim);
     }
     return Status::OkStatus();
 }
 
-Status GetMLAInfo(const LaunchParam &launchParam, MLAInfo &mmInfo, OpParam::MLA &param)
+Status GetMLAInfo(const LaunchParam &launchParam, MLAInfo &mmInfo, OpParam::MLA &param, uint32_t blockDim)
 {
-    OP_TILING_CHECK_STATUS_RETURN(GetMLANdInfo(launchParam, mmInfo, param));
+    OP_TILING_CHECK_STATUS_RETURN(GetMLANdInfo(launchParam, mmInfo, param, blockDim));
     return Status::OkStatus();
 }
 
@@ -93,7 +144,8 @@ Status GetTilingKeyTypeBase(MLAInfo &mmInfo, const Tensor &qTensor, const Tensor
 Status GenTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
 {
     uint32_t dataType = static_cast<int32_t>(mmInfo.type);
-    uint32_t tilingKey = dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) + (param.isRing << NUM5);
+    uint32_t tilingKey = dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) +
+                         (param.isRing << NUM5) + (mmInfo.flashDecoding << NUM6);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "TILING KEY IS = " << tilingKey;
     return Status::OkStatus();
@@ -107,8 +159,8 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     
     MLAInfo mmInfo = {0};
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
-    Status ret1  = GetMLAInfo(launchParam, mmInfo, param);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+    Status ret1  = GetMLAInfo(launchParam, mmInfo, param, blockDim);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     Status ret = GetMLATilingParam(launchParam, mmInfo, blockDim, tilingParam, tilingSize);
@@ -119,20 +171,23 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t basicWorkSpaceHalf = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenHalf;
     uint64_t basicWorkSpaceFloat = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenFloat;
     uint64_t basicWorkSpaceInt8 = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenInt;
-    bool isQuant = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
-    if (isQuant) {
+    uint64_t oCoreWorkSpaceSize = mmInfo.flashDecoding && mmInfo.mtpTp1Flag ?
+        WORKSPACE_BLOCK_SIZE_DB * mmInfo.flashDecodingTaskNum * mmInfo.splitKVNum * dataLenFloat * 2 : 0;
+    uint64_t lWorkSpaceSize = mmInfo.flashDecoding && mmInfo.mtpTp1Flag ?
+        mmInfo.numHeads * mmInfo.flashDecodingTaskNum * mmInfo.splitKVNum * dataLenFloat * 2 * 8 : 0;
+    if (mmInfo.quantFlag) {
         uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
         uint64_t pWorkSpaceSize = basicWorkSpaceInt8;
-        uint64_t oTempWorkSpcaceSize = basicWorkSpaceInt8 * 2;
+        uint64_t oTempWorkSpaceSize = basicWorkSpaceInt8 * 2;
         kernelInfo.GetScratchSizes() = {sWorkSpaceSize, sWorkSpaceSize, pWorkSpaceSize,
-                                        oTempWorkSpcaceSize, basicWorkSpaceFloat};
+                                        oTempWorkSpaceSize, basicWorkSpaceFloat, oCoreWorkSpaceSize, lWorkSpaceSize};
     } else {
         uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
         uint64_t pWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceHalf * 4 : basicWorkSpaceHalf * 2;
-        uint64_t oTempWorkSpcaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
-        uint64_t goWorkSpcaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
-        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, NUM512, pWorkSpaceSize, oTempWorkSpcaceSize,
-                                        goWorkSpcaceSize};
+        uint64_t oTempWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
+        uint64_t goWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
+        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, NUM512, pWorkSpaceSize, oTempWorkSpaceSize,
+                                        goWorkSpaceSize, oCoreWorkSpaceSize, lWorkSpaceSize};
     }
     Status ret2 = GenTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret2);
