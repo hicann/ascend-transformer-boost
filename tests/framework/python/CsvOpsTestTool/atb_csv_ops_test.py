@@ -839,7 +839,9 @@ def init_args():
     parser.add_argument('-tt', '--test_type', default='', choices=['Function', 'Performance', 'Generalization'], help='run testcases of specific test type, default: any test type')
     parser.add_argument('-tl', '--test_level', default='', choices=['Level0', 'Level1', 'Level2'], help='run testcases of specific test level, default: any test level')
     parser.add_argument('-m', '--model', default='', choices=['LLaMA-65B', 'ChatGLM-6B', 'LLaMA-Adapter', 'Baichuan2-13B', 'ChatGLM2-6B',
-                                                             'LLaMA2-13B', 'LLaMA2-7B', 'GPT-NeoX-20B', 'ChatGLM-130B', 'BLOOM-7B'], help='run testcases from specific model, default: any model')
+                                                             'LLaMA2-13B', 'LLaMA2-7B', 'GPT-NeoX-20B', 'ChatGLM-130B', 'BLOOM-7B', 'deepseek_v2_236b',
+                                                         'glm_4_9b_chat','Meta-Llama-3.1-70B-Instruct','Mixtral_8x22B_instruct_v0.1','qwen2.5_72b_instruct',
+                                                         'Qwen2.5-7B'], help='run testcases from specific model, default: any model')
     parser.add_argument('-s', '--soc_version', default='', choices=['Ascend310P', 'Ascend910B'], help='run testcases of specific ascend soc platform, default: local soc platform')
     parser.add_argument('-op', '--operation_name', default='', help='run testcases of specific operations, default: any operation name')
     parser.add_argument('-ws', '--world_size', default=2, type=int, help='the number of cards used for multicard op test, default: 2')
