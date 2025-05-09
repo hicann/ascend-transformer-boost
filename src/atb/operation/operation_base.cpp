@@ -128,7 +128,7 @@ void OperationBase::InitEmptyOutTensorPerms() const
     const Mki::SVector<Mki::TensorInfoIr> &outTensorInfoIrs = operationIr_->GetOutTensorInfoIrs();
     if (GetOutputNum() != 0 && outTensorInfoIrs.size() != GetOutputNum()) {
         ATB_LOG(ERROR) << GetLogPrefix() << "GetOutTensorInfoIrs size: " << outTensorInfoIrs.size()
-                       << " is not equal with GetOutputNum  : " << GetOutputNum();
+                       << " which is not equals to GetOutputNum: " << GetOutputNum();
         return;
     }
     emptyOutTensorPerms_.reserve(outTensorInfoIrs.size());
@@ -725,14 +725,14 @@ Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
     Status st = NO_ERROR;
     st = ExecuteVariantPackInTensorCheck(variantPack.inTensors);
     if (st != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "ExecuteVariantPackCheck for inTensor failed, error code: " << st;
-            return st;
-        }
+        ATB_LOG(ERROR) << GetLogPrefix() << "ExecuteVariantPackCheck for inTensor failed, error code: " << st;
+        return st;
+    }
     st = ExecuteVariantPackOutTensorCheck(variantPack.outTensors);
     if (st != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "ExecuteVariantPackCheck for outTensor failed, error code: " << st;
-            return st;
-        }
+        ATB_LOG(ERROR) << GetLogPrefix() << "ExecuteVariantPackCheck for outTensor failed, error code: " << st;
+        return st;
+    }
     return st;
 }
 
