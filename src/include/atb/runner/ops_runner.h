@@ -79,7 +79,7 @@ private:
     void UpdateRunInfoTensorData(KernelGraphNode &node, size_t nodeId, uint8_t *deviceIntermediateBuffer) const;
     Status UpdateRunInfoTiling(RunnerVariantPack &runnerVariantPack);
     void UpdateRunInfoWorkspace(RunnerVariantPack &runnerVariantPack);
-    Status RunAllKernel(ContextBase *context);
+    Status RunAllKernel(RunnerVariantPack &runnerVariantPack);
     bool IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
                                        const RunnerVariantPack &runnerVariantPack2) const;
     void InitTensorFromRunnerPack(const RunnerVariantPack &runnerVariantPack);
