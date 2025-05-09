@@ -1019,6 +1019,7 @@ private:
                                 embed_split_idx == 0,     // cmatrixInitVal
                                 0b10
                             );
+                            PIPE_BARRIER(M);
                             SET_FLAG(M, MTE1, qk_0_pingpong_flag);
                         }
                         SET_FLAG(MTE1, MTE2, l1kv_pingpong_flag);
@@ -1103,6 +1104,7 @@ private:
                             0,     // cmatrixInitVal
                             0b11
                         );
+                        PIPE_BARRIER(M);
                         SET_FLAG(M, MTE1, qk_0_pingpong_flag);
                         l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, mm1CopyType, mm1OutputType>(
                             s_gm_tensor[(uint64_t)block_idx * TMP_SIZE_DECODER * 4 * 2 + (uint64_t)((n_idx / s_block_stack) % 2) * TMP_SIZE_DECODER * 2 * 2 + q_i * 128 * 512 + split_idx * pp_n_scalar * q_heads],
@@ -2767,7 +2769,7 @@ private:
         for (int idx = 0; idx < block_cnt; idx++) {
             uint32_t ub_offset = 128 * idx;
             uint32_t block_offset = q_heads * 128 * idx;
-            uint32_t n_stride_real = (idx == block_cnt-1)? n_stride - 128 * idx : 128;
+            uint32_t n_stride_real = (idx == block_cnt - 1)? n_stride - 128 * idx : 128;
             uint32_t dst_gap = 128 - n_stride_real;
             uint32_t src_gap = n_stride - n_stride_real;
             ub_to_gm<ArchType::ASCEND_V220, P_DTYPE>(
@@ -3309,7 +3311,7 @@ private:
                 round_sub_m / FLOAT_BLOCK_SIZE  // repeat
             );
             PIPE_BARRIER(V);
-            if (head_loop > 1) {
+            if (head_loop > 1 || q_seq_len > 1) {
                 gm_to_ub<ArchType::ASCEND_V220, float>(
                     go32_ubuf_tensor,
                     go_gm_tensor,
@@ -3539,7 +3541,7 @@ private:
                 WAIT_FLAG(MTE3, V, EVENT_ID1);
             }
         }
-        else if (head_loop > 1) {
+        else if (head_loop > 1 || q_seq_len > 1) {
             SET_FLAG(V, MTE3, EVENT_ID5);
             WAIT_FLAG(V, MTE3, EVENT_ID5);
             ub_to_gm<ArchType::ASCEND_V220, float>(
@@ -3890,7 +3892,7 @@ private:
                             uint32_t head_offset = head_loop_idx * process_row_num * round_v;
                             uint32_t cur_sub_m = head_loop_idx == (head_loop - 1) ? sub_m - head_loop_idx * process_row_num : process_row_num;
                             
-                            uint32_t out_o_offset = head_loop_idx * process_row_num * round_v + q_i * 128 * 512;
+                            uint32_t out_o_offset = head_loop_idx * process_row_num * round_v + q_i * q_heads * 512;
                             uint32_t o_tmp_gm_offset, go_gm_offset;
                             if constexpr (std::is_same_v<IN_DTYPE,int8_t>) {
                                 o_tmp_gm_offset = block_idx * TMP_SIZE * 2 + 

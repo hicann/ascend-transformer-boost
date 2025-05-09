@@ -31,17 +31,17 @@ const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
 const float SPLITKV_SEQLEN = 2048;
 
-int32_t CalcSplitNum(int32_t taskNum, int32_t blockDim, int32_t minKVSeqlen, int32_t maxKVSeqlen, int32_t blockSize)
+int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int32_t maxKVSeqlen, int32_t blockSize)
 {
-    if (blockDim - taskNum <= NUM4) {
+    if (blockDim - mmInfo.flashDecodingTaskNum <= NUM4 || mmInfo.quantFlag) {
         return NUM1;
     }
     int32_t maxKVBlocks = (maxKVSeqlen + blockSize - 1) / blockSize;
     for (int32_t splitNum = 2; splitNum <= NUM6; splitNum++) {
-        if ((taskNum * splitNum) % blockDim != 0) {
+        if ((mmInfo.flashDecodingTaskNum * splitNum) % blockDim != 0) {
             continue;
         }
-        int32_t repeatTimesPerBlock = taskNum * splitNum / blockDim;
+        int32_t repeatTimesPerBlock = mmInfo.flashDecodingTaskNum * splitNum / blockDim;
         if (minKVSeqlen / splitNum >= blockSize &&
             repeatTimesPerBlock + NUM6 <= maxKVBlocks - (maxKVBlocks + splitNum - 1) / splitNum * repeatTimesPerBlock) {
             return splitNum;
@@ -59,21 +59,17 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
     mmInfo.flashDecodingTaskNum = mmInfo.quantFlag ? mmInfo.tailTaskNum : mmInfo.tailBatch;
     auto minKVSeqlen = std::min_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     auto maxKVSeqlen = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
+    auto minQSeqlen = mmInfo.qSeqLen != nullptr ? std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+    auto maxQSeqlen = mmInfo.qSeqLen != nullptr ? std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
     mmInfo.flashDecoding = mmInfo.flashDecodingTaskNum != 0 && param.isRing == 0 &&
-                            *minKVSeqlen >= SPLITKV_SEQLEN &&
-                            ((mmInfo.qSeqLen != nullptr &&
-                            *std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) == NUM2 &&
-                            *std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) == NUM2) ||
-                            (mmInfo.qSeqLen != nullptr &&
-                            *std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) == 1 &&
-                            *std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) == 1) ||
-                            mmInfo.qSeqLen == nullptr);
+                           *minKVSeqlen >= SPLITKV_SEQLEN &&
+                           ((minQSeqlen == NUM2 && maxQSeqlen == NUM2) ||
+                           (minQSeqlen == 1 && maxQSeqlen == 1));
     if (!mmInfo.flashDecoding) {
         return Status::OkStatus();
     }
-    mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
-                        CalcSplitNum(mmInfo.flashDecodingTaskNum, blockDim,
-                                     *minKVSeqlen, *maxKVSeqlen, mmInfo.blockSize);
+    mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ? blockDim / mmInfo.flashDecodingTaskNum :
+                        CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, *maxKVSeqlen, mmInfo.blockSize);
     mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
     if (mmInfo.flashDecoding) {
         for (int32_t batchIdx = 0; batchIdx < mmInfo.batch; batchIdx++) {
@@ -112,15 +108,13 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.numHeads = static_cast<int32_t>(param.headSize);
     mmInfo.maskType = static_cast<int32_t>(param.maskType);
     mmInfo.quantFlag = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
-    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT);
-    if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
-        mmInfo.maskType = 0;
-    }
     mmInfo.totalTaskNum = mmInfo.qSeqLen != nullptr ?
                           std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
                           mmInfo.batch;
-    if (mmInfo.mtpTp1Flag) {
-        GetFlashDecodingInfo(mmInfo, param, blockDim);
+    GetFlashDecodingInfo(mmInfo, param, blockDim);
+    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT || mmInfo.flashDecoding);
+    if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
+        mmInfo.maskType = 0;
     }
     return Status::OkStatus();
 }
@@ -164,7 +158,7 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MLAInfo mmInfo = {0};
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
-    Status ret1  = GetMLAInfo(launchParam, mmInfo, param, blockDim);
+    Status ret1 = GetMLAInfo(launchParam, mmInfo, param, blockDim);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     Status ret = GetMLATilingParam(launchParam, mmInfo, blockDim, tilingParam, tilingSize);
