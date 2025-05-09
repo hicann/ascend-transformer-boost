@@ -748,6 +748,7 @@ Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspa
             ATB_LOG(ERROR) << GetLogPrefix() << "execute fail, error code: " << st;
             return st;
         }
+
     } catch (const std::exception &e) {
         ATB_LOG(ERROR) << GetLogPrefix() << "execute throw an exception: " << e.what();
         return ERROR_RT_FAIL;

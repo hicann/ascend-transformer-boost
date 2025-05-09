@@ -290,4 +290,46 @@ ExecuteType ContextBase::GetExecuteType()
     return executeType_;
 }
 
+Status ContextBase::SetL2WorkspaceBuffer(void *l2WorkspaceBuffer, size_t bufferSize)
+{
+    if (!l2WorkspaceBuffer) {
+        ATB_LOG(INFO) << "SetL2WorkspaceBuffer failed! l2WorkspaceBuffer is nullptr";
+        return ERROR_INVALID_PARAM;
+    }
+    l2WorkspaceBuffer_ = l2WorkspaceBuffer;
+    l2WorkspaceBufferSize_ = bufferSize;
+    return NO_ERROR;
+}
+
+void *ContextBase::GetL2WorkspaceBuffer() const
+{
+    return l2WorkspaceBuffer_;
+}
+
+size_t ContextBase::GetL2WorkspaceBufferSize() const
+{
+    return l2WorkspaceBufferSize_;
+}
+
+Status ContextBase::SetL2TensorBuffer(void *l2TensorBuffer, size_t bufferSize)
+{
+    if (!l2TensorBuffer) {
+        ATB_LOG(INFO) << "SetL2TensorBuffer failed! l2TensorBuffer is nullptr";
+        return ERROR_INVALID_PARAM;
+    }
+    l2TensorBuffer_ = l2TensorBuffer;
+    l2TensorBufferSize_ = bufferSize;
+    return NO_ERROR;
+}
+
+void *ContextBase::GetL2TensorBuffer() const
+{
+    return l2TensorBuffer_;
+}
+
+size_t ContextBase::GetL2TensorBufferSize() const
+{
+    return l2TensorBufferSize_;
+}
+
 } // namespace atb

@@ -42,6 +42,12 @@ public:
     const Tensor &GetOverflowKernelOutTensor();
     Status SetExecuteType(ExecuteType type) override;
     ExecuteType GetExecuteType() override;
+    Status SetL2WorkspaceBuffer(void *l2WorkspaceBuffer, size_t bufferSize) override;
+    Status SetL2TensorBuffer(void *l2TensorBuffer, size_t bufferSize) override;
+    void *GetL2WorkspaceBuffer() const;
+    void *GetL2TensorBuffer() const;
+    size_t GetL2WorkspaceBufferSize() const;
+    size_t GetL2TensorBufferSize() const;
 
 private:
     Status CreateCopyStreamAndEvents();
@@ -61,6 +67,11 @@ private:
     std::vector<RunnerPool> runnerPools_;
     Tensor overflowOutTensor_;
     static thread_local ExecuteType executeType_;
+
+    void *l2WorkspaceBuffer_ = nullptr;
+    size_t l2WorkspaceBufferSize_ = 0;
+    void *l2TensorBuffer_ = nullptr;
+    size_t l2TensorBufferSize_ = 0;
 };
 } // namespace atb
 #endif

@@ -349,6 +349,26 @@ Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPac
     for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         UpdateRunInfoTensorData(node, nodeId, deviceIntermediateBuffer);
+        // 如果是MlaPreprocess的话其的outTensor直接使用传入的L2CacheBuffer
+        // 由于中间tensor加速库外部不感知，所以此处暂时由外界传入
+        if (GetName() == "MlaPreprocessOpsRunner") {
+            auto &outTensors = node.impl->GetOutTensors();
+            uint64_t offset = 0;
+            for (uint64_t tensorId = 0; tensorId < outTensors.size(); tensorId++) {
+                Mki::Tensor &tensor = outTensors.at(tensorId);
+                if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
+                    if (offset + tensor.dataSize <= runnerVariantPack.context->GetL2TensorBufferSize()) {
+                        tensor.data = offset + static_cast<uint8_t *>(runnerVariantPack.context->GetL2TensorBuffer());
+                        offset += tensor.dataSize;
+                        ATB_LOG(INFO) << GetLogPrefix() << "outTensor[" << tensorId << "] is using the L2 Tensor Buffer: "
+                                      << tensor.data << " and tensor.dataSize: " << tensor.dataSize;
+                    } else {
+                        ATB_LOG(ERROR) << GetLogPrefix() << "L2TensorBufferSize is smaller than the dataSize of MlaPreprocessOperation's outTensors";
+                        return ErrorType::ERROR_INTERNAL_ERROR;
+                    }
+                }
+            }
+        }
         if (needSetTiling) {
             ATB_LOG(DEBUG) << GetLogPrefix() << " node[" << nodeId << "] update kernel runinfo launch buffer";
             uint64_t tilingBufferSize = tilingSizes_.at(nodeId);
@@ -356,8 +376,15 @@ Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPac
             tilingOffset += tilingBufferSize;
         }
         if (needSetworkspace) {
-            ATB_LOG(DEBUG) << GetLogPrefix() << " node[" << nodeId << "] update kernel runinfo workspace";
-            node.impl->SetWorkspaceDeviceAddr(runnerVariantPack.workspaceBuffer);
+            // 如何算子需要的workspaceSize_小于可以使用的L2Cache的话，直接使用L2Cache
+            if (workspaceSize_ >= runnerVariantPack.context->GetL2WorkspaceBufferSize()) {
+                ATB_LOG(DEBUG) << GetLogPrefix() << " node[" << nodeId << "] update kernel runinfo workspace";
+                node.impl->SetWorkspaceDeviceAddr(runnerVariantPack.workspaceBuffer);
+            } else {
+                ATB_LOG(INFO) << GetLogPrefix() 
+                              << " node[" << nodeId << "] is using L2 Workspace Buffer to set runinfo workspace";
+                node.impl->SetWorkspaceDeviceAddr(static_cast<uint8_t *>(runnerVariantPack.context->GetL2WorkspaceBuffer()));
+            }
         }
     }
     return ErrorType::NO_ERROR;
