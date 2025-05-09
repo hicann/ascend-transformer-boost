@@ -77,7 +77,7 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
         }
         std::sort(mmInfo.batchList.begin(), mmInfo.batchList.end());
     }
-    MKI_LOG(INFO) << "mmInfo.flashDecoding IS = " << mmInfo.flashDecoding;
+    MKI_LOG(INFO) << "mmInfo.flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
 }
 

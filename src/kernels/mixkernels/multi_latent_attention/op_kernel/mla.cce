@@ -723,7 +723,6 @@ private:
                         embed_split_size,   // k
                         embed_split_idx == 0     // cmatrixInitVal
                     );
-
                     PIPE_BARRIER(M);
                     SET_FLAG(M, MTE1, embed_split_idx % 2);
                     SET_FLAG(M, MTE1, embed_split_idx % 2 + 2);
@@ -842,6 +841,7 @@ private:
                         qk_n_2,  // k
                         1      // cmatrixInitVal
                     );
+                    PIPE_BARRIER(M);
                     SET_FLAG(M, MTE1, l0b_pingpong_flag + 2);
                     if (embed_split_idx == embed_split_loop_v - 1) {
                         SET_FLAG(M, MTE1, l0_p_pingpong_flag);
