@@ -179,7 +179,7 @@ Status GetNdMLATiling(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilin
     return AtbOps::Status::OkStatus();
 }
 
-void GetDecodingNormalTaskTiling(MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam, int32_t &curTask,
+void GetDecodingNormalTaskTiling(MLAInfo &mmInfo, uint32_t blockDim, uint32_t *tilingParam, int32_t &curTask,
                                  int32_t &prevTaskNum)
 {
     int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
@@ -226,7 +226,7 @@ void GetDecodingTailBatchTiling(MLAInfo &mmInfo, uint32_t *tilingParam, int32_t 
         }
     }
 }
-void GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam)
+void GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t blockDim, uint32_t *tilingParam)
 {
     int32_t curTask = 0;
     int32_t prevTaskNum = 0;
