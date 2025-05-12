@@ -142,6 +142,7 @@ static bool ParamPrefillCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "Prefill, cacheMode should be KROPE_CTKV";
         return false;
     }
+    return true;
 }
 
 MultiLatentAttentionOperation::MultiLatentAttentionOperation(const infer::MultiLatentAttentionParam &param)
@@ -165,7 +166,7 @@ MultiLatentAttentionOperation::MultiLatentAttentionOperation(const infer::MultiL
         opIrKeyStr += "Nz";
     }
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_PREFILL) {
-        operationIr_ += "Prefill";
+        opIrKeyStr += "Prefill";
     }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKeyStr);
 }
@@ -439,7 +440,6 @@ Status MultiLatentAttentionOperation::InTensorDimCheckPrefill(const SVector<Tens
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     int64_t batch = inTensorDesc.at(IN_TENSOR_2).shape.dims[0];
-    int64_t max_seq = inTensorDesc.at(IN_TENSOR_2).shape.dims[1];
     if (batch > MAX_BATCH_SIZE_8192) {
         ATB_LOG(ERROR) << GetLogPrefix() << "batch should be <= " << MAX_BATCH_SIZE_8192;
         return ERROR_INVALID_TENSOR_DIM;
@@ -540,6 +540,7 @@ Status MultiLatentAttentionOperation::KVDimCheckPrefill(const SVector<TensorDesc
         ATB_LOG(ERROR) << GetLogPrefix() << "dim 2 of value(intensor4) equal to kvhead * embeddimV";
         return ERROR_INVALID_TENSOR_DIM;
     }
+    return NO_ERROR;
 }
 Status MultiLatentAttentionOperation::QKVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const
 {
