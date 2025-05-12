@@ -1250,6 +1250,7 @@ private:
                                     split_idx == 0,     // cmatrixInitVal
                                     unit_flag
                                 );
+                                PIPE_BARRIER(M);
                                 if (q_i == 0) {
                                     SET_FLAG(M, MTE1, l0b_pingpong_flag + 2);
                                 }
