@@ -457,21 +457,103 @@ Status MultiLatentAttentionOperation::InTensorDimCheckPrefill(const SVector<Tens
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
-        if (inTensorDesc.at(IN_TENSOR_7).shape.dims[0] != max_seq) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of mask(intensor7) and dim 2 of key(intensor2) shouble be same";
+        if (inTensorDesc.at(IN_TENSOR_7).shape.dims[0] != 512) { // 512: 压缩mask的规格
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of mask(intensor7) shoulde equal to 512";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        if (inTensorDesc.at(IN_TENSOR_7).shape.dims[1] != max_seq) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of mask(intensor7) and dim 2 of key(intensor2) shouble be same";
+        if (inTensorDesc.at(IN_TENSOR_7).shape.dims[1] != 512) { // 512: 压缩mask的规格
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of mask(intensor7) shoulde equal to 512";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
     return NO_ERROR;
 }
 
-Status MultiLatentAttentionOperation::QDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const {}
-Status MultiLatentAttentionOperation::KVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const {}
-Status MultiLatentAttentionOperation::QKVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const {}
+Status MultiLatentAttentionOperation::QDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const
+{
+    int64_t numTokens = inTensorDesc.at(IN_TENSOR_0).shape.dims[0];
+    if (inTensorDesc.at(IN_TENSOR_0).shape.dimNum == 2) {
+        if (inTensorDesc.at(IN_TENSOR_0).shape.dims[1] != param_.headNum * EM_BED_DIM_V) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of query(intensor0) equal to qhead * embeddimV";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    } else {
+        if (inTensorDesc.at(IN_TENSOR_0).shape.dims[1] != param_.headNum) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of query(intensor0) equal to qhead ";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (inTensorDesc.at(IN_TENSOR_0).shape.dims[2] != EM_BED_DIM_V) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim 2 of query(intensor0) equal to embeddimV ";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    if (inTensorDesc.at(IN_TENSOR_1).shape.dims[0] != numTokens) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of query(intensor0) and queryRope(intensor1) should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(IN_TENSOR_1).shape.dimNum == 2) {
+        if (inTensorDesc.at(IN_TENSOR_1).shape.dims[1] != param_.headNum * 64) { // 64: embeddim - embeddimV
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of queryRope(intensor1) equal to qhead * 64";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    } else {
+        if (inTensorDesc.at(IN_TENSOR_1).shape.dims[1] != param_.headNum) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of queryRope(intensor1) equal to qhead ";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (inTensorDesc.at(IN_TENSOR_1).shape.dims[2] != EM_BED_DIM_V) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim 2 of queryRope(intensor1) equal to 64 ";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    return NO_ERROR;
+}
+Status MultiLatentAttentionOperation::KVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const
+{
+    int64_t batch = inTensorDesc.at(IN_TENSOR_2).shape.dims[0];
+    int64_t max_seq = inTensorDesc.at(IN_TENSOR_2).shape.dims[1];
+    if (inTensorDesc.at(IN_TENSOR_2).shape.dims[DIM_2] != param_.kvHeadNum * EM_BED_DIM_V) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 2 of key(intensor2) equal to kvhead * embeddimV";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(IN_TENSOR_3).shape.dims[0] != batch) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of key(intensor2) and keyRope(intensor3) should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(IN_TENSOR_3).shape.dims[1] != max_seq) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of key(intensor2) and keyRope(intensor3) should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(IN_TENSOR_3).shape.dims[DIM_2] != param_.kvHeadNum * 64) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 2 of keyRope(intensor3) equal to kvhead * 64";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(IN_TENSOR_4).shape.dims[0] != batch) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of key(intensor2) and value(intensor4) should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(IN_TENSOR_4).shape.dims[1] != max_seq) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of key(intensor2) and value(intensor4) should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(IN_TENSOR_4).shape.dims[DIM_2] != param_.kvHeadNum * EM_BED_DIM_V) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 2 of value(intensor4) equal to kvhead * embeddimV";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+}
+Status MultiLatentAttentionOperation::QKVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const
+{
+    Status st = NO_ERROR;
+    st = QDimCheckPrefill(inTensorDesc);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    st = KVDimCheckPrefill(inTensorDesc);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    return NO_ERROR;
+}
 
 std::shared_ptr<Runner> MultiLatentAttentionOperation::CreateRunner(Context &context) const
 {
