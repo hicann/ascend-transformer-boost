@@ -225,7 +225,7 @@ void GetDecodingTailBatchTiling(MLAInfo &mmInfo, uint32_t *tilingParam, int32_t 
     }
 }
 
-void GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t blockDim, uint32_t tilingParam[])
+Status GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t blockDim, uint32_t *tilingParam)
 {
     int32_t curTask = 0;
     int32_t prevTaskNum = 0;
@@ -270,6 +270,7 @@ void GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t blockDim, uint32_t t
         }
     }
     GetDecodingTailBatchTiling(mmInfo, tilingParam, curTask, prevTaskNum, batchTilingMap);
+    return AtbOps::Status::OkStatus();
 }
 
 void GetNdMLAMtpTilingTP1(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam,
