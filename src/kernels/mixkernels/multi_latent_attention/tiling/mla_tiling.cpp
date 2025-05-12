@@ -57,7 +57,9 @@ int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int
 
 Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t blockDim)
 {
-    MKI_CHECK(blockDim > 0, "blockDim cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
+    if (blockDim <= 0) {
+        return Status::FailStatus(ERROR_INVALID_VALUE);
+    }
     mmInfo.tailBatch = mmInfo.batch % blockDim;
     mmInfo.tailTaskNum = mmInfo.totalTaskNum % blockDim;
     mmInfo.flashDecodingTaskNum = mmInfo.quantFlag ? mmInfo.tailTaskNum : mmInfo.tailBatch;
@@ -164,7 +166,6 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MLAInfo mmInfo = {0};
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
-    MKI_CHECK(blockDim > 0, "blockDim cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
     Status ret1 = GetMLAInfo(launchParam, mmInfo, param, blockDim);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
