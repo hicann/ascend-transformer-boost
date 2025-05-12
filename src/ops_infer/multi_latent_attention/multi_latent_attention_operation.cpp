@@ -73,7 +73,7 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
     } else {
         if (opParam.kvHeadNum != 1) {
             ATB_LOG(ERROR) << "kvHeadNum should be 1, only support MQA";
-            return false;
+            return ERROR_INVALID_PARAM;
         }
         if (opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::KVCACHE) {
             ATB_LOG(ERROR) << "dont support cacheMode KVCACHE yet";
@@ -501,7 +501,7 @@ Status MultiLatentAttentionOperation::QDimCheckPrefill(const SVector<TensorDesc>
             ATB_LOG(ERROR) << GetLogPrefix() << "dim 1 of queryRope(intensor1) equal to qhead ";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        if (inTensorDesc.at(IN_TENSOR_1).shape.dims[2] != EM_BED_DIM_V) {
+        if (inTensorDesc.at(IN_TENSOR_1).shape.dims[2] != 64) { // 64: embeddim - embeddimV
             ATB_LOG(ERROR) << GetLogPrefix() << "dim 2 of queryRope(intensor1) equal to 64 ";
             return ERROR_INVALID_TENSOR_DIM;
         }
