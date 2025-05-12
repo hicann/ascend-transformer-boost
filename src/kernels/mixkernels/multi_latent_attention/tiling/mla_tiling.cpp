@@ -96,6 +96,7 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
         mmInfo.embeddingSize = static_cast<int32_t>(kcacheShape.at(DIM_3));
         mmInfo.blockSize = static_cast<int32_t>(kcacheShape.at(DIM_1));
     }
+    MKI_CHECK(mmInfo.blockSize > 0, "blockSize cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
     mmInfo.numTokens = static_cast<int32_t>(param.kvSeqLen.size());
     mmInfo.numBlocks = static_cast<int32_t>(kcacheShape.at(DIM_0));
     mmInfo.maxNumBlocksPerQuery = static_cast<int32_t>(tableShape.at(DIM_1));
@@ -111,7 +112,7 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.totalTaskNum = mmInfo.qSeqLen != nullptr ?
                           std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
                           mmInfo.batch;
-    GetFlashDecodingInfo(mmInfo, param, blockDim);
+        GetFlashDecodingInfo(mmInfo, param, blockDim);
     mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT || (mmInfo.flashDecoding && !mmInfo.quantFlag));
     if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
         mmInfo.maskType = 0;
@@ -158,6 +159,7 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MLAInfo mmInfo = {0};
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+    MKI_CHECK(blockDim > 0, "blockDim cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
     Status ret1 = GetMLAInfo(launchParam, mmInfo, param, blockDim);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
