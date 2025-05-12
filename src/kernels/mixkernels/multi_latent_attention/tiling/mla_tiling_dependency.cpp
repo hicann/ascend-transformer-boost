@@ -21,6 +21,9 @@
 #include <mki/utils/platform/platform_info.h>
 #include "atbops/params/params.h"
 #include "mla_tiling.h"
+#include "mla_tiling_dependency.h"
+
+#define UNUSED_VALUE(x) (void)(x)
 
 namespace AtbOps {
 const int32_t TILING_BATCH = 0;
@@ -61,7 +64,21 @@ const int32_t NUM18 = 18;
 const int32_t NUM19 = 19;
 const int32_t NUM20 = 20;
 const int32_t NUM21 = 21;
+const int32_t NUM22 = 22;
+const int32_t NUM23 = 23;
+const int32_t NUM24 = 24;
+const int32_t NUM25 = 25;
+const int32_t NUM26 = 26;
+const int32_t NUM27 = 27;
+const int32_t NUM28 = 28;
+const int32_t NUM29 = 29;
+const int32_t NUM30 = 30;
+const int32_t NUM31 = 31;
 const int32_t NUM32 = 32;
+const int32_t NUM33 = 33;
+const int32_t NUM34 = 34;
+const int32_t NUM35 = 35;
+const int32_t NUM36 = 36;
 const int32_t NUM64 = 64;
 const int32_t NUM128 = 128;
 const int32_t NUM256 = 256;
@@ -93,6 +110,16 @@ inline int32_t ConvertValueToIndexMM(int32_t val, int32_t idxBound) // 16, 7
 {
     return (val > PP_MM[idxBound]) ? idxBound : (val / PP_INDEX - 1);
 }
+const int32_t PP_NN_NUM = 16;
+constexpr std::array<int32_t, PP_NN_NUM> PP_NN = {16,  32,  48,  64,  80,  96,  112, 128,
+                                                  144, 160, 176, 192, 208, 224, 240, 256};
+inline int32_t ConvertValueToIndexNN(int32_t val, int32_t idxBound)
+{
+    return (val > PP_NN[idxBound]) ? idxBound : (val / PP_INDEX - 1);
+}
+
+const int32_t EMBEDINF_LIMIT = 128;
+const int32_t NUM_TWO = 2;
 
 void GetAddrOffsetMLA(uint32_t *tilingParam, const AddrOffsets addrOffsets, const int32_t tilingOffset)
 {
@@ -261,5 +288,173 @@ Status GetMLATilingParam(const LaunchParam &launchParam, const MLAInfo &mmInfo,
     }
     GetTilingHead(mmInfo, param, tilingParam, torPtr);
     return AtbOps::Status::OkStatus();
+}
+
+void InitTilingKWithN(const MLAInfo &mmInfo, int32_t &embeddingSizeAligned, int32_t &nIbd,
+    int32_t seqIdx, uint32_t *tilingParam)
+{
+    int32_t tilingK = embeddingSizeAligned < LONG_SEQ_LEN ? LONG_SEQ_LEN : embeddingSizeAligned;
+    int32_t kvSeqlen = *(mmInfo.kvSeqLen + seqIdx);
+    int32_t kvSeqlenAligned = (kvSeqlen + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
+    int32_t nUbd = std::min(LONG_SEQ_LEN, kvSeqlenAligned);
+    nIbd = ConvertValueToIndexNN(nUbd, PP_NN_NUM - 1);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM3] =
+                            static_cast<uint32_t>(PP_NN[nIbd]);
+}
+
+Status CheckSeqlen(const MLAInfo &mmInfo, const AddrOffsets &addrOffsets, int32_t qSeqlen,
+                   int32_t kvSeqlen, int32_t seqIdx)
+{
+    UNUSED_VALUE(seqIdx);
+    MKI_CHECK(qSeqlen >= 0, "qSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(kvSeqlen >= 0, "kvSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(kvSeqlen == qSeqlen, "kvSeqlen should equal qSeqlen",
+            return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(addrOffsets.totalQBlkNum >= 0, "totalQBlkNum overflow",
+                 return Status::FailStatus(ERROR_INVALID_VALUE));
+    return Status::OkStatus();
+}
+
+void FillPrefillTilingOffsetParam(int32_t seqIdx, AddrOffsets &addrOffsets, uint32_t *tilingParam)
+{
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM4] =
+                                        GetHigh32Bit(addrOffsets.addrQSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM5] =
+                                        GetLoww32Bit(addrOffsets.addrQSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM6] =
+                                        GetHigh32Bit(addrOffsets.addrKSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM7] =
+                                        GetLoww32Bit(addrOffsets.addrKSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM8] =
+                                        GetHigh32Bit(addrOffsets.addrVSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM9] =
+                                        GetLoww32Bit(addrOffsets.addrVSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM10] =
+                                        GetHigh32Bit(addrOffsets.addrOSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM11] =
+                                        GetLoww32Bit(addrOffsets.addrOSeqOffset);
+}
+
+void PrefillTilingHead(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffsets &addrOffsets,
+                       uint32_t *tilingParam, int32_t kvRealHeads)
+{
+    tilingParam[0] = static_cast<uint32_t>(mmInfo.batch);
+    tilingParam[1] = static_cast<uint32_t>(mmInfo.maxSeqLen);
+    tilingParam[NUM2] = static_cast<uint32_t>(mmInfo.numHeads);
+    tilingParam[NUM3] = static_cast<uint32_t>(mmInfo.embeddingSize);
+    tilingParam[NUM4] = static_cast<uint32_t>(kvRealHeads);
+    tilingParam[NUM5] = torUptr;
+    tilingParam[NUM6] = static_cast<uint32_t>(mmInfo.headStride);
+    tilingParam[NUM7] = static_cast<uint32_t>(mmInfo.maskStride);
+    tilingParam[NUM8] = mmInfo.isTriuMask;
+    tilingParam[NUM9] = static_cast<uint32_t>(addrOffsets.totalQBlkNum);
+    tilingParam[NUM10] = 0;
+    tilingParam[NUM11] = 0;
+    tilingParam[NUM12] = 0;
+    tilingParam[NUM13] = mmInfo.headStride;
+    tilingParam[NUM14] = static_cast<uint32_t>(TILING_HEAD_SIZE_PREFILL);
+    tilingParam[NUM15] = static_cast<uint32_t>(TILING_PARA_SIZE_PREFILL);
+    tilingParam[NUM16] = mmInfo.maskType == 0 ? 1 : 2;
+    tilingParam[NUM17] = mmInfo.isLongSeq;
+    tilingParam[NUM18] = mmInfo.maxKvSeqLen;
+    tilingParam[NUM19] = 0;
+    tilingParam[NUM20] = mmInfo.maskType;
+    tilingParam[NUM21] = 0;
+    tilingParam[NUM22] = 0;
+    tilingParam[NUM23] = static_cast<uint32_t>(mmInfo.embeddingSizeV);
+    tilingParam[NUM24] = static_cast<uint32_t>(mmInfo.quantType);
+    tilingParam[NUM25] = 0;
+    tilingParam[NUM26] = 0;
+    tilingParam[NUM27] = 0;
+    tilingParam[NUM28] = 0;
+    tilingParam[NUM29] = mmInfo.maxKvSeqLen; // for bnsd, not used
+    tilingParam[NUM30] = 0;
+    tilingParam[NUM31] = 0;
+    tilingParam[NUM32] = 0;
+    tilingParam[NUM33] = 0;
+    tilingParam[NUM34] = 0;
+    tilingParam[NUM35] = 0;
+    tilingParam[NUM36] = 0;
+}
+
+
+Status PrefillTilingParam(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffsets &addrOffsets,
+                          int32_t kvRealHeads, uint32_t *tilingParam)
+{
+    for (int32_t seqIdx = 0; seqIdx < mmInfo.batch; seqIdx++) {
+        int32_t qSeqlen = *(mmInfo.qSeqLen + seqIdx);
+        int32_t qSeqlenAligned = (qSeqlen + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
+        int32_t kvSeqlen = *(mmInfo.kvSeqLen + seqIdx);
+        int32_t batchState = 1;
+        int32_t embeddingSizeAligned = (mmInfo.embeddingSize + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
+        int32_t nIbd = 0;
+        InitTilingKWithN(mmInfo, embeddingSizeAligned, nIbd, seqIdx, tilingParam);
+        int32_t mUbd = std::min(LONG_SEQ_LEN, qSeqlenAligned);
+        int32_t mIbd = ConvertValueToIndexMM(mUbd, PP_MM_NUM - 1);
+        mUbd = PP_MM[mIbd];
+        addrOffsets.totalQBlkNum += (qSeqlen != 0 && kvSeqlen != 0) ? ((qSeqlen + mUbd - 1) / mUbd) : 0;
+
+        tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM2] = static_cast<uint32_t>(mUbd);
+        Status ret1 = CheckSeqlen(mmInfo, addrOffsets, qSeqlen, kvSeqlen, seqIdx);
+        OP_TILING_CHECK_STATUS_RETURN(ret1);
+        tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL] = static_cast<uint32_t>(qSeqlen);
+        tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + 1] = static_cast<uint32_t>(kvSeqlen);
+        FillPrefillTilingOffsetParam(seqIdx, addrOffsets, tilingParam);
+        tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM13] =
+            static_cast<uint32_t>(addrOffsets.totalQBlkNum);
+        tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM14] = 1;
+        auto kvFactor = mmInfo.maxKvSeqLen;
+        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen * mmInfo.numHeads * mmInfo.embeddingSizeV);
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeads * mmInfo.embeddingSizeV);
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeads * mmInfo.embeddingSizeV);
+        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen * mmInfo.numHeads * mmInfo.embeddingSizeV);
+    }
+    PrefillTilingHead(mmInfo, torUptr, addrOffsets, tilingParam, kvRealHeads);
+    addrOffsets.block = static_cast<int64_t>(mmInfo.numHeads) * addrOffsets.totalQBlkNum;
+    return Status::OkStatus();
+}
+
+Status GetMLAPrefillTilingParam(const MLAInfo &mmInfo, uint32_t &blockDim,
+                                uint32_t *tilingParam, uint32_t tilingParamSize)
+{
+    if (tilingParam == nullptr) {
+        MKI_LOG(ERROR) << "pointer tilingParam or seq is nullptr.";
+        return Status::FailStatus(ERROR_INVALID_VALUE, "tilingParam is nullptr");
+    }
+    uint32_t tilingHeadSize = TILING_HEAD_SIZE_PREFILL;
+    uint64_t initSize =
+        static_cast<uint64_t>((mmInfo.batch * TILING_PARA_SIZE_PREFILL + tilingHeadSize) * sizeof(uint32_t));
+    uint64_t totalSize = static_cast<uint64_t>(tilingHeadSize) +
+                     static_cast<uint64_t>(mmInfo.batch) *
+                     static_cast<uint64_t>(TILING_PARA_SIZE_PREFILL);
+    auto ret = memset_s(tilingParam, tilingParamSize, 0, initSize);
+    MKI_CHECK(ret == EOK, "Failed to clear the array", return Status::FailStatus(-1));
+    AddrOffsets addrOffsets;
+    float tor = mmInfo.tor;
+    uint32_t *torUptr = reinterpret_cast<uint32_t *>(&tor);
+    int32_t kvRealHeads = mmInfo.kvHeads > 0 ? mmInfo.kvHeads : mmInfo.numHeads;
+    Status ret1 = PrefillTilingParam(mmInfo, *torUptr, addrOffsets, kvRealHeads, tilingParam);
+    OP_TILING_CHECK_STATUS_RETURN(ret1);
+    MKI_LOG(INFO) << "tiling is";
+    MKI_CHECK(static_cast<int64_t>(totalSize) <= std::numeric_limits<int32_t>::max(), "batch is too large",
+        return Status::FailStatus(ERROR_INVALID_VALUE));
+
+    for (uint32_t i = 0; i < static_cast<uint32_t>(totalSize); i++) {
+        if (i == (static_cast<uint32_t>(totalSize) - 1)) {
+            MKI_LOG(INFO) << tilingParam[i] << ")";
+            break;
+        }
+        MKI_LOG(INFO) << i << " index: " << tilingParam[i] << ",";
+    }
+    MKI_CHECK(addrOffsets.block > 0 && addrOffsets.block <= UINT32_MAX, "blockDim overflow",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
+    uint32_t logicalblock = static_cast<uint32_t>(addrOffsets.block);
+    MKI_LOG(INFO) << "totalQBlkNum is " << addrOffsets.totalQBlkNum;
+    MKI_LOG(INFO) << "block is " << logicalblock;
+    if (blockDim > logicalblock) {
+        blockDim = logicalblock;
+    }
+    MKI_LOG(INFO) << "blockDim is " << blockDim;
+    return Status::OkStatus();
 }
 } // end paged_attention namespace

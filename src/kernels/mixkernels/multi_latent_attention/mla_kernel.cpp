@@ -66,7 +66,59 @@ public:
     }
 };
 
+class MLAPrefillKernel : public KernelBase {
+public:
+    explicit MLAPrefillKernel(const std::string &kernelName, const BinHandle *handle)
+        : KernelBase(kernelName, handle)
+    {
+        launchBufferSize_ = Utils::RoundUp((TILING_PARA_SIZE_PREFILL + TILING_HEAD_SIZE_PREFILL) *
+                        sizeof(uint32_t), TILINGMIN);
+    }
+    
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        auto &param = AnyCast<OpParam::MLA>(launchParam.GetParam());
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 3 ||
+                            launchParam.GetInTensor(0).desc.dims.size() == 2,
+                        "input 0 dim num invalid", return false);
+        MKI_LOG(INFO) << "launchParam.GetOutTensorCount(): " << launchParam.GetOutTensorCount();
+        return true;
+    }
+    
+    uint64_t GetTilingSize(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MLA),
+            "paged attention: param type invalid", return false);
+        auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
+        auto batch = param.qSeqLen.size();
+        MKI_CHECK(batch > 0 && batch <= ND_BATCH_LIMIT, "batch is invalid", return 0);
+        MKI_CHECK(param.headSize > 0 && param.headSize <= M_LIMIT, "headsize is invalid", return 0);
+        uint64_t bufferSize =
+            Utils::RoundUp(launchBufferSize_ + TILING_PARA_SIZE_PREFILL * (batch - 1) * sizeof(uint32_t), TILINGMIN);
+        return bufferSize;
+    }
+    
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        Status ret = MLAPrefillTiling(launchParam, kernelInfo_);
+        MKI_CHECK_NO_LOG(ret.Ok(), return ret);
+        kernelInfo_.SetHwsyncIdx(0);
+        return Status::OkStatus();
+    }
+};
+    
+class MLAPrefillBF16Kernel : public MLAPrefillKernel {
+public:
+    explicit MLAPrefillBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : MLAPrefillKernel(kernelName, handle)
+    {
+    }
+};
+    
+    
 REG_KERNEL_BASE(MLAKernel);
+REG_KERNEL_BASE(MLAPrefillKernel);
+REG_KERNEL_BASE(MLAPrefillBF16Kernel);
 
 } // namespace AtbOps
 

@@ -49,6 +49,7 @@ constexpr int32_t UB_FLOAT_LINE_SIZE = 128;     // 128
 constexpr int32_t UB_HALF_LINE_SIZE = 128;       // UB_FLOAT_LINE_SIZE * 2
 constexpr int32_t BASE_MASK_SIZE = 128;
 constexpr int32_t COMPRESS_MASK_SIZE = 8192; // 64 * 128
+constexpr int32_t S_DB_SIZE_FLOAT = 8192;
 constexpr int32_t S_DB_SIZE = 8192;
 constexpr int32_t REDUCE_UB_SIZE = 1024;
 constexpr float BASE_Y = 128;
@@ -60,9 +61,9 @@ constexpr int32_t LOCAL_SIZE = 6;
 #ifdef __DAV_C220_CUBE__
 
 template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, bool int8_flag = false>
-class FlashAttentionEncoderHighPrecision {
+class FlashAttentionEncoder {
 public:
-    __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderHighPrecision(
+    __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoder(
         __gm__ uint8_t *__restrict__ sync,
         __gm__ uint8_t *__restrict__ q_gm,
         __gm__ uint8_t *__restrict__ q_rope_gm,
@@ -71,10 +72,11 @@ public:
         __gm__ uint8_t *__restrict__ v_gm,
         __gm__ uint8_t *__restrict__ s_gm,
         __gm__ uint8_t *__restrict__ p_gm,
+        __gm__ uint8_t *__restrict__ o_gm,
         __gm__ uint8_t *__restrict__ o_tmp_gm,
         __gm__ uint8_t *__restrict__ upo_tmp_gm,
         __gm__ uint8_t *__restrict__ tiling_para_gm) :
-        q_gm(q_gm), q_rope_gm(q_rope_gm), s_gm(s_gm), p_gm(p_gm), o_tmp_gm(o_tmp_gm), upo_tmp_gm(upo_tmp_gm),
+        q_gm(q_gm), q_rope_gm(q_rope_gm), s_gm(s_gm), p_gm(p_gm), o_gm(o_gm), o_tmp_gm(o_tmp_gm), upo_tmp_gm(upo_tmp_gm),
         tiling_para_gm(tiling_para_gm)
     {
         SetFftsBaseAddr((unsigned long)sync);
@@ -97,6 +99,7 @@ public:
         this->max_kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 18));
 
         this->data_shape_type = 0;
+        this->group_num = q_heads / kv_heads;
         this->stride_qo = q_heads * 128;
         this->stride_o = q_heads * embdv;
         this->stride_k = kv_heads * 128;
@@ -123,7 +126,8 @@ public:
         k_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->k_gm));
         k_rope_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->k_rope_gm));
         v_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->v_gm));
-        s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(this->s_gm));
+        s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->s_gm));
+        o_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->o_gm));
         p_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(this->p_gm));
         o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(this->o_tmp_gm));
 
@@ -143,7 +147,7 @@ public:
         SET_FLAG(FIX, M, EVENT_ID1);
     }
 
-    __aicore__ __attribute__((always_inline)) inline ~FlashAttentionEncoderHighPrecision()
+    __aicore__ __attribute__((always_inline)) inline ~FlashAttentionEncoder()
     {
         WAIT_FLAG(MTE1, MTE2, EVENT_ID0);
         WAIT_FLAG(MTE1, MTE2, EVENT_ID1);
@@ -266,7 +270,7 @@ public:
                     0
                 );
                 gm_to_l1<ArchType::ASCEND_V220, QKV_DT, DataFormat::ND, DataFormat::ND>(
-                    l1q_buf_addr_tensor[128],
+                    l1q_buf_addr_tensor[16 * 128],
                     q_rope_gm_tensor[q_rope_offset],
                     1,
                     0,
@@ -418,7 +422,7 @@ public:
                                 SET_FLAG(M, FIX, l0c_pingpong_flag);
                                 WAIT_FLAG(M, FIX, l0c_pingpong_flag);
 
-                                l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
+                                l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, half, float>(
                                     s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod + split_idx * pp_n_scalar],
                                     l0c_buf_tensor[l0c_offset],
                                     qk_m,        // MSize
@@ -584,6 +588,7 @@ private:
     __gm__ uint8_t *__restrict__ v_gm{nullptr};
     __gm__ uint8_t *__restrict__ s_gm{nullptr};
     __gm__ uint8_t *__restrict__ p_gm{nullptr};
+    __gm__ uint8_t *__restrict__ o_gm{nullptr};
     __gm__ uint8_t *__restrict__ o_tmp_gm{nullptr};
     __gm__ uint8_t *__restrict__ upo_tmp_gm{nullptr};
     __gm__ uint8_t *__restrict__ tiling_para_gm{nullptr};
@@ -605,8 +610,9 @@ private:
     AscendC::GlobalTensor<QKV_DT> k_gm_tensor;
     AscendC::GlobalTensor<QKV_DT> k_rope_gm_tensor;
     AscendC::GlobalTensor<QKV_DT> v_gm_tensor;
-    AscendC::GlobalTensor<float> s_gm_tensor;
+    AscendC::GlobalTensor<QKV_DT> s_gm_tensor;
     AscendC::GlobalTensor<QKV_DT> p_gm_tensor;
+    AscendC::GlobalTensor<QKV_DT> o_gm_tensor;
     AscendC::GlobalTensor<float> o_tmp_gm_tensor;
     AscendC::GlobalTensor<float> upo_gm_tensor;
 
@@ -638,7 +644,7 @@ private:
     uint32_t tiling_para_size{0};
 };
 
-extern "C" __global__ __aicore__ void mla_prefill_bf16(
+extern "C" __global__ __aicore__ void mla_prefill(
     __gm__ uint8_t *__restrict__ sync,
     __gm__ uint8_t *__restrict__ q_gm,
     __gm__ uint8_t *__restrict__ q_rope_gm,
@@ -661,14 +667,11 @@ extern "C" __global__ __aicore__ void mla_prefill_bf16(
     __gm__ uint8_t *__restrict__ tiling_para_gm)
 {
     uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
-    // 仅在tilingKey为1的时候是bf，其余场景均当做half处理
-    if (tilingKey == 1 || tilingKey == 2) {
-        FlashAttentionEncoderHighPrecision<__bf16> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run<true>();
-    } else {
-        FlashAttentionEncoderHighPrecision<half> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+    if (tilingKey == 1) {
+        FlashAttentionEncoder<half> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_cube.Run<false>();
     }
+
 }
 
 #endif
@@ -703,6 +706,18 @@ __aicore__ __attribute__((always_inline)) inline void __set_mask(int32_t len)
     } else {
         SetVectorMask<int8_t>(0x0, mask);
     }
+}
+
+
+__aicore__ __attribute__((always_inline)) inline void SetBlockReduceMask(int32_t len)
+{
+    if (len > 16 || len < 1) {
+        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+        return;
+    }
+    uint64_t subMask = ((uint64_t) 1 << len) - 1;
+    uint64_t maskValue = (subMask << 48) + (subMask << 32) + (subMask << 16) + subMask;
+    SetVectorMask<int8_t>(maskValue, maskValue);
 }
 
 
@@ -747,25 +762,29 @@ struct Rowmax<S_DTYPE, SoftmaxTile::TILE_512_MAIN> {
         cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
             tmp_ub,
             s_ub,
-            m * n_stride / FLOAT_VECTOR_SIZE,
+            m * n_stride / VECTOR_SIZE,
             1,
             1,
             8
         );
         PIPE_BARRIER(V);
-        cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
+        max_v<ArchType::ASCEND_V220, S_DTYPE>(
             tmp_ub[REDUCE_UB_SIZE],
             tmp_ub,
-            m * n_stride / FLOAT_BLOCK_SIZE / FLOAT_VECTOR_SIZE,
-            1,
-            1,
-            8
+            tmp_ub[16],
+            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,   // repeat
+            1,                            // dstBlockStride
+            2,                            // src0BlockStride
+            2,                            // src1BlockStride
+            8,                            // dstRepeatStride
+            16,                            // src0RepeatStride
+            16 // src1RepeatStride
         );
         PIPE_BARRIER(V);
         cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
             local_rowmax_ub,
             tmp_ub[REDUCE_UB_SIZE],
-            m * n_stride / FLOAT_VECTOR_SIZE / FLOAT_VECTOR_SIZE,
+            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
             1,
             1,
             8
@@ -785,33 +804,21 @@ struct Rowmax<S_DTYPE, SoftmaxTile::TILE_256_MAIN>{
         cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
             tmp_ub,
             s_ub,
-            m * n_stride / FLOAT_VECTOR_SIZE,
+            m * n_stride / VECTOR_SIZE,
             1,
             1,
             8
         );
         PIPE_BARRIER(V);
-        __set_mask(32);
-        cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-            tmp_ub[REDUCE_UB_SIZE],
-            tmp_ub,
-            m,
-            1,
-            1,
-            4
-        );
-        PIPE_BARRIER(V);
-        __set_vcg_mask(4);
         cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
             local_rowmax_ub,
-            tmp_ub[REDUCE_UB_SIZE],
-            (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
+            tmp_ub,
+            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
             1,
             1,
             8
         );
         PIPE_BARRIER(V);
-        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
     }
 };
 
@@ -894,7 +901,7 @@ struct Rowsum<EXP_DTYPE, SoftmaxTile::TILE_256_MAIN>{
     }
 };
 
-
+// need todo
 template<typename S_DTYPE>
 struct Rowmax<S_DTYPE, SoftmaxTile::TILE_TAIL>{
     __aicore__ __attribute__((always_inline)) Rowmax(
@@ -903,39 +910,45 @@ struct Rowmax<S_DTYPE, SoftmaxTile::TILE_TAIL>{
         const AscendC::LocalTensor<S_DTYPE> &tmp_ub,
         uint32_t m, uint32_t n_real, uint32_t n_stride)
     {
-        if (n_real >= FLOAT_VECTOR_SIZE) {
+        if (n_real >= VECTOR_SIZE) {
+            // 128 to 8 each row
             cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
                 tmp_ub,
                 s_ub,
                 m,
+                2,
                 1,
-                1,
-                n_stride / FLOAT_BLOCK_SIZE
+                n_stride / BLOCK_SIZE
             );
             PIPE_BARRIER(V);
+            // 8 to 1 each row
+            SetBlockReduceMask(VECTOR_SIZE / 16);
             cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
                 local_rowmax_ub,
                 tmp_ub,
-                (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
+                (m * 16 + VECTOR_SIZE - 1) / VECTOR_SIZE,
                 1,
                 1,
                 8
             );
             PIPE_BARRIER(V);
-            for (uint64_t rowmax_idx = 1; rowmax_idx < (uint64_t)n_real / FLOAT_VECTOR_SIZE; ++rowmax_idx) {
+            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+            for (uint64_t rowmax_idx = 1; rowmax_idx < (uint64_t)n_real / VECTOR_SIZE; ++rowmax_idx) {
+                // kvseq 方向每128做一次blk max
                 cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
                     tmp_ub,
-                    s_ub[rowmax_idx * FLOAT_VECTOR_SIZE],
+                    s_ub[rowmax_idx * VECTOR_SIZE],
                     m,
+                    2,
                     1,
-                    1,
-                    n_stride / FLOAT_BLOCK_SIZE
+                    n_stride / BLOCK_SIZE
                 );
                 PIPE_BARRIER(V);
+                SetBlockReduceMask(VECTOR_SIZE / 16);
                 cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
                     tmp_ub[REDUCE_UB_SIZE],
                     tmp_ub,
-                    (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
+                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
                     1,
                     1,
                     8
@@ -958,23 +971,23 @@ struct Rowmax<S_DTYPE, SoftmaxTile::TILE_TAIL>{
                 SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
             }
         }
-        if (n_real % FLOAT_VECTOR_SIZE > 0) {
-            __set_mask(n_real % FLOAT_VECTOR_SIZE);
+        if (n_real % VECTOR_SIZE > 0) {
+            __set_mask(n_real % VECTOR_SIZE);
             cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
                 tmp_ub,
-                s_ub[n_real / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                s_ub[n_real / VECTOR_SIZE * VECTOR_SIZE],
                 m,
+                2,
                 1,
-                1,
-                n_stride / FLOAT_BLOCK_SIZE
+                n_stride / BLOCK_SIZE
             );
             PIPE_BARRIER(V);
-            __set_vcg_mask((n_real % FLOAT_VECTOR_SIZE + FLOAT_BLOCK_SIZE - 1)/ FLOAT_BLOCK_SIZE);
-            if (n_real < FLOAT_VECTOR_SIZE) {
+            SetBlockReduceMask((n_real % VECTOR_SIZE + BLOCK_SIZE - 1)/ BLOCK_SIZE);
+            if (n_real < VECTOR_SIZE) {
                 cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
                     local_rowmax_ub,
                     tmp_ub,
-                    (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
+                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
                     1,
                     1,
                     8
@@ -984,7 +997,7 @@ struct Rowmax<S_DTYPE, SoftmaxTile::TILE_TAIL>{
                 cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
                     tmp_ub[REDUCE_UB_SIZE],
                     tmp_ub,
-                    (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
+                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
                     1,
                     1,
                     8
@@ -1128,59 +1141,34 @@ struct Rowsum<EXP_DTYPE, SoftmaxTile::TILE_TAIL>{
 template<typename S_DTYPE, typename EXP_DTYPE, typename P_DTYPE, typename MASK_DTYPE, uint32_t MASK_TYPE>
 __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
     const AscendC::LocalTensor<S_DTYPE> &s_ub,
-    const AscendC::LocalTensor<MASK_DTYPE> &mask_orig_ub,
     const AscendC::LocalTensor<S_DTYPE> &mask_processed_ub,
     const AscendC::LocalTensor<S_DTYPE> &local_rowmax_ub,
     const AscendC::LocalTensor<S_DTYPE> &hat_rowmax_ub,
     const AscendC::LocalTensor<S_DTYPE> &global_rowmax_ub,
-    const AscendC::LocalTensor<S_DTYPE> &diff_rowmax_ub,
+    const AscendC::LocalTensor<S_DTYPE> &diff16_rowmax_ub,
+    const AscendC::LocalTensor<EXP_DTYPE> &diff_rowmax_ub,
     const AscendC::LocalTensor<EXP_DTYPE> &s_exp_ub,
     const AscendC::LocalTensor<EXP_DTYPE> &local_rowsum_ub,
     const AscendC::LocalTensor<EXP_DTYPE> &global_rowsum_ub,
     const AscendC::LocalTensor<P_DTYPE> &p_ub,
     const AscendC::LocalTensor<EXP_DTYPE> &tmp_ub,
+    const AscendC::LocalTensor<S_DTYPE> &tmp16_ub,
     const AscendC::GlobalTensor<S_DTYPE> &s_gm,
     const AscendC::GlobalTensor<P_DTYPE> &p_gm,
-    bool first_n_iter, S_DTYPE tor,
+    bool first_n_iter, half tor,
     uint32_t m, uint32_t n_real, uint32_t n_stride, uint32_t pingpong_flag,
-    bool move_flag, uint32_t long_seq, uint32_t mask_type, uint32_t m_idx, uint32_t m_ind, uint32_t n_idx, uint32_t sub_block_idx)
+    bool move_flag, uint32_t long_seq)
 {
-    uint32_t round_m = (m + FLOAT_BLOCK_SIZE - 1) / FLOAT_BLOCK_SIZE * FLOAT_BLOCK_SIZE;
-    if constexpr(MASK_TYPE != 0) {
-        if (move_flag && long_seq) {
-            WAIT_FLAG(MTE2, V, EVENT_ID6);
-            conv_v<ArchType::ASCEND_V220, MASK_DTYPE, S_DTYPE>(
-                mask_processed_ub,
-                mask_orig_ub,
-                (m * n_stride + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                1,                                                                // dstBlockStride
-                1,                                                                // srcBlockStride
-                8,                                                                // dstRepeatStride
-                4                                                                 // srcRepeatStride
-            );
-            PIPE_BARRIER(V);
-            muls_v<ArchType::ASCEND_V220, float>(
-                mask_processed_ub,
-                mask_processed_ub, (float)-3e38,
-                (m * n_stride + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                1,                                                                // dstBlockStride
-                1,                                                                // srcBlockStride
-                8,                                                                // dstRepeatStride
-                8                                                                 // srcRepeatStride
-            );
-            PIPE_BARRIER(V);
-            SET_FLAG(V, MTE2, EVENT_ID6);
-        }
-    }
+    uint32_t round_m = (m + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
+    uint32_t round_m_8 = (m + FLOAT_BLOCK_SIZE - 1) / FLOAT_BLOCK_SIZE * FLOAT_BLOCK_SIZE;
 
     WAIT_FLAG(MTE3, MTE2, pingpong_flag);
-    // input QK
     gm_to_ub<ArchType::ASCEND_V220, S_DTYPE>(
         s_ub,
         s_gm,
         0,                                // sid
         m,                                // nBurst
-        n_stride / FLOAT_BLOCK_SIZE,  // lenBurst
+        n_stride / BLOCK_SIZE,  // lenBurst
         0,                                // srcGap
         0                                 // dstGap
     );
@@ -1190,21 +1178,24 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
     muls_v<ArchType::ASCEND_V220, S_DTYPE>(
         s_ub,
         s_ub,
-        tor,
-        (m * n_stride + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+        (S_DTYPE)tor,
+        (m * n_stride + VECTOR_SIZE - 1) / VECTOR_SIZE, // repeat
         1,                                                                // dstBlockStride
         1,                                                                // srcBlockStride
         8,                                                                // dstRepeatStride
         8                                                                 // srcRepeatStride
     );
+
     PIPE_BARRIER(V);
+
     if constexpr(MASK_TYPE != 0) {
         if (move_flag && long_seq) {
+            WAIT_FLAG(MTE2, V, EVENT_ID6);
             add_v<ArchType::ASCEND_V220, S_DTYPE>(
                 s_ub,
                 s_ub,
                 mask_processed_ub,
-                (m * n_stride + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                (m * n_stride + VECTOR_SIZE - 1) / VECTOR_SIZE, // repeat
                 1,                                                                // dstBlockStride
                 1,                                                                // src0BlockStride
                 1,                                                                // src1BlockStride
@@ -1212,33 +1203,34 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
                 8,                                                                // src0RepeatStride
                 8                                                                 // src1RepeatStride
             );
+            SET_FLAG(V, MTE2, EVENT_ID6);
             PIPE_BARRIER(V);
         }
     }
+    PIPE_BARRIER(ALL);
 
     if (n_real == 512) {
         Rowmax<S_DTYPE, SoftmaxTile::TILE_512_MAIN>(
             s_ub,
             local_rowmax_ub,
-            tmp_ub,
-            round_m, n_real, n_stride
+            tmp16_ub,
+            m, n_real, n_stride
         );
     } else if (n_real == 256) {
         Rowmax<S_DTYPE, SoftmaxTile::TILE_256_MAIN>(
             s_ub,
             local_rowmax_ub,
-            tmp_ub,
-            round_m, n_real, n_stride
+            tmp16_ub,
+            m, n_real, n_stride
         );
     } else {
         Rowmax<S_DTYPE, SoftmaxTile::TILE_TAIL>(
             s_ub,
             local_rowmax_ub,
-            tmp_ub,
-            round_m, n_real, n_stride
+            tmp16_ub,
+            m, n_real, n_stride
         );
     }
-
     if (first_n_iter) {
         // *** hm = lm
         ub_to_ub<ArchType::ASCEND_V220, S_DTYPE>(
@@ -1246,7 +1238,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
             local_rowmax_ub,
             0,                              // sid
             1,                              // nBurst
-            round_m / FLOAT_BLOCK_SIZE, // lenBurst
+            round_m / BLOCK_SIZE, // lenBurst
             0,                              // srcGap
             0                               // dstGap
         );
@@ -1269,7 +1261,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
         PIPE_BARRIER(V);
         // *** dm = gm - hm
         sub_v<ArchType::ASCEND_V220, S_DTYPE>(
-            diff_rowmax_ub,
+            diff16_rowmax_ub,
             global_rowmax_ub,
             hat_rowmax_ub,
             1,         // repeat
@@ -1281,8 +1273,19 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
             8          // src1RepeatStride
         );
         PIPE_BARRIER(V);
+        // dm fp16 cast to fp32
+        conv_v<ArchType::ASCEND_V220, S_DTYPE, EXP_DTYPE>(
+            diff_rowmax_ub,
+            diff16_rowmax_ub,
+            1,  // repeat
+            1,                                                                 // dstBlockStride
+            1,                                                                 // srcBlockStride
+            8,                                                                 // dstRepeatStride
+            4                                                                  // srcRepeatStride
+        );
+        PIPE_BARRIER(V);
         // *** dm = exp(dm)
-        exp_v<ArchType::ASCEND_V220, S_DTYPE>(
+        exp_v<ArchType::ASCEND_V220, EXP_DTYPE>(
             diff_rowmax_ub,
             diff_rowmax_ub,
             1,         // repeat
@@ -1300,123 +1303,101 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
         hat_rowmax_ub,
         0,                              // sid
         1,                              // nBurst
-        round_m / FLOAT_BLOCK_SIZE, // lenBurst
+        round_m / BLOCK_SIZE, // lenBurst
         0,                              // srcGap
         0                               // dstGap
     );
     PIPE_BARRIER(V);
     // *** hm_block = expand_to_block(hm), 存放于 tv
-    brcb_v<ArchType::ASCEND_V220, uint32_t>(
-        tmp_ub.template ReinterpretCast<uint32_t>(),
-        hat_rowmax_ub.template ReinterpretCast<uint32_t>(),
+    brcb_v<ArchType::ASCEND_V220, uint16_t>(
+        tmp_ub.template ReinterpretCast<uint16_t>(),
+        hat_rowmax_ub.template ReinterpretCast<uint16_t>(),
         1,                             // dstBlockStride
         8,                             // dstRepeatStride
         round_m / FLOAT_BLOCK_SIZE // repeat
     );
     PIPE_BARRIER(V);
-    // *** ls = ls - hm_block
-    // for (uint32_t sub_idx = 0; sub_idx < m; ++sub_idx) {
-    //     sub_v<ArchType::ASCEND_V220, S_DTYPE>(
-    //         s_ub[sub_idx * n_stride],
-    //         s_ub[sub_idx * n_stride],
-    //         tmp_ub[sub_idx * 8],
-    //         n_real / FLOAT_VECTOR_SIZE,                         // repeat
-    //         1,                             // dstBlockStride
-    //         1,                             // src0BlockStride
-    //         0,                             // src1BlockStride
-    //         8, // dstRepeatStride
-    //         8, // src0RepeatStride
-    //         0                              // src1RepeatStride
-    //     );
-    //     PIPE_BARRIER(V);
-    //     __set_mask(n_real % FLOAT_VECTOR_SIZE);
-    //     sub_v<ArchType::ASCEND_V220, S_DTYPE>(
-    //         s_ub[sub_idx * n_stride + n_real / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-    //         s_ub[sub_idx * n_stride + n_real / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-    //         tmp_ub[sub_idx * FLOAT_BLOCK_SIZE],
-    //         n_real % FLOAT_VECTOR_SIZE > 0,                         // repeat
-    //         1,                             // dstBlockStride
-    //         1,                             // src0BlockStride
-    //         0,                             // src1BlockStride
-    //         8, // dstRepeatStride
-    //         8, // src0RepeatStride
-    //         0                              // src1RepeatStride
-    //     );
-    //     PIPE_BARRIER(V);
-    //     SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-    // }
-    for (uint32_t vsub_idx = 0; vsub_idx < n_real / FLOAT_VECTOR_SIZE; ++vsub_idx) {
-        sub_v<ArchType::ASCEND_V220, float>(
-            s_ub[vsub_idx * FLOAT_VECTOR_SIZE],
-            s_ub[vsub_idx * FLOAT_VECTOR_SIZE],
-            tmp_ub,
+    for (uint32_t vsub_idx = 0; vsub_idx < n_real / VECTOR_SIZE; ++vsub_idx) {
+        sub_v<ArchType::ASCEND_V220, S_DTYPE>(
+            s_ub[vsub_idx * VECTOR_SIZE],
+            s_ub[vsub_idx * VECTOR_SIZE],
+            tmp_ub.template ReinterpretCast<S_DTYPE>(),
             m,                         // repeat
             1,                             // dstBlockStride
             1,                             // src0BlockStride
             0,                             // src1BlockStride
-            n_stride / FLOAT_BLOCK_SIZE, // dstRepeatStride
-            n_stride / FLOAT_BLOCK_SIZE, // src0RepeatStride
+            n_stride / BLOCK_SIZE, // dstRepeatStride
+            n_stride / BLOCK_SIZE, // src0RepeatStride
             1                              // src1RepeatStride
         );
     }
-    if (n_real % FLOAT_VECTOR_SIZE > 0) {
-        __set_mask(n_real % FLOAT_VECTOR_SIZE);
-        sub_v<ArchType::ASCEND_V220, float>(
-            s_ub[n_real / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-            s_ub[n_real / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-            tmp_ub,
+    if (n_real % VECTOR_SIZE > 0) {
+        __set_mask(n_real % VECTOR_SIZE);
+        sub_v<ArchType::ASCEND_V220, S_DTYPE>(
+            s_ub[n_real / VECTOR_SIZE * VECTOR_SIZE],
+            s_ub[n_real / VECTOR_SIZE * VECTOR_SIZE],
+            tmp_ub.template ReinterpretCast<S_DTYPE>(),
             m,                         // repeat
             1,                             // dstBlockStride
             1,                             // src0BlockStride
             0,                             // src1BlockStride
-            n_stride / FLOAT_BLOCK_SIZE, // dstRepeatStride
-            n_stride / FLOAT_BLOCK_SIZE, // src0RepeatStride
+            n_stride / BLOCK_SIZE, // dstRepeatStride
+            n_stride / BLOCK_SIZE, // src0RepeatStride
             1                              // src1RepeatStride
         );
         SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
     }
     PIPE_BARRIER(V);
 
-    // PIPE_BARRIER(V);
+    conv_v<ArchType::ASCEND_V220, S_DTYPE, EXP_DTYPE>(
+        s_exp_ub,
+        s_ub,
+        (m * n_stride + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,  // repeat
+        1,                                                                 // dstBlockStride
+        1,                                                                 // srcBlockStride
+        8,                                                                 // dstRepeatStride
+        4                                                                  // srcRepeatStride
+    );
+    PIPE_BARRIER(V);
     // *** ls = exp(ls)
     exp_v<ArchType::ASCEND_V220, EXP_DTYPE>(
         s_exp_ub,
-        s_ub,
+        s_exp_ub,
         (m * n_stride + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
         1,                                                                // dstBlockStride
         1,                                                                // srcBlockStride
         8,                                                                // dstRepeatStride
         8                                                                 // srcRepeatStride
     );
-    // PIPE_BARRIER(V);
+    PIPE_BARRIER(V);
     // *** ll = rowsum(ls32)
     if (n_real == 512) {
         Rowsum<EXP_DTYPE, SoftmaxTile::TILE_512_MAIN>(
             s_exp_ub,
             local_rowsum_ub,
             tmp_ub,
-            round_m, n_real, n_stride
+            round_m_8, n_real, n_stride
         );
     } else if (n_real == 256) {
         Rowsum<EXP_DTYPE, SoftmaxTile::TILE_256_MAIN>(
             s_exp_ub,
             local_rowsum_ub,
             tmp_ub,
-            round_m, n_real, n_stride
+            round_m_8, n_real, n_stride
         );
     } else {
         Rowsum<EXP_DTYPE, SoftmaxTile::TILE_TAIL>(
             s_exp_ub,
             local_rowsum_ub,
             tmp_ub,
-            round_m, n_real, n_stride
+            round_m_8, n_real, n_stride
         );
     }
 
     // *** lp = castfp32to16(ls)
-
     conv_v<ArchType::ASCEND_V220, EXP_DTYPE, P_DTYPE>(
-        p_ub, s_exp_ub,
+        p_ub,
+        s_exp_ub,
         (m * n_stride + FLOAT_VECTOR_SIZE - 1) /
             FLOAT_VECTOR_SIZE, // repeat
         1,                     // dstBlockStride
@@ -1443,7 +1424,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
             local_rowsum_ub,
             0,                              // sid
             1,                              // nBurst
-            round_m / FLOAT_BLOCK_SIZE, // lenBurst
+            round_m_8 / FLOAT_BLOCK_SIZE, // lenBurst
             0,                              // srcGap
             0                               // dstGap
         );
@@ -1483,9 +1464,9 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
 }
 
 template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, bool int8_flag = false>
-class FlashAttentionEncoderHighPrecisionVec {
+class FlashAttentionEncoderVec {
 public:
-    __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderHighPrecisionVec(
+    __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderVec(
         __gm__ uint8_t *__restrict__ sync, __gm__ uint8_t *__restrict__ mask_gm,
         __gm__ uint8_t *__restrict__ alibi_coeff_gm, __gm__ uint8_t *__restrict__ o_gm,
         __gm__ uint8_t *__restrict__ s_gm, __gm__ uint8_t *__restrict__ p_gm, __gm__ uint8_t *__restrict__ o_tmp_gm,
@@ -1507,7 +1488,7 @@ public:
         this->q_heads = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 2));
         this->embd = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 3));
         this->embdv = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 23));
-        this->tor = (float)(*((__gm__ float *)tiling_para_gm + 5));
+        this->tor = (half)(*((__gm__ float *)tiling_para_gm + 5));
         this->head_stride = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 6));
         this->mask_stride = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 7));
         this->is_triu_mask = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 8));
@@ -1543,7 +1524,7 @@ public:
         SET_FLAG(V, MTE2, EVENT_ID7);
         SET_FLAG(MTE3, V, EVENT_ID0);
     }
-    __aicore__ __attribute__((always_inline)) inline ~FlashAttentionEncoderHighPrecisionVec()
+    __aicore__ __attribute__((always_inline)) inline ~FlashAttentionEncoderVec()
     {
         WAIT_FLAG(MTE3, MTE2, EVENT_ID0);
         WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
@@ -1575,198 +1556,6 @@ public:
         return (num + VectorSize<Dtype>() - 1) / VectorSize<Dtype>();
     }
 
-    __aicore__ __attribute__((always_inline)) inline void DeqPerHeadS322F32(AscendC::LocalTensor<float> &s,
-                                                                            __gm__ uint8_t *deq_qk_gm,
-                                                                            __gm__ uint8_t *off_qk_gm,
-                                                                            uint32_t head_idx, uint32_t len)
-    {
-        // dequant QK
-        // int32_t转成float类型
-        conv_v<ArchType::ASCEND_V220, int32_t, float>(s, s.ReinterpretCast<int32_t>(),
-                                                      NumVectorsRoundUp<int32_t>(len), // repeat
-                                                      1,                        // dstBlockStride
-                                                      1,                        // srcBlockStride
-                                                      8,                        // dstRepeatStride
-                                                      8                         // srcRepeatStride
-        );
-        PIPE_BARRIER(V);
-
-        // scale
-        float s_quant_scale = *((__gm__ float *)deq_qk_gm + head_idx);
-        muls_v<ArchType::ASCEND_V220, float>(s, s, s_quant_scale,
-                                             NumVectorsRoundUp<float>(len), // repeat
-                                             1,                             // dstBlockStride
-                                             1,                             // srcBlockStride
-                                             8,                             // dstRepeatStride
-                                             8                              // srcRepeatStride
-        );
-        PIPE_BARRIER(V);
-    }
-
-    template <typename T>
-    __aicore__ inline void DivRepeatM(const AscendC::LocalTensor<T> &dst, const AscendC::LocalTensor<T> &src0,
-                                      const AscendC::LocalTensor<T> &src1, const uint32_t sub_m, const uint32_t qk_n,
-                                      const uint32_t qk_round_n)
-    {
-        uint32_t T_BLOCK_SIZE = BlockSize<T>();
-        uint32_t T_VECTOR_SIZE = VectorSize<T>();
-        for (uint32_t row_idx = 0; row_idx < qk_n / T_VECTOR_SIZE; ++row_idx) {
-            div_v<ArchType::ASCEND_V220, T>(dst[row_idx * T_VECTOR_SIZE], src0[row_idx * T_VECTOR_SIZE], src1,
-                                            sub_m,                     // repeat
-                                            1,                         // dstBlockStride
-                                            1,                         // src0BlockStride
-                                            0,                         // src1BlockStride
-                                            qk_round_n / T_BLOCK_SIZE, // dstRepeatStride
-                                            qk_round_n / T_BLOCK_SIZE, // src0RepeatStride
-                                            1                          // src1RepeatStride
-            );
-        }
-        if (qk_n % T_VECTOR_SIZE > 0) {
-            __set_mask(qk_n % T_VECTOR_SIZE);
-            div_v<ArchType::ASCEND_V220, T>(dst[qk_n / T_VECTOR_SIZE * T_VECTOR_SIZE],
-                                            src0[qk_n / T_VECTOR_SIZE * T_VECTOR_SIZE], src1,
-                                            sub_m,                     // repeat
-                                            1,                         // dstBlockStride
-                                            1,                         // src0BlockStride
-                                            0,                         // src1BlockStride
-                                            qk_round_n / T_BLOCK_SIZE, // dstRepeatStride
-                                            qk_round_n / T_BLOCK_SIZE, // src0RepeatStride
-                                            1                          // src1RepeatStride
-            );
-            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-        }
-        PIPE_BARRIER(V);
-    }
-
-    __aicore__ inline void SymmetricDeQuant(const AscendC::LocalTensor<float> &lo_ubuf_tensor,
-                                            const AscendC::LocalTensor<float> &p_scale_ubuf_tensor, uint32_t sub_m,
-                                            uint32_t round_sub_m, uint32_t qk_n, uint32_t qk_round_n, uint32_t head_idx)
-    {
-        if (quantType == 3) {
-            brcb_v<ArchType::ASCEND_V220, float>(tv_ubuf_tensor, p_scale_ubuf_tensor,
-                                                 1,                               // dstBlockStride
-                                                 8,                               // dstRepeatStride
-                                                 round_sub_m / BlockSize<float>() // repeat
-            );
-            PIPE_BARRIER(V);
-            for (uint32_t row_idx = 0; row_idx < qk_n / VectorSize<float>(); ++row_idx) {
-                mul_v<ArchType::ASCEND_V220, float>(lo_ubuf_tensor[row_idx * VectorSize<float>()],
-                                                    lo_ubuf_tensor[row_idx * VectorSize<float>()], tv_ubuf_tensor,
-                                                    sub_m,                           // repeat
-                                                    1,                               // dstBlockStride
-                                                    1,                               // src0BlockStride
-                                                    0,                               // src1BlockStride
-                                                    qk_round_n / BlockSize<float>(), // dstRepeatStride
-                                                    qk_round_n / BlockSize<float>(), // src0RepeatStride
-                                                    1                                // src1RepeatStride
-                );
-            }
-            if (qk_n % VectorSize<float>() > 0) {
-                __set_mask(qk_n % VectorSize<float>());
-                mul_v<ArchType::ASCEND_V220, float>(lo_ubuf_tensor[qk_n / VectorSize<float>() * VectorSize<float>()],
-                                                    lo_ubuf_tensor[qk_n / VectorSize<float>() * VectorSize<float>()],
-                                                    tv_ubuf_tensor,
-                                                    sub_m,                           // repeat
-                                                    1,                               // dstBlockStride
-                                                    1,                               // src0BlockStride
-                                                    0,                               // src1BlockStride
-                                                    qk_round_n / BlockSize<float>(), // dstRepeatStride
-                                                    qk_round_n / BlockSize<float>(), // src0RepeatStride
-                                                    1                                // src1RepeatStride
-                );
-                SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-            }
-            PIPE_BARRIER(V);
-        } else {
-            float p_scale = *((__gm__ float *)quant_p_gm + head_idx);
-            muls_v<ArchType::ASCEND_V220, float>(
-                lo_ubuf_tensor, lo_ubuf_tensor, p_scale,
-                (sub_m * qk_round_n + VectorSize<float>() - 1) / VectorSize<float>(), // repeat
-                1,                                                                    // dstBlockStride
-                1,                                                                    // srcBlockStride
-                8,                                                                    // dstRepeatStride
-                8                                                                     // srcRepeatStride
-            );
-            PIPE_BARRIER(V);
-        }
-    }
-
-    __aicore__ inline void SymmetricQuant(const AscendC::LocalTensor<float> &lp_ubuf_tensor,
-                                          const AscendC::LocalTensor<float> &ls32_ubuf_tensor,
-                                          const AscendC::LocalTensor<float> &lm_ubuf_tensor,
-                                          const AscendC::LocalTensor<float> &hm_ubuf_tensor,
-                                          const AscendC::LocalTensor<float> &p_scale_ubuf_tensor, const uint32_t sub_m,
-                                          const uint32_t round_sub_m, const uint32_t qk_n, const uint32_t qk_round_n,
-                                          uint32_t head_idx)
-    {
-        // online quant
-        if (quantType == 3) {
-            // max(exp^(x-hm)) = max(exp^(x-lm)*exp^(lm-hm)) = 1 * exp^(lm-hm))
-            sub_v<ArchType::ASCEND_V220, float>(lm_ubuf_tensor, lm_ubuf_tensor, hm_ubuf_tensor,
-                                                1, // repeat
-                                                1, // dstBlockStride
-                                                1, // src0BlockStride
-                                                1, // src1BlockStride
-                                                8, // dstRepeatStride
-                                                8, // src0RepeatStride
-                                                8  // src1RepeatStride
-            );
-            PIPE_BARRIER(V);
-            exp_v<ArchType::ASCEND_V220, float>(lm_ubuf_tensor, lm_ubuf_tensor,
-                                                1, // repeat
-                                                1, // dstBlockStride
-                                                1, // srcBlockStride
-                                                8, // dstRepeatStride
-                                                8  // srcRepeatStride
-            );
-            PIPE_BARRIER(V);
-            muls_v<ArchType::ASCEND_V220, float>(
-                p_scale_ubuf_tensor, lm_ubuf_tensor, ((float)1 / (float)127),
-                1, // repeat
-                1, // dstBlockStride
-                1, // srcBlockStride
-                8, // dstRepeatStride
-                8  // srcRepeatStride
-            );
-            PIPE_BARRIER(V);
-            brcb_v<ArchType::ASCEND_V220, float>(tv_ubuf_tensor, p_scale_ubuf_tensor,
-                                                 1,                               // dstBlockStride
-                                                 8,                               // dstRepeatStride
-                                                 round_sub_m / BlockSize<float>() // repeat
-            );
-            PIPE_BARRIER(V);
-            DivRepeatM<float>(lp_ubuf_tensor, ls32_ubuf_tensor, tv_ubuf_tensor, sub_m, qk_n, qk_round_n);
-        } else {  // offline quant
-            float p_scale = (float)1.0 / *((__gm__ float *)quant_p_gm + head_idx);
-            muls_v<ArchType::ASCEND_V220, float>(
-                lp_ubuf_tensor, ls32_ubuf_tensor, p_scale,
-                (sub_m * qk_round_n + VectorSize<float>() - 1) / VectorSize<float>(), // repeat
-                1,                                                                    // dstBlockStride
-                1,                                                                    // srcBlockStride
-                8,                                                                    // dstRepeatStride
-                8                                                                     // srcRepeatStride
-            );
-            PIPE_BARRIER(V);
-        }
-        AscendC::Cast<half, float, false>(lp_ubuf_tensor.ReinterpretCast<half>(), lp_ubuf_tensor,
-                                          AscendC::RoundMode::CAST_RINT, (uint64_t)0,
-                                          (sub_m * qk_round_n + VectorSize<float>() - 1) / VectorSize<float>(), {1, 1, 4, 8});
-        PIPE_BARRIER(V);
-        for (uint32_t row_idx = 0; row_idx < qk_n / VectorSize<half>(); ++row_idx) {
-            AscendC::Cast<int8_t, half, false>(lp_ubuf_tensor.ReinterpretCast<int8_t>()[row_idx * VectorSize<half>()],
-                                               lp_ubuf_tensor.ReinterpretCast<half>()[row_idx * VectorSize<half>()], AscendC::RoundMode::CAST_RINT,
-                                               (uint64_t)0, sub_m, {1, 1, (uint8_t)(qk_round_n / BlockSize<half>()), (uint8_t)(qk_round_n / BlockSize<half>())});
-        }
-        if (qk_n % VectorSize<half>() > 0) {
-            __set_mask(qk_n % VectorSize<half>());
-            AscendC::Cast<int8_t, half, false>(lp_ubuf_tensor.ReinterpretCast<int8_t>()[qk_n / VectorSize<half>() * VectorSize<half>()],
-                                               lp_ubuf_tensor.ReinterpretCast<half>()[qk_n / VectorSize<half>() * VectorSize<half>()], AscendC::RoundMode::CAST_RINT,
-                                               (uint64_t)0, sub_m, {1, 1, (uint8_t)(qk_round_n / BlockSize<half>()), (uint8_t)(qk_round_n / BlockSize<half>())});
-            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-        }
-        PIPE_BARRIER(V);
-    }
-
     template<bool IS_BF16 = true, uint32_t MASK_TYPE = 0>
     __aicore__ __attribute__((always_inline)) inline void Run()
     {
@@ -1780,7 +1569,7 @@ public:
 
         mask_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ IN_DATA_TYPE *>(mask_gm));
         o_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ O_DT *>(o_gm));
-        s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(s_gm));
+        s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(s_gm));
         p_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ QKV_DT *>(p_gm));
         o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(o_tmp_gm));
         logN_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__  IN_DATA_TYPE*>(logN_gm));
@@ -1822,7 +1611,6 @@ public:
             uint32_t n_loop = (kv_seqlen + pp_n_scalar - 1) / pp_n_scalar;
 
             uint32_t qk_m = (m_idx == (m_loop - 1)) ? (q_seqlen - m_idx * pp_m_scalar) : pp_m_scalar;
-            qk_m = 128;
             uint32_t sub_m = (sub_block_idx == 1) ? (qk_m - qk_m / 2) : qk_m / 2;
             uint32_t sub_m_d128 = (sub_m + VECTOR_SIZE - 1) / VECTOR_SIZE;            // up aligned to 128
             uint32_t sub_m_d64 = (sub_m + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE; // up aligned to 64
@@ -1855,8 +1643,6 @@ public:
             uint32_t launch_delay = s_block_stack * 2;
             uint32_t vect_mod = 2 * launch_delay;
             uint32_t m_slice = FLOAT_VECTOR_SIZE / s_block_stack;
-            // m_slice = sub_m > m_slice ? m_slice : 0;
-            // m_slice = sub_m > m_slice ? m_slice : 0;
             uint32_t m_end = (sub_m + m_slice - 1) / m_slice;
             if (long_seq == 0) {
                 mask_offset += m_idx * pp_m_scalar * max_seqlen;
@@ -1882,10 +1668,8 @@ public:
                     if (m_idx - n_idx >= 0 && m_idx - n_idx < 4) {
                         move_flag = 1;
                     }
-                    // WaitFlagDev(QK_READY);
                     for (uint32_t m_ind = 0; m_ind < m_end; m_ind++) {
                         uint32_t curr_m = m_ind == m_end - 1 ? sub_m - m_ind * m_slice : m_slice;
-                        // curr_m = 16;
                         uint32_t s_ub_offset = pingpong_flag * S_DB_SIZE;
                         uint32_t row_offset = m_ind * m_slice;
                         if constexpr(MASK_TYPE != 0) {
@@ -1894,7 +1678,7 @@ public:
                                 WAIT_FLAG(V, MTE2, EVENT_ID6);
                                 // 搬16 * 512, 压缩mask 512,512
                                 gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
-                                    mask16_ubuf_tensor,
+                                    mask_ubuf_tensor,
                                     mask_gm_tensor[cmp_mask_offset + (sub_block_idx * qk_m / 2 + m_ind * m_slice) * 512],
                                     0,                       // sid
                                     curr_m,                   // nBurst
@@ -1913,25 +1697,26 @@ public:
                         if (curr_m == 0) {
                             continue;
                         }
-                        OnlineSoftmaxStage1<float, float, QKV_DT, IN_DATA_TYPE, MASK_TYPE> (
+                        OnlineSoftmaxStage1<half, float, QKV_DT, IN_DATA_TYPE, MASK_TYPE> (
                             ls_ubuf_tensor[pingpong_flag * S_DB_SIZE],
-                            mask16_ubuf_tensor,
                             mask_ubuf_tensor,
                             lm_ubuf_tensor[m_ind * m_slice],
                             hm_ubuf_tensor[m_ind * m_slice],
                             gm_ubuf_tensor[m_ind * m_slice],
+                            dm16_ubuf_tensor[((n_idx / s_block_stack) % 4) * UB_FLOAT_LINE_SIZE + m_ind * m_slice],
                             dm_ubuf_tensor[((n_idx / s_block_stack) % 4) * UB_FLOAT_LINE_SIZE + m_ind * m_slice],
-                            ls_ubuf_tensor[pingpong_flag * S_DB_SIZE],
+                            ls32_ubuf_tensor,
                             ll_ubuf_tensor[m_ind * m_slice],
                             gl_ubuf_tensor[m_ind * m_slice],
                             lp_ubuf_tensor[pingpong_flag * S_DB_SIZE].ReinterpretCast<QKV_DT>(),
                             tv_ubuf_tensor,
+                            tv16_ubuf_tensor,
                             s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
                                     (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n + m_ind * m_slice * qk_round_n],
                             p_gm_tensor[((uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
                                             ((uint64_t)sub_block_idx * qk_m / 2 + m_ind * m_slice) * qk_round_n) * 2 / sizeof(QKV_DT)],
                             n_idx == 0, this->tor,
-                            curr_m, qk_n, qk_round_n, pingpong_flag, move_flag, long_seq, mask_type, m_idx, m_ind, n_idx, sub_block_idx
+                            curr_m, qk_n, qk_round_n, pingpong_flag, move_flag, long_seq
                         );
                         pingpong_flag = 1 - pingpong_flag;
                     }
@@ -2144,25 +1929,27 @@ private:
     const uint32_t gl_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE + 8 * UB_UINT8_LINE_SIZE;
     const uint32_t tv_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE + 9 * UB_UINT8_LINE_SIZE;
     const uint32_t p_scale_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE + 21 * UB_UINT8_LINE_SIZE;
+    const uint32_t dm16_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE + 21 * UB_UINT8_LINE_SIZE;
     const uint32_t log_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE + 30 * UB_UINT8_LINE_SIZE;
     const uint32_t log_ubuf_float_offset = 8 * UB_UINT8_BLOCK_SIZE + 30 * UB_UINT8_LINE_SIZE;
     const uint32_t lo_ubuf_offset = 9 * UB_UINT8_BLOCK_SIZE;
     const uint32_t mask16_ubuf_offset = 11 * UB_UINT8_BLOCK_SIZE;
 
     AsdopsBuffer<ArchType::ASCEND_V220> buf;
-    AscendC::LocalTensor<float> ls_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(ls_ubuf_offset);
-    AscendC::LocalTensor<float> lp_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lp_ubuf_offset);
+    AscendC::LocalTensor<half> ls_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(ls_ubuf_offset);
+    AscendC::LocalTensor<half> lp_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(lp_ubuf_offset);
     AscendC::LocalTensor<float> ls32_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(ls32_ubuf_offset);
-    AscendC::LocalTensor<float> mask_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(mask_ubuf_offset);
+    AscendC::LocalTensor<half> mask_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(mask_ubuf_offset);
     AscendC::LocalTensor<float> lo_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lo_ubuf_offset);
-    AscendC::LocalTensor<float> lm_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lm_ubuf_offset);
-    AscendC::LocalTensor<float> hm_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(hm_ubuf_offset);
-    AscendC::LocalTensor<float> gm_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(gm_ubuf_offset);
+    AscendC::LocalTensor<half> lm_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(lm_ubuf_offset);
+    AscendC::LocalTensor<half> hm_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(hm_ubuf_offset);
+    AscendC::LocalTensor<half> gm_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(gm_ubuf_offset);
     AscendC::LocalTensor<float> dm_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(dm_ubuf_offset);
     AscendC::LocalTensor<float> ll_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(ll_ubuf_offset);
     AscendC::LocalTensor<float> gl_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(gl_ubuf_offset);
     AscendC::LocalTensor<float> tv_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(tv_ubuf_offset);
-    AscendC::LocalTensor<float> p_scale_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(p_scale_ubuf_offset);
+    AscendC::LocalTensor<half> tv16_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(tv_ubuf_offset);
+    AscendC::LocalTensor<half> dm16_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, half>(dm16_ubuf_offset);
     AscendC::LocalTensor<float> go_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(go_ubuf_offset);
     AscendC::LocalTensor<IN_DATA_TYPE> mask16_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, IN_DATA_TYPE>(mask16_ubuf_offset);
 
@@ -2171,8 +1958,8 @@ private:
 
 
     AscendC::GlobalTensor<IN_DATA_TYPE> mask_gm_tensor;
-    AscendC::GlobalTensor<O_DT> o_gm_tensor;
-    AscendC::GlobalTensor<float> s_gm_tensor;
+    AscendC::GlobalTensor<QKV_DT> o_gm_tensor;
+    AscendC::GlobalTensor<QKV_DT> s_gm_tensor;
     AscendC::GlobalTensor<QKV_DT> p_gm_tensor;
     AscendC::GlobalTensor<float> o_tmp_gm_tensor;
     AscendC::GlobalTensor<IN_DATA_TYPE> logN_gm_tensor;
@@ -2182,7 +1969,7 @@ private:
     uint32_t max_seqlen{0};
     uint32_t q_heads{0};
     uint32_t embd{0};
-    float tor{0};
+    half tor{0};
     uint32_t head_stride{0};
     uint32_t mask_stride{0};
     uint32_t is_triu_mask{0};
@@ -2209,7 +1996,7 @@ private:
     uint32_t quantType{0};
 };
 
-extern "C" __global__ __aicore__ void mla_prefill_bf16(
+extern "C" __global__ __aicore__ void mla_prefill(
     __gm__ uint8_t *__restrict__ sync,
     __gm__ uint8_t *__restrict__ q_gm,
     __gm__ uint8_t *__restrict__ q_rope_gm,
@@ -2232,22 +2019,13 @@ extern "C" __global__ __aicore__ void mla_prefill_bf16(
     __gm__ uint8_t *__restrict__ tiling_para_gm)
 {
     uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
-    // 仅在tilingKey为1的时候是bf，其余场景均当做half处理
     if (tilingKey == 1) {
-        FlashAttentionEncoderHighPrecisionVec<__bf16> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
-                                                             tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
-                                                             deq_pv_gm, off_pv_gm, logN_gm);
-        fa_vec.Run<true, 0>();
-    } else if (tilingKey == 2) {
-        FlashAttentionEncoderHighPrecisionVec<__bf16> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
-                                                             tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
-                                                             deq_pv_gm, off_pv_gm, logN_gm);
-        fa_vec.Run<true, 1>();
-    } else {
-        FlashAttentionEncoderHighPrecisionVec<half> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
-                                                           tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm, deq_pv_gm,
-                                                           off_pv_gm, logN_gm);
+        FlashAttentionEncoderVec<half> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                        tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm, deq_pv_gm,
+                                                        off_pv_gm, logN_gm);
         fa_vec.Run<false, 0>();
     }
+
+
 }
 #endif

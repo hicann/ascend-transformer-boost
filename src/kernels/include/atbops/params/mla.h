@@ -21,11 +21,14 @@ namespace OpParam {
 struct MLA {
     enum Type {
         SPLIT_CACHE = 0,
+        PREFILL_SPLIT_CACHE = 1;
     };
     Type type;
     int32_t headSize = 0;
     float tor = 0;
     int32_t kvHead = 0;
+
+    uint32_t isTriuMask = 0;
 
     enum MaskType {
         MASK_TYPE_NONE = 0,
@@ -44,7 +47,7 @@ struct MLA {
 
     bool operator==(const MLA &other) const
     {
-        return this->headSize == other.headSize &&
+        return this->headSize == other.headSize && this->isTriuMask == other.isTriuMask &&
                this->qSeqLen == other.qSeqLen && this->kvSeqLen == other.kvSeqLen && this->type == other.type &&
                Mki::Utils::Compare<float>::IsEqual(this->tor, other.tor) && this->kvHead == other.kvHead &&
                this->isRing == other.isRing;

@@ -17,18 +17,53 @@ namespace AtbOps {
 constexpr int32_t BLOCK_SIZE = 16;
 constexpr int32_t BLOCK_SIZE_32 = 32;
 constexpr int32_t TILING_PARA_SIZE = 8;
-constexpr int32_t TILING_PARA_SIZE_TP1 = 5;
+constexpr int32_t TILING_PARA_SIZE_TP1 = 4;
 constexpr int32_t TILING_HEAD_SIZE = 15;
+constexpr int32_t TILING_PARA_SIZE_PREFILL = 27;
+constexpr int32_t TILING_HEAD_SIZE_PREFILL = 37;
+constexpr int32_t MAX_EMBEDDING = 576;
 constexpr int32_t M_LIMIT = 128;
+constexpr int32_t ND_BATCH_LIMIT = INT32_MAX;
 constexpr int32_t FLOAT_LIMIT = 64;
 constexpr int32_t BLOCK_LIMIT = 128 * 128;
 constexpr int32_t WORKSPACE_BLOCK_SIZE_DB = 65536; // 128 * 256 * 2
+constexpr int32_t DOUBLE_PING_PONG_SIZE = 32768 * 8;
+constexpr int32_t LONG_SEQ_LEN = 128;
+constexpr int32_t NORM_CMP_MASK_LEN = 512;
+constexpr int32_t LONG_SEQ_ALIBI_LEN = 256;
 
 enum class TilingKeyType {
     TILING_HALF_DATA = 0,
     TILING_BF16_DATA = 1,
     TILING_INT8_HALF_DATA = 2,
     TILING_INT8_BF16_DATA = 3
+};
+
+using PrefillTensor = struct PrefillTensor {
+    Tensor query;
+    Tensor queryRope;
+    Tensor kCache;
+    Tensor kCacheRope;
+    Tensor vCache;
+    Tensor vCacheRope;
+    Tensor kShareCache;
+    Tensor vShareCache;
+    Tensor layerId;
+    Tensor mask;
+    Tensor alibiCoeff;
+    Tensor blockTable;
+};
+
+using AddrOffsets = struct AddressOffsetInfo {
+    uint64_t addrQSeqOffset = 0;
+    uint64_t addrKSeqOffset = 0;
+    uint64_t addrVSeqOffset = 0;
+    uint64_t addrOSeqOffset = 0;
+    uint64_t addrOFdSeqOffset = 0;
+    uint64_t addrLSeqOffset = 0;
+    uint64_t addrMaskOffset = 0;
+    int32_t totalQBlkNum = 0;
+    int32_t block = 0;
 };
 
 using MLAInfo = struct MLATilingParams {

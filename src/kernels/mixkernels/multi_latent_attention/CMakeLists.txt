@@ -18,3 +18,11 @@ add_kernel(mla ascend910b mix
     op_kernel/mla.cce
     MLAKernel)
 
+add_kernel(mla_prefill ascend910b mix
+    op_kernel/mla_prefill.cce
+    MLAPrefillKernel)
+
+add_kernel(mla_prefill_bf16 ascend910b mix
+    op_kernel/mla_prefill_bf16.cce
+    MLAPrefillBF16Kernel)
+
