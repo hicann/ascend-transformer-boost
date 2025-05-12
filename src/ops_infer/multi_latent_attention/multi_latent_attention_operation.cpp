@@ -56,7 +56,8 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
         ATB_LOG(ERROR) << "dont support cacheMode KVCACHE yet";
         return ERROR_INVALID_PARAM;
     }
-    if (opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC &&
+    if ((opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC && opParam.
+                      calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
         opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
         ATB_LOG(ERROR) << "only mtp(CALC_TYPE_SPEC) support mask";
         return ERROR_INVALID_PARAM;
