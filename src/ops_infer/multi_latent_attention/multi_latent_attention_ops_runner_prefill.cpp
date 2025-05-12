@@ -33,7 +33,7 @@ MultiLatentAttentionOpsRunnerPrefill::~MultiLatentAttentionOpsRunnerPrefill() {}
 Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
 {
     (void)opsTensorPack;
-    kernelGraph_.inTensors.resize(inTensorSize);
+    kernelGraph_.inTensors.resize(IN_TENSOR_NUM_BASE);
     int inTensorStart = 0;
     Mki::Tensor &query = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &queryRope = kernelGraph_.inTensors.at(inTensorStart++);
@@ -55,7 +55,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
     Mki::Tensor &quantP = nullTensor_;
     Mki::Tensor &logN = nullTensor_;
 
-    kernelGraph_.outTensors.resize(outTensorSize);
+    kernelGraph_.outTensors.resize(OUT_TENSOR_NUM_BASE);
     Mki::Tensor &output = kernelGraph_.outTensors.at(0);
 
     kernelGraph_.nodes.resize(1);
@@ -81,8 +81,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
 Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
 {
     auto &mlaNode = kernelGraph_.nodes.at(0);
-    bool ret = newParam_.BuildFromTensor(opsTensorPack.inTensors, CONTEXTLENS_INDEX, QSEQLEN_INDEX,
-                                         param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC);
+    bool ret = newParam_.BuildFromTensor(opsTensorPack.inTensors, CONTEXTLENS_INDEX, QSEQLEN_INDEX, true);
     if (!ret) {
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
