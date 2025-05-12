@@ -251,7 +251,7 @@ __aicore__ inline void ComputeFp32ToI8Quant(const AscendC::LocalTensor<int8_t> &
     ComputeFp16ToI8Quant(out, tmp, tmp, scale, offset, quantMin, count);
 }
 
-__aicore__ inline void CopyGmTilingToUb(__ubuf__ uint8_t *tilingInUb, const __gm__ uint8_t *tilingInGm,
+__aicore__ inline void CopyGmTilingToUb(__ubuf__ uint8_t *&tilingInUb, const __gm__ uint8_t *tilingInGm,
                                         size_t tilingSize, AscendC::TPipe *pipe)
 {
     uint32_t roundTilingSize = RoundUp(tilingSize, 32);

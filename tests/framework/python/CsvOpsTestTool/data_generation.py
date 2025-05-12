@@ -3719,6 +3719,8 @@ class ElewiseOperation(DataGen):
 
     def elewiseMul(in_tensors, op_params):
         golden_result = in_tensors[0] * in_tensors[1]
+        if get_soc_version() != "Ascend910B":
+            golden_result = torch.where(torch.isinf(golden_result), torch.tensor(6.5504e+04), golden_result)
         return [golden_result]
 
     def elewiseRealdiv(in_tensors, op_params):

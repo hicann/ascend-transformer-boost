@@ -12,6 +12,7 @@ set(ops_train_directory ${CMAKE_CURRENT_LIST_DIR}/ops_train)
 set(ops_infer_directory ${CMAKE_CURRENT_LIST_DIR}/ops_infer)
 set(ops_common_directory ${CMAKE_CURRENT_LIST_DIR}/ops_common)
 set(atb_directory ${CMAKE_CURRENT_LIST_DIR}/atb)
+set(MSTX_PATH $ENV{ASCEND_HOME_PATH}/tools/mstx/include)
 
 add_compile_options(-Wfloat-equal -fno-common)
 
@@ -36,5 +37,7 @@ if(USE_ASAN)
 endif()
 target_link_libraries(atb PUBLIC dl mki asdops atb_mixops ascendcl profapi lcal hccl pthread acl_op_compiler)
 target_link_libraries(atb_train PUBLIC atb)
+target_include_directories(atb PUBLIC ${MSTX_PATH})
+target_include_directories(atb_static PUBLIC ${MSTX_PATH})
 
 install(TARGETS atb atb_static atb_train atb_train_static DESTINATION lib)

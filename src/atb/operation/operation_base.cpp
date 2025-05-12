@@ -29,6 +29,7 @@
 #include "atb/utils/utils_internal.h"
 #include "atb/utils/common_utils.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/mstx_mem_register.h"
 
 namespace atb {
 static std::atomic_int64_t g_operationBaseId(0);
@@ -805,6 +806,9 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
     ProfilingFuncName profType = executeType == EXECUTE_NORMAL ?
                                      OPERATION_EXECUTE :
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);
+    std::shared_ptr<MstxMemRegister> mstxMemRegister;
+    mstxMemRegister = std::make_shared<MstxMemRegister>(workspace, workspaceSize);
+    runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
     Status st = NO_ERROR;
     if (executeType == EXECUTE_NORMAL || executeType == EXECUTE_PRELAUNCH) {
         st = PreLaunch(variantPack, workspace, workspaceSize, context);
