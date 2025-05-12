@@ -34,9 +34,11 @@ Status MultiLatentAttentionOpsRunner::SetupKernelGraph(const OpsTensorPack &opsT
     std::size_t inTensorSize = IN_TENSOR_NUM_BASE;
     std::size_t outTensorSize = OUT_TENSOR_NUM_BASE;
     bool needMask = param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED;
-    bool needQLens = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC;
+    bool needQLens = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
+                     calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
     bool isInt8Nz = param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE;
-    bool isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING;
+    bool isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
+                  calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
 
     inTensorSize += needMask ? 1 : 0;
     inTensorSize += needQLens ? 1 : 0;
@@ -86,8 +88,9 @@ Status MultiLatentAttentionOpsRunner::ModifyKernelGraph(const OpsTensorPack &ops
     if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
         qSeqlenIdxBase++;
     }
-    bool ret = newParam_.BuildFromTensor(opsTensorPack.inTensors, CONTEXTLENS_INDEX, qSeqlenIdxBase,
-                                         param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC);
+    bool needQLens = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
+                     calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    bool ret = newParam_.BuildFromTensor(opsTensorPack.inTensors, CONTEXTLENS_INDEX, qSeqlenIdxBase, needQLens);
     if (!ret) {
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
@@ -99,7 +102,8 @@ Status MultiLatentAttentionOpsRunner::ModifyKernelGraph(const OpsTensorPack &ops
     asdParam.kvHead = param_.kvHeadNum;
     asdParam.kvSeqLen = newParam_.contextLens;
     asdParam.qSeqLen = newParam_.qSeqlen;
-    asdParam.isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING;
+    asdParam.isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
+                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SPEC) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_LOOK_AHEAD;
     }
