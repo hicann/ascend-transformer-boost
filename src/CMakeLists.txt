@@ -13,6 +13,8 @@ set(ops_infer_directory ${CMAKE_CURRENT_LIST_DIR}/ops_infer)
 set(ops_common_directory ${CMAKE_CURRENT_LIST_DIR}/ops_common)
 set(atb_directory ${CMAKE_CURRENT_LIST_DIR}/atb)
 
+add_compile_options(-Wfloat-equal -fno-common)
+
 file(GLOB_RECURSE INFER_OP_SOURCE "${ops_infer_directory}/*.cpp")
 file(GLOB_RECURSE TRAIN_OP_SOURCE "${ops_train_directory}/*.cpp")
 file(GLOB_RECURSE COMMON_OP_SOURCE "${ops_common_directory}/*.cpp")
