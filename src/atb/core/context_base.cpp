@@ -19,6 +19,8 @@
 #include "atb/utils.h"
 #include "atb/utils/probe.h"
 #include "atb/utils/singleton.h"
+#include "atb/core/allocator/default_device_allocator.h"
+#include "atb/core/allocator/default_host_allocator.h"
 
 namespace atb {
 static constexpr size_t MAX_COPY_EVENT_NUM = 10;
@@ -157,11 +159,21 @@ aclrtEvent ContextBase::GetAsyncTilingCopyEvent()
 
 uint8_t *ContextBase::GetHostTilingBuffer()
 {
+    // 如果走图模式的话直接使用hostAllocator申请内存
+    if (mode_ == GRAPH_LAUNCH_MODE) {
+        ATB_LOG(INFO) << "At GRAPH_LAUNCH_MODE, contextBase start allocate host tiling buffer using Allocator";
+        return reinterpret_cast<uint8_t*>(hostAllocator_->Allocate(TILING_BUFFER_BLOCK_SIZE));
+    }
     return hostTilingBufferPool_ ? hostTilingBufferPool_->GetBuffer() : nullptr;
 }
 
 uint8_t *ContextBase::GetDeviceTilingBuffer()
 {
+    // 如果走图模式的话直接使用deviceAllocator申请内存
+    if (mode_ == GRAPH_LAUNCH_MODE) {
+        ATB_LOG(INFO) << "At GRAPH_LAUNCH_MODE, contextBase start allocate device tiling buffer using Allocator";
+        return reinterpret_cast<uint8_t*>(deviceAllocator_->Allocate(TILING_BUFFER_BLOCK_SIZE));
+    }
     return deviceTilingBufferPool_ ? deviceTilingBufferPool_->GetBuffer() : nullptr;
 }
 
@@ -290,4 +302,63 @@ ExecuteType ContextBase::GetExecuteType()
     return executeType_;
 }
 
+Status ContextBase::SetLaunchMode(LaunchMode mode)
+{
+    if (mode > GRAPH_LAUNCH_MODE || mode < KERNEL_LAUNCH_MODE) {
+        ATB_LOG(ERROR) << "LaunchMode set error! mode should in enum range.";
+        return ERROR_INVALID_PARAM;
+    }
+    mode_ = mode;
+    return NO_ERROR;
+}
+
+LaunchMode ContextBase::GetLaunchMode()
+{
+    return mode_;
+}
+
+Status ContextBase::SetDeviceBufferAllocator(Allocator *allocator)
+{
+    if (allocator == nullptr) {
+        ATB_LOG(ERROR) << "allocator is nullptr";
+        return ERROR_INVALID_PARAM;
+    }
+    // 如果中途切换Allocator的话使用旧的Allocator管理的内存全部释放
+    ATB_LOG(WARN) << "Changing to the new Allocator will free all device buffers,"
+                  << "which allocated by the old Allocator.";
+    deviceAllocator_.reset(allocator);
+    return NO_ERROR;
+}
+
+void *ContextBase::GetArgsDeviceBuffer(size_t bufferSize)
+{
+    return deviceAllocator_->Allocate(bufferSize);
+}
+
+Status ContextBase::FreeArgsDeviceBuffer(void *addr)
+{
+    return deviceAllocator_->Deallocate(addr);
+}
+
+Status ContextBase::SetHostBufferAllocator(Allocator *allocator)
+{
+    if (allocator == nullptr) {
+        ATB_LOG(ERROR) << "allocator is nullptr";
+        return ERROR_INVALID_PARAM;
+    }
+    // 如果中途切换Allocator的话使用旧的Allocator管理的内存全部释放
+    ATB_LOG(WARN) << "Changing to the new Allocator will free all host buffers, which allocated by the old Allocator.";
+    hostAllocator_.reset(allocator);
+    return NO_ERROR;
+}
+
+void *ContextBase::GetArgsHostBuffer(size_t bufferSize)
+{
+    return hostAllocator_->Allocate(bufferSize);
+}
+
+Status ContextBase::FreeArgsHostBuffer(void *addr)
+{
+    return hostAllocator_->Deallocate(addr);
+}
 } // namespace atb
