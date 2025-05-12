@@ -36,6 +36,9 @@ int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int
     if (blockDim - mmInfo.flashDecodingTaskNum <= NUM4 || mmInfo.quantFlag) {
         return NUM1;
     }
+    if (blockSize == 0 || blockDim == 0) {
+        return NUM1;
+    }
     int32_t maxKVBlocks = (maxKVSeqlen + blockSize - 1) / blockSize;
     for (int32_t splitNum = 2; splitNum <= NUM6; splitNum++) {
         if ((mmInfo.flashDecodingTaskNum * splitNum) % blockDim != 0) {
@@ -54,6 +57,7 @@ int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int
 
 Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t blockDim)
 {
+    MKI_CHECK(blockDim > 0, "blockDim cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
     mmInfo.tailBatch = mmInfo.batch % blockDim;
     mmInfo.tailTaskNum = mmInfo.totalTaskNum % blockDim;
     mmInfo.flashDecodingTaskNum = mmInfo.quantFlag ? mmInfo.tailTaskNum : mmInfo.tailBatch;
@@ -76,6 +80,8 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
             mmInfo.batchList.push_back(BatchNode(batchIdx, *(mmInfo.kvSeqLen + batchIdx)));
         }
         std::sort(mmInfo.batchList.begin(), mmInfo.batchList.end());
+        int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
+        mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
     }
     MKI_LOG(INFO) << "mmInfo.flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
@@ -96,7 +102,6 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
         mmInfo.embeddingSize = static_cast<int32_t>(kcacheShape.at(DIM_3));
         mmInfo.blockSize = static_cast<int32_t>(kcacheShape.at(DIM_1));
     }
-    MKI_CHECK(mmInfo.blockSize > 0, "blockSize cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
     mmInfo.numTokens = static_cast<int32_t>(param.kvSeqLen.size());
     mmInfo.numBlocks = static_cast<int32_t>(kcacheShape.at(DIM_0));
     mmInfo.maxNumBlocksPerQuery = static_cast<int32_t>(tableShape.at(DIM_1));
@@ -112,7 +117,7 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.totalTaskNum = mmInfo.qSeqLen != nullptr ?
                           std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
                           mmInfo.batch;
-        GetFlashDecodingInfo(mmInfo, param, blockDim);
+    OP_TILING_CHECK_STATUS_RETURN(GetFlashDecodingInfo(mmInfo, param, blockDim));
     mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT || (mmInfo.flashDecoding && !mmInfo.quantFlag));
     if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
         mmInfo.maskType = 0;
