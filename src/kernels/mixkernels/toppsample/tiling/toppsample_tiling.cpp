@@ -87,7 +87,10 @@ Status ToppsampleTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint32_t dimSize = launchParam.GetInTensor(0).desc.dims.size();
     int64_t firstDim = 1;
     for (size_t i = 0; i < dimSize - 1; i++) {
-        firstDim *= launchParam.GetInTensor(0).desc.dims[i];
+        int64_t dim = launchParam.GetInTensor(0).desc.dims[i];
+        MKI_CHECK(firstDim < INT64_MAX / dim, "Integer overflow detected in firstDim calculation",
+                  return Status::FailStatus(ERROR_INVALID_VALUE));
+        firstDim *= dim;
     }
     MKI_CHECK(firstDim > 0 && firstDim <= 512, "batch size should be less than 512",
         return Status::FailStatus(ERROR_INVALID_VALUE));
