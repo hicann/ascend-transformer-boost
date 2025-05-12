@@ -63,6 +63,7 @@ using MLAInfo = struct MLATilingParams {
     int32_t tailTaskNum = 0;
     int32_t flashDecodingTaskNum = 0;
     int32_t prevSplitNumSum = 0;
+    int32_t normalTaskNum = 0;
     std::vector<BatchNode> batchList = {};
     bool quantFlag = false;
     bool mtpTp1Flag = false;
