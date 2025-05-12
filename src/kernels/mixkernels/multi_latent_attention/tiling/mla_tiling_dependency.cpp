@@ -182,8 +182,6 @@ Status GetNdMLATiling(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilin
 void GetDecodingNormalTaskTiling(MLAInfo &mmInfo, uint32_t blockDim, uint32_t *tilingParam, int32_t &curTask,
                                  int32_t &prevTaskNum)
 {
-    int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
-    int32_t normalTaskNum = taskNum / blockDim * blockDim;
     int32_t maxQPerJob = mmInfo.quantFlag ? NUM1 : NUM2;
     int32_t qRowIdx = 0;
     for (int32_t taskIdx = 0; taskIdx < mmInfo.batch; taskIdx++) {
@@ -191,7 +189,7 @@ void GetDecodingNormalTaskTiling(MLAInfo &mmInfo, uint32_t blockDim, uint32_t *t
         int32_t qSeqLen = mmInfo.qSeqLen == nullptr ? 1 : *(mmInfo.qSeqLen + batchIdx);
         int32_t kvSeqlen = *(mmInfo.kvSeqLen + batchIdx);
         int32_t curKvSeq = kvSeqlen - qSeqLen;
-        if (prevTaskNum >= normalTaskNum) {
+        if (prevTaskNum >= mmInfo.normalTaskNum) {
             curTask = taskIdx;
             break;
         }
@@ -226,6 +224,7 @@ void GetDecodingTailBatchTiling(MLAInfo &mmInfo, uint32_t *tilingParam, int32_t 
         }
     }
 }
+
 void GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t blockDim, uint32_t *tilingParam)
 {
     int32_t curTask = 0;
@@ -325,8 +324,7 @@ void GetTilingHead(const MLAInfo &mmInfo, const OpParam::MLA &param, uint32_t *t
 
     tilingParam[TILING_MASK_TYPE_ND] = static_cast<uint32_t>(mmInfo.maskType);
     if (mmInfo.flashDecoding) {
-        tilingParam[TILING_TASK_NUM] = static_cast<uint32_t>(mmInfo.quantFlag ?
-                                       mmInfo.totalTaskNum / blockDim * blockDim : mmInfo.batch / blockDim * blockDim);
+        tilingParam[TILING_TASK_NUM] = static_cast<uint32_t>(mmInfo.normalTaskNum);
         tilingParam[TILING_KV_SPLIT_NUM] = static_cast<uint32_t>(mmInfo.splitKVNum);
         tilingParam[TILING_SPLIT_TASKNUM] = static_cast<uint32_t>(mmInfo.prevSplitNumSum);
     } else {
