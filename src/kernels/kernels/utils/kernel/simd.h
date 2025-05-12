@@ -111,8 +111,13 @@ __aicore__ inline void cmax_v(AscendC::LocalTensor<DType> dst,
                               uint16_t srcBlockStride,
                               uint16_t srcRepeatStride)
 {
+#if defined(__DAV_C220_VEC__)
     AscendC::WholeReduceMax<DType, false>(
         dst, src, (int32_t)0, repeat, dstRepeatStride, srcBlockStride, srcRepeatStride, OrderType);
+#else
+    AscendC::WholeReduceMax<DType, false>(
+        dst, src, (int32_t)0, repeat, dstRepeatStride, srcBlockStride, srcRepeatStride);
+#endif
 }
 
 /////////////////////////////////////////////////////
