@@ -120,7 +120,8 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
                           std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
                           mmInfo.batch;
     OP_TILING_CHECK_STATUS_RETURN(GetFlashDecodingInfo(mmInfo, param, blockDim));
-    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT || (mmInfo.flashDecoding && !mmInfo.quantFlag));
+    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT ||
+                         (mmInfo.flashDecoding && !mmInfo.quantFlag && mmInfo.numHeads >= NUM16));
     if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
         mmInfo.maskType = 0;
     }
