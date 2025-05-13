@@ -57,7 +57,7 @@ int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int
 
 Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t blockDim)
 {
-    if (blockDim <= 0) {
+    if (blockDim == 0) {
         return Status::FailStatus(ERROR_INVALID_VALUE);
     }
     mmInfo.tailBatch = mmInfo.batch % blockDim;
