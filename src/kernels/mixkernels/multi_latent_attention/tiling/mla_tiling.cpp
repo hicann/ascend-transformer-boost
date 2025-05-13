@@ -64,7 +64,6 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
     mmInfo.tailTaskNum = mmInfo.totalTaskNum % blockDim;
     mmInfo.flashDecodingTaskNum = mmInfo.quantFlag ? mmInfo.tailTaskNum : mmInfo.tailBatch;
     auto minKVSeqlen = std::min_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
-    auto maxKVSeqlen = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     auto minQSeqlen = mmInfo.qSeqLen != nullptr ? *std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
     auto maxQSeqlen = mmInfo.qSeqLen != nullptr ? *std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
     mmInfo.flashDecoding = mmInfo.flashDecodingTaskNum != 0 && param.isRing == 0 &&
