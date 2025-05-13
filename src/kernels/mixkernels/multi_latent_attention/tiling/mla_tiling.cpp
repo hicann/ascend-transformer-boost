@@ -85,7 +85,7 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
         int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
         mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
     }
-    MKI_LOG(INFO) << "mmInfo.flashDecoding is = " << mmInfo.flashDecoding;
+    MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
 }
 
