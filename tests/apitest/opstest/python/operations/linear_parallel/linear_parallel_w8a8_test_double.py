@@ -60,10 +60,11 @@ def main_worker(rank, world_size, d_types, sizes, data_gen_ranges):
                 acl_out_tensor = acl_matmul_allreduce_operation.execute(in_tensors)[0]
                 torch.npu.synchronize()
 
-                matmul_result = torch.matmul(input_tensor.to(torch.float), weight_tensor.to(torch.float))
-                
-                golden_one_high = matmul_result.clone()
-                golden_one_low = matmul_result.clone().to(d_type)
+                matmul_result_high = torch.matmul(input_tensor.to(torch.float), weight_tensor.to(torch.float))
+                matmul_result_low = torch.matmul(input_tensor, weight_tensor)
+
+                golden_one_high = matmul_result_high.clone()
+                golden_one_low = matmul_result_low.clone()
 
                 golden_out_tensor_high = golden_one_high.clone()
                 golden_out_tensor_low = golden_one_low.clone()
@@ -100,7 +101,9 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
                  [[32, 2752], [2752, 8192]],
                  [[64, 8192], [8192, 3072]],
                  [[140, 8192], [8192, 5504]],
-                 [[1024, 8192], [8192, 5504]]]
+                 [[1024, 8192], [8192, 5504]],
+                 [[256, 1024][1024, 8192]],
+                 [[256, 3696][3696, 8192]]]
 
         data_gen_ranges = [[-1, 1], [-2, 2], [-5, 5], [-10, 10]]
         
