@@ -2067,11 +2067,11 @@ class TopkToppSamplingOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         json_data = json.loads(op_params)
-
-        # 此处修改存疑，非 type 0 连跑精度问题优先检查此处
-        rand_seed = json_data["randSeed"] if "randSeed" in json_data else 0
-        torch.manual_seed(rand_seed)
-
+        if json_data["topkToppSamplingType"]==0:
+            rand_seed = json_data["randSeed"] if "randSeed" in json_data else 0
+            torch.manual_seed(rand_seed)
+        else:
+            torch.manual_seed(0)
         low = float(data_gen_ranges.split(',')[0])
         high = float(data_gen_ranges.split(',')[1])
         probs = ((high - low) * torch.rand(shapes[i]) + low).float()
