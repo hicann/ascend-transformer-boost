@@ -98,7 +98,7 @@ static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam)
         return false;
     }
     if (opParam.calcType < infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_UNDEFINED ||
-        opParam.calcType > infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING)) {
+        opParam.calcType > infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
         ATB_LOG(ERROR) << "invalid calcType";
         return false;
     }
