@@ -88,6 +88,8 @@ Status ToppsampleTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     int64_t firstDim = 1;
     for (size_t i = 0; i < dimSize - 1; i++) {
         int64_t dim = launchParam.GetInTensor(0).desc.dims[i];
+        MKI_CHECK(dim > 0, "dims should be positive",
+            return Status::FailStatus(ERROR_INVALID_VALUE));
         MKI_CHECK(firstDim < INT64_MAX / dim, "Integer overflow detected in firstDim calculation",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         firstDim *= dim;
