@@ -104,8 +104,14 @@ class TestConcatOperation(operation_test.OperationTest):
         return np.array_equal(kCache, kCacheGolden) and np.array_equal(vCache, vCacheGolden)
     
     def check_soc_and_execute(self, *args, **kwargs):
-        if not operation_test.get_soc_version() == 'Ascend910B':
-            logging.info("this testcase supports Ascend910B only")
+        if not (operation_test.get_soc_version() == 'Ascend910B' and operation_test.get_soc_version() == 'Ascend310P'):
+            logging.info("this testcase supports Ascend910B and Ascend310P only")
+            return
+        self.execute_inplace(*args, **kwargs)
+    
+    def check_310p_and_execute(self, *args, **kwargs):
+        if not operation_test.get_soc_version() == 'Ascend310P':
+            logging.info("this testcase supports Ascend310P only")
             return
         self.execute_inplace(*args, **kwargs)
 
@@ -257,6 +263,20 @@ class TestConcatOperation(operation_test.OperationTest):
         self.dstBlks = input3.cpu().numpy().copy()
         self.check_soc_and_execute(OP_NAME, PARAM, [input0, input1, input2, input3, input4], [0, 1])
 
+    def test_blockcopy_float16_case_small_nd(self):
+        blockCount = 15
+        blockSize = 2
+        numHead = 32
+        headSize = 16
+        srcCount = 3
+        dstCount = 10
+        # 构造随机输入和占位输出
+        input0, input1, input2, input3, input4 =  create_input(blockCount, blockSize, numHead, headSize, srcCount, dstCount, "float16")
+        self.kCache = input0.cpu().numpy().copy()
+        self.vCache = input1.cpu().numpy().copy()
+        self.blockCount = blockCount
+        self.dstBlks = input3.cpu().numpy().copy()
+        self.check_310p_and_execute(OP_NAME, PARAM, [input0, input1, input2, input3, input4], [0, 1])  
 
 if __name__ == '__main__':
     if ("Ascend310B" != torch.npu.get_device_name()[len("Ascend310B")]) :
