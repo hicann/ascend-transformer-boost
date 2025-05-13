@@ -1068,7 +1068,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
         block_size = 128
         head_size_qk = 576
         head_size_vo = 512
-        num_blocks = 512
+        num_blocks = 2048
         tor = 1.0 / (head_size_qk ** 0.5)
         mask_dim = 0
         dtype = torch.float16
@@ -1182,7 +1182,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
         block_size = 128
         head_size_qk = 576
         head_size_vo = 512
-        num_blocks = 512
+        num_blocks = 2048
         tor = 1.0 / (head_size_qk ** 0.5)
         mask_dim = 0
         dtype = torch.float16

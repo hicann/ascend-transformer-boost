@@ -31,7 +31,7 @@ const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
 const float SPLITKV_SEQLEN = 2048;
 
-int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int32_t maxKVSeqlen, int32_t blockSize)
+int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int32_t blockSize)
 {
     if (blockDim - mmInfo.flashDecodingTaskNum <= NUM4 || mmInfo.quantFlag) {
         return NUM1;
@@ -39,14 +39,14 @@ int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int
     if (blockSize == 0 || blockDim == 0) {
         return NUM1;
     }
-    int32_t maxKVBlocks = (maxKVSeqlen + blockSize - 1) / blockSize;
+    int32_t minKVBlocks = (minKVSeqlen + blockSize - 1) / blockSize;
     for (int32_t splitNum = 2; splitNum <= NUM6; splitNum++) {
         if ((mmInfo.flashDecodingTaskNum * splitNum) % blockDim != 0) {
             continue;
         }
         int32_t repeatTimesPerBlock = mmInfo.flashDecodingTaskNum * splitNum / blockDim;
         if (minKVSeqlen / splitNum >= blockSize &&
-            repeatTimesPerBlock + NUM6 <= maxKVBlocks - (maxKVBlocks + splitNum - 1) / splitNum * repeatTimesPerBlock) {
+            repeatTimesPerBlock + NUM6 <= minKVBlocks - (minKVBlocks + splitNum - 1) / splitNum * repeatTimesPerBlock) {
             return splitNum;
         } else {
             return NUM1;
@@ -75,7 +75,7 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
         return Status::OkStatus();
     }
     mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
-                        CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, *maxKVSeqlen, mmInfo.blockSize);
+                        CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize);
     mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
     if (mmInfo.flashDecoding) {
         for (int32_t batchIdx = 0; batchIdx < mmInfo.batch; batchIdx++) {
