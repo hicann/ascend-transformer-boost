@@ -16,6 +16,7 @@ namespace Lcal {
     void AllGatherNPU91093EightRankFP16Tiling(CoCTilingData &cocTilingData);
     void AllGatherNPU91093SixteenRankFP16Tiling(CoCTilingData &cocTilingData);
     void AllGatherNPU91093TwoRankFP16Tiling(CoCTilingData &cocTilingData);
+    void AllGatherNPU91093TwoRankINT8Tiling(CoCTilingData &cocTilingData);
 
     void AllGatherV2NPU91093EightRankFP16Tiling(CoCTilingData &cocTilingData);
     void AllGatherV2NPU91093SixteenRankFP16Tiling(CoCTilingData &cocTilingData);
@@ -27,6 +28,8 @@ namespace Lcal {
     void ReduceScatterNPU91093EightRankFP16Tiling(CoCTilingData &cocTilingData);
     void ReduceScatterNPU91093SixteenRankFP16Tiling(CoCTilingData &cocTilingData);
     void ReduceScatterNPU91093TwoRankFP16Tiling(CoCTilingData &cocTilingData);
+    void ReduceScatterNPU91093TwoRankINT8Tiling(CoCTilingData &cocTilingData);
+    void ReduceScatterNPU91093FourRankFP16Tiling(CoCTilingData &cocTilingData);
 
     void CoCAllgatherMatmulReduceScatterAgEightRsTwoTiling(CoCTilingData &cocTilingData);
     void CoCAllgatherMatmulReduceScatterDefaultTiling(CoCTilingData &cocTilingData, int32_t rsDim);
