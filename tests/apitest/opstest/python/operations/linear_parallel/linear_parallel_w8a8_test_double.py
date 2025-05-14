@@ -34,14 +34,14 @@ torch.manual_seed(0)
 
 
 
-def main_worker(rank, world_size, data_types, data_sizes, data_gen_ranges):
+def main_worker(rank, data_types, data_sizes, data_gen_ranges):
     torch_npu.npu.set_device(rank)
     print(f'Process {rank} started, using device npu:{rank}.')
 
     acl_matmul_allreduce_operation = torch.classes.OperationTorch.OperationTorch(
         "LinearParallelOperation")
 
-    acl_param = json.dumps({"type": 0, "rank": rank, "rankSize": world_size,
+    acl_param = json.dumps({"type": 0, "rank": rank, "rankSize": 8,
                             "rankRoot": 0, "transWeight": False, "backend": "lcoc",
                             "quantType": -1,"outDataType": -1})
 
