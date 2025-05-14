@@ -198,6 +198,11 @@ OperationWrapper::OperationWrapper(const RelayAttentionParam &param)
     CreateOpUniquePtr(param);
 }
 
+OperationWrapper::OperationWrapper(const TopkToppSamplingParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
 OperationWrapper::OperationWrapper(const GraphParam &param)
 {
     CreateOpUniquePtr(param);
