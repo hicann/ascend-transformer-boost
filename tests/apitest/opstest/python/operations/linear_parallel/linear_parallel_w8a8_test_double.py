@@ -34,14 +34,14 @@ torch.manual_seed(0)
 
 
 
-def main_worker(rank, data_types, data_sizes, data_gen_ranges):
+def main_worker(rank, world_size, data_types, data_sizes, data_gen_ranges):
     torch_npu.npu.set_device(rank)
     print(f'Process {rank} started, using device npu:{rank}.')
 
     acl_matmul_allreduce_operation = torch.classes.OperationTorch.OperationTorch(
         "LinearParallelOperation")
 
-    acl_param = json.dumps({"type": 0, "rank": rank, "rankSize": 8,
+    acl_param = json.dumps({"type": 0, "rank": rank, "rankSize": world_size,
                             "rankRoot": 0, "transWeight": False, "backend": "lcoc",
                             "quantType": -1,"outDataType": -1})
 
@@ -71,7 +71,7 @@ def main_worker(rank, data_types, data_sizes, data_gen_ranges):
 
                 # all reduce
 
-                for i in range(world_size - 1):
+                for i in range(world_size):
                     golden_out_tensor_high += golden_one_high
                     golden_out_tensor_low += golden_one_low
 
@@ -100,7 +100,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
         data_gen_ranges = [[-10, 10]]
         
-        mp.spawn(main_worker, nprocs=world_size, args=(data_types, data_sizes, data_gen_ranges))
+        mp.spawn(main_worker, nprocs=world_size, args=(world_size, data_types, data_sizes, data_gen_ranges))
 
 if __name__ == '__main__':
     unittest.main()
