@@ -124,6 +124,15 @@ Status BlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         ATB_LOG(ERROR) << GetLogPrefix() << "indices shape[0] is greater than blockCount";
         return ERROR_INVALID_TENSOR_DIM;
     }
+    if (GetSingleton<Config>().Is310p()) {
+        auto status = SetupDimCheck310P(inTensors);
+        if (status != NO_ERROR) {
+            return status;
+        }
+    } else if (inTensors.at(0).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ ||
+            inTensors.at(1).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ) {
+                return ERROR_INVALID_TENSOR_FORMAT;
+    }
     return NO_ERROR;
 }
 
