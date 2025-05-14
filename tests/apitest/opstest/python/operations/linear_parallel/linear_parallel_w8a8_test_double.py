@@ -71,7 +71,7 @@ def main_worker(rank, world_size, data_types, data_sizes, data_gen_ranges):
 
                 # all reduce
 
-                for i in range(world_size):
+                for i in range(world_size-1):
                     golden_out_tensor_high += golden_one_high
                     golden_out_tensor_low += golden_one_low
 
