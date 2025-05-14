@@ -1,1 +1,10 @@
-// TODO
+#ifndef USR_DEFINE_RUNNERTYPE_H
+#define USR_DEFINE_RUNNERTYPE_H
+namespace atb {
+enum RunnerType : int {
+    RUNNER_TYPE_UNDEFINED = -1,
+    RUNNER_TYPE_xxx,
+    RUNNER_TYPE_MAX,
+};
+} // namespace atb
+#endif

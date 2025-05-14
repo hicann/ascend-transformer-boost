@@ -20,6 +20,7 @@ ENDIF ()
 
 option(BUILD_TEST_FRAMEWORK "BUILD_TEST_FRAMEWORK" OFF)
 option(BUILD_PYBIND "Build Python bindings for ATB Python Module" ON)
+option(BUILD_USR_OPS "Build user-define operators" ON)
 option(USE_UNIT_TEST "USE_UNIT_TEST" OFF)
 option(USE_PYTHON_TEST "USE_PYTHON_TEST" OFF)
 option(USE_FUZZ_TEST "USE_FUZZ_TEST" OFF)
@@ -101,6 +102,9 @@ if(BUILD_TEST_FRAMEWORK OR USE_UNIT_TEST OR USE_PYTHON_TEST OR USE_FUZZ_TEST OR 
     endif()
     set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
     add_subdirectory(tests)
+endif()
+if (BUILD_USR_OPS)
+    add_subdirectory(ops_usr_define)
 endif()
 add_subdirectory(src)
 
