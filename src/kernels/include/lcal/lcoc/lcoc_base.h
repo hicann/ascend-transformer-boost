@@ -20,7 +20,9 @@ enum QuantGranularity : int {
     PER_TENSOR = 0,
     PER_CHANNEL = 1,
     PER_GROUP = 2,
-    QUANT_GRANULARITY_MAX = 3,
+    PER_TOKEN = 3,
+    FLOAT32_SCALE_PER_CHANNEL = 4,
+    QUANT_GRANULARITY_MAX = 5,
 };
 
 struct MatMulInfo {
