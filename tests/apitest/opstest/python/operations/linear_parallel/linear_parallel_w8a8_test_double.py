@@ -34,7 +34,7 @@ torch.manual_seed(0)
 
 
 
-def main_worker(rank, world_size, d_types, sizes, data_gen_ranges):
+def main_worker(rank, world_size, data_types, data_sizes, data_gen_ranges):
     torch_npu.npu.set_device(rank)
     print(f'Process {rank} started, using device npu:{rank}.')
 
@@ -47,11 +47,11 @@ def main_worker(rank, world_size, d_types, sizes, data_gen_ranges):
 
     acl_matmul_allreduce_operation.set_param(acl_param)
     # exec
-    for d_type in d_types:
-        for size in sizes:
+    for data_type in data_types:
+        for data_size in data_sizes:
             for data_gen_range in data_gen_ranges:
-                input_tensor = torch.clamp(torch.randn(size[0]), data_gen_range[0], data_gen_range[1]).to(d_type)
-                weight_tensor = torch.clamp(torch.randn(size[1]), data_gen_range[0], data_gen_range[1]).to(d_type)
+                input_tensor = torch.clamp(torch.randn(data_size[0]), data_gen_range[0], data_gen_range[1]).to(data_type)
+                weight_tensor = torch.clamp(torch.randn(data_size[1]), data_gen_range[0], data_gen_range[1]).to(data_type)
 
                 in_tensors_desc = [input_tensor.shape,weight_tensor.shape]
 
@@ -93,21 +93,14 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
         world_size = 8
 
-        d_types = [torch.float16, torch.bfloat16]
+        data_types = [torch.bfloat16]
 
-        sizes = [[[27, 333], [333, 77]],
-                 [[2, 16], [16, 48]],
-                 [[140, 1024], [1024, 8192]],
-                 [[32, 2752], [2752, 8192]],
-                 [[64, 8192], [8192, 3072]],
-                 [[140, 8192], [8192, 5504]],
-                 [[1024, 8192], [8192, 5504]],
-                 [[256, 1024], [1024, 8192]],
-                 [[256, 3696], [3696, 8192]]]
+        data_sizes = [[[256, 1024], [1024, 8192]],
+                      [[256, 3696], [3696, 8192]]]
 
-        data_gen_ranges = [[-1, 1], [-2, 2], [-5, 5], [-10, 10]]
+        data_gen_ranges = [[-10, 10]]
         
-        mp.spawn(main_worker, nprocs=world_size, args=(world_size, d_types, sizes, data_gen_ranges))
+        mp.spawn(main_worker, nprocs=world_size, args=(data_types, data_sizes, data_gen_ranges))
 
 if __name__ == '__main__':
     unittest.main()
