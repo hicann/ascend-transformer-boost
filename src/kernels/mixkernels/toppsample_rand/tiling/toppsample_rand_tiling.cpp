@@ -59,7 +59,7 @@ Status ToppsampleRandTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     uint32_t dimSize = launchParam.GetInTensor(0).desc.dims.size();
     int64_t firstDim = 1;
     for (size_t i = 0; i < dimSize - 1; i++) {
-        firstDim *= launchParam.GetInTensor(0).desc.dims[i];
+        firstDim *= launchParam.GetInTensor(0).desc.dims[i]; 
     }
     MKI_CHECK(firstDim > 0 && firstDim <= 512, "batch size should be less than 512",
         return Status::FailStatus(ERROR_INVALID_VALUE));
