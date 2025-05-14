@@ -1574,7 +1574,7 @@ public:
             WaitFlagDev(reduce_flag_id);
             CombineScaleBlock(num_batches, q_heads, kv_split_core_num, embedding_size);
         }
-            }
+    }
 private:
 
 
@@ -2218,10 +2218,10 @@ private:
         uint32_t i)
     {
         constexpr uint32_t ubuf_offset = 3 * STAGE2_UB_UINT8_BLOCK_SIZE;
-        constexpr uint32_t lo_ubuf_size = ubuf_offset + STAGE2_UB_UINT8_BLOCK_SIZE * 4; //8 * 512 * doublebuffer * sizeof(float)
-        constexpr uint32_t to_ubuf_size = lo_ubuf_size + STAGE2_UB_UINT8_BLOCK_SIZE * 4; //8 * 512 * doublebuffer * sizeof(float)
-        constexpr uint32_t go_ubuf_size = to_ubuf_size + STAGE2_UB_UINT8_BLOCK_SIZE * 2; //8 * 512 * sizeof(float)
-        constexpr uint32_t go16_ubuf_size = go_ubuf_size + STAGE2_UB_UINT8_BLOCK_SIZE; //8 * 512 * sizeof(float) / 2
+        constexpr uint32_t lo_ubuf_size = ubuf_offset + STAGE2_UB_UINT8_BLOCK_SIZE * 4; // 8 * 512 * doublebuffer * sizeof(float)
+        constexpr uint32_t to_ubuf_size = lo_ubuf_size + STAGE2_UB_UINT8_BLOCK_SIZE * 4; // 8 * 512 * doublebuffer * sizeof(float)
+        constexpr uint32_t go_ubuf_size = to_ubuf_size + STAGE2_UB_UINT8_BLOCK_SIZE * 2; // 8 * 512 * sizeof(float)
+        constexpr uint32_t go16_ubuf_size = go_ubuf_size + STAGE2_UB_UINT8_BLOCK_SIZE; // 8 * 512 * sizeof(float) / 2
         constexpr uint32_t lBrcb_size = FLOAT_VECTOR_SIZE * 8;
         AscendC::LocalTensor<float> loTensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(ubuf_offset);
         AscendC::LocalTensor<float> toTensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lo_ubuf_size);
@@ -2378,7 +2378,7 @@ private:
         uint32_t batchTaskNum = (uint32_t)(*((__gm__ uint32_t *)tiling_gm + 17));
         uint32_t offset_tiling = tiling_head_size + tiling_para_size * (totalTaskNum + flashDecodingTaskNum);
         uint32_t q_seqlen = (uint32_t)(*((__gm__ uint32_t *)tiling_gm + 1 + tiling_head_size + tiling_para_size * totalTaskNum));
-        uint32_t decodingQSeqLens = decodingQSeqLens = batchTaskNum * q_seqlen;
+        uint32_t decodingQSeqLens = batchTaskNum * q_seqlen;
         if constexpr (tilingKeyType == TilingKeyType::TILING_INT8_DATA) {
             q_seqlen = 1;
         }
