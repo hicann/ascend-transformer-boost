@@ -16,8 +16,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/core/op_param_funcs.h"
-
-namespace atb {
+namespace {
 static const uint32_t SINGLE_TOPK_IN_TENSOR_NUM = 2;
 static const uint32_t BATCH_TOPK_MULTI_IN_TENSOR_NUM = 3;
 static const uint32_t BATCH_TOPK_EXP_IN_TENSOR_NUM = 4;
@@ -42,24 +41,19 @@ static const uint32_t LOG_PROBS_OUT_TENSOR_INDEX = 2;
 static const uint32_t LOG_PROBS_OUT_TENSOR_DIM = 2;
 static const uint32_t LAST_DIM = 1;
 
-template <> Status CreateOperation(const infer::TopkToppSamplingParam &opParam, Operation **operation)
+bool ParamCheck(const atb::infer::TopkToppSamplingParam &opParam)
 {
-    if (operation == nullptr) {
-        return ERROR_INVALID_PARAM;
-    }
-    OP_PARAM_RSV_CHECK(opParam);
     if (opParam.topkToppSamplingType <= atb::infer::TopkToppSamplingParam::SAMPLING_UNDEFINED ||
         opParam.topkToppSamplingType >= atb::infer::TopkToppSamplingParam::SAMPLING_MAX) {
         ATB_LOG(ERROR) << "topkToppSamplingType:" << opParam.topkToppSamplingType << "is invalid topkToppSamplingType";
-        return ERROR_INVALID_PARAM;
+        return false;
     }
-    *operation = new (std::nothrow) TopkToppSamplingOperation(opParam);
-    if (*operation == nullptr) {
-        ATB_LOG(ERROR) << "failed to new operation";
-        return ERROR_OUT_OF_HOST_MEMORY;
-    }
-    return NO_ERROR;
+    return true;
 }
+} // namespace
+
+namespace atb {
+OPERATION_PARAM_FUNCS(TopkToppSamplingOperation, infer::TopkToppSamplingParam)
 
 static Mki::OperationIr *GetOperationIrForTopkToppSampling(const infer::TopkToppSamplingParam &param)
 {
@@ -133,9 +127,9 @@ Status TopkToppSamplingOperation::InferShapeImpl(const SVector<TensorDesc> &inTe
     outTensorDescs.at(1).shape.dims[dimNum - 1] = 1;
 
     if (param_.topkToppSamplingType ==
-        atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
+            atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
         param_.topkToppSamplingType ==
-        atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
+            atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
         outTensorDescs.at(OUT_TENSOR_LOGPROBS) = inTensorDescs.at(0);
         outTensorDescs.at(OUT_TENSOR_LOGPROBS).dtype = ACL_FLOAT;
         outTensorDescs.at(OUT_TENSOR_LOGPROBS).shape.dims[dimNum - 1] = param_.logProbsSize;
@@ -196,15 +190,13 @@ Status TopkToppSamplingOperation::CheckMutinomial(const SVector<TensorDesc> &inT
 Status TopkToppSamplingOperation::CheckLogProbsSize(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (inTensorDescs.at(PROBS_TENSOR_INDEX).shape.dims[TENSER_VOC_DIM] < param_.logProbsSize) {
-        ATB_LOG(ERROR) << "logProbsSize: " << param_.logProbsSize
-                       << " should be less than or equal voc_size("
+        ATB_LOG(ERROR) << "logProbsSize: " << param_.logProbsSize << " should be less than or equal voc_size("
                        << inTensorDescs.at(PROBS_TENSOR_INDEX).shape.dims[TENSER_VOC_DIM] << ")";
         return ERROR_INVALID_PARAM;
     }
     if (param_.logProbsSize < MIN_LOGPROBS_SIZE || param_.logProbsSize > MAX_LOGPROBS_SIZE) {
-        ATB_LOG(ERROR) << "logProbsSize: " << param_.logProbsSize
-                       << " shoud be in range [" << MIN_LOGPROBS_SIZE
-                       <<", " << MAX_LOGPROBS_SIZE << "]";
+        ATB_LOG(ERROR) << "logProbsSize: " << param_.logProbsSize << " shoud be in range [" << MIN_LOGPROBS_SIZE << ", "
+                       << MAX_LOGPROBS_SIZE << "]";
         return ERROR_INVALID_PARAM;
     }
     return NO_ERROR;
@@ -315,9 +307,9 @@ Status TopkToppSamplingOperation::SetupCheckImpl(const SVector<Tensor> &inTensor
         }
     }
     if (param_.topkToppSamplingType ==
-    atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
-    param_.topkToppSamplingType ==
-    atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
+            atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
+        param_.topkToppSamplingType ==
+            atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
         Status LogProbsOutTensorCheckRes = TopkToppLogProbsOutTensorCheck(outTensorDescs);
         if (LogProbsOutTensorCheckRes != NO_ERROR) {
             return LogProbsOutTensorCheckRes;
@@ -336,4 +328,16 @@ nlohmann::json TopkToppSamplingOperation::GetParamJson() const
 {
     return OpParamToJson(param_);
 }
+
+infer::TopkToppSamplingParam TopkToppSamplingOperation::GetParam() const
+{
+    return param_;
+}
+
+void TopkToppSamplingOperation::SetParam(const infer::TopkToppSamplingParam &param)
+{
+    param_ = param;
+    runner_ = nullptr;
+}
+
 } // namespace atb

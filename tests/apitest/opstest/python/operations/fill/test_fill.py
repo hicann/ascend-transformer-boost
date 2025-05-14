@@ -22,7 +22,8 @@ PARAM = {"withMask": True, "value": -10000}
 
 class TestFillOperation(operation_test.OperationTest):
     def golden_calc(self, in_tensors):
-        outtensor = in_tensors[0].masked_fill(in_tensors[1], PARAM["value"])
+        value = self.op_param["value"]
+        outtensor = in_tensors[0].masked_fill(in_tensors[1], value)
         return [outtensor]
 
     def test_float16(self):
@@ -31,7 +32,10 @@ class TestFillOperation(operation_test.OperationTest):
             return True
         intensor0 = torch.rand(5, 5).npu().half()
         intentor1 = (torch.randint(2, (5, 5)) == torch.randint(1, (5, 5))).to(torch.bool).npu()
+        PARAM = {"withMask": True, "value": -10000}
         self.execute(OP_NAME, PARAM, [intensor0, intentor1])
+        PARAM = {"withMask": True, "value": 10000}
+        self.execute_update_param(OP_NAME,PARAM,[intensor0, intentor1])
 
     def test_bfloat16(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
@@ -39,7 +43,10 @@ class TestFillOperation(operation_test.OperationTest):
             return True
         intensor0 = torch.rand(5, 5).npu().bfloat16()
         intentor1 = (torch.randint(2, (5, 5)) == torch.randint(1, (5, 5))).to(torch.bool).npu()
+        PARAM = {"withMask": True, "value": -10000}
         self.execute(OP_NAME, PARAM, [intensor0, intentor1])
+        PARAM = {"withMask": True, "value": 10000}
+        self.execute_update_param(OP_NAME,PARAM,[intensor0, intentor1])
 
 if __name__ == '__main__':
     unittest.main()

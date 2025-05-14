@@ -2061,13 +2061,13 @@ struct ReduceParam {
 struct TopkToppSamplingParam {
     //! \brief 取样处理类型
     enum TopkToppSamplingType {
-        SAMPLING_UNDEFINED = -1,         //!< 未定义
-        SINGLE_TOPK_SAMPLING,            //!< 非batch级别随机种子、Topk的取样
-        BATCH_TOPK_MULTINOMIAL_SAMPLING, //!< batch级别随机种子、Topk的multinomial取样
-        BATCH_TOPK_EXPONENTIAL_SAMPLING, //!< batch级别随机种子、Topk的exponential取样
+        SAMPLING_UNDEFINED = -1,                  //!< 未定义
+        SINGLE_TOPK_SAMPLING,                     //!< 非batch级别随机种子、Topk的取样
+        BATCH_TOPK_MULTINOMIAL_SAMPLING,          //!< batch级别随机种子、Topk的multinomial取样
+        BATCH_TOPK_EXPONENTIAL_SAMPLING,          //!< batch级别随机种子、Topk的exponential取样
         BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING, //!< batch级别随机种子、Topk的multinomial 增加log_Probs取样
         BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING, //!< batch级别随机种子、Topk的exponential 增加log_Probs取样
-        SAMPLING_MAX,                    //!< 枚举最大值
+        SAMPLING_MAX,                             //!< 枚举最大值
     };
     //! \brief 采样类型，默认为非batch级别随机种子、Topk的取样
     TopkToppSamplingType topkToppSamplingType = SINGLE_TOPK_SAMPLING;
@@ -2092,6 +2092,18 @@ struct TopkToppSamplingParam {
     uint8_t rsv[12] = {0};
 };
 
+//!
+//! \brief 判断参数是否相同
+//!
+//! \param left
+//! \param right
+//! \return bool
+//!
+inline bool operator==(const TopkToppSamplingParam &left, const TopkToppSamplingParam &right)
+{
+    return left.topkToppSamplingType == right.topkToppSamplingType && left.randSeeds == right.randSeeds &&
+           left.randSeed == right.randSeed && left.topk == right.topk && left.logProbsSize == right.logProbsSize;
+}
 
 //!
 //! \struct PadParam
@@ -2134,6 +2146,18 @@ struct SortParam {
     //!
     uint8_t rsv[8] = {0};
 };
+
+//!
+//! \brief 判断参数是否相同
+//!
+//! \param left
+//! \param right
+//! \return bool
+//!
+inline bool operator==(const SortParam &left, const SortParam &right)
+{
+    return left.num == right.num;
+}
 
 //!
 //! \struct NonzeroParam
