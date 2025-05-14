@@ -12,6 +12,7 @@
 #include <memory>
 #include "atb/context.h"
 #include "atb/svector.h"
+#include "atb/allocator.h"
 #include "atb/core/tiling_buffer_pool/tiling_buffer_pool.h"
 #include "atb/core/runner_type.h"
 #include "atb/core/runner_pool.h"
@@ -42,6 +43,14 @@ public:
     const Tensor &GetOverflowKernelOutTensor();
     Status SetExecuteType(ExecuteType type) override;
     ExecuteType GetExecuteType() override;
+    Status SetLaunchMode(LaunchMode mode) override;
+    LaunchMode GetLaunchMode() override;
+    Status SetDeviceBufferAllocator(Allocator *allocator) override;
+    Status SetHostBufferAllocator(Allocator *allocator) override;
+    void *GetArgsDeviceBuffer(size_t bufferSize);
+    void *GetArgsHostBuffer(size_t bufferSize);
+    Status FreeArgsDeviceBuffer(void *addr);
+    Status FreeArgsHostBuffer(void *addr);
 
 private:
     Status CreateCopyStreamAndEvents();
@@ -61,6 +70,9 @@ private:
     std::vector<RunnerPool> runnerPools_;
     Tensor overflowOutTensor_;
     static thread_local ExecuteType executeType_;
+    LaunchMode mode_ = KERNEL_LAUNCH_MODE;
+    std::unique_ptr<Allocator> deviceAllocator_;  // 一开始就赋值为defaultDeviceAllocator
+    std::unique_ptr<Allocator> hostAllocator_;  // 一开始就赋值为defaultHostAllocator
 };
 } // namespace atb
 #endif
