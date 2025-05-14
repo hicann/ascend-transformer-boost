@@ -719,8 +719,8 @@ class LinearParallelOperation(DataGen):
         LinearParallelOperation.residual_golden = None
         return [golden_result]
 
-    def golden_linear_reduce_scatter(in_tensors, rank, rank_size):
-        matmul_result = MatmulCommon.golden(True)
+    def golden_linear_reduce_scatter(in_tensors, rank, rank_size, quant_type = -1, group_size = 0, out_data_type = -1):
+        matmul_result = LinearParallelOperation.golden_pure_linear(in_tensors, quant_type, group_size, out_data_type)[0]
         sum_tensor = matmul_result.clone()
         for i in range(rank_size - 1):
             sum_tensor += matmul_result
@@ -731,12 +731,12 @@ class LinearParallelOperation(DataGen):
         MatmulCommon.reset()
         return [golden_result]
 
-    def golden_all_gather_linear(in_tensors, rank_size):
+    def golden_all_gather_linear(in_tensors, rank_size, quant_type = -1, group_size = 0, out_data_type = -1):
         golden_mid_tensor = in_tensors[0].clone()
         for i in range(rank_size - 1):
             golden_mid_tensor = torch.cat((golden_mid_tensor, in_tensors[0]), dim=0)
         MatmulCommon.input_golden = golden_mid_tensor
-        golden_result = MatmulCommon.golden(True)
+        golden_result = LinearParallelOperation.golden_pure_linear(golden_mid_tensor, quant_type, group_size, out_data_type)[0]
         if LinearParallelOperation.residual_golden is not None:
             golden_result = golden_result + LinearParallelOperation.residual_golden
         MatmulCommon.reset()
@@ -800,11 +800,11 @@ class LinearParallelOperation(DataGen):
         if type == 0:
             return LinearParallelOperation.golden_linear_all_reduce(in_tensors, rank_size, quant_type, group_size, out_data_type)
         elif type == 1:
-            return LinearParallelOperation.golden_linear_reduce_scatter(in_tensors, rank, rank_size)
+            return LinearParallelOperation.golden_linear_reduce_scatter(in_tensors, rank, rank_size,quant_type, group_size, out_data_type)
         elif type == 2:
             if json_data.get('keepIntermediate') and json_data['keepIntermediate'] == True:
                 return LinearParallelOperation.golden_all_gather_linear_v2(in_tensors, rank_size)
-            return LinearParallelOperation.golden_all_gather_linear(in_tensors, rank_size)
+            return LinearParallelOperation.golden_all_gather_linear(in_tensors, rank_size, quant_type, group_size, out_data_type)
         elif type == 3:
             return LinearParallelOperation.golden_pure_linear(in_tensors, quant_type, group_size, out_data_type)
         elif type == 4:
