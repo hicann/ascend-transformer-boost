@@ -24,7 +24,7 @@ namespace atb {
 static constexpr size_t MAX_COPY_EVENT_NUM = 10;
 static constexpr uint64_t TILING_BUFFER_BLOCK_SIZE = 1024 * 1024 * 3;
 static constexpr uint32_t DEFAULT_EXECUTE_STREAM_NUMBER = 1;
-thread_local ExecuteType ContextBase::executeType_ = EXECUTE_NORMAL;
+thread_local ExecuteType ContextBase::executeType_ = EXECUTE_NORMAL; 
 
 ContextBase::ContextBase() {}
 
