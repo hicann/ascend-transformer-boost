@@ -42,4 +42,6 @@
 #include "atbops/params/mla_preprocess.h"
 #include "atbops/params/mla.h"
 #include "atbops/params/fusion.h"
+#include "atbops/params/gmm_deq_swiglu_quant_gmm_deq.h"
+#include "atbops/params/mm_deq_swiglu_quant_mm_deq.h"
 #endif
