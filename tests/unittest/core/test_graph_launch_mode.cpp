@@ -443,7 +443,7 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
             operation->Execute(pack, (uint8_t*)workSpace1, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
         }
-        else if (i >= 6 && i < 8) {
+        else if (i >= 6 && i < 9) {
             // 支持workSpace
             operation->Setup(pack, workspaceSize, context);
             if (workspaceSize != 0 && workSpace2 == nullptr) {
@@ -497,7 +497,7 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
     aclrtResetDevice(deviceId);
 }
 
-TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
+TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
 {
     bool status = atb::GetSingleton<atb::Config>().IsLaunchKernelWithTiling();
     if (status) {
@@ -578,7 +578,7 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
             aclmdlRIExecuteAsync(model, exeStream);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
         }
-        else if (i >= 6 && i < 8) {
+        else if (i >= 6 && i < 9) {
             // 支持workSpace
             operation->Setup(pack, workspaceSize, context);
             if (workspaceSize != 0 && workSpace2 == nullptr) {
@@ -624,6 +624,8 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
         aclrtFree(pack.outTensors.at(i).deviceData);
     }
     aclrtFree(workSpace);
+    aclrtFree(workSpace1);
+    aclrtFree(workSpace2);
     aclrtDestroyStream(exeStream);
     aclrtResetDevice(deviceId);
 }

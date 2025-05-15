@@ -943,12 +943,12 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
             runnerVariantPack_.intermediateBuffer = nullptr;
         } else if (workspace > runnerVariantPack_.workspaceBuffer) {
             // 如果workspace发生了变化，计算workspace变化带来的偏移量时需要再加上workspaceBufferSize才是中间tensor对应内存的起始地址
-            runnerVariantPAck_.intermediateBuffer = workspace -
-            reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPAck_.workspaceBufferSize;
+            runnerVariantPack_.intermediateBuffer = workspace -
+            reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPack_.workspaceBufferSize;
             runnerVariantPack_.workspaceBuffer = workspace;
         } else {
             runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
-            reinterpret_cast<uint64_t>(workspace) + runnerVariantPAck_.workspaceBufferSize;
+            reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
             runnerVariantPack_.workspaceBuffer = workspace;
         }
         if (needUpdateTensorAddr_) {
