@@ -37,7 +37,7 @@ ScatterElementsV2OpsRunner::ScatterElementsV2OpsRunner(const infer::ScatterEleme
         reduction = AsdOps::OpParam::ScatterElementsV2::ReductionType::ADD;
     } else {
         MKI_LOG(ERROR) << "reduction only support none or add";
-    } 
+    }
  
     AsdOps::OpParam::ScatterElementsV2 scatterElementsV2NodeParam = {reduction, param_.axis};
  
