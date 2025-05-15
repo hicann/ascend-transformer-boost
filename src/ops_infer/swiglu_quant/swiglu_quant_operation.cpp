@@ -93,7 +93,12 @@ Status SwigluQuantOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTe
         return ERROR_INVALID_TENSOR_DIM;
     }
     hiddenSize /= 2; // 2: inTensor dim: [ntokens, 2 * hidden_size]
-    if (UtilsInternal::AlignUp(hiddenSize, HIDDEN_SIZE_DIM_BASE) >= MAX_UB_SIZE / UB_FACTOR) {
+    int64_t dataItemSize = static_cast<int64_t>(UtilsInternal::GetDataTypeSize(inTensorDescs.at(0).dtype));
+    if (dataItemSize == 0) {
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    int64_t dimBase = HIDDEN_SIZE_DIM_BASE / dataItemSize;
+    if (UtilsInternal::AlignUp(hiddenSize, dimBase) >= MAX_UB_SIZE / UB_FACTOR) {
         ATB_LOG(ERROR) << "Expected 32-byte-up-aligned 25 * hiddenSize * item byte size < 192KB, but got hiddenSize: "
                        << hiddenSize << ", with dtype: " << inTensorDescs.at(0).dtype;
         return ERROR_INVALID_TENSOR_DIM;
