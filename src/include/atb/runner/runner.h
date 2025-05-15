@@ -32,6 +32,9 @@ public:
     virtual void SetParam(const Mki::Any &param);
     virtual bool IsSupportGlbWorkspace();
     aclrtStream GetExecuteStream(Context *context) const;
+    virtual uint64_t GetArgsSize();
+    virtual Status BuildArgs();
+    virtual Status UpdateTensorAddr(RunnerVariantPack &runnerVariantPack);
 
 protected:
     virtual void SetSaveTensorDir(const std::string &tensorDir);

@@ -15,6 +15,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <torch/torch.h>
 #include <torch/extension.h>
 #include <torch_npu/csrc/framework/OpCommand.h>

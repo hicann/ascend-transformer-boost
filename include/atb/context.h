@@ -148,15 +148,6 @@ public:
     //! \return 如果设置成功，返回True.
     //!
     virtual Status SetDeviceBufferAllocator(Allocator *allocator) = 0;
-
-    //!
-    //! \brief 设置Host侧内存管理类.
-    //!
-    //! \param allocator 自定义的Host侧内存管理类
-    //!
-    //! \return 如果设置成功，返回True.
-    //!
-    virtual Status SetHostBufferAllocator(Allocator *allocator) = 0;
 };
 
 //!

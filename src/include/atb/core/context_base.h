@@ -46,7 +46,6 @@ public:
     Status SetLaunchMode(LaunchMode mode) override;
     LaunchMode GetLaunchMode() override;
     Status SetDeviceBufferAllocator(Allocator *allocator) override;
-    Status SetHostBufferAllocator(Allocator *allocator) override;
     void *GetArgsDeviceBuffer(size_t bufferSize);
     void *GetArgsHostBuffer(size_t bufferSize);
     Status FreeArgsDeviceBuffer(void *addr);

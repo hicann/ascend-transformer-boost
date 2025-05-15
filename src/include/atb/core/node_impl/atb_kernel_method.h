@@ -36,6 +36,8 @@ public:
     virtual void Reset() = 0;
     virtual bool BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors, SVector<ViewFunc> &inTensorViewFuncs,
                                   const Mki::OpDesc &opDesc, size_t outTensorNum) = 0;
+    virtual Status BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors, const SVector<Mki::Tensor *> &outTensors,
+                                    const Mki::OpDesc &opDesc) = 0;
     virtual bool PlanKernelInferShape() = 0;
     virtual size_t GetTilingSize() const = 0;
     virtual bool UpdateBestKernel() = 0;
@@ -48,6 +50,12 @@ public:
                                  uint64_t maxTilingSize, uint64_t &tilingSizeFetched) = 0;
     virtual void AddTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *hostTilingBuffer,
                            size_t tilingSize) const = 0;
+    virtual void SetArgsDeviceBuffer(void *deviceBuffer) = 0;
+    virtual void SetArgsHostBuffer(void *hostBuffer) = 0;
+    virtual void *GetArgsDeviceBuffer() = 0;
+    virtual void *GetArgsHostBuffer() = 0;
+    virtual uint64_t GetArgsSize() = 0;
+    virtual Status BuildArgs() = 0;
 
     // utils
     virtual Mki::SVector<Mki::Tensor> &GetInTensors() = 0;

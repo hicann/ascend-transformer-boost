@@ -26,6 +26,8 @@ public:
     void Reset() override;
     bool BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors, SVector<ViewFunc> &inTensorViewFuncs,
                           const Mki::OpDesc &opDesc, size_t outTensorNum) override;
+    Status BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors, const SVector<Mki::Tensor *> &outTensors,
+                            const Mki::OpDesc &opDesc) override;
     bool PlanKernelInferShape() override;
     size_t GetTilingSize() const override;
     bool UpdateBestKernel() override;
@@ -38,6 +40,12 @@ public:
                          uint64_t maxTilingSize, uint64_t &tilingSizeFetched) override;
     void AddTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *hostTilingBuffer,
                    size_t tilingSize) const override;
+    void SetArgsDeviceBuffer(void *deviceBuffer) override;
+    void SetArgsHostBuffer(void *hostBuffer) override;
+    void *GetArgsDeviceBuffer() override;
+    void *GetArgsHostBuffer() override;
+    Status BuildArgs();
+    uint64_t GetArgsSize() override;
 
     // utils
     Mki::SVector<Mki::Tensor> &GetInTensors() override;
@@ -53,7 +61,7 @@ public:
 private:
     bool OperationGetBestKernel();
     std::string GetLogPrefix() const;
-    
+
 private:
     Mki::Operation *operation_ = nullptr;
     std::shared_ptr<Mki::Kernel> kernel_ = nullptr;
@@ -63,6 +71,8 @@ private:
     std::string logPrefix_;
     bool kernelCacheValid_ = false;   // kernel cache是否命中
     bool tilingBufferFilled_ = false; // tiling 是否已从缓存中读取
+    void *argsDeviceBuffer_ = nullptr;
+    void *argsHostBuffer_ = nullptr;
 };
 
 static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
