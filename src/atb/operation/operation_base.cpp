@@ -958,13 +958,14 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
 
 Status OperationBase::Launch()
 {
-    aclmdlRI tmpModel = nullptr;
-    Status st = aclmdlRICaptureGetInfo(GetExecuteStream(runnerVariantPack_.context), &streamStatus_, &tmpModel);
-    if (tmpModel != nullptr) {
-        model_ = tmpModel;
-    }
-    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRICaptureGetInfo failed! ret:" << st;
+    Status st = NO_ERROR;
     if (runnerVariantPack_.context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        aclmdlRI tmpModel = nullptr;
+        st = aclmdlRICaptureGetInfo(GetExecuteStream(runnerVariantPack_.context), &streamStatus_, &tmpModel);
+        if (tmpModel != nullptr) {
+            model_ = tmpModel;
+        }
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRICaptureGetInfo failed! ret:" << st;
         return GraphModeLaunch();
     } else {
         return EagerModeLaunch();
