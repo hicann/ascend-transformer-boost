@@ -124,7 +124,7 @@ Status BlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         ATB_LOG(ERROR) << GetLogPrefix() << "indices shape[0] is greater than blockCount";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (GetSingleton<Config>().Is310p()) {
+    if (GetSingleton<Config>().Is310P()) {
         auto status = SetupDimCheck310P(inTensors);
         if (status != NO_ERROR) {
             return status;
