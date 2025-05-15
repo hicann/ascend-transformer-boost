@@ -140,7 +140,7 @@ class TestConcatOperation(operation_test.OperationTest):
         srcCount = 3
         dstCount = 10
         dtypeStr = "float16"
-        input0, input1, input2, input3, input4 =  create_input(blockCount, blockSize, numHead, headSize, srcCount, dstCount, dtypeStr)
+        input0, input1, input2, input3, input4 =  create_input_nz(blockCount, blockSize, numHead, headSize, srcCount, dstCount, dtypeStr)
 
         kCache = input0.cpu().numpy().copy()
         vCache = input1.cpu().numpy().copy()
@@ -171,7 +171,7 @@ class TestConcatOperation(operation_test.OperationTest):
         srcCount = 3
         dstCount = 10
         dtypeStr = "float16"
-        input0, input1, input2, input3, input4 =  create_input(blockCount, blockSize, numHead, headSize, srcCount, dstCount, dtypeStr)
+        input0, input1, input2, input3, input4 =  create_input_nz(blockCount, blockSize, numHead, headSize, srcCount, dstCount, dtypeStr)
 
         kCache = input0.cpu().numpy().copy()
         vCache = input1.cpu().numpy().copy()
