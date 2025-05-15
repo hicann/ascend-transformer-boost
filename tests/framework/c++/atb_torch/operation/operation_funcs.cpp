@@ -2321,25 +2321,6 @@ static atb::Status ScatterElementsV2OperationCreate(const nlohmann::json &paramJ
     return CreateOperation(param, op);
 }
 
-static atb::Status ScatterElementsV2OperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
-{
-    atb::infer::ScatterElementsV2Param param;
-    ATB_LOG(INFO) << "ScatterElementsV2Param axis:" << param.axis;
-    ATB_LOG(INFO) << "ScatterElementsV2Param reduction:" << param.reduction;
-    if (paramJson.contains("axis")) {
-        param.axis = paramJson["axis"].get<int32_t>();
-    }
-    if (paramJson.contains("reduction")) {
-        param.reduction = paramJson["reduction"].get<atb::infer::ScatterElementsV2Param::ReductionType>();
-    }
-    if (paramJson.contains("rsv")) {
-        for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
-            param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
-        }
-    }
-    return CreateOperation(param, op);
-}
-
 static atb::Status ReshapeAndCacheOmniOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
 {
     ATB_LOG(INFO) << "ReshapeAndCacheOmniOperationCreate";
