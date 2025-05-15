@@ -12,13 +12,14 @@
 #define MLA_TILING_DEPENDENCY_H
 
 #include <cstdint>
+#include <vector>
 
 namespace AtbOps {
 constexpr int32_t BLOCK_SIZE = 16;
 constexpr int32_t BLOCK_SIZE_32 = 32;
 constexpr int32_t TILING_PARA_SIZE = 8;
-constexpr int32_t TILING_PARA_SIZE_TP1 = 5;
-constexpr int32_t TILING_HEAD_SIZE = 15;
+constexpr int32_t TILING_PARA_SIZE_TP1 = 8;
+constexpr int32_t TILING_HEAD_SIZE = 18;
 constexpr int32_t M_LIMIT = 128;
 constexpr int32_t FLOAT_LIMIT = 64;
 constexpr int32_t BLOCK_LIMIT = 128 * 128;
@@ -29,6 +30,17 @@ enum class TilingKeyType {
     TILING_BF16_DATA = 1,
     TILING_INT8_HALF_DATA = 2,
     TILING_INT8_BF16_DATA = 3
+};
+
+struct BatchNode {
+    int32_t batchIdx;
+    int32_t kvSeqlen;
+    BatchNode() {}
+    BatchNode(int32_t batchIdxIn, int32_t kvSeqlenIn) : batchIdx(batchIdxIn), kvSeqlen(kvSeqlenIn) {}
+    bool operator < (const BatchNode &other) const
+    {
+        return other.kvSeqlen > this->kvSeqlen;
+    }
 };
 
 using MLAInfo = struct MLATilingParams {
@@ -46,8 +58,17 @@ using MLAInfo = struct MLATilingParams {
     int32_t *qSeqLen{nullptr};
     int32_t maskType = 0;
     int32_t totalTaskNum = 0;
+    int32_t splitKVNum = 0;
+    int32_t tailBatch = 0;
+    int32_t tailTaskNum = 0;
+    int32_t flashDecodingTaskNum = 0;
+    int32_t prevSplitNumSum = 0;
+    int32_t normalTaskNum = 0;
+    std::vector<BatchNode> batchList = {};
+    bool quantFlag = false;
     bool mtpTp1Flag = false;
-    bool kNz = 0;
+    bool kNz = false;
+    bool flashDecoding = false;
     TilingKeyType type = TilingKeyType::TILING_HALF_DATA;
 };
 
