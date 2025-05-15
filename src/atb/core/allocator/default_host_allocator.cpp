@@ -17,13 +17,19 @@ DefaultHostAllocator::~DefaultHostAllocator()
 {
     // 释放所有管理的device侧地址
     for (auto it = memMap.begin(); it != memMap.end(); ++it) {
-#ifdef _DEBUG
-        ATB_LOG(INFO) << "DefaultHostAllocator::~DefaultHostAllocator aclrtFreeHost free host buffer: " << it->first;
-#endif
         Status st = aclrtFreeHost(it->first);
         if (st != 0) {
             ATB_LOG(ERROR) << "aclrtFree device buffer failed!";
         }
+        currentAllocateSize_ -= it->second;
+#ifdef _DEBUG
+        ATB_LOG(INFO) << "DefaultHostAllocator::~DefaultHostAllocator aclrtFreeHost free host buffer: " << it->first
+                      << ", which the host bufferSize is " << it->second << ", currentAllocateSize_: "
+                      << currentAllocateSize_;
+#else
+        ATB_LOG(INFO) << "DefaultHostAllocator::~DefaultHostAllocator aclrtFreeHost free host bufferSize: " << it->second
+                      << ", and currentAllocateSize_: " << currentAllocateSize_;
+#endif
     }
 }
 
@@ -45,11 +51,10 @@ void *DefaultHostAllocator::Allocate(size_t bufferSize)
     currentAllocateSize_ += bufferSize;
     memMap.insert(std::make_pair(addr, bufferSize));
 #ifdef _DEBUG
-    ATB_LOG(INFO) << "DefaultHostAllocator::Allocate host buffer success" << ", currentAllocateSize_: "
-                  << currentAllocateSize_
-                  << " hostBuffer: " << addr;
+    ATB_LOG(INFO) << "DefaultHostAllocator::Allocate host buffer success, host buffer is " << addr
+                  << ", which bufferSize is " << bufferSize << " and the currentAllocateSize_: " << currentAllocateSize_;
 #else
-    ATB_LOG(INFO) << "DefaultHostAllocator::Allocate host buffer success" << ", currentAllocateSize_: "
+    ATB_LOG(INFO) << "DefaultHostAllocator::Allocate host buffer success, bufferSize is " << bufferSize << " currentAllocateSize_: "
                   << currentAllocateSize_;
 #endif
     return addr;
@@ -75,9 +80,8 @@ Status DefaultHostAllocator::Deallocate(void *addr)
     currentAllocateSize_ -= it->second;
     memMap.erase(addr);
 #ifdef _DEBUG
-    ATB_LOG(INFO) << "DefaultHostAllocator::Deallocate host buffer success, free bufferSize: "<< it->second
-                  << ", currentAllocateSize_: " << currentAllocateSize_
-                  << " hostBuffer: " << addr;
+    ATB_LOG(INFO) << "DefaultHostAllocator::Deallocate host buffer success, free host buffer: " << addr
+                  << ", which bufferSize is "<< it->second << ", currentAllocateSize_: " << currentAllocateSize_;
 #else
     ATB_LOG(INFO) << "DefaultHostAllocator::Deallocate host buffer success, free bufferSize: "<< it->second
                     << ", currentAllocateSize_: " << currentAllocateSize_;

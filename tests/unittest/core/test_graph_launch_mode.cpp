@@ -410,6 +410,7 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
     void *workSpace = nullptr;
     void *workSpace1 = nullptr;
     void *workSpace2 = nullptr;
+    void *workSpace3 = nullptr;
     int ret = 0;
 	// 算子执行
     aclmdlRI model = nullptr;
@@ -428,9 +429,8 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
             context->SetExecuteType(atb::EXECUTE_LAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
-        }
-        else if (i > 3 && i < 6) {
-            // 支持workSpace
+        } else if (i > 3 && i < 6) {
+            // 支持workSpace更新
             operation->Setup(pack, workspaceSize, context);
             if (workspaceSize != 0 && workSpace1 == nullptr) {
                 ret = aclrtMalloc(&workSpace1, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
@@ -442,9 +442,8 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
             context->SetExecuteType(atb::EXECUTE_LAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace1, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
-        }
-        else if (i >= 6 && i < 9) {
-            // 支持workSpace
+        } else if (i >= 6 && i < 8) {
+            // 支持workSpace更新
             operation->Setup(pack, workspaceSize, context);
             if (workspaceSize != 0 && workSpace2 == nullptr) {
                 ret = aclrtMalloc(&workSpace2, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
@@ -456,8 +455,20 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
             context->SetExecuteType(atb::EXECUTE_LAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace2, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
-        }
-        else {
+        } else if (i >= 8 && i <= 9) {
+            // 支持workSpace更新
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace3 == nullptr) {
+                ret = aclrtMalloc(&workSpace3, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workSpace3:" << workSpace3 << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace3, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_LAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace3, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else {
             std::cout << "workspace:" << workSpace << ", workspaceSize:" << workspaceSize << std::endl;
             operation->Setup(pack, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
@@ -493,6 +504,7 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
     aclrtFree(workSpace);
     aclrtFree(workSpace1);
     aclrtFree(workSpace2);
+    aclrtFree(workSpace3);
     aclrtDestroyStream(exeStream);
     aclrtResetDevice(deviceId);
 }
@@ -544,6 +556,7 @@ TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
     void *workSpace = nullptr;
     void *workSpace1 = nullptr;
     void *workSpace2 = nullptr;
+    void *workSpace3 = nullptr;
     int ret = 0;
 	// 算子执行
     aclmdlRI model = nullptr;
@@ -566,7 +579,7 @@ TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
             aclmdlRICaptureEnd(exeStream, &model);
             aclmdlRIExecuteAsync(model, exeStream);
         } else if (i > 3 && i < 6) {
-            // 支持workSpace
+            // 支持workSpace更新
             operation->Setup(pack, workspaceSize, context);
             if (workspaceSize != 0 && workSpace1 == nullptr) {
                 ret = aclrtMalloc(&workSpace1, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
@@ -577,9 +590,8 @@ TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
             operation->Execute(pack, (uint8_t*)workSpace1, workspaceSize, context);
             aclmdlRIExecuteAsync(model, exeStream);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
-        }
-        else if (i >= 6 && i < 9) {
-            // 支持workSpace
+        } else if (i >= 6 && i < 8) {
+            // 支持workSpace更新
             operation->Setup(pack, workspaceSize, context);
             if (workspaceSize != 0 && workSpace2 == nullptr) {
                 ret = aclrtMalloc(&workSpace2, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
@@ -590,8 +602,20 @@ TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
             operation->Execute(pack, (uint8_t*)workSpace2, workspaceSize, context);
             aclmdlRIExecuteAsync(model, exeStream);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else if (i >= 8 && i <= 9) {
+            // 支持workSpace更新
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace3 == nullptr) {
+                ret = aclrtMalloc(&workSpace3, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workSpace3:" << workSpace3 << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace3, workspaceSize, context);
+            aclmdlRIExecuteAsync(model, exeStream);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
         } else {
-            // 参数更新
+            std::cout << "workspace:" << workSpace << ", workspaceSize:" << workspaceSize << std::endl;
             operation->Setup(pack, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
@@ -626,6 +650,7 @@ TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
     aclrtFree(workSpace);
     aclrtFree(workSpace1);
     aclrtFree(workSpace2);
+    aclrtFree(workSpace3);
     aclrtDestroyStream(exeStream);
     aclrtResetDevice(deviceId);
 }
