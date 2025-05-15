@@ -227,7 +227,7 @@ function fn_build_mki()
     if [ "$USE_MSDEBUG" == "ON" ]; then
         build_options="$build_options --msdebug"
     fi
-    build_options="$build_options --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
+    build_options="$build_options --output=$THIRD_PARTY_DIR $COMPILE_VERBOSE"
     bash scripts/build.sh $build_type $build_options
 }
 
@@ -584,7 +584,7 @@ function fn_run_pythontest()
     cd $CODE_ROOT/tests/apitest/opstest/python/
     rm -rf ./kernel_meta*
     for i in $(ls -d operations/*/); do
-        if [[ `find $i -name __init__.py` != "" ]];then
+        if [[ $(find $i -name __init__.py) != "" ]];then
             python3 -m unittest discover -s ./$i -p "*test*.py"; 
         fi
     done
