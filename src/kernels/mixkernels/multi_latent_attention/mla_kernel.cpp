@@ -52,19 +52,14 @@ public:
             "paged attention: param type invalid", return false);
         auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
         auto batch = param.kvSeqLen.size();
-        if (param.headSize == M_LIMIT) {
-            uint64_t taskNum = param.qSeqLen.data() == nullptr ? batch :
-                               std::accumulate(param.qSeqLen.data(),
-                                               param.qSeqLen.data() + batch, static_cast<int32_t>(0));
-            uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
-            uint64_t bufferSize =
-                Utils::RoundUp(launchBufferSize_ + TILING_PARA_SIZE_TP1 * (taskNum - 1) * sizeof(uint32_t) +
-                TILING_PARA_SIZE_TP1 * blockDim * blockDim * sizeof(uint32_t) + blockDim * 2 * sizeof(uint32_t),
-                TILINGMIN);
-            return bufferSize;
-        }
+        uint64_t taskNum = param.qSeqLen.data() == nullptr ? batch :
+                            std::accumulate(param.qSeqLen.data(),
+                                            param.qSeqLen.data() + batch, static_cast<int32_t>(0));
+        uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
         uint64_t bufferSize =
-            Utils::RoundUp(launchBufferSize_ + TILING_PARA_SIZE * (batch - 1) * sizeof(uint32_t), TILINGMIN);
+            Utils::RoundUp(launchBufferSize_ + TILING_PARA_SIZE_TP1 * (taskNum - 1) * sizeof(uint32_t) +
+            TILING_PARA_SIZE_TP1 * blockDim * blockDim * sizeof(uint32_t) + blockDim * 2 * sizeof(uint32_t),
+            TILINGMIN);
         return bufferSize;
     }
 };
