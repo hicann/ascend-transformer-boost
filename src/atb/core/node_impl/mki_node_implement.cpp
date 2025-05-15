@@ -194,8 +194,23 @@ void MkiNodeImplement::SetTilingDeviceAddr(uint8_t *deviceTilingBuffer)
     runInfo_.SetTilingDeviceAddr(deviceTilingBuffer);
 }
 
+Status MkiNodeImplement::BuildArgs()
+{
+    Mki::Status st = kernel_->BuildArgs(launchParam_, runInfo_, argsHostBuffer_);
+    if (st.Ok()) {
+        ATB_LOG(DEBUG) << GetLogPrefix() << " " << kernel_->GetName()
+                       << " BuildArgs success, launchParam\n:" << launchParam_.ToString();
+    } else {
+        ATB_LOG(ERROR) << GetLogPrefix() << " " << kernel_->GetName()
+                       << " BuildArgs fail, launchParam\n:" << launchParam_.ToString() << "\nst: " << st.ToString();
+        return atb::ATB_MKI_ERROR_HASH.find(Mki::ErrorType(st.Code()))->second;
+    }
+    return NO_ERROR;
+}
+
 Status MkiNodeImplement::Run(aclrtStream stream)
 {
+    Mki::Status st;
     if (kernel_ == nullptr) {
         ATB_LOG(ERROR) << GetLogPrefix() << " kernel is null";
         return ERROR_INVALID_PARAM;
@@ -204,7 +219,12 @@ Status MkiNodeImplement::Run(aclrtStream stream)
     ATB_LOG(INFO) << GetLogPrefix() << " " << kernel_->GetName() << " run start, launchParam:\n"
                   << launchParam_.ToString() << " runInfo:\n"
                   << runInfo_.ToString();
-    Mki::Status st = kernel_->Run(launchParam_, runInfo_);
+    bool isDeviceAddr = true;
+    if (argsDeviceBuffer_ != nullptr) {
+        st = kernel_->RunWithArgs(argsDeviceBuffer_, stream, isDeviceAddr);
+    } else {
+        st = kernel_->Run(launchParam_, runInfo_);
+    }
     if (st.Ok()) {
         ATB_LOG(INFO) << GetLogPrefix() << " " << kernel_->GetName()
                       << " run end, launchParam\n:" << launchParam_.ToString();
@@ -306,5 +326,52 @@ uint32_t MkiNodeImplement::GetBlockDim() const
 {
     const Mki::KernelInfo &kernelInfo = kernel_->GetKernelInfo();
     return kernelInfo.GetBlockDim();
+}
+
+void MkiNodeImplement::SetArgsDeviceBuffer(void *deviceBuffer)
+{
+    argsDeviceBuffer_ = deviceBuffer;
+}
+
+void MkiNodeImplement::SetArgsHostBuffer(void *hostBuffer)
+{
+    argsHostBuffer_ = hostBuffer;
+}
+
+void *MkiNodeImplement::GetArgsDeviceBuffer()
+{
+    return argsDeviceBuffer_;
+}
+
+void *MkiNodeImplement::GetArgsHostBuffer()
+{
+    return argsHostBuffer_;
+}
+
+uint64_t MkiNodeImplement::GetArgsSize()
+{
+    if (kernel_ == nullptr) {
+        ATB_LOG(ERROR) << GetLogPrefix() << " kernel is null";
+    }
+    return kernel_->GetKernelInfo().GetArgsSize();
+}
+
+Status MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors,
+                                          const SVector<Mki::Tensor *> &outTensors, const Mki::OpDesc &opDesc)
+{
+    launchParam_.SetParam(opDesc.specificParam);
+    launchParam_.GetInTensors().clear();
+    launchParam_.GetOutTensors().clear();
+    kernelCacheValid_ = false;
+
+    for (size_t i = 0; i < inTensors.size(); ++i) {
+        Mki::Tensor *tensor = inTensors.at(i);
+        launchParam_.AddInTensor(*tensor);
+    }
+    for (size_t i = 0; i < outTensors.size(); ++i) {
+        Mki::Tensor *tensor = outTensors.at(i);
+        launchParam_.AddOutTensor(*tensor);
+    }
+    return NO_ERROR;
 }
 } // namespace atb

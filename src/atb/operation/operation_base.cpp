@@ -545,12 +545,54 @@ Status OperationBase::SetupThrow(const VariantPack &variantPack, uint64_t &works
     return st;
 }
 
+void OperationBase::ProfilingPrepare()
+{
+    if (GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status() && !isProfArrayInited_) {
+        isProfArrayInited_ = true;
+        hashIdArray_.resize(OPERATION_MAX);
+        typeIdArray_.resize(OPERATION_MAX);
+        std::string setupName = name_ + "::Setup";
+        std::string executeName = name_ + "::Execute";
+        std::string preLaunchName = name_ + "::PreLaunch";
+        std::string launchName = name_ + "::Launch";
+        RegProfArray(OPERATION_SETUP, setupName);
+        RegProfArray(OPERATION_EXECUTE, executeName);
+        RegProfArray(OPERATION_PRELAUNCH, preLaunchName);
+        RegProfArray(OPERATION_LAUNCH, launchName);
+    }
+}
+
 Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
 {
-    Mki::Timer totalTimer;
+    Status st = NO_ERROR;
+    ProfilingPrepare();
     const uint64_t beginTime = GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status() ?
                                    GetSingleton<Mki::ProfilingFuncs>().ProfSysCycleTime() :
                                    0;
+    if (!context) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "context is null, setup fail";
+        return ERROR_INVALID_PARAM;
+    }
+    if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        ATB_LOG(INFO) << GetLogPrefix() << "run in GRAPH_LAUNCH_MODE";
+        st = GraphModeSetup(variantPack, workspaceSize, context);
+    } else {
+        ATB_LOG(INFO) << GetLogPrefix() << "run in KERNEL_LAUNCH_MODE";
+        st = EagerModeSetup(variantPack, workspaceSize, context);
+    }
+    if (Probe::ReportOperationStatisticEnable()) {
+        Probe::ReportOperationSetupStatistic(executeCount_, GenerateOperationName(name_, operationBaseIds_),
+                                             GetOpSetupStatistic().ToString());
+    }
+    if (GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status()) {
+        ReportApiInfo(beginTime, OPERATION_SETUP);
+    }
+    return st;
+}
+
+Status OperationBase::EagerModeSetup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
+{
+    Mki::Timer totalTimer;
     Status st = SetupPrepare();
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << "setup fail, error code: " << st;
@@ -585,15 +627,27 @@ Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceS
     }
     GetOpSetupStatistic().totalTime += totalTimer.ElapsedMicroSecond();
     ATB_LOG(INFO) << GetLogPrefix() << "setup statistic:" << GetOpSetupStatistic().ToString();
-    if (Probe::ReportOperationStatisticEnable()) {
-        Probe::ReportOperationSetupStatistic(executeCount_, GenerateOperationName(name_, operationBaseIds_),
-                                             GetOpSetupStatistic().ToString());
-    }
     GetOpSetupStatistic().Reset();
-    if (GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status()) {
-        ReportApiInfo(beginTime, OPERATION_SETUP);
-    }
     return st;
+}
+
+Status OperationBase::GraphModeSetup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
+{
+    if (!isCaptured_) {
+        Status st = EagerModeSetup(variantPack, workspaceSize, context);
+        return st;
+    } else {
+        if (!TensorUtil::IsRunnerVariantPackEqual(variantPack, runnerVariantPack_)) {
+            ATB_LOG(ERROR) << "Tensor shape is not support to change in GRAPH_MODE";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (!TensorUtil::IsTensorAddrEqual(variantPack, runnerVariantPack_)) {
+            needUpdateTensorAddr_ = true;
+        }
+        InitRunnerVariantPack(variantPack);
+        // todo:各种校验
+        return NO_ERROR;
+    }
 }
 
 void OperationBase::RegProfArray(ProfilingFuncName profFuncType, std::string profName)
@@ -811,6 +865,20 @@ Status OperationBase::PreExecuteThrow(const VariantPack &variantPack, uint8_t *w
 Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
                                 Context *context)
 {
+    if (!context) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "context is null, PreLaunch fail";
+        return ERROR_INVALID_PARAM;
+    }
+    if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        return GraphModePreLaunch(variantPack, workspace, workspaceSize, context);
+    } else {
+        return EagerModePreLaunch(variantPack, workspace, workspaceSize, context);
+    }
+}
+
+Status OperationBase::EagerModePreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                                         Context *context)
+{
     if (!setUpSuccess_) {
         ATB_LOG(ERROR) << GetLogPrefix() << "setup failed, execute exit.";
         return ERROR_INVALID_PARAM;
@@ -837,7 +905,73 @@ Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspa
     return st;
 }
 
+Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                                         Context *context)
+{
+    Status st = NO_ERROR;
+    lastWorkspaceAddr_ = reinterpret_cast<void *>(workspace);
+    if (!isCaptured_) {
+        argsBufferSize_ = runner_->GetArgsSize();
+        if (deviceArgsBuffer_ == nullptr) {
+            Status ret = aclrtMalloc(&deviceArgsBuffer_, argsBufferSize_, ACL_MEM_MALLOC_HUGE_FIRST);
+            if (ret != 0) {
+                ATB_LOG(ERROR) << "aclrtMalloc device buffer failed!";
+                return ret;
+            }
+            ATB_LOG(DEBUG) << "aclrtMalloc success!";
+        }
+
+        if (hostArgsBuffer_ == nullptr) {
+            Status ret = aclrtMallocHost(&hostArgsBuffer_, argsBufferSize_);
+            if (ret != 0) {
+                ATB_LOG(ERROR) << "aclrtMalloc host buffer failed!";
+                return ret;
+            }
+            ATB_LOG(DEBUG) << "aclrtMalloc success!";
+        }
+
+        runnerVariantPack_.argsDeviceBuffer = reinterpret_cast<uint8_t *>(deviceArgsBuffer_);
+        runnerVariantPack_.argsHostBuffer = reinterpret_cast<uint8_t *>(hostArgsBuffer_);
+        st = EagerModePreLaunch(variantPack, workspace, workspaceSize, context);
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "EagerModePreLaunch failed! ret:" << st;
+        // 上述的preLaunch当前只做了地址更新及tiling拷贝，后续考虑改名。当前为保证已有代码的质量不修改原有流程，后续需要考虑EAGER_MODE与GRAPH_MODE的流程归纳与复用。
+    } else {
+        ATB_LOG(INFO) << GetLogPrefix() << "begin update tensor addr.";
+        runnerVariantPack_.intermediateBuffer = nullptr;
+        if (needUpdateTensorAddr_) {
+            st = runner_->UpdateTensorAddr(runnerVariantPack_);
+            ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "UpdateTensorAddr failed! ret:" << st;
+            needUpdateTensorAddr_ = false;
+        }
+        FillHostTilingBuffer();
+        st = CopyTilingToDevice();
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "CopyTilingToDevice failed! ret:" << st;
+    }
+    st = runner_->BuildArgs();
+    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "BuildArgs failed! ret:" << st;
+
+    st = CopyArgsToDevice(context);
+    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "CopyArgsToDevice failed! ret:" << st;
+
+    return st;
+}
+
 Status OperationBase::Launch()
+{
+    aclmdlRI tmpModel = nullptr;
+    Status st = aclmdlRICaptureGetInfo(GetExecuteStream(runnerVariantPack_.context), &streamStatus_, &tmpModel);
+    if (tmpModel != nullptr) {
+        model_ = tmpModel;
+    }
+    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRICaptureGetInfo failed! ret:" << st;
+    if (runnerVariantPack_.context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        return GraphModeLaunch();
+    } else {
+        return EagerModeLaunch();
+    }
+}
+
+Status OperationBase::EagerModeLaunch()
 {
     Mki::Timer ExecuteTime;
     void *executeStream = GetExecuteStream(runnerVariantPack_.context);
@@ -873,6 +1007,31 @@ Status OperationBase::Launch()
     GetOpExecuteStatistic().launchTime += ExecuteTime.ElapsedMicroSecond();
     GetOpExecuteStatistic().totalTime += GetOpExecuteStatistic().preLaunchTime + GetOpExecuteStatistic().launchTime;
     ATB_LOG(INFO) << GetLogPrefix() << "execute statistic:" << GetOpExecuteStatistic().ToString();
+    return st;
+}
+
+Status OperationBase::GraphModeLaunch()
+{
+    Status st = NO_ERROR;
+    aclrtStream executeStream = GetExecuteStream(runnerVariantPack_.context);
+    if (streamStatus_ == ACL_MODEL_RI_CAPTURE_STATUS_ACTIVE) {
+        st = EagerModeLaunch();
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "EagerModeLaunch failed! ret:" << st;
+        return st;
+    }
+
+    if (!isCaptured_) {
+        st = aclmdlRICaptureBegin(executeStream, ACL_MODEL_RI_CAPTURE_MODE_GLOBAL);
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRICaptureBegin failed! ret:" << st;
+        st = EagerModeLaunch();
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "EagerModeLaunch failed! ret:" << st;
+        st = aclmdlRICaptureEnd(executeStream, &model_);
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRICaptureEnd failed! ret:" << st;
+    }
+
+    isCaptured_ = true;
+    st = aclmdlRIExecuteAsync(model_, executeStream);
+    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRIExecuteAsync failed! ret:" << st;
     return st;
 }
 
@@ -938,9 +1097,15 @@ Status OperationBase::CopyHostTilingToDevice(aclrtStream stream)
             ATB_LOG(ERROR) << GetLogPrefix() << "host tiling buffer is null!";
             return ERROR_OUT_OF_HOST_MEMORY;
         }
-        int ret =
-            aclrtMemcpyAsync(runnerVariantPack_.tilingBuffer, runnerVariantPack_.tilingBufferSize, hostTilingBuffer_,
-                             runnerVariantPack_.tilingBufferSize, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+        int ret = 0;
+        if (runnerVariantPack_.context->GetLaunchMode() == GRAPH_LAUNCH_MODE && !isCaptured_) {
+            ret = aclrtMemcpy(runnerVariantPack_.tilingBuffer, runnerVariantPack_.tilingBufferSize, hostTilingBuffer_,
+                              runnerVariantPack_.tilingBufferSize, ACL_MEMCPY_HOST_TO_DEVICE);
+        } else {
+            ret = aclrtMemcpyAsync(runnerVariantPack_.tilingBuffer, runnerVariantPack_.tilingBufferSize,
+                                   hostTilingBuffer_, runnerVariantPack_.tilingBufferSize, ACL_MEMCPY_HOST_TO_DEVICE,
+                                   stream);
+        }
 
         GetOpExecuteStatistic().tillingCopyTime += timer.ElapsedMicroSecond();
         if (ret != 0) {
@@ -1145,5 +1310,26 @@ aclrtStream OperationBase::GetExecuteStream(Context *context) const
         return nullptr;
     }
     return streams.at(streamId_);
+}
+
+Status OperationBase::CopyArgsToDevice(Context *context)
+{
+    Status st = NO_ERROR;
+#ifdef _DEBUG
+    ATB_LOG(DEBUG) << GetLogPrefix() << "args in graphMode is:";
+    for (size_t i = 0; i < argsBufferSize_ / sizeof(void *); i++) {
+        ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
+    }
+#endif
+    if (!isCaptured_) {
+        st = aclrtMemcpy(deviceArgsBuffer_, argsBufferSize_, hostArgsBuffer_, argsBufferSize_,
+                         ACL_MEMCPY_HOST_TO_DEVICE);
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclrtMemcpy failed! ret:" << st;
+    } else {
+        st = aclrtMemcpyAsync(deviceArgsBuffer_, argsBufferSize_, hostArgsBuffer_, argsBufferSize_,
+                              ACL_MEMCPY_HOST_TO_DEVICE, GetExecuteStream(context));
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclrtMemcpyAsync failed! ret:" << st;
+    }
+    return st;
 }
 } // namespace atb

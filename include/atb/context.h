@@ -28,12 +28,22 @@ namespace atb {
 //!
 //! \enum ExecuteType
 //!
-//! \brief 算子下发类型枚举，通过Context选择加速库算子下发的方式, 支持直接下发和使用分线程两段式下发.
+//! \brief 下发接口形式枚举，通过Context选择加速库算子下发接口的形式, 支持单段下发和使用分线程两段式下发.
 //!
 enum ExecuteType : int {
-    EXECUTE_NORMAL = 0,           //!< 直接下发
-    EXECUTE_PRELAUNCH,            //!< 用于分线程下发，第一段下发
-    EXECUTE_LAUNCH,               //!< 用于分线程下发，第二段下发
+    EXECUTE_NORMAL = 0, //!< 直接下发
+    EXECUTE_PRELAUNCH,  //!< 用于分线程下发，第一段下发
+    EXECUTE_LAUNCH,     //!< 用于分线程下发，第二段下发
+};
+
+//!
+//! \enum LaunchMode
+//!
+//! \brief 算子下发模式枚举，通过Context选择算子下发的模式，支持单算子下发与整图下发
+//!
+enum LaunchMode : int {
+    KERNEL_LAUNCH_MODE = 0, //!< 单算子下发模式
+    GRAPH_LAUNCH_MODE       //!< 整图下发模式
 };
 
 //!
@@ -114,6 +124,20 @@ public:
     //!
     //! \return 获取到的ExecuteType类型
     virtual ExecuteType GetExecuteType() = 0;
+
+    //!
+    //! \brief 设置算子下发模式
+    //!
+    //! \param mode 算子下发的模式类型
+    //!
+    //! \return 状态值，如果设置成功，返回NO_ERROR
+    virtual Status SetLaunchMode(LaunchMode mode) = 0;
+
+    //!
+    //! \brief 返回当前的算子下发模式
+    //!
+    //! \return 当前的算子下发模式
+    virtual LaunchMode GetLaunchMode() = 0;
 };
 
 //!
