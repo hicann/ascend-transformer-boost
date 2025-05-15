@@ -197,3 +197,20 @@ class OperationTest(unittest.TestCase):
         else:
             npu_device = f"npu:{npu_device}"
         return npu_device
+
+    def execute_inplace_v2(self, op_name, op_param, in_tensors, indexes):
+        print(f"———————— {op_name} test start ————————")
+        operation = torch.classes.OperationTorch.OperationTorch(
+            op_name)
+        if isinstance(op_param, dict):
+            operation.set_param(json.dumps(op_param))
+        elif isinstance(op_param, str):
+            operation.set_param(op_param)
+ 
+        input_tensors_copy = [tensor.cpu().clone() for tensor in in_tensors]
+        operation.execute(in_tensors)
+        out_tensors = []
+        for index in indexes:
+            out_tensors.append(in_tensors[index])
+        golden_out_tensors = self.golden_calc(input_tensors_copy)
+        self.__golden_compare_all(out_tensors, golden_out_tensors)
