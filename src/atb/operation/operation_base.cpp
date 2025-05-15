@@ -945,10 +945,20 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
             // 如果workspace发生了变化，计算workspace变化带来的偏移量时需要再加上workspaceBufferSize才是中间tensor对应内存的起始地址
             runnerVariantPack_.intermediateBuffer = workspace -
             reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPack_.workspaceBufferSize;
+#ifdef _DEBUG
+            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+                          << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
+#endif
             runnerVariantPack_.workspaceBuffer = workspace;
         } else {
             runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
             reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
+#ifdef _DEBUG
+            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+                          << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
+#endif
             runnerVariantPack_.workspaceBuffer = workspace;
         }
         if (needUpdateTensorAddr_) {

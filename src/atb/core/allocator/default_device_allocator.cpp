@@ -17,7 +17,9 @@ DefaultDeviceAllocator::~DefaultDeviceAllocator()
 {
     // 释放所有管理的device侧地址
     for (auto it = memMap.begin(); it != memMap.end(); ++it) {
+#ifdef _DEBUG
         ATB_LOG(INFO) << "DefaultDeviceAllocator::~DefaultDeviceAllocator aclrtFree free device buffer: " << it->first;
+#endif
         Status st = aclrtFree(it->first);
         if (st != 0) {
             ATB_LOG(ERROR) << "aclrtFree device buffer failed!";
@@ -42,9 +44,14 @@ void *DefaultDeviceAllocator::Allocate(size_t bufferSize)
     }
     currentAllocateSize_ += bufferSize;
     memMap.insert(std::make_pair(addr, bufferSize));
+#ifdef _DEBUG
     ATB_LOG(INFO) << "DefaultDeviceAllocator::Allocate device buffer succes, currentAllocateSize_: "
                   << currentAllocateSize_
                   << " deviceBuffer: " << addr;
+#else
+    ATB_LOG(INFO) << "DefaultDeviceAllocator::Allocate device buffer succes, currentAllocateSize_: "
+                  << currentAllocateSize_;
+#endif
     return addr;
 }
 
@@ -67,9 +74,14 @@ Status DefaultDeviceAllocator::Deallocate(void *addr)
     }
     currentAllocateSize_ -= it->second;
     memMap.erase(addr);
+#ifdef _DEBUG
     ATB_LOG(INFO) << "DefaultDeviceAllocator::Deallocate success, free bufferSize: "<< it->second
                   << ", currentAllocateSize_: " << currentAllocateSize_
                   << " deviceBuffer: " << addr;
+#else
+    ATB_LOG(INFO) << "DefaultDeviceAllocator::Deallocate success, free bufferSize: "<< it->second
+                  << ", currentAllocateSize_: " << currentAllocateSize_;
+#endif
     return NO_ERROR;
 }
 } // namespace atb
