@@ -35,7 +35,6 @@ void *DefaultDeviceAllocator::Allocate(size_t bufferSize)
     bufferSize = TensorUtil::AlignInt(bufferSize, ALIGN_INT);
     ATB_LOG(INFO) << "bufferSize should be 32-bit alignment, automate align upwards to " << bufferSize;
     // aclrtMalloc会自动对于bufferSize+32，不论bufferSize是否是32的整数倍
-    // aclrtMallocAlign32 只会对申请的bufferSize向上取整，不会再加32字节
     Status st = aclrtMalloc(&addr, bufferSize, ACL_MEM_MALLOC_HUGE_FIRST);
     if (st != 0) {
         ATB_LOG(ERROR) << "aclrtMalloc device buffer failed!";

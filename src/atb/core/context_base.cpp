@@ -28,7 +28,11 @@ static constexpr uint64_t TILING_BUFFER_BLOCK_SIZE = 1024 * 1024 * 3;
 static constexpr uint32_t DEFAULT_EXECUTE_STREAM_NUMBER = 1;
 thread_local ExecuteType ContextBase::executeType_ = EXECUTE_NORMAL;
 
-ContextBase::ContextBase() {}
+ContextBase::ContextBase()
+{
+    deviceAllocator_ = std::make_unique<DefaultDeviceAllocator>();
+    hostAllocator_ = std::make_unique<DefaultHostAllocator>();
+}
 
 ContextBase::~ContextBase() noexcept
 {
