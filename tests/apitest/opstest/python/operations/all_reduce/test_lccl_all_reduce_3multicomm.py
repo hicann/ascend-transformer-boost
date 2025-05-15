@@ -27,10 +27,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
-# usage:
-# export HCCL_WHITELIST_DISABLE=1
-# python3 -m unittest test_all_reduce_operation.py
-# Attention: when you use lccl backend, unset HCCL_MTE_ENABLE and copy lcal.o to current directory
 
 ATB_HOME_PATH = os.environ.get("ATB_HOME_PATH")
 if ATB_HOME_PATH is None:
@@ -40,7 +36,7 @@ LIBTORCH_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb_test_framework.so")
 LIB_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb.so")
 torch.classes.load_library(LIBTORCH_PATH)
 os.environ["LCCL_DETERMINISTIC"]="1"
-os.environ["HCCL_DETERMINISTIC"]="true"
+os.environ["LCCL_PARALLEL"]="1"
 
 def main_worker(rank, world_size,inTensorDtypes, sizes, random_seed,golden_cal):
     # init process group
@@ -49,36 +45,33 @@ def main_worker(rank, world_size,inTensorDtypes, sizes, random_seed,golden_cal):
     # init all reduce operation
     acl_allreduce_operation = torch.classes.OperationTorch.OperationTorch(
         "AllReduceOperation")
-    #exec all reduce
-    torch.manual_seed(random_seed)
-    low = -100
-    high = 100
-    for inTensorDtype in inTensorDtypes:
-        for size in sizes:
-            inTensors = []
-            for i in range(world_size):
-                inTensor = ((high - low) * torch.rand(size) + low).type(inTensorDtype)
-                inTensors.append(inTensor)
-            for key,gold in golden_cal.items():
-                if key == "prod" and inTensorDtype == torch.int16:
-                    continue
-                if key == "prod" and inTensorDtype == torch.bfloat16:
-                    continue
-                acl_param = json.dumps({"rank": rank, "rankSize": world_size,
-                    "rankRoot": 0, "allReduceType": "sum", "backend": "hccl","commDomain":"atb1"})
-                acl_allreduce_operation.set_param(acl_param)
-                inTensor = torch.tensor([1,1,1]).float().npu()
-                acl_out_tensor = acl_allreduce_operation.execute([inTensor])[0]
-                print("acl_out_tensor:", acl_out_tensor,
+    comm_domain = "11" if rank < 4 else "12"
+    acl_param = json.dumps({"rank": rank % 4, "rankSize": 4,
+                    "rankRoot": 0, "allReduceType": "sum", "backend": "lccl","commDomain": comm_domain})
+    acl_allreduce_operation.set_param(acl_param)
+    inTensor = torch.tensor([1,1,1]).float().npu()
+    acl_out_tensor = acl_allreduce_operation.execute([inTensor])[0]
+    print("acl_out_tensor:", acl_out_tensor,
                     ", \nrank:", rank)
-                acl_param2 = json.dumps({"rank": rank, "rankSize": world_size,
-                    "rankRoot": 0, "allReduceType": "sum", "backend": "hccl","commDomain":"atb2"})
-                acl_allreduce_operation.set_param(acl_param2)
-                acl_out_tensor = acl_allreduce_operation.execute([acl_out_tensor])[0]
-                torch.npu.synchronize()
-                golden_out_tensor = torch.tensor([16,16,16]).float().npu()
-                # assert result
-                assert golden_compare(golden_out_tensor.cpu(), acl_out_tensor.cpu())
+    acl_param2 = json.dumps({"rank": rank % 4, "rankSize": 4,
+                    "rankRoot": 0, "allReduceType": "sum", "backend": "lccl","commDomain": comm_domain})
+    acl_allreduce_operation.set_param(acl_param2)
+    acl_out_tensor = acl_allreduce_operation.execute([acl_out_tensor])[0]
+    torch.npu.synchronize()
+    golden_out_tensor = torch.tensor([16,16,16]).float().npu()
+    # assert result
+    assert golden_compare(golden_out_tensor.cpu(), acl_out_tensor.cpu())
+    
+    # 8rank commDomain
+    acl_param = json.dumps({"rank": rank % 8, "rankSize": 8,
+                    "rankRoot": 0, "allReduceType": "sum", "backend": "lccl","commDomain": "8"})
+    acl_allreduce_operation.set_param(acl_param)
+    inTensor1 = torch.tensor([1,1,1]).float().npu()
+    acl_out_tensor_8 = acl_allreduce_operation.execute([inTensor1])[0]
+    torch.npu.synchronize()
+    golden_out_tensor = torch.tensor([8,8,8]).float().npu()
+    # assert result
+    assert golden_compare(golden_out_tensor.cpu(), acl_out_tensor_8.cpu())
 
 def golden_compare(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001):
     result = torch.allclose(out_tensor, golden_out_tensor, rtol=rtol, atol=atol)
@@ -107,12 +100,6 @@ def min_cal(inTensors):
         result = torch.min(result,inTensors[i])
     return result
 
-def prod_cal(inTensors):
-    result = inTensors[0]
-    for i in range(1,len(inTensors)): 
-        result = torch.mul(result,inTensors[i])
-    return result
-
 def log(out_tensor,golden_out_tensor,filename):
     # 把输出重定向到文件
     f = open(filename, 'w')
@@ -126,18 +113,26 @@ class AllReduceOperationTest(operation_test.OperationTest):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return True
+        
+        device_count = torch_npu.npu.device_count() 
+        if device_count < 8: 
+            print("device_count is not enough") 
+            return
 
-        command = f"nm -D {LIB_PATH} | grep HcclAllReduce > /dev/null"
+        command = f"nm -D {LIB_PATH} | grep AllReduce > /dev/null"
         res = os.system(command)
+        print("res:",res)
         if res == 0:
-            world_size = 4
+            world_size = 8
+            if world_size > 2:
+                self.skipTest("Skipped because rank_size > 2")
             random_seed = 123
             inTensorDtypes = [torch.float]
             sizes = [[2,3]]
             golden_cal = {"sum":"sum_cal"}
             mp.spawn(main_worker, nprocs=world_size, args=(world_size, inTensorDtypes, sizes, random_seed,golden_cal))
         else:
-            print("hccl_runner is not compiled, skip AllReduceOperationTest")
+            print("lccl_runner is not compiled, skip AllReduceOperationTest")
 
 
 if __name__ == '__main__':

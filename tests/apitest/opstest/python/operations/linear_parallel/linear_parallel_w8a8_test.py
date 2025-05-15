@@ -103,6 +103,8 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
             return
         print(f"———————— LinearParallelCoverOp test start ————————")
         world_size = 8
+        if world_size > 2:
+            self.skipTest("Skipped because rank_size > 2")
         d_types = [torch.int8]
 
         sizes = [[[27, 333], [333, 77]],

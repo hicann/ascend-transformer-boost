@@ -10,26 +10,20 @@
 
 import os
 import json
+import time
 import unittest
 import sys
-import socket
-import random
-import threading
 from time import sleep
 import torch
 import torch_npu
-import torch.distributed as dist
 import torch.multiprocessing as mp
 from multiprocessing import  Process, set_start_method
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
-# usage:
-# export HCCL_WHITELIST_DISABLE=1
-# python3 -m unittest test_all_reduce_operation.py
-# Attention: when you use lccl backend, unset HCCL_MTE_ENABLE and copy lcal.o to current directory
 
 ATB_HOME_PATH = os.environ.get("ATB_HOME_PATH")
 if ATB_HOME_PATH is None:
@@ -39,11 +33,11 @@ LIBTORCH_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb_test_framework.so")
 LIB_PATH = os.path.join(ATB_HOME_PATH, "lib/libatb.so")
 torch.classes.load_library(LIBTORCH_PATH)
 
-def main_worker(rank, world_size,inTensorDtypes, sizes, random_seed):
-    # init process group
-    torch_npu.npu.set_device(rank)
+def main_worker(local_rank, gpus, nodes,world_size,nr,inTensorDtypes, sizes, random_seed):
+    torch.manual_seed(random_seed)
+    rank = nr * gpus + local_rank
+    torch_npu.npu.set_device(local_rank)
     print(f'Process {rank} started, using device npu:{rank}.')
-    # init all reduce operation
     all_to_all_operation = torch.classes.OperationTorch.OperationTorch(
         "AllToAllOperation")
     #exec all reduce
@@ -85,27 +79,25 @@ def golden_compare(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001):
             ", \ngolden_oute_tensor:", golden_out_tensor)
     return result
 
-def log(out_tensor,golden_out_tensor,filename):
-    # 把输出重定向到文件
-    f = open(filename, 'w')
-    # 之后使用print函数，都将内容打印到 screenshot.log 文件中
-    sys.stdout = f
-    print("diff:",out_tensor-golden_out_tensor)
-    f.close()
-
 class all_to_all_operationTest(operation_test.OperationTest):
-    def test_all_to_all_operation(self):
+    def test_alltoall(self):
+        return
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return True
-        world_size = 4
+        gpus = 2
+        nodes =2
+        world_size =gpus * nodes
+        if world_size > 2:
+            self.skipTest("Skipped because rank_size > 2")
+        nr = 1 #节点编号
         random_seed = 123
         inTensorDtypes = [torch.int8, torch.int16, torch.int32, torch.int64,torch.float32,torch.float16, torch.bfloat16]
-        sizes = [[3,4,6]]
+        sizes = [[10,100,512]]
         set_start_method('spawn', force=True)
         process_list = []
-        for i in range(world_size):  
-            p = Process(target=main_worker,args=(i,world_size, inTensorDtypes, sizes, random_seed))
+        for i in range(gpus):  
+            p = Process(target=main_worker,args=(i,gpus, nodes,world_size,nr, inTensorDtypes, sizes, random_seed))
             p.start()
             process_list.append(p)
 

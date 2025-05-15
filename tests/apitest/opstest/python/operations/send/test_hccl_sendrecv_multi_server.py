@@ -38,37 +38,44 @@ def main_worker(local_rank, gpus, nodes,world_size,nr,inTensorDtypes, sizes, ran
     rank = nr * gpus + local_rank
     torch_npu.npu.set_device(local_rank)
     print(f'Process {rank} started, using device npu:{rank}.')
-    all_to_all_operation = torch.classes.OperationTorch.OperationTorch(
-        "AllToAllOperation")
-    #exec all reduce
-    torch.manual_seed(random_seed)
-    low = -100
-    high = 100
-    for inTensorDtype in inTensorDtypes:
-        print(inTensorDtype)
-        for size in sizes:
-            inTensors = []
-            for i in range(world_size):
-                inTensor = ((high - low) * torch.rand(size) + low).type(inTensorDtype)
-                inTensors.append(inTensor)
-            goldenTensors = []
-            for i in range(world_size):
-                golden_out = []
-                for j in range(world_size):
-                    golden_out_list = inTensors[j].reshape(-1).tolist()
-                    split = golden_out_list[i*len(golden_out_list) // world_size:(i+1)*len(golden_out_list) // world_size]
-                    golden_out += split
-                golden_out_tensor = torch.tensor(golden_out,dtype=inTensorDtype).reshape(size)
-                goldenTensors.append(golden_out_tensor)
+    # init send operation
+    acl_send_operation = torch.classes.OperationTorch.OperationTorch(
+        "SendOperation")
+    # set send param
+    acl_param = json.dumps({"rank": rank, "rankSize": world_size,
+                                    "rankRoot": 0,"destRank": rank+2,"rankTableFile":"/home/qsc/ascend-transformer-boost/ranktable_16_89_91.json"})
+    acl_send_operation.set_param(acl_param)
+    inTensor1 = torch.tensor([[3,0,26],
+                              [2,15,2]]).float().npu()
+    inTensor2 = torch.tensor([[4,5,6],
+                              [2,1,2],
+                              [3,4,4]]).float().npu()
+    intensorList = [inTensor1,inTensor2]
+    out1 = torch.zeros(inTensor1.shape).npu()
+    out2 = torch.zeros(inTensor2.shape).npu()
+    outtensorList = [out1,out2]
+    print("setup SendOperation...")
+    acl_send_operation.setup([inTensor1],[])
+    # init recv operation
+    acl_recv_operation = torch.classes.OperationTorch.OperationTorch(
+        "RecvOperation")
+    # set recv param
+    acl_param2 = json.dumps({"rank": rank, "rankSize": world_size,
+                                "rankRoot": 0, "srcRank": rank-2})
+    acl_recv_operation.set_param(acl_param2)
 
-            acl_param = json.dumps({"rank": rank, "rankSize": world_size,
-                            "rankRoot": 0, "backend": "hccl"})
-            all_to_all_operation.set_param(acl_param)
-            inTensor = inTensors[rank].clone().npu()
-            acl_out_tensor = all_to_all_operation.execute([inTensor])[0]
-            torch.npu.synchronize()
-            # assert result
-            assert golden_compare(goldenTensors[rank], acl_out_tensor.cpu())
+    # rank 0 1  0 send 2 ,1 send 3
+    if rank//2==0:
+        print("execute SendOperation...")
+        acl_send_operation.execute([intensorList[rank]])
+        print(f'send result={"null"}')
+    else:# rank 2 3
+        print("execute RecvOperation...")
+        acl_out_tensor = acl_recv_operation.execute([outtensorList[rank-2]])[0]
+        print(f'recv result={acl_out_tensor}')
+        torch.npu.synchronize()
+        # assert result
+        assert golden_compare(acl_out_tensor, intensorList[rank-2])
 
 def golden_compare(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001):
     result = torch.allclose(out_tensor, golden_out_tensor, rtol=rtol, atol=atol)
@@ -79,8 +86,8 @@ def golden_compare(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001):
             ", \ngolden_oute_tensor:", golden_out_tensor)
     return result
 
-class all_to_all_operationTest(operation_test.OperationTest):
-    def test_alltoall(self):
+class SendOperationTest(operation_test.OperationTest):
+    def test_send(self):
         return
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
@@ -88,6 +95,8 @@ class all_to_all_operationTest(operation_test.OperationTest):
         gpus = 2
         nodes =2
         world_size =gpus * nodes
+        if world_size > 2:
+            self.skipTest("Skipped because rank_size > 2")
         nr = 1 #节点编号
         random_seed = 123
         inTensorDtypes = [torch.int8, torch.int16, torch.int32, torch.int64,torch.float32,torch.float16, torch.bfloat16]
