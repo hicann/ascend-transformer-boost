@@ -43,7 +43,7 @@ void RelayAttentionVariantPackParam::ReintCastShapeFix(const Mki::Tensor tensor,
 {
     if (tensor.desc.dims.size() - 1 != tensorList[0].desc.shape.dimNum) {
         int diffDimNum = tensorList[0].desc.shape.dimNum;
-        for (std::vector<atb::Tensor>::size_type i = 0; i < tensorList.size(); i++) {
+        for (std::size_t i = 0; i < tensorList.size(); i++) {
             for (std::size_t j = diffDimNum; j < tensor.desc.dims.size() - 1; j++) {
                 tensorList[i].desc.shape.dims[j] = 1;
             }
