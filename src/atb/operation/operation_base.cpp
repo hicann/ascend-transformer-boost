@@ -115,6 +115,45 @@ SVector<bool> OperationBase::GetEmptyInTensorPermissions() const
     return emptyInTensorPerms_;
 }
 
+void OperationBase::InitEmptyOutTensorPerms() const
+{
+    if (!operationIr_) {
+        ATB_LOG(DEBUG) << GetLogPrefix() << "operationIr_ is null.";
+        return;
+    }
+    if (!operationIr_->IsValid()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "operationIr_ is invalid";
+        return;
+    }
+    ATB_LOG(DEBUG) << GetLogPrefix() << "operationIr_ : " << operationIr_->ToString();
+    const Mki::SVector<Mki::TensorInfoIr> &outTensorInfoIrs = operationIr_->GetOutTensorInfoIrs();
+    if (GetOutputNum() != 0 && outTensorInfoIrs.size() != GetOutputNum()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "GetOutTensorInfoIrs size: " << outTensorInfoIrs.size()
+                       << " which is not equals to GetOutputNum: " << GetOutputNum();
+        return;
+    }
+    emptyOutTensorPerms_.reserve(outTensorInfoIrs.size());
+    emptyOutTensorPerms_.resize(outTensorInfoIrs.size());
+    for (size_t outTensorId = 0; outTensorId < outTensorInfoIrs.size(); outTensorId++) {
+        if (outTensorInfoIrs[outTensorId].isOptional) {
+            emptyOutTensorPerms_.at(outTensorId) = true;
+            ATB_LOG(INFO) << GetLogPrefix() << "emptyOutTensorPerms init outTensor[" << outTensorId
+                          << "] is isOptional";
+        } else {
+            emptyOutTensorPerms_.at(outTensorId) = false;
+        }
+    }
+    ATB_LOG(INFO) << GetLogPrefix() << "InitEmptyOutTensorPerms finished:" << emptyOutTensorPerms_;
+}
+ 
+SVector<bool> OperationBase::GetEmptyOutTensorPermissions() const
+{
+    if (emptyOutTensorPerms_.size() == 0) {
+        InitEmptyOutTensorPerms();
+    }
+    return emptyOutTensorPerms_;
+}
+
 template <typename TensorType> Status OperationBase::CheckInTensor(const SVector<TensorType> &inTensors) const
 {
     Status st = NO_ERROR;
@@ -129,6 +168,27 @@ template <typename TensorType> Status OperationBase::CheckInTensor(const SVector
         st = TensorCheck::CheckTensorShape(inTensor);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "inTensor [" << inTensorId
+                           << "] CheckTensorShape failed. ErrorType: " << st;
+            return st;
+        }
+    }
+    return NO_ERROR;
+}
+
+template <typename TensorType> Status OperationBase::CheckOutTensor(const SVector<TensorType> &outTensors) const
+{
+    Status st = NO_ERROR;
+    SVector<bool> emptyTensorPerms = GetEmptyOutTensorPermissions();
+    for (size_t outTensorId = 0; outTensorId < outTensors.size(); outTensorId++) {
+        const auto &outTensor = outTensors.at(outTensorId);
+        if (outTensorId < emptyTensorPerms.size() && emptyTensorPerms.at(outTensorId) &&
+            TensorCheck::IsEmptyTensor(outTensor)) {
+            ATB_LOG(INFO) << GetLogPrefix() << "outTensor [" << outTensorId << "] is allowed empty";
+            continue;
+        }
+        st = TensorCheck::CheckTensorShape(outTensor);
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "outTensor [" << outTensorId
                            << "] CheckTensorShape failed. ErrorType: " << st;
             return st;
         }
@@ -304,14 +364,9 @@ Status OperationBase::CheckVariantPack(const VariantPack &variantPack) const
     if (st != NO_ERROR) {
         return st;
     }
-    for (size_t outTensorId = 0; outTensorId < variantPack.outTensors.size(); outTensorId++) {
-        const auto &outTensor = variantPack.outTensors.at(outTensorId);
-        st = TensorCheck::CheckTensorShape(outTensor.desc);
-        if (st != NO_ERROR) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "outTensor [" << outTensorId
-                           << "] CheckTensorShape failed. ErrorType: " << st;
-            return st;
-        }
+    st = CheckOutTensor(variantPack.outTensors);
+    if (st != NO_ERROR) {
+        return st;
     }
     if (!CheckIniMatch(variantPack.inTensors, variantPack.outTensors)) {
         ATB_LOG(ERROR) << GetLogPrefix()
@@ -490,12 +545,54 @@ Status OperationBase::SetupThrow(const VariantPack &variantPack, uint64_t &works
     return st;
 }
 
+void OperationBase::ProfilingPrepare()
+{
+    if (GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status() && !isProfArrayInited_) {
+        isProfArrayInited_ = true;
+        hashIdArray_.resize(OPERATION_MAX);
+        typeIdArray_.resize(OPERATION_MAX);
+        std::string setupName = name_ + "::Setup";
+        std::string executeName = name_ + "::Execute";
+        std::string preLaunchName = name_ + "::PreLaunch";
+        std::string launchName = name_ + "::Launch";
+        RegProfArray(OPERATION_SETUP, setupName);
+        RegProfArray(OPERATION_EXECUTE, executeName);
+        RegProfArray(OPERATION_PRELAUNCH, preLaunchName);
+        RegProfArray(OPERATION_LAUNCH, launchName);
+    }
+}
+
 Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
 {
-    Mki::Timer totalTimer;
+    Status st = NO_ERROR;
+    ProfilingPrepare();
     const uint64_t beginTime = GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status() ?
                                    GetSingleton<Mki::ProfilingFuncs>().ProfSysCycleTime() :
                                    0;
+    if (!context) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "context is null, setup fail";
+        return ERROR_INVALID_PARAM;
+    }
+    if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        ATB_LOG(INFO) << GetLogPrefix() << "run in GRAPH_LAUNCH_MODE";
+        st = GraphModeSetup(variantPack, workspaceSize, context);
+    } else {
+        ATB_LOG(INFO) << GetLogPrefix() << "run in KERNEL_LAUNCH_MODE";
+        st = EagerModeSetup(variantPack, workspaceSize, context);
+    }
+    if (Probe::ReportOperationStatisticEnable()) {
+        Probe::ReportOperationSetupStatistic(executeCount_, GenerateOperationName(name_, operationBaseIds_),
+                                             GetOpSetupStatistic().ToString());
+    }
+    if (GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status()) {
+        ReportApiInfo(beginTime, OPERATION_SETUP);
+    }
+    return st;
+}
+
+Status OperationBase::EagerModeSetup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
+{
+    Mki::Timer totalTimer;
     Status st = SetupPrepare();
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << "setup fail, error code: " << st;
@@ -530,15 +627,27 @@ Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceS
     }
     GetOpSetupStatistic().totalTime += totalTimer.ElapsedMicroSecond();
     ATB_LOG(INFO) << GetLogPrefix() << "setup statistic:" << GetOpSetupStatistic().ToString();
-    if (Probe::ReportOperationStatisticEnable()) {
-        Probe::ReportOperationSetupStatistic(executeCount_, GenerateOperationName(name_, operationBaseIds_),
-                                             GetOpSetupStatistic().ToString());
-    }
     GetOpSetupStatistic().Reset();
-    if (GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status()) {
-        ReportApiInfo(beginTime, OPERATION_SETUP);
-    }
     return st;
+}
+
+Status OperationBase::GraphModeSetup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
+{
+    if (!isCaptured_) {
+        Status st = EagerModeSetup(variantPack, workspaceSize, context);
+        return st;
+    } else {
+        if (!TensorUtil::IsRunnerVariantPackEqual(variantPack, runnerVariantPack_)) {
+            ATB_LOG(ERROR) << "Tensor shape is not support to change in GRAPH_MODE";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (!TensorUtil::IsTensorAddrEqual(variantPack, runnerVariantPack_)) {
+            needUpdateTensorAddr_ = true;
+        }
+        InitRunnerVariantPack(variantPack);
+        // todo:各种校验
+        return NO_ERROR;
+    }
 }
 
 void OperationBase::RegProfArray(ProfilingFuncName profFuncType, std::string profName)
@@ -607,45 +716,55 @@ Status OperationBase::CopyTilingToDevice()
     return st;
 }
 
-Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
+template <typename TensorType>
+Status OperationBase::ExecuteVariantPackInTensorCheck(const SVector<TensorType> &inTensors) const
 {
     std::string Prefix = GetLogPrefix();
-    if (variantPack.inTensors.size() != runnerVariantPack_.inTensors.size()) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "execute inTensors.size:" << variantPack.inTensors.size()
+    if (inTensors.size() != runnerVariantPack_.inTensors.size()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "execute inTensors.size:" << inTensors.size()
                        << " != setup inTensors.size:" << runnerVariantPack_.inTensors.size();
         return ERROR_INVALID_PARAM;
     }
-    if (variantPack.outTensors.size() != runnerVariantPack_.outTensors.size()) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "execute outTensors.size:" << variantPack.outTensors.size()
-                       << " != setup outTensors.size:" << runnerVariantPack_.outTensors.size();
-        return ERROR_INVALID_PARAM;
-    }
-    SVector<bool> emptyTensorPerms = GetEmptyInTensorPermissions();
-    for (size_t i = 0; i < variantPack.inTensors.size(); i++) {
-        const Tensor &variantPackInTensor = variantPack.inTensors.at(i);
-        // If the oepration name contains WithStride, it indicates that the operation supports non continuous tensors
-        if (Prefix.find("WithStride") == std::string::npos &&
+    SVector<bool> emptyInTensorPerms = GetEmptyInTensorPermissions();
+    for (size_t i = 0; i < inTensors.size(); i++) {
+        const Tensor &variantPackInTensor = inTensors.at(i);
+        if (Prefix.find("WithStride") == std::string::npos && // "WithStride" indicates non continuous tensors
             variantPackInTensor.dataSize != Utils::GetTensorSize(runnerVariantPack_.inTensors.at(i).desc)) {
             ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.inTensors(" << i
                            << ").dataSize is Not equal to the setup dataSize";
             return ERROR_INVALID_PARAM;
         }
-        if (i < emptyTensorPerms.size() && emptyTensorPerms.at(i) && TensorCheck::IsEmptyTensor(variantPackInTensor)) {
+        if (i < emptyInTensorPerms.size() && emptyInTensorPerms.at(i) &&
+            TensorCheck::IsEmptyTensor(variantPackInTensor)) {
             continue;
         }
         if (!variantPackInTensor.deviceData && !variantPackInTensor.hostData) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.inTensors(" << i
-                           << ") deviceData&hostData is null";
             return ERROR_INVALID_PARAM;
         }
     }
+    return NO_ERROR;
+}
 
-    for (size_t i = 0; i < variantPack.outTensors.size(); i++) {
-        const Tensor &variantPackOutTensor = variantPack.outTensors.at(i);
+template <typename TensorType>
+Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType> &outTensors) const
+{
+    std::string Prefix = GetLogPrefix();
+    if (outTensors.size() != runnerVariantPack_.outTensors.size()) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "execute outTensors.size:" << outTensors.size()
+                       << " != setup outTensors.size:" << runnerVariantPack_.outTensors.size();
+        return ERROR_INVALID_PARAM;
+    }
+    SVector<bool> emptyOutTensorPerms = GetEmptyOutTensorPermissions();
+    for (size_t i = 0; i < outTensors.size(); i++) {
+        const Tensor &variantPackOutTensor = outTensors.at(i);
         if (variantPackOutTensor.dataSize != Utils::GetTensorSize(runnerVariantPack_.outTensors.at(i).desc)) {
             ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.outTensors(" << i
                            << ").dataSize is Not equal to the setup dataSize";
             return ERROR_INVALID_PARAM;
+        }
+        if (i < emptyOutTensorPerms.size() && emptyOutTensorPerms.at(i) &&
+            TensorCheck::IsEmptyTensor(variantPackOutTensor)) {
+            continue;
         }
         if (!variantPackOutTensor.deviceData && !variantPackOutTensor.hostData) {
             ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.outTensors(" << i
@@ -653,8 +772,23 @@ Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
             return ERROR_INVALID_PARAM;
         }
     }
-
     return NO_ERROR;
+}
+
+Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
+{
+    Status st = NO_ERROR;
+    st = ExecuteVariantPackInTensorCheck(variantPack.inTensors);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "ExecuteVariantPackCheck for inTensor failed, error code: " << st;
+        return st;
+    }
+    st = ExecuteVariantPackOutTensorCheck(variantPack.outTensors);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "ExecuteVariantPackCheck for outTensor failed, error code: " << st;
+        return st;
+    }
+    return st;
 }
 
 Status OperationBase::ExecuteCheck(const VariantPack &variantPack, const uint8_t *workspace, uint64_t workspaceSize,
@@ -731,6 +865,20 @@ Status OperationBase::PreExecuteThrow(const VariantPack &variantPack, uint8_t *w
 Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
                                 Context *context)
 {
+    if (!context) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "context is null, PreLaunch fail";
+        return ERROR_INVALID_PARAM;
+    }
+    if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        return GraphModePreLaunch(variantPack, workspace, workspaceSize, context);
+    } else {
+        return EagerModePreLaunch(variantPack, workspace, workspaceSize, context);
+    }
+}
+
+Status OperationBase::EagerModePreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                                         Context *context)
+{
     if (!setUpSuccess_) {
         ATB_LOG(ERROR) << GetLogPrefix() << "setup failed, execute exit.";
         return ERROR_INVALID_PARAM;
@@ -757,7 +905,74 @@ Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspa
     return st;
 }
 
+Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                                         Context *context)
+{
+    Status st = NO_ERROR;
+    lastWorkspaceAddr_ = reinterpret_cast<void *>(workspace);
+    if (!isCaptured_) {
+        argsBufferSize_ = runner_->GetArgsSize();
+        if (deviceArgsBuffer_ == nullptr) {
+            Status ret = aclrtMalloc(&deviceArgsBuffer_, argsBufferSize_, ACL_MEM_MALLOC_HUGE_FIRST);
+            if (ret != 0) {
+                ATB_LOG(ERROR) << "aclrtMalloc device buffer failed!";
+                return ret;
+            }
+            ATB_LOG(DEBUG) << "aclrtMalloc success!";
+        }
+
+        if (hostArgsBuffer_ == nullptr) {
+            Status ret = aclrtMallocHost(&hostArgsBuffer_, argsBufferSize_);
+            if (ret != 0) {
+                ATB_LOG(ERROR) << "aclrtMalloc host buffer failed!";
+                return ret;
+            }
+            ATB_LOG(DEBUG) << "aclrtMalloc success!";
+        }
+
+        runnerVariantPack_.argsDeviceBuffer = reinterpret_cast<uint8_t *>(deviceArgsBuffer_);
+        runnerVariantPack_.argsHostBuffer = reinterpret_cast<uint8_t *>(hostArgsBuffer_);
+        st = EagerModePreLaunch(variantPack, workspace, workspaceSize, context);
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "EagerModePreLaunch failed! ret:" << st;
+        // 上述的preLaunch当前只做了地址更新及tiling拷贝，后续考虑改名。当前为保证已有代码的质量不修改原有流程，后续需要考虑EAGER_MODE与GRAPH_MODE的流程归纳与复用。
+    } else {
+        ATB_LOG(INFO) << GetLogPrefix() << "begin update tensor addr.";
+        runnerVariantPack_.intermediateBuffer = nullptr;
+        if (needUpdateTensorAddr_) {
+            st = runner_->UpdateTensorAddr(runnerVariantPack_);
+            ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "UpdateTensorAddr failed! ret:" << st;
+            needUpdateTensorAddr_ = false;
+        }
+        FillHostTilingBuffer();
+        st = CopyTilingToDevice();
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "CopyTilingToDevice failed! ret:" << st;
+    }
+    st = runner_->BuildArgs();
+    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "BuildArgs failed! ret:" << st;
+
+    st = CopyArgsToDevice(context);
+    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "CopyArgsToDevice failed! ret:" << st;
+
+    return st;
+}
+
 Status OperationBase::Launch()
+{
+    Status st = NO_ERROR;
+    if (runnerVariantPack_.context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        aclmdlRI tmpModel = nullptr;
+        st = aclmdlRICaptureGetInfo(GetExecuteStream(runnerVariantPack_.context), &streamStatus_, &tmpModel);
+        if (tmpModel != nullptr) {
+            model_ = tmpModel;
+        }
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRICaptureGetInfo failed! ret:" << st;
+        return GraphModeLaunch();
+    } else {
+        return EagerModeLaunch();
+    }
+}
+
+Status OperationBase::EagerModeLaunch()
 {
     Mki::Timer ExecuteTime;
     void *executeStream = GetExecuteStream(runnerVariantPack_.context);
@@ -793,6 +1008,31 @@ Status OperationBase::Launch()
     GetOpExecuteStatistic().launchTime += ExecuteTime.ElapsedMicroSecond();
     GetOpExecuteStatistic().totalTime += GetOpExecuteStatistic().preLaunchTime + GetOpExecuteStatistic().launchTime;
     ATB_LOG(INFO) << GetLogPrefix() << "execute statistic:" << GetOpExecuteStatistic().ToString();
+    return st;
+}
+
+Status OperationBase::GraphModeLaunch()
+{
+    Status st = NO_ERROR;
+    aclrtStream executeStream = GetExecuteStream(runnerVariantPack_.context);
+    if (streamStatus_ == ACL_MODEL_RI_CAPTURE_STATUS_ACTIVE) {
+        st = EagerModeLaunch();
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "EagerModeLaunch failed! ret:" << st;
+        return st;
+    }
+
+    if (!isCaptured_) {
+        st = aclmdlRICaptureBegin(executeStream, ACL_MODEL_RI_CAPTURE_MODE_GLOBAL);
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRICaptureBegin failed! ret:" << st;
+        st = EagerModeLaunch();
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "EagerModeLaunch failed! ret:" << st;
+        st = aclmdlRICaptureEnd(executeStream, &model_);
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRICaptureEnd failed! ret:" << st;
+    }
+
+    isCaptured_ = true;
+    st = aclmdlRIExecuteAsync(model_, executeStream);
+    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclmdlRIExecuteAsync failed! ret:" << st;
     return st;
 }
 
@@ -858,9 +1098,15 @@ Status OperationBase::CopyHostTilingToDevice(aclrtStream stream)
             ATB_LOG(ERROR) << GetLogPrefix() << "host tiling buffer is null!";
             return ERROR_OUT_OF_HOST_MEMORY;
         }
-        int ret =
-            aclrtMemcpyAsync(runnerVariantPack_.tilingBuffer, runnerVariantPack_.tilingBufferSize, hostTilingBuffer_,
-                             runnerVariantPack_.tilingBufferSize, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+        int ret = 0;
+        if (runnerVariantPack_.context->GetLaunchMode() == GRAPH_LAUNCH_MODE && !isCaptured_) {
+            ret = aclrtMemcpy(runnerVariantPack_.tilingBuffer, runnerVariantPack_.tilingBufferSize, hostTilingBuffer_,
+                              runnerVariantPack_.tilingBufferSize, ACL_MEMCPY_HOST_TO_DEVICE);
+        } else {
+            ret = aclrtMemcpyAsync(runnerVariantPack_.tilingBuffer, runnerVariantPack_.tilingBufferSize,
+                                   hostTilingBuffer_, runnerVariantPack_.tilingBufferSize, ACL_MEMCPY_HOST_TO_DEVICE,
+                                   stream);
+        }
 
         GetOpExecuteStatistic().tillingCopyTime += timer.ElapsedMicroSecond();
         if (ret != 0) {
@@ -1065,5 +1311,26 @@ aclrtStream OperationBase::GetExecuteStream(Context *context) const
         return nullptr;
     }
     return streams.at(streamId_);
+}
+
+Status OperationBase::CopyArgsToDevice(Context *context)
+{
+    Status st = NO_ERROR;
+#ifdef _DEBUG
+    ATB_LOG(DEBUG) << GetLogPrefix() << "args in graphMode is:";
+    for (size_t i = 0; i < argsBufferSize_ / sizeof(void *); i++) {
+        ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
+    }
+#endif
+    if (!isCaptured_) {
+        st = aclrtMemcpy(deviceArgsBuffer_, argsBufferSize_, hostArgsBuffer_, argsBufferSize_,
+                         ACL_MEMCPY_HOST_TO_DEVICE);
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclrtMemcpy failed! ret:" << st;
+    } else {
+        st = aclrtMemcpyAsync(deviceArgsBuffer_, argsBufferSize_, hostArgsBuffer_, argsBufferSize_,
+                              ACL_MEMCPY_HOST_TO_DEVICE, GetExecuteStream(context));
+        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "aclrtMemcpyAsync failed! ret:" << st;
+    }
+    return st;
 }
 } // namespace atb

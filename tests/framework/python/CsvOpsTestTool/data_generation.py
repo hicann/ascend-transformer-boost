@@ -1299,6 +1299,7 @@ class AllReduceOperation(DataGen):
         logging.debug("env: %s", os.getenv("LCCL_DETERMINISTIC"))
         logging.debug("env: %s", os.getenv("HCCL_DETERMINISTIC"))
  
+        res = []
         if "quantType" in json_data and json_data["quantType"] != 0:
             if not hasattr(AllReduceOperation, 'scale_golden'):
                 AllReduceOperation.scale_golden = in_tensors[1]
@@ -1307,16 +1308,17 @@ class AllReduceOperation(DataGen):
             res = AllReduceOperation.sum_cal_quant(AllReduceOperation.intensors, op_params)
             delattr(AllReduceOperation, 'scale_golden')
             delattr(AllReduceOperation, 'offset_golden')
-            return res
         else:
            if allreduceType == "sum":
-              return AllReduceOperation.sum_cal(AllReduceOperation.intensors, op_params)
+              res = AllReduceOperation.sum_cal(AllReduceOperation.intensors, op_params)
            elif allreduceType == "max":
-              return AllReduceOperation.max_cal(AllReduceOperation.intensors)
+              res = AllReduceOperation.max_cal(AllReduceOperation.intensors)
            elif allreduceType == "min":
-              return AllReduceOperation.min_cal(AllReduceOperation.intensors)
+              res = AllReduceOperation.min_cal(AllReduceOperation.intensors)
            elif allreduceType == "prod":
-              return AllReduceOperation.prod_cal(AllReduceOperation.intensors)
+              res = AllReduceOperation.prod_cal(AllReduceOperation.intensors)
+        res = [torch.nan_to_num(tensor, nan=0.0, posinf=None, neginf=None) for tensor in res]
+        return res
               
     @staticmethod
     def get_op_type(op_params):

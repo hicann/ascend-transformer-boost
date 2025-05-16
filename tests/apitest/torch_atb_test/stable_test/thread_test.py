@@ -11,7 +11,7 @@ def tensor_computation(thread_id):
     x = torch.randn(m, k, dtype=torch.float16).npu()
     y = torch.randn(k, n, dtype=torch.float16).npu()
 
-    linear_param = torch_atb.LinearParam(transposeB=False, hasBias=False)
+    linear_param = torch_atb.LinearParam(transpose_b=False, has_bias=False)
     linear = torch_atb.Operation(linear_param)
     linear_outputs = linear.forward([x, y])
     print(f"Thread {thread_id} completed computation. linear outputs: {linear_outputs[0]}")

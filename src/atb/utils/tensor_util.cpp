@@ -306,4 +306,70 @@ bool TensorUtil::TensorDescsEqual(const SVector<Tensor> &tensors1, const SVector
     }
     return true;
 }
+
+bool TensorUtil::IsRunnerVariantPackEqual(const VariantPack &runnerVariantPack1,
+                                          const RunnerVariantPack &runnerVariantPack2)
+{
+    if (runnerVariantPack1.inTensors.size() != runnerVariantPack2.inTensors.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < runnerVariantPack1.inTensors.size(); ++i) {
+        if (!TensorUtil::TensorDescEqual(runnerVariantPack1.inTensors.at(i).desc,
+                                         runnerVariantPack2.inTensors.at(i).desc)) {
+            return false;
+        }
+    }
+
+    if (runnerVariantPack1.outTensors.size() != runnerVariantPack2.outTensors.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < runnerVariantPack1.outTensors.size(); ++i) {
+        if (!TensorUtil::TensorDescEqual(runnerVariantPack1.outTensors.at(i).desc,
+                                         runnerVariantPack2.outTensors.at(i).desc)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool TensorUtil::IsTensorAddrEqual(const VariantPack &runnerVariantPack1, const RunnerVariantPack &runnerVariantPack2)
+{
+    if (runnerVariantPack1.inTensors.size() != runnerVariantPack2.inTensors.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < runnerVariantPack1.inTensors.size(); ++i) {
+        auto &tensor1 = runnerVariantPack1.inTensors.at(i);
+        auto &tensor2 = runnerVariantPack2.inTensors.at(i);
+        if (tensor1.deviceData != tensor2.deviceData) {
+            return false;
+        }
+    }
+
+    if (runnerVariantPack1.outTensors.size() != runnerVariantPack2.outTensors.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < runnerVariantPack1.outTensors.size(); ++i) {
+        auto &tensor1 = runnerVariantPack1.outTensors.at(i);
+        auto &tensor2 = runnerVariantPack2.outTensors.at(i);
+        if (tensor1.deviceData != tensor2.deviceData) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool TensorUtil::IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
+                                               const RunnerVariantPack &runnerVariantPack2)
+{
+    if (runnerVariantPack1.inTensors.size() != runnerVariantPack2.inTensors.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < runnerVariantPack1.inTensors.size(); ++i) {
+        if (!TensorUtil::TensorDescEqual(runnerVariantPack1.inTensors.at(i).desc,
+                                         runnerVariantPack2.inTensors.at(i).desc)) {
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace atb

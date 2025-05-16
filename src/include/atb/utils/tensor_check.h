@@ -42,12 +42,26 @@ public:
     }
     inline static bool IsEmptyTensor(const Tensor &tensor)
     {
-        return tensor.desc.shape.dimNum == 0 && tensor.dataSize == 0 && !tensor.deviceData && !tensor.hostData;
+        bool emptyShape = (tensor.desc.shape.dimNum == 0);
+        for (size_t i = 0; !emptyShape && i < tensor.desc.shape.dimNum; i++) {
+            if (tensor.desc.shape.dims[i] == 0) {
+                emptyShape = true;
+            }
+        }
+        return emptyShape && tensor.dataSize == 0 && !tensor.deviceData && !tensor.hostData;
     }
-
+    // The tensor has no dimensions or if any dimension is zero, both indicate an empty tensor.
     inline static bool IsEmptyTensor(const TensorDesc &tensorDesc)
     {
-        return tensorDesc.shape.dimNum == 0;
+        if (tensorDesc.shape.dimNum == 0) {
+            return true;
+        }
+        for (size_t i = 0; i < tensorDesc.shape.dimNum; i++) {
+            if (tensorDesc.shape.dims[i] == 0) {
+                return true;
+            }
+        }
+        return false;
     }
     static Status TensorDescsEqual(const TensorDesc &tensorDesc0, const TensorDesc &tensorDesc1);
 

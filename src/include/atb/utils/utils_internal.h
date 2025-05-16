@@ -11,6 +11,7 @@
 #define ATB_UTILS_INTERNAL_H
 
 #include <cstdint>
+#include "acl/acl.h"
 
 namespace atb {
 class UtilsInternal {
@@ -20,6 +21,14 @@ public:
     static int32_t GetCurrentThreadId();
     static int32_t GetCurrentProcessId();
     static int64_t AlignUp(int64_t dim, int64_t align);
+    //!
+    //! \brief 返回aclDataType对应的数据类型大小。
+    //!
+    //! \param dType 传入数据类型
+    //!
+    //! \return 返回整数值对应aclDataType大小
+    //!
+    static uint64_t GetDataTypeSize(const aclDataType &dType);
 };
 } // namespace atb
 #endif
