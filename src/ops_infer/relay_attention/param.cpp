@@ -31,8 +31,25 @@ bool RelayAttentionVariantPackParam::BuildFromTensor(const SVector<Mki::Tensor> 
         value = *reinterpret_cast<std::vector<atb::Tensor> *>(valueTensor.hostData);
         keyShare = *reinterpret_cast<std::vector<atb::Tensor> *>(keyShareTensor.hostData);
         valueShare = *reinterpret_cast<std::vector<atb::Tensor> *>(valueShareTensor.hostData);
+        ReintCastShapeFix(keyTensor, key);
+        ReintCastShapeFix(valueTensor, value);
+        ReintCastShapeFix(keyShareTensor, keyShare);
+        ReintCastShapeFix(valueShareTensor, valueShare);
     }
     return true;
+}
+
+void RelayAttentionVariantPackParam::ReintCastShapeFix(const Mki::Tensor tensor, std::vector<atb::Tensor> &tensorList)
+{
+    if (tensor.desc.dims.size() - 1 != tensorList[0].desc.shape.dimNum) {
+        int diffDimNum = tensorList[0].desc.shape.dimNum;
+        for (std::vector<atb::Tensor>::size_type i = 0; i < tensorList.size(); i++) {
+            for (std::size_t j = diffDimNum; j < tensor.desc.dims.size() - 1; j++) {
+                tensorList[i].desc.shape.dims[j] = 1;
+            }
+            tensorList[i].desc.shape.dimNum = tensor.desc.dims.size() - 1;
+        }
+    }
 }
 
 bool RelayAttentionVariantPackParam::HostDataCheck(const SVector<Mki::Tensor> &inTensors)
