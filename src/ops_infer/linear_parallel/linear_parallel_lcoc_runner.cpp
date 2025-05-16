@@ -202,11 +202,11 @@ Status LinearParallelLcocRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPac
     if (isQuant_) {
         inputPkg.dequantOffset = inTensors.at(inTensorId++).deviceData;
         inputPkg.dequantScale = inTensors.at(inTensorId++).deviceData;
-        if (param_.quantType == infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
-            inputPkg.quantScale = inTensors.at(inTensorId++).deviceData;
-        }
     }
     inputPkg.bias = param_.hasResidual ? inTensors.at(inTensorId++).deviceData : nullptr;
+    if (isQuant_ && param_.quantType == infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+        inputPkg.quantScale = inTensors.at(inTensorId++).deviceData;
+    }
     Lcal::CoCOutputPkg outputPkg = {runnerVariantPack.outTensors[0].deviceData,
                                     param_.keepIntermediate ? runnerVariantPack.outTensors[1].deviceData : nullptr};
     Status st = LaunchKernel(inputPkg, outputPkg, runnerVariantPack, param_.type);
