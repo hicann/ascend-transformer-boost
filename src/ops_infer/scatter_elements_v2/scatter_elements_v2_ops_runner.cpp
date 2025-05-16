@@ -29,7 +29,6 @@ ScatterElementsV2OpsRunner::ScatterElementsV2OpsRunner(const infer::ScatterEleme
     kernelGraph_.nodes.resize(1);
     auto &scatterElementsV2Node = kernelGraph_.nodes[0];
 
-    // reduction =
     AsdOps::OpParam::ScatterElementsV2::ReductionType reduction = AsdOps::OpParam::ScatterElementsV2::ReductionType::NONE;
     if (param_.reduction == atb::infer::ScatterElementsV2Param::ReductionType::NONE) {
         reduction = AsdOps::OpParam::ScatterElementsV2::ReductionType::NONE;
