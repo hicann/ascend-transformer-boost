@@ -3956,6 +3956,29 @@ class KvCacheOperation(DataGen):
 
 class PagedAttentionOperation(DataGen):
     @staticmethod
+    def custom_normalize(tensor):
+        min_val = tensor.min()
+        max_val = tensor.max()
+        normalized = (tensor - min_val) / (max_val - min_val)  # 先归一化到[0,1]
+        scaled = normalized * (1 - (-1)) + (-1)  # 再映射到[-1,1]
+        return scaled
+
+    @staticmethod
+    def load_tensor_from_file(intensor_file, i, op_params) -> torch.Tensor:
+        bin = TensorBinFile(intensor_file)
+        tensor = bin.get_tensor()
+        needScale = i == 1 # kcache
+        if i == 2: # vcache
+            json_data = json.loads(op_params)
+            if "mlaVHeadSize" in json_data and json_data["mlaVHeadSize"] > 0:
+                needScale = False
+            else:
+                needScale = True
+        if needScale:
+            tensor = PagedAttentionOperation.custom_normalize(tensor)
+        return tensor
+
+    @staticmethod
     def shape_nd_to_nz(shape, dtype='float16'):
         assert len(shape) >= 2
         batch = shape[:-2]   # 最后两维nd->nz
