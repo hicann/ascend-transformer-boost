@@ -21,13 +21,13 @@
 #include "act/gemm/block/block_swizzle.hpp"
 #include "act/gemm/gemm_type.hpp"
 
-#include "mixkernels/utils/common/kernel/act/epilogue/dispatch_policy.h"
-#include "mixkernels/utils/common/kernel/act/gemm/dispatch_policy.h"
+#include "epilogue/dispatch_policy.h"
+#include "gemm/dispatch_policy.h"
 
-#include "mixkernels/utils/common/kernel/act/epilogue/block/block_epilogue.h"
-#include "mixkernels/utils/common/kernel/act/gemm/block/block_mmad.h"
-#include "mixkernels/utils/common/kernel/act/gemm/kernel/grouped_matmul_slice_m_per_token_dequant_multistage_workspace.h"
-#include "mixkernels/utils/common/kernel/act/gemm/kernel/grouped_matmul_slice_m_per_token_dequant_swiglu_quant_multistage_workspace.h"
+#include "epilogue/block/block_epilogue.h"
+#include "gemm/block/block_mmad.h"
+#include "gemm/kernel/grouped_matmul_slice_m_per_token_dequant_multistage_workspace.h"
+#include "gemm/kernel/grouped_matmul_slice_m_per_token_dequant_swiglu_quant_multistage_workspace.h"
 
 #define inline __inline__ __attribute__((always_inline))
 
