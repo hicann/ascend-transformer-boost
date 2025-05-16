@@ -30,7 +30,7 @@ template <> Status CreateOperation(const infer::ScatterElementsV2Param &opParam,
     OP_PARAM_RSV_CHECK(opParam);
  
     if (!GetSingleton<Config>().Is910B()) {
-        ATB_LOG(ERROR) << "ScatterElementsV2Operation only support 910B ";
+        ATB_LOG(ERROR) << "ScatterElementsV2Operation only supports Atlas 800I A2/A3 ";
         return ERROR_INVALID_PARAM;
     }
 
