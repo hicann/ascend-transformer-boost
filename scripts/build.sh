@@ -1,5 +1,5 @@
 #!/bin/bash
-#
+# 注释
 # Copyright (c) 2024 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
 # Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
