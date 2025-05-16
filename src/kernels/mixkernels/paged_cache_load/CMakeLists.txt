@@ -16,3 +16,7 @@ add_operation(PagedCacheLoadOperation "${paged_cache_load_srcs}")
 add_kernel(paged_cache_load_nz ascend910b vector
     op_kernel/paged_cache_load_nz.cpp
     PagedCacheLoadNzKernel)
+
+add_kernel(paged_cache_load_nd ascend910b vector
+    op_kernel/paged_cache_load_nd.cpp
+    PagedCacheLoadNdKernel)

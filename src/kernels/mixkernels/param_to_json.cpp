@@ -182,6 +182,8 @@ std::string PagedCacheLoadToJson(const Any &param)
     OpParam::PagedCacheLoad specificParam = AnyCast<OpParam::PagedCacheLoad>(param);
 
     paramsJson["type"] = specificParam.type;
+    paramsJson["cuSeqLens"] = specificParam.cuSeqLens;
+    paramsJson["hasSeqStarts"] = specificParam.hasSeqStarts;
 
     return paramsJson.dump();
 }

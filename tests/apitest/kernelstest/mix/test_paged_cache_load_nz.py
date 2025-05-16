@@ -68,7 +68,7 @@ class TestPagedCacheLoad(op_test.OpTest):
         key_cache = self.key_cache
         value_cache = self.value_cache
         sum_context_lens = sum(context_lens)
-
+        
         if self.dtype == "float16":
             key_expect = np.zeros((sum_context_lens, num_heads * head_size_k)).astype(np.float16)
             value_expect = np.zeros((sum_context_lens, num_heads * head_size_v)).astype(np.float16)
@@ -154,22 +154,22 @@ class TestPagedCacheLoad(op_test.OpTest):
 
     @op_test.only_910b
     def test_paged_cache_load_case0(self):
-        batch = 60
+        batch = 16
         seq_len = 1
-        num_heads = 64
+        num_heads = 16
         head_size_k = 576
         head_size_v = 512
         block_size = 128
-        num_blocks = 512
+        num_blocks = 128
         dtype = "float16"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
 
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -183,26 +183,26 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache).half(), torch.tensor(value_cache).half(),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).half(), torch.tensor(value).half()], [4, 5])
+                             torch.tensor(key).half(), torch.tensor(value).half(), torch.tensor(context_lens).int()], [4, 5])
 
     @op_test.only_910b
     def test_paged_cache_load_case1(self):
-        batch = 60
+        batch = 16
         seq_len = 1
-        num_heads = 64
+        num_heads = 16
         head_size_k = 576
         head_size_v = 512
         block_size = 128
-        num_blocks = 512
+        num_blocks = 128
         dtype = "bfloat16"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
 
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -216,26 +216,26 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache).bfloat16(), torch.tensor(value_cache).bfloat16(),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).bfloat16(), torch.tensor(value).bfloat16()], [4, 5])
+                             torch.tensor(key).bfloat16(), torch.tensor(value).bfloat16(), torch.tensor(context_lens).int()], [4, 5])
 
     @op_test.only_910b
     def test_paged_cache_load_case2(self):
-        batch = 60
+        batch = 16
         seq_len = 1
-        num_heads = 64
+        num_heads = 16
         head_size_k = 576
         head_size_v = 512
         block_size = 128
-        num_blocks = 512
+        num_blocks = 128
         dtype = "int8"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
 
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -249,26 +249,25 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache), torch.tensor(value_cache),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key), torch.tensor(value)], [4, 5])
+                             torch.tensor(key), torch.tensor(value), torch.tensor(context_lens).int()], [4, 5])
 
     @op_test.only_910b
     def test_paged_cache_load_case3(self):
-        batch = 30
+        batch = 32
         seq_len = 1
-        num_heads = 128
-        head_size_k = 576
-        head_size_v = 512
+        num_heads = 64
+        head_size_k = 276
+        head_size_v = 212
         block_size = 128
-        num_blocks = 512
+        num_blocks = 128
         dtype = "float16"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
-
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -282,26 +281,26 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache).half(), torch.tensor(value_cache).half(),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).half(), torch.tensor(value).half()], [4, 5])
+                             torch.tensor(key).half(), torch.tensor(value).half(), torch.tensor(context_lens).int()], [4, 5])
 
     @op_test.only_910b
     def test_paged_cache_load_case4(self):
-        batch = 30
+        batch = 32
         seq_len = 1
-        num_heads = 128
-        head_size_k = 576
-        head_size_v = 512
+        num_heads = 64
+        head_size_k = 276
+        head_size_v = 212
         block_size = 128
-        num_blocks = 512
+        num_blocks = 128
         dtype = "bfloat16"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
 
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -315,26 +314,26 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache).bfloat16(), torch.tensor(value_cache).bfloat16(),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).bfloat16(), torch.tensor(value).bfloat16()], [4, 5])
+                             torch.tensor(key).bfloat16(), torch.tensor(value).bfloat16(), torch.tensor(context_lens).int()], [4, 5])
 
     @op_test.only_910b
     def test_paged_cache_load_case5(self):
-        batch = 30
+        batch = 32
         seq_len = 1
-        num_heads = 128
-        head_size_k = 576
-        head_size_v = 512
+        num_heads = 64
+        head_size_k = 276
+        head_size_v = 212
         block_size = 128
-        num_blocks = 512
+        num_blocks = 128
         dtype = "int8"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
 
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -348,26 +347,26 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache), torch.tensor(value_cache),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key), torch.tensor(value)], [4, 5])
+                             torch.tensor(key), torch.tensor(value), torch.tensor(context_lens).int()], [4, 5])
 
     @op_test.only_910b
     def test_paged_cache_load_case6(self):
-        batch = 220
+        batch = 30
         seq_len = 1
         num_heads = 64
-        head_size_k = 276
-        head_size_v = 212
+        head_size_k = 76
+        head_size_v = 12
         block_size = 128
-        num_blocks = 512
+        num_blocks = 100
         dtype = "float16"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
 
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -381,26 +380,26 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache).half(), torch.tensor(value_cache).half(),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).half(), torch.tensor(value).half()], [4, 5])
+                             torch.tensor(key).half(), torch.tensor(value).half(), torch.tensor(context_lens).int()], [4, 5])
 
     @op_test.only_910b
     def test_paged_cache_load_case7(self):
-        batch = 220
+        batch = 30
         seq_len = 1
         num_heads = 64
-        head_size_k = 276
-        head_size_v = 212
+        head_size_k = 76
+        head_size_v = 12
         block_size = 128
-        num_blocks = 512
+        num_blocks = 100
         dtype = "bfloat16"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
 
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -414,26 +413,26 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache).bfloat16(), torch.tensor(value_cache).bfloat16(),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).bfloat16(), torch.tensor(value).bfloat16()], [4, 5])
+                             torch.tensor(key).bfloat16(), torch.tensor(value).bfloat16(), torch.tensor(context_lens).int()], [4, 5])
 
     @op_test.only_910b
     def test_paged_cache_load_case8(self):
-        batch = 220
+        batch = 30
         seq_len = 1
         num_heads = 64
-        head_size_k = 276
-        head_size_v = 212
+        head_size_k = 76
+        head_size_v = 12
         block_size = 128
-        num_blocks = 512
+        num_blocks = 100
         dtype = "int8"
 
         num_tokens = batch * seq_len
         OP_NAME = "PagedCacheLoadOperation"
         self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
 
-        OP_PARAM = {"type": 1}
+        OP_PARAM = {"type": 1, "cuSeqLens": False, "hasSeqStarts": False}
         self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd] * 2)
 
         key_cache = self.key_cache
@@ -447,205 +446,7 @@ class TestPagedCacheLoad(op_test.OpTest):
 
         return self.execute([torch.tensor(key_cache), torch.tensor(value_cache),
                              torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key), torch.tensor(value)], [4, 5])
-
-    @op_test.only_910b
-    def test_paged_cache_load_case9(self):
-        batch = 220
-        seq_len = 1
-        num_heads = 64
-        head_size_k = 276
-        head_size_v = 212
-        block_size = 128
-        num_blocks = 1024
-        dtype = "float16"
-
-        num_tokens = batch * seq_len
-        OP_NAME = "PagedCacheLoadOperation"
-        self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
-
-        OP_PARAM = {"type": 1}
-        self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
-        self.set_output_formats([self.format_nd] * 2)
-
-        key_cache = self.key_cache
-        value_cache = self.value_cache
-        block_tables = self.block_tables
-        context_lens = self.context_lens
-
-        sum_context_lens = int(sum(context_lens))
-        key = np.zeros((sum_context_lens, num_heads * head_size_k)).astype(np.float16)
-        value = np.zeros((sum_context_lens, num_heads * head_size_v)).astype(np.float16)
-
-        return self.execute([torch.tensor(key_cache).half(), torch.tensor(value_cache).half(),
-                             torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).half(), torch.tensor(value).half()], [4, 5])
-
-    @op_test.only_910b
-    def test_paged_cache_load_case10(self):
-        batch = 220
-        seq_len = 1
-        num_heads = 64
-        head_size_k = 276
-        head_size_v = 212
-        block_size = 128
-        num_blocks = 1024
-        dtype = "bfloat16"
-
-        num_tokens = batch * seq_len
-        OP_NAME = "PagedCacheLoadOperation"
-        self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
-
-        OP_PARAM = {"type": 1}
-        self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
-        self.set_output_formats([self.format_nd] * 2)
-
-        key_cache = self.key_cache
-        value_cache = self.value_cache
-        block_tables = self.block_tables
-        context_lens = self.context_lens
-
-        sum_context_lens = sum(context_lens)
-        key = np.zeros((sum_context_lens, num_heads * head_size_k)).astype(np.float32)
-        value = np.zeros((sum_context_lens, num_heads * head_size_v)).astype(np.float32)
-
-        return self.execute([torch.tensor(key_cache).bfloat16(), torch.tensor(value_cache).bfloat16(),
-                             torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).bfloat16(), torch.tensor(value).bfloat16()], [4, 5])
-
-    @op_test.only_910b
-    def test_paged_cache_load_case11(self):
-        batch = 220
-        seq_len = 1
-        num_heads = 64
-        head_size_k = 276
-        head_size_v = 212
-        block_size = 128
-        num_blocks = 1024
-        dtype = "int8"
-
-        num_tokens = batch * seq_len
-        OP_NAME = "PagedCacheLoadOperation"
-        self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
-
-        OP_PARAM = {"type": 1}
-        self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
-        self.set_output_formats([self.format_nd] * 2)
-
-        key_cache = self.key_cache
-        value_cache = self.value_cache
-        block_tables = self.block_tables
-        context_lens = self.context_lens
-
-        sum_context_lens = sum(context_lens)
-        key = np.zeros((sum_context_lens, num_heads * head_size_k)).astype(self.dtype)
-        value = np.zeros((sum_context_lens, num_heads * head_size_v)).astype(self.dtype)
-
-        return self.execute([torch.tensor(key_cache), torch.tensor(value_cache),
-                             torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key), torch.tensor(value)], [4, 5])
-
-    @op_test.only_910b
-    def test_paged_cache_load_case12(self):
-        batch = 521
-        seq_len = 1
-        num_heads = 64
-        head_size_k = 76
-        head_size_v = 12
-        block_size = 128
-        num_blocks = 100
-        dtype = "float16"
-
-        num_tokens = batch * seq_len
-        OP_NAME = "PagedCacheLoadOperation"
-        self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
-
-        OP_PARAM = {"type": 1}
-        self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
-        self.set_output_formats([self.format_nd] * 2)
-
-        key_cache = self.key_cache
-        value_cache = self.value_cache
-        block_tables = self.block_tables
-        context_lens = self.context_lens
-
-        sum_context_lens = int(sum(context_lens))
-        key = np.zeros((sum_context_lens, num_heads * head_size_k)).astype(np.float16)
-        value = np.zeros((sum_context_lens, num_heads * head_size_v)).astype(np.float16)
-
-        return self.execute([torch.tensor(key_cache).half(), torch.tensor(value_cache).half(),
-                             torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).half(), torch.tensor(value).half()], [4, 5])
-
-    @op_test.only_910b
-    def test_paged_cache_load_case13(self):
-        batch = 521
-        seq_len = 1
-        num_heads = 64
-        head_size_k = 76
-        head_size_v = 12
-        block_size = 128
-        num_blocks = 100
-        dtype = "bfloat16"
-
-        num_tokens = batch * seq_len
-        OP_NAME = "PagedCacheLoadOperation"
-        self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
-
-        OP_PARAM = {"type": 1}
-        self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
-        self.set_output_formats([self.format_nd] * 2)
-
-        key_cache = self.key_cache
-        value_cache = self.value_cache
-        block_tables = self.block_tables
-        context_lens = self.context_lens
-
-        sum_context_lens = sum(context_lens)
-        key = np.zeros((sum_context_lens, num_heads * head_size_k)).astype(np.float32)
-        value = np.zeros((sum_context_lens, num_heads * head_size_v)).astype(np.float32)
-
-        return self.execute([torch.tensor(key_cache).bfloat16(), torch.tensor(value_cache).bfloat16(),
-                             torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key).bfloat16(), torch.tensor(value).bfloat16()], [4, 5])
-
-    @op_test.only_910b
-    def test_paged_cache_load_case14(self):
-        batch = 521
-        seq_len = 1
-        num_heads = 64
-        head_size_k = 76
-        head_size_v = 12
-        block_size = 128
-        num_blocks = 100
-        dtype = "int8"
-
-        num_tokens = batch * seq_len
-        OP_NAME = "PagedCacheLoadOperation"
-        self.set_paged_cache_load_param(num_tokens, num_heads, head_size_k, head_size_v, block_size, num_blocks, dtype)
-
-        OP_PARAM = {"type": 1}
-        self.set_param(OP_NAME, OP_PARAM)
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
-        self.set_output_formats([self.format_nd] * 2)
-
-        key_cache = self.key_cache
-        value_cache = self.value_cache
-        block_tables = self.block_tables
-        context_lens = self.context_lens
-
-        sum_context_lens = sum(context_lens)
-        key = np.zeros((sum_context_lens, num_heads * head_size_k)).astype(self.dtype)
-        value = np.zeros((sum_context_lens, num_heads * head_size_v)).astype(self.dtype)
-
-        return self.execute([torch.tensor(key_cache), torch.tensor(value_cache),
-                             torch.tensor(block_tables).int(), torch.tensor(context_lens).int(),
-                             torch.tensor(key), torch.tensor(value)], [4, 5])
+                             torch.tensor(key), torch.tensor(value), torch.tensor(context_lens).int()], [4, 5])
 
 if __name__ == '__main__':
     unittest.main()

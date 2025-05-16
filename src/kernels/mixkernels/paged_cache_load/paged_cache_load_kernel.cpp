@@ -28,13 +28,10 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        auto param = AnyCast<OpParam::PagedCacheLoad>(launchParam.GetParam());
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::PagedCacheLoad),
             "PagedCacheLoad: param type invalid", return false);
-        if (param.type == OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ) {
-            MKI_CHECK(launchParam.GetInTensorCount() == DIM_6, "input num invalid", return false);
-            MKI_CHECK(launchParam.GetOutTensorCount() == DIM_2, "output num invalid", return false);
-        }
+        MKI_CHECK(launchParam.GetInTensorCount() == DIM_7, "input num invalid", return false);
+        MKI_CHECK(launchParam.GetOutTensorCount() == DIM_2, "output num invalid", return false);
         return true;
     }
 
@@ -52,7 +49,6 @@ public:
     }
 };
 
-
 class PagedCacheLoadNzKernel : public PagedCacheLoadKernel {
 public:
     explicit PagedCacheLoadNzKernel(const std::string &kernelName, const BinHandle *handle)
@@ -67,4 +63,19 @@ public:
     }
 };
 REG_KERNEL_BASE(PagedCacheLoadNzKernel);
+
+class PagedCacheLoadNdKernel : public PagedCacheLoadKernel {
+public:
+    explicit PagedCacheLoadNdKernel(const std::string &kernelName, const BinHandle *handle)
+        : PagedCacheLoadKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(PagedCacheLoadKernel::CanSupport(launchParam), "failed to check support", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(PagedCacheLoadNdKernel);
 } // namespace AtbOps
