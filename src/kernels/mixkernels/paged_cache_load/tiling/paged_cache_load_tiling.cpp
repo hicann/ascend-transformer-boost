@@ -28,14 +28,29 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
     auto &kShape = launchParam.GetOutTensor(DIM_0).desc.dims;
     auto &vShape = launchParam.GetOutTensor(DIM_1).desc.dims;
 
-    int32_t blockSize = static_cast<int32_t>(kCacheShape.at(DIM_2));
+    auto param = AnyCast<OpParam::PagedCacheLoad>(launchParam.GetParam());
+    int32_t blockSize;
+    int32_t tokenSizeK;
+    int32_t tokenSizeV;
+    switch (param.type) {
+        case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ:
+            blockSize = static_cast<int32_t>(kCacheShape.at(DIM_2));
+            tokenSizeK = static_cast<int32_t>(kShape.at(DIM_1));
+            tokenSizeV = static_cast<int32_t>(vShape.at(DIM_1));
+            break;
+        case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND:
+            blockSize = static_cast<int32_t>(kCacheShape.at(DIM_1));
+            tokenSizeK = static_cast<int32_t>(kShape.at(DIM_1)*kShape.at(DIM_2));
+            tokenSizeV = static_cast<int32_t>(vShape.at(DIM_1)*vShape.at(DIM_2));
+            break;
+        default:
+            return false;
+    }
+
     int32_t numTokens = static_cast<int32_t>(blockTablesShape.at(DIM_0)); // block tables row
     int32_t numblkTabCol = static_cast<int32_t>(blockTablesShape.at(DIM_1)); // block tables column
 
-    int32_t tokenSizeK = static_cast<int32_t>(kShape.at(DIM_1));
-    int32_t tokenSizeV = static_cast<int32_t>(vShape.at(DIM_1));
-
-    TensorDType inDtype = launchParam.GetInTensor(0).desc.dtype;
+    TensorDType inDtype = launchParam.GetInTensor(DIM_0).desc.dtype;
     uint32_t typeByte = static_cast<uint32_t>(GetTensorElementSize(inDtype));
 
     MKI_CHECK(blockSize > 0 && blockSize <= INT_MAX, "blockSize is invalid", return false);
@@ -54,6 +69,8 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
     tilingDataPtr->tokenSizeK = tokenSizeK;
     tilingDataPtr->tokenSizeV = tokenSizeV;
     tilingDataPtr->typeByte = typeByte;
+    tilingDataPtr->hasSeqStarts = param.hasSeqStarts;
+    tilingDataPtr->cuSeqLens = param.cuSeqLens;
 
     MKI_LOG(INFO) << "blockSize: " << tilingDataPtr->blockSize << ", numTokens: " <<
         tilingDataPtr->numTokens << ", numblkTabCol: " << tilingDataPtr->numblkTabCol <<
@@ -64,17 +81,22 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
 }
 
 
-Status PagedCacheLoadNzTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
+uint32_t PagedCacheLoadGetBlockDim(const LaunchParam &launchParam)
 {
     auto &kShape = launchParam.GetOutTensor(DIM_0).desc.dims;
     uint32_t sumContextLens = static_cast<uint32_t>(kShape.at(DIM_0));
 
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR);
-    blockDim = sumContextLens < blockDim ? sumContextLens : blockDim;
-
-    kernelInfo.SetBlockDim(blockDim);
-
-    return Status::OkStatus();
+    auto param = AnyCast<OpParam::PagedCacheLoad>(launchParam.GetParam());
+    switch (param.type) {
+        case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ:
+            return sumContextLens < blockDim ? sumContextLens : blockDim;
+        case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND:
+            return blockDim;
+        default:
+            return blockDim;
+    }
+    return blockDim;
 }
 
 
@@ -86,15 +108,7 @@ Status PagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
         return Status::FailStatus(ERROR_INVALID_VALUE, "tilingHost should not be empty"));
     MKI_CHECK(CommonPagedCacheLoadTiling(launchParam, kernelInfo), "value is invalid",
         return Status::FailStatus(ERROR_INVALID_VALUE));
-
-    auto param = AnyCast<OpParam::PagedCacheLoad>(launchParam.GetParam());
-    switch (param.type) {
-        case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ:
-            return PagedCacheLoadNzTiling(launchParam, kernelInfo);
-        default:
-            return Status::FailStatus(ERROR_ATTR_INVALID_TYPE,
-                "Failed to check reshape param, type of specificParam is invalid");
-    }
+    kernelInfo.SetBlockDim(PagedCacheLoadGetBlockDim(launchParam));
     return Status::OkStatus();
 }
 } // namespace AtbOps
