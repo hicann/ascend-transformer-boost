@@ -42,6 +42,8 @@ public:
     const Tensor &GetOverflowKernelOutTensor();
     Status SetExecuteType(ExecuteType type) override;
     ExecuteType GetExecuteType() override;
+    Status SetLaunchMode(LaunchMode mode) override;
+    LaunchMode GetLaunchMode() override;
 
 private:
     Status CreateCopyStreamAndEvents();
@@ -61,6 +63,7 @@ private:
     std::vector<RunnerPool> runnerPools_;
     Tensor overflowOutTensor_;
     static thread_local ExecuteType executeType_;
+    LaunchMode mode_ = KERNEL_LAUNCH_MODE;
 };
 } // namespace atb
 #endif

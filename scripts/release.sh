@@ -67,7 +67,7 @@ function fn_build_asdops()
     fi
 
     build_options="$build_options --output=$THIRD_PARTY_DIR"
-    bash scripts/build.sh release $build_options --no_werror
+    bash scripts/build.sh release $build_options
     cd $THIRD_PARTY_DIR
     tar -xf asdops.tar.gz
     rm -f asdops.tar.gz

@@ -12,6 +12,7 @@
 #include "atb/atb_infer.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <torch/torch.h>
 #pragma GCC diagnostic pop
 

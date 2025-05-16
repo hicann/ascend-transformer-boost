@@ -290,4 +290,19 @@ ExecuteType ContextBase::GetExecuteType()
     return executeType_;
 }
 
+Status ContextBase::SetLaunchMode(LaunchMode mode)
+{
+    if (mode > GRAPH_LAUNCH_MODE || mode < KERNEL_LAUNCH_MODE) {
+        ATB_LOG(ERROR) << "LaunchMode set error! mode should in enum range.";
+        return ERROR_INVALID_PARAM;
+    }
+    mode_ = mode;
+    return NO_ERROR;
+}
+
+LaunchMode ContextBase::GetLaunchMode()
+{
+    return mode_;
+}
+
 } // namespace atb

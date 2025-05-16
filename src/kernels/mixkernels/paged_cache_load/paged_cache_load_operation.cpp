@@ -30,6 +30,8 @@ public:
         switch (param.type) {
             case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ:
                 return GetKernelByName("PagedCacheLoadNzKernel");
+            case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND:
+                return GetKernelByName("PagedCacheLoadNdKernel");
             default:
                 break;
         }
@@ -43,7 +45,8 @@ public:
         auto param = AnyCast<OpParam::PagedCacheLoad>(specificParam);
         switch (param.type) {
             case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ:
-                return DIM_6;
+            case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND:
+                return DIM_7;
             default:
                 break;
         }
@@ -56,6 +59,7 @@ public:
         auto param = AnyCast<OpParam::PagedCacheLoad>(specificParam);
         switch (param.type) {
             case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ:
+            case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND:
                 return DIM_2;
             default:
                 break;
@@ -85,18 +89,71 @@ public:
         MKI_CHECK(blockTables.desc.dtype == TENSOR_DTYPE_INT32, "blockTables should be int32", return false);
         MKI_CHECK(contextLens.desc.dtype == TENSOR_DTYPE_INT32, "contextLens should be int32", return false);
 
-        MKI_CHECK(keyCache.desc.dims.size() == DIM_4 && valueCache.desc.dims.size() == DIM_4,
-            "KCache&VCache's dim num should be " << DIM_4, return false);
         MKI_CHECK(blockTables.desc.dims.size() == DIM_2, "blockTables's dim num should be " << DIM_2, return false);
+        MKI_CHECK(contextLens.desc.dims.size() == DIM_1, "contextLens's dim num should be " << DIM_1, return false);
 
-        auto numBlocks = keyCache.desc.dims[DIM_0];
-        auto blockSize = keyCache.desc.dims[DIM_2];
-        MKI_CHECK(valueCache.desc.dims[DIM_0] == numBlocks && valueCache.desc.dims[DIM_2] == blockSize,
-            "dim_0, dim_2 of KCache/VCache should be same", return false);
+        auto param = AnyCast<OpParam::PagedCacheLoad>(launchParam.GetParam());
+        if (!param.cuSeqLens) {
+            MKI_CHECK(blockTables.desc.dims[DIM_0] == contextLens.desc.dims[DIM_0],
+                "contextLens's dim_0 must be same as blockTables's dim_0", return false);
+        } else {
+            MKI_CHECK((blockTables.desc.dims[DIM_0]+1) == contextLens.desc.dims[DIM_0],
+                "contextLens's dim_0 must be same as blockTables's dim_0+1", return false);
+        }
+        if (param.hasSeqStarts) {
+            auto &seqStarts = launchParam.GetInTensor(DIM_6);
+            MKI_CHECK(!CheckEmptyTensor(seqStarts), "7rd inTensor should not be null tensor ", return false);
+            MKI_CHECK(seqStarts.desc.dtype == TENSOR_DTYPE_INT32, "seqStarts should be int32", return false);
+            MKI_CHECK(seqStarts.desc.dims.size() == DIM_1, "seqStarts's dim num should be " << DIM_1, return false);
+            MKI_CHECK(blockTables.desc.dims[DIM_0] == seqStarts.desc.dims[DIM_0],
+                "seqStarts's dim_0 must be same as blockTables's dim_0", return false);
+        }
 
-        MKI_CHECK(blockTables.desc.dims[DIM_0] == contextLens.desc.dims[DIM_0],
-            "contextLens's dim_0 must be same as blockTables's dim_0", return false);
         return true;
+    }
+
+    Status CheckPagedCacheLoadNd(const LaunchParam &launchParam) const
+    {
+        auto &keyCache = launchParam.GetInTensor(DIM_0);
+        auto &valueCache = launchParam.GetInTensor(DIM_1);
+
+        auto &key = launchParam.GetOutTensor(DIM_0);
+        auto &value = launchParam.GetOutTensor(DIM_1);
+
+        auto inDtype = keyCache.desc.dtype;
+        MKI_CHECK((inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16 || inDtype == TENSOR_DTYPE_INT8),
+            "K&V&KCache&VCache should be either int8 OR float16 OR bfloat16",
+            return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+
+        MKI_CHECK(keyCache.desc.dims.size() == DIM_4 && valueCache.desc.dims.size() == DIM_4,
+            "KCache&VCache's dim num should be " << DIM_4, return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        auto numBlocks = keyCache.desc.dims[DIM_0];
+        auto blockSize = keyCache.desc.dims[DIM_1];
+        MKI_CHECK(valueCache.desc.dims[DIM_0] == numBlocks && valueCache.desc.dims[DIM_1] == blockSize,
+            "dim_0, dim_1 of KCache/VCache should be same", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+
+        auto numHeads = keyCache.desc.dims[DIM_2];
+        auto headSizeK = keyCache.desc.dims[DIM_3];
+        auto headSizeV = valueCache.desc.dims[DIM_3];
+        constexpr int32_t baiscBlockSize = 32;
+        MKI_CHECK(numHeads * headSizeK * GetTensorElementSize(inDtype) % baiscBlockSize == 0,
+            "dim_2*dim_3 of KCache should be 32B aligned", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(numHeads * headSizeV * GetTensorElementSize(inDtype) % baiscBlockSize == 0,
+            "dim_2*dim_3 of VCache should be 32B aligned", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+
+        MKI_CHECK(key.desc.dims.size() == DIM_3 && value.desc.dims.size() == DIM_3,
+            "K&V's dim num should be " << DIM_3, return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(key.desc.dtype == inDtype && value.desc.dtype == inDtype,
+            "K&V's dtype must be same as KCache&VCache", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(key.desc.dims[DIM_0] == value.desc.dims[DIM_0],
+            "K&V's dim_0 must be same", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+
+        MKI_CHECK(key.desc.dims[DIM_1] == keyCache.desc.dims[DIM_2] && key.desc.dims[DIM_2] == keyCache.desc.dims[DIM_3],
+            "dim_1/2 of K must be same as dim_2/3 of KCache", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(value.desc.dims[DIM_1] == valueCache.desc.dims[DIM_2] && value.desc.dims[DIM_2] == valueCache.desc.dims[DIM_3],
+            "dim_1/2 of V must be same as dim_2/3 of VCache", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+
+        return Status::OkStatus();
     }
 
     Status CheckPagedCacheLoadNz(const LaunchParam &launchParam) const
@@ -112,25 +169,30 @@ public:
             "K&V&KCache&VCache should be either int8 OR float16 OR bfloat16",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
 
-        auto param = AnyCast<OpParam::PagedCacheLoad>(launchParam.GetParam());
-        if (param.type == OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ) {
-            MKI_CHECK(key.desc.dims.size() == DIM_2 && value.desc.dims.size() == DIM_2,
-                "K&V's dim num should be " << DIM_2, return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-            MKI_CHECK(key.desc.dtype == inDtype && value.desc.dtype == inDtype,
-                "K&V's dtype must be same as KCache&VCache", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-            MKI_CHECK(key.desc.dims[DIM_0] == value.desc.dims[DIM_0],
-                "K&V's dim_0 must be same", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(keyCache.desc.dims.size() == DIM_4 && valueCache.desc.dims.size() == DIM_4,
+            "KCache&VCache's dim num should be " << DIM_4, return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        auto numBlocks = keyCache.desc.dims[DIM_0];
+        auto blockSize = keyCache.desc.dims[DIM_2];
+        MKI_CHECK(valueCache.desc.dims[DIM_0] == numBlocks && valueCache.desc.dims[DIM_2] == blockSize,
+            "dim_0, dim_2 of KCache/VCache should be same", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
 
-            uint32_t eleNumAligned = 32; // int8
-            if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
-                eleNumAligned = 16; // fp16, bf16
-            }
-            MKI_CHECK(keyCache.desc.dims[DIM_3] == eleNumAligned && valueCache.desc.dims[DIM_3] == eleNumAligned
-                && key.desc.dims[DIM_1] == keyCache.desc.dims[DIM_1] * eleNumAligned
-                && value.desc.dims[DIM_1] == valueCache.desc.dims[DIM_1] * eleNumAligned,
-                "NZ format tensor dim should be aligned to eleNumAligned",
-                return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(key.desc.dims.size() == DIM_2 && value.desc.dims.size() == DIM_2,
+            "K&V's dim num should be " << DIM_2, return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(key.desc.dtype == inDtype && value.desc.dtype == inDtype,
+            "K&V's dtype must be same as KCache&VCache", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+        MKI_CHECK(key.desc.dims[DIM_0] == value.desc.dims[DIM_0],
+            "K&V's dim_0 must be same", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+
+        uint32_t eleNumAligned = 32; // int8
+        if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
+            eleNumAligned = 16; // fp16, bf16
         }
+        MKI_CHECK(keyCache.desc.dims[DIM_3] == eleNumAligned && valueCache.desc.dims[DIM_3] == eleNumAligned
+            && key.desc.dims[DIM_1] == keyCache.desc.dims[DIM_1] * eleNumAligned
+            && value.desc.dims[DIM_1] == valueCache.desc.dims[DIM_1] * eleNumAligned,
+            "NZ format tensor dim should be aligned to eleNumAligned",
+            return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+
         return Status::OkStatus();
     }
 
@@ -154,6 +216,8 @@ public:
         switch (param.type) {
             case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ:
                 return CheckPagedCacheLoadNz(launchParam);
+            case OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND:
+                return CheckPagedCacheLoadNd(launchParam);
             default:
                 return Status::FailStatus(ERROR_ATTR_INVALID_TYPE,
                     "Failed to check reshape param, type of specificParam is invalid");

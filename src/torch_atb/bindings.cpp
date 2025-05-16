@@ -8,17 +8,20 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
+#pragma GCC diagnostic pop
 #include <sstream>
 #include <atb/utils/param_to_json.h>
-#include "operation_wrapper.h"
 #include "graph_operation_builder.h"
 #include "enger_graph_builder.h"
 #include "graph_node.h"
 #include "resource/memory_manager.h"
 #include "prof/prof_stats.h"
+#include "operation_wrapper.h"
 
 namespace py = pybind11;
 using namespace atb;
