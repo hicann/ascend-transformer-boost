@@ -948,6 +948,7 @@ private:
         SET_FLAG(MTE2, MTE1, EVENT_ID0);
         WAIT_FLAG(MTE2, MTE1, EVENT_ID0);
         uint32_t q_load_coeff = q_heads;
+        uint32_t q_load_coeff_round = RoundUp<16>(q_load_coeff);
         uint32_t l0a_pingpong_size = L0AB_UINT8_BUF_SIZE / sizeof(IN_DTYPE);
         uint32_t l0b_pingpong_size = L0AB_UINT8_BUF_SIZE / sizeof(IN_DTYPE);
         uint32_t l0c_pingpong_size = L0C_FLOAT_BUF_SIZE;
@@ -1033,7 +1034,7 @@ private:
                             uint32_t qk_c_pingpong_flag = (now_idx * cur_q_seqlen + q_i) % 2;
                             uint32_t qk_0_pingpong_flag = (embed_split_idx * cur_q_seqlen + q_i) % 2;
                             WAIT_FLAG(M, MTE1, qk_0_pingpong_flag);
-                            for (uint64_t loa_load_idx = 0; loa_load_idx < m / BLOCK_SIZE; ++loa_load_idx) {
+                            for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff_round / BLOCK_SIZE; ++loa_load_idx) {
                                 l1_to_l0_a<ArchType::ASCEND_V220, IN_DTYPE, false, DataFormat::VECTOR, DataFormat::VECTOR>(
                                     l0a_buf_tensor[qk_0_pingpong_flag * l0a_pingpong_size + loa_load_idx * round_embed_split_size * BLOCK_SIZE],
                                     l1q_buf_addr_tensor[q_i * q_heads * BLOCK_SIZE + embed_split_idx * m * round_embed_split_size + loa_load_idx * T_CUBE_MATRIX_SIZE],
@@ -1118,7 +1119,7 @@ private:
                         uint32_t qk_c_pingpong_flag = (now_idx * cur_q_seqlen + q_i) % 2;
                         uint32_t qk_0_pingpong_flag = (embed_split_idx * cur_q_seqlen + q_i) % 2;
                         WAIT_FLAG(M, MTE1, qk_0_pingpong_flag);
-                        for (uint64_t loa_load_idx = 0; loa_load_idx < m / BLOCK_SIZE; ++loa_load_idx) {
+                        for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff_round / BLOCK_SIZE; ++loa_load_idx) {
                             l1_to_l0_a<ArchType::ASCEND_V220, IN_ROPE_DTYPE, false, DataFormat::VECTOR, DataFormat::VECTOR>(
                                 l0a_buf_tensor[qk_0_pingpong_flag * 16384 + loa_load_idx * round_embed_split_size * BLOCK_SIZE],
                                 l1q_buf_addr_tensor[q_i * q_heads * BLOCK_SIZE + embed_split_idx * m * 128 + loa_load_idx * CUBE_MATRIX_SIZE],
