@@ -286,4 +286,19 @@ void Runner::ChangeWorkspaceBufferByExecuteStream(RunnerVariantPack &runnerVaria
                   << " at StreamId: " << streamId;
 }
 
+uint64_t Runner::GetArgsSize()
+{
+    return 0;
+}
+
+Status Runner::BuildArgs()
+{
+    return NO_ERROR;
+}
+
+Status Runner::UpdateTensorAddr(RunnerVariantPack &runnerVariantPack)
+{
+    (void)runnerVariantPack;
+    return NO_ERROR;
+}
 } // namespace atb

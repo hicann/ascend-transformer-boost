@@ -14,6 +14,7 @@
 #include <memory>
 #include <atomic>
 #include <nlohmann/json.hpp>
+#include <acl/acl_mdl.h>
 #include "mki/utils/operationir/operation_ir_cfg.h"
 #include "atb/operation.h"
 #include "atb/runner/runner.h"
@@ -106,6 +107,16 @@ private:
     void ResetLogPrefix();
     void RegProfArray(ProfilingFuncName profFuncType, std::string profName);
     uint64_t GetTotalWorkspaceBufferSize();
+    Status EagerModeSetup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context);
+    Status GraphModeSetup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context);
+    Status GraphModePreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                                Context *context);
+    Status EagerModePreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                                Context *context);
+    Status EagerModeLaunch();
+    Status GraphModeLaunch();
+    void ProfilingPrepare();
+    Status CopyArgsToDevice(Context *context);
 
 private:
     std::string logPrefix_;
@@ -117,6 +128,14 @@ private:
     uint64_t workspaceSize_ = 0;
     bool isProfArrayInited_ = false;
     uint32_t streamId_ = 0;
+    aclmdlRI model_ = nullptr;
+    uint64_t argsBufferSize_ = 0;
+    void *deviceArgsBuffer_ = nullptr;
+    void *hostArgsBuffer_ = nullptr;
+    aclmdlRICaptureStatus streamStatus_ = ACL_MODEL_RI_CAPTURE_STATUS_INVALIDATED;
+    void *lastWorkspaceAddr_ = nullptr;
+    bool isCaptured_ = false;
+    bool needUpdateTensorAddr_ = false;
 };
 } // namespace atb
 #endif

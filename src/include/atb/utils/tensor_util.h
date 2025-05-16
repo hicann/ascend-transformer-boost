@@ -64,6 +64,11 @@ public:
     static void FastCopyTensors(const SVector<Tensor> &srcTensors, SVector<Tensor> &destTensors);
     static void FastCopyTensorsData(const SVector<Tensor> &srcTensors, SVector<Tensor> &destTensors);
     static bool TensorDescsEqual(const SVector<Tensor> &tensors1, const SVector<TensorDesc> &tensorDescs2);
+    static bool IsRunnerVariantPackEqual(const VariantPack &runnerVariantPack1,
+                                         const RunnerVariantPack &runnerVariantPack2);
+    static bool IsTensorAddrEqual(const VariantPack &runnerVariantPack1, const RunnerVariantPack &runnerVariantPack2);
+    static bool IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
+                                              const RunnerVariantPack &runnerVariantPack2);
 };
 } // namespace atb
 #endif
