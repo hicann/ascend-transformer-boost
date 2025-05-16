@@ -102,8 +102,8 @@ TEST(TestEventOperation, RecordOperation)
 
     // 释放资源
     aclrtDestroyEvent(event);
-    atb::DestroyContext(context);
     atb::DestroyOperation(operation);
+    atb::DestroyContext(context);
     aclrtDestroyStream(stream);
     aclrtResetDevice(deviceId);
 
