@@ -1618,7 +1618,7 @@ public:
             WaitFlagDev(reduce_flag_id);
             CombineScaleBlock(num_batches, q_heads, kv_split_core_num, embedding_size);
         }
-            }
+    }
 private:
 
 
