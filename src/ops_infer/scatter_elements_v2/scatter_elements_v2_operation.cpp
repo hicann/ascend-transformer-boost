@@ -29,6 +29,11 @@ template <> Status CreateOperation(const infer::ScatterElementsV2Param &opParam,
     }
     OP_PARAM_RSV_CHECK(opParam);
  
+    if (!GetSingleton<Config>().Is910B()) {
+        ATB_LOG(ERROR) << "ScatterElementsV2Operation only support 910B ";
+        return ERROR_INVALID_PARAM;
+    }
+
     // axis 只能等于 -1
     if (opParam.axis != -1) {
         ATB_LOG(ERROR) << "param_.axis should == -1";
@@ -52,12 +57,7 @@ template <> Status CreateOperation(const infer::ScatterElementsV2Param &opParam,
 ScatterElementsV2Operation::ScatterElementsV2Operation(const infer::ScatterElementsV2Param &param)
     : OperationBase("ScatterElementsV2Operation"), param_(param)
 {
-    if (GetSingleton<Config>().Is910B()) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ScatterElementsV2Operation");
-    } else {
-        ATB_LOG(ERROR) << "ScatterElementsV2Operation only support 910B ";
-        operationIr_ = nullptr;
-    }
+    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ScatterElementsV2Operation");
 }
  
 ScatterElementsV2Operation::~ScatterElementsV2Operation() {}
@@ -75,8 +75,8 @@ uint32_t ScatterElementsV2Operation::GetOutputNum() const
 Status ScatterElementsV2Operation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
                                                   SVector<TensorDesc> &outTensorDescs) const
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "inTensorDescs Size:" << inTensorDescs.size()
-                  << "outTensorDescs Size:" << outTensorDescs.size();
+    (void)inTensorDescs;
+    (void)outTensorDescs;
     return NO_ERROR;
 }
  
@@ -87,17 +87,14 @@ Status ScatterElementsV2Operation::InferShapeCheckImpl(const SVector<TensorDesc>
     const TensorDesc &updateTensorDesc = inTensorDescs.at(2);
  
     Status status = ParamCheck(inputTensorDesc, indicesTensorDesc, updateTensorDesc);
-    if (status != NO_ERROR) {
-        return status;
-    }
-    return NO_ERROR;
+    return status;
 }
  
 Status ScatterElementsV2Operation::SetupCheckImpl(const SVector<Tensor> &inTensors,
                                                   const SVector<Tensor> &outTensors) const
 {
-    ATB_LOG(INFO) << "outTensors size:" << outTensors.size();
-    ATB_LOG(INFO) << "inTensors size:" << inTensors.size();
+    (void)inTensors;
+    (void)outTensors;
     return NO_ERROR;
 }
  
