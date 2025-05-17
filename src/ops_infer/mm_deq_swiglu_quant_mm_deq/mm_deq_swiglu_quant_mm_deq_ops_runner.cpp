@@ -37,10 +37,10 @@ AtbOps::OpParam::MmDeqSwigluQuantMmDeq::OutputType GetAtbOpsOutputType(
     infer::MmDeqSwigluQuantMmDeqParam::OutputType outputType)
 {
     switch (outputType) {
-    case infer::MmDeqSwigluQuantMmDeqParam::OutputType::OUTPUT_FLOAT16:
-        return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::OutputType::OUTPUT_FLOAT16;
-    default:
-        return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::OutputType::OUTPUT_INVALID;
+        case infer::MmDeqSwigluQuantMmDeqParam::OutputType::OUTPUT_FLOAT16:
+            return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::OutputType::OUTPUT_FLOAT16;
+        default:
+            return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::OutputType::OUTPUT_INVALID;
     }
 }
 
@@ -48,12 +48,12 @@ AtbOps::OpParam::MmDeqSwigluQuantMmDeq::WeightUpPermuteType GetAtbOpsWeightUpPer
     infer::MmDeqSwigluQuantMmDeqParam::WeightUpPermuteType weightUpPermuteType)
 {
     switch (weightUpPermuteType) {
-    case infer::MmDeqSwigluQuantMmDeqParam::WeightUpPermuteType::PERMUTE_N256:
-        return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::WeightUpPermuteType::PERMUTE_N256;
-    case infer::MmDeqSwigluQuantMmDeqParam::WeightUpPermuteType::PERMUTE_N128:
-        return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::WeightUpPermuteType::PERMUTE_N128;
-    default:
-        return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::WeightUpPermuteType::PERMUTE_INVALID;
+        case infer::MmDeqSwigluQuantMmDeqParam::WeightUpPermuteType::PERMUTE_N256:
+            return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::WeightUpPermuteType::PERMUTE_N256;
+        case infer::MmDeqSwigluQuantMmDeqParam::WeightUpPermuteType::PERMUTE_N128:
+            return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::WeightUpPermuteType::PERMUTE_N128;
+        default:
+            return AtbOps::OpParam::MmDeqSwigluQuantMmDeq::WeightUpPermuteType::PERMUTE_INVALID;
     }
 }
 

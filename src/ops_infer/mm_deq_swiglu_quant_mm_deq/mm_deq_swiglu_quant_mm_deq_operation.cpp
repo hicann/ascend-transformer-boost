@@ -264,7 +264,7 @@ void MmDeqSwigluQuantMmDeqOperation::SetParam(const infer::MmDeqSwigluQuantMmDeq
 }
 
 Status MmDeqSwigluQuantMmDeqOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
-                                                        SVector<TensorDesc> &outTensorDescs) const
+    SVector<TensorDesc> &outTensorDescs) const
 {
     int64_t m = OperationUtil::GetXTensorM(inTensorDescs.at(InTensorIndex::X1), false);
     auto &outDesc = outTensorDescs.at(0);
@@ -282,7 +282,7 @@ Status MmDeqSwigluQuantMmDeqOperation::InferShapeCheckImpl(const SVector<TensorD
 }
 
 Status MmDeqSwigluQuantMmDeqOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
-                                                        const SVector<Tensor> &outTensors) const
+    const SVector<Tensor> &outTensors) const
 {
     Status status = CheckInTensors(inTensors);
     if (status != NO_ERROR) {

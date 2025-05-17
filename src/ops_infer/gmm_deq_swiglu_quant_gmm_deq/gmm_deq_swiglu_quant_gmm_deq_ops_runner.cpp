@@ -37,10 +37,10 @@ AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::OutputType GetAtbOpsOutputType(
     infer::GmmDeqSwigluQuantGmmDeqParam::OutputType outputType)
 {
     switch (outputType) {
-    case infer::GmmDeqSwigluQuantGmmDeqParam::OutputType::OUTPUT_FLOAT16:
-        return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::OutputType::OUTPUT_FLOAT16;
-    default:
-        return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::OutputType::OUTPUT_INVALID;
+        case infer::GmmDeqSwigluQuantGmmDeqParam::OutputType::OUTPUT_FLOAT16:
+            return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::OutputType::OUTPUT_FLOAT16;
+        default:
+            return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::OutputType::OUTPUT_INVALID;
     }
 }
 
@@ -48,10 +48,10 @@ AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::GroupListType GetAtbOpsGroupListType(
     infer::GmmDeqSwigluQuantGmmDeqParam::GroupListType groupListType)
 {
     switch (groupListType) {
-    case infer::GmmDeqSwigluQuantGmmDeqParam::GroupListType::GROUP_LIST_CUMSUM:
-        return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::GroupListType::GROUP_LIST_CUMSUM;
-    default:
-        return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::GroupListType::GROUP_LIST_INVALID;
+        case infer::GmmDeqSwigluQuantGmmDeqParam::GroupListType::GROUP_LIST_CUMSUM:
+            return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::GroupListType::GROUP_LIST_CUMSUM;
+        default:
+            return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::GroupListType::GROUP_LIST_INVALID;
     }
 }
 
@@ -59,12 +59,12 @@ AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::WeightUpPermuteType GetAtbOpsWeightUpP
     infer::GmmDeqSwigluQuantGmmDeqParam::WeightUpPermuteType weightUpPermuteType)
 {
     switch (weightUpPermuteType) {
-    case infer::GmmDeqSwigluQuantGmmDeqParam::WeightUpPermuteType::PERMUTE_N256:
-        return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::WeightUpPermuteType::PERMUTE_N256;
-    case infer::GmmDeqSwigluQuantGmmDeqParam::WeightUpPermuteType::PERMUTE_N128:
-        return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::WeightUpPermuteType::PERMUTE_N128;
-    default:
-        return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::WeightUpPermuteType::PERMUTE_INVALID;
+        case infer::GmmDeqSwigluQuantGmmDeqParam::WeightUpPermuteType::PERMUTE_N256:
+            return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::WeightUpPermuteType::PERMUTE_N256;
+        case infer::GmmDeqSwigluQuantGmmDeqParam::WeightUpPermuteType::PERMUTE_N128:
+            return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::WeightUpPermuteType::PERMUTE_N128;
+        default:
+            return AtbOps::OpParam::GmmDeqSwigluQuantGmmDeq::WeightUpPermuteType::PERMUTE_INVALID;
     }
 }
 

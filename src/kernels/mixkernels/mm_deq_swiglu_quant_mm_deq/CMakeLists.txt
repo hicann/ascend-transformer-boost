@@ -19,6 +19,7 @@ add_kernel(
     op_kernel/mm_deq_swiglu_quant_mm_deq_n256.cpp
     MmDeqSwigluQuantMmDeqN256Kernel
     INCLUDE_DIRECTORIES ${OPS_THIRD_PARTY_DIR}/catlass/include
+                        ${OPS_PROJECT_ROOT_DIR}/mixkernels/utils/common/kernel/act
 )
 
 add_kernel(
@@ -26,4 +27,5 @@ add_kernel(
     op_kernel/mm_deq_swiglu_quant_mm_deq_n128.cpp
     MmDeqSwigluQuantMmDeqN128Kernel
     INCLUDE_DIRECTORIES ${OPS_THIRD_PARTY_DIR}/catlass/include
+                        ${OPS_PROJECT_ROOT_DIR}/mixkernels/utils/common/kernel/act
 )
