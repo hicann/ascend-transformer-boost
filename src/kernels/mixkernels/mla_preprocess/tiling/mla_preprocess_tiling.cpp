@@ -185,7 +185,7 @@ void PpMatmulTilingApi::GetTileSize()
     k0_ = ComputeK0ForABpingpong(l1AbSize);
     kLoop_ = CeilDiv(k_, k0_);
     // 对于MM1和MM2, 如果一个核一轮跑不完, 选择全载A, 并更新k0
-    if (IsLoadAllAmat(l1AbSize)) {
+    if (0) { // IsLoadAllAmat(l1AbSize)
         k0_ = ComputeK0ForOnlyBpingpong(l1AbSize);
         kLoop_ = CeilDiv(k_, k0_);
     }

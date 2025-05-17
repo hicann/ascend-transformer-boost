@@ -724,17 +724,8 @@ public:
                                  scaleBrcbFp16_,
                                  CONST_128, headPerLoop,
                                  {1, 1, 0, calcRepeatStride, calcRepeatStride, 1});
-                    AscendC::PipeBarrier<PIPE_V>();
                 }
-                if (colTail > 0) {
-                    colOffset = colLoop * CONST_128;
-                    AscendC::Mul(tempQuantFp16_[colOffset],
-                                 inputTensor_[colOffset],
-                                 scaleBrcbFp16_,
-                                 colTail, headPerLoop,
-                                 {1, 1, 0, calcRepeatStride, calcRepeatStride, 1});
-                    AscendC::PipeBarrier<PIPE_V>();
-                }
+                AscendC::PipeBarrier<PIPE_V>();
 
                 // quant fp16 --> int8
                 CastFromF16ToI8(int8OutTensor_, tempQuantFp16_, quantMin_, headPerLoop * colNum);
@@ -792,17 +783,8 @@ public:
                                  scaleBrcbFp16_,
                                  CONST_128, headTail,
                                  {1, 1, 0, calcRepeatStride, calcRepeatStride, 1});
-                    AscendC::PipeBarrier<PIPE_V>();
                 }
-                if (colTail > 0) {
-                    colOffset = colLoop * CONST_128;
-                    AscendC::Mul(tempQuantFp16_[colOffset],
-                                 inputTensor_[colOffset],
-                                 scaleBrcbFp16_,
-                                 colTail, headTail,
-                                 {1, 1, 0, calcRepeatStride, calcRepeatStride, 1});
-                    AscendC::PipeBarrier<PIPE_V>();
-                }
+                AscendC::PipeBarrier<PIPE_V>();
 
                 // quant fp16 --> int8
                 CastFromF16ToI8(int8OutTensor_, tempQuantFp16_, quantMin_, headTail * colNum);

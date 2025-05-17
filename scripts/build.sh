@@ -227,7 +227,7 @@ function fn_build_mki()
     if [ "$USE_MSDEBUG" == "ON" ]; then
         build_options="$build_options --msdebug"
     fi
-    build_options="$build_options --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
+    build_options="$build_options --output=$THIRD_PARTY_DIR $COMPILE_VERBOSE"
     bash scripts/build.sh $build_type $build_options
 }
 
@@ -569,11 +569,12 @@ function fn_run_torchatbtest()
     export_atb_env
     fn_install_torch_atb
     cd $CODE_ROOT/tests/apitest/torch_atb_test
-    for testfile in $(find op_test -name "*_test.py"); do
-        python3 -m unittest "$testfile"
-    done
-    for testfile in $(find graph_test -name "*_test.py"); do
-        python3 -m unittest "$testfile"
+    for testdir in $(ls -d *_test); do
+        echo "Running tests in $testdir"
+        for testfile in $(find "$testdir" -name "*_test.py"); do
+            echo "Running $testfile"
+            python3 -m unittest "$testfile"
+        done
     done
 }
 
@@ -583,7 +584,7 @@ function fn_run_pythontest()
     cd $CODE_ROOT/tests/apitest/opstest/python/
     rm -rf ./kernel_meta*
     for i in $(ls -d operations/*/); do
-        if [[ `find $i -name __init__.py` != "" ]];then
+        if [[ $(find $i -name __init__.py) != "" ]];then
             python3 -m unittest discover -s ./$i -p "*test*.py"; 
         fi
     done
@@ -614,28 +615,37 @@ function fn_run_infratest()
 
 function fn_install_torch_atb()
 {
-    if ! pip show torch_atb > /dev/null 2>&1; then
-        py_version=$(python -c 'import sys; print(sys.version_info[0], ".", sys.version_info[1])' | tr -d ' ')
-        py_major_version=${py_version%%.*}
-        py_minor_version=${py_version##*.}
+    py_version=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    py_major_version=${py_version%%.*}
+    py_minor_version=${py_version##*.}
 
-        if [ "$py_major_version" == "3" ] && { [ "$py_minor_version" == "9" ] || [ "$py_minor_version" == "10" ] || [ "$py_minor_version" == "11" ]; }; then
-            wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
-            wheel_path="${OUTPUT_DIR}/whl/$wheel_file"
+    if [ "$py_major_version" != "3" ] || { [ "$py_minor_version" != "9" ] && [ "$py_minor_version" != "10" ] && [ "$py_minor_version" != "11" ]; }; then
+        echo "ERROR: Unsupported Python version. Only Python 3.9, 3.10, and 3.11 are supported."
+        exit 1
+    fi
 
-            if [ -f "$wheel_path" ]; then
-                if ! [ $(pip install "$wheel_path" > /dev/null 2>&1; echo $?) -eq 0 ]; then
-                    echo "ERROR: torch_atb installation failed!"
-                    exit 1
-                else
-                    echo "INFO: torch_atb installation succeeded!"
-                fi
-            else
-                echo "ERROR: Wheel file ${wheel_file} not found."
-                exit 1
-            fi
+    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
+    wheel_path="${OUTPUT_DIR}/whl/${wheel_file}"
+
+    if [ ! -f "$wheel_path" ]; then
+        echo "ERROR: Wheel file ${wheel_file} not found at ${wheel_path}."
+        exit 1
+    fi
+
+    if pip show torch_atb > /dev/null 2>&1; then
+        echo "INFO: torch_atb is already installed, force-reinstalling..."
+        if pip install --force-reinstall "$wheel_path" > /dev/null 2>&1; then
+            echo "INFO: torch_atb reinstallation succeeded!"
         else
-            echo "ERROR: Unsupported Python version. Only Python 3.9, 3.10, and 3.11 are supported."
+            echo "ERROR: torch_atb reinstallation failed!"
+            exit 1
+        fi
+    else
+        echo "INFO: torch_atb not found, installing..."
+        if pip install "$wheel_path" > /dev/null 2>&1; then
+            echo "INFO: torch_atb installation succeeded!"
+        else
+            echo "ERROR: torch_atb installation failed!"
             exit 1
         fi
     fi

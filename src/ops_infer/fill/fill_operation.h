@@ -19,6 +19,8 @@ public:
     ~FillOperation() override;
     uint32_t GetInputNum() const override;
     uint32_t GetOutputNum() const override;
+    infer::FillParam GetParam() const;
+    void SetParam(const infer::FillParam &param);
     Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const override;
     Status SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const override;
 

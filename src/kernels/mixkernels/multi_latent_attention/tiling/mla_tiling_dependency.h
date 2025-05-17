@@ -18,6 +18,7 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/status/status.h>
 
+
 namespace AtbOps {
 using namespace Mki;
 constexpr int32_t BLOCK_SIZE = 16;
@@ -42,7 +43,6 @@ enum class TilingKeyType {
     TILING_INT8_HALF_DATA = 2,
     TILING_INT8_BF16_DATA = 3
 };
-
 
 using PrefillTensor = struct PrefillTensor {
     Tensor query;

@@ -155,7 +155,7 @@ Status GetNdMLATiling(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilin
     int32_t maxQseqlen =  GetMaxQseqlen(param);
     MKI_CHECK(maxQseqlen > 0, "qSeqlen max value invalid, please check",
         return AtbOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
-
+        
     int32_t maxKVseqlen =  GetMaxKVseqlen(param);
     MKI_CHECK(maxKVseqlen > 0, "kvSeqlen max value invalid, please check",
         return AtbOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));

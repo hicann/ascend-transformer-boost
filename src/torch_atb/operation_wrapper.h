@@ -15,6 +15,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <torch/torch.h>
 #include <torch/extension.h>
 #include <torch_npu/csrc/framework/OpCommand.h>
@@ -60,6 +61,7 @@ public:
     explicit OperationWrapper(const atb::infer::LinearParallelParam &param);
     explicit OperationWrapper(const atb::infer::LinearSparseParam &param);
     explicit OperationWrapper(const atb::infer::RelayAttentionParam &param);
+    explicit OperationWrapper(const atb::infer::TopkToppSamplingParam &param);
     explicit OperationWrapper(const atb::GraphParam &param);
     atb::Operation *ReleaseOperation();
     std::string GetName() const;

@@ -14,34 +14,27 @@
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/core/op_param_funcs.h"
-
-namespace atb {
+namespace {
 static const size_t FILL_PARAM_VALUE_NUM = 1;
 static const uint32_t IN_TENSOR_NUM_WITH_MASK = 2;
 static const uint32_t IN_TENSOR_NUM_WITHOUT_MASK = 0;
 static const uint32_t OUT_TENSOR_NUM = 1;
-
-template <> Status CreateOperation(const infer::FillParam &opParam, Operation **operation)
+bool ParamCheck(const atb::infer::FillParam &opParam)
 {
-    if (operation == nullptr) {
-        return ERROR_INVALID_PARAM;
-    }
-    OP_PARAM_RSV_CHECK(opParam);
     if (opParam.value.size() != FILL_PARAM_VALUE_NUM) {
         ATB_LOG(ERROR) << "fillParam value size should be 1, actually: ", opParam.value.size();
-        return ERROR_INVALID_PARAM;
+        return false;
     }
-    if (!opParam.withMask && !TensorCheck::IsDimNumValid(opParam.outDim.size())) {
+    if (!opParam.withMask && !atb::TensorCheck::IsDimNumValid(opParam.outDim.size())) {
         ATB_LOG(ERROR) << "fillParam withMask is false, outDim.size() should >0 && <= MAX_DIM(8)";
-        return ERROR_INVALID_PARAM;
+        return false;
     }
-    *operation = new (std::nothrow) FillOperation(opParam);
-    if (*operation == nullptr) {
-        ATB_LOG(ERROR) << "failed to new operation";
-        return ERROR_OUT_OF_HOST_MEMORY;
-    }
-    return NO_ERROR;
+    return true;
 }
+} // namespace
+
+namespace atb {
+OPERATION_PARAM_FUNCS(FillOperation, infer::FillParam)
 
 FillOperation::FillOperation(const infer::FillParam &param) : OperationBase("FillOperation"), param_(param)
 {
@@ -150,5 +143,16 @@ std::shared_ptr<Runner> FillOperation::CreateRunner(Context &context) const
 nlohmann::json FillOperation::GetParamJson() const
 {
     return OpParamToJson(param_);
+}
+
+infer::FillParam FillOperation::GetParam() const
+{
+    return param_;
+}
+
+void FillOperation::SetParam(const infer::FillParam &param)
+{
+    param_ = param;
+    runner_ = nullptr;
 }
 } // namespace atb

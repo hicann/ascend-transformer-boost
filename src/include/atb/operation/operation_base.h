@@ -14,6 +14,7 @@
 #include <memory>
 #include <atomic>
 #include <nlohmann/json.hpp>
+#include <acl/acl_mdl.h>
 #include "mki/utils/operationir/operation_ir_cfg.h"
 #include "atb/operation.h"
 #include "atb/runner/runner.h"
@@ -53,7 +54,9 @@ protected:
     virtual Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const;
     virtual Status SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
     void InitEmptyInTensorPerms() const;
+    void InitEmptyOutTensorPerms() const;
     virtual SVector<bool> GetEmptyInTensorPermissions() const;
+    virtual SVector<bool> GetEmptyOutTensorPermissions() const;
     std::string GetLogPrefix() const;
     virtual Status SetNodeOperationIds();
     nlohmann::json GetGraphInfo() const;
@@ -65,6 +68,7 @@ protected:
     std::vector<int64_t> operationBaseIds_;
     Mki::OperationIr *operationIr_ = nullptr;
     mutable SVector<bool> emptyInTensorPerms_;
+    mutable SVector<bool> emptyOutTensorPerms_;
     RunnerVariantPack runnerVariantPack_;
     std::shared_ptr<Runner> runner_;
 
@@ -81,6 +85,8 @@ private:
     Status SetupThrow(const VariantPack &variantPack, uint64_t &workspaceSize);
     Status ExecuteCheck(const VariantPack &variantPack, const uint8_t *workspace, uint64_t workspaceSize,
                         Context *context);
+    template <typename TensorType> Status ExecuteVariantPackInTensorCheck(const SVector<TensorType> &inTensors) const;
+    template <typename TensorType> Status ExecuteVariantPackOutTensorCheck(const SVector<TensorType> &outTensors) const;
     Status ExecuteVariantPackCheck(const VariantPack &variantPack);
     void InitRunnerVariantPack(const VariantPack &variantPack);
     Status CopyHostTilingToDevice(aclrtStream stream);
@@ -91,6 +97,7 @@ private:
     void FillHostTilingBuffer();
     Status CheckVariantPack(const VariantPack &variantPack) const;
     template <typename TensorType> Status CheckInTensor(const SVector<TensorType> &inTensors) const;
+    template <typename TensorType> Status CheckOutTensor(const SVector<TensorType> &outTensors) const;
     bool CheckIniMatch(const SVector<TensorDesc> &inTensorDescs) const;
     bool CheckIniMatch(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
     void SetSaveTensorDir();
@@ -100,6 +107,16 @@ private:
     void ResetLogPrefix();
     void RegProfArray(ProfilingFuncName profFuncType, std::string profName);
     uint64_t GetTotalWorkspaceBufferSize();
+    Status EagerModeSetup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context);
+    Status GraphModeSetup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context);
+    Status GraphModePreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                                Context *context);
+    Status EagerModePreLaunch(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+                                Context *context);
+    Status EagerModeLaunch();
+    Status GraphModeLaunch();
+    void ProfilingPrepare();
+    Status CopyArgsToDevice(Context *context);
 
 private:
     std::string logPrefix_;
@@ -111,6 +128,14 @@ private:
     uint64_t workspaceSize_ = 0;
     bool isProfArrayInited_ = false;
     uint32_t streamId_ = 0;
+    aclmdlRI model_ = nullptr;
+    uint64_t argsBufferSize_ = 0;
+    void *deviceArgsBuffer_ = nullptr;
+    void *hostArgsBuffer_ = nullptr;
+    aclmdlRICaptureStatus streamStatus_ = ACL_MODEL_RI_CAPTURE_STATUS_INVALIDATED;
+    void *lastWorkspaceAddr_ = nullptr;
+    bool isCaptured_ = false;
+    bool needUpdateTensorAddr_ = false;
 };
 } // namespace atb
 #endif

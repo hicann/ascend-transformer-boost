@@ -8,17 +8,20 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
+#pragma GCC diagnostic pop
 #include <sstream>
 #include <atb/utils/param_to_json.h>
-#include "operation_wrapper.h"
 #include "graph_operation_builder.h"
 #include "enger_graph_builder.h"
 #include "graph_node.h"
 #include "resource/memory_manager.h"
 #include "prof/prof_stats.h"
+#include "operation_wrapper.h"
 
 namespace py = pybind11;
 using namespace atb;
@@ -72,6 +75,7 @@ PYBIND11_MODULE(_C, m)
         .def(py::init<const LinearParallelParam &>())
         .def(py::init<const LinearSparseParam &>())
         .def(py::init<const RelayAttentionParam &>())
+        .def(py::init<const TopkToppSamplingParam &>())
         .def(py::init<const GraphParam &>())
         .def_property_readonly("name", &TorchAtb::OperationWrapper::GetName)
         .def_property_readonly("input_num", &TorchAtb::OperationWrapper::GetInputNum)
@@ -156,6 +160,8 @@ PYBIND11_MODULE(_C, m)
         .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::LinearSparseParam &>(
                              &TorchAtb::GraphBuilder::AddNode))
         .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::RelayAttentionParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::TopkToppSamplingParam &>(
                              &TorchAtb::GraphBuilder::AddNode))
         .def("add_node", py::overload_cast<const std::vector<std::string> &, TorchAtb::OperationWrapper &>(
                              &TorchAtb::GraphBuilder::AddNode))
@@ -895,7 +901,7 @@ PYBIND11_MODULE(_C, m)
                 AddElements(deviceExpert, param.deviceExpert);
                 return param;
                 }),
-             py::arg("topk_expert_num") = 0,
+             py::arg("topk_expert_num") = 1,
              py::arg("cum_sum_num") = 0,
              py::arg("cum_sum_int64") = false,
              py::arg("device_expert") = py::list())
@@ -1233,4 +1239,45 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("mask_type", &RelayAttentionParam::maskType)
         .def("__repr__",
              [](const RelayAttentionParam &param) { return "RelayAttentionParam: " + OpParamToJson(param).dump(); });
+
+    py::class_<TopkToppSamplingParam> topkToppSampling(m, "TopkToppSamplingParam");
+ 
+    py::enum_<TopkToppSamplingParam::TopkToppSamplingType>(topkToppSampling, "TopkToppSamplingType")
+        .value("SAMPLING_UNDEFINED", TopkToppSamplingParam::TopkToppSamplingType::SAMPLING_UNDEFINED)
+        .value("SINGLE_TOPK_SAMPLING", TopkToppSamplingParam::TopkToppSamplingType::SINGLE_TOPK_SAMPLING)
+        .value("BATCH_TOPK_MULTINOMIAL_SAMPLING",
+               TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_SAMPLING)
+        .value("BATCH_TOPK_EXPONENTIAL_SAMPLING",
+               TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_SAMPLING)
+        .value("BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING",
+               TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING)
+        .value("BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING",
+               TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING)
+        .value("SAMPLING_MAX", TopkToppSamplingParam::TopkToppSamplingType::SAMPLING_MAX);
+ 
+    topkToppSampling
+        .def(py::init([](TopkToppSamplingParam::TopkToppSamplingType topkToppSamplingType,
+                         const std::vector<uint32_t> &randSeeds, uint32_t randSeed, uint32_t topk,
+                         int32_t logProbsSize) {
+                TopkToppSamplingParam param;
+                param.topkToppSamplingType = topkToppSamplingType;
+                AddElements(randSeeds, param.randSeeds);
+                param.randSeed = randSeed;
+                param.topk = topk;
+                param.logProbsSize = logProbsSize;
+                return param;
+                }),
+             py::arg("topk_topp_sampling_type") = TopkToppSamplingParam::TopkToppSamplingType::SINGLE_TOPK_SAMPLING,
+             py::arg("rand_seeds") = py::list(),
+             py::arg("rand_seed") = 0,
+             py::arg("topk") = 100,
+             py::arg("log_probs_size") = 0)
+        .def_readwrite("topk_topp_sampling_type", &TopkToppSamplingParam::topkToppSamplingType)
+        .def_readwrite("rand_seeds", &TopkToppSamplingParam::randSeeds)
+        .def_readwrite("rand_seed", &TopkToppSamplingParam::randSeed)
+        .def_readwrite("topk", &TopkToppSamplingParam::topk)
+        .def_readwrite("log_probs_size", &TopkToppSamplingParam::logProbsSize)
+        .def("__repr__", [](const TopkToppSamplingParam &param) {
+            return "TopkToppSamplingParam: " + OpParamToJson(param).dump();
+        });
 }
