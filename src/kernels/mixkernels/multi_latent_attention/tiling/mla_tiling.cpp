@@ -21,16 +21,75 @@ const int32_t NUM2 = 2;
 const int32_t NUM3 = 3;
 const int32_t NUM4 = 4;
 const int32_t NUM5 = 5;
+const int32_t NUM6 = 6;
+const int32_t NUM8 = 8;
 const int32_t NUM16 = 16;
 const int32_t NUM32 = 32;
 const int32_t NUM64 = 64;
 const int32_t NUM256 = 256;
 const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
-const float SPLITKV_RATION = 0.8;
+const float SPLITKV_SEQLEN = 2048;
+
+int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int32_t blockSize)
+{
+    if (blockDim - mmInfo.flashDecodingTaskNum <= NUM4 || mmInfo.quantFlag) {
+        return NUM1;
+    }
+    if (blockSize == 0 || blockDim == 0) {
+        return NUM1;
+    }
+    int32_t minKVBlocks = (minKVSeqlen + blockSize - 1) / blockSize;
+    for (int32_t splitNum = 2; splitNum <= NUM6; splitNum++) {
+        if ((mmInfo.flashDecodingTaskNum * splitNum) % blockDim != 0) {
+            continue;
+        }
+        int32_t repeatTimesPerBlock = mmInfo.flashDecodingTaskNum * splitNum / blockDim;
+        if (minKVSeqlen / splitNum >= blockSize &&
+            repeatTimesPerBlock + NUM6 <= minKVBlocks - (minKVBlocks + splitNum - 1) / splitNum * repeatTimesPerBlock) {
+            return splitNum;
+        } else {
+            return NUM1;
+        }
+    }
+    return NUM1;
+}
+
+Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t blockDim)
+{
+    if (blockDim == 0) {
+        return Status::FailStatus(ERROR_INVALID_VALUE);
+    }
+    mmInfo.tailBatch = mmInfo.batch % blockDim;
+    mmInfo.tailTaskNum = mmInfo.totalTaskNum % blockDim;
+    mmInfo.flashDecodingTaskNum = mmInfo.quantFlag ? mmInfo.tailTaskNum : mmInfo.tailBatch;
+    auto minKVSeqlen = std::min_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
+    auto minQSeqlen = mmInfo.qSeqLen != nullptr ? *std::min_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+    auto maxQSeqlen = mmInfo.qSeqLen != nullptr ? *std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+    mmInfo.flashDecoding = mmInfo.flashDecodingTaskNum != 0 && param.isRing == 0 &&
+                           *minKVSeqlen >= SPLITKV_SEQLEN &&
+                           ((minQSeqlen == NUM2 && maxQSeqlen == NUM2) ||
+                           (minQSeqlen == 1 && maxQSeqlen == 1));
+    if (!mmInfo.flashDecoding) {
+        return Status::OkStatus();
+    }
+    mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
+                        CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize);
+    mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
+    if (mmInfo.flashDecoding) {
+        for (int32_t batchIdx = 0; batchIdx < mmInfo.batch; batchIdx++) {
+            mmInfo.batchList.push_back(BatchNode(batchIdx, *(mmInfo.kvSeqLen + batchIdx)));
+        }
+        std::sort(mmInfo.batchList.begin(), mmInfo.batchList.end());
+        int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
+        mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
+    }
+    MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
+    return Status::OkStatus();
+}
 
 Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
-                    OpParam::MLA &param)
+                    OpParam::MLA &param, uint32_t blockDim)
 {
     auto kcacheShape = launchParam.GetInTensor(DIM_2).desc.dims;
     auto KDims = kcacheShape.size();
@@ -55,24 +114,23 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.kvHeads = param.kvHead;
     mmInfo.numHeads = static_cast<int32_t>(param.headSize);
     mmInfo.maskType = static_cast<int32_t>(param.maskType);
-    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT); // quant not support
+    mmInfo.quantFlag = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
+    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT);
+    if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
+        mmInfo.maskType = 0;
+    }
+    mmInfo.totalTaskNum = mmInfo.qSeqLen != nullptr ?
+                          std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
+                          mmInfo.batch;
     if (mmInfo.mtpTp1Flag) {
-        mmInfo.maskType = 0;
-    }
-    if (static_cast<int32_t>(mmInfo.type) >= NUM2) {
-        mmInfo.maskType = 0;
-    }
-    if (mmInfo.qSeqLen != nullptr) {
-        mmInfo.totalTaskNum = std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0));
-    } else {
-        mmInfo.totalTaskNum = mmInfo.batch;
+        OP_TILING_CHECK_STATUS_RETURN(GetFlashDecodingInfo(mmInfo, param, blockDim));
     }
     return Status::OkStatus();
 }
 
-Status GetMLAInfo(const LaunchParam &launchParam, MLAInfo &mmInfo, OpParam::MLA &param)
+Status GetMLAInfo(const LaunchParam &launchParam, MLAInfo &mmInfo, OpParam::MLA &param, uint32_t blockDim)
 {
-    OP_TILING_CHECK_STATUS_RETURN(GetMLANdInfo(launchParam, mmInfo, param));
+    OP_TILING_CHECK_STATUS_RETURN(GetMLANdInfo(launchParam, mmInfo, param, blockDim));
     return Status::OkStatus();
 }
 
@@ -93,7 +151,8 @@ Status GetTilingKeyTypeBase(MLAInfo &mmInfo, const Tensor &qTensor, const Tensor
 Status GenTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
 {
     uint32_t dataType = static_cast<int32_t>(mmInfo.type);
-    uint32_t tilingKey = dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) + (param.isRing << NUM5);
+    uint32_t tilingKey = dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) +
+                         (param.isRing << NUM5) + (mmInfo.flashDecoding << NUM6);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "TILING KEY IS = " << tilingKey;
     return Status::OkStatus();
@@ -104,11 +163,11 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
     auto qTensor = launchParam.GetInTensor(DIM_0);
     auto qRopeTensor = launchParam.GetInTensor(DIM_1);
-    
-    MLAInfo mmInfo = {0};
+
+    MLAInfo mmInfo;
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
-    Status ret1  = GetMLAInfo(launchParam, mmInfo, param);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+    Status ret1 = GetMLAInfo(launchParam, mmInfo, param, blockDim);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     Status ret = GetMLATilingParam(launchParam, mmInfo, blockDim, tilingParam, tilingSize);
@@ -119,20 +178,23 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t basicWorkSpaceHalf = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenHalf;
     uint64_t basicWorkSpaceFloat = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenFloat;
     uint64_t basicWorkSpaceInt8 = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenInt;
-    bool isQuant = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
-    if (isQuant) {
+    uint64_t oCoreWorkSpaceSize = mmInfo.flashDecoding && mmInfo.mtpTp1Flag ?
+        WORKSPACE_BLOCK_SIZE_DB * mmInfo.flashDecodingTaskNum * mmInfo.splitKVNum * dataLenFloat * 2 : 0;
+    uint64_t lWorkSpaceSize = mmInfo.flashDecoding && mmInfo.mtpTp1Flag ?
+        mmInfo.numHeads * mmInfo.flashDecodingTaskNum * mmInfo.splitKVNum * dataLenFloat * 2 * 8 : 0;
+    if (mmInfo.quantFlag) {
         uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
         uint64_t pWorkSpaceSize = basicWorkSpaceInt8;
-        uint64_t oTempWorkSpcaceSize = basicWorkSpaceInt8 * 2;
+        uint64_t oTempWorkSpaceSize = basicWorkSpaceInt8 * 2;
         kernelInfo.GetScratchSizes() = {sWorkSpaceSize, sWorkSpaceSize, pWorkSpaceSize,
-                                        oTempWorkSpcaceSize, basicWorkSpaceFloat};
+                                        oTempWorkSpaceSize, basicWorkSpaceFloat, oCoreWorkSpaceSize, lWorkSpaceSize};
     } else {
         uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
         uint64_t pWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceHalf * 4 : basicWorkSpaceHalf * 2;
-        uint64_t oTempWorkSpcaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
-        uint64_t goWorkSpcaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
-        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, NUM512, pWorkSpaceSize, oTempWorkSpcaceSize,
-                                        goWorkSpcaceSize};
+        uint64_t oTempWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
+        uint64_t goWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
+        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, NUM512, pWorkSpaceSize, oTempWorkSpaceSize,
+                                        goWorkSpaceSize, oCoreWorkSpaceSize, lWorkSpaceSize};
     }
     Status ret2 = GenTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret2);
@@ -153,73 +215,29 @@ inline Status PrefillPreCheck(OpParam::MLA &param)
               return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(param.kvSeqLen.data() != nullptr, "kvSeq cannot be nullptr",
               return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK(param.kTensorList.size() == param.vTensorList.size(), "k and v cache have different batch number",
-              return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
 }
 
-Status GetAlibiMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param, const Tensor &tensorMask,
-                        int32_t maxSeq)
-{
-    auto maskShape = tensorMask.desc.dims;
-    auto maskDim = maskShape.size();
-    MKI_CHECK(maskDim <= DIM_4 && maskDim >= DIM_2, "maskdim invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
-    if (maskDim == DIM_3) { // [h, ms, ms]
-        mmInfo.maskStride = 0;
-        mmInfo.headStride = static_cast<uint32_t>(maxSeq);
-    } else if (maskDim == DIM_4) { // [bs,1,ms,ms]  [bs,headnum,ms,ms]
-        MKI_CHECK(maskShape.at(DIM_2) * maskShape.at(1) <= UINT32_MAX, "maxSeq * headnum can not large than UINT32_MAX",
-                  return Status::FailStatus(ERROR_INVALID_VALUE));
-        mmInfo.maskStride = maskShape.at(1) * maskShape.at(DIM_2);
-        mmInfo.headStride = static_cast<uint32_t>(maxSeq);
-    } else if (maskDim == DIM_2) {
-        MKI_CHECK(maxSeq == LONG_SEQ_ALIBI_LEN, "alibi mask shape must be [256, 256] for long seq opt",
-                  return Status::FailStatus(ERROR_INVALID_VALUE));
-    }
-    MKI_CHECK(static_cast<uint64_t>(mmInfo.headStride) * static_cast<uint32_t>(maxSeq) <= UINT32_MAX,
-              "maxSeq can not exceed UINT32_MAX", return Status::FailStatus(ERROR_INVALID_VALUE));
-    return Status::OkStatus();
-}
 
 inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
                                   const Tensor &tensorMask)
 {
-    auto &tensorAlibiCoeff = mmInfo.tensors.alibiCoeff;
     auto maskShape = tensorMask.desc.dims;
     auto maskType = param.maskType;
-    auto maxQSeq = std::max_element(param.qSeqLen.begin(), param.qSeqLen.end());
     auto maxKvSeq = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     MKI_LOG(INFO) << "max kv seq" << *maxKvSeq;
     if (maskType != OpParam::MLA::MASK_TYPE_NONE) {
         auto maskDim = maskShape.size();
         int32_t maxSeq = maskShape.at(maskDim - 1);
         mmInfo.maxSeqLen = maxSeq;
-        if (!(maxSeq == 512 && param.isTriuMask != 0) && CheckEmptyTensor(tensorAlibiCoeff)) {
-            MKI_CHECK(*maxQSeq <= maxSeq, "qSeqLen larger than maxSeqLen",
-                      return Status::FailStatus(ERROR_INVALID_VALUE));
-            MKI_CHECK(*maxKvSeq <= maxSeq, "kvSeqLen larger than maxSeqLen",
-                      return Status::FailStatus(ERROR_INVALID_VALUE));
-        }
-        if (maskType == OpParam::MLA::MASK_TYPE_ALIBI) {
-            auto ret = GetAlibiMaskInfo(mmInfo, param, tensorMask, maxSeq);
-            OP_TILING_CHECK_STATUS_RETURN(ret);
-        } else {
-            MKI_CHECK(maskDim <= DIM_3 && maskDim >= DIM_2, "maskdim invalid",
-                      return Status::FailStatus(ERROR_INVALID_VALUE));
-            MKI_CHECK(maskShape.at(1) <= UINT32_MAX, "maxShape can not exceed UINT32_MAX",
-                      return Status::FailStatus(ERROR_INVALID_VALUE));
-            if (maskDim == DIM_2) { // [ms,ms]
-                mmInfo.maskStride = 0;
-                mmInfo.headStride = 0;
-            } else if (maskDim == DIM_3) { // [bs,ms,ms]
-                mmInfo.maskStride = maskShape.at(1);
-                mmInfo.headStride = 0;
-            }
-            if (maxSeq == 512 && param.isTriuMask != 0) {
-                mmInfo.isLongSeq = 1;
-            }
-        }
+        MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(maskShape.at(1) == 512, "compress mask shape should be 512, 512",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(param.isTriuMask == 1, "compress mask should use with triumask opt",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
     }
+
     return Status::OkStatus();
 }
 
@@ -261,10 +279,7 @@ void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, size_t batch, int3
     mmInfo.tor = param.tor;
     mmInfo.kvHeads = param.kvHead == 0 ? param.headSize : param.kvHead;
     mmInfo.isTriuMask = param.isTriuMask;
-    mmInfo.kTensorList = param.kTensorList;
-    mmInfo.vTensorList = param.vTensorList;
     mmInfo.maskType = static_cast<uint32_t>(param.maskType);
-    mmInfo.quantType = static_cast<uint32_t>(param.quantType);
 }
 
 Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)

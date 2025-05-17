@@ -21,7 +21,7 @@ namespace OpParam {
 struct MLA {
     enum Type {
         SPLIT_CACHE = 0,
-        PREFILL_SPLIT_CACHE = 1;
+        PREFILL_SPLIT_CACHE = 1
     };
     Type type;
     int32_t headSize = 0;

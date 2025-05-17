@@ -56,8 +56,11 @@ public:
             uint64_t taskNum = param.qSeqLen.data() == nullptr ? batch :
                                std::accumulate(param.qSeqLen.data(),
                                                param.qSeqLen.data() + batch, static_cast<int32_t>(0));
+            uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
             uint64_t bufferSize =
-                Utils::RoundUp(launchBufferSize_ + TILING_PARA_SIZE_TP1 * (taskNum - 1) * sizeof(uint32_t), TILINGMIN);
+                Utils::RoundUp(launchBufferSize_ + TILING_PARA_SIZE_TP1 * (taskNum - 1) * sizeof(uint32_t) +
+                TILING_PARA_SIZE_TP1 * blockDim * blockDim * sizeof(uint32_t) + blockDim * 2 * sizeof(uint32_t),
+                TILINGMIN);
             return bufferSize;
         }
         uint64_t bufferSize =
@@ -74,17 +77,17 @@ public:
         launchBufferSize_ = Utils::RoundUp((TILING_PARA_SIZE_PREFILL + TILING_HEAD_SIZE_PREFILL) *
                         sizeof(uint32_t), TILINGMIN);
     }
-    
+
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        auto &param = AnyCast<OpParam::MLA>(launchParam.GetParam());
+        auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
         MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 3 ||
                             launchParam.GetInTensor(0).desc.dims.size() == 2,
                         "input 0 dim num invalid", return false);
         MKI_LOG(INFO) << "launchParam.GetOutTensorCount(): " << launchParam.GetOutTensorCount();
         return true;
     }
-    
+
     uint64_t GetTilingSize(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MLA),
@@ -97,7 +100,7 @@ public:
             Utils::RoundUp(launchBufferSize_ + TILING_PARA_SIZE_PREFILL * (batch - 1) * sizeof(uint32_t), TILINGMIN);
         return bufferSize;
     }
-    
+
     Status InitImpl(const LaunchParam &launchParam) override
     {
         Status ret = MLAPrefillTiling(launchParam, kernelInfo_);
@@ -106,7 +109,7 @@ public:
         return Status::OkStatus();
     }
 };
-    
+
 class MLAPrefillBF16Kernel : public MLAPrefillKernel {
 public:
     explicit MLAPrefillBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
@@ -114,8 +117,7 @@ public:
     {
     }
 };
-    
-    
+
 REG_KERNEL_BASE(MLAKernel);
 REG_KERNEL_BASE(MLAPrefillKernel);
 REG_KERNEL_BASE(MLAPrefillBF16Kernel);

@@ -89,14 +89,14 @@ public:
         this->max_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 1));
         this->q_heads = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 2));
         this->embd = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 3));
-        this->embdv = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 23));
+        this->embdv = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
         this->kv_heads = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 4));
         this->is_triu_mask = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 8));
         this->total_q_blk_num = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 9));
-        this->tiling_head_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 14));
-        this->tiling_para_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 15));
-        this->tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
-        this->max_kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 18));
+        this->tiling_head_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 10));
+        this->tiling_para_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 11));
+        this->tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
+        this->max_kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 14));
 
         this->data_shape_type = 0;
         this->group_num = q_heads / kv_heads;
@@ -666,8 +666,8 @@ extern "C" __global__ __aicore__ void mla_prefill(
     __gm__ uint8_t *__restrict__ upo_tmp_gm,
     __gm__ uint8_t *__restrict__ tiling_para_gm)
 {
-    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
-    if (tilingKey == 1) {
+    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
+    if (tilingKey == 1 || tilingKey == 2) {
         FlashAttentionEncoder<half> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_cube.Run<false>();
     }
@@ -1487,33 +1487,25 @@ public:
         this->max_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 1));
         this->q_heads = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 2));
         this->embd = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 3));
-        this->embdv = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 23));
+        this->embdv = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
         this->tor = (half)(*((__gm__ float *)tiling_para_gm + 5));
         this->head_stride = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 6));
         this->mask_stride = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 7));
         this->is_triu_mask = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 8));
         this->total_q_blk_num = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 9));
-        this->isClamp = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 10));
-        this->clampMin = (float)(*((__gm__ float *)tiling_para_gm + 11));
-        this->clampMax = (float)(*((__gm__ float *)tiling_para_gm + 12));
-        this->tiling_head_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 14));
-        this->tiling_para_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 15));
-        this->tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
-        this->long_seq = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 17));
-        this->is_sqrt = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 19));
-        this->mask_type = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 20));
-        this->alibi_compress_offset = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 21));
-        this->alibi_left_align = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 22));
-        this->quantType = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 24));
-        this->data_shape_type = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 25));
+        this->tiling_head_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 10));
+        this->tiling_para_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 11));
+        this->tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
+        this->long_seq = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 13));
+        this->data_shape_type = 0;
         this->stride_qo = q_heads * embdv;
+
         if (this->data_shape_type == 1) {
             this->stride_qo = embdv;
         }
 
         this->__k = embd;
         this->round_k = (__k + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-        this->scaleType = (ScaleType)(*((__gm__ int32_t *)tiling_para_gm + 26));
         SET_FLAG(MTE3, MTE2, EVENT_ID0);
         SET_FLAG(MTE3, MTE2, EVENT_ID1);
         SET_FLAG(MTE3, MTE2, EVENT_ID2);
@@ -2018,14 +2010,17 @@ extern "C" __global__ __aicore__ void mla_prefill(
     __gm__ uint8_t *__restrict__ upo_tmp_gm,
     __gm__ uint8_t *__restrict__ tiling_para_gm)
 {
-    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
+    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
     if (tilingKey == 1) {
         FlashAttentionEncoderVec<half> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
                                                         tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm, deq_pv_gm,
                                                         off_pv_gm, logN_gm);
         fa_vec.Run<false, 0>();
+    } else if (tilingKey == 2) {
+        FlashAttentionEncoderVec<half> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                        tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm, deq_pv_gm,
+                                                        off_pv_gm, logN_gm);
+        fa_vec.Run<false, 1>();
     }
-
-
 }
 #endif

@@ -35,7 +35,7 @@ public:
             case OpParam::MLA::SPLIT_CACHE:
                 return GetKernelByName("MLAKernel");
             case OpParam::MLA::PREFILL_SPLIT_CACHE:
-                return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("MLAPrefillBF16Kernel") : 
+                return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("MLAPrefillBF16Kernel") :
                         GetKernelByName("MLAPrefillKernel");
             default:
                 break;
@@ -135,6 +135,7 @@ private:
         MKI_CHECK(tensorVcache.desc.dims.size() == KV_CACHE_DIM_NUM,
                   "Input4 dim num " << tensorVcache.desc.dims.size() << " invalid, should be " << KV_CACHE_DIM_NUM,
                   return false);
+        // kshape (batch, seq, n * d)
         auto batch = tensorKcache.desc.dims[DIM_0];
         auto maxSeqlen = tensorKcache.desc.dims[DIM_1];
         MKI_CHECK(tensorVcache.desc.dims[DIM_0] == batch && tensorVcache.desc.dims[DIM_1] == maxSeqlen,
@@ -183,33 +184,15 @@ private:
     bool CheckNdMask(const Tensor &tensorMask, Tensor &q, const ShapeParam &shapePara,
                      const OpParam::MLA &param) const
     {
-        auto maxQ = shapePara.maxQ;
-        auto maxKv = shapePara.maxKv;
-        auto batch = shapePara.batch;
-        auto headSize = param.headSize;
-        constexpr int32_t longSeqAlibiLen = 256;
         auto currentShape = tensorMask.desc.dims;
-        auto sz = currentShape.size();
-        MKI_CHECK(sz >= DIM_2, "mask invalid, please check.", return false);
-        auto maskLen = currentShape[sz - 1];
-        bool alibi = param.maskType == OpParam::MLA::MASK_TYPE_ALIBI;
-
+        auto maskShape = currentShape.size();
+        MKI_CHECK(maskShape == DIM_2, "mask invalid, please check.", return false);
+        auto maskLen = currentShape[maskShape - 1];
         auto norm = param.maskType == OpParam::MLA::MASK_TYPE_NORM;
-        auto lookAhead = param.maskType == OpParam::MLA::MASK_TYPE_LOOK_AHEAD;
-        auto isLongSeq = (param.isTriuMask == 1) && (maskLen == LONG_SEQ_LEN || maskLen == LONG_SEQ_LEN_OPT);
-        auto kvHead = param.kvHead == 0 ? headSize : param.kvHead;
-        auto isAlibiCompress = maskLen == LONG_SEQ_LEN && currentShape[sz - DIM_2] != maskLen && alibi;
+        // 全量mask当前仅支持512,512的压缩mask，其余不支持，需配合isTriuMask开启
+        auto isLongSeq = (param.isTriuMask == 1) && (maskLen == LONG_SEQ_LEN_OPT);
         std::vector<std::pair<SVector<int64_t>, bool>> supports = {
-            {{maxQ, maxKv}, true},
-            {{LONG_SEQ_LEN, LONG_SEQ_LEN}, isLongSeq},
-            {{LONG_SEQ_LEN_OPT, LONG_SEQ_LEN_OPT}, isLongSeq},
-            {{batch, LONG_SEQ_LEN, LONG_SEQ_LEN}, isLongSeq},
-            {{longSeqAlibiLen, longSeqAlibiLen}, alibi && sz == DIM_2},
-            {{q.desc.dims[DIM_0], maxKv}, lookAhead},
-            {{batch, maxQ, maxKv}, norm},
-            {{headSize, maxQ, maxKv}, alibi},
-            {{headSize, maxQ, LONG_SEQ_LEN}, isAlibiCompress},
-            {{batch, headSize, maxQ, maxKv}, true}
+            {{LONG_SEQ_LEN_OPT, LONG_SEQ_LEN_OPT}, isLongSeq && norm},
         };
         // 保证mask一定能覆盖S，核内不会出现异常，用户保证1.避免多传;2.数值正常
         MKI_CHECK(FindMask(supports, currentShape, false), "current mask shape is unsupported!", return false);
@@ -263,8 +246,8 @@ private:
                   "Input0 dtype " << GetStrWithDType(tensorQ.desc.dtype)
                                   << " invalid, should be float16 or bfloat16",
                                   return Status::FailStatus(ERROR_INVALID_VALUE));
-        auto &tensorKcache = launchParam.GetInTensor(DIM_2); // K.shape = [layerNum, batch, max_seqlen, hiddensize]
-        auto &tensorVcache = launchParam.GetInTensor(DIM_4); // V.shape = [layerNum, batch, max_seqlen, hiddensize]
+        auto &tensorKcache = launchParam.GetInTensor(DIM_2); // K.shape = [batch, max_seqlen, hiddensize]
+        auto &tensorVcache = launchParam.GetInTensor(DIM_4); // V.shape = [batch, max_seqlen, hiddensize]
         if (CheckEmptyTensor(tensorKcache) || CheckEmptyTensor(tensorVcache)) {
             MKI_CHECK(CheckEmptyTensor(tensorKcache) && CheckEmptyTensor(tensorVcache),
                       "normal k and v should both be empty tensor if batches are split",
