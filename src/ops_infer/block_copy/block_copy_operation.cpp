@@ -162,7 +162,7 @@ Status BlockCopyOperation::SetupDimCheck310P(const SVector<atb::Tensor> &inTenso
                 ATB_LOG(ERROR) << GetLogPrefix() << "ND format product of the first three tensor dim should be aligned to 16";
                 return ERROR_INVALID_TENSOR_DIM;
             }
-    }        
+    }
     if (inTensors.at(2).desc.shape.dims[0] != inTensors.at(4).desc.shape.dims[0]) {
         ATB_LOG(ERROR) << "src dim should be same as cumsum";
         return ERROR_INVALID_TENSOR_DIM;
