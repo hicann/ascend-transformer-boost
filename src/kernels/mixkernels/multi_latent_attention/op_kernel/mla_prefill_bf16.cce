@@ -97,6 +97,7 @@ public:
         this->max_kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 14));
 
         this->data_shape_type = 0;
+        this->group_num = q_heads / kv_heads;
         this->stride_qo = q_heads * 128;
         this->stride_o = q_heads * embdv;
         this->stride_k = kv_heads * 128;
