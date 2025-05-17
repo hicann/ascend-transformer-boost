@@ -7071,3 +7071,7 @@ class ScatterElementsV2Operation(DataGen):
 class GmmDeqSwigluQuantGmmDeqOperation(DataGen):
     # only for counterexample
     pass
+
+class MmDeqSwigluQuantMmDeqOperation(DataGen):
+    # onlly for counterexample
+    pass
