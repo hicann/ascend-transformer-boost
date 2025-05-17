@@ -284,7 +284,7 @@ class FillOperation(DataGen):
         else:
             golden_result = torch.full(json_data["outDim"],json_data["value"][0],dtype=torch.float16)
         return [golden_result]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
@@ -301,7 +301,7 @@ class ConcatOperation(DataGen):
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
-   
+
 class DynamicNTKOperation(DataGen):
     OUTPUT_DATA_TYPE_FP16 = 1
     OUTPUT_DATA_TYPE_BF16 = 27
@@ -329,7 +329,7 @@ class DynamicNTKOperation(DataGen):
         inv_freq = torch.from_numpy(inv_freq).npu().to(torch.float32)
         ret_data = positionIds, inv_freq, seqlens
         DynamicNTKOperation.in_tensors = ret_data
-        return DynamicNTKOperation.in_tensors[0]    
+        return DynamicNTKOperation.in_tensors[0]
     @staticmethod
     def golden(in_tensors, op_params):
         json_param = json.loads(op_params)
@@ -364,7 +364,7 @@ class SplitOperation(DataGen):
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
         if "splitSizes" in json_data and len(json_data["splitSizes"]) != 0:
-            if json_data['splitNum'] == 3: 
+            if json_data['splitNum'] == 3:
                 x = in_tensors[0]
                 y = torch.split(x, json_data["splitSizes"], dim = json_data['splitDim'])
                 return [y[0], y[1], y[2]]
@@ -378,7 +378,7 @@ class SplitOperation(DataGen):
             split_output = torch.chunk(in_tensors[0], chunks=json_data['splitNum'], dim=json_data['splitDim'])
             golden_result = torch.stack(split_output)
         return golden_result
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
@@ -1098,7 +1098,7 @@ class GatherOperation(DataGen):
         # 从 op_params 中获取 axis
         json_data = json.loads(op_params)
         axis = json_data["axis"]
-        
+
         # 确保 axis 在 x_shape 的有效范围内
         if axis < 0 or axis >= len(x_shape):
             raise ValueError(f"Axis {axis} is out of bounds for x with shape {x_shape}")
@@ -1121,7 +1121,7 @@ class GatherOperation(DataGen):
             # 生成在 [0, x_size_at_axis) 范围内的索引
             low, high = 0, x_size_at_axis
             indexs_data = ((high - low) * torch.rand(indexs_shape) + low).type(dtype_dict[datatype])
-            
+
         return indexs_data.npu()
     @staticmethod
     def golden(in_tensors, op_params):
@@ -1151,7 +1151,7 @@ class GatherOperation(DataGen):
             # inputFlatten = in_tensors[0].clone().reshape(-1)
             indicesFlatten = in_tensors[1].clone().reshape(-1)
             logging.debug("outputSize",outputSize)
-            
+
             golden_result = torch.zeros(outputSize, dtype=in_tensors[0].dtype, device=in_tensors[0].device).reshape(-1)
             idx = 0
             for i in range(0, dim0):
@@ -1167,7 +1167,7 @@ class GatherOperation(DataGen):
 
         # 返回结果
         return [golden_result.cpu()]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
@@ -1202,7 +1202,7 @@ class AllReduceOperation(DataGen):
         high = float(data_gen_ranges.split(',')[1])
         AllReduceOperation.offset_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict[datatype])
         return torch_npu.npu_format_cast(AllReduceOperation.offset_golden.npu(), format_dict[format])
-    
+
     @staticmethod
     def random(shape, datatype, format, data_gen_ranges, op_params):
         random_seed = int(os.environ["random_seed"])
@@ -1233,8 +1233,8 @@ class AllReduceOperation(DataGen):
                 return AllReduceOperation.gen_offset(shapes[i], datatype, format, data_gen_ranges)
         else:
             if i==0:
-                return AllReduceOperation.gen_input(shapes[i], datatype, format, data_gen_ranges, op_params)         
-        
+                return AllReduceOperation.gen_input(shapes[i], datatype, format, data_gen_ranges, op_params)
+
     @staticmethod
     def load_tensor_from_file(intensor_file, i, op_params) -> torch.Tensor:
         bin = TensorBinFile(intensor_file)
@@ -1256,11 +1256,11 @@ class AllReduceOperation(DataGen):
         if "quantType" in json_data or inTensors[0].dtype == torch.bfloat16:
             result = inTensors[0].clone().to(torch.float)
         else:
-            result = inTensors[0].clone()   
+            result = inTensors[0].clone()
         for i in range(1, len(inTensors)):
             result += inTensors[i]
         return [result.to(torch.bfloat16) if inTensors[0].dtype == torch.bfloat16 else result ]
-    
+
     def sum_cal_quant(inTensors, op_params):
         json_data = json.loads(op_params)
         rankSize = json_data['rankSize']
@@ -1298,7 +1298,7 @@ class AllReduceOperation(DataGen):
         logging.debug("backend: %s, allreduceType: %s", backend, allreduceType)
         logging.debug("env: %s", os.getenv("LCCL_DETERMINISTIC"))
         logging.debug("env: %s", os.getenv("HCCL_DETERMINISTIC"))
- 
+
         res = []
         if "quantType" in json_data and json_data["quantType"] != 0:
             if not hasattr(AllReduceOperation, 'scale_golden'):
@@ -1319,7 +1319,7 @@ class AllReduceOperation(DataGen):
               res = AllReduceOperation.prod_cal(AllReduceOperation.intensors)
         res = [torch.nan_to_num(tensor, nan=0.0, posinf=None, neginf=None) for tensor in res]
         return res
-              
+
     @staticmethod
     def get_op_type(op_params):
         json_data = json.loads(op_params)
@@ -1343,7 +1343,7 @@ class ReduceScatterOperation(DataGen):
             ReduceScatterOperation.intensors.append(intensor_cpu)
         intensor_npu = ReduceScatterOperation.intensors[rank].clone().npu()
         return torch_npu.npu_format_cast(intensor_npu, format_dict[format])
-        
+
     @staticmethod
     def load_tensor_from_file(intensor_file, i, op_params) -> torch.Tensor:
         bin = TensorBinFile(intensor_file)
@@ -1359,28 +1359,28 @@ class ReduceScatterOperation(DataGen):
         result = inTensors[0].clone()
         for i in range(1, len(inTensors)):
             result += inTensors[i]
-        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))    
+        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))
         return [chunks[rank]]
 
     def max_cal(inTensors,rank,rankSize):
         result = inTensors[0]
         for i in range(1,len(inTensors)):
             result = torch.max(result,inTensors[i])
-        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))    
+        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))
         return [chunks[rank]]
 
     def min_cal(inTensors,rank,rankSize):
         result = inTensors[0]
         for i in range(1,len(inTensors)):
             result = torch.min(result,inTensors[i])
-        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))    
+        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))
         return [chunks[rank]]
 
     def prod_cal(inTensors,rank,rankSize):
         result = inTensors[0]
         for i in range(1,len(inTensors)):
             result = torch.mul(result,inTensors[i])
-        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))    
+        chunks = torch.split(result,int(inTensors[0].shape[0]/rankSize))
         return [chunks[rank]]
 
 
@@ -1392,7 +1392,7 @@ class ReduceScatterOperation(DataGen):
         reduceType = json_data['reduceType']
         backend = json_data['backend']
         logging.debug("backend: %s, reduceType: %s", backend, reduceType)
- 
+
         if reduceType == "sum":
            return ReduceScatterOperation.sum_cal(ReduceScatterOperation.intensors,rank,rankSize)
         elif reduceType == "max":
@@ -1401,7 +1401,7 @@ class ReduceScatterOperation(DataGen):
             return ReduceScatterOperation.min_cal(ReduceScatterOperation.intensors,rank,rankSize)
         elif reduceType == "prod":
             return ReduceScatterOperation.prod_cal(ReduceScatterOperation.intensors,rank,rankSize)
-              
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
@@ -1646,7 +1646,7 @@ class BlockCopyOperation(DataGen):
             return torch.from_numpy(BlockCopyOperation.generate_cumSum(shapes[2][0], shapes[3][0]).astype(np.int32)).int().npu()
         else:
             raise ValueError("Index Error")
-        
+
     @staticmethod
     def golden(in_tensors, op_params):
         kCacheGolden = in_tensors[0].cpu().clone()
@@ -1808,7 +1808,7 @@ class PadOperation(DataGen):
             golden_result[i] = tmp_out[tempVal - 1]
         golden_result = torch.from_numpy(golden_result)
         return [golden_result]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
@@ -2059,7 +2059,7 @@ class TransdataOperation(DataGen):
             golden_result = TransdataOperation.golden_nz_to_nd(in_tensors, json_data["outCrops"])
 
         return [golden_result]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.CAST
@@ -2125,7 +2125,7 @@ class TopkToppSamplingOperation(DataGen):
             probs_masked_topk = probs_masked_topk.numpy()
             if in_tensors[0].dtype == torch.float16:
                 probs_cumsumed = np.cumsum(probs_masked_topk, axis=-1, dtype=np.float16).astype(np.float32)
-            elif in_tensors[0].dtype == torch.bfloat16:    
+            elif in_tensors[0].dtype == torch.bfloat16:
                 probs_cumsumed = torch.cumsum(torch.from_numpy(probs_masked_topk.copy()).bfloat16(), dim=-1).to(torch.float32).numpy()
             probs_cumsumed = torch.from_numpy(probs_cumsumed)
             probs_masked_topk = torch.from_numpy(probs_masked_topk)
@@ -2223,17 +2223,17 @@ class SwigluQuantOperation(DataGen):
         in_tensors = torch.empty(shapes[0]).uniform_(0, 1).to(dtype_dict[datatype]).npu()
         in_tensors = torch_npu.npu_format_cast(in_tensors, format_dict[format])
         return in_tensors
-    
+
     @staticmethod
     def golden(in_tensors, op_params):
         def sigmoid(x):
             return 1 / (1 + np.exp(-x))
-    
+
         def do_swiglu(a, b):
             sigmoid_mul_a = sigmoid(a) * a
             swiglu_y = sigmoid_mul_a * b
             return swiglu_y
-        
+
         def do_quant(swiglu_y):
             y_tmp = swiglu_y
             y_tmp = np.array(y_tmp)
@@ -2247,19 +2247,19 @@ class SwigluQuantOperation(DataGen):
             dynamic_scale = 1 / dynamic_scale
             dynamic_scale_output = np.append(dynamic_scale_output, dynamic_scale)
             return quant_y,dynamic_scale_output
-        
+
         def SwiGluQuantGolden(x_golden):
             x_golden = np.array(x_golden.cpu().float()).astype(np.float32)
             a, b = np.split(x_golden, 2, axis=1)
             wiglu_y = do_swiglu(a, b)
             quant_y, dynamic_scale = do_quant(wiglu_y)
             return torch.from_numpy(quant_y).npu(), torch.from_numpy(dynamic_scale).npu()
-        
+
         if in_tensors[0].dtype == torch.bfloat16:
             in_tensors[0] = in_tensors[0].to(torch.float32)
         golden_res = SwiGluQuantGolden(in_tensors[0].cpu())
         return [golden_res[0].to('cpu'), golden_res[1].to('cpu')]
- 
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.COMPUTE_QUANT
@@ -2317,7 +2317,7 @@ class IndexAddOperation(DataGen):
             in_tensor_valid_indices_num = IndexAddOperation.in_tensors[3]
             valid_indices_num = in_tensor_valid_indices_num.item()
             if valid_indices_num == 0:
-                return [in_tensor_var] 
+                return [in_tensor_var]
             in_tensor_var = in_tensor_var.float()
             in_tensor_updates = in_tensor_updates.float()
             in_tensor_indices = torch.split(in_tensor_indices, in_tensor_valid_indices_num.item(), dim=0)[0]
@@ -2501,7 +2501,7 @@ class LayerNormWithStrideOperation(DataGen):
             input = in_tensors[0].float()
             weight = in_tensors[1].float()
             bias = in_tensors[2].float()
-            if not is_quant:                
+            if not is_quant:
                 xshape = in_tensors[0].shape
                 stride = in_tensors[3].tolist()
                 golden_result = torch.nn.functional.layer_norm(input.as_strided(xshape, stride, 0), in_tensors[1].shape, weight, bias, eps)
@@ -2599,7 +2599,7 @@ class LayerNormWithStrideOperation(DataGen):
             return OpTypes.VECTOR_FUSION
         else:
             return OpTypes.COMPUTE_QUANT
-    
+
     @staticmethod
     def case_preprocess(op_params, operation, input_tensor_list):
         stride = input_tensor_list[3].tolist()
@@ -2624,7 +2624,7 @@ class LayerNormWithStrideOperation(DataGen):
 
     @staticmethod
     def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
-        stride = input_tensor_list[3].tolist()           
+        stride = input_tensor_list[3].tolist()
         xshape = input_tensor_list[0].shape
         output_tensor_list[0] = output_tensor_list[0].as_strided(xshape, stride, 0)
 
@@ -2709,7 +2709,7 @@ class RmsNormOperation(DataGen):
             golden_output = golden_output.half()
             golden_result_quant = torch.clamp(golden_output, -128, 127)
             return golden_result_quant.type(torch.int8)
-        
+
         if json_param['layerType'] == 2 and json_data['quantType'] == 2:
             golden_result = [rms_norm_quant_with_tensor(golden_output, in_tensors[3],in_tensors[4],in_tensors[5]), x]
         elif json_param['layerType'] == 3 and json_data['quantType'] == 2:
@@ -2883,7 +2883,7 @@ class RmsNormWithStrideOperation(DataGen):
             golden_output = golden_output.half()
             golden_result_quant = torch.clamp(golden_output, -128, 127)
             return golden_result_quant.type(torch.int8)
-        
+
         if json_param['layerType'] == 2 and json_data['quantType'] == 2:
             golden_result = [rms_norm_quant_with_tensor(golden_output, in_tensors[3],in_tensors[4],in_tensors[5]), x]
         elif json_param['layerType'] == 3 and json_data['quantType'] == 2:
@@ -2981,7 +2981,7 @@ class AsStridedOperation(DataGen):
         json_data = json.loads(op_params)
         golden_result = torch.as_strided(in_tensors[0], json_data['size'], json_data['stride'], json_data['offset'][0])
         return [golden_result]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
@@ -3013,7 +3013,7 @@ class MultinomialOperation(DataGen):
                         ret[j][z] = i
                         break
         return [torch.from_numpy(ret.astype(np.int32)).contiguous()]
-        
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.COMPUTE_FLOAT
@@ -3040,7 +3040,7 @@ class SliceOperation(DataGen):
 
     @staticmethod
     def get_op_type(op_params):
-        return OpTypes.MOVE   
+        return OpTypes.MOVE
 
 
 class SoftmaxOperation(DataGen):
@@ -3048,7 +3048,7 @@ class SoftmaxOperation(DataGen):
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
         in_tensor_dim_num = in_tensors[0].dim()
-        if in_tensors[0].dtype not in [dtype_dict["float"], dtype_dict["int64"], dtype_dict["bf16"]]: 
+        if in_tensors[0].dtype not in [dtype_dict["float"], dtype_dict["int64"], dtype_dict["bf16"]]:
             in_tensors[0] = in_tensors[0].to(torch.float32)
         json_data["axes"] = [ i % in_tensor_dim_num for i in json_data["axes"] ]
         target_shape = in_tensors[0].shape[json_data["axes"][0]:json_data["axes"][-1] + 1]
@@ -3057,7 +3057,7 @@ class SoftmaxOperation(DataGen):
         out_tensor = softmax0(in_tensor_flatten)
         out_tensor = out_tensor.unflatten(json_data["axes"][0], target_shape)
         return [out_tensor]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.COMPUTE_FLOAT
@@ -3275,7 +3275,7 @@ class RopeOperation(DataGen):
             q_embed = ((q * cos) + (RopeOperation.rotate_half(q) * sin)).view(ntoken, hidden_size)
             k_embed = ((k * cos) + (RopeOperation.rotate_half(k) * sin)).view(ntoken, hidden_size1)
             return [q_embed.to(dtype), k_embed.to(dtype)]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.COMPUTE_FLOAT
@@ -3324,7 +3324,7 @@ class ReshapeAndCacheOperation(DataGen):
         if i != 0:
             ReshapeAndCacheOperation.in_tensors[i] = torch_npu.npu_dtype_cast(ReshapeAndCacheOperation.in_tensors[i].npu(), dtype_dict[datatype])
             return torch_npu.npu_format_cast(ReshapeAndCacheOperation.in_tensors[i], format_dict[format])
-        
+
         soc_version = get_soc_version()
         json_data = json.loads(op_params)
         if "kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 1:
@@ -3388,7 +3388,7 @@ class ReshapeAndCacheOperation(DataGen):
         num_heads_v  = shapes[1][1]
         head_size_v = shapes[1][2]
         if (soc_version == 'Ascend910B' and ("kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 2)) or soc_version == 'Ascend310P':
-            block_size = shapes[2][2]   
+            block_size = shapes[2][2]
         else:
             block_size = shapes[2][1]
         num_blocks = shapes[2][0]
@@ -3400,7 +3400,7 @@ class ReshapeAndCacheOperation(DataGen):
             dtype = "float32"
         key = np.random.uniform(-1.0, 1.0, size=(num_tokens, num_heads, head_size_k)).astype(dtype)
         value = np.random.uniform(-1.0, 1.0, size=(num_tokens_v, num_heads_v, head_size_v)).astype(dtype)
-        
+
         num_tokens_slots = shapes[4][0]
         num_slots = block_size * num_blocks
         slot_list = np.zeros((num_tokens_slots)).astype(np.int32)
@@ -3527,7 +3527,7 @@ class ReshapeAndCacheOperation(DataGen):
             for i, slot in enumerate(slot_mapping):
                 block_index = slot // block_size
                 block_offset = slot % block_size
- 
+
                 token_key = in_tensors[0][i]
                 token_v = in_tensors[1][i]
                 token_key = token_key.reshape(num_heads * k_head_size)
@@ -3548,7 +3548,7 @@ class ReshapeAndCacheOperation(DataGen):
                 new_seq[0] = seq_len[0]
                 for n in range(1, len(seq_len)):
                     new_seq[n] = seq_len[n] + seq_len[n-1]
-                
+
                 for i, slot in enumerate(slot_mapping):
                     if slot < 0:
                         continue
@@ -3657,7 +3657,7 @@ class ElewiseOperation(DataGen):
             else:
                 data = ((high - low) * torch.rand(shape) + low).type(dtype_dict[datatype]).npu()
             return torch_npu.npu_format_cast(data, format_dict[format])
-        
+
         return DataGen.random(shape, datatype, format, data_gen_ranges, op_params)
 
     @staticmethod
@@ -3666,10 +3666,10 @@ class ElewiseOperation(DataGen):
         elewiseType = json_data["elewiseType"]
         if elewiseType == 12:
             return ElewiseOperation.random(shapes[i], datatype, format, data_gen_ranges, op_params)
-        
+
         return DataGen.random(shapes[i], datatype, format, data_gen_ranges, op_params)
 
-        
+
     def elewiseCast(in_tensors, op_params):
         json_data = json.loads(op_params)
         outType = json_data['outTensorType']
@@ -3761,7 +3761,7 @@ class ElewiseOperation(DataGen):
 
         # 对 input_x 和 input_scale 进行广播和除法操作
         result = input_x / input_scale
-        
+
         # 如果有 offset，则加上 offset
         if len(input_offset) > 0:
             result += input_offset
@@ -3905,7 +3905,7 @@ class TransposeOperation(DataGen):
         perm = json_data["perm"]
         golden_result = in_tensors[0].permute(perm).cpu()
         return [golden_result]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.CAST
@@ -3985,18 +3985,18 @@ class PagedAttentionOperation(DataGen):
         a, b = shape[-2], shape[-1]
         a0, b0 = 16, 16
         return list(batch) + [math.ceil(b / b0), math.ceil(a / a0), a0, b0]
-    
+
     @staticmethod
     def gen_axes_for_transpose(offset, base):
         return [x for x in range(offset)] + [x + offset for x in base]
-    
+
     @staticmethod
     def convert_nd_to_nz(x):
         array_trans = PagedAttentionOperation.gen_axes_for_transpose(len(x.shape) - 2, [2, 0, 1, 3]) # (m1, m0, n1, n0) -> (n1, m1, m0, n0)
         x_shape = PagedAttentionOperation.shape_nd_to_nz(x.shape, dtype=x.dtype)
         *_, n1, m1, m0, n0 = x_shape
         return x.reshape(x_shape[:-4] + [m1, m0, n1, n0]).transpose(*array_trans) # x原始需要对齐，才能reshape
-    
+
     @staticmethod
     def trans_dtype(dtype):
         if dtype == "float16":
@@ -4011,11 +4011,11 @@ class PagedAttentionOperation(DataGen):
             return torch.int32
         if dtype == "int64":
             return torch.int64
-    @staticmethod        
+    @staticmethod
     def process_deq_scale(deq_scale) -> np.ndarray:
         new_deq_scale = np.frombuffer(deq_scale.tobytes(), dtype=np.uint32)
         return new_deq_scale.astype(np.uint64)
-    
+
     def get_former_head(kvsplit, block_num, num_tokens, num_heads):
         headLimit = 128
         if kvsplit > 1:
@@ -4103,8 +4103,8 @@ class PagedAttentionOperation(DataGen):
         else:
             head_num_move = 1
         return head_num_move
-    
-    @staticmethod    
+
+    @staticmethod
     def group_mm_torch_quant(heads, group_num, A, B, is_k = False, k_descale=None, de_scalev = None):
         group_head = heads // group_num
         score_high = None
@@ -4120,8 +4120,8 @@ class PagedAttentionOperation(DataGen):
             else:
                 score_high = torch.cat((score_high, group_score_high), 0)
         return score_high
-    
-    @staticmethod    
+
+    @staticmethod
     def group_mm_torch(heads, group_num, A, B, razor_mod=0, is_k=False, k_descale=None, k_offset=None,\
                        v_descale=None, v_offset=None, is_int8_flag=False, has_bias=False):
         group_head = heads // group_num
@@ -4150,7 +4150,7 @@ class PagedAttentionOperation(DataGen):
             else:
                 score_high = torch.cat((score_high, group_score_high), 0)
         return score_high
-    
+
     def softmax_numpy(sim):
         sim = sim.cpu().numpy()
         row_max = np.max(sim, axis=-1, keepdims=True)
@@ -4291,7 +4291,7 @@ class PagedAttentionOperation(DataGen):
             sim = sim + mask[:sim.shape[-2], :sim.shape[-1]]
         elif mask.shape[0] != 0:
             sim = sim + mask.to(torch.float32)
-        
+
         # softmax
         if is_quant:
             gm = np.full([query.shape[0] , 1, 1],  np.finfo(np.float32).min)
@@ -4474,7 +4474,7 @@ class PagedAttentionOperation(DataGen):
             mm = torch.pow(m1, torch.arange(1, 1 + 2 * (num_head - n), 2))
             slopes = torch.cat([slopes, mm])
         return slopes
-    
+
     @staticmethod
     def create_lookahead_mask(num_tokens, batch, max_seq_len, q_seqlen_list, mask_type):
         mask = np.array([])
@@ -4521,7 +4521,7 @@ class PagedAttentionOperation(DataGen):
             for i in range(batch):
                 mask[i, :, :i] = -10000
         return mask
-    
+
     @staticmethod
     def create_seq_lens(num_tokens, batch):
         seq_lens = random.sample(range(1, num_tokens), k = batch - 1)
@@ -4777,7 +4777,7 @@ class PagedAttentionOperation(DataGen):
         golden_tensors = [torch.from_numpy(tensor).npu() for tensor in golden_data]
         PagedAttentionOperation.golden_tensors = golden_tensors
         PagedAttentionOperation.in_tensors = in_tensors
-        
+
         PagedAttentionOperation.in_tensors[0] = \
                             PagedAttentionOperation.in_tensors[0].to(PagedAttentionOperation.trans_dtype(datatype))
         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[0], format_dict[format])
@@ -4805,7 +4805,7 @@ class PagedAttentionOperation(DataGen):
         if "calcType" in json_data and json_data["calcType"] == 1:
             host_tensor_dict["qLens"] = input_tensor_list[qSeqLens_index].tolist()
         host_tensor_dict["contextLens"] = input_tensor_list[contextLens_index].tolist()
- 
+
         run_param = json.dumps(host_tensor_dict)
         operation.set_varaintpack_param(run_param)
 
@@ -5012,7 +5012,7 @@ class SelfAttentionOperation(DataGen):
                 score = np.concatenate((score, group_score), 0)
         logging.debug(score.shape)
         return score
-    
+
     def calc_expect_func(batch, seqlen, heads, embed, group_num=32):
         is_mask = False
         variate_seq = False
@@ -5142,7 +5142,7 @@ class SelfAttentionOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         json_data = json.loads(op_params)
-        if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1: 
+        if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1:
             MASK_TYPE_NO_HEAD_DECODER = 5
             mask_type =MASK_TYPE_NO_HEAD_DECODER
             data_type = torch.float16
@@ -5178,7 +5178,7 @@ class SelfAttentionOperation(DataGen):
             SelfAttentionOperation.embeddim = embeddim
             SelfAttentionOperation.max_seq = max_seq
             SelfAttentionOperation.clamp_min = clamp_min
-            SelfAttentionOperation.clamp_max = clamp_max             
+            SelfAttentionOperation.clamp_max = clamp_max
             SelfAttentionOperation.in_tensors = [q,k,v,attention_mask.to(data_type).npu(),torch.tensor(kv_seqLen).to(torch.int32).npu(),torch.tensor(q_seqlen).to(torch.int32).npu(),layer_id]
             return SelfAttentionOperation.in_tensors[i]
         if json_data["calcType"] == 3:
@@ -5298,8 +5298,8 @@ class SelfAttentionOperation(DataGen):
         asdops_param["post_mask_coff"] = -3e38
         if json_data["kernelType"] == 1:
             asdops_param["post_mask_coff"] = 1
-        
-        
+
+
         asdops_param["data_type"] = q.dtype
         asdops_param["q_ntokens"] = q.shape[0]
         asdops_param["kv_ntokens"] = k.shape[0]
@@ -5431,7 +5431,7 @@ class SelfAttentionOperation(DataGen):
             q_offset += q_s
             k_offset += kv_s
             v_offset += kv_s
-        
+
         # golden data
         # out = torch.from_numpy(out)
         out = out.view(q_ntokens, head_num, embed)
@@ -5440,11 +5440,11 @@ class SelfAttentionOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
-        if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1: 
+        if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1:
             q_offset = 0
             k_offset = 0
             v_offset = 0
-            isdecoder = 1 
+            isdecoder = 1
             is_clamp = 0
             batch = SelfAttentionOperation.batch
             heads = SelfAttentionOperation.heads
@@ -5499,7 +5499,7 @@ class SelfAttentionOperation(DataGen):
                     score = np.float16(np.maximum(score, clamp_min_brc))
                     score = torch.from_numpy(np.float16(np.minimum(score, clamp_max_brc)))
                 if is_mask:
-                    #score = score + self.mask_info[1](self.mask, idx, q_s, kv_s) 
+                    #score = score + self.mask_info[1](self.mask, idx, q_s, kv_s)
                     score = score + mask[idx, :q_s, :kv_s] * SelfAttentionOperation.post_mask_coff
                 score = score.numpy().astype(np.float32)
                 score_max = np.max(score, axis=-1)
@@ -5526,7 +5526,7 @@ class SelfAttentionOperation(DataGen):
                 q_offset += q_s
                 k_offset += max_seq
                 v_offset += max_seq
-            
+
             # golden data
             out = out.view(q_ntokens, heads * embed)
             golden_out = out.to(q.dtype)
@@ -5638,7 +5638,7 @@ class SelfAttentionOperation(DataGen):
                 if dim0 == 1:
                     attention_mask = attention_mask.contiguous().view(dim1, dim1)
                 elif dim0 != batch:
-                    
+
 
                     attention_mask = attention_mask.contiguous().view(batch, dim0 // batch, dim1, dim1)
 
@@ -5802,7 +5802,7 @@ class SelfAttentionOperationDumpTensor(DataGen):
                 __class__.golden_generator = SelfAttentionGolden()
             __class__.golden_generator.is_910b == get_soc_version() == "Ascend910B"
         return __class__.golden_generator.tensor_customize(shapes[i], dtype_dict[datatype], format, data_gen_ranges)
-    
+
     @staticmethod
     def case_preprocess(op_params, operation, input_tensor_list):
         json_data = json.loads(op_params)
@@ -5816,8 +5816,8 @@ class SelfAttentionOperationDumpTensor(DataGen):
             if ('mlaVHeadSize' in json_data.keys() and json_data['mlaVHeadSize'] > 0):
                 seqlen_id -= 1
             run_param = {"seqLen": input_tensor_list[seqlen_id].tolist()}
-            
-            
+
+
         else:
             token_offset_id = 6
             if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1:
@@ -5826,15 +5826,15 @@ class SelfAttentionOperationDumpTensor(DataGen):
             if json_data["maskType"] == 0:
                 token_offset_id -= 1
             if 'batchRunStatusEnable' in json_data.keys() and json_data['batchRunStatusEnable']:
-                run_param = {"tokenOffset": input_tensor_list[token_offset_id].tolist(), 
+                run_param = {"tokenOffset": input_tensor_list[token_offset_id].tolist(),
                             "seqLen": input_tensor_list[token_offset_id+1].tolist(),
                             "batchStatus": input_tensor_list[token_offset_id+3].tolist()}
             else:
-                run_param = {"tokenOffset": input_tensor_list[token_offset_id].tolist(), 
+                run_param = {"tokenOffset": input_tensor_list[token_offset_id].tolist(),
                             "seqLen": input_tensor_list[token_offset_id+1].tolist()}
         run_param = new_item | run_param
         operation.set_varaintpack_param(json.dumps(run_param))
-            
+
     @staticmethod
     def zero(shape, datatype, format, data_gen_ranges, op_params):
         data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
@@ -6425,7 +6425,7 @@ class GroupTopkOperation(DataGen):
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
-    
+
 class GroupedMatmulWithRoutingOperation(DataGen):
     def __init__(self):
         pass
@@ -6486,7 +6486,7 @@ class GroupedMatmulWithRoutingOperation(DataGen):
             num_tokens //= topK
         hidden_size_out = weight.shape[1] if transposeB else weight.shape[2]
         if groupedMatmulType == 0:
-            if outDataType == -1: 
+            if outDataType == -1:
                 ref = []
                 e_start = 0
                 for e in range(num_experts):
@@ -6499,7 +6499,7 @@ class GroupedMatmulWithRoutingOperation(DataGen):
                     ref.append(torch.mm(a.float(), b.float()).numpy())
                     e_start += experts_count[e]
                 ref = np.concatenate(ref)
-                return [torch.tensor(ref).to(activation.dtype)]       
+                return [torch.tensor(ref).to(activation.dtype)]
             else:
                 nscale = in_tensors[4]
                 mscale = in_tensors[5]
@@ -6513,13 +6513,13 @@ class GroupedMatmulWithRoutingOperation(DataGen):
                     if transposeB:
                         b = b.transpose_(0, 1)
                     c = torch.mm(a.int(), b.int())
-                    c_quant = c * mscale[experts_index[e_start : e_start + experts_count[e]]].reshape(-1,1) * nscale[e].reshape(1,-1) 
+                    c_quant = c * mscale[experts_index[e_start : e_start + experts_count[e]]].reshape(-1,1) * nscale[e].reshape(1,-1)
                     ref.append(c_quant)
                     e_start += experts_count[e]
                 ref = torch.cat(ref)
-                return [torch.tensor(ref).to(toDataType)]        
+                return [torch.tensor(ref).to(toDataType)]
         else:
-            if outDataType == -1: 
+            if outDataType == -1:
                 ref = torch.zeros(num_tokens, hidden_size_out, dtype=torch.float32)
                 e_start = 0
                 for e in range(num_experts):
@@ -6532,7 +6532,7 @@ class GroupedMatmulWithRoutingOperation(DataGen):
                     c = torch.mm(a.float(), b.float())
                     ref[experts_index[e_start : e_start + experts_count[e]]] += c
                     e_start += experts_count[e]
-                return [torch.tensor(ref).to(activation.dtype)]     
+                return [torch.tensor(ref).to(activation.dtype)]
             else:
                 nscale = in_tensors[4]
                 mscale = in_tensors[5]
@@ -6549,7 +6549,7 @@ class GroupedMatmulWithRoutingOperation(DataGen):
                     c_quant = (c * mscale[e_start : e_start + experts_count[e]].reshape(-1,1)) * nscale[e].reshape(1,-1)
                     ref[experts_index[e_start : e_start + experts_count[e]]] += c_quant
                     e_start += experts_count[e]
-                return [torch.tensor(ref).to(toDataType)]    
+                return [torch.tensor(ref).to(toDataType)]
 
     @staticmethod
     def get_op_type(op_params) -> OpTypes:
@@ -6572,7 +6572,7 @@ class CohereLayerNormOperation(DataGen):
         if isbf16:
             ret = ret.to(torch.bfloat16)
         return [ret]
-    
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.COMPUTE_FLOAT
@@ -6616,7 +6616,7 @@ class GatherPreRmsNormOperation(DataGen):
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
         epsilon = json_data['epsilon']
-        
+
         data_type = in_tensors[0].dtype
         input0 = in_tensors[0].clone().detach().float().cpu()
         input1 = in_tensors[1].clone().detach().float().cpu()
@@ -6643,7 +6643,7 @@ class NormRopeReshapeOperation(DataGen):
     random_idx = 0
     def __init__(self):
         pass
- 
+
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         soc_version = get_soc_version()
@@ -6666,7 +6666,7 @@ class NormRopeReshapeOperation(DataGen):
             if i == 5:
                 input5 = torch.tensor(np.random.choice(100, shapes[5][0], replace=False)).to(dtype_dict[datatype]).npu()
                 return input5
- 
+
             input6 = torch.zeros((shapes[6][0], shapes[6][1], shapes[6][2], shapes[6][3])).to(dtype_dict[datatype]).npu()
             return input6
 
@@ -6731,17 +6731,17 @@ class NormRopeReshapeOperation(DataGen):
             block_index = slot // block_size
             block_offset = slot % block_size
             token_key = key_rac[i]
-        
+
             keycacheout_golden[block_index][block_offset] = token_key
         return keycacheout_golden
- 
+
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
         epsilon = json_data['epsilon']
-        
+
         data_type = in_tensors[6].dtype
- 
+
         input0 = np.array(in_tensors[0].cpu()).astype(np.float16)  # x
         input1 = np.array(in_tensors[1].cpu()).astype(np.float16)  # gamma
         input2 = np.array(in_tensors[2].cpu()).astype(np.float16)  # keyRope
@@ -6749,16 +6749,16 @@ class NormRopeReshapeOperation(DataGen):
         input4 = np.array(in_tensors[4].cpu()).astype(np.float16)  # sin
         input5 = np.array(in_tensors[5].cpu()).astype(np.int32)    # slotMapping
         input6 = np.array(in_tensors[6].cpu()).astype(np.float16)  # keycachein
- 
+
         keycacheout_golden = np.zeros_like(input6)                 # keycacheout
- 
+
         rmsnorm_output = NormRopeReshapeOperation.rmsnorm_golden(input0, input1, epsilon)
         rope_output = NormRopeReshapeOperation.rope_golden(input2, input4, input3)
         rope_reshape = rope_output.reshape(input4.shape[0], -1, input4.shape[-1])
         key_rac = np.concatenate((rmsnorm_output, rope_reshape), axis=-1)
         output = NormRopeReshapeOperation.rac_golden(input6.shape[1], key_rac, input5, keycacheout_golden)
         return [torch.tensor(output).to(data_type)]
- 
+
     @staticmethod
     def get_op_type(op_params) -> OpTypes:
         return OpTypes.COMPUTE_FLOAT
@@ -6828,13 +6828,13 @@ class FusedAddTopkDivOperation(DataGen):
         return OpTypes.VECTOR_FUSION
 
 class ReshapeAndCacheOmniOperation(DataGen):
- 
- 
+
+
     @staticmethod
     def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
         output_tensor_list[0] = input_tensor_list[2]
         output_tensor_list[1] = input_tensor_list[3]
- 
+
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
@@ -6846,53 +6846,53 @@ class ReshapeAndCacheOmniOperation(DataGen):
         wins = in_tensors[5]
         seqLen = in_tensors[6]
         offsetIndex = in_tensors[7]
- 
+
         num_tokens, num_heads, head_size = key.shape
         block_size = key_expect.shape[1]
- 
- 
+
+
         key_expect_fp32 = key_expect.clone().to(torch.float32)
         value_expect_fp32 = value_expect.clone().to(torch.float32)
- 
+
         new_seq = seqLen.clone()
         new_seq[0] = seqLen[0]
         for n in range(1, seqLen.shape[0]):
             new_seq[n] = seqLen[n] + new_seq[n-1]
         new_seq = torch.cat((torch.zeros(1, dtype=torch.int32), new_seq), dim=0)
- 
+
         for i, slot in enumerate(slot_mapping):
             if slot < 0:
                 continue
             win = wins[i].clone()
             curIdxOffset = offsetIndex[i]
- 
+
             bsID = i // num_heads
             headID = i % num_heads
             headStartIdx = new_seq[bsID]
             headEndIdx = curIdxOffset + wins[i]
             bs = new_seq[bsID]
- 
+
             sum_key = torch.zeros(head_size, dtype = torch.float32)
             sum_value = torch.zeros(head_size, dtype = torch.float32)
             for j in range(seqLen[bsID]):
                 block_index = torch.div(slot, block_size, rounding_mode='trunc')
                 block_offset = slot % block_size
- 
+
                 token_key = key[bs+j][headID]
                 token_v = value[bs+j][headID]
                 if curIdxOffset == -1 or (j < curIdxOffset and curIdxOffset != -1):
                     key_expect_fp32[block_index][block_offset] = token_key
                     value_expect_fp32[block_index][block_offset] = token_v
                     slot+=1
-                    
+
                 if j >= headEndIdx and curIdxOffset != -1:
                     key_expect_fp32[block_index][block_offset] = token_key.to(torch.float32)
                     value_expect_fp32[block_index][block_offset] = token_v.to(torch.float32)
                     slot+=1
- 
+
         return key_expect_fp32, value_expect_fp32
-        
- 
+
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.MOVE
@@ -7049,21 +7049,25 @@ class ScatterElementsV2Operation(DataGen):
         input_tensor = ScatterElementsV2Operation.origin_input_tensor
         indice_tensor = in_tensors[1]
         update_tensor = in_tensors[2]
- 
+
         axis = json_data["axis"]
         reduction = "add" if "reduction" in json_data and json_data[ "reduction"] == 1 else None
- 
+
         if reduction:
             input_tensor.scatter_(axis, indice_tensor.long(), update_tensor, reduce=reduction)
         else:
             input_tensor.scatter_(axis, indice_tensor.long(), update_tensor)
         return [input_tensor,indice_tensor,update_tensor]
- 
+
     @staticmethod
     def case_preprocess(op_params, operation, input_tensor_list):
         # print(input_tensor_list[0])
         ScatterElementsV2Operation.origin_input_tensor = input_tensor_list[0].cpu().clone()
- 
+
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.COMPUTE_FLOAT
+
+class GmmDeqSwigluQuantGmmDeqOperation(DataGen):
+    # only for counterexample
+    pass
