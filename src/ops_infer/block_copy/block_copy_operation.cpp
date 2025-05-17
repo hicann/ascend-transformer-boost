@@ -125,6 +125,11 @@ Status BlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (GetSingleton<Config>().Is310P()) {
+        if ((inTensors.at(0).desc.dtype != ACL_FLOAT16) ||
+            (inTensors.at(1).desc.dtype != ACL_FLOAT16)) {
+            ATB_LOG(ERROR) << "Atlas 300I Duo inference products only support fp16";
+            return ERROR_INVALID_TENSOR_DTYPE;
+        }
         auto status = SetupDimCheck310P(inTensors);
         if (status != NO_ERROR) {
             return status;
