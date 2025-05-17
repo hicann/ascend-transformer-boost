@@ -150,10 +150,19 @@ Status BlockCopyOperation::SetupDimCheck310P(const SVector<atb::Tensor> &inTenso
     if (inTensors.at(0).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ ||
         inTensors.at(1).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ) {
             if ((inTensors.at(0).desc.shape.dims[3] != NZBLOCKSIZE) ||
-                (inTensors.at(1).desc.shape.dims[3] != NZBLOCKSIZE)) {
+                (inTensors.at(1).desc.shape.dims[3] != NZBLOCKSIZE) ||
+                (inTensors.at(0).desc.shape.dims[2] % NZBLOCKSIZE != 0) ||
+                (inTensors.at(1).desc.shape.dims[2] % NZBLOCKSIZE != 0)) { // 2: dim
                     ATB_LOG(ERROR) << GetLogPrefix() << "NZ format tensor dim should be aligned to 16";
+                    return ERROR_INVALID_TENSOR_DIM;
                 }
-        }
+    } else {
+        if ((inTensors.at(0).desc.shape.dims[3] * inTensors.at(0).desc.shape.dims[2] * inTensors.at(0).desc.shape.dims[1]) % NZBLOCKSIZE != 0 ||
+            (inTensors.at(1).desc.shape.dims[3] * inTensors.at(1).desc.shape.dims[2] * inTensors.at(0).desc.shape.dims[1]) % NZBLOCKSIZE != 0) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "ND format product of the first three tensor dim should be aligned to 16";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+    }        
     if (inTensors.at(2).desc.shape.dims[0] != inTensors.at(4).desc.shape.dims[0]) {
         ATB_LOG(ERROR) << "src dim should be same as cumsum";
         return ERROR_INVALID_TENSOR_DIM;
