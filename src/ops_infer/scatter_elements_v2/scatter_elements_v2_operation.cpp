@@ -93,9 +93,13 @@ Status ScatterElementsV2Operation::InferShapeCheckImpl(const SVector<TensorDesc>
 Status ScatterElementsV2Operation::SetupCheckImpl(const SVector<Tensor> &inTensors,
                                                   const SVector<Tensor> &outTensors) const
 {
-    (void)inTensors;
+    const TensorDesc &inputTensorDesc = inTensors.at(0).desc;
+    const TensorDesc &indicesTensorDesc = inTensorDescs.at(1).desc;
+    const TensorDesc &updateTensorDesc = inTensorDescs.at(2).desc;
+ 
+    Status status = ParamCheck(inputTensorDesc, indicesTensorDesc, updateTensorDesc);
     (void)outTensors;
-    return NO_ERROR;
+    return status;
 }
  
 Status ScatterElementsV2Operation::ParamCheck(const TensorDesc &inputTensorDesc, const TensorDesc &indicesTensorDesc,
