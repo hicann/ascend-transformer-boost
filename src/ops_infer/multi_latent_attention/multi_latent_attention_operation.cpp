@@ -134,8 +134,9 @@ static bool ParamPrefillCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "Prefill, headNum should equal to kvHeadNum";
         return false;
     }
-    if (opParam.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SPEC) {
-        ATB_LOG(ERROR) << "Prefill, maskType not support MASK_TYPE_SPEC";
+    if (opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        ATB_LOG(ERROR) << "Prefill, maskType support UNDEFINED and MASK_TYPE_MASK_FREE";
         return false;
     }
     if (opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
