@@ -24,26 +24,32 @@ Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     path += std::string("/.atb_auto_fusion/bishengir_bin/") +
             (OpParam::Fusion::MATMUL_ADD == fusionType.fusionType ? "libmatmul_add.so" : "libmatmul_gelu.so");
     std::string inferWorkspaceFuncName =
-        +(OpParam::Fusion::MATMUL_ADD == fusionType.fusionType ? "matmul_add_" : "matmul_gelu_");
+        (OpParam::Fusion::MATMUL_ADD == fusionType.fusionType ? "matmul_add_" : "matmul_gelu_");
     FusionTilingData *tilingDataPtr = reinterpret_cast<FusionTilingData *>(kernelInfo.GetTilingHostAddr());
     void *handle = dlopen(path.c_str(), RTLD_LAZY);
     if (!handle) {
         MKI_LOG(ERROR) << "host tiling load error!";
-        return Status::FailStatus(-1, "Can not open the binary");
+        return Status::FailStatus(-1, "Can not open the binary!");
     }
     TILING_FUNC_GET tilingFunc = nullptr;
     std::string tilingFuncName = inferWorkspaceFuncName + "tiling_func";
     *(void **)(&tilingFunc) = dlsym(handle, tilingFuncName.c_str());
     KernelArgs *kernelArgs = new (std::nothrow) KernelArgs;
+    if (tilingFunc == nullptr || kernelArgs == nullptr) {
+        return Status::FailStatus(-1, "Get tilingFunc or Malloc for binary params failed!");
+    }
     kernelArgs->tilingDevice = static_cast<void *>(tilingDataPtr);
     kernelArgs->tilingDeviceDup = kernelArgs->tilingDevice;
     tilingFunc(static_cast<void *>(kernelArgs));
-    INFER_WORKSPACE_T inferworkspaceFunc;
+    INFER_WORKSPACE_T inferworkspaceFunc = nullptr;
     inferWorkspaceFuncName += std::to_string(tilingDataPtr->key) + "_infer_workspace_shape_function";
     MKI_LOG(INFO) << "now inferWorkspaceFuncName is" << inferWorkspaceFuncName;
     *(void **)(&inferworkspaceFunc) = dlsym(handle, inferWorkspaceFuncName.c_str());
     KernelArgsForInferShapeWorkspaceWithTiling *wsWithTiling =
         new (std::nothrow) KernelArgsForInferShapeWorkspaceWithTiling;
+    if (inferworkspaceFunc == nullptr || wsWithTiling == nullptr) {
+        return Status::FailStatus(-1, "Get workspaceFunc or Get workspace tiling failed!");
+    }
     wsWithTiling->tilingDevice = tilingDataPtr;
     wsWithTiling->tilingDeviceDup = tilingDataPtr;
     int64_t workSpaceSize = inferworkspaceFunc(static_cast<void *>(wsWithTiling));
