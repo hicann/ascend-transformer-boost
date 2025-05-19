@@ -8,6 +8,7 @@ atb/cxx_abi_0/host/libasdops_cann_host.so
 atb/cxx_abi_0/host/libasdops_host.so
 atb/cxx_abi_1/host/libasdops_cann_host.so
 atb/cxx_abi_1/host/libasdops_host.so
+atb/cxx_abi_0/include/atb/allocator.h
 atb/cxx_abi_0/include/atb/atb_infer.h
 atb/cxx_abi_0/include/atb/context.h
 atb/cxx_abi_0/include/atb/graph_op_builder.h
@@ -20,6 +21,7 @@ atb/cxx_abi_0/include/atb/types.h
 atb/cxx_abi_0/include/atb/utils.h
 atb/cxx_abi_0/include/atb/comm.h
 atb/cxx_abi_0/include/atb/operation_infra.h
+atb/cxx_abi_1/include/atb/allocator.h
 atb/cxx_abi_1/include/atb/atb_infer.h
 atb/cxx_abi_1/include/atb/context.h
 atb/cxx_abi_1/include/atb/graph_op_builder.h
