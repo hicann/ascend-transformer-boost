@@ -69,13 +69,13 @@ Status DefaultHostAllocator::Deallocate(void *addr)
     auto it = memMap.find(addr);
     if (it == memMap.end()) {
         ATB_LOG(ERROR) << "free fail, can not find the address please check the address is made by allocator";
-        return ERROR_CANN_FAIL;
+        return ERROR_CANN_ERROR;
     }
     // Free
     Status st = aclrtFreeHost(addr);
     if (st != 0) {
         ATB_LOG(ERROR) << "aclrtFreeHost host buffer failed!";
-        return ERROR_CANN_FAIL;
+        return ERROR_CANN_ERROR;
     }
     currentAllocateSize_ -= it->second;
     memMap.erase(addr);
