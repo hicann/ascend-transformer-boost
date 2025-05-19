@@ -71,6 +71,11 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
             return ERROR_INVALID_PARAM;
         }
     } else {
+        if (opParam.headNum != 8 && opParam.headNum != 16 && opParam.headNum != 32 && // 8, 16, 32: headNum
+            opParam.headNum != 64 && opParam.headNum != 128) {                        // 64, 128: headNum
+            ATB_LOG(ERROR) << "headNum should be {8,16,32,64,128}";
+            return false;
+        }
         if (opParam.kvHeadNum != 1) {
             ATB_LOG(ERROR) << "kvHeadNum should be 1, only support MQA";
             return ERROR_INVALID_PARAM;
@@ -101,16 +106,10 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
 
 static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam)
 {
-    if (opParam.headNum != 8 && opParam.headNum != 16 && opParam.headNum != 32 && // 8, 16, 32: headNum
-        opParam.headNum != 64 && opParam.headNum != 128) {                        // 64, 128: headNum
-        ATB_LOG(ERROR) << "headNum should be {8,16,32,64,128}";
-        return false;
-    }
     if (opParam.qkScale <= 0 || opParam.qkScale > 1) {
         ATB_LOG(ERROR) << "qkScale should > 0 and <= 1";
         return false;
     }
-
     if (opParam.maskType < infer::MultiLatentAttentionParam::MaskType::UNDEFINED ||
         opParam.maskType > infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
         ATB_LOG(ERROR) << "invalid maskType";
@@ -130,6 +129,10 @@ static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam)
 
 static bool ParamPrefillCheck(const infer::MultiLatentAttentionParam &opParam)
 {
+    if (opParam.headNum < 1 || opParam.headNum > 128) { // 128: headNum
+        ATB_LOG(ERROR) << "headNum should be >= 1 and <= 128";
+        return false;
+    }
     if (opParam.headNum != opParam.kvHeadNum) {
         ATB_LOG(ERROR) << "Prefill, headNum should equal to kvHeadNum";
         return false;
