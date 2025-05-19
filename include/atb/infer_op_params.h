@@ -3113,7 +3113,7 @@ struct GmmDeqSwigluQuantGmmDeqParam {
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[10] = {0};
+    uint8_t rsv[42] = {0};
 };
 
 //!
@@ -3163,7 +3163,7 @@ struct MmDeqSwigluQuantMmDeqParam {
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[14] = {0};
+    uint8_t rsv[46] = {0};
 };
 
 } // namespace infer

@@ -7073,5 +7073,5 @@ class GmmDeqSwigluQuantGmmDeqOperation(DataGen):
     pass
 
 class MmDeqSwigluQuantMmDeqOperation(DataGen):
-    # onlly for counterexample
+    # only for counterexample
     pass
