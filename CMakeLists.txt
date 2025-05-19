@@ -104,7 +104,7 @@ if(BUILD_TEST_FRAMEWORK OR USE_UNIT_TEST OR USE_PYTHON_TEST OR USE_FUZZ_TEST OR 
     add_subdirectory(tests)
 endif()
 if (BUILD_USR_OPS)
-    add_subdirectory(ops_usr_define)
+    add_subdirectory(ops_customize)
 endif()
 add_subdirectory(src)
 
