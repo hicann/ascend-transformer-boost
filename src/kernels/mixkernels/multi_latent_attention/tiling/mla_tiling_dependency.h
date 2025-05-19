@@ -18,7 +18,6 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/status/status.h>
 
-
 namespace AtbOps {
 using namespace Mki;
 constexpr int32_t BLOCK_SIZE = 16;
@@ -36,6 +35,8 @@ constexpr int32_t BLOCK_LIMIT = 128 * 128;
 constexpr int32_t WORKSPACE_BLOCK_SIZE_DB = 65536; // 128 * 256 * 2
 constexpr int32_t DOUBLE_PING_PONG_SIZE = 32768 * 8;
 constexpr int32_t LONG_SEQ_LEN = 128;
+constexpr int32_t NORM_CMP_MASK_LEN = 512;
+constexpr int32_t LONG_SEQ_ALIBI_LEN = 256;
 
 enum class TilingKeyType {
     TILING_HALF_DATA = 0,
@@ -43,6 +44,7 @@ enum class TilingKeyType {
     TILING_INT8_HALF_DATA = 2,
     TILING_INT8_BF16_DATA = 3
 };
+
 
 using PrefillTensor = struct PrefillTensor {
     Tensor query;
@@ -100,16 +102,12 @@ using MLAInfo = struct MLATilingParams {
     int32_t flashDecodingTaskNum = 0;
     int32_t prevSplitNumSum = 0;
     int32_t normalTaskNum = 0;
-
     int32_t maxKvSeqLen = 0;
     int32_t maxSeqLen = 0;
     int32_t maskStride = 0;
     int32_t headStride = 0;
     int32_t blockDim = 0;
-    uint32_t isTriuMask = 0;
-    uint32_t isLongSeq = 0;
     PrefillTensor tensors;
-
     std::vector<BatchNode> batchList = {};
     bool quantFlag = false;
     bool mtpTp1Flag = false;

@@ -230,11 +230,12 @@ inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
         auto maskDim = maskShape.size();
         int32_t maxSeq = maskShape.at(maskDim - 1);
         mmInfo.maxSeqLen = maxSeq;
+        MKI_CHECK(maskType == OpParam::MLA::MASK_TYPE_CAUSAL_COMPRESS,
+                    "mask type invalid",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
         MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
                     return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(maskShape.at(1) == 512, "compress mask shape should be 512, 512",
-                    return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(param.isTriuMask == 1, "compress mask should use with triumask opt",
+        MKI_CHECK(maskShape.at(1) == NORM_CMP_MASK_LEN, "compress mask shape should be 512, 512",
                     return Status::FailStatus(ERROR_INVALID_VALUE));
     }
 
@@ -246,8 +247,6 @@ inline Status MLAPrefillPostCheck(MLAInfo &mmInfo, OpParam::MLA &param)
     MKI_CHECK(mmInfo.batch > 0 && mmInfo.batch <= ND_BATCH_LIMIT, "batch is invalid",
               return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(static_cast<int32_t>(param.qSeqLen.size()) == mmInfo.batch, "SeqLen size is invalid",
-              return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK(mmInfo.isTriuMask == 0 || mmInfo.isTriuMask == 1, "param isTriuMask is invalid",
               return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.embeddingSize <= MAX_EMBEDDING && mmInfo.embeddingSize > 0, "headdimQ is invalid",
                 return Status::FailStatus(ERROR_INVALID_VALUE));
@@ -264,8 +263,7 @@ inline void PrefillLog(MLAInfo &mmInfo, OpParam::MLA &param)
                   << " tor is : " << mmInfo.tor
                   << " kv_head is: " << mmInfo.kvHeads << " embed is: " << mmInfo.embeddingSize
                   << " maskStrid is: " << mmInfo.maskStride << " headStride is: " << mmInfo.headStride
-                  << " isTriuMask " << mmInfo.isTriuMask << " mask type is "
-                  << mmInfo.maskType <<  " longseq is " << mmInfo.isLongSeq;
+                  << " mask type is " << mmInfo.maskType;
 }
 
 void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, size_t batch, int32_t embed)
@@ -278,7 +276,6 @@ void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, size_t batch, int3
     mmInfo.kvSeqLen = param.kvSeqLen.data();
     mmInfo.tor = param.tor;
     mmInfo.kvHeads = param.kvHead == 0 ? param.headSize : param.kvHead;
-    mmInfo.isTriuMask = param.isTriuMask;
     mmInfo.maskType = static_cast<uint32_t>(param.maskType);
 }
 
@@ -337,8 +334,8 @@ Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     ret = GetMLAPrefillTilingParam(mmInfo, blockDim, tilingParam, tilingSize);
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint64_t dataLenFloat = sizeof(float);
-    uint64_t workSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(DOUBLE_PING_PONG_SIZE) * dataLenFloat;
-    kernelInfo.GetScratchSizes() = {workSize, workSize, workSize * 6, workSize}; // oTmp/S/P
+    uint64_t sSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(32768) * 16 * dataLenFloat;
+    kernelInfo.GetScratchSizes() = {sSize, sSize, sSize, sSize * 2}; // oTmp/S/P
     kernelInfo.SetBlockDim(blockDim);
     return Status::OkStatus();
 }

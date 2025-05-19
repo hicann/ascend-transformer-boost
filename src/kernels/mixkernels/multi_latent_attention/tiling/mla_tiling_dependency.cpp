@@ -155,7 +155,7 @@ Status GetNdMLATiling(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilin
     int32_t maxQseqlen =  GetMaxQseqlen(param);
     MKI_CHECK(maxQseqlen > 0, "qSeqlen max value invalid, please check",
         return AtbOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
-        
+
     int32_t maxKVseqlen =  GetMaxKVseqlen(param);
     MKI_CHECK(maxKVseqlen > 0, "kvSeqlen max value invalid, please check",
         return AtbOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
@@ -435,12 +435,12 @@ void PrefillTilingHead(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffse
     tilingParam[NUM5] = torUptr;
     tilingParam[NUM6] = static_cast<uint32_t>(mmInfo.headStride);
     tilingParam[NUM7] = static_cast<uint32_t>(mmInfo.maskStride);
-    tilingParam[NUM8] = mmInfo.isTriuMask;
+    tilingParam[NUM8] = 0;
     tilingParam[NUM9] = static_cast<uint32_t>(addrOffsets.totalQBlkNum);
     tilingParam[NUM10] = static_cast<uint32_t>(TILING_HEAD_SIZE_PREFILL);
     tilingParam[NUM11] = static_cast<uint32_t>(TILING_PARA_SIZE_PREFILL);
     tilingParam[NUM12] = mmInfo.maskType == 0 ? 1 : 2;
-    tilingParam[NUM13] = mmInfo.isLongSeq;
+    tilingParam[NUM13] = 0;
     tilingParam[NUM14] = mmInfo.maxKvSeqLen;
     tilingParam[NUM15] = mmInfo.maskType;
     tilingParam[NUM16] = static_cast<uint32_t>(mmInfo.embeddingSizeV);

@@ -18,7 +18,7 @@
 
 namespace AtbOps {
 using namespace Mki;
-constexpr uint32_t LONG_SEQ_LEN_OPT = 512;
+constexpr uint32_t LONG_SEQ_LEN_COMPRESS = 512;
 class MLAOperation : public OperationBase {
 public:
     explicit MLAOperation(const std::string &opName) noexcept : OperationBase(opName) {}
@@ -187,12 +187,10 @@ private:
         auto currentShape = tensorMask.desc.dims;
         auto maskShape = currentShape.size();
         MKI_CHECK(maskShape == DIM_2, "mask invalid, please check.", return false);
-        auto maskLen = currentShape[maskShape - 1];
-        auto norm = param.maskType == OpParam::MLA::MASK_TYPE_NORM;
+        auto normCompress = param.maskType == OpParam::MLA::MASK_TYPE_CAUSAL_COMPRESS;
         // 全量mask当前仅支持512,512的压缩mask，其余不支持，需配合isTriuMask开启
-        auto isLongSeq = (param.isTriuMask == 1) && (maskLen == LONG_SEQ_LEN_OPT);
         std::vector<std::pair<SVector<int64_t>, bool>> supports = {
-            {{LONG_SEQ_LEN_OPT, LONG_SEQ_LEN_OPT}, isLongSeq && norm},
+            {{LONG_SEQ_LEN_COMPRESS, LONG_SEQ_LEN_COMPRESS}, normCompress},
         };
         // 保证mask一定能覆盖S，核内不会出现异常，用户保证1.避免多传;2.数值正常
         MKI_CHECK(FindMask(supports, currentShape, false), "current mask shape is unsupported!", return false);

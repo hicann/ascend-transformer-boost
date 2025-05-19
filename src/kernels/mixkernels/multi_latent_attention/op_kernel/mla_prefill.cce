@@ -17,6 +17,7 @@
 #include "kernels/utils/kernel/mma.h"
 #include "kernels/utils/kernel/utils.h"
 #include "kernel_operator.h"
+#include "mixkernels/unpad_flash_attention/op_kernel/fa_common.cce"
 
 #ifdef __CCE_KT_TEST__
 #define __aicore__
@@ -32,35 +33,21 @@ constexpr int32_t BIT_SHIFT = 8;
 constexpr int32_t SOFTMAX_MAX_LENGTH = 256;
 
 constexpr int32_t L0AB_HALF_BUF_SIZE = 16384;  // 128 * 128
-constexpr int32_t BLOCK_SIZE = 16;
 constexpr int32_t CUBE_MATRIX_SIZE = 256;         // 16 * 16
 constexpr int32_t L0AB_UINT8_BLOCK_SIZE = 32768;  // 128 * 128 * 2B
 constexpr int32_t KV_DB_SIZE = 65536;  // 128 * 128 * 2B
 constexpr int32_t TMP_SIZE = 32768 * 16;               // 128 * 256
-
-constexpr int32_t FLOAT_BLOCK_SIZE = 8;
-constexpr int32_t VECTOR_SIZE = 128;
-constexpr int32_t FLOAT_VECTOR_SIZE = 64;
 constexpr int32_t UB_UINT8_BLOCK_SIZE = 16384;  // 64 * 128 * 2B
 constexpr int32_t UB_HALF_BUF_SIZE = 8192;
-constexpr int32_t UB_bf16_BUF_SIZE = 8192;      // 64 * 128
 constexpr int32_t UB_UINT8_LINE_SIZE = 512;     // 128 * 4B
 constexpr int32_t UB_FLOAT_LINE_SIZE = 128;     // 128
 constexpr int32_t UB_HALF_LINE_SIZE = 128;       // UB_FLOAT_LINE_SIZE * 2
-constexpr int32_t BASE_MASK_SIZE = 128;
-constexpr int32_t COMPRESS_MASK_SIZE = 8192; // 64 * 128
-constexpr int32_t S_DB_SIZE_FLOAT = 8192;
-constexpr int32_t S_DB_SIZE = 8192;
-constexpr int32_t REDUCE_UB_SIZE = 1024;
-constexpr float BASE_Y = 128;
-
-constexpr int32_t TMP_SIZET = 16384;
 constexpr int32_t BLOCK_QK = 128;
-constexpr int32_t LOCAL_SIZE = 6;
 
 #ifdef __DAV_C220_CUBE__
+constexpr int32_t BLOCK_SIZE = 16;
 
-template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, bool int8_flag = false>
+template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, int32_t MASK_TYPE = 0>
 class FlashAttentionEncoder {
 public:
     __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoder(
@@ -91,12 +78,15 @@ public:
         this->embd = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 3));
         this->embdv = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
         this->kv_heads = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 4));
-        this->is_triu_mask = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 8));
         this->total_q_blk_num = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 9));
         this->tiling_head_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 10));
         this->tiling_para_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 11));
         this->tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
         this->max_kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 14));
+
+        if constexpr(MASK_TYPE != 0) {
+            this->is_triu_mask = 1;
+        }
 
         this->data_shape_type = 0;
         this->group_num = q_heads / kv_heads;
@@ -193,7 +183,6 @@ public:
         }
     }
 
-    template<bool IS_BF16 = true>
     __aicore__ __attribute__((always_inline)) inline void Run()
     {
         uint64_t cur_batch = 0;
@@ -667,9 +656,12 @@ extern "C" __global__ __aicore__ void mla_prefill(
     __gm__ uint8_t *__restrict__ tiling_para_gm)
 {
     uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
-    if (tilingKey == 1 || tilingKey == 2) {
-        FlashAttentionEncoder<half> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run<false>();
+    if (tilingKey == 1) {
+        FlashAttentionEncoder<half, half, half, 0> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
+    } else if (tilingKey == 2) {
+        FlashAttentionEncoder<half, half, half, 1> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
     }
 
 }
@@ -677,469 +669,8 @@ extern "C" __global__ __aicore__ void mla_prefill(
 #endif
 
 #ifdef __DAV_C220_VEC__
-enum class ScaleType {
-    SCALE_TOR = 0,
-    SCALE_LOGN = 1,
-    SCALE_LOGN_FP32 = 2
-};
-
-enum class SoftmaxTile {
-    TILE_512_MAIN = 0,
-    TILE_256_MAIN,
-    TILE_128_MAIN,
-    TILE_TAIL
-};
-
-__aicore__ __attribute__((always_inline)) inline void __set_mask(int32_t len)
-{
-    uint64_t mask = 0;
-    uint64_t one = 1;
-    uint64_t temp = len % FLOAT_VECTOR_SIZE;
-    for (int64_t i = 0; i < temp; i++) {
-        mask |= one << i;
-    }
-
-    if (len == VECTOR_SIZE || len == 0) {
-        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-    } else if (len >= FLOAT_VECTOR_SIZE) {
-        SetVectorMask<int8_t>(mask, (uint64_t)-1);
-    } else {
-        SetVectorMask<int8_t>(0x0, mask);
-    }
-}
-
-
-__aicore__ __attribute__((always_inline)) inline void SetBlockReduceMask(int32_t len)
-{
-    if (len > 16 || len < 1) {
-        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-        return;
-    }
-    uint64_t subMask = ((uint64_t) 1 << len) - 1;
-    uint64_t maskValue = (subMask << 48) + (subMask << 32) + (subMask << 16) + subMask;
-    SetVectorMask<int8_t>(maskValue, maskValue);
-}
-
-
-__aicore__ __attribute__((always_inline)) inline void __set_vcg_mask(int32_t len)
-{
-    if (len > 16 || len < 1) {
-        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-        return;
-    }
-    uint64_t subMask = ((uint64_t) 1 << len) - 1;
-    uint64_t maskValue = (subMask << 48) + (subMask << 32) + (subMask << 16) + subMask +
-                            (subMask << 56) + (subMask << 40) + (subMask << 24) + (subMask << 8);
-    SetVectorMask<int8_t>(maskValue, maskValue);
-}
-
-template<typename S_DTYPE, SoftmaxTile TILE_MODE>
-struct Rowmax {
-    __aicore__ __attribute__((always_inline)) Rowmax(
-        const AscendC::LocalTensor<S_DTYPE> &s_ub,
-        const AscendC::LocalTensor<S_DTYPE> &local_rowmax_ub,
-        const AscendC::LocalTensor<S_DTYPE> &tmp_ub,
-        uint32_t m, uint32_t n_real, uint32_t n_stride);
-};
-
-template<typename EXP_DTYPE, SoftmaxTile TILE_MODE>
-struct Rowsum {
-    __aicore__ __attribute__((always_inline)) Rowsum(
-        const AscendC::LocalTensor<EXP_DTYPE> &s_exp_ub,
-        const AscendC::LocalTensor<EXP_DTYPE> &local_rowsum_ub,
-        const AscendC::LocalTensor<EXP_DTYPE> &tmp_ub,
-        uint32_t m, uint32_t n_real, uint32_t n_stride);
-};
-
-template<typename S_DTYPE>
-struct Rowmax<S_DTYPE, SoftmaxTile::TILE_512_MAIN> {
-    __aicore__ __attribute__((always_inline)) Rowmax(
-        const AscendC::LocalTensor<S_DTYPE> &s_ub,
-        const AscendC::LocalTensor<S_DTYPE> &local_rowmax_ub,
-        const AscendC::LocalTensor<S_DTYPE> &tmp_ub,
-        uint32_t m, uint32_t n_real, uint32_t n_stride)
-    {
-        cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-            tmp_ub,
-            s_ub,
-            m * n_stride / VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-        max_v<ArchType::ASCEND_V220, S_DTYPE>(
-            tmp_ub[REDUCE_UB_SIZE],
-            tmp_ub,
-            tmp_ub[16],
-            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,   // repeat
-            1,                            // dstBlockStride
-            2,                            // src0BlockStride
-            2,                            // src1BlockStride
-            8,                            // dstRepeatStride
-            16,                            // src0RepeatStride
-            16 // src1RepeatStride
-        );
-        PIPE_BARRIER(V);
-        cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-            local_rowmax_ub,
-            tmp_ub[REDUCE_UB_SIZE],
-            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-    }
-};
-
-template<typename S_DTYPE>
-struct Rowmax<S_DTYPE, SoftmaxTile::TILE_256_MAIN>{
-    __aicore__ __attribute__((always_inline)) Rowmax(
-        const AscendC::LocalTensor<S_DTYPE> &s_ub,
-        const AscendC::LocalTensor<S_DTYPE> &local_rowmax_ub,
-        const AscendC::LocalTensor<S_DTYPE> &tmp_ub,
-        uint32_t m, uint32_t n_real, uint32_t n_stride)
-    {
-        cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-            tmp_ub,
-            s_ub,
-            m * n_stride / VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-        cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-            local_rowmax_ub,
-            tmp_ub,
-            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-    }
-};
-
-template<typename EXP_DTYPE>
-struct Rowsum<EXP_DTYPE, SoftmaxTile::TILE_512_MAIN>{
-    __aicore__ __attribute__((always_inline)) Rowsum(
-        const AscendC::LocalTensor<EXP_DTYPE> &s_exp_ub,
-        const AscendC::LocalTensor<EXP_DTYPE> &local_rowsum_ub,
-        const AscendC::LocalTensor<EXP_DTYPE> &tmp_ub,
-        uint32_t m, uint32_t n_real, uint32_t n_stride)
-    {
-        cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-            tmp_ub,
-            s_exp_ub,
-            m * n_stride / FLOAT_VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-        cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-            tmp_ub[REDUCE_UB_SIZE],
-            tmp_ub,
-            m * n_stride / FLOAT_BLOCK_SIZE / FLOAT_VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-        cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-            local_rowsum_ub,
-            tmp_ub[REDUCE_UB_SIZE],
-            m * n_stride / FLOAT_VECTOR_SIZE / FLOAT_VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-    }
-};
-
-template<typename EXP_DTYPE>
-struct Rowsum<EXP_DTYPE, SoftmaxTile::TILE_256_MAIN>{
-    __aicore__ __attribute__((always_inline)) Rowsum(
-        const AscendC::LocalTensor<EXP_DTYPE> &s_exp_ub,
-        const AscendC::LocalTensor<EXP_DTYPE> &local_rowsum_ub,
-        const AscendC::LocalTensor<EXP_DTYPE> &tmp_ub,
-        uint32_t m, uint32_t n_real, uint32_t n_stride)
-    {
-        cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-            tmp_ub,
-            s_exp_ub,
-            m * n_stride / FLOAT_VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-        __set_mask(32);
-        cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-            tmp_ub[REDUCE_UB_SIZE],
-            tmp_ub,
-            m,
-            1,
-            1,
-            4
-        );
-        PIPE_BARRIER(V);
-        __set_vcg_mask(4);
-        cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-            local_rowsum_ub,
-            tmp_ub[REDUCE_UB_SIZE],
-            (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
-            1,
-            1,
-            8
-        );
-        PIPE_BARRIER(V);
-        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-    }
-};
-
-// need todo
-template<typename S_DTYPE>
-struct Rowmax<S_DTYPE, SoftmaxTile::TILE_TAIL>{
-    __aicore__ __attribute__((always_inline)) Rowmax(
-        const AscendC::LocalTensor<S_DTYPE> &s_ub,
-        const AscendC::LocalTensor<S_DTYPE> &local_rowmax_ub,
-        const AscendC::LocalTensor<S_DTYPE> &tmp_ub,
-        uint32_t m, uint32_t n_real, uint32_t n_stride)
-    {
-        if (n_real >= VECTOR_SIZE) {
-            // 128 to 8 each row
-            cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-                tmp_ub,
-                s_ub,
-                m,
-                2,
-                1,
-                n_stride / BLOCK_SIZE
-            );
-            PIPE_BARRIER(V);
-            // 8 to 1 each row
-            SetBlockReduceMask(VECTOR_SIZE / 16);
-            cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-                local_rowmax_ub,
-                tmp_ub,
-                (m * 16 + VECTOR_SIZE - 1) / VECTOR_SIZE,
-                1,
-                1,
-                8
-            );
-            PIPE_BARRIER(V);
-            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-            for (uint64_t rowmax_idx = 1; rowmax_idx < (uint64_t)n_real / VECTOR_SIZE; ++rowmax_idx) {
-                // kvseq 方向每128做一次blk max
-                cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-                    tmp_ub,
-                    s_ub[rowmax_idx * VECTOR_SIZE],
-                    m,
-                    2,
-                    1,
-                    n_stride / BLOCK_SIZE
-                );
-                PIPE_BARRIER(V);
-                SetBlockReduceMask(VECTOR_SIZE / 16);
-                cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-                    tmp_ub[REDUCE_UB_SIZE],
-                    tmp_ub,
-                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
-                    1,
-                    1,
-                    8
-                );
-                PIPE_BARRIER(V);
-                __set_mask(m);
-                max_v<ArchType::ASCEND_V220, S_DTYPE>(
-                    local_rowmax_ub,
-                    local_rowmax_ub,
-                    tmp_ub[REDUCE_UB_SIZE],
-                    1,                        // repeat
-                    1,                            // dstBlockStride
-                    1,                            // src0BlockStride
-                    1,                            // src1BlockStride
-                    8,                            // dstRepeatStride
-                    8,                            // src0RepeatStride
-                    8 // src1RepeatStride
-                );
-                PIPE_BARRIER(V);
-                SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-            }
-        }
-        if (n_real % VECTOR_SIZE > 0) {
-            __set_mask(n_real % VECTOR_SIZE);
-            cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-                tmp_ub,
-                s_ub[n_real / VECTOR_SIZE * VECTOR_SIZE],
-                m,
-                2,
-                1,
-                n_stride / BLOCK_SIZE
-            );
-            PIPE_BARRIER(V);
-            SetBlockReduceMask((n_real % VECTOR_SIZE + BLOCK_SIZE - 1)/ BLOCK_SIZE);
-            if (n_real < VECTOR_SIZE) {
-                cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-                    local_rowmax_ub,
-                    tmp_ub,
-                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
-                    1,
-                    1,
-                    8
-                );
-                PIPE_BARRIER(V);
-            } else {
-                cgmax_v<ArchType::ASCEND_V220, S_DTYPE>(
-                    tmp_ub[REDUCE_UB_SIZE],
-                    tmp_ub,
-                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
-                    1,
-                    1,
-                    8
-                );
-                PIPE_BARRIER(V);
-                __set_mask(m);
-                max_v<ArchType::ASCEND_V220, S_DTYPE>(
-                    local_rowmax_ub,
-                    local_rowmax_ub,
-                    tmp_ub[REDUCE_UB_SIZE],
-                    1,                        // repeat
-                    1,                            // dstBlockStride
-                    1,                            // src0BlockStride
-                    1,                            // src1BlockStride
-                    8,                            // dstRepeatStride
-                    8,                            // src0RepeatStride
-                    8 // src1RepeatStride
-                );
-                PIPE_BARRIER(V);
-            }
-            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-        }
-    }
-};
-
-template<typename EXP_DTYPE>
-struct Rowsum<EXP_DTYPE, SoftmaxTile::TILE_TAIL>{
-    __aicore__ __attribute__((always_inline)) Rowsum(
-        const AscendC::LocalTensor<EXP_DTYPE> &s_exp_ub,
-        const AscendC::LocalTensor<EXP_DTYPE> &local_rowsum_ub,
-        const AscendC::LocalTensor<EXP_DTYPE> &tmp_ub,
-        uint32_t m, uint32_t n_real, uint32_t n_stride)
-    {
-        if (n_real >= FLOAT_VECTOR_SIZE) {
-            cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                tmp_ub,
-                s_exp_ub,
-                m,
-                1,
-                1,
-                n_stride / FLOAT_BLOCK_SIZE
-            );
-            PIPE_BARRIER(V);
-            cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                local_rowsum_ub,
-                tmp_ub,
-                (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
-                1,
-                1,
-                8
-            );
-            PIPE_BARRIER(V);
-            for (uint64_t rowsum_idx = 1; rowsum_idx < (uint64_t)n_real / FLOAT_VECTOR_SIZE; ++rowsum_idx) {
-                cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                    tmp_ub,
-                    s_exp_ub[rowsum_idx * FLOAT_VECTOR_SIZE],
-                    m,
-                    1,
-                    1,
-                    n_stride / FLOAT_BLOCK_SIZE
-                );
-                PIPE_BARRIER(V);
-                cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                    tmp_ub[REDUCE_UB_SIZE],
-                    tmp_ub,
-                    (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
-                    1,
-                    1,
-                    8
-                );
-                PIPE_BARRIER(V);
-                __set_mask(m);
-                add_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                    local_rowsum_ub,
-                    local_rowsum_ub,
-                    tmp_ub[REDUCE_UB_SIZE],
-                    1,                        // repeat
-                    1,                            // dstBlockStride
-                    1,                            // src0BlockStride
-                    1,                            // src1BlockStride
-                    8,                            // dstRepeatStride
-                    8,                            // src0RepeatStride
-                    8 // src1RepeatStride
-                );
-                PIPE_BARRIER(V);
-                SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-            }
-        }
-        if (n_real % FLOAT_VECTOR_SIZE > 0) {
-            __set_mask(n_real % FLOAT_VECTOR_SIZE);
-            cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                tmp_ub,
-                s_exp_ub[n_real / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-                m,
-                1,
-                1,
-                n_stride / FLOAT_BLOCK_SIZE
-            );
-            PIPE_BARRIER(V);
-            __set_vcg_mask((n_real % FLOAT_VECTOR_SIZE + FLOAT_BLOCK_SIZE - 1)/ FLOAT_BLOCK_SIZE);
-            if (n_real < FLOAT_VECTOR_SIZE) {
-                cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                    local_rowsum_ub,
-                    tmp_ub,
-                    (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
-                    1,
-                    1,
-                    8
-                );
-                PIPE_BARRIER(V);
-            } else {
-                cgadd_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                    tmp_ub[REDUCE_UB_SIZE],
-                    tmp_ub,
-                    (m * FLOAT_BLOCK_SIZE + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,
-                    1,
-                    1,
-                    8
-                );
-                PIPE_BARRIER(V);
-                __set_mask(m);
-                add_v<ArchType::ASCEND_V220, EXP_DTYPE>(
-                    local_rowsum_ub,
-                    local_rowsum_ub,
-                    tmp_ub[REDUCE_UB_SIZE],
-                    1,                        // repeat
-                    1,                            // dstBlockStride
-                    1,                            // src0BlockStride
-                    1,                            // src1BlockStride
-                    8,                            // dstRepeatStride
-                    8,                            // src0RepeatStride
-                    8 // src1RepeatStride
-                );
-                PIPE_BARRIER(V);
-            }
-            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-        }
-    }
-};
-
 template<typename S_DTYPE, typename EXP_DTYPE, typename P_DTYPE, typename MASK_DTYPE, uint32_t MASK_TYPE>
-__aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
+__aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1FP16(
     const AscendC::LocalTensor<S_DTYPE> &s_ub,
     const AscendC::LocalTensor<S_DTYPE> &mask_processed_ub,
     const AscendC::LocalTensor<S_DTYPE> &local_rowmax_ub,
@@ -1157,7 +688,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
     const AscendC::GlobalTensor<P_DTYPE> &p_gm,
     bool first_n_iter, half tor,
     uint32_t m, uint32_t n_real, uint32_t n_stride, uint32_t pingpong_flag,
-    bool move_flag, uint32_t long_seq)
+    bool move_flag)
 {
     uint32_t round_m = (m + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
     uint32_t round_m_8 = (m + FLOAT_BLOCK_SIZE - 1) / FLOAT_BLOCK_SIZE * FLOAT_BLOCK_SIZE;
@@ -1189,7 +720,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
     PIPE_BARRIER(V);
 
     if constexpr(MASK_TYPE != 0) {
-        if (move_flag && long_seq) {
+        if (move_flag) {
             WAIT_FLAG(MTE2, V, EVENT_ID6);
             add_v<ArchType::ASCEND_V220, S_DTYPE>(
                 s_ub,
@@ -1210,25 +741,25 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
     PIPE_BARRIER(ALL);
 
     if (n_real == 512) {
-        Rowmax<S_DTYPE, SoftmaxTile::TILE_512_MAIN>(
+        Rowmax<S_DTYPE, RowCalcTile::SPEC_TILE_512>(
             s_ub,
             local_rowmax_ub,
             tmp16_ub,
-            m, n_real, n_stride
+            round_m, n_real, n_stride
         );
     } else if (n_real == 256) {
-        Rowmax<S_DTYPE, SoftmaxTile::TILE_256_MAIN>(
+        Rowmax<S_DTYPE, RowCalcTile::SPEC_TILE_256>(
             s_ub,
             local_rowmax_ub,
             tmp16_ub,
-            m, n_real, n_stride
+            round_m, n_real, n_stride
         );
     } else {
-        Rowmax<S_DTYPE, SoftmaxTile::TILE_TAIL>(
+        Rowmax<S_DTYPE, RowCalcTile::TAIL_TILE>(
             s_ub,
             local_rowmax_ub,
             tmp16_ub,
-            m, n_real, n_stride
+            round_m, n_real, n_stride
         );
     }
     if (first_n_iter) {
@@ -1372,21 +903,21 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
     PIPE_BARRIER(V);
     // *** ll = rowsum(ls32)
     if (n_real == 512) {
-        Rowsum<EXP_DTYPE, SoftmaxTile::TILE_512_MAIN>(
+        Rowsum<EXP_DTYPE, RowCalcTile::SPEC_TILE_512>(
             s_exp_ub,
             local_rowsum_ub,
             tmp_ub,
             round_m_8, n_real, n_stride
         );
     } else if (n_real == 256) {
-        Rowsum<EXP_DTYPE, SoftmaxTile::TILE_256_MAIN>(
+        Rowsum<EXP_DTYPE, RowCalcTile::SPEC_TILE_256>(
             s_exp_ub,
             local_rowsum_ub,
             tmp_ub,
             round_m_8, n_real, n_stride
         );
     } else {
-        Rowsum<EXP_DTYPE, SoftmaxTile::TILE_TAIL>(
+        Rowsum<EXP_DTYPE, RowCalcTile::TAIL_TILE>(
             s_exp_ub,
             local_rowsum_ub,
             tmp_ub,
@@ -1463,7 +994,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
     }
 }
 
-template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, bool int8_flag = false>
+template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, int32_t MASK_TYPE = 0>
 class FlashAttentionEncoderVec {
 public:
     __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderVec(
@@ -1491,7 +1022,6 @@ public:
         this->tor = (half)(*((__gm__ float *)tiling_para_gm + 5));
         this->head_stride = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 6));
         this->mask_stride = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 7));
-        this->is_triu_mask = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 8));
         this->total_q_blk_num = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 9));
         this->tiling_head_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 10));
         this->tiling_para_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 11));
@@ -1499,6 +1029,10 @@ public:
         this->long_seq = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 13));
         this->data_shape_type = 0;
         this->stride_qo = q_heads * embdv;
+
+        if constexpr(MASK_TYPE != 0) {
+            this->is_triu_mask = 1;
+        }
 
         if (this->data_shape_type == 1) {
             this->stride_qo = embdv;
@@ -1548,7 +1082,6 @@ public:
         return (num + VectorSize<Dtype>() - 1) / VectorSize<Dtype>();
     }
 
-    template<bool IS_BF16 = true, uint32_t MASK_TYPE = 0>
     __aicore__ __attribute__((always_inline)) inline void Run()
     {
 
@@ -1639,7 +1172,6 @@ public:
             if (long_seq == 0) {
                 mask_offset += m_idx * pp_m_scalar * max_seqlen;
             }
-            long_seq = 1;
             for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
                 if (n_idx < n_end) {
                     if (sub_m == 0) {
@@ -1665,7 +1197,7 @@ public:
                         uint32_t s_ub_offset = pingpong_flag * S_DB_SIZE;
                         uint32_t row_offset = m_ind * m_slice;
                         if constexpr(MASK_TYPE != 0) {
-                            if (long_seq != 0 && move_flag) {
+                            if (move_flag) {
                                 uint64_t cmp_mask_offset = (m_idx - n_idx) * 512 * 128;
                                 WAIT_FLAG(V, MTE2, EVENT_ID6);
                                 // 搬16 * 512, 压缩mask 512,512
@@ -1689,7 +1221,7 @@ public:
                         if (curr_m == 0) {
                             continue;
                         }
-                        OnlineSoftmaxStage1<half, float, QKV_DT, IN_DATA_TYPE, MASK_TYPE> (
+                        OnlineSoftmaxStage1FP16<half, float, QKV_DT, IN_DATA_TYPE, MASK_TYPE> (
                             ls_ubuf_tensor[pingpong_flag * S_DB_SIZE],
                             mask_ubuf_tensor,
                             lm_ubuf_tensor[m_ind * m_slice],
@@ -1708,7 +1240,7 @@ public:
                             p_gm_tensor[((uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
                                             ((uint64_t)sub_block_idx * qk_m / 2 + m_ind * m_slice) * qk_round_n) * 2 / sizeof(QKV_DT)],
                             n_idx == 0, this->tor,
-                            curr_m, qk_n, qk_round_n, pingpong_flag, move_flag, long_seq
+                            curr_m, qk_n, qk_round_n, pingpong_flag, move_flag
                         );
                         pingpong_flag = 1 - pingpong_flag;
                     }
@@ -1956,7 +1488,6 @@ private:
     AscendC::GlobalTensor<float> o_tmp_gm_tensor;
     AscendC::GlobalTensor<IN_DATA_TYPE> logN_gm_tensor;
     AscendC::GlobalTensor<float> logN_float_gm_tensor;
-    ScaleType scaleType = ScaleType::SCALE_TOR;
     uint32_t batch_size{0};
     uint32_t max_seqlen{0};
     uint32_t q_heads{0};
@@ -2012,15 +1543,15 @@ extern "C" __global__ __aicore__ void mla_prefill(
 {
     uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
     if (tilingKey == 1) {
-        FlashAttentionEncoderVec<half> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+        FlashAttentionEncoderVec<half, half, half, 0> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
                                                         tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm, deq_pv_gm,
                                                         off_pv_gm, logN_gm);
-        fa_vec.Run<false, 0>();
+        fa_vec.Run();
     } else if (tilingKey == 2) {
-        FlashAttentionEncoderVec<half> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+        FlashAttentionEncoderVec<half, half, half, 1> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
                                                         tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm, deq_pv_gm,
                                                         off_pv_gm, logN_gm);
-        fa_vec.Run<false, 1>();
+        fa_vec.Run();
     }
 }
 #endif

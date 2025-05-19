@@ -793,10 +793,6 @@ class TestMLAPrefill(op_test.OpTest):
         return [golden_out]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        # print("----------------out tensors--------------------")
-        # print(out_tensors)
-        # print(golden_tensors)
-        # print("----------------out tensors end--------------------")
         result_single = self.compare_output_data(out_tensors[0].half(), golden_tensors[0].half(), [0.001, 0.001, 0.005, 0.005])
         if self.is_int8_flag:
             result_double = compare_cv(self.golden_out_true, golden_tensors[0], out_tensors[0])
@@ -804,7 +800,6 @@ class TestMLAPrefill(op_test.OpTest):
         else:
             result_double = compare_cv(self.golden_out_true, golden_tensors[0], out_tensors[0])
             return (result_double or result_single)
-        # return True
 
     @op_test.only_910b
     def test_flash_attention_mla_fp16_case1(self):
@@ -814,15 +809,15 @@ class TestMLAPrefill(op_test.OpTest):
         heads = 1       # llama7b  hidden_size 4096
         embeddim = 192
         embeddimV = 128
-        max_seq = 256
+        max_seq = 512
         tor = 1.0 / math.sqrt(1.0 * embeddim)
         dynamic_batch = False
-        kv_seqLen = [256] * batch
+        kv_seqLen = [512] * batch
         is_clamp = 0
         clamp_min = 0
         clamp_max = 0
         OP_NAME = "MLAOperation"
-        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 0, "maskType": 0}
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 0}
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 13)
         self.set_output_formats([self.format_nd])
@@ -856,21 +851,21 @@ class TestMLAPrefill(op_test.OpTest):
     @op_test.only_910b
     def test_flash_attention_mla_fp16_case2(self):
         # unpad encoder
-        batch = 16
-        kv_head = 8     # kv_head num
+        batch = 1
+        kv_head = 1     # kv_head num
         isdecoder = 0       # prefill or decoder
-        heads = 8       # llama7b  hidden_size 4096
+        heads = 1       # llama7b  hidden_size 4096
         embeddim = 192
         embeddimV = 128
-        max_seq = 1024
+        max_seq = 128
         tor = 1.0 / math.sqrt(1.0 * embeddim)
         dynamic_batch = False
-        kv_seqLen = [1024] * batch
+        kv_seqLen = [128] * batch
         is_clamp = 0
         clamp_min = 0
         clamp_max = 0
         OP_NAME = "MLAOperation"
-        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 1, "maskType": 1}
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 5}
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 13)
         self.set_output_formats([self.format_nd])
@@ -896,7 +891,6 @@ class TestMLAPrefill(op_test.OpTest):
         for i in range(1):
             self.execute([self.q_split1, self.q_split2, self.k_split1[0], self.k_split2[0], self.v[0],
                             self.mask.to(data_type),
-                            # torch.tensor([], dtype=data_type),
                             torch.tensor([], dtype=torch.float),
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
@@ -913,15 +907,15 @@ class TestMLAPrefill(op_test.OpTest):
         heads = 1        # llama7b  hidden_size 4096
         embeddim = 192
         embeddimV = 128
-        max_seq = 128 + 64
+        max_seq = 128
         tor = 1.0 / math.sqrt(1.0 * embeddim)
         dynamic_batch = False
-        kv_seqLen = [128 + 64] * batch
+        kv_seqLen = [128] * batch
         is_clamp = 0
         clamp_min = 0
         clamp_max = 0
         OP_NAME = "MLAOperation"
-        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 0, "maskType": 0}
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 0}
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 13)
         self.set_output_formats([self.format_nd])
@@ -944,8 +938,9 @@ class TestMLAPrefill(op_test.OpTest):
 
         attention_out = np.zeros_like(self.golden_out.to(torch.float16))
         for i in range(1):
-            self.execute([self.q_split1, self.q_split2, self.k_split1[0], self.k_split2[0], self.v[0], 
-                             torch.tensor([], dtype=torch.bfloat16), torch.tensor([], dtype=torch.float),
+            self.execute([self.q_split1, self.q_split2, self.k_split1[0], self.k_split2[0], self.v[0],
+                            torch.tensor([], dtype=torch.bfloat16),
+                            torch.tensor([], dtype=torch.float),
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
@@ -953,23 +948,22 @@ class TestMLAPrefill(op_test.OpTest):
 
 
     @op_test.only_910b
-    def test_flash_attention_mla_bf16_512_mask(self):
+    def test_flash_attention_mla_bf16_case2(self):
         batch = 1
         kv_head = 1      # kv_head num
         isdecoder = 0       # prefill or decoder
         heads = 1        # llama7b  hidden_size 4096
         embeddim = 192
         embeddimV = 128
-        max_seq = 2048
+        max_seq = 128
         tor = 1.0 / math.sqrt(1.0 * embeddim)
-        # tor = 1.0
         dynamic_batch = False
-        kv_seqLen = [2048] * batch
+        kv_seqLen = [128] * batch
         is_clamp = 0
         clamp_min = 0
         clamp_max = 0
         OP_NAME = "MLAOperation"
-        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 1, "maskType": 1, "kvHead": heads}
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 5, "kvHead": heads}
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 13)
         self.set_output_formats([self.format_nd])
@@ -979,10 +973,11 @@ class TestMLAPrefill(op_test.OpTest):
                              is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
                              embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
                              is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
-                             data_type = data_type, is_alibi = False, is_triu_mask = False,
+                             data_type = data_type, is_alibi = False, is_triu_mask = True,
                              op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor, long_seq = True)
         self.gen_out_tensor()
-        self.mask = self.mask[0, :512, :512]
+        self.mask = self.mask.view(512, 512).to(data_type)
+
 
         logging.debug("**********input shape***********")
         logging.info(f"q shape: {self.q.shape}")
@@ -993,6 +988,7 @@ class TestMLAPrefill(op_test.OpTest):
         logging.info(f"golden shape: {self.golden_out.shape}")
 
         attention_out = np.zeros_like(self.golden_out.to(torch.float16))
+
         for i in range(1):
             self.execute([self.q_split1, self.q_split2, self.k_split1[0], self.k_split2[0], self.v[0],
                             self.mask.to(data_type),

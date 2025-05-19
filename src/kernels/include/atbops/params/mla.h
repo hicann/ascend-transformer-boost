@@ -28,14 +28,13 @@ struct MLA {
     float tor = 0;
     int32_t kvHead = 0;
 
-    uint32_t isTriuMask = 0;
-
     enum MaskType {
         MASK_TYPE_NONE = 0,
         MASK_TYPE_NORM = 1,
         MASK_TYPE_ALIBI = 2,
         MASK_TYPE_LOOK_AHEAD = 3,
-        MASK_TYPE_MASK_FREE = 4
+        MASK_TYPE_MASK_FREE = 4,
+        MASK_TYPE_CAUSAL_COMPRESS = 5
     };
 
     MaskType maskType = MASK_TYPE_NONE;
@@ -47,7 +46,7 @@ struct MLA {
 
     bool operator==(const MLA &other) const
     {
-        return this->headSize == other.headSize && this->isTriuMask == other.isTriuMask &&
+        return this->headSize == other.headSize &&
                this->qSeqLen == other.qSeqLen && this->kvSeqLen == other.kvSeqLen && this->type == other.type &&
                Mki::Utils::Compare<float>::IsEqual(this->tor, other.tor) && this->kvHead == other.kvHead &&
                this->isRing == other.isRing;
