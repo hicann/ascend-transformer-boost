@@ -28,6 +28,15 @@ Status ScatterElementsV2CommonTiling(const std::string &kernelName, const Launch
 
     // 获取 scatter_elements 算子的参数
     const auto &param = AnyCast<OpParam::ScatterElementsV2>(launchParam.GetParam());
+    std::string reductionStr = "";
+
+    if (param.reduction == OpParam::ScatterElementsV2::ReductionType::NONE) {
+        reductionStr = "none";
+    } else if (param.reduction == OpParam::ScatterElementsV2::ReductionType::ADD) {
+        reductionStr = "add";
+    } else {
+        MKI_LOG(ERROR) << "reduction only support none or add";
+    }
 
     // 创建 TbeTilingRunner 对象
     auto runner = AsdOpsGeRt::TbeTilingRunner()
@@ -38,7 +47,7 @@ Status ScatterElementsV2CommonTiling(const std::string &kernelName, const Launch
                       .AddInput(tensorDesc2.dtype, tensorDesc2.format, tensorDesc2.dims)        // 添加输入张量 2
                       .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims) // 添加输出张量
                       .AddAttrInt(param.axis)               // 添加 ScatterElementsV2 的 axis 属性
-                      .AddAttrStr(param.reduction.c_str()); // 添加 ScatterElementsV2 的 reduction 属性
+                      .AddAttrStr(reductionStr.c_str()); // 添加 ScatterElementsV2 的 reduction 属性
 
     // 获取 tiling 结果并返回状态
     return GetTilingFromRunner(kernelInfo, runner, binHandle);

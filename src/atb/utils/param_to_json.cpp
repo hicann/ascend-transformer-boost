@@ -868,4 +868,13 @@ template <> nlohmann::json OpParamToJson(const infer::FaUpdateParam &opParam)
     paramsJson["sp"] = opParam.sp;
     return paramsJson;
 }
+
+template <> nlohmann::json OpParamToJson(const infer::ScatterElementsV2Param &opParam)
+{
+    nlohmann::json scatterElementsV2ParamsJson;
+    scatterElementsV2ParamsJson["axis"] = opParam.axis;
+    scatterElementsV2ParamsJson["reduction"] = opParam.reduction;
+ 
+    return scatterElementsV2ParamsJson;
+}
 } // namespace atb
