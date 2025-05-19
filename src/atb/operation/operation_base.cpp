@@ -924,11 +924,17 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
         if (deviceArgsBuffer_ == nullptr) {
             // 调用Context分配deviceArgsBuffer_
             deviceArgsBuffer_ = runnerVariantPack_.context->GetArgsDeviceBuffer(argsBufferSize_);
+            if (deviceArgsBuffer_ == nullptr) {
+                return ERROR_CANN_ERROR;
+            }
         }
 
         if (hostArgsBuffer_ == nullptr) {
             // 调用Context分配hostArgsBuffer_
             hostArgsBuffer_ = runnerVariantPack_.context->GetArgsHostBuffer(argsBufferSize_);
+            if (hostArgsBuffer_ == nullptr) {
+                return ERROR_CANN_ERROR;
+            }
         }
 
         runnerVariantPack_.argsDeviceBuffer = reinterpret_cast<uint8_t *>(deviceArgsBuffer_);

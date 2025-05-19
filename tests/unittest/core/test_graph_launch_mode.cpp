@@ -367,7 +367,7 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
 {
     bool status = atb::GetSingleton<atb::Config>().IsLaunchKernelWithTiling();
     if (status) {
-        std::cout << "Skip Case TestGraphLaunchMode.CapturedByAtbAndTestGraphOp, because of status of LaunchKernelWithTiling is 1";
+        std::cout << "Skip Case TestGraphLaunchMode.CapturedByAtbAndChangeWorkspace, because of status of LaunchKernelWithTiling is 1";
         return;
     }
 	// 设置卡号、创建stream、创建context、设置stream
@@ -513,7 +513,7 @@ TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
 {
     bool status = atb::GetSingleton<atb::Config>().IsLaunchKernelWithTiling();
     if (status) {
-        std::cout << "Skip Case TestGraphLaunchMode.CapturedByUserAndTestGraphOp, because of status of LaunchKernelWithTiling is 1";
+        std::cout << "Skip Case TestGraphLaunchMode.CapturedByUserAndChangeWorkspace, because of status of LaunchKernelWithTiling is 1";
         return;
     }
 	// 设置卡号、创建stream、创建context、设置stream
