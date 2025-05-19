@@ -20,6 +20,7 @@
 #include "hosttensor_binders/reshape_and_cache_with_stride_binder.h"
 #include "hosttensor_binders/layernorm_with_stride_binder.h"
 #include "hosttensor_binders/rmsnorm_with_stride_binder.h"
+#include "hosttensor_binders/ring_mla_binder.h"
 
 
 HostTensorBinder *CreateHostTensorBinder(const std::string &opName)
@@ -46,6 +47,8 @@ HostTensorBinder *CreateHostTensorBinder(const std::string &opName)
         return new LayerNormWithStrideBinder();
     } else if (opName == "RmsNormWithStrideOperation") {
         return new RmsNormWithStrideBinder();
+    } else if (opName == "RingMLAOperation") {
+        return new RingMLABinder();
     } else {
         ATB_LOG(DEBUG) << "opName:" << opName << " not host binder";
     }
