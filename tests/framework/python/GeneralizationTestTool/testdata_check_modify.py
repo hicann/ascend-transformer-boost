@@ -2675,3 +2675,94 @@ class FaUpdateOperation(OperationValidation):
         if tensor_desc.shapes[1][2] > 512:
             return False
         return True
+
+class ScatterElementsV2Operation(OperationValidation):
+    @staticmethod
+    def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
+        if tensor_desc.dtypes[1] != 'int32' and tensor_desc.dtypes[1] != 'int64':
+            tensor_desc.dtypes[1] = 'int32'
+ 
+        # 1：indice_tensor dim需要和input_tensor保持一致。
+        if len(tensor_desc.shapes[1]) != len(tensor_desc.shapes[0]):
+            return False
+ 
+        # 2：indice_tensor非尾轴和非0轴的shape需要和input_tensor完全相同。
+        for i in range(1, len(tensor_desc.shapes[0]) - 1):
+            tensor_desc.shapes[1][i] = tensor_desc.shapes[0][i]
+ 
+ 
+        # 8：indice_tensor 首维和尾维需要小于 input_tensor
+        if tensor_desc.shapes[1][0] > tensor_desc.shapes[0][0]:
+            tensor_desc.shapes[1][0] = tensor_desc.shapes[0][0]
+ 
+        # 8：indice_tensor 首维和尾维需要小于 input_tensor
+        input_tensor_last_dim = len(tensor_desc.shapes[1]) - 1
+        if tensor_desc.shapes[1][input_tensor_last_dim] > tensor_desc.shapes[0][input_tensor_last_dim]:
+            tensor_desc.shapes[1][input_tensor_last_dim] = tensor_desc.shapes[0][input_tensor_last_dim]
+ 
+        # 4：update_tensor dim和shape需要和indice_tensor完全一致
+        if len(tensor_desc.shapes[1]) != len(tensor_desc.shapes[2]):
+            tensor_desc.shapes[2] = tensor_desc.shapes[1]
+ 
+        # 4：update_tensor dim和shape需要和indice_tensor完全一致
+        for i in range(0, len(tensor_desc.shapes[1])):
+            tensor_desc.shapes[2][i] = tensor_desc.shapes[1][i]
+ 
+        # 5:update_tensor 的dtype需要和input_tensor保持一致
+        if tensor_desc.dtypes[2] != tensor_desc.dtypes[0]:
+            tensor_desc.dtypes[2] = tensor_desc.dtypes[0]
+ 
+        tensor_desc.data_gen_ranges[1] = f"1,{tensor_desc.shapes[0][-1] - 1}"
+ 
+        axis, reduction = op_param['axis'], op_param['reduction']
+        if axis != -1:
+            op_param['axis'] = -1
+ 
+        if reduction != 0 and reduction != 1:
+            return False
+        return True
+class ScatterElementsV2Operation(OperationValidation):
+    @staticmethod
+    def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
+        if tensor_desc.dtypes[1] != 'int32' and tensor_desc.dtypes[1] != 'int64':
+            tensor_desc.dtypes[1] = 'int32'
+ 
+        # 1：indice_tensor dim需要和input_tensor保持一致。
+        if len(tensor_desc.shapes[1]) != len(tensor_desc.shapes[0]):
+            return False
+ 
+        # 2：indice_tensor非尾轴和非0轴的shape需要和input_tensor完全相同。
+        for i in range(1, len(tensor_desc.shapes[0]) - 1):
+            tensor_desc.shapes[1][i] = tensor_desc.shapes[0][i]
+ 
+ 
+        # 8：indice_tensor 首维和尾维需要小于 input_tensor
+        if tensor_desc.shapes[1][0] > tensor_desc.shapes[0][0]:
+            tensor_desc.shapes[1][0] = tensor_desc.shapes[0][0]
+ 
+        # 8：indice_tensor 首维和尾维需要小于 input_tensor
+        input_tensor_last_dim = len(tensor_desc.shapes[1]) - 1
+        if tensor_desc.shapes[1][input_tensor_last_dim] > tensor_desc.shapes[0][input_tensor_last_dim]:
+            tensor_desc.shapes[1][input_tensor_last_dim] = tensor_desc.shapes[0][input_tensor_last_dim]
+ 
+        # 4：update_tensor dim和shape需要和indice_tensor完全一致
+        if len(tensor_desc.shapes[1]) != len(tensor_desc.shapes[2]):
+            tensor_desc.shapes[2] = tensor_desc.shapes[1]
+ 
+        # 4：update_tensor dim和shape需要和indice_tensor完全一致
+        for i in range(0, len(tensor_desc.shapes[1])):
+            tensor_desc.shapes[2][i] = tensor_desc.shapes[1][i]
+ 
+        # 5:update_tensor 的dtype需要和input_tensor保持一致
+        if tensor_desc.dtypes[2] != tensor_desc.dtypes[0]:
+            tensor_desc.dtypes[2] = tensor_desc.dtypes[0]
+ 
+        tensor_desc.data_gen_ranges[1] = f"1,{tensor_desc.shapes[0][-1] - 1}"
+ 
+        axis, reduction = op_param['axis'], op_param['reduction']
+        if axis != -1:
+            op_param['axis'] = -1
+ 
+        if reduction != 0 and reduction != 1:
+            return False
+        return True

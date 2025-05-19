@@ -3018,6 +3018,38 @@ struct PagedCacheLoadParam {
     //!
     uint8_t rsv[64] = {0};
 };
+
+//!
+//! \struct ScatterElementsV2Param
+//!
+//! \brief 将张量update中的所有的值，按照indices位置，写到自身张量input_tensor中。
+//!
+struct ScatterElementsV2Param {
+    //!
+    //! \enum ReductionType
+    //!
+    //! \brief ReductionType
+    enum ReductionType {
+        NONE = 0, //!< 默认值。none。
+        ADD, //!< add 原地累加。
+    };
+    //!
+    //! \brief 指定要收集切片的轴。默认值为0.
+    //!
+    //! \warning 该参数必须大于或等于0
+    //!
+    int32_t axis = -1;
+    //!
+    //! \brief  允许从一个batch的每个元素中收集不同的项目，默认值为0.
+    //!
+    //! \warning 该参数必须大于或等于0,且小于或等于axis.
+    //!
+    ReductionType reduction = NONE;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[16] = {0};
+};
 } // namespace infer
 } // namespace atb
 #endif

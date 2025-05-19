@@ -34,15 +34,23 @@ public:
         auto tensor1dtype = tensorDesc1.dtype;
 
         const auto &param = AnyCast<OpParam::ScatterElementsV2>(launchParam.GetParam());
-        auto reduction = param.reduction;
+        std::string reductionStr = "";
+
+        if (param.reduction == OpParam::ScatterElementsV2::ReductionType::NONE) {
+            reductionStr = "none";
+        } else if (param.reduction == OpParam::ScatterElementsV2::ReductionType::ADD) {
+            reductionStr = "add";
+        } else {
+            MKI_LOG(ERROR) << "reduction only support none or add";
+        }
 
         switch (tensor0dtype) {
-            case TENSOR_DTYPE_UINT8: return GetUint8BestKernel(tensor1dtype, reduction);
-            case TENSOR_DTYPE_INT8: return GetInt8BestKernel(tensor1dtype, reduction);
-            case TENSOR_DTYPE_INT32: return GetInt32BestKernel(tensor1dtype, reduction);
-            case TENSOR_DTYPE_FLOAT16: return GetFloat16BestKernel(tensor1dtype, reduction);
-            case TENSOR_DTYPE_FLOAT: return GetFloat32BestKernel(tensor1dtype, reduction);
-            case TENSOR_DTYPE_BF16: return GetBfloat16BestKernel(tensor1dtype, reduction);
+            case TENSOR_DTYPE_UINT8: return GetUint8BestKernel(tensor1dtype, reductionStr);
+            case TENSOR_DTYPE_INT8: return GetInt8BestKernel(tensor1dtype, reductionStr);
+            case TENSOR_DTYPE_INT32: return GetInt32BestKernel(tensor1dtype, reductionStr);
+            case TENSOR_DTYPE_FLOAT16: return GetFloat16BestKernel(tensor1dtype, reductionStr);
+            case TENSOR_DTYPE_FLOAT: return GetFloat32BestKernel(tensor1dtype, reductionStr);
+            case TENSOR_DTYPE_BF16: return GetBfloat16BestKernel(tensor1dtype, reductionStr);
             default: return nullptr;
         }
     }

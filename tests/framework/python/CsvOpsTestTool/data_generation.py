@@ -7042,3 +7042,28 @@ class PagedCacheLoadOperation(DataGen):
     def get_op_type(op_params):
         return OpTypes.MOVE
 
+class ScatterElementsV2Operation(DataGen):
+    @staticmethod
+    def golden(in_tensors, op_params):
+        json_data = json.loads(op_params)
+        input_tensor = ScatterElementsV2Operation.origin_input_tensor
+        indice_tensor = in_tensors[1]
+        update_tensor = in_tensors[2]
+ 
+        axis = json_data["axis"]
+        reduction = "add" if "reduction" in json_data and json_data[ "reduction"] == 1 else None
+ 
+        if reduction:
+            input_tensor.scatter_(axis, indice_tensor.long(), update_tensor, reduce=reduction)
+        else:
+            input_tensor.scatter_(axis, indice_tensor.long(), update_tensor)
+        return [input_tensor,indice_tensor,update_tensor]
+ 
+    @staticmethod
+    def case_preprocess(op_params, operation, input_tensor_list):
+        # print(input_tensor_list[0])
+        ScatterElementsV2Operation.origin_input_tensor = input_tensor_list[0].cpu().clone()
+ 
+    @staticmethod
+    def get_op_type(op_params):
+        return OpTypes.COMPUTE_FLOAT
