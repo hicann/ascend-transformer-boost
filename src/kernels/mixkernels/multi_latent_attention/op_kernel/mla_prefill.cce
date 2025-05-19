@@ -41,8 +41,9 @@ constexpr int32_t UB_UINT8_BLOCK_SIZE = 16384;  // 64 * 128 * 2B
 constexpr int32_t UB_HALF_BUF_SIZE = 8192;
 constexpr int32_t UB_UINT8_LINE_SIZE = 512;     // 128 * 4B
 constexpr int32_t UB_FLOAT_LINE_SIZE = 128;     // 128
-constexpr int32_t UB_HALF_LINE_SIZE = 128;       // UB_FLOAT_LINE_SIZE * 2
+constexpr int32_t UB_HALF_LINE_SIZE = 128;       // UB_FLOAT_sLINE_SIZE * 2
 constexpr int32_t BLOCK_QK = 128;
+constexpr int32_t S_BLOCK_STACK = 4;
 
 #ifdef __DAV_C220_CUBE__
 constexpr int32_t BLOCK_SIZE = 16;
@@ -156,11 +157,6 @@ public:
         PIPE_BARRIER(ALL);
     }
 
-    __aicore__ __attribute__((always_inline)) inline uint32_t GetTilingKey()
-    {
-        return this->tilingKey;
-    }
-
     __aicore__ __attribute__((always_inline)) inline void LoadDataToCa(
         AscendC::LocalTensor<QKV_DT> dst_tensor, AscendC::LocalTensor<QKV_DT> src_tensor,
         uint32_t round_k, uint32_t qk_round_m, uint32_t qk_m)
@@ -237,12 +233,12 @@ public:
             uint32_t pingpong_flag = 0;
             uint32_t offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
 
-            uint64_t q_offset = addr_q_scalar + head_idx * 128 + m_idx * pp_m_scalar * q_heads * 128;
+            uint64_t q_offset = addr_q_scalar + head_idx * 128 + (uint64_t)m_idx * pp_m_scalar * q_heads * 128;
             uint64_t k_offset = addr_k_scalar + (head_idx / group_num) * 128;
             uint64_t k_rope_offset = addr_k_scalar / 2 + (head_idx / group_num) * 64;
-            uint64_t q_rope_offset = addr_q_scalar / 2 + head_idx * 64 + m_idx * pp_m_scalar * q_heads * 64;
+            uint64_t q_rope_offset = addr_q_scalar / 2 + head_idx * 64 + (uint64_t)m_idx * pp_m_scalar * q_heads * 64;
             if (data_shape_type == 1) {
-                q_offset = addr_q_scalar + head_idx * embdv * max_seqlen + m_idx * pp_m_scalar * stride_qo;//  + 17592186044416 / sizeof(QKV_DT);
+                q_offset = addr_q_scalar + head_idx * embdv * max_seqlen +(uint64_t) m_idx * pp_m_scalar * stride_qo;//  + 17592186044416 / sizeof(QKV_DT);
                 k_offset = addr_k_scalar + (head_idx / group_num) * embdv * max_kv_seqlen;//  + 17592186044416 / sizeof(QKV_DT);
             }
 
@@ -308,23 +304,21 @@ public:
             if (is_triu_mask) {
                 n_end = m_idx + 1;
             }
-            uint32_t s_block_stack = n_end > 8 ? 4 : (n_end > 4 ? 2 : 1);
-            s_block_stack = 4; // Currently not splitting K
-            uint32_t launch_delay = s_block_stack * 2;
+            uint32_t launch_delay = S_BLOCK_STACK * 2;
             uint32_t vect_mod = 2 * launch_delay;
             uint32_t kv_pingpong_flag = 0;
             uint64_t kv_pingpong_offset = kv_pingpong_flag * KV_DB_SIZE;
             uint32_t split_m = 128;
             uint32_t m_inner_loop = (qk_m + 127) / 128;
-            for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
+            for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += S_BLOCK_STACK) {
                 if (n_idx < n_end) {
                     uint32_t sv_n_triu = n_end * pp_n_scalar;
                     uint32_t l0c_pingpong_flag = 0;
-                    uint32_t l0c_offset = l0c_pingpong_flag * 128 * 128;
-                    if (n_idx + s_block_stack > n_end - 1) {
+                    uint32_t l0c_offset = l0c_pingpong_flag * L0AB_HALF_BUF_SIZE;
+                    if (n_idx + S_BLOCK_STACK > n_end - 1) {
                         sv_n = sv_n_triu > kv_seqlen ? kv_seqlen - n_idx * pp_n_scalar : sv_n_triu - n_idx * pp_n_scalar;
                     } else {
-                        sv_n = pp_n_scalar * s_block_stack;
+                        sv_n = pp_n_scalar * S_BLOCK_STACK;
                     }
                     uint32_t sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                     WAIT_FLAG(M, MTE1, EVENT_ID0);
@@ -334,14 +328,14 @@ public:
                     // *** Prepare K to L1
                     SET_FLAG(MTE1, M, EVENT_ID0);
                     WAIT_FLAG(MTE1, M, EVENT_ID0);
-                    for (uint32_t split_idx = 0; split_idx < s_block_stack && n_idx + split_idx < n_end; split_idx++) {
+                    for (uint32_t split_idx = 0; split_idx < S_BLOCK_STACK && n_idx + split_idx < n_end; split_idx++) {
                         pingpong_flag = (n_idx + split_idx) % 2;
                         offset = pingpong_flag * 128 * 192;
                         if (n_idx + split_idx == (n_loop - 1)) {
                             qk_n = (kv_seqlen - (n_idx + split_idx) * pp_n_scalar);
                             qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                         }
-                        bool last_split = split_idx == s_block_stack - 1 || n_idx + split_idx == n_end - 1;
+                        bool last_split = split_idx == S_BLOCK_STACK - 1 || n_idx + split_idx == n_end - 1;
 
                         WAIT_FLAG(MTE1, MTE2, pingpong_flag + 2 * kv_pingpong_flag);
                         gm_to_l1<ArchType::ASCEND_V220, QKV_DT, DataFormat::ND, DataFormat::NZ>(
@@ -370,10 +364,10 @@ public:
                             uint32_t embedk = (embed_idx == 0) ? 128 : 64;
                             uint32_t last_embed_loop = (embed_idx == (loopQK - 1)) ? 1 : 0;
                             uint32_t initc = (embed_idx == 0) ? 1: 0;
-
-                            WAIT_FLAG(M, MTE1, (embed_idx % 2) + 2);
+                            uint32_t embed_flag = embed_idx % 2;
+                            WAIT_FLAG(M, MTE1, embed_flag + 2);
                             l1_to_l0_b<ArchType::ASCEND_V220, QKV_DT, false, DataFormat::VECTOR, DataFormat::VECTOR>(
-                                l0b_buf_tensor[(embed_idx % 2) * L0AB_HALF_BUF_SIZE],
+                                l0b_buf_tensor[embed_flag * L0AB_HALF_BUF_SIZE],
                                 l1k_buf_addr_tensor[kv_pingpong_offset + offset + embed_idx * qk_round_n * 128],
                                 0,
                                 NumMatrixsRoundUp<QKV_DT>(RoundUp<uint32_t>(embedk, 32 / sizeof(QKV_DT)) * qk_round_n), // repeat
@@ -397,7 +391,7 @@ public:
                             mmad<ArchType::ASCEND_V220, QKV_DT, QKV_DT, float, false>(
                                 l0c_buf_tensor[l0c_offset],
                                 l0a_buf_tensor[embed_idx * L0AB_HALF_BUF_SIZE],
-                                l0b_buf_tensor[(embed_idx % 2) * L0AB_HALF_BUF_SIZE],
+                                l0b_buf_tensor[embed_flag * L0AB_HALF_BUF_SIZE],
                                 qk_m,  // m
                                 qk_n,  // n
                                 embedk,   // k
@@ -405,7 +399,7 @@ public:
                             );
                             PIPE_BARRIER(M);
 
-                            SET_FLAG(M, MTE1, (embed_idx % 2) + 2);
+                            SET_FLAG(M, MTE1, embed_flag + 2);
 
                             if (last_embed_loop) {
                                 SET_FLAG(M, FIX, l0c_pingpong_flag);
@@ -425,7 +419,7 @@ public:
                         k_offset += pp_n_scalar * stride_k;
                         k_rope_offset += pp_n_scalar * stride_k / 2;
                         l0c_pingpong_flag = 1 - l0c_pingpong_flag;
-                        l0c_offset = l0c_pingpong_flag * 128 * 128;
+                        l0c_offset = l0c_pingpong_flag * L0AB_HALF_BUF_SIZE;
                     }
                     SET_FLAG(M, MTE1, EVENT_ID0);
                     SET_FLAG(M, MTE1, EVENT_ID1);
@@ -435,15 +429,15 @@ public:
                 }
                 if (n_idx >= launch_delay) {
                     uint32_t l0c_pingpong_flag = 0;
-                    uint32_t l0c_offset = l0c_pingpong_flag * 128 * 128;
+                    uint32_t l0c_offset = l0c_pingpong_flag * L0AB_HALF_BUF_SIZE;
                     uint32_t sv_n_triu = n_end * pp_n_scalar;
-                    if (n_idx + s_block_stack > n_end + launch_delay - 1) {
+                    if (n_idx + S_BLOCK_STACK > n_end + launch_delay - 1) {
                         sv_n = sv_n_triu > kv_seqlen ? kv_seqlen - (n_idx - launch_delay) * pp_n_scalar : sv_n_triu - (n_idx - launch_delay) * pp_n_scalar;
                     } else {
-                        sv_n = pp_n_scalar * s_block_stack;
+                        sv_n = pp_n_scalar * S_BLOCK_STACK;
                     }
                     uint32_t sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-                    uint32_t n_slice = pp_n_scalar * ((s_block_stack + 1) / 2);
+                    uint32_t n_slice = pp_n_scalar * ((S_BLOCK_STACK + 1) / 2);
                     // n_slice = 256;
                     uint32_t l1_split_loop = (sv_n + n_slice - 1) / n_slice;
                     WAIT_FLAG(MTE1, MTE2, kv_pingpong_flag * 2);
@@ -501,7 +495,7 @@ public:
                             uint32_t d_split_loop = (d + 127) / 128;
                             for (uint32_t l0_k_split_idx = 0; l0_k_split_idx < d_split_loop; l0_k_split_idx++) {
                                 uint32_t l0_pingpong_flag = l0_k_split_idx % 2;
-                                uint32_t l0_offset = l0_pingpong_flag * 128 * 128;
+                                uint32_t l0_offset = l0_pingpong_flag * L0AB_HALF_BUF_SIZE;
                                 bool l0_last_split = l0_k_split_idx == d_split_loop - 1;
                                 int32_t l0_p_offset = nowM == 1 ? l0_k_split_idx * 128 : l0_k_split_idx * 128 * nowMRound;
                                 bool initC = l0_k_split_idx== 0 && l1_k_split_idx == 0;
@@ -669,6 +663,25 @@ extern "C" __global__ __aicore__ void mla_prefill(
 #endif
 
 #ifdef __DAV_C220_VEC__
+
+__aicore__ __attribute__((always_inline)) inline void __set_mask(int32_t len)
+{
+    uint64_t mask = 0;
+    uint64_t one = 1;
+    uint64_t temp = len % FLOAT_VECTOR_SIZE;
+    for (int64_t i = 0; i < temp; i++) {
+        mask |= one << i;
+    }
+
+    if (len == VECTOR_SIZE || len == 0) {
+        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+    } else if (len >= FLOAT_VECTOR_SIZE) {
+        SetVectorMask<int8_t>(mask, (uint64_t)-1);
+    } else {
+        SetVectorMask<int8_t>(0x0, mask);
+    }
+}
+
 template<typename S_DTYPE, typename EXP_DTYPE, typename P_DTYPE, typename MASK_DTYPE, uint32_t MASK_TYPE>
 __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1FP16(
     const AscendC::LocalTensor<S_DTYPE> &s_ub,
@@ -1064,12 +1077,6 @@ public:
         PIPE_BARRIER(ALL);
     }
 
-    __aicore__ __attribute__((always_inline)) inline uint32_t GetTilingKey()
-    {
-        return this->tilingKey;
-    }
-
-
     template<typename Dtype>
     __aicore__ __attribute__((always_inline)) inline uint32_t VectorSize()
     {
@@ -1152,9 +1159,9 @@ public:
             float base_y = -128;
             float delta = 0;
 
-            uint64_t o_offset = addr_o_scalar + head_idx * embdv + m_idx * pp_m_scalar * stride_qo;
+            uint64_t o_offset = addr_o_scalar + head_idx * embdv + (uint64_t)m_idx * pp_m_scalar * stride_qo;
             if (data_shape_type == 1) {
-                o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + m_idx * pp_m_scalar * stride_qo;
+                o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + (uint64_t)m_idx * pp_m_scalar * stride_qo;
             }
 
             uint32_t n_end = n_loop;
@@ -1162,28 +1169,26 @@ public:
                 n_end = m_idx + 1;
             }
             uint32_t qk_n_triu = n_end * pp_n_scalar;
-            uint32_t s_block_stack = n_end > 8 ? 4 : (n_end > 4 ? 2 : 1);
-            s_block_stack = 4; // Currently not splitting K
             uint32_t pv_stage = 3;
-            uint32_t launch_delay = s_block_stack * 2;
+            uint32_t launch_delay = S_BLOCK_STACK * 2;
             uint32_t vect_mod = 2 * launch_delay;
-            uint32_t m_slice = FLOAT_VECTOR_SIZE / s_block_stack;
+            uint32_t m_slice = FLOAT_VECTOR_SIZE / S_BLOCK_STACK;
             uint32_t m_end = (sub_m + m_slice - 1) / m_slice;
             if (long_seq == 0) {
                 mask_offset += m_idx * pp_m_scalar * max_seqlen;
             }
-            for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
+            for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += S_BLOCK_STACK) {
                 if (n_idx < n_end) {
                     if (sub_m == 0) {
                         WaitFlagDev(QK_READY);
                         FftsCrossCoreSync<PIPE_MTE3, 2>(SOFTMAX_READY);
                         continue;
                     }
-                    uint32_t p_scale_offset = n_idx / s_block_stack % pv_stage * pp_m_scalar;
-                    if (n_idx + s_block_stack > n_end - 1) {
+                    uint32_t p_scale_offset = n_idx / S_BLOCK_STACK % pv_stage * pp_m_scalar;
+                    if (n_idx + S_BLOCK_STACK > n_end - 1) {
                         qk_n = qk_n_triu > kv_seqlen ? kv_seqlen - n_idx * pp_n_scalar : qk_n_triu - n_idx * pp_n_scalar;
                     } else {
-                        qk_n = pp_n_scalar * s_block_stack;
+                        qk_n = pp_n_scalar * S_BLOCK_STACK;
                     }
                     qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
 
@@ -1227,8 +1232,8 @@ public:
                             lm_ubuf_tensor[m_ind * m_slice],
                             hm_ubuf_tensor[m_ind * m_slice],
                             gm_ubuf_tensor[m_ind * m_slice],
-                            dm16_ubuf_tensor[((n_idx / s_block_stack) % 4) * UB_FLOAT_LINE_SIZE + m_ind * m_slice],
-                            dm_ubuf_tensor[((n_idx / s_block_stack) % 4) * UB_FLOAT_LINE_SIZE + m_ind * m_slice],
+                            dm16_ubuf_tensor[((n_idx / S_BLOCK_STACK) % 4) * UB_FLOAT_LINE_SIZE + m_ind * m_slice],
+                            dm_ubuf_tensor[((n_idx / S_BLOCK_STACK) % 4) * UB_FLOAT_LINE_SIZE + m_ind * m_slice],
                             ls32_ubuf_tensor,
                             ll_ubuf_tensor[m_ind * m_slice],
                             gl_ubuf_tensor[m_ind * m_slice],
@@ -1253,14 +1258,14 @@ public:
                         WaitFlagDev(UPDATE_READY); // 4
                         continue;
                     }
-                    uint32_t p_scale_offset = (n_idx - launch_delay) / s_block_stack % pv_stage * pp_m_scalar;
+                    uint32_t p_scale_offset = (n_idx - launch_delay) / S_BLOCK_STACK % pv_stage * pp_m_scalar;
                     uint32_t sub_km = 64;
                     uint32_t loop_m = (sub_m + sub_km - 1) / sub_km;
                     if (n_idx != launch_delay) {
                         // *** dm_block = expand_to_block(dm), 存放于 tv
                         brcb_v<ArchType::ASCEND_V220, uint32_t>(
                             tv_ubuf_tensor.ReinterpretCast<uint32_t>(),
-                            dm_ubuf_tensor[((n_idx - launch_delay) / s_block_stack % 4) * UB_FLOAT_LINE_SIZE].ReinterpretCast<uint32_t>(),
+                            dm_ubuf_tensor[((n_idx - launch_delay) / S_BLOCK_STACK % 4) * UB_FLOAT_LINE_SIZE].ReinterpretCast<uint32_t>(),
                             1,                             // dstBlockStride
                             8,                             // dstRepeatStride
                             round_sub_m / FLOAT_BLOCK_SIZE // repeat
@@ -1347,7 +1352,7 @@ public:
                         SET_FLAG(MTE2, V, EVENT_ID3);
                         WAIT_FLAG(MTE2, V, EVENT_ID3);
                     }
-                    if (n_idx + s_block_stack > n_end + launch_delay - 1)  {
+                    if (n_idx + S_BLOCK_STACK > n_end + launch_delay - 1)  {
                         // *** gl_block = expand_to_block(gl), 存放于 tv
                         brcb_v<ArchType::ASCEND_V220, uint32_t>(
                             tv_ubuf_tensor.ReinterpretCast<uint32_t>(),

@@ -63,7 +63,7 @@ Status MultiLatentAttentionOpsRunner::SetupKernelGraph(const OpsTensorPack &opsT
     kernelGraph_.nodes.resize(1);
     auto &mlaNode = kernelGraph_.nodes.at(0);
     AtbOps::OpParam::MLA asdParam;
-    asdParam.type = AtbOps::OpParam::MLA::SPLIT_CACHE;
+    asdParam.type = AtbOps::OpParam::MLA::;
     asdParam.headSize = param_.headNum;
     asdParam.tor = param_.qkScale;
     asdParam.kvHead = param_.kvHeadNum;
