@@ -102,7 +102,7 @@ class all_to_all_operationTest(operation_test.OperationTest):
             return True
         world_size = 4
         if world_size > torch_npu.npu.device_count():
-            self.skipTest(f"Skipped because rank_size {world_size} > available devices {torch_npu.npu.device_count()}")
+            self.skipTest(f"Skipped because world_size {world_size} > available devices {torch_npu.npu.device_count()}")
         random_seed = 123
         inTensorDtypes = [torch.int8, torch.int16, torch.int32, torch.int64,torch.float32,torch.float16, torch.bfloat16]
         sizes = [[3,4,6]]

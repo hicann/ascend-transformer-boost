@@ -134,7 +134,7 @@ class AllReduceOperationTest(operation_test.OperationTest):
         nodes =2
         world_size =gpus * nodes
         if world_size > torch_npu.npu.device_count():
-            self.skipTest(f"Skipped because rank_size {world_size} > available devices {torch_npu.npu.device_count()}")
+            self.skipTest(f"Skipped because world_size {world_size} > available devices {torch_npu.npu.device_count()}")
         nr = 0
         random_seed = 123
         inTensorDtypes = [torch.int8, torch.int16, torch.int32, torch.int64,torch.float32,torch.float16, torch.bfloat16]

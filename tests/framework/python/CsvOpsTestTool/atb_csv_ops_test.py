@@ -113,7 +113,7 @@ class CsvOpsTest():
         if card_type == 'multi_card':
             if op_name not in ['AllGatherOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'LinearParallelOperation','AllToAllVOperation', 'AllToAllVV2Operation', 'AllToAllOperation']:
                 return False
-            elif self.args.world_size != json.loads(self.op_param.loc[case_index])['rankSize']
+            elif self.args.world_size != json.loads(self.op_param.loc[case_index])['rankSize']:
                 logging.warning("CaseNum %d, Case %s will not run because args.world_size %s differs from testcase's rank_size %s",
                                 self.case_num.loc[case_index], self.case_name.loc[case_index], self.args.world_size, json.loads(self.op_param.loc[case_index])['rankSize'])
                 logging.info("")
