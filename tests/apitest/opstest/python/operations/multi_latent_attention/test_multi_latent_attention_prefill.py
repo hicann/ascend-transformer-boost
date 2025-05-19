@@ -799,7 +799,7 @@ class TestMLAPrefill(operation_test.OperationTest):
             return (result_double or result_single)
 
 
-    def test_flash_attention_mla_fp16_case1(self):
+    def test_flash_attention_mla_fp16(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
