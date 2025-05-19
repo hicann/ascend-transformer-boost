@@ -66,9 +66,8 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
     asdParam.tor = param_.qkScale;
     asdParam.kvHead = param_.kvHeadNum;
     asdParam.isRing = 0;
-    asdParam.isTriuMask = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ? 1 : 0;
     asdParam.maskType = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ?
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NORM :
+                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_COMPRESS :
                             AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
 
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
@@ -86,6 +85,10 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
     }
+    if (newParam_.contestLens != newParam_.qSeqlen) {
+        ATB_LOG(ERROR) << GetLogPrefix() << " qSeqLen and kvSeqLen should be same";
+        return ERROR_INVALID_PARAM;
+    }
     AtbOps::OpParam::MLA asdParam;
     asdParam.type = AtbOps::OpParam::MLA::PREFILL_SPLIT_CACHE;
     asdParam.headSize = param_.headNum;
@@ -94,9 +97,8 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
     asdParam.kvSeqLen = newParam_.contextLens;
     asdParam.qSeqLen = newParam_.qSeqlen;
     asdParam.isRing = 0;
-    asdParam.isTriuMask = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ? 1 : 0;
     asdParam.maskType = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ?
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NORM :
+                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_COMPRESS :
                             AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     return NO_ERROR;
