@@ -7,8 +7,8 @@
 namespace atb {
 class AddOpsRunner : public OpsRunner {
 public:
-    explicit AddOOpsRunner(const customize::AddOParam &param);
-    ~AddOOpsRunner() override;
+    explicit AddOpsRunner(const customize::AddOParam &param);
+    ~AddOpsRunner() override;
 
 private:
     customize::AddParam param_;

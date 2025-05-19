@@ -2,7 +2,7 @@
 #include "customize_op_params.h"
 
 namespace atb{
-template <> nlohmann::jason OpParamToJason(const infer::xxxParam &opParam)
+template <> nlohmann::jason OpParamToJason(const customize::xxxParam &opParam)
 {
     nlohmann::jason paramsJson;
     paramsJson["xxx"] = opParam.xxx;

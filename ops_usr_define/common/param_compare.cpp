@@ -19,7 +19,7 @@ template <typename T> bool ParamCompareFuncImpl(const Mki::Any &any1, const Mki:
 }
 
 static const std::map<std::size_t, ParamCompareFunc> USR_PARAM_COMPARE_MAP = {
-    {typeid(xxxops::OpParam::xxx).hash_code(), ParamCompareFuncImpl<xxxops::OpParam::xxx>}
+    {typeid(AsdOps::OpParam::Elewise).hash_code(), ParamCompareFuncImpl<AsdOps::OpParam::Elewise>},
 };
 
 bool IsLaunchParamEqual(const Mki::LaunchParam &launchParam1, const Mki::LaunchParam &launchParam2)
