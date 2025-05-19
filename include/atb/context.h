@@ -11,7 +11,6 @@
 #define ATB_CONTEXT_H
 #include <acl/acl.h>
 #include "atb/types.h"
-#include "atb/allocator.h"
 
 //!
 //! \file context.h
@@ -139,15 +138,6 @@ public:
     //!
     //! \return 当前的算子下发模式
     virtual LaunchMode GetLaunchMode() = 0;
-
-    //!
-    //! \brief 设置Device侧内存管理类.
-    //!
-    //! \param allocator 自定义的Device侧内存管理类
-    //!
-    //! \return 状态值，如果设置成功，返回NO_ERROR
-    //!
-    virtual Status SetDeviceBufferAllocator(Allocator *allocator) = 0;
 };
 
 //!

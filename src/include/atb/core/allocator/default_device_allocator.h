@@ -11,7 +11,7 @@
 #define ATB_DEFAULT_DEVICE_ALLOCATOR_H
 #include <cstdint>
 #include <map>
-#include "atb/allocator.h"
+#include "atb/core/allocator/allocator.h"
 
 namespace atb {
 class DefaultDeviceAllocator : public Allocator {

@@ -321,19 +321,6 @@ LaunchMode ContextBase::GetLaunchMode()
     return mode_;
 }
 
-Status ContextBase::SetDeviceBufferAllocator(Allocator *allocator)
-{
-    if (allocator == nullptr) {
-        ATB_LOG(ERROR) << "allocator is nullptr";
-        return ERROR_INVALID_PARAM;
-    }
-    // 如果中途切换Allocator的话使用旧的Allocator管理的内存全部释放
-    ATB_LOG(WARN) << "Changing to the new Allocator will free all device buffers,"
-                  << "which allocated by the old Allocator.";
-    deviceAllocator_.reset(allocator);
-    return NO_ERROR;
-}
-
 void *ContextBase::GetArgsDeviceBuffer(size_t bufferSize)
 {
     return deviceAllocator_->Allocate(bufferSize);
