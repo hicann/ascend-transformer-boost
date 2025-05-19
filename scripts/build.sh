@@ -168,8 +168,8 @@ function fn_build_asdops()
     rm -rf ascend-op-common-lib
     branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
     [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
-    echo  "current branch for atb and asdops: $branch"
-    git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
+    echo  "current branch for atb and asdops: br_personal/w30062832/ringattention_type10_ubrebuild_rope"
+    git clone --branch br_personal/w30062832/ringattention_type10_ubrebuild_rope --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
     echo  "current commid id of ascend-op-common-lib: $(git rev-parse HEAD)"
     [[ -d "$THIRD_PARTY_DIR/Mind-KernelInfra" ]] && mkdir -p 3rdparty && [[ -d "$THIRD_PARTY_DIR/mki" ]] && cp -r $THIRD_PARTY_DIR/mki 3rdparty
@@ -204,7 +204,7 @@ function fn_build_mki()
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
-        git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
+        git clone --branch master --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
     fi
     cd Mind-KernelInfra
     echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"
