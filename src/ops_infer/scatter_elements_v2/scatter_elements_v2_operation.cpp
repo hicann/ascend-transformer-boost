@@ -94,8 +94,8 @@ Status ScatterElementsV2Operation::SetupCheckImpl(const SVector<Tensor> &inTenso
                                                   const SVector<Tensor> &outTensors) const
 {
     const TensorDesc &inputTensorDesc = inTensors.at(0).desc;
-    const TensorDesc &indicesTensorDesc = inTensorDescs.at(1).desc;
-    const TensorDesc &updateTensorDesc = inTensorDescs.at(2).desc;
+    const TensorDesc &indicesTensorDesc = inTensors.at(1).desc;
+    const TensorDesc &updateTensorDesc = inTensors.at(2).desc;
  
     Status status = ParamCheck(inputTensorDesc, indicesTensorDesc, updateTensorDesc);
     (void)outTensors;
