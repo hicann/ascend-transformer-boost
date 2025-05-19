@@ -111,18 +111,11 @@ class CsvOpsTest():
         if card_type == 'single_card' and op_name in ['AllGatherOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'LinearParallelOperation','AllToAllVOperation', 'AllToAllVV2Operation', 'AllToAllOperation']:
             return False
         if card_type == 'multi_card':
-            rank_size = json.loads(self.op_param.loc[case_index])['rankSize']
             if op_name not in ['AllGatherOperation', 'AllReduceOperation', 'BroadcastOperation', 'ReduceScatterOperation', 'LinearParallelOperation','AllToAllVOperation', 'AllToAllVV2Operation', 'AllToAllOperation']:
                 return False
-            # 跳过2卡以上用例
-            elif rank_size > 2:
-                logging.warning("CaseNum %d, Case %s will not run because rankSize %d > 2",
-                                self.case_num.loc[case_index], self.case_name.loc[case_index], rank_size)
-                logging.info("")
-                return False
-            elif self.args.world_size != rank_size:
+            elif self.args.world_size != json.loads(self.op_param.loc[case_index])['rankSize']
                 logging.warning("CaseNum %d, Case %s will not run because args.world_size %s differs from testcase's rank_size %s",
-                                self.case_num.loc[case_index], self.case_name.loc[case_index], self.args.world_size, rank_size)
+                                self.case_num.loc[case_index], self.case_name.loc[case_index], self.args.world_size, json.loads(self.op_param.loc[case_index])['rankSize'])
                 logging.info("")
                 return False
         if args.test_type != '' and self.test_type.loc[case_index] != args.test_type:

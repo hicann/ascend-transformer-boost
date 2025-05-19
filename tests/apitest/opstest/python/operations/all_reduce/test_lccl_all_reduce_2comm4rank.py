@@ -124,8 +124,8 @@ class AllReduceOperationTest(operation_test.OperationTest):
         print("res:",res)
         if res == 0:
             world_size = 8
-            if world_size > 2:
-                self.skipTest("Skipped because rank_size > 2")
+            if world_size > torch_npu.npu.device_count():
+                self.skipTest(f"Skipped because rank_size {world_size} > available devices {torch_npu.npu.device_count()}")
             random_seed = 123
             inTensorDtypes = [torch.float]
             sizes = [[2,3]]

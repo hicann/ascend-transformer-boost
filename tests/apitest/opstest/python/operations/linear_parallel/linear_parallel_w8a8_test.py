@@ -103,8 +103,8 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
             return
         print(f"———————— LinearParallelCoverOp test start ————————")
         world_size = 8
-        if world_size > 2:
-            self.skipTest("Skipped because rank_size > 2")
+        if world_size > torch_npu.npu.device_count():
+            self.skipTest(f"Skipped because rank_size {world_size} > available devices {torch_npu.npu.device_count()}")
         d_types = [torch.int8]
 
         sizes = [[[27, 333], [333, 77]],
