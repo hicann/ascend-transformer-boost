@@ -1,5 +1,5 @@
-#ifndef USR_DEFINE_PARAM_COMPARE_H
-#define USR_DEFINE_PARAM_COMPARE_H
+#ifndef CUSTOMIZE_PARAM_COMPARE_H
+#define CUSTOMIZE_PARAM_COMPARE_H
 #include <mki/launch_param.h>
 
 namespace atb {

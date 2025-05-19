@@ -5,7 +5,7 @@
 #include <atbops/params/params.h>
 #include <mki/launch_param.h>
 #include "atb/utils/log.h"
-#include "usr_define_op_params.h"
+#include "customize_op_params.h"
 #include "atb/utils/tensor_util.h"
 
 namespace atb {
