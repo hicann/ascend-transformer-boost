@@ -97,4 +97,13 @@ void MstxMemRegister::AddTensorMemRegions(void *ptr, uint64_t size)
         rangesDesc_.push_back(tensorInfo);
     }
 }
+
+Status MstxMemRegister::CheckTensorRange()
+{
+    if (rangeDesc_.empty()) {
+        return false;
+    } else {
+        return true;
+    }
+}
 }  // namespace atb
