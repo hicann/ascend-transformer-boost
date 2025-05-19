@@ -120,12 +120,12 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     }
     if (isQuant_) {
         coCParamDesc.quantInfo = {static_cast<Lcal::QuantGranularity>(param_.quantType), param_.quantGroupSize};
-	if (param_.quantType == infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_CHANNEL) {
-	    const TensorDesc &scale = runnerVariantPack.inTensors.at(3).desc;
-	    if (scale.dtype == ACL_FLOAT) {
-	        coCParamDesc.quantInfo = {Lcal::QuantGranularity::FLOAT32_SCALE_PER_CHANNEL, param_.quantGroupSize};
-	    }
-	}
+        if (param_.quantType == infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_CHANNEL) {
+            const TensorDesc &scale = runnerVariantPack.inTensors.at(3).desc;
+            if (scale.dtype == ACL_FLOAT) {
+                coCParamDesc.quantInfo = {Lcal::QuantGranularity::FLOAT32_SCALE_PER_CHANNEL, param_.quantGroupSize};
+            }
+        }
     }
     int ret = lcoc_->SetParam(lcalType_, {}, coCParamDesc);
     if (ret != 0) {
