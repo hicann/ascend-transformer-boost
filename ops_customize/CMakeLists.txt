@@ -1,5 +1,5 @@
 file(GLOB_RECURSE USR_COMMON_SRC "${CMAKE_CURRENT_LIST_DIR}/common/*.cpp")
-file(GLOB_RECURSE USR_OPS_SRC "${CMAKE_CURRENT_LIST_DIR}ops/*/*.cpp")
+file(GLOB_RECURSE USR_OPS_SRC "${CMAKE_CURRENT_LIST_DIR}/ops/*.cpp")
 
 add_library(atb_customize SHARED
     ${USR_COMMON_SRC}
