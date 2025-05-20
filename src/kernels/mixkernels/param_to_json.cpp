@@ -318,7 +318,7 @@ std::string UnpadFlashAttentionToJson(const Any &param)
     for (size_t i = 0; i < specificParam.vTensorList.size(); ++i) {
         ss << "\nvTensorList[" << i << "]: " << specificParam.vTensorList.at(i).ToString();
     }
-    
+
     for (size_t i = 0; i < specificParam.kShareTensorList.size(); ++i) {
         ss << "\nkShareTensorList[" << i << "]: " << specificParam.kShareTensorList.at(i).ToString();
     }
@@ -357,6 +357,28 @@ std::string RINGMLAToJson(const Any &param)
     paramsJson["qSeqLen"] = specificParam.qSeqLen;
     paramsJson["kvSeqLen"] = specificParam.kvSeqLen;
     paramsJson["isRing"] = specificParam.isRing;
+std::string GmmDeqSwigluQuantGmmDeqToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::GmmDeqSwigluQuantGmmDeq specificParam = AnyCast<OpParam::GmmDeqSwigluQuantGmmDeq>(param);
+
+    paramsJson["outputType"] = specificParam.outputType;
+    paramsJson["groupListType"] = specificParam.groupListType;
+    paramsJson["weightUpPermuteType"] = specificParam.weightUpPermuteType;
+    paramsJson["transposeWeightUp"] = specificParam.transposeWeightUp;
+    paramsJson["transposeWeightDown"] = specificParam.transposeWeightDown;
+    return paramsJson.dump();
+}
+
+std::string MmDeqSwigluQuantMmDeqToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::MmDeqSwigluQuantMmDeq specificParam = AnyCast<OpParam::MmDeqSwigluQuantMmDeq>(param);
+
+    paramsJson["outputType"] = specificParam.outputType;
+    paramsJson["weightUpPermuteType"] = specificParam.weightUpPermuteType;
+    paramsJson["transposeWeightUp"] = specificParam.transposeWeightUp;
+    paramsJson["transposeWeightDown"] = specificParam.transposeWeightDown;
     return paramsJson.dump();
 }
 
@@ -383,4 +405,6 @@ REG_STRINGIFY(OpParam::UnpadWithHiddenState, UnpadWithHiddenStateToJson);
 REG_STRINGIFY(OpParam::Unpad, UnpadToJson);
 REG_STRINGIFY(OpParam::RopeQConcat, RopeQConcatToJson);
 REG_STRINGIFY(OpParam::SwigluQuant, SwigluQuantToJson);
+REG_STRINGIFY(OpParam::GmmDeqSwigluQuantGmmDeq, GmmDeqSwigluQuantGmmDeqToJson);
+REG_STRINGIFY(OpParam::MmDeqSwigluQuantMmDeq, MmDeqSwigluQuantMmDeqToJson);
 } // namespace AtbOps

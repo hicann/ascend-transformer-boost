@@ -56,7 +56,16 @@ OperationBase::OperationBase(const std::string &name) : name_(name)
     logPrefix_ = name_ + " ";
 }
 
-OperationBase::~OperationBase() {}
+OperationBase::~OperationBase()
+{
+    // 对于GraphOperation来说，里面的子Op都不会有runnerVariantPack_
+    if (runnerVariantPack_.context) {
+        ATB_LOG(INFO) << GetLogPrefix() << "will free deviceArgsBuffer_ and hostArgsBuffer_";
+        // 此处如果先destroy了context再destroy operation，里面调用aclrtFree接口会报错
+        runnerVariantPack_.context->FreeArgsDeviceBuffer(deviceArgsBuffer_);
+        runnerVariantPack_.context->FreeArgsHostBuffer(hostArgsBuffer_);
+    }
+}
 
 Status OperationBase::SetOperationBaseIds(const std::vector<int64_t> &operationBaseIds, const int64_t nodeId)
 {
@@ -913,21 +922,19 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
     if (!isCaptured_) {
         argsBufferSize_ = runner_->GetArgsSize();
         if (deviceArgsBuffer_ == nullptr) {
-            Status ret = aclrtMalloc(&deviceArgsBuffer_, argsBufferSize_, ACL_MEM_MALLOC_HUGE_FIRST);
-            if (ret != 0) {
-                ATB_LOG(ERROR) << "aclrtMalloc device buffer failed!";
-                return ret;
+            // 调用Context分配deviceArgsBuffer_
+            deviceArgsBuffer_ = runnerVariantPack_.context->GetArgsDeviceBuffer(argsBufferSize_);
+            if (deviceArgsBuffer_ == nullptr) {
+                return ERROR_CANN_ERROR;
             }
-            ATB_LOG(DEBUG) << "aclrtMalloc success!";
         }
 
         if (hostArgsBuffer_ == nullptr) {
-            Status ret = aclrtMallocHost(&hostArgsBuffer_, argsBufferSize_);
-            if (ret != 0) {
-                ATB_LOG(ERROR) << "aclrtMalloc host buffer failed!";
-                return ret;
+            // 调用Context分配hostArgsBuffer_
+            hostArgsBuffer_ = runnerVariantPack_.context->GetArgsHostBuffer(argsBufferSize_);
+            if (hostArgsBuffer_ == nullptr) {
+                return ERROR_CANN_ERROR;
             }
-            ATB_LOG(DEBUG) << "aclrtMalloc success!";
         }
 
         runnerVariantPack_.argsDeviceBuffer = reinterpret_cast<uint8_t *>(deviceArgsBuffer_);
@@ -937,7 +944,29 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
         // 上述的preLaunch当前只做了地址更新及tiling拷贝，后续考虑改名。当前为保证已有代码的质量不修改原有流程，后续需要考虑EAGER_MODE与GRAPH_MODE的流程归纳与复用。
     } else {
         ATB_LOG(INFO) << GetLogPrefix() << "begin update tensor addr.";
-        runnerVariantPack_.intermediateBuffer = nullptr;
+        if (workspace == runnerVariantPack_.workspaceBuffer) {
+            // 如果workspace地址没有变化，intermediateBuffer作为偏移量为0
+            runnerVariantPack_.intermediateBuffer = nullptr;
+        } else if (workspace > runnerVariantPack_.workspaceBuffer) {
+            // 如果workspace发生了变化，计算workspace变化带来的偏移量时需要再加上workspaceBufferSize才是中间tensor对应内存的起始地址
+            runnerVariantPack_.intermediateBuffer = workspace -
+            reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPack_.workspaceBufferSize;
+#ifdef _DEBUG
+            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+                          << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
+#endif
+            runnerVariantPack_.workspaceBuffer = workspace;
+        } else {
+            runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
+            reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
+#ifdef _DEBUG
+            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+                          << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
+#endif
+            runnerVariantPack_.workspaceBuffer = workspace;
+        }
         if (needUpdateTensorAddr_) {
             st = runner_->UpdateTensorAddr(runnerVariantPack_);
             ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "UpdateTensorAddr failed! ret:" << st;
@@ -1016,6 +1045,7 @@ Status OperationBase::GraphModeLaunch()
     Status st = NO_ERROR;
     aclrtStream executeStream = GetExecuteStream(runnerVariantPack_.context);
     if (streamStatus_ == ACL_MODEL_RI_CAPTURE_STATUS_ACTIVE) {
+        isCaptured_ = true;
         st = EagerModeLaunch();
         ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "EagerModeLaunch failed! ret:" << st;
         return st;

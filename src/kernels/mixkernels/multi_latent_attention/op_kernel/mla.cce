@@ -842,6 +842,7 @@ private:
                         qk_n_2,  // k
                         1      // cmatrixInitVal
                     );
+                    PIPE_BARRIER(M);
                     SET_FLAG(M, MTE1, l0b_pingpong_flag + 2);
                     if (embed_split_idx == embed_split_loop_v - 1) {
                         SET_FLAG(M, MTE1, l0_p_pingpong_flag);
@@ -1504,11 +1505,13 @@ public:
         SET_FLAG(MTE3, MTE2, EVENT_ID2);
         SET_FLAG(MTE3, MTE2, EVENT_ID3);
         SET_FLAG(MTE3, MTE2, EVENT_ID4);
-        SET_FLAG(V, MTE2, EVENT_ID4);
+        SET_FLAG(MTE3, MTE2, EVENT_ID5);
         SET_FLAG(V, MTE2, EVENT_ID0);
+        SET_FLAG(V, MTE2, EVENT_ID1);
+        SET_FLAG(V, MTE2, EVENT_ID2);
+        SET_FLAG(V, MTE2, EVENT_ID4);
         SET_FLAG(V, MTE2, EVENT_ID7);
         SET_FLAG(MTE3, V, EVENT_ID2);
-        SET_FLAG(V, MTE2, EVENT_ID2);
 
         for(uint32_t process = block_idx; process < totalTaskNum; process += block_num){
             uint32_t offset_tiling = tiling_head_size + tiling_para_size * process;
@@ -1562,11 +1565,13 @@ public:
         WAIT_FLAG(MTE3, MTE2, EVENT_ID2);
         WAIT_FLAG(MTE3, MTE2, EVENT_ID3);
         WAIT_FLAG(MTE3, MTE2, EVENT_ID4);
+        WAIT_FLAG(MTE3, MTE2, EVENT_ID5);
         WAIT_FLAG(V, MTE2, EVENT_ID0);
+        WAIT_FLAG(V, MTE2, EVENT_ID1);
+        WAIT_FLAG(V, MTE2, EVENT_ID2);
         WAIT_FLAG(V, MTE2, EVENT_ID4);
         WAIT_FLAG(V, MTE2, EVENT_ID7);
         WAIT_FLAG(MTE3, V, EVENT_ID2);
-        WAIT_FLAG(V, MTE2, EVENT_ID2);
 
         if constexpr (flashDecoding) {
             int reduce_flag_id = 3;
@@ -2330,7 +2335,7 @@ private:
         );
     }
 
-    __aicore__ __attribute__((always_inline)) inline void CopyScaleBlock(uint32_t sub_m, uint32_t head_loop_idx, uint32_t l_offset, uint32_t o_offset, uint32_t split_num)
+    __aicore__ __attribute__((always_inline)) inline void CopyScaleBlock(uint32_t sub_m, uint32_t head_loop_idx, uint32_t l_offset, uint32_t o_offset, uint32_t split_num, uint32_t oUbOffset)
     {
         SET_FLAG(V, MTE3, EVENT_ID2);
         WAIT_FLAG(V, MTE3, EVENT_ID2);
@@ -2352,7 +2357,7 @@ private:
         uint32_t src_gap = ((__k % 16 <= 8) && (__k % 16 > 0))? 1 : 0;
         ub_to_gm_align<ArchType::ASCEND_V220, float>(
             o_core_tmp_gm_tensor[(int64_t)o_offset],
-            go32_ubuf_tensor,
+            go32_ubuf_tensor[oUbOffset],
             0,        // sid
             sub_m,    // nBurst
             __k * 4,  // lenBurst
@@ -2842,7 +2847,7 @@ private:
             0                             // dstGap
         );
         SET_FLAG(MTE2, V, pingpong_flag + 2);
-        
+
         WAIT_FLAG(MTE2, V, pingpong_flag);
         //dequant
         DeQuantPerHeadProc(
@@ -2895,6 +2900,7 @@ private:
             m
         );
     }
+
     __aicore__ __attribute__((always_inline)) inline void SoftmaxStage2MLAHeadLoop(
         AscendC::GlobalTensor<mm2CopyType> o_tmp_gm_tensor,
         AscendC::GlobalTensor<float> go_gm_tensor,
@@ -3279,12 +3285,17 @@ private:
         uint32_t split_num
         )
     {
+        uint32_t oPingPongFlag = (n_idx / 4) % 2;
         uint32_t sub_m_d64 = (sub_m + 63) / 64;     // up aligned to 64
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
-        WAIT_FLAG(V, MTE2, EVENT_ID0);
+        if constexpr (std::is_same_v<IN_DTYPE,int8_t>) {
+            oPingPongFlag = 0;
+        }
+        uint32_t oUbOffset = oPingPongFlag * 4096; // oPingPongFlag * 8 * 512
+        WAIT_FLAG(V, MTE2, oPingPongFlag);
         if (n_idx != 4) {
             gm_to_ub<ArchType::ASCEND_V220, mm2CopyType>(
-                lo_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),
+                lo_ubuf_tensor.template ReinterpretCast<mm2CopyType>()[oUbOffset],
                 o_tmp_gm_tensor,
                 0,                    // sid
                 1,                    // nBurst
@@ -3294,14 +3305,14 @@ private:
             );
             SET_FLAG(MTE2, V, EVENT_ID0);
             WAIT_FLAG(MTE2, V, EVENT_ID0);
-            if constexpr (std::is_same_v<IN_DTYPE,int8_t>) {
+            if constexpr (std::is_same_v<IN_DTYPE, int8_t>) {
                 DeQuantPerHeadProc(
-                    lo_ubuf_tensor, lo_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),// lo_ubuf_tensor use the same ptr
+                    lo_ubuf_tensor[oUbOffset], lo_ubuf_tensor.template ReinterpretCast<mm2CopyType>()[oUbOffset],// lo_ubuf_tensor use the same ptr
                     descale_k1_ubuf_tensor, tv32_ubuf_tensor, pm32_ubuf_tensor, sub_m, round_v, round_v, 1);
             }
         }
         SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-        WAIT_FLAG(MTE3, MTE2, EVENT_ID4);
+        WAIT_FLAG(MTE3, MTE2, oPingPongFlag + 4);
         if (n_idx != 4) {
             // *** dm = exp(dm)
             SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
@@ -3314,7 +3325,7 @@ private:
             PIPE_BARRIER(V);
             if (head_loop > 1) {
                 gm_to_ub<ArchType::ASCEND_V220, float>(
-                    go32_ubuf_tensor,
+                    go32_ubuf_tensor[oUbOffset],
                     go_gm_tensor,
                     0,
                     1,
@@ -3329,8 +3340,8 @@ private:
             // *** go = go * dm_block
             SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
             for (uint32_t vmul_idx = 0; vmul_idx < __v / FLOAT_VECTOR_SIZE; ++vmul_idx) {
-                mul_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[vmul_idx * FLOAT_VECTOR_SIZE],
-                    go32_ubuf_tensor[vmul_idx * FLOAT_VECTOR_SIZE],
+                mul_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[oUbOffset + vmul_idx * FLOAT_VECTOR_SIZE],
+                    go32_ubuf_tensor[oUbOffset + vmul_idx * FLOAT_VECTOR_SIZE],
                     tv32_ubuf_tensor,
                     sub_m,        // repeat
                     1,            // dstBlockStride
@@ -3343,8 +3354,8 @@ private:
             }
             if (__v % FLOAT_VECTOR_SIZE > 0) {
                 __set_mask(__v % FLOAT_VECTOR_SIZE);
-                mul_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-                    go32_ubuf_tensor[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                mul_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[oUbOffset + __v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                    go32_ubuf_tensor[oUbOffset + __v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
                     tv32_ubuf_tensor,
                     sub_m,        // repeat
                     1,            // dstBlockStride
@@ -3358,9 +3369,9 @@ private:
             }
             PIPE_BARRIER(V);
             // *** go = lo + go
-            add_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor,
-                go32_ubuf_tensor,
-                lo_ubuf_tensor,
+            add_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[oUbOffset],
+                go32_ubuf_tensor[oUbOffset],
+                lo_ubuf_tensor[oUbOffset],
                 (sub_m * round_v + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,  // repeat
                 1,                            // dstBlockStride
                 1,                            // src0BlockStride
@@ -3372,9 +3383,8 @@ private:
             PIPE_BARRIER(V);
         } else {
             // *** gl = ll
-
             gm_to_ub<ArchType::ASCEND_V220, mm2CopyType>(
-                go32_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),
+                go32_ubuf_tensor.template ReinterpretCast<mm2CopyType>()[oUbOffset],
                 o_tmp_gm_tensor,
                 0,                    // sid
                 1,                    // nBurst
@@ -3386,11 +3396,11 @@ private:
             WAIT_FLAG(MTE2, V, EVENT_ID0);
             if constexpr (std::is_same_v<IN_DTYPE,int8_t>) {
                 DeQuantPerHeadProc(
-                    go32_ubuf_tensor, go32_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),// lo_ubuf_tensor use the same ptr
+                    go32_ubuf_tensor[oUbOffset], go32_ubuf_tensor.template ReinterpretCast<mm2CopyType>()[oUbOffset],// lo_ubuf_tensor use the same ptr
                     descale_k1_ubuf_tensor, tv32_ubuf_tensor, pm32_ubuf_tensor, sub_m, round_v, round_v, 1);
             }
         }
-        SET_FLAG(V, MTE2, EVENT_ID0);
+        SET_FLAG(V, MTE2, oPingPongFlag);
 
         if (n_idx + 4 > n_loop + 4 - 1) {
             // *** gl_block = expand_to_block(gl), 存放于 tv
@@ -3404,8 +3414,8 @@ private:
             // *** go = go / gl_block
             SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
             for (uint32_t vdiv_idx = 0; vdiv_idx < __v / FLOAT_VECTOR_SIZE; ++vdiv_idx) {
-                div_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[vdiv_idx * FLOAT_VECTOR_SIZE],
-                    go32_ubuf_tensor[vdiv_idx * FLOAT_VECTOR_SIZE],
+                div_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[oUbOffset + vdiv_idx * FLOAT_VECTOR_SIZE],
+                    go32_ubuf_tensor[oUbOffset + vdiv_idx * FLOAT_VECTOR_SIZE],
                     tv32_ubuf_tensor,
                     sub_m,                 // repeat
                     1,                     // dstBlockStride
@@ -3418,8 +3428,8 @@ private:
             }
             if (__v % FLOAT_VECTOR_SIZE > 0) {
                 __set_mask(__v % FLOAT_VECTOR_SIZE);
-                div_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-                    go32_ubuf_tensor[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                div_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[oUbOffset + __v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                    go32_ubuf_tensor[oUbOffset + __v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
                     tv32_ubuf_tensor,
                     sub_m,                 // repeat
                     1,                     // dstBlockStride
@@ -3463,14 +3473,14 @@ private:
                     8                                 // src1RepeatStride
                 );
                 PIPE_BARRIER(V);
- 
+
                 uint32_t o_fd_offset = prev_split_num * q_heads * 512 * q_seq_len + cur_nIndx * __k + head_idx * __k * split_num;
                 uint32_t l_offset = prev_split_num * q_heads * q_seq_len + cur_nIndx + head_idx * split_num;
-                CopyScaleBlock(sub_m, head_loop_idx, l_offset * 8, o_fd_offset, split_num);
+                CopyScaleBlock(sub_m, head_loop_idx, l_offset * 8, o_fd_offset, split_num, oUbOffset);
             } else {
                 // *** go = castfp32to16(go)
-                conv_v<ArchType::ASCEND_V220, float, OUT_DTYPE>(go_ubuf_tensor,
-                    go32_ubuf_tensor,
+                conv_v<ArchType::ASCEND_V220, float, OUT_DTYPE>(go_ubuf_tensor[oUbOffset * 2],
+                    go32_ubuf_tensor[oUbOffset],
                     (sub_m * round_v + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,  // repeat
                     1,                            // dstBlockStride
                     1,                            // srcBlockStride
@@ -3479,10 +3489,10 @@ private:
                 );
                 SET_FLAG(V, MTE3, EVENT_ID0);
                 WAIT_FLAG(V, MTE3, EVENT_ID0);
- 
+
                 ub_to_gm_align<ArchType::ASCEND_V220, OUT_DTYPE>(
                     o_gm_tensor,
-                    go_ubuf_tensor,
+                    go_ubuf_tensor[oUbOffset * 2],
                     0,        // sid
                     sub_m,    // nBurst
                     __v * 2,  // lenBurst
@@ -3547,7 +3557,7 @@ private:
             WAIT_FLAG(V, MTE3, EVENT_ID5);
             ub_to_gm<ArchType::ASCEND_V220, float>(
                 go_gm_tensor,
-                go32_ubuf_tensor,
+                go32_ubuf_tensor[oUbOffset],
                 0,
                 1,
                 sub_m * round_v / FLOAT_BLOCK_SIZE,
@@ -3555,7 +3565,7 @@ private:
                 0
             );
         }
-        SET_FLAG(MTE3, MTE2, EVENT_ID4);
+        SET_FLAG(MTE3, MTE2, oPingPongFlag + 4);
     }
 
     __aicore__ __attribute__((always_inline)) inline void InnerRunVectorChange(
@@ -3874,8 +3884,10 @@ private:
                 FftsCrossCoreSync<PIPE_MTE3, 2>(SOFTMAX_READY_DECODER);
             }
             /* ************ softmax2 stage1  ************* */
-            uint32_t process_row_num = 16;
-
+            uint32_t process_row_num = 8;
+            if constexpr (std::is_same_v<IN_DTYPE,int8_t>) {
+                process_row_num = 16;
+            }
             // stage2也被删掉 head32的时候可不改sm2
             if (n_idx >= s_block_stack) {
                 WaitFlagDev(UPDATE_READY_DECODER);
