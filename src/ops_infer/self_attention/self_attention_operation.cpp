@@ -316,7 +316,8 @@ bool PrefixEncoderParamCheck(const infer::SelfAttentionParam &opParam)
         {std::abs(opParam.clampMax - 0.0f) < FLT_EPSILON, "PREFIX_ENCODER doesn't support clamp"},
         {opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
              opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT ||
-             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS,
+             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS ||
+             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_FREE,
          "PREFIX_ENCODER only supports alibi compress mask, norm compress mask and alibi compress sqrt mask"},
         {opParam.kvcacheCfg == atb::infer::SelfAttentionParam::K_CACHE_V_CACHE,
          "PREFIX_ENCODER doesn't support key value bypass"},

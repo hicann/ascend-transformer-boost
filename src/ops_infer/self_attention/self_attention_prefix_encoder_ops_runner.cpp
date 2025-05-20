@@ -38,6 +38,7 @@ SelfAttentionPrefixEncoderOpsRunner::SelfAttentionPrefixEncoderOpsRunner(const i
         intensorSize = 7;
         hasSlopes = false;
     }
+    bool needMask = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_FREE;
     kernelGraph_.inTensors.resize(intensorSize);
     kernelGraph_.outTensors.resize(1);
 
@@ -46,10 +47,10 @@ SelfAttentionPrefixEncoderOpsRunner::SelfAttentionPrefixEncoderOpsRunner(const i
     Mki::Tensor &key = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *value = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *blockTables = &kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *mask = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *mask = needMask ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
     Mki::Tensor &seqLen = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &kvSeqLen = kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *slopes = hasSlopes ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
+    Mki::Tensor *slopes = hasSlopes && needMask ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
 
     Mki::Tensor &attnOut = kernelGraph_.outTensors.at(0);
 
