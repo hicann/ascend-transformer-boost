@@ -344,6 +344,69 @@ std::string UnpadToJson(const Any &param)
     (void)param;
     return "{}";
 }
+
+std::string RINGMLAToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::RINGMLA specificParam = AnyCast<OpParam::RINGMLA>(param);
+
+    paramsJson["type"] = specificParam.type;
+    paramsJson["tor"] = specificParam.tor;
+    paramsJson["kvHead"] = specificParam.kvHead;
+    paramsJson["headSize"] = specificParam.headSize;
+    paramsJson["qSeqLen"] = specificParam.qSeqLen;
+    paramsJson["kvSeqLen"] = specificParam.kvSeqLen;
+    paramsJson["isRing"] = specificParam.isRing;
+    return paramsJson.dump();
+}
+
+std::string RingAttentionToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::RingAttention specificParam = AnyCast<OpParam::RingAttention>(param);
+
+    paramsJson["type"] = specificParam.type;
+    paramsJson["headSize"] = specificParam.headSize;
+    paramsJson["qSeqLen"] = specificParam.qSeqLen;
+    paramsJson["kvSeqLen"] = specificParam.kvSeqLen;
+    paramsJson["tor"] = specificParam.tor;
+    paramsJson["kvHead"] = specificParam.kvHead;
+    paramsJson["batchRunStatus"] = specificParam.batchRunStatus;
+    paramsJson["isClamp"] = specificParam.isClamp;
+    paramsJson["clampMin"] = specificParam.clampMin;
+    paramsJson["clampMax"] = specificParam.clampMax;
+    paramsJson["maskType"] = specificParam.maskType;
+    paramsJson["alibiLeftAlign"] = specificParam.alibiLeftAlign;
+    paramsJson["isAlibiMaskSqrt"] = specificParam.isAlibiMaskSqrt;
+    paramsJson["compressHead"] = specificParam.compressHead;
+    paramsJson["isTriuMask"] = specificParam.isTriuMask;
+    paramsJson["quantType"] = specificParam.quantType;
+    paramsJson["outDataType"] = specificParam.outDataType;
+    paramsJson["scaleType"] = specificParam.scaleType;
+    paramsJson["windowSize"] = specificParam.windowSize;
+    paramsJson["cacheType"] = specificParam.cacheType;
+    paramsJson["headDimV"] = specificParam.headDimV;
+    paramsJson["kvShareMap"] = specificParam.kvShareMap;
+    paramsJson["kvShareLen"] = specificParam.kvShareLen;
+    paramsJson["isRing"] = specificParam.isRing;
+
+    std::stringstream ss;
+    for (size_t i = 0; i < specificParam.kTensorList.size(); ++i) {
+        ss << "\nkTensorList[" << i << "]: " << specificParam.kTensorList.at(i).ToString();
+    }
+    for (size_t i = 0; i < specificParam.vTensorList.size(); ++i) {
+        ss << "\nvTensorList[" << i << "]: " << specificParam.vTensorList.at(i).ToString();
+    }
+
+    for (size_t i = 0; i < specificParam.kShareTensorList.size(); ++i) {
+        ss << "\nkShareTensorList[" << i << "]: " << specificParam.kShareTensorList.at(i).ToString();
+    }
+    for (size_t i = 0; i < specificParam.vShareTensorList.size(); ++i) {
+        ss << "\nvShareTensorList[" << i << "]: " << specificParam.vShareTensorList.at(i).ToString();
+    }
+    return paramsJson.dump() + ss.str();
+}
+
 REG_STRINGIFY(OpParam::BlockCopy, BlockCopyToJson);
 REG_STRINGIFY(OpParam::FastSoftMaxGrad, FastSoftMaxGradToJson);
 REG_STRINGIFY(OpParam::FastSoftMax, FastSoftMaxToJson);
@@ -366,4 +429,6 @@ REG_STRINGIFY(OpParam::UnpadWithHiddenState, UnpadWithHiddenStateToJson);
 REG_STRINGIFY(OpParam::Unpad, UnpadToJson);
 REG_STRINGIFY(OpParam::RopeQConcat, RopeQConcatToJson);
 REG_STRINGIFY(OpParam::SwigluQuant, SwigluQuantToJson);
+REG_STRINGIFY(OpParam::RINGMLA, RINGMLAToJson);
+REG_STRINGIFY(OpParam::RingAttention, RingAttentionToJson);
 } // namespace AtbOps

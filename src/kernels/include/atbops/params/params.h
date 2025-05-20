@@ -42,4 +42,6 @@
 #include "atbops/params/mla_preprocess.h"
 #include "atbops/params/mla.h"
 #include "atbops/params/fusion.h"
+#include "atbops/params/ring_attention.h"
+#include "atbops/params/ring_mla.h"
 #endif
