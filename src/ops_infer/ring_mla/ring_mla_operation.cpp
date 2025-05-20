@@ -35,10 +35,12 @@ static const uint32_t IN_PREV_OUT_INDEX = IN_QUERY_INDEX + 5;
 static const uint32_t IN_PREV_LSE_INDEX = IN_QUERY_INDEX + 6;
 static const uint32_t OUT_PREV_OUT_INDEX = 0;
 static const uint32_t OUT_PREV_LSE_INDEX = 1;
-// query, key, value dim indexstatic const uint32_t QKV_N_TOKENS_IDX = 0;
+// query, key, value dim index
+static const uint32_t QKV_N_TOKENS_IDX = 0;
 static const uint32_t QKV_HEAD_NUM_IDX = 1;
 static const uint32_t QKV_HEAD_SIZE_IDX = 2;
-// seqlen, mask indexstatic const uint32_t SEQLEN_BATCH_IDX = 0;
+// seqlen, mask index
+static const uint32_t SEQLEN_BATCH_IDX = 0;
 }; // namespace
 namespace atb {
 bool ParamCheck(const infer::RingMLAParam &opParam, ExternalError &extError)
@@ -131,20 +133,21 @@ RingMLAOperation::~RingMLAOperation() {}
 uint32_t RingMLAOperation::GetInputNum() const
 {
     if (isInputSoftmaxLse_) {
-        return BASE_IN_TENSOR_NUM + 2; // 2: prevLse, prevOut    }
-        return BASE_IN_TENSOR_NUM;
+        return BASE_IN_TENSOR_NUM + 2; // 2: prevLse, prevOut
     }
+    return BASE_IN_TENSOR_NUM;
+}
 
-    uint32_t RingMLAOperation::GetOutputNum() const
-    {
-        return BASE_OUT_TENSOR_NUM;
-    }
+uint32_t RingMLAOperation::GetOutputNum() const
+{
+    return BASE_OUT_TENSOR_NUM;
+}
 
-    bool RingMLAOperation::DimNumCheck(const SVector<TensorDesc> &inTensorDescs, ExternalError extError) const
-    {
-        // IR: query, key, value, mask, (prevLse), (prevOut)
-        for (int i = 0; i < 3; ++i) { // 3: query, key, value        if (inTensorDescs.at(i).shape.dimNum !=
-                                      // QKV_DIM_NUM) { // QKV_DIM_NUM: [nTokens, headNum, headSize]
+bool RingMLAOperation::DimNumCheck(const SVector<TensorDesc> &inTensorDescs, ExternalError extError) const
+{
+    // IR: query, key, value, mask, (prevLse), (prevOut)
+    for (int i = 0; i < 3; ++i) {                              // 3: query, key, valu
+        if (inTensorDescs.at(i).shape.dimNum != QKV_DIM_NUM) { // QKV_DIM_NUM: [nTokens, headNum, headSize]
             extError.errorDesc = OperationUtil::ConcatInfo("dimNum of inTensors[", i, "] should be ", QKV_DIM_NUM);
             extError.errorData =
                 OperationUtil::ConcatInfo("But got inTensors[", i, "] dimNum: ", inTensorDescs.at(i).shape.dimNum);
@@ -215,7 +218,7 @@ Status RingMLAOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) cons
         return extError.errorType;
     }
     if (inTensorDescs.at(IN_MASK_INDEX).shape.dimNum == 3) { // 3: mask: [batch, maxSeqLen, maxSeqLen]
-                                                             // 1: seqlen shape: [batch]
+        // 1: seqlen shape: [batch]
         int64_t batch = inTensorDescs.at(IN_SEQLEN_INDEX).shape.dims[SEQLEN_BATCH_IDX];
         if (inTensorDescs.at(IN_SEQLEN_INDEX).shape.dimNum == 2) {      // 2: seqlen shape: [2, batch]
             if (inTensorDescs.at(IN_SEQLEN_INDEX).shape.dims[0] != 2) { // 2: seqlen shape: [2, batch]
@@ -314,9 +317,9 @@ Status RingMLAOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
         outTensorDescs.at(OUT_PREV_LSE_INDEX) =
             inTensorDescs.at(IN_PREV_LSE_INDEX); // 1: softmaxLse, 6: prevLse        return NO_ERROR;
     }
-    outTensorDescs.at(OUT_PREV_LSE_INDEX) = inTensorDescs.at(
-        IN_QUERY_INDEX); // 1: softmaxLse, 0: query    outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dimNum = LSE_DIM_NUM;
-                         // // 1: softmaxLse 2: [nTokens, headNum] query: [nTokens, headNum, headSize] 删除headSize
+    outTensorDescs.at(OUT_PREV_LSE_INDEX) = inTensorDescs.at(IN_QUERY_INDEX); // 1: softmaxLse, 0: query
+    outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dimNum = LSE_DIM_NUM; // 1: softmaxLse 2: [nTokens, headNum]
+    // query: [nTokens, headNum, headSize] 删除headSize
     outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] = 0;
     return NO_ERROR;
 }

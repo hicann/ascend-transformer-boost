@@ -56,7 +56,7 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
     kernelGraph_.nodes.resize(1);
     auto &RingMLANode = kernelGraph_.nodes.at(0);
 
-    AtbOps::OpParam::RingAttention RingMLAParam;
+    AtbOps::OpParam::RINGMLA RingMLAParam;
     SetRingMLAParam(RingMLAParam);
 
     RingMLANode.opDesc = {0, "RingAttentionOperation", RingMLAParam};
@@ -86,7 +86,7 @@ Status RingMLAOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
     }
     auto &RingMLANode = kernelGraph_.nodes.at(0); // 0: RingMLA节点位置
 
-    AtbOps::OpParam::RingAttention RingMLAParam;
+    AtbOps::OpParam::RINGMLA RingMLAParam;
     SetRingMLAParam(RingMLAParam);
     RingMLAParam.qSeqLen = newParam.qSeqLen;
     RingMLAParam.kvSeqLen = newParam.kvSeqLen;
@@ -115,19 +115,19 @@ Status RingMLAOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
     return NO_ERROR;
 }
 
-void RingMLAOpsRunner::SetRingMLAParam(AtbOps::OpParam::RingAttention &RingMLAParam)
+void RingMLAOpsRunner::SetRingMLAParam(AtbOps::OpParam::RINGMLA &RingMLAParam)
 {
     RingMLAParam.isRing = isInputSoftmaxLse_;
     RingMLAParam.headSize = param_.headNum;
     RingMLAParam.kvHead = param_.kvHeadNum;
     RingMLAParam.tor = param_.qkScale;
-    RingMLAParam.type = AtbOps::OpParam::RingAttention::Type::RING_ATTENTION;
+    RingMLAParam.type = AtbOps::OpParam::RINGMLA::Type::RING_ATTENTION;
     if (param_.maskType == infer::RingMLAParam::MaskType::NO_MASK) {
-        RingMLAParam.maskType = static_cast<AtbOps::OpParam::RingAttention::MaskType>(
-            AtbOps::OpParam::RingAttention::MaskType::MASK_TYPE_NONE);
+        RingMLAParam.maskType = static_cast<AtbOps::OpParam::RINGMLA::MaskType>(
+            AtbOps::OpParam::RINGMLA::MaskType::MASK_TYPE_NONE);
     } else if (param_.maskType == infer::RingMLAParam::MaskType::MASK_TYPE_TRIU) {
-        RingMLAParam.maskType = static_cast<AtbOps::OpParam::RingAttention::MaskType>(
-            AtbOps::OpParam::RingAttention::MaskType::MASK_TYPE_NORM);
+        RingMLAParam.maskType = static_cast<AtbOps::OpParam::RINGMLA::MaskType>(
+            AtbOps::OpParam::RINGMLA::MaskType::MASK_TYPE_NORM);
         RingMLAParam.isTriuMask = 1;
     }
 }
