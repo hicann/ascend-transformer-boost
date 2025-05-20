@@ -51,21 +51,6 @@ enum class MaskType {
 };
 
 
-
-
-__aicore__ __attribute__((always_inline)) inline void __set_vcg_mask(int32_t len)
-{
-    if (len > 16 || len < 1) {
-        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-        return;
-    }
-    uint64_t subMask = ((uint64_t) 1 << len) - 1;
-    uint64_t maskValue = (subMask << 48) + (subMask << 32) + (subMask << 16) + subMask +
-                            (subMask << 56) + (subMask << 40) + (subMask << 24) + (subMask << 8);
-    SetVectorMask<int8_t>(maskValue, maskValue);
-}
-
-
 __aicore__ __attribute__((always_inline)) inline void SetVecMask(int32_t len)
 {
     uint64_t mask = 0;
