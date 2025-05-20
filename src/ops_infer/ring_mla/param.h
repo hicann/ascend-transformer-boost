@@ -7,8 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef ATB_RING_ATTENTION_PARAM_H
-#define ATB_RING_ATTENTION_PARAM_H
+#ifndef ATB_RING_MLA_PARAM_H
+#define ATB_RING_MLA_PARAM_H
 
 #include <mki/utils/SVector/SVector.h>
 #include <mki/tensor.h>
@@ -24,4 +24,4 @@ struct RingMLAVariantPackParam {
     bool BuildFromTensor(const SVector<Mki::Tensor> &inTensors, const size_t seqLenTensorId);
 };
 } // namespace atb
-#endif // ATB_RING_ATTENTION_PARAM_H
+#endif // ATB_RING_MLA_PARAM_H
