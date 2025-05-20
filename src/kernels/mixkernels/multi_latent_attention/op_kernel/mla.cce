@@ -1611,7 +1611,7 @@ public:
         WAIT_FLAG(V, MTE2, EVENT_ID4);
         WAIT_FLAG(V, MTE2, EVENT_ID7);
         WAIT_FLAG(MTE3, V, EVENT_ID2);
-
+        PIPE_BARRIER(ALL);
         if constexpr (flashDecoding) {
             int reduce_flag_id = 3;
             FftsCrossCoreSync<PIPE_MTE3, 0>(reduce_flag_id);
@@ -2405,6 +2405,9 @@ private:
             src_gap,   // srcGap
             (split_num - 1) * __k * 4  // dstGap
         );
+
+        SET_FLAG(MTE3, V, EVENT_ID3);
+        WAIT_FLAG(MTE3, V, EVENT_ID3);
     }
 
     __aicore__ __attribute__((always_inline)) inline void CombineScaleBlock(uint32_t num_tokens, uint32_t q_heads, uint32_t kv_split_core_num, uint32_t embedding_size)
