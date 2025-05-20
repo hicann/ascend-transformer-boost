@@ -36,6 +36,7 @@ struct MatmulCommonCheckParam {
     int32_t quantGroupSize = 0;
     int64_t tilingK = 0;
     int64_t tilingN = 0;
+    bool isMoe = false;
     bool enAccum = false;
 
     MatmulCommonCheckParam &operator=(const infer::LinearParam &linearParam)
@@ -55,10 +56,16 @@ struct MatmulCommonCheckParam {
         this->matmulOpEnum = LINEAR_PARALLEL;
         this->transposeA = false;
         this->transposeB = linearParallelParam.transWeight;
+        this->isMoe =
+            linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+            atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC;
         this->isQuant =
             linearParallelParam.backend == "lcoc" &&
             (linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::LINEAR_ALL_REDUCE ||
-             linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::PURE_LINEAR) &&
+             linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::PURE_LINEAR ||
+             linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+             linearParallelParam.type ==
+                 atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) &&
             (linearParallelParam.quantType > atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
              linearParallelParam.quantType < atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX);
         this->hasBias = this->isQuant;

@@ -341,6 +341,18 @@ static atb::Status LinearParallelOperationCreate(const nlohmann::json &paramJson
             param.twoDimTPInfo.innerDimIsAg = twoDimTPInfo["innerDimIsAg"].get<uint8_t>();
         }
     }
+    if (paramJson.find("moeInfo") != paramJson.end()) {
+        const auto &moeInfo = paramJson["moeInfo"];
+        if (moeInfo.contains("localExpertNums")) {
+            param.moeInfo.localExpertNums = moeInfo["localExpertNums"].get<uint16_t>();
+        }
+        if (moeInfo.contains("epSize")) {
+            param.moeInfo.epSize = static_cast<uint8_t>(moeInfo["epSize"].get<uint16_t>());
+        }
+        if (moeInfo.contains("tpSize")) {
+            param.moeInfo.tpSize = static_cast<uint8_t>(moeInfo["tpSize"].get<uint16_t>());
+        }
+    }
     param.rank = paramJson["rank"].get<int>();
     param.rankSize = paramJson["rankSize"].get<int>();
     ATB_LOG(INFO) << "LinearParallelParam  rank:" << param.rank << ", rankSize:" << param.rankSize
@@ -350,7 +362,10 @@ static atb::Status LinearParallelOperationCreate(const nlohmann::json &paramJson
                   << ", quantGroupSize:" << param.quantGroupSize << ", commDomain:" << param.commDomain
                   << ", twoDimTPInfo.agDim:" << param.twoDimTPInfo.agDim
                   << ", twoDimTPInfo.rsDim:" << param.twoDimTPInfo.rsDim
-                  << ", twoDimTPInfo.innerDimIsAg:" << param.twoDimTPInfo.innerDimIsAg;
+                  << ", twoDimTPInfo.innerDimIsAg:" << param.twoDimTPInfo.innerDimIsAg
+                  << ", moeInfo.localExpertNums:" << param.moeInfo.localExpertNums
+                  << ", moeInfo.epSize:" << param.moeInfo.epSize
+                  << ", moeInfo.tpSize:" << param.moeInfo.tpSize;
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();

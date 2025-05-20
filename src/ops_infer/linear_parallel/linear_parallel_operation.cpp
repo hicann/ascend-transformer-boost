@@ -23,9 +23,78 @@
 namespace atb {
 static const uint32_t IN_TENSOR_NUM_WITH_RESIDUAL = 3;
 static const uint32_t IN_TENSOR_NUM_WITHOUT_RESIDUAL = 2;
+static const uint32_t IN_TENSOR_NUM_WITH_MOE = 2;
 static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_QUANT = 2;
+static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT  = 1;
 static const uint32_t OUT_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM_WITH_MID = 2;
+static const uint32_t LOCAL_EXPERT_NUMS_MIN = 1;
+static const uint32_t LOCAL_EXPERT_NUMS_MAX = 16;
+static const uint32_t IN_TENSOR_DIM_NUM = 2;
+static const uint32_t RESIDUAL_TENSOR_INDEX_3 = 3;
+static const uint32_t RESIDUAL_TENSOR_INDEX_4 = 4;
+
+static bool AllToAllvcAllGatherGmmOutTensorCheck(const SVector<TensorDesc> &inTensorDescs,
+                                                 const TensorDesc &outTensorDesc, const std::string &logPrefix)
+{
+    uint64_t inTensorXDimNum = inTensorDescs.at(0).shape.dimNum;
+    if (inTensorXDimNum != IN_TENSOR_DIM_NUM) {
+        ATB_LOG(ERROR) << logPrefix << "invalid intensor dimNum";
+        return false;
+    }
+    if (inTensorXDimNum != outTensorDesc.shape.dimNum) {
+        ATB_LOG(ERROR) << logPrefix << "outTensor dimNum [" << outTensorDesc.shape.dimNum << "] and inTensor0 dimNum ["
+                       << inTensorXDimNum << "] should be equal";
+        return false;
+    }
+    return true;
+}
+
+bool CheckType(const infer::LinearParallelParam &opParam, Status &isOK)
+{
+    if (opParam.type <= atb::infer::LinearParallelParam::ParallelType::UNDEFINED ||
+        opParam.type >= atb::infer::LinearParallelParam::ParallelType::MAX) {
+        ATB_LOG(ERROR) << "LinearParallel type:" << opParam.type << " is invalid ParallelType";
+        isOK = ERROR_INVALID_PARAM;
+        return true;
+    }
+    if (opParam.type != atb::infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR && opParam.keepIntermediate) {
+        ATB_LOG(ERROR) << "LinearParallel backend lcoc only ALL_GATHER_LINEAR support keepIntermediate is true";
+        isOK = ERROR_INVALID_PARAM;
+        return true;
+    }
+    if (opParam.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN &&
+        opParam.type != atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM &&
+        opParam.type != atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+        ATB_LOG(ERROR) << "LinearParallel backend lcoc only ALLTOALLVC_ALL_GATHER_GMM and "
+                       << "GMM_REDUCE_SCATTER_ALLTOALLVC support quantType[QUANT_TYPE_PER_TOKEN]";
+        isOK = ERROR_INVALID_PARAM;
+        return true;
+    }
+    if (opParam.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+        opParam.type == atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+        if (opParam.moeInfo.epSize * opParam.moeInfo.tpSize != opParam.rankSize) {
+            ATB_LOG(ERROR) << "ep * tp should equal to rankSize";
+            isOK = ERROR_INVALID_PARAM;
+            return true;
+        }
+        if (opParam.moeInfo.localExpertNums < LOCAL_EXPERT_NUMS_MIN ||
+            opParam.moeInfo.localExpertNums > LOCAL_EXPERT_NUMS_MAX) {
+            ATB_LOG(ERROR) << "localExpertNums should between 1 and 16";
+            isOK = ERROR_INVALID_PARAM;
+            return true;
+        }
+        if (opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
+            opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_CHANNEL &&
+            opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+            ATB_LOG(ERROR) << "LinearParallel type:" << opParam.type
+                           << " support QuantType is QUANT_TYPE_UNDEFINED/QUANT_TYPE_PER_CHANNEL/QUANT_TYPE_PER_TOKEN";
+            isOK = ERROR_INVALID_PARAM;
+            return true;
+        }
+    }
+    return false;
+}
 
 template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Operation **operation)
 {
@@ -42,16 +111,9 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         return ERROR_INVALID_PARAM;
     }
     if (opParam.backend == "lcoc") {
-        if (opParam.type <= atb::infer::LinearParallelParam::ParallelType::UNDEFINED ||
-            opParam.type >= atb::infer::LinearParallelParam::ParallelType::MAX) {
-            ATB_LOG(ERROR) << "LinearParallel type:" << opParam.type << " is invalid ParallelType";
-            return ERROR_INVALID_PARAM;
-        }
-        if (opParam.type != atb::infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR &&
-            opParam.keepIntermediate) {
-            ATB_LOG(ERROR) << "LinearParallel backend lcoc only ALL_GATHER_LINEAR support keepIntermediate is true";
-            return ERROR_INVALID_PARAM;
-        }
+        Status isOk;
+        if (CheckType(opParam, isOk))
+            return isOk;
     }
     *operation = new (std::nothrow) LinearParallelOperation(opParam);
     if (*operation == nullptr) {
@@ -73,8 +135,15 @@ LinearParallelOperation::LinearParallelOperation(const infer::LinearParallelPara
         if (param_.keepIntermediate) {
             opIrKeySs << "KeepIntermediate";
         }
+        if (param_.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+            param_.type == atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+            opIrKeySs << "Moe";
+        }
         if (commonCheckParam_.isQuant) {
             opIrKeySs << "Quant";
+            if (param_.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+                opIrKeySs << "PerToken";
+            }
         }
     }
     std::string opIrKey = opIrKeySs.str();
@@ -86,8 +155,15 @@ LinearParallelOperation::~LinearParallelOperation() {}
 uint32_t LinearParallelOperation::GetInputNum() const
 {
     uint32_t inTensorNum = param_.hasResidual ? IN_TENSOR_NUM_WITH_RESIDUAL : IN_TENSOR_NUM_WITHOUT_RESIDUAL;
+    if (param_.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+        param_.type == atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+        inTensorNum += IN_TENSOR_NUM_WITH_MOE;
+        }
     if (commonCheckParam_.isQuant) {
         inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_QUANT;
+        if (param_.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+            inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT;
+        }
     }
     return inTensorNum;
 }
@@ -113,6 +189,9 @@ Status LinearParallelOperation::InferShapeImpl(const SVector<TensorDesc> &inTens
             return InferShapeAllGatherLinear(inTensorDescs, outTensorDescs);
         case atb::infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             return InferShapeAllGatherLinearReduceScatter(inTensorDescs, outTensorDescs);
+        case atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
+        case atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
+            return InferShapeAllToAllvcAllGatherGmm(inTensorDescs, outTensorDescs);
         default:
             ATB_LOG(ERROR) << "not support type:" << param_.type;
             return ERROR_INVALID_PARAM;
@@ -162,6 +241,17 @@ Status LinearParallelOperation::InferShapeAllGatherLinearReduceScatter(const SVe
     return NO_ERROR;
 }
 
+Status LinearParallelOperation::InferShapeAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs,
+                                                                 SVector<TensorDesc> &outTensorDescs) const
+{
+    Status st = OperationUtil::MatmulInferShape(inTensorDescs, outTensorDescs, commonCheckParam_);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    outTensorDescs.at(0).shape.dims[0] = inTensorDescs.at(inTensorDescs.size() - 1).shape.dims[0];
+    return NO_ERROR;
+}
+
 Status LinearParallelOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (param_.backend != "lcoc") {
@@ -177,6 +267,9 @@ Status LinearParallelOperation::InferShapeCheckImpl(const SVector<TensorDesc> &i
             return InferShapeCheckAllGatherLinear(inTensorDescs);
         case atb::infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             return InferShapeCheckAllGatherLinearReduceScatter(inTensorDescs);
+        case atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
+        case atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
+            return InferShapeCheckAllToAllvcAllGatherGmm(inTensorDescs);
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "not support type:" << param_.type;
             return ERROR_INVALID_PARAM;
@@ -187,7 +280,13 @@ Status LinearParallelOperation::CheckResidual(const SVector<TensorDesc> &inTenso
 {
     if (param_.hasResidual) {
         int64_t n = OperationUtil::GetYTensorN(inTensorDescs.at(1), param_.transWeight);
-        size_t residualTensorId = inTensorDescs.size() - 1;
+        size_t residualTensorId = inTensorDescs.size();
+        if (param_.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+            param_.type == atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+            residualTensorId -= commonCheckParam_.isQuant ? RESIDUAL_TENSOR_INDEX_4 : RESIDUAL_TENSOR_INDEX_3;
+        } else {
+            residualTensorId -= 1;
+        }
         const TensorDesc &residual = inTensorDescs.at(residualTensorId);
         int64_t needFirstDim = 1;
         if (!OperationUtil::LinearBiasDeqCheck(residual, GetLogPrefix(), n, needFirstDim, residualTensorId)) {
@@ -261,6 +360,33 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(
     return CheckResidual(inTensorDescs);
 }
 
+Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs) const
+{
+    if (!OperationUtil::MatmulInTensorDescsCheck(inTensorDescs, GetLogPrefix(), commonCheckParam_)) {
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (commonCheckParam_.isQuant) {
+        int64_t xTensorM = OperationUtil::GetXTensorM(inTensorDescs.at(0));
+        int64_t dequantPerTokenScaleM = inTensorDescs.at(inTensorDescs.size() - 3).shape.dims[0];
+        if (xTensorM != dequantPerTokenScaleM) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 m [" << xTensorM
+                           << "] should equal to dequantPerTokenScale m [" << dequantPerTokenScaleM << "]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    int64_t globalTokensPerExpertMatrixM = OperationUtil::GetXTensorM(inTensorDescs.at(inTensorDescs.size() - 2));
+    int64_t globalTokensPerExpertMatrixK = OperationUtil::GetXTensorK(inTensorDescs.at(inTensorDescs.size() - 2));
+    int64_t expertNums = param_.moeInfo.epSize * param_.moeInfo.localExpertNums;
+    if (globalTokensPerExpertMatrixM != param_.moeInfo.epSize || globalTokensPerExpertMatrixK != expertNums) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "globalTokensPerExpertMatrix m [" << globalTokensPerExpertMatrixM
+                       << "] should equal to ep [" << param_.moeInfo.epSize << "] and globalTokensPerExpertMatrix k ["
+                       << globalTokensPerExpertMatrixK << "] should equal to ep*localExpertNums [" << expertNums
+                       << "]";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return CheckResidual(inTensorDescs);
+}
+
 Status LinearParallelOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
                                                const SVector<Tensor> &outTensors) const
 {
@@ -279,6 +405,9 @@ Status LinearParallelOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
             return SetupCheckAllGatherLinear(inTensorDescs, outTensorDescs);
         case atb::infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             return SetupCheckAllGatherLinearReduceScatter(inTensorDescs, outTensorDescs.at(0));
+        case atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
+        case atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
+            return SetupCheckAllToAllvcAllGatherGmm(inTensorDescs, outTensorDescs.at(0));
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "not support type:" << param_.type;
             return ERROR_INVALID_PARAM;
@@ -340,6 +469,17 @@ Status LinearParallelOperation::SetupCheckAllGatherLinearReduceScatter(SVector<T
     inTensorDescs.at(0).shape.dims[0] *= param_.twoDimTPInfo.agDim;
     outTensorDesc.shape.dims[0] *= param_.twoDimTPInfo.rsDim;
     return OperationUtil::MatmulOutTensorCheck(outTensorDesc, inTensorDescs, GetLogPrefix(), commonCheckParam_) ?
+               NO_ERROR :
+               ERROR_INVALID_TENSOR_DIM;
+}
+
+Status LinearParallelOperation::SetupCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs,
+                                                                 const TensorDesc &outTensorDesc) const
+{
+    if (InferShapeCheckAllToAllvcAllGatherGmm(inTensorDescs) != NO_ERROR) {
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return AllToAllvcAllGatherGmmOutTensorCheck(inTensorDescs, outTensorDesc, GetLogPrefix()) ?
                NO_ERROR :
                ERROR_INVALID_TENSOR_DIM;
 }
