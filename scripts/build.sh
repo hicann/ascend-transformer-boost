@@ -148,13 +148,10 @@ function fn_build_asdops()
     if [ -d "$THIRD_PARTY_DIR/asdops/lib" ]; then
         return 0
     fi
-    if [ -n "$ATB_HOME_PATH" -a "$SRC_ONLY" == "OFF" ]; then
-        echo "Get required asdops binary files from $ATB_HOME_PATH"
-        if [ "${ATB_HOME_PATH##$OUTPUT_DIR}" != "$ATB_HOME_PATH" ]; then
-            echo -e "\e[1;41;1;33mThere is a risk that you are using asdops binary files from OUTPUT of current project\e[0m"
-        fi
+    if [ -n "$ATB_BUILD_DEPENDENCY_PATH" -a "$SRC_ONLY" == "OFF" ]; then
+        echo "Get required asdops binary files from $ATB_BUILD_DEPENDENCY_PATH"
         mkdir -p $THIRD_PARTY_DIR/asdops/
-        cp -Lrf $ATB_HOME_PATH/lib $THIRD_PARTY_DIR/asdops/
+        cp -Lrf $ATB_BUILD_DEPENDENCY_PATH/lib $THIRD_PARTY_DIR/asdops/
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb.so 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_static.a 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_train.so 2> /dev/null
@@ -167,7 +164,6 @@ function fn_build_asdops()
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    rm -rf ascend-op-common-lib
     branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
     [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
     echo  "current branch for atb and asdops: $branch"
@@ -203,8 +199,9 @@ function fn_build_mki()
     fi
     cd $THIRD_PARTY_DIR
     if [ ! -d "Mind-KernelInfra" ]; then
-        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
+        # branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+        # [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
+        branch=master
         echo  "current branch for mki: $branch"
         git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
     fi
