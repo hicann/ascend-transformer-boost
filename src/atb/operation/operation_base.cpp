@@ -848,7 +848,7 @@ Status OperationBase::PreExecuteThrow(const VariantPack &variantPack, uint8_t *w
     UpdateTensorData(variantPack, workspace);
 
     Status st = NO_ERROR;
-    if (!GetSingleton<Config>().IsLaunchKernelWithTiling()) {
+    if (!(runnerVariantPack_.context->GetLaunchWithTilingStatus())) {
         st = CopyTilingToDevice();
         if (st != 0) {
             return st;
@@ -1226,7 +1226,7 @@ void OperationBase::FillHostTilingBuffer()
         }
 
         Mki::Timer runnerFillHostTilingTimer;
-        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize);
+        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize, runnerVariantPack_.context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "fill host tiling buffer fail";
             return;

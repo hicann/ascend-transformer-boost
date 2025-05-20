@@ -49,6 +49,7 @@ public:
     void *GetArgsHostBuffer(size_t bufferSize);
     Status FreeArgsDeviceBuffer(void *addr);
     Status FreeArgsHostBuffer(void *addr);
+    bool GetLaunchWithTilingStatus();
 
 private:
     Status CreateCopyStreamAndEvents();

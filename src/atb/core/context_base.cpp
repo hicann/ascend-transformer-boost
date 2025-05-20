@@ -340,4 +340,9 @@ Status ContextBase::FreeArgsHostBuffer(void *addr)
 {
     return hostAllocator_->Deallocate(addr);
 }
+bool ContextBase::GetLaunchWithTilingStatus()
+{
+    return GetSingleton<Config>().IsLaunchKernelWithTiling() && mode_ != GRAPH_LAUNCH_MODE;
+}
+
 } // namespace atb

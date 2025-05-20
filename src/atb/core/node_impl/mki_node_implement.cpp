@@ -161,14 +161,14 @@ int64_t MkiNodeImplement::GetWorkspaceSize() const
     }
     return kernel_->GetKernelInfo().GetTotalScratchSize();
 }
-Status MkiNodeImplement::InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize)
+Status MkiNodeImplement::InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool isLaunchWithTiling)
 {
     ATB_LOG(DEBUG) << GetLogPrefix() << " init kernel info";
     if (kernel_ == nullptr) {
         ATB_LOG(ERROR) << GetLogPrefix() << " kernel is null";
         return ERROR_INVALID_PARAM;
     }
-    if (GetSingleton<Config>().IsLaunchKernelWithTiling()) {
+    if (isLaunchWithTiling) {
         ATB_LOG(INFO) << GetLogPrefix() << " use tiling optimize";
         kernel_->SetLaunchWithTiling(true);
     } else {
@@ -237,7 +237,7 @@ Status MkiNodeImplement::Run(aclrtStream stream)
 }
 
 bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *kernelHostTilingBuffer,
-                                       uint64_t maxTilingSize, uint64_t &tilingSizeFetched)
+                                       uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool isLaunchWithTiling)
 {
     tilingBufferFilled_ = false;
     Mki::Timer kernelCacheGetTilingTimer;
@@ -257,7 +257,7 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
         ATB_LOG(ERROR) << GetLogPrefix() << " MkiNodeImplement do not have enough tiling buffer for cached tilnig";
         return false;
     }
-    if (!GetSingleton<Config>().IsLaunchKernelWithTiling() || Probe::IsSaveTiling()) {
+    if (!isLaunchWithTiling || Probe::IsSaveTiling()) {
         int ret = memcpy_s(kernelHostTilingBuffer, maxTilingSize, cachedTilingBuffer->data(), tilingSizeFetched);
         if (ret != EOK) {
             ATB_LOG(ERROR) << GetLogPrefix() << " MkiNodeImplement memcpy_s cached tiling fail, error:" << ret;
