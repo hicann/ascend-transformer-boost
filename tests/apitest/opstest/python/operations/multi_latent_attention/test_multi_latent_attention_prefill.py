@@ -217,7 +217,6 @@ class TestMLAPrefill(operation_test.OperationTest):
             m1 = 2.0 ** ( -4.0 / n)
             mm = torch.pow(m1, torch.arange(1, 1 + 2 * (n_heads - n), 2))
             slopes = torch.cat([slopes, mm])
-        # slopes = torch.ones(n_heads)
         return slopes
 
     def get_alibi_bias(self, n_heads, max_seqlen):
@@ -240,7 +239,6 @@ class TestMLAPrefill(operation_test.OperationTest):
         return bias
 
     def get_interleave(self, n, alibi_bias_max=8.0):
-        # return torch.ones(n)
         def get_interleave_power_of_2(n, alibi_bias_max):
             if n == 0:
                 return 0
