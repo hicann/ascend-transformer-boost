@@ -313,11 +313,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
         return [golden_out, self.lse]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        logging.info(f"out_tensors: {out_tensors}")
-        logging.info(f"golden_tensors:{golden_tensors}")
-        logging.info(self.true_out.shape)
-        logging.info(golden_tensors[0].shape)
-        logging.info(out_tensors[0].shape)
         go_double = compare_cv(self.true_out, golden_tensors[0], out_tensors[0])
         go_old = self.compare_output_data(out_tensors[0], golden_tensors[0], [0.001, 0.001, 0.005, 0.005])
 
