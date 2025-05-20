@@ -344,6 +344,22 @@ std::string UnpadToJson(const Any &param)
     (void)param;
     return "{}";
 }
+
+std::string RINGMLAToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::RINGMLA specificParam = AnyCast<OpParam::RINGMLA>(param);
+
+    paramsJson["type"] = specificParam.type;
+    paramsJson["tor"] = specificParam.tor;
+    paramsJson["kvHead"] = specificParam.kvHead;
+    paramsJson["headSize"] = specificParam.headSize;
+    paramsJson["qSeqLen"] = specificParam.qSeqLen;
+    paramsJson["kvSeqLen"] = specificParam.kvSeqLen;
+    paramsJson["isRing"] = specificParam.isRing;
+    return paramsJson.dump();
+}
+
 REG_STRINGIFY(OpParam::BlockCopy, BlockCopyToJson);
 REG_STRINGIFY(OpParam::FastSoftMaxGrad, FastSoftMaxGradToJson);
 REG_STRINGIFY(OpParam::FastSoftMax, FastSoftMaxToJson);
@@ -366,4 +382,5 @@ REG_STRINGIFY(OpParam::UnpadWithHiddenState, UnpadWithHiddenStateToJson);
 REG_STRINGIFY(OpParam::Unpad, UnpadToJson);
 REG_STRINGIFY(OpParam::RopeQConcat, RopeQConcatToJson);
 REG_STRINGIFY(OpParam::SwigluQuant, SwigluQuantToJson);
+REG_STRINGIFY(OpParam::RINGMLA, RINGMLAToJson);
 } // namespace AtbOps

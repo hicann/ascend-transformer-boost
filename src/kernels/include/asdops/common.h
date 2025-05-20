@@ -24,5 +24,6 @@ constexpr size_t DIM_9 = 9;
 constexpr size_t DIM_10 = 10;
 constexpr size_t DIM_11 = 11;
 constexpr size_t DIM_12 = 12;
+constexpr size_t DIM_14 = 14;
 } // namespace AsdOps
 #endif
