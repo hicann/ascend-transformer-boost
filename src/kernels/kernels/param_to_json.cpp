@@ -334,17 +334,6 @@ std::string LogprobsSampleParamToJson(const Any &asdOpsParam)
     return paramsJson.dump();
 }
 
-std::string MoeGateCorrToJson(const Any &asdOpsParam)
-{
-    nlohmann::json paramsJson;
-    OpParam::MoeGateCorr specificParam = AnyCast<OpParam::MoeGateCorr>(asdOpsParam);
-
-    paramsJson["transposeA"] = specificParam.transposeA;
-    paramsJson["transposeB"] = specificParam.transposeB;
-
-    return paramsJson.dump();
-}
-
 REG_STRINGIFY(OpParam::Activation, ActivationToJson);
 REG_STRINGIFY(OpParam::AsStrided, AsStridedToJson);
 REG_STRINGIFY(OpParam::Concat, ConcatToJson);
@@ -371,5 +360,4 @@ REG_STRINGIFY(OpParam::Transdata, TransdataToJson);
 REG_STRINGIFY(OpParam::Transpose, TransposeToJson);
 REG_STRINGIFY(OpParam::ZerosLike, ZerosLikeToJson);
 REG_STRINGIFY(OpParam::LogprobsSample, LogprobsSampleParamToJson);
-REG_STRINGIFY(OpParam::MoeGateCorr, MoeGateCorrToJson);
 } // namespace AsdOps

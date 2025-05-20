@@ -121,11 +121,6 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
         return isWeightNz_ ? SetupKernelGraphMatmulElewiseAddWeightNzNot910B() :
                              SetupKernelGraphMatmulElewiseAddWeightNdNot910B();
     } else {
-        if (xTensor.desc.dtype == Mki::TENSOR_DTYPE_FLOAT && weightTensor.desc.dtype == Mki::TENSOR_DTYPE_FLOAT) {
-            moeGateCorrParam_.transposeA = param_.transposeA;
-            moeGateCorrParam_.transposeB = param_.transposeB;
-            return SetupKernelGraphMoeGateCorr();
-        }
         if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is310B()) {
             return SetupKernelGraphMatmul910B();
         }
@@ -686,25 +681,6 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNzNot910B()
     transdataOutNode.opDesc = {0, "TransdataOperation", transdataNzToNdParam_};
     transdataOutNode.inTensors = {&matmulOutTensor};
     transdataOutNode.outTensors = {&outTensor};
-
-    return NO_ERROR;
-}
-
-Status LinearOpsRunner::SetupKernelGraphMoeGateCorr()
-{
-    ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMoeGateCorr";
-
-    InitKernelGraph(SIZE_2, 1, 0, 1);
-
-    Mki::Tensor &xTensor = kernelGraph_.inTensors.at(0);
-    Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(1);
-    Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
-
-    KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
-
-    matmulNode.opDesc = {0, "MoeGateCorrOperation", moeGateCorrParam_};
-    matmulNode.inTensors = {&xTensor, &weightTensor};
-    matmulNode.outTensors = {&outTensor};
 
     return NO_ERROR;
 }
