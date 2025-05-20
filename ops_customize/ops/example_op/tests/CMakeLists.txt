@@ -10,6 +10,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/../../../../common          
     ${CMAKE_SOURCE_DIR}/../../operation_implement
     ${CMAKE_PREFIX_PATH}/include
+    ${CMAKE_PREFIX_PATH}/include/atb
     ${CMAKE_SOURCE_DIR}/../../../../../../3rdparty/mki/include
 )
 
