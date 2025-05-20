@@ -281,8 +281,8 @@ TEST(TestSingleGraphMultistream, TestNormalGraphOp)
     EXPECT_EQ(nodeStreamId3, 1);
 
     // 资源释放
-    atb::DestroyContext(context);
     atb::DestroyOperation(graphOp);
+    atb::DestroyContext(context);
     for (size_t i = 0; i < pack.inTensors.size(); i++) {
         aclrtFree(pack.inTensors.at(i).deviceData);
     }
@@ -386,8 +386,8 @@ TEST(TestSingleGraphMultistream, TestGraphOpWithEvent)
     EXPECT_EQ(nodeStreamId4, 1);
 
     // 资源释放
-    atb::DestroyContext(context);
     atb::DestroyOperation(graphOp);
+    atb::DestroyContext(context);
     for (size_t i = 0; i < pack.inTensors.size(); i++) {
         aclrtFree(pack.inTensors.at(i).deviceData);
     }

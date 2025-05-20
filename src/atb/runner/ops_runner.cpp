@@ -274,7 +274,7 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
 Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t nodeId,
                                                    uint8_t *kernelHostTilingBuffer, size_t tilingSize)
 {
-    if (node.impl->GetTilingFilledFlag()) {
+    if (node.impl->GetTilingFilledFlag() && !needKernelGraphModify_) {
         return NO_ERROR;
     }
 

@@ -145,8 +145,8 @@ TEST(TestGraphNullInternalTensor, TestOne)
  
     atb::Status st = (st1 == atb::NO_ERROR) ? atb::NO_ERROR : atb::ERROR_INVALID_GRAPH;
  
-    atb::DestroyContext(context);
     atb::DestroyOperation(graphOp);
+    atb::DestroyContext(context);
     for (size_t i = 0; i < pack.inTensors.size(); i++) {
         aclrtFree(pack.inTensors.at(i).deviceData);
     }
