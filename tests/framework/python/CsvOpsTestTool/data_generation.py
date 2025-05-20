@@ -966,12 +966,12 @@ class MatmulCommon:
             weight_cpu = (high - low) * torch.rand(shape, dtype=torch.float16) + low
         elif datatype == MatmulCommon.datatype_bf16:
             weight_cpu = (high - low) * torch.rand(shape, dtype=torch.bfloat16) + low
+        elif datatype == MatmulCommon.datatype_float:
+            weight_cpu = (high - low) * torch.rand(shape, dtype=torch.float32) + low
         elif datatype == MatmulCommon.datatype_int8:
             low_int = int(low)
             high_int = int(high)
             weight_cpu = torch.randint(low=low_int, high=high_int, size=tuple(shape), dtype=torch.int8)
-        elif datatype == MatmulCommon.datatype_float:
-            weight_cpu = (high - low) * torch.rand(shape, dtype=torch.float32) + low
         else:
             logging.error("inTensor1 datatype error!")
             return None
