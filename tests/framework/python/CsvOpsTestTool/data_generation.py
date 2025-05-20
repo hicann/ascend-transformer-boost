@@ -46,7 +46,7 @@ class OpTypes(Enum):
     VECTOR_FUSION = 8
     CV_FUSION = 9
 
-def get_precision_and_eb_threshold(op_type, dtype):
+def get_precision_and_eb_threshold(op_type, dtype, compute_num):
     precision_threshold = 0
     eb_threshold = 0
     if op_type in [OpTypes.MOVE, OpTypes.RAND, OpTypes.CAST, OpTypes.COMPUTE_INTEGER]:
@@ -64,6 +64,13 @@ def get_precision_and_eb_threshold(op_type, dtype):
         if dtype in [torch.float32]:
             precision_threshold = 2**(-11)
             eb_threshold = 2**(-14)
+                        if compute_num != -1:
+                if compute_num < 2048:
+                    precision_threshold = 2**(-11)
+                elif compute_num < 16384:
+                    precision_threshold = 2**(-10)
+                else:
+                    precision_threshold = 2**(-9)
     if op_type in [OpTypes.COMPUTE_FLOAT_HIGH_PRECISION]:
         if dtype in [torch.float16]:
             precision_threshold = 2**(-11)
@@ -479,7 +486,9 @@ class LinearOperation(DataGen):
             if accum is not None:
                 golden_result = golden_result + accum
         if accum is None:
-            if out_data_type == 27:
+            if out_data_type == -1:
+                golden_result = golden_result.to(torch.float32)
+            elif out_data_type == 27:
                 golden_result = golden_result.to(torch.bfloat16)
             else:
                 golden_result = golden_result.to(torch.float16)
@@ -933,6 +942,8 @@ class MatmulCommon:
         elif datatype == MatmulCommon.datatype_bf16:
             input_cpu = (high - low) * torch.rand(shape, dtype=torch.bfloat16) + low
             MatmulCommon.linear_type = LinearType.bf16bf16_fp32_bf16
+        elif datatype == MatmulCommon.datatype_float:
+            input_cpu = (high - low) * torch.rand(shape, dtype=torch.float32) + low
         elif datatype == MatmulCommon.datatype_int8:
             low_int = int(low)
             high_int = int(high)
@@ -959,6 +970,8 @@ class MatmulCommon:
             low_int = int(low)
             high_int = int(high)
             weight_cpu = torch.randint(low=low_int, high=high_int, size=tuple(shape), dtype=torch.int8)
+        elif datatype == MatmulCommon.datatype_float:
+            weight_cpu = (high - low) * torch.rand(shape, dtype=torch.float32) + low
         else:
             logging.error("inTensor1 datatype error!")
             return None
