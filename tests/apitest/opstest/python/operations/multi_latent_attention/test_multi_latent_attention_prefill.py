@@ -792,10 +792,10 @@ class TestMLAPrefill(operation_test.OperationTest):
     def golden_compare(self, out_tensors, golden_tensors):
         result_single = self.compare_output_data(out_tensors[0].half().npu(), golden_tensors[0].half().npu(), [0.001, 0.001, 0.005, 0.005])
         if self.is_int8_flag:
-            result_double = compare_cv(self.golden_out_true, golden_tensors[0].npu(), out_tensors[0].npu())
+            result_double = compare_cv(self.golden_out_true.npu(), golden_tensors[0].npu(), out_tensors[0].npu())
             return (result_double or result_single)
         else:
-            result_double = compare_cv(self.golden_out_true, golden_tensors[0].npu(), out_tensors[0].npu())
+            result_double = compare_cv(self.golden_out_true.npu(), golden_tensors[0].npu(), out_tensors[0].npu())
             return (result_double or result_single)
 
 
