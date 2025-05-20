@@ -3050,6 +3050,122 @@ struct ScatterElementsV2Param {
     //!
     uint8_t rsv[16] = {0};
 };
+
+//!
+//! \struct GmmDeqSwigluQuantGmmDeqParam
+//!
+//! \brief GroupedMatmul1 + Dequant1 + Swiglu + Quant + GroupedMatmul2 + Dequant2 融合算子
+//!
+struct GmmDeqSwigluQuantGmmDeqParam {
+    //!
+    //! \enum OutputType
+    //!
+    //! \brief 指定输出类型
+    //!
+    enum OutputType {
+        OUTPUT_FLOAT16 = 0,
+        OUTPUT_BFLOAT16,
+        OUTPUT_INVALID
+    };
+
+    //!
+    //! \enum GroupListType
+    //!
+    //! \brief 指定 group list 类型
+    //!
+    enum GroupListType {
+        GROUP_LIST_CUMSUM = 0,
+        GROUP_LIST_SINGLE,
+        GROUP_LIST_INVALID
+    };
+
+    //!
+    //! \enum WeightUpPermuteType
+    //!
+    //! \brief weight1 和 scale 1 重排类型
+    //!
+    enum WeightUpPermuteType {
+        PERMUTE_N256 = 0,
+        PERMUTE_N128,
+        PERMUTE_INVALID
+    };
+
+    //!
+    //! \brief 输出数据类型
+    //!
+    OutputType outputType = OUTPUT_FLOAT16;
+    //!
+    //! \brief groupList 形式
+    //!
+    GroupListType groupListType = GROUP_LIST_CUMSUM;
+    //!
+    //! \brief Weight1 和 scale1 的重排方式
+    //!
+    WeightUpPermuteType weightUpPermuteType = PERMUTE_N256;
+    //!
+    //! \brief Weight1 是否转置
+    //!
+    bool transposeWeightUp = false;
+    //!
+    //! \brief Weight2 是否转置
+    //!
+    bool transposeWeightDown = true;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[42] = {0};
+};
+
+//!
+//! \struct MmDeqSwigluQuantMmDeqParam
+//!
+//! \brief Matmul1 + Dequant1 + Swiglu + Quant + Matmul2 + Dequant2 融合算子
+//!
+struct MmDeqSwigluQuantMmDeqParam {
+    //!
+    //! \enum OutputType
+    //!
+    //! \brief 指定输出类型
+    //!
+    enum OutputType {
+        OUTPUT_FLOAT16 = 0,
+        OUTPUT_BFLOAT16,
+        OUTPUT_INVALID
+    };
+
+    //!
+    //! \enum WeightUpPermuteType
+    //!
+    //! \brief weight1 和 scale 1 重排类型
+    //!
+    enum WeightUpPermuteType {
+        PERMUTE_N256 = 0,
+        PERMUTE_N128,
+        PERMUTE_INVALID
+    };
+
+    //!
+    //! \brief 输出数据类型
+    //!
+    OutputType outputType = OUTPUT_FLOAT16;
+    //!
+    //! \brief Weight1 和 scale1 的重排方式
+    //!
+    WeightUpPermuteType weightUpPermuteType = PERMUTE_N256;
+    //!
+    //! \brief Weight1 是否转置
+    //!
+    bool transposeWeightUp = false;
+    //!
+    //! \brief Weight2 是否转置
+    //!
+    bool transposeWeightDown = true;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[46] = {0};
+};
+
 } // namespace infer
 } // namespace atb
 #endif
