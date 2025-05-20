@@ -74,7 +74,7 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
         if (opParam.headNum != 8 && opParam.headNum != 16 && opParam.headNum != 32 && // 8, 16, 32: headNum
             opParam.headNum != 64 && opParam.headNum != 128) {                        // 64, 128: headNum
             ATB_LOG(ERROR) << "headNum should be {8,16,32,64,128}";
-            return false;
+            return ERROR_INVALID_PARAM;
         }
         if (opParam.kvHeadNum != 1) {
             ATB_LOG(ERROR) << "kvHeadNum should be 1, only support MQA";
