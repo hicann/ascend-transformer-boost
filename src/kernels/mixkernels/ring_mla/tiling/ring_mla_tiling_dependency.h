@@ -28,7 +28,7 @@ constexpr int32_t TILING_PARA_SIZE = 8;
 constexpr int32_t TILING_PARA_SIZE_TP1 = 5;
 constexpr int32_t TILING_HEAD_SIZE = 15;
 constexpr int32_t TILING_PARA_SIZE_PREFILL = 27;
-constexpr int32_t TILING_HEAD_SIZE_PREFILL = 38;
+constexpr int32_t TILING_HEAD_SIZE_PREFILL = 39;
 constexpr int32_t MAX_EMBEDDING = 576;
 constexpr int32_t M_LIMIT = 128;
 constexpr int32_t ND_BATCH_LIMIT = INT32_MAX;
@@ -88,9 +88,9 @@ using RINGMLAInfo = struct RINGMLATilingParams {
     uint32_t quantType = 0;
     uint32_t isLongSeq = 0;
     TilingKeyType type = TilingKeyType::TILING_HALF_DATA;
-    PrefillTensor tensors;
-    std::vector<Tensor> kTensorList;
-    std::vector<Tensor> vTensorList;
+    PrefillTensor tensors = {};
+    std::vector<Tensor> kTensorList = {};
+    std::vector<Tensor> vTensorList = {};
 };
 
 using AddrOffsets = struct AddressOffsetInfo {

@@ -1384,24 +1384,24 @@ class TestMLAPrefill(op_test.OpTest):
     @op_test.only_910b
     def test_flash_attention_mla_fp16_case1(self):
         # unpad encoder
-        batch = 2
+        batch = 1
         kv_head = 16      # kv_head num
         isdecoder = 0       # prefill or decoder
         heads = 16       # llama7b  hidden_size 4096
         embeddim = 192
         embeddimV = 128
-        max_seq = 128
+        max_seq = 200
         tor = 1.0 / math.sqrt(1.0 * embeddim)
         dynamic_batch = False
-        kv_seqLen = [128] * batch
+        kv_seqLen = [200] * batch
         is_clamp = 0
         clamp_min = 0
         clamp_max = 0
 
-        isring = 0
+        isring = 1
         shape_out_1 = (sum(kv_seqLen), heads, embeddimV)  # embeddimV  sum(q_seq), head*ebeddimv
         shape_out_2 = (sum(kv_seqLen), heads)
-        data_type = torch.float16
+        data_type = torch.bfloat16
 
         if isring:
             old_out = torch.rand(shape_out_1).to(data_type)
@@ -1422,7 +1422,7 @@ class TestMLAPrefill(op_test.OpTest):
                              embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
                              is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
                              data_type = data_type, is_alibi = False, is_triu_mask = True,
-                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor, lse=old_lse, last_o=old_out, isring=isring,)
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor, lse=old_lse, last_o=old_out, isring=isring)
         self.gen_out_tensor()
         self.mask = np.reshape(self.mask, (max_seq, max_seq))
         logging.debug("**********input shape***********")

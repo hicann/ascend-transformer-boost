@@ -17,9 +17,9 @@
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/platform/platform_info.h>
 #include "atbops/params/params.h"
-#include "mixkernels/ring_mla/tiling/ring_mla_tiling.h"
-#include "mixkernels/ring_mla/tiling/ring_mla_tiling_dependency.h"
-#include "mixkernels/utils/common.h"
+#include "mixops/ring_mla/tiling/ring_mla_tiling.h"
+#include "mixops/ring_mla/tiling/ring_mla_tiling_dependency.h"
+#include "mixops/utils/common.h"
 
 namespace AtbOps {
 using namespace Mki;
@@ -30,7 +30,8 @@ public:
     explicit RINGMLAPrefillKernel(const std::string &kernelName, const BinHandle *handle)
         : KernelBase(kernelName, handle)
     {
-        launchBufferSize_ = Utils::RoundUp((TILING_PARA_SIZE_PREFILL + TILING_HEAD_SIZE_PREFILL) * sizeof(uint32_t), TILINGMIN);
+        launchBufferSize_ = Utils::RoundUp((TILING_PARA_SIZE_PREFILL + TILING_HEAD_SIZE_PREFILL) *
+                sizeof(uint32_t), TILINGMIN);
     }
 
     bool CanSupport(const LaunchParam &launchParam) const override
@@ -40,7 +41,6 @@ public:
                           launchParam.GetInTensor(0).desc.dims.size() == 2,
                       "input 0 dim num invalid", return false);
         MKI_LOG(INFO) << "launchParam.GetOutTensorCount(): " << launchParam.GetOutTensorCount();
-        // MKI_CHECK(launchParam.GetOutTensorCount() == 1, "output num invalid", return false);
         return true;
     }
 

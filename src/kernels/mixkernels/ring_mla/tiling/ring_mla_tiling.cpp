@@ -7,12 +7,12 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-#include "ring_mla_tiling.h"
+#include <algorithm>
+#include <numeric>
 #include "mki/utils/assert/assert.h"
 #include "mki/utils/checktensor/check_tensor.h"
 #include "mki/utils/platform/platform_info.h"
-#include <algorithm>
-#include <numeric>
+#include "ring_mla_tiling.h"
 
 namespace AtbOps {
 
@@ -175,7 +175,6 @@ Status GetAlibiMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, const Tens
     } else if (maskDim == DIM_2) {
         MKI_CHECK(maxSeq == LONG_SEQ_ALIBI_LEN, "alibi mask shape must be [256, 256] for long seq opt",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
-        // mmInfo.isAlibiMaskSqrt = param.isAlibiMaskSqrt;
     }
     MKI_CHECK(static_cast<uint64_t>(mmInfo.headStride) * static_cast<uint32_t>(maxSeq) <= UINT32_MAX,
               "maxSeq can not exceed UINT32_MAX", return Status::FailStatus(ERROR_INVALID_VALUE));
@@ -183,7 +182,7 @@ Status GetAlibiMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, const Tens
 }
 
 inline Status GetPrefiillMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param,
-                                        const Tensor &tensorMask)
+                                  const Tensor &tensorMask)
 {
     auto &tensorAlibiCoeff = mmInfo.tensors.alibiCoeff;
     auto maskShape = tensorMask.desc.dims;
@@ -195,9 +194,6 @@ inline Status GetPrefiillMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param,
         auto maskDim = maskShape.size();
         int32_t maxSeq = maskShape.at(maskDim - 1);
         mmInfo.maxSeqLen = maxSeq;
-        // if (maxSeq == LONG_SEQ_LEN && maskShape.at(maskDim - DIM_2) != maxSeq) {
-        //     mmInfo.alibiCompressOffset = static_cast<uint32_t>(maskShape.at(maskDim - DIM_2));
-        // }
         if (!(maxSeq == LONG_SEQ_LEN && param.isTriuMask != 0) && CheckEmptyTensor(tensorAlibiCoeff)) {
             MKI_CHECK(*maxQSeq <= maxSeq, "qSeqLen larger than maxSeqLen",
                       return Status::FailStatus(ERROR_INVALID_VALUE));
@@ -246,7 +242,8 @@ inline void PrefillLog(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
 {
     MKI_LOG(INFO) << "batch is: " << mmInfo.batch << " kvMaxSeq is: " << mmInfo.maxKvSeqLen
                   << " maskMaxSeq is: " << mmInfo.maxSeqLen << " head is: " << mmInfo.numHeads
-                  << " qSeq  is: " << *(mmInfo.qSeqLen) << " kvSeq is: " << *(mmInfo.kvSeqLen) << " tor is : " << mmInfo.tor
+                  << " qSeq  is: " << *(mmInfo.qSeqLen) << " kvSeq is: " << *(mmInfo.kvSeqLen)
+                  << " tor is : " << mmInfo.tor
                   << " kv_head is: " << mmInfo.kvHeads << " embed is: " << mmInfo.embeddingSize
                   << " maskStrid is: " << mmInfo.maskStride << " headStride is: " << mmInfo.headStride << " isTriuMask "
                   << mmInfo.isTriuMask << " mask type is " << mmInfo.maskType <<  " longseq is " << mmInfo.isLongSeq
@@ -276,14 +273,10 @@ Status InitInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
     OP_TILING_CHECK_STATUS_RETURN(PrefillPreCheck(param));
     size_t batch = 0;
     int32_t embed = 192;
-    int32_t embedv = 128;
     SVector<int64_t> kcacheShape;
     SVector<int64_t> vcacheShape;
     kcacheShape = mmInfo.tensors.kCache.desc.dims;
-    // embed = ((mmInfo.tensors.query.desc.dims).at(1) + (mmInfo.tensors.queryRope.desc.dims).at(1)) / param.headSize; // headdim
-    // embedv = (mmInfo.tensors.query.desc.dims).at(1) / param.headSize; // headdim
     batch = param.qSeqLen.size();
-    // 4 is shape : [layer, batch, maxseq, hiddensize]
     mmInfo.maxKvSeqLen = kcacheShape.at(2);         // MaxSeqLen is the 2st dimension of K
     batch = static_cast<size_t>(kcacheShape.at(1)); // Batch is the 1th dimension of Q
     OP_TILING_CHECK_STATUS_RETURN(GetPrefiillMaskInfo(mmInfo, param, mmInfo.tensors.mask));
@@ -327,8 +320,6 @@ Status RINGMLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     uint64_t workSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(DOUBLE_PING_PONG_SIZE) * dataLenFloat;
     kernelInfo.GetScratchSizes() = {workSize, workSize, workSize * 6, workSize}; // oTmp/S/P
     kernelInfo.SetBlockDim(blockDim);
-    // uint32_t tilingKey = (mmInfo.tensors.query.desc.dtype == TENSOR_DTYPE_FLOAT16) ? 0 : 1;
-    // kernelInfo.SetTilingId(tilingKey);
     return Status::OkStatus();
 }
 

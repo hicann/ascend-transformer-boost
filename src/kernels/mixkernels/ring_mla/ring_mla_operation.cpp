@@ -33,11 +33,9 @@ public:
             "OpParam is invalid", return nullptr);
         auto param = AnyCast<OpParam::RINGMLA>(launchParam.GetParam());
         switch (param.type) {
-//            case OpParam::RINGMLA::SPLIT_CACHE:
-//                return GetKernelByName("MLAKernel");
             case OpParam::RINGMLA::PREFILL_SPLIT_CACHE:
-//                return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("RINGMLAPrefillBF16Kernel") : GetKernelByName("RINGMLAPrefillKernel");
-                return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("RINGMLAPrefillKernel") : GetKernelByName("RINGMLAPrefillKernel");
+                return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("RINGMLAPrefillBF16Kernel") :
+                GetKernelByName("RINGMLAPrefillKernel");
             default:
                 break;
         }
@@ -50,8 +48,6 @@ public:
         MKI_CHECK(specificParam.Type() == typeid(OpParam::RINGMLA), "OpParam is invalid", return 0);
         auto param = AnyCast<OpParam::RINGMLA>(specificParam);
         switch (param.type) {
-//            case OpParam::RINGMLA::SPLIT_CACHE:
-//                return DIM_8;
             case OpParam::RINGMLA::PREFILL_SPLIT_CACHE:
                 return DIM_16;
             default:
@@ -82,8 +78,6 @@ protected:
             "OpParam is invalid", return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
         auto param = AnyCast<OpParam::RINGMLA>(launchParam.GetParam());
         switch (param.type) {
-//            case OpParam::RINGMLA::SPLIT_CACHE:
-//                return InferShapeMLA(launchParam, outTensors);
             case OpParam::RINGMLA::PREFILL_SPLIT_CACHE:
                 return InferShapeMLAPrefill(launchParam, outTensors);
             default:
@@ -98,33 +92,6 @@ private:
         int32_t maxKv;
         uint32_t batch;
     };
-
-//    Status InferShapeMLA(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const
-//    {
-//        auto param = AnyCast<OpParam::RINGMLA>(launchParam.GetParam());
-//        MKI_CHECK(CheckMLA(launchParam), "Failed to check launch param",
-//            return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Failed to check launch param"));
-//        auto &tensorQ = launchParam.GetInTensor(DIM_0);
-//        auto &tensorQRope = launchParam.GetInTensor(DIM_1);
-//        outTensors[DIM_0].desc = tensorQ.desc;
-//        outTensors[DIM_0].desc.dtype = tensorQRope.desc.dtype;
-//        if (param.isRing) {
-//            // outTensor1  lse
-//            outTensors[DIM_1].desc = tensorQ.desc;
-//            if (tensorQ.desc.dims.size() == DIM_2) {
-//                outTensors[DIM_1].desc.dims[DIM_1] = DIM_1;
-//            } else if (tensorQ.desc.dims.size() == DIM_3) {
-//                outTensors[DIM_1].desc.dims[DIM_2] = DIM_1;
-//            } else {
-//                outTensors[DIM_1].desc.dims[DIM_0] = DIM_0;
-//            }
-//        } else {
-//            outTensors[DIM_1].desc.dtype = tensorQ.desc.dtype;
-//            outTensors[DIM_1].desc.format = tensorQ.desc.format;
-//            outTensors[DIM_1].desc.dims = {0};
-//        }
-//        return Status::OkStatus();
-//    }
 
     bool CheckPrefillBatchwise(const OpParam::RINGMLA &param, const Tensor &tensorQ) const
     {
@@ -151,7 +118,8 @@ private:
         return true;
     }
 
-    bool CheckPrefilShape(const Mki::Tensor &tensorKcache, const Mki::Tensor &tensorVcache, const Mki::Tensor &tensorQ) const
+    bool CheckPrefilShape(const Mki::Tensor &tensorKcache, const Mki::Tensor &tensorVcache,
+                          const Mki::Tensor &tensorQ) const
     {
         static const size_t KV_CACHE_DIM_NUM = 4;
          MKI_CHECK(tensorKcache.desc.dims.size() == KV_CACHE_DIM_NUM,
@@ -191,7 +159,6 @@ private:
             }
             uint32_t count = 0;
             for (int32_t i = curShape.size() - 1; i >= 0; i--, count++) {
-                // batch, head应该完全一致，maxQ和maxKv保证能够覆盖
                 if (count < (nz ? DIM_3 : DIM_2)) {
                     if (iter.first[i] > curShape[i]) {
                         return false;
@@ -224,9 +191,7 @@ private:
         auto norm = param.maskType == OpParam::RINGMLA::MASK_TYPE_NORM;
         auto lookAhead = param.maskType == OpParam::RINGMLA::MASK_TYPE_LOOK_AHEAD;
         auto isLongSeq = (param.isTriuMask == 1) && (maskLen == LONG_SEQ_LEN);
-        auto kvHead = param.kvHead == 0 ? headSize : param.kvHead;
         auto isAlibiCompress = maskLen == LONG_SEQ_LEN && currentShape[sz - DIM_2] != maskLen && alibi;
-        // auto isSwaCompress = param.maskType == OpParam::RINGMLA::MASK_TYPE_SWA_COMPRESS;
         std::vector<std::pair<SVector<int64_t>, bool>> supports = {
             {{maxQ, maxKv}, true},
             {{LONG_SEQ_LEN, LONG_SEQ_LEN}, isLongSeq},
@@ -235,12 +200,8 @@ private:
             {{q.desc.dims[DIM_0], maxKv}, lookAhead},
             {{batch, maxQ, maxKv}, norm},
             {{headSize, maxQ, maxKv}, alibi},
-            // {{static_cast<int32_t>(batch) / kvHead, maxQ, maxKv}, norm && param.compressHead},
-            // {{headSize, maxQ, maxKv}, alibi && alibi && param.compressHead},
             {{headSize, maxQ, LONG_SEQ_LEN}, isAlibiCompress},
             {{batch, headSize, maxQ, maxKv}, true}
-            // {{static_cast<int32_t>(batch) / kvHead, headSize, maxQ, maxKv}, alibi && param.compressHead},
-            // {{SWA_COMPRESS_MASK_SIZE, SWA_COMPRESS_MASK_SIZE}, isSwaCompress}
         };
         // 保证mask一定能覆盖S，核内不会出现异常，用户保证1.避免多传;2.数值正常
         MKI_CHECK(FindMask(supports, currentShape, false), "current mask shape is unsupported!", return false);
@@ -264,18 +225,14 @@ private:
         if (CheckEmptyTensor(mask)) {
             return true;
         }
-        // MKI_CHECK_NO_LOG(CheckMaskPre(mask, q), return false);
         MKI_CHECK(batch > 0, "batch invalid, please check", return false);
-        // head
         MKI_CHECK(head > 0, "head invalid, please check", return false);
-        // maxKvSeqlen
         auto maxKvSeqlenIter = std::max_element(kvSeqLen.begin(), kvSeqLen.end());
         MKI_CHECK(maxKvSeqlenIter != kvSeqLen.end() && *maxKvSeqlenIter > 0, "kvSeqlen invalid, please check",
                   return false);
         auto minKvSeqlenIter = std::min_element(kvSeqLen.begin(), kvSeqLen.end());
         MKI_CHECK((minKvSeqlenIter != kvSeqLen.end() && *minKvSeqlenIter >= 0),
                   "kvSeqlen min value invalid, please check", return false);
-        // maxQSeqlen
         MKI_CHECK(maxQ > 0, "qSeqlen max value invalid, please check", return false);
         auto minQSeqlenIter = std::min_element(qSeqLen.begin(), qSeqLen.end());
         MKI_CHECK((minQSeqlenIter == qSeqLen.end()) || ((minQSeqlenIter != qSeqLen.end() && *minQSeqlenIter >= 0)),
@@ -294,15 +251,19 @@ private:
         auto &tensorlse = launchParam.GetInTensor(DIM_15);
         MKI_CHECK(tensorQ.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorQ.desc.dtype == TENSOR_DTYPE_BF16,
                   "Input0 dtype " << GetStrWithDType(tensorQ.desc.dtype)
-                                  << " invalid, should be float16 or bfloat16", return Status::FailStatus(ERROR_INVALID_VALUE));
+                                  << " invalid, should be float16 or bfloat16",
+                                  return Status::FailStatus(ERROR_INVALID_VALUE));
         auto &tensorKcache = launchParam.GetInTensor(DIM_2); // K.shape = [layerNum, batch, max_seqlen, hiddensize]
         auto &tensorVcache = launchParam.GetInTensor(DIM_4); // V.shape = [layerNum, batch, max_seqlen, hiddensize]
         if (CheckEmptyTensor(tensorKcache) || CheckEmptyTensor(tensorVcache)) {
             MKI_CHECK(CheckEmptyTensor(tensorKcache) && CheckEmptyTensor(tensorVcache),
-                      "normal k and v should both be empty tensor if batches are split", return Status::FailStatus(ERROR_INVALID_VALUE));
-            MKI_CHECK(CheckPrefillBatchwise(param, tensorQ), "kv batchwise settings invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+                      "normal k and v should both be empty tensor if batches are split",
+                      return Status::FailStatus(ERROR_INVALID_VALUE));
+            MKI_CHECK(CheckPrefillBatchwise(param, tensorQ), "kv batchwise settings invalid",
+                      return Status::FailStatus(ERROR_INVALID_VALUE));
         } else {
-            MKI_CHECK(CheckPrefilShape(tensorKcache, tensorVcache, tensorQ), "check datashape invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+            MKI_CHECK(CheckPrefilShape(tensorKcache, tensorVcache, tensorQ),
+                      "check datashape invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
         }
         auto &tensorLayerId = launchParam.GetInTensor(DIM_5);
         MKI_CHECK(CheckEmptyTensor(tensorLayerId) || tensorLayerId.desc.dims.size() == 1,
@@ -324,7 +285,6 @@ private:
         }
         return Status::OkStatus();
     }
-
 
     bool CheckMLA(const LaunchParam &launchParam) const
     {

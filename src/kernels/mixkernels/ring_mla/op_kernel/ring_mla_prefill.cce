@@ -753,7 +753,6 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
     uint32_t long_seq = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 17));
     uint32_t mask_type = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 20));
     uint32_t isRing = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 37));
-
     uint32_t n_tokens = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 38));
 
     uint32_t data_shape_type =(uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 24));
@@ -765,14 +764,6 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
     uint32_t loopV = (embdv + BLOCK_QK - 1) / BLOCK_QK;
     uint32_t qk_k = BLOCK_QK;
     uint32_t qk_round_k = BLOCK_QK;
-
-    constexpr int32_t BLOCK_SIZE_32 = 32;
-    static constexpr uint32_t T_BLOCK_SIZE =  BLOCK_SIZE_32 / sizeof(float);
-    uint32_t __k{0};
-    uint32_t round_k{0};
-
-    __k = embdv;
-    round_k = RoundUp<T_BLOCK_SIZE>(__k);
 
     uint32_t lenBurst = sizeof(float);
 
@@ -795,7 +786,7 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
     uint32_t cur_total_q_blk_num = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 13 + offset_tiling));
     uint32_t process_num = total_q_blk_num * q_heads;
     uint32_t next_process = 0;
-    for (uint32_t process = block_idx; process < process_num; process = next_process) { // process_num: batch *(qSeqlen/mUbd) *q_heads
+    for (uint32_t process = block_idx; process < process_num; process = next_process) {
         while (process >= cur_total_q_blk_num * q_heads) {
             cur_batch++;
             pre_total_q_blk_num = cur_total_q_blk_num;
@@ -821,21 +812,17 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
         uint64_t addr_o_scalar = (uint64_t)(((uint64_t)addr_o_high32) << 32 | addr_o_loww32);
 
         uint32_t process_idx = process - pre_total_q_blk_num * q_heads;
-        uint32_t m_idx = process_idx / q_heads; // 按照head分块？
-        uint64_t head_idx = process_idx % q_heads; //
+        uint32_t m_idx = process_idx / q_heads;
+        uint64_t head_idx = process_idx % q_heads;
 
-        // for prefix triu_mask
-        uint32_t prefixLen = kv_seqlen - q_seqlen;
-        uint32_t prefixBlockNum = (prefixLen + pp_m_scalar - 1) / pp_m_scalar;
-
-        uint32_t m_loop = (q_seqlen + pp_m_scalar - 1) / pp_m_scalar; // m_loop:q_seqlen维度切分
-        uint32_t n_loop = (kv_seqlen + pp_n_scalar - 1) / pp_n_scalar;// n_loop：kv_seqlen维度切分
+        uint32_t m_loop = (q_seqlen + pp_m_scalar - 1) / pp_m_scalar;
+        uint32_t n_loop = (kv_seqlen + pp_n_scalar - 1) / pp_n_scalar;
 
         uint32_t qk_m = (m_idx == (m_loop - 1)) ? (q_seqlen - m_idx * pp_m_scalar) : pp_m_scalar;
         uint32_t sub_m = (sub_block_idx == 1) ? (qk_m - qk_m / 2) : qk_m / 2;
         uint32_t sub_m_d128 = (sub_m + VECTOR_SIZE - 1) / VECTOR_SIZE;             // up aligned to 128
         uint32_t sub_m_d64 = (sub_m + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE;  // up aligned to 64
-        uint32_t round_sub_m = (sub_m + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;  // up aligned to  4 * 16  == 64
+        uint32_t round_sub_m = (sub_m + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
 
         /******** pre_load *******/
         uint32_t qk_n = n_loop == 1 ? kv_seqlen : pp_n_scalar;
@@ -847,7 +834,7 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
         uint64_t mask_head_offset = head_idx * ((uint64_t)head_stride) * max_seqlen;
         uint64_t mask_offset = mask_batch_offset + mask_head_offset;
         if (long_seq == 0) {
-            mask_offset += m_idx * pp_m_scalar * max_seqlen + prefixLen * max_seqlen;
+            mask_offset += m_idx * pp_m_scalar * max_seqlen;
         } else {
             gm_to_ub<ArchType::ASCEND_V220, half>(
                 mask_ubuf_tensor,
@@ -871,7 +858,7 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
 
         uint32_t n_end = n_loop;
         if (is_triu_mask) {
-            n_end = m_idx + prefixBlockNum + 1;
+            n_end = m_idx + 1;
         }
         uint32_t qk_n_triu = n_end * pp_n_scalar;
         uint32_t s_block_stack = n_end > NO_STACK_S_BLOCK_LIMIT ? 2 : 1;
@@ -880,9 +867,9 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
         uint32_t m_slice = sub_m > 32 ? 32 : 0; // s_block_stack=2时，UB可以放下
         uint32_t m_end = sub_m > 32 ? 2 : 1;
 
-        for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += s_block_stack) { // n_loop循环--kvlen维度，每次处理s_block_stack 2/1
-            if (n_idx < n_end) { // qk部分
-                if (n_idx + s_block_stack > n_end - 1) { // 尾块处理
+        for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
+            if (n_idx < n_end) {
+                if (n_idx + s_block_stack > n_end - 1) {
                     qk_n = qk_n_triu > kv_seqlen ? kv_seqlen - n_idx * pp_n_scalar : qk_n_triu - n_idx * pp_n_scalar;
                 } else {
                     qk_n = pp_n_scalar * s_block_stack;
@@ -1094,10 +1081,10 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
                                 8
                             );
                             SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-                        } // lm_ubuf_tensor中为最大值
+                        }
                         PIPE_BARRIER(V);
                         if (n_idx == 0) {
-                            // *** hm = lm   hm记录最大值
+                            // *** hm = lm
                             ub_to_ub<ArchType::ASCEND_V220, half>(
                                 hm_ubuf_tensor,
                                 lm_ubuf_tensor,
@@ -1136,7 +1123,7 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
                             );
                             PIPE_BARRIER(V);
                         }
-                        // *** gm = hm  更新gm为最大值
+                        // *** gm = hm
                         ub_to_ub<ArchType::ASCEND_V220, half>(
                             gm_ubuf_tensor,
                             hm_ubuf_tensor,
@@ -1775,7 +1762,7 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
             if (n_idx >= launch_delay) {
                 // *** 更新 L 和 O
                 WaitFlagDev(UPDATE_READY);
-                for(uint32_t k_idx = 0; k_idx < loopV; k_idx++){ // (embdv + BLOCK_QK - 1) / BLOCK_QK;
+                for(uint32_t k_idx = 0; k_idx < loopV; k_idx++){
                     uint64_t o_offsetk = o_offset + k_idx * BLOCK_QK;
                     if (sub_m > 0) {
                         qk_k = (k_idx == (loopV - 1))? embdv - k_idx * BLOCK_QK : BLOCK_QK;
@@ -1848,12 +1835,12 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
                                 tv_ubuf_tensor.ReinterpretCast<uint32_t>(),
                                 1,                              // dstBlockStride
                                 8,                              // dstRepeatStride
-                                round_sub_m / FLOAT_BLOCK_SIZE  // repeat  1
+                                round_sub_m / FLOAT_BLOCK_SIZE  // repeat
                             );
                             PIPE_BARRIER(V);
                             WAIT_FLAG(MTE2, V, EVENT_ID3);
                             // *** go = go * dm_block
-                            for (uint32_t vmul_idx = 0; vmul_idx < qk_k / FLOAT_VECTOR_SIZE; ++vmul_idx) { //
+                            for (uint32_t vmul_idx = 0; vmul_idx < qk_k / FLOAT_VECTOR_SIZE; ++vmul_idx) {
                                 mul_v<ArchType::ASCEND_V220, float>(go_ubuf_tensor[vmul_idx * FLOAT_VECTOR_SIZE],
                                     go_ubuf_tensor[vmul_idx * FLOAT_VECTOR_SIZE],
                                     tv_ubuf_tensor[VECTOR_SIZE],
@@ -1900,10 +1887,8 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
                             SET_FLAG(V, MTE2, EVENT_ID4);
                         }
                         // *** gl = castfp32to16(gl)
-                        if (n_idx + s_block_stack > n_end + launch_delay - 1){ // 结束时候
-
+                        if (n_idx + s_block_stack > n_end + launch_delay - 1){
                             PIPE_BARRIER(V);
-                            //以下为o输出的原始代码
                             if(k_idx == 0){
                                 conv_v<ArchType::ASCEND_V220, float, half>(gl_ubuf_tensor.ReinterpretCast<half>(),
                                     gl_ubuf_tensor,
@@ -2007,7 +1992,6 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
                             );
                             PIPE_BARRIER(V);
 
-//                                SET_FLAG(V, MTE2, EVENT_ID5);
                             if (isRing){
 //                              以下为更新lse的部分：lse_new = log(exp(lse_new) + exp(lse_old))
 //                              搬运prev_lse    lsein_ubuf_tensor
@@ -2025,6 +2009,7 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
                                     0,        // srcGap  (stride_qo - embdv) * 2 / embdv
                                     0                                 // dstGap
                                 );
+//                                PIPE_BARRIER(ALL);
                                 SET_FLAG(MTE2, V, EVENT_ID5);
                                 WAIT_FLAG(MTE2, V, EVENT_ID5);
 
@@ -2267,7 +2252,6 @@ extern "C" __global__ __aicore__ void ring_mla_prefill(
 
                             } else {
                                 PIPE_BARRIER(V);
-
                                 if (k_idx == 0) {
                                     SET_FLAG(V, MTE3, EVENT_ID4);
                                     WAIT_FLAG(V, MTE3, EVENT_ID4);

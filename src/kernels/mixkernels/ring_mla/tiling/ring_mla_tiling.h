@@ -10,12 +10,12 @@
 #ifndef MLA_TILING_H
 #define MLA_TILING_H
 
-#include "atbops/params/params.h"
-#include "ring_mla_tiling_dependency.h"
 #include <mki/kernel_info.h>
 #include <mki/launch_param.h>
 #include <mki/utils/log/log.h>
 #include <mki/utils/status/status.h>
+#include "ring_mla_tiling_dependency.h"
+#include "atbops/params/params.h"
 
 namespace AtbOps {
 using namespace Mki;
@@ -24,7 +24,7 @@ Status RINGMLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
 Status GetRINGMLATilingParam(const LaunchParam &launchParam, const RINGMLAInfo &mmInfo,
     uint32_t &blockDim, uint32_t *tilingParam, uint64_t tilingParamSize);
 Status GetRINGMLAPrefillTilingParam(const RINGMLAInfo &mmInfo, uint32_t &blockDim,
-                                uint32_t *tilingParam, uint32_t tilingParamSize);
+                                    uint32_t *tilingParam, uint32_t tilingParamSize);
 }
 
 #endif // MLA_TILING_H
