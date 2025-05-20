@@ -362,3 +362,295 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndTestGraphOp)
     aclrtDestroyStream(exeStream);
     aclrtResetDevice(deviceId);
 }
+
+TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
+{
+    bool status = atb::GetSingleton<atb::Config>().IsLaunchKernelWithTiling();
+    if (status) {
+        std::cout << "Skip Case TestGraphLaunchMode.CapturedByAtbAndChangeWorkspace, because of status of LaunchKernelWithTiling is 1";
+        return;
+    }
+	// 设置卡号、创建stream、创建context、设置stream
+    uint32_t deviceId = 1;
+    aclrtSetDevice(deviceId);
+    aclrtStream exeStream = nullptr;
+    aclrtCreateStream(&exeStream);
+    int err = 0;
+ 
+    atb::Context *context = nullptr;
+    atb::CreateContext(&context);
+    context->SetExecuteStream(exeStream);
+    context->SetLaunchMode(atb::GRAPH_LAUNCH_MODE);
+ 
+    // 创建图算子
+    atb::Operation *operation = nullptr;
+    atb::GraphParam opGraph;
+    CreateMultiGraphOperation(opGraph, &operation);
+ 
+	// 输入输出tensor准备
+    atb::VariantPack pack;
+    atb::SVector<atb::TensorDesc> intensorDescs;
+    atb::SVector<atb::TensorDesc> outtensorDescs;
+ 
+    uint32_t inTensorNum = opGraph.inTensorNum;
+    uint32_t outTensorNum = opGraph.outTensorNum;
+    inTensorNum = operation->GetInputNum();
+    outTensorNum = operation->GetOutputNum();
+ 
+    pack.inTensors.resize(inTensorNum);
+    intensorDescs.resize(inTensorNum);
+    CreateInTensorDescs(intensorDescs);
+    
+    outtensorDescs.resize(outTensorNum);
+    pack.outTensors.resize(outTensorNum);
+    operation->InferShape(intensorDescs, outtensorDescs);
+    CreateOutTensors(pack.outTensors, outtensorDescs);
+ 
+    uint64_t workspaceSize = 0;
+    void *workSpace = nullptr;
+    void *workSpace1 = nullptr;
+    void *workSpace2 = nullptr;
+    void *workSpace3 = nullptr;
+    int ret = 0;
+	// 算子执行
+    aclmdlRI model = nullptr;
+    for (size_t i = 0; i < 10; i++) {
+        CreateInTensors(pack.inTensors, intensorDescs, i + 1);
+        CreateOutTensors(pack.outTensors, outtensorDescs);
+        if (i == 0) {
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace == nullptr) {
+                ret = aclrtMalloc(&workSpace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workspace:" << workSpace << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_LAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else if (i > 3 && i < 6) {
+            // 支持workSpace更新
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace1 == nullptr) {
+                ret = aclrtMalloc(&workSpace1, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workspace1:" << workSpace1 << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace1, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_LAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace1, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else if (i >= 6 && i < 8) {
+            // 支持workSpace更新
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace2 == nullptr) {
+                ret = aclrtMalloc(&workSpace2, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workSpace2:" << workSpace2 << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace2, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_LAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace2, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else if (i >= 8 && i <= 9) {
+            // 支持workSpace更新
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace3 == nullptr) {
+                ret = aclrtMalloc(&workSpace3, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workSpace3:" << workSpace3 << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace3, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_LAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace3, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else {
+            std::cout << "workspace:" << workSpace << ", workspaceSize:" << workspaceSize << std::endl;
+            operation->Setup(pack, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_LAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        }
+ 
+        // 流同步，作用是等待device侧任务计算完成
+        ret = aclrtSynchronizeStream(exeStream);
+        ASSERT_EQ(ret, 0);
+        std::cout << "aclrtSynchronizeStream success!" << std::endl;
+ 
+        // 打印输出Tensor的值
+        std::vector<uint16_t> outBuffer(atb::Utils::GetTensorNumel(pack.outTensors.at(0)));
+        PrintOutTensorValue(pack.outTensors.at(0), outBuffer);
+        for (size_t j = 0; j < outBuffer.size(); j++) {
+            EXPECT_EQ((uint32_t)outBuffer.at(j), (i + 1) * 16);
+        }
+    }
+ 
+	// 资源释放
+    atb::DestroyOperation(operation);
+    atb::DestroyContext(context);
+    aclmdlRIDestroy(model);
+    for (size_t i = 0; i < pack.inTensors.size(); i++) {
+        aclrtFree(pack.inTensors.at(i).deviceData);
+    }
+    for (size_t i = 0; i < pack.outTensors.size(); i++) {
+        aclrtFree(pack.outTensors.at(i).deviceData);
+    }
+    aclrtFree(workSpace);
+    aclrtFree(workSpace1);
+    aclrtFree(workSpace2);
+    aclrtFree(workSpace3);
+    aclrtDestroyStream(exeStream);
+    aclrtResetDevice(deviceId);
+}
+
+TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
+{
+    bool status = atb::GetSingleton<atb::Config>().IsLaunchKernelWithTiling();
+    if (status) {
+        std::cout << "Skip Case TestGraphLaunchMode.CapturedByUserAndChangeWorkspace, because of status of LaunchKernelWithTiling is 1";
+        return;
+    }
+	// 设置卡号、创建stream、创建context、设置stream
+    uint32_t deviceId = 1;
+    aclrtSetDevice(deviceId);
+    aclrtStream exeStream = nullptr;
+    aclrtCreateStream(&exeStream);
+    int err = 0;
+ 
+    atb::Context *context = nullptr;
+    atb::CreateContext(&context);
+    context->SetExecuteStream(exeStream);
+    context->SetLaunchMode(atb::GRAPH_LAUNCH_MODE);
+ 
+    // 创建图算子
+    atb::Operation *operation = nullptr;
+    atb::GraphParam opGraph;
+    CreateMultiGraphOperation(opGraph, &operation);
+ 
+	// 输入输出tensor准备
+    atb::VariantPack pack;
+    atb::SVector<atb::TensorDesc> intensorDescs;
+    atb::SVector<atb::TensorDesc> outtensorDescs;
+ 
+    uint32_t inTensorNum = opGraph.inTensorNum;
+    uint32_t outTensorNum = opGraph.outTensorNum;
+    inTensorNum = operation->GetInputNum();
+    outTensorNum = operation->GetOutputNum();
+ 
+    pack.inTensors.resize(inTensorNum);
+    intensorDescs.resize(inTensorNum);
+    CreateInTensorDescs(intensorDescs);
+    
+    outtensorDescs.resize(outTensorNum);
+    pack.outTensors.resize(outTensorNum);
+    operation->InferShape(intensorDescs, outtensorDescs);
+    CreateOutTensors(pack.outTensors, outtensorDescs);
+ 
+    uint64_t workspaceSize = 0;
+    void *workSpace = nullptr;
+    void *workSpace1 = nullptr;
+    void *workSpace2 = nullptr;
+    void *workSpace3 = nullptr;
+    int ret = 0;
+	// 算子执行
+    aclmdlRI model = nullptr;
+    for (size_t i = 0; i < 10; i++) {
+        CreateInTensors(pack.inTensors, intensorDescs, i + 1);
+        CreateOutTensors(pack.outTensors, outtensorDescs);
+        if (i == 0) {
+            aclmdlRICaptureBegin(exeStream, ACL_MODEL_RI_CAPTURE_MODE_RELAXED);
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace == nullptr) {
+                ret = aclrtMalloc(&workSpace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workspace:" << workSpace << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_LAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+            aclmdlRICaptureEnd(exeStream, &model);
+            aclmdlRIExecuteAsync(model, exeStream);
+        } else if (i > 3 && i < 6) {
+            // 支持workSpace更新
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace1 == nullptr) {
+                ret = aclrtMalloc(&workSpace1, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workspace1:" << workSpace1 << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace1, workspaceSize, context);
+            aclmdlRIExecuteAsync(model, exeStream);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else if (i >= 6 && i < 8) {
+            // 支持workSpace更新
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace2 == nullptr) {
+                ret = aclrtMalloc(&workSpace2, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workSpace2:" << workSpace2 << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace2, workspaceSize, context);
+            aclmdlRIExecuteAsync(model, exeStream);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else if (i >= 8 && i <= 9) {
+            // 支持workSpace更新
+            operation->Setup(pack, workspaceSize, context);
+            if (workspaceSize != 0 && workSpace3 == nullptr) {
+                ret = aclrtMalloc(&workSpace3, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+                ASSERT_EQ(ret, 0);
+            }
+            std::cout << "workSpace3:" << workSpace3 << ", workspaceSize:" << workspaceSize << std::endl;
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace3, workspaceSize, context);
+            aclmdlRIExecuteAsync(model, exeStream);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+        } else {
+            std::cout << "workspace:" << workSpace << ", workspaceSize:" << workspaceSize << std::endl;
+            operation->Setup(pack, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
+            operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+            context->SetExecuteType(atb::EXECUTE_NORMAL);
+ 
+            // 重放
+            aclmdlRIExecuteAsync(model, exeStream);
+        }
+        // 流同步，作用是等待device侧任务计算完成
+        ret = aclrtSynchronizeStream(exeStream);
+        ASSERT_EQ(ret, 0);
+        std::cout << "aclrtSynchronizeStream success!" << std::endl;
+ 
+        // 打印输出Tensor的值
+        std::vector<uint16_t> outBuffer(atb::Utils::GetTensorNumel(pack.outTensors.at(0)));
+        PrintOutTensorValue(pack.outTensors.at(0), outBuffer);
+        for (size_t j = 0; j < outBuffer.size(); j++) {
+            EXPECT_EQ((uint32_t)outBuffer.at(j), (i + 1) * 16);
+        }
+    }
+ 
+	// 资源释放
+    atb::DestroyOperation(operation);
+    atb::DestroyContext(context);
+    aclmdlRIDestroy(model);
+    for (size_t i = 0; i < pack.inTensors.size(); i++) {
+        aclrtFree(pack.inTensors.at(i).deviceData);
+    }
+    for (size_t i = 0; i < pack.outTensors.size(); i++) {
+        aclrtFree(pack.outTensors.at(i).deviceData);
+    }
+    aclrtFree(workSpace);
+    aclrtFree(workSpace1);
+    aclrtFree(workSpace2);
+    aclrtFree(workSpace3);
+    aclrtDestroyStream(exeStream);
+    aclrtResetDevice(deviceId);
+}
