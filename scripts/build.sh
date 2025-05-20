@@ -165,7 +165,7 @@ function fn_build_asdops()
     fi
     cd $THIRD_PARTY_DIR
     branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_feature_cann_8.2.RC1_0506POC_20250806
+    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
     echo  "current branch for atb and asdops: $branch"
     git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
@@ -199,8 +199,9 @@ function fn_build_mki()
     fi
     cd $THIRD_PARTY_DIR
     if [ ! -d "Mind-KernelInfra" ]; then
-        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_feature_cann_8.2.RC1_0506POC_20250806
+        # branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+        # [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
+        branch=master
         echo  "current branch for mki: $branch"
         git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
     fi
