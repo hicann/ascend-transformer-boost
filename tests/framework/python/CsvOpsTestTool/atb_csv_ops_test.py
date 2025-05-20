@@ -100,7 +100,6 @@ class CsvOpsTest():
         self.file_data.loc[:, 'Error+/-1'] = ''
         self.file_data.loc[:, 'PrecisionPercent'] = ''
         self.file_data.loc[:, 'EBPercent'] = ''
-        self.compute_num = -1
 
     def need_to_run_case(self, case_index, args, card_type):
         op_name = self.op_name.loc[case_index].split('_')[0]
@@ -243,10 +242,6 @@ class CsvOpsTest():
                     quit(1)
             self.__dump_tensor(input_tensor.cpu(), 'input', i, 'index: {}'.format(i))
             self.input_tensor_list.append(input_tensor)
-        if self.operation_name == "LinearOperation" and input_dtypes_list[0] == "float":
-            json_data = json.loads(self.op_param_str)
-            transpose_a = json_data["transposeA"] if "transposeA" in json_data else False
-            self.compute_num = shapes[0][-2] if transpose_a else shapes[0][-1]
 
     def generate_output_tensors(self, infershape_result):
         output_num = 0
@@ -469,7 +464,7 @@ class CsvOpsTest():
                 if self.op_type in [data_generation.OpTypes.CV_FUSION]:
                     gpu_golden_output = self.gpu_golden_output_tensor_list[i]
                     self.__dump_tensor(gpu_golden_output, 'gpu_golden', i, 'index: {}'.format(i))
-                precision_threshold, eb_threshold = data_generation.get_precision_and_eb_threshold(self.op_type, actual_output.dtype, self.compute_num)
+                precision_threshold, eb_threshold = data_generation.get_precision_and_eb_threshold(self.op_type, actual_output.dtype)
                 precision, eb = self.__precision_eb_percent(i, actual_output, golden_output, precision_threshold, eb_threshold)
                 self.file_data.loc[self.index, 'PrecisionPercent'] += precision + ';'
                 self.file_data.loc[self.index, 'EBPercent'] += eb + ';'

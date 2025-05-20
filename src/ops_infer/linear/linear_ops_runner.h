@@ -36,7 +36,6 @@ private:
     Status SetupKernelGraphMatmulDequant910B();
     Status SetupKernelGraphMatmulDequantWeightNdNot910B();
     Status SetupKernelGraphMatmulDequantWeightNzNot910B();
-    Status SetupKernelGraphMoeGateCorr();
     void SetupMatmulOriShape(const Mki::Tensor &xTensor, const Mki::Tensor &weightTensor);
     void SetupMatmulOriShapeEin(const Mki::Tensor &xTensor, const Mki::Tensor &weightTensor);
     void InitKernelGraph(size_t inTensorNum, size_t outTensorNum, size_t internalTensorNum, size_t nodeNum);
@@ -48,7 +47,6 @@ private:
     bool xNeedMergeAxis_ = false;
     bool weightNeedMergeAxis_ = false;
     AsdOps::OpParam::MatMul matmulParam_;
-    AsdOps::OpParam::MoeGateCorr moeGateCorrParam_;
     AsdOps::OpParam::Elewise elewiseAddParam_;
     AsdOps::OpParam::Transdata transdataNdToNzParam_;
     AsdOps::OpParam::Transdata transdataNzToNdParam_;
