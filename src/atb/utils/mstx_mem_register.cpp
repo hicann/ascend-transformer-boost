@@ -100,7 +100,7 @@ void MstxMemRegister::AddTensorMemRegions(void *ptr, uint64_t size)
 
 Status MstxMemRegister::CheckTensorRange()
 {
-    if (rangeDesc_.empty()) {
+    if (rangesDesc_.empty()) {
         return false;
     } else {
         return true;
