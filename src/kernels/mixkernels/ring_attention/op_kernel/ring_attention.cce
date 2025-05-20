@@ -8,13 +8,14 @@
 * See LICENSE in the root of the software repository for the full text of the License.
 */
 
-#include "mixops/include/common.h"
-#include "mixops/include/common_func.h"
-#include "mixops/include/simd.h"
-#include "mixops/include/iterator.h"
-#include "mixops/include/mma.h"
-#include "mixops/include/utils.h"
+#include "kernels/utils/kernel/common.h"
+#include "kernels/utils/kernel/common_func.h"
+#include "kernels/utils/kernel/simd.h"
+#include "kernels/utils/kernel/iterator.h"
+#include "kernels/utils/kernel/mma.h"
+#include "kernels/utils/kernel/utils.h"
 #include "kernel_operator.h"
+
 
 #ifdef __CCE_KT_TEST__
 #define __aicore__

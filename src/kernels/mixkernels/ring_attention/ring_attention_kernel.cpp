@@ -17,8 +17,7 @@
 #include <mki/utils/platform/platform_info.h>
 #include "atbops/params/params.h"
 #include "tiling/ring_attention_tiling.h"
-#include "mixops/utils/common.h"
-
+#include "mixkernels/utils/common.h"
 
 namespace AtbOps {
 using namespace Mki;

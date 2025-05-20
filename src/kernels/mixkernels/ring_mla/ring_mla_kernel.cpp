@@ -17,9 +17,9 @@
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/platform/platform_info.h>
 #include "atbops/params/params.h"
-#include "mixops/ring_mla/tiling/ring_mla_tiling.h"
-#include "mixops/ring_mla/tiling/ring_mla_tiling_dependency.h"
-#include "mixops/utils/common.h"
+#include "mixkernels/ring_mla/tiling/ring_mla_tiling.h"
+#include "mixkernels/ring_mla/tiling/ring_mla_tiling_dependency.h"
+#include "mixkernels/utils/common.h"
 
 namespace AtbOps {
 using namespace Mki;

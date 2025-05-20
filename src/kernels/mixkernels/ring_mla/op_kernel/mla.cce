@@ -7,13 +7,13 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-#include "ops/utils/kernel/common.h"
-#include "ops/utils/kernel/common_func.h"
-#include "ops/utils/kernel/simd.h"
-#include "ops/utils/kernel/iterator.h"
-#include "ops/utils/kernel/mma.h"
-#include "ops/utils/kernel/utils.h"
-#include "mixops/unpad_flash_attention/op_kernel/fa_common.cce"
+#include "kernels/utils/kernel/common.h"
+#include "kernels/utils/kernel/common_func.h"
+#include "kernels/utils/kernel/simd.h"
+#include "kernels/utils/kernel/iterator.h"
+#include "kernels/utils/kernel/mma.h"
+#include "kernels/utils/kernel/utils.h"
+#include "mixkernels/unpad_flash_attention/op_kernel/fa_common.cce"
 
 #ifdef __CCE_KT_TEST__
 #define __aicore__

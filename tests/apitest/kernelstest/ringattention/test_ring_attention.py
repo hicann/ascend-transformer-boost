@@ -16,15 +16,19 @@ import op_test
 import torch
 import torch.nn.functional as F
 # from Visual_comparison import generate_comparison_image
-sys.path.append('/opt/cl/ascend-op-common-lib/tests/pythontest')
+# sys.path.append('/opt/cl/ascend-op-common-lib/tests/pythontest')
 from enum import Enum
 import random
-# from read_tensor_file import get_dump_tensor
-current_file_path = os.path.abspath(__file__)
-current_dir = os.path.dirname(current_file_path)
-parent_dir = os.path.dirname(os.path.dirname(current_dir))
-#将父级的父级目录添加到 sys.path
-sys.path.append(parent_dir)
+# # from read_tensor_file import get_dump_tensor
+# current_file_path = os.path.abspath(__file__)
+# current_dir = os.path.dirname(current_file_path)
+# parent_dir = os.path.dirname(os.path.dirname(current_dir))
+# #将父级的父级目录添加到 sys.path
+# sys.path.append(parent_dir)
+
+sys.path.append('../')
+sys.path.append('../..')
+# import operation_test
 from precision_calcu import *
 
 np.set_printoptions(formatter={'float_kind':'{:0.2f}'.format})
