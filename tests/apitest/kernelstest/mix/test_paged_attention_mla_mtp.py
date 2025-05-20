@@ -265,11 +265,6 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
         return [golden_out]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        logging.debug(f"out_tensors: {out_tensors}")
-        logging.debug(f"golden_tensors:{golden_tensors}")
-        logging.debug(self.true_out.shape)
-        logging.debug(golden_tensors[0].shape)
-        logging.debug(out_tensors[0].shape)
         result_double = compare_cv(self.true_out, golden_tensors[0], out_tensors[0])
         result_old = self.compare_output_data(out_tensors[0], golden_tensors[0], [0.001, 0.001, 0.005, 0.005])
         return (result_double or result_old)
