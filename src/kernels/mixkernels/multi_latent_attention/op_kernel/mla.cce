@@ -2405,12 +2405,6 @@ private:
             src_gap,   // srcGap
             (split_num - 1) * __k * 4  // dstGap
         );
-
-        WAIT_FLAG(MTE3, V, EVENT_ID3);
-        SET_FLAG(MTE3, V, EVENT_ID3);
-
-        WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
-        SET_FLAG(MTE3, MTE2, EVENT_ID1);
     }
 
     __aicore__ __attribute__((always_inline)) inline void CombineScaleBlock(uint32_t num_tokens, uint32_t q_heads, uint32_t kv_split_core_num, uint32_t embedding_size)
