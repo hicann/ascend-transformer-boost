@@ -26,7 +26,8 @@ protected:
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;
     Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const override;
     Status SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const override;
-    Status KVCacheDimCheck910B(const SVector<TensorDesc> &inTensorDescs) const;
+    Status KVCacheDimCheck910BND(const SVector<TensorDesc> &inTensorDescs) const;
+    Status KVCacheDimCheck910BNZ(const SVector<TensorDesc> &inTensorDescs) const;
     Status DimCheck(const SVector<TensorDesc> &inTensorDescs) const;
 
 private:
