@@ -495,8 +495,8 @@ Status GetMLAPrefillTilingParam(const MLAInfo &mmInfo, uint32_t &blockDim,
     uint64_t totalSize = static_cast<uint64_t>(tilingHeadSize) +
                      static_cast<uint64_t>(mmInfo.batch) *
                      static_cast<uint64_t>(TILING_PARA_SIZE_PREFILL);
-    auto ret = memset_s(tilingParam, tilingParamSize, 0, initSize);
-    MKI_CHECK(ret == EOK, "Failed to clear the array", return Status::FailStatus(-1));
+    MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0, initSize) == EOK, "init tiling failed",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
     AddrOffsets addrOffsets;
     float tor = mmInfo.tor;
     uint32_t *torUptr = reinterpret_cast<uint32_t *>(&tor);

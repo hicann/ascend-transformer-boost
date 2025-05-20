@@ -78,7 +78,6 @@ struct BatchNode {
     {
         return other.kvSeqlen > this->kvSeqlen;
     }
-
 };
 
 using MLAInfo = struct MLATilingParams {

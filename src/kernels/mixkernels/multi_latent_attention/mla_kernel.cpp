@@ -74,8 +74,8 @@ public:
     explicit MLAPrefillKernel(const std::string &kernelName, const BinHandle *handle)
         : KernelBase(kernelName, handle)
     {
-        launchBufferSize_ = Utils::RoundUp((TILING_PARA_SIZE_PREFILL + TILING_HEAD_SIZE_PREFILL) *
-                        sizeof(uint32_t), TILINGMIN);
+        launchBufferSize_ = Utils::RoundUp((TILING_PARA_SIZE_PREFILL + TILING_HEAD_SIZE_PREFILL) * 
+                            sizeof(uint32_t), TILINGMIN);
     }
 
     bool CanSupport(const LaunchParam &launchParam) const override
