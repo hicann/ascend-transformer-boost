@@ -19,5 +19,5 @@ TEST(ExampleOpTest, CreateOperation_Success) {
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    return RUNN_ALL_TEST();
+    return RUN_ALL_TESTS();
 }

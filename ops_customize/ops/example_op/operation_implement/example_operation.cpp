@@ -8,7 +8,7 @@
 #include "atb/core/op_param_funcs.h"
 
 namespace atb {
-template <> Status CreateOperation(const usr_define::AddParam &opParam, Operation **operation)
+template <> Status CreateOperation(const customize::AddParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;

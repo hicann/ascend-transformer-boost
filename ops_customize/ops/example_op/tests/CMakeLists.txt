@@ -19,7 +19,6 @@ target_link_libraries(example_op_test
     PRIVATE
       atb_customize
       GTest::GTest
-      GTest::Main
       pthread
 )
 
