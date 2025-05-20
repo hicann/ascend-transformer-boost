@@ -2404,6 +2404,33 @@ static atb::Status PagedCacheLoadOperationCreate(const nlohmann::json &paramJson
     return CreateOperation(param, op);
 }
 
+static atb::Status RingMLAOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    atb::infer::RingMLAParam param;
+    if (paramJson.contains("calcType")) {
+        param.calcType = atb::infer::RingMLAParam::CalcType(paramJson["calcType"].get<int32_t>());
+    }
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("kvHeadNum")) {
+        param.kvHeadNum = paramJson["kvHeadNum"].get<int>();
+    }
+    if (paramJson.contains("qkScale")) {
+        param.qkScale = paramJson["qkScale"].get<float>();
+    }
+    if (paramJson.contains("kernelType")) {
+        param.kernelType = atb::infer::RingMLAParam::KernelType(paramJson["kernelType"].get<int32_t>());
+    }
+    if (paramJson.contains("maskType")) {
+        param.maskType = atb::infer::RingMLAParam::MaskType(paramJson["maskType"].get<int32_t>());
+    }
+    if (paramJson.contains("inputLayout")) {
+        param.inputLayout = atb::infer::InputLayout(paramJson["inputLayout"].get<int32_t>());
+    }
+    return CreateOperation(param, op);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AllReduceOperation", &AllReduceOperationCreate},
     {"BroadcastOperation", &BroadcastOperationCreate},
@@ -2525,6 +2552,7 @@ std::map<std::string, OperationUpdateFunc> g_update_funcMap = {
     {"FillOperation", &FillOperationUpdate},
     {"SortOperation", &SortOperationUpdate},
     {"TopkToppSamplingOperation", &TopkToppSamplingOperationUpdate},
+    {"RingMLAOperation", &RingMLAOperationCreate},
 };
 
 atb::Status UpdateOperationParam(const std::string &opName, const std::string &param, atb::Operation *operation)
