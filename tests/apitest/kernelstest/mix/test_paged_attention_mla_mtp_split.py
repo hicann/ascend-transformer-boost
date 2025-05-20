@@ -89,7 +89,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
         sim_sub = np.exp(sim_sub)
         row_sum = np.sum(sim_sub, axis=-1, keepdims=True)
         soft_res = sim_sub / row_sum
-        return soft_res
+        return soft_res, row_max + np.log(row_sum)
 
     def ref_masked_attention(self,
             query,  # (q_seqlen, num_heads, head_size)
@@ -108,20 +108,23 @@ class TestUnpadPagedAttention(op_test.OpTest):
             sim_high = sim_high + (mask[:sim_high.shape[-2], :sim_high.shape[-1]] * self.post_mask_factor).to(torch.float32)
 
         # softmax
-        p_high = self.softmax_numpy(sim_high)
+        p_high, lse_high = self.softmax_numpy(sim_high)
         p = torch.from_numpy(p_high).to(query.dtype)
         p_high = torch.from_numpy(p_high).to(torch.float32)
+        lse_high = torch.permute(torch.from_numpy(lse_high).to(torch.float32), (1, 0, 2))  # (q_seqlen, head_num, 1)
         value = torch.permute(value, (1, 0, 2))
         out_high = self.group_matmul(query.shape[0], key.shape[0], p_high, value)
         out = self.group_matmul(query.shape[0], key.shape[0], p, value)
         out_high = torch.permute(out_high, (1, 0, 2))
         out = torch.permute(out, (1, 0, 2))
         out = out.to(query.dtype)
-        return out, out_high
+        return out, out_high, lse_high.to(query.dtype), lse_high
 
     def ref_single_query_cached_kv_attention(self,
         output,
         true_out,
+        lse,          # (num_tokens, num_heads, 1)
+        true_lse,
         query,
         key_cache,    # (num_blocks, block_size, num_heads, head_size)
         value_cache,  # (num_blocks, block_size, num_heads, head_size)
@@ -166,7 +169,11 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 mask = global_mask[cu_seqlen : (cu_seqlen + q_seqlen), :]  # lookahead: cur_q: cur_q + q
             else:
                 mask = None
-            out, out_high = self.ref_masked_attention(q, keys, values, scale, mask)
+            out, out_high, lse_i, lse_i_high = self.ref_masked_attention(q, keys, values, scale, mask)
+            lse_i = lse_i.reshape(-1, num_heads, 1)
+            lse[cu_seqlen : cu_seqlen + q_seqlen, :, :] = lse_i
+            lse_i_high = lse_i_high.reshape(-1, num_heads, 1)
+            true_lse[cu_seqlen : cu_seqlen + q_seqlen, :, :] = lse_i_high
             out = out.reshape(-1, num_heads, head_size_vo)
             out_high = out_high.reshape(-1, num_heads, head_size_vo)
             output[cu_seqlen: cu_seqlen + q_seqlen, :, :] = out
@@ -198,10 +205,12 @@ class TestUnpadPagedAttention(op_test.OpTest):
                   k_seqlen_list: int,
                   mask_type,
                   dtype = torch.float16,
-                  is_nz_in = False
+                  is_nz_in = False,
+                  is_ring = 0
     ):
         self.data_type = dtype
         self.head_size_qk = head_size_qk
+        self.is_ring = is_ring
         q_min_range = -1.0
         q_max_range = 1.0
         kv_min_range = -1.0
@@ -257,9 +266,13 @@ class TestUnpadPagedAttention(op_test.OpTest):
         shape_out = (num_tokens, num_heads, head_size_vo)
         ref_output = torch.zeros(shape_out, dtype=dtype)
         true_out = torch.zeros(shape_out, dtype=torch.float32)
+        lse = torch.zeros((num_tokens, num_heads, 1), dtype=dtype)
+        true_lse = torch.zeros((num_tokens, num_heads, 1), dtype=torch.float32)
         self.ref_single_query_cached_kv_attention(
             ref_output,
             true_out,
+            lse,
+            true_lse,
             query,
             key_cache,
             value_cache,
@@ -281,7 +294,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
             key_cache_split2_nz = self.convert_nd_to_nz(key_cache_split2)
             self.key_cache_split1 = key_cache_split1_nz.to(dtype).reshape(num_blocks, -1, block_size, 16)
             self.key_cache_split2 = key_cache_split2_nz.to(dtype).reshape(num_blocks, -1, block_size, 16)
-
+        
         self.q = query
         self.num_tokens = num_tokens
         self.key_cache = key_cache
@@ -292,10 +305,12 @@ class TestUnpadPagedAttention(op_test.OpTest):
         self.mask = mask
         self.golden_out = ref_output
         self.true_out = true_out
+        self.lse = lse
+        self.true_lse = true_lse
 
     def golden_calc(self, in_tensors):
         golden_out = torch.tensor(self.golden_out)
-        return [golden_out]
+        return [golden_out, self.lse]
 
     def golden_compare(self, out_tensors, golden_tensors):
         logging.info(f"out_tensors: {out_tensors}")
@@ -303,9 +318,15 @@ class TestUnpadPagedAttention(op_test.OpTest):
         logging.info(self.true_out.shape)
         logging.info(golden_tensors[0].shape)
         logging.info(out_tensors[0].shape)
-        result_double = compare_cv(self.true_out, golden_tensors[0], out_tensors[0])
-        result_old = self.compare_output_data(out_tensors[0], golden_tensors[0], [0.001, 0.001, 0.005, 0.005])
-        return (result_double or result_old)
+        go_double = compare_cv(self.true_out, golden_tensors[0], out_tensors[0])
+        go_old = self.compare_output_data(out_tensors[0], golden_tensors[0], [0.001, 0.001, 0.005, 0.005])
+
+        lse_double = True
+        lse_old = True
+        if self.is_ring:
+            lse_double = compare_cv(self.true_lse, golden_tensors[1], out_tensors[1])
+            lse_old = self.compare_output_data(out_tensors[1], golden_tensors[1], [0.001, 0.001, 0.005, 0.005])
+        return (go_double or go_old) and (lse_double or lse_old)
 
     def gen_mask(self, q_len, dtype):
         """
@@ -577,8 +598,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
 
     @op_test.only_910b
     def test_paged_mla_seq2_head128_with_mask_unaligned_fp16(self):
-        # Due to CI issue, this test is removed temporarily
-        return
         self.set_support_910b_only()
         batch = 2 
         q_seqlen_list = [2] * batch
@@ -882,5 +901,627 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 attention_out, torch.tensor([])
             ]
         )
+
+
+    @op_test.only_910b
+    def test_paged_mla_seq4_head64_fp16_ring(self):
+        self.set_support_910b_only()
+        batch = 2
+        q_seqlen_list = [4] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [256] * batch
+        num_heads = 64
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_type = 0
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+        "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": 0, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+              f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+        for i in range (1):
+            self.execute(
+            [
+                self.q_split1,
+                self.q_split2,
+                self.key_cache_split1,
+                self.key_cache_split2,
+                torch.tensor(self.block_tables).int(),
+                # self.mask
+                torch.tensor([], dtype=torch.float16),
+                torch.tensor([1], dtype=torch.float),
+                torch.tensor([1], dtype=torch.float)
+            ],
+            [
+                attention_out, lse
+            ]
+        )
+
+    @op_test.only_910b
+    def test_paged_mla_seq4_head64_bf16_ring(self):
+        self.set_support_910b_only()
+        batch = 2
+        q_seqlen_list = [4] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [256] * batch
+        num_heads = 64
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_type = 0
+        dtype = torch.bfloat16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+        "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": 0, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+              f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+        for i in range (1):
+            self.execute(
+            [
+                self.q_split1,
+                self.q_split2,
+                self.key_cache_split1,
+                self.key_cache_split2,
+                torch.tensor(self.block_tables).int(),
+                # self.mask
+                torch.tensor([], dtype=torch.float16),
+                torch.tensor([1], dtype=torch.float),
+                torch.tensor([1], dtype=torch.float)
+            ],
+            [
+                attention_out, lse
+            ]
+        )
+
+    @op_test.only_910b
+    def test_paged_mla_seq2_head128_bf16_ring(self):
+        self.set_support_910b_only()
+        batch = 3
+        q_seqlen_list = [2] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [256] * batch
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_type = 0
+        dtype = torch.bfloat16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list,
+                       k_seqlen_list, mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead": kv_heads, "headSize": num_heads,
+                    "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": 0, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+                     f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range(1):
+            self.execute(
+                [
+                    self.q_split1,
+                    self.q_split2,
+                    self.key_cache_split1,
+                    self.key_cache_split2,
+                    torch.tensor(self.block_tables).int(),
+                    # self.mask
+                    torch.tensor([], dtype=torch.float16),
+                    torch.tensor([1], dtype=torch.float),
+                    torch.tensor([1], dtype=torch.float)
+                ],
+                [
+                    attention_out, lse
+                ]
+            )
+
+    @op_test.only_910b
+    def test_paged_mla_seq2_head8_with_mask_fp16_ring(self):
+        self.set_support_910b_only()
+        batch = 5
+        q_seqlen_list = [2] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [256] * batch
+        num_heads = 8
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        mask_type = 3
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list,
+                       k_seqlen_list, mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead": kv_heads, "headSize": num_heads,
+                    "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": mask_type,
+                    "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+                     f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range(1):
+            self.execute(
+                [
+                    self.q_split1,
+                    self.q_split2,
+                    self.key_cache_split1,
+                    self.key_cache_split2,
+                    torch.tensor(self.block_tables).int(),
+                    self.mask,
+                    torch.tensor([1], dtype=torch.float),
+                    torch.tensor([1], dtype=torch.float)
+                    # torch.tensor([], dtype=torch.float16)
+                ],
+                [
+                    attention_out, lse
+                ]
+            )
+
+    @op_test.only_910b
+    def test_paged_mla_seq3_head32_with_mask_unaligned_fp16_ring(self):
+        self.set_support_910b_only()
+        batch = 16
+        q_seqlen_list = [3] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [257] * batch
+        num_heads = 32
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        mask_type = 3
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list,
+                       k_seqlen_list, mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead": kv_heads, "headSize": num_heads,
+                    "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": mask_type,
+                    "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+                     f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range(1):
+            self.execute(
+                [
+                    self.q_split1,
+                    self.q_split2,
+                    self.key_cache_split1,
+                    self.key_cache_split2,
+                    torch.tensor(self.block_tables).int(),
+                    self.mask,
+                    torch.tensor([1], dtype=torch.float),
+                    torch.tensor([1], dtype=torch.float)
+                    # torch.tensor([], dtype=torch.float16)
+                ],
+                [
+                    attention_out, lse
+                ]
+            )
+    @op_test.only_910b
+    def test_paged_mla_seq3_head64_with_mask_fp16_ring(self):
+        self.set_support_910b_only()
+        batch = 8
+        q_seqlen_list = [3] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [256] * batch
+        num_heads = 64
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        mask_type = 3
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+        "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": mask_type, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+              f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range (1):
+            self.execute(
+            [
+                self.q_split1,
+                self.q_split2,
+                self.key_cache_split1,
+                self.key_cache_split2,
+                torch.tensor(self.block_tables).int(),
+                self.mask,
+                torch.tensor([1], dtype=torch.float),
+                torch.tensor([1], dtype=torch.float)
+                # torch.tensor([], dtype=torch.float16)
+            ],
+            [
+                attention_out, lse
+            ]
+        )
+
+    @op_test.only_910b
+    def test_paged_mla_seq4_head64_with_mask_unaligned_fp16_ring(self):
+        self.set_support_910b_only()
+        batch = 9
+        q_seqlen_list = [4] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [257] * batch
+        num_heads = 64
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        mask_type = 3
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+        "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": mask_type, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+              f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range (1):
+            self.execute(
+            [
+                self.q_split1,
+                self.q_split2,
+                self.key_cache_split1,
+                self.key_cache_split2,
+                torch.tensor(self.block_tables).int(),
+                self.mask,
+                torch.tensor([1], dtype=torch.float),
+                torch.tensor([1], dtype=torch.float)
+                # torch.tensor([], dtype=torch.float16)
+            ],
+            [
+                attention_out, lse
+            ]
+        )
+
+    @op_test.only_910b
+    def test_paged_mla_seq5_head64_with_mask_free_fp16_unalign_ring(self):
+        self.set_support_910b_only()
+        batch = 8
+        q_seqlen_list = [5] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [127] * batch
+        num_heads = 64
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        ref_mask_type = 3
+        op_mask_type = 4
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list,
+                       k_seqlen_list, ref_mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+                    "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": op_mask_type, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+                     f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        mask_free = self.gen_mask(q_seqlen_list[0], dtype)
+        mask_param = mask_free if op_mask_type==4 else self.mask
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range (1):
+            self.execute(
+                [
+                    self.q_split1,
+                    self.q_split2,
+                    self.key_cache_split1,
+                    self.key_cache_split2,
+                    torch.tensor(self.block_tables).int(),
+                    mask_param,
+                    torch.tensor([1], dtype=torch.float),
+                    torch.tensor([1], dtype=torch.float)
+                ],
+                [
+                    attention_out, lse
+                ]
+            )
+
+    @op_test.only_910b
+    def test_paged_mla_seq9_head64_with_mask_free_fp16_mtp2_ring(self):
+        self.set_support_910b_only()
+        batch = 4
+        q_seqlen_list = [9] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [129] * batch
+        num_heads = 64
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        ref_mask_type = 3
+        op_mask_type = 4
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list,
+                       k_seqlen_list, ref_mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+                    "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": op_mask_type, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+                     f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        mask_free = self.gen_mask(q_seqlen_list[0], dtype)
+        mask_param = mask_free if op_mask_type==4 else self.mask
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range (1):
+            self.execute(
+                [
+                    self.q_split1,
+                    self.q_split2,
+                    self.key_cache_split1,
+                    self.key_cache_split2,
+                    torch.tensor(self.block_tables).int(),
+                    mask_param,
+                    torch.tensor([1], dtype=torch.float),
+                    torch.tensor([1], dtype=torch.float)
+                ],
+                [
+                    attention_out, lse
+                ]
+            )
+
+    @op_test.only_910b
+    def test_paged_mla_seq16_head128_with_mask_free_fp16_unalign_ring(self):
+        self.set_support_910b_only()
+        batch = 3
+        q_seqlen_list = [16] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [127] * batch
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        ref_mask_type = 3
+        op_mask_type = 4
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list,
+                       k_seqlen_list, ref_mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+                    "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": op_mask_type, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+                     f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        mask_free = self.gen_mask(q_seqlen_list[0], dtype)
+        mask_param = mask_free if op_mask_type==4 else self.mask
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range (1):
+            self.execute(
+                [
+                    self.q_split1,
+                    self.q_split2,
+                    self.key_cache_split1,
+                    self.key_cache_split2,
+                    torch.tensor(self.block_tables).int(),
+                    mask_param,
+                    torch.tensor([1], dtype=torch.float),
+                    torch.tensor([1], dtype=torch.float)
+                ],
+                [
+                    attention_out, lse
+                ]
+            )
+
+    @op_test.only_910b
+    def test_paged_mla_seq17_head128_with_mask_free_fp16_mtp2_ring(self):
+        self.set_support_910b_only()
+        batch = 2
+        q_seqlen_list = [17] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [129] * batch
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+
+        ref_mask_type = 3
+        op_mask_type = 4
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        is_ring = 1
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list,
+                       k_seqlen_list, ref_mask_type, dtype, False, is_ring)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+                    "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": op_mask_type, "isRing": is_ring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"blcok_tables shape: {self.block_tables}")
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+                     f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+
+        mask_free = self.gen_mask(q_seqlen_list[0], dtype)
+        mask_param = mask_free if op_mask_type==4 else self.mask
+
+        shape_out_2 = ((num_tokens, num_heads, 1))
+        lse = torch.zeros(shape_out_2, dtype=dtype)
+
+        for i in range (1):
+            self.execute(
+                [
+                    self.q_split1,
+                    self.q_split2,
+                    self.key_cache_split1,
+                    self.key_cache_split2,
+                    torch.tensor(self.block_tables).int(),
+                    mask_param,
+                    torch.tensor([1], dtype=torch.float),
+                    torch.tensor([1], dtype=torch.float)
+                ],
+                [
+                    attention_out, lse
+                ]
+            )
+
 if __name__ == '__main__':
     unittest.main()
