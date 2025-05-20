@@ -26,7 +26,7 @@ AddOpsRunner::AddOpsRunner(const customize::AddParam &param)
     Mki::Tensor &operationOutTensor = kernelGraph_.outTensors.at(INDEX_ZERO);
     addNode.outTensors = {&operationOutTensor};
 
-    AsdOps::OpParam::Elewise AddParam{ AsdOps::OpParam::Elewise::ELEWISE_ADD }
+    AsdOps::OpParam::Elewise AddParam{ AsdOps::OpParam::Elewise::ELEWISE_ADD };
     addNode.opDesc = {0, "AddOperation", AddParam};
     ATB_LOG(INFO) << "AddOpsRunner::AddOpsRunner end";
 }
