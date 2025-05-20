@@ -163,8 +163,8 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
     auto qTensor = launchParam.GetInTensor(DIM_0);
     auto qRopeTensor = launchParam.GetInTensor(DIM_1);
-    
-    MLAInfo mmInfo = {0};
+
+    MLAInfo mmInfo;
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     Status ret1 = GetMLAInfo(launchParam, mmInfo, param, blockDim);
@@ -200,6 +200,143 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     OP_TILING_CHECK_STATUS_RETURN(ret2);
     kernelInfo.SetBlockDim(blockDim);
     MKI_LOG(INFO) << "launchBufferSize = " << tilingSize << " block dim = " << blockDim;
+    return Status::OkStatus();
+}
+
+inline Status PrefillPreCheck(OpParam::MLA &param)
+{
+    MKI_CHECK(param.headSize > 0, "headSize is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK((param.kvHead > 0 && param.kvHead <= param.headSize && param.headSize % param.kvHead == 0) ||
+                  (param.kvHead == 0),
+              "kvHead is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(param.qSeqLen.size() == param.kvSeqLen.size(), "qSeqLen size Not equal to kvSeqLen",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(param.qSeqLen.data() != nullptr, "qSeq cannot be nullptr",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(param.kvSeqLen.data() != nullptr, "kvSeq cannot be nullptr",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
+    return Status::OkStatus();
+}
+
+
+inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
+                                  const Tensor &tensorMask)
+{
+    auto maskShape = tensorMask.desc.dims;
+    auto maskType = param.maskType;
+    auto maxKvSeq = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
+    MKI_LOG(INFO) << "max kv seq" << *maxKvSeq;
+    if (maskType != OpParam::MLA::MASK_TYPE_NONE) {
+        auto maskDim = maskShape.size();
+        int32_t maxSeq = maskShape.at(maskDim - 1);
+        mmInfo.maxSeqLen = maxSeq;
+        MKI_CHECK(maskType == OpParam::MLA::MASK_TYPE_CAUSAL_COMPRESS,
+                    "mask type invalid",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(maskShape.at(1) == NORM_CMP_MASK_LEN, "compress mask shape should be 512, 512",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
+    }
+
+    return Status::OkStatus();
+}
+
+inline Status MLAPrefillPostCheck(MLAInfo &mmInfo, OpParam::MLA &param)
+{
+    MKI_CHECK(mmInfo.batch > 0 && mmInfo.batch <= ND_BATCH_LIMIT, "batch is invalid",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(static_cast<int32_t>(param.qSeqLen.size()) == mmInfo.batch, "SeqLen size is invalid",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(mmInfo.embeddingSize <= MAX_EMBEDDING && mmInfo.embeddingSize > 0, "headdimQ is invalid",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(mmInfo.embeddingSizeV <= MAX_EMBEDDING && mmInfo.embeddingSizeV > 0, "headdimV is invalid",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
+    return Status::OkStatus();
+}
+
+inline void PrefillLog(MLAInfo &mmInfo, OpParam::MLA &param)
+{
+    MKI_LOG(INFO) << "batch is: " << mmInfo.batch << " kvMaxSeq is: " << mmInfo.maxKvSeqLen
+                  << " maskMaxSeq is: " << mmInfo.maxSeqLen << " head is: " << mmInfo.numHeads
+                  << " qSeq  is: " << *(mmInfo.qSeqLen) << " kvSeq is: " << *(mmInfo.kvSeqLen)
+                  << " tor is : " << mmInfo.tor
+                  << " kv_head is: " << mmInfo.kvHeads << " embed is: " << mmInfo.embeddingSize
+                  << " maskStrid is: " << mmInfo.maskStride << " headStride is: " << mmInfo.headStride
+                  << " mask type is " << mmInfo.maskType;
+}
+
+void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, size_t batch, int32_t embed)
+{
+    mmInfo.batch = static_cast<int32_t>(batch);
+    mmInfo.numHeads = param.headSize;
+    mmInfo.embeddingSize = embed;
+    mmInfo.embeddingSizeV = embed - NUM64;
+    mmInfo.qSeqLen = param.qSeqLen.data();
+    mmInfo.kvSeqLen = param.kvSeqLen.data();
+    mmInfo.tor = param.tor;
+    mmInfo.kvHeads = param.kvHead == 0 ? param.headSize : param.kvHead;
+    mmInfo.maskType = static_cast<uint32_t>(param.maskType);
+}
+
+Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
+{
+    OP_TILING_CHECK_STATUS_RETURN(PrefillPreCheck(param));
+    size_t batch = 0;
+    SVector<int64_t> kcacheShape;
+    SVector<int64_t> vcacheShape;
+    kcacheShape = mmInfo.tensors.kCache.desc.dims;
+    int64_t queryDim = mmInfo.tensors.query.desc.dims.size();
+    int32_t embed = 0; // headdim
+    if (queryDim == DIM_3) {
+        embed = (mmInfo.tensors.query.desc.dims).at(2) +
+                    (mmInfo.tensors.queryRope.desc.dims).at(2);
+    } else {
+        embed = ((mmInfo.tensors.query.desc.dims).at(1) +
+                    (mmInfo.tensors.queryRope.desc.dims).at(1)) / param.headSize;
+    }
+    mmInfo.maxKvSeqLen = kcacheShape.at(1);         // MaxSeqLen is the 2st dimension of K
+    batch = static_cast<size_t>(kcacheShape.at(0)); // Batch is the 1th dimension of Q
+    OP_TILING_CHECK_STATUS_RETURN(GetPrefiillMaskInfo(mmInfo, param, mmInfo.tensors.mask));
+    MLAPrefillFillInfo(mmInfo, param, batch, embed);
+    vcacheShape = mmInfo.tensors.vCache.desc.dims;
+    auto vcacheDim = vcacheShape.size();
+    MKI_CHECK((vcacheShape[vcacheDim - 1] == mmInfo.embeddingSizeV) ||
+                  (vcacheShape[vcacheDim - 1] == mmInfo.kvHeads * mmInfo.embeddingSizeV),
+              "headdimV is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+    OP_TILING_CHECK_STATUS_RETURN(MLAPrefillPostCheck(mmInfo, param));
+    PrefillLog(mmInfo, param);
+    return Status::OkStatus();
+}
+
+Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
+{
+    MLAInfo mmInfo;
+    uint32_t index = 0;
+    MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MLA), "OpParam is invalid",
+              return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+    auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
+    mmInfo.tensors.query = launchParam.GetInTensor(index++);
+    mmInfo.tensors.queryRope = launchParam.GetInTensor(index++);
+    mmInfo.tensors.kCache = launchParam.GetInTensor(index++);
+    mmInfo.tensors.kCacheRope = launchParam.GetInTensor(index++);
+    mmInfo.tensors.vCache = launchParam.GetInTensor(index++);
+    mmInfo.tensors.mask = launchParam.GetInTensor(index++);
+    mmInfo.tensors.alibiCoeff = launchParam.GetInTensor(index++);
+    Status ret = InitInfo(mmInfo, param);
+    OP_TILING_CHECK_STATUS_RETURN(ret);
+    uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+    MKI_CHECK(blockDim > 0, "blockDim cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
+    mmInfo.blockDim = blockDim;
+    uint8_t *tilingHost = kernelInfo.GetTilingHostAddr();
+    uint64_t tilingSize = kernelInfo.GetTilingSize();
+    uint32_t *tilingParam = reinterpret_cast<uint32_t *>(tilingHost);
+    ret = GetMLAPrefillTilingParam(mmInfo, blockDim, tilingParam, tilingSize);
+    OP_TILING_CHECK_STATUS_RETURN(ret);
+    uint64_t dataLenFloat = sizeof(float);
+    uint64_t sSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(32768) * 16 * dataLenFloat;
+    kernelInfo.GetScratchSizes() = {sSize, sSize, sSize, sSize * 2}; // oTmp/S/P
+    kernelInfo.SetBlockDim(blockDim);
     return Status::OkStatus();
 }
 
