@@ -96,8 +96,11 @@ class SendOperationTest(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return True
         world_size = 4
-        if world_size > torch_npu.npu.device_count():
-            self.skipTest(f"Skipped because world_size {world_size} > available devices {torch_npu.npu.device_count()}")
+        device_available = os.environ.get("ASCEND_RT_VISIBLE_DEVICES")
+        if device_available:
+            device_num = len(device_available.split(","))
+            if world_size > device_num:
+                self.skipTest(f"Skipped because world_size {world_size} > available devices {device_num}")
         random_seed = 123
         inTensorDtypes = [torch.int8, torch.int16, torch.int32, torch.int64,torch.float32,torch.float16, torch.bfloat16]
         sizes = [[10,100,512]]

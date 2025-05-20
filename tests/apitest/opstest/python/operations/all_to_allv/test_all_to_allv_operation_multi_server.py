@@ -76,8 +76,11 @@ class all_to_allv_operationTest(operation_test.OperationTest):
         gpus = 2
         nodes =2
         world_size =gpus * nodes
-        if world_size > torch_npu.npu.device_count():
-            self.skipTest(f"Skipped because world_size {world_size} > available devices {torch_npu.npu.device_count()}")
+        device_available = os.environ.get("ASCEND_RT_VISIBLE_DEVICES")
+        if device_available:
+            device_num = len(device_available.split(","))
+            if world_size > device_num:
+                self.skipTest(f"Skipped because world_size {world_size} > available devices {device_num}")
         nr = 1 #节点编号
         random_seed = 123
         inTensorDtypes = [torch.int8, torch.int16, torch.int32, torch.int64,torch.float32,torch.float16, torch.bfloat16]
