@@ -102,17 +102,17 @@ void PrepareScalarParams(std::vector<uint32_t> &scalars, bool &dynamicBatch, Mki
     std::vector<uint32_t> max_seqlen(1, 0);
     std::vector<uint32_t> is_batch_dynamic(1, 0);
     opTest.ReadFile(batch_num.data(), batch_num.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/batch_num.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/batch_num.bin");
     opTest.ReadFile(embd_dim.data(), embd_dim.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/embd_dim.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/embd_dim.bin");
     opTest.ReadFile(q_heads.data(), q_heads.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/q_heads.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/q_heads.bin");
     opTest.ReadFile(kv_heads.data(), kv_heads.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/kv_heads.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/kv_heads.bin");
     opTest.ReadFile(max_seqlen.data(), max_seqlen.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/max_seqlen.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/max_seqlen.bin");
     opTest.ReadFile(is_batch_dynamic.data(), is_batch_dynamic.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/is_batch_dynamic.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/is_batch_dynamic.bin");
     scalars.push_back(batch_num[0]);
     scalars.push_back(embd_dim[0]);
     scalars.push_back(q_heads[0]);
@@ -131,15 +131,15 @@ void PrepareScalarParams(std::vector<uint32_t> &scalars, MkiOpTest &opTest, cons
     std::vector<uint32_t> max_seqlen(1, 0);
     std::vector<uint32_t> is_batch_dynamic(1, 0);
     opTest.ReadFile(batch_num.data(), batch_num.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/batch_num.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/batch_num.bin");
     opTest.ReadFile(embd_dim.data(), embd_dim.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/embd_dim.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/embd_dim.bin");
     opTest.ReadFile(q_heads.data(), q_heads.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/q_heads.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/q_heads.bin");
     opTest.ReadFile(kv_heads.data(), kv_heads.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/kv_heads.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/kv_heads.bin");
     opTest.ReadFile(max_seqlen.data(), max_seqlen.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/max_seqlen.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/max_seqlen.bin");
     scalars.push_back(batch_num[0]);
     scalars.push_back(embd_dim[0]);
     scalars.push_back(q_heads[0]);
@@ -151,52 +151,52 @@ void PrepareVectors(std::vector<int32_t> &q_seqlen, std::vector<int32_t> &kv_seq
                     MkiOpTest &opTest, const std::string &atbopsHomeDir, const std::string &subDir)
 {
     opTest.ReadFile(q_seqlen.data(), q_seqlen.size() * sizeof(int32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/q_seqlen.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/q_seqlen.bin");
     opTest.ReadFile(kv_seqlen.data(), kv_seqlen.size() * sizeof(int32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/kv_seqlen.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/kv_seqlen.bin");
     opTest.ReadFile(batch_state.data(), batch_state.size() * sizeof(int32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/batchRunStatus.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/batchRunStatus.bin");
 }
 
 void PrepareVectors(std::vector<int32_t> &q_seqlen, std::vector<int32_t> &kv_seqlen, MkiOpTest &opTest,
                     const std::string &atbopsHomeDir, const std::string &subDir)
 {
     opTest.ReadFile(q_seqlen.data(), q_seqlen.size() * sizeof(int32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/q_seqlen.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/q_seqlen.bin");
     opTest.ReadFile(kv_seqlen.data(), kv_seqlen.size() * sizeof(int32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/kv_seqlen.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/kv_seqlen.bin");
 }
 
 void PrepareExpect(std::vector<uint16_t> &expect, std::vector<uint32_t> &expect_high, MkiOpTest &opTest,
                    const std::string &atbopsHomeDir, const std::string &subDir)
 {
     opTest.ReadFile(expect.data(), expect.size() * sizeof(uint16_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/expect.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/expect.bin");
     opTest.ReadFile(expect_high.data(), expect_high.size() * sizeof(uint32_t),
-                    atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/expect_high.bin");
+                    atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/expect_high.bin");
 }
 
 void PrepareKvFiles(uint32_t batch, std::vector<std::string> &kvFiles, MkiOpTest &opTest, const std::string &atbopsHomeDir,
                     const std::string &subDir, bool isRelay, uint32_t share_len)
 {
     for (size_t i = 0; i < batch; ++i) {
-        std::string file = atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/kvBatches/input2_" +
+        std::string file = atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/kvBatches/input2_" +
                            std::to_string(i) + ".bin";
         kvFiles.push_back(file);
     }
     for (size_t i = 0; i < batch; ++i) {
-        std::string file = atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/kvBatches/input3_" +
+        std::string file = atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/kvBatches/input3_" +
                            std::to_string(i) + ".bin";
         kvFiles.push_back(file);
     }
     if (isRelay) {
         for (size_t i = 0; i < share_len; ++i) {
-            std::string file = atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/kvBatches/share_input2_" +
+            std::string file = atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/kvBatches/share_input2_" +
                                std::to_string(i) + ".bin";
             kvFiles.push_back(file);
         }
         for (size_t i = 0; i < share_len; ++i) {
-            std::string file = atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/kvBatches/share_input3_" +
+            std::string file = atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/kvBatches/share_input3_" +
                                std::to_string(i) + ".bin";
             kvFiles.push_back(file);
         }
@@ -208,16 +208,16 @@ SVector<std::string> GetInDataFiles(const std::string &atbopsHomeDir, const std:
     SVector<std::string> inDataFiles;
     if (isRelay) {
         inDataFiles = {
-            atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/input1.bin",
-            atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/input4.bin",
+            atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/input1.bin",
+            atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/input4.bin",
         };
     } else {
         inDataFiles = {
-            atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/input1.bin",
-            atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/input2.bin",
-            atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/input3.bin",
-            atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/layerId.bin",
-            atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + subDir + "/data/input4.bin",
+            atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/input1.bin",
+            atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/input2.bin",
+            atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/input3.bin",
+            atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/layerId.bin",
+            atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/input4.bin",
         };
     }
     

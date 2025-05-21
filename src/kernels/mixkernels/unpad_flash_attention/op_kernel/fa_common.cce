@@ -50,6 +50,7 @@ enum class MaskType {
     MASK_TYPE_ALIBI_COMPRESS_128 = 9
 };
 
+
 __aicore__ __attribute__((always_inline)) inline void SetVecMask(int32_t len)
 {
     uint64_t mask = 0;
@@ -88,6 +89,7 @@ struct Rowmax {
         const AscendC::LocalTensor<T> &tmp_ub,
         uint32_t num_rows_round, uint32_t num_elems, uint32_t num_elems_aligned);
 };
+
 
 template<typename S_DTYPE, typename EXP_DTYPE, typename P_DTYPE, typename MASK_DTYPE, MaskType MASK_TYPE>
 struct OnlineSoftmaxStage1 {
@@ -135,6 +137,199 @@ __aicore__ __attribute__((always_inline)) inline void SetBlockReduceMask<half>(i
     uint64_t maskValue = (subMask << 48) + (subMask << 32) + (subMask << 16) + subMask;
     SetVectorMask<int8_t>(maskValue, maskValue);
 }
+
+template<>
+struct Rowmax<half, RowCalcTile::SPEC_TILE_512> {
+    __aicore__ __attribute__((always_inline)) Rowmax(
+        const AscendC::LocalTensor<half> &s_ub,
+        const AscendC::LocalTensor<half> &local_rowmax_ub,
+        const AscendC::LocalTensor<half> &tmp_ub,
+        uint32_t m, uint32_t n_real, uint32_t n_stride)
+    {
+        cgmax_v<ArchType::ASCEND_V220, half>(
+            tmp_ub,
+            s_ub,
+            m * n_stride / VECTOR_SIZE,
+            1,
+            1,
+            8
+        );
+        PIPE_BARRIER(V);
+        max_v<ArchType::ASCEND_V220, half>(
+            tmp_ub[REDUCE_UB_SIZE],
+            tmp_ub,
+            tmp_ub[16],
+            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,   // repeat
+            1,                            // dstBlockStride
+            2,                            // src0BlockStride
+            2,                            // src1BlockStride
+            8,                            // dstRepeatStride
+            16,                            // src0RepeatStride
+            16 // src1RepeatStride
+        );
+        PIPE_BARRIER(V);
+        cgmax_v<ArchType::ASCEND_V220, half>(
+            local_rowmax_ub,
+            tmp_ub[REDUCE_UB_SIZE],
+            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
+            1,
+            1,
+            8
+        );
+        PIPE_BARRIER(V);
+    }
+};
+
+template<>
+struct Rowmax<half, RowCalcTile::SPEC_TILE_256>{
+    __aicore__ __attribute__((always_inline)) Rowmax(
+        const AscendC::LocalTensor<half> &s_ub,
+        const AscendC::LocalTensor<half> &local_rowmax_ub,
+        const AscendC::LocalTensor<half> &tmp_ub,
+        uint32_t m, uint32_t n_real, uint32_t n_stride)
+    {
+        cgmax_v<ArchType::ASCEND_V220, half>(
+            tmp_ub,
+            s_ub,
+            m * n_stride / VECTOR_SIZE,
+            1,
+            1,
+            8
+        );
+        PIPE_BARRIER(V);
+        cgmax_v<ArchType::ASCEND_V220, half>(
+            local_rowmax_ub,
+            tmp_ub,
+            (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
+            1,
+            1,
+            8
+        );
+        PIPE_BARRIER(V);
+    }
+};
+
+template<>
+struct Rowmax<half, RowCalcTile::TAIL_TILE>{
+    __aicore__ __attribute__((always_inline)) Rowmax(
+        const AscendC::LocalTensor<half> &s_ub,
+        const AscendC::LocalTensor<half> &local_rowmax_ub,
+        const AscendC::LocalTensor<half> &tmp_ub,
+        uint32_t m, uint32_t n_real, uint32_t n_stride)
+    {
+        if (n_real >= VECTOR_SIZE) {
+            // 128 to 8 each row
+            cgmax_v<ArchType::ASCEND_V220, half>(
+                tmp_ub,
+                s_ub,
+                m,
+                2,
+                1,
+                n_stride / BLOCK_SIZE
+            );
+            PIPE_BARRIER(V);
+            // 8 to 1 each row
+            SetBlockReduceMask<half>(VECTOR_SIZE / 16);
+            cgmax_v<ArchType::ASCEND_V220, half>(
+                local_rowmax_ub,
+                tmp_ub,
+                (m * 16 + VECTOR_SIZE - 1) / VECTOR_SIZE,
+                1,
+                1,
+                8
+            );
+            PIPE_BARRIER(V);
+            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+            for (uint64_t rowmax_idx = 1; rowmax_idx < (uint64_t)n_real / VECTOR_SIZE; ++rowmax_idx) {
+                // kvseq 方向每128做一次blk max
+                cgmax_v<ArchType::ASCEND_V220, half>(
+                    tmp_ub,
+                    s_ub[rowmax_idx * VECTOR_SIZE],
+                    m,
+                    2,
+                    1,
+                    n_stride / BLOCK_SIZE
+                );
+                PIPE_BARRIER(V);
+                SetBlockReduceMask<half>(VECTOR_SIZE / 16);
+                cgmax_v<ArchType::ASCEND_V220, half>(
+                    tmp_ub[REDUCE_UB_SIZE],
+                    tmp_ub,
+                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
+                    1,
+                    1,
+                    8
+                );
+                PIPE_BARRIER(V);
+                SetVecMask(m);
+                max_v<ArchType::ASCEND_V220, half>(
+                    local_rowmax_ub,
+                    local_rowmax_ub,
+                    tmp_ub[REDUCE_UB_SIZE],
+                    1,                        // repeat
+                    1,                            // dstBlockStride
+                    1,                            // src0BlockStride
+                    1,                            // src1BlockStride
+                    8,                            // dstRepeatStride
+                    8,                            // src0RepeatStride
+                    8 // src1RepeatStride
+                );
+                PIPE_BARRIER(V);
+                SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+            }
+        }
+        if (n_real % VECTOR_SIZE > 0) {
+            SetVecMask(n_real % VECTOR_SIZE);
+            cgmax_v<ArchType::ASCEND_V220, half>(
+                tmp_ub,
+                s_ub[n_real / VECTOR_SIZE * VECTOR_SIZE],
+                m,
+                2,
+                1,
+                n_stride / BLOCK_SIZE
+            );
+            PIPE_BARRIER(V);
+            SetBlockReduceMask<half>((n_real % VECTOR_SIZE + BLOCK_SIZE - 1)/ BLOCK_SIZE);
+            if (n_real < VECTOR_SIZE) {
+                cgmax_v<ArchType::ASCEND_V220, half>(
+                    local_rowmax_ub,
+                    tmp_ub,
+                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
+                    1,
+                    1,
+                    8
+                );
+                PIPE_BARRIER(V);
+            } else {
+                cgmax_v<ArchType::ASCEND_V220, half>(
+                    tmp_ub[REDUCE_UB_SIZE],
+                    tmp_ub,
+                    (m * BLOCK_SIZE + VECTOR_SIZE - 1) / VECTOR_SIZE,
+                    1,
+                    1,
+                    8
+                );
+                PIPE_BARRIER(V);
+                SetVecMask(m);
+                max_v<ArchType::ASCEND_V220, half>(
+                    local_rowmax_ub,
+                    local_rowmax_ub,
+                    tmp_ub[REDUCE_UB_SIZE],
+                    1,                        // repeat
+                    1,                            // dstBlockStride
+                    1,                            // src0BlockStride
+                    1,                            // src1BlockStride
+                    8,                            // dstRepeatStride
+                    8,                            // src0RepeatStride
+                    8 // src1RepeatStride
+                );
+                PIPE_BARRIER(V);
+            }
+            SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+        }
+    }
+};
+
 
 template<>
 struct Rowsum<float, RowCalcTile::SPEC_TILE_512>{
@@ -371,7 +566,7 @@ struct Rowmax<float, RowCalcTile::SPEC_TILE_512> {
 template<>
 struct Rowmax<float, RowCalcTile::SPEC_TILE_256>{
     __aicore__ __attribute__((always_inline)) inline Rowmax(
-        const AscendC::LocalTensor<float> &src_ub, 
+        const AscendC::LocalTensor<float> &src_ub,
         const AscendC::LocalTensor<float> &rowmax_ub,
         const AscendC::LocalTensor<float> &tmp_ub,
         uint32_t num_rows_round, uint32_t num_elems, uint32_t num_elems_aligned)
