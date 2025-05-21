@@ -1549,11 +1549,11 @@ struct LinearParallelParam {
     //! \brief Moe 算子参数结构体
     struct MoeInfo {
         //! \brief MOE场景，每个NPU处理的expert数量
-        uint16_t localExpertNums = 1;
+        int16_t localExpertNums = 1;
         //! \brief MOE场景，EP通信域大小
-        uint8_t epSize = 1;
+        int8_t epSize = 1;
         //! \brief MOE场景，TP通信域大小
-        uint8_t tpSize = 1;
+        int8_t tpSize = 1;
     };
     //! \brief AllGather_Matmul_ReduceScatter算子参数
     MoeInfo moeInfo;

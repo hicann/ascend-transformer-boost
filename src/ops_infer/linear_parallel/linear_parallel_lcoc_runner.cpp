@@ -31,10 +31,14 @@ LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelPa
             break;
         case infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER:
             lcalType_ = Lcal::LcalType::MATMUL_REDUCE_SCATTER;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR:
             lcalType_ =
                 param_.keepIntermediate ? Lcal::LcalType::ALL_GATHER_MATMUL_V2 : Lcal::LcalType::ALL_GATHER_MATMUL;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             lcalType_ = Lcal::LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER;
@@ -140,9 +144,12 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
                               .TP = param_.moeInfo.tpSize,
                               .isMoe = 1};
         coCParamDesc.moeInfo = moeInfo;
-        coCParamDesc.moeInfo.maxOutputSize =
-            runnerVariantPack.inTensors.at(runnerVariantPack.inTensors.size() - 1).desc.shape.dims[0];
-        ATB_LOG(ERROR) << GetLogPrefix() << "maxOutputSize" << coCParamDesc.moeInfo.maxOutputSize;
+        if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM) {
+            coCParamDesc.moeInfo.maxOutputSize =
+                runnerVariantPack.inTensors.at(runnerVariantPack.inTensors.size() - 1).desc.shape.dims[0];
+        } else if (param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+            coCParamDesc.moeInfo.maxOutputSize = runnerVariantPack.inTensors.at(0).desc.shape.dims[0];
+        }
     }
     int ret = lcoc_->SetParam(lcalType_, {}, coCParamDesc);
     if (ret != 0) {

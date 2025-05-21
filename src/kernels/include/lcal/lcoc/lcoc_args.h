@@ -59,23 +59,6 @@ namespace Lcal {
         { FP16INT4_FP32_FP16, HCCL_DATA_TYPE_FP16 },  { BF16INT4_FP32_BF16, HCCL_DATA_TYPE_BFP16 }
     };
 
-    struct WorkspaceDetail {
-        int64_t matrixActivationSize{ 0 };
-        int64_t matrixWeightSize{ 0 };
-        int64_t matrixIntermediateSize{ 0 };
-        int64_t formatDequantParamSize{ 0 };
-        int64_t reducebufSize{ 0 };
-
-        int64_t GetSize() const
-        {
-            return matrixActivationSize
-                    + matrixWeightSize
-                    + matrixIntermediateSize
-                    + formatDequantParamSize
-                    + reducebufSize;
-        }
-    };
-
     struct CoCParamDesc {
         CoCDataTypeDesc dataTypeDesc = FP16FP16_FP32_FP16;
         MatMulInfo mmInfo = {};

@@ -344,13 +344,13 @@ static atb::Status LinearParallelOperationCreate(const nlohmann::json &paramJson
     if (paramJson.find("moeInfo") != paramJson.end()) {
         const auto &moeInfo = paramJson["moeInfo"];
         if (moeInfo.contains("localExpertNums")) {
-            param.moeInfo.localExpertNums = moeInfo["localExpertNums"].get<uint16_t>();
+            param.moeInfo.localExpertNums = moeInfo["localExpertNums"].get<int16_t>();
         }
         if (moeInfo.contains("epSize")) {
-            param.moeInfo.epSize = static_cast<uint8_t>(moeInfo["epSize"].get<uint16_t>());
+            param.moeInfo.epSize = static_cast<int8_t>(moeInfo["epSize"].get<int16_t>());
         }
         if (moeInfo.contains("tpSize")) {
-            param.moeInfo.tpSize = static_cast<uint8_t>(moeInfo["tpSize"].get<uint16_t>());
+            param.moeInfo.tpSize = static_cast<int8_t>(moeInfo["tpSize"].get<int16_t>());
         }
     }
     param.rank = paramJson["rank"].get<int>();
