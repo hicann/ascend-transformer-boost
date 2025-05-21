@@ -298,24 +298,17 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
 
     def golden_calc(self, in_tensors):
         golden_out = torch.tensor(self.golden_out)
-        result = [golden_out]
+        result = [[self.true_out, golden_out]]
         if self.calcType == 3:
-            result.append(self .lse)
+            result.append([self.true_lse, self.lse])
         return result
 
-
     def golden_compare(self, out_tensors, golden_tensors):
-        if self.compare_count == 0:
-            result_double = compare_cv(self.true_out.npu(), golden_tensors.npu(), out_tensors.npu())
-            result_old = self.compare_output_data(out_tensors.npu(), golden_tensors.npu(), [0.001, 0.001, 0.005, 0.005])
-        else:
-            result_double = compare_cv(golden_tensors.npu(), golden_tensors.npu(), out_tensors.npu())
-            result_old = self.compare_output_data(out_tensors.npu(), golden_tensors.npu(), [0.001, 0.001, 0.005, 0.005])
-        self.compare_count += 1
+        result_double = compare_cv(golden_tensors[0].npu(), golden_tensors[1].npu(), out_tensors.npu())
+        result_old = self.compare_output_data(out_tensors.npu(), golden_tensors[1].npu(), [0.001, 0.001, 0.005, 0.005])
         return (result_double or result_old)
 
     def test_mla_split_mtp_head32_fp16(self):
-        self.compare_count = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -349,7 +342,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  torch.tensor(self.q_seqlen_list).npu()])
 
     def test_mla_split_mtp_head128_fp16(self):
-        self.compare_count = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -383,7 +375,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  torch.tensor(self.q_seqlen_list).npu()])
 
     def test_mla_split_mtp_mask_head32_fp16(self):
-        self.compare_count = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -418,7 +409,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  torch.tensor(self.q_seqlen_list).npu()])
 
     def test_mla_split_mtp_mask_head32_fp16_isRing(self):
-        self.compare_count = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -453,7 +443,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  torch.tensor(self.q_seqlen_list).npu()])
 
     def test_mla_split_mtp_mask_head128_fp16(self):
-        self.compare_count = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -490,7 +479,6 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
 
 
     def test_mla_split_mtp_mask_free(self):
-        self.compare_count = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
