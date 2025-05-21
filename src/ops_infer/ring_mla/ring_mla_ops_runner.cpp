@@ -94,8 +94,8 @@ Status RingMLAOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
         RingMLAParam.kvSeqLen = newParam.qSeqLen;
     }
 
-    uint32_t hiddenSizePos = kernelGraph_.inTensors.at(VALUE_TENSOR_POS).desc.dims.size() - 1;
-    int32_t hiddenSizeV = static_cast<int32_t>(kernelGraph_.inTensors.at(VALUE_TENSOR_POS).desc.dims[hiddenSizePos]);
+    // uint32_t hiddenSizePos = kernelGraph_.inTensors.at(VALUE_TENSOR_POS).desc.dims.size() - 1;
+    // int32_t hiddenSizeV = static_cast<int32_t>(kernelGraph_.inTensors.at(VALUE_TENSOR_POS).desc.dims[hiddenSizePos]);
     // if (hiddenSizePos == 1) { // [batch * seqLen, HiddenSize]
     //     int32_t headNumV = (RingMLAParam.kvHead > 0) ? RingMLAParam.kvHead : RingMLAParam.headSize;
     //     // RingMLAParam.headSize = param_.headNum, 一定大于0
@@ -121,7 +121,7 @@ void RingMLAOpsRunner::SetRingMLAParam(AtbOps::OpParam::RINGMLA &RingMLAParam)
     RingMLAParam.headSize = param_.headNum;
     RingMLAParam.kvHead = param_.kvHeadNum;
     RingMLAParam.tor = param_.qkScale;
-    RingMLAParam.type = AtbOps::OpParam::RINGMLA::Type::;
+    RingMLAParam.type = AtbOps::OpParam::RINGMLA::Type::PREFILL_SPLIT_CACHE;
     if (param_.maskType == infer::RingMLAParam::MaskType::NO_MASK) {
         RingMLAParam.maskType = static_cast<AtbOps::OpParam::RINGMLA::MaskType>(
             AtbOps::OpParam::RINGMLA::MaskType::MASK_TYPE_NONE);
