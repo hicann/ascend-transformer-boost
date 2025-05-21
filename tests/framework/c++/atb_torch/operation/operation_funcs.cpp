@@ -2419,6 +2419,57 @@ static atb::Status PagedCacheLoadOperationCreate(const nlohmann::json &paramJson
     return CreateOperation(param, op);
 }
 
+static atb::Status GmmDeqSwigluQuantGmmDeqOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    ATB_LOG(INFO) << "GmmDeqSwigluQuantGmmDeqOperationCreate";
+    atb::infer::GmmDeqSwigluQuantGmmDeqParam param;
+    if (paramJson.contains("outputType")) {
+        param.outputType = paramJson["outputType"];
+    }
+    if (paramJson.contains("groupListType")) {
+        param.groupListType = paramJson["groupListType"];
+    }
+    if (paramJson.contains("weightUpPermuteType")) {
+        param.weightUpPermuteType = paramJson["weightUpPermuteType"];
+    }
+    if (paramJson.contains("transposeWeightUp")) {
+        param.transposeWeightUp = paramJson["transposeWeightUp"];
+    }
+    if (paramJson.contains("transposeWeightDown")) {
+        param.transposeWeightDown = paramJson["transposeWeightDown"];
+    }
+    if (paramJson.contains("rsv")) {
+        for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
+            param.rsv[i] = paramJson["rsv"].at(i).get<uint8_t>();
+        }
+    }
+    return CreateOperation(param, op);
+}
+
+static atb::Status MmDeqSwigluQuantMmDeqOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    ATB_LOG(INFO) << "MmDeqSwigluQuantMmDeqOperationCreate";
+    atb::infer::MmDeqSwigluQuantMmDeqParam param;
+    if (paramJson.contains("outputType")) {
+        param.outputType = paramJson["outputType"];
+    }
+    if (paramJson.contains("weightUpPermuteType")) {
+        param.weightUpPermuteType = paramJson["weightUpPermuteType"];
+    }
+    if (paramJson.contains("transposeWeightUp")) {
+        param.transposeWeightUp = paramJson["transposeWeightUp"];
+    }
+    if (paramJson.contains("transposeWeightDown")) {
+        param.transposeWeightDown = paramJson["transposeWeightDown"];
+    }
+    if (paramJson.contains("rsv")) {
+        for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
+            param.rsv[i] = paramJson["rsv"].at(i).get<uint8_t>();
+        }
+    }
+    return CreateOperation(param, op);
+}
+
 std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"AllReduceOperation", &AllReduceOperationCreate},
     {"BroadcastOperation", &BroadcastOperationCreate},
@@ -2505,6 +2556,8 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"FaUpdateOperation", &FaUpdateOperationCreate},
     {"PagedCacheLoadOperation", &PagedCacheLoadOperationCreate},
     {"ScatterElementsV2Operation", &ScatterElementsV2OperationCreate},
+    {"GmmDeqSwigluQuantGmmDeqOperation", &GmmDeqSwigluQuantGmmDeqOperationCreate},
+    {"MmDeqSwigluQuantMmDeqOperation", &MmDeqSwigluQuantMmDeqOperationCreate},
 };
 
 atb::Status CreateOperation(const std::string &opName, const std::string &param, atb::Operation **operation)

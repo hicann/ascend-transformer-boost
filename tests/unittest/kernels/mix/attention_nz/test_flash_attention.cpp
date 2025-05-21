@@ -52,7 +52,7 @@ TEST(TestFlashAttentionNz, FlashAttentionTestKVPtr_normmask_dim3)
     ASSERT_NE(atbopsHome, nullptr);
     std::string atbopsHomeDir(atbopsHome);
     std::string subDir = "attention_nz";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + 
+    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_nz_data_gen_renew.py 2 513 8 1 32 128 2048 0 0 3 0 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
@@ -116,7 +116,7 @@ TEST(TestFlashAttentionNz, FlashAttentionTestKVPtr_normmask_dim2)
     ASSERT_NE(atbopsHome, nullptr);
     std::string atbopsHomeDir(atbopsHome);
     std::string subDir = "attention_nz";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + 
+    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_nz_data_gen_renew.py 5 1025 8 1 8 128 2048 0 0 2 0 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
@@ -180,7 +180,7 @@ TEST(TestFlashAttentionNz, FlashAttentionTestKVPtr_alibimask_dim4)
     ASSERT_NE(atbopsHome, nullptr);
     std::string atbopsHomeDir(atbopsHome);
     std::string subDir = "attention_nz";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + 
+    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_nz_data_gen_renew.py 16 1024 12 1 12 128 2048 0 1 4 0 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
@@ -245,7 +245,7 @@ TEST(TestFlashAttentionNz, FlashAttentionTestKVPtr_alibimask_dim3)
     ASSERT_NE(atbopsHome, nullptr);
     std::string atbopsHomeDir(atbopsHome);
     std::string subDir = "attention_nz";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + 
+    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_nz_data_gen_renew.py 28 88 32 1 32 128 256 0 1 3 0 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
@@ -624,7 +624,7 @@ TEST(TestFlashAttentionNz, FlashAttentionTestKVPtr_alibimask_dim4_BNSD)
     ASSERT_NE(atbopsHome, nullptr);
     std::string atbopsHomeDir(atbopsHome);
     std::string subDir = "attention_nz";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + 
+    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_nz_data_gen_renew.py 16 1024 12 1 12 128 2048 0 1 4 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
@@ -690,7 +690,7 @@ TEST(TestFlashAttentionNz, FlashAttentionTestKVPtr_alibimask_dim3_BNSD)
     ASSERT_NE(atbopsHome, nullptr);
     std::string atbopsHomeDir(atbopsHome);
     std::string subDir = "attention_nz";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/mixkernels/mix/" + 
+    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_nz_data_gen_renew.py 28 88 32 1 32 128 256 0 1 3 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);

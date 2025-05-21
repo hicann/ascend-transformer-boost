@@ -37,4 +37,5 @@
 #include "asdops/params/scatter_elements_v2.h"
 #include "asdops/params/logprobs.h"
 #include "asdops/params/faUpdate.h"
+#include "asdops/params/moe_gate_corr.h"
 #endif
