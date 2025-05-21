@@ -12,12 +12,6 @@ Status BroadcastCommonTiling(const std::string &kernelName, const LaunchParam &l
     const auto &tensorDesc0 = launchParam.GetInTensor(0).desc;
     const auto &tensorDesc1 = launchParam.GetInTensor(1).desc;
     const auto &tensorDescOut = launchParam.GetOutTensor(0).desc;
-    if (tensorDesc0.dtype != TENSOR_DTYPE_FLOAT16 ||
-        tensorDesc1.dtype != TENSOR_DTYPE_FLOAT16 ||
-        tensorDescOut.dtype != TENSOR_DTYPE_FLOAT16)
-    {
-        MKI_LOG_ERROR("ExampleTiling: only FLOAT16 supported");
-    }
 
     auto runner = AsdOpsGeRt::TbeTilingRunner()
         .SetKernelName(kernelName)

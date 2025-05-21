@@ -25,6 +25,7 @@ set(USR_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/src/kernels/include
     ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
     ${PROJECT_SOURCE_DIR}/src/kernels/tiling
+    ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
 )
 
 target_include_directories(atb_customize        PUBLIC ${USR_INCLUDE_DIRS})
