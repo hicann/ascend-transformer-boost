@@ -225,7 +225,7 @@ class MoeTestDate:
         if comm_type in [CommType.ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN]:
             self.generate_matrix_c_for_moe_309(coc_dtype_desc, rank, TP, EP, l0c_dtype, output_dtype, quant_info)
         if comm_type in [ CommType.MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN]:
-            self.generate_matrix_c_for_moe_310(coc_dtype_desc, rank, TP, EP, l0c_dtype, l0c_dtype_low, output_dtype, quant_info)
+            self.generate_matrix_c_for_moe_310(coc_dtype_desc, rank, TP, EP, l0c_dtype, output_dtype, quant_info)
         if trans_b:
             self.matrix_b = self.matrix_b.transpose(1, 2).contiguous()
         self.matrix_b = self.matrix_b.repeat(1, expert_per_rank, 1)  # b输入

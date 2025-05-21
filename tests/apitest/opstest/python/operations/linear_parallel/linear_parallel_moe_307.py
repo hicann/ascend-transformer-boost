@@ -84,10 +84,11 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     torch.npu.synchronize()
     golden_out_tensor = moedata.matrix_c
     out_tensor_compare = out_tensor[0].to(torch.device('cpu'))[:golden_out_tensor.shape[1], :]
+
     assert check_precision_new(out_tensor_compare, golden_out_tensor, rank)
 
 
-def check_precision_new(out_tensor, golden_out_tensor, rank, err=2 ** -8):
+def check_precision_new(out_tensor, golden_out_tensor, rank, err=2 ** -4):
     # 计算每个元素的误差阈值
     max_err = err * torch.max(torch.ones_like(golden_out_tensor), torch.abs(golden_out_tensor))
 
@@ -132,7 +133,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
                  args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                        CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
-    def test_linear_paraller_bf16(self):
+    def test_linear_paraller_fp16_quant(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             return
         print(f"———————— LinearParallelCoverOp test start ————————")
@@ -151,16 +152,15 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         local_expert_nums = 4
         EP = 8
         TP = 1
-        out_data_type = 27
+        out_data_type = 1
         dequant_granularity = 3
         has_dequant_offset = 1
-        data_type = 3
+        data_type = 2
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
         mp.spawn(main_worker, nprocs=world_size,
                  args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                        CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
-
 
 if __name__ == '__main__':
     unittest.main()

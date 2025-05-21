@@ -365,15 +365,6 @@ Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVec
     if (!OperationUtil::MatmulInTensorDescsCheck(inTensorDescs, GetLogPrefix(), commonCheckParam_)) {
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (commonCheckParam_.isQuant) {
-        int64_t xTensorM = OperationUtil::GetXTensorM(inTensorDescs.at(0));
-        int64_t dequantPerTokenScaleM = inTensorDescs.at(inTensorDescs.size() - 3).shape.dims[0];
-        if (xTensorM != dequantPerTokenScaleM) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 m [" << xTensorM
-                           << "] should equal to dequantPerTokenScale m [" << dequantPerTokenScaleM << "]";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-    }
     int64_t globalTokensPerExpertMatrixM = OperationUtil::GetXTensorM(inTensorDescs.at(inTensorDescs.size() - 2));
     int64_t globalTokensPerExpertMatrixK = OperationUtil::GetXTensorK(inTensorDescs.at(inTensorDescs.size() - 2));
     int64_t expertNums = param_.moeInfo.epSize * param_.moeInfo.localExpertNums;

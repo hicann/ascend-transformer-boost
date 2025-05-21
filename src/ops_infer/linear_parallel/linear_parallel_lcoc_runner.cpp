@@ -146,7 +146,7 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         coCParamDesc.moeInfo = moeInfo;
         if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM) {
             coCParamDesc.moeInfo.maxOutputSize =
-                runnerVariantPack.inTensors.at(runnerVariantPack.inTensors.size() - 1).desc.shape.dims[0];
+            runnerVariantPack.inTensors.at(runnerVariantPack.inTensors.size() - 1).desc.shape.dims[0];
         } else if (param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
             coCParamDesc.moeInfo.maxOutputSize = runnerVariantPack.inTensors.at(0).desc.shape.dims[0];
         }

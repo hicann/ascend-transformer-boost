@@ -58,6 +58,7 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     new_M = matrix_a_i_list.shape[1]
     input_tensor = matrix_a_i_list
     input_tensor = input_tensor.reshape(new_M, K)
+    input_tensor = torch.nn.functional.pad(input_tensor, (0, 0, 0, input_tensor.shape[0] * world_size * local_expert_nums - new_M ), mode='constant', value=0)
     in_tensors.append(input_tensor.to(torch.device('npu')))
 
     weight_tensor = moedata.matrix_b
@@ -136,7 +137,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
                  args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                        CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
-    def test_linear_paraller_bf16(self):
+    def test_linear_paraller_fp16_qunat(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             return
         print(f"———————— LinearParallelCoverOp test start ————————")
@@ -155,10 +156,10 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         local_expert_nums = 4
         EP = 8
         TP = 1
-        out_data_type = 27
+        out_data_type = 1
         dequant_granularity = 3
         has_dequant_offset = 1
-        data_type = 3
+        data_type = 2
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
         mp.spawn(main_worker, nprocs=world_size,
