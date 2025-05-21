@@ -7109,3 +7109,8 @@ class GmmDeqSwigluQuantGmmDeqOperation(DataGen):
 class MmDeqSwigluQuantMmDeqOperation(DataGen):
     # only for counterexample
     pass
+
+class RingMLAOperation(DataGen):
+    @staticmethod
+    def get_op_type(op_params):
+        return OpTypes.CV_FUSION
