@@ -13,6 +13,10 @@ add_library(atb_customize_static STATIC
 
 target_include_directories(atb_customize
   PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/ops
+    ${CMAKE_CURRENT_LIST_DIR}/ops/example_op/operation_implement
+    ${CMAKE_CURRENT_LIST_DIR}/ops/example_op/operation_implement/tiling
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/common
     $ENV{ASCEND_HOME_PATH}/include
@@ -27,13 +31,17 @@ target_include_directories(atb_customize
 
 target_include_directories(atb_customize_static
   PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/ops
+    ${CMAKE_CURRENT_LIST_DIR}/ops/example_op/operation_implement
+    ${CMAKE_CURRENT_LIST_DIR}/ops/example_op/operation_implement/tiling
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/common
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{ASCEND_HOME_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src/include
+    ${CMAKE_SOURCE_DIR}/src/include 
     ${CMAKE_SOURCE_DIR}/src/kernels/include
     ${PROJECT_SOURCE_DIR}/src/kernels/tiling
 )

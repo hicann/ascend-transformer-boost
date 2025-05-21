@@ -37,12 +37,12 @@ AddOperation::AddOperation(const customize::AddParam &param) : OperationBase("Ad
 
 AddOperation::~AddOperation() {}
 
-uint32_t ElewiseOperation::GetInputNum() const
+uint32_t AddOperation::GetInputNum() const
 {
     return TENSOR_NUM_TWO;
 }
 
-uint32_t ElewiseOperation::GetOutputNum() const
+uint32_t AddOperation::GetOutputNum() const
 {
     return TENSOR_NUM_ONE;
 }
