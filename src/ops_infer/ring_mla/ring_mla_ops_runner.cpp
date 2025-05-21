@@ -18,7 +18,7 @@ namespace {
 // query_split1, query_split2, key_split1, key_split2, value, mask, seqLen, prevOut (optional), prevLse(optional)
 static constexpr uint32_t VALUE_TENSOR_POS = 2;
 static constexpr uint32_t SEQLEN_TENSOR_POS = 6;
-static constexpr uint32_t IN_TENSOR_NUM = 16;
+static constexpr uint32_t IN_TENSOR_NUM = 15;
 static constexpr uint32_t OUT_TENSOR_NUM = 2;
 } // namespace
 
@@ -37,9 +37,10 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
 
     int inTensorStart = 0;
     Mki::Tensor *query_split1 = &kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *key = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *query_split2 = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *key_split1 = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *key_split2 = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *value = &kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *layerId = &nullTensor_;
     Mki::Tensor *mask = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *seqLen = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *prevOut = isInputSoftmaxLse_ ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
@@ -52,20 +53,21 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
     Mki::Tensor *attnOut = &kernelGraph_.outTensors.at(outTensorStart++);
     Mki::Tensor *softmaxLse = &kernelGraph_.outTensors.at(outTensorStart++);
 
-    ATB_LOG(INFO) << GetLogPrefix() << "Ctor seqLen dataSize:" << seqLen->dataSize;
+    ATB_LOG(INFO) << GetLogPrefix() << "Ctor seqLen dataSize: " << seqLen->dataSize;
     kernelGraph_.nodes.resize(1);
     auto &RingMLANode = kernelGraph_.nodes.at(0);
 
     AtbOps::OpParam::RINGMLA RingMLAParam;
     SetRingMLAParam(RingMLAParam);
 
-    RingMLANode.opDesc = {0, "RingMLAOperation", RingMLAParam};
+    RingMLANode.opDesc = {0, "RINGMLAOperation", RingMLAParam};
 
-    // flashAttentionEncoderNode.inTensors = {&query_split1, query_split2, &key_split1, key_split2, value, layerId,
-    // mask, slopes, qkDescale, qkOffset, vpvDescale, vpvOffset, pScale, logN};
-    RingMLANode.inTensors = {query_split1, query_split2, key_split1,   key_split2,   value,        layerId,
-                             mask,         &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_,
-                             &nullTensor_, &nullTensor_, prevOut,      prevLse};
+    // flashAttentionEncoderNode.inTensors = {&query_split1, query_split2, &key_split1, key_split2, value,
+    // mask, slopes, qkDescale, qkOffset, vpvDescale, vpvOffset, pScale, logN, prevOut, prevLse};
+    RingMLANode.inTensors = {query_split1, query_split2, key_split1,   key_split2,   value,
+                             mask,         &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_,
+                             &nullTensor_, &nullTensor_, &nullTensor_, prevOut,      prevLse};
+
     RingMLANode.outTensors = {attnOut, softmaxLse};
     RingMLANode.inTensorViewFuncs.resize(RingMLANode.inTensors.size()); // view
     RingMLANode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) { // format, dtype 设置
@@ -94,21 +96,11 @@ Status RingMLAOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
         RingMLAParam.kvSeqLen = newParam.qSeqLen;
     }
 
-    // uint32_t hiddenSizePos = kernelGraph_.inTensors.at(VALUE_TENSOR_POS).desc.dims.size() - 1;
-    // int32_t hiddenSizeV = static_cast<int32_t>(kernelGraph_.inTensors.at(VALUE_TENSOR_POS).desc.dims[hiddenSizePos]);
-    // if (hiddenSizePos == 1) { // [batch * seqLen, HiddenSize]
-    //     int32_t headNumV = (RingMLAParam.kvHead > 0) ? RingMLAParam.kvHead : RingMLAParam.headSize;
-    //     // RingMLAParam.headSize = param_.headNum, 一定大于0
-    //     RingMLAParam.headDimV = hiddenSizeV / headNumV;
-    // } else { // [batch, seqLen, headNum, headSize]
-    //     RingMLAParam.headDimV = hiddenSizeV;
-    // }
-
     ATB_LOG(INFO) << GetLogPrefix() << "seqLen dataSize: " << newParam.qSeqLen.size();
     ATB_LOG(INFO) << GetLogPrefix() << "kvSeqLen dataSize: " << newParam.kvSeqLen.size();
-    RingMLANode.opDesc = {0, "RingMLAOperation", RingMLAParam};
+    RingMLANode.opDesc = {0, "RINGMLAOperation", RingMLAParam};
     ATB_LOG(INFO) << GetLogPrefix() << " update AsdOps::OpParam::RINGMLAParam.type: " << RingMLAParam.type
-                  << "headNum: " << param_.headNum << ", qSeqLen.size: " << RingMLAParam.qSeqLen.size()
+                  << ", headNum: " << param_.headNum << ", qSeqLen.size: " << RingMLAParam.qSeqLen.size()
                   << ", kvSeqLen.size: " << RingMLAParam.kvSeqLen.size() << ", qkScale: " << RingMLAParam.tor
                   << ", kvHead: " << RingMLAParam.kvHead << ", maskType: " << RingMLAParam.maskType;
     return NO_ERROR;

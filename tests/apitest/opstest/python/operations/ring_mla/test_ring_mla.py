@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
 # Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -7,14 +7,18 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 #
+
+import time
+import json
+from enum import Enum
+import torch
 import logging
 import unittest
 import math
 import numpy as np
-import sys, os
-import op_test
-import torch
-from enum import Enum
+import sys
+import os
+
 import random
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
@@ -44,7 +48,7 @@ MASK_TYPE_ALIBI_WITH_PREFIX_BATCH = 8
 MASK_TYPE_NO_BATCH_WITH_PREFIX = 9
 MASK_TYPE_ALIBI_NO_BATCH_WITH_PREFIX = 10
 MASK_TYPE_RAZOR_FUSION = 11
-class TestMLAPrefill(op_test.OpTest):
+class TestMLAPrefill(operation_test.OperationTest):
 
     def close_pack(self, in_data, seq_len):
         kv = in_data.numpy()
@@ -286,7 +290,6 @@ class TestMLAPrefill(op_test.OpTest):
 
         mask_sizeQ = razorLen * tileQ + textQLen
         mask_sizeK = razorLen * tileKv + textKvLen
-        print("generate razor mask:", razorLen, tileQ, tileKv, textQLen, textKvLen, preTokens, nextTokens, baseM)
         mask = np.zeros((mask_sizeQ, mask_sizeK), dtype=int)
         preTokensBlock = preTokens // baseM
         nextTokensBlock = nextTokens // baseM
@@ -538,8 +541,7 @@ class TestMLAPrefill(op_test.OpTest):
         self.input_lse = self.input_lse.reshape(self.q_ntokens, self.heads, 1)
         # 更新o
         out = out.view(self.q_ntokens, self.heads, self.embeddimv)
-        print("ori out is:  ", out.reshape(self.q_ntokens, self.heads*self.embeddimv))
-        self.last_o = self.last_o.view(self.q_ntokens, self.heads, self.embeddimv)  # [q_len, head, embeddimv
+        self.last_o = self.last_o.view(self.q_ntokens, self.heads, self.embeddimv)  # [q_len, head, embeddimv]
 
         self.last_o = self.last_o.to(torch.float32)
         out  = out.to(torch.float32)
@@ -587,10 +589,6 @@ class TestMLAPrefill(op_test.OpTest):
             lse_i = lse[q_start_idx:(q_start_idx+q_len)].permute(1, 0).unsqueeze(0)  # (1, heads, bs)
             lse_old = self.input_lse[q_start_idx:(q_start_idx+q_len)].permute(2, 1, 0)  # (1, heads, bs)
 
-            print("old lse is: ", lse_old)
-            print("new lse is: ", lse_i)
-            print("result is: ", torch.log(torch.exp(lse_old) + torch.exp(lse_i)))
-
             new_lse_aaa = torch.log(torch.exp(lse_old) + torch.exp(lse_i))  # (1, heads, bs)
             new_lse_aaa = new_lse_aaa.permute(2, 1, 0)
             if result_lse_new is None:
@@ -604,7 +602,7 @@ class TestMLAPrefill(op_test.OpTest):
         return result.to(torch.float16)
 
     def gen_out_tensor(self, online=False):
-        print("-----------------------start-----------------------------")
+        logging.info("-----------------------start gen_out_tensor-----------------------------")
         q_offset = 0
         k_offset = 0
         v_offset = 0
@@ -706,11 +704,8 @@ class TestMLAPrefill(op_test.OpTest):
                 score = np.float16(np.maximum(score, clamp_min_brc))
                 score = torch.from_numpy(np.float16(np.minimum(score, clamp_max_brc)))
             temp_mask = self.mask_info[1](self.mask, idx, q_s, kv_s) * self.post_mask_coff
-            print("-----------------------------------------------------")
-            print(temp_mask)
+            logging.info("------------------------- mask ----------------------------")
             if is_mask or is_razor_fusion:
-                print("add mask !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                print("temp_mask is: ", temp_mask)
                 score = score + temp_mask
 
             s_qk = score
@@ -1185,30 +1180,13 @@ class TestMLAPrefill(op_test.OpTest):
         return score
 
     def golden_calc(self, in_tensors):
-        # golden_out = torch.tensor(self.golden_out).half()
-        # golden_out = torch.tensor(self.golden_out)
-        # return [golden_out, self.new_les]
         golden_out = self.golden_out_o.clone().detach().npu()
         les = self.new_les.clone().detach().npu()
         return [golden_out, les]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        # print("----------------out tensors--------------------")
-        # print("out_tensors[0]", out_tensors[0])
-        # print("golden_tensors[0]", golden_tensors[0])
-        # print("out_tensors[1]", out_tensors[1])
-        # print("golden_tensors[1]", golden_tensors[1])
-        # print("----------------out tensors end--------------------")
-
-        # print(out_tensors[0] - golden_tensors[0])
         result_single = self.compare_output_data(out_tensors[0].half(), golden_tensors[0].half(), [0.001, 0.001, 0.005, 0.005])
         result_single_lse = self.compare_output_data(out_tensors[1].half(), golden_tensors[1].half(), [0.001, 0.001, 0.005, 0.005])
-        # if self.is_int8_flag:
-        #     result_double = compare_cv(self.golden_out_true, golden_tensors[0], out_tensors[0])
-        #     return (result_double or result_single)
-        # else:
-        #     result_double = compare_cv(self.golden_out_true, golden_tensors[0], out_tensors[0])
-        #     return (result_double or result_single)
         if not result_single:
             print("output wrong precision!")
         if not result_single_lse:
@@ -1354,7 +1332,8 @@ class TestMLAPrefill(op_test.OpTest):
         shape_out_2 = (sum(kv_seqLen), heads)
         data_type = torch.float16
 
-        isring = 0
+        isring = 1
+        calcType = 0
         if isring:
             old_out = torch.rand(shape_out_1).to(data_type)
             old_lse = (torch.rand(shape_out_2) * 10).to(torch.float32)
@@ -1366,10 +1345,6 @@ class TestMLAPrefill(op_test.OpTest):
 
         OP_NAME = "RingMLAOperation"
         OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 0, "maskType": 0, "kvHead": heads, "isRing":isring}
-        # self.set_param(OP_NAME, OP_PARAM)
-        # self.set_input_formats([self.format_nd] * 15)
-        # self.set_output_formats([self.format_nd] * 2)
-
 
         self.set_data_params(dynamic_batch = dynamic_batch,
                              is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
@@ -1379,15 +1354,6 @@ class TestMLAPrefill(op_test.OpTest):
                              op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_MASK, tor = tor, long_seq = False,
                              lse=old_lse, last_o=old_out, isring=isring,)
         self.gen_out_tensor()
-        logging.info(f"mask shape: {self.mask.shape}")
-        # print(self.mask)
-
-        # self.mask = self.mask[0, :512, :512]
-        # print(self.mask)
-
-        logging.info(f"mask shape: {self.mask.shape}")
-
-
         logging.info("case: test_flash_attention_mla_bf16_512_mask")
         logging.info("**********input shape***********")
         logging.info(f"q shape: {self.q.shape}")
@@ -1395,16 +1361,7 @@ class TestMLAPrefill(op_test.OpTest):
         logging.info(f"v shape: {self.v.shape}")
         logging.info(f"layer_id shape: {self.layer_id.shape}")
         logging.info(f"mask shape: {self.mask.shape}")
-        # logging.info(f"golden shape: {self.golden_out.shape}")
-        # self.golden_out = torch.zeros(sum(kv_seqLen), heads * 128)
-
         attention_out = np.zeros_like(self.golden_out_o.to(torch.float16))
-        # self.q_split1 = torch.zeros(sum(kv_seqLen), heads * 128).to(data_type)
-        # self.q_split2 = torch.zeros(sum(kv_seqLen), heads * 64).to(data_type)
-        # self.k_split1 = torch.zeros(1, batch, max_seq, kv_head * 128).to(data_type)
-        # self.k_split2 = torch.zeros(1, batch, max_seq, kv_head * 64).to(data_type)
-        # self.v = torch.zeros(1, batch, max_seq, kv_head * 128).to(data_type)
-        # for i in range(1):
         PARAM = json.dumps(
                 {"headNum": heads, "calcType": calcType, "maskType": MASK_TYPE_NO_MASK,
                 "kvHeadNum": kv_head, "qkScale": tor})
@@ -1420,19 +1377,11 @@ class TestMLAPrefill(op_test.OpTest):
 
 
         RUN_PARAM = json.dumps({"seqLen": param_seqlen})
-        logging.info("param_seqlen: ", seqlen, "seqlen", seqlen)
+        logging.info("param_seqlen: ", param_seqlen, "seqlen", seqlen)
         logging.info("old_out.shape", old_out.shape)
         
         old_lse = old_lse.transpose(1, 0)
         logging.info("input_lse :", old_lse.shape)
-        # self.execute([self.q_split1, self.q_split2, self.k_split1, self.k_split2, self.v, torch.tensor([], dtype=data_type),
-        #               torch.tensor([], dtype=torch.float),
-        #               torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
-        #               torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
-        #               torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float),
-        #               old_out,old_lse],
-        #              [torch.tensor(attention_out, dtype=data_type), output_lse])#
-        
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q_split1.reshape(q_ntokens, heads, 128).npu(), self.q_split1.reshape(q_ntokens, heads, 64).npu(),
                                                             self.k.reshape(kv_ntokens, kv_head, 128).npu(), self.v.reshape(kv_ntokens, kv_head, embeddimV).npu(),
                                                             self.mask.to(data_type).npu(), seqlen.npu(),
@@ -1537,14 +1486,6 @@ class TestMLAPrefill(op_test.OpTest):
         
         old_lse = old_lse.transpose(1, 0)
         logging.info("input_lse :", old_lse.shape)
-        # self.execute([self.q_split1, self.q_split2, self.k_split1, self.k_split2, self.v, torch.tensor([], dtype=data_type),
-        #               torch.tensor([], dtype=torch.float),
-        #               torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
-        #               torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
-        #               torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float),
-        #               old_out,old_lse],
-        #              [torch.tensor(attention_out, dtype=data_type), output_lse])#
-        
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.reshape(q_ntokens, heads, embeddim).npu(),
                                                             self.k.reshape(kv_ntokens, kv_head, embeddim).npu(), self.v.reshape(kv_ntokens, kv_head, embeddimV).npu(),
                                                             self.mask.to(data_type).npu(), seqlen.npu(),
