@@ -898,4 +898,18 @@ template <> nlohmann::json OpParamToJson(const infer::MmDeqSwigluQuantMmDeqParam
     paramsJson["transposeWeightDown"] = opParam.transposeWeightDown;
     return paramsJson;
 }
+
+template <> nlohmann::json OpParamToJson(const infer::RingMLAParam &opParam)
+{
+    nlohmann::json paramsJson;
+    paramsJson["calcType"] = opParam.calcType;
+    paramsJson["headNum"] = opParam.headNum;
+    paramsJson["kvHeadNum"] = opParam.kvHeadNum;
+    paramsJson["qkScale"] = opParam.qkScale;
+    paramsJson["kernelType"] = opParam.kernelType;
+    paramsJson["maskType"] = opParam.maskType;
+    paramsJson["inputLayout"] = opParam.inputLayout;
+    return paramsJson;
+}
+
 } // namespace atb
