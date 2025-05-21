@@ -32,7 +32,7 @@ void SetRandseed(uint32_t &randseed)
     srand(randseed);
 }
 
-void FillTilingParam(const LaunchParam &launchParam, MultinomialTilingData &tilingDataPtr, uint32_t &firstDim)
+void FillTilingParam(const LaunchParam &launchParam, MultinomialTilingData &tilingDataPtr, uint64_t &firstDim)
 {
     auto para = AnyCast<OpParam::Multinomial>(launchParam.GetParam());
     uint32_t randseed = para.randSeed;
@@ -40,7 +40,7 @@ void FillTilingParam(const LaunchParam &launchParam, MultinomialTilingData &tili
     uint32_t realLastDim = static_cast<uint32_t>(launchParam.GetInTensor(0).desc.dims[1]);
     uint32_t dimSize = launchParam.GetInTensor(0).desc.dims.size();
     for (size_t i = 0; i < dimSize - 1; i++) {
-        firstDim *= static_cast<uint32_t>(launchParam.GetInTensor(0).desc.dims[i]);
+        firstDim *= static_cast<uint64_t>(launchParam.GetInTensor(0).desc.dims[i]);
     }
     uint32_t maxUbSizeMulti = static_cast<uint32_t>(PlatformInfo::Instance().GetUbSize());
     uint32_t tempUbEle = (maxUbSizeMulti - REMAIN_SPACE) / 2; // 2 for sizeof(half)
@@ -84,7 +84,7 @@ Status MultinomialTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MKI_CHECK(tilingDataPtr != nullptr, "tilingDataPtr should not be empty",
                  return Status::FailStatus(ERROR_INVALID_VALUE));
 
-    uint32_t firstDim = 1;
+    uint64_t firstDim = 1;
     FillTilingParam(launchParam, *tilingDataPtr, firstDim);
     kernelInfo.SetBlockDim(firstDim);
     uint64_t maxCore = static_cast<uint64_t>(PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR));
