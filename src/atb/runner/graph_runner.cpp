@@ -917,15 +917,38 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
-        ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] execute start, runner:" << node.runner->GetName()
-                      << ", variantPack:\n"
-                      << node.runnerVariantPack.ToString();
+        ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]" << "graphrunner start";
+        if (runnerVariantPack.mstxMemRegister != nullptr) {
+            runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
+            for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
+                auto &tensor = node.runnerVariantPack.inTensors.at(i);
+                if (node.inTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, tensor.dataSize);
+                }
+            }
+            for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); ++i) {
+                auto &tensor = node.runnerVariantPack.outTensors.at(i);
+                if (node.outTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, tensor.dataSize);
+                }
+            }
+            if (runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+                runnerVariantPack.mstxMemRegister->MstxMemRegionsRegister();
+            }
+        }
+        ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] execute start, runner:" << node.runner->GetName() 
+                                        << ", variantPack:\n"
+                                        << node.runnerVariantPack.ToString();
         node.runnerVariantPack.context = runnerVariantPack.context;
+        node.runnerVariantPack.mstxMemRegister = runnerVariantPack.mstxMemRegister;
         Status st = node.runner->Execute(node.runnerVariantPack);
         if (st != 0) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId
-                           << "] execute fail, runner name:" << node.runner->GetName();
+            << "] execute fail, runner name:" << node.runner->GetName();
             return st;
+        }
+        if (runnerVariantPack.mstxMemRegister != nullptr && runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+            runnerVariantPack.mstxMemRegister->MstxMemRegionsUnregister();
         }
     }
 
