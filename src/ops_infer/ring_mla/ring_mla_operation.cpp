@@ -251,7 +251,7 @@ bool RingMLAOperation::KSplitDimCheck(const SVector<TensorDesc> &inTensorDescs, 
         return false;
     }
     int64_t kvNTokens = inTensorDescs.at(IN_KEY_SPLIT1_INDEX).shape.dims[QKV_N_TOKENS_IDX];
-    if (inTensorDescs.at(IN_KEY_SPLIT2_INDEX).shape.dims[QKV_N_TOKENS_IDX] != qNTokens) {
+    if (inTensorDescs.at(IN_KEY_SPLIT2_INDEX).shape.dims[QKV_N_TOKENS_IDX] != kvNTokens) {
         extError.errorDesc = "keySplit1[0] must be same as keySplit2[0]";
         extError.errorData = OperationUtil::ConcatInfo(
             ", but got keySplit1[0]: ", kvNTokens,

@@ -3167,8 +3167,6 @@ struct MmDeqSwigluQuantMmDeqParam {
     uint8_t rsv[46] = {0};
 };
 
-
-
 //!
 //! \struct RingMLAParam
 //!
