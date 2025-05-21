@@ -28,8 +28,10 @@ MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.usage = MSTX_MEM_HEAP_USAGE_TYPE_SUB_ALLOCATOR;
     heapDesc.type = MSTX_MEM_TYPE_VIRTUAL_ADDRESS;
     heapDesc.typeSpecificDesc = &rangeDesc;
-
-    memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
+    
+    if (GetRegisterDomain()) {
+        memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
+    }
 }
 
 MstxMemRegister::~MstxMemRegister()
@@ -95,6 +97,15 @@ void MstxMemRegister::AddTensorMemRegions(void *ptr, uint64_t size)
         tensorInfo.ptr = ptr;
         tensorInfo.size = size;
         rangesDesc_.push_back(tensorInfo);
+    }
+}
+
+Status MstxMemRegister::CheckTensorRange()
+{
+    if (rangesDesc_.empty()) {
+        return false;
+    } else {
+        return true;
     }
 }
 }  // namespace atb
