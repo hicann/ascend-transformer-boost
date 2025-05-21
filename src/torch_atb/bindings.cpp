@@ -1169,10 +1169,19 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("rs_dim", &LinearParallelParam::TwoDimTPInfo::rsDim)
         .def_readwrite("inner_dim_is_ag", &LinearParallelParam::TwoDimTPInfo::innerDimIsAg);
 
+    py::class_<LinearParallelParam::MoeInfo>(linearParallel, "MoeInfo")
+        .def(py::init<int16_t, int8_t, int8_t>(),
+             py::arg("localExpertNums") = 0,
+             py::arg("epSize") = 0,
+             py::arg("tpSize") = 0)
+        .def_readwrite("localExpertNums", &LinearParallelParam::MoeInfo::localExpertNums)
+        .def_readwrite("epSize", &LinearParallelParam::MoeInfo::epSize)
+        .def_readwrite("tpSize", &LinearParallelParam::MoeInfo::tpSize);
+
     linearParallel
         .def(py::init<bool, int, int, int, bool, std::string, HcclComm, CommMode, std::string,
                       LinearParallelParam::ParallelType, bool, LinearParallelParam::QuantType, int32_t, aclDataType,
-                      std::string, LinearParallelParam::TwoDimTPInfo>(),
+                      std::string, LinearParallelParam::TwoDimTPInfo, LinearParallelParam::MoeInfo>(),
              py::arg("trans_weight") = true,
              py::arg("rank") = 0,
              py::arg("rank_size") = 0,
@@ -1188,7 +1197,8 @@ PYBIND11_MODULE(_C, m)
              py::arg("quant_group_size") = 0,
              py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
              py::arg("comm_domain") = "",
-             py::arg("two_dim_TP_info") = LinearParallelParam::TwoDimTPInfo())
+             py::arg("two_dim_TP_info") = LinearParallelParam::TwoDimTPInfo(),
+             py::arg("moe_info") = LinearParallelParam::MoeInfo())
         .def_readwrite("trans_weight", &LinearParallelParam::transWeight)
         .def_readwrite("rank", &LinearParallelParam::rank)
         .def_readwrite("rank_size", &LinearParallelParam::rankSize)
@@ -1205,6 +1215,7 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("out_data_type", &LinearParallelParam::outDataType)
         .def_readwrite("comm_domain", &LinearParallelParam::commDomain)
         .def_readwrite("two_dim_TP_info", &LinearParallelParam::twoDimTPInfo)
+        .def_readwrite("moe_info", &LinearParallelParam::moeInfo)
         .def("__repr__",
              [](const LinearParallelParam &param) { return "LinearParallelParam: " + OpParamToJson(param).dump(); });
 

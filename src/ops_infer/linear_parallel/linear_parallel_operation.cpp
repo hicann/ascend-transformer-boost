@@ -78,8 +78,8 @@ bool CheckType(const infer::LinearParallelParam &opParam, Status &isOK)
             isOK = ERROR_INVALID_PARAM;
             return true;
         }
-        if (opParam.moeInfo.localExpertNums < LOCAL_EXPERT_NUMS_MIN ||
-            opParam.moeInfo.localExpertNums > LOCAL_EXPERT_NUMS_MAX) {
+        if (opParam.moeInfo.localExpertNums < static_cast<int16_t>(LOCAL_EXPERT_NUMS_MIN) ||
+            opParam.moeInfo.localExpertNums > static_cast<int16_t>(LOCAL_EXPERT_NUMS_MAX)) {
             ATB_LOG(ERROR) << "localExpertNums should between 1 and 16";
             isOK = ERROR_INVALID_PARAM;
             return true;
