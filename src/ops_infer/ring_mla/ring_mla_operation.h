@@ -25,7 +25,8 @@ public:
 
 protected:
     bool DimNumCheck(const SVector<TensorDesc> &inTensorDescs, ExternalError &extError) const;
-    bool QKSplitDimCheck(const SVector<TensorDesc> &inTensorDescs, ExternalError &extError) const;
+    bool QSplitDimCheck(const SVector<TensorDesc> &inTensorDescs, ExternalError &extError) const;
+    bool KSplitDimCheck(const SVector<TensorDesc> &inTensorDescs, ExternalError &extError) const;  
     bool InputLseDimNumCheck(const SVector<TensorDesc> &inTensorDescs, ExternalError &extError) const;
     Status DimCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const override;
