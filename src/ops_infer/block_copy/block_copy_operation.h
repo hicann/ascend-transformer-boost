@@ -22,6 +22,7 @@ public:
     uint32_t GetOutputNum() const override;
     Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const override;
     Status SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const override;
+    Status SetupDimCheck310P(const SVector<atb::Tensor> &inTensors) const;
 
 protected:
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;

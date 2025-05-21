@@ -860,6 +860,15 @@ class TestMLAPrepross(op_test.OpTest):
         self.__test_mlapo_impl(torch.float16, num_tokens, num_heads, cache_mode, quant_mode, weight_format)
 
     @op_test.only_910b
+    def test_mla_preprocess_fp16_cm2_qm0_nd_case3(self):
+        num_tokens = 1
+        num_heads = 64
+        cache_mode = 2
+        quant_mode = 0
+        weight_format = self.format_nd
+        self.__test_mlapo_impl(torch.float16, num_tokens, num_heads, cache_mode, quant_mode, weight_format)
+
+    @op_test.only_910b
     def test_mla_preprocess_bf16_cm0_qm0_nd_case1(self):
         num_tokens = 32
         num_heads = 32
@@ -908,6 +917,15 @@ class TestMLAPrepross(op_test.OpTest):
     def test_mla_preprocess_bf16_cm2_qm0_nd_case2(self):
         num_tokens = 1024
         num_heads = 32
+        cache_mode = 2
+        quant_mode = 0
+        weight_format = self.format_nd
+        self.__test_mlapo_impl(torch.bfloat16, num_tokens, num_heads, cache_mode, quant_mode, weight_format)
+
+    @op_test.only_910b
+    def test_mla_preprocess_bf16_cm2_qm0_nd_case3(self):
+        num_tokens = 1
+        num_heads = 64
         cache_mode = 2
         quant_mode = 0
         weight_format = self.format_nd

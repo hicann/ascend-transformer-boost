@@ -308,4 +308,9 @@ uint32_t Config::GetRunnerPoolSize() const
 {
     return runnerPoolSize_;
 }
+
+void Config::SetLaunchKernelWithTilingStatus(bool status)
+{
+    isLaunchKernelWithTiling_ = status;
+}
 } // namespace atb

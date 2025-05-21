@@ -47,6 +47,7 @@ public:
     std::string GetShareMemoryNameSuffix() const;
     bool IsLaunchKernelWithTiling() const;
     bool IsMatmulShuffleKEnable() const;
+    void SetLaunchKernelWithTilingStatus(bool status);
 
 private:
     static bool IsEnable(const char *env, bool enable = false);

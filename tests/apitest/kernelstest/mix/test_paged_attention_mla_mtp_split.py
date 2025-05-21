@@ -298,11 +298,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
         return [golden_out]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        logging.info(f"out_tensors: {out_tensors}")
-        logging.info(f"golden_tensors:{golden_tensors}")
-        logging.info(self.true_out.shape)
-        logging.info(golden_tensors[0].shape)
-        logging.info(out_tensors[0].shape)
         result_double = compare_cv(self.true_out, golden_tensors[0], out_tensors[0])
         result_old = self.compare_output_data(out_tensors[0], golden_tensors[0], [0.001, 0.001, 0.005, 0.005])
         return (result_double or result_old)
@@ -328,7 +323,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head64_fp16(self):
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [256] * batch
@@ -378,7 +373,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head128_fp16(self):
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [256] * batch
@@ -428,7 +423,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head128_with_mask_fp16(self):
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [256] * batch
@@ -469,7 +464,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 self.mask,
                 torch.tensor([1], dtype=torch.float),
                 torch.tensor([1], dtype=torch.float)
-                # torch.tensor([], dtype=torch.float16)
             ],
             [
                 attention_out, torch.tensor([])
@@ -479,7 +473,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head128_with_mask_unaligned_fp16(self):
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [257] * batch
@@ -520,7 +514,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 self.mask,
                 torch.tensor([1], dtype=torch.float),
                 torch.tensor([1], dtype=torch.float)
-                # torch.tensor([], dtype=torch.float16)
             ],
             [
                 attention_out, torch.tensor([])
@@ -530,7 +523,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head128_with_mask_unaligned_small_fp16(self):
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [33] * batch
@@ -571,7 +564,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 self.mask,
                 torch.tensor([1], dtype=torch.float),
                 torch.tensor([1], dtype=torch.float)
-                # torch.tensor([], dtype=torch.float16)
             ],
             [
                 attention_out, torch.tensor([])
@@ -583,7 +575,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
         # Due to CI issue, this test is removed temporarily
         return
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [257] * batch
@@ -633,7 +625,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head128_with_mask_unaligned_small_fp16(self):
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [33] * batch
@@ -683,7 +675,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head128_with_mask_free_fp16_unalign(self):
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [127] * batch
@@ -738,7 +730,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head128_with_mask_free_fp16_mtp2(self):
         self.set_support_910b_only()
-        batch = 2 # batch = 10, num_heads=128 bug
+        batch = 2 
         q_seqlen_list = [3] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [129] * batch
@@ -830,7 +822,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 self.key_cache_split2,
                 torch.tensor(self.block_tables).int(),
                 self.mask,
-                # torch.tensor([], dtype=torch.float16),
                 torch.tensor([1], dtype=torch.float),
                 torch.tensor([1], dtype=torch.float)
             ],
@@ -841,7 +832,7 @@ class TestUnpadPagedAttention(op_test.OpTest):
     @op_test.only_910b
     def test_paged_mla_seq2_head128_mtp_fp16(self):
         self.set_support_910b_only()
-        batch = 24 # batch = 10, num_heads=128 bug
+        batch = 24 
         q_seqlen_list = [2] * batch
         num_tokens = np.array(q_seqlen_list).sum()
         k_seqlen_list = [256] * batch
@@ -864,7 +855,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 8)
         self.set_output_formats([self.format_nd] * 2)
-        # logging.info(f"blcok_tables shape: {self.block_tables}")
         logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
         logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
             f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
@@ -882,7 +872,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 self.mask,
                 torch.tensor([1], dtype=torch.float),
                 torch.tensor([1], dtype=torch.float)
-                # torch.tensor([], dtype=torch.float16)
             ],
             [
                 attention_out, torch.tensor([])

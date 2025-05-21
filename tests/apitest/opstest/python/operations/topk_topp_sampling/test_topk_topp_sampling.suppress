@@ -140,6 +140,11 @@ class TestToppOperation(operation_test.OperationTest):
         PARAM["randSeed"] = rand_seed
         PARAM["topkToppSamplingType"] = 0
         self.execute(OP_NAME, PARAM, [probs, topp])
+        PARAM = dict()
+        PARAM["topk"] = 200
+        PARAM["randSeed"] = rand_seed
+        PARAM["topkToppSamplingType"] = 0
+        self.execute_update_param(OP_NAME, PARAM, [probs, topp])
 
     def test_1_topk_batch(self):
         if operation_test.get_soc_version() == 'Ascend910A' or \

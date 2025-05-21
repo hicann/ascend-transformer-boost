@@ -182,6 +182,8 @@ std::string PagedCacheLoadToJson(const Any &param)
     OpParam::PagedCacheLoad specificParam = AnyCast<OpParam::PagedCacheLoad>(param);
 
     paramsJson["type"] = specificParam.type;
+    paramsJson["cuSeqLens"] = specificParam.cuSeqLens;
+    paramsJson["hasSeqStarts"] = specificParam.hasSeqStarts;
 
     return paramsJson.dump();
 }
@@ -316,7 +318,7 @@ std::string UnpadFlashAttentionToJson(const Any &param)
     for (size_t i = 0; i < specificParam.vTensorList.size(); ++i) {
         ss << "\nvTensorList[" << i << "]: " << specificParam.vTensorList.at(i).ToString();
     }
-    
+
     for (size_t i = 0; i < specificParam.kShareTensorList.size(); ++i) {
         ss << "\nkShareTensorList[" << i << "]: " << specificParam.kShareTensorList.at(i).ToString();
     }
@@ -342,6 +344,32 @@ std::string UnpadToJson(const Any &param)
     (void)param;
     return "{}";
 }
+
+std::string GmmDeqSwigluQuantGmmDeqToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::GmmDeqSwigluQuantGmmDeq specificParam = AnyCast<OpParam::GmmDeqSwigluQuantGmmDeq>(param);
+
+    paramsJson["outputType"] = specificParam.outputType;
+    paramsJson["groupListType"] = specificParam.groupListType;
+    paramsJson["weightUpPermuteType"] = specificParam.weightUpPermuteType;
+    paramsJson["transposeWeightUp"] = specificParam.transposeWeightUp;
+    paramsJson["transposeWeightDown"] = specificParam.transposeWeightDown;
+    return paramsJson.dump();
+}
+
+std::string MmDeqSwigluQuantMmDeqToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::MmDeqSwigluQuantMmDeq specificParam = AnyCast<OpParam::MmDeqSwigluQuantMmDeq>(param);
+
+    paramsJson["outputType"] = specificParam.outputType;
+    paramsJson["weightUpPermuteType"] = specificParam.weightUpPermuteType;
+    paramsJson["transposeWeightUp"] = specificParam.transposeWeightUp;
+    paramsJson["transposeWeightDown"] = specificParam.transposeWeightDown;
+    return paramsJson.dump();
+}
+
 REG_STRINGIFY(OpParam::BlockCopy, BlockCopyToJson);
 REG_STRINGIFY(OpParam::FastSoftMaxGrad, FastSoftMaxGradToJson);
 REG_STRINGIFY(OpParam::FastSoftMax, FastSoftMaxToJson);
@@ -364,4 +392,6 @@ REG_STRINGIFY(OpParam::UnpadWithHiddenState, UnpadWithHiddenStateToJson);
 REG_STRINGIFY(OpParam::Unpad, UnpadToJson);
 REG_STRINGIFY(OpParam::RopeQConcat, RopeQConcatToJson);
 REG_STRINGIFY(OpParam::SwigluQuant, SwigluQuantToJson);
+REG_STRINGIFY(OpParam::GmmDeqSwigluQuantGmmDeq, GmmDeqSwigluQuantGmmDeqToJson);
+REG_STRINGIFY(OpParam::MmDeqSwigluQuantMmDeq, MmDeqSwigluQuantMmDeqToJson);
 } // namespace AtbOps
