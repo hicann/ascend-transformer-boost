@@ -81,8 +81,11 @@ enum class LcalType {
     ALL2ALL_MATMUL = 106,
     MATMUL_ALL2ALL = 107,
     ALL_GATHER_MATMUL_REDUCE_SCATTER = 111,
-    LCAL_TYPE_MAX = 112,
-    BANDWIDTH = 201
+    BANDWIDTH = 201,
+
+    ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN = 309,
+    MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN = 310,
+    LCAL_TYPE_MAX = 311,
 };
 
 const std::map<LcalType, std::string> LCAL_TYPE2NAME = {
@@ -102,7 +105,9 @@ const std::map<LcalType, std::string> LCAL_TYPE2NAME = {
     { LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER, "LcalAllGatherMatmulReduceScatter" },
     { LcalType::BANDWIDTH, "LcalBandwidthTest" },
     { LcalType::ALL_REDUCE_910B2C, "LcalAllReduce910B2C" },
-    { LcalType::ALL_GATHER_910B2C, "LcalAllGather910B2C" }
+    { LcalType::ALL_GATHER_910B2C, "LcalAllGather910B2C" },
+    { LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN, "LcalAllToAllVAllGatherMatmulHidden" },
+    { LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN, "LcalMatmulReduceScatterAllToAllVHidden" }
 };
 
 

@@ -317,6 +317,9 @@ template <> nlohmann::json OpParamToJson(const infer::LinearParallelParam &opPar
     paramsJson["quantGroupSize"] = opParam.quantGroupSize;
     paramsJson["outDataType"] = opParam.outDataType;
     paramsJson["commDomain"] = opParam.commDomain;
+    paramsJson["local_expert_nums"] = opParam.moeInfo.localExpertNums;
+    paramsJson["epSize"] = opParam.moeInfo.epSize;
+    paramsJson["tpSize"] = opParam.moeInfo.tpSize;
 
     return paramsJson;
 }

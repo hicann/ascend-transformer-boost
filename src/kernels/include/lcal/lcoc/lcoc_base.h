@@ -20,7 +20,9 @@ enum QuantGranularity : int {
     PER_TENSOR = 0,
     PER_CHANNEL = 1,
     PER_GROUP = 2,
-    QUANT_GRANULARITY_MAX = 3,
+    PER_TOKEN = 3,
+    FLOAT32_SCALE_PER_CHANNEL = 4,
+    QUANT_GRANULARITY_MAX = 5,
 };
 
 struct MatMulInfo {
@@ -52,6 +54,14 @@ struct QuantInfo {
 
 struct PostInfo {
     int32_t withRmsNorm = 0;
+};
+
+struct MoeInfo {
+    int16_t local_expert_nums = 0;
+    int8_t EP = 0;
+    int8_t TP = 0;
+    int32_t maxOutputSize = -1;
+    int8_t isMoe = 0;
 };
 }
 #endif  // LCAL_LCOC_BASE_H

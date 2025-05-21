@@ -24,8 +24,8 @@ public:
         const;
     int AllReduce(void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType,
         HcclReduceOp op = HCCL_REDUCE_SUM, aclrtStream stream = nullptr,
-        HcclDataType outputDataType = static_cast<HcclDataType>(255), // RESERVED TYPE
-        const void *scale = nullptr, int64_t scaleCount = 0, const void *offset = nullptr) const;
+        HcclDataType outputDataType = HCCL_DATA_TYPE_RESERVED, const void *scale = nullptr, int64_t scaleCount = 0,
+        const void *offset = nullptr) const;
     int ReduceScatter(void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType,
         HcclReduceOp op = HCCL_REDUCE_SUM, aclrtStream stream = nullptr) const;
     int AllGather(void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType, aclrtStream stream) const;
