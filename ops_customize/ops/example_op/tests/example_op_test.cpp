@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "operation_implement/example_operation.h"
+#include "example_operation.h"
 #include "customize_op_params.h"
 #include "atb/core/op_param_funcs.h"
 
