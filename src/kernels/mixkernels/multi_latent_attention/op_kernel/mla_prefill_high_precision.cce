@@ -918,7 +918,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
         8,                                                                // dstRepeatStride
         8                                                                 // srcRepeatStride
     );
-    // PIPE_BARRIER(V);
+    PIPE_BARRIER(V);
     // *** ll = rowsum(ls32)
     if (n_real == 512) {
         Rowsum<EXP_DTYPE, RowCalcTile::SPEC_TILE_512>(
