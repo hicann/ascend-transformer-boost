@@ -84,14 +84,16 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
             ATB_LOG(ERROR) << "dont support cacheMode KVCACHE yet";
             return ERROR_INVALID_PARAM;
         }
-        if (opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC &&
+        if ((opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC && opParam.
+                      calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
             opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
             ATB_LOG(ERROR) << "only mtp(CALC_TYPE_SPEC) support mask";
             return ERROR_INVALID_PARAM;
         }
-        if (opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING &&
+        if ((opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || opParam.
+                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
             opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
-            ATB_LOG(ERROR) << "mtp(CALC_TYPE_RING) only support krppe ctkv";
+            ATB_LOG(ERROR) << "CalcType is ring only support krppe ctkv";
             return ERROR_INVALID_PARAM;
         }
     }
@@ -157,10 +159,12 @@ MultiLatentAttentionOperation::MultiLatentAttentionOperation(const infer::MultiL
     if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
         opIrKeyStr += "Mask";
     }
-    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC) {
+    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
+                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
         opIrKeyStr += "Qlens";
     }
-    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING) {
+    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
+                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
         opIrKeyStr += "IsRing";
     }
     if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
@@ -186,7 +190,8 @@ uint32_t MultiLatentAttentionOperation::GetInputNum() const
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_PREFILL) {
         intensorNumBase++;
     }
-    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC) {
+    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
+                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
         intensorNumBase++;
     }
     if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
@@ -197,8 +202,9 @@ uint32_t MultiLatentAttentionOperation::GetInputNum() const
 
 uint32_t MultiLatentAttentionOperation::GetOutputNum() const
 {
-    return param_.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ? OUT_TENSOR_NUM_1 :
-                                                                                           OUT_TENSOR_NUM_2;
+    bool isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
+                  calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    return isRing ? OUT_TENSOR_NUM_2 : OUT_TENSOR_NUM_1;
 }
 
 Status MultiLatentAttentionOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
@@ -206,7 +212,8 @@ Status MultiLatentAttentionOperation::InferShapeImpl(const SVector<TensorDesc> &
 {
     outTensorDescs.at(0) = inTensorDescs.at(0);
     outTensorDescs.at(0).dtype = inTensorDescs.at(1).dtype;
-    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING) {
+    if ((param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
+                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING)) {
         outTensorDescs.at(1) = outTensorDescs.at(0);
         outTensorDescs.at(1).shape.dims[2] = 1; // 2: dim2
     }
