@@ -15,6 +15,7 @@
 namespace Lcal {
     void AllGatherGetDefaultTiling(CoCTilingData &cocTilingData);
     void AllGatherEightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData);
+    void AllGatherFourRankINT8Tiling(CoCTilingData &cocTilingData);
 
     void AllGatherV2EightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData);
     void AllGatherV2EightRankFP16Core16GetDefaultTiling(CoCTilingData &cocTilingData);
@@ -27,5 +28,6 @@ namespace Lcal {
     void AllReduceTwoRankFP16Tiling(CoCTilingData &cocTilingData);
 
     void ReduceScatterEightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData);
+    void ReduceScatterFourRankINT8Tiling(CoCTilingData &cocTilingData);
 }
 #endif // LCAL_TILING_910B_H

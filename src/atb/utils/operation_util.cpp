@@ -408,7 +408,7 @@ bool OperationUtil::MatmulInputWeightDimNumCheck(const SVector<TensorDesc> &inTe
         validDimNums = {1};
     } else {
         if (weightTensorDesc.format == ACL_FORMAT_ND) {
-            validDimNums = {DIM_2};
+            validDimNums = {DIM_2, DIM_3};
         } else if (weightTensorDesc.format == ACL_FORMAT_FRACTAL_NZ) {
             validDimNums = {DIM_2, DIM_4};
         }
@@ -423,9 +423,43 @@ bool OperationUtil::MatmulInputWeightDimNumCheck(const SVector<TensorDesc> &inTe
 }
 
 /**
+ * input/weight TensorDesc batch校验
+ * @param inTensorDescs
+ * @param logPrefix
+ * @param param
+ * @param isPass
+ * @return
+ */
+bool CheckBatch(const SVector<TensorDesc> &inTensorDescs, const std::string &logPrefix, MatmulCommonCheckParam param,
+                bool &isPass)
+{
+    const auto &inputTensorDesc = inTensorDescs.at(0);
+    const auto &weightTensorDesc = inTensorDescs.at(1);
+    if (param.enAccum || (param.hasBias && inTensorDescs.at(INDEX_2).dtype == ACL_FLOAT)) {
+        if (inputTensorDesc.shape.dimNum == DIM_3 && weightTensorDesc.shape.dimNum == DIM_3) {
+            auto inputTensorBatch = inputTensorDesc.shape.dims[0];
+            auto weightTensorBatch = weightTensorDesc.shape.dims[0];
+            if (inputTensorBatch != weightTensorBatch) {
+                ATB_LOG(ERROR) << logPrefix << "inTensor0's batch " << inputTensorBatch << " should be equal to "
+                               << "inTensor1's batch " << weightTensorBatch;
+                isPass = false;
+                return true;
+            }
+        }
+    } else {
+        int64_t weightBatch = OperationUtil::GetTensorBatch(weightTensorDesc);
+        if (weightBatch != 1) {
+            ATB_LOG(ERROR) << logPrefix << "inTensor1 batch [" << weightBatch << "] should be 1";
+            isPass = false;
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * input/weight TensorDesc shape校验
- * @param inputTensorDesc
- * @param weightTensorDesc
+ * @param inTensorDescs
  * @param logPrefix
  * @param param
  * @return
@@ -439,22 +473,10 @@ bool OperationUtil::MatmulInputWeightShapeCheck(const SVector<TensorDesc> &inTen
         return true;
     }
     // check batch
-    if (param.enAccum || (param.hasBias && inTensorDescs.at(INDEX_2).dtype == ACL_FLOAT)) {
-        if (inputTensorDesc.shape.dimNum == DIM_3 && weightTensorDesc.shape.dimNum == DIM_3) {
-            auto inputTensorBatch = inputTensorDesc.shape.dims[0];
-            auto weightTensorBatch = weightTensorDesc.shape.dims[0];
-            if (inputTensorBatch != weightTensorBatch) {
-                ATB_LOG(ERROR) << logPrefix << "inTensor0's batch " << inputTensorBatch << " should be equal to "
-                               << "inTensor1's batch " << weightTensorBatch;
-                return false;
-            }
-        }
-    } else {
-        int64_t weightBatch = GetTensorBatch(weightTensorDesc);
-        if (weightBatch != 1) {
-            ATB_LOG(ERROR) << logPrefix << "inTensor1 batch [" << weightBatch << "] should be 1";
-            return false;
-        }
+    if (!param.isMoe) {
+        bool isPass;
+        if (CheckBatch(inTensorDescs, logPrefix, param, isPass))
+            return isPass;
     }
 
     // check k

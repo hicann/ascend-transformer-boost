@@ -1478,7 +1478,9 @@ struct LinearParallelParam {
         ALL_GATHER_LINEAR = 2,                //!< AllGather+linear
         PURE_LINEAR = 3,                      //!< linear
         ALL_GATHER_LINEAR_REDUCE_SCATTER = 4, //!< AllGather+linear+reduce_scatter
-        MAX = 5,                              //!< 枚举类型最大值
+        ALLTOALLVC_ALL_GATHER_GMM = 5,        //!< AllToAllvc+AllGather+GroupMatmul
+        GMM_REDUCE_SCATTER_ALLTOALLVC = 6,    //!< GroupMatmul+ReduceScatter+AllToAllvc
+        MAX = 7,                              //!< 枚举类型最大值
     };
     //!
     //! \enum QuantType
@@ -1491,7 +1493,8 @@ struct LinearParallelParam {
         QUANT_TYPE_PER_TENSOR = 0,  //!< 对整个张量进行量化
         QUANT_TYPE_PER_CHANNEL = 1, //!< 对张量中每个channel分别进行量化
         QUANT_TYPE_PER_GROUP = 2,   //!< 将张量按quantGroupSize划分后，分别进行量化
-        QUANT_TYPE_MAX = 3,         //!< 枚举类型最大值
+        QUANT_TYPE_PER_TOKEN = 3,   //!< 对张量中每个token分别进行量化
+        QUANT_TYPE_MAX = 4,         //!< 枚举类型最大值
     };
     //! \brief 权重是否需要转置，默认为true。
     bool transWeight = true;
@@ -1543,10 +1546,22 @@ struct LinearParallelParam {
     };
     //! \brief AllGather_Matmul_ReduceScatter算子参数
     TwoDimTPInfo twoDimTPInfo;
+    //! \brief Moe 算子参数结构体
+    struct MoeInfo {
+        //! \brief MOE场景，每个NPU处理的expert数量
+        int16_t localExpertNums = 1;
+        //! \brief MOE场景，EP通信域大小
+        int8_t epSize = 1;
+        //! \brief MOE场景，TP通信域大小
+        int8_t tpSize = 1;
+    };
+    //! \brief AllGather_Matmul_ReduceScatter算子参数
+    MoeInfo moeInfo;
+
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[56] = {0};
+    uint8_t rsv[52] = {0};
 };
 
 //!

@@ -59,23 +59,6 @@ namespace Lcal {
         { FP16INT4_FP32_FP16, HCCL_DATA_TYPE_FP16 },  { BF16INT4_FP32_BF16, HCCL_DATA_TYPE_BFP16 }
     };
 
-    struct WorkspaceDetail {
-        int64_t matrixActivationSize{ 0 };
-        int64_t matrixWeightSize{ 0 };
-        int64_t matrixIntermediateSize{ 0 };
-        int64_t formatDequantParamSize{ 0 };
-        int64_t reducebufSize{ 0 };
-
-        int64_t GetSize() const
-        {
-            return matrixActivationSize
-                    + matrixWeightSize
-                    + matrixIntermediateSize
-                    + formatDequantParamSize
-                    + reducebufSize;
-        }
-    };
-
     struct CoCParamDesc {
         CoCDataTypeDesc dataTypeDesc = FP16FP16_FP32_FP16;
         MatMulInfo mmInfo = {};
@@ -83,6 +66,7 @@ namespace Lcal {
         PostInfo postInfo = {};
         HcclReduceOp op = HCCL_REDUCE_SUM; // 当前不支持其他值
         TwoDimTPInfo twoDimTPInfo = {};
+        MoeInfo moeInfo = {};
     };
 
     struct CoCInputPkg {
@@ -95,6 +79,9 @@ namespace Lcal {
 
         void *quantScale = nullptr; // 量化参数，当融合了量化操作时需要传入
         void *quantOffset = nullptr; // 可选，若无offset（如对称量化场景），传入空指针即可
+        void *num_local_tokens_per_expert = nullptr;
+        void *num_global_tokens_per_local_expert = nullptr;
+        void *global_tokens_per_expert_matrix = nullptr;
     };
 
     struct CoCOutputPkg {

@@ -10,7 +10,11 @@
 #ifndef LCAL_TILING_H
 #define LCAL_TILING_H
 
+#include <iostream>
+#include <array>
 #include "tiling_args.h"
+#include "lcal_types.h"
+#include "lcal_comm.h"
 #include "lcoc.h"
 
 namespace Lcal {
@@ -82,5 +86,26 @@ public:
     bool CheckTiling(const TaskParam &taskParam) override;
     void GetDefaultTiling(const TaskParam &taskParam) override;
 };
+
+class CoCAllToAllAllGatherMatmulHiddenTilingFunc : public CoCAllGatherMatmulTilingFunc {
+public:
+    CoCAllToAllAllGatherMatmulHiddenTilingFunc(const CoCAllToAllAllGatherMatmulHiddenTilingFunc &) = delete;
+    CoCAllToAllAllGatherMatmulHiddenTilingFunc &operator = (
+        const CoCAllToAllAllGatherMatmulHiddenTilingFunc &) = delete;
+    CoCAllToAllAllGatherMatmulHiddenTilingFunc() {}
+    bool CheckTiling(const TaskParam &tilingInfo) override;
+    void GetDefaultTiling(const TaskParam &tilingInfo) override;
+};
+
+class CoCMatmulReduceScatterAllToAllHiddenTilingFunc : public CoCMatmulReduceScatterTilingFunc {
+public:
+    CoCMatmulReduceScatterAllToAllHiddenTilingFunc(const CoCMatmulReduceScatterAllToAllHiddenTilingFunc &) = delete;
+    CoCMatmulReduceScatterAllToAllHiddenTilingFunc &operator = (
+        const CoCMatmulReduceScatterAllToAllHiddenTilingFunc &) = delete;
+    CoCMatmulReduceScatterAllToAllHiddenTilingFunc() {}
+    bool CheckTiling(const TaskParam &tilingInfo) override;
+    void GetDefaultTiling(const TaskParam &tilingInfo) override;
+};
+
 }
 #endif // LCAL_TILING_H
