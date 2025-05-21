@@ -17,9 +17,12 @@ target_include_directories(atb_customize
     ${CMAKE_CURRENT_LIST_DIR}/common
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{ASCEND_HOME_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/include
     ${CMAKE_SOURCE_DIR}/src/kernels/include
+    ${PROJECT_SOURCE_DIR}/src/kernels/tiling
+
 )
 
 target_include_directories(atb_customize_static
@@ -28,9 +31,11 @@ target_include_directories(atb_customize_static
     ${CMAKE_CURRENT_LIST_DIR}/common
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{ASCEND_HOME_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/include
     ${CMAKE_SOURCE_DIR}/src/kernels/include
+    ${PROJECT_SOURCE_DIR}/src/kernels/tiling
 )
 
 target_link_libraries(atb_customize 

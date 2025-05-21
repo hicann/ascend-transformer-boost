@@ -9,6 +9,8 @@ class AddOperation : public OperationBase {
 public:
     explicit AddOperation(const customize::AddParam &param);
     ~AddOperation() override;
+    uint32_t GetInputNum() const override;
+    uint32_t GetOutputNum() const override;
 
 protected:
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
