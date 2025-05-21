@@ -55,5 +55,13 @@ struct QuantInfo {
 struct PostInfo {
     int32_t withRmsNorm = 0;
 };
+
+struct MoeInfo {
+    int16_t local_expert_nums = 0;
+    int8_t EP = 0;
+    int8_t TP = 0;
+    int32_t maxOutputSize = -1;
+    int8_t isMoe = 0;
+};
 }
 #endif  // LCAL_LCOC_BASE_H

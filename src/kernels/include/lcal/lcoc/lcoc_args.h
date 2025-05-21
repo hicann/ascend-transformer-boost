@@ -66,6 +66,7 @@ namespace Lcal {
         PostInfo postInfo = {};
         HcclReduceOp op = HCCL_REDUCE_SUM; // 当前不支持其他值
         TwoDimTPInfo twoDimTPInfo = {};
+        MoeInfo moeInfo = {};
     };
 
     struct CoCInputPkg {
@@ -78,6 +79,9 @@ namespace Lcal {
 
         void *quantScale = nullptr; // 量化参数，当融合了量化操作时需要传入
         void *quantOffset = nullptr; // 可选，若无offset（如对称量化场景），传入空指针即可
+        void *num_local_tokens_per_expert = nullptr;
+        void *num_global_tokens_per_local_expert = nullptr;
+        void *global_tokens_per_expert_matrix = nullptr;
     };
 
     struct CoCOutputPkg {

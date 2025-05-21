@@ -91,6 +91,10 @@ namespace Lcal {
     constexpr int32_t DEFAULT_SPLIT_K = 0;
     constexpr int32_t NUM_TWO = 2;
 
+    // Todo: tmp hard code, need tiling func for moe
+    constexpr int32_t AllTOAll_HIDDEN_UBMOVENUM = 28672;
+
+
     // 默认值均为-1
     struct CoCTiling {
         // Tiling参数，用来控制融合算子执行策略
@@ -149,6 +153,7 @@ namespace Lcal {
         QuantInfo quantInfo = {}; // device侧对应23-26
         TwoDimTPInfo twoDimTPInfo = {}; // device侧对应27-29
         PostInfo postInfo = {}; // device侧对应30
+        MoeInfo moeInfo = {}; // device侧对应31
         bool weightNz = false;
     };
 }
