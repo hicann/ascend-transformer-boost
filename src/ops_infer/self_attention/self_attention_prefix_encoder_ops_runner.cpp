@@ -122,9 +122,12 @@ void SelfAttentionPrefixEncoderOpsRunner::SetFAParam(AtbOps::OpParam::UnpadFlash
     } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
         flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
             AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_NORM);
+    } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_FREE) {
+        flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
+            AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_MASK_FREE);
     }
     // [head_num, seqlen, 128]
-    if (isMask128_) {
+    if (isMask128_ && param_.maskType != infer::SelfAttentionParam::MASK_TYPE_FREE) {
         flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
             AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_ALIBI_COMPRESS_128);
     }
