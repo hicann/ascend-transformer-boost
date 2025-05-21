@@ -3164,7 +3164,7 @@ private:
             SET_FLAG(V, MTE3, EVENT_ID0);
             WAIT_FLAG(V, MTE3, EVENT_ID0);
 
-            uint32_t lenBurst = sizeof(OUT_DTYPE);
+            uint32_t outBytes = sizeof(OUT_DTYPE);
             if (q_seq_len > 1){
                 uint32_t inner_o_gm_offset = 0;
                 uint32_t inner_go_ubuf_offset = 0;
@@ -3174,7 +3174,7 @@ private:
                         go_ubuf_tensor[inner_go_ubuf_offset],
                         0,                                  // sid
                         1,                                  // nBurst
-                        head_used_col_num * __v * lenBurst, // lenBurst
+                        head_used_col_num * __v * outBytes, // lenBurst
                         0,                                  // leftPaddingNum
                         0,                                  // rightPaddingNum
                         0,                                  // srcGap
@@ -3189,7 +3189,7 @@ private:
                         go_ubuf_tensor[inner_go_ubuf_offset],
                         0,                              // sid
                         1,                              // nBurst
-                        sub_head_num * __v * lenBurst,  // lenBurst
+                        sub_head_num * __v * outBytes,  // lenBurst
                         0,                              // leftPaddingNum
                         0,                              // rightPaddingNum
                         0,                              // srcGap
@@ -3204,7 +3204,7 @@ private:
                         go_ubuf_tensor[inner_go_ubuf_offset],
                         0,                                  // sid
                         1,                                  // nBurst
-                        tail_used_col_num * __v * lenBurst, // lenBurst
+                        tail_used_col_num * __v * outBytes, // lenBurst
                         0,                                  // leftPaddingNum
                         0,                                  // rightPaddingNum
                         0,                                  // srcGap
@@ -3217,7 +3217,7 @@ private:
                     go_ubuf_tensor,
                     0,                      // sid
                     1,                      // nBurst
-                    sub_m * __v * lenBurst, // lenBurst
+                    sub_m * __v * outBytes, // lenBurst
                     0,                      // leftPaddingNum
                     0,                      // rightPaddingNum
                     0,                      // srcGap
@@ -3258,7 +3258,7 @@ private:
                         4,                  // dstRepeatStride
                         8                   // srcRepeatStride
                     );
-                    if (lenBurst * sub_head_num < 32) {
+                    if (outBytes * sub_head_num < 32) {
                         PIPE_BARRIER(V);
                         uint32_t cal_head_num_up32 = (cal_head_num + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                         brcb_v<ArchType::ASCEND_V220, OUT_DTYPE>(lse_conv_ubuf_tensor[cal_head_num_up32],
@@ -3271,14 +3271,14 @@ private:
                         WAIT_FLAG(V, MTE3, EVENT_ID1);
                         int64_t lse_gm_offset = o_offset / __k;
                         uint32_t srcGap = sub_head_num -1;
-                        uint32_t dstGap = (q_heads - 1) * lenBurst;
+                        uint32_t dstGap = (q_heads - 1) * outBytes;
                         for (uint32_t i = 0; i < sub_head_num; ++i) {
                             ub_to_gm_align<ArchType::ASCEND_V220, OUT_DTYPE>(
                                 lse_gm_tensor[(int64_t)(lse_gm_offset + i)],
                                 lse_conv_ubuf_tensor[cal_head_num_up32 + i * BLOCK_SIZE],
                                 0,          // sid
                                 q_seq_len,  // nBurst
-                                lenBurst,   // lenBurst
+                                outBytes,   // lenBurst
                                 0,          // leftPaddingNum
                                 0,          // rightPaddingNum
                                 srcGap,     // srcGap
@@ -3288,13 +3288,13 @@ private:
                     } else {
                         SET_FLAG(V, MTE3, EVENT_ID1);
                         WAIT_FLAG(V, MTE3, EVENT_ID1);
-                        uint32_t dstGap = (q_heads - sub_head_num) * lenBurst;
+                        uint32_t dstGap = (q_heads - sub_head_num) * outBytes;
                         ub_to_gm_align<ArchType::ASCEND_V220, OUT_DTYPE>(
                             lse_gm_tensor[(int64_t)(o_offset / __k)],
                             lse_conv_ubuf_tensor,
                             0,                      // sid
                             q_seq_len,              // nBurst
-                            lenBurst * sub_head_num,// lenBurst
+                            outBytes * sub_head_num,// lenBurst
                             0,                      // leftPaddingNum
                             0,                      // rightPaddingNum
                             0,                      // srcGap
@@ -3339,7 +3339,7 @@ private:
         uint32_t head_loop,
         uint32_t head_loop_idx,
         uint32_t q_seq_len,
-        uint32_t q_i,
+        int32_t q_i,
         uint32_t sub_head_num,
         uint32_t cur_head_idx,
         uint32_t cur_nIndx,
@@ -3566,8 +3566,8 @@ private:
                 // ********************* move O to GM ************************
             }
             if constexpr (IS_RING) {
-                if (head_loop_idx == head_loop - 1 && q_i == q_seq_len - 1) {
-                    uint32_t lenBurst = sizeof(OUT_DTYPE);
+                if (head_loop_idx == head_loop - 1 && (uint32_t)q_i == q_seq_len - 1) {
+                    uint32_t outBytes = sizeof(OUT_DTYPE);
                     uint32_t cal_head_num = q_seq_len * sub_head_num;
                     uint32_t cal_head_num_d64 = (cal_head_num + 63) / 64;
                     ln_v<ArchType::ASCEND_V220, float>(lse32_ubuf_tensor,
@@ -3602,13 +3602,13 @@ private:
                     SET_FLAG(V, MTE3, EVENT_ID1);
                     WAIT_FLAG(V, MTE3, EVENT_ID1);
                     // 搬出lse
-                    uint32_t dstGap = (q_heads - sub_head_num) * lenBurst;
+                    uint32_t dstGap = (q_heads - sub_head_num) * outBytes;
                     ub_to_gm_align<ArchType::ASCEND_V220, OUT_DTYPE>(
                         lse_gm_tensor[(int64_t)(o_offset / __k)],
                         lse_conv_ubuf_tensor,
                         0,                      // sid
                         q_seq_len,           // nBurst
-                        lenBurst * sub_head_num,// lenBurst
+                        outBytes * sub_head_num,// lenBurst
                         0,                      // leftPaddingNum
                         0,                      // rightPaddingNum
                         0,                      // srcGap
@@ -3962,7 +3962,7 @@ private:
             // stage2也被删掉 head32的时候可不改sm2
             if (n_idx >= s_block_stack) {
                 WaitFlagDev(UPDATE_READY_DECODER);
-                for(int q_i = 0; q_i < cur_q_seqlen; q_i++) {
+                for(int32_t q_i = 0; q_i < cur_q_seqlen; q_i++) {
                     int32_t real_n_loop = (cur_kv_seqlen + q_i * kvEndFlag + pp_n_scalar - 1) / pp_n_scalar;
                     int32_t real_kv_seqlen_left = cur_kv_seqlen + q_i * kvEndFlag - (n_idx - s_block_stack) * pp_n_scalar;
                     if (real_kv_seqlen_left <= 0) {
@@ -4008,7 +4008,7 @@ private:
                                 descale_k1_ubuf_tensor[head_loop_idx * process_row_num],
                                 n_idx, real_n_loop, cur_sub_m, o_offset,
                                 q_i * q_heads + cur_head_num / 2 * sub_block_idx + head_loop_idx * process_row_num,
-                                head_loop, head_loop_idx, cur_q_seqlen, (uint32_t)q_i, sub_head_num, q_i * FLOAT_VECTOR_SIZE + head_loop_idx * process_row_num, cur_nIndx, prev_split_num, split_num);
+                                head_loop, head_loop_idx, cur_q_seqlen, q_i, sub_head_num, q_i * FLOAT_VECTOR_SIZE + head_loop_idx * process_row_num, cur_nIndx, prev_split_num, split_num);
                         }
                     }
                 }
