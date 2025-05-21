@@ -202,20 +202,41 @@ bool RingMLAOperation::QKSplitDimCheck(const SVector<TensorDesc> &inTensorDescs,
     if (inTensorDescs.at(IN_QUERY_SPLIT1_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] != QK_SPLIT1_HEAD_SIZE) {
         extError.errorDesc = OperationUtil::ConcatInfo("headSize of querySplit1 must be ", QK_SPLIT1_HEAD_SIZE);
         extError.errorData = OperationUtil::ConcatInfo(
-            "Expected headSize: ", QK_SPLIT1_HEAD_SIZE,
-            ", querySplit1 headSize: ", inTensorDescs.at(IN_QUERY_SPLIT1_INDEX).shape.dims[QKV_HEAD_SIZE_IDX]);
+            "querySplit1 headSize: ", inTensorDescs.at(IN_QUERY_SPLIT1_INDEX).shape.dims[QKV_HEAD_SIZE_IDX]);
         ATB_LOG(ERROR) << GetLogPrefix() << extError;
         return false;
     }
     if (inTensorDescs.at(IN_KEY_SPLIT1_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] != QK_SPLIT1_HEAD_SIZE) {
         extError.errorDesc = OperationUtil::ConcatInfo("headSize of keySplit1 must be ", QK_SPLIT1_HEAD_SIZE);
         extError.errorData = OperationUtil::ConcatInfo(
-            "Expected headSize: ", QK_SPLIT1_HEAD_SIZE,
+            ", keySplit1 headSize: ", inTensorDescs.at(IN_KEY_SPLIT1_INDEX).shape.dims[QKV_HEAD_SIZE_IDX]);
+        ATB_LOG(ERROR) << GetLogPrefix() << extError;
+        return false;
+    }
+    if (inTensorDescs.at(IN_QUERY_SPLIT2_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] != QK_SPLIT2_HEAD_SIZE) {
+        extError.errorDesc = OperationUtil::ConcatInfo("headSize of querySplit1 must be ", QK_SPLIT2_HEAD_SIZE);
+        extError.errorData = OperationUtil::ConcatInfo(
+            "querySplit1 headSize: ", inTensorDescs.at(IN_QUERY_SPLIT2_INDEX).shape.dims[QKV_HEAD_SIZE_IDX]);
+        ATB_LOG(ERROR) << GetLogPrefix() << extError;
+        return false;
+    }
+    if (inTensorDescs.at(IN_KEY_SPLIT2_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] != QK_SPLIT2_HEAD_SIZE) {
+        extError.errorDesc = OperationUtil::ConcatInfo("headSize of keySplit1 must be ", QK_SPLIT2_HEAD_SIZE);
+        extError.errorData = OperationUtil::ConcatInfo(
             ", keySplit1 headSize: ", inTensorDescs.at(IN_KEY_SPLIT1_INDEX).shape.dims[QKV_HEAD_SIZE_IDX]);
         ATB_LOG(ERROR) << GetLogPrefix() << extError;
         return false;
     }
     // TODO(ivan): add check
+    int64_t qNTokens = inTensorDescs.at(IN_QUERY_SPLIT1_INDEX).shape.dims[QKV_N_TOKENS_IDX];
+    if (inTensorDescs.at(IN_QUERY_SPLIT2_INDEX).shape.dims[QKV_N_TOKENS_IDX] != qNTokens) {
+        extError.errorDesc = "querySplit1[0] must be same as querySplit1[0]";
+        extError.errorData = OperationUtil::ConcatInfo(
+            ", but got querySplit1[0]: ", qNTokens,
+            ", querySplit2[0]: ", inTensorDescs.at(IN_QUERY_SPLIT2_INDEX).shape.dims[QKV_N_TOKENS_IDX]);
+        ATB_LOG(ERROR) << GetLogPrefix() << extError;
+        return false;
+    }
 }
 
 Status RingMLAOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
