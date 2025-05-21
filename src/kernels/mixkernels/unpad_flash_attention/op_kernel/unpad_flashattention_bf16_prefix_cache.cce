@@ -2804,8 +2804,8 @@ public:
         s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ S_DTYPE *>(s_gm));
         p_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ P_DTYPE *>(p_gm));
         o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(o_tmp_gm));
-        if constexpr (MASK_TYPE == MaskType::MASK_TYPE_FREE) {
-            GenMaskMatrix(mask16_ubuf_tensor.template ReinterpretCast<float>(), mask_coff, 32);
+        if constexpr (MASK_TYPE == MaskType::MASK_TYPE_MASK_FREE) {
+            GenMaskMatrix(mask16_ubuf_tensor.template ReinterpretCast<float>(), mask_coff);
         }
         uint64_t next_process = 0;
         for (uint64_t process = block_idx; process < process_num; process = next_process) {
@@ -2897,7 +2897,7 @@ public:
                             div_m = 4;
                         } */
                         int32_t div_m = 4;
-                        if constexpr (MASK_TYPE == MaskType::MASK_TYPE_FREE) {
+                        if constexpr (MASK_TYPE == MaskType::MASK_TYPE_MASK_FREE) {
                             OnlineSoftmaxStage1<S_DTYPE, EXP_DTYPE, P_DTYPE, MASK_DTYPE, MASK_TYPE> (
                                 ls_ubuf_tensor[s_ub_offset], 
                                 mask16_ubuf_tensor.template ReinterpretCast<float>(),
@@ -3326,7 +3326,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_bf16_prefix_cache(
         FlashAttentionEncoderHighPrecisionCubeOpt<half> fa_cube(sync, q_gm, k_gm, v_gm, block_table_gm, s_gm, p_gm, o_tmp_gm, tiling_para_gm);
         fa_cube.Run();
 #elif __DAV_C220_VEC__
-        FlashAttentionEncoderHighPrecisionVecOpt<float, half, half, half, float, MaskType::MASK_TYPE_FREE, ScaleType::SCALE_TOR> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+        FlashAttentionEncoderHighPrecisionVecOpt<float, half, half, half, float, MaskType::MASK_TYPE_MASK_FREE, ScaleType::SCALE_TOR> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
                                                              tiling_para_gm);
         fa_vec.Run();
 #endif
@@ -3335,7 +3335,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_bf16_prefix_cache(
         FlashAttentionEncoderHighPrecisionCubeOpt<__bf16> fa_cube(sync, q_gm, k_gm, v_gm, block_table_gm, s_gm, p_gm, o_tmp_gm, tiling_para_gm);
         fa_cube.Run();
 #elif __DAV_C220_VEC__
-        FlashAttentionEncoderHighPrecisionVecOpt<float, __bf16, __bf16, __bf16, float, MaskType::MASK_TYPE_FREE, ScaleType::SCALE_TOR> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+        FlashAttentionEncoderHighPrecisionVecOpt<float, __bf16, __bf16, __bf16, float, MaskType::MASK_TYPE_MASK_FREE, ScaleType::SCALE_TOR> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
                                                              tiling_para_gm);
         fa_vec.Run();
 #endif
