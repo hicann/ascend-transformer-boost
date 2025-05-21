@@ -22,6 +22,7 @@ public:
     MstxMemRegister(void *workspace, uint64_t workspaceSize);
     ~MstxMemRegister();
     static mstxDomainHandle_t &GetRegisterDomain();
+    Status CheckTensorRange();
     void MstxMemRegionsRegister();
     void MstxMemRegionsUnregister();
     void ClearMstxMemRegions() noexcept;
