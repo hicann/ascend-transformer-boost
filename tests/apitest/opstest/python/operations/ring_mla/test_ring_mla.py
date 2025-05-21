@@ -1332,7 +1332,7 @@ class TestMLAPrefill(operation_test.OperationTest):
         shape_out_2 = (sum(kv_seqLen), heads)
         data_type = torch.float16
 
-        isring = 1
+        isring = 0
         calcType = 0
         if isring:
             old_out = torch.rand(shape_out_1).to(data_type)
@@ -1382,13 +1382,13 @@ class TestMLAPrefill(operation_test.OperationTest):
         
         old_lse = old_lse.transpose(1, 0)
         logging.info("input_lse :", old_lse.shape)
-        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q_split1.reshape(q_ntokens, heads, 128).npu(), self.q_split1.reshape(q_ntokens, heads, 64).npu(),
-                                                            self.k.reshape(kv_ntokens, kv_head, 128).npu(), self.v.reshape(kv_ntokens, kv_head, embeddimV).npu(),
-                                                            self.mask.to(data_type).npu(), seqlen.npu(),
-                                                            ])
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q_split1.reshape(q_ntokens, heads, 128).npu(), self.q_split2.reshape(q_ntokens, heads, 64).npu(),          
+                                                            self.k_split1.reshape(kv_ntokens, kv_head, 128).npu(), self.k_split2.reshape(kv_ntokens, kv_head, 64).npu(),
+                                                            self.v.reshape(kv_ntokens, kv_head, embeddimV).npu(), self.mask.to(data_type).reshape(max_seq, max_seq).npu(), seqlen.npu(),
+                                                        ])
 
 
-    def test_flash_attention_mla_bf16_512_mask(self):
+    def test_flash_attention_mla_bf16_512_mask_is_ring(self):
         '''
         embeddim > embeddimV, no mask, q_seqlen == kv_seqLen, only input q_seqlen, isring = 1
         '''
@@ -1417,6 +1417,7 @@ class TestMLAPrefill(operation_test.OperationTest):
         data_type = torch.float16
 
         isring = 1
+        calcType = 0
         if isring:
             old_out = torch.rand(shape_out_1).to(data_type)
             old_lse = (torch.rand(shape_out_2) * 10).to(torch.float32)
@@ -1486,10 +1487,11 @@ class TestMLAPrefill(operation_test.OperationTest):
         
         old_lse = old_lse.transpose(1, 0)
         logging.info("input_lse :", old_lse.shape)
-        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.reshape(q_ntokens, heads, embeddim).npu(),
-                                                            self.k.reshape(kv_ntokens, kv_head, embeddim).npu(), self.v.reshape(kv_ntokens, kv_head, embeddimV).npu(),
-                                                            self.mask.to(data_type).npu(), seqlen.npu(),
-                                                            old_out.reshape(q_ntokens, heads, embeddimV).npu(), old_lse.reshape(heads, q_ntokens).npu()])
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q_split1.reshape(q_ntokens, heads, 128).npu(), self.q_split2.reshape(q_ntokens, heads, 64).npu(),          
+                                                    self.k_split1.reshape(kv_ntokens, kv_head, 128).npu(), self.k_split2.reshape(kv_ntokens, kv_head, 64).npu(),
+                                                    self.v.reshape(kv_ntokens, kv_head, embeddimV).npu(), self.mask.to(data_type).reshape(max_seq, max_seq).npu(), seqlen.npu(),
+                                                    old_out.reshape(q_ntokens, heads, embeddimV).npu(), old_lse.reshape(heads, q_ntokens).npu()
+                                                ])
 
 if __name__ == '__main__':
     unittest.main()

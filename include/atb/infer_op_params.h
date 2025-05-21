@@ -3173,6 +3173,11 @@ struct MmDeqSwigluQuantMmDeqParam {
 //! \warning 仅Atlas 800I/T A2/A3推理产品支持该算子
 //!
 struct RingMLAParam {
+    //!
+    //! \enum CalcType
+    //!
+    //! \brief 计算类型
+    //!
     enum CalcType : int {
         CALC_TYPE_DEFAULT = 0, // 默认，非首末卡场景，有prev_lse, prev_o传入，生成softmaxLse输出
         CALC_TYPE_FISRT_RING,  // 首卡场景，无prev_lse, prev_o传入，生成softmaxLse输出
