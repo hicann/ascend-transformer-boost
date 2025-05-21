@@ -24,6 +24,7 @@ namespace atb {
 static const uint32_t IN_TENSOR_NUM_WITH_RESIDUAL = 3;
 static const uint32_t IN_TENSOR_NUM_WITHOUT_RESIDUAL = 2;
 static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_QUANT = 2;
+static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT = 1;
 static const uint32_t OUT_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM_WITH_MID = 2;
 
@@ -75,6 +76,9 @@ LinearParallelOperation::LinearParallelOperation(const infer::LinearParallelPara
         }
         if (commonCheckParam_.isQuant) {
             opIrKeySs << "Quant";
+            if (param_.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+                opIrKeySs << "PerToken";
+            }
         }
     }
     std::string opIrKey = opIrKeySs.str();
@@ -88,6 +92,9 @@ uint32_t LinearParallelOperation::GetInputNum() const
     uint32_t inTensorNum = param_.hasResidual ? IN_TENSOR_NUM_WITH_RESIDUAL : IN_TENSOR_NUM_WITHOUT_RESIDUAL;
     if (commonCheckParam_.isQuant) {
         inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_QUANT;
+        if (param_.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+            inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT;
+        }
     }
     return inTensorNum;
 }
