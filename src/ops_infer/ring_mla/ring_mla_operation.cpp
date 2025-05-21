@@ -237,6 +237,7 @@ bool RingMLAOperation::QKSplitDimCheck(const SVector<TensorDesc> &inTensorDescs,
         ATB_LOG(ERROR) << GetLogPrefix() << extError;
         return false;
     }
+    return true;
 }
 
 Status RingMLAOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
@@ -362,13 +363,11 @@ Status RingMLAOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
         return NO_ERROR;
     }
     outTensorDescs.at(OUT_PREV_LSE_INDEX) = inTensorDescs.at(IN_QUERY_SPLIT1_INDEX); // 1: softmaxLse, 0: query
-    outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dimNum = LSE_DIM_NUM; // 1: softmaxLse 2: [nTokens, headNum]
     // query: [nTokens, headNum, headSize] 删除headSize
-    // outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] = 0;
     outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dims[LSE_N_TOKENS_IDX] =
-        inTensorDescs.at(IN_QUERY_INDEX).shape.dims[QKV_N_TOKENS_IDX];
+        inTensorDescs.at(IN_QUERY_SPLIT1_INDEX).shape.dims[QKV_N_TOKENS_IDX];
     outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dims[LSE_HEAD_NUM_IDX] =
-        inTensorDescs.at(IN_QUERY_INDEX).shape.dims[QKV_HEAD_NUM_IDX];
+        inTensorDescs.at(IN_QUERY_SPLIT1_INDEX).shape.dims[QKV_HEAD_NUM_IDX];
     // query: [nTokens, headNum, headSize] 删除headSize
     outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] = 0;
     outTensorDescs.at(OUT_PREV_LSE_INDEX).dtype = ACL_FLOAT;

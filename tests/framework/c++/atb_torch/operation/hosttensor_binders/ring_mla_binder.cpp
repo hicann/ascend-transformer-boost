@@ -13,8 +13,9 @@
 #include "atb/utils/log.h"
 
 namespace {
-const int SEQLEN_INDEX = 4; // 4: seqlen; ring MLA: query, key, value, mask, qSeqLen
-}
+// 6: seqlen; ring MLA: query_split1, query_split2, key_split1, key_split2, value, mask, seqlen
+const int SEQLEN_INDEX = 6;
+} // namespace
 
 
 RingMLABinder::RingMLABinder() {}
