@@ -279,16 +279,16 @@ void FillAddrOffsets(const AtbOps::UnpadFlashAttentionInfo &mmInfo, AtbOps::Addr
         MKI_LOG(INFO) << "addrOffsets mmInfo.maxKvSeqLen" << mmInfo.maxKvSeqLen << "kvRealHeads"
                       << mmInfo.innerBatchSize << "mmInfo.embeddingSize" << mmInfo.embeddingSize;
         addrOffsets.addrQSeqOffset +=
-            static_cast<uint64_t>(mmInfo.maxQSeqLen * mmInfo.innerBatchSize * mmInfo.embeddingSize);
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen * kvRealHeads * mmInfo.embeddingSize);
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen * kvRealHeads * mmInfo.embeddingSizeV);
+            static_cast<uint64_t>(mmInfo.maxQSeqLen) * mmInfo.innerBatchSize * mmInfo.embeddingSize;
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * kvRealHeads * mmInfo.embeddingSize;
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * kvRealHeads * mmInfo.embeddingSizeV;
         addrOffsets.addrOSeqOffset +=
-            static_cast<uint64_t>(mmInfo.maxQSeqLen  * mmInfo.innerBatchSize * mmInfo.embeddingSizeV);
+            static_cast<uint64_t>(mmInfo.maxQSeqLen) * mmInfo.innerBatchSize * mmInfo.embeddingSizeV;
     } else {
-        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen * mmInfo.innerBatchSize * mmInfo.embeddingSize);
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeads * mmInfo.embeddingSize);
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeads * mmInfo.embeddingSizeV);
-        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen * mmInfo.innerBatchSize * mmInfo.embeddingSizeV);
+        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.innerBatchSize * mmInfo.embeddingSize;
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSize;
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
+        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.innerBatchSize * mmInfo.embeddingSizeV;
     }
 }
 

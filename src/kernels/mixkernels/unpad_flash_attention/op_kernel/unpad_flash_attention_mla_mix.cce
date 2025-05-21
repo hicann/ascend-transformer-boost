@@ -199,12 +199,12 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
         uint32_t pingpong_flag = 0;
         uint32_t offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
 
-        uint64_t q_offset = addr_q_scalar + head_idx * embd + m_idx * pp_m_scalar * stride_qo;
+        uint64_t q_offset = addr_q_scalar + head_idx * embd + (uint64_t)m_idx * pp_m_scalar * stride_qo;
         uint64_t k_offset = addr_k_scalar + (head_idx / group_num) * embd;
         
         if (data_shape_type == 1)
         {
-            q_offset = addr_q_scalar + head_idx * embd * max_seqlen + m_idx * stride_qo * pp_m_scalar;
+            q_offset = addr_q_scalar + head_idx * embd * max_seqlen + (uint64_t)m_idx * stride_qo * pp_m_scalar;
             k_offset = addr_k_scalar + (head_idx / group_num) * embd * max_kv_seqlen;
         }
         
@@ -740,7 +740,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
         uint64_t mask_head_offset = head_idx * ((uint64_t)head_stride) * max_seqlen;
         uint64_t mask_offset = mask_batch_offset + mask_head_offset;
         if (long_seq == 0) {
-            mask_offset += m_idx * pp_m_scalar * max_seqlen;
+            mask_offset += (uint64_t)m_idx * pp_m_scalar * max_seqlen;
         } else {
             gm_to_ub<ArchType::ASCEND_V220, half>(
                 mask_ubuf_tensor,
@@ -755,10 +755,10 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
             WAIT_FLAG(MTE2, V, EVENT_ID0);
         }
 
-        uint64_t o_offset = addr_o_scalar + head_idx * embdv + m_idx * pp_m_scalar * stride_qo;
+        uint64_t o_offset = addr_o_scalar + head_idx * embdv + (uint64_t)m_idx * pp_m_scalar * stride_qo;
 
         if(data_shape_type == 1){
-            o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + m_idx * pp_m_scalar * stride_qo;
+            o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + (uint64_t)m_idx * pp_m_scalar * stride_qo;
         }
 
         uint32_t n_end = n_loop;

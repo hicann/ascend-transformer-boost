@@ -226,11 +226,11 @@ public:
             uint32_t pingpong_flag = 0;
             uint32_t offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
 
-            uint64_t q_offset = addr_q_scalar + head_idx * embd + m_idx * pp_m_scalar * stride_qo;
+            uint64_t q_offset = addr_q_scalar + head_idx * embd + (uint64_t)m_idx * pp_m_scalar * stride_qo;
             uint64_t k_offset = addr_k_scalar + (head_idx / group_num) * embd;
             if (tiling_data_shape == 1)
             {
-               q_offset = addr_q_scalar + head_idx * embd * max_seqlen+ m_idx * pp_m_scalar * stride_qo;
+               q_offset = addr_q_scalar + head_idx * embd * max_seqlen+ (uint64_t)m_idx * pp_m_scalar * stride_qo;
                k_offset = addr_k_scalar + (head_idx / group_num) * embd * max_kv_seqlen;
             }
             
@@ -801,7 +801,7 @@ public:
             float delta = 0;
 
             if (long_seq == 0) {
-                mask_offset += m_idx * pp_m_scalar * max_seqlen;
+                mask_offset += (uint64_t)m_idx * pp_m_scalar * max_seqlen;
             } else {
                 gm_to_ub<ArchType::ASCEND_V220, IN_DATA_TYPE>(
                     mask16_ubuf_tensor,
@@ -836,9 +836,9 @@ public:
                 PIPE_BARRIER(V);
             }
 
-            uint64_t o_offset = addr_o_scalar + head_idx * embdv + m_idx * pp_m_scalar * stride_qo;
+            uint64_t o_offset = addr_o_scalar + head_idx * embdv + (uint64_t)m_idx * pp_m_scalar * stride_qo;
             if(tiling_data_shape_type == 1){
-                o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + m_idx * pp_m_scalar * stride_qo;
+                o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + (uint64_t)m_idx * pp_m_scalar * stride_qo;
             }
             uint32_t n_end = n_loop;
             if (is_triu_mask) {
@@ -868,7 +868,7 @@ public:
                                         delta = 0;
                                     } else {
                                         mask_offset = BASE_MASK_SIZE * max_seqlen;
-                                        delta_uint = m_idx * pp_m_scalar - n_idx * pp_n_scalar;
+                                        delta_uint = (uint64_t)m_idx * pp_m_scalar - n_idx * pp_n_scalar;
                                         delta = base_y + delta_uint;
                                     }
                                 } else {
@@ -883,7 +883,7 @@ public:
                                 if (n_idx == n_end - 1) {
                                     mask_offset = head_idx * alibi_compress_offset * BASE_MASK_SIZE;
                                 } else {
-                                    delta_uint = m_idx * pp_m_scalar - n_idx * pp_n_scalar;
+                                    delta_uint = (uint64_t)m_idx * pp_m_scalar - n_idx * pp_n_scalar;
                                     mask_offset = BASE_MASK_SIZE * delta_uint + head_idx * alibi_compress_offset * BASE_MASK_SIZE;
                                 }
                             }
@@ -1471,7 +1471,7 @@ public:
                                         0                                 // dstGap
                                     );
                                 } else if (mask_type == 2 && alibi_compress_offset > 0) {
-                                    delta_uint = m_idx * pp_m_scalar - n_idx * pp_n_scalar;
+                                    delta_uint = (uint64_t)m_idx * pp_m_scalar - n_idx * pp_n_scalar;
                                     mask_offset = BASE_MASK_SIZE * delta_uint + head_idx * alibi_compress_offset * BASE_MASK_SIZE;
                                     mask_offset_tail = mask_offset - BASE_MASK_SIZE * pp_n_scalar;
                                     if (n_idx == n_end - 2) {
