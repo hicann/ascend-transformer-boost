@@ -936,7 +936,7 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
                 runnerVariantPack.mstxMemRegister->MstxMemRegionsRegister();
             }
         }
-        ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] execute start, runner:" << node.runner->GetName() 
+        ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] execute start, runner:" << node.runner->GetName()
                                         << ", variantPack:\n"
                                         << node.runnerVariantPack.ToString();
         node.runnerVariantPack.context = runnerVariantPack.context;

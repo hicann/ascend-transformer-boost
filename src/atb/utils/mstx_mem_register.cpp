@@ -29,7 +29,7 @@ MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.type = MSTX_MEM_TYPE_VIRTUAL_ADDRESS;
     heapDesc.typeSpecificDesc = &rangeDesc;
     
-    if (GetRegisterDomain()){
+    if (GetRegisterDomain()) {
         memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
     }
 }
