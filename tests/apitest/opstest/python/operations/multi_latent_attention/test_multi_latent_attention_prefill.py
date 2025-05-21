@@ -821,7 +821,7 @@ class TestMLAPrefill(operation_test.OperationTest):
             "qkScale": tor,
             "kvHeadNum": kv_head,
             "maskType": 0,
-            "calcType": 3,
+            "calcType": 4,
             "cacheMode": 1
             }
         RUN_PARAM = json.dumps({"qSeqlen": q_seqLen, "contextLens": kv_seqLen})
@@ -877,7 +877,7 @@ class TestMLAPrefill(operation_test.OperationTest):
             "qkScale": tor,
             "kvHeadNum": kv_head,
             "maskType": 2,
-            "calcType": 3,
+            "calcType": 4,
             "cacheMode": 1
         }
         RUN_PARAM = json.dumps({"qSeqlen": q_seqLen, "contextLens": kv_seqLen})
@@ -936,7 +936,7 @@ class TestMLAPrefill(operation_test.OperationTest):
             "qkScale": tor,
             "kvHeadNum": kv_head,
             "maskType": 0,
-            "calcType": 3,
+            "calcType": 4,
             "cacheMode": 1
         }
         RUN_PARAM = json.dumps({"qSeqlen": q_seqLen, "contextLens": kv_seqLen})
@@ -998,7 +998,7 @@ class TestMLAPrefill(operation_test.OperationTest):
             "qkScale": tor,
             "kvHeadNum": kv_head,
             "maskType": 2,
-            "calcType": 3,
+            "calcType": 4,
             "cacheMode": 1
         }
         RUN_PARAM = json.dumps({"qSeqlen": q_seqLen, "contextLens": kv_seqLen})
