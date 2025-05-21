@@ -7,8 +7,8 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-#ifndef ATBOPS_PARAMS_MLA_H
-#define ATBOPS_PARAMS_MLA_H
+#ifndef ATBOPS_PARAMS_RINGMLA_H
+#define ATBOPS_PARAMS_RINGMLA_H
 
 #include <cstdint>
 #include <string>
@@ -18,10 +18,10 @@
 #include "mki/utils/compare/compare.h"
 namespace AtbOps {
 namespace OpParam {
-struct MLA {
+struct RINGMLA {
     enum Type {
         SPLIT_CACHE = 0,
-        PREFILL_SPLIT_CACHE = 1
+        PREFILL_SPLIT_CACHE = 1,
     };
     Type type;
     int32_t headSize = 0;
@@ -36,8 +36,7 @@ struct MLA {
         MASK_TYPE_NORM = 1,
         MASK_TYPE_ALIBI = 2,
         MASK_TYPE_LOOK_AHEAD = 3,
-        MASK_TYPE_MASK_FREE = 4,
-        MASK_TYPE_CAUSAL_COMPRESS = 5
+        MASK_TYPE_MASK_FREE = 4
     };
 
     MaskType maskType = MASK_TYPE_NONE;
@@ -55,7 +54,7 @@ struct MLA {
 
     int32_t isRing = 0;
 
-    bool operator==(const MLA &other) const
+    bool operator==(const RINGMLA &other) const
     {
         return this->headSize == other.headSize && this->isTriuMask == other.isTriuMask &&
                this->qSeqLen == other.qSeqLen && this->kvSeqLen == other.kvSeqLen && this->type == other.type &&
@@ -65,4 +64,4 @@ struct MLA {
 };
 } // namespace OpParam
 } // namespace AtbOps
-#endif // ATBOPS_PARAMS_MLA_H
+#endif // ATBOPS_PARAMS_RINGMLA_H
