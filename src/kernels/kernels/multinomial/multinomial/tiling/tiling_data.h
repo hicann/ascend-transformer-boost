@@ -17,7 +17,7 @@ constexpr uint32_t MAX_RAND_NUM = 256;
 struct MultinomialTilingData {
     uint32_t realLastDim{1};
     uint32_t expandLastDim{16};
-    uint32_t firstDim{1};
+    uint64_t firstDim{1};
     uint32_t numSamples{1};
     uint32_t numSamplesMax{64};
     uint32_t perCoreRunNum{16};
