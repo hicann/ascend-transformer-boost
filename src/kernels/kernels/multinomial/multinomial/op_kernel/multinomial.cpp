@@ -27,7 +27,7 @@ public:
                                 __gm__ uint8_t *z,
                                 uint32_t realLastDim,
                                 uint32_t expandLastDim,
-                                uint32_t firstDim,
+                                uint64_t firstDim,
                                 float *randValList,
                                 uint32_t numSamples,
                                 uint32_t numSamplesMax,
@@ -172,7 +172,7 @@ private:
     uint32_t expandLastDim_{0};
     uint32_t numSamples_{0};
     uint32_t numSamplesMax_{0};
-    uint32_t firstDim_{0};
+    uint64_t firstDim_{0};
     float maxNum_ = 0;
     float tempValue_ = 0;
     uint32_t perCoreRunNum_;
@@ -190,15 +190,15 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 #if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
     tilingdata->realLastDim = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->expandLastDim = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
-    tilingdata->firstDim = (*(const __gm__ uint32_t *)(p_tilingdata + 8));
-    tilingdata->numSamples = (*(const __gm__ uint32_t *)(p_tilingdata + 12));
-    tilingdata->numSamplesMax = (*(const __gm__ uint32_t *)(p_tilingdata + 16));
-    tilingdata->perCoreRunNum = (*(const __gm__ int32_t *)(p_tilingdata + 20));
-    tilingdata->nlElePerCorePerRun = (*(const __gm__ uint32_t *)(p_tilingdata + 24));
-    tilingdata->lElePerCoreLastRun = (*(const __gm__ uint32_t *)(p_tilingdata + 28));
-    tilingdata->tempUbEleAligened = (*(const __gm__ uint32_t *)(p_tilingdata + 32));
+    tilingdata->firstDim = (*(const __gm__ uint64_t *)(p_tilingdata + 8));
+    tilingdata->numSamples = (*(const __gm__ uint32_t *)(p_tilingdata + 16));
+    tilingdata->numSamplesMax = (*(const __gm__ uint32_t *)(p_tilingdata + 20));
+    tilingdata->perCoreRunNum = (*(const __gm__ int32_t *)(p_tilingdata + 24));
+    tilingdata->nlElePerCorePerRun = (*(const __gm__ uint32_t *)(p_tilingdata + 28));
+    tilingdata->lElePerCoreLastRun = (*(const __gm__ uint32_t *)(p_tilingdata + 32));
+    tilingdata->tempUbEleAligened = (*(const __gm__ uint32_t *)(p_tilingdata + 36));
     for (uint32_t i = 0; i < tilingdata->numSamplesMax; i++) {
-        tilingdata->randValList[i] = (*(const __gm__ float *)(p_tilingdata + 36 + i *sizeof(float)));
+        tilingdata->randValList[i] = (*(const __gm__ float *)(p_tilingdata + 40 + i *sizeof(float)));
     }
 #else
     AscendC::TPipe pipe;
@@ -207,15 +207,15 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
     AscendC::PipeBarrier<PIPE_ALL>();
     tilingdata->realLastDim = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 0));
     tilingdata->expandLastDim = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 4));
-    tilingdata->firstDim = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 8));
-    tilingdata->numSamples = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 12));
-    tilingdata->numSamplesMax = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 16));
-    tilingdata->perCoreRunNum = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 20));
-    tilingdata->nlElePerCorePerRun = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 24));
-    tilingdata->lElePerCoreLastRun = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 28));
-    tilingdata->tempUbEleAligened = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 32));
+    tilingdata->firstDim = (*(__ubuf__ uint64_t *)(tilingdata_in_ub + 8));
+    tilingdata->numSamples = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 16));
+    tilingdata->numSamplesMax = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 20));
+    tilingdata->perCoreRunNum = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 24));
+    tilingdata->nlElePerCorePerRun = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 28));
+    tilingdata->lElePerCoreLastRun = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 32));
+    tilingdata->tempUbEleAligened = (*(__ubuf__ uint32_t *)(tilingdata_in_ub + 36));
     for (uint32_t i = 0; i < tilingdata->numSamplesMax; i++) {
-        tilingdata->randValList[i] = (*(__ubuf__ float *)(tilingdata_in_ub + 36 + i * sizeof(float)));
+        tilingdata->randValList[i] = (*(__ubuf__ float *)(tilingdata_in_ub + 40 + i * sizeof(float)));
     }
     AscendC::PipeBarrier<PIPE_ALL>();
 #endif

@@ -2898,6 +2898,7 @@ struct MultiLatentAttentionParam {
         CALC_TYPE_SPEC,          // 支持传入大于1的qseqlen
         CALC_TYPE_RING,          // ringAttention
         CALC_TYPE_SPEC_AND_RING,          // 支持传入大于1的qseqlen ringAttention
+        CALC_TYPE_PREFILL,       // 全量场景
     };
     //!
     //! \brief CalcType类型
