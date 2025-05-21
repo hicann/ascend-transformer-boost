@@ -397,6 +397,9 @@ Status PrefillTilingParam(const RINGMLAInfo &mmInfo, const uint32_t &torUptr, Ad
         int32_t mUbd = std::min(LONG_SEQ_LEN, qSeqlenAligned);
         int32_t mIbd = ConvertValueToIndexMM(mUbd, PP_MM_NUM - 1);
         mUbd = PP_MM[mIbd];
+        if (mUbd == 0) {
+            return Status::FailStatus(ERROR_INVALID_VALUE, "mUbd is 0 as a divide value"));
+        }
         addrOffsets.totalQBlkNum += (qSeqlen != 0 && kvSeqlen != 0) ? ((qSeqlen + mUbd - 1) / mUbd) : 0;
 
         tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM2] = static_cast<uint32_t>(mUbd);
