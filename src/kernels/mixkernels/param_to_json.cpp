@@ -357,6 +357,9 @@ std::string RINGMLAToJson(const Any &param)
     paramsJson["qSeqLen"] = specificParam.qSeqLen;
     paramsJson["kvSeqLen"] = specificParam.kvSeqLen;
     paramsJson["isRing"] = specificParam.isRing;
+    return paramsJson.dump();
+}
+
 std::string GmmDeqSwigluQuantGmmDeqToJson(const Any &param)
 {
     nlohmann::json paramsJson;
