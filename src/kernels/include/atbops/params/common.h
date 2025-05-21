@@ -26,5 +26,6 @@ constexpr size_t DIM_11 = 11;
 constexpr size_t DIM_12 = 12;
 constexpr size_t DIM_13 = 13;
 constexpr size_t DIM_14 = 14;
+constexpr size_t DIM_15 = 15;
 } // namespace AtbOps
 #endif
