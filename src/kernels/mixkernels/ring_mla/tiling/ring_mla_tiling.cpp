@@ -276,7 +276,6 @@ Status InitInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
     SVector<int64_t> vcacheShape;
     kcacheShape = mmInfo.tensors.kCache.desc.dims;
     int32_t embed = 192;
-    batch = param.qSeqLen.size();
 
     int32_t maxKvSeqLen = 0;
     if (kcacheShape.size() == DIM_3) {
@@ -289,7 +288,6 @@ Status InitInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
     mmInfo.maxKvSeqLen = maxKvSeqLen; // MaxSeqLen is the 2st dimension of K
     batch = param.kvSeqLen.size();
 
-    batch = static_cast<size_t>(kcacheShape.at(1)); // Batch is the 1th dimension of Q
     OP_TILING_CHECK_STATUS_RETURN(GetPrefiillMaskInfo(mmInfo, param, mmInfo.tensors.mask));
     MLAPrefillFillInfo(mmInfo, param, batch, embed);
     vcacheShape = mmInfo.tensors.vCache.desc.dims;
