@@ -7,9 +7,6 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-#include "atbops/params/params.h"
-#include "ring_mla_tiling.h"
-#include "ring_mla_tiling_dependency.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -22,6 +19,9 @@
 #include <securec.h>
 #include <unordered_map>
 #include <vector>
+#include "atbops/params/params.h"
+#include "ring_mla_tiling.h"
+#include "ring_mla_tiling_dependency.h"
 
 #define UNUSED_VALUE(x) (void)(x)
 
@@ -299,7 +299,8 @@ void InitTilingKWithN(const RINGMLAInfo &mmInfo, int32_t &embeddingSizeAligned, 
     int32_t kvSeqlenAligned = (kvSeqlen + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
     int32_t nUbd = std::min(LONG_SEQ_LEN, kvSeqlenAligned);
     nIbd = ConvertValueToIndexNN(nUbd, PP_NN_NUM - 1);
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM3] = static_cast<uint32_t>(PP_NN[nIbd]);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM3] =
+        static_cast<uint32_t>(PP_NN[nIbd]);
 }
 
 Status CheckSeqlen(const RINGMLAInfo &mmInfo, const AddrOffsets &addrOffsets, int32_t qSeqlen,
@@ -317,18 +318,26 @@ Status CheckSeqlen(const RINGMLAInfo &mmInfo, const AddrOffsets &addrOffsets, in
 
 void RingFillPrefillTilingOffsetParam(int32_t seqIdx, AddrOffsets &addrOffsets, uint32_t *tilingParam)
 {
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM4] = GetHigh32Bit(addrOffsets.addrQSeqOffset);
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM5] = GetLoww32Bit(addrOffsets.addrQSeqOffset);
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM6] = GetHigh32Bit(addrOffsets.addrKSeqOffset);
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM7] = GetLoww32Bit(addrOffsets.addrKSeqOffset);
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM8] = GetHigh32Bit(addrOffsets.addrVSeqOffset);
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM9] = GetLoww32Bit(addrOffsets.addrVSeqOffset);
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM10] = GetHigh32Bit(addrOffsets.addrOSeqOffset);
-    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM11] = GetLoww32Bit(addrOffsets.addrOSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM4] =
+        GetHigh32Bit(addrOffsets.addrQSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM5] =
+        GetLoww32Bit(addrOffsets.addrQSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM6] =
+        GetHigh32Bit(addrOffsets.addrKSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM7] =
+        GetLoww32Bit(addrOffsets.addrKSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM8] =
+        GetHigh32Bit(addrOffsets.addrVSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM9] =
+        GetLoww32Bit(addrOffsets.addrVSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM10] =
+        GetHigh32Bit(addrOffsets.addrOSeqOffset);
+    tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM11] =
+        GetLoww32Bit(addrOffsets.addrOSeqOffset);
 }
 
 void PrefillTilingHead(const RINGMLAInfo &mmInfo, const uint32_t &torUptr, AddrOffsets &addrOffsets,
-                    uint32_t *tilingParam, int32_t kvRealHeads, int32_t ntokens)
+                       uint32_t *tilingParam, int32_t kvRealHeads, int32_t ntokens)
 {
     tilingParam[0] = static_cast<uint32_t>(mmInfo.batch);
     tilingParam[1] = static_cast<uint32_t>(mmInfo.maxSeqLen);
@@ -374,7 +383,7 @@ void PrefillTilingHead(const RINGMLAInfo &mmInfo, const uint32_t &torUptr, AddrO
 
 
 Status PrefillTilingParam(const RINGMLAInfo &mmInfo, const uint32_t &torUptr, AddrOffsets &addrOffsets,
-                              int32_t kvRealHeads, uint32_t *tilingParam)
+                          int32_t kvRealHeads, uint32_t *tilingParam)
 {
     int32_t ntokens = 0;
     for (int32_t seqIdx = 0; seqIdx < mmInfo.batch; seqIdx++) {
@@ -407,13 +416,14 @@ Status PrefillTilingParam(const RINGMLAInfo &mmInfo, const uint32_t &torUptr, Ad
     }
     MKI_LOG(INFO) << "addrOffsets.totalQBlkNum :" << addrOffsets.totalQBlkNum;
     MKI_LOG(INFO) << "wcd change ntokens:" << ntokens;
-    PrefillTilingHead(mmInfo, torUptr, addrOffsets, tilingParam, kvRealHeads, ntokens);
+    PrefillTilingHead(mmInfo, torUptr, addrOffsets, tilingParam,
+                      kvRealHeads, ntokens);
     addrOffsets.block = static_cast<int64_t>(mmInfo.numHeads) * addrOffsets.totalQBlkNum;
     return Status::OkStatus();
 }
 
 Status GetRINGMLAPrefillTilingParam(const RINGMLAInfo &mmInfo, uint32_t &blockDim,
-                                         uint32_t *tilingParam, uint32_t tilingParamSize)
+                                    uint32_t *tilingParam, uint32_t tilingParamSize)
 {
     if (tilingParam == nullptr) {
         MKI_LOG(ERROR) << "pointer tilingParam or seq is nullptr.";
