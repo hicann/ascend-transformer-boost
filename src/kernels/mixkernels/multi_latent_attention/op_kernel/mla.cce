@@ -55,6 +55,7 @@ constexpr int32_t TILING_KVCORENUM = 15;
 constexpr int32_t TILING_DECODINGNUM = 16;
 
 constexpr int32_t KV_FLOW_NUM = 4;
+constexpr int32_t K_BLOCK_NUM = 4;
 
 template <typename T>
 using GlobalT = AscendC::GlobalTensor<T>;
@@ -75,7 +76,8 @@ enum class InputFormat {
 
 enum class BlockStack {
     ONE_FLOW = 0,
-    FOUR_FLOW = 1
+    FOUR_FLOW = 1,
+    FIVE_FLOW = 2
 };
 
 template<TilingKeyType tilingKeyType>
@@ -145,6 +147,7 @@ constexpr int32_t TMP_SIZE_DECODER = 32768;
 constexpr int32_t STAGE2_UB_UINT8_BLOCK_SIZE = 8192;
 constexpr int32_t CUBE_MATRIX_SIZE = 256;
 constexpr int32_t MASK_COLUMNS = 128;
+constexpr int32_t SP_BLOCK_SIZE = 16384;
 
 __aicore__ __attribute__((always_inline)) void inline __set_mask(int32_t len)
 {
@@ -177,6 +180,7 @@ struct UbufAlloc<BlockStack::ONE_FLOW>
     static constexpr uint32_t lp_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lp32_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t mask_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t lo_ubuf_ping_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lo_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t mask32_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t ls16_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
@@ -196,6 +200,7 @@ struct UbufAlloc<BlockStack::ONE_FLOW>
     static constexpr uint32_t p_scale_ubuf_offset = 6 * UB_UINT8_BLOCK_SIZE_MLA + 17 * UB_UINT8_LINE_SIZE;
     static constexpr uint32_t go_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t go32_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t lo_ubuf_pong_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t tv32_ubuf_offset = 10 * UB_UINT8_BLOCK_SIZE_MLA;
 };
 
@@ -207,6 +212,7 @@ struct UbufAlloc<BlockStack::FOUR_FLOW>
     static constexpr uint32_t lp_ubuf_offset = 0 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lp32_ubuf_offset = 0 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t mask_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t lo_ubuf_ping_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t lo_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t mask32_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t ls16_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
@@ -225,9 +231,40 @@ struct UbufAlloc<BlockStack::FOUR_FLOW>
     static constexpr uint32_t gl32_ubuf_offset = 6 * UB_UINT8_BLOCK_SIZE_MLA + 16 * UB_UINT8_LINE_SIZE;
     static constexpr uint32_t go_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t go32_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t lo_ubuf_pong_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA;
     static constexpr uint32_t tv32_ubuf_offset = 10 * UB_UINT8_BLOCK_SIZE_MLA;
 };
 
+template<>
+struct UbufAlloc<BlockStack::FIVE_FLOW>
+{
+    static constexpr uint32_t ls32_ubuf_offset = 0;
+    static constexpr uint32_t ls32_quant_ubuf_offset = 0;
+    static constexpr uint32_t lp_ubuf_offset = 0 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t lp32_ubuf_offset = 0 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t mask_ubuf_offset = 2 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t lo_ubuf_ping_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t lo_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t mask32_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t ls16_ubuf_offset = 4 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t lm32_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t hm32_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + 1 * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t pm32_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + 2 * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t pm32_ubuf_stage2_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + 3 * UB_UINT8_LINE_SIZE; //unused
+    static constexpr uint32_t descale1_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (4+2) * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t descale2_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (5+2) * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t dm32_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (6+2) * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t dm32_ubuf_stage2_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (7+2) * UB_UINT8_LINE_SIZE; //unused
+    static constexpr uint32_t ll_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (10+2) * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t ll_ubuf_stage2_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (12+2) * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t gm32_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (14+2) * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t gl_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (16+2) * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t gl32_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE_MLA + (16+2) * UB_UINT8_LINE_SIZE;
+    static constexpr uint32_t go_ubuf_offset =0 * UB_UINT8_BLOCK_SIZE_MLA;
+    static constexpr uint32_t go32_ubuf_offset = 0 * UB_UINT8_BLOCK_SIZE_MLA;  // UB_UINT8_BLOCK_SIZE_MLA = 16384;
+    static constexpr uint32_t lo_ubuf_pong_offset = 6 * UB_UINT8_BLOCK_SIZE_MLA; // 
+    static constexpr uint32_t tv32_ubuf_offset = 10 * UB_UINT8_BLOCK_SIZE_MLA; // 16384 * 10 ~ 11
+};
 
 
 #endif
@@ -1355,6 +1392,7 @@ private:
     uint32_t l1p_pingpong_flag = 0;
 };
 #endif
+
 #ifdef __DAV_C220_VEC__
 template <TilingKeyType tilingKeyType = TilingKeyType::TILING_HALF_DATA, typename IN_DTYPE = half, typename OUT_DTYPE = half, bool IS_RING = false,
           BlockStack blockStack = BlockStack::ONE_FLOW, bool flashDecoding = false>
@@ -4350,7 +4388,7 @@ extern "C" __global__ __aicore__ void mla(
         pa_aic.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
         pa_aic.RunTP1();
 #elif __DAV_C220_VEC__
-        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, half, false, BlockStack::FOUR_FLOW> pa_aiv {};
+        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, half, false, BlockStack::FIVE_FLOW> pa_aiv {};
         pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm);
         pa_aiv.RunTP1();
 #endif
@@ -4360,7 +4398,7 @@ extern "C" __global__ __aicore__ void mla(
         pa_aic.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
         pa_aic.RunTP1();
 #elif __DAV_C220_VEC__
-        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, false, BlockStack::FOUR_FLOW> pa_aiv {};
+        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, false, BlockStack::FIVE_FLOW> pa_aiv {};
         pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm);
         pa_aiv.RunTP1();
 #endif
@@ -4410,7 +4448,7 @@ extern "C" __global__ __aicore__ void mla(
         pa_aic_fp16.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
         pa_aic_fp16.RunTP1();
 #elif __DAV_C220_VEC__
-        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, half, false, BlockStack::FOUR_FLOW, true> pa_aiv {};
+        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, half, false, BlockStack::FIVE_FLOW, true> pa_aiv {};
         pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm, o_core_tmp_gm, l_gm);
         pa_aiv.RunTP1();
 #endif
@@ -4420,7 +4458,7 @@ extern "C" __global__ __aicore__ void mla(
         pa_aic_fp16.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
         pa_aic_fp16.RunTP1();
 #elif __DAV_C220_VEC__
-        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, false, BlockStack::FOUR_FLOW, true> pa_aiv {};
+        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, false, BlockStack::FIVE_FLOW, true> pa_aiv {};
         pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm, o_core_tmp_gm, l_gm);
         pa_aiv.RunTP1();
 #endif
