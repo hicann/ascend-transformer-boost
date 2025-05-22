@@ -2415,10 +2415,10 @@ static atb::Status PagedCacheLoadOperationCreate(const nlohmann::json &paramJson
         param.kvCacheType = atb::infer::PagedCacheLoadParam::KvCacheType(paramJson["kvCacheType"].get<int8_t>());
     }
     if (paramJson.contains("isSeqLensCumsumMode")) {
-        param.cuSeqLens = paramJson["isSeqLensCumsumMode"].get<bool>();
+        param.isSeqLensCumsumMode = paramJson["isSeqLensCumsumMode"].get<bool>();
     }
     if (paramJson.contains("hasSeqStarts")) {
-        param.cuSeqLens = paramJson["hasSeqStarts"].get<bool>();
+        param.hasSeqStarts = paramJson["hasSeqStarts"].get<bool>();
     }
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
