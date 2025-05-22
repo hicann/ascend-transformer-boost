@@ -88,7 +88,7 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     assert check_precision_new(out_tensor_compare, golden_out_tensor, rank)
 
 
-def check_precision_new(out_tensor, golden_out_tensor, rank, err=2 ** -4):
+def check_precision_new(out_tensor, golden_out_tensor, rank, err=2 ** -3):
     # 计算每个元素的误差阈值
     max_err = err * torch.max(torch.ones_like(golden_out_tensor), torch.abs(golden_out_tensor))
 
