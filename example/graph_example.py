@@ -1,7 +1,5 @@
 import torch
-import torch.nn.functional as F
 import torch_atb
-import math
 import acl
 import logging
 
@@ -49,9 +47,6 @@ def graph_build():
     self_attention_param.kv_head_num = 16
     self_attention_param.calc_type = torch_atb.SelfAttentionParam.CalcType.PA_ENCODER
 
-    # float16: query, key, value,
-    # int32: seqLen
-    # -> float16 (s, 16, d_k)
     self_attention = graph.add_node([query, key, value, seqLen], self_attention_param)
     self_attention_out = self_attention.get_output(0)
 
@@ -67,7 +62,6 @@ def graph_build():
     layernorm_param.norm_param.begin_norm_axis = 0
     layernorm_param.norm_param.begin_params_axis = 0
 
-    # x, gamma, beta, float16 -> float16
     layernorm_0 = graph.add_node([elewise_add_0_out, gamma, beta], layernorm_param)
     layernorm_0_out = layernorm_0.get_output(0)
 
@@ -75,7 +69,6 @@ def graph_build():
     bias_0 = graph.add_input("bias_0") # bias in linear
     linear_param = torch_atb.LinearParam(out_data_type=torch_atb.AclDataType.ACL_DT_UNDEFINED)
 
-    # x, weight, bias， float 16 -> float16
     linear_0 = graph.add_node([layernorm_0_out, weight_0, bias_0], linear_param) 
     linear_0_out = linear_0.get_output(0)
 
@@ -87,7 +80,6 @@ def graph_build():
     weight_1 = graph.add_input("weight_1")
     bias_1 = graph.add_input("bias_1")
 
-    # x, weight, bias， float 16 -> float16
     linear_1 = graph.add_node([elewise_tanh_out, weight_1, bias_1], linear_param)
     linear_1_out = linear_1.get_output(0)
 
@@ -96,42 +88,11 @@ def graph_build():
     print("----------- graph build success -----------")
     return Graph
 
-def golden(inputs):
-    query, key, value, seqLen, input_0, gamma, beta, w0, b0, w1, b1 = inputs
-
-    # 1. Self-Attention
-    #   q,k,v: [s, heads, d_k] → permute到 [heads, s, d_k]
-    Q = query.permute(1, 0, 2)
-    K = key.permute(1, 0, 2)
-    V = value.permute(1, 0, 2)
-
-    # 计算 scaled dot-product attention
-    scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(d_k)
-    attn = torch.softmax(scores, dim=-1)
-    out = torch.matmul(attn, V)              # [heads, s, d_k]
-    A = out.permute(1, 0, 2)                # back to [s, heads, d_k]
-
-    # 2. 残差相加
-    B = A + input_0                              # broadcast [16,d_k] → [s,16,d_k]
-
-    # 3. LayerNorm
-    #    等价于 normalize B 上所有元素，然后逐元素乘 gamma 加 beta
-    C = F.layer_norm(B, (s, 16, d_k), weight=gamma, bias=beta, eps=1e-5)
-
-    # 4. 前馈网络：Linear0 → Tanh → Linear1
-    D = torch.matmul(C, w0.T) + b0               # [s,16,d_k] @ [d_k,output_dim1] → [s,16,output_dim1]
-    E = torch.tanh(D)
-    F_ = torch.matmul(E, w1.T) + b1              # [s,16,output_dim1]
-
-    return F_
-
 def run():
     Graph = graph_build()
     inputs = get_inputs()
     print("----------- single graph forward begin -----------")
     results = Graph.forward(inputs)
-    golden = golden(inputs)
-    logging.info(golden)
     logging.info(results)
     print("----------- single graph forward success -----------")
 
