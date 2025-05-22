@@ -137,16 +137,26 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_LOGICAL_NOT inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Elewise::ELEWISE_ADD:
-                if (inDtype == TENSOR_DTYPE_FLOAT) {
-                    return GetKernelByName("AddF32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
-                    return GetKernelByName("AddF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_BF16) {
-                    return GetKernelByName("AddBF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_INT32) {
-                    return GetKernelByName("AddI32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_INT64) {
-                    return GetKernelByName("AddI64Kernel");
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("AddAptF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("AddAptF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("AddAptBF16Kernel");
+                    }
+                } else {
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("AddF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("AddF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("AddBF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_INT32) {
+                        return GetKernelByName("AddI32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_INT64) {
+                        return GetKernelByName("AddI64Kernel");
+                    }
                 }
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_ADD inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
