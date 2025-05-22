@@ -142,6 +142,7 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         Lcal::MoeInfo moeInfo{.local_expert_nums = param_.moeInfo.localExpertNums,
                               .EP = param_.moeInfo.epSize,
                               .TP = param_.moeInfo.tpSize,
+                              .maxOutputSize = -1,
                               .isMoe = 1};
         coCParamDesc.moeInfo = moeInfo;
         if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM) {
