@@ -20,6 +20,7 @@ d_v = 64 # Value Dimension (vHiddenSize)
 output_dim = 64
 output_dim_1 = 128
 
+
 def get_inputs():
     torch.manual_seed(233)
     # 单batch场景，batch不为1时s应为seq len * batch
@@ -36,6 +37,7 @@ def get_inputs():
     bias_1 = (torch.randn((output_dim_1,), dtype=torch.float16)).npu()
     inputs = [query, key, value, seqLen, input_0, gamma, beta, weight_0, bias_0, weight_1, bias_1]
     return inputs
+
 
 def graph_build():
     graph = torch_atb.Builder("Graph")
@@ -82,11 +84,13 @@ def graph_build():
     Graph = graph.build()
     return Graph
 
+
 def run():
     Graph = graph_build()
     inputs = get_inputs()
     results = Graph.forward(inputs)
     logging.info(results)
+
 
 if __name__ == "__main__":
     run()
