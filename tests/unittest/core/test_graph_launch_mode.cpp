@@ -23,6 +23,7 @@
 #include <cpp-stub/src/stub.h>
 #include <atb/utils/config.h>
 #include "atb/utils/singleton.h"
+#include <mki/utils/time/timer.h>
  
 // 设置各个intensor的属性
 static void CreateInTensorDescs(atb::SVector<atb::TensorDesc> &intensorDescs) 
@@ -184,9 +185,11 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
     // 创建图算子
     atb::Operation *operation = nullptr;
     atb::Operation *warmUpOperation = nullptr;
+    atb::Operation *kernelLaunchOperation = nullptr;
     atb::GraphParam opGraph;
     CreateMultiGraphOperation(opGraph, &operation);
     CreateMultiGraphOperation(opGraph, &warmUpOperation);
+    CreateMultiGraphOperation(opGraph, &kernelLaunchOperation);
  
 	// 输入输出tensor准备
     atb::VariantPack pack;
@@ -210,6 +213,31 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
     void *workSpace = nullptr;
     int ret = 0;
 
+    // prof golden
+    CreateInTensors(pack.inTensors, intensorDescs, 1);
+    CreateOutTensors(pack.outTensors, outtensorDescs);
+    context->SetLaunchMode(atb::KERNEL_LAUNCH_MODE);
+    uint64_t goldenTime = 100000000;
+    for (size_t i = 0; i < 4; i++) {
+        Mki::Timer timer;
+        kernelLaunchOperation->Setup(pack, workspaceSize, context);
+        if (workspaceSize != 0 && workSpace == nullptr) {
+            ret = aclrtMalloc(&workSpace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+            ASSERT_EQ(ret, 0);
+        }
+        context->SetExecuteType(atb::EXECUTE_NORMAL);
+        kernelLaunchOperation->Execute(pack, (uint8_t *)workSpace, workspaceSize, context);
+        goldenTime = std::min(timer.ElapsedMicroSecond(), goldenTime);
+        ret = aclrtSynchronizeStream(exeStream);
+        ASSERT_EQ(ret, 0);
+    }
+    aclrtFree(workSpace);
+    DestroyOperation(kernelLaunchOperation);
+ 
+    workspaceSize = 0;
+    workSpace = nullptr;
+    ret = 0;
+    
     // warm up
     CreateInTensors(pack.inTensors, intensorDescs, 1);
     CreateOutTensors(pack.outTensors, outtensorDescs);
@@ -235,6 +263,7 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
 	// 算子执行
     aclmdlRI model = nullptr;
     context->SetLaunchMode(atb::GRAPH_LAUNCH_MODE);
+    uint64_t updateTime = 0;
     for (size_t i = 0; i < 10; i++) {
         CreateInTensors(pack.inTensors, intensorDescs, i + 1);
         CreateOutTensors(pack.outTensors, outtensorDescs);
@@ -255,10 +284,12 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
             aclmdlRIExecuteAsync(model, exeStream);
         } else {
             // 参数更新
+            Mki::Timer timer;
             operation->Setup(pack, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
+            updateTime = std::max(timer.ElapsedMicroSecond(), updateTime);
  
             // 重放
             aclmdlRIExecuteAsync(model, exeStream);
@@ -274,6 +305,9 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
         for (size_t j = 0; j < outBuffer.size(); j++) {
             EXPECT_EQ((uint32_t)outBuffer.at(j), (i + 1) * 16);
         }
+        double timeCompareRate = (double)updateTime / (double)goldenTime;
+        ATB_LOG(INFO) << "timeCompareRate:" << timeCompareRate;
+        EXPECT_LT(timeCompareRate, 0.5);
     }
  
 	// 资源释放
@@ -336,7 +370,7 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndTestGraphOp)
     // warm up
     CreateInTensors(pack.inTensors, intensorDescs, 1);
     CreateOutTensors(pack.outTensors, outtensorDescs);
-    context->SetLaunchMode(atb::GRAPH_LAUNCH_MODE);
+    context->SetLaunchMode(atb::KERNEL_LAUNCH_MODE);
     for (size_t i = 0; i < 2; i++) {
         warmUpOperation->Setup(pack, workspaceSize, context);
         if (workspaceSize != 0 && workSpace == nullptr) {
@@ -400,11 +434,6 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndTestGraphOp)
 
 TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
 {
-    bool status = atb::GetSingleton<atb::Config>().IsLaunchKernelWithTiling();
-    if (status) {
-        std::cout << "Skip Case TestGraphLaunchMode.CapturedByAtbAndChangeWorkspace, because of status of LaunchKernelWithTiling is 1";
-        return;
-    }
 	// 设置卡号、创建stream、创建context、设置stream
     uint32_t deviceId = 1;
     aclrtSetDevice(deviceId);
@@ -546,11 +575,6 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
 
 TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
 {
-    bool status = atb::GetSingleton<atb::Config>().IsLaunchKernelWithTiling();
-    if (status) {
-        std::cout << "Skip Case TestGraphLaunchMode.CapturedByUserAndChangeWorkspace, because of status of LaunchKernelWithTiling is 1";
-        return;
-    }
 	// 设置卡号、创建stream、创建context、设置stream
     uint32_t deviceId = 1;
     aclrtSetDevice(deviceId);

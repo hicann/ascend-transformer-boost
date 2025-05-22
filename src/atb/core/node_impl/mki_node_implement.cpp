@@ -244,6 +244,12 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
     Mki::Kernel *kernelCached = nullptr;
     TilingBufferPtr cachedTilingBuffer = kernelCache.GetTiling(kernelIndex, launchParam_, kernelCached);
     if (kernelCached != nullptr) {
+        // 由于当前的kernel在设计上是带状态的，必须保证kernel状态与当前所需相同才能使用cache中的kernel
+        bool cachedTilingLaunchStatus = kernelCached->GetKernelInfo().GetLaunchWithTiling();
+        if (cachedTilingLaunchStatus != isLaunchWithTiling) {
+            ATB_LOG(INFO) << "Cache miss because of status of tilingLaunch mismatch.";
+            return false;
+        }
         kernel_.reset(kernelCached);
         kernelCacheValid_ = true;
     }
