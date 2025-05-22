@@ -22,9 +22,6 @@ using namespace Mki;
 Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo);
 Status GetMLATilingParam(const LaunchParam &launchParam, MLAInfo &mmInfo,
     uint32_t &blockDim, uint32_t *tilingParam, uint64_t tilingParamSize);
-Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo);
-Status GetMLAPrefillTilingParam(const MLAInfo &mmInfo, uint32_t &blockDim,
-                                uint32_t *tilingParam, uint32_t tilingParamSize);
 }
 
 #endif // MLA_TILING_H
