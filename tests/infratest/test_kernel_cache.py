@@ -22,10 +22,7 @@ import infratest_utils
 class TestKernelCache(unittest.TestCase):
     """
     kernelCache缓存性能测试:
-    0、不开启缓存
-    1、开启本地缓存功能时，同op，setup入参一样，setup运行时间相交不开启缓存功能，时间缩短
-    2、开启全局缓存功能时，同op，setup入参一样，setup运行时间相交不开启缓存功能，时间缩短
-    3、开启本地+全局缓存功能时，同op，setup入参一样，setup运行时间相交不开启缓存功能，时间缩短
+    开启本地+全局缓存功能
     """
 
     @classmethod
@@ -34,28 +31,13 @@ class TestKernelCache(unittest.TestCase):
         TestKernelCache.out_tensors = [torch.randn(32, 32, dtype=torch.float16).npu()]
 
     def test_performance(self):
-        os.putenv("ATB_OPSRUNNER_KERNEL_CACHE_TYPE", "0")
-        setup_result, setup_time_without_cache, precision_result = self._get_operation_result()
+        setup_result, setup_time_with_both_cache, precision_result = self._get_operation_result()
         assert setup_result == 0
         assert precision_result
 
-        os.putenv("ATB_OPSRUNNER_KERNEL_CACHE_TYPE", "1")
-        setup_result, setup_time_with_local_cache, precision_result = self._get_operation_result()
-        assert setup_result == 0
+        logging.info(f"setup_time_with_both_cache:{setup_time_with_both_cache}")
 
-        os.putenv("ATB_OPSRUNNER_KERNEL_CACHE_TYPE", "2")
-        setup_result, setup_time_with_global_cache, precision_result = self._get_operation_result()
-        assert setup_result == 0
-
-        os.putenv("ATB_OPSRUNNER_KERNEL_CACHE_TYPE", "3")
-        setup_result, setup_time_with_both_cache, precision_result = self._get_operation_result()
-        assert setup_result == 0
-
-        logging.info(f"setup time setup_time_without_cache:{setup_time_without_cache}, setup_time_with_local_cache:{setup_time_with_local_cache}, setup_time_with_global_cache:{setup_time_with_global_cache}, setup_time_with_both_cache:{setup_time_with_both_cache}")
-
-        assert setup_time_without_cache > setup_time_with_local_cache
-        assert setup_time_without_cache > setup_time_with_global_cache
-        assert setup_time_without_cache > setup_time_with_both_cache
+        assert setup_time_with_both_cache
 
     def _get_operation_result(self):
         logging.info(f"get operation result start.")

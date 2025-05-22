@@ -185,19 +185,13 @@ uint32_t Config::GetWorkspaceMemAllocAlgType() const
     return workspaceMemAllocAlgType_;
 }
 
-uint32_t Config::GetKernelCacheType() const
-{
-    return kernelCacheType_;
-}
 
 void Config::InitKernelCache()
 {
     const uint32_t maxKernelCacheCount = 1024;
 
-    const char *envStr = std::getenv("ATB_OPSRUNNER_KERNEL_CACHE_TYPE");
-    kernelCacheType_ = envStr != nullptr ? static_cast<uint32_t>(strtol(envStr, nullptr, DECIMAL)) :
-                                           KernelCacheType::KERNEL_CACHE_BOTH;
-
+    const char *envStr = nullptr;
+    
     envStr = std::getenv("ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT");
     localKernelCacheCount_ = envStr != nullptr ? static_cast<uint32_t>(strtol(envStr, nullptr, DECIMAL)) : 1;
     if (localKernelCacheCount_ == 0) {

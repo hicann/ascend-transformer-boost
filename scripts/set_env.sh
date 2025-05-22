@@ -56,7 +56,6 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE=0 #每个Runner的Execute时就做同步
     export ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE=0 #每个Operation的Execute时就做同步
     export ATB_OPSRUNNER_SETUP_CACHE_ENABLE=1 #是否开启SetupCache，当检查到输入和输出没有变化时，不做setup
-    export ATB_OPSRUNNER_KERNEL_CACHE_TYPE=3 #0:不开启, 1:开启本地缓存 2:开启全局缓存 3：同时开启本地和全局缓存
     export ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT=1 #本地缓存个数，支持范围1~1024
     export ATB_OPSRUNNER_KERNEL_CACHE_GLOABL_COUNT=5 #全局缓存个数，支持范围1~1024
     export ATB_OPSRUNNER_KERNEL_CACHE_TILING_SIZE=10240 #tiling默认大小，支持范围1~1073741824
