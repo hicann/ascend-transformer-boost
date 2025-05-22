@@ -3347,7 +3347,7 @@ private:
         uint32_t split_num
         )
     {
-        uint32_t oPingPongFlag = (n_idx / 4) % 2;
+        uint32_t oPingPongFlag = head_loop_idx % 2;
         uint32_t sub_m_d64 = (sub_m + 63) / 64;     // up aligned to 64
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
         if constexpr (std::is_same_v<IN_DTYPE,int8_t>) {
