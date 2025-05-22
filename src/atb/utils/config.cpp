@@ -50,7 +50,7 @@ Config::Config()
                   << ", IsStreamSyncEveryKernelEnable: " << isStreamSyncEveryKernelEnable_
                   << ", IsStreamSyncEveryOperationEnable: " << isStreamSyncEveryOperationEnable_;
     ATB_LOG(INFO) << "IsOpsRunnerSetupCacheEnable: " << isOpsRunnerSetupCacheEnable_
-                  << ", KernelCacheType: " << kernelCacheType_ << ", LocalKernelCacheCount: " << localKernelCacheCount_
+                  << ", LocalKernelCacheCount: " << localKernelCacheCount_
                   << ", GlobalKernelCacheCount: " << globalKernelCacheCount_;
     ATB_LOG(INFO) << "ProfilingLevel0Status: " << GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status()
                   << ", ProfilingLevel1Status: " << GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel1Status()
@@ -191,7 +191,7 @@ void Config::InitKernelCache()
     const uint32_t maxKernelCacheCount = 1024;
 
     const char *envStr = nullptr;
-    
+
     envStr = std::getenv("ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT");
     localKernelCacheCount_ = envStr != nullptr ? static_cast<uint32_t>(strtol(envStr, nullptr, DECIMAL)) : 1;
     if (localKernelCacheCount_ == 0) {
