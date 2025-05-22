@@ -1,5 +1,7 @@
 import torch
+import torch.nn.functional as F
 import torch_atb
+import math
 import acl
 import logging
 
@@ -10,8 +12,32 @@ d_v = 64 # Value Dimension (vHiddenSize)
 output_dim = 64
 output_dim_1 = 128
 
-def single_graph_build():
-    print("------------ single graph build begin ------------")
+def get_inputs():
+    torch.manual_seed(233)
+
+    print("------------ generate inputs begin ------------")
+    query = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
+    key = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
+    value = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
+    seqLen = (torch.tensor([s], dtype = torch.int32))
+
+    input_0 = (torch.randn((16, d_k), dtype=torch.float16)).npu()
+
+    gamma = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
+    beta = (torch.zeros((s, 16, d_k), dtype=torch.float16)).npu()
+
+    weight_0 = (torch.randn((output_dim_1, output_dim), dtype=torch.float16)).npu()
+    bias_0 = (torch.randn((output_dim_1,), dtype=torch.float16)).npu()
+
+    weight_1 = (torch.randn((output_dim_1, output_dim_1), dtype=torch.float16)).npu()
+    bias_1 = (torch.randn((output_dim_1,), dtype=torch.float16)).npu()
+
+    inputs = [query, key, value, seqLen, input_0, gamma, beta, weight_0, bias_0, weight_1, bias_1]
+    print("------------ generate inputs success ------------")
+    return inputs
+
+def graph_build():
+    print("------------ graph build begin ------------")
     graph = torch_atb.Builder("Graph")
     
     query = graph.add_input("query")
@@ -67,42 +93,45 @@ def single_graph_build():
 
     graph.mark_output(linear_1_out)
     Graph = graph.build()
-    print("----------- single graph build success -----------")
+    print("----------- graph build success -----------")
     return Graph
 
-def get_inputs():
-    torch.manual_seed(233)
+def golden(inputs):
+    query, key, value, seqLen, input_0, gamma, beta, w0, b0, w1, b1 = inputs
 
-    print("------------ generate inputs begin ------------")
-    query = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
-    key = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
-    value = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
-    seqLen = (torch.tensor([s], dtype = torch.int32))
-    # (s, 16, d_k) == (128, ,16 , 64)
+    # 1. Self-Attention
+    #   q,k,v: [s, heads, d_k] → permute到 [heads, s, d_k]
+    Q = query.permute(1, 0, 2)
+    K = key.permute(1, 0, 2)
+    V = value.permute(1, 0, 2)
 
-    input_0 = (torch.randn((16, d_k), dtype=torch.float16)).npu()
+    # 计算 scaled dot-product attention
+    scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(d_k)
+    attn = torch.softmax(scores, dim=-1)
+    out = torch.matmul(attn, V)              # [heads, s, d_k]
+    A = out.permute(1, 0, 2)                # back to [s, heads, d_k]
 
-    gamma = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
-    beta = (torch.zeros((s, 16, d_k), dtype=torch.float16)).npu()
-    # (s, 16, d_k) == (128, 16, 64)
+    # 2. 残差相加
+    B = A + input_0                              # broadcast [16,d_k] → [s,16,d_k]
 
-    weight_0 = (torch.randn((output_dim_1, output_dim), dtype=torch.float16)).npu()
-    bias_0 = (torch.randn((output_dim_1,), dtype=torch.float16)).npu()
-    # (s, 16, output_dim1) == (128, 16, 128)
+    # 3. LayerNorm
+    #    等价于 normalize B 上所有元素，然后逐元素乘 gamma 加 beta
+    C = F.layer_norm(B, (s, 16, d_k), weight=gamma, bias=beta, eps=1e-5)
 
-    weight_1 = (torch.randn((output_dim_1, output_dim_1), dtype=torch.float16)).npu()
-    bias_1 = (torch.randn((output_dim_1,), dtype=torch.float16)).npu()
-    # (s, 16, output_dim1) == (128, 16, 128)
+    # 4. 前馈网络：Linear0 → Tanh → Linear1
+    D = torch.matmul(C, w0.T) + b0               # [s,16,d_k] @ [d_k,output_dim1] → [s,16,output_dim1]
+    E = torch.tanh(D)
+    F_ = torch.matmul(E, w1.T) + b1              # [s,16,output_dim1]
 
-    inputs = [query, key, value, seqLen, input_0, gamma, beta, weight_0, bias_0, weight_1, bias_1]
-    print("------------ generate inputs success ------------")
-    return inputs
+    return F_
 
 def run():
-    Graph = single_graph_build()
+    Graph = graph_build()
     inputs = get_inputs()
     print("----------- single graph forward begin -----------")
     results = Graph.forward(inputs)
+    golden = golden(inputs)
+    logging.info(golden)
     logging.info(results)
     print("----------- single graph forward success -----------")
 
