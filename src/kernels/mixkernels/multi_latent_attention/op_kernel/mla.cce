@@ -55,6 +55,7 @@ constexpr int32_t TILING_KVCORENUM = 15;
 constexpr int32_t TILING_DECODINGNUM = 16;
 
 constexpr int32_t KV_FLOW_NUM = 4;
+constexpr int32_t K_BLOCK_NUM = 4;
 
 template <typename T>
 using GlobalT = AscendC::GlobalTensor<T>;
@@ -146,6 +147,7 @@ constexpr int32_t TMP_SIZE_DECODER = 32768;
 constexpr int32_t STAGE2_UB_UINT8_BLOCK_SIZE = 8192;
 constexpr int32_t CUBE_MATRIX_SIZE = 256;
 constexpr int32_t MASK_COLUMNS = 128;
+constexpr int32_t SP_BLOCK_SIZE = 16384;
 
 __aicore__ __attribute__((always_inline)) void inline __set_mask(int32_t len)
 {
