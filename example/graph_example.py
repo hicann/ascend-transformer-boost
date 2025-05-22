@@ -9,9 +9,9 @@
 #
 
 import logging
+import acl
 import torch
 import torch_atb
-import acl
 
 s = 128 # Sequence Length
 h = 16 # Number of Heads
