@@ -25,7 +25,7 @@ shape_dtype_list = [
     [32,1,16,192,128,64,256,"int8"],
 ]
 
-# ND:type=0
+# ND:type=1
 configs = [
     {"kvCacheType": 1, "isSeqLensCumsumMode": True, "hasSeqStarts": True},
     {"kvCacheType": 1, "isSeqLensCumsumMode": False, "hasSeqStarts": True},
