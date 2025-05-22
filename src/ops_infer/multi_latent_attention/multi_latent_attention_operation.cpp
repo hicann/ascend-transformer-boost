@@ -453,11 +453,11 @@ Status MultiLatentAttentionOperation::InTensorDimCheckPrefill(const SVector<Tens
         return st;
     }
     if (inTensorDesc.at(IN_TENSOR_5).shape.dims[0] != batch) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of mask(intensor5) and dim 1 of key(intensor2) shouble be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of qSeqLen(intensor5) and dim 0 of key(intensor2) shouble be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(IN_TENSOR_6).shape.dims[0] != batch) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of mask(intensor6) and dim 1 of key(intensor2) shouble be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of kvSeqLen(intensor6) and dim 0 of key(intensor2) shouble be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
