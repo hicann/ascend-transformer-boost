@@ -1420,7 +1420,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1(
         8,                                                                // dstRepeatStride
         8                                                                 // srcRepeatStride
     );
-    // PIPE_BARRIER(V);
+     PIPE_BARRIER(V);
     // *** ll = rowsum(ls32)
     if (n_real == 512) {
         Rowsum<EXP_DTYPE, SoftmaxTile::TILE_512_MAIN>(
@@ -2289,8 +2289,8 @@ public:
                                 }
 
                                 // prev_o搬入ub  ----
-                                PIPE_BARRIER(ALL);
-//                                WAIT_FLAG(V, MTE2, EVENT_ID4);
+//                                PIPE_BARRIER(ALL);
+                                WAIT_FLAG(V, MTE2, EVENT_ID6);
                                 gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
                                     o_prev_ub_tensor, // 复用lo
                                     o_prev_gm_tensor[o_offset + (uint64_t)sub_block_idx * qk_m / 2 * stride_qo],
@@ -2301,9 +2301,9 @@ public:
                                     (stride_qo - qk_k) * 2, // srcGap
                                     0                       // dstGap
                                 );
-                                PIPE_BARRIER(ALL);
-//                                SET_FLAG(MTE2, V, EVENT_ID4);
-//                                WAIT_FLAG(MTE2, V, EVENT_ID4);
+//                                PIPE_BARRIER(ALL);
+                                SET_FLAG(MTE2, V, EVENT_ID6);
+                                WAIT_FLAG(MTE2, V, EVENT_ID6);
 
                                 conv_v<ArchType::ASCEND_V220, IN_DATA_TYPE, float>(o32_prev_ub_tensor,
                                                                            o_prev_ub_tensor,
@@ -2408,10 +2408,10 @@ public:
                                                                            8           // srcRepeatStride
                                 );
                                 PIPE_BARRIER(V);
-//                                SET_FLAG(V, MTE2, EVENT_ID4);
+                                SET_FLAG(V, MTE2, EVENT_ID6);
                                 // 搬出O
-                                SET_FLAG(V, MTE3, EVENT_ID1);
-                                WAIT_FLAG(V, MTE3, EVENT_ID1);
+                                SET_FLAG(V, MTE3, EVENT_ID0);
+                                WAIT_FLAG(V, MTE3, EVENT_ID0);
                                 ub_to_gm_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
                                     o_gm_tensor[o_offset + (uint64_t)sub_block_idx * qk_m / 2 * stride_qo],
                                     go_ubuf_tensor.ReinterpretCast<IN_DATA_TYPE>(),
