@@ -27,7 +27,7 @@ def get_inputs():
     query = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
     key = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
     value = (torch.randn((s, 16, d_v), dtype=torch.float16)).npu()
-    seqLen = (torch.tensor([s], dtype = torch.int32))
+    seqLen = (torch.tensor([s], dtype=torch.int32))
     input_0 = (torch.randn((16, d_k), dtype=torch.float16)).npu()
     gamma = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
     beta = (torch.zeros((s, 16, d_k), dtype=torch.float16)).npu()
@@ -53,13 +53,13 @@ def graph_build():
     self_attention_out = self_attention.get_output(0)
 
     input_0 = graph.add_input("input_0")
-    elewise_add_param = torch_atb.ElewiseParam(elewise_type = torch_atb.ElewiseParam.ElewiseType.ELEWISE_ADD)
+    elewise_add_param = torch_atb.ElewiseParam(elewise_type=torch_atb.ElewiseParam.ElewiseType.ELEWISE_ADD)
     elewise_add_0 = graph.add_node([self_attention_out, input_0], elewise_add_param)
     elewise_add_0_out = elewise_add_0.get_output(0)
 
     gamma = graph.add_input("gamma") # weight in layernorm, (Hadamard product)
     beta = graph.add_input("beta") # bias in layernorm
-    layernorm_param = torch_atb.LayerNormParam(layer_type = torch_atb.LayerNormParam.LayerNormType.LAYER_NORM_NORM)
+    layernorm_param = torch_atb.LayerNormParam(layer_type=torch_atb.LayerNormParam.LayerNormType.LAYER_NORM_NORM)
     layernorm_param.norm_param.begin_norm_axis = 0
     layernorm_param.norm_param.begin_params_axis = 0
     layernorm_0 = graph.add_node([elewise_add_0_out, gamma, beta], layernorm_param)
@@ -71,7 +71,7 @@ def graph_build():
     linear_0 = graph.add_node([layernorm_0_out, weight_0, bias_0], linear_param) 
     linear_0_out = linear_0.get_output(0)
 
-    elewise_tanh_param = torch_atb.ElewiseParam(elewise_type = torch_atb.ElewiseParam.ElewiseType.ELEWISE_TANH)
+    elewise_tanh_param = torch_atb.ElewiseParam(elewise_type=torch_atb.ElewiseParam.ElewiseType.ELEWISE_TANH)
     elewise_tanh = graph.add_node([linear_0_out], elewise_tanh_param)
     elewise_tanh_out = elewise_tanh.get_output(0)
 
