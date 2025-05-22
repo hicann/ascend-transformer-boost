@@ -24,9 +24,10 @@ def get_inputs():
     torch.manual_seed(233)
 
     print("------------ generate inputs begin ------------")
+    # 单batch场景，batch不为1时s应为seq len * batch
     query = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
     key = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
-    value = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
+    value = (torch.randn((s, 16, d_v), dtype=torch.float16)).npu()
     seqLen = (torch.tensor([s], dtype = torch.int32))
 
     input_0 = (torch.randn((16, d_k), dtype=torch.float16)).npu()
