@@ -283,7 +283,7 @@ class TestMLAPrefill(op_test.OpTest):
 
         mask_sizeQ = razorLen * tileQ + textQLen
         mask_sizeK = razorLen * tileKv + textKvLen
-        print("generate razor mask:", razorLen, tileQ, tileKv, textQLen, textKvLen, preTokens, nextTokens, baseM)
+        # print("generate razor mask:", razorLen, tileQ, tileKv, textQLen, textKvLen, preTokens, nextTokens, baseM)
         mask = np.zeros((mask_sizeQ, mask_sizeK), dtype=int)
         preTokensBlock = preTokens // baseM
         nextTokensBlock = nextTokens // baseM
@@ -535,7 +535,7 @@ class TestMLAPrefill(op_test.OpTest):
         self.input_lse = self.input_lse.reshape(self.q_ntokens, self.heads, 1)
         # 更新o
         out = out.view(self.q_ntokens, self.heads, self.embeddimv)
-        print("ori out is:  ", out.reshape(self.q_ntokens, self.heads*self.embeddimv))
+        # print("ori out is:  ", out.reshape(self.q_ntokens, self.heads*self.embeddimv))
         self.last_o = self.last_o.view(self.q_ntokens, self.heads, self.embeddimv)  # [q_len, head, embeddimv
 
         self.last_o = self.last_o.to(torch.float32)
@@ -584,9 +584,9 @@ class TestMLAPrefill(op_test.OpTest):
             lse_i = lse[q_start_idx:(q_start_idx+q_len)].permute(1, 0).unsqueeze(0)  # (1, heads, bs)
             lse_old = self.input_lse[q_start_idx:(q_start_idx+q_len)].permute(2, 1, 0)  # (1, heads, bs)
 
-            print("old lse is: ", lse_old)
-            print("new lse is: ", lse_i)
-            print("result is: ", torch.log(torch.exp(lse_old) + torch.exp(lse_i)))
+            # print("old lse is: ", lse_old)
+            # print("new lse is: ", lse_i)
+            # print("result is: ", torch.log(torch.exp(lse_old) + torch.exp(lse_i)))
 
             new_lse_aaa = torch.log(torch.exp(lse_old) + torch.exp(lse_i))  # (1, heads, bs)
             new_lse_aaa = new_lse_aaa.permute(2, 1, 0)
@@ -703,11 +703,9 @@ class TestMLAPrefill(op_test.OpTest):
                 score = np.float16(np.maximum(score, clamp_min_brc))
                 score = torch.from_numpy(np.float16(np.minimum(score, clamp_max_brc)))
             temp_mask = self.mask_info[1](self.mask, idx, q_s, kv_s) * self.post_mask_coff
-            print("-----------------------------------------------------")
-            print(temp_mask)
             if is_mask or is_razor_fusion:
-                print("add mask !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                print("temp_mask is: ", temp_mask)
+                # print("add mask !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                # print("temp_mask is: ", temp_mask)
                 score = score + temp_mask
 
             s_qk = score
@@ -822,10 +820,6 @@ class TestMLAPrefill(op_test.OpTest):
             self.max_seq = 512
             self.gen_mask(self.batch, self.heads, self.data_type, self.mask_type, 0, False, 0)
 
-        print(q.shape)
-        print(k.shape)
-
-
         self.q_split1, self.q_split2 = q[:, :128], q[:, 128:192]
         # self.q_split1, self.q_split2 = torch.split(q, [128*2,64*2], dim=1)
         # self.k_split1, self.k_split2 = torch.split(k, [128*2,64*2], dim=3)
@@ -837,275 +831,6 @@ class TestMLAPrefill(op_test.OpTest):
         for i in range(1, self.kv_head):
             self.k_split1 = torch.cat([self.k_split1,  k[:,:,:, i*192:i*192+128]], dim = 3)
             self.k_split2 = torch.cat([self.k_split2, k[:,:,:,i*192+128:(i+1)*192]], dim = 3)
-
-        print(self.q_split1.shape)
-        print(self.q_split2.shape)
-        print(self.k_split1.shape)
-        print(self.k_split2.shape)
-        # print(self.q_rope.shape)
-        print("-----------------------end-----------------------------")
-
-
-    def gen_out_tensor_bnsd(self):
-        q_offset = 0
-        k_offset = 0
-        v_offset = 0
-        batch = self.batch
-        dynamic_batch = self.dynamic_batch
-        batch_state = self.batch_state
-        heads = self.heads
-        is_decoder = self.is_decoder
-        embed = self.embeddim
-        embedv = self.embeddimv
-        max_seq = self.max_seq
-        q_seqlen = self.q_seqlen
-        kv_seqlen = self.kv_seqLen
-        kv_head = self.kv_head
-        mask = self.mask
-        is_mask = self.is_mask
-        q = self.q
-        k = self.k
-        v = self.v
-        q_ntokens = self.q_ntokens
-        kv_ntokens = self.kv_ntokens
-        layer_id = self.layer_id[0]
-        s = None
-        _p = None
-        out = None
-        obsnd = torch.zeros(batch, max_seq, heads, embedv)
-        out_true_bnsd = torch.zeros(batch, max_seq, heads, embedv)
-        kbsnd=k.view(layer_id+1,batch,max_seq,kv_head,embed)
-        vbsnd=v.view(layer_id+1,batch,max_seq,kv_head,embedv)
-        qbsnd = torch.zeros(batch, max_seq, heads, embed)
-        self.encoder_logN = torch.tensor([2.0] * self.max_seq).to(torch.float32)
-        self.encoder_logN.uniform_(1, 2)
-        self.decoder_logN = torch.tensor([2.0] * batch).to(torch.float32)
-        self.decoder_logN.uniform_(1, 2)
-        for idx in range(batch):
-            if dynamic_batch and batch_state[idx] == 0 and not is_decoder:
-                continue
-            if dynamic_batch and batch_state[idx] == 0:
-                output = torch.zeros([heads, q_s, embedv])
-                output = torch.permute(output, (1, 0, 2))
-                if out is None:
-                    out = output
-                else:
-                    out = torch.cat((out, output), 0)
-                q_offset += q_s
-                k_offset += max_seq
-                v_offset += max_seq
-                continue
-            # todo bs,n,d 转b，n，s，d
-            q_s = q_seqlen[idx]
-            kv_s = kv_seqlen[idx]
-            q_slice = q[q_offset:q_offset + q_s][:]
-            q_slice = q_slice.view(q_s, heads, embed)
-            for q_s_idx in range(q_s):
-                qbsnd[idx][q_s_idx] = q_slice[q_s_idx][:]
-            q_slice = torch.permute(q_slice, (1, 0, 2))
-            k_slice = k[layer_id][idx][:kv_s][:]
-            k_slice = k_slice.view(kv_s, kv_head, embed)
-            k_slice_t = torch.permute(k_slice, (1, 2, 0))   # get K^T
-            v_slice = v[layer_id][idx][:kv_s][:]
-            v_slice = v_slice.view(kv_s, kv_head, embedv)
-            v_slice = torch.permute(v_slice, (1, 0, 2))
-
-            score = self.group_mm_torch(heads, kv_head, q_slice, k_slice_t)
-            if s is None:
-                s = score.view([-1, ])
-            else:
-                s = torch.cat((s, score.view([-1, ])), 0)
-            score = score * self.tor
-            if self.scaleType == ScaleType.SCALE_LOGN_FP32.value:
-                if is_decoder:
-                    score *= self.decoder_logN[idx]
-                else:
-                    score *= self.encoder_logN[None, :q_s, None]
-            if self.is_clamp == 1:
-                clamp_min_brc = np.ones((score.shape)) * self.clamp_min
-                clamp_max_brc = np.ones((score.shape)) * self.clamp_max
-                score = np.float16(np.maximum(score, clamp_min_brc))
-                score = torch.from_numpy(np.float16(np.minimum(score, clamp_max_brc)))
-            temp_mask = self.mask_info[1](self.mask, idx, q_s, kv_s) * self.post_mask_coff
-            if is_mask:
-                score = score + temp_mask
-            score = score.numpy().astype(np.float32)
-            score_max = np.max(score, axis=-1)
-            score = score - score_max.reshape((heads, q_s, 1))
-            score_exp = np.exp(score)
-            score_sum = np.sum(score_exp, axis=-1)
-
-            if _p is None:
-                _p = score_exp.astype(np.float32).reshape([-1, ])
-            else:
-                _p = np.concatenate(
-                    (_p, score_exp.astype(np.float32).reshape([-1, ])), 0)
-
-            p_true = (score_exp / score_sum.reshape((heads, q_s, 1)))
-            p_true = torch.from_numpy(p_true)
-            o_true = self.group_mm_torch(heads, kv_head, p_true, v_slice)
-            o_true = o_true.view(heads, q_s, embedv)
-            o_true = torch.permute(o_true, (1, 0, 2)).contiguous()
-
-            #根据数据类型转换
-            p = p_true.to(torch.bfloat16)
-            o = self.group_mm_torch(heads, kv_head, p, v_slice)
-            o = o.view(heads, q_s, embedv)
-            o = torch.permute(o, (1, 0, 2)).contiguous()
-            if out is None:
-                out = o
-                out_true = o_true
-            else:
-                out = torch.cat((out, o), 0)
-                out_true = torch.cat((out_true, o_true), 0)
-
-            for i in range(0,q_s):
-                obsnd[idx][i] = o[i]
-                out_true_bnsd[idx]=out_true[i]
-            q_offset += q_s
-            k_offset += max_seq
-            v_offset += max_seq
-        obnsd = torch.permute(obsnd, (0, 2, 1,3))
-        out_true_bnsd = torch.permute(out_true_bnsd, (0, 2, 1,3))
-        self.qbnsd = torch.permute(qbsnd, (0, 2, 1, 3)).to(self.data_type)
-        self.kbnsd = torch.permute(kbsnd, (0, 1, 3, 2, 4)).to(self.data_type)
-        self.vbnsd = torch.permute(vbsnd, (0, 1, 3, 2, 4)).to(self.data_type)
-        # golden data
-        out = out.view(q_ntokens, heads * embedv)
-        out_true = out_true.view(q_ntokens, heads * embedv)
-        if(self.is_decoder == 1):
-            self.golden_out = out
-            self.golden_out_true = out_true.to(torch.float32)
-        else:
-            self.golden_out = obnsd.to(self.data_type)
-            self.golden_out_true = out_true_bnsd.to(torch.float32)
-        logging.debug(f"golden_out shape: {self.golden_out.shape}")
-
-        if self.no_cache:
-            self.k = self.close_pack(self.k.to(torch.float32), kv_seqlen).to(self.data_type)
-            self.v = self.close_pack(self.v.to(torch.float32), kv_seqlen).to(self.data_type)
-        if self.long_seq:
-            self.max_seq = 128
-            self.gen_mask(self.batch, self.heads, self.data_type, self.mask_type)
-    def gen_out_tensor_bnsd_splitm(self):
-        q_offset = 0
-        k_offset = 0
-        v_offset = 0
-        batch = self.batch
-        dynamic_batch = self.dynamic_batch
-        batch_state = self.batch_state
-        heads = self.heads
-        is_decoder = self.is_decoder
-        embed = self.embeddim
-        embedv = self.embeddimv
-        max_seq = self.max_seq
-        q_seqlen = self.q_seqlen
-        kv_seqlen = self.kv_seqLen
-        kv_head = self.kv_head
-        mask = self.mask
-        is_mask = self.is_mask
-        q = self.q
-        k = self.k
-        v = self.v
-        q_ntokens = self.q_ntokens
-        kv_ntokens = self.kv_ntokens
-        layer_id = self.layer_id[0]
-        s = None
-        _p = None
-        out = None
-        maxQSeqlen = max(q_seqlen)
-        obsnd = torch.zeros(batch, maxQSeqlen, heads, embedv)
-        out_true_bnsd = torch.zeros(batch, maxQSeqlen, heads, embedv)
-        maxKvSeqlen = max(kv_seqlen)
-        kbsnd=k.view(layer_id+1,batch,maxKvSeqlen,kv_head,embed)
-        vbsnd=v.view(layer_id+1,batch,maxKvSeqlen,kv_head,embedv)
-        qbsnd = torch.zeros(batch, maxQSeqlen, heads, embed)
-        for idx in range(batch):
-            if dynamic_batch and batch_state[idx] == 0 and not is_decoder:
-                continue
-            if dynamic_batch and batch_state[idx] == 0:
-                output = torch.zeros([heads, q_s, embedv])
-                output = torch.permute(output, (1, 0, 2))
-                if out is None:
-                    out = output
-                else:
-                    out = torch.cat((out, output), 0)
-                q_offset += q_s
-                k_offset += max_seq
-                v_offset += max_seq
-                continue
-            # todo bs,n,d 转b，n，s，d
-            q_s = q_seqlen[idx]
-            kv_s = kv_seqlen[idx]
-            q_slice = q[q_offset:q_offset + q_s][:]
-            q_slice = q_slice.view(q_s, heads, embed)
-            for q_s_idx in range(q_s):
-                qbsnd[idx][q_s_idx] = q_slice[q_s_idx][:]
-            q_slice = torch.permute(q_slice, (1, 0, 2))
-            k_slice = k[layer_id][idx][:kv_s][:]
-            k_slice = k_slice.view(kv_s, kv_head, embed)
-            k_slice_t = torch.permute(k_slice, (1, 2, 0))   # get K^T
-            v_slice = v[layer_id][idx][:kv_s][:]
-            v_slice = v_slice.view(kv_s, kv_head, embedv)
-            v_slice = torch.permute(v_slice, (1, 0, 2))
-
-            score = self.group_mm_torch(heads, kv_head, q_slice, k_slice_t)
-            if s is None:
-                s = score.view([-1, ])
-            else:
-                s = torch.cat((s, score.view([-1, ])), 0)
-            score = score * self.tor
-            score = score.numpy().astype(np.float32)
-            score_max = np.max(score, axis=-1)
-            score = score - score_max.reshape((heads, q_s, 1))
-            score_exp = np.exp(score)
-            score_sum = np.sum(score_exp, axis=-1)
-
-            if _p is None:
-                _p = score_exp.astype(np.float32).reshape([-1, ])
-            else:
-                _p = np.concatenate(
-                    (_p, score_exp.astype(np.float32).reshape([-1, ])), 0)
-
-            p_true = (score_exp / score_sum.reshape((heads, q_s, 1)))
-            p_true = torch.from_numpy(p_true)
-            o_true = self.group_mm_torch(heads, kv_head, p_true, v_slice)
-            o_true = o_true.view(heads, q_s, embedv)
-            o_true = torch.permute(o_true, (1, 0, 2)).contiguous()
-
-            #根据数据类型转换
-            p = p_true.to(torch.bfloat16)
-            o = self.group_mm_torch(heads, kv_head, p, v_slice)
-            o = o.view(heads, q_s, embedv)
-            o = torch.permute(o, (1, 0, 2)).contiguous()
-
-            if out is None:
-                out = o
-                out_true = o_true
-            else:
-                out = torch.cat((out, o), 0)
-                out_true = torch.cat((out_true, o_true), 0)
-            for i in range(0,q_s):
-                obsnd[idx][i] = o[i]
-                out_true_bnsd[idx][i]=out_true[i]
-            q_offset += q_s
-            k_offset += kv_s
-            v_offset += kv_s
-        obnsd = torch.permute(obsnd, (0, 2, 1,3))
-        out_true_bnsd = torch.permute(out_true_bnsd, (0, 2, 1,3))
-        self.qbnsd = torch.permute(qbsnd, (0, 2, 1, 3)).to(self.data_type)
-        self.kbnsd = torch.permute(kbsnd, (0, 1, 3, 2, 4)).to(self.data_type)
-        self.vbnsd = torch.permute(vbsnd, (0, 1, 3, 2, 4)).to(self.data_type)
-        # golden data
-        out = out.view(q_ntokens, heads * embedv)
-        out_true = out_true.view(q_ntokens, heads * embedv)
-        self.golden_out = obnsd.to(self.data_type)
-        self.golden_out_true = out_true_bnsd.to(torch.float32)
-        logging.debug(f"golden_out shape: {self.golden_out.shape}")
-
-        if self.no_cache:
-            self.k = self.close_pack(self.k.to(torch.float32), kv_seqlen).to(self.data_type)
-            self.v = self.close_pack(self.v.to(torch.float32), kv_seqlen).to(self.data_type)
 
     def gen_seq_len(self, batch, seq_len):
         ntokens = sum(seq_len)
@@ -1119,15 +844,9 @@ class TestMLAPrefill(op_test.OpTest):
 
         out = out.flatten().to(torch.float32)
         out_len = out.shape[0]
-        # print("--------------out----------------")
-        # for i in range(16*128):
-        #     print(i, out[i])
 
         diff = torch.abs(golden - out)
-        # print(diff[128*128*7:])
         max_diff = diff.max().item()
-        # print(out[115121], golden[115121])
-        print(torch.argmax(diff))
         limit_error = torch.maximum(torch.abs(golden * ratios[0]), torch.tensor(ratios[1]))
         strict_limit_error = torch.maximum(torch.abs(golden * ratios[2]), torch.tensor(ratios[3]))
         error_count = torch.gt(diff, limit_error).sum().item()
@@ -1187,14 +906,6 @@ class TestMLAPrefill(op_test.OpTest):
         return [golden_out, self.new_les]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        print("----------------out tensors--------------------")
-        print("out_tensors[0]", out_tensors[0])
-        print("golden_tensors[0]", golden_tensors[0])
-        print("out_tensors[1]", out_tensors[1])
-        print("golden_tensors[1]", golden_tensors[1])
-        print("----------------out tensors end--------------------")
-
-        # print(out_tensors[0] - golden_tensors[0])
         result_single = self.compare_output_data(out_tensors[0].half(), golden_tensors[0].half(), [0.001, 0.001, 0.005, 0.005])
         result_single_lse = self.compare_output_data(out_tensors[1].half(), golden_tensors[1].half(), [0.001, 0.001, 0.005, 0.005])
         # if self.is_int8_flag:
@@ -1205,121 +916,80 @@ class TestMLAPrefill(op_test.OpTest):
         #     return (result_double or result_single)
         return True
 
-    # @op_test.only_910b
-    # def test_flash_attention_mla_fp16_case1(self):
-    #     # unpad encoder
-    #     batch = 1
-    #     kv_head = 1      # kv_head num
-    #     isdecoder = 0       # prefill or decoder
-    #     heads = 1        # llama7b  hidden_size 4096
-    #     embeddim = 192
-    #     embeddimV = 128
-    #     max_seq = 512
-    #     tor = 1.0 / math.sqrt(1.0 * embeddim)
-    #     dynamic_batch = False
-    #     kv_seqLen = [512] * batch
-    #     is_clamp = 0
-    #     clamp_min = 0
-    #     clamp_max = 0
-    #     OP_NAME = "MLAOperation"
-    #     OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 0, "maskType": 0}
-    #     self.set_param(OP_NAME, OP_PARAM)
-    #     self.set_input_formats([self.format_nd] * 13)
-    #     self.set_output_formats([self.format_nd])
-    #     data_type = torch.float16
-    #
-    #     self.set_data_params(dynamic_batch = dynamic_batch,
-    #                          is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
-    #                          embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
-    #                          is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
-    #                          data_type = data_type, is_alibi = False, is_triu_mask = False,
-    #                          op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_MASK, tor = tor)
-    #     self.gen_out_tensor()
-    #     # self.mask = np.reshape(self.mask, (max_seq, max_seq))
-    #     # print(self.mask.shape)
-    #     # self.mask = self.mask.view(128, 128).to(data_type)
-    #
-    #
-    #     print(self.q_split1.shape)
-    #     print(self.q_split2.shape)
-    #     print(self.k_split1.shape)
-    #     print(self.k_split2.shape)
-    #     print(self.v)
-    #
-    #     logging.debug("**********input shape***********")
-    #     logging.info(f"q shape: {self.q.shape}")
-    #     logging.info(f"k shape: {self.k.shape}")
-    #     logging.info(f"v shape: {self.v.shape}")
-    #     logging.info(f"layer_id shape: {self.layer_id.shape}")
-    #     logging.info(f"mask shape: {self.mask.shape}")
-    #
-    #     logging.info(f"mask shape: {self.mask.shape}")
-    #     print(self.mask)
-    #     attention_out = np.zeros_like(self.golden_out.to(torch.float16))
-    #     for i in range(1):
-    #         self.execute([self.q_split1, self.q_split2, self.k_split1, self.k_split2, self.v,
-    #                         torch.tensor([], dtype=data_type),
-    #                         torch.tensor([], dtype=torch.float),
-    #                          torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
-    #                          torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
-    #                          torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
-    #                         [torch.tensor(attention_out, dtype=data_type)])
-
-
-    # @op_test.only_910b
-    # def test_flash_attention_mla_bf16_case1(self):
-    #     batch = 1
-    #     kv_head = 1      # kv_head num
-    #     isdecoder = 0       # prefill or decoder
-    #     heads = 1        # llama7b  hidden_size 4096
-    #     embeddim = 192
-    #     embeddimV = 128
-    #     max_seq = 128 * 2
-    #     tor = 1.0 / math.sqrt(1.0 * embeddim)
-    #     dynamic_batch = False
-    #     kv_seqLen = [128 * 2] * batch
-    #     is_clamp = 0
-    #     clamp_min = 0
-    #     clamp_max = 0
-    #     OP_NAME = "MLAOperation"
-    #     OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 0, "maskType": 0}
-    #     self.set_param(OP_NAME, OP_PARAM)
-    #     self.set_input_formats([self.format_nd] * 14)
-    #     self.set_output_formats([self.format_nd])
-    #     data_type = torch.bfloat16
-    #
-    #     self.set_data_params(dynamic_batch = dynamic_batch,
-    #                          is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
-    #                          embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
-    #                          is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
-    #                          data_type = data_type, is_alibi = False, is_triu_mask = False,
-    #                          op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor)
-    #     self.gen_out_tensor()
-    #     logging.info(f"mask shape: {self.mask.shape}")
-    #     self.mask = self.mask.view(512, 512).to(data_type)
-    #     logging.info(f"mask shape: {self.mask.shape}")
-    #
-    #
-    #     logging.debug("**********input shape***********")
-    #     logging.info(f"q shape: {self.q.shape}")
-    #     logging.info(f"k shape: {self.k.shape}")
-    #     logging.info(f"v shape: {self.v.shape}")
-    #     logging.info(f"layer_id shape: {self.layer_id.shape}")
-    #     logging.info(f"mask shape: {self.mask.shape}")
-    #
-    #     attention_out = np.zeros_like(self.golden_out.to(torch.float16))
-    #     for i in range(1):
-    #         self.execute([self.q_split1, self.q_split2, self.k_split1, self.k_split2, self.v, self.layer_id, torch.tensor([], dtype=torch.bfloat16), torch.tensor([], dtype=torch.float),
-    #                          torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
-    #                          torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
-    #                          torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
-    #                         [torch.tensor(attention_out, dtype=data_type)])
-
-
     @op_test.only_910b
-    def test_flash_attention_mla_bf16_512_mask(self):
+    def test_flash_attention_mla_fp16_mask(self):
         # for i in range(100):
         #     np.random.seed(123)
+        batch = 2
+        kv_head = 16      # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 16        # llama7b  hidden_size 4096
+        embeddim = 192
+        embeddimV = 128
+        max_seq = 200
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [200] * batch
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+
+        isring = 1
+        shape_out_1 = (sum(kv_seqLen), heads, embeddimV)  # embeddimV  sum(q_seq), head*ebeddimv
+        shape_out_2 = (sum(kv_seqLen), heads)
+        data_type = torch.float16
+
+        if isring:
+            old_out = torch.rand(shape_out_1).to(data_type)
+            old_lse = (torch.rand(shape_out_2) * 10).to(torch.float32)
+        else:
+            old_out = torch.zeros(shape_out_1, dtype=data_type)
+            old_lse = torch.zeros(shape_out_2, dtype=torch.float32)
+        output_lse = torch.zeros(heads, (sum(kv_seqLen)), dtype=torch.float32)
+
+        OP_NAME = "RINGMLAOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 1, "maskType": 1, "kvHead": heads, "isRing":isring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 15)
+        self.set_output_formats([self.format_nd] * 2)
+
+
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, is_triu_mask = True,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor, long_seq = True,
+                             lse=old_lse, last_o=old_out, isring=isring,)
+        self.gen_out_tensor()
+
+        logging.debug("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.info(f"k shape: {self.k.shape}")
+        logging.info(f"v shape: {self.v.shape}")
+        logging.info(f"layer_id shape: {self.layer_id.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+
+        # self.mask = self.mask.view(512, 512).to(data_type)
+        # mask2 = torch.triu(torch.ones(size=(512, 512), dtype=torch.bfloat16), 1).npu()# * -10000.0
+
+        # print("mask2 is: , **************************", mask2)
+
+        attention_out = np.zeros_like(self.golden_out_o.to(torch.float16))
+
+        self.mask = self.mask.view(512, 512).to(data_type)
+
+        old_lse = old_lse.transpose(1, 0)
+        self.execute([self.q_split1, self.q_split2, self.k_split1, self.k_split2, self.v, self.mask.to(data_type),
+                      torch.tensor([], dtype=torch.float),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float),
+                      old_out,old_lse],
+                     [torch.tensor(attention_out, dtype=data_type), output_lse])
+
+    @op_test.only_910b
+    def test_flash_attention_mla_fp16_nomask(self):
         batch = 2
         kv_head = 16      # kv_head num
         isdecoder = 0       # prefill or decoder
@@ -1363,32 +1033,14 @@ class TestMLAPrefill(op_test.OpTest):
                              lse=old_lse, last_o=old_out, isring=isring,)
         self.gen_out_tensor()
         logging.info(f"mask shape: {self.mask.shape}")
-        # print(self.mask)
-
-        # self.mask = self.mask[0, :512, :512]
-        # print(self.mask)
-
-        logging.info(f"mask shape: {self.mask.shape}")
-
-
         logging.debug("**********input shape***********")
         logging.info(f"q shape: {self.q.shape}")
         logging.info(f"k shape: {self.k.shape}")
         logging.info(f"v shape: {self.v.shape}")
         logging.info(f"layer_id shape: {self.layer_id.shape}")
         logging.info(f"mask shape: {self.mask.shape}")
-        # logging.info(f"golden shape: {self.golden_out.shape}")
-        # self.golden_out = torch.zeros(sum(kv_seqLen), heads * 128)
-
         attention_out = np.zeros_like(self.golden_out_o.to(torch.float16))
-        # self.q_split1 = torch.zeros(sum(kv_seqLen), heads * 128).to(data_type)
-        # self.q_split2 = torch.zeros(sum(kv_seqLen), heads * 64).to(data_type)
-        # self.k_split1 = torch.zeros(1, batch, max_seq, kv_head * 128).to(data_type)
-        # self.k_split2 = torch.zeros(1, batch, max_seq, kv_head * 64).to(data_type)
-        # self.v = torch.zeros(1, batch, max_seq, kv_head * 128).to(data_type)
-        # for i in range(1):
         old_lse = old_lse.transpose(1, 0)
-        print("input_lse :", old_lse.shape)
         self.execute([self.q_split1, self.q_split2, self.k_split1, self.k_split2, self.v, torch.tensor([], dtype=data_type),
                       torch.tensor([], dtype=torch.float),
                       torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
@@ -1396,6 +1048,139 @@ class TestMLAPrefill(op_test.OpTest):
                       torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float),
                       old_out,old_lse],
                      [torch.tensor(attention_out, dtype=data_type), output_lse])#
+
+    @op_test.only_910b
+    def test_flash_attention_mla_bf16_512_nomask(self):
+        batch = 2
+        kv_head = 16      # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 16        # llama7b  hidden_size 4096
+        embeddim = 192
+        embeddimV = 128
+        max_seq = 200
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [200] * batch
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+
+        isring = 1
+        shape_out_1 = (sum(kv_seqLen), heads, embeddimV)  # embeddimV  sum(q_seq), head*ebeddimv
+        shape_out_2 = (sum(kv_seqLen), heads)
+        data_type = torch.bfloat16
+
+        if isring:
+            old_out = torch.rand(shape_out_1).to(data_type)
+            old_lse = (torch.rand(shape_out_2) * 10).to(torch.float32)
+        else:
+            old_out = torch.zeros(shape_out_1, dtype=data_type)
+            old_lse = torch.zeros(shape_out_2, dtype=torch.float32)
+        output_lse = torch.zeros(heads, (sum(kv_seqLen)), dtype=torch.float32)
+
+        OP_NAME = "RINGMLAOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 0, "maskType": 0, "kvHead": heads, "isRing":isring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 15)
+        self.set_output_formats([self.format_nd] * 2)
+
+
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, is_triu_mask = False,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_MASK, tor = tor, long_seq = False,
+                             lse=old_lse, last_o=old_out, isring=isring,)
+        self.gen_out_tensor()
+        logging.info(f"mask shape: {self.mask.shape}")
+        logging.debug("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.info(f"k shape: {self.k.shape}")
+        logging.info(f"v shape: {self.v.shape}")
+        logging.info(f"layer_id shape: {self.layer_id.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+        attention_out = np.zeros_like(self.golden_out_o.to(torch.float16))
+        old_lse = old_lse.transpose(1, 0)
+        self.execute([self.q_split1, self.q_split2, self.k_split1, self.k_split2, self.v, torch.tensor([], dtype=data_type),
+                      torch.tensor([], dtype=torch.float),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float),
+                      old_out,old_lse],
+                     [torch.tensor(attention_out, dtype=data_type), output_lse])#
+
+    @op_test.only_910b
+    def test_flash_attention_mla_bf16_512_mask(self):
+        # for i in range(100):
+        #     np.random.seed(123)
+        batch = 2
+        kv_head = 16      # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 16        # llama7b  hidden_size 4096
+        embeddim = 192
+        embeddimV = 128
+        max_seq = 3
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [3] * batch
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+
+        isring = 1
+        shape_out_1 = (sum(kv_seqLen), heads, embeddimV)  # embeddimV  sum(q_seq), head*ebeddimv
+        shape_out_2 = (sum(kv_seqLen), heads)
+        data_type = torch.bfloat16
+
+        if isring:
+            old_out = torch.rand(shape_out_1).to(data_type)
+            old_lse = (torch.rand(shape_out_2) * 10).to(torch.float32)
+        else:
+            old_out = torch.zeros(shape_out_1, dtype=data_type)
+            old_lse = torch.zeros(shape_out_2, dtype=torch.float32)
+        output_lse = torch.zeros(heads, (sum(kv_seqLen)), dtype=torch.float32)
+
+        OP_NAME = "RINGMLAOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "isTriuMask": 1, "maskType": 1, "kvHead": heads, "isRing":isring}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 15)
+        self.set_output_formats([self.format_nd] * 2)
+
+
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, is_triu_mask = True,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor, long_seq = True,
+                             lse=old_lse, last_o=old_out, isring=isring,)
+        self.gen_out_tensor()
+
+        logging.debug("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.info(f"k shape: {self.k.shape}")
+        logging.info(f"v shape: {self.v.shape}")
+        logging.info(f"layer_id shape: {self.layer_id.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+
+        # self.mask = self.mask.view(512, 512).to(data_type)
+        # mask2 = torch.triu(torch.ones(size=(512, 512), dtype=torch.bfloat16), 1).npu()# * -10000.0
+
+        # print("mask2 is: , **************************", mask2)
+
+        attention_out = np.zeros_like(self.golden_out_o.to(torch.float16))
+
+        self.mask = self.mask.view(512, 512).to(data_type)
+
+        old_lse = old_lse.transpose(1, 0)
+        self.execute([self.q_split1, self.q_split2, self.k_split1, self.k_split2, self.v, self.mask.to(data_type),
+                      torch.tensor([], dtype=torch.float),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                      torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float),
+                      old_out,old_lse],
+                     [torch.tensor(attention_out, dtype=data_type), output_lse])
 
 
 if __name__ == '__main__':
