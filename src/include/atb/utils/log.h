@@ -11,12 +11,16 @@
 #ifndef ATB_LOG_H
 #define ATB_LOG_H
 #include <mki/utils/log/log.h>
+#include <mki/utils/assert/assert.h>
 #include <mki/utils/log/log_stream.h>
 #include <mki/utils/log/log_core.h>
 #include <mki/utils/log/log_sink.h>
 #include <mki/utils/log/log_entity.h>
 #include "atb/types.h"
 
+#define ATB_CHECK(condition, logExpr, handleExpr)                                                                      \
+    MKI_CHECK(condition, logExpr, handleExpr)
+        
 #define ATB_LOG(level) ATB_LOG_##level
 #define ATB_FLOG(level, format, ...) ATB_FLOG_##level(format, __VA_ARGS__)
 

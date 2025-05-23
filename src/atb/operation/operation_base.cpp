@@ -827,11 +827,12 @@ Status OperationBase::ExecuteCheck(const VariantPack &variantPack, const uint8_t
         ATB_LOG(ERROR) << GetLogPrefix() << "execute workspace is can't be null when workspaceSize > 0";
         return ERROR_INVALID_PARAM;
     }
-
-    Status st = ExecuteVariantPackCheck(variantPack);
-    if (st != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "CheckExecuteVariantPack failed!";
-        return st;
+    if (variantPack.inTensors.size() > 0 || variantPack.outTensors.size() > 0) {
+        Status st = ExecuteVariantPackCheck(variantPack);
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "CheckExecuteVariantPack failed!";
+            return st;
+        }
     }
 
     return NO_ERROR;
@@ -1261,8 +1262,10 @@ void OperationBase::UpdateTensorData(const VariantPack &variantPack, uint8_t *wo
     runnerVariantPack_.tilingBuffer = deviceTilingBuffer;
     runnerVariantPack_.workspaceBuffer = workspace;
     runnerVariantPack_.intermediateBuffer = workspace + runnerVariantPack_.workspaceBufferSize;
-    TensorUtil::FastCopyTensorsData(variantPack.inTensors, runnerVariantPack_.inTensors);
-    TensorUtil::FastCopyTensorsData(variantPack.outTensors, runnerVariantPack_.outTensors);
+    if (variantPack.inTensors.size() > 0 || variantPack.outTensors.size() > 0) {
+        TensorUtil::FastCopyTensorsData(variantPack.inTensors, runnerVariantPack_.inTensors);
+        TensorUtil::FastCopyTensorsData(variantPack.outTensors, runnerVariantPack_.outTensors);
+    }
 }
 
 std::string OperationBase::VariantPackToString(const VariantPack &variantPack) const
