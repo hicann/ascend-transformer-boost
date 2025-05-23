@@ -8,6 +8,14 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #pragma once
-#include "act/epilogue/block/block_epilogue.hpp"
+#include "catlass/epilogue/dispatch_policy.hpp"
 
-#include "block_epilogue_per_token_dequant_swiglu.h"
+namespace Catlass::Epilogue {
+
+template <uint32_t UB_STAGES_>
+struct EpilogueAtlasA2PerTokenDequantSwiglu {
+    using ArchTag = Arch::AtlasA2;
+    static constexpr uint32_t UB_STAGES = UB_STAGES_;
+};
+
+}  // namespace Catlass::Epilogue

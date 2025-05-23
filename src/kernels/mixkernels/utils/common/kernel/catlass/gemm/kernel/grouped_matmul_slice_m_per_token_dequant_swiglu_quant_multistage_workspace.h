@@ -8,16 +8,16 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #pragma once
-#include "act/act.hpp"
-#include "act/arch/cross_core_sync.hpp"
-#include "act/arch/resource.hpp"
-#include "act/coord.hpp"
-#include "act/detail/callback.hpp"
-#include "act/gemm_coord.hpp"
-#include "act/matrix_coord.hpp"
-#include "act/epilogue/tile/tile_swizzle.hpp"
+#include "catlass/catlass.hpp"
+#include "catlass/arch/cross_core_sync.hpp"
+#include "catlass/arch/resource.hpp"
+#include "catlass/coord.hpp"
+#include "catlass/detail/callback.hpp"
+#include "catlass/gemm_coord.hpp"
+#include "catlass/matrix_coord.hpp"
+#include "catlass/epilogue/tile/tile_swizzle.hpp"
 
-namespace Act::Gemm::Kernel {
+namespace Catlass::Gemm::Kernel {
 
 template <class ArchTag>
 class BlockQuant {
@@ -49,10 +49,10 @@ public:
         __gm__ ElementOutput *ptrOutput{nullptr};
         LayoutOutput layoutOutput;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params() {};
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params(
             __gm__ ElementInput *ptrInput_, LayoutInput const &layoutInput_,
             __gm__ ElementDequantScale *ptrQuantScale_, LayoutDequantScale const &layoutQuantScale_,
@@ -62,7 +62,7 @@ public:
             ptrOutput(ptrOutput_), layoutOutput(layoutOutput_) {}
     };
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     BlockQuant(Arch::Resource<ArchTag> const &resource, Params const &params_) : params(params_)
     {
         int64_t ubOffset = 0;
@@ -91,7 +91,7 @@ public:
         AscendC::SetFlag<AscendC::HardEvent::MTE3_V>(EVENT_ID1);
     }
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     ~BlockQuant()
     {
         AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID0);
@@ -99,7 +99,7 @@ public:
         AscendC::WaitFlag<AscendC::HardEvent::MTE3_V>(EVENT_ID1);
     }
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator() (
         MatrixCoord const &blockShape,
         MatrixCoord const &blockCoord,
@@ -301,10 +301,10 @@ public:
         GM_ADDR ptrWorkspace;
 
         // Methods
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params() {}
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params(
             GemmCoord problemShape_, uint32_t problemCount_, GM_ADDR ptrGroupList_,
             GM_ADDR ptrA_, LayoutA const &layoutA_,
@@ -330,7 +330,7 @@ public:
     };
 
     // Methods
-    ACT_DEVICE
+    CATLASS_DEVICE
     GroupedMatmulSliceMPerTokenDequantSwigluQuantMultiStageWorkspace()
     {
         Arch::FlagID flagId = 0;
@@ -343,11 +343,11 @@ public:
     }
 
     template <int32_t CORE_TYPE = g_coreType>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()(Params const &params);
 
     template <>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()<AscendC::AIC>(Params const &params)
     {
         BlockScheduler blockScheduler;
@@ -454,7 +454,7 @@ public:
     }
 
     template <>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()<AscendC::AIV>(Params const &params)
     {
         uint32_t coreIdx = AscendC::GetBlockIdx() / AscendC::GetSubBlockNum();
@@ -559,10 +559,10 @@ private:
             BlockMmad, BlockEpilogue, BlockScheduler, WORKSPACE_STAGES, ElementGroupList
         >;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         AicWaitFunc() = default;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         void operator()() const
         {
             Arch::CrossCoreWaitFlag(ptr->flagAivFinishComputeList[stageId]);
@@ -577,10 +577,10 @@ private:
             BlockMmad, BlockEpilogue, BlockScheduler, WORKSPACE_STAGES, ElementGroupList
         >;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         AicSetFunc() = default;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         void operator()() const
         {
             Arch::CrossCoreSetFlag<0x2, PIPE_FIX>(ptr->flagAicFinishStoreList[stageId]);
@@ -598,4 +598,4 @@ private:
     Arch::Resource<ArchTag> resource;
 };
 
-} // namespace Act::Gemm::Kernel
+} // namespace Catlass::Gemm::Kernel

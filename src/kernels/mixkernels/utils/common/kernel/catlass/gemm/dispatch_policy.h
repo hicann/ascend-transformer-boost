@@ -8,9 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #pragma once
-#include "act/gemm/dispatch_policy.hpp"
+#include "catlass/gemm/dispatch_policy.hpp"
 
-namespace Act::Gemm {
+namespace Catlass::Gemm {
 
 template <uint32_t PRELOAD_STAGES_, uint32_t L1A_STAGES_, uint32_t L1B_STAGES_,
     uint32_t L0A_STAGES_, uint32_t L0B_STAGES_, uint32_t L0C_STAGES_, bool ENABLE_UNIT_FLAG_, bool ENABLE_SHUFFLE_K_>
@@ -25,4 +25,4 @@ struct MmadAtlasA2PreloadAsyncWithCallbackResidentA : public MmadAtlasA2Async {
     static constexpr bool ENABLE_SHUFFLE_K = ENABLE_SHUFFLE_K_;
 };
 
-}  // namespace Act::Gemm
+}  // namespace Catlass::Gemm
