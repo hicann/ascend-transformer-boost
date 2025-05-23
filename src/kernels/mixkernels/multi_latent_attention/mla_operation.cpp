@@ -126,7 +126,7 @@ private:
     }
 
     bool CheckPrefilShape(const Mki::Tensor &tensorKcache, const Mki::Tensor &tensorVcache,
-                          const Mki::Tensor &tensorQ) const
+                          const Mki::Tensor &tensorQ, uint32_t batch, uint32_t kvhead) const
     {
         static const size_t KV_CACHE_DIM_NUM = 3;
         MKI_CHECK(tensorKcache.desc.dims.size() == KV_CACHE_DIM_NUM,
@@ -135,11 +135,19 @@ private:
         MKI_CHECK(tensorVcache.desc.dims.size() == KV_CACHE_DIM_NUM,
                   "Input4 dim num " << tensorVcache.desc.dims.size() << " invalid, should be " << KV_CACHE_DIM_NUM,
                   return false);
-        // kshape (batch, seq, n * d)
-        auto batch = tensorKcache.desc.dims[DIM_0];
-        auto maxSeqlen = tensorKcache.desc.dims[DIM_1];
-        MKI_CHECK(tensorVcache.desc.dims[DIM_0] == batch && tensorVcache.desc.dims[DIM_1] == maxSeqlen,
-                  "Shape of input1 should be batch  input2 should be maxSeqlen", return false);
+        // kshape (batch, seq, n * d) (bs, n, d)
+        auto kvdim0 = tensorKcache.desc.dims[DIM_0];
+        if(kvdim0 == batch) {
+            // (b, s, n * d)
+            uint32_t maxSeqlen = tensorKcache.desc.dims[DIM_1];
+            MKI_CHECK(tensorVcache.desc.dims[DIM_0] == batch && tensorVcache.desc.dims[DIM_1] == maxSeqlen,
+                  "v shape error", return false);
+        } else {
+            // (b * s, n, d)
+            uint32_t maxSeqlen = tensorKcache.desc.dims[DIM_1] / batch;
+            MKI_CHECK(tensorVcache.desc.dims[DIM_0] == maxSeqlen * batch && tensorVcache.desc.dims[DIM_1] == kvhead,
+                  "v shape error", return false);
+        }
         MKI_CHECK(tensorKcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorKcache.desc.dtype == TENSOR_DTYPE_BF16,
                   "Input1 dtype " << GetStrWithDType(tensorKcache.desc.dtype)
                                   << " invalid, should be float16 or bfloat16 or int8",
@@ -246,12 +254,15 @@ private:
                                   return Status::FailStatus(ERROR_INVALID_VALUE));
         auto &tensorKcache = launchParam.GetInTensor(DIM_2); // K.shape = [batch, max_seqlen, hiddensize]
         auto &tensorVcache = launchParam.GetInTensor(DIM_4); // V.shape = [batch, max_seqlen, hiddensize]
+        auto kvSeqLen = param.kvSeqLen;
+        uint32_t batch = kvSeqLen.size();
+        uint32_t head =param.kvHead;
         if (CheckEmptyTensor(tensorKcache) || CheckEmptyTensor(tensorVcache)) {
             MKI_CHECK(CheckEmptyTensor(tensorKcache) && CheckEmptyTensor(tensorVcache),
                       "normal k and v should both be empty tensor if batches are split",
                       return Status::FailStatus(ERROR_INVALID_VALUE));
         } else {
-            MKI_CHECK(CheckPrefilShape(tensorKcache, tensorVcache, tensorQ), "check datashape invalid",
+            MKI_CHECK(CheckPrefilShape(tensorKcache, tensorVcache, tensorQ, batch, head), "check datashape invalid",
                       return Status::FailStatus(ERROR_INVALID_VALUE));
         }
         auto ret = CheckMask(launchParam, tensorQ, launchParam.GetInTensor(DIM_5));
