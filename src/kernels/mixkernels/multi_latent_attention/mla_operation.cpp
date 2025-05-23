@@ -35,8 +35,12 @@ public:
             case OpParam::MLA::SPLIT_CACHE:
                 return GetKernelByName("MLAKernel");
             case OpParam::MLA::PREFILL_SPLIT_CACHE:
-                return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("MLAPrefillBF16Kernel") :
-                        GetKernelByName("MLAPrefillKernel");
+                if (param.maskType == OpParam::MLA::MASK_TYPE_MASK_FREE) {
+                    return GetKernelByName("MLAPrefillBF16Kernel");
+                } else {
+                    return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("MLAPrefillBF16Kernel") :
+                            GetKernelByName("MLAPrefillKernel");
+                }
             default:
                 break;
         }

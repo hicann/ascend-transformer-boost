@@ -309,6 +309,15 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
     return Status::OkStatus();
 }
 
+Status GenMlaPrefillTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
+{
+    uint32_t dataType = static_cast<int32_t>(mmInfo.type);
+    uint32_t tilingKey = dataType + (mmInfo.maskType << NUM1);
+    kernelInfo.SetTilingId(tilingKey);
+    MKI_LOG(INFO) << "MLA Prefill TILING KEY IS = " << tilingKey;
+    return Status::OkStatus();
+}
+
 Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 {
     MLAInfo mmInfo;
@@ -332,6 +341,8 @@ Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(tilingHost);
     ret = GetMLAPrefillTilingParam(mmInfo, blockDim, tilingParam, tilingSize);
+    OP_TILING_CHECK_STATUS_RETURN(ret);
+    ret = GenMlaPrefillTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint64_t dataLenFloat = sizeof(float);
     uint64_t sSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(32768) * 16 * dataLenFloat;

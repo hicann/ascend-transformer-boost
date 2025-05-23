@@ -622,40 +622,6 @@ private:
     uint32_t tiling_head_size{0};
     uint32_t tiling_para_size{0};
 };
-
-extern "C" __global__ __aicore__ void mla_prefill_bf16(
-    __gm__ uint8_t *__restrict__ sync,
-    __gm__ uint8_t *__restrict__ q_gm,
-    __gm__ uint8_t *__restrict__ q_rope_gm,
-    __gm__ uint8_t *__restrict__ k_gm,
-    __gm__ uint8_t *__restrict__ k_rope_gm,
-    __gm__ uint8_t *__restrict__ v_gm,
-    __gm__ uint8_t *__restrict__ mask_gm,
-    __gm__ uint8_t *__restrict__ alibi_coeff_gm,
-    __gm__ uint8_t *__restrict__ deq_qk_gm,
-    __gm__ uint8_t *__restrict__ off_qk_gm,
-    __gm__ uint8_t *__restrict__ deq_pv_gm,
-    __gm__ uint8_t *__restrict__ off_pv_gm,
-    __gm__ uint8_t *__restrict__ quant_p_gm,
-    __gm__ uint8_t *__restrict__ logN_gm,
-    __gm__ uint8_t *__restrict__ o_gm,
-    __gm__ uint8_t *__restrict__ s_gm,
-    __gm__ uint8_t *__restrict__ p_gm,
-    __gm__ uint8_t *__restrict__ o_tmp_gm,
-    __gm__ uint8_t *__restrict__ upo_tmp_gm,
-    __gm__ uint8_t *__restrict__ tiling_para_gm)
-{
-    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
-    // 仅在tilingKey为1的时候是bf，其余场景均当做half处理
-    if (tilingKey == 1) {
-        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, 0> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run();
-    } else if (tilingKey == 2){
-        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, 1> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run();
-    }
-}
-
 #endif
 
 #ifdef __DAV_C220_VEC__
@@ -685,7 +651,7 @@ __aicore__ __attribute__((always_inline)) inline void __set_mask(int32_t len)
     }
 }
 
-template<typename S_DTYPE, typename EXP_DTYPE, typename P_DTYPE, typename MASK_DTYPE, uint32_t MASK_TYPE>
+template<typename S_DTYPE, typename EXP_DTYPE, typename P_DTYPE, typename MASK_DTYPE, MaskType MASK_TYPE>
 __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
     const AscendC::LocalTensor<S_DTYPE> &s_ub,
     const AscendC::LocalTensor<MASK_DTYPE> &mask_orig_ub,
@@ -706,7 +672,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
     bool move_flag)
 {
     uint32_t round_m = (m + FLOAT_BLOCK_SIZE - 1) / FLOAT_BLOCK_SIZE * FLOAT_BLOCK_SIZE;
-    if constexpr(MASK_TYPE != 0) {
+    if constexpr(MASK_TYPE == MaskType::MASK_TYPE_CAUSAL_COMPRESS) {
         if (move_flag) {
             WAIT_FLAG(MTE2, V, EVENT_ID6);
             conv_v<ArchType::ASCEND_V220, MASK_DTYPE, S_DTYPE>(
@@ -758,7 +724,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
         8                                                                 // srcRepeatStride
     );
     PIPE_BARRIER(V);
-    if constexpr(MASK_TYPE != 0) {
+    if constexpr(MASK_TYPE != MaskType::MASK_TYPE_NONE) {
         if (move_flag) {
             add_v<ArchType::ASCEND_V220, S_DTYPE>(
                 s_ub,
@@ -1012,7 +978,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
     }
 }
 
-template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, int32_t MASK_TYPE = 0>
+template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, MaskType MASK_TYPE = MaskType::MASK_TYPE_NONE>
 class FlashAttentionEncoderHighPrecisionVec {
 public:
     __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderHighPrecisionVec(
@@ -1048,7 +1014,7 @@ public:
         if (this->data_shape_type == 1) {
             this->stride_qo = embdv;
         }
-        if constexpr (MASK_TYPE != 0) {
+        if constexpr (MASK_TYPE != MaskType::MASK_TYPE_NONE) {
             this->is_triu_mask = 1;
         }
         this->__k = embd;
@@ -1204,7 +1170,7 @@ public:
                         uint32_t curr_m = m_ind == m_end - 1 ? sub_m - m_ind * m_slice : m_slice;
                         uint32_t s_ub_offset = pingpong_flag * S_DB_SIZE;
                         uint32_t row_offset = m_ind * m_slice;
-                        if constexpr(MASK_TYPE != 0) {
+                        if constexpr(MASK_TYPE == MaskType::MASK_TYPE_CAUSAL_COMPRESS) {
                             if (move_flag) {
                                 uint64_t cmp_mask_offset = (m_idx - n_idx) * 512 * 128;
                                 WAIT_FLAG(V, MTE2, EVENT_ID6);
@@ -1523,6 +1489,7 @@ private:
     uint32_t data_shape_type{0};
     uint32_t quantType{0};
 };
+#endif
 
 extern "C" __global__ __aicore__ void mla_prefill_bf16(
     __gm__ uint8_t *__restrict__ sync,
@@ -1546,17 +1513,25 @@ extern "C" __global__ __aicore__ void mla_prefill_bf16(
     __gm__ uint8_t *__restrict__ upo_tmp_gm,
     __gm__ uint8_t *__restrict__ tiling_para_gm)
 {
-    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
-    if (tilingKey == 1) {
-        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, 0> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
-                                                             tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
-                                                             deq_pv_gm, off_pv_gm, logN_gm);
+    if (TILING_KEY_IS(1))
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, 0> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
+#elif __DAV_C220_VEC__
+        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, MaskType::MASK_TYPE_NONE> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                                tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
+                                                                deq_pv_gm, off_pv_gm, logN_gm);
         fa_vec.Run();
-    } else if (tilingKey == 2) {
-        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, 1> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
-                                                             tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
-                                                             deq_pv_gm, off_pv_gm, logN_gm);
-        fa_vec.Run();
-    }
-}
 #endif
+    } else if (TILING_KEY_IS(11)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, 1> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                                    tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
+                                                                    deq_pv_gm, off_pv_gm, logN_gm);
+        fa_vec.Run();
+#elif __DAV_C220_VEC__
+        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, MaskType::MASK_TYPE_CAUSAL_COMPRESS> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
+#endif
+}
+}
