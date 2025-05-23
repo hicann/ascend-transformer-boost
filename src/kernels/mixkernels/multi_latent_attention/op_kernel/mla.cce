@@ -3388,6 +3388,9 @@ private:
         if constexpr (std::is_same_v<IN_DTYPE,int8_t>) {
             oPingPongFlag = 0;
         }
+        if (head_loop <= 1 && q_seq_len <= 1) {
+            oPingPongFlag = 0;
+        }
         uint32_t oUbOffset = oPingPongFlag * 4096; // oPingPongFlag * 8 * 512
         WAIT_FLAG(V, MTE2, oPingPongFlag);
         if (n_idx != 4) {
