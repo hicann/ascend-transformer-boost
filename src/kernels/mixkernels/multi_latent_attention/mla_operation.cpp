@@ -145,7 +145,7 @@ private:
         } else {
             // (b * s, n, d)
             MKI_CHECK(batch != 0, "batch error", return false);
-            uint32_t maxSeqlen = tensorKcache.desc.dims[DIM_1] / batch;
+            uint32_t maxSeqlen = tensorKcache.desc.dims[DIM_0] / batch;
             MKI_CHECK(tensorVcache.desc.dims[DIM_0] == maxSeqlen * batch && tensorVcache.desc.dims[DIM_1] == kvhead,
                   "v shape error", return false);
         }
