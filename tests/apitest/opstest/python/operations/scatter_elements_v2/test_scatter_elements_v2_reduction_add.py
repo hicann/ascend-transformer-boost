@@ -46,7 +46,7 @@ class TestScatterElementsV2AddOperation(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return True
         input_tensor = torch.ones(10, 10, dtype=torch.uint8)
-        indice_tensor = torch.tensor([[0, 1], [0, 11]], dtype=torch.int32)
+        indice_tensor = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
          # 原地写不会创建新的tensor
