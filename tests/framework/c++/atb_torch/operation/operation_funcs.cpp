@@ -2411,8 +2411,8 @@ static atb::Status PagedCacheLoadOperationCreate(const nlohmann::json &paramJson
 {
     ATB_LOG(INFO) << "PagedCacheLoadOperationCreate";
     atb::infer::PagedCacheLoadParam param;
-    if (paramJson.contains("kvCacheType")) {
-        param.kvCacheType = atb::infer::PagedCacheLoadParam::KvCacheType(paramJson["kvCacheType"].get<int8_t>());
+    if (paramJson.contains("kvCacheCfg")) {
+        param.kvCacheCfg = atb::infer::PagedCacheLoadParam::KvCacheCfg(paramJson["kvCacheCfg"].get<int8_t>());
     }
     if (paramJson.contains("isSeqLensCumsumMode")) {
         param.isSeqLensCumsumMode = paramJson["isSeqLensCumsumMode"].get<bool>();

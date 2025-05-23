@@ -27,10 +27,10 @@ shape_dtype_list = [
 
 # ND:type=0
 configs = [
-    {"kvCacheType": 1, "isSeqLensCumsumMode": True, "hasSeqStarts": True},
-    {"kvCacheType": 1, "isSeqLensCumsumMode": False, "hasSeqStarts": True},
-    {"kvCacheType": 1, "isSeqLensCumsumMode": False, "hasSeqStarts": False},
-    {"kvCacheType": 1, "isSeqLensCumsumMode": True, "hasSeqStarts": False},
+    {"kvCacheCfg": 1, "isSeqLensCumsumMode": True, "hasSeqStarts": True},
+    {"kvCacheCfg": 1, "isSeqLensCumsumMode": False, "hasSeqStarts": True},
+    {"kvCacheCfg": 1, "isSeqLensCumsumMode": False, "hasSeqStarts": False},
+    {"kvCacheCfg": 1, "isSeqLensCumsumMode": True, "hasSeqStarts": False},
 ]
 
 type_list_numpy = {"float16":np.float16 , "bfloat16": np.float32, "int8": np.int8, "int32": np.int32}
@@ -200,7 +200,7 @@ class PagedCacheLoadOperation(operation_test.OperationTest):
             # 参数有效性校验
             try:
                 param_dict = json.loads(param)
-                if param_dict.get('kvCacheType') not in [0, 1]:
+                if param_dict.get('kvCacheCfg') not in [0, 1]:
                     raise ValueError("Invalid type parameter in PARAM")
             except json.JSONDecodeError:
                 raise ValueError("Invalid JSON format for PARAM")

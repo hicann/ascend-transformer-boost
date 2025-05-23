@@ -27,30 +27,25 @@ PagedCacheLoadOpsRunner::PagedCacheLoadOpsRunner(const infer::PagedCacheLoadPara
     Mki::Tensor &contextLens = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &key = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &value = kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor &seq_starts = kernelGraph_.inTensors.at(3);
-    if (param_.kvCacheType == infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_NZ) {
-    } else {
-        seq_starts = kernelGraph_.inTensors.at(inTensorStart++);
-    }
 
-    size_t outTensorStart = 0;
-    Mki::Tensor &outKeyTensor = kernelGraph_.outTensors.at(outTensorStart++);
-    Mki::Tensor &outValueTensor = kernelGraph_.outTensors.at(outTensorStart++);
-    
-    kernelGraph_.nodes.resize(1);
-    auto &pagedCacheLoadNode = kernelGraph_.nodes.at(0);
-    AtbOps::OpParam::PagedCacheLoad pagedCacheLoadParam;
-    if (param_.kvCacheType == infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_NZ) {
+    if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
+        Mki::Tensor &seq_starts = kernelGraph_.inTensors.at(3);
+
+        size_t outTensorStart = 0;
+        Mki::Tensor &outKeyTensor = kernelGraph_.outTensors.at(outTensorStart++);
+        Mki::Tensor &outValueTensor = kernelGraph_.outTensors.at(outTensorStart++);
+
+        kernelGraph_.nodes.resize(1);
+        auto &pagedCacheLoadNode = kernelGraph_.nodes.at(0);
+        AtbOps::OpParam::PagedCacheLoad pagedCacheLoadParam;
+
         pagedCacheLoadParam.type = AtbOps::OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ;
-    } else {
-        pagedCacheLoadParam.type = AtbOps::OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND;
-    }
-    pagedCacheLoadParam.cuSeqLens = param_.isSeqLensCumsumMode;
-    pagedCacheLoadParam.hasSeqStarts = param_.hasSeqStarts;
-    pagedCacheLoadNode.opDesc = {0, "PagedCacheLoadOperation", pagedCacheLoadParam};
-    pagedCacheLoadNode.inTensors = {&keyCacheTensor, &valueCacheTensor, &blockTablesTensor, &contextLens, &key, &value, &seq_starts};
-    pagedCacheLoadNode.outTensors = {&outKeyTensor, &outValueTensor};
-    if (param_.kvCacheType == infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_NZ) {
+        pagedCacheLoadParam.cuSeqLens = param_.isSeqLensCumsumMode;
+        pagedCacheLoadParam.hasSeqStarts = param_.hasSeqStarts;
+
+        pagedCacheLoadNode.opDesc = {0, "PagedCacheLoadOperation", pagedCacheLoadParam};
+        pagedCacheLoadNode.inTensors = {&keyCacheTensor, &valueCacheTensor, &blockTablesTensor, &contextLens, &key, &value, &seq_starts};
+        pagedCacheLoadNode.outTensors = {&outKeyTensor, &outValueTensor};
         pagedCacheLoadNode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) {
             for (size_t i = 0; i < launchParam.GetInTensorCount(); i++) {
                 if (i == 0 || i == 1) { // 2, 3: intensor index
@@ -61,6 +56,22 @@ PagedCacheLoadOpsRunner::PagedCacheLoadOpsRunner(const infer::PagedCacheLoadPara
             }
         };
     } else {
+        Mki::Tensor &seq_starts = kernelGraph_.inTensors.at(inTensorStart++);
+
+        size_t outTensorStart = 0;
+        Mki::Tensor &outKeyTensor = kernelGraph_.outTensors.at(outTensorStart++);
+        Mki::Tensor &outValueTensor = kernelGraph_.outTensors.at(outTensorStart++);
+
+        kernelGraph_.nodes.resize(1);
+        auto &pagedCacheLoadNode = kernelGraph_.nodes.at(0);
+        AtbOps::OpParam::PagedCacheLoad pagedCacheLoadParam;
+        pagedCacheLoadParam.type = AtbOps::OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND;
+        pagedCacheLoadParam.cuSeqLens = param_.isSeqLensCumsumMode;
+        pagedCacheLoadParam.hasSeqStarts = param_.hasSeqStarts;
+
+        pagedCacheLoadNode.opDesc = {0, "PagedCacheLoadOperation", pagedCacheLoadParam};
+        pagedCacheLoadNode.inTensors = {&keyCacheTensor, &valueCacheTensor, &blockTablesTensor, &contextLens, &key, &value, &seq_starts};
+        pagedCacheLoadNode.outTensors = {&outKeyTensor, &outValueTensor};
         pagedCacheLoadNode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) {
             for (size_t i = 0; i < launchParam.GetInTensorCount(); i++) {
                 launchParam.GetInTensor(i).desc.format = Mki::TENSOR_FORMAT_ND;
