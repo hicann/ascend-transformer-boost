@@ -19,6 +19,8 @@ namespace AsdOps {
 using namespace Mki;
 Status ElewiseCommonTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle);
+Status CosTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                 const BinHandle &binHandle);
 Status MulsTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                   const BinHandle &binHandle);
 Status BroadcastCommonTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,

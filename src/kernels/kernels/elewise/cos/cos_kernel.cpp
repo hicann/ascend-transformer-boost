@@ -37,6 +37,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            return CosTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        }
         return ElewiseCommonTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };
