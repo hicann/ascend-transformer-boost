@@ -3048,7 +3048,7 @@ struct ScatterElementsV2Param {
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[16] = {0};
+    uint8_t rsv[24] = {0};
 };
 } // namespace infer
 } // namespace atb
