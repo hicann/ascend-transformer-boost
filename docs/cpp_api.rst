@@ -66,3 +66,9 @@ operation_infra.h
 
 .. doxygenfile:: operation_infra.h
    :project: ATB_CPP_API
+
+atb_acl.h
+-----------------------
+
+.. doxygenfile:: atb_acl.h
+   :project: ATB_CPP_API
