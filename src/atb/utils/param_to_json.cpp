@@ -267,23 +267,9 @@ template <> nlohmann::json OpParamToJson(const infer::LayerNormWithStrideParam &
     normParam["beginNormAxis"] = opParam.normParam.beginNormAxis;
     normParam["beginParamsAxis"] = opParam.normParam.beginParamsAxis;
 
-    nlohmann::json preNormParam;
-    preNormParam["quantType"] = opParam.preNormParam.quantType;
-    preNormParam["epsilon"] = opParam.preNormParam.epsilon;
-    preNormParam["opMode"] = opParam.preNormParam.opMode;
-    preNormParam["zoomScaleValue"] = opParam.preNormParam.zoomScaleValue;
-
-    nlohmann::json postNormParam;
-    postNormParam["quantType"] = opParam.postNormParam.quantType;
-    postNormParam["epsilon"] = opParam.postNormParam.epsilon;
-    postNormParam["opMode"] = opParam.postNormParam.opMode;
-    postNormParam["zoomScaleValue"] = opParam.postNormParam.zoomScaleValue;
-
     nlohmann::json layerNormWithStrideParamJson;
     layerNormWithStrideParamJson["layerType"] = opParam.layerType;
     layerNormWithStrideParamJson["normParam"] = normParam;
-    layerNormWithStrideParamJson["preNormParam"] = preNormParam;
-    layerNormWithStrideParamJson["postNormParam"] = postNormParam;
 
     return layerNormWithStrideParamJson;
 }

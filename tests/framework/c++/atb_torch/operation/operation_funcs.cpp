@@ -1175,46 +1175,6 @@ static atb::Status LayerNormOperationCreate(const nlohmann::json &paramJson, atb
             }
         }
     }
-    if (param.layerType == atb::infer::LayerNormParam::LAYER_NORM_PRENORM) {
-        const auto &preNormParam = paramJson["preNormParam"];
-        if (preNormParam.contains("epsilon")) {
-            param.preNormParam.epsilon = preNormParam["epsilon"].get<float>();
-        }
-        if (preNormParam.contains("quantType")) {
-            param.preNormParam.quantType = atb::infer::QuantType(preNormParam["quantType"].get<int32_t>());
-        }
-        if (preNormParam.contains("opMode")) {
-            param.preNormParam.opMode = preNormParam["opMode"].get<size_t>();
-        }
-        if (preNormParam.contains("zoomScaleValue")) {
-            param.preNormParam.zoomScaleValue = preNormParam["zoomScaleValue"].get<float>();
-        }
-        if (preNormParam.contains("rsv")) {
-            for (size_t i = 0; i < preNormParam["rsv"].size(); i++) {
-                param.preNormParam.rsv[i] = preNormParam["rsv"].at(i).get<int8_t>();
-            }
-        }
-    }
-    if (param.layerType == atb::infer::LayerNormParam::LAYER_NORM_POSTNORM) {
-        const auto &postNormParam = paramJson["postNormParam"];
-        if (postNormParam.contains("epsilon")) {
-            param.postNormParam.epsilon = postNormParam["epsilon"].get<float>();
-        }
-        if (postNormParam.contains("quantType")) {
-            param.postNormParam.quantType = atb::infer::QuantType(postNormParam["quantType"].get<int32_t>());
-        }
-        if (postNormParam.contains("opMode")) {
-            param.postNormParam.opMode = postNormParam["opMode"].get<size_t>();
-        }
-        if (postNormParam.contains("zoomScaleValue")) {
-            param.postNormParam.zoomScaleValue = postNormParam["zoomScaleValue"].get<float>();
-        }
-        if (postNormParam.contains("rsv")) {
-            for (size_t i = 0; i < postNormParam["rsv"].size(); i++) {
-                param.postNormParam.rsv[i] = postNormParam["rsv"].at(i).get<int8_t>();
-            }
-        }
-    }
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();

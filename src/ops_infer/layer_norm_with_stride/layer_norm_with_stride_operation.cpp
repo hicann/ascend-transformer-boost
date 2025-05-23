@@ -39,8 +39,6 @@ template <> Status CreateOperation(const infer::LayerNormWithStrideParam &opPara
     }
     OP_PARAM_RSV_CHECK(opParam);
     OP_PARAM_RSV_CHECK(opParam.normParam);
-    OP_PARAM_RSV_CHECK(opParam.preNormParam);
-    OP_PARAM_RSV_CHECK(opParam.postNormParam);
     if (opParam.layerType != infer::LayerNormWithStrideParam::LAYER_NORM_NORM) {
         ATB_LOG(ERROR) << "LayerNormWithStrideParam only support LAYER_NORM_NORM";
         return ERROR_INVALID_PARAM;
