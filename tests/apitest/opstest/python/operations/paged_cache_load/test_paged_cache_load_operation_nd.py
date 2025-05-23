@@ -25,7 +25,7 @@ shape_dtype_list = [
     [32,1,16,192,128,64,256,"int8"],
 ]
 
-# ND:type=1
+# ND:type=0
 configs = [
     {"kvCacheType": 1, "isSeqLensCumsumMode": True, "hasSeqStarts": True},
     {"kvCacheType": 1, "isSeqLensCumsumMode": False, "hasSeqStarts": True},
@@ -168,18 +168,17 @@ def generate_data(
     
         ret_data = key_cache, value_cache, block_tables, context_lens, key, value, seq_starts, key_expect, value_expect
         return ret_data
-        
-
-
+    
+    
 class PagedCacheLoadOperation(operation_test.OperationTest):
     soc_version = operation_test.get_soc_version()
 
     def golden_calc(self, input_tensors):
         return [self.in_tensors[4], self.in_tensors[5]]
-
+    
     def golden_compare(self, out_tensor, golden_out_tensor):
         return torch.equal(out_tensor, golden_out_tensor)
-
+    
     def _run_test(self, 
                     shape_dtype_idx: int, 
                     param_idx: int,
