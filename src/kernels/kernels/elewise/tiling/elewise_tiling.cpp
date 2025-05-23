@@ -30,6 +30,38 @@ Status ElewiseCommonTiling(const std::string &kernelName, const LaunchParam &lau
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
 
+Status AddTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                             const BinHandle &binHandle)
+{
+    const auto &tensorDesc0 = launchParam.GetInTensor(0).desc;
+    const auto &tensorDesc1 = launchParam.GetInTensor(1).desc;
+    const auto &tensorDescOut = launchParam.GetOutTensor(0).desc;
+
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("Add")
+        .SetKernelName(kernelName)
+        .AddInput(tensorDesc0.dtype, tensorDesc0.format, tensorDesc0.dims)
+        .AddInput(tensorDesc1.dtype, tensorDesc1.format, tensorDesc1.dims)
+        .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims);
+
+    return GetTilingFromRunner(kernelInfo, runner, binHandle);
+}
+
+Status CastTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                             const BinHandle &binHandle)
+{
+    const auto &tensorDesc = launchParam.GetInTensor(0).desc;
+    const auto &tensorDescOut = launchParam.GetOutTensor(0).desc;
+
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("Cast")
+        .SetKernelName(kernelName)
+        .AddInput(tensorDesc.dtype, tensorDesc.format, tensorDesc.dims)
+        .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims);
+
+    return GetTilingFromRunner(kernelInfo, runner, binHandle);
+}
+
 Status MulsTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                   const BinHandle &binHandle)
 {
