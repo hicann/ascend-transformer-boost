@@ -553,9 +553,12 @@ Status MultiLatentAttentionOperation::KVDimCheckPrefill1(const SVector<TensorDes
 
 Status MultiLatentAttentionOperation::KVDimCheckPrefill2(const SVector<TensorDesc> &inTensorDesc) const
 {
+    if (inTensorDesc.at(IN_TENSOR_5).shape.dims[0] == 0) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of key(intensor5) cant be 0";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
     if (inTensorDesc.at(IN_TENSOR_2).shape.dims[0] % inTensorDesc.at(IN_TENSOR_5).shape.dims[0] != 0) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of key(intensor2) should be multiple of batch"
-                       << ", batch = " << inTensorDesc.at(IN_TENSOR_5).shape.dims[0];
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of key(intensor2) should be multiple of batch";
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(IN_TENSOR_2).shape.dims[1] != param_.kvHeadNum) {
