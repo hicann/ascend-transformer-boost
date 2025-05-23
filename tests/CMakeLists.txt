@@ -15,3 +15,5 @@ endif()
 if(USE_FUZZ_TEST)
     add_subdirectory(apitest/fuzztest)
 endif()
+add_subdirectory(cinterface)
+
