@@ -3031,24 +3031,24 @@ struct FaUpdateParam {
 //!
 struct PagedCacheLoadParam {
     //!
-    //! \enum KvCacheType
+    //! \enum KvCacheCfg
     //!
     //! \brief KvCache配置
     //!
     //! \note 默认值为K_CACHE_V_CACHE(0)，传入key_cache和value_cache
     //!
-    enum KvCacheType : int8_t {
-        PAGED_CACHE_LOAD_NZ = 0, //!< 默认值,传入key_cache和value_cache,且为NZ格式
-        PAGED_CACHE_LOAD_ND,    //!< 传入key_cache和value_cache,且为ND格式
+    enum KvCacheCfg : int8_t {
+        K_CACHE_V_CACHE_NZ = 0, //!< 默认值,传入key_cache和value_cache,且为NZ格式
+        K_CACHE_V_CACHE_ND,     //!< 传入key_cache和value_cache,且为ND格式
     };
-    //! KvCacheType 配置
-    KvCacheType kvCacheType = PAGED_CACHE_LOAD_NZ;
+    //! KvCacheCfg 配置
+    KvCacheCfg kvCacheCfg = K_CACHE_V_CACHE_NZ;
     //!
-    //! \brief 是否使用batch输入为累加和模式
+    //! \brief 支持输入SeqLens为累加和模式，即第n个batch中所需提取的元素数量为前n个batch的所需提取元素数量的累加和
     //!
     bool isSeqLensCumsumMode = false;
     //!
-    //! \brief 是否提供batch在blocktable中对应起始位置
+    //! \brief 提供SeqStart用于为每个batch提供在blockTable中的初始位置（类似于offset）
     //!
     bool hasSeqStarts = false;
     //!
