@@ -137,13 +137,14 @@ private:
                   return false);
         // kshape (batch, seq, n * d) (bs, n, d)
         auto kvdim0 = tensorKcache.desc.dims[DIM_0];
-        if(kvdim0 == batch) {
+        if (kvdim0 == batch) {
             // (b, s, n * d)
             uint32_t maxSeqlen = tensorKcache.desc.dims[DIM_1];
             MKI_CHECK(tensorVcache.desc.dims[DIM_0] == batch && tensorVcache.desc.dims[DIM_1] == maxSeqlen,
                   "v shape error", return false);
         } else {
             // (b * s, n, d)
+            MKI_CHECK(batch != 0, "batch error", return false);
             uint32_t maxSeqlen = tensorKcache.desc.dims[DIM_1] / batch;
             MKI_CHECK(tensorVcache.desc.dims[DIM_0] == maxSeqlen * batch && tensorVcache.desc.dims[DIM_1] == kvhead,
                   "v shape error", return false);
@@ -256,7 +257,7 @@ private:
         auto &tensorVcache = launchParam.GetInTensor(DIM_4); // V.shape = [batch, max_seqlen, hiddensize]
         auto kvSeqLen = param.kvSeqLen;
         uint32_t batch = kvSeqLen.size();
-        uint32_t head =param.kvHead;
+        uint32_t head = param.kvHead;
         if (CheckEmptyTensor(tensorKcache) || CheckEmptyTensor(tensorVcache)) {
             MKI_CHECK(CheckEmptyTensor(tensorKcache) && CheckEmptyTensor(tensorVcache),
                       "normal k and v should both be empty tensor if batches are split",

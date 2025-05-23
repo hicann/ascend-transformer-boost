@@ -297,7 +297,8 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
     }
     auto kvSeqLen = param.kvSeqLen;
     batch = kvSeqLen.size();
-    if(kcacheShape.at(0) != batch) {
+    if (kcacheShape.at(0) != batch) {
+        MKI_CHECK(batch != 0, "batch error", return Status::FailStatus(ERROR_INVALID_VALUE));
         mmInfo.maxKvSeqLen = kcacheShape.at(0) / batch; // (b*s, n ,d)
     } else {
         mmInfo.maxKvSeqLen = kcacheShape.at(1);         // (b, s, n*d)
