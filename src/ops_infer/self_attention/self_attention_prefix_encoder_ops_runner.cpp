@@ -38,7 +38,7 @@ SelfAttentionPrefixEncoderOpsRunner::SelfAttentionPrefixEncoderOpsRunner(const i
         intensorSize = 7;
         hasSlopes = false;
     }
-    bool needMask = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_FREE;
+    needMask_ = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_MASK_FREE;
     kernelGraph_.inTensors.resize(intensorSize);
     kernelGraph_.outTensors.resize(1);
 
@@ -47,10 +47,10 @@ SelfAttentionPrefixEncoderOpsRunner::SelfAttentionPrefixEncoderOpsRunner(const i
     Mki::Tensor &key = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *value = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *blockTables = &kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *mask = needMask ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
+    Mki::Tensor *mask = needMask_ ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
     Mki::Tensor &seqLen = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &kvSeqLen = kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *slopes = hasSlopes && needMask ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
+    Mki::Tensor *slopes = hasSlopes && needMask_ ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
 
     Mki::Tensor &attnOut = kernelGraph_.outTensors.at(0);
 
@@ -122,12 +122,12 @@ void SelfAttentionPrefixEncoderOpsRunner::SetFAParam(AtbOps::OpParam::UnpadFlash
     } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
         flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
             AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_NORM);
-    } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_FREE) {
+    } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_MASK_FREE) {
         flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
             AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_MASK_FREE);
     }
     // [head_num, seqlen, 128]
-    if (isMask128_ && param_.maskType != infer::SelfAttentionParam::MASK_TYPE_FREE) {
+    if (isMask128_ && needMask_) {
         flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
             AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_ALIBI_COMPRESS_128);
     }

@@ -536,7 +536,8 @@ Status InitInfo(UnpadFlashAttentionInfo &mmInfo, OpParam::UnpadFlashAttention &p
         GetSpecTilingKey(mmInfo, param);
     }
     MKI_CHECK(optEnable || mmInfo.maskType != OpParam::UnpadFlashAttention::MASK_TYPE_MASK_FREE,
-            "maskType is mask free, not support opt unable.", return Status::FailStatus(ERROR_INVALID_VALUE));
+            "maskType is mask free, not support opt unable, isMLA or embeddingSize > 128 or scaleType not tor.",
+            return Status::FailStatus(ERROR_INVALID_VALUE));
     if (param.type != OpParam::UnpadFlashAttention::MULTI_LATENT_ATTENTION_COMBINE_CACHE &&
         param.type != OpParam::UnpadFlashAttention::MULTI_LATENT_ATTENTION_HIGH_PRECISION_COMBINE_CACHE) {
         OP_TILING_CHECK_STATUS_RETURN(FlashAttentionVCacheCheck(mmInfo, param));
