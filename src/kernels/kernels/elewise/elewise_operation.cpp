@@ -91,12 +91,20 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_MULS inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Elewise::ELEWISE_COS:
-                if (inDtype == TENSOR_DTYPE_FLOAT) {
-                    return GetKernelByName("CosF32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
-                    return GetKernelByName("CosF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_BF16) {
-                    return GetKernelByName("CosBF16Kernel");
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("CosF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("CosF16Kernel");
+                    }
+                } else {
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("CosF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("CosF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("CosBF16Kernel");
+                    }
                 }
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_COS inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
