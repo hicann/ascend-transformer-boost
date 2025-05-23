@@ -54,18 +54,75 @@ Status AddOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
     return NO_ERROR;
 }
 
-SVector<bool> AddOperation::GetEmptyInTensorPermissions() const
+Status AddOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
-    SVector<bool> v;
-
-    // quant_per_channel dequant_per_channel intensor[2] allows null
-    if (GetInputNum() == TENSOR_NUM_THREE) {
-        SVector<bool> emptyTensorPerms(GetInputNum(), false);
-        emptyTensorPerms.at(TENSOR_NUM_THREE - 1) = true;
-        return emptyTensorPerms;
+    if (inTensorDescs.size() != 2) {
+        ATB_LOG(ERROR) << "AddOp requires exactly 2 inputs, got ";
+                       << inTensorDescs.size();
+        return ERROR_INVALID_PARAM;
     }
 
-    return v;
+    const TensorDesc &A = inTensorDescs[0];
+    const TensorDesc &B = inTensorDescs[1];
+
+    if (A.dtype != B.dtype || A.dtype != ACL_DT_FLOAT16) {
+        ATB_LOG(ERROR) << "AddOp inputs dtypes must match and be FLOAT16, got ";
+                       << A.dtype << " vs " <<B.dtype;
+        return ERROR_INVALID_PARAM;
+    }
+
+      if (A.format != B.format) {
+        ATB_LOG(ERROR) << "AddOp input formats must match, got "
+                       << A.format << " vs " << B.format;
+        return ERROR_INVALID_PARAM;
+    }
+
+    if (A.shape.dimNum == 0 || A.shape.dimNum > MAX_DIM ||
+        B.shape.dimNum == 0 || B.shape.dimNum > MAX_DIM) {
+        ATB_LOG(ERROR) << "AddOp input dimNum out of range, got "
+                       << A.shape.dimNum << " and " << B.shape.dimNum;
+        return ERROR_INVALID_PARAM;
+    }
+
+    for (uint64_t i = 0; i < A.shape.dimNum; ++i) {
+        if (A.shape.dims[i] <= 0) {
+            ATB_LOG(ERROR) << "AddOp input 0 dim[" << i << "] <= 0";
+            return ERROR_INVALID_PARAM;
+        }
+    }
+    for (uint64_t i = 0; i < B.shape.dimNum; ++i) {
+        if (B.shape.dims[i] <= 0) {
+            ATB_LOG(ERROR) << "AddOp input 1 dim[" << i << "] <= 0";
+            return ERROR_INVALID_PARAM;
+        }
+    }
+    return NO_ERROR;
+}
+
+Status AddOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
+{
+    if (inTensors.size() != 2 || outTensors.size() != 1) {
+        ATB_LOG(ERROR) << "AddOp runtime expects 2 inputs & 1 output, got "
+                       << inTensors.size() << " in, "
+                       << outTensors.size() << " out";
+        return ERROR_INVALID_PARAM;
+    }
+
+    const TensorDesc &TA = inTensors[0].desc;
+    const TensorDesc &TB = inTensors[1].desc;
+    const TensorDesc &TC = outTensors[0].desc;
+
+    if (TA.dtype != TB.dtype ||
+       (TA.dtype != ACL_DT_FLOAT16 && TA.dtype != ACL_DT_FLOAT)) {
+        ATB_LOG(ERROR) << "AddOp runtime dtype mismatch or unsupported.";
+        return ERROR_INVALID_PARAM;
+    }
+    if (TA.format != TB.format) {
+        ATB_LOG(ERROR) << "AddOp runtime format mismatch.";
+        return ERROR_INVALID_PARAM;
+    }
+    ATB_LOG(DEBUG) << "outTensors size:" << outTensors.size();
+    return NO_ERROR;
 }
 
 std::shared_ptr<Runner> AddOperation::CreateRunner(Context &context) const

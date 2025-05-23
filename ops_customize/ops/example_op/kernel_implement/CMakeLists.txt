@@ -4,3 +4,8 @@ set(add_src
 )
 
 add_operation(AddOperation "${add_src}")
+
+add_kernel(add ascend910b vector
+    op_kernel/example.cpp
+    AddKernel
+)

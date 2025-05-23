@@ -28,7 +28,7 @@ set(USR_INCLUDE_DIRS
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
 )
 
-target_include_directories(atb_customize        PUBLIC ${USR_INCLUDE_DIRS})
+target_include_directories(atb_customize PUBLIC ${USR_INCLUDE_DIRS})
 target_include_directories(atb_customize_static PUBLIC ${USR_INCLUDE_DIRS})
 
 set(USR_LINK_LIBS
@@ -49,6 +49,8 @@ target_link_libraries(atb_customize_static PUBLIC ${USR_LINK_LIBS})
 
 install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
+
+add_subdirectory(ops/example_op/tests/kernel_implement)
 
 if (BUILD_USR_OPS_TEST)
     enable_testing()
