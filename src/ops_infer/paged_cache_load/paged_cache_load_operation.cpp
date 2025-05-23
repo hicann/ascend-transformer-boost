@@ -53,8 +53,8 @@ template <> Status CreateOperation(const infer::PagedCacheLoadParam &opParam, Op
         ATB_LOG(ERROR) << "paged cache load only support Atlas 800I A2 inference product!";
         return ERROR_INVALID_PARAM;
     }
-    if (opParam.kvCacheType > infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_ND ||
-        opParam.kvCacheType < infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_NZ) {
+    if (opParam.kvCacheCfg < infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ ||
+        opParam.kvCacheCfg > infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_ND) {
         ATB_LOG(ERROR) << "wrong kvcache config";
         return ERROR_INVALID_PARAM;
     }
@@ -70,10 +70,10 @@ PagedCacheLoadOperation::PagedCacheLoadOperation(const infer::PagedCacheLoadPara
     : OperationBase("PagedCacheLoadOperation"), param_(param)
 {
     if (GetSingleton<Config>().Is910B()) {
-        if (param_.kvCacheType == infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_NZ) {
+        if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("PagedCacheLoadOperation");
         } else {
-            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("PagedCacheLoadOperationSeqStarts");
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("PagedCacheLoadOperationND");
         }
     }
 }
@@ -82,7 +82,7 @@ PagedCacheLoadOperation::~PagedCacheLoadOperation() {}
 
 uint32_t PagedCacheLoadOperation::GetInputNum() const
 {
-    if (param_.kvCacheType == infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_NZ) {
+    if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
         return IN_TENSOR_NUM;
     } else {
         return IN_TENSOR_NUM_SEQ_STARTS;
@@ -114,8 +114,7 @@ Status PagedCacheLoadOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
     for (size_t i = 0; i < inTensors.size(); i++) {
         inTensorDescs.push_back(inTensors.at(i).desc);
     }
-    if (param_.kvCacheType == infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_NZ &&
-        !param_.hasSeqStarts) { // NZ且未开启SeqStarts时输入intensor数量为6
+    if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) { // NZ
         if (outTensors.at(0).desc.shape.dims[1] !=
             inTensorDescs.at(0).shape.dims[1] * inTensorDescs.at(0).shape.dims[OUT_DIM] ||
             outTensors.at(1).desc.shape.dims[1] !=
@@ -161,33 +160,31 @@ Status PagedCacheLoadOperation::DimCheck(const SVector<TensorDesc> &inTensorDesc
         ATB_LOG(ERROR) << GetLogPrefix() << "sumcontextlens should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (param_.isSeqLensCumsumMode) {
+    if (param_.isSeqLensCumsumMode && param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
         if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0] - ONE) { // 1:-1
             ATB_LOG(ERROR) << GetLogPrefix() <<
                 "the lencontext of blocktable should match the lencontext of SeqLens when isSeqLensCumsumMode is true.";
             return ERROR_INVALID_TENSOR_DIM;
-        } else {
-            ATB_LOG(ERROR) << GetLogPrefix() <<
-                "the lencontext of blocktable should match the lencontext of SeqLens when isSeqLensCumsumMode is false.";
+        }
+    }
+    if (infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ || !param_.isSeqLensCumsumMode) {
+        if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0]) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "lenscontextlens should be same";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
-    if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0]) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "lenscontextlens should be same";
-        return ERROR_INVALID_TENSOR_DIM;
-    }
-    return (param_.kvCacheType == infer::PagedCacheLoadParam::KvCacheType::PAGED_CACHE_LOAD_NZ) ?
+    return (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) ?
             KVCacheDimCheck910BNZ(inTensorDescs) : KVCacheDimCheck910BND(inTensorDescs);
 }
 
 Status PagedCacheLoadOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc> &inTensorDescs) const
 {
-    if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dimNum != INPUTKEY_DIM ||         // 0: keyCache
-        inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dimNum != INPUTVALUE_DIM ||       // 1: value Cache
-        inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dimNum != INPUTBLOCK_DIM ||
-        inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dimNum != INPUTCONTEXTLENS_DIM ||
-        inTensorDescs.at(IN_TENSOR_4_KEY).shape.dimNum != INPUTBLOCK_DIM ||
-        inTensorDescs.at(IN_TENSOR_5_VALUE).shape.dimNum != INPUTBLOCK_DIM) {      // 2: blocktables
+    if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dimNum != INPUTKEY_DIM ||     // 0: keyCache
+        inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dimNum != INPUTVALUE_DIM || // 1: value Cache
+        inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dimNum != INPUTBLOCK_DIM || // 2: dim=2
+        inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dimNum != INPUTCONTEXTLENS_DIM || // 1: dim=1
+        inTensorDescs.at(IN_TENSOR_4_KEY).shape.dimNum != INPUTBLOCK_DIM ||        // 2: dim=2
+        inTensorDescs.at(IN_TENSOR_5_VALUE).shape.dimNum != INPUTBLOCK_DIM) {      // 2: dim=2
         ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
@@ -223,34 +220,11 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BND(const SVector<TensorDesc> 
         inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dimNum != INPUTVALUE_DIM || // 1: valueCache
         inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dimNum != INPUTBLOCK_DIM || // 2: blockTable
         inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dimNum != INPUTCONTEXTLENS_DIM || // 3: SeqLens
-        inTensorDescs.at(IN_TENSOR_4_KEY).shape.dimNum != INPUTBLOCK_DIM || // 4:key
-        inTensorDescs.at(IN_TENSOR_5_VALUE).shape.dimNum != INPUTBLOCK_DIM || // 5: value
+        inTensorDescs.at(IN_TENSOR_4_KEY).shape.dimNum != OUT_DIM || // 4:key
+        inTensorDescs.at(IN_TENSOR_5_VALUE).shape.dimNum != OUT_DIM || // 5: value
         inTensorDescs.at(IN_TENSOR_6_SEQ_STARTS).shape.dimNum != INPUTCONTEXTLENS_DIM) { // 6: seq start
         ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
         return ERROR_INVALID_TENSOR_DIM_NUM;
-    }
-    if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).dtype == ACL_INT8) {
-        if (THIRTYTWO != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
-                THIRTYTWO!= inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
-            ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 32";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        if (MAX_k < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * THIRTYTWO ||
-                MAX_v < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * THIRTYTWO) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-    } else {
-        if (SIXTEEN != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
-                SIXTEEN!= inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
-            ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 16";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        if (MAX_k < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * SIXTEEN ||
-                MAX_v < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * SIXTEEN) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
     }
     int64_t lencontext = inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dims[0]; // 2: blockTable-batch(len(contextLens))
     int64_t seqstart = inTensorDescs.at(IN_TENSOR_6_SEQ_STARTS).shape.dims[0]; // 6: seq_start-batch(len(contextLens))
