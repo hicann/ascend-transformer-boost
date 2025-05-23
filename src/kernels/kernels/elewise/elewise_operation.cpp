@@ -49,7 +49,11 @@ public:
         }
 
         std::stringstream ss;
-        ss << "Cast";
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            ss << "CastApt";
+        } else {
+            ss << "Cast";
+        }
         auto inDTypeShortName = GetDTypeShortName(inDType);
         if (!inDTypeShortName) {
             MKI_LOG(ERROR) << "Cast does not support input type: " << GetStrWithDType(inDType);
