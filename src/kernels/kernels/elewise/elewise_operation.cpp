@@ -93,9 +93,9 @@ public:
             case OpParam::Elewise::ELEWISE_COS:
                 if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
                     if (inDtype == TENSOR_DTYPE_FLOAT) {
-                        return GetKernelByName("CosF32Kernel");
+                        return GetKernelByName("CosAptF32Kernel");
                     } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
-                        return GetKernelByName("CosF16Kernel");
+                        return GetKernelByName("CosAptF16Kernel");
                     }
                 } else {
                     if (inDtype == TENSOR_DTYPE_FLOAT) {
