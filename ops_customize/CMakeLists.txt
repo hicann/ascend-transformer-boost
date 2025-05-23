@@ -1,5 +1,14 @@
 file(GLOB_RECURSE USR_COMMON_SRC "${CMAKE_CURRENT_LIST_DIR}/common/*.cpp")
-file(GLOB_RECURSE USR_OPS_SRC "${CMAKE_CURRENT_LIST_DIR}/ops/*.cpp")
+file(GLOB_RECURSE ALL_OPS_SRC "${CMAKE_CURRENT_LIST_DIR}/ops/*.cpp")
+
+set(USR_OPS_SRC "")
+
+foreach(_f IN LISTS ALL_OPS_SRC)
+    if (NOT _f MATCHES "/kernel_implement/" AND
+        NOT _f MATCHES "/tests/")
+        list(APPEND USR_OPS_SRC "${_f}")
+    endif()
+endforeach()
 
 add_library(atb_customize SHARED
     ${USR_COMMON_SRC}
@@ -50,7 +59,7 @@ target_link_libraries(atb_customize_static PUBLIC ${USR_LINK_LIBS})
 install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
 
-add_subdirectory(ops/example_op/tests/kernel_implement)
+add_subdirectory(ops/example_op/kernel_implement)
 
 if (BUILD_USR_OPS_TEST)
     enable_testing()

@@ -14,8 +14,8 @@ public:
 
 protected:
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
-    Status AddOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const;
-    Status AddOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
+    Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const override;
+    Status SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const override;
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;
     nlohmann::json GetParamJson() const override;
 

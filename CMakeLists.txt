@@ -104,10 +104,10 @@ if(BUILD_TEST_FRAMEWORK OR USE_UNIT_TEST OR USE_PYTHON_TEST OR USE_FUZZ_TEST OR 
     set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
     add_subdirectory(tests)
 endif()
+add_subdirectory(src)
 if (BUILD_USR_OPS)
     add_subdirectory(ops_customize)
 endif()
-add_subdirectory(src)
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/atb/cxx_abi_${cxx_abi}")
 
