@@ -16,7 +16,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/core/op_param_funcs.h"
 
-namespace atb {
+namespace atb { 
 const uint32_t TENSOR_NUM_ONE = 1;
 const uint32_t TENSOR_NUM_TWO = 2;
 const uint32_t TENSOR_NUM_THREE = 3;
