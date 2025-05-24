@@ -65,7 +65,7 @@ Status AddOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDesc
     const TensorDesc &A = inTensorDescs[0];
     const TensorDesc &B = inTensorDescs[1];
 
-    if (A.dtype != B.dtype || A.dtype != ACL_DT_FLOAT16) {
+    if (A.dtype != B.dtype || A.dtype != ACL_FLOAT16) {
         ATB_LOG(ERROR) << "AddOp inputs dtypes must match and be FLOAT16, got ";
                        << A.dtype << " vs " <<B.dtype;
         return ERROR_INVALID_PARAM;
@@ -112,12 +112,11 @@ Status AddOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVec
     const TensorDesc &TB = inTensors[1].desc;
     const TensorDesc &TC = outTensors[0].desc;
 
-    if (TA.dtype != TB.dtype ||
-       (TA.dtype != ACL_DT_FLOAT16 && TA.dtype != ACL_DT_FLOAT)) {
+    if (TA.dtype != TB.dtype || TA.dtype != TC.dtype || TA.dtype != ACL_FLOAT16) {
         ATB_LOG(ERROR) << "AddOp runtime dtype mismatch or unsupported.";
         return ERROR_INVALID_PARAM;
     }
-    if (TA.format != TB.format) {
+    if (TA.format != TB.format || TA.format != TC.format) {
         ATB_LOG(ERROR) << "AddOp runtime format mismatch.";
         return ERROR_INVALID_PARAM;
     }
