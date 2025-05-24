@@ -57,7 +57,7 @@ Status AddOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
 Status AddOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (inTensorDescs.size() != 2) {
-        ATB_LOG(ERROR) << "AddOp requires exactly 2 inputs, got ";
+        ATB_LOG(ERROR) << "AddOp requires exactly 2 inputs, got "
                        << inTensorDescs.size();
         return ERROR_INVALID_PARAM;
     }
@@ -66,7 +66,7 @@ Status AddOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDesc
     const TensorDesc &B = inTensorDescs[1];
 
     if (A.dtype != B.dtype || A.dtype != ACL_FLOAT16) {
-        ATB_LOG(ERROR) << "AddOp inputs dtypes must match and be FLOAT16, got ";
+        ATB_LOG(ERROR) << "AddOp inputs dtypes must match and be FLOAT16, got "
                        << A.dtype << " vs " <<B.dtype;
         return ERROR_INVALID_PARAM;
     }

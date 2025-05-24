@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.15)
-project(example_op_test CXX)
-
 find_package(GTest REQUIRED)
 enable_testing()
 
@@ -17,8 +14,10 @@ add_executable(example_op_test example_op_test.cpp)
 
 target_link_libraries(example_op_test
     PRIVATE
+      GTest::gtest
+      GTest::gtest_main
+      atb
       atb_customize
-      GTest::GTest
       pthread
 )
 
