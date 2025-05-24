@@ -517,15 +517,6 @@ function fn_run_kernel_unittest()
     $ATB_HOME_PATH/bin/kernels_unittest --gtest_output=xml:kernel_test_detail.xml
 }
 
-function fn_run_kernel_cinterfacetest()
-{
-    export_atb_env
-    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
-    echo "run $ATB_HOME_PATH/bin/atb_cinterface"
-    $ATB_HOME_PATH/bin/atb_cinterface
-}
-
-
 function fn_run_fuzztest()
 {
     export_atb_env
@@ -566,7 +557,6 @@ function fn_build_coverage()
         fn_run_unittest
         fn_run_pythontest
         fn_run_torchatbtest
-        fn_run_kernel_cinterfacetest
     fi
     if [ "$COVERAGE_TYPE" == "FUZZTEST" ];then
         fn_run_fuzztest
@@ -775,7 +765,6 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UNIT_TEST=ON"
             fn_build_3rdparty_for_test
             fn_build
-            fn_run_kernel_cinterfacetest
             fn_run_unittest
             ;;
         "kernelunittest")

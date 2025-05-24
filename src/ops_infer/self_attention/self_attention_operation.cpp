@@ -316,7 +316,8 @@ bool PrefixEncoderParamCheck(const infer::SelfAttentionParam &opParam)
         {std::abs(opParam.clampMax - 0.0f) < FLT_EPSILON, "PREFIX_ENCODER doesn't support clamp"},
         {opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
              opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT ||
-             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS,
+             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS ||
+             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_MASK_FREE,
          "PREFIX_ENCODER only supports alibi compress mask, norm compress mask and alibi compress sqrt mask"},
         {opParam.kvcacheCfg == atb::infer::SelfAttentionParam::K_CACHE_V_CACHE,
          "PREFIX_ENCODER doesn't support key value bypass"},
@@ -354,7 +355,8 @@ SelfAttentionOperation::SelfAttentionOperation(const infer::SelfAttentionParam &
     : OperationBase("SelfAttentionOperation"), param_(param)
 {
     isMla_ = param_.mlaVHeadSize > 0;
-    hasMask_ = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED &&
+    hasMask_ = (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED
+                || param_.maskType != infer::SelfAttentionParam::MASK_TYPE_MASK_FREE) &&
                !(param_.calcType == infer::SelfAttentionParam::DECODER &&
                  param_.maskType == infer::SelfAttentionParam::MASK_TYPE_SLIDING_WINDOW_NORM);
     kvHeadNum_ = (param_.kvHeadNum > 0) ? param_.kvHeadNum : param_.headNum;

@@ -29,6 +29,7 @@ private:
 private:
     infer::SelfAttentionParam param_;
     bool isMask128_ = false;
+    bool needMask_ = true;
     Mki::Tensor nullTensor_ = {}; // 空tensor，作为layerId或mask
 };
 } // namespace atb

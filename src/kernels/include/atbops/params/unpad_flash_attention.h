@@ -93,7 +93,8 @@ struct UnpadFlashAttention {
         MASK_TYPE_ALIBI_COMPRESS = 6,
         MASK_TYPE_ALIBI_COMPRESS_SQRT = 7,
         MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN = 8,
-        MASK_TYPE_ALIBI_COMPRESS_128 = 9
+        MASK_TYPE_ALIBI_COMPRESS_128 = 9,
+        MASK_TYPE_MASK_FREE = 10
     };
     MaskType maskType = MASK_TYPE_NORM;
     enum CacheType {
