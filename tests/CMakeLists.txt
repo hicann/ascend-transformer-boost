@@ -11,9 +11,8 @@
 add_subdirectory(framework)
 if(USE_UNIT_TEST OR USE_ALL_TEST)
     add_subdirectory(unittest)
+    add_subdirectory(cinterface)
 endif()
 if(USE_FUZZ_TEST)
     add_subdirectory(apitest/fuzztest)
 endif()
-add_subdirectory(cinterface)
-
