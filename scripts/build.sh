@@ -749,11 +749,16 @@ function fn_main()
             generate_atb_version_info
             pack_testframework
             ;;
+        "testcinterface")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CINTERFACE_TEST=ON"
+            fn_build_3rdparty_for_test
+            fn_build
+            fn_run_kernel_cinterfacetest
+            ;;
         "unittest")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UNIT_TEST=ON"
             fn_build_3rdparty_for_test
             fn_build
-            fn_run_kernel_cinterfacetest
             fn_run_unittest
             ;;
         "kernelunittest")
