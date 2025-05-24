@@ -8,18 +8,18 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #pragma once
-#include "act/act.hpp"
-#include "act/arch/resource.hpp"
-#include "act/epilogue/dispatch_policy.hpp"
-#include "act/gemm_coord.hpp"
-#include "act/matrix_coord.hpp"
-#include "act/layout/layout.hpp"
-#include "act/detail/callback.hpp"
+#include "catlass/catlass.hpp"
+#include "catlass/arch/resource.hpp"
+#include "catlass/epilogue/dispatch_policy.hpp"
+#include "catlass/gemm_coord.hpp"
+#include "catlass/matrix_coord.hpp"
+#include "catlass/layout/layout.hpp"
+#include "catlass/detail/callback.hpp"
 
-#include "mixkernels/utils/common/kernel/act/epilogue/tile/tile_stride_muls.h"
-#include "mixkernels/utils/common/kernel/act/epilogue/tile/tile_stride_binary.h"
+#include "mixkernels/utils/common/kernel/catlass/epilogue/tile/tile_stride_muls.h"
+#include "mixkernels/utils/common/kernel/catlass/epilogue/tile/tile_stride_binary.h"
 
-namespace Act::Epilogue::Block {
+namespace Catlass::Epilogue::Block {
 
 template <
     uint32_t UB_STAGES_,
@@ -123,10 +123,10 @@ public:
         __gm__ ElementD *ptrD{nullptr};
         LayoutD layoutD{};
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params() {};
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params(
             __gm__ ElementScale *ptrScale_, LayoutScale const &layoutScale_,
             __gm__ ElementPerTokenScale *ptrPerTokenScale_, LayoutPerTokenScale const &layoutPerTokenScale_,
@@ -136,7 +136,7 @@ public:
             ptrD(ptrD_), layoutD(layoutD_) {}
     };
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     BlockEpilogue(Arch::Resource<ArchTag> const &resource, Params const &params = Params{}) : params(params)
     {
         size_t ubOffset = 0;
@@ -175,7 +175,7 @@ public:
         ubTmpMxChunkN = resource.ubBuf.template GetBufferByByte<float>(ubOffset);
     }
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     ~BlockEpilogue()
     {
         for (uint32_t i = 0; i < UB_STAGES; ++i) {
@@ -186,13 +186,13 @@ public:
         }
     }
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     void UpdateParams(Params const &params_)
     {
         params = params_;
     }
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator() (
         GemmCoord const &blockShapeMNK,
         GemmCoord const &blockCoordMNK,
@@ -352,4 +352,4 @@ private:
     CopyUbToGmD copyUbToGmD;
 };
 
-}  // namespace Act::Epilogue::Block
+}  // namespace Catlass::Epilogue::Block

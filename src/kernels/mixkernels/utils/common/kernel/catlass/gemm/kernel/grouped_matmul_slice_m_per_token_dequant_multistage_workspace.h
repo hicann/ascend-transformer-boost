@@ -9,15 +9,15 @@
  */
 
 #pragma once
-#include "act/act.hpp"
-#include "act/arch/cross_core_sync.hpp"
-#include "act/arch/resource.hpp"
-#include "act/coord.hpp"
-#include "act/detail/callback.hpp"
-#include "act/gemm_coord.hpp"
-#include "act/matrix_coord.hpp"
+#include "catlass/catlass.hpp"
+#include "catlass/arch/cross_core_sync.hpp"
+#include "catlass/arch/resource.hpp"
+#include "catlass/coord.hpp"
+#include "catlass/detail/callback.hpp"
+#include "catlass/gemm_coord.hpp"
+#include "catlass/matrix_coord.hpp"
 
-namespace Act::Gemm::Kernel {
+namespace Catlass::Gemm::Kernel {
 
 template <
     class BlockMmad_,
@@ -71,10 +71,10 @@ public:
         GM_ADDR ptrWorkspace;
 
         // Methods
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params() {}
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params(
             GemmCoord problemShape_, uint32_t problemCount_, GM_ADDR ptrGroupList_,
             GM_ADDR ptrA_, LayoutA layoutA_,
@@ -97,7 +97,7 @@ public:
     };
 
     // Methods
-    ACT_DEVICE
+    CATLASS_DEVICE
     GroupedMatmulSliceMPerTokenDequantMultiStageWorkspace()
     {
         Arch::FlagID flagId = 0;
@@ -110,11 +110,11 @@ public:
     }
 
     template <int32_t CORE_TYPE = g_coreType>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()(Params const &params);
 
     template <>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()<AscendC::AIC>(Params const &params)
     {
         BlockScheduler blockScheduler;
@@ -221,7 +221,7 @@ public:
     }
 
     template <>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()<AscendC::AIV>(Params const &params)
     {
         BlockScheduler blockScheduler;
@@ -296,10 +296,10 @@ private:
         using MatmulKernel = GroupedMatmulSliceMPerTokenDequantMultiStageWorkspace<BlockMmad, BlockEpilogue, BlockScheduler,
             WORKSPACE_STAGES, ElementGroupList>;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         AicWaitFunc() = default;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         void operator()() const
         {
             Arch::CrossCoreWaitFlag(ptr->flagAivFinishComputeList[stageId]);
@@ -313,10 +313,10 @@ private:
         using MatmulKernel = GroupedMatmulSliceMPerTokenDequantMultiStageWorkspace<BlockMmad, BlockEpilogue, BlockScheduler,
             WORKSPACE_STAGES, ElementGroupList>;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         AicSetFunc() = default;
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         void operator()() const
         {
             Arch::CrossCoreSetFlag<0x2, PIPE_FIX>(ptr->flagAicFinishStoreList[stageId]);
@@ -334,4 +334,4 @@ private:
     Arch::Resource<ArchTag> resource;
 };
 
-} // namespace Act::Gemm::Kernel
+} // namespace Catlass::Gemm::Kernel
