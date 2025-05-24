@@ -25,6 +25,7 @@ static const uint32_t IN_TENSOR_NUM_WITH_RESIDUAL = 3;
 static const uint32_t IN_TENSOR_NUM_WITHOUT_RESIDUAL = 2;
 static const uint32_t IN_TENSOR_NUM_WITH_MOE = 2;
 static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_QUANT = 2;
+static const uint32_t MOE_IN_TENSOR_NUM_REMOVE_OFFSET = 1;
 static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT  = 1;
 static const uint32_t OUT_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM_WITH_MID = 2;
@@ -160,6 +161,7 @@ uint32_t LinearParallelOperation::GetInputNum() const
         inTensorNum += IN_TENSOR_NUM_WITH_MOE;
         }
     if (commonCheckParam_.isQuant) {
+        inTensorNum -= MOE_IN_TENSOR_NUM_REMOVE_OFFSET;
         inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_QUANT;
         if (param_.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
             inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT;
@@ -362,9 +364,6 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(
 
 Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs) const
 {
-    if (!OperationUtil::MatmulInTensorDescsCheck(inTensorDescs, GetLogPrefix(), commonCheckParam_)) {
-        return ERROR_INVALID_TENSOR_DIM;
-    }
     int64_t globalTokensPerExpertMatrixM = OperationUtil::GetXTensorM(inTensorDescs.at(inTensorDescs.size() - 2));
     int64_t globalTokensPerExpertMatrixK = OperationUtil::GetXTensorK(inTensorDescs.at(inTensorDescs.size() - 2));
     int64_t expertNums = param_.moeInfo.epSize * param_.moeInfo.localExpertNums;
