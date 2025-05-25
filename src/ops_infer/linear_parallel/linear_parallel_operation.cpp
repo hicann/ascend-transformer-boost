@@ -155,13 +155,19 @@ LinearParallelOperation::~LinearParallelOperation() {}
 
 uint32_t LinearParallelOperation::GetInputNum() const
 {
-    uint32_t inTensorNum = param_.hasResidual ? IN_TENSOR_NUM_WITH_RESIDUAL : IN_TENSOR_NUM_WITHOUT_RESIDUAL;
+    bool isMoe = false;
     if (param_.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
         param_.type == atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+        isMoe = true;
+    }
+    uint32_t inTensorNum = param_.hasResidual ? IN_TENSOR_NUM_WITH_RESIDUAL : IN_TENSOR_NUM_WITHOUT_RESIDUAL;
+    if (isMoe) {
         inTensorNum += IN_TENSOR_NUM_WITH_MOE;
-        }
+    }
     if (commonCheckParam_.isQuant) {
-        inTensorNum -= MOE_IN_TENSOR_NUM_REMOVE_OFFSET;
+        if (isMoe) {
+            inTensorNum -= MOE_IN_TENSOR_NUM_REMOVE_OFFSET;
+        }
         inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_QUANT;
         if (param_.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
             inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT;
