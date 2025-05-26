@@ -2804,7 +2804,7 @@ private:
         SET_FLAG(MTE2, V, pingpong_flag);
 
         WAIT_FLAG(MTE2, V, pingpong_flag);
-        OnlineSoftmaxStage1Step1(
+        OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_NONE>(
             s_ub.template ReinterpretCast<float>(),
             local_rowmax_ub,
             hat_rowmax_ub,
@@ -2918,7 +2918,7 @@ private:
         AscendC::Add(s_ub.template ReinterpretCast<float>(), s_ub.template ReinterpretCast<float>(), s_rope_ub, m * n_stride); // float
         PIPE_BARRIER(V);
 
-        OnlineSoftmaxStage1Step1(
+        OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_NONE>(
             s_ub.template ReinterpretCast<float>(),
             local_rowmax_ub,
             hat_rowmax_ub,

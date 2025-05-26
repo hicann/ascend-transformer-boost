@@ -81,7 +81,6 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
     $ENV{ASCEND_HOME_PATH}/include
-    $ENV{ASCEND_HOME_PATH}/include/aclnn
     $ENV{PYTHON_INCLUDE_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/include
     $ENV{PYTORCH_INSTALL_PATH}/include/torch/csrc/api/include
