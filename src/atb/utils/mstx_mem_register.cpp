@@ -29,8 +29,9 @@ MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.type = MSTX_MEM_TYPE_VIRTUAL_ADDRESS;
     heapDesc.typeSpecificDesc = &rangeDesc;
     
-    if (GetRegisterDomain()) {
-        memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
+    memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
+    if (memPool_ == 0) {
+        throw std::runtime_error("MSTX_ERR_MEMPOOL_INIT_FAILED")
     }
 }
 

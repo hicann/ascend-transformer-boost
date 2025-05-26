@@ -1078,8 +1078,17 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
                                      OPERATION_EXECUTE :
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);
     std::shared_ptr<MstxMemRegister> mstxMemRegister;
-    mstxMemRegister = std::make_shared<MstxMemRegister>(workspace, workspaceSize);
-    runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
+    try {
+        mstxMemRegister = std::make_shared<MstxMemRegister>(workspace, workspaceSize);
+    } catch {
+        ATB_LOG(ERROR) << "MstxMenRegister creation failed: " << e.what();
+        mstxMemRegister.reset()
+    }
+    if (mstxMemRegister) {
+        runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
+    } else {
+        runnerVariantPack_.mstxMemRegister = nullptr;
+    }
     Status st = NO_ERROR;
     if (executeType == EXECUTE_NORMAL || executeType == EXECUTE_PRELAUNCH) {
         st = PreLaunch(variantPack, workspace, workspaceSize, context);
