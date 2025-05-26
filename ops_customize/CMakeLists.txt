@@ -1,6 +1,3 @@
-list(APPEND CMAKE_MOUDLE_PATH "${CMAKE_SOURCE_DIR}/src/cmake")
-include(AtbMacros)
-
 file(GLOB_RECURSE USR_COMMON_SRC "${CMAKE_CURRENT_LIST_DIR}/common/*.cpp")
 file(GLOB_RECURSE ALL_OPS_SRC "${CMAKE_CURRENT_LIST_DIR}/ops/*.cpp")
 
