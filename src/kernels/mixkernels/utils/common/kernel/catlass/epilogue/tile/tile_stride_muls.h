@@ -8,9 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #pragma once
-#include "act/act.hpp"
+#include "catlass/catlass.hpp"
 
-namespace Act::Epilogue::Tile {
+namespace Catlass::Epilogue::Tile {
 
 template <
     class ArchTag_,
@@ -28,10 +28,10 @@ struct TileStrideMuls {
 
     static_assert(DstTileShape::ROW == SrcTileShape::ROW && DstTileShape::ROW == TileShape::ROW, "Error");
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     TileStrideMuls() {}
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()(
         AscendC::LocalTensor<ElementCompute> const &ubDst,
         AscendC::LocalTensor<ElementCompute> const &ubSrc,
@@ -64,4 +64,4 @@ struct TileStrideMuls {
     }
 };
 
-}  // Act::Epilogue::Tile
+}  // Catlass::Epilogue::Tile

@@ -238,8 +238,6 @@ function fn_build_act()
     fi
     cd $THIRD_PARTY_DIR
     git clone https://gitee.com/ascend/catlass.git
-    cd catlass
-    git checkout 0079f32
 }
 
 function fn_build_nlohmann_json()
