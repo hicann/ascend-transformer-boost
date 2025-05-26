@@ -872,6 +872,8 @@ def get_device_properties():
         soc_version = "Ascend910A"
     elif ("Ascend310B", device_name, re.I):
         soc_version = "Ascend310B"
+    elif re.search("Ascend910_9599", device_name, re.I):
+        soc_version = "Ascend910_95"
     else:
         logging.error("device_name %s is not supported", device_name)
         quit(1)
