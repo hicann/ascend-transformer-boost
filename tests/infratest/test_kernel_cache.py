@@ -33,11 +33,11 @@ class TestKernelCache(unittest.TestCase):
     def test_performance(self):
         setup_result, setup_time_with_both_cache, precision_result = self._get_operation_result()
         assert setup_result == 0
+        assert setup_time_with_both_cache
         assert precision_result
 
         logging.info(f"setup_time_with_both_cache:{setup_time_with_both_cache}")
 
-        assert setup_time_with_both_cache
 
     def _get_operation_result(self):
         logging.info(f"get operation result start.")
