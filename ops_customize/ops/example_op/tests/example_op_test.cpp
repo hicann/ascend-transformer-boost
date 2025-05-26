@@ -48,10 +48,10 @@ atb::SVector<atb::Tensor> PrepareAddInTensors(atb::Context *contexPtr, aclrtStre
 {
     uint32_t dim0 = 2;
     uint32_t dim1 = 2;
-    std::vector<float> tnesor0(VECTOR_SIZE, INIT_VALUE);
+    std::vector<float> tensor0(VECTOR_SIZE, INIT_VALUE);
     atb::Tensor tensorAdd0 = 
         CreateTensorFromVector(contexPtr, stream, tensor0, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
-    std::vector<float> tnesor1(VECTOR_SIZE, INIT_VALUE);
+    std::vector<float> tensor1(VECTOR_SIZE, INIT_VALUE);
     atb::Tensor tensorAdd1 = 
         CreateTensorFromVector(contexPtr, stream, tensor1, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
     atb::SVector<atb::Tensor> inTensors = {tensorAdd0, tensorAdd1};
@@ -64,7 +64,7 @@ atb::Operation *PrepareOperation()
     param.paramForNothing = 0;
     atb::Operation *op = nullptr;
     CHECK_STATUS(atb::CreateOperation(param, &op));
-    return op
+    return op;
 }
 
 // TEST(ExampleOpTest, CreateOperation_Success) {
@@ -112,7 +112,7 @@ TEST(ExampleOpTest, CreateOperation_Success) {
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
-    CHECK_STATUS(atb:DestroyOperation(op));
+    CHECK_STATUS(atb::DestroyOperation(op));
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(atb::DestroyContext(context));
     CHECK_STATUS(aclFinalize());
