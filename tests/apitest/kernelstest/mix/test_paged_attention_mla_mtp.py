@@ -271,8 +271,6 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
 
     @op_test.only_910b
     def test_paged_mla_qs_kvs_unequal_prefill_embed_over_256_no_mask_fp16(self):
-        # Due to CI issue, this test is removed temporarily
-        return
         batch = 27
         q_seqlen_list = [128] * batch
         k_seqlen_list = [512] * batch
@@ -363,8 +361,6 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
 
     @op_test.only_910b
     def test_paged_mla_qs_kvs_unequal_prefill_embed_below_256_no_mask_fp16(self):
-        # Due to CI issue, this test is removed temporarily
-        return
         batch = 25
         q_seqlen_list = [23] * batch
         k_seqlen_list = [156] * batch
@@ -410,8 +406,6 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
 
     @op_test.only_910b
     def test_paged_mla_qs_kvs_unequal_prefill_embed_below_256_partial_triu_mask_fp16(self):
-        # Due to CI issue, this test is removed temporarily
-        return
         batch = 27
         q_seqlen_list = [256] * batch
         k_seqlen_list = [766] * batch
