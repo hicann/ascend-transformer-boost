@@ -937,9 +937,8 @@ void GraphRunner::UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPa
 
 bool GraphRunner::EndsWithRunnerName(const std::string str, const std::string suffix)
 {
-    return str.size() >= suffix.size() &&
-    str.compare(str.size() - suffix.size(),
-    suffix.size(), suffix) == 0;
+    return (str.size() >= suffix.size() &&
+            str.compare(str.size() - suffix.size(),suffix.size(), suffix) == 0);
 }
 
 Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
