@@ -151,7 +151,6 @@ protected:
     }
 };
 REG_KERNEL_BASE(DequantPerChannelKernel);
-} // namespace AsdOps
 
 class QuantPerChannelV2Kernel : public BroadcastKernel {
     public:

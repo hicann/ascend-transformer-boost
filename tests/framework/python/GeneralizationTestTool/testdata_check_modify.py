@@ -35,7 +35,7 @@ def get_soc_version(only_910C=False):
           re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
           re.search("Ascend910A", device_name, re.I)):
         soc_version = "Ascend910A"
-    elif re.search("Ascend910_95", device_name, re.I):
+    elif re.search("Ascend910_9599", device_name, re.I):
         soc_version = 'Ascend910_95'
     else:
         logging.error("device_name {} is not supported".format(device_name))
@@ -791,6 +791,7 @@ class BroadcastOperation(OperationValidation):
 class ElewiseOperation(OperationValidation):
     @staticmethod
     def op_param_check_modify(op_param):
+        soc_version = get_soc_version()
         elewiseType = op_param["elewiseType"]
         if "inputScale" in op_param:
             input_scale = op_param["inputScale"]
