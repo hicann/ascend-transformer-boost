@@ -19,8 +19,7 @@ class TestScatterElements(op_test.OpTest):
     def golden_calc(self, in_tensors):
         specificParam = self.op_desc["specificParam"]
         axis = specificParam["axis"]
-        reduction = specificParam["reduction"] if "reduction" in specificParam and specificParam[
-            "reduction"] == "add" else None
+        reduction = "add" if "reduction" in specificParam and specificParam[ "reduction"] == 1 else None
 
         input_tensor = in_tensors[0]
         indices = in_tensors[1]
@@ -43,7 +42,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -54,7 +53,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -65,7 +64,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -76,7 +75,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -87,7 +86,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -98,7 +97,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -109,7 +108,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -120,7 +119,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -131,7 +130,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -142,7 +141,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -153,7 +152,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -164,7 +163,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -175,7 +174,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -186,7 +185,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -197,7 +196,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -208,7 +207,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -219,7 +218,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -230,7 +229,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -241,7 +240,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -252,7 +251,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -263,7 +262,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -274,7 +273,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int32)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -285,7 +284,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "add"}
+        op_para = {"axis": -1, "reduction": 1}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
@@ -296,7 +295,7 @@ class TestScatterElements(op_test.OpTest):
         index = torch.tensor([[0, 1], [0, 1]], dtype=torch.int64)
         update_tensor = torch.tensor([[1, 2], [3, 4]], dtype=input_tensor.dtype)
 
-        op_para = {"axis": -1, "reduction": "none"}
+        op_para = {"axis": -1, "reduction": 0}
         self.set_param(OP_NAME, op_para)
         output_tensor = [0]  # 原地写不会创建新的tensor
         self.execute([input_tensor, index, update_tensor], output_tensor)
