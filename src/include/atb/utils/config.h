@@ -58,7 +58,6 @@ private:
     void InitTilingBuffer();
     void InitVariable(const char *envName, uint32_t min, uint32_t max, uint32_t &value) const;
     void InitShareMemoryNameSuffix();
-    void InitRunnerPool();
 
 private:
     std::string atbHomePath_;
