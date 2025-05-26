@@ -1,9 +1,14 @@
 #include "c_interface_utils.h"
+#include "atb/utils/config.h"
+#include "atb/utils/singleton.h"
 using namespace atb;
 using namespace atb::cinterfaceTest;
 
 TEST(TestATBACL, TestMLAPreProcesscomb0Q0C0)
 {
+    if (!GetSingleton<Config>().Is910B()) {
+        exit(0);        
+    }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;
