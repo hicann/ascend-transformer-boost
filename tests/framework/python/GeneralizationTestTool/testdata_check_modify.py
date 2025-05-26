@@ -35,6 +35,8 @@ def get_soc_version(only_910C=False):
           re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
           re.search("Ascend910A", device_name, re.I)):
         soc_version = "Ascend910A"
+    elif re.search("Ascend910_95", device_name, re.I):
+        soc_version = 'Ascend910_95'
     else:
         logging.error("device_name {} is not supported".format(device_name))
         quit(1)
@@ -790,16 +792,34 @@ class ElewiseOperation(OperationValidation):
     @staticmethod
     def op_param_check_modify(op_param):
         elewiseType = op_param["elewiseType"]
-        input_scale = op_param["inputScale"]
-        asymmetric = op_param["asymmetric"]
-        inputOffset = op_param["inputOffset"]
-        outType = op_param["outTensorType"]
-        soc_version = get_soc_version()
-        op_param["mulsParam"] = {"varAttr": op_param["varAttr"]}
+        if "inputScale" in op_param:
+            input_scale = op_param["inputScale"]
+        if "asymmetric" in op_param:
+            asymmetric = op_param["asymmetric"]
+        if "inputOffset" in op_param:
+            inputOffset = op_param["inputOffset"]
+        if "outTensorType" in op_param:
+            outTensorType = op_param["outTensorType"]
+        if "mulsParam" in op_param and "varAttr" in op_param:
+            op_param["mulsParam"] = {"varAttr": op_param["varAttr"]}
         if elewiseType in [17, 18, 19]:
             op_param["quantParam"] = {"inputScale": input_scale}
             op_param["quantParam"]["asymmetric"] = asymmetric
             op_param["quantParam"]["inputOffset"] = inputOffset
+        elif elewiseType in [21]:
+            op_param["outTensorType"] = outTensorType
+            if "quantParam" in op_param:
+                del op_param["quantParam"]
+            if "inputScale" in op_param:
+                del op_param["inputScale"]
+            if "asymmetric" in op_param:
+                del op_param["asymmetric"]
+            if "inputOffset" in op_param:
+                del op_param["inputOffset"]
+            if "mulsParam" in op_param:
+                del op_param["mulsParam"]
+            if "varAttr" in op_param:
+                del op_param["varAttr"]
         else:
             if "quantParam" in op_param:
                 del op_param["quantParam"]
@@ -829,7 +849,7 @@ class ElewiseOperation(OperationValidation):
             if elewiseType in [1, 2, 3, 4, 5, 6, 7, 17, 18, 19, 20]:
                 return False
         elif in_num == 3:
-            if elewiseType not in [17, 18]:
+            if elewiseType not in [17, 18, 21]:
                 return False
         return True
 
@@ -861,6 +881,8 @@ class ElewiseOperation(OperationValidation):
             return in_dtype in ['float16', 'int8']
         if elewiseType in [19, 20]:
             return in_dtype in ['float16']
+        if elewiseType in [21]:
+            return in_dtype in ['float16', 'bf16']
         return True
 
     def in_shape_check_modify(op_param, in_shape):
@@ -965,6 +987,11 @@ class ElewiseOperation(OperationValidation):
             elif len(tensor_desc.shapes[0]) == 3:
                 tensor_desc.shapes[1] = tensor_desc.shapes[0][1:]
                 tensor_desc.shapes[2] = tensor_desc.shapes[0][1:]
+        if elewiseType in [21]:
+            tensor_desc.dtypes[1] = tensor_desc.dtypes[0]
+            tensor_desc.dtypes[2] = tensor_desc.dtypes[0]
+            tensor_desc.shapes[1] = [tensor_desc.shapes[0][len(tensor_desc.shapes[0]) - 1]]
+            tensor_desc.shapes[2] = [tensor_desc.shapes[0][len(tensor_desc.shapes[0]) - 1]]
         return True
 
 

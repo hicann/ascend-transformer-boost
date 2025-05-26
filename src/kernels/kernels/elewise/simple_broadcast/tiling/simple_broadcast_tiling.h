@@ -42,5 +42,7 @@ Status SimplyBroadcastTiling(BroadcastInfo &broadcastInfo, const LaunchParam &la
 Status QuantPerChannelTiling(BroadcastInfo &broadcastInfo, const LaunchParam &launchParam, KernelInfo &kernelInfo);
 
 Status DequantPerChannelTiling(BroadcastInfo &broadcastInfo, const LaunchParam &launchParam, KernelInfo &kernelInfo);
+
+Status QuantPerChannelV2Tiling(const LaunchParam &launchParam, KernelInfo &kernelInfo, const BinHandle &binHandle);
 } // namespace AsdOps
 #endif
