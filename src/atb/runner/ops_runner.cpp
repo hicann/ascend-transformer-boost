@@ -601,12 +601,14 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         if (runnerVariantPack.mstxMemRegister != nullptr) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
+            runnerVariantPack.workspaceBufferSize = static_cast<uint64_t>(TensorUtil::AlignInt(runnerVariantPack.workspaceBufferSize, ALIGN_INT));
             runnerVariantPack.mstxMemRegister->AddTensorMemRegions(runnerVariantPack.workspaceBuffer, runnerVariantPack.workspaceBufferSize);
             auto &inTensors = node.impl->GetInTensors();
             for (uint64_t tensorId = 0; tensorId < inTensors.size(); tensorId++) {
                 Mki::Tensor &tensor = inTensors.at(tensorId);
                 if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                     tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
+                    tensor.dataSize = static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT));
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
                 }
                 }
@@ -615,6 +617,7 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
                 Mki::Tensor &tensor = outTensors.at(tensorId);
                 if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                     tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
+                    tensor.dataSize = static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT));
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
                 }
             }

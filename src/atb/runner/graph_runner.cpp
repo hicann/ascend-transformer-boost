@@ -935,11 +935,6 @@ void GraphRunner::UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPa
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's tensor data end";
 }
 
-bool GraphRunner::EndsWithRunnerName(const std::string str, const std::string suffix)
-{
-    return (str.size() >= suffix.size() &&
-            str.compare(str.size() - suffix.size(),suffix.size(), suffix) == 0);
-}
 
 Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
 {
@@ -947,17 +942,19 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
         auto &node = runnerGraph_.nodes.at(nodeId);
         ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]" << "graphrunner start";
         if (runnerVariantPack.mstxMemRegister != nullptr &&
-            !(EndsWithRunnerName(node.runner->GetName(), "OpsRunner") || EndsWithRunnerName(node.runner->GetName(), "GraphRunner"))) {
+            !(dynamic_cast<OpsRunner*>(node.runner.get()) || dynamic_cast<GraphRunner*>(node.runner.get()))) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
             for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.inTensors.at(i);
                 if (node.inTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
+                    tensor.dataSize = static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT));
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, tensor.dataSize);
                 }
             }
             for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.outTensors.at(i);
                 if (node.outTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
+                    tensor.dataSize = static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT));
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, tensor.dataSize);
                 }
             }
