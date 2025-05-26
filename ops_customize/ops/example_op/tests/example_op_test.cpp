@@ -4,6 +4,8 @@
 #include "example_operation.h"
 #include "customize_op_params.h"
 #include "atb/core/op_param_funcs.h"
+#include "atb/utils.h"
+#include "atb/context.h"
 
 using namespace atb;
 
@@ -34,7 +36,7 @@ atb::Tensor CreateTensor(const aclDataType dataType, const aclFormat format, std
 }
 
 template <typename T>
-atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtstream stream, std::vector<T> data,
+atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream, std::vector<T> data,
     const aclDataType outTensorType, const aclFormat format, std::vector<int64_t> shape)
 {
     atb::Tensor tensor;
@@ -85,7 +87,7 @@ TEST(ExampleOpTest, CreateOperation_Success) {
 
     CHECK_STATUS(aclInit(nullptr));
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
-    CHECK_STATUS(CreateContext(&stream));
+    CHECK_STATUS(CreateContext(&context));
     context->SetExecuteStream(stream);
 
     atb::Operation *op = PrepareOperation();
