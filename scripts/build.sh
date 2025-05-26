@@ -151,7 +151,6 @@ function fn_build_asdops()
     if [ -n "$ATB_BUILD_DEPENDENCY_PATH" -a "$SRC_ONLY" == "OFF" ]; then
         echo "Get required asdops binary files from $ATB_BUILD_DEPENDENCY_PATH"
         mkdir -p $THIRD_PARTY_DIR/asdops/
-        cp -Lrf $ATB_HOME_PATH/lib $THIRD_PARTY_DIR/asdops/
         cp -Lrf $ATB_BUILD_DEPENDENCY_PATH/lib $THIRD_PARTY_DIR/asdops/
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb.so 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_static.a 2> /dev/null
