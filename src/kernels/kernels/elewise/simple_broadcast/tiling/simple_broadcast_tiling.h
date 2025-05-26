@@ -13,6 +13,7 @@
 #include <mki/launch_param.h>
 #include <mki/kernel_info.h>
 #include <mki/utils/status/status.h>
+#include <mki/bin_handle.h>
 #include "simple_broadcast_tiling_data.h"
 
 namespace AsdOps {
