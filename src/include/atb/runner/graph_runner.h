@@ -110,6 +110,7 @@ private:
     void UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPack);
     Status ExecuteAllRunner(RunnerVariantPack &runnerVariantPack);
     Status PreExecuteAllRunner(RunnerVariantPack &runnerVariantPack);
+    bool EndsWithRunnerName(const std::string str, const std::string suffix);
 
 private:
     Graph runnerGraph_;

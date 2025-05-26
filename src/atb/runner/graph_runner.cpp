@@ -935,12 +935,20 @@ void GraphRunner::UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPa
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's tensor data end";
 }
 
+bool GraphRunner::EndsWithRunnerName(const std::string str, const std::string suffix)
+{
+    return str.size() >= suffix.size() &&
+    str.compare(str.size() - suffix.size(),
+    suffix.size(), suffix) == 0;
+}
+
 Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]" << "graphrunner start";
-        if (runnerVariantPack.mstxMemRegister != nullptr) {
+        if (runnerVariantPack.mstxMemRegister != nullptr &&
+            !(EndsWithRunnerName(node.runner->GetName(), "OpsRunner") || EndsWithRunnerName(node.runner->GetName(), "GraphRunner"))) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
             for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.inTensors.at(i);
