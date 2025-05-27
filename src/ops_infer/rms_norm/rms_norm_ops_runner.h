@@ -27,6 +27,7 @@ private:
     void SetPreRmsNormParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
     void SetPostRmsNormQuantParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
     void SetPostRmsNormParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
+    void SetRmsNormLingQuParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const;
     void BuildRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormParam);
     void BuildRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam);
     void BuildRmsNormDynamicQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam);
@@ -35,10 +36,12 @@ private:
     void BuildPostRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormParam);
     void BuildPostRmsNormQuantGraph(const AsdOps::OpParam::Norm &rmsNormParam);
     void BuildRmsNormForwardGraph(const AsdOps::OpParam::Norm &rmsNormParam);
+    void BuildRmsNormLingQuGraph(const AsdOps::OpParam::Norm &rmsNormParam);
 
 private:
     infer::RmsNormParam param_;
     Mki::Tensor nullTensor_ = {}; // 空tensor，作为quant参数的占位符
+    ViewFunc gammaViewFunc;
 };
 } // namespace atb
 #endif

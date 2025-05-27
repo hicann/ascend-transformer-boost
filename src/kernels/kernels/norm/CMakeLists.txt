@@ -33,6 +33,8 @@ set(norm_srcs
     ${CMAKE_CURRENT_LIST_DIR}/rmspostnormquant/tiling/rms_post_norm_quant_tiling.cpp
     ${CMAKE_CURRENT_LIST_DIR}/gatherprermsnorm/gather_pre_rms_norm_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/gatherprermsnorm/tiling/gather_pre_rms_norm_tiling.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/rmsnormlingqu/rms_norm_lingqu_kernel.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/rmsnormlingqu/rms_norm_lingqu_tiling.cpp
 )
 
 add_operation(NormOperation "${norm_srcs}")
