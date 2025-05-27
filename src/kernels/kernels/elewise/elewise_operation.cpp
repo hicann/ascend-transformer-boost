@@ -81,12 +81,22 @@ public:
             case OpParam::Elewise::ELEWISE_CAST:
                 return GetCastKernel(launchParam);
             case OpParam::Elewise::ELEWISE_MULS:
-                if (inDtype == TENSOR_DTYPE_FLOAT) {
-                    return GetKernelByName("MulsF32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
-                    return GetKernelByName("MulsF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_BF16) {
-                    return GetKernelByName("MulsBF16Kernel");
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("MulsAptF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("MulsAptF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("MulsAptBF16Kernel");
+                    }
+                }else{
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("MulsF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("MulsF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("MulsBF16Kernel");
+                    }
                 }
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_MULS inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
@@ -101,12 +111,20 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_COS inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Elewise::ELEWISE_SIN:
-                if (inDtype == TENSOR_DTYPE_FLOAT) {
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("SinAptF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("SinAptF16Kernel");
+                    }
+                }else {
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
                     return GetKernelByName("SinF32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
                     return GetKernelByName("SinF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_BF16) {
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
                     return GetKernelByName("SinBF16Kernel");
+                    }
                 }
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_SIN inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
