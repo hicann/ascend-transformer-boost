@@ -1016,26 +1016,25 @@ struct OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_MASK_FREE>{
     uint32_t s_ub_start_offset = s_mask_blk_start + s_col_offset;
     uint32_t rep_times = m / FLOAT_BLOCK_SIZE;
     uint32_t m_tail = m % FLOAT_BLOCK_SIZE;
-    
+    int32_t dup_blk_num = (last_block_n - BLOCK_SIZE - s_col_offset) / FLOAT_BLOCK_SIZE;
     if (need_mask) {
-        uint32_t dup_blk_num =((last_block_n - s_col_offset) + FLOAT_BLOCK_SIZE - 1) / FLOAT_BLOCK_SIZE - 1;  
-        for (size_t i = 0; i < rep_times; ++i) {
+        for (size_t i = 0; i < rep_times; ++i, dup_blk_num--) {
             add_v<ArchType::ASCEND_V220, float>(
                 s_ub[s_ub_start_offset + i * (n_stride + 1) * FLOAT_BLOCK_SIZE],
                 s_ub[s_ub_start_offset + i * (n_stride + 1) * FLOAT_BLOCK_SIZE],
                 mask_ub_tensor[mask_offset],
+                dup_blk_num >= 0 ? 2 : 1,
+                n_stride / FLOAT_BLOCK_SIZE,                     
+                n_stride / FLOAT_BLOCK_SIZE,                     
+                4,                           // 32 / 8
+                1,           
                 1,
-                n_stride / FLOAT_BLOCK_SIZE,                     
-                n_stride / FLOAT_BLOCK_SIZE,                     
-                4,                      // 32 / 8
-                0,           
-                0,
-                0                       // 复用mask
+                1                       
             );
             if (dup_blk_num > 0) {
                 vector_dup(
                     (__ubuf__ float*)
-                    s_ub[s_ub_start_offset + i * (n_stride + 1) * FLOAT_BLOCK_SIZE + FLOAT_BLOCK_SIZE].GetPhyAddr(),
+                    s_ub[s_ub_start_offset + i * (n_stride + 1) * FLOAT_BLOCK_SIZE + BLOCK_SIZE].GetPhyAddr(),
                     (float)mask_coff,
                     dup_blk_num,
                     n_stride / 8,
@@ -1043,7 +1042,6 @@ struct OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_MASK_FREE>{
                     1,
                     0
                 );
-                dup_blk_num -= 1;
             }
         }
         if (m_tail) {
@@ -1052,18 +1050,18 @@ struct OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_MASK_FREE>{
                 s_ub[s_ub_start_offset + rep_times * (n_stride + 1) * FLOAT_BLOCK_SIZE],
                 s_ub[s_ub_start_offset + rep_times * (n_stride + 1) * FLOAT_BLOCK_SIZE],
                 mask_ub_tensor[mask_offset],
+                dup_blk_num >=0 ? 2 : 1,
+                n_stride / FLOAT_BLOCK_SIZE,                    
+                n_stride / FLOAT_BLOCK_SIZE,                    
+                4,                                
                 1,
-                n_stride / FLOAT_BLOCK_SIZE,                    
-                n_stride / FLOAT_BLOCK_SIZE,                    
-                4,                      // 32 / 8
-                0,
-                0,
-                0                       // 复用mask
-                );
+                1,
+                1
+            );
             if (dup_blk_num > 0) {
                 vector_dup(
                     (__ubuf__ float*)
-                    s_ub[s_ub_start_offset + rep_times * (n_stride + 1) * FLOAT_BLOCK_SIZE + FLOAT_BLOCK_SIZE]
+                    s_ub[s_ub_start_offset + rep_times * (n_stride + 1) * FLOAT_BLOCK_SIZE + BLOCK_SIZE]
                     .GetPhyAddr(),
                     (float)mask_coff,
                     dup_blk_num,
