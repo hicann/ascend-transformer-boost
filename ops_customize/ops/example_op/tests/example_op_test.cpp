@@ -36,8 +36,8 @@ atb::Tensor CreateTensor(const aclDataType dataType, const aclFormat format, std
 }
 
 template <typename T>
-atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream, std::vector<T> data,
-    const aclDataType outTensorType, const aclFormat format, std::vector<int64_t> shape)
+atb::Tensor CreateTensorFromVector(std::vector<T> data, const aclDataType outTensorType, const aclFormat format,
+                                   std::vector<int64_t> shape)
 {
     atb::Tensor tensor;
     tensor = CreateTensor(outTensorType, format, shape);
@@ -46,16 +46,16 @@ atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
     return tensor;
 }
 
-atb::SVector<atb::Tensor> PrepareAddInTensors(atb::Context *contexPtr, aclrtStream stream)
+atb::SVector<atb::Tensor> PrepareAddInTensors()
 {
     uint32_t dim0 = 2;
     uint32_t dim1 = 2;
     std::vector<float> tensor0(VECTOR_SIZE, INIT_VALUE);
     atb::Tensor tensorAdd0 = 
-        CreateTensorFromVector(contexPtr, stream, tensor0, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
+        CreateTensorFromVector(tensor0, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
     std::vector<float> tensor1(VECTOR_SIZE, INIT_VALUE);
     atb::Tensor tensorAdd1 = 
-        CreateTensorFromVector(contexPtr, stream, tensor1, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
+        CreateTensorFromVector(tensor1, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
     atb::SVector<atb::Tensor> inTensors = {tensorAdd0, tensorAdd1};
     return inTensors;
 }
@@ -92,7 +92,7 @@ TEST(ExampleOpTest, CreateOperation_Success) {
 
     atb::Operation *op = PrepareOperation();
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareAddInTensors(context, stream);
+    variantPack.inTensors = PrepareAddInTensors();
     atb::Tensor tensorOut = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 2});
     variantPack.outTensors.push_back(tensorOut);
 
