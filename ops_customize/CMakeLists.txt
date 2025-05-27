@@ -61,8 +61,10 @@ install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
 
 add_subdirectory(ops/example_op/kernel_implement)
+add_subdirectory(ops/example_blockcopy/kernel_implement)
 
 if (BUILD_USR_OPS_TEST)
     enable_testing()
     add_subdirectory(ops/example_op/tests)
+    add_subdirectory(ops/example_blockcopy/tests)
 endif()

@@ -39,6 +39,18 @@ struct AddParam {
     //!
     uint8_t rsv[64] = {0};
 };
+
+//!
+//! \struct BlockCopyParam
+//!
+//! \brief 将KVCache里通过src indices指定的block数据copy到dst indices指定的block位置上。
+//!
+struct BlockCopyParam {
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[16] = {0};
+};
 } // namespace customize
 } // namespace atb
 #endif
