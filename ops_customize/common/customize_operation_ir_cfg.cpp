@@ -24,7 +24,7 @@ CustomizeOperationIrCfg::CustomizeOperationIrCfg()
 
 CustomizeOperationIrCfg::~CustomizeOperationIrCfg() {}
 
-void AtbOperationIrCfg::InitOperationIrCfg()
+void CustomizeOperationIrCfg::InitOperationIrCfg()
 {
     std::string iniFilePath = GetSingleton<Config>().GetAtbHomePath() + "/configs/customize_ops_configs/customize_ops_info.ini";
     Mki::Status status = opIrCfg_.Load(iniFilePath);
@@ -35,7 +35,7 @@ void AtbOperationIrCfg::InitOperationIrCfg()
     ATB_LOG(INFO) << "Load customize_ops_info.ini success!";
 }
 
-Mki::OperationIr *AtbOperationIrCfg::GetOperationIr(const std::string &opKey)
+Mki::OperationIr *CustomizeOperationIrCfg::GetOperationIr(const std::string &opKey)
 {
     return opIrCfg_.GetOperationIr(opKey);
 }
