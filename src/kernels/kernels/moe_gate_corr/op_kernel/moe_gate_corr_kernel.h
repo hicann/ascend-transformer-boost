@@ -11,13 +11,13 @@
 #ifndef MOE_GATE_CORR_KERNEL_H
 #define MOE_GATE_CORR_KERNEL_H
 
-#include "act/act.hpp"
-#include "act/arch/resource.hpp"
-#include "act/coord.hpp"
-#include "act/gemm_coord.hpp"
-#include "act/matrix_coord.hpp"
+#include "catlass/catlass.hpp"
+#include "catlass/arch/resource.hpp"
+#include "catlass/coord.hpp"
+#include "catlass/gemm_coord.hpp"
+#include "catlass/matrix_coord.hpp"
 
-using namespace Act;
+using namespace Catlass;
 
 template <
     class BlockMmad_,
@@ -51,10 +51,10 @@ public:
         LayoutC layoutC;
 
         // Methods
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params() {}
 
-        ACT_DEVICE
+        CATLASS_DEVICE
         Params(GemmCoord const &problemShape_, GM_ADDR ptrA_, LayoutA layoutA_, GM_ADDR ptrB_,
                LayoutB layoutB_, GM_ADDR ptrC_, LayoutC layoutC_)
             : problemShape(problemShape_), ptrA(ptrA_), layoutA(layoutA_), ptrB(ptrB_), layoutB(layoutB_),
@@ -62,15 +62,15 @@ public:
     };
 
     // Methods
-    ACT_DEVICE
+    CATLASS_DEVICE
     MoeGateCorrKernel() {}
 
     template <int32_t CORE_TYPE = g_coreType>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()(Params const &params);
 
     template <>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()<AscendC::AIC>(Params const &params) {
         BlockScheduler blockScheduler(params.problemShape, MakeCoord(L1TileShape::M, L1TileShape::N));
         uint32_t coreLoops = blockScheduler.GetCoreLoops();
@@ -110,7 +110,7 @@ public:
     }
 
     template <>
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()<AscendC::AIV>(Params const &params) {}
 };
 

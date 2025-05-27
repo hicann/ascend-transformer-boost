@@ -8,9 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #pragma once
-#include "act/act.hpp"
+#include "catlass/catlass.hpp"
 
-namespace Act::Epilogue::Tile {
+namespace Catlass::Epilogue::Tile {
 
 template <
     class ArchTag_,
@@ -38,7 +38,7 @@ struct TileStrideBinary {
     static constexpr uint32_t ROW_NUM_PER_COMPUTE = MAX_REPEAT_TIMES;
     static constexpr uint32_t COL_NUM_PER_COMPUTE = BYTE_PER_VECTOR_FRACTAL / sizeof(ElementCompute);
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     TileStrideBinary()
     {
         repeatParams.dstBlkStride = 1;
@@ -58,10 +58,10 @@ struct TileStrideMul :
     TileStrideBinary<ArchTag_, ElementCompute_, TileShape_, DST_STRIDE_, SRC0_STRIDE_, SRC1_STRIDE_> {
     using Base = TileStrideBinary<ArchTag_, ElementCompute_, TileShape_, DST_STRIDE_, SRC0_STRIDE_, SRC1_STRIDE_>;
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     TileStrideMul() : Base() {}
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()(AscendC::LocalTensor<typename Base::ElementCompute> const &ubDst,
         AscendC::LocalTensor<typename Base::ElementCompute> const &ubSrc0,
         AscendC::LocalTensor<typename Base::ElementCompute> const &ubSrc1)
@@ -87,10 +87,10 @@ struct TileStrideDiv :
     TileStrideBinary<ArchTag_, ElementCompute_, TileShape_, DST_STRIDE_, SRC0_STRIDE_, SRC1_STRIDE_> {
     using Base = TileStrideBinary<ArchTag_, ElementCompute_, TileShape_, DST_STRIDE_, SRC0_STRIDE_, SRC1_STRIDE_>;
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     TileStrideDiv() : Base() {}
 
-    ACT_DEVICE
+    CATLASS_DEVICE
     void operator()(AscendC::LocalTensor<typename Base::ElementCompute> const &ubDst,
         AscendC::LocalTensor<typename Base::ElementCompute> const &ubSrc0,
         AscendC::LocalTensor<typename Base::ElementCompute> const &ubSrc1)

@@ -12,14 +12,14 @@
 #include <kernel_operator.h>
 #undef inline
 
-#include "act/act.hpp"
-#include "act/arch/arch.hpp"
-#include "act/layout/layout.hpp"
-#include "act/epilogue/tile/tile_broadcast_mul.hpp"
-#include "act/epilogue/tile/tile_broadcast_one_blk.hpp"
-#include "act/epilogue/tile/tile_swizzle.hpp"
-#include "act/gemm/block/block_swizzle.hpp"
-#include "act/gemm/gemm_type.hpp"
+#include "catlass/catlass.hpp"
+#include "catlass/arch/arch.hpp"
+#include "catlass/layout/layout.hpp"
+#include "catlass/epilogue/tile/tile_broadcast_mul.hpp"
+#include "catlass/epilogue/tile/tile_broadcast_one_blk.hpp"
+#include "catlass/epilogue/tile/tile_swizzle.hpp"
+#include "catlass/gemm/block/block_swizzle.hpp"
+#include "catlass/gemm/gemm_type.hpp"
 
 #include "epilogue/dispatch_policy.h"
 #include "gemm/dispatch_policy.h"
@@ -39,7 +39,7 @@ __gm__ struct OpSystemRunCfg g_opSystemRunCfg{0};
 extern __gm__ struct OpSystemRunCfg g_opSystemRunCfg;
 #endif
 
-using namespace Act;
+using namespace Catlass;
 using namespace AtbOps;
 
 using MmadAtlasA2Custom = Gemm::MmadAtlasA2PreloadAsyncWithCallback<
@@ -67,7 +67,7 @@ template <
     class BlockScheduler_ = Mm1BlockScheduler,
     class DispatchPolicy_ = MmadAtlasA2Custom
 >
-ACT_DEVICE
+CATLASS_DEVICE
 void MmDeqSwigluQuant(
     GemmCoord problemShape,
     GM_ADDR gmA, layout::RowMajor layoutA,
@@ -142,7 +142,7 @@ template <
     class BlockScheduler_ = Mm2BlockScheduler,
     class DispatchPolicy_ = Mm2DispatchPolicy
 >
-ACT_DEVICE
+CATLASS_DEVICE
 void MmDeq(
     GemmCoord problemShape,
     GM_ADDR gmA, layout::RowMajor layoutA,
@@ -208,7 +208,7 @@ void MmDeq(
     gemm(params);
 }
 
-ACT_DEVICE
+CATLASS_DEVICE
 void BarrierBetweenUpAndDown()
 {
     AscendC::PipeBarrier<PIPE_ALL>();
