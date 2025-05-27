@@ -50,10 +50,10 @@ atb::SVector<atb::Tensor> PrepareAddInTensors()
 {
     uint32_t dim0 = 2;
     uint32_t dim1 = 2;
-    std::vector<float> tensor0(VECTOR_SIZE, INIT_VALUE);
+    std::vector<__fp16> tensor0(VECTOR_SIZE, static_cast<__fp16>(INIT_VALUE));
     atb::Tensor tensorAdd0 = 
         CreateTensorFromVector(tensor0, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
-    std::vector<float> tensor1(VECTOR_SIZE, INIT_VALUE);
+    std::vector<__fp16> tensor1(VECTOR_SIZE, static_cast<__fp16>(INIT_VALUE));
     atb::Tensor tensorAdd1 = 
         CreateTensorFromVector(tensor1, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
     atb::SVector<atb::Tensor> inTensors = {tensorAdd0, tensorAdd1};
@@ -88,6 +88,7 @@ TEST(ExampleOpTest, CreateOperation_Success) {
     CHECK_STATUS(aclInit(nullptr));
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(CreateContext(&context));
+    CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
 
     atb::Operation *op = PrepareOperation();
