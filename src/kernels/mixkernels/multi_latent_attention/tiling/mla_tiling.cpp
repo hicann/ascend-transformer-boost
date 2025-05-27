@@ -226,7 +226,7 @@ inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
     auto maskType = param.maskType;
     auto maxKvSeq = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     MKI_LOG(INFO) << "max kv seq" << *maxKvSeq;
-    if (maskType != OpParam::MLA::MASK_TYPE_NONE) {
+    if (maskType != OpParam::MLA::MASK_TYPE_NONE && maskType != OpParam::MLA::MASK_TYPE_MASK_FREE) {
         auto maskDim = maskShape.size();
         int32_t maxSeq = maskShape.at(maskDim - 1);
         mmInfo.maxSeqLen = maxSeq;
@@ -311,6 +311,7 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
 
 Status GenMlaPrefillTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
 {
+    // currently only support fp16/bf16 maskfree prefill or bf16 prefill kernel
     uint32_t dataType = static_cast<int32_t>(mmInfo.type);
     uint32_t tilingKey = dataType + (mmInfo.maskType << NUM1);
     kernelInfo.SetTilingId(tilingKey);
@@ -342,6 +343,7 @@ Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(tilingHost);
     ret = GetMLAPrefillTilingParam(mmInfo, blockDim, tilingParam, tilingSize);
     OP_TILING_CHECK_STATUS_RETURN(ret);
+    GetTilingKeyTypeBase(mmInfo, mmInfo.tensors.query, mmInfo.tensors.queryRope);
     ret = GenMlaPrefillTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint64_t dataLenFloat = sizeof(float);

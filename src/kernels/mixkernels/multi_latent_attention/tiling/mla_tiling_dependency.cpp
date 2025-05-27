@@ -397,8 +397,6 @@ Status CheckSeqlen(const MLAInfo &mmInfo, const AddrOffsets &addrOffsets, int32_
     UNUSED_VALUE(seqIdx);
     MKI_CHECK(qSeqlen >= 0, "qSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(kvSeqlen >= 0, "kvSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK(kvSeqlen == qSeqlen, "kvSeqlen should equal qSeqlen",
-            return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(addrOffsets.totalQBlkNum >= 0, "totalQBlkNum overflow",
                  return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
@@ -439,7 +437,7 @@ void PrefillTilingHead(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffse
     tilingParam[NUM9] = static_cast<uint32_t>(addrOffsets.totalQBlkNum);
     tilingParam[NUM10] = static_cast<uint32_t>(TILING_HEAD_SIZE_PREFILL);
     tilingParam[NUM11] = static_cast<uint32_t>(TILING_PARA_SIZE_PREFILL);
-    tilingParam[NUM12] = mmInfo.maskType;
+    tilingParam[NUM12] = mmInfo.maskType == 0 ? 1 : 2;
     tilingParam[NUM13] = 0;
     tilingParam[NUM14] = mmInfo.maxKvSeqLen;
     tilingParam[NUM15] = mmInfo.maskType;

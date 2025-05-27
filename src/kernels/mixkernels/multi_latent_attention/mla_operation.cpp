@@ -210,7 +210,7 @@ private:
         uint32_t batch = kvSeqLen.size();
         auto maxQSeqlenIter = std::max_element(qSeqLen.begin(), qSeqLen.end());
         auto maxQ = maxQSeqlenIter != qSeqLen.end() ? *maxQSeqlenIter : 1;
-        if (param.maskType == OpParam::MLA::MASK_TYPE_NONE) {
+        if (param.maskType == OpParam::MLA::MASK_TYPE_NONE || param.maskType == OpParam::MLA::MASK_TYPE_MASK_FREE) {
             MKI_CHECK(CheckEmptyTensor(mask), "mask type inconsistent", return false);
         } else {
             MKI_CHECK(!CheckEmptyTensor(mask), "mask type inconsistent", return false);
