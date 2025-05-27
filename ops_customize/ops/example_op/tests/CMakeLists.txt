@@ -13,6 +13,7 @@ enable_testing()
 
 # link_directories(
 #     ${CMAKE_PREFIX_PATH}/lib
+#     ${CAMKE_SOURCE_DIR}/src/kernels/tbe
 # )
 
 add_executable(example_op_test example_op_test.cpp)

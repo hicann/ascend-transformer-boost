@@ -43,6 +43,7 @@ target_include_directories(atb_customize_static PUBLIC ${USR_INCLUDE_DIRS})
 set(USR_LINK_LIBS
   dl
   mki
+  tbe_adapter
   asdops
   atb_mixops
   ascendcl
