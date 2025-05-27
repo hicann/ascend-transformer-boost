@@ -38,6 +38,31 @@ Status CreateContext(Context **context)
     return NO_ERROR;
 }
 
+Status CreateContext(Context **context, const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc)
+{
+    if (!context) {
+        ATB_LOG(ERROR) << "param context is null, CreateContext fail";
+        return ERROR_INVALID_PARAM;
+    }
+
+    ContextBase *contextBase = new (std::nothrow) ContextBase();
+    if (!contextBase) {
+        ATB_LOG(ERROR) << "new ContextBase fail, CreateContext fail";
+        return ERROR_OUT_OF_HOST_MEMORY;
+    }
+
+    Status st = contextBase->Init(std::function<void*(size_t)> alloc, std::function<void(void*)> dealloc);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << "ContextBase init fail, CreateContext fail";
+        delete contextBase;
+        contextBase = nullptr;
+        return st;
+    }
+
+    *context = contextBase;
+    return NO_ERROR;
+}
+
 Status DestroyContext(Context *context)
 {
     if (context) {

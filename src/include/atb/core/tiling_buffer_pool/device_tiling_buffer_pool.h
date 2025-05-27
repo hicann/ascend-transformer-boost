@@ -9,18 +9,23 @@
  */
 #ifndef ATB_DEVICE_TILING_BUFFER_POOL_H
 #define ATB_DEVICE_TILING_BUFFER_POOL_H
+#include <functional>
 #include "atb/core/tiling_buffer_pool/tiling_buffer_pool.h"
 
 namespace atb {
 class DeviceTilingBufferPool : public TilingBufferPool {
 public:
-    DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize);
+    DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize, const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc);
     ~DeviceTilingBufferPool() override;
 
 protected:
     uint8_t *MallocTotalBuffer(uint64_t bufferSize) override;
     void FreeTotalBuffer(uint8_t *buffer) override;
     bool IsDeviceBufferPool() override;
+
+private:
+    std::functional<void*(size_t size)> customAllocateFunc_;
+    std::functional<void(void*)> customDeallocateFunc_;
 };
 } // namespace atb
 #endif

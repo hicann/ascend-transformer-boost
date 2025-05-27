@@ -32,6 +32,8 @@ ContextBase::ContextBase()
 {
     deviceAllocator_ = std::make_unique<DefaultDeviceAllocator>();
     hostAllocator_ = std::make_unique<DefaultHostAllocator>();
+    // deviceAllocateFunc_ = [this](size_t size) { return deviceAllocator_->Allocate(size); };
+    // deviceDeallocateFunc_ = [this](void* addr) { deviceAllocator_->Deallocate(addr); };
 }
 
 ContextBase::~ContextBase() noexcept
@@ -48,8 +50,12 @@ ContextBase::~ContextBase() noexcept
     }
 }
 
-Status ContextBase::Init()
+Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc)
 {
+    // 赋值
+    deviceAllocateFunc_ = alloc;
+    deviceDeallocateFunc_ = dealloc;
+
     executeStreams_.resize(DEFAULT_EXECUTE_STREAM_NUMBER);
 
     hostTilingBufferPool_ = std::make_unique<HostTilingBufferPool>(GetSingleton<Config>().GetHostTilingBlockNum(),
@@ -64,7 +70,7 @@ Status ContextBase::Init()
     }
 
     deviceTilingBufferPool_ = std::make_unique<DeviceTilingBufferPool>(GetSingleton<Config>().GetDeviceTilingBlockNum(),
-                                                                       TILING_BUFFER_BLOCK_SIZE);
+                                                                       TILING_BUFFER_BLOCK_SIZE, alloc, dealloc);
     if (!deviceTilingBufferPool_) {
         return ERROR_OUT_OF_HOST_MEMORY;
     }
@@ -178,6 +184,11 @@ uint8_t *ContextBase::GetDeviceTilingBuffer()
         ATB_LOG(INFO) << "At GRAPH_LAUNCH_MODE, contextBase start allocate device tiling buffer using Allocator";
         return reinterpret_cast<uint8_t*>(deviceAllocator_->Allocate(TILING_BUFFER_BLOCK_SIZE));
     }
+    // if (isUsingCustomAllocator_) {
+    //     // todo:如果使用了Allocate，HostTilingBuffer需要怎么设置
+    //     ATB_LOG(INFO) << "Already set the custom Allocator, will use the custom Allocator to allocate device tiling buffer";
+    //     return deviceAllocateFunc_(TILING_BUFFER_BLOCK_SIZE);
+    // }
     return deviceTilingBufferPool_ ? deviceTilingBufferPool_->GetBuffer() : nullptr;
 }
 
@@ -340,4 +351,23 @@ Status ContextBase::FreeArgsHostBuffer(void *addr)
 {
     return hostAllocator_->Deallocate(addr);
 }
+
+// 使用用户的alloc和dealloc替换默认的alloc和dealloc
+// Status ContextBase::SetAllocator(std::function<void*(size_t)> alloc, std::function<void(void*)> dealloc)
+// {
+//     if (alloc && dealloc) {
+//         // 设置用户自定义的alloc和dealloc
+//         ATB_LOG(WARN) << "Set new alloc and dealloc function should before the Setup and Execute";
+//         deviceAllocateFunc_ = alloc;
+//         deviceDeallocateFunc_ = dealloc;
+//         isUsingCustomAllocator_ = true;
+//         // todo:第一条路
+//         // 释放之前ContextBase::Init()时创建的device侧内存
+//         deviceTilingBufferPool_->Destroy();
+
+//         return NO_ERROR;
+//     }
+//     return ERROR_INVALID_PARAM; 
+// }
+
 } // namespace atb

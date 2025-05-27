@@ -9,6 +9,7 @@
  */
 #ifndef ATB_CONTEXT_H
 #define ATB_CONTEXT_H
+#include <functional>
 #include <acl/acl.h>
 #include "atb/types.h"
 
@@ -138,6 +139,15 @@ public:
     //!
     //! \return 当前的算子下发模式
     virtual LaunchMode GetLaunchMode() = 0;
+
+    // 方案一：用户自定义Allocator类，通过设置Allocator类去自定义内存管理
+    // todo:
+    // virtual Status SetDeviceBufferAllocator(Allocator *allocator) = 0;
+
+    // 方案二：回调用户自定义Allocate方法和Deallocate方法
+    // virtual Status SetAllocate(std::function<void*(size_t)> alloc) = 0;
+    // virtual Status SetDeallocate(std::function<Status(void*)> dealloc) = 0;
+
 };
 
 //!
@@ -150,6 +160,9 @@ public:
 //! \return 状态值.如果设置成功，返回NO_ERROR.
 //!
 Status CreateContext(Context **context);
+
+// 方案二新：回调用户自定义Allocate方法和Deallocate方法 ok
+Status CreateContext(Context **context, const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc);
 
 //!
 //! \brief 销毁上下文.

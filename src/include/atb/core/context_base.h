@@ -24,7 +24,7 @@ public:
     ~ContextBase() override;
     ContextBase(const ContextBase &other) = delete;
     ContextBase &operator=(const ContextBase &other) = delete;
-    Status Init();
+    Status Init(std::function<void*(size_t)> alloc, std::function<void(void*)> dealloc);
     void Destroy();
     Status SetExecuteStream(aclrtStream stream) override;
     aclrtStream GetExecuteStream() const override;
@@ -45,6 +45,7 @@ public:
     ExecuteType GetExecuteType() override;
     Status SetLaunchMode(LaunchMode mode) override;
     LaunchMode GetLaunchMode() override;
+    // Status SetAllocator(std::function<void*(size_t)> alloc, std::function<Status(void*)> dealloc) override;
     void *GetArgsDeviceBuffer(size_t bufferSize);
     void *GetArgsHostBuffer(size_t bufferSize);
     Status FreeArgsDeviceBuffer(void *addr);
@@ -71,6 +72,9 @@ private:
     LaunchMode mode_ = KERNEL_LAUNCH_MODE;
     std::unique_ptr<Allocator> deviceAllocator_;  // 一开始就赋值为defaultDeviceAllocator
     std::unique_ptr<Allocator> hostAllocator_;  // 一开始就赋值为defaultHostAllocator
+    std::function<void*(size_t)> deviceAllocateFunc_;
+    std::function<void(void*)> deviceDeallocateFunc_;
+    bool isUsingCustomAllocator_ = false;
 };
 } // namespace atb
 #endif
