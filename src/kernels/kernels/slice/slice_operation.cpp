@@ -11,6 +11,7 @@
 #include <mki/base/operation_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/slice.h"
 
 namespace AsdOps {
