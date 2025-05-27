@@ -2530,37 +2530,72 @@ class GroupTopkOperation(OperationValidation):
 
 class BlockCopyOperation(OperationValidation):
     @staticmethod
-    def op_param_check_modify(op_param):
-        if get_soc_version() == 'Ascend310P':
-            return False
-        return True
-
-    @staticmethod
     def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
         # print(tensor_desc)
-        tensor_desc.dtypes[2] = 'int32'
-        tensor_desc.dtypes[3] = 'int32'
-        tensor_desc.dtypes[4] = 'int32'
-        tensor_desc.dtypes[0] = tensor_desc.dtypes[1]
-        tensor_desc.shapes[2][0] = tensor_desc.shapes[4][0]
-        tensor_desc.shapes[0][0] = tensor_desc.shapes[1][0]
-        if len(tensor_desc.shapes[0]) != 4 or len(tensor_desc.shapes[1]) != 4:
-            return False
-        tensor_desc.shapes[0][1] = tensor_desc.shapes[1][1]
-        tensor_desc.shapes[0][2] = tensor_desc.shapes[1][2]
-        tensor_desc.shapes[0][3] = tensor_desc.shapes[1][3]
-        if len(tensor_desc.shapes[2]) != 1 or len(tensor_desc.shapes[3]) != 1 or len(tensor_desc.shapes[4]) != 1:
-            return False
-        if tensor_desc.shapes[0][0] < tensor_desc.shapes[2][0]:
-            return False
-        if tensor_desc.shapes[0][0] < tensor_desc.shapes[3][0]:
-            return False
-        if tensor_desc.shapes[2][0] > tensor_desc.shapes[3][0]:
-            return False
-        if tensor_desc.shapes[2][0] + tensor_desc.shapes[3][0] > tensor_desc.shapes[0][0]:
-            return False
-        tensor_desc.data_gen_types = ["random", "random", "customize", "customize", "customize"]
-        return True
+        if get_soc_version() == 'Ascend310P':
+            tensor_desc.dtypes[2] = 'int32'
+            tensor_desc.dtypes[3] = 'int32'
+            tensor_desc.dtypes[4] = 'int32'
+            tensor_desc.formats[0] = random.choice(["nd", "fractal_nz"])
+            tensor_desc.formats[1] = random.choice(["nd", "fractal_nz"])
+            tensor_desc.formats[2] = "nd"
+            tensor_desc.formats[3] = "nd"
+            tensor_desc.formats[4] = "nd"
+            tensor_desc.dtypes[0] = tensor_desc.dtypes[1]
+            tensor_desc.shapes[2][0] = tensor_desc.shapes[4][0]
+            tensor_desc.shapes[0][0] = tensor_desc.shapes[1][0]
+            if len(tensor_desc.shapes[0]) != 4 or len(tensor_desc.shapes[1]) != 4:
+                return False
+            tensor_desc.shapes[0][1] = tensor_desc.shapes[1][1]
+            tensor_desc.shapes[0][2] = tensor_desc.shapes[1][2]
+            tensor_desc.shapes[0][3] = tensor_desc.shapes[1][3]
+            tensor_desc.formats[0] = tensor_desc.formats[1]
+            if len(tensor_desc.shapes[2]) != 1 or len(tensor_desc.shapes[3]) != 1 or len(tensor_desc.shapes[4]) != 1:
+                return False
+            if tensor_desc.shapes[0][0] < tensor_desc.shapes[2][0]:
+                return False
+            if tensor_desc.shapes[0][0] < tensor_desc.shapes[3][0]:
+                return False
+            if tensor_desc.shapes[2][0] > tensor_desc.shapes[3][0]:
+                return False
+            if tensor_desc.shapes[2][0] + tensor_desc.shapes[3][0] > tensor_desc.shapes[0][0]:
+                return False
+            if tensor_desc.dtypes[0] != 'float16' or tensor_desc.dtypes[1] != 'float16':
+                return False
+            if tensor_desc.formats[0] == "nd" and tensor_desc.formats[1] == "nd":
+                if (tensor_desc.shapes[0][1] * tensor_desc.shapes[0][2] * tensor_desc.shapes[0][3]) % 16 != 0:
+                    return False
+            if tensor_desc.formats[0] == "fractal_nz" and tensor_desc.formats[1] == "fractal_nz":
+                tensor_desc.shapes[0][3] = 16
+                tensor_desc.shapes[1][3] = 16
+                if ((tensor_desc.shapes[0][2] % 16) != 0) or ((tensor_desc.shapes[1][2] % 16) != 0):
+                    return False
+            tensor_desc.data_gen_types = ["random", "random", "customize", "customize", "customize"]
+            return True
+        else:
+            tensor_desc.dtypes[2] = 'int32'
+            tensor_desc.dtypes[3] = 'int32'
+            tensor_desc.dtypes[4] = 'int32'
+            tensor_desc.dtypes[0] = tensor_desc.dtypes[1]
+            tensor_desc.shapes[2][0] = tensor_desc.shapes[4][0]
+            tensor_desc.shapes[0][0] = tensor_desc.shapes[1][0]
+            if len(tensor_desc.shapes[0]) != 4 or len(tensor_desc.shapes[1]) != 4:
+                return False
+            tensor_desc.shapes[0][1] = tensor_desc.shapes[1][1]
+            tensor_desc.shapes[0][2] = tensor_desc.shapes[1][2]
+            tensor_desc.shapes[0][3] = tensor_desc.shapes[1][3]
+            if len(tensor_desc.shapes[2]) != 1 or len(tensor_desc.shapes[3]) != 1 or len(tensor_desc.shapes[4]) != 1:
+                return False
+            if tensor_desc.shapes[0][0] < tensor_desc.shapes[2][0]:
+                return False
+            if tensor_desc.shapes[0][0] < tensor_desc.shapes[3][0]:
+                return False
+            if tensor_desc.shapes[2][0] > tensor_desc.shapes[3][0]:
+                return False
+            if tensor_desc.shapes[2][0] + tensor_desc.shapes[3][0] > tensor_desc.shapes[0][0]:
+                return False
+            tensor_desc.data_gen_types = ["random", "random", "customize", "customize", "customize"]
+            return True
 
 
 class GroupedMatmulInplaceAddOperation(OperationValidation):
