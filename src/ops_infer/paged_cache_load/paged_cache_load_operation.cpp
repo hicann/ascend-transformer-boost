@@ -40,8 +40,13 @@ static const uint32_t MAX_SEQ_LEN = 2048;
 static const uint32_t MAX_k = 147456;
 static const uint32_t MAX_v = 147456;
 static const uint32_t BLOCKSIZEINDEX = 2;
-static constexpr int64_t ZERO = 0;
-static constexpr int64_t ONE = 1;
+static const uint32_t BLOCKSIZEINDEX_ND = 1;
+static const uint32_t NUM_HEADS_INDEX = 2;
+static const uint32_t HEAD_SIZE_INDEX = 3;
+static const uint32_t ALIGN_INT8 = 32;
+static const uint32_t ALIGN_FP16_BF16 = 16;
+static const uint32_t ZERO = 0;
+static const uint32_t ONE = 1;
 
 template <> Status CreateOperation(const infer::PagedCacheLoadParam &opParam, Operation **operation)
 {
@@ -141,33 +146,54 @@ Status PagedCacheLoadOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
 Status PagedCacheLoadOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
 {
     int64_t numBlocks = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[0]; // 0: keyCache
-    int64_t blockSize = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX]; // 1: keyCache
     int64_t lencontext = inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dims[0]; // 2: blocktable
     int64_t sumcontext = inTensorDescs.at(IN_TENSOR_4_KEY).shape.dims[0]; // 4: key
     if (numBlocks != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[0]) {
         ATB_LOG(ERROR) << GetLogPrefix() << "numBlocks should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (blockSize != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[BLOCKSIZEINDEX]) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "blockSizes should be same";
-        return ERROR_INVALID_TENSOR_DIM;
-    }
-    if (blockSize == ZERO) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "blockSize cannot be zero";
-        return ERROR_INVALID_TENSOR_DIM;
-    }
     if (sumcontext != inTensorDescs.at(IN_TENSOR_5_VALUE).shape.dims[0]) {
         ATB_LOG(ERROR) << GetLogPrefix() << "sumcontextlens should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (param_.isSeqLensCumsumMode && param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
-        if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0] - ONE) { // 1:-1
-            ATB_LOG(ERROR) << GetLogPrefix() <<
-                "the lencontext of blocktable should match the lencontext of SeqLens when isSeqLensCumsumMode is true.";
+    if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_ND) {
+        int64_t blockSize = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX_ND]; // 1: keyCache
+        int64_t num_heads = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX]; // 1: keyCache
+        if (blockSize != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[BLOCKSIZEINDEX_ND]) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "blockSizes should be same";
             return ERROR_INVALID_TENSOR_DIM;
         }
-    }
-    if (infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ || !param_.isSeqLensCumsumMode) {
+        if (num_heads != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[BLOCKSIZEINDEX]) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "numHeads should be same";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (blockSize == ZERO) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "blockSize cannot be zero";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (param_.isSeqLensCumsumMode) {
+            if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0] - ONE) { // 1:-1
+                ATB_LOG(ERROR) << GetLogPrefix() <<
+                    "the lencontext of blocktable should match the lencontext of SeqLens when isSeqLensCumsumMode is true.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+        } else {
+            if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0]) {
+                ATB_LOG(ERROR) << GetLogPrefix() <<
+                    "the lencontext of blocktable should match the lencontext of SeqLens when isSeqLensCumsumMode is true.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+        }
+    } else { // NZ
+        int64_t blockSize = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX]; // 1: keyCache
+        if (blockSize != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[BLOCKSIZEINDEX]) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "blockSizes should be same";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        if (blockSize == ZERO) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "blockSize cannot be zero";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
         if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0]) {
             ATB_LOG(ERROR) << GetLogPrefix() << "lenscontextlens should be same";
             return ERROR_INVALID_TENSOR_DIM;
@@ -225,6 +251,31 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BND(const SVector<TensorDesc> 
         inTensorDescs.at(IN_TENSOR_6_SEQ_STARTS).shape.dimNum != INPUTCONTEXTLENS_DIM) { // 6: seq start
         ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
         return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    int64_t num_heads = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[NUM_HEADS_INDEX]; // 2: num heads
+    int64_t head_size_k = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[HEAD_SIZE_INDEX]; // 3: head_size_k
+    int64_t head_size_v = inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[HEAD_SIZE_INDEX]; // 3: head_size_v
+    if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).dtype == ACL_INT8) { // keyCache: int8
+        if (num_heads * head_size_k % ALIGN_INT8 != 0) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "int8 ND format num_heads*head_size_k should be aligned to 32!";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    } else { // keyCache: fp16/bf16
+        if (num_heads * head_size_k % ALIGN_FP16_BF16 != 0) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "fp16/bf16 ND format num_heads*head_size_k should be aligned to 16!";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    if (inTensorDescs.at(IN_TENSOR_1_VALUECACHE).dtype == ACL_INT8) { // valueCache: int8
+        if (num_heads * head_size_v % ALIGN_INT8 != 0) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "int8 ND format num_heads*head_size_v should be aligned to 32!";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    } else { // valueCache: fp16/bf16
+        if (num_heads * head_size_v % ALIGN_FP16_BF16 != 0) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "fp16/bf16 ND format num_heads*head_size_v should be aligned to 16!";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
     int64_t lencontext = inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dims[0]; // 2: blockTable-batch(len(contextLens))
     int64_t seqstart = inTensorDescs.at(IN_TENSOR_6_SEQ_STARTS).shape.dims[0]; // 6: seq_start-batch(len(contextLens))
