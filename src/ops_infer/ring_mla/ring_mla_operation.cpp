@@ -77,16 +77,23 @@ bool ParamCheck(const infer::RingMLAParam &opParam, ExternalError &extError)
     }
     if (opParam.kvHeadNum > 0 && opParam.headNum % opParam.kvHeadNum != 0) {
         extError.errorDesc = "Ring MLA expects headNum to be divisible by kvHeadNum.";
-        extError.errorData = OperationUtil::ConcatInfo("But got param.kvHeadNum = ", opParam.kvHeadNum);
-        ATB_LOG(ERROR) << extError;
-        return false;
-    }
-    if (opParam.headNum < opParam.kvHeadNum) {
-        extError.errorDesc = "Ring MLA expects headNum >= kvHeadNum/";
         extError.errorData = OperationUtil::ConcatInfo("But got param.headNum = ", opParam.headNum,
                                                        "param.kvHeadNum = ", opParam.kvHeadNum);
         ATB_LOG(ERROR) << extError;
         return false;
+    }
+    if (opParam.headNum < opParam.kvHeadNum) {
+        extError.errorDesc = "Ring MLA expects headNum >= kvHeadNum";
+        extError.errorData = OperationUtil::ConcatInfo("But got param.headNum = ", opParam.headNum,
+                                                       "param.kvHeadNum = ", opParam.kvHeadNum);
+        ATB_LOG(ERROR) << extError;
+        return false;
+    }
+    if (opParam.maskType != infer::RingMLAParam::MaskType::NO_MASK &&
+        opParam.maskType != infer::RingMLAParam::MaskType::MASK_TYPE_TRIU) {
+        extError.errorDesc = "Ring MLA expects maskType as one of NO_MASK, MASK_TYPE_TRIU";
+        extError.errorData = OperationUtil::ConcatInfo("But got param.maskType = ", opParam.maskType);
+        ATB_LOG(ERROR) << extError;
     }
     if (opParam.inputLayout != infer::TYPE_BSND) {
         extError.errorDesc = "Ring MLA only supports inputLayout as TYPE_BSND";
@@ -162,14 +169,17 @@ bool RingMLAOperation::DimNumCheck(const SVector<TensorDesc> &inTensorDescs, Ext
             return false;
         }
     }
-    if ((inTensorDescs.at(IN_MASK_INDEX).shape.dimNum != 2 &&  // 2: mask: [maxSeqLen, maxSeqLen]
-         inTensorDescs.at(IN_MASK_INDEX).shape.dimNum != 3)) { // 3: mask: [batch, maxSeqLen, maxSeqLen]
-        extError.errorDesc = "dimNum of mask should be 2 or 3!";
-        extError.errorData =
-            OperationUtil::ConcatInfo("But got mask dimNum: ", inTensorDescs.at(IN_MASK_INDEX).shape.dimNum);
-        ATB_LOG(ERROR) << GetLogPrefix() << extError;
-        return false;
+    if (param_.maskType != infer::RingMLAParam::MaskType::NO_MASK) {
+        if (inTensorDescs.at(IN_MASK_INDEX).shape.dimNum != 2 && // 2: mask: [maxSeqLen, maxSeqLen]
+            inTensorDescs.at(IN_MASK_INDEX).shape.dimNum != 3) { // 3: mask: [batch, maxSeqLen, maxSeqLen]
+            extError.errorDesc = "dimNum of mask should be 2 or 3!";
+            extError.errorData =
+                OperationUtil::ConcatInfo("But got mask dimNum: ", inTensorDescs.at(IN_MASK_INDEX).shape.dimNum);
+            ATB_LOG(ERROR) << GetLogPrefix() << extError;
+            return false;
+        }
     }
+
     if (inTensorDescs.at(IN_SEQLEN_INDEX).shape.dimNum != 1 && // 1: [batch]
         inTensorDescs.at(IN_SEQLEN_INDEX).shape.dimNum != 2) { // 1: [2, batch]
         extError.errorDesc = "dimNum of seqlen should be 1 or 2!";
@@ -292,6 +302,12 @@ Status RingMLAOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) cons
         ATB_LOG(ERROR) << GetLogPrefix() << extError;
         return extError.errorType;
     }
+    if (inTensorDescs.at(IN_VALUE_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] != QK_SPLIT1_HEAD_SIZE) {
+        extError.errorData = OperationUtil::ConcatInfo("value headSize: ",
+                                                       inTensorDescs.at(IN_VALUE_INDEX).shape.dims[QKV_HEAD_SIZE_IDX]);
+        ATB_LOG(ERROR) << GetLogPrefix() << extError;
+        return extError.errorType;
+    }
     if (inTensorDescs.at(IN_MASK_INDEX).shape.dimNum == 3) { // 3: mask: [batch, maxSeqLen, maxSeqLen]
         // 1: seqlen shape: [batch]
         int64_t batch = inTensorDescs.at(IN_SEQLEN_INDEX).shape.dims[SEQLEN_BATCH_IDX];
@@ -393,7 +409,6 @@ Status RingMLAOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
         return NO_ERROR;
     }
     outTensorDescs.at(OUT_PREV_LSE_INDEX) = inTensorDescs.at(IN_QUERY_SPLIT1_INDEX); // 1: softmaxLse, 0: query
-    // query: [nTokens, headNum, headSize] 删除headSize
     outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dims[LSE_N_TOKENS_IDX] =
         inTensorDescs.at(IN_QUERY_SPLIT1_INDEX).shape.dims[QKV_N_TOKENS_IDX];
     outTensorDescs.at(OUT_PREV_LSE_INDEX).shape.dims[LSE_HEAD_NUM_IDX] =
@@ -420,10 +435,31 @@ Status RingMLAOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const 
     targetOutTensorDescs.reserve(BASE_OUT_TENSOR_NUM);
     targetOutTensorDescs.resize(BASE_OUT_TENSOR_NUM);
     InferShapeImpl(inTensorDescs, targetOutTensorDescs);
-
+    ExternalError extError;
+    extError.errorType = ERROR_INVALID_TENSOR_DIM;
+    extError.solutionDesc = "Please check the shape of outTensor.";
+    std::stringstream ss;
     for (size_t i = 0; i < BASE_OUT_TENSOR_NUM; ++i) {
         if (!TensorUtil::TensorDescEqual(outTensorDescs.at(i), targetOutTensorDescs.at(i))) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "invalid outTensor shape at outTensors[" << i << "].";
+            extError.errorDesc = OperationUtil::ConcatInfo("Invalid outTensor shape at outTensors[", i, "].");
+            ss << "Target outTensor shape: [";
+            int dimNum = (int)targetOutTensorDescs.at(i).shape.dimNum;
+            for (int j = 0; j < dimNum - 1; ++j) {
+                ss << targetOutTensorDescs.at(i).shape.dims[j] << ", ";
+            }
+            ss << targetOutTensorDescs.at(i).shape.dims[dimNum - 1] << "], ";
+            ss << "but got outTensor shape: [";
+            dimNum = (int)outTensorDescs.at(i).shape.dimNum;
+            for (int j = 0; j < dimNum - 1; ++j) {
+                ss << outTensorDescs.at(i).shape.dims[j] << ", ";
+            }
+            ss << outTensorDescs.at(i).shape.dims[dimNum - 1] << "]. ";
+            ss << "Target outTensor dtype: " << targetOutTensorDescs.at(i).dtype << ", ";
+            ss << "outTensor dtype: " << outTensorDescs.at(i).dtype << ", ";
+            ss << "Target outTensor format: " << targetOutTensorDescs.at(i).format << ", ";
+            ss << "outTensor format: " << outTensorDescs.at(i).format;
+            extError.errorData = ss.str();
+            ATB_LOG(ERROR) << GetLogPrefix() << extError;
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
