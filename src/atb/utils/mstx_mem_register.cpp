@@ -30,9 +30,6 @@ MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.typeSpecificDesc = &rangeDesc;
     
     memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
-    if (memPool_ == 0) {
-        throw std::runtime_error("MSTX_ERR_MEMPOOL_INIT_FAILED")
-    }
 }
 
 MstxMemRegister::~MstxMemRegister()
@@ -108,5 +105,10 @@ Status MstxMemRegister::CheckTensorRange()
     } else {
         return true;
     }
+}
+
+bool MstxMemRegister::IsVlid() const noexcept
+{
+    return memPool_ != 0;
 }
 }  // namespace atb

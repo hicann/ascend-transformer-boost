@@ -28,6 +28,7 @@ public:
     void ClearMstxMemRegions() noexcept;
     void AddTensorMemRegions(void *ptr, uint64_t size);
     int32_t GetMstxDevice();
+    bool IsVlid() const noexcept;
 
 private:
     mstxMemHeapHandle_t memPool_;
