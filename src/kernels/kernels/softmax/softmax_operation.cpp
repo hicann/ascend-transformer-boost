@@ -10,6 +10,7 @@
 #include <mki/base/operation_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/softmax.h"
 
 namespace AsdOps {
@@ -22,14 +23,26 @@ public:
     {
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
         auto dtype = launchParam.GetOutTensor(0).desc.dtype;
-        if (dtype == TENSOR_DTYPE_FLOAT16) {
-            return GetKernelByName("SoftmaxF16Kernel");
-        } else if (dtype == TENSOR_DTYPE_FLOAT) {
-            return GetKernelByName("SoftmaxF32Kernel");
-        } else if (dtype == TENSOR_DTYPE_BF16) {
-            return GetKernelByName("SoftmaxBF16Kernel");
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            if (dtype == TENSOR_DTYPE_FLOAT16) {
+                return GetKernelByName("SoftmaxAptF16Kernel");
+            } else if (dtype == TENSOR_DTYPE_FLOAT) {
+                return GetKernelByName("SoftmaxAptF32Kernel");
+            } else if (dtype == TENSOR_DTYPE_BF16) {
+                return GetKernelByName("SoftmaxAptBF16Kernel");
+            } else {
+                return nullptr;
+            }           
         } else {
-            return nullptr;
+            if (dtype == TENSOR_DTYPE_FLOAT16) {
+                return GetKernelByName("SoftmaxF16Kernel");
+            } else if (dtype == TENSOR_DTYPE_FLOAT) {
+                return GetKernelByName("SoftmaxF32Kernel");
+            } else if (dtype == TENSOR_DTYPE_BF16) {
+                return GetKernelByName("SoftmaxBF16Kernel");
+            } else {
+                return nullptr;
+            }
         }
     }
 

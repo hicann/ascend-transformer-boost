@@ -68,4 +68,34 @@ public:
     }
 };
 REG_KERNEL_BASE(SoftmaxBF16Kernel);
+
+// SoftmaxAptF16Kernel
+class SoftmaxAptF16Kernel : public SoftmaxKernel {
+public:
+    explicit SoftmaxAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SoftmaxKernel(kernelName, handle)
+    {
+    }
+};
+REG_KERNEL_BASE(SoftmaxAptF16Kernel);
+
+// SoftmaxAptF32Kernel
+class SoftmaxAptF32Kernel : public SoftmaxKernel {
+public:
+    explicit SoftmaxAptF32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SoftmaxKernel(kernelName, handle)
+    {
+    }
+};
+REG_KERNEL_BASE(SoftmaxAptF32Kernel);
+
+// SoftmaxAptBF16Kernel
+class SoftmaxAptBF16Kernel : public SoftmaxKernel {
+public:
+    explicit SoftmaxAptBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SoftmaxKernel(kernelName, handle)
+    {
+    }
+};
+REG_KERNEL_BASE(SoftmaxAptBF16Kernel);
 } // namespace AsdOps
