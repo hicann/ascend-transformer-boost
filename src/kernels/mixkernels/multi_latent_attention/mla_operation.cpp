@@ -135,20 +135,6 @@ private:
         MKI_CHECK(tensorVcache.desc.dims.size() == KV_CACHE_DIM_NUM,
                   "Input4 dim num " << tensorVcache.desc.dims.size() << " invalid, should be " << KV_CACHE_DIM_NUM,
                   return false);
-        // kshape (batch, seq, n * d) (bs, n, d)
-        auto kvdim0 = tensorKcache.desc.dims[DIM_0];
-        if (kvdim0 == batch) {
-            // (b, s, n * d)
-            uint32_t maxSeqlen = tensorKcache.desc.dims[DIM_1];
-            MKI_CHECK(tensorVcache.desc.dims[DIM_0] == batch && tensorVcache.desc.dims[DIM_1] == maxSeqlen,
-                  "v shape error", return false);
-        } else {
-            // (b * s, n, d)
-            MKI_CHECK(batch != 0, "batch error", return false);
-            uint32_t maxSeqlen = tensorKcache.desc.dims[DIM_0] / batch;
-            MKI_CHECK(tensorVcache.desc.dims[DIM_0] == maxSeqlen * batch && tensorVcache.desc.dims[DIM_1] == kvhead,
-                  "v shape error", return false);
-        }
         MKI_CHECK(tensorKcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorKcache.desc.dtype == TENSOR_DTYPE_BF16,
                   "Input1 dtype " << GetStrWithDType(tensorKcache.desc.dtype)
                                   << " invalid, should be float16 or bfloat16 or int8",
