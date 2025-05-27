@@ -44,7 +44,7 @@ template <> Status CreateOperation(const customize::BlockCopyParam &opParam, Ope
 CustomizeBlockCopyOperation::CustomizeBlockCopyOperation(const customize::BlockCopyParam &param)
     : OperationBase("CustomizeBlockCopyOperation"), param_(param)
 {
-    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("CustomizeBlockCopyOperation");
+    operationIr_ = GetSingleton<CustomizeOperationIrCfg>().GetOperationIr("CustomizeBlockCopyOperation");
 }
 
 CustomizeBlockCopyOperation::~CustomizeBlockCopyOperation() {}

@@ -59,6 +59,7 @@ target_link_libraries(atb_customize_static PUBLIC ${USR_LINK_LIBS})
 
 install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_customize/customize_ops_configs DESTINATION ./configs)
 
 add_subdirectory(ops/example_op/kernel_implement)
 add_subdirectory(ops/example_blockcopy/kernel_implement)
