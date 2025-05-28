@@ -78,7 +78,6 @@ Status DefaultHostAllocator::Deallocate(void *addr)
         return ERROR_CANN_ERROR;
     }
     currentAllocateSize_ -= it->second;
-    memMap.erase(addr);
 #ifdef _DEBUG
     ATB_LOG(INFO) << "DefaultHostAllocator::Deallocate host buffer success, free host buffer: " << addr
                   << ", which bufferSize is "<< it->second << ", currentAllocateSize_: " << currentAllocateSize_;
@@ -86,6 +85,7 @@ Status DefaultHostAllocator::Deallocate(void *addr)
     ATB_LOG(INFO) << "DefaultHostAllocator::Deallocate host buffer success, free bufferSize: "<< it->second
                     << ", currentAllocateSize_: " << currentAllocateSize_;
 #endif
+    memMap.erase(addr);
     return NO_ERROR;
 }
 } // namespace atb

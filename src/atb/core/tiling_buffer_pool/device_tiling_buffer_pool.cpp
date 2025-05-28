@@ -11,7 +11,7 @@
 #include "atb/utils/log.h"
 
 namespace atb {
-DeviceTilingBufferPool::DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize, std::functional<void*(size_t size)> alloc, std::functional<void(void*)> dealloc)
+DeviceTilingBufferPool::DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize, const std::functional<void*(size_t size)> alloc, const std::functional<void(void*)> dealloc)
     : TilingBufferPool(blockNum, blockSize), customAllocateFunc_(alloc), customDeallocateFunc_(dealloc)
 {
 }
@@ -37,6 +37,7 @@ void DeviceTilingBufferPool::FreeTotalBuffer(uint8_t *buffer)
         if (customDeallocateFunc_) {
             ATB_LOG(INFO) << "Using the Custom Deallocation Function to deallocate device tiling buffer";
             customDeallocateFunc_(static_cast<void *>(buffer));
+            return;
         }
         aclError aclRet = aclrtFree(buffer);
         if (aclRet != ACL_SUCCESS) {

@@ -139,15 +139,6 @@ public:
     //!
     //! \return 当前的算子下发模式
     virtual LaunchMode GetLaunchMode() = 0;
-
-    // 方案一：用户自定义Allocator类，通过设置Allocator类去自定义内存管理
-    // todo:
-    // virtual Status SetDeviceBufferAllocator(Allocator *allocator) = 0;
-
-    // 方案二：回调用户自定义Allocate方法和Deallocate方法
-    // virtual Status SetAllocate(std::function<void*(size_t)> alloc) = 0;
-    // virtual Status SetDeallocate(std::function<Status(void*)> dealloc) = 0;
-
 };
 
 //!
@@ -161,7 +152,19 @@ public:
 //!
 Status CreateContext(Context **context);
 
-// 方案二新：回调用户自定义Allocate方法和Deallocate方法 ok
+//!
+//! \brief 创建上下文.
+//!
+//! 在当前进程或线程中显式创建一个由用户管理Tiling内存的Context.
+//!
+//! \param context 传入的context
+//！
+//！\param alloc 传入的Tiling内存分配方法
+//!
+//! \param dealloc 传入的Tiling内存释放方法
+//!
+//! \return 状态值.如果设置成功，返回NO_ERROR.
+//!
 Status CreateContext(Context **context, const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc);
 
 //!

@@ -51,7 +51,7 @@ Status CreateContext(Context **context, const std::function<void*(size_t)>& allo
         return ERROR_OUT_OF_HOST_MEMORY;
     }
 
-    Status st = contextBase->Init(std::function<void*(size_t)> alloc, std::function<void(void*)> dealloc);
+    Status st = contextBase->Init(alloc, dealloc);
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << "ContextBase init fail, CreateContext fail";
         delete contextBase;
