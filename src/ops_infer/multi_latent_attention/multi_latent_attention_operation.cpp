@@ -113,7 +113,7 @@ static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam)
         return false;
     }
     if (opParam.maskType < infer::MultiLatentAttentionParam::MaskType::UNDEFINED ||
-        opParam.maskType > infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        opParam.maskType > infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         ATB_LOG(ERROR) << "invalid maskType";
         return false;
     }
@@ -135,12 +135,15 @@ static bool ParamPrefillCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "headNum should be >= 1 and <= 128";
         return false;
     }
-    if (opParam.headNum != opParam.kvHeadNum) {
-        ATB_LOG(ERROR) << "Prefill, headNum should be equal to kvHeadNum";
-        return false;
+    if (opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        if (opParam.headNum != opParam.kvHeadNum) {
+            ATB_LOG(ERROR) << "Prefill, headNum should be equal to kvHeadNum";
+            return false;
+        }
     }
     if (opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
-        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE &&
+        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         ATB_LOG(ERROR) << "Prefill, maskType support UNDEFINED and MASK_TYPE_MASK_FREE";
         return false;
     }
@@ -156,7 +159,8 @@ MultiLatentAttentionOperation::MultiLatentAttentionOperation(const infer::MultiL
 {
     std::string opIrKeyStr;
     opIrKeyStr += "MultiLatentAttentionOperation";
-    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
+    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+        param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         opIrKeyStr += "Mask";
     }
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
@@ -184,7 +188,8 @@ MultiLatentAttentionOperation::~MultiLatentAttentionOperation() {}
 uint32_t MultiLatentAttentionOperation::GetInputNum() const
 {
     uint32_t intensorNumBase = IN_TENSOR_NUM;
-    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
+    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+        param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         intensorNumBase++;
     }
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_PREFILL) {

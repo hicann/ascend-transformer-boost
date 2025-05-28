@@ -85,7 +85,8 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
     }
-    if (newParam_.contextLens != newParam_.qSeqlen) {
+    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK &&
+        newParam_.contextLens != newParam_.qSeqlen) {
         ATB_LOG(ERROR) << GetLogPrefix() << " qSeqLen and kvSeqLen should be same";
         return ERROR_INVALID_PARAM;
     }
