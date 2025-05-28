@@ -1141,42 +1141,45 @@ class GatherOperation(DataGen):
         json_data = json.loads(op_params)
         axis = json_data["axis"]
         batchDims = json_data["batchDims"]
-        if batchDims == 0:
-            if axis == 0:
-                if in_tensors[0].ndim == 2 and in_tensors[1].ndim == 2:
-                    embedding = torch.nn.Embedding(in_tensors[0].shape[0],in_tensors[0].shape[1])
-                    embedding.weight.data.copy_(in_tensors[0])
-                    embedding.weight.requires_grad = False
-                    golden_result = embedding(in_tensors[1]).detach()
-                    return [golden_result]
-            outputSize = []
-            dim0 = 1
-            for i in range(0,axis):
-                outputSize.append(in_tensors[0].shape[i])
-                dim0 *= in_tensors[0].shape[i]
-            dim1 = in_tensors[0].shape[axis]
-            for i in range(0,in_tensors[1].ndim):
-                outputSize.append(in_tensors[1].shape[i])
-            dim2 = 1
-            for i in range(axis + 1,in_tensors[0].ndim):
-                outputSize.append(in_tensors[0].shape[i])
-                dim2 *= in_tensors[0].shape[i]
-            # inputFlatten = in_tensors[0].clone().reshape(-1)
-            indicesFlatten = in_tensors[1].clone().reshape(-1)
-            logging.debug("outputSize",outputSize)
+        if in_tensors[1].ndim == 1:
+            golden_result = torch.index_select(in_tensors[0], axis, in_tensors[1].to(torch.int64))
+        else:
+            if batchDims == 0:
+                if axis == 0:
+                    if in_tensors[0].ndim == 2 and in_tensors[1].ndim == 2:
+                        embedding = torch.nn.Embedding(in_tensors[0].shape[0],in_tensors[0].shape[1])
+                        embedding.weight.data.copy_(in_tensors[0])
+                        embedding.weight.requires_grad = False
+                        golden_result = embedding(in_tensors[1]).detach()
+                        return [golden_result]
+                outputSize = []
+                dim0 = 1
+                for i in range(0,axis):
+                    outputSize.append(in_tensors[0].shape[i])
+                    dim0 *= in_tensors[0].shape[i]
+                dim1 = in_tensors[0].shape[axis]
+                for i in range(0,in_tensors[1].ndim):
+                    outputSize.append(in_tensors[1].shape[i])
+                dim2 = 1
+                for i in range(axis + 1,in_tensors[0].ndim):
+                    outputSize.append(in_tensors[0].shape[i])
+                    dim2 *= in_tensors[0].shape[i]
+                # inputFlatten = in_tensors[0].clone().reshape(-1)
+                indicesFlatten = in_tensors[1].clone().reshape(-1)
+                logging.debug("outputSize",outputSize)
 
-            golden_result = torch.zeros(outputSize, dtype=in_tensors[0].dtype, device=in_tensors[0].device).reshape(-1)
-            idx = 0
-            for i in range(0, dim0):
-                inputIdx = i * dim1 * dim2
-                for indice in indicesFlatten:
-                    for k in range(0, dim2):
-                        golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
-                        idx += 1
-            golden_result = golden_result.reshape(outputSize)
-        elif batchDims > 0:
-            # 使用 torch.gather 进行批量维度的处理
-            golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
+                golden_result = torch.zeros(outputSize, dtype=in_tensors[0].dtype, device=in_tensors[0].device).reshape(-1)
+                idx = 0
+                for i in range(0, dim0):
+                    inputIdx = i * dim1 * dim2
+                    for indice in indicesFlatten:
+                        for k in range(0, dim2):
+                            golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
+                            idx += 1
+                golden_result = golden_result.reshape(outputSize)
+            elif batchDims > 0:
+                # 使用 torch.gather 进行批量维度的处理
+                golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
 
         # 返回结果
         return [golden_result.cpu()]
