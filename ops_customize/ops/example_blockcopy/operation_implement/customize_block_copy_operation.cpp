@@ -13,10 +13,10 @@
 #include "atb/utils/config.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/param_to_json.h"
-#include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/core/op_param_funcs.h"
+#include "customize_operation_ir_cfg.h"
 
 namespace {
 constexpr static uint32_t CACHE_DIM = 4;
