@@ -215,7 +215,7 @@ Status GetFlashAttentionNoCacheMaskInfo(UnpadFlashAttentionInfo &mmInfo, OpParam
         auto ret = GetSwaMaskInfo(mmInfo, param, tensorMask);
         OP_TILING_CHECK_STATUS_RETURN(ret);
     } else if (maskType != OpParam::UnpadFlashAttention::MASK_TYPE_NONE
-        && maskType != OpParam::UnpadFlashAttention::MASK_TYPE_MASK_FREE) {
+        && maskType != OpParam::UnpadFlashAttention::MASK_TYPE_CASUAL_MASK) {
         auto maskDim = maskShape.size();
         int32_t maxSeq = maskShape.at(maskDim - 1);
         mmInfo.maxSeqLen = maxSeq;
@@ -396,11 +396,11 @@ void GetSpecTilingKey(UnpadFlashAttentionInfo &mmInfo, const OpParam::UnpadFlash
         param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_ND) &&
         mmInfo.tensors.query.desc.dtype == TENSOR_DTYPE_BF16) {
         mmInfo.tilingKey = SPEC_TILING_KEY + (static_cast<uint32_t>(mmInfo.splitm) << DIM_4);
-    } else if (mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_MASK_FREE &&
+    } else if (mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_CASUAL_MASK &&
         param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND &&
         mmInfo.tensors.query.desc.dtype == TENSOR_DTYPE_FLOAT16) {
         mmInfo.tilingKey = SPEC_TILING_KEY + 1;
-    } else if (mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_MASK_FREE &&
+    } else if (mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_CASUAL_MASK &&
         param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND &&
         mmInfo.tensors.query.desc.dtype == TENSOR_DTYPE_BF16) {
         mmInfo.tilingKey = SPEC_TILING_KEY;
@@ -529,13 +529,13 @@ Status InitInfo(UnpadFlashAttentionInfo &mmInfo, OpParam::UnpadFlashAttention &p
     FlashAttentionFillInfo(mmInfo, param, batch, embed);
     // mask_none/mask_free opt模板方法tilingkey
     bool optEnable = (mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_NONE ||
-                        mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_MASK_FREE) &&
+                        mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_CASUAL_MASK) &&
                         mmInfo.embeddingSize <= 128 && !mmInfo.isMLA &&
                         mmInfo.scaleType == OpParam::UnpadFlashAttention::SCALE_TOR;
     if (optEnable) {
         GetSpecTilingKey(mmInfo, param);
     }
-    MKI_CHECK(optEnable || mmInfo.maskType != OpParam::UnpadFlashAttention::MASK_TYPE_MASK_FREE,
+    MKI_CHECK(optEnable || mmInfo.maskType != OpParam::UnpadFlashAttention::MASK_TYPE_CASUAL_MASK,
             "maskType is mask free, not support opt unable, isMLA or embeddingSize > 128 or scaleType not tor.",
             return Status::FailStatus(ERROR_INVALID_VALUE));
     if (param.type != OpParam::UnpadFlashAttention::MULTI_LATENT_ATTENTION_COMBINE_CACHE &&

@@ -50,7 +50,7 @@ enum class MaskType {
     MASK_TYPE_ALIBI_COMPRESS_SQRT = 7,
     MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN = 8,
     MASK_TYPE_ALIBI_COMPRESS_128 = 9,
-    MASK_TYPE_MASK_FREE = 10
+    MASK_TYPE_CAUSAL_MASK = 10               // mask内部生成
 };
 
 __aicore__ __attribute__((always_inline)) inline void SetVecMask(int32_t len)
@@ -973,7 +973,7 @@ struct OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_NONE> {
 };
 
 template<>
-struct OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_MASK_FREE>{
+struct OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_CAUSAL_MASK>{
     __aicore__ __attribute__((always_inline)) inline OnlineSoftmaxStage1Step1(
     const AscendC::LocalTensor<float> &s_ub,
     const AscendC::LocalTensor<float> &mask_ub_tensor,
@@ -1382,7 +1382,7 @@ struct OnlineSoftmaxStage1<float, float, P_DTYPE, MASK_DTYPE, MaskType::MASK_TYP
 };
 
 template <typename P_DTYPE, typename MASK_DTYPE>
-struct OnlineSoftmaxStage1<float, float, P_DTYPE, MASK_DTYPE, MaskType::MASK_TYPE_MASK_FREE> {
+struct OnlineSoftmaxStage1<float, float, P_DTYPE, MASK_DTYPE, MaskType::MASK_TYPE_CAUSAL_MASK> {
     __aicore__ __attribute__((always_inline)) inline OnlineSoftmaxStage1(
         const AscendC::LocalTensor<float> &s_ub,
         const AscendC::LocalTensor<float> &mask_processed_ub,
@@ -1416,7 +1416,7 @@ struct OnlineSoftmaxStage1<float, float, P_DTYPE, MASK_DTYPE, MaskType::MASK_TYP
         SET_FLAG(MTE2, V, pingpong_flag);
         WAIT_FLAG(MTE2, V, pingpong_flag);
         
-        OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_MASK_FREE>(
+        OnlineSoftmaxStage1Step1<MaskType::MASK_TYPE_CAUSAL_MASK>(
             s_ub.template ReinterpretCast<float>(),
             mask_processed_ub,
             local_rowmax_ub,
