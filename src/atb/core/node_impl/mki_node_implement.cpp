@@ -168,14 +168,8 @@ Status MkiNodeImplement::InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tili
         ATB_LOG(ERROR) << GetLogPrefix() << " kernel is null";
         return ERROR_INVALID_PARAM;
     }
-    if (GetSingleton<Config>().IsLaunchKernelWithTiling()) {
-        ATB_LOG(INFO) << GetLogPrefix() << " use tiling optimize";
-        kernel_->SetLaunchWithTiling(true);
-    } else {
-        ATB_LOG(DEBUG) << GetLogPrefix() << " set tiling info, tilingSize: " << tilingSize;
-        kernel_->SetLaunchWithTiling(false);
-        kernel_->SetTilingHostAddr(hostTilingBuffer, tilingSize);
-    }
+    ATB_LOG(INFO) << GetLogPrefix() << " use tiling optimize";
+    kernel_->SetLaunchWithTiling(true);
     Mki::Status status = kernel_->Init(launchParam_);
     if (!status.Ok()) {
         ATB_LOG(ERROR) << GetLogPrefix() << " InitRunInfo failed!";
@@ -257,7 +251,7 @@ bool MkiNodeImplement::GetCachedTiling(KernelCache &kernelCache, size_t kernelIn
         ATB_LOG(ERROR) << GetLogPrefix() << " MkiNodeImplement do not have enough tiling buffer for cached tilnig";
         return false;
     }
-    if (!GetSingleton<Config>().IsLaunchKernelWithTiling() || Probe::IsSaveTiling()) {
+    if (Probe::IsSaveTiling()) {
         int ret = memcpy_s(kernelHostTilingBuffer, maxTilingSize, cachedTilingBuffer->data(), tilingSizeFetched);
         if (ret != EOK) {
             ATB_LOG(ERROR) << GetLogPrefix() << " MkiNodeImplement memcpy_s cached tiling fail, error:" << ret;
