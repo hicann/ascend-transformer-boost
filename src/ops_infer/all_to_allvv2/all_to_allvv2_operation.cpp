@@ -23,7 +23,6 @@
 namespace {
 bool ParamCheck(const atb::infer::AllToAllVV2Param &opParam)
 {
-    std::cout << "====== ParamCheck ========";
     if (opParam.backend != "hccl") {
         ATB_LOG(ERROR) << "backend is " << opParam.backend << ", backend must be hccl";
         return false;
