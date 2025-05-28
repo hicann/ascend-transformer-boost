@@ -1733,7 +1733,7 @@ struct SelfAttentionParam {
         MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN, //!< alibi压缩mask左对齐,只支持Atlas 800I A2推理产品
         MASK_TYPE_SLIDING_WINDOW_NORM,       //!< sliding window attention mask
         MASK_TYPE_SLIDING_WINDOW_COMPRESS,   //!< sliding window attention压缩mask
-        MASK_TYPE_MASK_FREE,                      //!< mask free
+        MASK_TYPE_CASUAL_MASK,                      //!< mask free
     };
     //!
     //! \enum KvCacheCfg
