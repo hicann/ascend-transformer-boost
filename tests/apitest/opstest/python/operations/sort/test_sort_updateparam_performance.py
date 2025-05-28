@@ -56,6 +56,12 @@ class TestSortOperation(operation_test.OperationTest):
         updateParam_end_time = time.perf_counter()
         print(f"updateParam time: {updateParam_end_time - updateParam_start_time} second")
 
+        PARAM = {"num": [8192]}
+        updateParam_start_time = time.perf_counter()
+        operation.update_param(json.dumps(PARAM))
+        updateParam_end_time = time.perf_counter()
+        print(f"updateParam time: {updateParam_end_time - updateParam_start_time} second")
+
         execute_start_time = time.perf_counter()
         operation.execute([intensor])
         execute_end_time = time.perf_counter()
