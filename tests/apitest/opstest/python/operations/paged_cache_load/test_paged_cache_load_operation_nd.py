@@ -171,7 +171,6 @@ def generate_data(
     
     
 class PagedCacheLoadOperation(operation_test.OperationTest):
-    soc_version = operation_test.get_soc_version()
 
     def golden_calc(self, input_tensors):
         return [self.in_tensors[4], self.in_tensors[5]]
@@ -192,6 +191,11 @@ class PagedCacheLoadOperation(operation_test.OperationTest):
                 format_type: 指定格式类型（None表示根据参数自动判断）
                 print_param: 是否打印参数信息
             """
+            not_support_device = ['Ascend910A','Ascend310B','Ascend310P']
+            # 获取Soc型号
+            if operation_test.get_soc_version() in not_support_device:
+                print("These test cases only support A2/A3")
+                return True
             # OP NAME
             OP_NAME = "PagedCacheLoadOperation"
             param = json.dumps(configs[param_idx])
