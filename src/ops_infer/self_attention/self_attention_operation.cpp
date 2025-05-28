@@ -356,7 +356,7 @@ SelfAttentionOperation::SelfAttentionOperation(const infer::SelfAttentionParam &
 {
     isMla_ = param_.mlaVHeadSize > 0;
     hasMask_ = (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED
-                || param_.maskType != infer::SelfAttentionParam::MASK_TYPE_MASK_FREE) &&
+                && param_.maskType != infer::SelfAttentionParam::MASK_TYPE_MASK_FREE) &&
                !(param_.calcType == infer::SelfAttentionParam::DECODER &&
                  param_.maskType == infer::SelfAttentionParam::MASK_TYPE_SLIDING_WINDOW_NORM);
     kvHeadNum_ = (param_.kvHeadNum > 0) ? param_.kvHeadNum : param_.headNum;
@@ -380,6 +380,7 @@ SelfAttentionOperation::SelfAttentionOperation(const infer::SelfAttentionParam &
             hasSlopes_ = false;
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPrefixEncoder");
         } else {
+            hasSlopes_ = param_.maskType == infer::SelfAttentionParam::MASK_TYPE_MASK_FREE ? false : hasSlopes_;
             operationIr_ =
                 GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPrefixEncoderSlopes");
         }
@@ -1532,7 +1533,9 @@ Status SelfAttentionOperation::InferShapePrefixDimCheck910B(const SVector<Tensor
     if (st != NO_ERROR) {
         return st;
     }
-    st = PAMaskDimCheck(inTensorDescs); // check mask
+    if (hasMask_) {
+        st = PAMaskDimCheck(inTensorDescs); // check mask
+    }
     if (st != NO_ERROR) {
         return st;
     }

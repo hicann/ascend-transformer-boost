@@ -1835,8 +1835,9 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         q_seqlen = torch.from_numpy(q_seqlen).to(torch.int32).npu()
         kv_seqLen = np.array(kv_seqLen)
         kv_seqLen = torch.from_numpy(kv_seqLen).to(torch.int32).npu()
-        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.k_cache.npu(), self.v_cache.npu(
-        ), self.block_tables.npu(), self.mask.to(data_type).npu(), q_seqlen, kv_seqLen, torch.tensor([1], dtype=torch.float).npu()])
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.k_cache.npu(), self.v_cache.npu(),
+                                self.block_tables.npu(), torch.tensor([], dtype=data_type).npu(), q_seqlen, kv_seqLen,
+                                torch.tensor([], dtype=data_type).npu()])
 
     def test_flash_attention_case_fa_encoder_withcache_fp16_maskfree(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
@@ -1881,8 +1882,9 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         q_seqlen = torch.from_numpy(q_seqlen).to(torch.int32).npu()
         kv_seqLen = np.array(kv_seqLen)
         kv_seqLen = torch.from_numpy(kv_seqLen).to(torch.int32).npu()
-        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.k_cache.npu(), self.v_cache.npu(
-        ), self.block_tables.npu(), self.mask.to(data_type).npu(), q_seqlen, kv_seqLen, torch.tensor([1], dtype=torch.float).npu()])
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.k_cache.npu(), self.v_cache.npu(),
+                                self.block_tables.npu(), torch.tensor([], dtype=torch.float).npu(), q_seqlen, kv_seqLen,
+                                torch.tensor([], dtype=torch.float).npu()])
 
 if __name__ == '__main__':
     unittest.main()
