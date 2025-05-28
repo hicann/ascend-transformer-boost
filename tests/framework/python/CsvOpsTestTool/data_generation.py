@@ -3361,7 +3361,7 @@ class ReshapeAndCacheOperation(DataGen):
 
         soc_version = get_soc_version()
         json_data = json.loads(op_params)
-        if "kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 1:
+        if "kvCacheCfg" in json_data and json_data["kvCacheCfg"] == 1:
             MAX_SEQ_LEN = 1024
             num_tokens = shapes[0][0]
             num_heads = shapes[0][1]
@@ -6983,6 +6983,60 @@ class PagedCacheLoadOperation(DataGen):
         dtype = datatype_dict[datatype]
         soc_version = get_soc_version()
         MAX_SEQ_LEN = 1024
+        json_data = json.loads(op_params)
+        # ND
+        if "kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 1:
+            seq_len = 1
+            num_blocks_k = shapes[0][0]
+            num_blocks_v = shapes[1][0]
+            block_size_k = shapes[0][1]
+            block_size_v = shapes[1][1]
+            num_heads_k = shapes[0][2]
+            num_heads_v = shapes[1][2]
+            head_size_k = shapes[0][3]
+            head_size_v = shapes[1][3]
+            batch = shapes[2][0]
+            num_tokens = seq_len * batch
+            context_lens = [random.randint(1, MAX_SEQ_LEN) for _ in range(num_tokens)]
+            num_tokens = len(context_lens)
+            
+            key_cache = np.random.randint(1, 11, size=(num_blocks_k, block_size_k, num_heads_k, head_size_k)).astype(
+            dtype)
+            value_cache = np.random.randint(1, 11, size=(num_blocks_v, block_size_v, num_heads_v, head_size_v)).astype(
+            dtype)
+            
+            sum_context_lens = context_lens[-1]
+            max_context_len = max(context_lens)
+            
+            cu_context_lens = [0]
+            for elem in context_lens:
+                cu_context_lens.append(cu_context_lens[-1] + elem)
+                
+            max_num_blocks_per_req = (max_context_len + block_size_k -1) // block_size_k + 4
+            block_tables = [] #[num_tokens, max_num_blocks_per_seq]
+            for _ in range(num_tokens):
+                block_table = [
+                    random.randint(0, num_blocks_k -1) for _ in range(max_num_blocks_per_req)
+                ]
+                block_tables.append(block_table)
+            seq_starts = [random.randint(0, 4) * block_size_k for _ in range(num_tokens)]
+            if "isSeqLensCumsumMode" in json_data and json_data["isSeqLensCumsumMode"]:
+                context_lens = np.array(cu_context_lens).astype(np.int32)
+            else:
+                context_lens = np.array(context_lens).astype(np.int32)
+
+            block_tables = np.array(block_tables).astype(np.int32)
+            seq_starts = np.array(seq_starts).astype(np.int32)
+            
+            key = np.zeros((sum_context_lens, num_heads_k, head_size_k)).astype(dtype)
+            value = np.zeros((sum_context_lens, num_heads_v, head_size_v)).astype(dtype)
+            
+            ret_data = key_cache, value_cache, block_tables, context_lens, key, value, seq_starts
+            in_tensors = [torch.from_numpy(tensor) for tensor in ret_data]
+            in_tensors = [tensor.npu() for tensor in in_tensors]
+            PagedCacheLoadOperation.in_tensors = in_tensors
+            return torch_npu.npu_format_cast(PagedCacheLoadOperation.in_tensors[i], format_dict[format])
+        # NZ
         batch = shapes[3][0]
         context_lens = [random.randint(128, 128) for _ in range(batch)]
         num_tokens = len(context_lens)
@@ -7025,6 +7079,75 @@ class PagedCacheLoadOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         MAX_SEQ_LEN = 1024
+        data_type = in_tensors[0].dtype
+        datatype_dictkv = {"torch.float16": "float16", "torch.bfloat16": "float32", "torch.int8": "int8"}
+        json_data = json.loads(op_params)
+        if "kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 1:
+            seq_len = 1
+            num_heads_k =  in_tensors[0][2]
+            num_heads_v =  in_tensors[1][2]
+            head_size_k =  in_tensors[0][3]
+            head_size_v =  in_tensors[1][3]
+            block_size = in_tensors[0][1]
+            batch = in_tensors[2][0]
+            num_tokens = seq_len * batch
+            
+            block_tables = in_tensors[2].numpy()  # [num_tokens, max_num_blocks_per_seq]
+            context_lens = in_tensors[3].numpy()
+            seq_starts = in_tensors[6].numpy()
+            
+            key_expect = np.zeros((sum_context_lens, num_heads_k, head_size_k)).astype(datatype_dictkv[str(data_type)])
+            value_expect = np.zeros((sum_context_lens, num_heads_v, head_size_v)).astype(datatype_dictkv[str(data_type)])
+            
+            if "hasSeqStarts" in json_data and  json_data["hasSeqStarts"]:
+                kv_rslt_id = 0
+                context_start = 0
+                for i in range(num_tokens):
+                    block_table = block_tables[i]
+                    context_end = int(context_lens[i+1])
+                    context_len = context_end - context_start
+                    context_start = context_end
+                    block_table_offset = seq_starts[i] // block_size
+                    for j in range(context_len):
+                        block_id = int(block_table[block_table_offset + j // block_size])
+                        block_offset = j % block_size
+                        
+                        if block_id < 0:
+                            continue
+                        
+                        temp_k = key_cache[block_id][block_offset]
+                        temp_v = value_cache[block_id][block_offset]
+                        
+                        key_expect[kv_rslt_id] = temp_k
+                        value_expect[kv_rslt_id] = temp_v
+                        kv_rslt_id += 1
+                        
+                res_data = key_expect, value_expect
+                out_tensors = [torch.from_numpy(tensor) for tensor in res_data]
+                return out_tensors
+            
+            kv_rslt_id = 0
+            for i in range(num_tokens):
+                block_table = block_tables[i]
+                context_len = int(context_lens[i])
+
+                for j in range(context_len):
+                    block_id = int(block_table[j // block_size])
+                    block_offset = j % block_size
+
+                    if block_id < 0:
+                        continue
+
+                    temp_k = key_cache[block_id][block_offset]
+                    temp_v = value_cache[block_id][block_offset]
+
+                    key_expect[kv_rslt_id] = temp_k
+                    value_expect[kv_rslt_id] = temp_v
+                    kv_rslt_id += 1
+                    
+            res_data = key_expect, value_expect
+            out_tensors = [torch.from_numpy(tensor) for tensor in res_data]
+            return out_tensors
         context_lens = in_tensors[3].numpy()
         sum_context_lens = sum(context_lens)
         max_context_len = max(context_lens)
@@ -7071,6 +7194,11 @@ class PagedCacheLoadOperation(DataGen):
         res_data = key_expect, value_expect
         out_tensors = [torch.from_numpy(tensor) for tensor in res_data]
         return out_tensors
+
+    @staticmethod
+    def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
+        output_tensor_list[0] = input_tensor_list[4]
+        output_tensor_list[1] = input_tensor_list[5]
 
     @staticmethod
     def get_op_type(op_params):
