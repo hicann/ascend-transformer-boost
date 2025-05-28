@@ -127,14 +127,12 @@ Status PagedCacheLoadOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
             ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
             return ERROR_INVALID_TENSOR_DIM;
         }
-    } else {
-        if (outTensors.at(0).desc.shape.dims[1] != inTensorDescs.at(0).shape.dims[2] ||
-            outTensors.at(0).desc.shape.dims[2] != inTensorDescs.at(0).shape.dims[3] ||
-            outTensors.at(1).desc.shape.dims[1] != inTensorDescs.at(1).shape.dims[2] ||
-            outTensors.at(1).desc.shape.dims[2] != inTensorDescs.at(1).shape.dims[3]) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
+    } else if (outTensors.at(0).desc.shape.dims[1] != inTensorDescs.at(0).shape.dims[2] ||
+                outTensors.at(0).desc.shape.dims[2] != inTensorDescs.at(0).shape.dims[3] ||
+                outTensors.at(1).desc.shape.dims[1] != inTensorDescs.at(1).shape.dims[2] ||
+                outTensors.at(1).desc.shape.dims[2] != inTensorDescs.at(1).shape.dims[3]) {
+                ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
+                return ERROR_INVALID_TENSOR_DIM;
     }
     Status st = DimCheck(inTensorDescs);
     if (st != NO_ERROR) {
@@ -177,12 +175,10 @@ Status PagedCacheLoadOperation::DimCheck(const SVector<TensorDesc> &inTensorDesc
                     "the lencontext of blocktable should match the lencontext of SeqLens when isSeqLensCumsumMode is true.";
                 return ERROR_INVALID_TENSOR_DIM;
             }
-        } else {
-            if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0]) {
-                ATB_LOG(ERROR) << GetLogPrefix() <<
-                    "the lencontext of blocktable should match the lencontext of SeqLens when isSeqLensCumsumMode is true.";
-                return ERROR_INVALID_TENSOR_DIM;
-            }
+        } else if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0]) {
+                    ATB_LOG(ERROR) << GetLogPrefix() <<
+                        "the lencontext of blocktable should match the lencontext of SeqLens when isSeqLensCumsumMode is true.";
+                    return ERROR_INVALID_TENSOR_DIM;
         }
     } else { // NZ
         int64_t blockSize = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX]; // 1: keyCache
@@ -225,17 +221,14 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc> 
             ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
             return ERROR_INVALID_TENSOR_DIM;
         }
-    } else {
-        if (SIXTEEN != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
+    } else  if (SIXTEEN != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
                 SIXTEEN!= inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
             ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 16";
             return ERROR_INVALID_TENSOR_DIM;
-        }
-        if (MAX_k < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * SIXTEEN ||
+    } else if (MAX_k < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[1] * SIXTEEN ||
                 MAX_v < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[1] * SIXTEEN) {
             ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
             return ERROR_INVALID_TENSOR_DIM;
-        }
     }
     return NO_ERROR;
 }
@@ -260,22 +253,18 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BND(const SVector<TensorDesc> 
             ATB_LOG(ERROR) << GetLogPrefix() << "int8 ND format num_heads*head_size_k should be aligned to 32!";
             return ERROR_INVALID_TENSOR_DIM;
         }
-    } else { // keyCache: fp16/bf16
-        if (num_heads * head_size_k % ALIGN_FP16_BF16 != 0) {
+    } else if (num_heads * head_size_k % ALIGN_FP16_BF16 != 0) {  // keyCache: fp16/bf16
             ATB_LOG(ERROR) << GetLogPrefix() << "fp16/bf16 ND format num_heads*head_size_k should be aligned to 16!";
             return ERROR_INVALID_TENSOR_DIM;
-        }
     }
     if (inTensorDescs.at(IN_TENSOR_1_VALUECACHE).dtype == ACL_INT8) { // valueCache: int8
         if (num_heads * head_size_v % ALIGN_INT8 != 0) {
             ATB_LOG(ERROR) << GetLogPrefix() << "int8 ND format num_heads*head_size_v should be aligned to 32!";
             return ERROR_INVALID_TENSOR_DIM;
         }
-    } else { // valueCache: fp16/bf16
-        if (num_heads * head_size_v % ALIGN_FP16_BF16 != 0) {
+    } else if (num_heads * head_size_v % ALIGN_FP16_BF16 != 0) { // valueCache: fp16/bf16
             ATB_LOG(ERROR) << GetLogPrefix() << "fp16/bf16 ND format num_heads*head_size_v should be aligned to 16!";
             return ERROR_INVALID_TENSOR_DIM;
-        }
     }
     int64_t lencontext = inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dims[0]; // 2: blockTable-batch(len(contextLens))
     int64_t seqstart = inTensorDescs.at(IN_TENSOR_6_SEQ_STARTS).shape.dims[0]; // 6: seq_start-batch(len(contextLens))
