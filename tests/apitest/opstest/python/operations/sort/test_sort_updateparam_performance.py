@@ -9,53 +9,57 @@
 #
 import sys
 import os
+import json
 import unittest
 import torch
 import torch_npu
+import torch.nn as nn
+import logging
 import json
 import time
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-import operation_test  # NOQA: E402
+import operation_test
 
-OP_NAME = "FillOperation"
-PARAM = {"withMask": True, "value": -10000}
+OP_NAME = "SortOperation"
 
 
-class TestFillOperation(operation_test.OperationTest):
+class TestSortOperation(operation_test.OperationTest):    
 
-    def test_float16(self):
-        if operation_test.get_soc_version() == 'Ascend310B':
-            print("this testcase don't supports Ascend310B")
+    def test_3d_float(self):
+        if  operation_test.get_soc_version() == 'Ascend910A' or \
+            operation_test.get_soc_version() == 'Ascend310B':
+            logging.info("this testcase don't supports Ascend910A\Ascend310B")
             return True
-        intensor0 = torch.rand(10000, 10000).npu().half()
-        intentor1 = (torch.randint(2, (10000, 10000)) ==
-                     torch.randint(1, (10000, 10000))).to(torch.bool).npu()
+
+        intensor = torch.randint(-65504, 65504, (8192, 8192, 8192)).float().npu().half()
 
         operation = torch.classes.OperationTorch.OperationTorch(OP_NAME)
 
-        PARAM = {"withMask": True, "value": -10000}
+        PARAM = {"num": [8192]}
         createOperation_start_time = time.perf_counter()
         operation.set_param(json.dumps(PARAM))
         createOperation_end_time = time.perf_counter()
         print(f"createOperation time: {createOperation_end_time - createOperation_start_time} second")
 
-        execute_1_start_time = time.perf_counter()
-        operation.execute([intensor0, intentor1])
-        execute_1_end_time = time.perf_counter()
-        print(f"execute_1 time: {execute_1_end_time - execute_1_start_time} second")
+        execute_start_time = time.perf_counter()
+        operation.execute([intensor])
+        execute_end_time = time.perf_counter()
+        print(f"execute time: {execute_end_time - execute_start_time} second")
 
-        PARAM = {"withMask": True, "value": 10000}
+        PARAM = {"num": [8191]}
         updateParam_start_time = time.perf_counter()
         operation.update_param(json.dumps(PARAM))
         updateParam_end_time = time.perf_counter()
         print(f"updateParam time: {updateParam_end_time - updateParam_start_time} second")
 
-        execute_2_start_time = time.perf_counter()
-        operation.execute([intensor0, intentor1])
-        execute_2_end_time = time.perf_counter()
-        print(f"execute_2 time: {execute_2_end_time - execute_2_start_time} second")
-
+        execute_start_time = time.perf_counter()
+        operation.execute([intensor])
+        execute_end_time = time.perf_counter()
+        print(f"execute time: {execute_end_time - execute_start_time} second")
 
 if __name__ == '__main__':
     unittest.main()
