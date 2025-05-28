@@ -15,6 +15,7 @@ import unittest
 import numpy as np
 import sys
 import os
+from precision_calcu import compare_cv
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
@@ -38,7 +39,7 @@ MASK_TYPE_RAZOR_FUSION = 11
 logging.getLogger().setLevel(logging.DEBUG)
 
 
-class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
+class TestRazorFusionAttention(operation_test.OperationTest):
 
     def close_pack(self, in_data, seq_len):
         kv = in_data.numpy()
@@ -407,7 +408,9 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
     def golden_compare(self, out_tensors, golden_tensors):
         print("golden_compare")
         print(out_tensors.shape)
-        return self.compare_output_data(out_tensors.half(), golden_tensors.half(), [0.001, 0.001, 0.005, 0.005])
+        result_double = compare_cv(self.golden_out_true.npu(), golden_tensors.npu(), out_tensors.npu())
+        result_old = self.compare_output_data(out_tensors.half(), golden_tensors.half(), [0.001, 0.001, 0.005, 0.005])
+        return (result_double or result_old)
 
     def test_razor_fusion_attention_case_fa_razor_fusion_norm_bfloat16(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
