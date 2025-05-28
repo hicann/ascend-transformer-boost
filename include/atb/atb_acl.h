@@ -13,9 +13,7 @@
 #include <acl/acl_rt.h>
 #include <acl/acl.h>
 #include <opdev/common_types.h>
-#include <opdev/op_log.h>
 #include "atb/operation.h"
-#include "atb/infer_op_params.h"
 
 //!
 //! \file atb_acl.h
@@ -27,7 +25,7 @@
 extern "C" {
 #endif
 //!
-//! \brief 关于MLA算子使用aclnn风格调用的2段式接口种的第1段，
+//! \brief 关于MLA算子使用aclnn风格调用的2段式接口的第1段，
 //! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
 //!
 //! \param qNope MLA算子的输入tensor
@@ -37,7 +35,7 @@ extern "C" {
 //! \param blockTables MLA算子的输入tensor
 //! \param contextLens MLA算子的输入tensor
 //! \param mask MLA算子的输入tensor
-//! \param qseqlen MLA算子的输入tensor
+//! \param qSeqlen MLA算子的输入tensor
 //! \param qkDescale MLA算子的输入tensor
 //! \param pvDescale MLA算子的输入tensor
 //! \param headNum MLA算子的query head数量
@@ -55,22 +53,62 @@ extern "C" {
 //! \return 表示函数是否执行成功的状态码
 atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRope, const aclTensor *ctKV,
     const aclTensor *kRope, const aclTensor *blockTables, const aclTensor *contextLens,
-    const aclTensor *mask, const aclTensor *qseqlen, const aclTensor *qkDescale,
+    const aclTensor *mask, const aclTensor *qSeqlen, const aclTensor *qkDescale,
     const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
     int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut,
-    aclTensor *ise, uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
+    aclTensor *ise, uint64_t *workSpaceSize, atb::Operation **op, atb::Context *context);
 
 //!
-//! \brief 关于MLA算子使用aclnn风格调用的2段式接口种的第2段，
+//! \brief 关于MLA算子使用aclnn风格调用的2段式接口第2段，
 //! 用于算子的推理调度阶段
 //!
 //! \param workSpace 针对MLA算子申请的工作空间
-//! \param workspaceSize MLA算子的workspace大小
+//! \param workSpaceSize MLA算子的workspace大小
 //! \param op MLA算子的op handler
 //! \param context MLA算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLA(void* workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+atb::Status AtbMLA(void* workSpace, uint64_t workSpaceSize, atb::Operation *op, atb::Context *context);
+
+//!
+//! \brief MLA prefill 前处理接口
+//! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
+//!
+//! \param q MLA算子的输入tensor: query
+//! \param qRope MLA算子的输入tensor: query rope 
+//! \param k MLA算子的输入tensor: key
+//! \param kRope MLA算子的输入tensor: key rope
+//! \param v MLA算子的输入tensor: value
+//! \param qSeqLen MLA算子的输入tensor: query seq length
+//! \param kvSeqLen MLA算子的输入tensor: key and value seq length
+//! \param mask MLA算子的输入tensor: mask
+//! \param headNum MLA算子的query head数量
+//! \param qkScale MLA算子Q*T转置后的缩放系数
+//! \param kvHeadNum MLA算子的kv head 数量
+//! \param maskType MLA算子的mask类型
+//! \param cacheMode MLA算子的cache类型
+//! \param attenOut MLA算子的输出tensor
+//! \param workspaceSize MLA算子的workspace大小
+//! \param op MLA算子的handler
+//! \param context MLA算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *qRope, const aclTensor *k,
+    const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen, const aclTensor *kvSeqLen,
+    const aclTensor *mask, int32_t headNum, float qkScale, int32_t kvHeadNum,
+    int maskType, uint8_t cacheMode, aclTensor *attenOut,
+    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
+
+//!
+//! \brief MLA prefill 处理接口
+//!
+//! \param workSpace 针对MLA算子申请的工作空间
+//! \param workSpaceSize MLA算子的work space大小
+//! \param op MLA算子的op handler
+//! \param context MLA算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbMLAPreFill(void* workSpace, uint64_t workSpaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief 关于MlaPreprocess算子使用aclnn风格调用的2段式接口种的第1段，
