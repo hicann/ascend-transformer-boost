@@ -1079,7 +1079,7 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);
     std::shared_ptr<MstxMemRegister> mstxMemRegister;
     mstxMemRegister = std::make_shared<MstxMemRegister>(workspace, workspaceSize);
-    if (mstxMemRegister && mstxMemRegister->IsVlid()) {
+    if (mstxMemRegister && mstxMemRegister->IsValid()) {
         runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
     }
     Status st = NO_ERROR;

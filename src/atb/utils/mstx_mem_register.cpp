@@ -107,7 +107,7 @@ Status MstxMemRegister::CheckTensorRange()
     }
 }
 
-bool MstxMemRegister::IsVlid() const noexcept
+bool MstxMemRegister::IsValid() const noexcept
 {
     return memPool_ != 0;
 }
