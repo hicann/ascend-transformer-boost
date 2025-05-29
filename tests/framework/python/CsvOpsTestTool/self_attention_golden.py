@@ -22,7 +22,7 @@ import shutil
 import logging
 import re
 from enum import Enum
-from typing import Any
+from typing import List, Dict, Any
 import copy
 
 
@@ -1271,7 +1271,7 @@ class SelfAttentionGolden:
         # 用SelfAttentionMaskGen处理mask
         self.mask_generator = None
 
-    def load_from_op_params(self, op_params: dict[str, Any]):
+    def load_from_op_params(self, op_params: Dict[str, Any]):
         for op_k, op_v in op_params.items():
             if hasattr(self, op_k):
                 self.op_k = op_v
@@ -1395,7 +1395,7 @@ class SelfAttentionGolden:
         elif len(shape) == 2:
             self.embeddimv = shape[1] // head_num
 
-    def prepare_in_tensors(self, in_tensors: list[torch.tensor]):
+    def prepare_in_tensors(self, in_tensors: List[torch.tensor]):
         if self.seqlen_id != -1:
             self.q_seqLen = in_tensors[self.seqlen_id]
             self.batch = in_tensors[self.seqlen_id].shape[0]
