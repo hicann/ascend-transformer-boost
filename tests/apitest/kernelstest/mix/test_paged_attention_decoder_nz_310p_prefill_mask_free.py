@@ -327,7 +327,7 @@ class TestPagedAttentionNz(op_test.OpTest):
             in_tensors = [tensor.npu().contiguous() for tensor in data]
 
             OP_NAME = "PagedAttentionOperation"
-            OP_PARAM = {"tor": (1.0 / (head_size ** 0.5)), "headSize": num_heads, "kvHead": kv_heads, "maskType": 4, "scaleType": 0, "type": 2003, "qSeqLen":q_seqlen_list,"kvSeqLen":k_seqlen_list}
+            OP_PARAM = {"tor": (1.0 / (head_size ** 0.5)), "headSize": num_heads, "kvHead": kv_heads, "maskType": 4, "scaleType": 0, "type": 2003, "qSeqLen":q_seqlen_list}
 
             self.set_param(OP_NAME, OP_PARAM)
             self.set_input_formats([self.format_nz, self.format_nz,self.format_nz, self.format_nd, self.format_nd, self.format_nz, self.format_nd])
