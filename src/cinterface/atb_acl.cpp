@@ -353,7 +353,7 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
 {
     atb::infer::PagedCacheLoadParam param;
     param.kvCacheCfg = atb::infer::PagedCacheLoadParam::KvCacheCfg(kvCacheCfg);
-    param.isSeqLensCumsumType = isSeqLensCumsumType;
+    param.isSeqLensCumsumMode = isSeqLensCumsumType;
     param.hasSeqStarts = hasSeqStarts;
 
     if (op != nullptr && *op == nullptr) {
@@ -367,28 +367,28 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
 
     pack.inTensors.resize(g_PAGEDCACHELOADINTENSORNUM);
     auto status = aclTensorToAtbTensor(keyCache, &(pack.inTensors[i++]));
-    ATB_CHECK(status, "keyCache create failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "keyCache create failed!", return status);
     status = aclTensorToAtbTensor(valueCache, &(pack.inTensors[i++]));
-    ATB_CHECK(status, "valueCache create failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "valueCache create failed!", return status);
     status = aclTensorToAtbTensor(blockTables, &(pack.inTensors[i++]));
-    ATB_CHECK(status, "blockTables create failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "blockTables create failed!", return status);
     status = aclTensorToAtbTensor(contextLens, &(pack.inTensors[i++]));
-    ATB_CHECK(status, "contextLens create failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "contextLens create failed!", return status);
     status = aclTensorToAtbTensor(key, &(pack.inTensors[i++]));
-    ATB_CHECK(status, "key create failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "key create failed!", return status);
     status = aclTensorToAtbTensor(value, &(pack.inTensors[i++]));
-    ATB_CHECK(status, "value create failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "value create failed!", return status);
     if (param.hasSeqStarts) {
         status = aclTensorToAtbTensor(seqStarts, &(pack.inTensors[i++]));
-        ATB_CHECK(status, "seqStarts create failed!", return status);
+        ATB_CHECK(status == ACL_ERROR_NONE, "seqStarts create failed!", return status);
     }
 
     i = 0;
     pack.outTensors.resize(g_PAGEDCACHELOADOUTTENSORNUM);
     status = aclTensorToAtbTensor(key, &(pack.outTensors[i++]));
-    ATB_CHECK(status, "key create failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "key create failed!", return status);
     status = aclTensorToAtbTensor(value, &(pack.outTensors[i++]));
-    ATB_CHECK(status, "value create failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "value create failed!", return status);
 
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbPagedCacheLoad Setup failed!", return st);
