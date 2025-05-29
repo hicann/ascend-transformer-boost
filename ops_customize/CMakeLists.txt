@@ -25,6 +25,8 @@ set(USR_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/ops
     ${CMAKE_CURRENT_LIST_DIR}/ops/example_op/operation_implement
     ${CMAKE_CURRENT_LIST_DIR}/ops/example_op/operation_implement/tiling
+    ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement
+    ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement/tiling
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/common
     $ENV{ASCEND_HOME_PATH}/include
