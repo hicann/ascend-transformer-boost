@@ -35,6 +35,7 @@ private:
     bool useQKVQuantOffline_ = false;
     bool useQKVQuantOnline_ = false;
     bool useSwa_ = false;
+    bool useCausalMask_ = false;
     bool usePrefixEncoder_ = false;
     bool kvCacheWithParam_ = false;
     atb::infer::SelfAttentionParam::CalcType calcType_ = atb::infer::SelfAttentionParam::UNDEFINED;

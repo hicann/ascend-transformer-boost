@@ -1830,14 +1830,13 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         PARAM = json.dumps(
             {"headNum": heads, "calcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CASUAL_MASK,
              "kvHeadNum": kv_head, "isTriuMask": 1, "qkScale": tor, "kernelType": KERNELTYPE_HIGH_PRECISION})
-        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER})
+        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CASUAL_MASK})
         q_seqlen = np.array(q_seqlens)
         q_seqlen = torch.from_numpy(q_seqlen).to(torch.int32).npu()
         kv_seqLen = np.array(kv_seqLen)
         kv_seqLen = torch.from_numpy(kv_seqLen).to(torch.int32).npu()
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.k_cache.npu(), self.v_cache.npu(),
-                                self.block_tables.npu(), torch.tensor([], dtype=data_type).npu(), q_seqlen, kv_seqLen,
-                                torch.tensor([], dtype=data_type).npu()])
+                                self.block_tables.npu(), q_seqlen, kv_seqLen])
 
     def test_flash_attention_case_fa_encoder_withcache_fp16_maskfree(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
@@ -1877,14 +1876,13 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         PARAM = json.dumps(
             {"headNum": heads, "calcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CASUAL_MASK,
              "kvHeadNum": kv_head, "isTriuMask": 1, "qkScale": tor, "kernelType": KERNELTYPE_HIGH_PRECISION})
-        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER})
+        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CASUAL_MASK})
         q_seqlen = np.array(q_seqlens)
         q_seqlen = torch.from_numpy(q_seqlen).to(torch.int32).npu()
         kv_seqLen = np.array(kv_seqLen)
         kv_seqLen = torch.from_numpy(kv_seqLen).to(torch.int32).npu()
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q.npu(), self.k_cache.npu(), self.v_cache.npu(),
-                                self.block_tables.npu(), torch.tensor([], dtype=torch.float).npu(), q_seqlen, kv_seqLen,
-                                torch.tensor([], dtype=torch.float).npu()])
+                                self.block_tables.npu(), q_seqlen, kv_seqLen])
 
 if __name__ == '__main__':
     unittest.main()

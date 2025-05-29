@@ -379,7 +379,7 @@ SelfAttentionOperation::SelfAttentionOperation(const infer::SelfAttentionParam &
         if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
             hasSlopes_ = false;
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPrefixEncoder");
-        } else if(param_.maskType == infer::SelfAttentionParam::MASK_TYPE_CASUAL_MASK) {
+        } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_CASUAL_MASK) {
             hasSlopes_ = false;
             operationIr_ =
                 GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPrefixEncoderCausalMask");
@@ -1493,7 +1493,7 @@ Status SelfAttentionOperation::InferShapePrefixDimNumCheck910B(const SVector<Ten
     const std::size_t kKeyIndex = 1;
     const std::size_t kValueIndex = 2;
     const std::size_t kBlockTablesIndex = 3;
-    const std::size_t kSeqLenIndex = 5;
+    const std::size_t kSeqLenIndex = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_CASUAL_MASK ? 5 : 4;
     const std::size_t kSlopesIndex = 7;
     if ((inTensorDescs.at(kQueryIndex).shape.dimNum != 2 &&  // 2: query: [batch * qSeqLen, qHiddenSize]
          inTensorDescs.at(kQueryIndex).shape.dimNum != 3)) { // 3: [batch * seqLen, headNum, headSize]
@@ -1531,7 +1531,7 @@ Status SelfAttentionOperation::InferShapePrefixDimNumCheck910B(const SVector<Ten
 Status SelfAttentionOperation::InferShapePrefixDimCheck910B(const SVector<TensorDesc> &inTensorDescs) const
 {
     const std::size_t kBlockTablesIndex = 3;
-    const std::size_t kSeqLenIndex = 5;
+    const std::size_t kSeqLenIndex = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_CASUAL_MASK ? 5 : 4;
     const std::size_t kBlockSizeIndex = 1;
     const int32_t kMaxHeadSize = 128;
     Status st = InferShapePrefixDimNumCheck910B(inTensorDescs);
