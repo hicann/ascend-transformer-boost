@@ -159,7 +159,7 @@ Status CreateContext(Context **context);
 //!
 //! \param context 传入的context
 //！
-//！\param alloc 传入的Tiling内存分配方法
+//! \param alloc 传入的Tiling内存分配方法
 //!
 //! \param dealloc 传入的Tiling内存释放方法
 //!
