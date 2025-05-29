@@ -108,8 +108,7 @@ class TestPpMatmul310pDequant(op_test.OpTest):
         self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
                       torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
                       torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
+                     [torch.zeros(self.bat_C.shape).half()])
 
     @op_test.only_310p
     def testcase1(self):
@@ -128,8 +127,7 @@ class TestPpMatmul310pDequant(op_test.OpTest):
         self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
                       torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
                       torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
+                     [torch.zeros(self.bat_C.shape).half()])
 
     @op_test.only_310p
     def testcase2(self):
@@ -148,8 +146,7 @@ class TestPpMatmul310pDequant(op_test.OpTest):
         self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
                       torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
                       torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
+                     [torch.zeros(self.bat_C.shape).half()])
     @op_test.only_310p
 
     def testcase3(self):
@@ -169,8 +166,7 @@ class TestPpMatmul310pDequant(op_test.OpTest):
         self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
                       torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
                       torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
+                     [torch.zeros(self.bat_C.shape).half()])
 
     @op_test.only_310p
     def testcase4(self):
@@ -190,8 +186,7 @@ class TestPpMatmul310pDequant(op_test.OpTest):
         self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
                       torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
                       torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
+                     [torch.zeros(self.bat_C.shape).half()])
 
 
 if __name__ == '__main__':

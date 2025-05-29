@@ -30,7 +30,6 @@ def _load_atb_libs():
 def _init_env_params():
     os.environ["ATB_HOME_PATH"] = str(package_dir)
     os.environ["ASDOPS_HOME_PATH"] = str(package_dir)
-    os.environ["ASDOPS_MATMUL_PP_FLAG"] = '1'
     os.environ["ASDOPS_LOG_TO_BOOST_TYPE"] = 'atb'
     os.environ["ASDOPS_LOG_PATH"] = '~'
 
