@@ -654,18 +654,19 @@ Status PagedAttentionOperation::MaskFreeInferShapeCheck310P(const SVector<Tensor
                 ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dims should be [1,8,128,16]";
                 return ERROR_INVALID_TENSOR_DIM;
             }
+            size_t kBlockSize = inTensorDescs.at(1).shape.dims[2];
+            size_t vBlockSize = inTensorDescs.at(2).shape.dims[2];
+            if(kBlockSize != 128 || vBlockSize != 128){
+                ATB_LOG(ERROR) << "PagedAttentionOperation intensor1 and intensor2 dim2 should be 128.";
+                return ERROR_INVALID_PARAM;
+            }
         } else {
             ATB_LOG(ERROR) << "Only Altas 300I Duo inference products support mask free";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
 
-    size_t kBlockSize = inTensorDescs.at(1).shape.dims[2];
-    size_t vBlockSize = inTensorDescs.at(2).shape.dims[2];
-    if(kBlockSize != 128 || vBlockSize != 128){
-        ATB_LOG(ERROR) << "PagedAttentionOperation intensor1 and intensor2 dim2 should be 128.";
-        return ERROR_INVALID_PARAM;
-    }
+
     return NO_ERROR;
 }
 
@@ -682,38 +683,39 @@ Status PagedAttentionOperation::MaskFreeSetupCheck310P(const SVector<Tensor> &in
                     return ERROR_INVALID_TENSOR_DIM;
                 }
             }
+            if(inTensor.at(4).desc.shape.dimNum == 1){
+                size_t batch = inTensor.at(4).desc.shape.dims[0];
+                int *k_seqlen_list = static_cast<int *>(inTensor[4].hostData);
+                int *q_seqlen_list = static_cast<int *>(inTensor[6].hostData);
+        
+                for (int i = 0; i < batch; i++) {
+                    if (k_seqlen_list[i] < q_seqlen_list[i]) {
+                        ATB_LOG(ERROR) << "PagedAttentionOperation intensor4[i] should bigger than intensor6[i].";
+                        return ERROR_INVALID_PARAM;
+                    }
+                    if ((k_seqlen_list[i] - q_seqlen_list[i]) % 128 != 0) {
+                        ATB_LOG(ERROR) << "PagedAttentionOperation (intensor4[i] - item in intensor6[i]) % 128 should be 0. ";
+                        return ERROR_INVALID_PARAM;
+                    }
+                }
+            } else {
+                ATB_LOG(ERROR) << "PagedAttentionOperation k_seqlen_list dims should be 1.";
+                return ERROR_INVALID_PARAM;
+            }
+        
+            size_t kBlockSize = inTensor.at(1).desc.shape.dims[2];
+            size_t vBlockSize = inTensor.at(2).desc.shape.dims[2];
+            if(kBlockSize != 128 || vBlockSize != 128){
+                ATB_LOG(ERROR) << "PagedAttentionOperation intensor1 and intensor2 dim2 should be 128.";
+                return ERROR_INVALID_PARAM;
+            }
         } else {
             ATB_LOG(ERROR) << "Only Altas 300I Duo inference products support mask free";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
 
-    if(inTensor.at(4).desc.shape.dimNum == 1){
-        size_t batch = inTensor.at(4).desc.shape.dims[0];
-        int *k_seqlen_list = static_cast<int *>(inTensor[4].hostData);
-        int *q_seqlen_list = static_cast<int *>(inTensor[6].hostData);
 
-        for (int i = 0; i < batch; i++) {
-            if (k_seqlen_list[i] < q_seqlen_list[i]) {
-                ATB_LOG(ERROR) << "PagedAttentionOperation intensor4[i] should bigger than intensor6[i].";
-                return ERROR_INVALID_PARAM;
-            }
-            if ((k_seqlen_list[i] - q_seqlen_list[i]) % 128 != 0) {
-                ATB_LOG(ERROR) << "PagedAttentionOperation (intensor4[i] - item in intensor6[i]) % 128 should be 0. ";
-                return ERROR_INVALID_PARAM;
-            }
-        }
-    } else {
-        ATB_LOG(ERROR) << "PagedAttentionOperation k_seqlen_list dims should be 1.";
-        return ERROR_INVALID_PARAM;
-    }
-
-    size_t kBlockSize = inTensor.at(1).desc.shape.dims[2];
-    size_t vBlockSize = inTensor.at(2).desc.shape.dims[2];
-    if(kBlockSize != 128 || vBlockSize != 128){
-        ATB_LOG(ERROR) << "PagedAttentionOperation intensor1 and intensor2 dim2 should be 128.";
-        return ERROR_INVALID_PARAM;
-    }
 
     return NO_ERROR;
 }
