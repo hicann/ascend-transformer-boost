@@ -364,8 +364,14 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
     }
     atb::VariantPack pack;
     size_t i = 0; 
+    if (param.hasSeqStarts) {
+        pack.inTensors.resize(g_PAGEDCACHELOADINTENSORNUM);
+    }
 
-    pack.inTensors.resize(g_PAGEDCACHELOADINTENSORNUM);
+    else {
+        pack.inTensors.resize(g_PAGEDCACHELOADINTENSORNUM - 1);
+    }
+    
     auto status = aclTensorToAtbTensor(keyCache, &(pack.inTensors[i++]));
     ATB_CHECK(status == ACL_ERROR_NONE, "keyCache create failed!", return status);
     status = aclTensorToAtbTensor(valueCache, &(pack.inTensors[i++]));
