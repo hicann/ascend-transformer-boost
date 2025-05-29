@@ -353,7 +353,7 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
 {
     atb::infer::PagedCacheLoadParam param;
     param.kvCacheCfg = atb::infer::PagedCacheLoadParam::KvCacheCfg(kvCacheCfg);
-    param.isSeqLensCumsumMode = isSeqLensCumsumType;
+    param.isSeqLensCumsumType = isSeqLensCumsumType;
     param.hasSeqStarts = hasSeqStarts;
 
     if (op != nullptr && *op == nullptr) {

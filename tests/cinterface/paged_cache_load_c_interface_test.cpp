@@ -33,8 +33,8 @@ const int64_t headSizeVP3 = 12;
 const int64_t blockSizeP3 = 128;
 const int64_t numBlocksP3 = 100;
 
-void TestPagedCacheLoadNZ(int64_t batch, int64_t numHeads, int64_t headSizeK, int64_t headSizeV, int64_t blockSize,
-                          int64_t numBlocks, aclDataType dataType)
+void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int64_t headSizeK, const int64_t headSizeV, const int64_t blockSize,
+                          const int64_t numBlocks, const aclDataType dataType)
 {
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
