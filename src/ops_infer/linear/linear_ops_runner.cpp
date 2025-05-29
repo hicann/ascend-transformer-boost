@@ -100,7 +100,7 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     if (matmulParam_.enDequant) {
         if (GetSingleton<Config>().Is910B() && param_.quantMode == infer::LinearParam::PER_TOKEN) {
                 return SetupKernelGraphMatmulDequantPerToken910B();
-        } elif (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is310B()) {
+        } else if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is310B()) {
             return SetupKernelGraphMatmulDequant910B();
         }
         return isWeightNz_ ? SetupKernelGraphMatmulDequantWeightNzNot910B() :
