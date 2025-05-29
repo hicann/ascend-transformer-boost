@@ -171,6 +171,9 @@ static void PrintOutTensorValue(atb::Tensor &outTensor, std::vector<uint16_t> &o
  
 TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
 {
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        return;
+    }
 	// 设置卡号、创建stream、创建context、设置stream
     uint32_t deviceId = 1;
     aclrtSetDevice(deviceId);
@@ -327,6 +330,9 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
  
 TEST(TestGraphLaunchMode, CapturedByAtbAndTestGraphOp)
 {
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        return;
+    }
 	// 设置卡号、创建stream、创建context、设置stream
     uint32_t deviceId = 1;
     aclrtSetDevice(deviceId);
@@ -434,6 +440,9 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndTestGraphOp)
 
 TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
 {
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        return;
+    }
 	// 设置卡号、创建stream、创建context、设置stream
     uint32_t deviceId = 1;
     aclrtSetDevice(deviceId);
@@ -575,6 +584,9 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
 
 TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
 {
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        return;
+    }
 	// 设置卡号、创建stream、创建context、设置stream
     uint32_t deviceId = 1;
     aclrtSetDevice(deviceId);
