@@ -68,7 +68,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
     asdParam.isRing = 0;
     asdParam.maskType = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ?
                             AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_COMPRESS :
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CASUAL_MASK;
+                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_MASK;
 
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     mlaNode.inTensors = {&query,     &queryRope, &key,       &keyRope,  &value,  &mask, &alibiCoeff,
