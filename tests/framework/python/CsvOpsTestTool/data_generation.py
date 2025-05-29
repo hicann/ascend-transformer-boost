@@ -4489,6 +4489,9 @@ class PagedAttentionOperation(DataGen):
             elif maskType == 3:
                 mask_slice = mask[cu_seqlen : (cu_seqlen + q_seqlen), :context_len]
                 out = PagedAttentionOperation.ref_masked_attention(q, keys, values, scale, mask_slice)
+            elif maskType == 4:
+                mask_slice = mask[cu_seqlen : (cu_seqlen + q_seqlen), :context_len]
+                out = PagedAttentionOperation.ref_masked_attention(q, keys, values, scale, mask_slice)
 
             if is_lookahead:
                 out = out.reshape(-1, num_heads, head_size_vo)
@@ -4791,6 +4794,16 @@ class PagedAttentionOperation(DataGen):
                 mask_nz = PagedAttentionOperation.convert_nd_to_nz(mask_pad)
                 mask_nz = mask_nz.reshape(1, -1, num_tokens_pad, 16).astype(np.float16)
                 mask_nz = np.ascontiguousarray(mask_nz)
+            elif maskType == 4:
+                seq_len = 128
+                # 创建一个矩阵，初始为全 0
+                mask = np.zeros((seq_len, seq_len), dtype=np.float16)
+                # 构造严格上三角（不包括对角线）的 mask，赋值为 -inf
+                mask[np.triu_indices(seq_len, k=1)] = 1
+                mask *= -60000
+                mask_nz = PagedAttentionOperation.convert_nd_to_nz(mask)
+                mask_nz = mask_nz.reshape(1, 8, 128, 16).astype(np.float16)
+                mask_nz = np.ascontiguousarray(mask_nz)
             data.extend([query, key_cache_nz, value_cache_nz, block_tables, context_lens])
             data.extend([mask_nz, batch_run_status, k_descale, k_offset, v_descale, v_offset, q_seq_lens, razor_offset, p_scale, logN])
         else:
@@ -4911,6 +4924,23 @@ class PagedAttentionOperation(DataGen):
                         else:
                             mask = mask.contiguous().view(1, json_data["headNum"], dim1, dim2*dim3)
                     golden_tensors[5] = mask
+                    if maskType == 4 :
+                        num_tokens = in_tensors[6].sum().item()
+                        max_k_seqlen = max(in_tensors[4]).item()
+                        batch_size = in_tensors[4].shape[0]
+                        # 转numpy
+                        mask = torch.zeros(size=(num_tokens, max_k_seqlen))
+                        prev_qseq = 0
+                        for i in range(batch_size):
+                            qseq = in_tensors[6][i]
+                            kseq = in_tensors[4][i]
+                            start = kseq - qseq
+                            tri = torch.ones((qseq, qseq)).half()
+                            tri = torch.triu(tri, 1)
+                            tri *= -60000
+                            mask[prev_qseq:(prev_qseq + qseq), start:kseq] = tri
+                            prev_qseq += qseq
+                        golden_tensors[5] = mask
             PagedAttentionOperation.golden_tensors = golden_tensors
 
         PagedAttentionOperation.ref_single_query_cached_kv_attention(
