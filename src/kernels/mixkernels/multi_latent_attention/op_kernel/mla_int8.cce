@@ -1176,7 +1176,10 @@ private:
                             }
                             
                             WAIT_FLAG(MTE1, MTE2, l1_right_v_pingpong_flag); 
-                            int64_t kv_offset = ((int64_t)block_table_id + v_row_loop_idx * 2) * block_size * stride_kv; 
+                            
+                            block_table_id = (uint32_t)(*(block_tables_gm +
+                                cur_batch * max_num_blocks_per_query + start_kv / block_size + (n_idx-1) * K_BLOCK_NUM + v_row_loop_idx * 2));
+                            int64_t kv_offset = (int64_t)block_table_id * block_size * stride_kv;
 
                             uint32_t rows_v_gm_to_l1_one_loop = p_cols_l1_2_l0 > 128 ? 128 : p_cols_l1_2_l0;
                             uint32_t rows_v_gm_to_l1_one_loop_round = RoundUp<T_BLOCK_SIZE>(rows_v_gm_to_l1_one_loop);
@@ -1193,7 +1196,9 @@ private:
                                 0            // srcDValue
                                 );  
                             if (p_cols_l1_2_l0 > 128) {
-                                int64_t kv_offset2 = ((int64_t)block_table_id + v_row_loop_idx * 2 + 1) * block_size * stride_kv; 
+                                block_table_id = (uint32_t)(*(block_tables_gm +
+                                    cur_batch * max_num_blocks_per_query + start_kv / block_size + (n_idx-1) * K_BLOCK_NUM + v_row_loop_idx * 2 + 1));
+                                int64_t kv_offset2 = (int64_t)block_table_id * block_size * stride_kv;
                                 gm_to_l1<ArchType::ASCEND_V220, IN_KVDTYPE, DataFormat::NZ, DataFormat::NZ>(
                                 l1v_buf_addr_tensor[l1_right_v_pingpong_flag * block_size * v_rows_mad + rows_v_gm_to_l1_one_loop_round * block_size],
                                 k_gm_tensor[kv_offset2 + embed_split_idx * block_size * block_size], 
