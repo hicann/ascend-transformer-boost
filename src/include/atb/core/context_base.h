@@ -71,6 +71,8 @@ private:
     LaunchMode mode_ = KERNEL_LAUNCH_MODE;
     std::unique_ptr<Allocator> deviceAllocator_;  // 一开始就赋值为defaultDeviceAllocator
     std::unique_ptr<Allocator> hostAllocator_;  // 一开始就赋值为defaultHostAllocator
+    std::function<void*(size_t size)> allocateFunc_;  // 默认使用defaultDeviceAllocator中的Allocate方法
+    std::function<void(void*)> deallocateFunc_;       // 默认使用defaultDeviceAllocator中的Deallocate方法
 };
 } // namespace atb
 #endif
