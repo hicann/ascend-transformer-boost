@@ -678,7 +678,7 @@ Status PagedAttentionOperation::MaskFreeSetupCheck310P(const SVector<Tensor> &in
                     ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dim num should be 4";
                     return ERROR_INVALID_TENSOR_DIM;
                 }
-                if(inTensor.at(5).desc.shape.dims[0] != 1 || inTensor.at(5).desc.shape.dims[1] != 8 || inTensor.at(5).desc.shape.dims[2] != 128 || inTensor.at(5).desc.shape.dims[3] != 16) {
+                if (inTensor.at(5).desc.shape.dims[0] != 1 || inTensor.at(5).desc.shape.dims[1] != 8 || inTensor.at(5).desc.shape.dims[2] != 128 || inTensor.at(5).desc.shape.dims[3] != 16) {
                     ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dims should be [1,8,128,16]";
                     return ERROR_INVALID_TENSOR_DIM;
                 }
