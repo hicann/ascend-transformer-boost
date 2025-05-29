@@ -48,7 +48,7 @@ MASK_TYPE_ALIBI_NO_BATCH_WITH_PREFIX = 10
 
 CAL_TYPE_PREFIX_ENCODER = 4
 MASK_TYPE_ALIBI_COMPRESS = 4
-MASK_TYPE_CASUAL_MASK = 9
+MASK_TYPE_CAUSAL_MASK = 9
 MASK_TYPE_ALIBI_COMPRESS_SQRT = 5
 UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND = 2012
 KERNELTYPE_HIGH_PRECISION = 1
@@ -1814,7 +1814,7 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         num_blocks = 1024
         OP_NAME = "SelfAttentionOperation"
         OP_PARAM = {"type": UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND, "qSeqLen": q_seqlens, "kvSeqLen": kv_seqLen, "headSize": heads, "tor": tor,
-                    "isClamp": is_clamp, "clampMin": clamp_min, "clampMax": clamp_max, "maskType": MASK_TYPE_CASUAL_MASK, "kvHead": kv_head,
+                    "isClamp": is_clamp, "clampMin": clamp_min, "clampMax": clamp_max, "maskType": MASK_TYPE_CAUSAL_MASK, "kvHead": kv_head,
                     "isTriuMask": 1, "alibiLeftAlign": 0, "isAlibiMaskSqrt": 0}
         data_type = torch.bfloat16
 
@@ -1828,9 +1828,9 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
                              num_blocks=num_blocks, block_size=block_size, is_triu_mask=True, is_mask=True)
         self.gen_out_tensor()
         PARAM = json.dumps(
-            {"headNum": heads, "calcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CASUAL_MASK,
+            {"headNum": heads, "calcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CAUSAL_MASK,
              "kvHeadNum": kv_head, "isTriuMask": 1, "qkScale": tor, "kernelType": KERNELTYPE_HIGH_PRECISION})
-        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CASUAL_MASK})
+        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CAUSAL_MASK})
         q_seqlen = np.array(q_seqlens)
         q_seqlen = torch.from_numpy(q_seqlen).to(torch.int32).npu()
         kv_seqLen = np.array(kv_seqLen)
@@ -1860,7 +1860,7 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         num_blocks = 1024
         OP_NAME = "SelfAttentionOperation"
         OP_PARAM = {"type": UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND, "qSeqLen": q_seqlens, "kvSeqLen": kv_seqLen, "headSize": heads, "tor": tor,
-                    "isClamp": is_clamp, "clampMin": clamp_min, "clampMax": clamp_max, "maskType": MASK_TYPE_CASUAL_MASK, "kvHead": kv_head,
+                    "isClamp": is_clamp, "clampMin": clamp_min, "clampMax": clamp_max, "maskType": MASK_TYPE_CAUSAL_MASK, "kvHead": kv_head,
                     "isTriuMask": 1, "alibiLeftAlign": 0, "isAlibiMaskSqrt": 0}
         data_type = torch.float16
 
@@ -1874,9 +1874,9 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
                              num_blocks=num_blocks, block_size=block_size, is_triu_mask=True, is_mask=True)
         self.gen_out_tensor()
         PARAM = json.dumps(
-            {"headNum": heads, "calcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CASUAL_MASK,
+            {"headNum": heads, "calcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CAUSAL_MASK,
              "kvHeadNum": kv_head, "isTriuMask": 1, "qkScale": tor, "kernelType": KERNELTYPE_HIGH_PRECISION})
-        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CASUAL_MASK})
+        RUN_PARAM = json.dumps({"seqLen": q_seqlens, "kvSeqLen": kv_seqLen, "CalcType": CAL_TYPE_PREFIX_ENCODER, "maskType": MASK_TYPE_CAUSAL_MASK})
         q_seqlen = np.array(q_seqlens)
         q_seqlen = torch.from_numpy(q_seqlen).to(torch.int32).npu()
         kv_seqLen = np.array(kv_seqLen)

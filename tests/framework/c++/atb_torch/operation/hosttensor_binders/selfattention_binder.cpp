@@ -75,7 +75,7 @@ void SelfAttentionBinder::ParseParam(const nlohmann::json &paramJson)
             useSwa_ = true;
         }
         ATB_LOG(INFO) << "paramJson[maskType]:" << paramJson["maskType"];
-        if (paramJson["maskType"] == atb::infer::SelfAttentionParam::MASK_TYPE_CASUAL_MASK) {
+        if (paramJson["maskType"] == atb::infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK) {
             useCausalMask_ = true;
         }
     }
