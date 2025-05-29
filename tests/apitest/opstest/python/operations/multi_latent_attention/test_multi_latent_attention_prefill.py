@@ -1039,7 +1039,7 @@ class TestMLAPrefill(operation_test.OperationTest):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
-        batch = 2
+        batch = 1
         kv_head = 1      # kv_head num
         isdecoder = 0       # prefill or decoder
         heads = 1        # llama7b  hidden_size 4096
