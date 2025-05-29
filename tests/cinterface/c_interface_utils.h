@@ -23,14 +23,6 @@ const int64_t maxSeqLen = 256;
 
 const int64_t embeddimV = 8;
 const int64_t qRopeSzie = 64;
-const int64_t headSizeQk = 576;
-const int64_t headSizeVo = 512;
-const int64_t kSeqlen = 256;
-const int64_t maskDim = 0;
-const int64_t batch = numTokens * kSeqlen;
-const int64_t numBlocks = 64;
-const int64_t maxNumBlocksPerQuery = 16;
-const int64_t maxSeqLen = 256;
 
 const int64_t dims = 7168;
 const int64_t dimB = 2112;

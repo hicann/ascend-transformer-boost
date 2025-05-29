@@ -46,7 +46,7 @@ extern "C" {
 //! \param cacheMode MLA算子的cache类型
 //! \param attenOut MLA算子的输出tensor
 //! \param ise MLA算子的输出tensor
-//! \param workspaceSize MLA算子的workspace大小
+//! \param workSpaceSize MLA算子的workspace大小
 //! \param op MLA算子的handler
 //! \param context MLA算子的上下文参数
 //!
@@ -75,7 +75,7 @@ atb::Status AtbMLA(void* workSpace, uint64_t workSpaceSize, atb::Operation *op, 
 //! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
 //!
 //! \param q MLA算子的输入tensor: query
-//! \param qRope MLA算子的输入tensor: query rope 
+//! \param qRope MLA算子的输入tensor: query rope
 //! \param k MLA算子的输入tensor: key
 //! \param kRope MLA算子的输入tensor: key rope
 //! \param v MLA算子的输入tensor: value
@@ -88,7 +88,7 @@ atb::Status AtbMLA(void* workSpace, uint64_t workSpaceSize, atb::Operation *op, 
 //! \param maskType MLA算子的mask类型
 //! \param cacheMode MLA算子的cache类型
 //! \param attenOut MLA算子的输出tensor
-//! \param workspaceSize MLA算子的workspace大小
+//! \param workSpaceSize MLA算子的workspace大小
 //! \param op MLA算子的handler
 //! \param context MLA算子的上下文参数
 //!
@@ -97,7 +97,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen, const aclTensor *kvSeqLen,
     const aclTensor *mask, int32_t headNum, float qkScale, int32_t kvHeadNum,
     int maskType, uint8_t cacheMode, aclTensor *attenOut,
-    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
+    uint64_t *workSpaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief MLA prefill 处理接口
