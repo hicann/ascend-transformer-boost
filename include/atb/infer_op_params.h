@@ -1394,6 +1394,12 @@ struct LinearParam {
         MATMUL_UNDEFINED = 0,
         MATMUL_EIN_SUM
     };
+    //! \brief Matmul不同量化类型。
+    enum QuantMode : uint8_t {
+        QUANT_UNDEFINED,
+        PER_CHANNEL,
+        PER_TOKEN
+    };
     //!
     //! \brief 是否转置A矩阵。
     //!
@@ -1443,7 +1449,7 @@ struct LinearParam {
     //!
     bool enAccum = false;
     //!
-    //! \brief matmul类型
+    //! \brief matmul计算类型
     //!
     //! \note 默认值为MATMUL_UNDEFINED，非爱因斯坦乘场景。
     //!
@@ -1451,9 +1457,17 @@ struct LinearParam {
     //!
     MatmulType matmulType = MATMUL_UNDEFINED;
     //!
+    //! \brief matmul量化类型
+    //!
+    //! \note 默认值为QUANT_UNDEFINED。
+    //!
+    //! \warning 取值范围为PER_CHANNEL/PER_TOKEN。
+    //!
+    QuantMode quantMode = QUANT_UNDEFINED;
+    //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[22] = {0};
+    uint8_t rsv[21] = {0};
 };
 
 //!

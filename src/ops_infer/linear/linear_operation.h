@@ -35,6 +35,8 @@ private:
     Status AccumCheck(const TensorDesc &accumTensorDesc, const TensorDesc &xTensorDesc,
                       const TensorDesc &weightTensorDesc) const;
     Status DeqScaleCheck(const TensorDesc &deqScaleTensorDesc, const TensorDesc &weightTensorDesc) const;
+    Status PerTokenDeqScaleCheck(const TensorDesc &deqScaleTensorDesc, const TensorDesc &weightTensorDesc,
+                                 const TensorDesc &xTensorDesc, const TensorDesc &perTokendeqScaleTensorDesc) const;
     Status OutTensorCheck(const SVector<TensorDesc> &inTensorDescs, const SVector<Tensor> &outTensors) const;
     bool XWeightDimNumCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;
     bool XWeightBatchCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;

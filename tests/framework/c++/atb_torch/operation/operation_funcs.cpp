@@ -492,9 +492,13 @@ static atb::Status LinearOperationCreate(const nlohmann::json &paramJson, atb::O
     if (paramJson.contains("matmulType")) {
         param.matmulType = atb::infer::LinearParam::MatmulType(paramJson["matmulType"].get<int>());
     }
+    if (paramJson.contains("quantMode")) {
+        param.quantMode = atb::infer::LinearParam::QuantMode(paramJson["quantMode"].get<int>());
+    }
     ATB_LOG(INFO) << "LinearParam  transposeA:" << param.transposeA << ", transposeB:" << param.transposeB
                   << ", hasBias:" << param.hasBias << ", outDataType:" << param.outDataType
-                  << ", enAccum: " << param.enAccum << ", matmulType: " << param.matmulType;
+                  << ", enAccum: " << param.enAccum << ", matmulType: " << param.matmulType
+                  << ", quantMode" << param.quantMode;
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
