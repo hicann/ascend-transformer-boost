@@ -62,10 +62,10 @@ install(DIRECTORY include/ DESTINATION include/customize)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_customize/customize_ops_configs DESTINATION ./configs)
 
 add_subdirectory(ops/example_op/kernel_implement)
-add_subdirectory(ops/example_blockcopy/kernel_implement)
+add_subdirectory(ops/customize_blockcopy/kernel_implement)
 
 if (BUILD_USR_OPS_TEST)
     enable_testing()
     add_subdirectory(ops/example_op/tests)
-    add_subdirectory(ops/example_blockcopy/tests)
+    add_subdirectory(ops/customize_blockcopy/tests)
 endif()
