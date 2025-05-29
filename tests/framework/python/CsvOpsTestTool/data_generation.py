@@ -1070,8 +1070,8 @@ class MatmulCommon:
         shape = shapes[i]
         low, high = MatmulCommon.__get_data_range(data_gen_ranges)
         if out_data_type == 1 or out_data_type == 27:
-            MatmulCommon.deq_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict["float"])
-            return MatmulCommon.deq_golden.npu()
+            MatmulCommon.pertoken_scale_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict["float"])
+            return MatmulCommon.pertoken_scale_golden.npu()
         return None
 
     @staticmethod
