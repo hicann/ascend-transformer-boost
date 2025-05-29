@@ -688,7 +688,7 @@ Status PagedAttentionOperation::MaskFreeSetupCheck310P(const SVector<Tensor> &in
                 int *k_seqlen_list = static_cast<int *>(inTensor[4].hostData);
                 int *q_seqlen_list = static_cast<int *>(inTensor[6].hostData);
         
-                for (int i = 0; i < batch; i++) {
+                for (size_t i = 0; i < batch; i++) {
                     if (k_seqlen_list[i] < q_seqlen_list[i]) {
                         ATB_LOG(ERROR) << "PagedAttentionOperation intensor4[i] should bigger than intensor6[i].";
                         return ERROR_INVALID_PARAM;
