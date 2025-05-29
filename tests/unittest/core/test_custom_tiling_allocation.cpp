@@ -24,6 +24,18 @@ TEST(TestCustomAllocatorTiling, TestCustomCase)
     EXPECT_EQ(st, atb::NO_ERROR);
     st = atb::DestroyContext(context);
     EXPECT_EQ(st, atb::NO_ERROR);
+    
+    st = atb::CreateContext(&context, nullptr, nullptr);
+    EXPECT_EQ(st, atb::NO_ERROR);
+    st = atb::DestroyContext(context);
+    EXPECT_EQ(st, atb::NO_ERROR);
+
+    std::function<void*(size_t)> emptyAlloc;
+    std::function<void(void*)> emptyDealloc;
+    st = atb::CreateContext(&context, emptyAlloc, emptyDealloc);
+    EXPECT_EQ(st, atb::NO_ERROR);
+    st = atb::DestroyContext(context);
+    EXPECT_EQ(st, atb::NO_ERROR);
 }
 
 TEST(TestCustomAllocatorTiling, TestOriginCase)
@@ -37,4 +49,20 @@ TEST(TestCustomAllocatorTiling, TestOriginCase)
     EXPECT_EQ(st, atb::NO_ERROR);
     st = atb::DestroyContext(context);
     EXPECT_EQ(st, atb::NO_ERROR);
+}
+
+TEST(TestCustomAllocatorTiling, TestErrorCase)
+{
+    DefaultDeviceAllocator defaultDeviceAllocator;
+    uint32_t deviceId = 1;
+    aclrtSetDevice(deviceId);
+    aclrtStream exeStream = nullptr;
+    aclrtCreateStream(&exeStream);
+    std::function<void*(size_t)> emptyAlloc;
+    atb::Context *context = nullptr;
+    Status st = atb::CreateContext(&context, emptyAlloc, [&](void * addr) { defaultDeviceAllocator.Deallocate(addr); });
+    EXPECT_EQ(st, atb::ERROR_INVALID_PARAM);
+    std::function<void(void*)> emptyDealloc;
+    st = atb::CreateContext(&context, [&](size_t size) { return defaultDeviceAllocator.Allocate(size); }, emptyDealloc);
+    EXPECT_EQ(st, atb::ERROR_INVALID_PARAM);
 }

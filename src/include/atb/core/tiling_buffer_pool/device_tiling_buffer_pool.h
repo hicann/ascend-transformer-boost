@@ -24,8 +24,8 @@ protected:
     bool IsDeviceBufferPool() override;
 
 private:
-    std::function<void*(size_t size)> customAllocateFunc_;
-    std::function<void(void*)> customDeallocateFunc_;
+    std::function<void*(size_t size)> allocateFunc_;
+    std::function<void(void*)> deallocateFunc_;
 };
 } // namespace atb
 #endif
