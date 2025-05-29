@@ -14,7 +14,6 @@ import unittest
 import math
 import numpy as np
 sys.path.append('../')
-sys.path.append('/opt/cl/ascend-transformer-boost/tests/apitest/kernelstest')
 sys.path.append('../..')
 import op_test
 import torch
@@ -866,7 +865,7 @@ class TestMLAPrefill(op_test.OpTest):
         clamp_min = 0
         clamp_max = 0
         OP_NAME = "MLAOperation"
-        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 5}
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 4}
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 13)
         self.set_output_formats([self.format_nd])
@@ -964,7 +963,7 @@ class TestMLAPrefill(op_test.OpTest):
         clamp_min = 0
         clamp_max = 0
         OP_NAME = "MLAOperation"
-        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 5, "kvHead": heads}
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 4, "kvHead": heads}
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 13)
         self.set_output_formats([self.format_nd])
@@ -1001,7 +1000,7 @@ class TestMLAPrefill(op_test.OpTest):
 
 
     @op_test.only_910b
-    def test_flash_attention_mla_bf16_mask_free(self):
+    def test_flash_attention_mla_bf16_causal_mask(self):
         batch = 1
         kv_head = 1      # kv_head num
         isdecoder = 0       # prefill or decoder
@@ -1016,7 +1015,7 @@ class TestMLAPrefill(op_test.OpTest):
         clamp_min = 0
         clamp_max = 0
         OP_NAME = "MLAOperation"
-        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 4, "kvHead": heads}
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 5, "kvHead": heads}
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 13)
         self.set_output_formats([self.format_nd])
@@ -1053,7 +1052,7 @@ class TestMLAPrefill(op_test.OpTest):
             
 
     @op_test.only_910b
-    def test_flash_attention_mla_bf16_prefix_with_mask_free(self):
+    def test_flash_attention_mla_bf16_prefix_with_causal_mask(self):
         batch = 1
         kv_head = 1      # kv_head num
         isdecoder = 0       # prefill or decoder
@@ -1071,7 +1070,7 @@ class TestMLAPrefill(op_test.OpTest):
         clamp_min = 0
         clamp_max = 0
         OP_NAME = "MLAOperation"
-        OP_PARAM = {"type": 1, "qSeqLen":q_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 4, "kvHead": heads}
+        OP_PARAM = {"type": 1, "qSeqLen":q_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor, "maskType": 5, "kvHead": heads}
         self.set_param(OP_NAME, OP_PARAM)
         self.set_input_formats([self.format_nd] * 13)
         self.set_output_formats([self.format_nd])
