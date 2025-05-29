@@ -54,11 +54,11 @@ extern "C" {
 //!
 //! \return 表示函数是否执行成功的状态码
 atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRope, const aclTensor *ctKV,
-    const aclTensor *kRope, const aclTensor *blockTables, const aclTensor *contextLens,
-    const aclTensor *mask, const aclTensor *qseqlen, const aclTensor *qkDescale,
-    const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
-    int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut,
-    aclTensor *ise, uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
+                                   const aclTensor *kRope, const aclTensor *blockTables, const aclTensor *contextLens,
+                                   const aclTensor *mask, const aclTensor *qseqlen, const aclTensor *qkDescale,
+                                   const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
+                                   int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut, aclTensor *ise,
+                                   uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief 关于MLA算子使用aclnn风格调用的2段式接口种的第2段，
@@ -70,7 +70,7 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
 //! \param context MLA算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLA(void* workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+atb::Status AtbMLA(void *workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief 关于MlaPreprocess算子使用aclnn风格调用的2段式接口种的第1段，
@@ -122,20 +122,17 @@ atb::Status AtbMLA(void* workSpace, uint64_t workspaceSize, atb::Operation *op, 
 //! \param context MLA算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLAPreprocessGetWorkspaceSize(const aclTensor *input, const aclTensor *gamma0,
-    const aclTensor *beta0, const aclTensor *quantScale0, const aclTensor *quantOffset0,
-    const aclTensor *wdqkv, const aclTensor *deScale0, const aclTensor *bias0,
-    const aclTensor *gamma1, const aclTensor *beta1, const aclTensor *quantScale1,
-    const aclTensor *quantOffset1, const aclTensor *wuq, const aclTensor *deScale1,
-    const aclTensor *bias1, const aclTensor *gamma2, const aclTensor *cos,
-    const aclTensor *sin, const aclTensor *wuk, const aclTensor *kvCache,
-    const aclTensor *kvCacheRope, const aclTensor *slotmapping,
-    const aclTensor *ctkvScale, const aclTensor *qNopeScale, uint32_t wdqDim,
-    uint32_t qRopeDim, uint32_t kRopeDim, float epsilon, uint32_t qRotaryCoeff,
-    uint32_t kRotaryCoeff, bool transposeWdq, bool transposeWuq, bool transposeWuk,
-    uint8_t cacheMode, uint16_t quantMode, aclTensor *qOut0, aclTensor *kvCacheOut0,
-    aclTensor *qOut1, aclTensor *kvCacheOut1, uint64_t *workspaceSize,
-    atb::Operation **op, atb::Context *context);
+atb::Status AtbMLAPreprocessGetWorkspaceSize(
+    const aclTensor *input, const aclTensor *gamma0, const aclTensor *beta0, const aclTensor *quantScale0,
+    const aclTensor *quantOffset0, const aclTensor *wdqkv, const aclTensor *deScale0, const aclTensor *bias0,
+    const aclTensor *gamma1, const aclTensor *beta1, const aclTensor *quantScale1, const aclTensor *quantOffset1,
+    const aclTensor *wuq, const aclTensor *deScale1, const aclTensor *bias1, const aclTensor *gamma2,
+    const aclTensor *cos, const aclTensor *sin, const aclTensor *wuk, const aclTensor *kvCache,
+    const aclTensor *kvCacheRope, const aclTensor *slotmapping, const aclTensor *ctkvScale, const aclTensor *qNopeScale,
+    uint32_t wdqDim, uint32_t qRopeDim, uint32_t kRopeDim, float epsilon, uint32_t qRotaryCoeff, uint32_t kRotaryCoeff,
+    bool transposeWdq, bool transposeWuq, bool transposeWuk, uint8_t cacheMode, uint16_t quantMode, aclTensor *qOut0,
+    aclTensor *kvCacheOut0, aclTensor *qOut1, aclTensor *kvCacheOut1, uint64_t *workspaceSize, atb::Operation **op,
+    atb::Context *context);
 
 //!
 //! \brief 关于MLAPreprocess算子使用aclnn风格调用的2段式接口种的第2段，
@@ -148,6 +145,42 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(const aclTensor *input, const aclTe
 //!
 //! \return 表示函数是否执行成功的状态码
 atb::Status AtbMLAPreprocess(void *workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+
+//!
+//! \brief 关于PagedCacheLoad算子使用aclnn风格调用的2段式接口种的第1段，
+//! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
+//!
+//! \param keyCache PagedCacheLoad算子的输入tensor
+//! \param valueCache PagedCacheLoad算子的输入tensor
+//! \param blockTables PagedCacheLoad算子的输入tensor
+//! \param contextLens PagedCacheLoad算子的输入tensor
+//! \param key PagedCacheLoad算子的输入/输出tensor
+//! \param value PagedCacheLoad算子的输入/输出tensor
+//! \param kvCacheCfg keyCache和valueCache为ND还是NZ格式
+//! \param isSeqLensCumsumType 是否使用batch输入为累加模式
+//! \param hasSeqStarts 是否提供batch在blocktable中对应起始位置，对齐到blocktable
+//! \param workspaceSize PagedCacheLoad算子的workspace大小
+//! \param op PagedCacheLoad算子的handler
+//! \param context PagedCacheLoad算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const aclTensor *valueCache,
+                                              const aclTensor *blockTables, const aclTensor *contextLens,
+                                              const aclTensor *key, const aclTensor *value, const aclTensor *seqStarts,
+                                              int8_t kvCacheCfg, bool isSeqLensCumsumType, bool hasSeqStarts,
+                                              uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
+
+//!
+//! \brief 关于PagedCacheLoad算子使用aclnn风格调用的2段式接口种的第2段，
+//! 用于算子的推理调度阶段
+//!
+//! \param workSpace 针对PagedCacheLoad算子申请的工作空间
+//! \param workspaceSize PagedCacheLoad算子的workspace大小
+//! \param op PagedCacheLoad算子的op handler
+//! \param context PagedCacheLoad算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbPagedCacheLoad(void *workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 #ifdef __cplusplus
 }
 #endif
