@@ -29,6 +29,8 @@ const size_t g_MLAOUTTENSORNUMNOCALCRING = 1;
 const size_t g_MLAPPINTENSORNUM = 24;
 const size_t g_MLAPPOUTTENSORNUMCACHEMODE = 4;
 const size_t g_MLAPPOUTTENSORNUM = 2;
+const size_t g_PAGEDCACHELOADINTENSORNUM = 7;
+const size_t g_PAGEDCACHELOADOUTTENSORNUM = 2;
 int64_t GetTensorSize(const aclTensor *input)
 {
     const op::Shape shape = input->GetViewShape();
@@ -103,11 +105,11 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
 }
 
 atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRope, const aclTensor *ctKV,
-    const aclTensor *kRope, const aclTensor *blockTables, const aclTensor *contextLens,
-    const aclTensor *mask, const aclTensor *qSeqLen, const aclTensor *qkDescale,
-    const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
-    int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut,
-    aclTensor *ise, uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
+                                   const aclTensor *kRope, const aclTensor *blockTables, const aclTensor *contextLens,
+                                   const aclTensor *mask, const aclTensor *qSeqLen, const aclTensor *qkDescale,
+                                   const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
+                                   int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut, aclTensor *ise,
+                                   uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
 {
     atb::infer::MultiLatentAttentionParam param;
     param.headNum = headNum;
@@ -189,27 +191,24 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
     return atb::NO_ERROR;
 }
 
-atb::Status AtbMLA(void* workSpcace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
+atb::Status AtbMLA(void *workSpcace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
-    atb::Status st = op->Execute(g_PACK, (uint8_t*)(workSpcace), workspaceSize, context);
+    atb::Status st = op->Execute(g_PACK, (uint8_t *)(workSpcace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
     return st;
 }
 
-atb::Status AtbMLAPreprocessGetWorkspaceSize(const aclTensor *input, const aclTensor *gamma0,
-    const aclTensor *beta0, const aclTensor *quantScale0, const aclTensor *quantOffset0,
-    const aclTensor *wdqkv, const aclTensor *deScale0, const aclTensor *bias0,
-    const aclTensor *gamma1, const aclTensor *beta1, const aclTensor *quantScale1,
-    const aclTensor *quantOffset1, const aclTensor *wuq, const aclTensor *deScale1,
-    const aclTensor *bias1, const aclTensor *gamma2, const aclTensor *cos,
-    const aclTensor *sin, const aclTensor *wuk, const aclTensor *kvCache,
-    const aclTensor *kvCacheRope, const aclTensor *slotmapping,
-    const aclTensor *ctkvScale, const aclTensor *qNopeScale, uint32_t wdqDim,
-    uint32_t qRopeDim, uint32_t kRopeDim, float epsilon, uint32_t qRotaryCoeff,
-    uint32_t kRotaryCoeff, bool transposeWdq, bool transposeWuq, bool transposeWuk,
-    uint8_t cacheMode, uint16_t quantMode, aclTensor *qOut0, aclTensor *kvCacheOut0,
-    aclTensor *qOut1, aclTensor *kvCacheOut1, uint64_t *workspaceSize,
-    atb::Operation **op, atb::Context *context)
+atb::Status AtbMLAPreprocessGetWorkspaceSize(
+    const aclTensor *input, const aclTensor *gamma0, const aclTensor *beta0, const aclTensor *quantScale0,
+    const aclTensor *quantOffset0, const aclTensor *wdqkv, const aclTensor *deScale0, const aclTensor *bias0,
+    const aclTensor *gamma1, const aclTensor *beta1, const aclTensor *quantScale1, const aclTensor *quantOffset1,
+    const aclTensor *wuq, const aclTensor *deScale1, const aclTensor *bias1, const aclTensor *gamma2,
+    const aclTensor *cos, const aclTensor *sin, const aclTensor *wuk, const aclTensor *kvCache,
+    const aclTensor *kvCacheRope, const aclTensor *slotmapping, const aclTensor *ctkvScale, const aclTensor *qNopeScale,
+    uint32_t wdqDim, uint32_t qRopeDim, uint32_t kRopeDim, float epsilon, uint32_t qRotaryCoeff, uint32_t kRotaryCoeff,
+    bool transposeWdq, bool transposeWuq, bool transposeWuk, uint8_t cacheMode, uint16_t quantMode, aclTensor *qOut0,
+    aclTensor *kvCacheOut0, aclTensor *qOut1, aclTensor *kvCacheOut1, uint64_t *workspaceSize, atb::Operation **op,
+    atb::Context *context)
 {
     atb::infer::MlaPreprocessParam param;
     param.wdqDim = wdqDim;
@@ -341,8 +340,71 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(const aclTensor *input, const aclTe
 
 atb::Status AtbMLAPreprocess(void *workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
-    atb::Status st = op->Execute(g_PACK, (uint8_t*)(workSpace), workspaceSize, context);
+    atb::Status st = op->Execute(g_PACK, (uint8_t *)(workSpace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreprocess Execute failed!", return st);
+    return st;
+}
+
+atb::Status AtbPagedCacheLoadGetWorkSpaceSize(const aclTensor *keyCache, const aclTensor *valueCache,
+                                              const aclTensor *blockTables, const aclTensor *contextLens,
+                                              const aclTensor *key, const aclTensor *value, const aclTensor *seqStarts,
+                                              int8_t kvCacheCfg, bool isSeqLensCumsumType, bool hasSeqStarts,
+                                              uint64_t *workSpaceSize, atb::Operation **op, atb::Context *context)
+{
+    atb::infer::PagedCacheLoadParam param;
+    param.kvCacheCfg = atb::infer::PagedCacheLoadParam::KvCacheCfg(kvCacheCfg);
+    param.isSeqLensCumsumMode = isSeqLensCumsumType;
+    param.hasSeqStarts = hasSeqStarts;
+
+    if (op != nullptr && *op == nullptr) {
+        auto st = CreateOperation(param, op);
+        if (st != atb::NO_ERROR) {
+            return st;
+        }
+    }
+    atb::VariantPack pack;
+    size_t i = 0; 
+    if (param.hasSeqStarts) {
+        pack.inTensors.resize(g_PAGEDCACHELOADINTENSORNUM);
+    }
+
+    else {
+        pack.inTensors.resize(g_PAGEDCACHELOADINTENSORNUM - 1);
+    }
+    
+    auto status = aclTensorToAtbTensor(keyCache, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "keyCache create failed!", return status);
+    status = aclTensorToAtbTensor(valueCache, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "valueCache create failed!", return status);
+    status = aclTensorToAtbTensor(blockTables, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "blockTables create failed!", return status);
+    status = aclTensorToAtbTensor(contextLens, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "contextLens create failed!", return status);
+    status = aclTensorToAtbTensor(key, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "key create failed!", return status);
+    status = aclTensorToAtbTensor(value, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "value create failed!", return status);
+    if (param.hasSeqStarts) {
+        status = aclTensorToAtbTensor(seqStarts, &(pack.inTensors[i++]));
+        ATB_CHECK(status == atb::NO_ERROR, "seqStarts create failed!", return status);
+    }
+
+    i = 0;
+    pack.outTensors.resize(g_PAGEDCACHELOADOUTTENSORNUM);
+    status = aclTensorToAtbTensor(key, &(pack.outTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "key create failed!", return status);
+    status = aclTensorToAtbTensor(value, &(pack.outTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "value create failed!", return status);
+
+    atb::Status st = (*op)->Setup(pack, *workSpaceSize, context);
+    ATB_CHECK(st == atb::NO_ERROR, "AtbPagedCacheLoad Setup failed!", return st);
+    return atb::NO_ERROR;
+}
+
+atb::Status AtbPagedCacheLoad(void *workSpcace, uint64_t workSpaceSize, atb::Operation *op, atb::Context *context)
+{
+    atb::Status st = op->Execute(g_PACK, (uint8_t *)(workSpcace), workSpaceSize, context);
+    ATB_CHECK(st == atb::NO_ERROR, "AtbPagedCacheLoad Execute failed!", return st);
     return st;
 }
 #ifdef __cplusplus
