@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -27,6 +27,12 @@ constexpr static size_t INPUT_CUMSUM = 4;
 } // namespace
 
 namespace atb {
+/**
+ * @brief CreateOperation 模板特化，用于工厂注册阶段创建实例。
+ * @param[in] opParam    用户参数
+ * @param[out] operation 输出的 Operation 指针
+ * @return Status        创建结果，NO_ERROR 表示成功
+ */
 template <> Status CreateOperation(const customize::BlockCopyParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
@@ -89,14 +95,15 @@ Status CustomizeBlockCopyOperation::InferShapeCheckImpl(const SVector<TensorDesc
 }
 
 Status CustomizeBlockCopyOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
-                                          SVector<TensorDesc> &outTensorDescs) const
+                                                   SVector<TensorDesc> &outTensorDescs) const
 {
     ATB_LOG(INFO) << GetLogPrefix() << "inTensorDescs Size:" << inTensorDescs.size()
                   << "outTensorDescs Size:" << outTensorDescs.size();
     return NO_ERROR;
 }
 
-Status CustomizeBlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
+Status CustomizeBlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
+                                                   const SVector<Tensor> &outTensors) const
 {
     (void)outTensors;
     int64_t blockCount = inTensors.at(0).desc.shape.dims[0];

@@ -13,7 +13,7 @@ const int32_t DEVICE_ID = 0;
 const int BLOCK_COUNT = 2;
 const int BLOCK_SIZE = 2;
 const int HEADS = 1;
-const int HEADS_SIZE = 1;
+const int HEAD_SIZE = 1;
 const float INIT_VALUE = 1.0f;
 
 #define CHECK_STATUS(status)                                                                  \
@@ -93,10 +93,10 @@ TEST(ExampleOpTest, CreateOperation_Success) {
     atb::Operation *op = PrepareOperation();
     atb::VariantPack variantPack;
     variantPack.inTensors = PrepareBlockCopyInTensors();
-    auto outKey   = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
-    auto outValue = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
-    pack.outTensors.push_back(outKey);
-    pack.outTensors.push_back(outValue);
+    // auto outKey   = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
+    // auto outValue = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
+    // variantPack.outTensors.push_back(outKey);
+    // variantPack.outTensors.push_back(outValue);
 
     // setup
     uint64_t workspaceSize = 0;

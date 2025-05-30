@@ -20,7 +20,7 @@ ENDIF ()
 
 option(BUILD_TEST_FRAMEWORK "BUILD_TEST_FRAMEWORK" OFF)
 option(BUILD_PYBIND "Build Python bindings for ATB Python Module" ON)
-option(BUILD_USR_OPS "Build user-customize operators" ON)
+option(BUILD_CUSTOMIZE_OPS "Build user-customize operators" ON)
 option(BUILD_USR_OPS_TEST "Build tests for user-customize operators" ON)
 option(USE_UNIT_TEST "USE_UNIT_TEST" OFF)
 option(USE_PYTHON_TEST "USE_PYTHON_TEST" OFF)
@@ -105,7 +105,7 @@ if(BUILD_TEST_FRAMEWORK OR USE_UNIT_TEST OR USE_PYTHON_TEST OR USE_FUZZ_TEST OR 
     add_subdirectory(tests)
 endif()
 add_subdirectory(src)
-if (BUILD_USR_OPS)
+if (BUILD_CUSTOMIZE_OPS)
     add_subdirectory(ops_customize)
 endif()
 
