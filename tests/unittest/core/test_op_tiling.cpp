@@ -31,16 +31,10 @@ bool IsLaunchKernelWithTilingStub()
     return false;
 }
 
-uint32_t GetKernelCacheTypeStub()
-{
-    return 0;
-}
-
 TEST(TestOpTiling, GetCurrentOpTiling)
 {
     Stub stub;
     stub.set(ADDR(Config, IsLaunchKernelWithTiling), IsLaunchKernelWithTilingStub);
-    stub.set(ADDR(Config, GetKernelCacheType), GetKernelCacheTypeStub);
     uint64_t tilingBufferSize = 0;
     void *tilingDeviceBuffer = nullptr;
     atb::infer::ElewiseParam param;
