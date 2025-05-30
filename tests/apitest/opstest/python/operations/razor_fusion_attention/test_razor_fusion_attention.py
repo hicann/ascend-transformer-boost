@@ -408,17 +408,16 @@ class TestRazorFusionAttention(operation_test.OperationTest):
     def golden_compare(self, out_tensors, golden_tensors):
         print("golden_compare")
         print(out_tensors.shape)
-        result_double = compare_cv(self.golden_out_true.npu(), golden_tensors.npu(), out_tensors.npu())
+        result_double = compare_cv(self.golden_out_true.flatten(), golden_tensors.cpu().flatten(), out_tensors.cpu().flatten())
         result_old = self.compare_output_data(out_tensors.half(), golden_tensors.half(), [0.001, 0.001, 0.005, 0.005])
-        return (result_double or result_old)
+        self.rfa_compare_result = (result_double or result_old)
+        return self.rfa_compare_result
 
     def test_razor_fusion_attention_case_fa_razor_fusion_norm_bfloat16(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
         batch = 2
-        tor = 1.0
-
         razorLen = 512
         tileQ = 1
         tileKv = 2
@@ -432,6 +431,7 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "RazorFusionAttentionOperation"
+        tor = 0.088
         OP_PARAM = {"headNum":1, "kvHeadNum":1, "qkScale": tor, "tileQ": tileQ,  "tileKv": tileKv,
                     "razorLen": razorLen, "textQLen": textQLen,  "textKvLen": textKvLen, "preTokens": preTokens,
                     "nextTokens": nextTokens}
@@ -449,8 +449,6 @@ class TestRazorFusionAttention(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         batch = 2
-        tor = 1.0
-
         razorLen = 500
         tileQ = 2
         tileKv = 3
@@ -464,6 +462,7 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "RazorFusionAttentionOperation"
+        tor = 0.088
         OP_PARAM = {"headNum":1, "kvHeadNum":1, "qkScale": tor, "tileQ": tileQ,  "tileKv": tileKv,
                     "razorLen": razorLen, "textQLen": textQLen,  "textKvLen": textKvLen, "preTokens": preTokens,
                     "nextTokens": nextTokens}
@@ -481,8 +480,6 @@ class TestRazorFusionAttention(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         batch = 3
-        tor = 1.0
-
         razorLen = 128
         tileQ = 3
         tileKv = 2
@@ -496,6 +493,7 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "RazorFusionAttentionOperation"
+        tor = 0.088
         OP_PARAM = {"headNum":1, "kvHeadNum":1, "qkScale": tor, "tileQ": tileQ,  "tileKv": tileKv,
                     "razorLen": razorLen, "textQLen": textQLen,  "textKvLen": textKvLen, "preTokens": preTokens,
                     "nextTokens": nextTokens}
@@ -517,8 +515,6 @@ class TestRazorFusionAttention(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         batch = 1
-        tor = 1.0
-
         razorLen = 311
         tileQ = 2
         tileKv = 3
@@ -532,6 +528,7 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "RazorFusionAttentionOperation"
+        tor = 0.088
         OP_PARAM = {"headNum":1, "kvHeadNum":1, "qkScale": tor, "tileQ": tileQ,  "tileKv": tileKv,
                     "razorLen": razorLen, "textQLen": textQLen,  "textKvLen": textKvLen, "preTokens": preTokens,
                     "nextTokens": nextTokens}
