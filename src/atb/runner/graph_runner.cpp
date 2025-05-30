@@ -948,14 +948,12 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
             for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.inTensors.at(i);
                 if (node.inTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
-                    tensor.dataSize = static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT));
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, tensor.dataSize);
                 }
             }
             for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.outTensors.at(i);
                 if (node.outTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
-                    tensor.dataSize = static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT));
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, tensor.dataSize);
                 }
             }
