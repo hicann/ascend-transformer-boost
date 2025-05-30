@@ -24,6 +24,7 @@
 
 #include "paged_attention_decoder.h"
 
+
 template<>
 __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decode(const int32_t fm, const int32_t fn,
                                                                                  const int32_t fk, const int32_t bn,
@@ -694,7 +695,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
                                             1, 0, 8, 0);
 
         PIPE_BARRIER(V);
-        
+
         conv_v<ArchType::ASCEND_V200, half, float>(tvUbuf_tensor.ReinterpretCast<float>()[fk], tvUbuf_tensor,
                                                    kD64, 1, 1, uint16_t(8), uint16_t(4));
         PIPE_BARRIER(V);
@@ -831,7 +832,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_DEFAULT>::Decod
                                                                                  const int32_t m_actual,
                                                                                  const int32_t n0_actual,
                                                                                  const int32_t n1_actual,
-                                                                                 const uint32_t maskType)
+                                                                                 const uint32_t maskType, const int32_t nIdx,
+                                                                                 const int32_t mask_n, const int32_t is_ping)
 {
     int32_t Pingflag = 0; // manual PingPong attempt
     int32_t Pongflag = 1;
@@ -1751,7 +1753,8 @@ template<>
 __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::DecodeParallel(const int32_t fm, const int32_t fn, const int32_t fk,
                                                                                           const int32_t bn, const int32_t m_actual,
                                                                                           const int32_t n0_actual, const int32_t n1_actual,
-                                                                                          const uint32_t maskType)
+                                                                                          const uint32_t maskType, const int32_t nIdx,
+                                                                                          const int32_t mask_n, const int32_t is_ping)
 {
     int32_t Pingflag = 0; // manual PingPong attempt
     int32_t Pongflag = 1;
@@ -1821,10 +1824,17 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
         SET_FLAG(MTE2, MTE1, Pingflag + 2);
         if (n1_actual != -1) {
             WAIT_FLAG(MTE1, MTE2, Pongflag + 2);
-            gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+            if (maskType == 4) {
+                gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
+                l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+                gmSrcm_tensor[0], fm, fm, maskStride, bn, bn,
+                bn);
+            } else {
+                gm_to_l1<ArchType::ASCEND_V200, half, DataFormat::NZ, DataFormat::NZ>(
                 l1maskBufAddr_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
                 gmSrcm_tensor[srcmOffset + maskStride * blockSize], fm, fm, maskStride, bn, bn,
                 bn);
+            }
             SET_FLAG(MTE2, MTE1, Pongflag + 2);
         }
     }
@@ -2017,7 +2027,7 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
                                                   l0cBuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE], 1,
                                                   pSize / CUBE_MATRIX_SIZE, 0, 0);
     SET_FLAG(V, M, Pingflag);
-    
+
     PIPE_BARRIER(V);
 
     // 3.1. mask(attention score * tor)
@@ -2044,7 +2054,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
         SET_FLAG(MTE1, MTE2, Pingflag + 2);
         SET_FLAG(MTE1, V, Pingflag);
         WAIT_FLAG(MTE1, V, Pingflag);
-        add_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
+        if ((maskType == 4 && is_ping == 1 &&  mask_n == nIdx) || maskType != 4) {
+            add_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
                                            lsUbuf_tensor[Pingflag * L0AB_HALF_BUF_SIZE],
                                            loUbuf_tensor.ReinterpretCast<half>()[Pingflag * L0AB_HALF_BUF_SIZE],
                                            fm * fn / VECTOR_SIZE, // repeat
@@ -2054,7 +2065,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
                                            8,                     // dstRepeatStride
                                            8,                     // src0RepeatStride
                                            8                      // src1RepeatStride
-        );
+            );
+        }
 
         PIPE_BARRIER(V);
     }
@@ -2318,7 +2330,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
             SET_FLAG(MTE1, MTE2, Pongflag + 2);
             SET_FLAG(MTE1, V, Pongflag);
             WAIT_FLAG(MTE1, V, Pongflag);
-            add_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
+            if((maskType == 4 && is_ping == 0 &&  mask_n == nIdx)|| maskType != 4) {
+                add_v<ArchType::ASCEND_V200, half>(lsUbuf_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
                                                lsUbuf_tensor[Pongflag * L0AB_HALF_BUF_SIZE],
                                                loUbuf_tensor.ReinterpretCast<half>()[Pongflag * L0AB_HALF_BUF_SIZE],
                                                fm * bn / VECTOR_SIZE, // repeat
@@ -2328,7 +2341,8 @@ __aicore__ inline void PagedAttentionDecoder<CalcMode::CALC_MODE_PREFILL>::Decod
                                                8,                     // dstRepeatStride
                                                8,                     // src0RepeatStride
                                                8                      // src1RepeatStride
-            );
+                );
+            }
             PIPE_BARRIER(V);
         }
         // 3. softmax part
@@ -3261,6 +3275,9 @@ __aicore__ inline void RunParallel(uint32_t startBlk, uint32_t endBlk, uint32_t 
             int32_t roundN1 = (n1_actual + 15) / 16 * 16;
             int32_t roundK = (__k + 15) / 16 * 16;
 
+            int32_t is_ping = 0;
+            int32_t mask_n = 0;
+
             int64_t maskOffset = currMaskOffset + nIdx * blockSize * maskStride;
             if ((nIdx + 1) == (nLoop)) {
                 n1_actual = -1;
@@ -3269,10 +3286,10 @@ __aicore__ inline void RunParallel(uint32_t startBlk, uint32_t endBlk, uint32_t 
             if (m_actual == 1) {
                 pa.Decode(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, wrapO);
             } else if (m_actual <= 16) {
-                pa.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType);
+                pa.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx, mask_n, is_ping);
             } else {
                 paPrefill.Init(qOffset, kvOffset0, kvOffset0, kvOffset1, kvOffset1, maskOffset, qOffset, initG, wrapO);
-                paPrefill.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType);
+                paPrefill.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx, mask_n, is_ping);
             }
         }
     }
@@ -3317,7 +3334,7 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
         0, 1, 4, 0, 0);
     SET_FLAG(MTE2, S, EVENT_ID0);
     WAIT_FLAG(MTE2, S, EVENT_ID0);
-    
+
     uint32_t maskAddrHigh32 = (uint32_t)(*((__ubuf__ int32_t *)batchTilingUb + 5));
     uint32_t maskAddrLow32 = (uint32_t)(*((__ubuf__ int32_t *)batchTilingUb + 6));
     int64_t curBatchMaskStride = (int64_t)(((uint64_t)maskAddrHigh32) << 32 | maskAddrLow32);
@@ -3343,6 +3360,9 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
         int32_t start = cur_q_blk_id * nLoop;
         int32_t end = start + nLoop;
 
+        int32_t prefix_size = (kv_seqlen_aligned - q_seqlen_aligned) / blockSize;
+
+
         for (int32_t loop_idx = start; loop_idx < end; loop_idx += 2) {
             int32_t headId = loop_idx / (mLoop * nLoop);
             int32_t mIdx = loop_idx % (mLoop * nLoop) / nLoop;
@@ -3356,7 +3376,7 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
                 kvOffset1 = numBlocksId1 * blockSize * kvHeads * embeddingSize + (headId / groupNum) * strideKV;
             }
             int64_t qOffset = curQOffset + headId * strideQO + mIdx * pp_m_scalar * BLOCK_SIZE;
-            int64_t maskOffset = curBatchMaskStride + mIdx * pp_m_scalar * BLOCK_SIZE + nIdx * maskStride * blockSize;
+            int64_t maskOffset = 0;
             int32_t wrapO = (nIdx == (nLoop - 1) || (nIdx + 1) == (nLoop - 1)) ? 1 : 0;
             int32_t initG = (nIdx == 0) ? 1 : 0;
             int32_t m_actual = (mIdx == (mLoop - 1)) ? (q_seqlen_real - mIdx * pp_m_scalar) : pp_m_scalar;
@@ -3371,10 +3391,28 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
             if (nIdx + 1 == nLoop) {
                 n1_actual = -1;
             }
+
+            int32_t is_ping = 0;
+            int32_t mask_n = 0;
+            if (maskType == 4) {
+                if (prefix_size % 2 == 1) {
+                    mask_n = (prefix_size / 2) * 2 + ((mIdx + 1) / 2 ) *2;
+                } else {
+                    mask_n = (prefix_size / 2) * 2 + (mIdx / 2 ) *2;
+                }
+                if (nIdx > mask_n) {
+                    continue;
+                }
+                wrapO = nIdx == mask_n ? 1 : 0;
+                if (nIdx + 1 == mIdx + prefix_size +1) {
+                    n1_actual = -1;
+                }
+                is_ping = (prefix_size % 2 == mIdx % 2) ? 1 : 0;
+            }
             paPrefill.Init(qOffset, kvOffset0, kvOffset0, kvOffset1, kvOffset1, maskOffset, qOffset, initG, wrapO);
-            paPrefill.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType);
+            paPrefill.DecodeParallel(roundM, roundN0, roundK, roundN1, m_actual, n0_actual, n1_actual, maskType, nIdx,  mask_n, is_ping);
         }
-        if (cur_q_blk_id == cur_proc_num - 1) { 
+        if (cur_q_blk_id == cur_proc_num - 1) {
             curBatch += 1;
             SET_FLAG(S, MTE2, EVENT_ID0);
             WAIT_FLAG(S, MTE2, EVENT_ID0);
@@ -3388,6 +3426,7 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
         }
     }
 };
+
 
 
 extern "C" __global__ __aicore__ void

@@ -54,6 +54,8 @@ protected:
     Status InferShapeDimCheckBNSD910B(const SVector<TensorDesc> &inTensorDescs) const;
     Status SetupDimCheckBNSD910B(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
     bool MlaBatchSizeCheck(const SVector<TensorDesc> &inTensorDescs) const;
+    Status MaskFreeInferShapeCheck310P(const SVector<TensorDesc> &inTensorDescs) const;
+    Status MaskFreeSetupCheck310P(const SVector<Tensor> &inTensor) const;
 
 private:
     bool IsInMLAIncompatible() const;
