@@ -4492,6 +4492,9 @@ class PagedAttentionOperation(DataGen):
             elif maskType == 3:
                 mask_slice = mask[cu_seqlen : (cu_seqlen + q_seqlen), :context_len]
                 out = PagedAttentionOperation.ref_masked_attention(q, keys, values, scale, mask_slice)
+            elif maskType == 4:
+                mask_slice = mask[cu_seqlen : (cu_seqlen + q_seqlen), :context_len]
+                out = PagedAttentionOperation.ref_masked_attention(q, keys, values, scale, mask)
 
             if is_lookahead:
                 out = out.reshape(-1, num_heads, head_size_vo)
@@ -4649,6 +4652,9 @@ class PagedAttentionOperation(DataGen):
 
         if is_mask:
             max_seq_len = (shapes[5][1] * 16) if is_NZ else shapes[5][-1]
+            if maskType == 4:
+                k_seq_len = np.array(json_data["k_seq_len"]) 
+                max_seq_len = max(k_seq_len)
         k_seq_len = max_seq_len
         dtype = datatype
         if datatype == 'bf16':
@@ -4703,6 +4709,7 @@ class PagedAttentionOperation(DataGen):
 
         # create context_lens
         context_lens = [random.randint(max_seq_len, max_seq_len) for _ in range(batch)]
+
         max_context_len = max_seq_len
         max_num_blocks_per_query = (max_context_len + block_size - 1) // block_size
         # create q_seq_lens,mask
@@ -4715,6 +4722,7 @@ class PagedAttentionOperation(DataGen):
         # correct context_lens
         if is_compresshead:
             context_lens = [val for val in context_lens for _ in range(num_head)]
+
         batch = len(context_lens)
         # create block_tables
         for _ in range(batch):
@@ -4794,6 +4802,34 @@ class PagedAttentionOperation(DataGen):
                 mask_nz = PagedAttentionOperation.convert_nd_to_nz(mask_pad)
                 mask_nz = mask_nz.reshape(1, -1, num_tokens_pad, 16).astype(np.float16)
                 mask_nz = np.ascontiguousarray(mask_nz)
+            elif maskType == 4:
+                context_lens = np.array(json_data["k_seq_len"]) 
+                q_seq_lens = np.array(json_data["q_seq_len"]) 
+
+                seq_len = 128
+                # 创建一个矩阵，初始为全 0
+                mask = np.zeros((seq_len, seq_len), dtype=np.float16)
+                # 构造严格上三角（不包括对角线）的 mask，赋值为 -inf
+                mask[np.triu_indices(seq_len, k=1)] = 1
+                mask *= -60000
+                mask_nz = PagedAttentionOperation.convert_nd_to_nz(mask)
+                mask_nz = mask_nz.reshape(1, 8, 128, 16).astype(np.float16)
+                mask_nz = np.ascontiguousarray(mask_nz)
+
+                max_k_seqlen = context_lens[0]
+                mask = torch.zeros(size=(q_seq_lens.sum(), max(context_lens)))
+                prev_qseq = 0
+                for i in range(len(context_lens)):
+                    qseq = q_seq_lens[i]
+                    kseq = context_lens[i]
+                    start = kseq - qseq
+                    tri = torch.ones((qseq, qseq)).half()
+                    tri = torch.triu(tri, 1)
+                    tri *= -60000
+                    mask[prev_qseq:(prev_qseq + qseq), start:kseq] = tri
+                    prev_qseq += qseq
+                mask = mask.numpy()
+
             data.extend([query, key_cache_nz, value_cache_nz, block_tables, context_lens])
             data.extend([mask_nz, batch_run_status, k_descale, k_offset, v_descale, v_offset, q_seq_lens, razor_offset, p_scale, logN])
         else:
@@ -4811,12 +4847,14 @@ class PagedAttentionOperation(DataGen):
         golden_data.extend([mask, batch_run_status, k_descale, k_offset, v_descale, v_offset, q_seq_lens, razor_offset, p_scale, logN])
 
         in_tensors = [torch.from_numpy(tensor).npu() for tensor in data]
+        
         golden_tensors = [torch.from_numpy(tensor).npu() for tensor in golden_data]
         PagedAttentionOperation.golden_tensors = golden_tensors
         PagedAttentionOperation.in_tensors = in_tensors
 
         PagedAttentionOperation.in_tensors[0] = \
                             PagedAttentionOperation.in_tensors[0].to(PagedAttentionOperation.trans_dtype(datatype))
+
         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[0], format_dict[format])
 
     @staticmethod
@@ -4849,6 +4887,7 @@ class PagedAttentionOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
+
         is_NZ = get_soc_version() != "Ascend910B"
         head_size_o = 0
         if "mlaVHeadSize" in json_data and json_data["mlaVHeadSize"] > 0:
@@ -4914,8 +4953,25 @@ class PagedAttentionOperation(DataGen):
                         else:
                             mask = mask.contiguous().view(1, json_data["headNum"], dim1, dim2*dim3)
                     golden_tensors[5] = mask
-            PagedAttentionOperation.golden_tensors = golden_tensors
+                    if maskType == 4 :
+                        num_tokens = in_tensors[6].sum().item()
+                        max_k_seqlen = max(in_tensors[4]).item()
+                        batch_size = in_tensors[4].shape[0]
+                        # 转numpy
+                        mask = torch.zeros(size=(num_tokens, max_k_seqlen))
+                        prev_qseq = 0
+                        for i in range(batch_size):
+                            qseq = in_tensors[6][i]
+                            kseq = in_tensors[4][i]
+                            start = kseq - qseq
+                            tri = torch.ones((qseq, qseq)).half()
+                            tri = torch.triu(tri, 1)
+                            tri *= -60000
+                            mask[prev_qseq:(prev_qseq + qseq), start:kseq] = tri
+                            prev_qseq += qseq
+                        golden_tensors[5] = mask
 
+            PagedAttentionOperation.golden_tensors = golden_tensors
         PagedAttentionOperation.ref_single_query_cached_kv_attention(
             op_params,
             ref_output,

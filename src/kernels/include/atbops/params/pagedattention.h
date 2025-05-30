@@ -46,7 +46,8 @@ struct PagedAttention {
         MASK_TYPE_NONE = 0,
         MASK_TYPE_NORM = 1,
         MASK_TYPE_ALIBI = 2,
-        MASK_TYPE_LOOK_AHEAD = 3
+        MASK_TYPE_LOOK_AHEAD = 3,
+        MASK_TYPE_MASK_FREE = 4
     };
 
     MaskType maskType = MASK_TYPE_NORM;

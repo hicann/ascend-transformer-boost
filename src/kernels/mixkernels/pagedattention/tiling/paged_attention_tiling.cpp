@@ -71,7 +71,8 @@ void GetMaskStride(PagedAttentionInfo &mmInfo, OpParam::PagedAttention &param, T
             mmInfo.headStride = 0;
             mmInfo.divCoef = cs ? param.kvHead : 1;
         }
-    } else if (maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD) {
+    } else if (maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD  ||
+                    maskType == OpParam::PagedAttention::MASK_TYPE_MASK_FREE) {
         mmInfo.maxPromptLen = static_cast<int32_t>(maskShape.at(DIM_1));
         mmInfo.batchStride = 0;
         mmInfo.headStride = 0;
@@ -262,6 +263,8 @@ Status GetPagedAttentionNzMaskInfo(const LaunchParam &launchParam, PagedAttentio
                 break;
             case OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD:
                 break;
+            case OpParam::PagedAttention::MASK_TYPE_MASK_FREE:
+                break;
             default:
                 return Status::FailStatus(ERROR_INVALID_VALUE, "Invalid MaskType");
         }
@@ -352,9 +355,10 @@ Status GetPaParallelCheck(const uint32_t *tilingParam, const OpParam::PagedAtten
     isParallel = (param.type == OpParam::PagedAttention::PAGED_ATTENTION_NZ_MASK) ?
                  (mmInfo.numTokens != mmInfo.batch) : isParallel;
     bool isLookahead = param.maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD;
+    bool isPrefix = param.maskType == OpParam::PagedAttention::MASK_TYPE_MASK_FREE;
 
     // parallel support check
-    if (isParallel || isLookahead) {
+    if (isParallel || isLookahead || isPrefix) {
         MKI_CHECK(mmInfo.batch > 0 && mmInfo.batch <= PARALLEL_MAX_BATCH,
                 "parallel batch size invalid",
                  return Status::FailStatus(ERROR_INVALID_VALUE));
@@ -387,7 +391,8 @@ Status GetPaParallelCheck(const uint32_t *tilingParam, const OpParam::PagedAtten
                  return Status::FailStatus(ERROR_INVALID_VALUE));
         } else if (param.type == OpParam::PagedAttention::PAGED_ATTENTION_NZ_MASK) {
             MKI_CHECK(param.maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD ||
-                param.maskType == OpParam::PagedAttention::MASK_TYPE_NONE,
+                param.maskType == OpParam::PagedAttention::MASK_TYPE_NONE ||
+                param.maskType == OpParam::PagedAttention::MASK_TYPE_MASK_FREE,
                 "prefill pa only support no mask and lookahead mask",
                  return Status::FailStatus(ERROR_INVALID_VALUE));
             MKI_CHECK(mmInfo.embeddingSize > 0 && mmInfo.embeddingSizeV == 0,

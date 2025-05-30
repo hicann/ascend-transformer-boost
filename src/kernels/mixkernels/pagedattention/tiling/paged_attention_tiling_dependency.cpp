@@ -832,8 +832,12 @@ void GetPaBatchTiling(const OpParam::PagedAttention &param, const PagedAttention
         qOffset += incOffset;
         maskOffset += incOffset;
     }
-    tilingParam[TILING_MASK_STRIDE] = (maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD) ?
+    if (maskType == OpParam::PagedAttention::MASK_TYPE_MASK_FREE) {
+        tilingParam[TILING_MASK_STRIDE] = 128;
+    } else {
+        tilingParam[TILING_MASK_STRIDE] = (maskType == OpParam::PagedAttention::MASK_TYPE_LOOK_AHEAD) ?
                                     static_cast<uint32_t>(numTokensPad) : static_cast<uint32_t>(maxQ);
+    }
     tilingParam[TILING_DECODE_TYPE] = maxQ > maxMSlice ? static_cast<uint32_t>(CalcType::CALC_TYPE_PREFILL) :
                                       static_cast<uint32_t>(CalcType::CALC_TYPE_MIX);
 }
