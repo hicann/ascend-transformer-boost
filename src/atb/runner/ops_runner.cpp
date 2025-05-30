@@ -601,8 +601,10 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         if (runnerVariantPack.mstxMemRegister != nullptr) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
-            runnerVariantPack.workspaceBufferSize = static_cast<uint64_t>(TensorUtil::AlignInt(runnerVariantPack.workspaceBufferSize, ALIGN_INT));
-            runnerVariantPack.mstxMemRegister->AddTensorMemRegions(runnerVariantPack.workspaceBuffer, runnerVariantPack.workspaceBufferSize);
+            if (runnerVariantPack.workspaceBufferSize) {
+                runnerVariantPack.workspaceBufferSize = static_cast<uint64_t>(TensorUtil::AlignInt(runnerVariantPack.workspaceBufferSize, ALIGN_INT));
+                runnerVariantPack.mstxMemRegister->AddTensorMemRegions(runnerVariantPack.workspaceBuffer, runnerVariantPack.workspaceBufferSize);
+            }
             auto &inTensors = node.impl->GetInTensors();
             for (uint64_t tensorId = 0; tensorId < inTensors.size(); tensorId++) {
                 Mki::Tensor &tensor = inTensors.at(tensorId);
