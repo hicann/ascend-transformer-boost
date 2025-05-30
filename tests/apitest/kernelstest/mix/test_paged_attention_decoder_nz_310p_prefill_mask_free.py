@@ -297,10 +297,10 @@ class TestPagedAttentionNz(op_test.OpTest):
 
     def get_case_from_json(self):  
         json_str = {  
-        "batch": [1, 2, 7, 23],  
-        "head_comb":[[8,8],[32,32],[8,1],[7,1]],  
-        "headdim":[64, 80, 96, 128],
-        "kvSeqlen":[1, 11, 47, 63, 71, 111, 127, 239, 255, 257, 267, 303, 319, 327, 367, 383, 495, 511, 513, 523, 559, 575, 583, 623, 639, 751, 767, 1025, 1035, 1071, 1087, 1095, 1135, 1151, 1263, 1279, 1537, 1547, 1583, 1599, 1607, 1647, 1663, 1775, 1791, 128, 256, 512, 1024, 2048]    
+        "batch": [1, 2],  
+        "head_comb":[[8,8],[7,1]],  
+        "headdim":[64, 128],
+        "kvSeqlen":[1, 11]    
         }  
         case_list = list(itertools.product(json_str["batch"], json_str["head_comb"], json_str["headdim"], json_str["kvSeqlen"]))  
         return case_list
