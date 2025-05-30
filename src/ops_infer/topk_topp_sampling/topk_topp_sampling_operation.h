@@ -19,6 +19,8 @@ public:
     ~TopkToppSamplingOperation() override;
     uint32_t GetInputNum() const override;
     uint32_t GetOutputNum() const override;
+    infer::TopkToppSamplingParam GetParam() const;
+    void SetParam(const infer::TopkToppSamplingParam &param);
 
 protected:
     Status CheckBatchSize(const SVector<TensorDesc> &inTensorDescs) const;

@@ -21,21 +21,34 @@ namespace OpParam {
 struct MLA {
     enum Type {
         SPLIT_CACHE = 0,
+        PREFILL_SPLIT_CACHE = 1
     };
     Type type;
     int32_t headSize = 0;
     float tor = 0;
     int32_t kvHead = 0;
+    uint32_t isTriuMask = 0;
+    std::vector<Mki::Tensor> kTensorList;
+    std::vector<Mki::Tensor> vTensorList;
 
     enum MaskType {
         MASK_TYPE_NONE = 0,
         MASK_TYPE_NORM = 1,
         MASK_TYPE_ALIBI = 2,
         MASK_TYPE_LOOK_AHEAD = 3,
-        MASK_TYPE_MASK_FREE = 4
+        MASK_TYPE_MASK_FREE = 4,
+        MASK_TYPE_CAUSAL_COMPRESS = 5
     };
 
     MaskType maskType = MASK_TYPE_NONE;
+
+    enum QuantType {
+        TYPE_QUANT_UNDEFINED = 0,
+        TYPE_DEQUANT_FUSION,
+        TYPE_QUANT_QKV_OFFLINE,
+        TYPE_QUANT_QKV_ONLINE
+    };
+    QuantType quantType = TYPE_QUANT_UNDEFINED;
 
     std::vector<int32_t> qSeqLen;
     std::vector<int32_t> kvSeqLen;
@@ -44,7 +57,7 @@ struct MLA {
 
     bool operator==(const MLA &other) const
     {
-        return this->headSize == other.headSize &&
+        return this->headSize == other.headSize && this->isTriuMask == other.isTriuMask &&
                this->qSeqLen == other.qSeqLen && this->kvSeqLen == other.kvSeqLen && this->type == other.type &&
                Mki::Utils::Compare<float>::IsEqual(this->tor, other.tor) && this->kvHead == other.kvHead &&
                this->isRing == other.isRing;

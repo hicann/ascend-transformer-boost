@@ -26,6 +26,7 @@ public:
                                 __gm__ uint8_t * __restrict__ valueCacheInGm,
                                 __gm__ uint8_t * __restrict__ blockTablesInGm,
                                 __gm__ uint8_t * __restrict__ contextLensInGm,
+                                __gm__ uint8_t * __restrict__ seqStartsInGm,
                                 __gm__ uint8_t * __restrict__ keyOutGm,
                                 __gm__ uint8_t * __restrict__ valueOutGm,
                                 __gm__ uint8_t * __restrict__ tilingParaGm);
@@ -44,6 +45,7 @@ private:
     AscendC::GlobalTensor<T> inValueCacheGM;
     AscendC::GlobalTensor<int32_t> inBlockTableGM;
     AscendC::GlobalTensor<int32_t> inContextLenGM;
+    AscendC::GlobalTensor<int32_t> inSeqStartsGM;
 
     // output
     AscendC::GlobalTensor<T> outKeyGM;
@@ -63,6 +65,8 @@ private:
     int32_t tokenSizeK = 0;
     int32_t tokenSizeV = 0;
     int32_t typeByte = 0;
+    int32_t hasSeqStarts = 0;
+    int32_t cuSeqLens = 0;
 
     uint32_t maxNumTokens = 0;
     uint32_t eleNumPerBlk = 0;
@@ -74,6 +78,7 @@ __aicore__ inline void PagedCacheLoadNz<T>::Init(
     __gm__ uint8_t * __restrict__ valueCacheInGm,
     __gm__ uint8_t * __restrict__ blockTablesInGm,
     __gm__ uint8_t * __restrict__ contextLensInGm,
+    __gm__ uint8_t * __restrict__ seqStartsInGm,
     __gm__ uint8_t * __restrict__ keyOutGm,
     __gm__ uint8_t * __restrict__ valueOutGm,
     __gm__ uint8_t * __restrict__ tilingParaGm)
@@ -85,7 +90,7 @@ __aicore__ inline void PagedCacheLoadNz<T>::Init(
     this->inValueCacheGM.SetGlobalBuffer((__gm__ T *)valueCacheInGm);
     this->inBlockTableGM.SetGlobalBuffer((__gm__ int32_t *)blockTablesInGm);
     this->inContextLenGM.SetGlobalBuffer((__gm__ int32_t *)contextLensInGm);
-
+    this->inSeqStartsGM.SetGlobalBuffer((__gm__ int32_t *)seqStartsInGm);
     // output
     this->outKeyGM.SetGlobalBuffer((__gm__ T *)keyOutGm);
     this->outValueGM.SetGlobalBuffer((__gm__ T *)valueOutGm);
@@ -103,7 +108,6 @@ __aicore__ inline void PagedCacheLoadNz<T>::Init(
     AscendC::LocalTensor<int32_t> locateInfoTensor = locateInfoBuf.Get<int32_t>();
     this->contextLenTensor = locateInfoTensor[0];
     this->blockTableTensor = locateInfoTensor[maxNumTokensRnd];
-
     this->tmpTensor = tmpBuf.Get<T>();
     this->eleNumPerBlk = BLOCK_SIZE / this->typeByte; // fp16, bf16, int8
 }
@@ -126,6 +130,10 @@ __aicore__ inline void PagedCacheLoadNz<T>::ParseTilingData(__gm__ uint8_t * __r
     this->tokenSizeV = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
     locId++;
     this->typeByte = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
+    locId++;
+    this->hasSeqStarts = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
+    locId++;
+    this->cuSeqLens = (*(__gm__ int32_t *)((__gm__ uint8_t *)tilingBuf + locId * sizeof(int32_t)));
 }
 
 
@@ -210,6 +218,8 @@ __aicore__ inline void PagedCacheLoadNz<T>::Process()
     int32_t coreNum = AscendC::GetBlockNum(); // total vector core number
 
     int32_t numRsltProc = 0;
+    int32_t ctxtStart = 0;
+    if (this->cuSeqLens) ctxtStart = this->contextLenTensor.GetValue(0);
 
     for (int32_t tokenId = 0; tokenId < this->numTokens; tokenId++) {
         int32_t localtokenId = tokenId % this->maxNumTokens;
@@ -220,7 +230,14 @@ __aicore__ inline void PagedCacheLoadNz<T>::Process()
         }
 
         // get the context len of current token
-        int32_t ctxtLenValue = this->contextLenTensor.GetValue(localtokenId);
+        int32_t ctxtLenValue;
+        if (this->cuSeqLens) {
+            int32_t ctxtEnd = this->contextLenTensor.GetValue(localtokenId + 1);
+            ctxtLenValue = ctxtEnd - ctxtStart;
+            ctxtStart = ctxtEnd;
+        } else {
+            ctxtLenValue = this->contextLenTensor.GetValue(localtokenId);
+        }
 
         uint32_t localBlkTabId = 0;
         int32_t blkTabValue = 0;
@@ -230,6 +247,7 @@ __aicore__ inline void PagedCacheLoadNz<T>::Process()
             int32_t blkOffset = ctxtId % this->blockSize;
             if (blkOffset == 0) {
                 localBlkTabId = localtokenId * this->numblkTabCol + ctxtId / this->blockSize;
+                if (this->hasSeqStarts) localBlkTabId += this->inSeqStartsGM.GetValue(localtokenId);
                 blkTabValue = this->blockTableTensor.GetValue(localBlkTabId);
             }
 
@@ -255,12 +273,13 @@ extern "C" __global__ __aicore__ void paged_cache_load_nz(
     __gm__ uint8_t * __restrict__ contextLensInGm,
     __gm__ uint8_t * __restrict__ keyInGm,
     __gm__ uint8_t * __restrict__ valueInGm,
+    __gm__ uint8_t * __restrict__ seqStartsInGm,
     __gm__ uint8_t * __restrict__ keyOutGm,
     __gm__ uint8_t * __restrict__ valueOutGm,
     __gm__ uint8_t * __restrict__ tilingParaGm)
 {
     PagedCacheLoad::PagedCacheLoadNz<int8_t> op;
     op.Init(keyCacheInGm, valueCacheInGm, blockTablesInGm,
-             contextLensInGm, keyOutGm, valueOutGm, tilingParaGm);
+             contextLensInGm, seqStartsInGm, keyOutGm, valueOutGm, tilingParaGm);
     op.Process();
 }

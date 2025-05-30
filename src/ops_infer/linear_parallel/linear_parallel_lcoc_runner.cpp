@@ -31,10 +31,14 @@ LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelPa
             break;
         case infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER:
             lcalType_ = Lcal::LcalType::MATMUL_REDUCE_SCATTER;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR:
             lcalType_ =
                 param_.keepIntermediate ? Lcal::LcalType::ALL_GATHER_MATMUL_V2 : Lcal::LcalType::ALL_GATHER_MATMUL;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             lcalType_ = Lcal::LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER;
@@ -42,6 +46,16 @@ LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelPa
         case infer::LinearParallelParam::ParallelType::PURE_LINEAR:
             lcalType_ = Lcal::LcalType::PURE_MATMUL;
             isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+            break;
+        case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
+            lcalType_ = Lcal::LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
+                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+            break;
+        case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
+            lcalType_ = Lcal::LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
                        param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         default:
@@ -116,6 +130,27 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     }
     if (isQuant_) {
         coCParamDesc.quantInfo = {static_cast<Lcal::QuantGranularity>(param_.quantType), param_.quantGroupSize};
+        if (param_.quantType == infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_CHANNEL) {
+            const TensorDesc &scale = runnerVariantPack.inTensors.at(3).desc;
+            if (scale.dtype == ACL_FLOAT) {
+                coCParamDesc.quantInfo = {Lcal::QuantGranularity::FLOAT32_SCALE_PER_CHANNEL, param_.quantGroupSize};
+            }
+        }
+    }
+    if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+        param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+        Lcal::MoeInfo moeInfo{.local_expert_nums = param_.moeInfo.localExpertNums,
+                              .EP = param_.moeInfo.epSize,
+                              .TP = param_.moeInfo.tpSize,
+                              .maxOutputSize = -1,
+                              .isMoe = 1};
+        coCParamDesc.moeInfo = moeInfo;
+        if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM) {
+            coCParamDesc.moeInfo.maxOutputSize =
+            runnerVariantPack.inTensors.at(runnerVariantPack.inTensors.size() - 1).desc.shape.dims[0];
+        } else if (param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+            coCParamDesc.moeInfo.maxOutputSize = runnerVariantPack.inTensors.at(0).desc.shape.dims[0];
+        }
     }
     int ret = lcoc_->SetParam(lcalType_, {}, coCParamDesc);
     if (ret != 0) {
@@ -167,6 +202,14 @@ Status LinearParallelLcocRunner::LaunchKernel(Lcal::CoCInputPkg inputPkg, Lcal::
             ret = lcoc_->PureMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
                                     GetExecuteStream(runnerVariantPack.context));
             break;
+        case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
+            ret = lcoc_->AllToAllVAllGatherMatmulHidden(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                                        runnerVariantPack.context->GetExecuteStream());
+            break;
+        case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
+            ret = lcoc_->MatmulReduceScatterAllToAllVHidden(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                                            runnerVariantPack.context->GetExecuteStream());
+            break;
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "UnSupported type: " << param_.type;
             return ERROR_INVALID_PARAM;
@@ -194,6 +237,14 @@ Status LinearParallelLcocRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPac
         inputPkg.dequantScale = inTensors.at(inTensorId++).deviceData;
     }
     inputPkg.bias = param_.hasResidual ? inTensors.at(inTensorId++).deviceData : nullptr;
+    if (isQuant_ && param_.quantType == infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
+        inputPkg.quantScale = inTensors.at(inTensorId++).deviceData;
+    }
+    if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+        param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+        inputPkg.global_tokens_per_expert_matrix = inTensors.at(inTensorId++).deviceData;
+    }
+
     Lcal::CoCOutputPkg outputPkg = {runnerVariantPack.outTensors[0].deviceData,
                                     param_.keepIntermediate ? runnerVariantPack.outTensors[1].deviceData : nullptr};
     Status st = LaunchKernel(inputPkg, outputPkg, runnerVariantPack, param_.type);

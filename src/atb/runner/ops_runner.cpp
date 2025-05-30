@@ -36,6 +36,7 @@
 #include "atb/utils/acl_kernel.h"
 #include "atb/operation/operation_base.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/mstx_mem_register.h"
 
 namespace atb {
 const int ALIGN_INT = 512;
@@ -156,7 +157,7 @@ bool OpsRunner::SetupCanReuse(RunnerVariantPack &runnerVariantPack, bool &kernel
             return false;
         }
         if (!isParamUpdated_ && setupCount_ != 0 &&
-            IsRunnerVariantPackInputEqual(runnerVariantPack, lastRunnerVariantPack_)) {
+            TensorUtil::IsRunnerVariantPackInputEqual(runnerVariantPack, lastRunnerVariantPack_)) {
             ATB_LOG(INFO) << GetLogPrefix() << " runnerVariantPack input is not change, setup do nothing";
             kernelGraphTopoChanged = false;
             GetOpSetupStatistic().setupCacheHitCount++;
@@ -273,7 +274,7 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
 Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t nodeId,
                                                    uint8_t *kernelHostTilingBuffer, size_t tilingSize)
 {
-    if (node.impl->GetTilingFilledFlag()) {
+    if (node.impl->GetTilingFilledFlag() && !needKernelGraphModify_) {
         return NO_ERROR;
     }
 
@@ -344,6 +345,8 @@ Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPac
     bool needSetTiling = !((GetSingleton<Config>().IsLaunchKernelWithTiling()) || (totalTilingSize_ == 0));
     bool needSetworkspace = (workspaceSize_ != 0);
     uint64_t tilingOffset = 0;
+    uint64_t deviceArgsSizeOffset = 0;
+    uint64_t hostArgsSizeOffset = 0;
 
     for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
@@ -357,6 +360,18 @@ Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPac
         if (needSetworkspace) {
             ATB_LOG(DEBUG) << GetLogPrefix() << " node[" << nodeId << "] update kernel runinfo workspace";
             node.impl->SetWorkspaceDeviceAddr(runnerVariantPack.workspaceBuffer);
+        }
+        if (runnerVariantPack.argsDeviceBuffer != nullptr) {
+            node.impl->SetArgsDeviceBuffer(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
+            ATB_LOG(DEBUG) << GetLogPrefix() << "argsDeviceBuffer from workSpace is "
+                           << (void *)(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
+            deviceArgsSizeOffset += node.impl->GetArgsSize();
+        }
+        if (runnerVariantPack.argsHostBuffer != nullptr) {
+            node.impl->SetArgsHostBuffer(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
+            ATB_LOG(DEBUG) << GetLogPrefix() << "argsHostBuffer from workSpace is "
+                           << (void *)(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
+            hostArgsSizeOffset += node.impl->GetArgsSize();
         }
     }
     return ErrorType::NO_ERROR;
@@ -381,7 +396,7 @@ Status OpsRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
 
 Status OpsRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 {
-    Status st = RunAllKernel(runnerVariantPack.context);
+    Status st = RunAllKernel(runnerVariantPack);
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << "RunAllKernel failed! ret:" << st;
         return st;
@@ -578,15 +593,36 @@ void OpsRunner::ReportMsprofInfo(const uint64_t timeStamp, const char *opName, c
     }
 }
 
-Status OpsRunner::RunAllKernel(ContextBase *context)
+Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
 {
     ATB_LOG(DEBUG) << GetLogPrefix() << " start run all kernel, kernel count:" << kernelGraph_.nodes.size();
-    aclrtStream stream = GetExecuteStream(context);
+    aclrtStream stream = GetExecuteStream(runnerVariantPack.context);
     for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
-
+        if (runnerVariantPack.mstxMemRegister != nullptr) {
+            runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
+            auto &inTensors = node.impl->GetInTensors();
+            for (uint64_t tensorId = 0; tensorId < inTensors.size(); tensorId++) {
+                Mki::Tensor &tensor = inTensors.at(tensorId);
+                if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
+                    tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
+                }
+                }
+            auto &outTensors = node.impl->GetOutTensors();
+            for (uint64_t tensorId = 0; tensorId < outTensors.size(); tensorId++) {
+                Mki::Tensor &tensor = outTensors.at(tensorId);
+                if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
+                    tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
+                }
+            }
+            if (runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+                runnerVariantPack.mstxMemRegister->MstxMemRegionsRegister();
+            }
+        }
         RunKernelPreProcess(node, nodeId, stream);
-        Status st = RunKernel(node, nodeId, context);
+        Status st = RunKernel(node, nodeId, runnerVariantPack.context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << "RunKernel failed! ret:" << st;
             return st;
@@ -594,6 +630,9 @@ Status OpsRunner::RunAllKernel(ContextBase *context)
             ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] " << node.GetName() << " run end";
         }
         RunKernelPostProcess(node, nodeId, stream);
+        if (runnerVariantPack.mstxMemRegister != nullptr && runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+            runnerVariantPack.mstxMemRegister->MstxMemRegionsUnregister();
+        }
     }
     ATB_LOG(INFO) << GetLogPrefix() << " finish run all kernel";
     return NO_ERROR;
@@ -908,22 +947,8 @@ Status OpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
 Status OpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
 {
     (void)opsTensorPack;
+    overrideModifyGraph_ = false;
     return NO_ERROR;
-}
-
-bool OpsRunner::IsRunnerVariantPackInputEqual(const RunnerVariantPack &runnerVariantPack1,
-                                              const RunnerVariantPack &runnerVariantPack2) const
-{
-    if (runnerVariantPack1.inTensors.size() != runnerVariantPack2.inTensors.size()) {
-        return false;
-    }
-    for (size_t i = 0; i < runnerVariantPack1.inTensors.size(); ++i) {
-        if (!TensorUtil::TensorDescEqual(runnerVariantPack1.inTensors.at(i).desc,
-                                         runnerVariantPack2.inTensors.at(i).desc)) {
-            return false;
-        }
-    }
-    return true;
 }
 
 void OpsRunner::InitKernelCache()
@@ -1289,5 +1314,59 @@ void OpsRunner::InitOpsTensorPack(const RunnerVariantPack &runnerPack)
 bool OpsRunner::IsSupportGlbWorkspace()
 {
     return true;
+}
+
+uint64_t OpsRunner::GetArgsSize()
+{
+    uint64_t argsSize = 0;
+    for (size_t i = 0; i < kernelGraph_.nodes.size(); i++) {
+        ATB_LOG(DEBUG) << GetLogPrefix() << kernelGraph_.nodes.at(i).impl->GetName() << " argsSize from GetArgsSize is "
+                       << kernelGraph_.nodes.at(i).impl->GetArgsSize();
+        argsSize += kernelGraph_.nodes.at(i).impl->GetArgsSize();
+    }
+    return argsSize;
+}
+
+Status OpsRunner::BuildArgs()
+{
+    Status st = NO_ERROR;
+    for (size_t i = 0; i < kernelGraph_.nodes.size(); i++) {
+        st = kernelGraph_.nodes.at(i).impl->BuildArgs();
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "node [" << i << "] BuildArgs failed!";
+            return st;
+        }
+    }
+    return NO_ERROR;
+}
+
+Status OpsRunner::UpdateTensorAddr(RunnerVariantPack &runnerVariantPack)
+{
+    for (size_t i = 0; i < kernelGraph_.inTensors.size(); i++) {
+        TensorUtil::ConvertAtbTensor2OpsTensor(runnerVariantPack.inTensors.at(i), kernelGraph_.inTensors.at(i));
+    }
+    for (size_t i = 0; i < kernelGraph_.outTensors.size(); i++) {
+        TensorUtil::ConvertAtbTensor2OpsTensor(runnerVariantPack.outTensors.at(i), kernelGraph_.outTensors.at(i));
+    }
+
+    opsTensorPack_.inTensors = kernelGraph_.inTensors;
+    opsTensorPack_.outTensors = kernelGraph_.outTensors;
+
+    Status st = ModifyKernelGraph(opsTensorPack_);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << "ModifyKernelGraph failed!";
+        return st;
+    }
+
+    for (size_t i = 0; i < kernelGraph_.nodes.size(); i++) {
+        KernelGraphNode &node = kernelGraph_.nodes.at(i);
+        UpdateRunInfoTensorData(node, i, runnerVariantPack.intermediateBuffer);
+        st = node.impl->BuildLaunchParam(node.inTensors, node.outTensors, node.opDesc);
+        if (st != 0) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "build launchParam fail";
+            return st;
+        }
+    }
+    return NO_ERROR;
 }
 } // namespace atb

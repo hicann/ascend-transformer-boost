@@ -1478,7 +1478,9 @@ struct LinearParallelParam {
         ALL_GATHER_LINEAR = 2,                //!< AllGather+linear
         PURE_LINEAR = 3,                      //!< linear
         ALL_GATHER_LINEAR_REDUCE_SCATTER = 4, //!< AllGather+linear+reduce_scatter
-        MAX = 5,                              //!< 枚举类型最大值
+        ALLTOALLVC_ALL_GATHER_GMM = 5,        //!< AllToAllvc+AllGather+GroupMatmul
+        GMM_REDUCE_SCATTER_ALLTOALLVC = 6,    //!< GroupMatmul+ReduceScatter+AllToAllvc
+        MAX = 7,                              //!< 枚举类型最大值
     };
     //!
     //! \enum QuantType
@@ -1491,7 +1493,8 @@ struct LinearParallelParam {
         QUANT_TYPE_PER_TENSOR = 0,  //!< 对整个张量进行量化
         QUANT_TYPE_PER_CHANNEL = 1, //!< 对张量中每个channel分别进行量化
         QUANT_TYPE_PER_GROUP = 2,   //!< 将张量按quantGroupSize划分后，分别进行量化
-        QUANT_TYPE_MAX = 3,         //!< 枚举类型最大值
+        QUANT_TYPE_PER_TOKEN = 3,   //!< 对张量中每个token分别进行量化
+        QUANT_TYPE_MAX = 4,         //!< 枚举类型最大值
     };
     //! \brief 权重是否需要转置，默认为true。
     bool transWeight = true;
@@ -1543,10 +1546,22 @@ struct LinearParallelParam {
     };
     //! \brief AllGather_Matmul_ReduceScatter算子参数
     TwoDimTPInfo twoDimTPInfo;
+    //! \brief Moe 算子参数结构体
+    struct MoeInfo {
+        //! \brief MOE场景，每个NPU处理的expert数量
+        int16_t localExpertNums = 1;
+        //! \brief MOE场景，EP通信域大小
+        int8_t epSize = 1;
+        //! \brief MOE场景，TP通信域大小
+        int8_t tpSize = 1;
+    };
+    //! \brief AllGather_Matmul_ReduceScatter算子参数
+    MoeInfo moeInfo;
+
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[56] = {0};
+    uint8_t rsv[52] = {0};
 };
 
 //!
@@ -1841,7 +1856,8 @@ struct PagedAttentionParam {
         UNDEFINED = 0,   //!< 默认值，全0的mask
         MASK_TYPE_NORM,  //!< 倒三角mask
         MASK_TYPE_ALIBI, //!< alibi mask
-        MASK_TYPE_SPEC   //!< 并行解码mask
+        MASK_TYPE_SPEC,   //!< 并行解码mask
+        MASK_TYPE_MASK_FREE //! mask_free 只支持fp16
     };
     //! mask类型
     MaskType maskType = UNDEFINED;
@@ -2061,13 +2077,13 @@ struct ReduceParam {
 struct TopkToppSamplingParam {
     //! \brief 取样处理类型
     enum TopkToppSamplingType {
-        SAMPLING_UNDEFINED = -1,         //!< 未定义
-        SINGLE_TOPK_SAMPLING,            //!< 非batch级别随机种子、Topk的取样
-        BATCH_TOPK_MULTINOMIAL_SAMPLING, //!< batch级别随机种子、Topk的multinomial取样
-        BATCH_TOPK_EXPONENTIAL_SAMPLING, //!< batch级别随机种子、Topk的exponential取样
+        SAMPLING_UNDEFINED = -1,                  //!< 未定义
+        SINGLE_TOPK_SAMPLING,                     //!< 非batch级别随机种子、Topk的取样
+        BATCH_TOPK_MULTINOMIAL_SAMPLING,          //!< batch级别随机种子、Topk的multinomial取样
+        BATCH_TOPK_EXPONENTIAL_SAMPLING,          //!< batch级别随机种子、Topk的exponential取样
         BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING, //!< batch级别随机种子、Topk的multinomial 增加log_Probs取样
         BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING, //!< batch级别随机种子、Topk的exponential 增加log_Probs取样
-        SAMPLING_MAX,                    //!< 枚举最大值
+        SAMPLING_MAX,                             //!< 枚举最大值
     };
     //! \brief 采样类型，默认为非batch级别随机种子、Topk的取样
     TopkToppSamplingType topkToppSamplingType = SINGLE_TOPK_SAMPLING;
@@ -2092,6 +2108,18 @@ struct TopkToppSamplingParam {
     uint8_t rsv[12] = {0};
 };
 
+//!
+//! \brief 判断参数是否相同
+//!
+//! \param left
+//! \param right
+//! \return bool
+//!
+inline bool operator==(const TopkToppSamplingParam &left, const TopkToppSamplingParam &right)
+{
+    return left.topkToppSamplingType == right.topkToppSamplingType && left.randSeeds == right.randSeeds &&
+           left.randSeed == right.randSeed && left.topk == right.topk && left.logProbsSize == right.logProbsSize;
+}
 
 //!
 //! \struct PadParam
@@ -2134,6 +2162,18 @@ struct SortParam {
     //!
     uint8_t rsv[8] = {0};
 };
+
+//!
+//! \brief 判断参数是否相同
+//!
+//! \param left
+//! \param right
+//! \return bool
+//!
+inline bool operator==(const SortParam &left, const SortParam &right)
+{
+    return left.num == right.num;
+}
 
 //!
 //! \struct NonzeroParam
@@ -2873,6 +2913,8 @@ struct MultiLatentAttentionParam {
         CALC_TYPE_UNDEFINED = 0, // 默认值
         CALC_TYPE_SPEC,          // 支持传入大于1的qseqlen
         CALC_TYPE_RING,          // ringAttention
+        CALC_TYPE_SPEC_AND_RING,          // 支持传入大于1的qseqlen ringAttention
+        CALC_TYPE_PREFILL,       // 全量场景
     };
     //!
     //! \brief CalcType类型
@@ -2989,6 +3031,238 @@ struct FaUpdateParam {
 //! \brief reshapeandcache反向
 //!
 struct PagedCacheLoadParam {
+    //!
+    //! \enum KvCacheCfg
+    //!
+    //! \brief KvCache配置
+    //!
+    //! \note 默认值为K_CACHE_V_CACHE(0)，传入key_cache和value_cache
+    //!
+    enum KvCacheCfg : int8_t {
+        K_CACHE_V_CACHE_NZ = 0, //!< 默认值,传入key_cache和value_cache,且为NZ格式
+        K_CACHE_V_CACHE_ND,     //!< 传入key_cache和value_cache,且为ND格式
+    };
+    //! KvCacheCfg 配置
+    KvCacheCfg kvCacheCfg = K_CACHE_V_CACHE_NZ;
+    //!
+    //! \brief 支持输入SeqLens为累加和模式，即第n个batch中所需提取的元素数量为前n个batch的所需提取元素数量的累加和
+    //!
+    bool isSeqLensCumsumMode = false;
+    //!
+    //! \brief 提供SeqStart用于为每个batch提供在blockTable中的初始位置（类似于offset）
+    //!
+    bool hasSeqStarts = false;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[61] = {0};
+};
+
+//!
+//! \struct ScatterElementsV2Param
+//!
+//! \brief 将张量update中的所有的值，按照indices位置，写到自身张量input_tensor中。
+//!
+struct ScatterElementsV2Param {
+    //!
+    //! \enum ReductionType
+    //!
+    //! \brief ReductionType
+    enum ReductionType {
+        NONE = 0, //!< 默认值。none。
+        ADD, //!< add 原地累加。
+    };
+    //!
+    //! \brief 指定要收集切片的轴。默认值为0.
+    //!
+    //! \warning 该参数必须大于或等于0
+    //!
+    int32_t axis = -1;
+    //!
+    //! \brief  允许从一个batch的每个元素中收集不同的项目，默认值为0.
+    //!
+    //! \warning 该参数必须大于或等于0,且小于或等于axis.
+    //!
+    ReductionType reduction = NONE;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[24] = {0};
+};
+
+//!
+//! \struct GmmDeqSwigluQuantGmmDeqParam
+//!
+//! \brief GroupedMatmul1 + Dequant1 + Swiglu + Quant + GroupedMatmul2 + Dequant2 融合算子
+//!
+struct GmmDeqSwigluQuantGmmDeqParam {
+    //!
+    //! \enum OutputType
+    //!
+    //! \brief 指定输出类型
+    //!
+    enum OutputType {
+        OUTPUT_FLOAT16 = 0,
+        OUTPUT_BFLOAT16,
+        OUTPUT_INVALID
+    };
+
+    //!
+    //! \enum GroupListType
+    //!
+    //! \brief 指定 group list 类型
+    //!
+    enum GroupListType {
+        GROUP_LIST_CUMSUM = 0,
+        GROUP_LIST_SINGLE,
+        GROUP_LIST_INVALID
+    };
+
+    //!
+    //! \enum WeightUpPermuteType
+    //!
+    //! \brief weight1 和 scale 1 重排类型
+    //!
+    enum WeightUpPermuteType {
+        PERMUTE_N256 = 0,
+        PERMUTE_N128,
+        PERMUTE_INVALID
+    };
+
+    //!
+    //! \brief 输出数据类型
+    //!
+    OutputType outputType = OUTPUT_FLOAT16;
+    //!
+    //! \brief groupList 形式
+    //!
+    GroupListType groupListType = GROUP_LIST_CUMSUM;
+    //!
+    //! \brief Weight1 和 scale1 的重排方式
+    //!
+    WeightUpPermuteType weightUpPermuteType = PERMUTE_N256;
+    //!
+    //! \brief Weight1 是否转置
+    //!
+    bool transposeWeightUp = false;
+    //!
+    //! \brief Weight2 是否转置
+    //!
+    bool transposeWeightDown = true;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[42] = {0};
+};
+
+//!
+//! \struct MmDeqSwigluQuantMmDeqParam
+//!
+//! \brief Matmul1 + Dequant1 + Swiglu + Quant + Matmul2 + Dequant2 融合算子
+//!
+struct MmDeqSwigluQuantMmDeqParam {
+    //!
+    //! \enum OutputType
+    //!
+    //! \brief 指定输出类型
+    //!
+    enum OutputType {
+        OUTPUT_FLOAT16 = 0,
+        OUTPUT_BFLOAT16,
+        OUTPUT_INVALID
+    };
+
+    //!
+    //! \enum WeightUpPermuteType
+    //!
+    //! \brief weight1 和 scale 1 重排类型
+    //!
+    enum WeightUpPermuteType {
+        PERMUTE_N256 = 0,
+        PERMUTE_N128,
+        PERMUTE_INVALID
+    };
+
+    //!
+    //! \brief 输出数据类型
+    //!
+    OutputType outputType = OUTPUT_FLOAT16;
+    //!
+    //! \brief Weight1 和 scale1 的重排方式
+    //!
+    WeightUpPermuteType weightUpPermuteType = PERMUTE_N256;
+    //!
+    //! \brief Weight1 是否转置
+    //!
+    bool transposeWeightUp = false;
+    //!
+    //! \brief Weight2 是否转置
+    //!
+    bool transposeWeightDown = true;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[46] = {0};
+};
+
+//!
+//! \struct RingMLAParam
+//!
+//! \warning 仅Atlas 800I/T A2/A3推理产品支持该算子
+//!
+struct RingMLAParam {
+    //!
+    //! \enum CalcType
+    //!
+    //! \brief 计算类型
+    //!
+    enum CalcType : int {
+        CALC_TYPE_DEFAULT = 0, // 默认，非首末卡场景，有prev_lse, prev_o传入，生成softmaxLse输出
+        CALC_TYPE_FISRT_RING,  // 首卡场景，无prev_lse, prev_o传入，生成softmaxLse输出
+        CALC_TYPE_MAX
+    };
+    //!
+    //! \enum KernelType
+    //!
+    //! \brief 算子内核精度类型
+    //!
+    enum KernelType : int {
+        KERNELTYPE_DEFAULT = 0,   //!< i:float16, bmm:float16, o:float16
+        KERNELTYPE_HIGH_PRECISION //!< i:float16, bmm:float, o:float16
+    };
+
+    //!
+    //! \enum MaskType
+    //!
+    //! \brief mask类型
+    //!
+    enum MaskType : int {
+        NO_MASK = 0,    //!< 默认值，全0mask
+        MASK_TYPE_TRIU, //!< 上三角mask
+    };
+
+    //! 计算类型
+    CalcType calcType = CalcType::CALC_TYPE_DEFAULT;
+
+    //! query头大小, 需大于0
+    int32_t headNum = 0;
+    //! kv头数量, 该值需要用户根据使用的模型实际情况传入
+    //! kvHeadNum = 0时，keyCache的k_head_num，valueCache的v_head_num与query的num_heads一致，均为num_heads的数值
+    //! kvHeadNum != 0时，keyCache的k_head_num， valueCache的v_head_num与kvHeadNum值相同
+    int32_t kvHeadNum = 0;
+
+    //! 算子tor值, 在Q*K^T后乘
+    float qkScale = 1;
+
+    //! 内核精度类型
+    KernelType kernelType = KERNELTYPE_HIGH_PRECISION; // 预留
+
+    //! mask类型
+    MaskType maskType = MASK_TYPE_TRIU;
+
+    //! 数据排布格式默认为BSND
+    InputLayout inputLayout = TYPE_BSND;
+
     //!
     //! \brief 预留参数
     //!

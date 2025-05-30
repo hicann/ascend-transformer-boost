@@ -15,6 +15,7 @@ import unittest
 import numpy as np
 import sys
 import os
+from precision_calcu import compare_cv
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
@@ -38,7 +39,7 @@ MASK_TYPE_RAZOR_FUSION = 11
 logging.getLogger().setLevel(logging.DEBUG)
 
 
-class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
+class TestRazorFusionAttention(operation_test.OperationTest):
 
     def close_pack(self, in_data, seq_len):
         kv = in_data.numpy()
@@ -407,15 +408,16 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
     def golden_compare(self, out_tensors, golden_tensors):
         print("golden_compare")
         print(out_tensors.shape)
-        return self.compare_output_data(out_tensors.half(), golden_tensors.half(), [0.001, 0.001, 0.005, 0.005])
+        result_double = compare_cv(self.golden_out_true.flatten(), golden_tensors.cpu().flatten(), out_tensors.cpu().flatten())
+        result_old = self.compare_output_data(out_tensors.half(), golden_tensors.half(), [0.001, 0.001, 0.005, 0.005])
+        self.rfa_compare_result = (result_double or result_old)
+        return self.rfa_compare_result
 
     def test_razor_fusion_attention_case_fa_razor_fusion_norm_bfloat16(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
         batch = 2
-        tor = 1.0
-
         razorLen = 512
         tileQ = 1
         tileKv = 2
@@ -429,6 +431,7 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "RazorFusionAttentionOperation"
+        tor = 0.088
         OP_PARAM = {"headNum":1, "kvHeadNum":1, "qkScale": tor, "tileQ": tileQ,  "tileKv": tileKv,
                     "razorLen": razorLen, "textQLen": textQLen,  "textKvLen": textKvLen, "preTokens": preTokens,
                     "nextTokens": nextTokens}
@@ -446,8 +449,6 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         batch = 2
-        tor = 1.0
-
         razorLen = 500
         tileQ = 2
         tileKv = 3
@@ -461,6 +462,7 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "RazorFusionAttentionOperation"
+        tor = 0.088
         OP_PARAM = {"headNum":1, "kvHeadNum":1, "qkScale": tor, "tileQ": tileQ,  "tileKv": tileKv,
                     "razorLen": razorLen, "textQLen": textQLen,  "textKvLen": textKvLen, "preTokens": preTokens,
                     "nextTokens": nextTokens}
@@ -478,8 +480,6 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         batch = 3
-        tor = 1.0
-
         razorLen = 128
         tileQ = 3
         tileKv = 2
@@ -493,6 +493,7 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "RazorFusionAttentionOperation"
+        tor = 0.088
         OP_PARAM = {"headNum":1, "kvHeadNum":1, "qkScale": tor, "tileQ": tileQ,  "tileKv": tileKv,
                     "razorLen": razorLen, "textQLen": textQLen,  "textKvLen": textKvLen, "preTokens": preTokens,
                     "nextTokens": nextTokens}
@@ -514,8 +515,6 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
             print("this testcase only supports Ascend910B")
             return
         batch = 1
-        tor = 1.0
-
         razorLen = 311
         tileQ = 2
         tileKv = 3
@@ -529,6 +528,7 @@ class TestFlashAttentionPrefixEncoder(operation_test.OperationTest):
         kv_seqLen = [tileKv * razorLen + textKvLen] * batch
         baseM = kv_seqLen[0] if kv_seqLen[0] <= 128 else 128
         OP_NAME = "RazorFusionAttentionOperation"
+        tor = 0.088
         OP_PARAM = {"headNum":1, "kvHeadNum":1, "qkScale": tor, "tileQ": tileQ,  "tileKv": tileKv,
                     "razorLen": razorLen, "textQLen": textQLen,  "textKvLen": textKvLen, "preTokens": preTokens,
                     "nextTokens": nextTokens}

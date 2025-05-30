@@ -57,8 +57,8 @@ TEST(TestEventOperation, ErrorEvent)
     st = operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
 
     // 释放资源
-    atb::DestroyContext(context);
     atb::DestroyOperation(operation);
+    atb::DestroyContext(context);
     aclrtDestroyStream(stream);
     aclrtResetDevice(deviceId);
     ASSERT_EQ(st, atb::ERROR_INVALID_PARAM);
@@ -101,9 +101,9 @@ TEST(TestEventOperation, RecordOperation)
     atb::Status st = operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
 
     // 释放资源
-    atb::DestroyContext(context);
     aclrtDestroyEvent(event);
     atb::DestroyOperation(operation);
+    atb::DestroyContext(context);
     aclrtDestroyStream(stream);
     aclrtResetDevice(deviceId);
 
@@ -155,9 +155,9 @@ TEST(TestEventOperation, WaitOperation)
     int ret = aclrtSynchronizeStream(stream2);
     
     // 释放资源
-    atb::DestroyContext(context);
     aclrtDestroyEvent(event);
     atb::DestroyOperation(operation);
+    atb::DestroyContext(context);
     aclrtDestroyStream(stream2);
     aclrtDestroyStream(stream1);
     aclrtResetDevice(deviceId);
@@ -401,11 +401,11 @@ TEST(TestEventOperation, TestRecordWaitGraphOp)
     }
 
     // 资源释放
-    atb::DestroyContext(context1);
-    atb::DestroyContext(context2);
     aclrtDestroyEvent(event);
     atb::DestroyOperation(graphOp1);
     atb::DestroyOperation(graphOp2);
+    atb::DestroyContext(context1);
+    atb::DestroyContext(context2);
     for (size_t i = 0; i < pack1.inTensors.size(); i++) {
         aclrtFree(pack1.inTensors.at(i).deviceData);
     }
@@ -541,11 +541,11 @@ TEST(TestEventOperation, TestWaitRecordGraphOp)
     }
 
     // 资源释放
-    atb::DestroyContext(context1);
-    atb::DestroyContext(context2);
     aclrtDestroyEvent(event);
     atb::DestroyOperation(graphOp1);
     atb::DestroyOperation(graphOp2);
+    atb::DestroyContext(context1);
+    atb::DestroyContext(context2);
     for (size_t i = 0; i < pack1.inTensors.size(); i++) {
         aclrtFree(pack1.inTensors.at(i).deviceData);
     }
@@ -661,9 +661,9 @@ TEST(TestEventOperation, TestUpdateWaitGraphOp)
     graphOp2->Execute(pack, (uint8_t*)workSpace3, workspaceSize3, context2);
 
     // 资源释放
-    atb::DestroyContext(context2);
     aclrtDestroyEvent(event);
     atb::DestroyOperation(graphOp2);
+    atb::DestroyContext(context2);
     for (size_t i = 0; i < pack.inTensors.size(); i++) {
         aclrtFree(pack.inTensors.at(i).deviceData);
     }
@@ -758,9 +758,9 @@ TEST(TestEventOperation, TestUpdateParam)
     ASSERT_EQ(st, atb::NO_ERROR);
 
     // 释放资源
-    atb::DestroyContext(context);
     aclrtDestroyEvent(event);
     atb::DestroyOperation(operation);
+    atb::DestroyContext(context);
     aclrtDestroyStream(stream);
     aclrtResetDevice(deviceId);
 }
@@ -903,11 +903,11 @@ TEST(TestEventOperation, TestWaitRecordGraphOpMultiTime)
     }
 
     // 资源释放
-    atb::DestroyContext(context1);
-    atb::DestroyContext(context2);
     aclrtDestroyEvent(event);
     atb::DestroyOperation(graphOp1);
     atb::DestroyOperation(graphOp2);
+    atb::DestroyContext(context1);
+    atb::DestroyContext(context2);
     aclrtDestroyStream(stream1);
     aclrtDestroyStream(stream2);
     aclrtResetDevice(deviceId);

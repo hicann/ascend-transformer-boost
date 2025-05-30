@@ -227,8 +227,9 @@ static atb::Status AllGatherVOperationCreate(const nlohmann::json &paramJson, at
     if (paramJson.find("commDomain") != paramJson.end()) {
         param.commDomain = paramJson["commDomain"].get<std::string>();
     }
-    ATB_LOG(INFO) << "AllGatherParam rank:" << param.rank << ", rankSize:" << param.rankSize << ", rankRoot:" <<
-        param.rankRoot << ", backend:" << param.backend << ", commDomain:" << param.commDomain;
+    ATB_LOG(INFO) << "AllGatherParam rank:" << param.rank << ", rankSize:" << param.rankSize
+                  << ", rankRoot:" << param.rankRoot << ", backend:" << param.backend
+                  << ", commDomain:" << param.commDomain;
     return CreateOperation(param, op);
 }
 
@@ -340,6 +341,18 @@ static atb::Status LinearParallelOperationCreate(const nlohmann::json &paramJson
             param.twoDimTPInfo.innerDimIsAg = twoDimTPInfo["innerDimIsAg"].get<uint8_t>();
         }
     }
+    if (paramJson.find("moeInfo") != paramJson.end()) {
+        const auto &moeInfo = paramJson["moeInfo"];
+        if (moeInfo.contains("localExpertNums")) {
+            param.moeInfo.localExpertNums = moeInfo["localExpertNums"].get<int16_t>();
+        }
+        if (moeInfo.contains("epSize")) {
+            param.moeInfo.epSize = static_cast<int8_t>(moeInfo["epSize"].get<int16_t>());
+        }
+        if (moeInfo.contains("tpSize")) {
+            param.moeInfo.tpSize = static_cast<int8_t>(moeInfo["tpSize"].get<int16_t>());
+        }
+    }
     param.rank = paramJson["rank"].get<int>();
     param.rankSize = paramJson["rankSize"].get<int>();
     ATB_LOG(INFO) << "LinearParallelParam  rank:" << param.rank << ", rankSize:" << param.rankSize
@@ -349,7 +362,10 @@ static atb::Status LinearParallelOperationCreate(const nlohmann::json &paramJson
                   << ", quantGroupSize:" << param.quantGroupSize << ", commDomain:" << param.commDomain
                   << ", twoDimTPInfo.agDim:" << param.twoDimTPInfo.agDim
                   << ", twoDimTPInfo.rsDim:" << param.twoDimTPInfo.rsDim
-                  << ", twoDimTPInfo.innerDimIsAg:" << param.twoDimTPInfo.innerDimIsAg;
+                  << ", twoDimTPInfo.innerDimIsAg:" << param.twoDimTPInfo.innerDimIsAg
+                  << ", moeInfo.localExpertNums:" << param.moeInfo.localExpertNums
+                  << ", moeInfo.epSize:" << param.moeInfo.epSize
+                  << ", moeInfo.tpSize:" << param.moeInfo.tpSize;
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
@@ -613,7 +629,7 @@ static atb::Status SetValueOperationCreate(const nlohmann::json &paramJson, atb:
     return CreateOperation(param, op);
 }
 
-static atb::Status SortOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::infer::SortParam SortParamFromJson(const nlohmann::json &paramJson)
 {
     atb::infer::SortParam param;
     for (auto item : paramJson["num"]) {
@@ -625,7 +641,17 @@ static atb::Status SortOperationCreate(const nlohmann::json &paramJson, atb::Ope
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
         }
     }
-    return CreateOperation(param, op);
+    return param;
+}
+
+static atb::Status SortOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return CreateOperation(SortParamFromJson(paramJson), op);
+}
+
+static atb::Status SortOperationUpdate(const nlohmann::json &paramJson, atb::Operation *op)
+{
+    return UpdateOperationParam(op, SortParamFromJson(paramJson));
 }
 
 static atb::Status TransposeOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -810,10 +836,12 @@ static atb::Status ReshapeAndCacheWithStrideOperationCreate(const nlohmann::json
 {
     atb::infer::ReshapeAndCacheWithStrideParam param;
     if (paramJson.contains("compressType")) {
-        param.compressType = atb::infer::ReshapeAndCacheWithStrideParam::CompressType(paramJson["compressType"].get<int32_t>());
+        param.compressType =
+            atb::infer::ReshapeAndCacheWithStrideParam::CompressType(paramJson["compressType"].get<int32_t>());
     }
     if (paramJson.contains("kvCacheCfg")) {
-        param.kvCacheCfg = atb::infer::ReshapeAndCacheWithStrideParam::KvCacheCfg(paramJson["kvCacheCfg"].get<int32_t>());
+        param.kvCacheCfg =
+            atb::infer::ReshapeAndCacheWithStrideParam::KvCacheCfg(paramJson["kvCacheCfg"].get<int32_t>());
     }
     ATB_LOG(INFO) << "ReshapeAndCacheWithStrideOperation Create compressType:" << param.compressType
                   << ", kvCacheCfg:" << param.kvCacheCfg;
@@ -824,8 +852,7 @@ static atb::Status ReshapeAndCacheWithStrideOperationCreate(const nlohmann::json
     }
     return CreateOperation(param, op);
 }
-
-static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::infer::FillParam FillParamFromJson(const nlohmann::json &paramJson)
 {
     atb::infer::FillParam param;
     if (paramJson.contains("withMask")) {
@@ -848,7 +875,17 @@ static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Ope
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
         }
     }
-    return CreateOperation(param, op);
+    return param;
+}
+
+static atb::Status FillOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return CreateOperation(FillParamFromJson(paramJson), op);
+}
+
+static atb::Status FillOperationUpdate(const nlohmann::json &paramJson, atb::Operation *op)
+{
+    return UpdateOperationParam(op, FillParamFromJson(paramJson));
 }
 
 static atb::Status RepeatOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -957,7 +994,7 @@ static atb::Status ElewiseOperationCreate(const nlohmann::json &paramJson, atb::
     return CreateOperation(param, op);
 }
 
-static atb::Status TopkToppSamplingOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+static atb::infer::TopkToppSamplingParam TopkToppSamplingParamFromJson(const nlohmann::json &paramJson)
 {
     atb::infer::TopkToppSamplingParam param;
     if (paramJson.contains("topkToppSamplingType")) {
@@ -983,7 +1020,17 @@ static atb::Status TopkToppSamplingOperationCreate(const nlohmann::json &paramJs
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
         }
     }
-    return CreateOperation(param, op);
+    return param;
+}
+
+static atb::Status TopkToppSamplingOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    return CreateOperation(TopkToppSamplingParamFromJson(paramJson), op);
+}
+
+static atb::Status TopkToppSamplingOperationUpdate(const nlohmann::json &paramJson, atb::Operation *op)
+{
+    return UpdateOperationParam(op, TopkToppSamplingParamFromJson(paramJson));
 }
 
 static atb::Status PadOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
@@ -1355,7 +1402,8 @@ static atb::Status RmsNormWithStrideOperationCreate(const nlohmann::json &paramJ
             param.normParam.rstd = normParam["rstd"].get<bool>();
         }
         if (normParam.contains("precisionMode")) {
-            param.normParam.precisionMode = normParam["precisionMode"].get<atb::infer::RmsNormWithStrideParam::PrecisionMode>();
+            param.normParam.precisionMode =
+                normParam["precisionMode"].get<atb::infer::RmsNormWithStrideParam::PrecisionMode>();
         }
         if (normParam.contains("modelType")) {
             param.normParam.modelType = normParam["modelType"].get<atb::infer::RmsNormWithStrideParam::ModelType>();
@@ -1964,8 +2012,9 @@ static atb::Status all_to_allvv2_operationCreate(const nlohmann::json &paramJson
     if (paramJson.find("commDomain") != paramJson.end()) {
         param.commDomain = paramJson["commDomain"].get<std::string>();
     }
-    ATB_LOG(INFO) << "AllToAllVV2Param rank:" << param.rank << ", rankSize:" << param.rankSize << ", rankRoot:" <<
-        param.rankRoot << ", backend:" << param.backend << ", commDomain:" << param.commDomain;
+    ATB_LOG(INFO) << "AllToAllVV2Param rank:" << param.rank << ", rankSize:" << param.rankSize
+                  << ", rankRoot:" << param.rankRoot << ", backend:" << param.backend
+                  << ", commDomain:" << param.commDomain;
     return CreateOperation(param, op);
 }
 
@@ -2268,6 +2317,25 @@ static atb::Status MultiLatentAttentionOperationCreate(const nlohmann::json &par
     return CreateOperation(param, op);
 }
 
+static atb::Status ScatterElementsV2OperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    atb::infer::ScatterElementsV2Param param;
+    ATB_LOG(INFO) << "ScatterElementsV2Param axis:" << param.axis;
+    ATB_LOG(INFO) << "ScatterElementsV2Param reduction:" << param.reduction;
+    if (paramJson.contains("axis")) {
+        param.axis = paramJson["axis"].get<int32_t>();
+    }
+    if (paramJson.contains("reduction")) {
+        param.reduction = paramJson["reduction"].get<atb::infer::ScatterElementsV2Param::ReductionType>();
+    }
+    if (paramJson.contains("rsv")) {
+        for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
+            param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
+        }
+    }
+    return CreateOperation(param, op);
+}
+
 static atb::Status ReshapeAndCacheOmniOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
 {
     ATB_LOG(INFO) << "ReshapeAndCacheOmniOperationCreate";
@@ -2343,10 +2411,97 @@ static atb::Status PagedCacheLoadOperationCreate(const nlohmann::json &paramJson
 {
     ATB_LOG(INFO) << "PagedCacheLoadOperationCreate";
     atb::infer::PagedCacheLoadParam param;
+    if (paramJson.contains("kvCacheCfg")) {
+        param.kvCacheCfg = atb::infer::PagedCacheLoadParam::KvCacheCfg(paramJson["kvCacheCfg"].get<int8_t>());
+    }
+    if (paramJson.contains("isSeqLensCumsumMode")) {
+        param.isSeqLensCumsumMode = paramJson["isSeqLensCumsumMode"].get<bool>();
+    }
+    if (paramJson.contains("hasSeqStarts")) {
+        param.hasSeqStarts = paramJson["hasSeqStarts"].get<bool>();
+    }
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
         }
+    }
+    return CreateOperation(param, op);
+}
+
+static atb::Status GmmDeqSwigluQuantGmmDeqOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    ATB_LOG(INFO) << "GmmDeqSwigluQuantGmmDeqOperationCreate";
+    atb::infer::GmmDeqSwigluQuantGmmDeqParam param;
+    if (paramJson.contains("outputType")) {
+        param.outputType = paramJson["outputType"];
+    }
+    if (paramJson.contains("groupListType")) {
+        param.groupListType = paramJson["groupListType"];
+    }
+    if (paramJson.contains("weightUpPermuteType")) {
+        param.weightUpPermuteType = paramJson["weightUpPermuteType"];
+    }
+    if (paramJson.contains("transposeWeightUp")) {
+        param.transposeWeightUp = paramJson["transposeWeightUp"];
+    }
+    if (paramJson.contains("transposeWeightDown")) {
+        param.transposeWeightDown = paramJson["transposeWeightDown"];
+    }
+    if (paramJson.contains("rsv")) {
+        for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
+            param.rsv[i] = paramJson["rsv"].at(i).get<uint8_t>();
+        }
+    }
+    return CreateOperation(param, op);
+}
+
+static atb::Status MmDeqSwigluQuantMmDeqOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    ATB_LOG(INFO) << "MmDeqSwigluQuantMmDeqOperationCreate";
+    atb::infer::MmDeqSwigluQuantMmDeqParam param;
+    if (paramJson.contains("outputType")) {
+        param.outputType = paramJson["outputType"];
+    }
+    if (paramJson.contains("weightUpPermuteType")) {
+        param.weightUpPermuteType = paramJson["weightUpPermuteType"];
+    }
+    if (paramJson.contains("transposeWeightUp")) {
+        param.transposeWeightUp = paramJson["transposeWeightUp"];
+    }
+    if (paramJson.contains("transposeWeightDown")) {
+        param.transposeWeightDown = paramJson["transposeWeightDown"];
+    }
+    if (paramJson.contains("rsv")) {
+        for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
+            param.rsv[i] = paramJson["rsv"].at(i).get<uint8_t>();
+        }
+    }
+    return CreateOperation(param, op);
+}
+
+static atb::Status RingMLAOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
+{
+    atb::infer::RingMLAParam param;
+    if (paramJson.contains("calcType")) {
+        param.calcType = atb::infer::RingMLAParam::CalcType(paramJson["calcType"].get<int32_t>());
+    }
+    if (paramJson.contains("headNum")) {
+        param.headNum = paramJson["headNum"].get<int>();
+    }
+    if (paramJson.contains("kvHeadNum")) {
+        param.kvHeadNum = paramJson["kvHeadNum"].get<int>();
+    }
+    if (paramJson.contains("qkScale")) {
+        param.qkScale = paramJson["qkScale"].get<float>();
+    }
+    if (paramJson.contains("kernelType")) {
+        param.kernelType = atb::infer::RingMLAParam::KernelType(paramJson["kernelType"].get<int32_t>());
+    }
+    if (paramJson.contains("maskType")) {
+        param.maskType = atb::infer::RingMLAParam::MaskType(paramJson["maskType"].get<int32_t>());
+    }
+    if (paramJson.contains("inputLayout")) {
+        param.inputLayout = atb::infer::InputLayout(paramJson["inputLayout"].get<int32_t>());
     }
     return CreateOperation(param, op);
 }
@@ -2436,6 +2591,10 @@ std::map<std::string, OperationCreateFunc> g_funcMap = {
     {"RazorFusionAttentionOperation", &RazorFusionAttentionOperationCreate},
     {"FaUpdateOperation", &FaUpdateOperationCreate},
     {"PagedCacheLoadOperation", &PagedCacheLoadOperationCreate},
+    {"ScatterElementsV2Operation", &ScatterElementsV2OperationCreate},
+    {"GmmDeqSwigluQuantGmmDeqOperation", &GmmDeqSwigluQuantGmmDeqOperationCreate},
+    {"MmDeqSwigluQuantMmDeqOperation", &MmDeqSwigluQuantMmDeqOperationCreate},
+    {"RingMLAOperation", &RingMLAOperationCreate},
 };
 
 atb::Status CreateOperation(const std::string &opName, const std::string &param, atb::Operation **operation)
@@ -2468,6 +2627,9 @@ std::map<std::string, OperationUpdateFunc> g_update_funcMap = {
     {"UnpadWithHiddenStateOperation", &UnpadWithHiddenStateOperationUpdate},
     {"LaserAttentionOperation", &LaserAttentionOperationUpdate},
     {"LaserAttentionGradOperation", &LaserAttentionGradOperationUpdate},
+    {"FillOperation", &FillOperationUpdate},
+    {"SortOperation", &SortOperationUpdate},
+    {"TopkToppSamplingOperation", &TopkToppSamplingOperationUpdate},
 };
 
 atb::Status UpdateOperationParam(const std::string &opName, const std::string &param, atb::Operation *operation)

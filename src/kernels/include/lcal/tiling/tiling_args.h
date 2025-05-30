@@ -34,6 +34,7 @@ namespace Lcal {
     constexpr int32_t COMM_DATA_DIRECT = 0;
     constexpr int32_t COMM_NPU_DIRECT = 1;
     constexpr int32_t COMMNPUSPLIT_ONE = 1;
+    constexpr int32_t COMMNPUSPLIT_TWO = 2;
     constexpr int32_t COMMNPUSPLIT_THREE = 3;
     constexpr int32_t COMMNPUSPLIT_EIGHT = 8;
     constexpr int32_t COMMNPUSPLIT_FOUR = 4;
@@ -89,6 +90,10 @@ namespace Lcal {
     constexpr int32_t DIM_TWO = 2;
     constexpr int32_t DEFAULT_SPLIT_K = 0;
     constexpr int32_t NUM_TWO = 2;
+
+    // Todo: tmp hard code, need tiling func for moe
+    constexpr int32_t AllTOAll_HIDDEN_UBMOVENUM = 28672;
+
 
     // 默认值均为-1
     struct CoCTiling {
@@ -148,6 +153,7 @@ namespace Lcal {
         QuantInfo quantInfo = {}; // device侧对应23-26
         TwoDimTPInfo twoDimTPInfo = {}; // device侧对应27-29
         PostInfo postInfo = {}; // device侧对应30
+        MoeInfo moeInfo = {}; // device侧对应31
         bool weightNz = false;
     };
 }

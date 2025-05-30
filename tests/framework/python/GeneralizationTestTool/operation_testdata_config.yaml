@@ -1062,7 +1062,7 @@ in_shape:
 op_name: BlockCopyOperation
 in_num: [5]
 in_dtype: ["float16","bf16","int8"]
-in_format: ["nd"]
+in_format: ["nd","fractal_nz"]
 in_shape:
   dim_numbers: [1,4]
   dim_number_weights: [0.5,0.5]
@@ -1177,3 +1177,25 @@ in_shape:
   dim_number_weights: [0.5,0.5]
   dim_values: [[16],[32],[64],[128],[256],[320],[512],[768],[1024],[5120]]
   dim_value_weights: [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
+
+
+
+---
+ 
+ 
+op_name: ScatterElementsV2Operation
+op_param:
+  - key: axis
+    values: [-1]
+  - key: reduction
+    values: [0,1]
+in_num: [3]
+in_dtype: ["float16","bf16","int32","float","int8","uint8"]
+in_format: ["nd"]
+in_shape:
+  dim_numbers: [2, 3, 4]
+  dim_number_weights: [0.1, 0.1, 0.1]
+  dim_values: [[16], [32], [64], [128]]
+  dim_value_weights: [0.2, 0.2, 0.2, 0.2]
+data_gen_range: ["0,100", "0,100", "0,100"]
+data_gen_type: ["random"]

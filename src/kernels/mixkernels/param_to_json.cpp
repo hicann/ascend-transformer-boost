@@ -176,6 +176,18 @@ std::string ReshapeAndCacheToJson(const Any &param)
     return paramsJson.dump();
 }
 
+std::string PagedCacheLoadToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::PagedCacheLoad specificParam = AnyCast<OpParam::PagedCacheLoad>(param);
+
+    paramsJson["type"] = specificParam.type;
+    paramsJson["cuSeqLens"] = specificParam.cuSeqLens;
+    paramsJson["hasSeqStarts"] = specificParam.hasSeqStarts;
+
+    return paramsJson.dump();
+}
+
 std::string RopeGradToJson(const Any &param)
 {
     nlohmann::json paramsJson;
@@ -306,7 +318,7 @@ std::string UnpadFlashAttentionToJson(const Any &param)
     for (size_t i = 0; i < specificParam.vTensorList.size(); ++i) {
         ss << "\nvTensorList[" << i << "]: " << specificParam.vTensorList.at(i).ToString();
     }
-    
+
     for (size_t i = 0; i < specificParam.kShareTensorList.size(); ++i) {
         ss << "\nkShareTensorList[" << i << "]: " << specificParam.kShareTensorList.at(i).ToString();
     }
@@ -332,6 +344,47 @@ std::string UnpadToJson(const Any &param)
     (void)param;
     return "{}";
 }
+
+std::string RINGMLAToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::RINGMLA specificParam = AnyCast<OpParam::RINGMLA>(param);
+
+    paramsJson["type"] = specificParam.type;
+    paramsJson["tor"] = specificParam.tor;
+    paramsJson["kvHead"] = specificParam.kvHead;
+    paramsJson["headSize"] = specificParam.headSize;
+    paramsJson["qSeqLen"] = specificParam.qSeqLen;
+    paramsJson["kvSeqLen"] = specificParam.kvSeqLen;
+    paramsJson["isRing"] = specificParam.isRing;
+    return paramsJson.dump();
+}
+
+std::string GmmDeqSwigluQuantGmmDeqToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::GmmDeqSwigluQuantGmmDeq specificParam = AnyCast<OpParam::GmmDeqSwigluQuantGmmDeq>(param);
+
+    paramsJson["outputType"] = specificParam.outputType;
+    paramsJson["groupListType"] = specificParam.groupListType;
+    paramsJson["weightUpPermuteType"] = specificParam.weightUpPermuteType;
+    paramsJson["transposeWeightUp"] = specificParam.transposeWeightUp;
+    paramsJson["transposeWeightDown"] = specificParam.transposeWeightDown;
+    return paramsJson.dump();
+}
+
+std::string MmDeqSwigluQuantMmDeqToJson(const Any &param)
+{
+    nlohmann::json paramsJson;
+    OpParam::MmDeqSwigluQuantMmDeq specificParam = AnyCast<OpParam::MmDeqSwigluQuantMmDeq>(param);
+
+    paramsJson["outputType"] = specificParam.outputType;
+    paramsJson["weightUpPermuteType"] = specificParam.weightUpPermuteType;
+    paramsJson["transposeWeightUp"] = specificParam.transposeWeightUp;
+    paramsJson["transposeWeightDown"] = specificParam.transposeWeightDown;
+    return paramsJson.dump();
+}
+
 REG_STRINGIFY(OpParam::BlockCopy, BlockCopyToJson);
 REG_STRINGIFY(OpParam::FastSoftMaxGrad, FastSoftMaxGradToJson);
 REG_STRINGIFY(OpParam::FastSoftMax, FastSoftMaxToJson);
@@ -342,7 +395,9 @@ REG_STRINGIFY(OpParam::PadWithHiddenState, PadWithHiddenStateToJson);
 REG_STRINGIFY(OpParam::Pad, PadToJson);
 REG_STRINGIFY(OpParam::PagedAttention, PagedAttentionToJson);
 REG_STRINGIFY(OpParam::MLA, MLAToJson);
+REG_STRINGIFY(OpParam::RINGMLA, RINGMLAToJson);
 REG_STRINGIFY(OpParam::ReshapeAndCache, ReshapeAndCacheToJson);
+REG_STRINGIFY(OpParam::PagedCacheLoad, PagedCacheLoadToJson);
 REG_STRINGIFY(OpParam::RopeGrad, RopeGradToJson);
 REG_STRINGIFY(OpParam::Rope, RopeToJson);
 REG_STRINGIFY(OpParam::StridedBatchMatmul, StridedBatchMatmulToJson);
@@ -353,4 +408,6 @@ REG_STRINGIFY(OpParam::UnpadWithHiddenState, UnpadWithHiddenStateToJson);
 REG_STRINGIFY(OpParam::Unpad, UnpadToJson);
 REG_STRINGIFY(OpParam::RopeQConcat, RopeQConcatToJson);
 REG_STRINGIFY(OpParam::SwigluQuant, SwigluQuantToJson);
+REG_STRINGIFY(OpParam::GmmDeqSwigluQuantGmmDeq, GmmDeqSwigluQuantGmmDeqToJson);
+REG_STRINGIFY(OpParam::MmDeqSwigluQuantMmDeq, MmDeqSwigluQuantMmDeqToJson);
 } // namespace AtbOps

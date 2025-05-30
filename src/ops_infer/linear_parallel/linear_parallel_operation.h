@@ -35,17 +35,22 @@ private:
                                      SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeAllGatherLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs,
                                                   SVector<TensorDesc> &outTensorDescs) const;
+    Status InferShapeAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs,
+                                            SVector<TensorDesc> &outTensorDescs) const;
     Status CheckResidual(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckLinearAllReduce(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckAllGatherLinear(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckAllGatherLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs) const;
+    Status InferShapeCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs) const;
     Status SetupCheckLinearAllReduce(const SVector<TensorDesc> &inTensorDescs, const TensorDesc &outTensorDesc) const;
     Status SetupCheckLinearReduceScatter(const SVector<TensorDesc> &inTensorDescs, TensorDesc &outTensorDesc) const;
     Status SetupCheckAllGatherLinear(SVector<TensorDesc> &inTensorDescs,
                                      const SVector<TensorDesc> &outTensorDescs) const;
     Status SetupCheckAllGatherLinearReduceScatter(SVector<TensorDesc> &inTensorDescs,
                                                   TensorDesc &outTensorDesc) const;
+    Status SetupCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs,
+                                            const TensorDesc &outTensorDesc) const;
 
 private:
     infer::LinearParallelParam param_;

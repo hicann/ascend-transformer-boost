@@ -112,7 +112,7 @@ function fn_gen_doc()
     fi
 
     cd $CODE_ROOT
-    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || git rev-parse HEAD) 
+    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || git rev-parse HEAD)
     export LD_LIBRARY_PATH=$CODE_ROOT/3rdparty/graphviz/lib:$LD_LIBRARY_PATH
     local doxyfile=$CODE_ROOT/docs/Doxyfile
     local doxygen_output_dir=$CODE_ROOT/docs/$branch
@@ -148,13 +148,10 @@ function fn_build_asdops()
     if [ -d "$THIRD_PARTY_DIR/asdops/lib" ]; then
         return 0
     fi
-    if [ -n "$ATB_HOME_PATH" -a "$SRC_ONLY" == "OFF" ]; then
-        echo "Get required asdops binary files from $ATB_HOME_PATH"
-        if [ "${ATB_HOME_PATH##$OUTPUT_DIR}" != "$ATB_HOME_PATH" ]; then
-            echo -e "\e[1;41;1;33mThere is a risk that you are using asdops binary files from OUTPUT of current project\e[0m"
-        fi
+    if [ -n "$ATB_BUILD_DEPENDENCY_PATH" -a "$SRC_ONLY" == "OFF" ]; then
+        echo "Get required asdops binary files from $ATB_BUILD_DEPENDENCY_PATH"
         mkdir -p $THIRD_PARTY_DIR/asdops/
-        cp -Lrf $ATB_HOME_PATH/lib $THIRD_PARTY_DIR/asdops/
+        cp -Lrf $ATB_BUILD_DEPENDENCY_PATH/lib $THIRD_PARTY_DIR/asdops/
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb.so 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_static.a 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_train.so 2> /dev/null
@@ -168,7 +165,7 @@ function fn_build_asdops()
     fi
     cd $THIRD_PARTY_DIR
     rm -rf ascend-op-common-lib
-    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
     [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
     echo  "current branch for atb and asdops: $branch"
     git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
@@ -203,7 +200,7 @@ function fn_build_mki()
     fi
     cd $THIRD_PARTY_DIR
     if [ ! -d "Mind-KernelInfra" ]; then
-        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
         git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
@@ -230,8 +227,17 @@ function fn_build_mki()
     if [ "$USE_MSDEBUG" == "ON" ]; then
         build_options="$build_options --msdebug"
     fi
-    build_options="$build_options --output=$THIRD_PARTY_DIR --no_werror $COMPILE_VERBOSE"
+    build_options="$build_options --output=$THIRD_PARTY_DIR $COMPILE_VERBOSE"
     bash scripts/build.sh $build_type $build_options
+}
+
+function fn_build_act()
+{
+    if [ -d "$THIRD_PARTY_DIR/catlass" ]; then
+        return 0
+    fi
+    cd $THIRD_PARTY_DIR
+    git clone https://gitee.com/ascend/catlass.git
 }
 
 function fn_build_nlohmann_json()
@@ -296,6 +302,7 @@ function fn_build_3rdparty_for_compile()
 {
     fn_build_nlohmann_json
     fn_build_mki
+    fn_build_act
     fn_build_asdops
     fn_build_cann_dependency
     if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
@@ -345,7 +352,7 @@ function export_atb_hitest_env()
     export PATH=/home/slave1/hitest/linux_avatar_${ARCH}:$PATH	        #(添加工具包到PATH环境变量)
     export LD_LIBRARY_PATH=/home/slave1/hitest/linux_avatar_${ARCH}:$LD_LIBRARY_PATH	    #(添加工具包到LD_LIBRARY_PATH环境变量)
     export LLT_INCLUDEPATH=${CODE_ROOT}/core  #(指定需要插桩的代码目录，用冒号:间隔，可指定多个代码目录)
-    export LLT_EXCLUDEPATH=${CODE_ROOT}/tests #指定需要排除不插桩的路径，即，指定的路径下的所有源码都不会被插桩 
+    export LLT_EXCLUDEPATH=${CODE_ROOT}/tests #指定需要排除不插桩的路径，即，指定的路径下的所有源码都不会被插桩
     #清空上一次构建的模型数据
     rm -rf /home/slave1/hitest/linux_avatar_${ARCH}/apache-tomcat-8.0.39/webapps/base/covstub
     rm -rf /home/slave1/hitest/linux_avatar_${ARCH}/apache-tomcat-8.0.39/webapps/base/covdata
@@ -440,7 +447,7 @@ function fn_make_run_package()
     ${makeself_dir}/makeself.sh --header ${makeself_dir}/makeself-header.sh \
        --help-header $CODE_ROOT/scripts/help.info --gzip --complevel 4 --nomd5 --sha256 --chown \
         ${OUTPUT_DIR} $CODE_ROOT/ci/$ARCH/Ascend-cann-atb_${VERSION}_linux-${ARCH}.run "Ascend-cann-atb-api" ./install.sh
-        
+
     mv $CODE_ROOT/ci/$ARCH $OUTPUT_DIR
     echo "Ascend-cann-atb_${VERSION}_linux-${ARCH}.run is successfully generated in $OUTPUT_DIR"
 }
@@ -508,6 +515,15 @@ function fn_run_kernel_unittest()
     $ATB_HOME_PATH/bin/kernels_unittest --gtest_output=xml:kernel_test_detail.xml
 }
 
+function fn_run_kernel_cinterfacetest()
+{
+    export_atb_env
+    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+    echo "run $ATB_HOME_PATH/bin/atb_cinterface"
+    $ATB_HOME_PATH/bin/atb_cinterface
+}
+
+
 function fn_run_fuzztest()
 {
     export_atb_env
@@ -548,6 +564,7 @@ function fn_build_coverage()
         fn_run_unittest
         fn_run_pythontest
         fn_run_torchatbtest
+        fn_run_kernel_cinterfacetest
     fi
     if [ "$COVERAGE_TYPE" == "FUZZTEST" ];then
         fn_run_fuzztest
@@ -572,11 +589,12 @@ function fn_run_torchatbtest()
     export_atb_env
     fn_install_torch_atb
     cd $CODE_ROOT/tests/apitest/torch_atb_test
-    for testfile in $(find op_test -name "*_test.py"); do
-        python3 -m unittest "$testfile"
-    done
-    for testfile in $(find graph_test -name "*_test.py"); do
-        python3 -m unittest "$testfile"
+    for testdir in $(ls -d *_test); do
+        echo "Running tests in $testdir"
+        for testfile in $(find "$testdir" -name "*_test.py"); do
+            echo "Running $testfile"
+            python3 -m unittest "$testfile"
+        done
     done
 }
 
@@ -586,8 +604,8 @@ function fn_run_pythontest()
     cd $CODE_ROOT/tests/apitest/opstest/python/
     rm -rf ./kernel_meta*
     for i in $(ls -d operations/*/); do
-        if [[ `find $i -name __init__.py` != "" ]];then
-            python3 -m unittest discover -s ./$i -p "*test*.py"; 
+        if [[ $(find $i -name __init__.py) != "" ]];then
+            python3 -m unittest discover -s ./$i -p "*test*.py";
         fi
     done
 }
@@ -617,28 +635,37 @@ function fn_run_infratest()
 
 function fn_install_torch_atb()
 {
-    if ! pip show torch_atb > /dev/null 2>&1; then
-        py_version=$(python -c 'import sys; print(sys.version_info[0], ".", sys.version_info[1])' | tr -d ' ')
-        py_major_version=${py_version%%.*}
-        py_minor_version=${py_version##*.}
+    py_version=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    py_major_version=${py_version%%.*}
+    py_minor_version=${py_version##*.}
 
-        if [ "$py_major_version" == "3" ] && { [ "$py_minor_version" == "9" ] || [ "$py_minor_version" == "10" ] || [ "$py_minor_version" == "11" ]; }; then
-            wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
-            wheel_path="${OUTPUT_DIR}/whl/$wheel_file"
+    if [ "$py_major_version" != "3" ] || { [ "$py_minor_version" != "9" ] && [ "$py_minor_version" != "10" ] && [ "$py_minor_version" != "11" ]; }; then
+        echo "ERROR: Unsupported Python version. Only Python 3.9, 3.10, and 3.11 are supported."
+        exit 1
+    fi
 
-            if [ -f "$wheel_path" ]; then
-                if ! [ $(pip install "$wheel_path" > /dev/null 2>&1; echo $?) -eq 0 ]; then
-                    echo "ERROR: torch_atb installation failed!"
-                    exit 1
-                else
-                    echo "INFO: torch_atb installation succeeded!"
-                fi
-            else
-                echo "ERROR: Wheel file ${wheel_file} not found."
-                exit 1
-            fi
+    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
+    wheel_path="${OUTPUT_DIR}/whl/${wheel_file}"
+
+    if [ ! -f "$wheel_path" ]; then
+        echo "ERROR: Wheel file ${wheel_file} not found at ${wheel_path}."
+        exit 1
+    fi
+
+    if pip show torch_atb > /dev/null 2>&1; then
+        echo "INFO: torch_atb is already installed, force-reinstalling..."
+        if pip install --force-reinstall "$wheel_path" > /dev/null 2>&1; then
+            echo "INFO: torch_atb reinstallation succeeded!"
         else
-            echo "ERROR: Unsupported Python version. Only Python 3.9, 3.10, and 3.11 are supported."
+            echo "ERROR: torch_atb reinstallation failed!"
+            exit 1
+        fi
+    else
+        echo "INFO: torch_atb not found, installing..."
+        if pip install "$wheel_path" > /dev/null 2>&1; then
+            echo "INFO: torch_atb installation succeeded!"
+        else
+            echo "ERROR: torch_atb installation failed!"
             exit 1
         fi
     fi
@@ -746,6 +773,7 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_UNIT_TEST=ON"
             fn_build_3rdparty_for_test
             fn_build
+            fn_run_kernel_cinterfacetest
             fn_run_unittest
             ;;
         "kernelunittest")

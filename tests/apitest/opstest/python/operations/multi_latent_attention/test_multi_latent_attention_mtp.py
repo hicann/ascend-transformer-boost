@@ -83,7 +83,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         sim_sub = np.exp(sim_sub)
         row_sum = np.sum(sim_sub, axis=-1, keepdims=True)
         soft_res = sim_sub / row_sum
-        return soft_res
+        return soft_res, row_max + np.log(row_sum)
 
     def ref_masked_attention(self,
             query,  # (q_seqlen, num_heads, head_size)
@@ -102,20 +102,23 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             sim_high = sim_high + (mask[:sim_high.shape[-2], :sim_high.shape[-1]] * self.post_mask_factor).to(torch.float32)
         
         # softmax
-        p_high = self.softmax_numpy(sim_high)
+        p_high, lse_high = self.softmax_numpy(sim_high)
         p = torch.from_numpy(p_high).to(query.dtype)
         p_high = torch.from_numpy(p_high).to(torch.float32)
+        lse_high = torch.permute(torch.from_numpy(lse_high).to(torch.float32), (1, 0, 2))  # (q_seqlen, head_num, 1)
         value = torch.permute(value, (1, 0, 2))
         out_high = self.group_matmul(query.shape[0], key.shape[0], p_high, value)
         out = self.group_matmul(query.shape[0], key.shape[0], p, value)
         out_high = torch.permute(out_high, (1, 0, 2))
         out = torch.permute(out, (1, 0, 2))
         out = out.to(query.dtype)
-        return out, out_high
+        return out, out_high, lse_high.to(query.dtype), lse_high
 
     def ref_single_query_cached_kv_attention(self,
         output,
         true_out,
+        lse,
+        true_lse,
         query,
         key_cache,    # (num_blocks, block_size, num_heads, head_size)
         value_cache,  # (num_blocks, block_size, num_heads, head_size)
@@ -160,7 +163,11 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                 mask = global_mask[cu_seqlen : (cu_seqlen + q_seqlen), :]  # lookahead: cur_q: cur_q + q
             else:
                 mask = None
-            out, out_high = self.ref_masked_attention(q, keys, values, scale, mask)
+            out, out_high, lse_i, lse_i_high = self.ref_masked_attention(q, keys, values, scale, mask)
+            lse_i = lse_i.reshape(-1, num_heads, 1)
+            lse[cu_seqlen: cu_seqlen + q_seqlen, :, :] = lse_i
+            lse_i_high = lse_i_high.reshape(-1, num_heads, 1)
+            true_lse[cu_seqlen: cu_seqlen + q_seqlen, :, :] = lse_i_high
             out = out.reshape(-1, num_heads, head_size_vo)
             out_high = out_high.reshape(-1, num_heads, head_size_vo)
             output[cu_seqlen: cu_seqlen + q_seqlen, :, :] = out
@@ -177,10 +184,12 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                   q_seqlen_list: int,
                   k_seqlen_list: int,
                   mask_type,
-                  dtype = torch.float16
+                  dtype = torch.float16,
+                  calcType=0
     ):
         self.data_type = dtype
         self.head_size_qk = head_size_qk
+        self.calcType = calcType
         q_min_range = -1.0
         q_max_range = 1.0
         kv_min_range = -1.0
@@ -236,9 +245,13 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         shape_out = (num_tokens, num_heads, head_size_vo)
         ref_output = torch.zeros(shape_out, dtype=dtype)
         true_out = torch.zeros(shape_out, dtype=torch.float32)
+        lse = torch.zeros((num_tokens, num_heads, 1), dtype=dtype)
+        true_lse = torch.zeros((num_tokens, num_heads, 1), dtype=torch.float32)
         self.ref_single_query_cached_kv_attention(
             ref_output,
             true_out,
+            lse,
+            true_lse,
             query,
             key_cache,
             value_cache,
@@ -262,6 +275,8 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         self.mask = mask
         self.golden_out = ref_output
         self.true_out = true_out
+        self.lse = lse
+        self.true_lse = true_lse
 
     def gen_mask(self, q_len, dtype):
         """
@@ -283,14 +298,24 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
 
     def golden_calc(self, in_tensors):
         golden_out = torch.tensor(self.golden_out)
-        return [golden_out]
+        result = [golden_out]
+        if self.calcType == 3:
+            result.append(self.lse)
+        return result
+
 
     def golden_compare(self, out_tensors, golden_tensors):
-        result_double = compare_cv(self.true_out.npu(), golden_tensors.npu(), out_tensors.npu())
-        result_old = self.compare_output_data(out_tensors.npu(), golden_tensors.npu(), [0.001, 0.001, 0.005, 0.005])
+        if self.compare_index == 0:
+            result_double = compare_cv(self.true_out.npu(), golden_tensors.npu(), out_tensors.npu())
+            result_old = self.compare_output_data(out_tensors.npu(), golden_tensors.npu(), [0.001, 0.001, 0.005, 0.005])
+        else:
+            result_double = compare_cv(self.true_lse.npu(), golden_tensors.npu(), out_tensors.npu())
+            result_old = self.compare_output_data(out_tensors.npu(), golden_tensors.npu(), [0.001, 0.001, 0.005, 0.005])
+        self.compare_index += 1
         return (result_double or result_old)
 
     def test_mla_split_mtp_head32_fp16(self):
+        self.compare_index = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -324,6 +349,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  torch.tensor(self.q_seqlen_list).npu()])
 
     def test_mla_split_mtp_head128_fp16(self):
+        self.compare_index = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -357,6 +383,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  torch.tensor(self.q_seqlen_list).npu()])
 
     def test_mla_split_mtp_mask_head32_fp16(self):
+        self.compare_index = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -390,7 +417,43 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                                  self.mask.npu(),
                                  torch.tensor(self.q_seqlen_list).npu()])
 
+    def test_mla_split_mtp_mask_head32_fp16_isRing(self):
+        self.compare_index = 0
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 2
+        q_seqlen = [2] * batch
+        num_tokens = np.array(q_seqlen).sum()
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+        k_seqlen = [257] * batch
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.float16
+        mask_type = 3
+
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo,
+                       q_seqlen, k_seqlen, mask_type, dtype, 3)
+
+        OP_NAME = "MultiLatentAttentionOperation"
+        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "calcType": 3, "maskType": 1, "cacheMode": 1})
+        RUN_PARAM = json.dumps({"contextLens": self.k_seqlen_list.tolist(), "qSeqlen": self.q_seqlen_list.tolist(), "maskType": 1})
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
+                                [self.q_split1.npu(),
+                                 self.q_split2.npu(),
+                                 self.key_cache_split1.npu(),
+                                 self.key_cache_split2.npu(),
+                                 torch.tensor(self.block_tables).int().npu(),
+                                 torch.tensor(self.k_seqlen_list).npu(),
+                                 self.mask.npu(),
+                                 torch.tensor(self.q_seqlen_list).npu()])
+
     def test_mla_split_mtp_mask_head128_fp16(self):
+        self.compare_index = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return
@@ -427,6 +490,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
 
 
     def test_mla_split_mtp_mask_free(self):
+        self.compare_index = 0
         if not operation_test.get_soc_version() == 'Ascend910B':
             print("this testcase only supports Ascend910B")
             return

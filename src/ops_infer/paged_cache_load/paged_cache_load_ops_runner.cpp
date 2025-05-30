@@ -15,8 +15,7 @@ namespace atb {
 PagedCacheLoadOpsRunner::PagedCacheLoadOpsRunner(const infer::PagedCacheLoadParam &param)
     : OpsRunner("PagedCacheLoadOpsRunner", RUNNER_TYPE_PAGED_CACHE_LOAD), param_(param)
 {
-    ATB_LOG(INFO) << "PagedCacheLoadOpsRunner::PagedCacheLoadOpsRunner called";
-    const std::size_t intensorSize = 6;
+    const std::size_t intensorSize = 7;
     const std::size_t outtensorSize = 2;
     kernelGraph_.inTensors.resize(intensorSize);
     kernelGraph_.outTensors.resize(outtensorSize);
@@ -29,26 +28,56 @@ PagedCacheLoadOpsRunner::PagedCacheLoadOpsRunner(const infer::PagedCacheLoadPara
     Mki::Tensor &key = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &value = kernelGraph_.inTensors.at(inTensorStart++);
 
-    size_t outTensorStart = 0;
-    Mki::Tensor &outKeyTensor = kernelGraph_.outTensors.at(outTensorStart++);
-    Mki::Tensor &outValueTensor = kernelGraph_.outTensors.at(outTensorStart++);
+    if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
+        Mki::Tensor &seq_starts = kernelGraph_.inTensors.at(3);
 
-    kernelGraph_.nodes.resize(1);
-    auto &pagedCacheLoadNode = kernelGraph_.nodes.at(0);
-    AtbOps::OpParam::PagedCacheLoad pagedCacheLoadParam;
-    pagedCacheLoadParam.type = AtbOps::OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ;
-    pagedCacheLoadNode.opDesc = {0, "PagedCacheLoadOperation", pagedCacheLoadParam};
-    pagedCacheLoadNode.inTensors = {&keyCacheTensor, &valueCacheTensor, &blockTablesTensor, &contextLens, &key, &value};
-    pagedCacheLoadNode.outTensors = {&outKeyTensor, &outValueTensor};
-    pagedCacheLoadNode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) {
-        for (size_t i = 0; i < launchParam.GetInTensorCount(); i++) {
-            if (i == 0 || i == 1) { // 2, 3: intensor index
-                launchParam.GetInTensor(i).desc.format = Mki::TENSOR_FORMAT_FRACTAL_NZ;
-            } else {
+        size_t outTensorStart = 0;
+        Mki::Tensor &outKeyTensor = kernelGraph_.outTensors.at(outTensorStart++);
+        Mki::Tensor &outValueTensor = kernelGraph_.outTensors.at(outTensorStart++);
+
+        kernelGraph_.nodes.resize(1);
+        auto &pagedCacheLoadNode = kernelGraph_.nodes.at(0);
+        AtbOps::OpParam::PagedCacheLoad pagedCacheLoadParam;
+
+        pagedCacheLoadParam.type = AtbOps::OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_NZ;
+        pagedCacheLoadParam.cuSeqLens = param_.isSeqLensCumsumMode;
+        pagedCacheLoadParam.hasSeqStarts = param_.hasSeqStarts;
+
+        pagedCacheLoadNode.opDesc = {0, "PagedCacheLoadOperation", pagedCacheLoadParam};
+        pagedCacheLoadNode.inTensors = {&keyCacheTensor, &valueCacheTensor, &blockTablesTensor, &contextLens, &key, &value, &seq_starts};
+        pagedCacheLoadNode.outTensors = {&outKeyTensor, &outValueTensor};
+        pagedCacheLoadNode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) {
+            for (size_t i = 0; i < launchParam.GetInTensorCount(); i++) {
+                if (i == 0 || i == 1) { // 2, 3: intensor index
+                    launchParam.GetInTensor(i).desc.format = Mki::TENSOR_FORMAT_FRACTAL_NZ;
+                } else {
+                    launchParam.GetInTensor(i).desc.format = Mki::TENSOR_FORMAT_ND;
+                }
+            }
+        };
+    } else {
+        Mki::Tensor &seq_starts = kernelGraph_.inTensors.at(inTensorStart++);
+
+        size_t outTensorStart = 0;
+        Mki::Tensor &outKeyTensor = kernelGraph_.outTensors.at(outTensorStart++);
+        Mki::Tensor &outValueTensor = kernelGraph_.outTensors.at(outTensorStart++);
+
+        kernelGraph_.nodes.resize(1);
+        auto &pagedCacheLoadNode = kernelGraph_.nodes.at(0);
+        AtbOps::OpParam::PagedCacheLoad pagedCacheLoadParam;
+        pagedCacheLoadParam.type = AtbOps::OpParam::PagedCacheLoad::PAGED_CACHE_LOAD_ND;
+        pagedCacheLoadParam.cuSeqLens = param_.isSeqLensCumsumMode;
+        pagedCacheLoadParam.hasSeqStarts = param_.hasSeqStarts;
+
+        pagedCacheLoadNode.opDesc = {0, "PagedCacheLoadOperation", pagedCacheLoadParam};
+        pagedCacheLoadNode.inTensors = {&keyCacheTensor, &valueCacheTensor, &blockTablesTensor, &contextLens, &key, &value, &seq_starts};
+        pagedCacheLoadNode.outTensors = {&outKeyTensor, &outValueTensor};
+        pagedCacheLoadNode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) {
+            for (size_t i = 0; i < launchParam.GetInTensorCount(); i++) {
                 launchParam.GetInTensor(i).desc.format = Mki::TENSOR_FORMAT_ND;
             }
-        }
-    };
+        };
+    }
 }
 
 PagedCacheLoadOpsRunner::~PagedCacheLoadOpsRunner() {}

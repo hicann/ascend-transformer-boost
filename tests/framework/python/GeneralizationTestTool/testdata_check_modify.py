@@ -2530,37 +2530,72 @@ class GroupTopkOperation(OperationValidation):
 
 class BlockCopyOperation(OperationValidation):
     @staticmethod
-    def op_param_check_modify(op_param):
-        if get_soc_version() == 'Ascend310P':
-            return False
-        return True
-
-    @staticmethod
     def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
         # print(tensor_desc)
-        tensor_desc.dtypes[2] = 'int32'
-        tensor_desc.dtypes[3] = 'int32'
-        tensor_desc.dtypes[4] = 'int32'
-        tensor_desc.dtypes[0] = tensor_desc.dtypes[1]
-        tensor_desc.shapes[2][0] = tensor_desc.shapes[4][0]
-        tensor_desc.shapes[0][0] = tensor_desc.shapes[1][0]
-        if len(tensor_desc.shapes[0]) != 4 or len(tensor_desc.shapes[1]) != 4:
-            return False
-        tensor_desc.shapes[0][1] = tensor_desc.shapes[1][1]
-        tensor_desc.shapes[0][2] = tensor_desc.shapes[1][2]
-        tensor_desc.shapes[0][3] = tensor_desc.shapes[1][3]
-        if len(tensor_desc.shapes[2]) != 1 or len(tensor_desc.shapes[3]) != 1 or len(tensor_desc.shapes[4]) != 1:
-            return False
-        if tensor_desc.shapes[0][0] < tensor_desc.shapes[2][0]:
-            return False
-        if tensor_desc.shapes[0][0] < tensor_desc.shapes[3][0]:
-            return False
-        if tensor_desc.shapes[2][0] > tensor_desc.shapes[3][0]:
-            return False
-        if tensor_desc.shapes[2][0] + tensor_desc.shapes[3][0] > tensor_desc.shapes[0][0]:
-            return False
-        tensor_desc.data_gen_types = ["random", "random", "customize", "customize", "customize"]
-        return True
+        if get_soc_version() == 'Ascend310P':
+            tensor_desc.dtypes[2] = 'int32'
+            tensor_desc.dtypes[3] = 'int32'
+            tensor_desc.dtypes[4] = 'int32'
+            tensor_desc.formats[0] = random.choice(["nd", "fractal_nz"])
+            tensor_desc.formats[1] = random.choice(["nd", "fractal_nz"])
+            tensor_desc.formats[2] = "nd"
+            tensor_desc.formats[3] = "nd"
+            tensor_desc.formats[4] = "nd"
+            tensor_desc.dtypes[0] = tensor_desc.dtypes[1]
+            tensor_desc.shapes[2][0] = tensor_desc.shapes[4][0]
+            tensor_desc.shapes[0][0] = tensor_desc.shapes[1][0]
+            if len(tensor_desc.shapes[0]) != 4 or len(tensor_desc.shapes[1]) != 4:
+                return False
+            tensor_desc.shapes[0][1] = tensor_desc.shapes[1][1]
+            tensor_desc.shapes[0][2] = tensor_desc.shapes[1][2]
+            tensor_desc.shapes[0][3] = tensor_desc.shapes[1][3]
+            tensor_desc.formats[0] = tensor_desc.formats[1]
+            if len(tensor_desc.shapes[2]) != 1 or len(tensor_desc.shapes[3]) != 1 or len(tensor_desc.shapes[4]) != 1:
+                return False
+            if tensor_desc.shapes[0][0] < tensor_desc.shapes[2][0]:
+                return False
+            if tensor_desc.shapes[0][0] < tensor_desc.shapes[3][0]:
+                return False
+            if tensor_desc.shapes[2][0] > tensor_desc.shapes[3][0]:
+                return False
+            if tensor_desc.shapes[2][0] + tensor_desc.shapes[3][0] > tensor_desc.shapes[0][0]:
+                return False
+            if tensor_desc.dtypes[0] != 'float16' or tensor_desc.dtypes[1] != 'float16':
+                return False
+            if tensor_desc.formats[0] == "nd" and tensor_desc.formats[1] == "nd":
+                if (tensor_desc.shapes[0][1] * tensor_desc.shapes[0][2] * tensor_desc.shapes[0][3]) % 16 != 0:
+                    return False
+            if tensor_desc.formats[0] == "fractal_nz" and tensor_desc.formats[1] == "fractal_nz":
+                tensor_desc.shapes[0][3] = 16
+                tensor_desc.shapes[1][3] = 16
+                if ((tensor_desc.shapes[0][2] % 16) != 0) or ((tensor_desc.shapes[1][2] % 16) != 0):
+                    return False
+            tensor_desc.data_gen_types = ["random", "random", "customize", "customize", "customize"]
+            return True
+        else:
+            tensor_desc.dtypes[2] = 'int32'
+            tensor_desc.dtypes[3] = 'int32'
+            tensor_desc.dtypes[4] = 'int32'
+            tensor_desc.dtypes[0] = tensor_desc.dtypes[1]
+            tensor_desc.shapes[2][0] = tensor_desc.shapes[4][0]
+            tensor_desc.shapes[0][0] = tensor_desc.shapes[1][0]
+            if len(tensor_desc.shapes[0]) != 4 or len(tensor_desc.shapes[1]) != 4:
+                return False
+            tensor_desc.shapes[0][1] = tensor_desc.shapes[1][1]
+            tensor_desc.shapes[0][2] = tensor_desc.shapes[1][2]
+            tensor_desc.shapes[0][3] = tensor_desc.shapes[1][3]
+            if len(tensor_desc.shapes[2]) != 1 or len(tensor_desc.shapes[3]) != 1 or len(tensor_desc.shapes[4]) != 1:
+                return False
+            if tensor_desc.shapes[0][0] < tensor_desc.shapes[2][0]:
+                return False
+            if tensor_desc.shapes[0][0] < tensor_desc.shapes[3][0]:
+                return False
+            if tensor_desc.shapes[2][0] > tensor_desc.shapes[3][0]:
+                return False
+            if tensor_desc.shapes[2][0] + tensor_desc.shapes[3][0] > tensor_desc.shapes[0][0]:
+                return False
+            tensor_desc.data_gen_types = ["random", "random", "customize", "customize", "customize"]
+            return True
 
 
 class GroupedMatmulInplaceAddOperation(OperationValidation):
@@ -2673,5 +2708,96 @@ class FaUpdateOperation(OperationValidation):
         if len(tensor_desc.shapes[0]) != 2 or len(tensor_desc.shapes[1]) != 3:
             return False
         if tensor_desc.shapes[1][2] > 512:
+            return False
+        return True
+
+class ScatterElementsV2Operation(OperationValidation):
+    @staticmethod
+    def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
+        if tensor_desc.dtypes[1] != 'int32' and tensor_desc.dtypes[1] != 'int64':
+            tensor_desc.dtypes[1] = 'int32'
+ 
+        # 1：indice_tensor dim需要和input_tensor保持一致。
+        if len(tensor_desc.shapes[1]) != len(tensor_desc.shapes[0]):
+            return False
+ 
+        # 2：indice_tensor非尾轴和非0轴的shape需要和input_tensor完全相同。
+        for i in range(1, len(tensor_desc.shapes[0]) - 1):
+            tensor_desc.shapes[1][i] = tensor_desc.shapes[0][i]
+ 
+ 
+        # 8：indice_tensor 首维和尾维需要小于 input_tensor
+        if tensor_desc.shapes[1][0] > tensor_desc.shapes[0][0]:
+            tensor_desc.shapes[1][0] = tensor_desc.shapes[0][0]
+ 
+        # 8：indice_tensor 首维和尾维需要小于 input_tensor
+        input_tensor_last_dim = len(tensor_desc.shapes[1]) - 1
+        if tensor_desc.shapes[1][input_tensor_last_dim] > tensor_desc.shapes[0][input_tensor_last_dim]:
+            tensor_desc.shapes[1][input_tensor_last_dim] = tensor_desc.shapes[0][input_tensor_last_dim]
+ 
+        # 4：update_tensor dim和shape需要和indice_tensor完全一致
+        if len(tensor_desc.shapes[1]) != len(tensor_desc.shapes[2]):
+            tensor_desc.shapes[2] = tensor_desc.shapes[1]
+ 
+        # 4：update_tensor dim和shape需要和indice_tensor完全一致
+        for i in range(0, len(tensor_desc.shapes[1])):
+            tensor_desc.shapes[2][i] = tensor_desc.shapes[1][i]
+ 
+        # 5:update_tensor 的dtype需要和input_tensor保持一致
+        if tensor_desc.dtypes[2] != tensor_desc.dtypes[0]:
+            tensor_desc.dtypes[2] = tensor_desc.dtypes[0]
+ 
+        tensor_desc.data_gen_ranges[1] = f"1,{tensor_desc.shapes[0][-1] - 1}"
+ 
+        axis, reduction = op_param['axis'], op_param['reduction']
+        if axis != -1:
+            op_param['axis'] = -1
+ 
+        if reduction != 0 and reduction != 1:
+            return False
+        return True
+class ScatterElementsV2Operation(OperationValidation):
+    @staticmethod
+    def tensor_desc_check_modify(op_param, tensor_desc: TensorDesc):
+        if tensor_desc.dtypes[1] != 'int32' and tensor_desc.dtypes[1] != 'int64':
+            tensor_desc.dtypes[1] = 'int32'
+ 
+        # 1：indice_tensor dim需要和input_tensor保持一致。
+        if len(tensor_desc.shapes[1]) != len(tensor_desc.shapes[0]):
+            return False
+ 
+        # 2：indice_tensor非尾轴和非0轴的shape需要和input_tensor完全相同。
+        for i in range(1, len(tensor_desc.shapes[0]) - 1):
+            tensor_desc.shapes[1][i] = tensor_desc.shapes[0][i]
+ 
+ 
+        # 8：indice_tensor 首维和尾维需要小于 input_tensor
+        if tensor_desc.shapes[1][0] > tensor_desc.shapes[0][0]:
+            tensor_desc.shapes[1][0] = tensor_desc.shapes[0][0]
+ 
+        # 8：indice_tensor 首维和尾维需要小于 input_tensor
+        input_tensor_last_dim = len(tensor_desc.shapes[1]) - 1
+        if tensor_desc.shapes[1][input_tensor_last_dim] > tensor_desc.shapes[0][input_tensor_last_dim]:
+            tensor_desc.shapes[1][input_tensor_last_dim] = tensor_desc.shapes[0][input_tensor_last_dim]
+ 
+        # 4：update_tensor dim和shape需要和indice_tensor完全一致
+        if len(tensor_desc.shapes[1]) != len(tensor_desc.shapes[2]):
+            tensor_desc.shapes[2] = tensor_desc.shapes[1]
+ 
+        # 4：update_tensor dim和shape需要和indice_tensor完全一致
+        for i in range(0, len(tensor_desc.shapes[1])):
+            tensor_desc.shapes[2][i] = tensor_desc.shapes[1][i]
+ 
+        # 5:update_tensor 的dtype需要和input_tensor保持一致
+        if tensor_desc.dtypes[2] != tensor_desc.dtypes[0]:
+            tensor_desc.dtypes[2] = tensor_desc.dtypes[0]
+ 
+        tensor_desc.data_gen_ranges[1] = f"1,{tensor_desc.shapes[0][-1] - 1}"
+ 
+        axis, reduction = op_param['axis'], op_param['reduction']
+        if axis != -1:
+            op_param['axis'] = -1
+ 
+        if reduction != 0 and reduction != 1:
             return False
         return True

@@ -317,6 +317,9 @@ template <> nlohmann::json OpParamToJson(const infer::LinearParallelParam &opPar
     paramsJson["quantGroupSize"] = opParam.quantGroupSize;
     paramsJson["outDataType"] = opParam.outDataType;
     paramsJson["commDomain"] = opParam.commDomain;
+    paramsJson["local_expert_nums"] = opParam.moeInfo.localExpertNums;
+    paramsJson["epSize"] = opParam.moeInfo.epSize;
+    paramsJson["tpSize"] = opParam.moeInfo.tpSize;
 
     return paramsJson;
 }
@@ -868,4 +871,48 @@ template <> nlohmann::json OpParamToJson(const infer::FaUpdateParam &opParam)
     paramsJson["sp"] = opParam.sp;
     return paramsJson;
 }
+
+template <> nlohmann::json OpParamToJson(const infer::ScatterElementsV2Param &opParam)
+{
+    nlohmann::json scatterElementsV2ParamsJson;
+    scatterElementsV2ParamsJson["axis"] = opParam.axis;
+    scatterElementsV2ParamsJson["reduction"] = opParam.reduction;
+
+    return scatterElementsV2ParamsJson;
+}
+
+template <> nlohmann::json OpParamToJson(const infer::GmmDeqSwigluQuantGmmDeqParam &opParam)
+{
+    nlohmann::json paramsJson;
+    paramsJson["outputType"] = opParam.outputType;
+    paramsJson["groupListType"] = opParam.groupListType;
+    paramsJson["weightUpPermuteType"] = opParam.weightUpPermuteType;
+    paramsJson["transposeWeightUp"] = opParam.transposeWeightUp;
+    paramsJson["transposeWeightDown"] = opParam.transposeWeightDown;
+    return paramsJson;
+}
+
+template <> nlohmann::json OpParamToJson(const infer::MmDeqSwigluQuantMmDeqParam &opParam)
+{
+    nlohmann::json paramsJson;
+    paramsJson["outputType"] = opParam.outputType;
+    paramsJson["weightUpPermuteType"] = opParam.weightUpPermuteType;
+    paramsJson["transposeWeightUp"] = opParam.transposeWeightUp;
+    paramsJson["transposeWeightDown"] = opParam.transposeWeightDown;
+    return paramsJson;
+}
+
+template <> nlohmann::json OpParamToJson(const infer::RingMLAParam &opParam)
+{
+    nlohmann::json paramsJson;
+    paramsJson["calcType"] = opParam.calcType;
+    paramsJson["headNum"] = opParam.headNum;
+    paramsJson["kvHeadNum"] = opParam.kvHeadNum;
+    paramsJson["qkScale"] = opParam.qkScale;
+    paramsJson["kernelType"] = opParam.kernelType;
+    paramsJson["maskType"] = opParam.maskType;
+    paramsJson["inputLayout"] = opParam.inputLayout;
+    return paramsJson;
+}
+
 } // namespace atb
