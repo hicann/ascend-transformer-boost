@@ -5221,7 +5221,10 @@ class SelfAttentionOperation(DataGen):
                 seqLen_id -= 1
             run_param = json.dumps({"seqLen": input_tensor_list[seqLen_id].tolist()})
         elif json_data["calcType"] == 4:
-            run_param = json.dumps({"tokenOffset": input_tensor_list[5].tolist(), "seqLen": input_tensor_list[6].tolist()})
+            if json_data["maskType"] == 9:
+                run_param = json.dumps({"tokenOffset": input_tensor_list[4].tolist(), "seqLen": input_tensor_list[5].tolist()})
+            else:
+                run_param = json.dumps({"tokenOffset": input_tensor_list[5].tolist(), "seqLen": input_tensor_list[6].tolist()})
         elif 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1:
             run_param = json.dumps({"tokenOffset": input_tensor_list[4].tolist(), "seqLen": input_tensor_list[5].tolist()})
         else:
