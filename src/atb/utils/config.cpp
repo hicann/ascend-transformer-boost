@@ -61,7 +61,7 @@ Config::Config()
                   << ", DeviceTilingBufferBlockNum:" << deviceTilingBlockNum_
                   << ", ShareMemoryNameSuffix:" << shareMemoryNameSuffix_
                   << ", IsLaunchKernelWithTiling:" << isLaunchKernelWithTiling_
-                  << ", IsMatmulShuffleKEnable:" << isMatmulShuffleKEnable_ << ", RunnerPoolSize:" << runnerPoolSize_;
+                  << ", IsMatmulShuffleKEnable:" << isMatmulShuffleKEnable_;
 }
 
 Config::~Config() {}
@@ -294,11 +294,6 @@ bool Config::IsLaunchKernelWithTiling() const
 bool Config::IsMatmulShuffleKEnable() const
 {
     return isMatmulShuffleKEnable_;
-}
-
-uint32_t Config::GetRunnerPoolSize() const
-{
-    return runnerPoolSize_;
 }
 
 void Config::SetLaunchKernelWithTilingStatus(bool status)
