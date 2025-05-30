@@ -11,8 +11,8 @@
 #include "atb/utils/log.h"
 
 namespace atb {
-DeviceTilingBufferPool::DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize)
-    : TilingBufferPool(blockNum, blockSize)
+DeviceTilingBufferPool::DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize, const std::function<void*(size_t size)>& alloc, const std::function<void(void*)>& dealloc)
+    : TilingBufferPool(blockNum, blockSize), allocateFunc_(alloc), deallocateFunc_(dealloc)
 {
 }
 
@@ -20,20 +20,15 @@ DeviceTilingBufferPool::~DeviceTilingBufferPool() {}
 
 uint8_t *DeviceTilingBufferPool::MallocTotalBuffer(uint64_t bufferSize)
 {
-    void *buffer = nullptr;
-    ATB_LOG(INFO) << "aclrtMalloc bufferSize:" << bufferSize;
-    int ret = aclrtMalloc(&buffer, bufferSize, ACL_MEM_MALLOC_HUGE_FIRST);
-    ATB_LOG_IF(ret != 0, ERROR) << "aclrtMalloc fail, bufferSize:" << bufferSize << ", ret:" << ret;
-    return static_cast<uint8_t *>(buffer);
+    ATB_LOG(INFO) << "allocate device tiling buffer, and the buffersize is: " << bufferSize;
+    return static_cast<uint8_t *>(allocateFunc_(static_cast<size_t>(bufferSize)));
 }
 
 void DeviceTilingBufferPool::FreeTotalBuffer(uint8_t *buffer)
 {
     if (buffer) {
-        aclError aclRet = aclrtFree(buffer);
-        if (aclRet != ACL_SUCCESS) {
-            ATB_LOG(ERROR) << "Free total buffer failed! ret: " << aclRet;
-        }
+        ATB_LOG(INFO) << "deallocate device tiling buffer";
+        deallocateFunc_(static_cast<void *>(buffer));
     }
 
     buffer = nullptr;
