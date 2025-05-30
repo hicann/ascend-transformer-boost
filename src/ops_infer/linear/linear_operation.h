@@ -42,6 +42,7 @@ private:
     bool XWeightBatchCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;
     bool XWeightKEqualCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;
     bool WeightAlignCheck(const TensorDesc &weightTensorDesc, int64_t align) const;
+    bool PerTokenXWeightDimNumCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;
 
 private:
     infer::LinearParam param_;

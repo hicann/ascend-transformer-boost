@@ -653,6 +653,23 @@ bool LinearOperation::XWeightDimNumCheck(const TensorDesc &xTensorDesc, const Te
                                       ", inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
         ATB_LOG(ERROR) << GetLogPrefix() << error;
         return false;
+    } else if (!PerTokenXWeightDimNumCheck(xTensorDesc, weightTensorDesc)) {
+        return false;
+    }
+    return true;
+}
+
+bool LinearOperation::PerTokenXWeightDimNumCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const
+{
+    ExternalError error;
+    error.errorType = ERROR_INVALID_TENSOR_DIM_NUM;
+    error.solutionDesc = "Please check format and shape of inTensors.";
+    if (param_.quantMode == infer::LinearParam::PER_TOKEN && xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_2) {
+        error.errorDesc = "When quantMode is PER_TOKEN and inTensor0 dim num is 3, inTensor1 dim num cannot be 2,";
+        error.errorData = OperationUtil::ConcatInfo("quantMode = ", param_.quantMode, ", inTensor0 dimNum = ", xTensorDesc.shape.dimNum,
+                                      ", inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
+        ATB_LOG(ERROR) << GetLogPrefix() << error;
+        return false;
     }
     return true;
 }
