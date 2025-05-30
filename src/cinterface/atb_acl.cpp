@@ -200,7 +200,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen, const aclTensor *kvSeqLen,
     const aclTensor *mask, int32_t headNum, float qkScale, int32_t kvHeadNum,
     int maskType, uint8_t cacheMode, aclTensor *attenOut,
-    uint64_t *workSpaceSize, atb::Operation **op, atb::Context *context)
+    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
 {
     atb::infer::MultiLatentAttentionParam param;
     param.headNum = headNum;
@@ -239,7 +239,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     status = aclTensorToAtbTensorHost(kvSeqLen, &(pack.inTensors[i++]));
     ATB_CHECK(status == atb::NO_ERROR, "kvSeqLen create failed!", return status);
 
-    if (param.maskType != atb::infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+    if (param.maskType == atb::infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
         status = aclTensorToAtbTensor(mask, &(pack.inTensors[i++]));
         ATB_CHECK(status == atb::NO_ERROR, "mask create failed!", return status);
     }
@@ -248,14 +248,14 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[0]));
     ATB_CHECK(status == atb::NO_ERROR, "attenOut create failed!", return status);
 
-    atb::Status st = (*op)->Setup(pack, *workSpaceSize, context);
+    atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);
     return atb::NO_ERROR;
 }
 
-atb::Status AtbMLAPreFill(void* workSpace, uint64_t workSpaceSize, atb::Operation *op, atb::Context *context)
+atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
-    atb::Status st = op->Execute(g_PACK, (uint8_t*)(workSpace), workSpaceSize, context);
+    atb::Status st = op->Execute(g_PACK, (uint8_t*)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
     return st;
 }
@@ -403,9 +403,9 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(const aclTensor *input, const aclTe
     return atb::NO_ERROR;
 }
 
-atb::Status AtbMLAPreprocess(void *workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
+atb::Status AtbMLAPreprocess(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
-    atb::Status st = op->Execute(g_PACK, (uint8_t*)(workSpace), workspaceSize, context);
+    atb::Status st = op->Execute(g_PACK, (uint8_t*)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreprocess Execute failed!", return st);
     return st;
 }

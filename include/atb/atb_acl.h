@@ -46,7 +46,7 @@ extern "C" {
 //! \param cacheMode MLA算子的cache类型
 //! \param attenOut MLA算子的输出tensor
 //! \param ise MLA算子的输出tensor
-//! \param workSpaceSize MLA算子的workspace大小
+//! \param workspaceSize MLA算子的workspace大小
 //! \param op MLA算子的handler
 //! \param context MLA算子的上下文参数
 //!
@@ -56,19 +56,19 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
     const aclTensor *mask, const aclTensor *qSeqlen, const aclTensor *qkDescale,
     const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
     int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut,
-    aclTensor *ise, uint64_t *workSpaceSize, atb::Operation **op, atb::Context *context);
+    aclTensor *ise, uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief 关于MLA算子使用aclnn风格调用的2段式接口第2段，
 //! 用于算子的推理调度阶段
 //!
-//! \param workSpace 针对MLA算子申请的工作空间
-//! \param workSpaceSize MLA算子的workspace大小
+//! \param workspace 针对MLA算子申请的工作空间
+//! \param workspaceSize MLA算子的workspace大小
 //! \param op MLA算子的op handler
 //! \param context MLA算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLA(void* workSpace, uint64_t workSpaceSize, atb::Operation *op, atb::Context *context);
+atb::Status AtbMLA(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief MLA prefill 前处理接口
@@ -88,7 +88,7 @@ atb::Status AtbMLA(void* workSpace, uint64_t workSpaceSize, atb::Operation *op, 
 //! \param maskType MLA算子的mask类型
 //! \param cacheMode MLA算子的cache类型
 //! \param attenOut MLA算子的输出tensor
-//! \param workSpaceSize MLA算子的workspace大小
+//! \param workspaceSize MLA算子的workspace大小
 //! \param op MLA算子的handler
 //! \param context MLA算子的上下文参数
 //!
@@ -97,18 +97,18 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen, const aclTensor *kvSeqLen,
     const aclTensor *mask, int32_t headNum, float qkScale, int32_t kvHeadNum,
     int maskType, uint8_t cacheMode, aclTensor *attenOut,
-    uint64_t *workSpaceSize, atb::Operation **op, atb::Context *context);
+    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
 
 //!
 //! \brief MLA prefill 处理接口
 //!
-//! \param workSpace 针对MLA算子申请的工作空间
-//! \param workSpaceSize MLA算子的work space大小
+//! \param workspace 针对MLA算子申请的工作空间
+//! \param workspaceSize MLA算子的work space大小
 //! \param op MLA算子的op handler
 //! \param context MLA算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLAPreFill(void* workSpace, uint64_t workSpaceSize, atb::Operation *op, atb::Context *context);
+atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief 关于MlaPreprocess算子使用aclnn风格调用的2段式接口种的第1段，
@@ -179,13 +179,13 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(const aclTensor *input, const aclTe
 //! \brief 关于MLAPreprocess算子使用aclnn风格调用的2段式接口种的第2段，
 //! 用于算子的推理调度阶段
 //!
-//! \param workSpace 针对MLAPreprocess算子申请的工作空间
+//! \param workspace 针对MLAPreprocess算子申请的工作空间
 //! \param workspaceSize MLAPreprocess算子的workspace大小
 //! \param op MLAPreprocess算子的op handler
 //! \param context MLAPreprocess算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLAPreprocess(void *workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+atb::Status AtbMLAPreprocess(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 #ifdef __cplusplus
 }
 #endif
