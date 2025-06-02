@@ -59,7 +59,7 @@ add_custom_command(
                                                                            --params_path ${PROJECT_SOURCE_DIR}/src/kernels/include/asdops/params
                                                                            --dest_file_path ${ATTRIBUTE_UTILS_CPP}
 )
-add_custom_target(ATTRIBUTE_UTILS_CPP_TARGET DEPENDS ${ATTRIBUTE_UTILS_CPP})
+add_custom_target(OPS_ATTRIBUTE_UTILS_CPP_TARGET DEPENDS ${ATTRIBUTE_UTILS_CPP})
 set_source_files_properties(${ATTRIBUTE_UTILS_CPP} PROPERTIES GENERATED TRUE)
 
 #########################
