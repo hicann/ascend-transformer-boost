@@ -24,7 +24,7 @@ CANN_COPYRIGHT = '''/*
 
 TYPE_MAP = {
     'SVector': 'AsdOps::SVECTOR_TYPE',
-    'vector' : 'AsdOps::VECTOR_TYPE'
+    'vector': 'AsdOps::VECTOR_TYPE'
 }
 
 
