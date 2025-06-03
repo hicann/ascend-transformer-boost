@@ -34,8 +34,8 @@ format_enum_dict = {-1: "undefined", 0: "nchw", 1: "nhwc", 2: "nd", 3: "nc1hwc0"
                 4: "fractal_z", 12: "nc1hwc0_c04", 16: "hwcn", 27: "ndhwc",
                 29: "fractal_nz", 30: "ncdhw", 32: "ndc1hwc0", 33: "fractal_z_3d"}
 
-err_enum_dict = {0: "NO_ERROR", 1: "ERROR_INVALID_PARAM", 2: "ERROR_INVALID_GRAPH", 3: "ERROR_INTERNAL_ERROR", 4: "ERROR_RT_FAIL", 
-                 5: "ERROR_INVALID_IN_TENSOR_NUM", 6: "ERROR_INVALID_TENSOR_DTYPE", 7: "ERROR_INVALID_TENSOR_FORMAT", 8: "ERROR_INVALID_TENSOR_DIM", 
+err_enum_dict = {0: "NO_ERROR", 1: "ERROR_INVALID_PARAM", 2: "ERROR_INVALID_GRAPH", 3: "ERROR_INTERNAL_ERROR", 4: "ERROR_RT_FAIL",
+                 5: "ERROR_INVALID_IN_TENSOR_NUM", 6: "ERROR_INVALID_TENSOR_DTYPE", 7: "ERROR_INVALID_TENSOR_FORMAT", 8: "ERROR_INVALID_TENSOR_DIM",
                  9: "ERROR_INVALID_TENSOR_SIZE", 10: "ERROR_OPERATION_NULL_RUNNER", 11: "ERROR_GRAPH_INFERSHAPE_FUNC_FAIL", 12: "ERROR_CANN_ERROR",
                  13: "ERROR_INVALID_TENSOR_INI_MATCH", 14: "ERROR_INVALID_TENSOR_ADDR", 15: "ERROR_INVALID_TENSOR_NUM", 16: "ERROR_INVALID_TENSOR_DIM_NUM",
                  17: "ERROR_INVALID_SINGLE_OPERATION_PARAM", 18: "ERROR_GRAPH_NODE_RESHAPE_FUNC_FAIL", 19: "ERROR_INVALID_GRAPH_NODE_CHUNK",
@@ -451,7 +451,7 @@ class CsvOpsTest():
             self.__dump_tensor(eb, 'eb', i, 'index {}, eb_threshold: {}'.format(i, eb_threshold))
         eb_percent = '0' if eb == 0 else str(torch.sum(eb).to(torch.float).numpy() / eb_threshold * 100)[:5]
         return precision_percent, eb_percent
-        
+
     def precision_performance_analysis(self):
         if (len(self.output_tensor_list) == 0):
             self.output_tensor_list = self.input_tensor_list
@@ -502,7 +502,7 @@ class CsvOpsResult():
 
     def reset(self, index):
             self.result = {"succ": 0, "fail": 0, "SetupTime(us)": 0, "ExecuteTime(us)": 0, "SyncTime(us)": 0,
-                           "Error0.1‰": '', "Error0.5‰": '', "Error1‰": '', "Error4‰": '', "Error5‰": '', "Error+/-1": '', 
+                           "Error0.1‰": '', "Error0.5‰": '', "Error1‰": '', "Error4‰": '', "Error5‰": '', "Error+/-1": '',
                            "PrecisionPercent": '', "EBPercent": '', "FirstErrType": self.opsTest.file_data.loc[index, 'ExpectedError']}
 
     def add_list(self, list_index, list_key, list_str):
@@ -735,7 +735,7 @@ class CsvOpsTestUtil:
     def get_case_range(number, max_case_number):
         case_number = [int(num) for num in number.split(":")]
         from_case_num = case_number[0]
-        if (len(case_number) == 1):    
+        if (len(case_number) == 1):
             to_case_num = case_number[0]
         else:
             to_case_num = case_number[1]
@@ -870,8 +870,10 @@ def get_device_properties():
     re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
     re.search("Ascend910A", device_name, re.I)):
         soc_version = "Ascend910A"
-    elif ("Ascend310B", device_name, re.I):
+    elif re.search("Ascend310B", device_name, re.I):
         soc_version = "Ascend310B"
+    elif re.search("Ascend910_9599", device_name, re.I):
+        soc_version = "Ascend910_95"
     else:
         logging.error("device_name %s is not supported", device_name)
         quit(1)
