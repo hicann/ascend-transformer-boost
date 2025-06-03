@@ -6,12 +6,24 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 
+option(USE_MSSANITIZER "USE_MSSANITIZER" OFF)
+option(USE_MSDEBUG "USE_MSDEBUG" OFF)
+message(STATUS "USE_MSSANITIZER:${USE_MSSANITIZER}")
+message(STATUS "USE_MSDEBUG:${USE_MSDEBUG}")
+
+set(OPS_PROJECT_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}")
+set(OPS_THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/3rdparty")
+set(MKI_PACKAGE_DIR "${OPS_THIRD_PARTY_DIR}/mki")
+set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
+
 file(GLOB_RECURSE CUSTOMIZE_SRCS
      "${CMAKE_CURRENT_SOURCE_DIR}/common/*.cpp"
      "${CMAKE_CURRENT_SOURCE_DIR}/ops/*.cpp")
 
-list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/kernel_implement/.*")
 list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/tests/.*")
+
+include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
+include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
 
 add_library(customize_objs OBJECT ${CUSTOMIZE_SRCS})
 
@@ -32,6 +44,8 @@ set(USR_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
     ${PROJECT_SOURCE_DIR}/src/kernels/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
+    ${OPS_PROJECT_ROOT_DIR}
+    ${OPS_PROJECT_ROOT_DIR}/tbe_adapter/include
 )
 
 target_include_directories(atb_customize PUBLIC ${USR_INCLUDE_DIRS})
@@ -60,9 +74,6 @@ install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_customize/customize_ops_configs DESTINATION ./configs)
 
-add_subdirectory(ops)
-
-# 添加位置以及是否需要add_subdirectory
 find_package(GTest 1.13.0 REQUIRED)
 enable_testing()
 add_subdirectory(ops/customize_blockcopy/tests)
