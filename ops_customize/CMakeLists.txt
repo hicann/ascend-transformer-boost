@@ -25,15 +25,16 @@ list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/tests/.*")
 include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
 include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
 
-add_library(customize_ops SHARED ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp ${CMAKE_CURRENT_LIST_DIR}/ops.cpp)
-add_library(customize_ops_static STATIC $<TARGET_OBJECTS:customize_ops>)
+add_library(customiz_objs OBJECT
+    ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/ops.cpp
+    ${CUSTOMIZE_SRCS}
+)
 
-add_library(customize_objs OBJECT ${CUSTOMIZE_SRCS})
+add_library(atb_customize SHARED $<TARGET_OBJECTS:customiz_objs>)
+add_library(atb_customize_static STATIC $<TARGET_OBJECTS:customiz_objs>)
 
-add_library(atb_customize SHARED $<TARGET_OBJECTS:customize_objs>)
-add_library(atb_customize_static STATIC $<TARGET_OBJECTS:customize_objs>)
-
-set(USR_INCLUDE_DIRS
+set(CUSTOMIZE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/ops
     ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement
@@ -51,11 +52,10 @@ set(USR_INCLUDE_DIRS
     ${OPS_PROJECT_ROOT_DIR}/tbe_adapter/include
 )
 
-target_include_directories(atb_customize PUBLIC ${USR_INCLUDE_DIRS})
-target_include_directories(atb_customize_static PUBLIC ${USR_INCLUDE_DIRS})
+target_include_directories(atb_customize PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
+target_include_directories(atb_customize_static PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 
-target_link_libraries(atb_customize
-  PUBLIC
+set(CUSTOMIZE_DEPS
     mki
     tbe_adapter
     asdops
@@ -68,10 +68,8 @@ target_link_libraries(atb_customize
     acl_op_compiler
 )
 
-target_link_libraries(atb_customize_static
-  PUBLIC
-    atb_customize
-)
+target_link_libraries(atb_customize PUBLIC ${CUSTOMIZE_DEPS})
+target_link_libraries(atb_customize_static PUBLIC ${CUSTOMIZE_DEPS})
 
 install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
