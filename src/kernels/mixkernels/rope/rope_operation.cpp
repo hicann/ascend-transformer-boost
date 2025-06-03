@@ -37,8 +37,8 @@ public:
     Status InferShapeImpl(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const override
     {
         MKI_LOG(INFO) << "RopeInferShape enter";
-        auto &map = opInferShape::GetGeInferShapeMap();
-        return map["RotaryPosEmbInfer"](launchParam, outTensors, AsdOps::GetMkiSpecificAttr<OpParam::Rope>);
+        return opInferShape::CallGeInferShape("RotaryPosEmbInfer", launchParam, outTensors,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::Rope>);
     }
 
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
