@@ -97,8 +97,8 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        auto &map = optiling::GetGeTilingMap();
-        return map["RotaryPosEmbInfer"](*GetBinHandle(), launchParam, AsdOps::GetMkiSpecificAttr<OpParam::Rope>, kernelInfo_);
+        return optiling::CallGeTiling("RotaryPosEmbInfer", *GetBinHandle(), launchParam,
+                                      AsdOps::GetMkiSpecificAttr<OpParam::Rope>, kernelInfo_);
     }
 };
 
