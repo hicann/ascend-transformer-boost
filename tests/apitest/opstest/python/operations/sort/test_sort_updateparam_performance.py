@@ -7,7 +7,7 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 #
-import operation_test
+
 import sys
 import os
 import json
@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-
+import operation_test
 OP_NAME = "SortOperation"
 
 
