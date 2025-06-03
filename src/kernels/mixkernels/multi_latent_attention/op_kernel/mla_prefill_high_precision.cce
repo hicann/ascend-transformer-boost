@@ -220,7 +220,7 @@ public:
 
             uint32_t m_loop = (q_seqlen + pp_m_scalar - 1) / pp_m_scalar;
             uint32_t n_loop = (kv_seqlen + pp_n_scalar - 1) / pp_n_scalar;
-
+            uint32_t prefixIdx = (kv_seqlen - q_seqlen) / pp_n_scalar; 
             uint32_t qk_m = (m_idx == (m_loop - 1)) ? (q_seqlen - m_idx * pp_m_scalar) : pp_m_scalar;
             uint32_t qk_round_m = (qk_m + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
 
@@ -300,7 +300,7 @@ public:
 
             uint32_t n_end = n_loop;
             if (is_triu_mask) {
-                n_end = m_idx + 1;
+                n_end = m_idx + prefixIdx + 1;
             }
             uint32_t launch_delay = S_BLOCK_STACK * 2;
             uint32_t vect_mod = 2 * launch_delay;
@@ -622,40 +622,6 @@ private:
     uint32_t tiling_head_size{0};
     uint32_t tiling_para_size{0};
 };
-
-extern "C" __global__ __aicore__ void mla_prefill_bf16(
-    __gm__ uint8_t *__restrict__ sync,
-    __gm__ uint8_t *__restrict__ q_gm,
-    __gm__ uint8_t *__restrict__ q_rope_gm,
-    __gm__ uint8_t *__restrict__ k_gm,
-    __gm__ uint8_t *__restrict__ k_rope_gm,
-    __gm__ uint8_t *__restrict__ v_gm,
-    __gm__ uint8_t *__restrict__ mask_gm,
-    __gm__ uint8_t *__restrict__ alibi_coeff_gm,
-    __gm__ uint8_t *__restrict__ deq_qk_gm,
-    __gm__ uint8_t *__restrict__ off_qk_gm,
-    __gm__ uint8_t *__restrict__ deq_pv_gm,
-    __gm__ uint8_t *__restrict__ off_pv_gm,
-    __gm__ uint8_t *__restrict__ quant_p_gm,
-    __gm__ uint8_t *__restrict__ logN_gm,
-    __gm__ uint8_t *__restrict__ o_gm,
-    __gm__ uint8_t *__restrict__ s_gm,
-    __gm__ uint8_t *__restrict__ p_gm,
-    __gm__ uint8_t *__restrict__ o_tmp_gm,
-    __gm__ uint8_t *__restrict__ upo_tmp_gm,
-    __gm__ uint8_t *__restrict__ tiling_para_gm)
-{
-    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
-    // 仅在tilingKey为1的时候是bf，其余场景均当做half处理
-    if (tilingKey == 1) {
-        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, 0> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run();
-    } else if (tilingKey == 2){
-        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, 1> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run();
-    }
-}
-
 #endif
 
 #ifdef __DAV_C220_VEC__
@@ -685,7 +651,7 @@ __aicore__ __attribute__((always_inline)) inline void __set_mask(int32_t len)
     }
 }
 
-template<typename S_DTYPE, typename EXP_DTYPE, typename P_DTYPE, typename MASK_DTYPE, uint32_t MASK_TYPE>
+template<typename S_DTYPE, typename EXP_DTYPE, typename P_DTYPE, typename MASK_DTYPE, MaskType MASK_TYPE>
 __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
     const AscendC::LocalTensor<S_DTYPE> &s_ub,
     const AscendC::LocalTensor<MASK_DTYPE> &mask_orig_ub,
@@ -706,7 +672,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
     bool move_flag)
 {
     uint32_t round_m = (m + FLOAT_BLOCK_SIZE - 1) / FLOAT_BLOCK_SIZE * FLOAT_BLOCK_SIZE;
-    if constexpr(MASK_TYPE != 0) {
+    if constexpr(MASK_TYPE == MaskType::MASK_TYPE_MASK_FREE) {
         if (move_flag) {
             WAIT_FLAG(MTE2, V, EVENT_ID6);
             conv_v<ArchType::ASCEND_V220, MASK_DTYPE, S_DTYPE>(
@@ -758,7 +724,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
         8                                                                 // srcRepeatStride
     );
     PIPE_BARRIER(V);
-    if constexpr(MASK_TYPE != 0) {
+    if constexpr(MASK_TYPE == MaskType::MASK_TYPE_MASK_FREE) {
         if (move_flag) {
             add_v<ArchType::ASCEND_V220, S_DTYPE>(
                 s_ub,
@@ -1012,7 +978,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1BF16(
     }
 }
 
-template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, int32_t MASK_TYPE = 0>
+template<typename IN_DATA_TYPE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, MaskType MASK_TYPE = MaskType::MASK_TYPE_NONE>
 class FlashAttentionEncoderHighPrecisionVec {
 public:
     __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderHighPrecisionVec(
@@ -1048,7 +1014,7 @@ public:
         if (this->data_shape_type == 1) {
             this->stride_qo = embdv;
         }
-        if constexpr (MASK_TYPE != 0) {
+        if constexpr (MASK_TYPE != MaskType::MASK_TYPE_NONE) {
             this->is_triu_mask = 1;
         }
         this->__k = embd;
@@ -1106,6 +1072,8 @@ public:
         o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(o_tmp_gm));
         logN_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__  IN_DATA_TYPE*>(logN_gm));
         logN_float_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(logN_gm));
+        float mask_coff = std::is_same_v<IN_DATA_TYPE, half> ? HALF_MASK_COFF : BF16_MASK_COFF;
+        GenMaskMatrix(mask16_ubuf_tensor.template ReinterpretCast<float>(), mask_coff);
         uint32_t next_process = 0;
         for (uint32_t process = block_idx; process < process_num; process = next_process) {
             while (process >= cur_total_q_blk_num * q_heads) {
@@ -1141,6 +1109,7 @@ public:
 
             uint32_t m_loop = (q_seqlen + pp_m_scalar - 1) / pp_m_scalar;
             uint32_t n_loop = (kv_seqlen + pp_n_scalar - 1) / pp_n_scalar;
+            uint32_t prefixIdx = (kv_seqlen - q_seqlen) / pp_n_scalar;
 
             uint32_t qk_m = (m_idx == (m_loop - 1)) ? (q_seqlen - m_idx * pp_m_scalar) : pp_m_scalar;
             uint32_t sub_m = (sub_block_idx == 1) ? (qk_m - qk_m / 2) : qk_m / 2;
@@ -1166,7 +1135,7 @@ public:
 
             uint32_t n_end = n_loop;
             if (is_triu_mask) {
-                n_end = m_idx + 1;
+                n_end = m_idx + prefixIdx + 1;
             }
             uint32_t qk_n_triu = n_end * pp_n_scalar;
             uint32_t pv_stage = 3;
@@ -1187,7 +1156,8 @@ public:
                         continue;
                     }
                     uint32_t p_scale_offset = n_idx / S_BLOCK_STACK % pv_stage * pp_m_scalar;
-                    if (n_idx + S_BLOCK_STACK > n_end - 1) {
+                    bool last_n_loop = n_idx + S_BLOCK_STACK > n_end - 1;
+                    if (last_n_loop) {
                         qk_n = qk_n_triu > kv_seqlen ? kv_seqlen - n_idx * pp_n_scalar : qk_n_triu - n_idx * pp_n_scalar;
                     } else {
                         qk_n = pp_n_scalar * S_BLOCK_STACK;
@@ -1204,7 +1174,7 @@ public:
                         uint32_t curr_m = m_ind == m_end - 1 ? sub_m - m_ind * m_slice : m_slice;
                         uint32_t s_ub_offset = pingpong_flag * S_DB_SIZE;
                         uint32_t row_offset = m_ind * m_slice;
-                        if constexpr(MASK_TYPE != 0) {
+                        if constexpr(MASK_TYPE == MaskType::MASK_TYPE_MASK_FREE) {
                             if (move_flag) {
                                 uint64_t cmp_mask_offset = (m_idx - n_idx) * 512 * 128;
                                 WAIT_FLAG(V, MTE2, EVENT_ID6);
@@ -1229,26 +1199,48 @@ public:
                         if (curr_m == 0) {
                             continue;
                         }
-                        OnlineSoftmaxStage1BF16<float, float, QKV_DT, IN_DATA_TYPE, MASK_TYPE> (
-                            ls_ubuf_tensor[pingpong_flag * S_DB_SIZE],
-                            mask16_ubuf_tensor,
-                            mask_ubuf_tensor,
-                            lm_ubuf_tensor[m_ind * m_slice],
-                            hm_ubuf_tensor[m_ind * m_slice],
-                            gm_ubuf_tensor[m_ind * m_slice],
-                            dm_ubuf_tensor[((n_idx / S_BLOCK_STACK) % 4) * UB_FLOAT_LINE_SIZE + m_ind * m_slice],
-                            ls_ubuf_tensor[pingpong_flag * S_DB_SIZE],
-                            ll_ubuf_tensor[m_ind * m_slice],
-                            gl_ubuf_tensor[m_ind * m_slice],
-                            lp_ubuf_tensor[pingpong_flag * S_DB_SIZE].ReinterpretCast<QKV_DT>(),
-                            tv_ubuf_tensor,
-                            s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
-                                    (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n + m_ind * m_slice * qk_round_n],
-                            p_gm_tensor[((uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
-                                            ((uint64_t)sub_block_idx * qk_m / 2 + m_ind * m_slice) * qk_round_n) * 2 / sizeof(QKV_DT)],
-                            n_idx == 0, this->tor,
-                            curr_m, qk_n, qk_round_n, pingpong_flag, move_flag
-                        );
+                        if constexpr (MASK_TYPE == MaskType::MASK_TYPE_CAUSAL_MASK) {
+                            OnlineSoftmaxStage1<float, float, QKV_DT, IN_DATA_TYPE, MASK_TYPE> (
+                                ls_ubuf_tensor[pingpong_flag * S_DB_SIZE], 
+                                mask16_ubuf_tensor.template ReinterpretCast<float>(),
+                                lm_ubuf_tensor[row_offset],
+                                hm_ubuf_tensor[row_offset],
+                                gm_ubuf_tensor[row_offset],
+                                dm_ubuf_tensor[((n_idx / S_BLOCK_STACK) % 4) * UB_FLOAT_LINE_SIZE + row_offset],
+                                ls_ubuf_tensor[pingpong_flag * S_DB_SIZE],
+                                ll_ubuf_tensor[row_offset],
+                                gl_ubuf_tensor[row_offset],
+                                lp_ubuf_tensor[pingpong_flag * S_DB_SIZE].ReinterpretCast<QKV_DT>(),
+                                tv_ubuf_tensor,
+                                s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
+                                        (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n + m_ind * m_slice * qk_round_n],
+                                p_gm_tensor[((uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
+                                                ((uint64_t)sub_block_idx * qk_m / 2 + m_ind * m_slice) * qk_round_n) * 2 / sizeof(QKV_DT)],
+                                n_idx == 0, this->tor, mask_coff, curr_m, qk_n, qk_round_n, pp_n_scalar,
+                                last_n_loop, m_ind * m_slice, qk_m / 2, pingpong_flag
+                            );
+                        } else {
+                             OnlineSoftmaxStage1BF16<float, float, QKV_DT, IN_DATA_TYPE, MASK_TYPE> (
+                                ls_ubuf_tensor[pingpong_flag * S_DB_SIZE],
+                                mask16_ubuf_tensor,
+                                mask_ubuf_tensor,
+                                lm_ubuf_tensor[row_offset],
+                                hm_ubuf_tensor[row_offset],
+                                gm_ubuf_tensor[row_offset],
+                                dm_ubuf_tensor[((n_idx / S_BLOCK_STACK) % 4) * UB_FLOAT_LINE_SIZE + row_offset],
+                                ls_ubuf_tensor[pingpong_flag * S_DB_SIZE],
+                                ll_ubuf_tensor[row_offset],
+                                gl_ubuf_tensor[row_offset],
+                                lp_ubuf_tensor[pingpong_flag * S_DB_SIZE].ReinterpretCast<QKV_DT>(),
+                                tv_ubuf_tensor,
+                                s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
+                                        (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n + m_ind * m_slice * qk_round_n],
+                                p_gm_tensor[((uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
+                                                ((uint64_t)sub_block_idx * qk_m / 2 + m_ind * m_slice) * qk_round_n) * 2 / sizeof(QKV_DT)],
+                                n_idx == 0, this->tor,
+                                curr_m, qk_n, qk_round_n, pingpong_flag, move_flag
+                            );
+                        }
                         pingpong_flag = 1 - pingpong_flag;
                     }
                     FftsCrossCoreSync<PIPE_MTE3, 2>(SOFTMAX_READY);
@@ -1523,6 +1515,7 @@ private:
     uint32_t data_shape_type{0};
     uint32_t quantType{0};
 };
+#endif
 
 extern "C" __global__ __aicore__ void mla_prefill_bf16(
     __gm__ uint8_t *__restrict__ sync,
@@ -1546,17 +1539,45 @@ extern "C" __global__ __aicore__ void mla_prefill_bf16(
     __gm__ uint8_t *__restrict__ upo_tmp_gm,
     __gm__ uint8_t *__restrict__ tiling_para_gm)
 {
-    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
-    if (tilingKey == 1) {
-        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, 0> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
-                                                             tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
-                                                             deq_pv_gm, off_pv_gm, logN_gm);
+    if (TILING_KEY_IS(1)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, 0> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
+#elif __DAV_C220_VEC__
+        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, MaskType::MASK_TYPE_NONE> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                                tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
+                                                                deq_pv_gm, off_pv_gm, logN_gm);
         fa_vec.Run();
-    } else if (tilingKey == 2) {
-        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, 1> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
-                                                             tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
-                                                             deq_pv_gm, off_pv_gm, logN_gm);
-        fa_vec.Run();
-    }
-}
 #endif
+    } else if (TILING_KEY_IS(9)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, 1> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
+#elif __DAV_C220_VEC__
+        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, MaskType::MASK_TYPE_MASK_FREE> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                                    tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
+                                                                    deq_pv_gm, off_pv_gm, logN_gm);
+        fa_vec.Run();
+#endif
+    } else if (TILING_KEY_IS(10)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<half, half, half, 1> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
+#elif __DAV_C220_VEC__
+        FlashAttentionEncoderHighPrecisionVec<half, half, half, MaskType::MASK_TYPE_CAUSAL_MASK> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                                    tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
+                                                                    deq_pv_gm, off_pv_gm, logN_gm);
+        fa_vec.Run();
+#endif
+    } else if (TILING_KEY_IS(11)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<__bf16, __bf16, __bf16, 1> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
+#elif __DAV_C220_VEC__
+        FlashAttentionEncoderHighPrecisionVec<__bf16, __bf16, __bf16, MaskType::MASK_TYPE_CAUSAL_MASK> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                                    tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm,
+                                                                    deq_pv_gm, off_pv_gm, logN_gm);
+        fa_vec.Run();
+#endif
+}
+}

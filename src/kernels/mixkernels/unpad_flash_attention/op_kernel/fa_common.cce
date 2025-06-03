@@ -50,7 +50,8 @@ enum class MaskType {
     MASK_TYPE_ALIBI_COMPRESS_SQRT = 7,
     MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN = 8,
     MASK_TYPE_ALIBI_COMPRESS_128 = 9,
-    MASK_TYPE_CAUSAL_MASK = 10               // mask内部生成
+    MASK_TYPE_CAUSAL_MASK = 10,
+    MASK_TYPE_MASK_FREE = 11
 };
 
 __aicore__ __attribute__((always_inline)) inline void SetVecMask(int32_t len)
