@@ -51,7 +51,8 @@ protected:
 protected:
     Status SetupImpl(RunnerVariantPack &runnerVariantPack) override;
     uint64_t GetTilingBufferSizeImpl() override;
-    Status FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize) override;
+    Status FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize,
+                                    ContextBase *context) override;
     uint64_t GetWorkspaceBufferSizeImpl() override;
     uint64_t GetIntermediateBufferSizeImpl() override;
     Status ExecuteImpl(RunnerVariantPack &runnerVariantPack) override;
@@ -66,11 +67,11 @@ protected:
 private:
     void Reset();
     bool SetupCanReuse(RunnerVariantPack &runnerVariantPack, bool &kernelGraphTopoChanged);
-    void SetupCacheGetCachedTiling(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize);
-    Status PlanKernelGraph(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize);
-    Status PlanKernel(size_t nodeId, uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize);
+    void SetupCacheGetCachedTiling(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize, bool launchWithTiling);
+    Status PlanKernelGraph(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize, bool launchWithTiling);
+    Status PlanKernel(size_t nodeId, uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize, bool launchWithTiling);
     bool UpdateNodeBestKernelAndTiling(KernelGraphNode &node, size_t nodeId, uint8_t *kernelHostTilingBuffer,
-                                       uint64_t maxTilingSize);
+                                       uint64_t maxTilingSize, bool launchWithTiling);
     void RunMallocCache(RunnerVariantPack &runnerVariantPack);
     void UpdateOutTensorDeviceData(RunnerVariantPack &runnerVariantPack);
     size_t GetNodeAlignedTilingBufferSize(const KernelGraphNode &node, size_t nodeId) const;
@@ -97,7 +98,7 @@ private:
     Status UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPack);
     Status RunKernel(KernelGraphNode &node, size_t nodeId, ContextBase *context) const;
     Status FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t nodeId, uint8_t *kernelHostTilingBuffer,
-                                            size_t tilingSize);
+                                            size_t tilingSize, bool launchWithTiling);
     void MallocLocalInternalTensor(const KernelGraphNode &node, size_t nodeId, size_t tensorId,
                                    const Mki::Tensor &infershapedOutTensor, Mki::Tensor *outTensor);
     void MallocGlobalInternalTensor(const KernelGraphNode &node, size_t nodeId, size_t tensorId,
@@ -112,7 +113,7 @@ private:
     void SaveGlobalDeviceTiling(const std::string &dirPath, std::vector<char> &tilingData) const;
     void IncreaseStatisticCacheHitCount(bool localCache) const;
     bool GetCachedTiling(KernelGraphNode &node, size_t nodeId, uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize,
-                         uint64_t &tilingSizeFetched);
+                         uint64_t &tilingSizeFetched, bool launchWithTiling);
     void UpdateCacheTiling(KernelGraphNode &node, size_t nodeId, uint8_t *kernelHostTilingBuffer, size_t tilingSize);
     void SetNodesSaveTensorFlag();
     void SetNodeIds();

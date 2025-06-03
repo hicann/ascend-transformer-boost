@@ -39,7 +39,7 @@ TEST(TESTRUNNER, UNCOVEREDFUNCTIONS)
     bufferSize = runner.GetTilingBufferSize();
     EXPECT_EQ(bufferSize, 0);
     std::vector<char> hostTilingBuffer = {'a'};
-    runner.FillHostTilingBuffer(reinterpret_cast<uint8_t *>(hostTilingBuffer.data()), 1);
+    runner.FillHostTilingBuffer(reinterpret_cast<uint8_t *>(hostTilingBuffer.data()), 1, variantPack.context);
     RunnerVariantPack runnerVariantPack;
     runnerVariantPack.inTensors.resize(1);
     runnerVariantPack.inTensors.at(0).desc = { ACL_INT32, ACL_FORMAT_ND, {1} };
