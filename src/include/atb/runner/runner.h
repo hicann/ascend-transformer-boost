@@ -22,7 +22,7 @@ public:
     std::string GetOperationName() const;
     Status Setup(RunnerVariantPack &runnerVariantPack);
     uint64_t GetTilingBufferSize();
-    Status FillHostTilingBuffer(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize);
+    Status FillHostTilingBuffer(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize, ContextBase *context);
     virtual std::vector<uint64_t> &GetWorkspaceBufferSize();
     uint64_t GetIntermediateBufferSize();
     Status Execute(RunnerVariantPack &runnerVariantPack);
@@ -58,7 +58,8 @@ protected:
 private:
     virtual Status SetupImpl(RunnerVariantPack &runnerVariantPack);
     virtual uint64_t GetTilingBufferSizeImpl();
-    virtual Status FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize);
+    virtual Status FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize,
+                                            ContextBase *context);
     virtual uint64_t GetWorkspaceBufferSizeImpl();
     virtual uint64_t GetIntermediateBufferSizeImpl();
     virtual Status ExecuteImpl(RunnerVariantPack &runnerVariantPack);
