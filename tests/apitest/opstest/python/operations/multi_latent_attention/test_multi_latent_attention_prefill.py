@@ -793,8 +793,6 @@ class TestMLAPrefill(operation_test.OperationTest):
             result_double = compare_cv(self.golden_out_true.npu(), golden_tensors[0].npu(), out_tensors[0].npu())
             return (result_double or result_single)
         else:
-            print(f"{golden_tensors[0]=}")
-            print(f"{out_tensors[0]=}")
             result_double = compare_cv(self.golden_out_true.npu(), golden_tensors[0].npu(), out_tensors[0].npu())
             return (result_double or result_single)
 
