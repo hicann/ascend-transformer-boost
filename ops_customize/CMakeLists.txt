@@ -25,6 +25,9 @@ list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/tests/.*")
 include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
 include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
 
+add_library(customize_ops SHARED ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp ${CMAKE_CURRENT_LIST_DIR}/ops.cpp)
+add_library(customize_ops_static STATIC $<TARGET_OBJECTS:customize_ops>)
+
 add_library(customize_objs OBJECT ${CUSTOMIZE_SRCS})
 
 add_library(atb_customize SHARED $<TARGET_OBJECTS:customize_objs>)
