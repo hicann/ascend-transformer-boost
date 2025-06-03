@@ -14,6 +14,7 @@ include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
 include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
 
 include_directories(
+    ${PROJECT_SOURCE_DIR}/cann_ops_adapter/include
     ${CMAKE_CURRENT_LIST_DIR}
     $ENV{ASCEND_HOME_PATH}/include
 )
@@ -39,7 +40,7 @@ if(NOT RESULT EQUAL 0)
 endif()
 
 include(${OPS_CONFIG_CMAKE_DIR}/op_build.cmake)
- 
+
 file(GLOB_RECURSE CMAKELISTS_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt")
 string(REPLACE "/CMakeLists.txt" "" CMAKELISTS_PATHS "${CMAKELISTS_PATHS}")
 foreach(SUB_DIR ${CMAKELISTS_PATHS})
@@ -53,7 +54,20 @@ add_custom_target(MIX_BINARY_SRC_TARGET ALL
     DEPENDS ${BINARY_SRC_LIST} ${BINARY_TARGET_LIST}
 )
 
-list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp ${CMAKE_CURRENT_LIST_DIR}/ops.cpp)
+set(ATTRIBUTE_UTILS_CPP ${CMAKE_CURRENT_LIST_DIR}/attribute_utils.cpp)
+add_custom_command(
+    OUTPUT ${ATTRIBUTE_UTILS_CPP}
+    DEPENDS ${ATTIBUTES_DEPENDS_FILES}
+    COMMAND python3 ${PROJECT_SOURCE_DIR}/scripts/build_attribute_utils.py --namespace ${NAMESPACE}
+                                                                           --params_path ${PROJECT_SOURCE_DIR}/src/kernels/include/atbops/params
+                                                                           --dest_file_path ${ATTRIBUTE_UTILS_CPP}
+)
+add_custom_target(ATTRIBUTE_UTILS_CPP_TARGET DEPENDS ${ATTRIBUTE_UTILS_CPP})
+set_source_files_properties(${ATTRIBUTE_UTILS_CPP} PROPERTIES GENERATED TRUE)
+
+list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp
+                            ${CMAKE_CURRENT_LIST_DIR}/ops.cpp
+)
 add_library(atb_mixops SHARED ${BINARY_SRC_LIST})
 add_dependencies(atb_mixops MIX_BINARY_SRC_TARGET)
 target_link_libraries(atb_mixops PRIVATE ${ops_objects} mki tbe_adapter tiling_api register)
