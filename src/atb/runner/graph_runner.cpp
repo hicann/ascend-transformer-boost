@@ -19,6 +19,7 @@
 #include "atb/operation.h"
 #include "atb/utils.h"
 #include "atb/utils/singleton.h"
+#include "atb/runner/ops_runner.h"
 
 namespace atb {
 const int ALIGN_INT = 512;
@@ -935,23 +936,25 @@ void GraphRunner::UpdateVariantPackTensorData(RunnerVariantPack &runnerVariantPa
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's tensor data end";
 }
 
+
 Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]" << "graphrunner start";
-        if (runnerVariantPack.mstxMemRegister != nullptr) {
+        if (runnerVariantPack.mstxMemRegister != nullptr &&
+            !(dynamic_cast<OpsRunner*>(node.runner.get()) || dynamic_cast<GraphRunner*>(node.runner.get()))) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
             for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.inTensors.at(i);
                 if (node.inTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
-                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, tensor.dataSize);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
             for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.outTensors.at(i);
                 if (node.outTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
-                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, tensor.dataSize);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
             if (runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
