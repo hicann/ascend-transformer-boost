@@ -121,10 +121,6 @@ private:
     bool CheckPrefilShape(const Mki::Tensor &tensorKcache, const Mki::Tensor &tensorVcache,
                           const Mki::Tensor &tensorQ) const
     {
-        auto batch = tensorKcache.desc.dims[DIM_1];
-        auto maxSeqlen = tensorKcache.desc.dims[DIM_2];
-        MKI_CHECK(tensorVcache.desc.dims[DIM_1] == batch && tensorVcache.desc.dims[DIM_2] == maxSeqlen,
-                  "Shape of input1 should be batch  input2 should be maxSeqlen", return false);
         MKI_CHECK(tensorKcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorKcache.desc.dtype == TENSOR_DTYPE_BF16 ||
                       tensorKcache.desc.dtype == TENSOR_DTYPE_INT8,
                   "Input1 dtype " << GetStrWithDType(tensorKcache.desc.dtype)

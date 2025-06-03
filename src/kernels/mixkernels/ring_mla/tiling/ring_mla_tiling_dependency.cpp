@@ -309,8 +309,6 @@ Status CheckSeqlen(const RINGMLAInfo &mmInfo, const AddrOffsets &addrOffsets, in
     UNUSED_VALUE(seqIdx);
     MKI_CHECK(qSeqlen >= 0, "qSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(kvSeqlen >= 0, "kvSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK(kvSeqlen == qSeqlen, "kvSeqlen should equal qSeqlen",
-            return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(addrOffsets.totalQBlkNum >= 0, "totalQBlkNum overflow",
                  return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
