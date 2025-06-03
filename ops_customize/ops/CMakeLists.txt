@@ -58,19 +58,23 @@ include(${OPS_CONFIG_CMAKE_DIR}/op_build.cmake)
 file(GLOB_RECURSE CMAKELISTS_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt")
 string(REPLACE "/CMakeLists.txt" "" CMAKELISTS_PATHS "${CMAKELISTS_PATHS}")
 foreach(SUB_DIR ${CMAKELISTS_PATHS})
+    if (SUB_DIR MATCHES ".*/tests($|/).*")
+        message(STATUS "skip tests subdirectory: ${SUB_DIR}")
+        continue()
+    endif()
     message(STATUS "add subdirectory: ${SUB_DIR}")
     add_subdirectory(${SUB_DIR})
 endforeach()
 
 set_source_files_properties(${BINARY_SRC_LIST} PROPERTIES GENERATED TRUE)
 
-add_custom_target(MIX_BINARY_SRC_TARGET ALL
+add_custom_target(CUSTOMIZE_OPS_BINARY_SRC_TARGET ALL
     DEPENDS ${BINARY_SRC_LIST} ${BINARY_TARGET_LIST}
 )
 
 list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp ${CMAKE_CURRENT_LIST_DIR}/ops.cpp)
 add_library(customize_ops SHARED ${BINARY_SRC_LIST})
-add_dependencies(customize_ops MIX_BINARY_SRC_TARGET)
+add_dependencies(customize_ops CUSTOMIZE_OPS_BINARY_SRC_TARGET)
 target_link_libraries(customize_ops PRIVATE ${ops_objects} mki tbe_adapter tiling_api register)
 target_link_libraries(customize_ops PRIVATE
     -Wl,--whole-archive
@@ -79,7 +83,7 @@ target_link_libraries(customize_ops PRIVATE
 )
 
 add_library(customize_ops_static STATIC $<TARGET_OBJECTS:customize_ops>)
-add_dependencies(customize_ops_static MIX_BINARY_SRC_TARGET)
+add_dependencies(customize_ops_static CUSTOMIZE_OPS_BINARY_SRC_TARGET)
 target_link_libraries(customize_ops_static PRIVATE ${ops_objects} mki tbe_adapter tiling_api register)
 target_link_libraries(customize_ops_static PRIVATE
     -Wl,--whole-archive

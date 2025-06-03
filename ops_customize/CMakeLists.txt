@@ -52,7 +52,7 @@ install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_customize/customize_ops_configs DESTINATION ./configs)
 
-add_subdirectory(ops/customize_blockcopy/kernel_implement)
+add_subdirectory(ops)
 
 # 添加位置以及是否需要add_subdirectory
 find_package(GTest 1.13.0 REQUIRED)
