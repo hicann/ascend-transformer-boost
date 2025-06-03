@@ -24,7 +24,7 @@ namespace atb {
 void CacheSlot::Init(uint32_t cacheItemCount)
 {
     cachedItems.resize(cacheItemCount);
-    uint64_t kernelCacheTilingSize = GetSingleton<Config>().GetKernelCacheTilingSize();
+    uint64_t kernelCacheTilingSize = GetSingleton<Context>().GetKernelCacheTilingSize();
     for (auto &cacheItem : cachedItems) {
         cacheItem.tilingBuffer.reserve(kernelCacheTilingSize);
     }

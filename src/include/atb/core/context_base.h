@@ -49,6 +49,8 @@ public:
     void *GetArgsHostBuffer(size_t bufferSize);
     Status FreeArgsDeviceBuffer(void *addr);
     Status FreeArgsHostBuffer(void *addr);
+    virtual void SetKernelCacheTilingSize(uint64_t size) override;
+    virtual uint64_t GetKernelCacheTilingSize() const override;
 
 private:
     Status CreateCopyStreamAndEvents();
@@ -73,6 +75,8 @@ private:
     std::unique_ptr<Allocator> hostAllocator_;  // 一开始就赋值为defaultHostAllocator
     std::function<void*(size_t size)> allocateFunc_;  // 默认使用defaultDeviceAllocator中的Allocate方法
     std::function<void(void*)> deallocateFunc_;       // 默认使用defaultDeviceAllocator中的Deallocate方法
+
+    uint64_t kernelCacheTilingSize_ = 0;
 };
 } // namespace atb
 #endif

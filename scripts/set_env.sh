@@ -59,7 +59,6 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_OPSRUNNER_KERNEL_CACHE_TYPE=3 #0:不开启, 1:开启本地缓存 2:开启全局缓存 3：同时开启本地和全局缓存
     export ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT=1 #本地缓存个数，支持范围1~1024
     export ATB_OPSRUNNER_KERNEL_CACHE_GLOABL_COUNT=5 #全局缓存个数，支持范围1~1024
-    export ATB_OPSRUNNER_KERNEL_CACHE_TILING_SIZE=10240 #tiling默认大小，支持范围1~1073741824
     export ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE=1 #0:暴力算法 1:block分配算法 2:有序heap算法 3:引入block合并(SOMAS算法退化版)
     export ATB_WORKSPACE_MEM_ALLOC_GLOBAL=0 #0:不开启 1:开启全局中间tensor内存分配
     export ATB_COMPARE_TILING_EVERY_KERNEL=0 #每个Kernel运行后，比较运行前和后的NPU上tiling内容是否变化
