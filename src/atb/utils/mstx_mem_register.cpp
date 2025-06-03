@@ -29,9 +29,7 @@ MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.type = MSTX_MEM_TYPE_VIRTUAL_ADDRESS;
     heapDesc.typeSpecificDesc = &rangeDesc;
     
-    if (GetRegisterDomain()) {
-        memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
-    }
+    memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
 }
 
 MstxMemRegister::~MstxMemRegister()
@@ -107,5 +105,10 @@ Status MstxMemRegister::CheckTensorRange()
     } else {
         return true;
     }
+}
+
+bool MstxMemRegister::IsValid() const noexcept
+{
+    return memPool_ != 0;
 }
 }  // namespace atb
