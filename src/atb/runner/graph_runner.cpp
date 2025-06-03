@@ -353,12 +353,14 @@ uint64_t GraphRunner::GetTilingBufferSizeImpl()
     return totalTilingBufferSize_;
 }
 
-Status GraphRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize)
+Status GraphRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize,
+                                             ContextBase *context)
 {
     uint64_t tilingOffset = 0;
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
-        Status ret = node.runner->FillHostTilingBuffer(hostTilingBuffer + tilingOffset, tilingBufferSizes_.at(nodeId));
+        Status ret = node.runner->FillHostTilingBuffer(hostTilingBuffer + tilingOffset,
+                                                       tilingBufferSizes_.at(nodeId), context);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "GraphRunner::FillHostTilingBufferImpl failed! error code:" << ret;
             return ret;

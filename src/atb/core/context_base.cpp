@@ -370,4 +370,10 @@ uint64_t ContextBase::GetKernelCacheTilingSize() const
 {
     return kernelCacheTilingSize_;
 }
+
+bool ContextBase::GetLaunchWithTilingStatus()
+{
+    return GetSingleton<Config>().IsLaunchKernelWithTiling() && mode_ != GRAPH_LAUNCH_MODE;
+}
+
 } // namespace atb

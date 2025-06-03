@@ -51,6 +51,7 @@ public:
     Status FreeArgsHostBuffer(void *addr);
     virtual void SetKernelCacheTilingSize(uint64_t size) override;
     virtual uint64_t GetKernelCacheTilingSize() const override;
+    bool GetLaunchWithTilingStatus();
 
 private:
     Status CreateCopyStreamAndEvents();

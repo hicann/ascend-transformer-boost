@@ -66,9 +66,9 @@ uint64_t Runner::GetTilingBufferSize()
     return GetTilingBufferSizeImpl();
 }
 
-Status Runner::FillHostTilingBuffer(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize)
+Status Runner::FillHostTilingBuffer(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize, ContextBase *context)
 {
-    return FillHostTilingBufferImpl(hostTilingBuffer, tilingBufferSize);
+    return FillHostTilingBufferImpl(hostTilingBuffer, tilingBufferSize, context);
 }
 
 std::vector<uint64_t> &Runner::GetWorkspaceBufferSize()
@@ -166,8 +166,9 @@ uint64_t Runner::GetTilingBufferSizeImpl()
 }
 
 
-Status Runner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize)
+Status Runner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize, ContextBase *context)
 {
+    (void)context;
     ATB_LOG(INFO) << GetLogPrefix() << "hostTilingBuffer:" << hostTilingBuffer << ", tilingBufferSize"
                   << tilingBufferSize;
     return NO_ERROR;

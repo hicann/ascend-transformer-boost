@@ -74,7 +74,8 @@ public:
 protected:
     Status SetupImpl(RunnerVariantPack &runnerVariantPack) override;
     uint64_t GetTilingBufferSizeImpl() override;
-    Status FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize) override;
+    Status FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize,
+                                    ContextBase *context) override;
     std::vector<uint64_t> &GetWorkspaceBufferSize() override;
     uint64_t GetIntermediateBufferSizeImpl() override;
     Status ExecuteImpl(RunnerVariantPack &runnerVariantPack) override;
