@@ -45,7 +45,7 @@ target_link_libraries(atb_customize
 
 target_link_libraries(atb_customize_static
   PUBLIC
-    $<TARGET_LINKS:atb_customize>
+    atb_customize
 )
 
 install(TARGETS atb_customize atb_customize_static DESTINATION lib)
