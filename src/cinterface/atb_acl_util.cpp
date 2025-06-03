@@ -29,18 +29,18 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     if (aclTensorSrc == nullptr) {
         atbTensorDst->hostData = nullptr;
         atbTensorDst->deviceData = nullptr;
-        return ACL_ERROR_NONE;
+        return atb::NO_ERROR;
     }
     int64_t *dims = nullptr;
     uint64_t dimCount;
     aclDataType dataType;
     aclFormat format;
     auto status = aclGetViewShape(aclTensorSrc, &dims, &dimCount);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetViewShape failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "aclGetViewShape failed!", return status);
     status = aclGetDataType(aclTensorSrc, &dataType);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetDataType failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "aclGetDataType failed!", return status);
     status = aclGetFormat(aclTensorSrc, &format);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetFormat failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "aclGetFormat failed!", return status);
     atb::TensorDesc desc;
     desc.shape.dimNum = dimCount;
     for (size_t i = 0; i < dimCount; i++) {
@@ -52,7 +52,7 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     atbTensorDst->deviceData = aclTensorSrc->GetData();
     atbTensorDst->hostData = nullptr;
     atbTensorDst->dataSize = GetTensorSize(aclTensorSrc);
-    return ACL_ERROR_NONE;
+    return atb::NO_ERROR;
 }
 
 atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor *atbTensorDst)
@@ -60,18 +60,18 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
     if (aclTensorSrc == nullptr) {
         atbTensorDst->hostData = nullptr;
         atbTensorDst->deviceData = nullptr;
-        return ACL_ERROR_NONE;
+        return atb::NO_ERROR;
     }
     int64_t *dims = nullptr;
     uint64_t dimCount;
     aclDataType dataType;
     aclFormat format;
     auto status = aclGetViewShape(aclTensorSrc, &dims, &dimCount);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetViewShape failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "aclGetViewShape failed!", return status);
     status = aclGetDataType(aclTensorSrc, &dataType);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetDataType failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "aclGetDataType failed!", return status);
     status = aclGetFormat(aclTensorSrc, &format);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetFormat failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "aclGetFormat failed!", return status);
     atb::TensorDesc desc;
     desc.shape.dimNum = dimCount;
     for (size_t i = 0; i < dimCount; i++) {
@@ -83,7 +83,7 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
     atbTensorDst->deviceData = nullptr;
     atbTensorDst->hostData = aclTensorSrc->GetData();
     atbTensorDst->dataSize = GetTensorSize(aclTensorSrc);
-    return ACL_ERROR_NONE;
+    return atb::NO_ERROR;
 }
 
 #ifdef __cplusplus

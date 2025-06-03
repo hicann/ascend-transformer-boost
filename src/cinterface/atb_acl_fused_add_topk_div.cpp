@@ -14,14 +14,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-const size_t g_FUSEDADDTOPK_INTENSOR_NUM = 2;
-const size_t g_FUSEDADDTOPK_OUTTENSOR_NUM = 2;
+const size_t g_FUSED_ADD_TOPK_INTENSOR_NUM = 2;
+const size_t g_FUSED_ADD_TOPK_OUTTENSOR_NUM = 2;
 
 atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTensor *addNum, const aclTensor *mappingNum,
                                                const aclTensor *mappingTable, uint32_t groupNum, uint32_t groupTopk,
                                                uint32_t n, uint32_t k, int activationType, bool isNorm, float scale,
                                                bool enableExpertMapping, aclTensor *y, aclTensor *indices,
-                                               uint64_t *workSpaceSize, atb::Operation **op, atb::Context *context)
+                                               uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
 {
     atb::infer::FusedAddTopkDivParam param;
     param.groupNum = groupNum;
@@ -41,7 +41,7 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
     }
     atb::VariantPack pack;
 
-    size_t intensorNum = g_FUSEDADDTOPK_INTENSOR_NUM;
+    size_t intensorNum = g_FUSED_ADD_TOPK_INTENSOR_NUM;
     if (enableExpertMapping) {
         intensorNum += 2; // 2: mappingNum, mappingTable
     }
@@ -59,22 +59,23 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
     }
 
     index = 0;
-    pack.outTensors.resize(g_FUSEDADDTOPK_OUTTENSOR_NUM);
+    pack.outTensors.resize(g_FUSED_ADD_TOPK_OUTTENSOR_NUM);
     status = aclTensorToAtbTensor(y, &(pack.outTensors[index++]));
     ATB_CHECK(status == atb::NO_ERROR, "y create failed!", return status);
     status = aclTensorToAtbTensor(indices, &(pack.outTensors[index++]));
     ATB_CHECK(status == atb::NO_ERROR, "indices create failed!", return status);
-    (*op)->Setup(pack, *workSpaceSize, context);
+    (*op)->Setup(pack, *workspaceSize, context);
     return atb::NO_ERROR;
 }
 
-atb::Status AtbFusedAddTopkDiv(void *workSpace, uint64_t workSpaceSize, atb::Operation *op, atb::Context *context)
+atb::Status AtbFusedAddTopkDiv(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
     atb::VariantPack pack;
-    atb::Status st = op->Execute(pack, (uint8_t *)(workSpace), workSpaceSize, context);
+    atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreprocess Execute failed!", return st);
     return st;
 }
+
 #ifdef __cplusplus
 }
 #endif

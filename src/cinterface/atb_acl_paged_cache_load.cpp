@@ -15,8 +15,8 @@
 extern "C" {
 #endif
 
-const size_t g_PAGEDCACHELOADINTENSORNUM = 7;
-const size_t g_PAGEDCACHELOADOUTTENSORNUM = 2;
+const size_t g_PAGED_CACHE_LOAD_INTENSOR_NUM = 6;
+const size_t g_PAGED_CACHE_LOAD_OUTTENSOR_NUM = 2;
 
 atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const aclTensor *valueCache,
                                               const aclTensor *blockTables, const aclTensor *contextLens,
@@ -36,15 +36,13 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
         }
     }
     atb::VariantPack pack;
-    size_t i = 0; 
+    size_t i = 0;
     if (param.hasSeqStarts) {
-        pack.inTensors.resize(g_PAGEDCACHELOADINTENSORNUM);
+        pack.inTensors.resize(g_PAGED_CACHE_LOAD_INTENSOR_NUM + 1);
+    } else {
+        pack.inTensors.resize(g_PAGED_CACHE_LOAD_INTENSOR_NUM);
     }
 
-    else {
-        pack.inTensors.resize(g_PAGEDCACHELOADINTENSORNUM - 1);
-    }
-    
     auto status = aclTensorToAtbTensor(keyCache, &(pack.inTensors[i++]));
     ATB_CHECK(status == atb::NO_ERROR, "keyCache create failed!", return status);
     status = aclTensorToAtbTensor(valueCache, &(pack.inTensors[i++]));
@@ -63,7 +61,7 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
     }
 
     i = 0;
-    pack.outTensors.resize(g_PAGEDCACHELOADOUTTENSORNUM);
+    pack.outTensors.resize(g_PAGED_CACHE_LOAD_OUTTENSOR_NUM);
     status = aclTensorToAtbTensor(key, &(pack.outTensors[i++]));
     ATB_CHECK(status == atb::NO_ERROR, "key create failed!", return status);
     status = aclTensorToAtbTensor(value, &(pack.outTensors[i++]));
@@ -77,8 +75,8 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
 
 atb::Status AtbPagedCacheLoad(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
-    atb::VariantPack g_PACK;
-    atb::Status st = op->Execute(g_PACK, (uint8_t *)(workspace), workspaceSize, context);
+    atb::VariantPack pack;
+    atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbPagedCacheLoad Execute failed!", return st);
     return st;
 }

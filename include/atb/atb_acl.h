@@ -107,13 +107,13 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
 //! \brief 关于MLA算子使用aclnn风格调用的2段式接口种的第2段，
 //! 用于算子的推理调度阶段
 //!
-//! \param workSpace 针对MLA算子申请的工作空间
+//! \param workspace 针对MLA算子申请的工作空间
 //! \param workspaceSize MLA算子的workspace大小
 //! \param op MLA算子的op handler
 //! \param context MLA算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLA(void *workSpace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+atb::Status AtbMLA(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief 关于MlaPreprocess算子使用aclnn风格调用的2段式接口种的第1段，
@@ -178,6 +178,18 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     atb::Context *context);
 
 //!
+//! \brief 关于MLAPreprocess算子使用aclnn风格调用的2段式接口种的第2段，
+//! 用于算子的推理调度阶段
+//!
+//! \param workspace 针对MLAPreprocess算子申请的工作空间
+//! \param workspaceSize MLAPreprocess算子的workspace大小
+//! \param op MLAPreprocess算子的op handler
+//! \param context MLAPreprocess算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbMLAPreprocess(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+
+//!
 //! \brief 关于PagedCacheLoad算子使用aclnn风格调用的2段式接口种的第1段，
 //! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
 //!
@@ -187,6 +199,7 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
 //! \param contextLens PagedCacheLoad算子的输入tensor
 //! \param key PagedCacheLoad算子的输入/输出tensor
 //! \param value PagedCacheLoad算子的输入/输出tensor
+//! \param seqStarts PagedCacheLoad算子的输入tensor
 //! \param kvCacheCfg keyCache和valueCache为ND还是NZ格式
 //! \param isSeqLensCumsumType 是否使用batch输入为累加模式
 //! \param hasSeqStarts 是否提供batch在blocktable中对应起始位置，对齐到blocktable
@@ -212,18 +225,6 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
 //!
 //! \return 表示函数是否执行成功的状态码
 atb::Status AtbPagedCacheLoad(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
-
-//!
-//! \brief 关于MLAPreprocess算子使用aclnn风格调用的2段式接口种的第2段，
-//! 用于算子的推理调度阶段
-//!
-//! \param workspace 针对MLAPreprocess算子申请的工作空间
-//! \param workspaceSize MLAPreprocess算子的workspace大小
-//! \param op MLAPreprocess算子的op handler
-//! \param context MLAPreprocess算子的上下文参数
-//!
-//! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLAPreprocess(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief 关于RingMLA算子使用aclnn风格调用的2段式接口种的第1段，
