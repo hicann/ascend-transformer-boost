@@ -72,18 +72,30 @@ public:
         MKI_CHECK(IsConsistent(launchParam), "Fail to check consistent", return nullptr);
         auto inDtype = launchParam.GetInTensor(0).desc.dtype;
         auto platformType = PlatformInfo::Instance().GetPlatformType();
-        if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
-            return GetKernelByName("Transpose16Kernel");
-        } else if (inDtype == TENSOR_DTYPE_FLOAT || inDtype == TENSOR_DTYPE_INT32) {
-            MKI_CHECK(platformType == PlatformType::ASCEND_910B || platformType == PlatformType::ASCEND_310P,
-                      "INT32/FP32 is not supported by current Soc", return nullptr);
-            return GetKernelByName("Transpose32Kernel");
-        } else if (inDtype == TENSOR_DTYPE_INT64) {
-            return GetKernelByName("Transpose64Kernel");
-        } else if (inDtype == TENSOR_DTYPE_INT8) {
-            MKI_CHECK(platformType == PlatformType::ASCEND_910B || platformType == PlatformType::ASCEND_310P,
-                      "INT8 is not supported by current Soc", return nullptr);
-            return GetKernelByName("Transpose8Kernel");
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
+                return GetKernelByName("TransposeApt16Kernel");
+            } else if (inDtype == TENSOR_DTYPE_FLOAT || inDtype == TENSOR_DTYPE_INT32) {
+                return GetKernelByName("TransposeApt32Kernel");
+            } else if (inDtype == TENSOR_DTYPE_INT64) {
+                return GetKernelByName("TransposeApt64Kernel");
+            } else if (inDtype == TENSOR_DTYPE_INT8) {
+                return GetKernelByName("TransposeApt8Kernel");
+            }
+        } else {
+            if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
+                return GetKernelByName("Transpose16Kernel");
+            } else if (inDtype == TENSOR_DTYPE_FLOAT || inDtype == TENSOR_DTYPE_INT32) {
+                MKI_CHECK(platformType == PlatformType::ASCEND_910B || platformType == PlatformType::ASCEND_310P,
+                        "INT32/FP32 is not supported by current Soc", return nullptr);
+                return GetKernelByName("Transpose32Kernel");
+            } else if (inDtype == TENSOR_DTYPE_INT64) {
+                return GetKernelByName("Transpose64Kernel");
+            } else if (inDtype == TENSOR_DTYPE_INT8) {
+                MKI_CHECK(platformType == PlatformType::ASCEND_910B || platformType == PlatformType::ASCEND_310P,
+                        "INT8 is not supported by current Soc", return nullptr);
+                return GetKernelByName("Transpose8Kernel");
+        }
         }
         return nullptr;
     }
