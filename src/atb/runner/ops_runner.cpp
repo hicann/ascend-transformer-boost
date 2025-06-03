@@ -342,7 +342,7 @@ uint64_t OpsRunner::GetIntermediateBufferSizeImpl()
 Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPack)
 {
     uint8_t *deviceIntermediateBuffer = runnerVariantPack.intermediateBuffer;
-    bool needSetTiling = !((GetSingleton<Config>().IsLaunchKernelWithTiling()) || (totalTilingSize_ == 0));
+    bool needSetTiling = false;
     bool needSetworkspace = (workspaceSize_ != 0);
     uint64_t tilingOffset = 0;
     uint64_t deviceArgsSizeOffset = 0;
@@ -605,15 +605,17 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
             for (uint64_t tensorId = 0; tensorId < inTensors.size(); tensorId++) {
                 Mki::Tensor &tensor = inTensors.at(tensorId);
                 if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
-                    tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
+                    tensor.data = runnerVariantPack.intermediateBuffer +
+                                  reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
                 }
-                }
+            }
             auto &outTensors = node.impl->GetOutTensors();
             for (uint64_t tensorId = 0; tensorId < outTensors.size(); tensorId++) {
                 Mki::Tensor &tensor = outTensors.at(tensorId);
                 if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
-                    tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
+                    tensor.data = runnerVariantPack.intermediateBuffer +
+                                  reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
                 }
             }

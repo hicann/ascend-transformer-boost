@@ -849,12 +849,6 @@ Status OperationBase::PreExecuteThrow(const VariantPack &variantPack, uint8_t *w
     UpdateTensorData(variantPack, workspace);
 
     Status st = NO_ERROR;
-    if (!GetSingleton<Config>().IsLaunchKernelWithTiling()) {
-        st = CopyTilingToDevice();
-        if (st != 0) {
-            return st;
-        }
-    }
 #ifdef _DEBUG
     ATB_LOG(INFO) << GetLogPrefix() << "PreExecute " << runner_->GetName() << "_" << runner_.get() << " start";
 #else

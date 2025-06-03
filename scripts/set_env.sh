@@ -66,7 +66,6 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_HOST_TILING_BUFFER_BLOCK_NUM=128 #Context内部HostTilingBuffer块数，通常使用默认值即可，可配置范围：最小128，最大1024
     export ATB_DEVICE_TILING_BUFFER_BLOCK_NUM=32 #Context内部DeviceTilingBuffer块数，通常使用默认值即可，可配置范围：最小32，最大1024
     export ATB_SHARE_MEMORY_NAME_SUFFIX="" #共享内存命名后缀，多用户同时使用通信算子时，需通过设置该值进行共享内存的区分
-    export ATB_LAUNCH_KERNEL_WITH_TILING=1 #tiling拷贝随算子下发功能开关
     export ATB_MATMUL_SHUFFLE_K_ENABLE=1 #Shuffle-K使能，默认开
     export ATB_RUNNER_POOL_SIZE=64 #加速库runner池中可存放runner的个数，支持范围0~1024，为0时不开启runner池功能
 
