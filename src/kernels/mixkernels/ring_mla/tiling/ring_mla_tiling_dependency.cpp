@@ -409,7 +409,7 @@ Status PrefillTilingParam(const RINGMLAInfo &mmInfo, const uint32_t &torUptr, Ad
         tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM13] =
             static_cast<uint32_t>(addrOffsets.totalQBlkNum);
         tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM14] = 1;
-        auto kvFactor = mmInfo.maxKvSeqLen;
+        auto kvFactor = kvSeqLen;
         addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen * mmInfo.numHeads * mmInfo.embeddingSizeV);
         addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeads * mmInfo.embeddingSizeV);
         addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeads * mmInfo.embeddingSizeV);
