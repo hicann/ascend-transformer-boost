@@ -67,10 +67,9 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
     RingMLANode.inTensors = {query_split1, query_split2, key_split1,   key_split2,   value,
                              mask,         &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_,
                              &nullTensor_, &nullTensor_, &nullTensor_, prevOut,      prevLse};
-    SVector<Mki::Tensor> intermidateOutTensors = {prevOut, prevLse};
-    TensorUtil::FastCopyTensors(intermidateOutTensors, runnerVariantPack_.outTensors);
+    SVector<Mki::Tensor> intermidateOutTensors = {&prevOut, &prevLse};
+    TensorUtil::FastCopyTensors(intermidateOutTensors, RingMLANode.outTensors);
 
-    RingMLANode.outTensors = {attnOut, softmaxLse};
     RingMLANode.inTensorViewFuncs.resize(RingMLANode.inTensors.size()); // view
     RingMLANode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) { // format, dtype 设置
         for (size_t i = 0; i < launchParam.GetInTensorCount(); i++) {
