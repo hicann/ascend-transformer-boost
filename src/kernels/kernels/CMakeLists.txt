@@ -52,6 +52,8 @@ add_custom_target(BINARY_SRC_TARGET ALL
     DEPENDS ${BINARY_SRC_LIST} ${BINARY_TARGET_LIST}
 )
 
+# build attribute_utils.cpp for canndev ops infer code
+file(GLOB ATTIBUTES_DEPENDS_FILES "${PROJECT_SOURCE_DIR}/src/kernels/include/asdops/params/*.h")
 set(ATTRIBUTE_UTILS_CPP ${CMAKE_CURRENT_LIST_DIR}/attribute_utils.cpp)
 add_custom_command(
     OUTPUT ${ATTRIBUTE_UTILS_CPP}
