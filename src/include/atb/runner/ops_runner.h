@@ -98,7 +98,7 @@ private:
     Status UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPack);
     Status RunKernel(KernelGraphNode &node, size_t nodeId, ContextBase *context) const;
     Status FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t nodeId, uint8_t *kernelHostTilingBuffer,
-                                            size_t tilingSize, bool launchWithTiling);
+                                            size_t tilingSize, ContextBase *context);
     void MallocLocalInternalTensor(const KernelGraphNode &node, size_t nodeId, size_t tensorId,
                                    const Mki::Tensor &infershapedOutTensor, Mki::Tensor *outTensor);
     void MallocGlobalInternalTensor(const KernelGraphNode &node, size_t nodeId, size_t tensorId,
