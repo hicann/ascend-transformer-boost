@@ -45,6 +45,22 @@ bool RingMLAVariantPackParam::BuildFromTensor(const SVector<Mki::Tensor> &inTens
     if (batch == seqLenTensor.Numel()) {
         kvSeqLen = qSeqLen;
     }
+
+    std::stringstream ss;
+    if (qSeqLen.size() > 0) {
+        ss << "qSeqLen: ";
+        for (size_t i = 0; i < qSeqLen.size(); ++i) {
+            ss << qSeqLen[i] << "\t";
+        }
+    }
+
+    if (kvSeqLen.size() > 0) {
+        ss << "kvSeqLen: ";
+        for (size_t i = 0; i < qSeqLen.size(); ++i) {
+            ss << kvSeqLen[i] << "\t";
+        }
+    }
+    ATB_LOG(INFO) << "RIngMLA BuildFromTensor " << ss.str();
     return true;
 }
 } // namespace atb
