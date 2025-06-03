@@ -53,7 +53,8 @@ add_custom_target(MIX_BINARY_SRC_TARGET ALL
     DEPENDS ${BINARY_SRC_LIST} ${BINARY_TARGET_LIST}
 )
 
-list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp ${CMAKE_CURRENT_LIST_DIR}/ops.cpp)
+# list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp ${CMAKE_CURRENT_LIST_DIR}/ops.cpp)
+list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/ops.cpp)
 add_library(atb_mixops SHARED ${BINARY_SRC_LIST})
 add_dependencies(atb_mixops MIX_BINARY_SRC_TARGET)
 target_link_libraries(atb_mixops PRIVATE ${ops_objects} mki tbe_adapter tiling_api register)
