@@ -214,7 +214,8 @@ Status GetFlashAttentionNoCacheMaskInfo(UnpadFlashAttentionInfo &mmInfo, OpParam
         maskType == OpParam::UnpadFlashAttention::MASK_TYPE_SWA_NORM) {
         auto ret = GetSwaMaskInfo(mmInfo, param, tensorMask);
         OP_TILING_CHECK_STATUS_RETURN(ret);
-    } else if (maskType != OpParam::UnpadFlashAttention::MASK_TYPE_NONE) {
+    } else if (maskType != OpParam::UnpadFlashAttention::MASK_TYPE_NONE
+        && maskType != OpParam::UnpadFlashAttention::MASK_TYPE_CAUSAL_MASK) {
         auto maskDim = maskShape.size();
         int32_t maxSeq = maskShape.at(maskDim - 1);
         mmInfo.maxSeqLen = maxSeq;
@@ -246,9 +247,7 @@ Status GetFlashAttentionNoCacheMaskInfo(UnpadFlashAttentionInfo &mmInfo, OpParam
                 mmInfo.maskStride = maskShape.at(1);
                 mmInfo.headStride = 0;
             }
-            if (maxSeq == LONG_SEQ_LEN && param.isTriuMask != 0) {
-                mmInfo.isLongSeq = 1;
-            }
+            mmInfo.isLongSeq = (maxSeq == LONG_SEQ_LEN && param.isTriuMask != 0) ? 1 : 0;
         }
     }
     return Status::OkStatus();
@@ -397,6 +396,14 @@ void GetSpecTilingKey(UnpadFlashAttentionInfo &mmInfo, const OpParam::UnpadFlash
         param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_ND) &&
         mmInfo.tensors.query.desc.dtype == TENSOR_DTYPE_BF16) {
         mmInfo.tilingKey = SPEC_TILING_KEY + (static_cast<uint32_t>(mmInfo.splitm) << DIM_4);
+    } else if (mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_CAUSAL_MASK &&
+        param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND &&
+        mmInfo.tensors.query.desc.dtype == TENSOR_DTYPE_FLOAT16) {
+        mmInfo.tilingKey = SPEC_TILING_KEY + 1;
+    } else if (mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_CAUSAL_MASK &&
+        param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND &&
+        mmInfo.tensors.query.desc.dtype == TENSOR_DTYPE_BF16) {
+        mmInfo.tilingKey = SPEC_TILING_KEY;
     }
 }
 void FlashAttentionEncoderBNSD(UnpadFlashAttentionInfo &mmInfo, OpParam::UnpadFlashAttention &param, int32_t embed)
@@ -520,11 +527,17 @@ Status InitInfo(UnpadFlashAttentionInfo &mmInfo, OpParam::UnpadFlashAttention &p
     batch = param.qSeqLen.size();
     OP_TILING_CHECK_STATUS_RETURN(InitMaxKVSeqlen(batch, kcacheShape, mmInfo, param));
     FlashAttentionFillInfo(mmInfo, param, batch, embed);
-    bool optEnable = mmInfo.maskType == 0 && mmInfo.embeddingSize <= 128 && !mmInfo.isMLA &&
-                     mmInfo.scaleType == OpParam::UnpadFlashAttention::SCALE_TOR;
+    // mask_none/mask_free opt模板方法tilingkey
+    bool optEnable = (mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_NONE ||
+                        mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_CAUSAL_MASK) &&
+                        mmInfo.embeddingSize <= 128 && !mmInfo.isMLA &&
+                        mmInfo.scaleType == OpParam::UnpadFlashAttention::SCALE_TOR;
     if (optEnable) {
         GetSpecTilingKey(mmInfo, param);
     }
+    MKI_CHECK(optEnable || mmInfo.maskType != OpParam::UnpadFlashAttention::MASK_TYPE_CAUSAL_MASK,
+            "maskType is mask free, not support opt unable, isMLA or embeddingSize > 128 or scaleType not tor.",
+            return Status::FailStatus(ERROR_INVALID_VALUE));
     if (param.type != OpParam::UnpadFlashAttention::MULTI_LATENT_ATTENTION_COMBINE_CACHE &&
         param.type != OpParam::UnpadFlashAttention::MULTI_LATENT_ATTENTION_HIGH_PRECISION_COMBINE_CACHE) {
         OP_TILING_CHECK_STATUS_RETURN(FlashAttentionVCacheCheck(mmInfo, param));

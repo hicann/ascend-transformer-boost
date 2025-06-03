@@ -38,6 +38,7 @@ SelfAttentionPrefixEncoderOpsRunner::SelfAttentionPrefixEncoderOpsRunner(const i
         intensorSize = 7;
         hasSlopes = false;
     }
+    needMask_ = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK;
     kernelGraph_.inTensors.resize(intensorSize);
     kernelGraph_.outTensors.resize(1);
 
@@ -46,10 +47,10 @@ SelfAttentionPrefixEncoderOpsRunner::SelfAttentionPrefixEncoderOpsRunner(const i
     Mki::Tensor &key = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *value = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *blockTables = &kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *mask = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *mask = needMask_ ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
     Mki::Tensor &seqLen = kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor &kvSeqLen = kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *slopes = hasSlopes ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
+    Mki::Tensor *slopes = hasSlopes && needMask_ ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
 
     Mki::Tensor &attnOut = kernelGraph_.outTensors.at(0);
 
@@ -85,7 +86,13 @@ Status SelfAttentionPrefixEncoderOpsRunner::ModifyKernelGraph(const OpsTensorPac
 {
     // query, key, value, blockTables, mask, seqlen, kvSeqLen, slopes
     SelfAttentionFusionVariantPackParam newParam;
-    bool ret = newParam.BuildFromTensorPrefixEncoder(opsTensorPack.inTensors, SEQLEN_TENSOR_POS, KVSEQLEN_TENSOR_POS);
+    uint32_t seqlen_pos = SEQLEN_TENSOR_POS;
+    uint32_t kvSeqlen_pos = KVSEQLEN_TENSOR_POS;
+    if (!needMask_) {
+        seqlen_pos = SEQLEN_TENSOR_POS - 1;
+        kvSeqlen_pos = KVSEQLEN_TENSOR_POS - 1;
+    }
+    bool ret = newParam.BuildFromTensorPrefixEncoder(opsTensorPack.inTensors, seqlen_pos, kvSeqlen_pos);
     if (!ret) {
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
@@ -121,9 +128,12 @@ void SelfAttentionPrefixEncoderOpsRunner::SetFAParam(AtbOps::OpParam::UnpadFlash
     } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
         flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
             AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_NORM);
+    } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK) {
+        flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
+            AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_CAUSAL_MASK);
     }
     // [head_num, seqlen, 128]
-    if (isMask128_) {
+    if (isMask128_ && needMask_) {
         flashAttentionParam.maskType = static_cast<AtbOps::OpParam::UnpadFlashAttention::MaskType>(
             AtbOps::OpParam::UnpadFlashAttention::MASK_TYPE_ALIBI_COMPRESS_128);
     }
