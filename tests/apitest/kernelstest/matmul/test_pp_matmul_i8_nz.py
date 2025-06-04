@@ -48,7 +48,7 @@ def process_deq_scale(deq_scale) -> np.ndarray:
 class TestPpMatmulI8(op_test.OpTest):
     def __gen_test_data(self, shpae: tuple) -> None:
         bsize, msize, ksize, nsize = shpae
-        bat_A, bat_B, bat_C, bat_scale, bat_bias = [], [], [], [], []
+        bat_A, bat_B, bat_C, bat_scale, bat_bias, bat_pertoken_descale = [], [], [], [], [], []
         for _ in range(bsize):
             a = np.random.uniform(-2, 2, size=(msize, ksize)).astype(np.int8)
             b = np.random.uniform(-2, 2, size=(ksize, nsize)).astype(np.int8)
@@ -77,17 +77,20 @@ class TestPpMatmulI8(op_test.OpTest):
         self.bat_C = np.stack(bat_C)
         self.bat_scale = np.stack(bat_scale)
         self.bat_bias = np.stack(bat_bias)
+        pertoken_descale = np.empty(msize)
+        bat_pertoken_descale.append(pertoken_descale)
+        self.bat_pertoken_descale = np.stack(bat_pertoken_descale)
         return
 
     def golden_calc(self, in_tensors):
         return [torch.tensor(self.bat_C).half()]
 
     def golden_compare(self, out_tensors, golden_out_tensors):
-            if "specificParam" in self.op_desc.keys():
-                logging.debug(str(self.op_desc["specificParam"]))
-            curesult = torch.allclose(out_tensors[0], golden_out_tensors[0], rtol=0.002, atol=0.002)
-            logging.debug("SUCCESS" if curesult else "FAIL!!")
-            return curesult
+        if "specificParam" in self.op_desc.keys():
+            logging.debug(str(self.op_desc["specificParam"]))
+        curesult = torch.allclose(out_tensors[0], golden_out_tensors[0], rtol=0.002, atol=0.002)
+        logging.debug("SUCCESS" if curesult else "FAIL!!")
+        return curesult
 
     @op_test.only_310b
     def testcase_nobiascase1(self):
@@ -98,7 +101,7 @@ class TestPpMatmulI8(op_test.OpTest):
             self.NZ = True
             bsize, msize, ksize, nsize = 1, 128, 2560, 5120
             self.set_param("MatMulOperation",
-                            {"transposeA": self.trans_A,
+                           {"transposeA": self.trans_A,
                             "transposeB": self.trans_B,
                             "withBias": self.bias_flag,
                             "oriShape": [msize, ksize, nsize],
@@ -106,16 +109,18 @@ class TestPpMatmulI8(op_test.OpTest):
             self.set_input_formats([self.format_nd,
                                     self.format_nz,
                                     self.format_nd,
+                                    self.format_nd,
                                     self.format_nd])
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
             self.execute([torch.tensor(self.bat_A, dtype=torch.int8),
-                            torch.tensor(self.bat_B, dtype=torch.int8),
-                            torch.tensor(self.bat_bias, dtype=torch.int32),
-                            torch.tensor(self.bat_scale, dtype=torch.int64)],
-                            [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-                            {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+                          torch.tensor(self.bat_B, dtype=torch.int8),
+                          torch.tensor(self.bat_bias, dtype=torch.int32),
+                          torch.tensor(self.bat_scale, dtype=torch.int64),
+                          torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
+                         [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
+                         {"ASDOPS_MATMUL_PP_FLAG": "1"})
+
 
 if __name__ == '__main__':
     unittest.main()
