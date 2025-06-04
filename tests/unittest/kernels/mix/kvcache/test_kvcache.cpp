@@ -59,16 +59,16 @@ TEST(TestKVCache, KVCacheTest0)
     int64_t layer = 28;
     int64_t ntokens = 1331;
 
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
 
     Mki::Test::MkiOpTest opTest;
     opTest.SetOutdataUseInputData(0, 2);
     std::vector<uint16_t> expect(layer * batch * maxSeqLen * hiddenSize, 0);
     opTest.ReadFile(expect.data(),
         expect.size() * sizeof(uint16_t),
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data/cache_Out.bin");
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data/cache_Out.bin");
     opTest.Golden(std::bind(KVCacheGolden, expect.data(), std::placeholders::_1));
     OpParam::KVCache opParam;
     opParam.type = OpParam::KVCache::KVCACHE_ND;
@@ -82,11 +82,11 @@ TEST(TestKVCache, KVCacheTest0)
         {TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {batch}},
     };
     // tokenoffset must be greater than or equal to seqlen
-    SVector<std::string> inDataFiles = {atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data/newKV.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data/layerid.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data/cacheIn.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data/tokenoffset.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data/seqlen.bin"};
+    SVector<std::string> inDataFiles = {atbHomeDir + "/../../tests/unittest/mix/kvcache/data/newKV.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data/layerid.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data/cacheIn.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data/tokenoffset.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data/seqlen.bin"};
 
     Status status = opTest.RunWithDataFile(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
@@ -101,16 +101,16 @@ TEST(TestKVCache, KVCacheTest1)
     int64_t layer = 1;
     int64_t ntokens = 1024;
 
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
 
     Mki::Test::MkiOpTest opTest;
     opTest.SetOutdataUseInputData(0, 2);
     std::vector<uint16_t> expect(layer * batch * ((maxSeqLen + 15) / 16) * ((hiddenSize + 15) / 16) * 16 * 16, 0);
     opTest.ReadFile(expect.data(),
         expect.size() * sizeof(uint16_t),
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/cache_Out.bin");
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/cache_Out.bin");
 
     opTest.Golden(std::bind(KVCacheGolden, expect.data(), std::placeholders::_1));
     OpParam::KVCache opParam;
@@ -127,11 +127,11 @@ TEST(TestKVCache, KVCacheTest1)
         {TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {batch}},
     };
     // tokenoffset must be greater than or equal to seqlen
-    SVector<std::string> inDataFiles = {atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/newKV.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/layerid.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/cacheIn.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/tokenoffset.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/seqlen.bin"};
+    SVector<std::string> inDataFiles = {atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/newKV.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/layerid.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/cacheIn.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/tokenoffset.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nz/seqlen.bin"};
 
     Status status = opTest.RunWithDataFile(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
@@ -145,16 +145,16 @@ TEST(TestKVCache, KVCacheTest2)
     int64_t hiddenSize = 1024;
     int64_t ntokens = 1331;
 
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
 
     Mki::Test::MkiOpTest opTest;
     opTest.SetOutdataUseInputData(0, 2);
     std::vector<uint16_t> expect(batch * maxSeqLen * hiddenSize, 0);
     opTest.ReadFile(expect.data(),
         expect.size() * sizeof(uint16_t),
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/cache_Out.bin");
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/cache_Out.bin");
     opTest.Golden(std::bind(KVCacheGolden, expect.data(), std::placeholders::_1));
     OpParam::KVCache opParam;
     opParam.type = OpParam::KVCache::KVCACHE_ND;
@@ -168,11 +168,11 @@ TEST(TestKVCache, KVCacheTest2)
         {TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {batch}},
     };
     // tokenoffset must be greater than or equal to seqlen
-    SVector<std::string> inDataFiles = {atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/newKV.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/layerid.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/cacheIn.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/tokenoffset.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/seqlen.bin"};
+    SVector<std::string> inDataFiles = {atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/newKV.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/layerid.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/cacheIn.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/tokenoffset.bin",
+        atbHomeDir + "/../../tests/unittest/mix/kvcache/data_nd_dync_batch/seqlen.bin"};
 
     Status status = opTest.RunWithDataFile(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
