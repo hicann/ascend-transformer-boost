@@ -25,11 +25,11 @@ public:
         auto dtype = launchParam.GetOutTensor(0).desc.dtype;
         if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
             if (dtype == TENSOR_DTYPE_FLOAT16) {
-                return GetKernelByName("TopKDescF16Kernel910D");
+                return GetKernelByName("TopKDescF16KernelV2");
             } else if (dtype == TENSOR_DTYPE_BF16) {
-                return GetKernelByName("TopKDescBF16Kernel910D");
+                return GetKernelByName("TopKDescBF16KernelV2");
             } else if (dtype == TENSOR_DTYPE_FLOAT) {
-                return GetKernelByName("TopKDescF32Kernel910D");
+                return GetKernelByName("TopKDescF32KernelV2");
             } else {
                 return nullptr;
             }

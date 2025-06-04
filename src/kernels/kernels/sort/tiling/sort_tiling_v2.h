@@ -17,7 +17,7 @@
 
 namespace AsdOps {
 using namespace Mki;
-Status TopKDescTiling910D(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+Status TopKDescTilingV2(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                       const BinHandle &binHandle);
 } // namespace AsdOps
 

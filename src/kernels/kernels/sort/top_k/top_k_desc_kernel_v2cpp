@@ -20,9 +20,9 @@ namespace AsdOps {
 constexpr uint64_t TENSOR_TOPK_CONST_IDX = 1;
 constexpr uint64_t TENSOR_TOPK_WORKSPACE_IDX = 6;
 
-class TopKDescKernel910D : public KernelBase {
+class TopKDescKernelV2 : public KernelBase {
 public:
-    explicit TopKDescKernel910D(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit TopKDescKernelV2(const std::string &kernelName, const BinHandle *handle) noexcept
         : KernelBase(kernelName, handle)
     {
     }
@@ -69,11 +69,11 @@ public:
     }
 };
 
-// TopKDescF16Kernel910D
-class TopKDescF16Kernel910D : public TopKDescKernel910D {
+// TopKDescF16KernelV2
+class TopKDescF16KernelV2 : public TopKDescKernelV2 {
 public:
-    explicit TopKDescF16Kernel910D(const std::string &kernelName, const BinHandle *handle) noexcept
-        : TopKDescKernel910D(kernelName, handle)
+    explicit TopKDescF16KernelV2(const std::string &kernelName, const BinHandle *handle) noexcept
+        : TopKDescKernelV2(kernelName, handle)
     {
     }
     Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
@@ -81,13 +81,13 @@ public:
         return AsdOps::Status::OkStatus();
     }
 };
-REG_KERNEL_BASE(TopKDescF16Kernel910D);
+REG_KERNEL_BASE(TopKDescF16KernelV2);
 
-// TopKDescBF16Kernel910D
-class TopKDescBF16Kernel910D : public TopKDescKernel910D {
+// TopKDescBF16KernelV2
+class TopKDescBF16KernelV2 : public TopKDescKernelV2 {
 public:
-    explicit TopKDescBF16Kernel910D(const std::string &kernelName, const BinHandle *handle) noexcept
-        : TopKDescKernel910D(kernelName, handle)
+    explicit TopKDescBF16KernelV2(const std::string &kernelName, const BinHandle *handle) noexcept
+        : TopKDescKernelV2(kernelName, handle)
     {
     }
     Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
@@ -95,13 +95,13 @@ public:
         return AsdOps::Status::OkStatus();
     }
 };
-REG_KERNEL_BASE(TopKDescBF16Kernel910D);
+REG_KERNEL_BASE(TopKDescBF16KernelV2);
 
-// TopKDescF32Kernel910D
-class TopKDescF32Kernel910D : public TopKDescKernel910D {
+// TopKDescF32KernelV2
+class TopKDescF32KernelV2 : public TopKDescKernelV2 {
 public:
-    explicit TopKDescF32Kernel910D(const std::string &kernelName, const BinHandle *handle) noexcept
-        : TopKDescKernel910D(kernelName, handle)
+    explicit TopKDescF32KernelV2(const std::string &kernelName, const BinHandle *handle) noexcept
+        : TopKDescKernelV2(kernelName, handle)
     {
     }
     Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
@@ -109,5 +109,5 @@ public:
         return AsdOps::Status::OkStatus();
     }
 };
-REG_KERNEL_BASE(TopKDescF32Kernel910D);
+REG_KERNEL_BASE(TopKDescF32KernelV2);
 } // namespace AsdOps
