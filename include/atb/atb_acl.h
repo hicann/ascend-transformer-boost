@@ -275,6 +275,52 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
 //! \return 表示函数是否执行成功的状态码
 atb::Status AtbRingMLA(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
+//!
+//! \brief 关于SelfAttentionPrefixEncoder算子使用aclnn风格调用的2段式接口种的第1段，
+//! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
+//!
+//! \param query SelfAttentionPrefixEncoder算子的输入tensor
+//! \param key SelfAttentionPrefixEncoder算子的输入tensor
+//! \param value SelfAttentionPrefixEncoder算子的输入tensor
+//! \param blockTables SelfAttentionPrefixEncoder算子的输入tensor
+//! \param value SelfAttentionPrefixEncoder算子的输入tensor
+//! \param seqLen SelfAttentionPrefixEncoder算子的输入tensor
+//! \param kvSeqLen SelfAttentionPrefixEncoder算子的输入tensor
+//! \param mask SelfAttentionPrefixEncoder算子的输入tensor（maskType为MASK_TYPE_CASUAL_MASK时，需要置为nullptr）
+//! \param slopes SelfAttentionPrefixEncoder算子的输入tensor（maskType不为MASK_TYPE_ALIBI_COMPRESS或MASK_TYPE_ALIBI_COMPRESS_SQRT时，需要置为nullptr）
+
+//! \param maskType SelfAttentionPrefixEncoder mask类型
+//! \param headNum SelfAttentionPrefixEncoder算子头大小
+//! \param kvHeadNum SelfAttentionPrefixEncoder算子kv头大小
+//! \param qkScale SelfAttentionPrefixEncoder算子tor值
+
+//! \param attnOut SelfAttentionPrefixEncoder算子输出tensor
+//! \param workspaceSize RingMLA算子的workspace大小
+//! \param op RingMLA算子的handler
+//! \param context RingMLA算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query, const aclTensor *key,
+                                                          const aclTensor *value, const aclTensor *blockTables,
+                                                          const aclTensor *seqLen, const aclTensor *kvSeqLen,
+                                                          const aclTensor *mask, const aclTensor *slopes, int maskType,
+                                                          int32_t headNum, int32_t kvHeadNum, float qkScale,
+                                                          aclTensor *attnOut, uint64_t *workspaceSize,
+                                                          atb::Operation **op, atb::Context *context);
+
+//!
+//! \brief 关于SelfAttentionPrefixEncoder算子使用aclnn风格调用的2段式接口种的第2段，
+//! 用于算子的推理调度阶段
+//!
+//! \param workspace 针对SelfAttentionPrefixEncoder算子申请的工作空间
+//! \param workspaceSize SelfAttentionPrefixEncoder算子的workspace大小
+//! \param op SelfAttentionPrefixEncoder算子的op handler
+//! \param context SelfAttentionPrefixEncoder算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbSelfAttentionPrefixEncoder(void *workspace, uint64_t workspaceSize, atb::Operation *op,
+                                          atb::Context *context);
+
 #ifdef __cplusplus
 }
 #endif
