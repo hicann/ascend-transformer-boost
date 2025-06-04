@@ -24,22 +24,24 @@ namespace {
 constexpr uint32_t DTYPE_BIT_COUNT = 2;
 constexpr uint32_t FORMAT_BIT_COUNT = 1;
 constexpr uint32_t INPUT_BIT_COUNT = 2;
-constexpr uint32_t PP_MATMUL_I8_BF16_KERNEL_KEY = 0b1'00'00'10'0'0'0'10;
-constexpr uint32_t PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'10'0'1'0'10;
-constexpr uint32_t PP_MATMUL_I8_KERNEL_KEY = 0b1'00'00'01'0'0'0'10;
-constexpr uint32_t PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'01'0'1'0'10;
+constexpr uint32_t PP_MATMUL_I8_BF16_KERNEL_KEY = 0b1'00'00'10'0'0'0'11;
+constexpr uint32_t PP_MATMUL_I8_FP16_KERNEL_KEY = 0b1'00'00'01'0'0'0'11;
+constexpr uint32_t PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'10'0'1'0'11;
+constexpr uint32_t PP_MATMUL_I8_FP16_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'01'0'1'0'11;
+constexpr uint32_t PP_MATMUL_I8_KERNEL_KEY = 0b1'00'00'01'0'0'0'11;
+constexpr uint32_t PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'01'0'1'0'11;
 constexpr uint32_t PP_MATMUL_F16_KERNEL_KEY = 0b1'01'01'01'0'0'0'00;
 constexpr uint32_t PP_MATMUL_F16_MIX_KERNEL_KEY = 0b1'01'01'01'0'0'0'01;
 constexpr uint32_t PP_MATMUL_BF16_KERNEL_KEY = 0b1'10'10'10'0'0'0'00;
 constexpr uint32_t PP_MATMUL_F16_OPT_KERNEL_KEY = 0b1'01'01'01'0'1'0'00;
 constexpr uint32_t PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY = 0b1'10'10'10'0'1'0'00;
 constexpr uint32_t PP_MATMUL_NZ_F16_KERNEL_KEY = 0b0'01'01'01'1'1'1'00;
-constexpr uint32_t PP_MATMUL_I8_NZ_KERNEL_KEY = 0b0'00'00'01'1'1'1'10;
+constexpr uint32_t PP_MATMUL_I8_NZ_KERNEL_KEY = 0b0'00'00'01'1'1'1'11;
 constexpr uint32_t PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY = 0b0'00'00'01'1'1'1'11;
 constexpr uint32_t PP_MATMUL_ACCUM_KERNEL_KEY = 0b1'10'10'11'0'0'0'00;
 constexpr uint32_t PP_MATMUL_FP_ND_ND_KERNEL_KEY = 0b0'01'01'01'0'0'0'00;
-constexpr uint32_t PP_MATMUL_I8_NZ_M300_KERNEL_KEY = 0b0'00'00'01'0'1'0'10;
-constexpr uint32_t PP_MATMUL_I8_ND_M300_KERNEL_KEY = 0b0'00'00'01'0'0'0'10;
+constexpr uint32_t PP_MATMUL_I8_NZ_M300_KERNEL_KEY = 0b0'00'00'01'0'1'0'11;
+constexpr uint32_t PP_MATMUL_I8_ND_M300_KERNEL_KEY = 0b0'00'00'01'0'0'0'11;
 constexpr uint32_t PP_MATMUL_F16_NZ_M300_KERNEL_KEY = 0b0'01'01'01'0'1'0'00;
 
 } // namespace
@@ -69,7 +71,7 @@ public:
         const TensorDType dtypeA = inTensorDescA.dtype;
         const TensorDType dtypeB = inTensorDescB.dtype;
         const TensorDType dtypeC = outTensorDescC.dtype;
-        bool isSparseDequant = (inTensorCount == DIM_5 && opParam.tilingK > 0 && opParam.tilingN > 0);
+        bool isSparseDequant = (opParam.enDequant && opParam.tilingK > 0 && opParam.tilingN > 0);
         if (!isSparseDequant) {
             // Validate input tensor format, excluding PpMatMulI8NzCompressKernel.
             MKI_CHECK((formatA == TENSOR_FORMAT_ND) || ValidNzFormat(launchParam.GetInTensor(0)),
@@ -120,6 +122,26 @@ public:
                 MKI_CHECK(!opParam.transposeA, "Unsupported transposed A_matrix", return nullptr);
                 return GetKernelByName("PpMatmulEinSumKernel");
             }
+            // 先判断w8a8compress
+            if (isSparseDequant) {
+                switch (kernelKey) {
+                    case PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzCompressKernel");
+                    default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
+                }
+            }
+
+            if (opParam.quantMode == OpParam::MatMul::QuantMode::PER_TOKEN_SYMM) {
+                switch (kernelKey) {
+                    case PP_MATMUL_I8_BF16_KERNEL_KEY:
+                    case PP_MATMUL_I8_FP16_KERNEL_KEY:
+                    case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY:
+                    case PP_MATMUL_I8_FP16_WEIGHT_NZ_KERNEL_KEY:
+                        return GetKernelByName("PpMatMulI8Bf16Kernel");
+                    default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
+                }
+            }
+
+            // 判断w8a8
             switch (kernelKey) {
                 case PP_MATMUL_I8_BF16_KERNEL_KEY:
                 case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY:
@@ -133,7 +155,6 @@ public:
                 case PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY: return GetKernelByName("PpMatMulBf16NdNzNdKernel");
                 case PP_MATMUL_NZ_F16_KERNEL_KEY: return GetKernelByName("PpMatMulNzF16Kernel");
                 case PP_MATMUL_I8_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzKernel");
-                case PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzCompressKernel");
                 case PP_MATMUL_FP_ND_ND_KERNEL_KEY: return GetKernelByName("PpMatmulF16NdM300Kernel");
                 case PP_MATMUL_I8_ND_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
                 case PP_MATMUL_I8_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8NdNzKernel");
@@ -195,7 +216,7 @@ public:
             return 5; // There're 5 inputs if int8NzSparse
         }
         if (param.enDequant) {
-            return 4; // There're 4 inputs if enable post dequant.
+            return 5; // There're 5 inputs if enable post dequant.
         }
         bool fuseAdd = (param.withBias || param.matmulType == MmType::MATMUL_ACCUM_ATOMIC ||
                         param.matmulType == MmType::MATMUL_WITH_BIAS);

@@ -1024,7 +1024,8 @@ private:
             MKI_CHECK(CheckEmptyTensor(mask), "mask type inconsistent", return false);
             // swa decode mask should be empty
         } else {
-            if (param.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_NONE) {
+            if (param.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_NONE ||
+                param.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_CAUSAL_MASK) {
                 MKI_CHECK(CheckEmptyTensor(mask), "mask type inconsistent", return false);
             } else {
                 MKI_CHECK(!CheckEmptyTensor(mask), "mask type inconsistent", return false);

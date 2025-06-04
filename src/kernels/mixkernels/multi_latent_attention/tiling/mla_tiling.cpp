@@ -222,23 +222,24 @@ inline Status PrefillPreCheck(OpParam::MLA &param)
 inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
                                   const Tensor &tensorMask)
 {
-    auto maskShape = tensorMask.desc.dims;
     auto maskType = param.maskType;
+    if (maskType == OpParam::MLA::MASK_TYPE_NONE || maskType == OpParam::MLA::MASK_TYPE_CAUSAL_MASK) {
+        MKI_LOG(INFO) << "No Check for nomask or causal mask";
+        return Status::OkStatus(); 
+    }
+    auto maskShape = tensorMask.desc.dims;
     auto maxKvSeq = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     MKI_LOG(INFO) << "max kv seq" << *maxKvSeq;
-    if (maskType != OpParam::MLA::MASK_TYPE_NONE) {
-        auto maskDim = maskShape.size();
-        int32_t maxSeq = maskShape.at(maskDim - 1);
-        mmInfo.maxSeqLen = maxSeq;
-        MKI_CHECK(maskType == OpParam::MLA::MASK_TYPE_CAUSAL_COMPRESS,
-                    "mask type invalid",
-                    return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
-                    return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(maskShape.at(1) == NORM_CMP_MASK_LEN, "compress mask shape should be 512, 512",
-                    return Status::FailStatus(ERROR_INVALID_VALUE));
-    }
-
+    auto maskDim = maskShape.size();
+    int32_t maxSeq = maskShape.at(maskDim - 1);
+    mmInfo.maxSeqLen = maxSeq;
+    MKI_CHECK(maskType == OpParam::MLA::MASK_TYPE_MASK_FREE,
+                "mask type invalid",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(maskShape.at(1) == NORM_CMP_MASK_LEN, "compress mask shape should be 512, 512",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
 }
 
@@ -309,6 +310,16 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
     return Status::OkStatus();
 }
 
+Status GenMlaPrefillTilingKey(MLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::MLA &param)
+{
+    // currently only support fp16/bf16 maskfree prefill or bf16 prefill kernel
+    uint32_t dataType = static_cast<int32_t>(mmInfo.type);
+    uint32_t tilingKey = dataType + (mmInfo.maskType << NUM1);
+    kernelInfo.SetTilingId(tilingKey);
+    MKI_LOG(INFO) << "MLA Prefill TILING KEY IS = " << tilingKey;
+    return Status::OkStatus();
+}
+
 Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 {
     MLAInfo mmInfo;
@@ -332,6 +343,9 @@ Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(tilingHost);
     ret = GetMLAPrefillTilingParam(mmInfo, blockDim, tilingParam, tilingSize);
+    OP_TILING_CHECK_STATUS_RETURN(ret);
+    GetTilingKeyTypeBase(mmInfo, mmInfo.tensors.query, mmInfo.tensors.queryRope);
+    ret = GenMlaPrefillTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint64_t dataLenFloat = sizeof(float);
     uint64_t sSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(32768) * 16 * dataLenFloat;

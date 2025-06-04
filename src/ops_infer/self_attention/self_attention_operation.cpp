@@ -316,7 +316,8 @@ bool PrefixEncoderParamCheck(const infer::SelfAttentionParam &opParam)
         {std::abs(opParam.clampMax - 0.0f) < FLT_EPSILON, "PREFIX_ENCODER doesn't support clamp"},
         {opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
              opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT ||
-             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS,
+             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS ||
+             opParam.maskType == infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK,
          "PREFIX_ENCODER only supports alibi compress mask, norm compress mask and alibi compress sqrt mask"},
         {opParam.kvcacheCfg == atb::infer::SelfAttentionParam::K_CACHE_V_CACHE,
          "PREFIX_ENCODER doesn't support key value bypass"},
@@ -354,7 +355,8 @@ SelfAttentionOperation::SelfAttentionOperation(const infer::SelfAttentionParam &
     : OperationBase("SelfAttentionOperation"), param_(param)
 {
     isMla_ = param_.mlaVHeadSize > 0;
-    hasMask_ = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED &&
+    hasMask_ = (param_.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED
+                && param_.maskType != infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK) &&
                !(param_.calcType == infer::SelfAttentionParam::DECODER &&
                  param_.maskType == infer::SelfAttentionParam::MASK_TYPE_SLIDING_WINDOW_NORM);
     kvHeadNum_ = (param_.kvHeadNum > 0) ? param_.kvHeadNum : param_.headNum;
@@ -377,6 +379,10 @@ SelfAttentionOperation::SelfAttentionOperation(const infer::SelfAttentionParam &
         if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
             hasSlopes_ = false;
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPrefixEncoder");
+        } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK) {
+            hasSlopes_ = false;
+            operationIr_ =
+                GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPrefixEncoderCausalMask");
         } else {
             operationIr_ =
                 GetSingleton<AtbOperationIrCfg>().GetOperationIr("SelfAttentionOperationPrefixEncoderSlopes");
@@ -516,6 +522,8 @@ uint32_t SelfAttentionOperation::GetInputNum() const
     } else if (param_.calcType == infer::SelfAttentionParam::PREFIX_ENCODER) {
         if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_NORM_COMPRESS) {
             return PREFIX_128MASK_ENCODER_IN_TENSOR_NUM;
+        } else if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK) {
+            return FUSION_BYPASS_IN_TENSOR_NUM;
         } else {
             return PREFIX_ENCODER_IN_TENSOR_NUM;
         }
@@ -1485,7 +1493,7 @@ Status SelfAttentionOperation::InferShapePrefixDimNumCheck910B(const SVector<Ten
     const std::size_t kKeyIndex = 1;
     const std::size_t kValueIndex = 2;
     const std::size_t kBlockTablesIndex = 3;
-    const std::size_t kSeqLenIndex = 5;
+    const std::size_t kSeqLenIndex = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK ? 5 : 4;
     const std::size_t kSlopesIndex = 7;
     if ((inTensorDescs.at(kQueryIndex).shape.dimNum != 2 &&  // 2: query: [batch * qSeqLen, qHiddenSize]
          inTensorDescs.at(kQueryIndex).shape.dimNum != 3)) { // 3: [batch * seqLen, headNum, headSize]
@@ -1523,14 +1531,16 @@ Status SelfAttentionOperation::InferShapePrefixDimNumCheck910B(const SVector<Ten
 Status SelfAttentionOperation::InferShapePrefixDimCheck910B(const SVector<TensorDesc> &inTensorDescs) const
 {
     const std::size_t kBlockTablesIndex = 3;
-    const std::size_t kSeqLenIndex = 5;
+    const std::size_t kSeqLenIndex = param_.maskType != infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK ? 5 : 4;
     const std::size_t kBlockSizeIndex = 1;
     const int32_t kMaxHeadSize = 128;
     Status st = InferShapePrefixDimNumCheck910B(inTensorDescs);
     if (st != NO_ERROR) {
         return st;
     }
-    st = PAMaskDimCheck(inTensorDescs); // check mask
+    if (hasMask_) {
+        st = PAMaskDimCheck(inTensorDescs); // check mask
+    }
     if (st != NO_ERROR) {
         return st;
     }

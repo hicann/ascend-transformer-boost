@@ -5783,6 +5783,90 @@ class TestFlashAttention(op_test.OpTest):
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
                             [torch.tensor(attention_out, dtype=data_type)])
+        
+    @op_test.only_910b
+    def test_flash_attention_case_fa_encoder_withcache_fp16_maskfree(self):
+        # [b,ms,ms]
+        batch = 1
+        kv_head = 1        # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 1
+        embeddim = 128
+        max_seq = 128*100
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        q_seqlens = [128*6+16] * batch
+        kv_seqLen = [128*8+16] * batch
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        dynamic_batch = False
+        block_size = 128
+        num_blocks = 1024
+        OP_NAME = "UnpadFlashAttentionOperation"
+        OP_PARAM = {"type": 2012, "qSeqLen": q_seqlens, "kvSeqLen": kv_seqLen, "headSize": heads, "tor": tor,
+                    "isClamp" : is_clamp, "clampMin" : clamp_min, "clampMax" : clamp_max, "maskType": 10, "kvHead": kv_head,
+                    "isTriuMask": 1}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 12)
+        self.set_output_formats([self.format_nd])
+        data_type = torch.float16
+
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH_WITH_PREFIX,
+                             no_cache = True, tor = tor, q_seqlens = q_seqlens,
+                             num_blocks = num_blocks, block_size = block_size, is_triu_mask = True, is_mask=True)
+        self.gen_out_tensor()
+        attention_out = np.zeros_like(self.q.to(torch.float16))
+        
+
+        return self.execute([self.q, self.k_cache, self.v_cache, self.block_tables,
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
+                            [torch.tensor(attention_out, dtype=torch.float16)])
+        
+    @op_test.only_910b
+    def test_flash_attention_case_fa_encoder_withcache_bf16_maskfree(self):
+        # [b,ms,ms]
+        batch = 2
+        kv_head = 2       # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 4
+        embeddim = 128
+        max_seq = 128*100
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        q_seqlens = [128*26+13] * batch
+        kv_seqLen = [128*28+13] * batch
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        dynamic_batch = False
+        block_size = 128
+        num_blocks = 1024
+        OP_NAME = "UnpadFlashAttentionOperation"
+        OP_PARAM = {"type": 2012, "qSeqLen": q_seqlens, "kvSeqLen": kv_seqLen, "headSize": heads, "tor": tor,
+                    "isClamp" : is_clamp, "clampMin" : clamp_min, "clampMax" : clamp_max, "maskType": 10, "kvHead": kv_head,
+                    "isTriuMask": 1}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 12)
+        self.set_output_formats([self.format_nd])
+        data_type = torch.bfloat16
+
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH_WITH_PREFIX,
+                             no_cache = True, tor = tor, q_seqlens = q_seqlens,
+                             num_blocks = num_blocks, block_size = block_size, is_triu_mask = True, is_mask=True)
+        self.gen_out_tensor()
+        attention_out = np.zeros_like(self.q.to(torch.float16))
+        return self.execute([self.q, self.k_cache, self.v_cache, self.block_tables,
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
+                            [torch.tensor(attention_out, dtype=torch.bfloat16)])
 
 if __name__ == '__main__':
     unittest.main()

@@ -369,21 +369,27 @@ PYBIND11_MODULE(_C, m)
     py::enum_<LinearParam::MatmulType>(linear, "MatmulType")
         .value("MATMUL_UNDEFINED", LinearParam::MatmulType::MATMUL_UNDEFINED)
         .value("MATMUL_EIN_SUM", LinearParam::MatmulType::MATMUL_EIN_SUM);
+    py::enum_<LinearParam::QuantMode>(linear, "QuantMode")
+        .value("QUANT_UNDEFINED", LinearParam::QuantMode::QUANT_UNDEFINED)
+        .value("PER_CHANNEL", LinearParam::QuantMode::PER_CHANNEL)
+        .value("PER_TOKEN", LinearParam::QuantMode::PER_TOKEN);
 
     linear
-        .def(py::init<bool, bool, bool, aclDataType, bool, LinearParam::MatmulType>(),
+        .def(py::init<bool, bool, bool, aclDataType, bool, LinearParam::MatmulType, LinearParam::QuantMode>(),
              py::arg("transpose_a") = false,
              py::arg("transpose_b") = true,
              py::arg("has_bias") = true,
              py::arg("out_data_type") = aclDataType::ACL_DT_UNDEFINED,
              py::arg("en_accum") = false,
-             py::arg("matmul_type") = LinearParam::MatmulType::MATMUL_UNDEFINED)
+             py::arg("matmul_type") = LinearParam::MatmulType::MATMUL_UNDEFINED,
+             py::arg("quant_mode") = LinearParam::QuantMode::QUANT_UNDEFINED)
         .def_readwrite("transpose_a", &LinearParam::transposeA)
         .def_readwrite("transpose_b", &LinearParam::transposeB)
         .def_readwrite("has_bias", &LinearParam::hasBias)
         .def_readwrite("out_data_type", &LinearParam::outDataType)
         .def_readwrite("en_accum", &LinearParam::enAccum)
         .def_readwrite("matmul_type", &LinearParam::matmulType)
+        .def_readwrite("quant_mode", &LinearParam::quantMode)
         .def("__repr__", [](const LinearParam &param) { return "LinearParam: " + OpParamToJson(param).dump(); });
 
     py::class_<SoftmaxParam>(m, "SoftmaxParam")

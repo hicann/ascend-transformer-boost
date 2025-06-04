@@ -41,7 +41,7 @@ def cvt_nd_to_nz(nd_mat: np.ndarray, block_size: tuple = (16, 16)) -> np.ndarray
 class TestPpMatmulI8(op_test.OpTest):
     def __gen_test_data(self, shpae: tuple) -> None:
         bsize, msize, ksize, nsize = shpae
-        bat_A, bat_B, bat_C, bat_scale, bat_bias = [], [], [], [], []
+        bat_A, bat_B, bat_C, bat_scale, bat_bias, bat_pertoken_descale = [], [], [], [], [], []
         input_formats = self.op_desc["input_formats"]
         for _ in range(bsize):
             a = np.random.uniform(-2, 2, size=(msize, ksize)).astype(np.int8)
@@ -73,6 +73,9 @@ class TestPpMatmulI8(op_test.OpTest):
         self.bat_C = np.stack(bat_C)
         self.bat_scale = np.stack(bat_scale)
         self.bat_bias = np.stack(bat_bias)
+        pertoken_descale = np.empty(msize)
+        bat_pertoken_descale.append(pertoken_descale)
+        self.bat_pertoken_descale = np.stack(bat_pertoken_descale)
         return
 
     def golden_calc(self, in_tensors):
@@ -94,7 +97,7 @@ class TestPpMatmulI8(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
@@ -103,6 +106,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -117,7 +121,7 @@ class TestPpMatmulI8(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
@@ -126,6 +130,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -140,7 +145,7 @@ class TestPpMatmulI8(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
@@ -149,6 +154,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -163,7 +169,7 @@ class TestPpMatmulI8(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
@@ -172,6 +178,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -188,7 +195,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 "MatMulOperation",
                 {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
             )
-            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
             self.execute(
@@ -197,6 +204,7 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_B, dtype=torch.int8),
                     torch.tensor(self.bat_bias, dtype=torch.int32),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
+                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
                 {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -213,7 +221,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 "MatMulOperation",
                 {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
             )
-            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
             self.execute(
@@ -222,6 +230,7 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_B, dtype=torch.int8),
                     torch.tensor(self.bat_bias, dtype=torch.int32),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
+                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
                 {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -238,7 +247,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 "MatMulOperation",
                 {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
             )
-            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
             self.execute(
@@ -247,6 +256,7 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_B, dtype=torch.int8),
                     torch.tensor(self.bat_bias, dtype=torch.int32),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
+                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
                 {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -262,7 +272,7 @@ class TestPpMatmulI8(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
@@ -271,6 +281,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -286,7 +297,7 @@ class TestPpMatmulI8(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
@@ -295,6 +306,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -312,7 +324,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 "MatMulOperation",
                 {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
             )
-            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nd])
             logging.debug(
                 f"run case{idx}:*** bsize:{bsize} m {msize} k {ksize} n {nsize} ta:{self.trans_A} tb:{self.trans_B} ****"
@@ -325,6 +337,7 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_B, dtype=torch.int8),
                     torch.tensor(self.bat_bias, dtype=torch.int32),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
+                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
                 {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -342,7 +355,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 "MatMulOperation",
                 {"transposeA": self.trans_A, "transposeB": self.trans_B, "withBias": self.bias_flag, "enDequant": True},
             )
-            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+            self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nd])
             logging.debug(
                 f"run case{idx}:*** bsize:{bsize} m {msize} k {ksize} n {nsize} ta:{self.trans_A} tb:{self.trans_B} ****"
@@ -355,6 +368,7 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_B, dtype=torch.int8),
                     torch.tensor(self.bat_bias, dtype=torch.int32),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
+                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
                 {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -375,7 +389,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 "oriShape": [msize, ksize, nsize],
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
@@ -384,6 +398,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -406,7 +421,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 "oriShape": [msize, ksize, nsize],
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
@@ -415,6 +430,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},

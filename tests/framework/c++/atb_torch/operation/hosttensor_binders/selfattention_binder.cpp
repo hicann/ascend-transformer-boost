@@ -74,13 +74,18 @@ void SelfAttentionBinder::ParseParam(const nlohmann::json &paramJson)
             paramJson["maskType"] == atb::infer::SelfAttentionParam::MASK_TYPE_SLIDING_WINDOW_COMPRESS) {
             useSwa_ = true;
         }
+        ATB_LOG(INFO) << "paramJson[maskType]:" << paramJson["maskType"];
+        if (paramJson["maskType"] == atb::infer::SelfAttentionParam::MASK_TYPE_CAUSAL_MASK) {
+            useCausalMask_ = true;
+        }
     }
 }
 
 void SelfAttentionBinder::BindTensorPrefixEncoder(atb::VariantPack &variantPack)
 {
     // query, key, value, blockTables, mask, qSeqLen, kvSeqLen, slopes
-    const uint32_t kSeqLenTensorId = 5;
+    const uint32_t kSeqLenTensorId = useCausalMask_ ? 4 : 5;
+    ATB_LOG(INFO) << "useCausalMask_:" << useCausalMask_;
     variantPack.inTensors.at(kSeqLenTensorId).hostData = seqLen_.data();
     variantPack.inTensors.at(kSeqLenTensorId + 1).hostData = kvSeqLen_.data();
 }

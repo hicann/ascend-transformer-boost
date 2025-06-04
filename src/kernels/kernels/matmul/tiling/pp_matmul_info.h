@@ -41,6 +41,7 @@ struct MatMulInfo {
     bool isInt8{0};   // 是否shi int8融合
     float inDtype{0};
     float outDtype{0};
+    OpParam::MatMul::QuantMode quantMode{OpParam::MatMul::QuantMode::PER_CHANNEL_SYMM};
     MatMulInfo() {}
     explicit MatMulInfo(const LaunchParam &launchParam)
     {
@@ -58,6 +59,7 @@ struct MatMulInfo {
         dtypeC = launchParam.GetOutTensor(0).desc.dtype;
         biasFlag = attrs.withBias;
         mmType = attrs.matmulType;
+        quantMode = attrs.quantMode;
         if (formatA == TENSOR_FORMAT_ND && formatB == TENSOR_FORMAT_FRACTAL_NZ) {
             if (inputADim.size() == 2) { // 2: [M, K]
                 batchSize = 1;
@@ -178,6 +180,7 @@ struct PpTilingData {
     uint32_t swizzlDirect{0};
     uint32_t splitk{0};
     uint32_t enShuffleK{0};
+    uint32_t quantMode{0};
 
     void SetBaseShape(uint32_t batchSize, uint32_t m, uint32_t k, uint32_t n);
     void SetBaseOp(uint32_t coreNum, uint32_t mBase, uint32_t nBase, const MatMulInfo &mmInfo);

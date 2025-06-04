@@ -105,7 +105,7 @@ Status RINGMLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     auto qTensor = launchParam.GetInTensor(DIM_0);
     auto qRopeTensor = launchParam.GetInTensor(DIM_1);
 
-    RINGMLAInfo mmInfo = {0};
+    RINGMLAInfo mmInfo;
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
     Status ret1  = GetRINGMLAInfo(launchParam, mmInfo, param);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);

@@ -7,6 +7,7 @@ namespace cinterfaceTest {
 const int64_t MLAINOUTMLA = 12;
 const int64_t MLAINOUTMLAPP = 28;
 const int64_t MLAPREINOUT = 7;
+const int64_t MLAPPREFILLINOUT = 9;
 const int64_t blockSize = 128;
 const int64_t numTokens = 32;
 const int64_t numHeads = 32;
@@ -19,6 +20,9 @@ const int64_t batch = numTokens * kSeqlen;
 const int64_t numBlocks = 64;
 const int64_t maxNumBlocksPerQuery = 16;
 const int64_t maxSeqLen = 256;
+
+const int64_t embeddimV = 128;
+const int64_t qRopeSzie = 64;
 
 const int64_t dims = 7168;
 const int64_t dimB = 2112;
@@ -81,7 +85,16 @@ int64_t GetTensorSize(const aclTensor *input);
 aclnnStatus Init(atb::Context **context, aclrtStream *stream, int64_t *deviceId);
 aclnnStatus Destroy(atb::Context **context, aclrtStream *stream);
 aclnnStatus CreateInOutData(size_t num, uint8_t **inoutHost, uint8_t **inoutDevice, size_t *inoutSize);
-void CreateACLTensorInOut(const std::vector<int64_t> dims, aclDataType type, aclFormat format, aclTensor **list, size_t &i, uint8_t *inout);
+void CreateACLTensorInOut(const std::vector<int64_t> dims, aclDataType type, aclFormat format, aclTensor **list, size_t &i, void *inout);
+
+//!
+//! \brief 返回aclDataType对应的数据类型大小。
+//!
+//! \param dType 传入数据类型
+//!
+//! \return 返回整数值对应aclDataType大小
+//!
+uint64_t GetDataTypeSize(const aclDataType &dType);
 }
 }
 #endif
