@@ -27,13 +27,6 @@ struct Norm {
         GATHER_PRE_RMS_NORM,
     };
     NormType normType;
-    // layernorm
-    int32_t beginNormAxis = 0;
-    int32_t beginParamsAxis = 0;
-    // postlayernorm
-    // opsMode = 0 : high precision
-    // opsMode = 1 : high performance
-    size_t opsMode = 0;
     float epsilon = 0.1f;
     float zoomScaleValue = 1.0f;
     // post/pre rmsnorm
@@ -41,6 +34,13 @@ struct Norm {
     // precisionMode = 1 : high performance(weight fp16)
     uint32_t precisionMode = 0;
     uint32_t gemmaMode = 0;
+    // layernorm
+    int32_t beginNormAxis = 0;
+    int32_t beginParamsAxis = 0;
+    // postlayernorm
+    // opsMode = 0 : high precision
+    // opsMode = 1 : high performance
+    size_t opsMode = 0;
     bool inGamma = false; // CohereLayerNorm, LayernormF16Kernel, LayernormBF16Kernel, LayernormF32Kernel,
                           // PostLayernormF16Kernel, LayernormF16QuantKernel, PostLayernormF16QuantKernel,
                           // RmsPreNormQuantKernel, RmsNormKernel, RmsNormQuantKernel, PreRmsNormKernel,
