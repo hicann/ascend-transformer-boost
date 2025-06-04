@@ -297,6 +297,7 @@ template <> nlohmann::json OpParamToJson(const infer::LinearParam &opParam)
     paramsJson["outDataType"] = opParam.outDataType;
     paramsJson["enAccum"] = opParam.enAccum;
     paramsJson["matmulType"] = opParam.matmulType;
+    paramsJson["quantMode"] = opParam.quantMode;
     return paramsJson;
 }
 

@@ -31,6 +31,7 @@ struct PpMatmulTilingData {
     uint32_t swizzlDirect{0};
     uint32_t splitk{0};
     uint32_t enShuffleK{0};
+    uint32_t quantMode{0};
 };
 
 struct GemvMatmulTilingData {
