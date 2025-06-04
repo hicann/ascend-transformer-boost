@@ -32,9 +32,13 @@ static void CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<a
         int ret = aclrtMalloc(&inTensors.at(i).deviceData, inTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST); // 分配NPU内存
         if (ret != 0) {
             std::cout << "alloc error!";
-            exit(0);
+            exit(1);
         }
         ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(), ACL_MEMCPY_HOST_TO_DEVICE); //拷贝CPU内存到NPU侧
+        if (ret != 0) {
+            std::cout << "memcpy error!";
+            exit(1);
+        }
     }
 }
 
@@ -47,7 +51,7 @@ static void CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVector
         int ret = aclrtMalloc(&outTensors.at(i).deviceData, outTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
         if (ret != 0) {
             std::cout << "alloc error!";
-            exit(0);
+            exit(1);
         }
     }
 }
@@ -248,14 +252,14 @@ int main()
         ret = aclrtMalloc(&workSpaceWR, workspaceSizeWR, ACL_MEM_MALLOC_HUGE_FIRST);
         if (ret != 0) {
             std::cout << "alloc error!\n";
-            exit(0);
+            exit(1);
         }
     }
     if (workspaceSizeRW != 0 && workSpaceRW == nullptr) {
         ret = aclrtMalloc(&workSpaceRW, workspaceSizeRW, ACL_MEM_MALLOC_HUGE_FIRST);
         if (ret != 0) {
             std::cout << "alloc error!\n";
-            exit(0);
+            exit(1);
         }
     }
     operationWR->Execute(packWR, (uint8_t*)workSpaceWR, workspaceSizeWR, contextWR);
@@ -266,13 +270,13 @@ int main()
     ret = aclrtSynchronizeStream(stream1);
     if (ret != 0) {
         std::cout << "sync error!";
-        exit(0);
+        exit(1);
     }
 
     ret = aclrtSynchronizeStream(stream2);
     if (ret != 0) {
         std::cout << "sync error!";
-        exit(0);
+        exit(1);
     }
 
 	// 资源释放
