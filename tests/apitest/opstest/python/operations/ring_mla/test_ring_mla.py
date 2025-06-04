@@ -924,6 +924,31 @@ class TestMLAPrefill(operation_test.OperationTest):
                 score = torch.cat((score, group_score), 0)
         return score
 
+    def transpose_kv_shape(self, kv_seqLen, kv_head):
+        kv_ntokens = sum(kv_seqLen)
+        new_k = None
+        new_k_rope = None
+        new_v = None
+        for i, kv_len in enumerate(kv_seqLen):
+            if kv_len == 0:
+                continue
+            if new_k == None:
+                new_k = self.k_split1[0][i][:kv_len][:]
+            else:
+                new_k = torch.cat((new_k, self.k_split1[0][i][:kv_len][:]), 0)
+            if new_k_rope == None:
+                new_k_rope = self.k_split2[0][i][:kv_len][:]
+            else:
+                new_k_rope = torch.cat((new_k_rope, self.k_split2[0][i][:kv_len][:]), 0)
+            if new_v == None:
+                new_v = self.v[0][i][:kv_len][:]
+            else:
+                new_v = torch.cat((new_v, self.v[0][i][:kv_len][:]))
+        new_k = new_k.reshape(kv_ntokens, kv_head, 128)
+        new_k_rope = new_k_rope.reshape(kv_ntokens, kv_head, 64)
+        new_v = new_v.reshape(kv_ntokens, kv_head, 128)
+        return new_k, new_k_rope, new_v
+
     def golden_calc(self, in_tensors):
         golden_out = self.golden_out_o.clone().detach().npu()
         les = self.new_les.clone().detach().npu()
@@ -1399,11 +1424,11 @@ class TestMLAPrefill(operation_test.OperationTest):
         heads = 16        # llama7b  hidden_size 4096
         embeddim = 192
         embeddimV = 128
-        max_seq = 456
+        max_seq = 234
         tor = 1.0 / math.sqrt(1.0 * embeddim)
         dynamic_batch = False
         q_seqLen = [128, 128, 128]
-        kv_seqLen = [123, 234, 123]
+        kv_seqLen = [123, 234, 134]
         is_clamp = 0
         clamp_min = 0
         clamp_max = 0
@@ -1468,13 +1493,18 @@ class TestMLAPrefill(operation_test.OperationTest):
         logging.info("param_seqlen: ", param_seqlen, "seqlen", seqlen)
         logging.info("old_out.shape", old_out.shape)
         
+        new_k, new_k_rope, new_v = self.transpose_kv_shape(kv_seqLen, kv_head)
+        logging.info("new_k shape is: ", new_k.shape)
+        logging.info("new_v shape is; ", new_v.shape)
+        
+        
         old_lse = old_lse.transpose(1, 0)
         logging.info("input_lse :", old_lse.shape)
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q_split1.reshape(q_ntokens, heads, 128).npu(),
                                                             self.q_split2.reshape(q_ntokens, heads, 64).npu(),          
-                                                    self.k_split1.reshape(max_seq*batch, kv_head, 128).npu(),
-                                                    self.k_split2.reshape(max_seq*batch, kv_head, 64).npu(),
-                                                    self.v.reshape(max_seq*batch, kv_head, 128).npu(),
+                                                    new_k.reshape(kv_ntokens, kv_head, 128).npu(),
+                                                    new_k_rope.reshape(kv_ntokens, kv_head, 64).npu(),
+                                                    new_v.reshape(kv_ntokens, kv_head, 128).npu(),
                                                     self.mask.to(data_type).npu(), seqlen.npu(),
                                                     old_out.reshape(q_ntokens, heads, 128).npu(),
                                                     old_lse.reshape(heads, q_ntokens).npu()
@@ -1562,18 +1592,7 @@ class TestMLAPrefill(operation_test.OperationTest):
         logging.info("param_seqlen: ", param_seqlen, "seqlen", seqlen)
         logging.info("old_out.shape", old_out.shape)
 
-        new_k_1 = self.k_split1[0][0][:200][:]
-        new_k_2 = self.k_split1[0][2][:][:]
-        new_k_rope_1 = self.k_split2[0][0][:200][:]
-        new_k_rope_2 = self.k_split2[0][2][:][:]
-        new_v_1 = self.v[0][0][:200][:]
-        new_v_2 = self.v[0][2][:][:]
-        logging.info("new_v1 shape is: ", new_v_1.shape)
-        logging.info("new_v2 shape is; ", new_v_2.shape)
-
-        new_k = torch.cat((new_k_1, new_k_2), 0)
-        new_k_rope = torch.cat((new_k_rope_1, new_k_rope_2), 0)
-        new_v = torch.cat((new_v_1, new_v_2), 0)
+        new_k, new_k_rope, new_v = self.transpose_kv_shape(kv_seqLen, kv_head)
         logging.info("new_k shape is: ", new_k.shape)
         logging.info("new_v shape is; ", new_v.shape)
         
