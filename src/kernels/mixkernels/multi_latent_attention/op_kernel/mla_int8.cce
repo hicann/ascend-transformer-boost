@@ -2345,7 +2345,7 @@ __aicore__ __attribute__((always_inline)) inline void DeQuantPerHeadProc(
         );
     }
 
-    __aicore__ __attribute__((always_inline)) inline void CopyScaleBlock(uint32_t sub_m, uint32_t head_loop_idx, uint32_t l_offset, uint32_t o_offset, uint32_t split_num)
+    __aicore__ __attribute__((always_inline)) inline void CopyScaleBlock(uint32_t sub_m, uint32_t head_loop_idx, uint32_t l_offset, uint32_t o_offset, uint32_t split_num, uint32_t pingpong_flag)
     {
         SET_FLAG(V, MTE3, EVENT_ID2);
         WAIT_FLAG(V, MTE3, EVENT_ID2);
@@ -2367,7 +2367,7 @@ __aicore__ __attribute__((always_inline)) inline void DeQuantPerHeadProc(
         uint32_t src_gap = ((__k % 16 <= 8) && (__k % 16 > 0))? 1 : 0;
         ub_to_gm_align<ArchType::ASCEND_V220, float>(
             o_core_tmp_gm_tensor[(int64_t)o_offset],
-            go32_ubuf_tensor,
+            go32_ubuf_tensor_[pingpong_flag * 8192],
             0,        // sid
             sub_m,    // nBurst
             __k * 4,  // lenBurst
@@ -3740,7 +3740,7 @@ template<typename MASK_DTYPE>
  
                 uint32_t o_fd_offset = prev_split_num * q_heads * 512 * q_seq_len + cur_nIndx * __k + head_idx * __k * split_num;
                 uint32_t l_offset = prev_split_num * q_heads * q_seq_len + cur_nIndx + head_idx * split_num;
-                CopyScaleBlock(sub_m, head_loop_idx, l_offset * 8, o_fd_offset, split_num);
+                CopyScaleBlock(sub_m, head_loop_idx, l_offset * 8, o_fd_offset, split_num, pingpong_flag);
             } else {
                 // *** go = castfp32to16(go)
                 conv_v<ArchType::ASCEND_V220, float, OUT_DTYPE>(go_ubuf_tensor,
