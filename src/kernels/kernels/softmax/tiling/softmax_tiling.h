@@ -18,5 +18,7 @@ namespace AsdOps {
 using namespace Mki;
 Status SoftmaxCommonTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle);
+Status SoftmaxAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                           const BinHandle &binHandle);
 } // namespace AsdOps
 #endif // ASCEND_OPS_SOFTMAX_TILING_H
