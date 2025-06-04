@@ -31,5 +31,5 @@ multiStream_multiGraph_demo.cpp
     ```
 - 查看Profiling
     ```sh
-    msprof --application="multiStream_demo"     # 生成profiling文件
+    msprof --application="multiStreamDemo"     # 生成profiling文件
     ```
