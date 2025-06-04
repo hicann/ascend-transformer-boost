@@ -14,6 +14,7 @@
 #include <acl/acl.h>
 #include <opdev/common_types.h>
 #include "atb/operation.h"
+#include "atb/infer_op_params.h"
 
 //!
 //! \file atb_acl.h
