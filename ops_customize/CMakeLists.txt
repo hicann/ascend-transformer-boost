@@ -11,27 +11,35 @@ option(USE_MSDEBUG "USE_MSDEBUG" OFF)
 message(STATUS "USE_MSSANITIZER:${USE_MSSANITIZER}")
 message(STATUS "USE_MSDEBUG:${USE_MSDEBUG}")
 
+set(OPS_PROJECT_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set(OPS_THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/3rdparty")
 set(MKI_PACKAGE_DIR "${OPS_THIRD_PARTY_DIR}/mki")
 set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 
-file(GLOB_RECURSE CUSTOMIZE_SRCS
-     "${CMAKE_CURRENT_SOURCE_DIR}/common/*.cpp"
-     "${CMAKE_CURRENT_SOURCE_DIR}/ops/*.cpp")
-
-list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/tests/.*")
-
-include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
-include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
-
-add_library(customize_objs OBJECT
-    ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/ops.cpp
-    ${CUSTOMIZE_SRCS}
+include_directories(
+    ${CMAKE_SOURCE_DIR}/src/kernels
+    ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
 )
 
-add_library(atb_customize SHARED $<TARGET_OBJECTS:customize_objs>)
-add_library(atb_customize_static STATIC $<TARGET_OBJECTS:customize_objs>)
+add_subdirectory(ops)
+
+file(GLOB_RECURSE CUSTOMIZE_SRCS
+     "${CMAKE_CURRENT_SOURCE_DIR}/ops/*.cpp")
+
+list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/kernel_implement/.*")
+list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/tests/.*")
+
+# include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
+# include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
+
+# add_library(customize_objs OBJECT
+#     ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp
+#     ${CMAKE_CURRENT_LIST_DIR}/ops.cpp
+#     ${CUSTOMIZE_SRCS}
+# )
+
+add_library(atb_customize SHARED ${CUSTOMIZE_SRCS})
+add_library(atb_customize_static STATIC ${CUSTOMIZE_SRCS})
 
 set(CUSTOMIZE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}
@@ -43,15 +51,15 @@ set(CUSTOMIZE_INCLUDE_DIRS
     $ENV{ASCEND_HOME_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/include
-    ${CMAKE_SOURCE_DIR}/src/kernels
+    # ${CMAKE_SOURCE_DIR}/src/kernels
     ${CMAKE_SOURCE_DIR}/src/kernels/include
-    ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
+    # ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
     ${CMAKE_SOURCE_DIR}/src/kernels/tiling
     ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels
     ${CMAKE_SOURCE_DIR}/3rdparty/mki/include
 )
 
-target_include_directories(customize_objs PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
+# target_include_directories(customize_objs PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 target_include_directories(atb_customize PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 target_include_directories(atb_customize_static PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 
