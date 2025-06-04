@@ -49,18 +49,18 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     if (aclTensorSrc == nullptr) {
         atbTensorDst->hostData = nullptr;
         atbTensorDst->deviceData = nullptr;
-        return ACL_ERROR_NONE;
+        return atb::NO_ERROR;
     }
     int64_t *dims = nullptr;
     uint64_t dimCount;
     aclDataType dataType;
     aclFormat format;
     auto status = aclGetViewShape(aclTensorSrc, &dims, &dimCount);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetViewShape failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetViewShape failed!", return atb::ERROR_INVALID_TENSOR_DIM);
     status = aclGetDataType(aclTensorSrc, &dataType);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetDataType failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetDataType failed!", return atb::ERROR_INVALID_TENSOR_DTYPE);
     status = aclGetFormat(aclTensorSrc, &format);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetFormat failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetFormat failed!", return atb::ERROR_INVALID_TENSOR_FORMAT);
     atb::TensorDesc desc;
     desc.shape.dimNum = dimCount;
     for (size_t i = 0; i < dimCount; i++) {
@@ -72,7 +72,7 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     atbTensorDst->deviceData = aclTensorSrc->GetData();
     atbTensorDst->hostData = nullptr;
     atbTensorDst->dataSize = GetTensorSize(aclTensorSrc);
-    return ACL_ERROR_NONE;
+    return atb::NO_ERROR;
 }
 
 atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor *atbTensorDst)
@@ -80,18 +80,18 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
     if (aclTensorSrc == nullptr) {
         atbTensorDst->hostData = nullptr;
         atbTensorDst->deviceData = nullptr;
-        return ACL_ERROR_NONE;
+        return atb::NO_ERROR;
     }
     int64_t *dims = nullptr;
     uint64_t dimCount;
     aclDataType dataType;
     aclFormat format;
     auto status = aclGetViewShape(aclTensorSrc, &dims, &dimCount);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetViewShape failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetViewShape failed!", return atb::ERROR_INVALID_TENSOR_DIM);
     status = aclGetDataType(aclTensorSrc, &dataType);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetDataType failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetDataType failed!", return atb::ERROR_INVALID_TENSOR_DTYPE);
     status = aclGetFormat(aclTensorSrc, &format);
-    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetFormat failed!", return status);
+    ATB_CHECK(status == ACL_ERROR_NONE, "aclGetFormat failed!", return atb::ERROR_INVALID_TENSOR_FORMAT);
     atb::TensorDesc desc;
     desc.shape.dimNum = dimCount;
     for (size_t i = 0; i < dimCount; i++) {
@@ -103,7 +103,7 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
     atbTensorDst->deviceData = nullptr;
     atbTensorDst->hostData = aclTensorSrc->GetData();
     atbTensorDst->dataSize = GetTensorSize(aclTensorSrc);
-    return ACL_ERROR_NONE;
+    return atb::NO_ERROR;
 }
 
 atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRope, const aclTensor *ctKV,
@@ -150,43 +150,43 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
         pack.inTensors.resize(counter - 1);
     }
     auto status = aclTensorToAtbTensor(qNope, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "qNope create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "qNope create failed!", return status);
     status = aclTensorToAtbTensor(qRope, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "qRope create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "qRope create failed!", return status);
     status = aclTensorToAtbTensor(ctKV, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "ctKV create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "ctKV create failed!", return status);
     status = aclTensorToAtbTensor(kRope, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "kRope create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "kRope create failed!", return status);
     status = aclTensorToAtbTensor(blockTables, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "blockTables create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "blockTables create failed!", return status);
     status = aclTensorToAtbTensorHost(contextLens, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "contextLens create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "contextLens create failed!", return status);
 
     if (param.maskType != atb::infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
         status = aclTensorToAtbTensor(mask, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "mask create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "mask create failed!", return status);
     }
     if (param.calcType == atb::infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC) {
         status = aclTensorToAtbTensorHost(qSeqLen, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "qSeqLen create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "qSeqLen create failed!", return status);
     }
     if (param.cacheMode == atb::infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
         status = aclTensorToAtbTensor(qkDescale, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "qkDescale create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "qkDescale create failed!", return status);
         status = aclTensorToAtbTensor(pvDescale, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "pvDescale create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "pvDescale create failed!", return status);
     }
     i = 0;
     if (param.calcType != atb::infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING) {
         pack.outTensors.resize(g_MLAOUTTENSORNUMNOCALCRING);
         status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "attenOut create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "attenOut create failed!", return status);
     } else {
         pack.outTensors.resize(g_MLAOUTTENSORNUMCALCRING);
         status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "calc_type_ring attenOut create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "calc_type_ring attenOut create failed!", return status);
         status = aclTensorToAtbTensor(ise, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "calc_type_ring ise create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "calc_type_ring ise create failed!", return status);
     }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);
@@ -196,6 +196,70 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
 atb::Status AtbMLA(void *workSpcace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
     atb::Status st = op->Execute(g_PACK, (uint8_t *)(workSpcace), workspaceSize, context);
+    ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
+    return st;
+}
+
+atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *qRope, const aclTensor *k,
+    const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen, const aclTensor *kvSeqLen,
+    const aclTensor *mask, int32_t headNum, float qkScale, int32_t kvHeadNum,
+    int maskType, uint8_t cacheMode, aclTensor *attenOut,
+    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
+{
+    atb::infer::MultiLatentAttentionParam param;
+    param.headNum = headNum;
+    param.qkScale = qkScale;
+    param.kvHeadNum = kvHeadNum;
+    param.maskType = atb::infer::MultiLatentAttentionParam::MaskType(maskType);
+    param.calcType = atb::infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_PREFILL;
+    param.cacheMode = atb::infer::MultiLatentAttentionParam::CacheMode(cacheMode);
+    if (op != nullptr && *op == nullptr) {
+        auto st = CreateOperation(param, op);
+        if (st != atb::NO_ERROR) {
+            return st;
+        }
+    }
+    atb::VariantPack pack;
+    size_t i = 0;
+
+    if (param.maskType == atb::infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
+        pack.inTensors.resize(g_MLAINTENSORNUMNOMASK);
+    } else {
+        pack.inTensors.resize(g_MLAINTENSORNUMMASK);
+    }
+
+    auto status = aclTensorToAtbTensor(q, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "qNope create failed!", return status);
+    status = aclTensorToAtbTensor(qRope, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "qRope create failed!", return status);
+    status = aclTensorToAtbTensor(k, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "key create failed!", return status);
+    status = aclTensorToAtbTensor(kRope, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "kRope create failed!", return status);
+    status = aclTensorToAtbTensor(v, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "value create failed!", return status);
+    status = aclTensorToAtbTensorHost(qSeqLen, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "qSeqLen create failed!", return status);
+    status = aclTensorToAtbTensorHost(kvSeqLen, &(pack.inTensors[i++]));
+    ATB_CHECK(status == atb::NO_ERROR, "kvSeqLen create failed!", return status);
+
+    if (param.maskType == atb::infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        status = aclTensorToAtbTensor(mask, &(pack.inTensors[i++]));
+        ATB_CHECK(status == atb::NO_ERROR, "mask create failed!", return status);
+    }
+  
+    pack.outTensors.resize(g_MLAOUTTENSORNUMNOCALCRING);
+    status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[0]));
+    ATB_CHECK(status == atb::NO_ERROR, "attenOut create failed!", return status);
+
+    atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
+    ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);
+    return atb::NO_ERROR;
+}
+
+atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
+{
+    atb::Status st = op->Execute(g_PACK, (uint8_t*)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
     return st;
 }
@@ -235,83 +299,83 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     size_t i = 0;
     pack.inTensors.resize(g_MLAPPINTENSORNUM);
     auto status = aclTensorToAtbTensor(input, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "input create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "input create failed!", return status);
     status = aclTensorToAtbTensor(gamma0, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "gamma0 create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "gamma0 create failed!", return status);
     status = aclTensorToAtbTensor(beta0, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "beta0 create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "beta0 create failed!", return status);
     if (param.quantMode == atb::infer::MlaPreprocessParam::QuantMode::PER_TENSOR_QUANT_ASYMM) {
         status = aclTensorToAtbTensor(quantScale0, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "quantScale0 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "quantScale0 create failed!", return status);
         status = aclTensorToAtbTensor(quantOffset0, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "quantOffset0 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "quantOffset0 create failed!", return status);
     } else {
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
     }
     status = aclTensorToAtbTensor(wdqkv, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "wdqkv create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "wdqkv create failed!", return status);
     status = aclTensorToAtbTensor(deScale0, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "deScale0 create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "deScale0 create failed!", return status);
     if (param.quantMode != atb::infer::MlaPreprocessParam::QuantMode::PER_TOKEN_QUANT_SYMM &&
         param.quantMode != atb::infer::MlaPreprocessParam::QuantMode::UNQUANT) {
         status = aclTensorToAtbTensor(bias0, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "bias0 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "bias0 create failed!", return status);
     } else {
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
     }
     status = aclTensorToAtbTensor(gamma1, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "gamma1 create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "gamma1 create failed!", return status);
     status = aclTensorToAtbTensor(beta1, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "beta1 create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "beta1 create failed!", return status);
 
     if (param.quantMode == atb::infer::MlaPreprocessParam::QuantMode::PER_TENSOR_QUANT_ASYMM) {
         status = aclTensorToAtbTensor(quantScale1, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "quantScale1 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "quantScale1 create failed!", return status);
         status = aclTensorToAtbTensor(quantOffset1, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "quantOffset1 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "quantOffset1 create failed!", return status);
     } else {
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
     }
     status = aclTensorToAtbTensor(wuq, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "wuq create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "wuq create failed!", return status);
     status = aclTensorToAtbTensor(deScale1, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "deScale1 create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "deScale1 create failed!", return status);
     if (param.quantMode != atb::infer::MlaPreprocessParam::QuantMode::PER_TOKEN_QUANT_SYMM &&
         param.quantMode != atb::infer::MlaPreprocessParam::QuantMode::UNQUANT) {
         status = aclTensorToAtbTensor(bias1, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "bias1 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "bias1 create failed!", return status);
     } else {
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
     }
     status = aclTensorToAtbTensor(gamma2, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "gamma2 create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "gamma2 create failed!", return status);
 
     status = aclTensorToAtbTensor(cos, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "cos create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "cos create failed!", return status);
 
     status = aclTensorToAtbTensor(sin, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "sin create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "sin create failed!", return status);
 
     status = aclTensorToAtbTensor(wuk, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "wuk create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "wuk create failed!", return status);
 
     status = aclTensorToAtbTensor(kvCache, &(pack.inTensors[i++]));
-    ATB_CHECK(status == ACL_ERROR_NONE, "kvCache create failed!", return status);
+    ATB_CHECK(status == atb::NO_ERROR, "kvCache create failed!", return status);
 
     if (param.cacheMode != atb::infer::MlaPreprocessParam::CacheMode::KVCACHE) {
         status = aclTensorToAtbTensor(kvCacheRope, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "kvCacheRope create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "kvCacheRope create failed!", return status);
     } else {
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
     }
     status = aclTensorToAtbTensor(slotmapping, &(pack.inTensors[i++]));
     if (param.cacheMode == atb::infer::MlaPreprocessParam::CacheMode::INT8_NZCACHE) {
         status = aclTensorToAtbTensor(ctkvScale, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "ctkvScale create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "ctkvScale create failed!", return status);
         status = aclTensorToAtbTensor(qNopeScale, &(pack.inTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "qNopeScale create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "qNopeScale create failed!", return status);
     } else {
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
         status = aclTensorToAtbTensor(nullptr, &(pack.inTensors[i++]));
@@ -321,19 +385,19 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     if (param.cacheMode != atb::infer::MlaPreprocessParam::CacheMode::KVCACHE) {
         pack.outTensors.resize(g_MLAPPOUTTENSORNUMCACHEMODE);
         status = aclTensorToAtbTensor(qOut0, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "qOut0 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "qOut0 create failed!", return status);
         status = aclTensorToAtbTensor(kvCacheOut0, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "kvCacheOut0 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "kvCacheOut0 create failed!", return status);
         status = aclTensorToAtbTensor(qOut1, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "qOut1 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "qOut1 create failed!", return status);
         status = aclTensorToAtbTensor(kvCacheOut1, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "kvCacheOut1 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "kvCacheOut1 create failed!", return status);
     } else {
         pack.outTensors.resize(g_MLAPPOUTTENSORNUM);
         status = aclTensorToAtbTensor(qOut0, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "qOut0 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "qOut0 create failed!", return status);
         status = aclTensorToAtbTensor(kvCacheOut0, &(pack.outTensors[i++]));
-        ATB_CHECK(status == ACL_ERROR_NONE, "kvCacheOut0 create failed!", return status);
+        ATB_CHECK(status == atb::NO_ERROR, "kvCacheOut0 create failed!", return status);
     }
     atb::Status st = (*op)->Setup(pack, *workSpaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreprocess Setup failed!", return st);
