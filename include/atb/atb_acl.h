@@ -283,10 +283,9 @@ atb::Status AtbRingMLA(void *workspace, uint64_t workspaceSize, atb::Operation *
 //! \param key SelfAttentionPrefixEncoder算子的输入tensor
 //! \param value SelfAttentionPrefixEncoder算子的输入tensor
 //! \param blockTables SelfAttentionPrefixEncoder算子的输入tensor
-//! \param value SelfAttentionPrefixEncoder算子的输入tensor
+//! \param mask SelfAttentionPrefixEncoder算子的输入tensor（maskType为MASK_TYPE_CASUAL_MASK时，需要置为nullptr）
 //! \param seqLen SelfAttentionPrefixEncoder算子的输入tensor
 //! \param kvSeqLen SelfAttentionPrefixEncoder算子的输入tensor
-//! \param mask SelfAttentionPrefixEncoder算子的输入tensor（maskType为MASK_TYPE_CASUAL_MASK时，需要置为nullptr）
 //! \param slopes SelfAttentionPrefixEncoder算子的输入tensor（maskType不为MASK_TYPE_ALIBI_COMPRESS或MASK_TYPE_ALIBI_COMPRESS_SQRT时，需要置为nullptr）
 
 //! \param maskType SelfAttentionPrefixEncoder mask类型
@@ -302,10 +301,10 @@ atb::Status AtbRingMLA(void *workspace, uint64_t workspaceSize, atb::Operation *
 //! \return 表示函数是否执行成功的状态码
 atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query, const aclTensor *key,
                                                           const aclTensor *value, const aclTensor *blockTables,
-                                                          const aclTensor *seqLen, const aclTensor *kvSeqLen,
-                                                          const aclTensor *mask, const aclTensor *slopes, int maskType,
-                                                          int32_t headNum, int32_t kvHeadNum, float qkScale,
-                                                          aclTensor *attnOut, uint64_t *workspaceSize,
+                                                          const aclTensor *mask, const aclTensor *seqLen,
+                                                          const aclTensor *kvSeqLen, const aclTensor *slopes,
+                                                          int maskType, int32_t headNum, int32_t kvHeadNum,
+                                                          float qkScale, aclTensor *attnOut, uint64_t *workspaceSize,
                                                           atb::Operation **op, atb::Context *context);
 
 //!
