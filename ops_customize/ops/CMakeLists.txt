@@ -9,6 +9,7 @@ include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_SOURCE_DIR}/src/kernels
     ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels
+    ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels/utils
     ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
     $ENV{ASCEND_HOME_PATH}/include
 )

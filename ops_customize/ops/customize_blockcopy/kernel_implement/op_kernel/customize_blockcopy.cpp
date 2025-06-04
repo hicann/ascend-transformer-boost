@@ -9,8 +9,8 @@
 */
 
 #include "kernel_operator.h"
-#include "mixkernels/utils/common/kernel/kernel_utils.h"
-#include "mixkernels/blockcopy/tiling/tiling_data.h"
+#include "common/kernel/kernel_utils.h"
+#include "customize_blockcopy/kernel_implement/tiling/tiling_data.h"
 
 using namespace AscendC;
 
