@@ -12,7 +12,7 @@
 #include "mki_loader/op_register.h"
 
 namespace AtbOps {
-Ops::Ops() : opSchedule_(std::make_unique<Mki::OpSchedule>()) {}
+Ops::Ops() : opSchedule_(std::make_unique<OpSchedule>()) {}
 
 Ops::~Ops() {}
 
