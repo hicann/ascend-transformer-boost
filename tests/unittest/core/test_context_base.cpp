@@ -15,12 +15,9 @@
 #include <atb/utils/log.h>
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/config.h"
-#include "tests/pythontest/pytorch/adapter/utils/utils.h"
 #include "test_utils/context/memory_context.h"
 #include "atb/types.h"
 #include "atb/core/context_base.h"
-#include "atb/operation/operation_base.h"
-#include "core/ops/split/split_operation.h"
 
 // TEST(TestContextBase, ForwardTilingCopyEvent)
 // {
