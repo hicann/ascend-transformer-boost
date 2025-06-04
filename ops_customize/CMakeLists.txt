@@ -44,13 +44,12 @@ set(CUSTOMIZE_INCLUDE_DIRS
     $ENV{ASCEND_HOME_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/include
+    ${CMAKE_SOURCE_DIR}/src/kernels
     ${CMAKE_SOURCE_DIR}/src/kernels/include
-    ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels/utils
     ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
-    ${PROJECT_SOURCE_DIR}/src/kernels/tiling
-    ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
-    ${OPS_PROJECT_ROOT_DIR}
-    ${OPS_PROJECT_ROOT_DIR}/tbe_adapter/include
+    ${CMAKE_SOURCE_DIR}/src/kernels/tiling
+    ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels
+    ${CMAKE_SOURCE_DIR}/3rdparty/mki/include
 )
 
 target_include_directories(customize_objs PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
