@@ -52,6 +52,16 @@ add_custom_target(BINARY_SRC_TARGET ALL
     DEPENDS ${BINARY_SRC_LIST} ${BINARY_TARGET_LIST}
 )
 
+set(ATTRIBUTE_UTILS_CPP ${CMAKE_CURRENT_LIST_DIR}/attribute_utils.cpp)
+add_custom_command(
+    OUTPUT ${ATTRIBUTE_UTILS_CPP}
+    DEPENDS ${ATTIBUTES_DEPENDS_FILES}
+    COMMAND python3 ${PROJECT_SOURCE_DIR}/scripts/build_attribute_utils.py --namespace ${NAMESPACE}
+                                                                           --params_path ${PROJECT_SOURCE_DIR}/src/kernels/include/asdops/params
+                                                                           --dest_file_path ${ATTRIBUTE_UTILS_CPP}
+)
+add_custom_target(OPS_ATTRIBUTE_UTILS_CPP_TARGET DEPENDS ${ATTRIBUTE_UTILS_CPP})
+set_source_files_properties(${ATTRIBUTE_UTILS_CPP} PROPERTIES GENERATED TRUE)
 
 #########################
 # 设置target名称
