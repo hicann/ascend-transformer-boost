@@ -7,6 +7,7 @@ namespace cinterfaceTest {
 const int64_t MLAINOUTMLA = 12;
 const int64_t MLAINOUTMLAPP = 28;
 const int64_t MLAPREINOUT = 7;
+const int64_t MLAPPREFILLINOUT = 9;
 const int64_t blockSize = 128;
 const int64_t numTokens = 32;
 const int64_t numHeads = 32;
@@ -19,6 +20,9 @@ const int64_t batch = numTokens * kSeqlen;
 const int64_t numBlocks = 64;
 const int64_t maxNumBlocksPerQuery = 16;
 const int64_t maxSeqLen = 256;
+
+const int64_t embeddimV = 128;
+const int64_t qRopeSzie = 64;
 
 const int64_t dims = 7168;
 const int64_t dimB = 2112;
