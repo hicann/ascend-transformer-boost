@@ -27,6 +27,49 @@
 extern "C" {
 #endif
 //!
+//! \brief 关于FusedAddTopkDiv算子使用aclnn风格调用的2段式接口种的第1段，
+//! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
+//!
+//! \param x FusedAddTopkDiv算子的输入tensor
+//! \param addNum FusedAddTopkDiv算子的输入tensor
+//! \param mappingNum FusedAddTopkDiv算子的输入tensor（enableExpertMapping为false时，需要置为nullptr）
+//! \param mappingTable FusedAddTopkDiv算子的输入tensor（enableExpertMapping为false时，需要置为nullptr）
+
+//! \param groupNum FusedAddTopkDiv算子分组数量
+//! \param groupTopk FusedAddTopkDiv算子选择k个组
+//! \param n FusedAddTopkDiv算子分组数量
+//! \param k FusedAddTopkDiv算子topk选择前k个值
+//! \param activationType FusedAddTopkDiv算子激活类型
+//! \param isNorm FusedAddTopkDiv算子是否归一化
+//! \param scale FusedAddTopkDiv算子归一化后的乘系数
+//! \param enableExpertMapping FusedAddTopkDiv算子中是否开启物理专家向逻辑专家的映射
+
+//! \param y FusedAddTopkDiv算子输出tensor
+//! \param indices FusedAddTopkDiv算子输出tensor
+//! \param workspaceSize FusedAddTopkDiv算子的workspace大小
+//! \param op FusedAddTopkDiv算子的handler
+//! \param context FusedAddTopkDiv算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTensor *addNum, const aclTensor *mappingNum,
+                                               const aclTensor *mappingTable, uint32_t groupNum, uint32_t groupTopk,
+                                               uint32_t n, uint32_t k, int activationType, bool isNorm, float scale,
+                                               bool enableExpertMapping, aclTensor *y, aclTensor *indices,
+                                               uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
+
+//!
+//! \brief 关于FusedAddTopkDiv算子使用aclnn风格调用的2段式接口种的第2段，
+//! 用于算子的推理调度阶段
+//!
+//! \param workspace 针对FusedAddTopkDiv算子申请的工作空间
+//! \param workspaceSize FusedAddTopkDiv算子的workspace大小
+//! \param op FusedAddTopkDiv算子的op handler
+//! \param context FusedAddTopkDiv算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbFusedAddTopkDiv(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+
+//!
 //! \brief 关于MLA算子使用aclnn风格调用的2段式接口种的第1段，
 //! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
 //!
@@ -135,6 +178,42 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     atb::Context *context);
 
 //!
+//! \brief 关于PagedCacheLoad算子使用aclnn风格调用的2段式接口种的第1段，
+//! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
+//!
+//! \param keyCache PagedCacheLoad算子的输入tensor
+//! \param valueCache PagedCacheLoad算子的输入tensor
+//! \param blockTables PagedCacheLoad算子的输入tensor
+//! \param contextLens PagedCacheLoad算子的输入tensor
+//! \param key PagedCacheLoad算子的输入/输出tensor
+//! \param value PagedCacheLoad算子的输入/输出tensor
+//! \param kvCacheCfg keyCache和valueCache为ND还是NZ格式
+//! \param isSeqLensCumsumType 是否使用batch输入为累加模式
+//! \param hasSeqStarts 是否提供batch在blocktable中对应起始位置，对齐到blocktable
+//! \param workspaceSize PagedCacheLoad算子的workspace大小
+//! \param op PagedCacheLoad算子的handler
+//! \param context PagedCacheLoad算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const aclTensor *valueCache,
+                                              const aclTensor *blockTables, const aclTensor *contextLens,
+                                              const aclTensor *key, const aclTensor *value, const aclTensor *seqStarts,
+                                              int8_t kvCacheCfg, bool isSeqLensCumsumType, bool hasSeqStarts,
+                                              uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
+
+//!
+//! \brief 关于PagedCacheLoad算子使用aclnn风格调用的2段式接口种的第2段，
+//! 用于算子的推理调度阶段
+//!
+//! \param workspace 针对PagedCacheLoad算子申请的工作空间
+//! \param workspaceSize PagedCacheLoad算子的workspace大小
+//! \param op PagedCacheLoad算子的op handler
+//! \param context PagedCacheLoad算子的上下文参数
+//!
+//! \return 表示函数是否执行成功的状态码
+atb::Status AtbPagedCacheLoad(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+
+//!
 //! \brief 关于MLAPreprocess算子使用aclnn风格调用的2段式接口种的第2段，
 //! 用于算子的推理调度阶段
 //!
@@ -145,49 +224,6 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
 //!
 //! \return 表示函数是否执行成功的状态码
 atb::Status AtbMLAPreprocess(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
-
-//!
-//! \brief 关于FusedAddTopkDiv算子使用aclnn风格调用的2段式接口种的第1段，
-//! 用于workspaceSize的获取，以及输入输出tensors的准备等前处理
-//!
-//! \param x FusedAddTopkDiv算子的输入tensor
-//! \param addNum FusedAddTopkDiv算子的输入tensor
-//! \param mappingNum FusedAddTopkDiv算子的输入tensor（enableExpertMapping为false时，需要置为nullptr）
-//! \param mappingTable FusedAddTopkDiv算子的输入tensor（enableExpertMapping为false时，需要置为nullptr）
-
-//! \param groupNum FusedAddTopkDiv算子分组数量
-//! \param groupTopk FusedAddTopkDiv算子选择k个组
-//! \param n FusedAddTopkDiv算子分组数量
-//! \param k FusedAddTopkDiv算子topk选择前k个值
-//! \param activationType FusedAddTopkDiv算子激活类型
-//! \param isNorm FusedAddTopkDiv算子是否归一化
-//! \param scale FusedAddTopkDiv算子归一化后的乘系数
-//! \param enableExpertMapping FusedAddTopkDiv算子中是否开启物理专家向逻辑专家的映射
-
-//! \param y FusedAddTopkDiv算子输出tensor
-//! \param indices FusedAddTopkDiv算子输出tensor
-//! \param workspaceSize FusedAddTopkDiv算子的workspace大小
-//! \param op FusedAddTopkDiv算子的handler
-//! \param context FusedAddTopkDiv算子的上下文参数
-//!
-//! \return 表示函数是否执行成功的状态码
-atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTensor *addNum, const aclTensor *mappingNum,
-                                               const aclTensor *mappingTable, uint32_t groupNum, uint32_t groupTopk,
-                                               uint32_t n, uint32_t k, int activationType, bool isNorm, float scale,
-                                               bool enableExpertMapping, aclTensor *y, aclTensor *indices,
-                                               uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
-
-//!
-//! \brief 关于FusedAddTopkDiv算子使用aclnn风格调用的2段式接口种的第2段，
-//! 用于算子的推理调度阶段
-//!
-//! \param workspace 针对FusedAddTopkDiv算子申请的工作空间
-//! \param workspaceSize FusedAddTopkDiv算子的workspace大小
-//! \param op FusedAddTopkDiv算子的op handler
-//! \param context FusedAddTopkDiv算子的上下文参数
-//!
-//! \return 表示函数是否执行成功的状态码
-atb::Status AtbFusedAddTopkDiv(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief 关于RingMLA算子使用aclnn风格调用的2段式接口种的第1段，

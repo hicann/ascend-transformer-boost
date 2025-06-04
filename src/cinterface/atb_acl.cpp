@@ -19,20 +19,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-static atb::VariantPack g_PACK;
-const size_t g_MLAINTENSORNUMINT8NOMASK = 9;
-const size_t g_MLAINTENSORNUMINT8MASK = 10;
-const size_t g_MLAINTENSORNUMNOMASK = 7;
-const size_t g_MLAINTENSORNUMMASK = 8;
-const size_t g_MLAOUTTENSORNUMCALCRING = 2;
-const size_t g_MLAOUTTENSORNUMNOCALCRING = 1;
-const size_t g_MLAPPINTENSORNUM = 24;
-const size_t g_MLAPPOUTTENSORNUMCACHEMODE = 4;
-const size_t g_MLAPPOUTTENSORNUM = 2;
-const size_t g_FUSEDADDTOPK_INTENSOR_NUM = 2;
-const size_t g_FUSEDADDTOPK_OUTTENSOR_NUM = 2;
-const size_t g_RINGMLA_INTENSOR_NUM = 7;
-const size_t g_RINGMLA_OUTTENSOR_NUM = 2;
+
 int64_t GetTensorSize(const aclTensor *input)
 {
     const op::Shape shape = input->GetViewShape();
