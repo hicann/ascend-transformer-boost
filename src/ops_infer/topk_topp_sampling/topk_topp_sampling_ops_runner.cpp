@@ -538,7 +538,6 @@ Status TopkToppSamplingOpsRunner::SetupSingleTopKSampling()
     auto &indicesSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &probsSumedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &indicesSortedSampledTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    auto &selectRangeTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     kernelGraph_.nodes.resize(NODE_COUNT); // topp has 5 nodes
     int64_t nodeNum = 0;
@@ -574,7 +573,7 @@ Status TopkToppSamplingOpsRunner::SetupSingleTopKSampling()
     toppParam.randSeed = randSeeds;
     toppSamplingNode.opDesc = {0, "ToppsampleOperation", toppParam};
     toppSamplingNode.inTensors = {&probsSumedTensor, &pTensor};
-    toppSamplingNode.outTensors = {&indicesSortedSampledTensor, &selectRangeTensor};
+    toppSamplingNode.outTensors = {&indicesSortedSampledTensor};
 
     gatherIndicesNode.opDesc = {0, "GatherOperation", AsdOps::OpParam::Gather()};
     gatherIndicesNode.inTensors = {&indicesSortedTensor, &indicesSortedSampledTensor};
