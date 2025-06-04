@@ -8,5 +8,5 @@ link_directories(
     $ENV{ASCEND_HOME_PATH}/lib64
     )
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -D_GLIBCXX_USE_CXX11_ABI=0")
-add_executable(multiStreamDemo multiStream_demo.cpp)
+add_executable(multiStreamDemo multiStream_singleGraph_demo.cpp)
 target_link_libraries(multiStreamDemo atb ascendcl runtime)
