@@ -34,6 +34,7 @@ private:
     Status SetupKernelGraphMatmulEin();
     Status SetupKernelGraphMatmulEinElewiseAdd();
     Status SetupKernelGraphMatmulDequant910B();
+    Status SetupKernelGraphMatmulDequantPerToken910B();
     Status SetupKernelGraphMatmulDequantWeightNdNot910B();
     Status SetupKernelGraphMatmulDequantWeightNzNot910B();
     Status SetupKernelGraphMoeGateCorr();

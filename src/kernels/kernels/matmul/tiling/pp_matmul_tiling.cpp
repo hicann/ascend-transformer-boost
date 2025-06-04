@@ -30,7 +30,15 @@ const std::map<TensorDType, uint32_t> G_DTYPE_MAP = {
     {TENSOR_DTYPE_INT8, 0u}, {TENSOR_DTYPE_FLOAT16, 1u}, {TENSOR_DTYPE_BF16, 2u}, {TENSOR_DTYPE_FLOAT, 3u}};
 const std::map<TensorFormat, uint32_t> G_FORMAT_MAP = {{TENSOR_FORMAT_ND, 0u}, {TENSOR_FORMAT_FRACTAL_NZ, 1u}};
 using MmType = AsdOps::OpParam::MatMul::MatMulType;
+using QmType = AsdOps::OpParam::MatMul::QuantMode;
 
+bool IsI8Bf16Kernel(const MatMulInfo &mmInfo)
+{
+    bool isI8Bf16 = mmInfo.isInt8 && mmInfo.dtypeC == TENSOR_DTYPE_BF16;
+    bool isI8Fp16 =
+        mmInfo.isInt8 && mmInfo.dtypeC == TENSOR_DTYPE_FLOAT16 && mmInfo.quantMode == QmType::PER_TOKEN_SYMM;
+    return isI8Bf16 || isI8Fp16;
+}
 void PpTilingData::SetBaseShape(uint32_t batchSize, uint32_t m, uint32_t k, uint32_t n)
 {
     opShape.batchSize = batchSize;
@@ -72,7 +80,7 @@ void PpTilingData::SetTilingKey(const MatMulInfo &mmInfo, uint32_t swizzleDirect
 {
     if (mmInfo.mmType == MmType::MATMUL_ACCUM_ATOMIC || mmInfo.mmType == MmType::MATMUL_WITH_BIAS ||
         mmInfo.mmType == MmType::MATMUL_EIN_SUM || mmInfo.mmType == MmType::MATMUL_DEQUANT ||
-        ((mmInfo.isInt8) && mmInfo.dtypeC == TENSOR_DTYPE_BF16)) {
+        IsI8Bf16Kernel(mmInfo)) {
         // SwizzleDir[1] TransA[1] TransB[1] DtypeA[3] DtypeB[3] DtypeC[3] FormatA[1] FormatB[1] FormatC[1] WithBias[1]
         tilingKey = swizzleDirect;
         tilingKey = (tilingKey << 1) + static_cast<uint32_t>(mmInfo.transA);
@@ -129,6 +137,7 @@ void GetPpMatmulTiling(const MatMulInfo &mmInfo, const HardwareInfo &hwInfo, uin
     opShape.n = mmInfo.n;
     opShape.k = mmInfo.k;
     tilingData.opShape = opShape;
+    tilingData.quantMode = static_cast<uint32_t>(mmInfo.quantMode);
     tilingData.SetTilingKey(mmInfo, 0, 0); // init tilingkey with transA transB.
     if (opShape.m < opShape.n) {
         TilingFunc<false, OpShape, PpTilingData, HardwareInfo, MatMulInfo>(opShape, tilingData, hwInfo, mmInfo);
@@ -156,6 +165,7 @@ void PrintPpMatmulTiling(const KernelInfo &kernelInfo)
     MKI_LOG(INFO) << "swizzlCount = " << tilingData->swizzlCount;
     MKI_LOG(INFO) << "swizzlDirect = " << tilingData->swizzlDirect;
     MKI_LOG(INFO) << "enShuffleK = " << tilingData->enShuffleK;
+    MKI_LOG(INFO) << "quantMode = " << tilingData->quantMode;
     return;
 }
 
@@ -202,7 +212,7 @@ Status PpMatmulTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     kernelInfo.SetBlockDim(blockDim);
     Status ret = PpMatmulTilingCheck<PpTilingData>(*tilingData);
     MKI_CHECK_NO_LOG(ret.Ok(), return ret);
-    if ((inputDType == TENSOR_DTYPE_INT8) && (launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_BF16)) {
+    if (IsI8Bf16Kernel(mmInfo)) {
         uint64_t workSpaceSize = static_cast<uint64_t>(RoundUp(tilingData->opShape.m0, CONST_32)) *
                                  RoundUp(tilingData->opShape.n0, CONST_32) * sizeof(uint32_t) * blockDim;
         kernelInfo.GetScratchSizes() = {workSpaceSize};

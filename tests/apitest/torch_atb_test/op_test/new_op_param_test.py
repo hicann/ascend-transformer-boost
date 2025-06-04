@@ -65,6 +65,7 @@ class Test(unittest.TestCase):
         expected_transpose_a = False
         expected_transpose_b = True
         expected_matmul_type = 0
+        expected_quant_mode = 0
  
         self.assertEqual(linear_param.en_accum, expected_en_accum)
         self.assertEqual(linear_param.has_bias, expected_has_bias)
@@ -72,6 +73,7 @@ class Test(unittest.TestCase):
         self.assertEqual(linear_param.transpose_a, expected_transpose_a)
         self.assertEqual(linear_param.transpose_b, expected_transpose_b)
         self.assertEqual(linear_param.matmul_type, expected_matmul_type)
+        self.assertEqual(linear_param.quant_mode, expected_quant_mode)
  
     def test_softmax(self):
         softmax_param = torch_atb.SoftmaxParam()
