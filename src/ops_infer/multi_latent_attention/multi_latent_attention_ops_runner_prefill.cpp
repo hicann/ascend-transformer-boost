@@ -67,7 +67,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
     asdParam.kvHead = param_.kvHeadNum;
     asdParam.isRing = 0;
     asdParam.maskType = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ?
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_COMPRESS :
+                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE :
                             AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
 
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
@@ -98,7 +98,7 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
     asdParam.qSeqLen = newParam_.qSeqlen;
     asdParam.isRing = 0;
     asdParam.maskType = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ?
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_COMPRESS :
+                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE :
                             AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     return NO_ERROR;
