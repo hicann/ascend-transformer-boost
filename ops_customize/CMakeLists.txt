@@ -25,14 +25,14 @@ list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/tests/.*")
 include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
 include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
 
-add_library(customiz_objs OBJECT
+add_library(customize_objs OBJECT
     ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ops.cpp
     ${CUSTOMIZE_SRCS}
 )
 
-add_library(atb_customize SHARED $<TARGET_OBJECTS:customiz_objs>)
-add_library(atb_customize_static STATIC $<TARGET_OBJECTS:customiz_objs>)
+add_library(atb_customize SHARED $<TARGET_OBJECTS:customize_objs>)
+add_library(atb_customize_static STATIC $<TARGET_OBJECTS:customize_objs>)
 
 set(CUSTOMIZE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}
@@ -45,6 +45,7 @@ set(CUSTOMIZE_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/include
     ${CMAKE_SOURCE_DIR}/src/kernels/include
+    ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels/utils
     ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
     ${PROJECT_SOURCE_DIR}/src/kernels/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
@@ -52,6 +53,7 @@ set(CUSTOMIZE_INCLUDE_DIRS
     ${OPS_PROJECT_ROOT_DIR}/tbe_adapter/include
 )
 
+target_include_directories(customize_objs PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 target_include_directories(atb_customize PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 target_include_directories(atb_customize_static PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 
