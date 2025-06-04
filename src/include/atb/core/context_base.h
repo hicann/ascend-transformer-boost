@@ -49,8 +49,8 @@ public:
     void *GetArgsHostBuffer(size_t bufferSize);
     Status FreeArgsDeviceBuffer(void *addr);
     Status FreeArgsHostBuffer(void *addr);
-    virtual void SetKernelCacheTilingSize(uint64_t size) override;
-    virtual uint64_t GetKernelCacheTilingSize() const override;
+    void SetKernelCacheTilingSize(uint64_t size) override;
+    uint64_t GetKernelCacheTilingSize() const override;
     bool GetLaunchWithTilingStatus();
 
 private:

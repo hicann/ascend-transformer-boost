@@ -141,15 +141,15 @@ public:
     virtual LaunchMode GetLaunchMode() = 0;
 
     //!
-    //! \brief 设置tiling默认大小，支持范围1~1073741824
+    //! \brief 设置atb的tiling内存池中一块buffer的大小，支持范围1~1073741824，默认值10240
     //!
-    //! \param size tiling默认大小，支持范围1~1073741824
+    //! \param size tiling内存池中一块buffer的大小，支持范围1~1073741824
     virtual void SetKernelCacheTilingSize(uint64_t size) = 0;
 
     //!
-    //! \brief 返回当前的tiling默认大小
+    //! \brief 返回当前的atb的tiling内存池中一块buffer的大小
     //!
-    //! \return 当前的tiling默认大小
+    //! \return 当前的tiling内存池中一块buffer的大小
     virtual uint64_t GetKernelCacheTilingSize() const = 0;
 };
 

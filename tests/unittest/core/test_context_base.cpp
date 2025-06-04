@@ -14,7 +14,6 @@
 #include <gtest/gtest.h>
 #include <atb/utils/log.h>
 #include "atb/utils/tensor_util.h"
-#include "tests/test_utils/operation_test.h"
 #include "atb/utils/config.h"
 #include "tests/pythontest/pytorch/adapter/utils/utils.h"
 #include "test_utils/context/memory_context.h"
