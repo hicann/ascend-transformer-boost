@@ -177,7 +177,8 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
 
 atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
-    atb::Status st = op->Execute(g_PACK, (uint8_t*)(workspace), workspaceSize, context);
+    atb::VariantPack pack;
+    atb::Status st = op->Execute(pack, (uint8_t*)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
     return st;
 }
