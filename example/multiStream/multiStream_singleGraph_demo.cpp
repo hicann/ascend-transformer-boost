@@ -12,7 +12,7 @@
 #include <vector>
 #include "atb/atb_infer.h"
 
-static void CreateInTensorDescs(atb::SVector<atb::TensorDesc> &intensorDescs) 
+static void CreateInTensorDescs(atb::SVector<atb::TensorDesc> &intensorDescs)
 {
     for (size_t i = 0; i < intensorDescs.size(); i++) {
         intensorDescs.at(i).dtype = ACL_FLOAT16;
@@ -34,7 +34,8 @@ static void CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<a
             std::cout << "alloc error!";
             exit(1);
         }
-        ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(), ACL_MEMCPY_HOST_TO_DEVICE); //拷贝CPU内存到NPU侧
+        // 拷贝CPU内存到NPU侧
+        ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(), ACL_MEMCPY_HOST_TO_DEVICE);
         if (ret != 0) {
             std::cout << "memcpy error!";
             exit(1);
@@ -279,7 +280,7 @@ int main()
         }
     }
     operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
-    //流同步
+    // 流同步
     ret = aclrtSynchronizeStream(stream1);
     if (ret != 0) {
         std::cout << "sync error!";
