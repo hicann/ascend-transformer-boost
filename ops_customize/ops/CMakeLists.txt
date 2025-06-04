@@ -65,8 +65,8 @@ target_link_libraries(customize_ops_static PRIVATE
     -Wl,--no-whole-archive
 )
 
-add_executable(atbops_sym_check sym_check.cpp)
-target_link_libraries(atbops_sym_check PRIVATE customize_ops mki)
+add_executable(ops_sym_check sym_check.cpp)
+target_link_libraries(ops_sym_check PRIVATE customize_ops mki)
 
 install(TARGETS customize_ops DESTINATION lib)
 install(TARGETS customize_ops_static DESTINATION lib)
