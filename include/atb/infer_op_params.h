@@ -2900,6 +2900,7 @@ struct MultiLatentAttentionParam {
         UNDEFINED = 0,       //!< 默认值，全0的mask
         MASK_TYPE_SPEC,      //!< qseqlen > 1时的mask
         MASK_TYPE_MASK_FREE, //!< mask free
+        MASK_TYPE_CAUSAL_MASK, //!< 内部生成mask
     };
     //!
     //! \brief mask类型
