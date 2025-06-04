@@ -105,7 +105,7 @@ private:
                                     const Mki::Tensor &infershapedOutTensor, Mki::Tensor *outTensor);
     void MallocInternalTensor(KernelGraphNode &node, size_t nodeId);
     void FreeInternalTensor(KernelGraphNode &node, size_t nodeId);
-    void InitKernelCache();
+    void InitKernelCache(ContextBase *context);
     void SaveGlobalDeviceTiling(const std::string &dirPath, std::vector<uint8_t> &tilingData) const;
     void RunKernelPreProcess(KernelGraphNode &node, size_t nodeId, aclrtStream stream);
     void RunKernelPostProcess(KernelGraphNode &node, size_t nodeId, aclrtStream stream);

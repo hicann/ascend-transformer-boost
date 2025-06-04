@@ -15,6 +15,7 @@
 #include <mki/kernel.h>
 
 namespace atb {
+static constexpr uint64_t DEFAULT_TILING_SIZE = 10240;
 using TilingBuffer = std::vector<uint8_t>;
 using TilingBufferPtr = TilingBuffer const *;
 struct CacheItem {
@@ -28,7 +29,7 @@ struct CacheSlot {
     size_t replacePos = 0;
     size_t hitPos = 0;
     size_t validSize = 0;
-    void Init(uint32_t cacheItemCount);
+    void Init(uint32_t cacheItemCount, uint64_t kernelCacheTilingSize);
     void AddTiling(uint8_t *tilingData, uint64_t tilingSize, const Mki::LaunchParam &launchParam,
                    const Mki::Kernel *kernel);
     TilingBufferPtr GetTilingByIndex(const size_t index, const Mki::LaunchParam &launchParam, Mki::Kernel *&kernel);
@@ -39,7 +40,7 @@ class KernelCache {
 public:
     KernelCache() noexcept;
     ~KernelCache();
-    void Init(uint64_t kernelCount, uint32_t cacheItemCount = 1);
+    void Init(uint64_t kernelCount, uint32_t cacheItemCount = 1, uint64_t kernelCacheTilingSize = DEFAULT_TILING_SIZE);
     void AddTiling(size_t kernelIndex, uint8_t *tilingData, uint64_t tilingSize, const Mki::LaunchParam &launchParam,
                    const Mki::Kernel *kernel);
     TilingBufferPtr GetTiling(size_t kernelIndex, const Mki::LaunchParam &launchParam, Mki::Kernel *&kernel);
