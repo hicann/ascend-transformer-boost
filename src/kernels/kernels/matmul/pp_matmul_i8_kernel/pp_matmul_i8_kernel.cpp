@@ -64,6 +64,27 @@ public:
 };
 REG_KERNEL_BASE(PpMatMulI8Kernel);
 
+class QuantBatchMatmulI8Kernel : public PpMatMulI8CommKernel {
+public:
+    explicit QuantBatchMatmulI8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : PpMatMulI8CommKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK_NO_LOG(PpMatMulI8CommKernel::CanSupport(launchParam), return false);
+        const auto &inTensor3 = launchParam.GetInTensor(3);
+        MKI_CHECK(inTensor3.desc.format == TENSOR_FORMAT_ND, "inTensor3 format invalid", return false);
+        MKI_CHECK(inTensor3.desc.dtype == TENSOR_DTYPE_INT64 || inTensor3.desc.dtype == TENSOR_DTYPE_UINT64,
+                  "inTensor3 dtype invalid", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(QuantBatchMatmulI8Kernel);
+
+
+
 class PpMatMulI8NdNzKernel : public PpMatMulI8Kernel {
 public:
     explicit PpMatMulI8NdNzKernel(const std::string &kernelName, const BinHandle *handle) noexcept

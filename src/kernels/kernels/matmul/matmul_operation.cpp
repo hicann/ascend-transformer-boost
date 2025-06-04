@@ -24,6 +24,8 @@ namespace {
 constexpr uint32_t DTYPE_BIT_COUNT = 2;
 constexpr uint32_t FORMAT_BIT_COUNT = 1;
 constexpr uint32_t INPUT_BIT_COUNT = 2;
+constexpr uint32_t ALIGNment_4 = 4;
+constexpr uint32_t ALIGNment_16 = 16;
 constexpr uint32_t PP_MATMUL_I8_BF16_KERNEL_KEY = 0b1'00'00'10'0'0'0'10;
 constexpr uint32_t PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'10'0'1'0'10;
 constexpr uint32_t PP_MATMUL_I8_KERNEL_KEY = 0b1'00'00'01'0'0'0'10;
@@ -124,7 +126,14 @@ public:
                 case PP_MATMUL_I8_BF16_KERNEL_KEY:
                 case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY:
                     return GetKernelByName("PpMatMulI8Bf16Kernel");
-                case PP_MATMUL_I8_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
+                case PP_MATMUL_I8_KERNEL_KEY: {
+                    const uint32_t nModResult = opParam.oriShape[DIM_2] % ALIGNment_16;
+                    if (nModResult < ALIGNment_4) {
+                        return GetKernelByName("QuantBatchMatmulI8Kernel");
+                    } else {
+                        return GetKernelByName("PpMatMulI8Kernel");
+                    }
+                }
                 case PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8WeightNzKernel");
                 case PP_MATMUL_F16_KERNEL_KEY: return GetKernelByName("PpMatMulF16Kernel");
                 case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
