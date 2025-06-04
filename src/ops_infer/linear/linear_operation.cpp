@@ -30,7 +30,7 @@ static constexpr uint64_t DIM_NUM_4 = 4;
 
 namespace atb {
 bool MatmulParamCheck(const infer::LinearParam &opParam, ExternalError &error)
-{   
+{
     if (opParam.quantMode != atb::infer::LinearParam::QUANT_UNDEFINED) {
         error.errorData = OperationUtil::ConcatInfo(error.errorData, "quantMode = ", opParam.quantMode);
         error.errorDesc = "QuantMode is not the default value. When outDataType is undefind, quantMode needs to be undefind.";
@@ -273,7 +273,7 @@ uint32_t LinearOperation::GetInputNum() const
     } else {
         if (param_.hasBias) {
             return IN_TENSOR_NUM_4;
-        } else if (param_.quantMode == infer::LinearParam::PER_TOKEN){
+        } else if (param_.quantMode == infer::LinearParam::PER_TOKEN) {
             return IN_TENSOR_NUM_4;
         } else {
             return IN_TENSOR_NUM_3;
@@ -667,7 +667,7 @@ bool LinearOperation::PerTokenXWeightDimNumCheck(const TensorDesc &xTensorDesc, 
     if (param_.quantMode == infer::LinearParam::PER_TOKEN && xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_2) {
         error.errorDesc = "When quantMode is PER_TOKEN and inTensor0 dim num is 3, inTensor1 dim num cannot be 2,";
         error.errorData = OperationUtil::ConcatInfo("quantMode = ", param_.quantMode, ", inTensor0 dimNum = ", xTensorDesc.shape.dimNum,
-                                      ", inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
+                                                    ", inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
         ATB_LOG(ERROR) << GetLogPrefix() << error;
         return false;
     }
