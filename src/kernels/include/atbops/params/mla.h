@@ -37,7 +37,7 @@ struct MLA {
         MASK_TYPE_ALIBI = 2,
         MASK_TYPE_LOOK_AHEAD = 3,
         MASK_TYPE_MASK_FREE = 4,
-        MASK_TYPE_CAUSAL_COMPRESS = 5
+        MASK_TYPE_CAUSAL_MASK = 5
     };
 
     MaskType maskType = MASK_TYPE_NONE;
