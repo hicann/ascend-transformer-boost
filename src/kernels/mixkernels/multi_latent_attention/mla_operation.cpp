@@ -35,8 +35,12 @@ public:
             case OpParam::MLA::SPLIT_CACHE:
                 return GetKernelByName("MLAKernel");
             case OpParam::MLA::PREFILL_SPLIT_CACHE:
-                return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("MLAPrefillBF16Kernel") :
-                        GetKernelByName("MLAPrefillKernel");
+                if (param.maskType == OpParam::MLA::MASK_TYPE_CAUSAL_MASK) {
+                    return GetKernelByName("MLAPrefillBF16Kernel");
+                } else {
+                    return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("MLAPrefillBF16Kernel") :
+                            GetKernelByName("MLAPrefillKernel");
+                }
             default:
                 break;
         }
@@ -187,7 +191,7 @@ private:
         auto currentShape = tensorMask.desc.dims;
         auto maskShape = currentShape.size();
         MKI_CHECK(maskShape == DIM_2, "mask invalid, please check.", return false);
-        auto normCompress = param.maskType == OpParam::MLA::MASK_TYPE_CAUSAL_COMPRESS;
+        auto normCompress = param.maskType == OpParam::MLA::MASK_TYPE_MASK_FREE;
         // 全量mask当前仅支持512,512的压缩mask，其余不支持，需配合isTriuMask开启
         std::vector<std::pair<SVector<int64_t>, bool>> supports = {
             {{LONG_SEQ_LEN_COMPRESS, LONG_SEQ_LEN_COMPRESS}, normCompress},
@@ -206,7 +210,7 @@ private:
         uint32_t batch = kvSeqLen.size();
         auto maxQSeqlenIter = std::max_element(qSeqLen.begin(), qSeqLen.end());
         auto maxQ = maxQSeqlenIter != qSeqLen.end() ? *maxQSeqlenIter : 1;
-        if (param.maskType == OpParam::MLA::MASK_TYPE_NONE) {
+        if (param.maskType == OpParam::MLA::MASK_TYPE_NONE || param.maskType == OpParam::MLA::MASK_TYPE_CAUSAL_MASK) {
             MKI_CHECK(CheckEmptyTensor(mask), "mask type inconsistent", return false);
         } else {
             MKI_CHECK(!CheckEmptyTensor(mask), "mask type inconsistent", return false);
