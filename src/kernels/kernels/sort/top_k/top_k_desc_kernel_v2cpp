@@ -49,7 +49,7 @@ public:
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Sort),
             "sort: param type invalid", return Status::FailStatus(1));
-        auto status = TopKDescTiling910D(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        auto status = TopKDescTilingV2(GetName(), launchParam, kernelInfo_, *GetBinHandle());
         MKI_CHECK_NO_LOG(status.Ok(), return status);
 
         /*kernelInfo_.SetConstTensorOffset(launchBufferSize_);
