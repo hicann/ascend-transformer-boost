@@ -39,7 +39,6 @@ public:
     uint32_t GetGlobalKernelCacheCount() const;
     uint32_t GetHostTilingBlockNum() const;
     uint32_t GetDeviceTilingBlockNum() const;
-    uint32_t GetRunnerPoolSize() const;
     uint64_t GetKernelCacheTilingSize() const;
     bool IsCompareTilingEveryKernelEnable() const;
     bool IsworkspaceMemAllocGlobal() const;
@@ -57,7 +56,6 @@ private:
     void InitTilingBuffer();
     void InitVariable(const char *envName, uint32_t min, uint32_t max, uint32_t &value) const;
     void InitShareMemoryNameSuffix();
-    void InitRunnerPool();
 
 private:
     std::string atbHomePath_;
@@ -80,7 +78,6 @@ private:
     std::string shareMemoryNameSuffix_;
     bool isLaunchKernelWithTiling_ = false;
     bool isMatmulShuffleKEnable_ = false;
-    uint32_t runnerPoolSize_ = 64;
 };
 } // namespace atb
 #endif
