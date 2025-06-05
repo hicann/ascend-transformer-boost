@@ -1,3 +1,5 @@
+include(${CMAKE_CURRENT_LIST_DIR}/../..)
+
 set(customize_blockcopy_srcs
     ${CMAKE_CURRENT_LIST_DIR}/customize_blockcopy_operation.cpp
     ${CMAKE_CURRENT_LIST_DIR}/customize_blockcopy_kernel.cpp
