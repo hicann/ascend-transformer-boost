@@ -56,7 +56,6 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE=0 #每个Runner的Execute时就做同步
     export ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE=0 #每个Operation的Execute时就做同步
     export ATB_OPSRUNNER_SETUP_CACHE_ENABLE=1 #是否开启SetupCache，当检查到输入和输出没有变化时，不做setup
-    export ATB_OPSRUNNER_KERNEL_CACHE_TYPE=3 #0:不开启, 1:开启本地缓存 2:开启全局缓存 3：同时开启本地和全局缓存
     export ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT=1 #本地缓存个数，支持范围1~1024
     export ATB_OPSRUNNER_KERNEL_CACHE_GLOABL_COUNT=5 #全局缓存个数，支持范围1~1024
     export ATB_OPSRUNNER_KERNEL_CACHE_TILING_SIZE=10240 #tiling默认大小，支持范围1~1073741824
@@ -68,10 +67,8 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_SHARE_MEMORY_NAME_SUFFIX="" #共享内存命名后缀，多用户同时使用通信算子时，需通过设置该值进行共享内存的区分
     export ATB_LAUNCH_KERNEL_WITH_TILING=1 #tiling拷贝随算子下发功能开关
     export ATB_MATMUL_SHUFFLE_K_ENABLE=1 #Shuffle-K使能，默认开
-    export ATB_RUNNER_POOL_SIZE=64 #加速库runner池中可存放runner的个数，支持范围0~1024，为0时不开启runner池功能
 
     #算子库环境变量
-    export ASDOPS_HOME_PATH=$ATB_HOME_PATH
     export ASDOPS_MATMUL_PP_FLAG=1 #算子库开启使用PPMATMUL
     export ASDOPS_LOG_TO_BOOST_TYPE=atb #算子库对应加速库日志类型，默认atb
     export ASDOPS_LOG_PATH=~ #算子库日志保存路径
