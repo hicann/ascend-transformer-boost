@@ -63,6 +63,11 @@ template <> Status CreateOperation(const infer::PagedCacheLoadParam &opParam, Op
         ATB_LOG(ERROR) << "wrong kvcache config";
         return ERROR_INVALID_PARAM;
     }
+    if (opParam.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ &&
+        (opParam.hasSeqStarts || opParam.isSeqLensCumsumMode)) {
+        ATB_LOG(ERROR) << "foramt NZ donot support hasSeqStarts=true or isSeqLensCumsumMode=true!";
+        return ERROR_INVALID_PARAM;
+    }
     *operation = new (std::nothrow) PagedCacheLoadOperation(opParam);
     if (*operation == nullptr) {
         ATB_LOG(ERROR) << "failed to new operation";

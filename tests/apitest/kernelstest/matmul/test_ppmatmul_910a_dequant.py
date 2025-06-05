@@ -56,7 +56,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
     def __gen_test_data(self, shpae: tuple) -> None:
         np.random.seed(0)
         bsize, msize, ksize, nsize = shpae
-        bat_A, bat_B, bat_C, scale_n, bias_n = [], [], [], [], []
+        bat_A, bat_B, bat_C, scale_n, bias_n, bat_pertoken_descale = [], [], [], [], [], []
         for _ in range(bsize):
             a = np.random.randint(-2, 2, size=(msize, ksize)).astype(np.int8)
             b = np.random.randint(-2, 2, size=(ksize, nsize)).astype(np.int8)
@@ -82,6 +82,9 @@ class TestPpMatmul910aDequant(op_test.OpTest):
         self.bat_A = np.stack(bat_A)
         self.bat_B = np.stack(bat_B)
         self.bat_C = np.stack(bat_C)
+        pertoken_descale = np.empty(msize)
+        bat_pertoken_descale.append(pertoken_descale)
+        self.bat_pertoken_descale = np.stack(bat_pertoken_descale)
         return
 
     def golden_calc(self, in_tensors):
@@ -111,7 +114,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                     "enDequant": self.enDequant,
                 },
             )
-            self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+            self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
             self.set_output_formats([self.format_nz])
             self.__gen_test_data((bsize, msize, ksize, nsize))
             logging.debug(self.bat_A.shape)
@@ -121,6 +124,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                     torch.tensor(self.bat_B).to(torch.int8),
                     torch.tensor(self.bias).to(torch.int32),
                     torch.tensor(self.scale).to(torch.float32),
+                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape).to(torch.half)],
                 {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -140,7 +144,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 "enDequant": self.enDequant,
             },
         )
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
@@ -150,6 +154,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_B).to(torch.int8),
                 torch.tensor(self.bias).to(torch.int32),
                 torch.tensor(self.scale).float(),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -169,7 +174,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 "enDequant": self.enDequant,
             },
         )
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
@@ -179,6 +184,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_B).to(torch.int8),
                 torch.tensor(self.bias).to(torch.int32),
                 torch.tensor(self.scale).float(),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -198,7 +204,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 "enDequant": self.enDequant,
             },
         )
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
@@ -208,6 +214,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_B).to(torch.int8),
                 torch.tensor(self.bias).to(torch.int32),
                 torch.tensor(self.scale).float(),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -227,7 +234,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 "enDequant": self.enDequant,
             },
         )
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
@@ -237,6 +244,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_B).to(torch.int8),
                 torch.tensor(self.bias).to(torch.int32),
                 torch.tensor(self.scale).float(),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -256,7 +264,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 "enDequant": self.enDequant,
             },
         )
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
@@ -266,6 +274,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_B).to(torch.int8),
                 torch.tensor(self.bias).to(torch.int32),
                 torch.tensor(self.scale).float(),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},
@@ -285,7 +294,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 "enDequant": self.enDequant,
             },
         )
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
@@ -295,6 +304,7 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_B).to(torch.int8),
                 torch.tensor(self.bias).to(torch.int32),
                 torch.tensor(self.scale).float(),
+                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
             {"ASDOPS_MATMUL_PP_FLAG": "1"},

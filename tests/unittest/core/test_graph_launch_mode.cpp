@@ -240,33 +240,11 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
     workspaceSize = 0;
     workSpace = nullptr;
     ret = 0;
-    
-    // warm up
-    CreateInTensors(pack.inTensors, intensorDescs, 1);
-    CreateOutTensors(pack.outTensors, outtensorDescs);
-    context->SetLaunchMode(atb::GRAPH_LAUNCH_MODE);
-    for (size_t i = 0; i < 2; i++) {
-        warmUpOperation->Setup(pack, workspaceSize, context);
-        if (workspaceSize != 0 && workSpace == nullptr) {
-            ret = aclrtMalloc(&workSpace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-            ASSERT_EQ(ret, 0);
-        }
-        context->SetExecuteType(atb::EXECUTE_NORMAL);
-        warmUpOperation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
-        ret = aclrtSynchronizeStream(exeStream);
-        ASSERT_EQ(ret, 0);
-    }
-    aclrtFree(workSpace);
-    DestroyOperation(warmUpOperation);
- 
-    workspaceSize = 0;
-    workSpace = nullptr;
-    ret = 0;
 
 	// 算子执行
     aclmdlRI model = nullptr;
     context->SetLaunchMode(atb::GRAPH_LAUNCH_MODE);
-    uint64_t updateTime = 0;
+    uint64_t updateTime = 100000000;
     for (size_t i = 0; i < 10; i++) {
         CreateInTensors(pack.inTensors, intensorDescs, i + 1);
         CreateOutTensors(pack.outTensors, outtensorDescs);
@@ -292,7 +270,7 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
             context->SetExecuteType(atb::EXECUTE_PRELAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
-            updateTime = std::max(timer.ElapsedMicroSecond(), updateTime);
+            updateTime = std::min(timer.ElapsedMicroSecond(), updateTime);
  
             // 重放
             aclmdlRIExecuteAsync(model, exeStream);
@@ -308,10 +286,10 @@ TEST(TestGraphLaunchMode, CapturedByUserAndTestGraphOp)
         for (size_t j = 0; j < outBuffer.size(); j++) {
             EXPECT_EQ((uint32_t)outBuffer.at(j), (i + 1) * 16);
         }
-        double timeCompareRate = (double)updateTime / (double)goldenTime;
-        ATB_LOG(INFO) << "timeCompareRate:" << timeCompareRate;
-        // EXPECT_LT(timeCompareRate, 0.5);
     }
+    double timeCompareRate = (double)updateTime / (double)goldenTime;
+    ATB_LOG(INFO) << "timeCompareRate:" << timeCompareRate;
+    // EXPECT_LT(timeCompareRate, 0.5);
  
 	// 资源释放
     atb::DestroyOperation(operation);

@@ -35,11 +35,14 @@ private:
     Status AccumCheck(const TensorDesc &accumTensorDesc, const TensorDesc &xTensorDesc,
                       const TensorDesc &weightTensorDesc) const;
     Status DeqScaleCheck(const TensorDesc &deqScaleTensorDesc, const TensorDesc &weightTensorDesc) const;
+    Status PerTokenDeqScaleCheck(const TensorDesc &deqScaleTensorDesc, const TensorDesc &weightTensorDesc,
+                                 const TensorDesc &xTensorDesc, const TensorDesc &perTokendeqScaleTensorDesc) const;
     Status OutTensorCheck(const SVector<TensorDesc> &inTensorDescs, const SVector<Tensor> &outTensors) const;
     bool XWeightDimNumCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;
     bool XWeightBatchCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;
     bool XWeightKEqualCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;
     bool WeightAlignCheck(const TensorDesc &weightTensorDesc, int64_t align) const;
+    bool PerTokenXWeightDimNumCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const;
 
 private:
     infer::LinearParam param_;
