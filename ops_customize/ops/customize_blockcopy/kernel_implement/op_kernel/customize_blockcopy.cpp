@@ -304,7 +304,7 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
 #endif
 }
 
-extern "C" __global__ __aicore__ void blockcopy(GM_ADDR kCache, GM_ADDR vCache,
+extern "C" __global__ __aicore__ void customize_blockcopy(GM_ADDR kCache, GM_ADDR vCache,
                                              GM_ADDR srcBlockIndices, GM_ADDR dstBlockIndices, GM_ADDR cumSum,
                                              GM_ADDR kCacheOut, GM_ADDR vCacheOut, GM_ADDR tiling)
 {
