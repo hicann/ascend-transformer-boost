@@ -51,10 +51,11 @@ static const uint32_t EM_BED_DIM_V = 128;
 namespace atb {
 
 static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam);
-
+static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam);
 static bool ParamPrefillCheck(const infer::MultiLatentAttentionParam &opParam);
 
-template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opParam, Operation **operation)
+template <>
+Status CreateOperation(const infer::MultiLatentAttentionParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
@@ -71,29 +72,7 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
             return ERROR_INVALID_PARAM;
         }
     } else {
-        if (opParam.headNum != 8 && opParam.headNum != 16 && opParam.headNum != 32 && // 8, 16, 32: headNum
-            opParam.headNum != 64 && opParam.headNum != 128) {                        // 64, 128: headNum
-            ATB_LOG(ERROR) << "headNum should be {8,16,32,64,128}";
-            return ERROR_INVALID_PARAM;
-        }
-        if (opParam.kvHeadNum != 1) {
-            ATB_LOG(ERROR) << "kvHeadNum should be 1, only support MQA";
-            return ERROR_INVALID_PARAM;
-        }
-        if (opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::KVCACHE) {
-            ATB_LOG(ERROR) << "dont support cacheMode KVCACHE yet";
-            return ERROR_INVALID_PARAM;
-        }
-        if ((opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC && opParam.
-                      calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
-            opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
-            ATB_LOG(ERROR) << "only mtp(CALC_TYPE_SPEC) support mask";
-            return ERROR_INVALID_PARAM;
-        }
-        if ((opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || opParam.
-                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
-            opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
-            ATB_LOG(ERROR) << "CalcType is ring only support krppe ctkv";
+        if (!ParamCheck(opParam)) {
             return ERROR_INVALID_PARAM;
         }
     }
@@ -106,6 +85,41 @@ template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opPar
     return NO_ERROR;
 }
 
+static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
+{
+    if (opParam.headNum != 8 && opParam.headNum != 16 && opParam.headNum != 32 &&  // 8, 16, 32: headNum
+        opParam.headNum != 64 && opParam.headNum != 128) {                         // 64, 128: headNum
+        ATB_LOG(ERROR) << "headNum should be {8,16,32,64,128}";
+        return false;
+    }
+    if (opParam.kvHeadNum != 1) {
+        ATB_LOG(ERROR) << "kvHeadNum should be 1, only support MQA";
+        return false;
+    }
+    if (opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::KVCACHE) {
+        ATB_LOG(ERROR) << "dont support cacheMode KVCACHE yet";
+        return false;
+    }
+    if (opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE &&
+        opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC && opParam.headNum != 128) {
+        ATB_LOG(ERROR) << "mtp quant only support headNum 128";
+        return false;
+    }
+    if ((opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC &&
+         opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
+        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
+        ATB_LOG(ERROR) << "only mtp(CALC_TYPE_SPEC) support mask";
+        return false;
+    }
+    if ((opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
+         opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
+        opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
+        ATB_LOG(ERROR) << "CalcType is ring only support krppe ctkv";
+        return false;
+    }
+    return true;
+}
+
 static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam)
 {
     if (opParam.qkScale <= 0 || opParam.qkScale > 1) {
@@ -113,7 +127,7 @@ static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam)
         return false;
     }
     if (opParam.maskType < infer::MultiLatentAttentionParam::MaskType::UNDEFINED ||
-        opParam.maskType > infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        opParam.maskType > infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         ATB_LOG(ERROR) << "invalid maskType";
         return false;
     }
@@ -135,12 +149,15 @@ static bool ParamPrefillCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "headNum should be >= 1 and <= 128";
         return false;
     }
-    if (opParam.headNum != opParam.kvHeadNum) {
-        ATB_LOG(ERROR) << "Prefill, headNum should be equal to kvHeadNum";
-        return false;
+    if (opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        if (opParam.headNum != opParam.kvHeadNum) {
+            ATB_LOG(ERROR) << "Prefill, headNum should be equal to kvHeadNum";
+            return false;
+        }
     }
     if (opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
-        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE &&
+        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         ATB_LOG(ERROR) << "Prefill, maskType support UNDEFINED and MASK_TYPE_MASK_FREE";
         return false;
     }
@@ -156,7 +173,8 @@ MultiLatentAttentionOperation::MultiLatentAttentionOperation(const infer::MultiL
 {
     std::string opIrKeyStr;
     opIrKeyStr += "MultiLatentAttentionOperation";
-    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
+    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+        param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         opIrKeyStr += "Mask";
     }
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
@@ -184,7 +202,8 @@ MultiLatentAttentionOperation::~MultiLatentAttentionOperation() {}
 uint32_t MultiLatentAttentionOperation::GetInputNum() const
 {
     uint32_t intensorNumBase = IN_TENSOR_NUM;
-    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
+    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+        param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         intensorNumBase++;
     }
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_PREFILL) {

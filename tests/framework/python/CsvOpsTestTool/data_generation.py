@@ -425,10 +425,14 @@ class LinearOperation(DataGen):
             if en_accum:
                 return torch_npu.npu_format_cast(MatmulCommon.gen_accum(shapes, i, datatype, data_gen_ranges), format_dict[format])
             out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
-            return torch_npu.npu_format_cast(MatmulCommon.gen_deq(shapes, i, data_gen_ranges, out_data_type), format_dict[format])
+            quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
+            return torch_npu.npu_format_cast(MatmulCommon.gen_deq(shapes, i, data_gen_ranges, out_data_type, quantMode), format_dict[format])
         if i == 3:
             out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
-            return torch_npu.npu_format_cast(MatmulCommon.gen_deq(shapes, i, data_gen_ranges, out_data_type), format_dict[format])
+            quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
+            if quantMode == 2:
+                return torch_npu.npu_format_cast(MatmulCommon.gen_pertoken_scale(shapes, i, data_gen_ranges, out_data_type), format_dict[format])
+            return torch_npu.npu_format_cast(MatmulCommon.gen_deq(shapes, i, data_gen_ranges, out_data_type, quantMode), format_dict[format])
 
     @staticmethod
     def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
@@ -440,12 +444,14 @@ class LinearOperation(DataGen):
     def golden(in_tensors, op_params):
         out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
         matmultype = MatmulCommon.get_param_value(op_params, "matmulType", 0)
+        quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
 
         x = MatmulCommon.input_golden
         weight = MatmulCommon.weight_golden
         bias = MatmulCommon.bias_golden
         deq_scale = MatmulCommon.deq_golden
         accum = MatmulCommon.accum_golden
+        pertoken_scale = MatmulCommon.pertoken_scale_golden
         if out_data_type == -1:
             x = x.to(torch.float32)
             weight = weight.to(torch.float32)
@@ -464,6 +470,8 @@ class LinearOperation(DataGen):
                 golden_result = golden_result + bias_expanded
         elif len(x.shape) == 3 and len(weight.shape) == 3:
             output_list = []
+            if quantMode == 2:
+                pertoken_scale = pertoken_scale.unsqueeze(-1)
             for i in range(x.shape[0]):
                 x_i = x[i:i + 1, :].squeeze(0)
                 weight_i = weight[i:i + 1, :].squeeze(0)
@@ -471,7 +479,12 @@ class LinearOperation(DataGen):
                 if bias is not None:
                     output_i = output_i + bias[i:i + 1, :]
                 if deq_scale is not None:
-                    output_i = output_i * deq_scale[i:i + 1, :]
+                    if quantMode == 2:
+                        output_i = output_i * deq_scale
+                    else:
+                        output_i = output_i * deq_scale[i:i + 1, :]
+                if pertoken_scale is not None and quantMode == 2:
+                    output_i = output_i * pertoken_scale
                 if accum is not None:
                     output_i = output_i + accum[i:i + 1, :].squeeze(0)
                 output_list.append(output_i)
@@ -483,6 +496,9 @@ class LinearOperation(DataGen):
                 golden_result = golden_result + bias
             if deq_scale is not None:
                 golden_result = golden_result * deq_scale
+            if pertoken_scale is not None and quantMode == 2:
+                    pertoken_scale = pertoken_scale.unsqueeze(-1)
+                    golden_result = golden_result * pertoken_scale
             if accum is not None:
                 golden_result = golden_result + accum
         if accum is None:
@@ -879,7 +895,7 @@ class LinearSparseOperation(DataGen):
         if i == 2:
             return MatmulCommon.gen_bias(shapes, i, datatype, data_gen_ranges)
         if i == 3:
-            return MatmulCommon.gen_deq(shapes, i, data_gen_ranges, 1)
+            return MatmulCommon.gen_deq(shapes, i, data_gen_ranges, 1, 0)
         if i == 4:
             return LinearSparseOperation.random(shapes[4], datatype, format, data_gen_ranges, op_params)
 
@@ -915,6 +931,7 @@ class MatmulCommon:
     accum_golden = None
     deq_golden = None
     matmultype_golden = None
+    pertoken_scale_golden = None
     linear_type = -1
     groupList_golden = None
 
@@ -1026,9 +1043,12 @@ class MatmulCommon:
         return accum_npu
 
     @staticmethod
-    def gen_deq(shapes, i, data_gen_ranges, out_data_type):
+    def gen_deq(shapes, i, data_gen_ranges, out_data_type, quant_mode):
         shape = shapes[i]
         low, high = MatmulCommon.__get_data_range(data_gen_ranges)
+        if quant_mode == 2:
+            MatmulCommon.deq_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict["float"])
+            return MatmulCommon.deq_golden.npu()
         if out_data_type == 1:
             low_int = int(low)
             high_int = int(high)
@@ -1043,6 +1063,15 @@ class MatmulCommon:
         elif out_data_type == 27:
             MatmulCommon.deq_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict["float"])
             return MatmulCommon.deq_golden.npu()
+        return None
+
+    @staticmethod
+    def gen_pertoken_scale(shapes, i, data_gen_ranges, out_data_type):
+        shape = shapes[i]
+        low, high = MatmulCommon.__get_data_range(data_gen_ranges)
+        if out_data_type == 1 or out_data_type == 27:
+            MatmulCommon.pertoken_scale_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict["float"])
+            return MatmulCommon.pertoken_scale_golden.npu()
         return None
 
     @staticmethod
@@ -1141,42 +1170,45 @@ class GatherOperation(DataGen):
         json_data = json.loads(op_params)
         axis = json_data["axis"]
         batchDims = json_data["batchDims"]
-        if batchDims == 0:
-            if axis == 0:
-                if in_tensors[0].ndim == 2 and in_tensors[1].ndim == 2:
-                    embedding = torch.nn.Embedding(in_tensors[0].shape[0],in_tensors[0].shape[1])
-                    embedding.weight.data.copy_(in_tensors[0])
-                    embedding.weight.requires_grad = False
-                    golden_result = embedding(in_tensors[1]).detach()
-                    return [golden_result]
-            outputSize = []
-            dim0 = 1
-            for i in range(0,axis):
-                outputSize.append(in_tensors[0].shape[i])
-                dim0 *= in_tensors[0].shape[i]
-            dim1 = in_tensors[0].shape[axis]
-            for i in range(0,in_tensors[1].ndim):
-                outputSize.append(in_tensors[1].shape[i])
-            dim2 = 1
-            for i in range(axis + 1,in_tensors[0].ndim):
-                outputSize.append(in_tensors[0].shape[i])
-                dim2 *= in_tensors[0].shape[i]
-            # inputFlatten = in_tensors[0].clone().reshape(-1)
-            indicesFlatten = in_tensors[1].clone().reshape(-1)
-            logging.debug("outputSize",outputSize)
+        if in_tensors[1].ndim == 1:
+            golden_result = torch.index_select(in_tensors[0], axis, in_tensors[1].to(torch.int64))
+        else:
+            if batchDims == 0:
+                if axis == 0:
+                    if in_tensors[0].ndim == 2 and in_tensors[1].ndim == 2:
+                        embedding = torch.nn.Embedding(in_tensors[0].shape[0],in_tensors[0].shape[1])
+                        embedding.weight.data.copy_(in_tensors[0])
+                        embedding.weight.requires_grad = False
+                        golden_result = embedding(in_tensors[1]).detach()
+                        return [golden_result]
+                outputSize = []
+                dim0 = 1
+                for i in range(0,axis):
+                    outputSize.append(in_tensors[0].shape[i])
+                    dim0 *= in_tensors[0].shape[i]
+                dim1 = in_tensors[0].shape[axis]
+                for i in range(0,in_tensors[1].ndim):
+                    outputSize.append(in_tensors[1].shape[i])
+                dim2 = 1
+                for i in range(axis + 1,in_tensors[0].ndim):
+                    outputSize.append(in_tensors[0].shape[i])
+                    dim2 *= in_tensors[0].shape[i]
+                # inputFlatten = in_tensors[0].clone().reshape(-1)
+                indicesFlatten = in_tensors[1].clone().reshape(-1)
+                logging.debug("outputSize",outputSize)
 
-            golden_result = torch.zeros(outputSize, dtype=in_tensors[0].dtype, device=in_tensors[0].device).reshape(-1)
-            idx = 0
-            for i in range(0, dim0):
-                inputIdx = i * dim1 * dim2
-                for indice in indicesFlatten:
-                    for k in range(0, dim2):
-                        golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
-                        idx += 1
-            golden_result = golden_result.reshape(outputSize)
-        elif batchDims > 0:
-            # 使用 torch.gather 进行批量维度的处理
-            golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
+                golden_result = torch.zeros(outputSize, dtype=in_tensors[0].dtype, device=in_tensors[0].device).reshape(-1)
+                idx = 0
+                for i in range(0, dim0):
+                    inputIdx = i * dim1 * dim2
+                    for indice in indicesFlatten:
+                        for k in range(0, dim2):
+                            golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
+                            idx += 1
+                golden_result = golden_result.reshape(outputSize)
+            elif batchDims > 0:
+                # 使用 torch.gather 进行批量维度的处理
+                golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
 
         # 返回结果
         return [golden_result.cpu()]
@@ -3361,7 +3393,7 @@ class ReshapeAndCacheOperation(DataGen):
 
         soc_version = get_soc_version()
         json_data = json.loads(op_params)
-        if "kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 1:
+        if "kvCacheCfg" in json_data and json_data["kvCacheCfg"] == 1:
             MAX_SEQ_LEN = 1024
             num_tokens = shapes[0][0]
             num_heads = shapes[0][1]
@@ -4489,6 +4521,9 @@ class PagedAttentionOperation(DataGen):
             elif maskType == 3:
                 mask_slice = mask[cu_seqlen : (cu_seqlen + q_seqlen), :context_len]
                 out = PagedAttentionOperation.ref_masked_attention(q, keys, values, scale, mask_slice)
+            elif maskType == 4:
+                mask_slice = mask[cu_seqlen : (cu_seqlen + q_seqlen), :context_len]
+                out = PagedAttentionOperation.ref_masked_attention(q, keys, values, scale, mask)
 
             if is_lookahead:
                 out = out.reshape(-1, num_heads, head_size_vo)
@@ -4646,6 +4681,9 @@ class PagedAttentionOperation(DataGen):
 
         if is_mask:
             max_seq_len = (shapes[5][1] * 16) if is_NZ else shapes[5][-1]
+            if maskType == 4:
+                k_seq_len = np.array(json_data["k_seq_len"]) 
+                max_seq_len = max(k_seq_len)
         k_seq_len = max_seq_len
         dtype = datatype
         if datatype == 'bf16':
@@ -4700,6 +4738,7 @@ class PagedAttentionOperation(DataGen):
 
         # create context_lens
         context_lens = [random.randint(max_seq_len, max_seq_len) for _ in range(batch)]
+
         max_context_len = max_seq_len
         max_num_blocks_per_query = (max_context_len + block_size - 1) // block_size
         # create q_seq_lens,mask
@@ -4712,6 +4751,7 @@ class PagedAttentionOperation(DataGen):
         # correct context_lens
         if is_compresshead:
             context_lens = [val for val in context_lens for _ in range(num_head)]
+
         batch = len(context_lens)
         # create block_tables
         for _ in range(batch):
@@ -4791,6 +4831,34 @@ class PagedAttentionOperation(DataGen):
                 mask_nz = PagedAttentionOperation.convert_nd_to_nz(mask_pad)
                 mask_nz = mask_nz.reshape(1, -1, num_tokens_pad, 16).astype(np.float16)
                 mask_nz = np.ascontiguousarray(mask_nz)
+            elif maskType == 4:
+                context_lens = np.array(json_data["k_seq_len"]) 
+                q_seq_lens = np.array(json_data["q_seq_len"]) 
+
+                seq_len = 128
+                # 创建一个矩阵，初始为全 0
+                mask = np.zeros((seq_len, seq_len), dtype=np.float16)
+                # 构造严格上三角（不包括对角线）的 mask，赋值为 -inf
+                mask[np.triu_indices(seq_len, k=1)] = 1
+                mask *= -60000
+                mask_nz = PagedAttentionOperation.convert_nd_to_nz(mask)
+                mask_nz = mask_nz.reshape(1, 8, 128, 16).astype(np.float16)
+                mask_nz = np.ascontiguousarray(mask_nz)
+
+                max_k_seqlen = context_lens[0]
+                mask = torch.zeros(size=(q_seq_lens.sum(), max(context_lens)))
+                prev_qseq = 0
+                for i in range(len(context_lens)):
+                    qseq = q_seq_lens[i]
+                    kseq = context_lens[i]
+                    start = kseq - qseq
+                    tri = torch.ones((qseq, qseq)).half()
+                    tri = torch.triu(tri, 1)
+                    tri *= -60000
+                    mask[prev_qseq:(prev_qseq + qseq), start:kseq] = tri
+                    prev_qseq += qseq
+                mask = mask.numpy()
+
             data.extend([query, key_cache_nz, value_cache_nz, block_tables, context_lens])
             data.extend([mask_nz, batch_run_status, k_descale, k_offset, v_descale, v_offset, q_seq_lens, razor_offset, p_scale, logN])
         else:
@@ -4808,12 +4876,14 @@ class PagedAttentionOperation(DataGen):
         golden_data.extend([mask, batch_run_status, k_descale, k_offset, v_descale, v_offset, q_seq_lens, razor_offset, p_scale, logN])
 
         in_tensors = [torch.from_numpy(tensor).npu() for tensor in data]
+        
         golden_tensors = [torch.from_numpy(tensor).npu() for tensor in golden_data]
         PagedAttentionOperation.golden_tensors = golden_tensors
         PagedAttentionOperation.in_tensors = in_tensors
 
         PagedAttentionOperation.in_tensors[0] = \
                             PagedAttentionOperation.in_tensors[0].to(PagedAttentionOperation.trans_dtype(datatype))
+
         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[0], format_dict[format])
 
     @staticmethod
@@ -4846,6 +4916,7 @@ class PagedAttentionOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
+
         is_NZ = get_soc_version() != "Ascend910B"
         head_size_o = 0
         if "mlaVHeadSize" in json_data and json_data["mlaVHeadSize"] > 0:
@@ -4911,8 +4982,25 @@ class PagedAttentionOperation(DataGen):
                         else:
                             mask = mask.contiguous().view(1, json_data["headNum"], dim1, dim2*dim3)
                     golden_tensors[5] = mask
-            PagedAttentionOperation.golden_tensors = golden_tensors
+                    if maskType == 4 :
+                        num_tokens = in_tensors[6].sum().item()
+                        max_k_seqlen = max(in_tensors[4]).item()
+                        batch_size = in_tensors[4].shape[0]
+                        # 转numpy
+                        mask = torch.zeros(size=(num_tokens, max_k_seqlen))
+                        prev_qseq = 0
+                        for i in range(batch_size):
+                            qseq = in_tensors[6][i]
+                            kseq = in_tensors[4][i]
+                            start = kseq - qseq
+                            tri = torch.ones((qseq, qseq)).half()
+                            tri = torch.triu(tri, 1)
+                            tri *= -60000
+                            mask[prev_qseq:(prev_qseq + qseq), start:kseq] = tri
+                            prev_qseq += qseq
+                        golden_tensors[5] = mask
 
+            PagedAttentionOperation.golden_tensors = golden_tensors
         PagedAttentionOperation.ref_single_query_cached_kv_attention(
             op_params,
             ref_output,
@@ -5162,7 +5250,10 @@ class SelfAttentionOperation(DataGen):
                 seqLen_id -= 1
             run_param = json.dumps({"seqLen": input_tensor_list[seqLen_id].tolist()})
         elif json_data["calcType"] == 4:
-            run_param = json.dumps({"tokenOffset": input_tensor_list[5].tolist(), "seqLen": input_tensor_list[6].tolist()})
+            if json_data["maskType"] == 9:
+                run_param = json.dumps({"tokenOffset": input_tensor_list[4].tolist(), "seqLen": input_tensor_list[5].tolist()})
+            else:
+                run_param = json.dumps({"tokenOffset": input_tensor_list[5].tolist(), "seqLen": input_tensor_list[6].tolist()})
         elif 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1:
             run_param = json.dumps({"tokenOffset": input_tensor_list[4].tolist(), "seqLen": input_tensor_list[5].tolist()})
         else:
@@ -6983,6 +7074,60 @@ class PagedCacheLoadOperation(DataGen):
         dtype = datatype_dict[datatype]
         soc_version = get_soc_version()
         MAX_SEQ_LEN = 1024
+        json_data = json.loads(op_params)
+        # ND
+        if "kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 1:
+            seq_len = 1
+            num_blocks_k = shapes[0][0]
+            num_blocks_v = shapes[1][0]
+            block_size_k = shapes[0][1]
+            block_size_v = shapes[1][1]
+            num_heads_k = shapes[0][2]
+            num_heads_v = shapes[1][2]
+            head_size_k = shapes[0][3]
+            head_size_v = shapes[1][3]
+            batch = shapes[2][0]
+            num_tokens = seq_len * batch
+            context_lens = [random.randint(1, MAX_SEQ_LEN) for _ in range(num_tokens)]
+            num_tokens = len(context_lens)
+            
+            key_cache = np.random.randint(1, 11, size=(num_blocks_k, block_size_k, num_heads_k, head_size_k)).astype(
+            dtype)
+            value_cache = np.random.randint(1, 11, size=(num_blocks_v, block_size_v, num_heads_v, head_size_v)).astype(
+            dtype)
+            
+            sum_context_lens = context_lens[-1]
+            max_context_len = max(context_lens)
+            
+            cu_context_lens = [0]
+            for elem in context_lens:
+                cu_context_lens.append(cu_context_lens[-1] + elem)
+                
+            max_num_blocks_per_req = (max_context_len + block_size_k -1) // block_size_k + 4
+            block_tables = [] #[num_tokens, max_num_blocks_per_seq]
+            for _ in range(num_tokens):
+                block_table = [
+                    random.randint(0, num_blocks_k -1) for _ in range(max_num_blocks_per_req)
+                ]
+                block_tables.append(block_table)
+            seq_starts = [random.randint(0, 4) * block_size_k for _ in range(num_tokens)]
+            if "isSeqLensCumsumMode" in json_data and json_data["isSeqLensCumsumMode"]:
+                context_lens = np.array(cu_context_lens).astype(np.int32)
+            else:
+                context_lens = np.array(context_lens).astype(np.int32)
+
+            block_tables = np.array(block_tables).astype(np.int32)
+            seq_starts = np.array(seq_starts).astype(np.int32)
+            
+            key = np.zeros((sum_context_lens, num_heads_k, head_size_k)).astype(dtype)
+            value = np.zeros((sum_context_lens, num_heads_v, head_size_v)).astype(dtype)
+            
+            ret_data = key_cache, value_cache, block_tables, context_lens, key, value, seq_starts
+            in_tensors = [torch.from_numpy(tensor) for tensor in ret_data]
+            in_tensors = [tensor.npu() for tensor in in_tensors]
+            PagedCacheLoadOperation.in_tensors = in_tensors
+            return torch_npu.npu_format_cast(PagedCacheLoadOperation.in_tensors[i], format_dict[format])
+        # NZ
         batch = shapes[3][0]
         context_lens = [random.randint(128, 128) for _ in range(batch)]
         num_tokens = len(context_lens)
@@ -7025,6 +7170,75 @@ class PagedCacheLoadOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         MAX_SEQ_LEN = 1024
+        data_type = in_tensors[0].dtype
+        datatype_dictkv = {"torch.float16": "float16", "torch.bfloat16": "float32", "torch.int8": "int8"}
+        json_data = json.loads(op_params)
+        if "kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 1:
+            seq_len = 1
+            num_heads_k =  in_tensors[0][2]
+            num_heads_v =  in_tensors[1][2]
+            head_size_k =  in_tensors[0][3]
+            head_size_v =  in_tensors[1][3]
+            block_size = in_tensors[0][1]
+            batch = in_tensors[2][0]
+            num_tokens = seq_len * batch
+            
+            block_tables = in_tensors[2].numpy()  # [num_tokens, max_num_blocks_per_seq]
+            context_lens = in_tensors[3].numpy()
+            seq_starts = in_tensors[6].numpy()
+            
+            key_expect = np.zeros((sum_context_lens, num_heads_k, head_size_k)).astype(datatype_dictkv[str(data_type)])
+            value_expect = np.zeros((sum_context_lens, num_heads_v, head_size_v)).astype(datatype_dictkv[str(data_type)])
+            
+            if "hasSeqStarts" in json_data and  json_data["hasSeqStarts"]:
+                kv_rslt_id = 0
+                context_start = 0
+                for i in range(num_tokens):
+                    block_table = block_tables[i]
+                    context_end = int(context_lens[i+1])
+                    context_len = context_end - context_start
+                    context_start = context_end
+                    block_table_offset = seq_starts[i] // block_size
+                    for j in range(context_len):
+                        block_id = int(block_table[block_table_offset + j // block_size])
+                        block_offset = j % block_size
+                        
+                        if block_id < 0:
+                            continue
+                        
+                        temp_k = key_cache[block_id][block_offset]
+                        temp_v = value_cache[block_id][block_offset]
+                        
+                        key_expect[kv_rslt_id] = temp_k
+                        value_expect[kv_rslt_id] = temp_v
+                        kv_rslt_id += 1
+                        
+                res_data = key_expect, value_expect
+                out_tensors = [torch.from_numpy(tensor) for tensor in res_data]
+                return out_tensors
+            
+            kv_rslt_id = 0
+            for i in range(num_tokens):
+                block_table = block_tables[i]
+                context_len = int(context_lens[i])
+
+                for j in range(context_len):
+                    block_id = int(block_table[j // block_size])
+                    block_offset = j % block_size
+
+                    if block_id < 0:
+                        continue
+
+                    temp_k = key_cache[block_id][block_offset]
+                    temp_v = value_cache[block_id][block_offset]
+
+                    key_expect[kv_rslt_id] = temp_k
+                    value_expect[kv_rslt_id] = temp_v
+                    kv_rslt_id += 1
+                    
+            res_data = key_expect, value_expect
+            out_tensors = [torch.from_numpy(tensor) for tensor in res_data]
+            return out_tensors
         context_lens = in_tensors[3].numpy()
         sum_context_lens = sum(context_lens)
         max_context_len = max(context_lens)
@@ -7071,6 +7285,11 @@ class PagedCacheLoadOperation(DataGen):
         res_data = key_expect, value_expect
         out_tensors = [torch.from_numpy(tensor) for tensor in res_data]
         return out_tensors
+
+    @staticmethod
+    def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
+        output_tensor_list[0] = input_tensor_list[4]
+        output_tensor_list[1] = input_tensor_list[5]
 
     @staticmethod
     def get_op_type(op_params):

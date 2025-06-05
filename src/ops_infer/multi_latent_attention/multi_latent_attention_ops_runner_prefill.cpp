@@ -66,9 +66,13 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
     asdParam.tor = param_.qkScale;
     asdParam.kvHead = param_.kvHeadNum;
     asdParam.isRing = 0;
-    asdParam.maskType = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ?
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_COMPRESS :
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
+    if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE;
+    } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_MASK;
+    } else {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
+    }
 
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     mlaNode.inTensors = {&query,     &queryRope, &key,       &keyRope,  &value,  &mask, &alibiCoeff,
@@ -85,7 +89,8 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
     }
-    if (newParam_.contextLens != newParam_.qSeqlen) {
+    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK &&
+        newParam_.contextLens != newParam_.qSeqlen) {
         ATB_LOG(ERROR) << GetLogPrefix() << " qSeqLen and kvSeqLen should be same";
         return ERROR_INVALID_PARAM;
     }
@@ -97,9 +102,13 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
     asdParam.kvSeqLen = newParam_.contextLens;
     asdParam.qSeqLen = newParam_.qSeqlen;
     asdParam.isRing = 0;
-    asdParam.maskType = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ?
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_COMPRESS :
-                            AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
+    if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE;
+    } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_MASK;
+    } else {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
+    }
     mlaNode.opDesc = {0, "MLAOperation", asdParam};
     return NO_ERROR;
 }

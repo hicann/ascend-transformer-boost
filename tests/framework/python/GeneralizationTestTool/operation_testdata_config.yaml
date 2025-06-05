@@ -1062,7 +1062,7 @@ in_shape:
 op_name: BlockCopyOperation
 in_num: [5]
 in_dtype: ["float16","bf16","int8"]
-in_format: ["nd"]
+in_format: ["nd","fractal_nz"]
 in_shape:
   dim_numbers: [1,4]
   dim_number_weights: [0.5,0.5]

@@ -116,8 +116,9 @@ bool DeviceParamCheck(const infer::PagedAttentionParam &opParam)
         }
     }
     if (GetSingleton<Config>().Is910A()) {
-        if (opParam.maskType == atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_SPEC) {
-            ATB_LOG(ERROR) << "SPEC_MASK does not support Atlas 800 training product";
+        if (opParam.maskType == atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_SPEC ||
+            opParam.maskType == atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+            ATB_LOG(ERROR) << "SPEC_MASK and MASK_FREE does not support Atlas 800 training product";
             return false;
         }
         if (opParam.calcType != atb::infer::PagedAttentionParam::CalcType::CALC_TYPE_UNDEFINED) {
@@ -177,8 +178,9 @@ bool CalcParamCheck(const infer::PagedAttentionParam &opParam)
             }
         } else {
             if (opParam.maskType != atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_SPEC &&
-                opParam.maskType != atb::infer::PagedAttentionParam::MaskType::UNDEFINED) {
-                ATB_LOG(ERROR) << "SPEC func only support no mask and spec mask";
+                opParam.maskType != atb::infer::PagedAttentionParam::MaskType::UNDEFINED &&
+                opParam.maskType != atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
+                ATB_LOG(ERROR) << "SPEC func only support no mask,spec mask or mask free";
                 return false;
             }
         }
@@ -413,10 +415,11 @@ Status PagedAttentionOperation::InferShapeCheckImpl(const SVector<TensorDesc> &i
     } else {
         st = InferShapeDimCheck(inTensorDescs);
     }
+
     if (st != NO_ERROR) {
         return st;
     }
-    return NO_ERROR;
+    return MaskFreeInferShapeCheck310P(inTensorDescs);
 }
 
 Status PagedAttentionOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
@@ -434,10 +437,11 @@ Status PagedAttentionOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
     } else if (param_.inputLayout == infer::InputLayout::TYPE_BNSD && GetSingleton<Config>().Is910B()) {
         st = SetupDimCheckBNSD910B(inTensors, outTensors);
     }
+
     if (st != NO_ERROR) {
         return st;
     }
-    return NO_ERROR;
+    return MaskFreeSetupCheck310P(inTensors);
 }
 
 Status PagedAttentionOperation::KVCacheDimCheck310P(const SVector<TensorDesc> &inTensorDescs) const
@@ -635,6 +639,80 @@ Status PagedAttentionOperation::InferShapeDimCheckBNSD910B(const SVector<TensorD
     if (blockSize != inTensorDescs.at(2).shape.dims[2]) { // 2: valueCache 2: 2nd dim
         ATB_LOG(ERROR) << "blockSizes should be same";
         return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
+Status PagedAttentionOperation::MaskFreeInferShapeCheck310P(const SVector<TensorDesc> &inTensorDescs) const
+{
+    if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
+        if (GetSingleton<Config>().Is310P()) {
+            if (inTensorDescs.at(5).shape.dimNum != 4) {
+                ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dim num should be 4";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            if (inTensorDescs.at(5).shape.dims[0] != 1 || inTensorDescs.at(5).shape.dims[1] != 8 || inTensorDescs.at(5).shape.dims[2] != 128 || inTensorDescs.at(5).shape.dims[3] != 16) {
+                ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dims should be [1,8,128,16]";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            size_t kBlockSize = inTensorDescs.at(1).shape.dims[2];
+            size_t vBlockSize = inTensorDescs.at(2).shape.dims[2];
+            if (kBlockSize != 128 || vBlockSize != 128) {
+                ATB_LOG(ERROR) << "PagedAttentionOperation intensor1 and intensor2 dim2 should be 128.";
+                return ERROR_INVALID_PARAM;
+            }
+        } else {
+            ATB_LOG(ERROR) << "Only Altas 300I Duo inference products support mask free";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
+    return NO_ERROR;
+}
+
+Status PagedAttentionOperation::MaskFreeSetupCheck310P(const SVector<Tensor> &inTensor) const
+{
+    if (param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
+        if (GetSingleton<Config>().Is310P()) {
+            if (GetSingleton<Config>().Is310P() && param_.maskType == atb::infer::PagedAttentionParam::MASK_TYPE_MASK_FREE) {
+                if (inTensor.at(5).desc.shape.dimNum != 4) {
+                    ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dim num should be 4";
+                    return ERROR_INVALID_TENSOR_DIM;
+                }
+                if (inTensor.at(5).desc.shape.dims[0] != 1 || inTensor.at(5).desc.shape.dims[1] != 8 || inTensor.at(5).desc.shape.dims[2] != 128 || inTensor.at(5).desc.shape.dims[3] != 16) {
+                    ATB_LOG(ERROR) << "When maskType is mask free on Altas 300I Duo inference products, mask dims should be [1,8,128,16]";
+                    return ERROR_INVALID_TENSOR_DIM;
+                }
+            }
+            if (inTensor.at(4).desc.shape.dimNum == 1) {
+                size_t batch = inTensor.at(4).desc.shape.dims[0];
+                int *k_seqlen_list = static_cast<int *>(inTensor[4].hostData);
+                int *q_seqlen_list = static_cast<int *>(inTensor[6].hostData);
+        
+                for (size_t i = 0; i < batch; i++) {
+                    if (k_seqlen_list[i] < q_seqlen_list[i]) {
+                        ATB_LOG(ERROR) << "PagedAttentionOperation intensor4[i] should bigger than intensor6[i].";
+                        return ERROR_INVALID_PARAM;
+                    }
+                    if ((k_seqlen_list[i] - q_seqlen_list[i]) % 128 != 0) {
+                        ATB_LOG(ERROR) << "PagedAttentionOperation (intensor4[i] - item in intensor6[i]) % 128 should be 0. ";
+                        return ERROR_INVALID_PARAM;
+                    }
+                }
+            } else {
+                ATB_LOG(ERROR) << "PagedAttentionOperation k_seqlen_list dims should be 1.";
+                return ERROR_INVALID_PARAM;
+            }
+        
+            size_t kBlockSize = inTensor.at(1).desc.shape.dims[2];
+            size_t vBlockSize = inTensor.at(2).desc.shape.dims[2];
+            if (kBlockSize != 128 || vBlockSize != 128) {
+                ATB_LOG(ERROR) << "PagedAttentionOperation intensor1 and intensor2 dim2 should be 128.";
+                return ERROR_INVALID_PARAM;
+            }
+        } else {
+            ATB_LOG(ERROR) << "Only Altas 300I Duo inference products support mask free";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
     return NO_ERROR;
 }

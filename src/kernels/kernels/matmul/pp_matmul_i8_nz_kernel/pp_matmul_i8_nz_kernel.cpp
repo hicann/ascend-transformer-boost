@@ -25,7 +25,7 @@ public:
     bool CanSupport(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MatMul), "check param type failed!", return false);
-        MKI_CHECK(launchParam.GetInTensorCount() == 4, "check inTensor count failed", return false);
+        MKI_CHECK(launchParam.GetInTensorCount() == 5, "check inTensor count failed", return false);
         MKI_CHECK(launchParam.GetOutTensorCount() == 1, "check outTensor count failed", return false);
 
         auto inTensor0 = launchParam.GetInTensor(DIM_0);

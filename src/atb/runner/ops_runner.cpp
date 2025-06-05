@@ -131,7 +131,8 @@ void OpsRunner::ReserveSvector(RunnerVariantPack &runnerPack)
     opsTensorPack_.outTensors.reserve(runnerPack.outTensors.size());
 }
 
-void OpsRunner::SetupCacheGetCachedTiling(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize)
+void OpsRunner::SetupCacheGetCachedTiling(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize,
+                                          bool launchWithTiling)
 {
     if (totalTilingSize_ > maxTilingSize) {
         ATB_LOG(ERROR) << GetLogPrefix() << " no enough buffer for tiling";
@@ -139,8 +140,8 @@ void OpsRunner::SetupCacheGetCachedTiling(uint8_t *kernelHostTilingBuffer, uint6
     }
     for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
         uint64_t tilingSize = nodeId < tilingSizes_.size() ? tilingSizes_.at(nodeId) : 0;
-        bool getTilingSuccess =
-            GetCachedTiling(kernelGraph_.nodes.at(nodeId), nodeId, kernelHostTilingBuffer, tilingSize, tilingSize);
+        bool getTilingSuccess = GetCachedTiling(kernelGraph_.nodes.at(nodeId), nodeId, kernelHostTilingBuffer,
+                                                tilingSize, tilingSize, launchWithTiling);
         if (getTilingSuccess) {
             ATB_LOG(DEBUG) << GetLogPrefix() << " get tiling success";
             kernelHostTilingBuffer += tilingSize;
@@ -165,7 +166,9 @@ bool OpsRunner::SetupCanReuse(RunnerVariantPack &runnerVariantPack, bool &kernel
                 RunMallocCache(runnerVariantPack);
             }
             if (!needKernelGraphModify_) {
-                SetupCacheGetCachedTiling(runnerVariantPack.hostTilingBuffer, runnerVariantPack.tilingBufferSize);
+                bool launchWithTiling = runnerVariantPack.context->GetLaunchWithTilingStatus();
+                SetupCacheGetCachedTiling(runnerVariantPack.hostTilingBuffer, runnerVariantPack.tilingBufferSize,
+                                          launchWithTiling);
                 return true; // 组图不改，参数不改，直接返回
             }
         } else {
@@ -208,7 +211,8 @@ Status OpsRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
     ATB_LOG(INFO) << GetLogPrefix() << " Setup start, kernel graph:\n" << kernelGraph_.ToString();
     ATB_LOG(DEBUG) << GetLogPrefix() << " runnerVariantPack inTensor size:" << runnerVariantPack.inTensors.size()
                    << ", outTensor size:" << runnerVariantPack.outTensors.size();
-    st = PlanKernelGraph(runnerVariantPack.hostTilingBuffer, runnerVariantPack.tilingBufferSize);
+    bool launchWithTiling = runnerVariantPack.context->GetLaunchWithTilingStatus();
+    st = PlanKernelGraph(runnerVariantPack.hostTilingBuffer, runnerVariantPack.tilingBufferSize, launchWithTiling);
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << "PlanKernelGraph fail";
         return st;
@@ -236,7 +240,7 @@ uint64_t OpsRunner::GetTilingBufferSizeImpl()
     return totalTilingSize_;
 }
 
-Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize)
+Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize, ContextBase *context)
 {
     if (tilingBufferSize < totalTilingSize_) {
         ATB_LOG(FATAL) << GetLogPrefix() << " FillHostTilingBufferImpl fail, tilingBufferSize:" << tilingBufferSize
@@ -257,7 +261,8 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
         }
 
         uint8_t *kernelHostTilingBuffer = hostTilingBuffer + offset;
-        Status ret = FillSingleKernelHostTilingBuffer(node, nodeId, kernelHostTilingBuffer, tilingSize);
+        bool launchWithTiling = context->GetLaunchWithTilingStatus();
+        Status ret = FillSingleKernelHostTilingBuffer(node, nodeId, kernelHostTilingBuffer, tilingSize, launchWithTiling);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] fill tiling buffer fail, error code:" << ret;
             return ret;
@@ -272,7 +277,8 @@ Status OpsRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t t
 }
 
 Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t nodeId,
-                                                   uint8_t *kernelHostTilingBuffer, size_t tilingSize)
+                                                   uint8_t *kernelHostTilingBuffer, size_t tilingSize,
+                                                   bool launchWithTiling)
 {
     if (node.impl->GetTilingFilledFlag() && !needKernelGraphModify_) {
         return NO_ERROR;
@@ -281,7 +287,7 @@ Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t
     ATB_LOG(DEBUG) << GetLogPrefix() << " node[" << nodeId << "] InitHostLaunchBuffer start";
     GetOpSetupStatistic().tilingCacheMissCount += 1;
     Mki::Timer fillTimer;
-    Status status = node.impl->InitKernelInfo(kernelHostTilingBuffer, tilingSize);
+    Status status = node.impl->InitKernelInfo(kernelHostTilingBuffer, tilingSize, launchWithTiling);
     if (status != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] InitRunInfo failed!";
         return status;
@@ -342,7 +348,8 @@ uint64_t OpsRunner::GetIntermediateBufferSizeImpl()
 Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPack)
 {
     uint8_t *deviceIntermediateBuffer = runnerVariantPack.intermediateBuffer;
-    bool needSetTiling = !((GetSingleton<Config>().IsLaunchKernelWithTiling()) || (totalTilingSize_ == 0));
+    bool isLaunchKernelWithTiling = runnerVariantPack.context->GetLaunchWithTilingStatus();
+    bool needSetTiling = !(isLaunchKernelWithTiling || (totalTilingSize_ == 0));
     bool needSetworkspace = (workspaceSize_ != 0);
     uint64_t tilingOffset = 0;
     uint64_t deviceArgsSizeOffset = 0;
@@ -601,12 +608,16 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         if (runnerVariantPack.mstxMemRegister != nullptr) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
+            if (runnerVariantPack.workspaceBufferSize) {
+                runnerVariantPack.workspaceBufferSize = static_cast<uint64_t>(TensorUtil::AlignInt(runnerVariantPack.workspaceBufferSize, ALIGN_INT));
+                runnerVariantPack.mstxMemRegister->AddTensorMemRegions(runnerVariantPack.workspaceBuffer, runnerVariantPack.workspaceBufferSize);
+            }
             auto &inTensors = node.impl->GetInTensors();
             for (uint64_t tensorId = 0; tensorId < inTensors.size(); tensorId++) {
                 Mki::Tensor &tensor = inTensors.at(tensorId);
                 if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                     tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
-                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
                 }
             auto &outTensors = node.impl->GetOutTensors();
@@ -614,7 +625,7 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
                 Mki::Tensor &tensor = outTensors.at(tensorId);
                 if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                     tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
-                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, tensor.dataSize);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
             if (runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
@@ -682,7 +693,7 @@ void OpsRunner::Reset()
     tensorMalloced_.clear();
 }
 
-Status OpsRunner::PlanKernelGraph(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize)
+Status OpsRunner::PlanKernelGraph(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize, bool launchWithTiling)
 {
     ATB_LOG(DEBUG) << GetLogPrefix() << " plan kernel graph start";
     tilingSizes_.resize(kernelGraph_.nodes.size());
@@ -693,7 +704,7 @@ Status OpsRunner::PlanKernelGraph(uint8_t *kernelHostTilingBuffer, uint64_t maxT
             return ERROR_OUT_OF_HOST_MEMORY;
         }
         uint64_t restTilingBufferSize = maxTilingSize - totalTilingSize_;
-        Status st = PlanKernel(nodeId, kernelHostTilingBuffer, restTilingBufferSize);
+        Status st = PlanKernel(nodeId, kernelHostTilingBuffer, restTilingBufferSize, launchWithTiling);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] plan kernel graph fail";
             return st;
@@ -709,10 +720,11 @@ Status OpsRunner::PlanKernelGraph(uint8_t *kernelHostTilingBuffer, uint64_t maxT
 }
 
 bool OpsRunner::UpdateNodeBestKernelAndTiling(KernelGraphNode &node, size_t nodeId, uint8_t *kernelHostTilingBuffer,
-                                              uint64_t maxTilingSize)
+                                              uint64_t maxTilingSize, bool launchWithTiling)
 {
     uint64_t tilingSize = 0;
-    bool getTilingSuccess = GetCachedTiling(node, nodeId, kernelHostTilingBuffer, maxTilingSize, tilingSize);
+    bool getTilingSuccess = GetCachedTiling(node, nodeId, kernelHostTilingBuffer,
+                                            maxTilingSize, tilingSize, launchWithTiling);
     if (!node.impl->UpdateBestKernel()) {
         ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] " << node.GetName()
                        << " update best kernel failed";
@@ -725,7 +737,8 @@ bool OpsRunner::UpdateNodeBestKernelAndTiling(KernelGraphNode &node, size_t node
     return true;
 }
 
-Status OpsRunner::PlanKernel(size_t nodeId, uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize)
+Status OpsRunner::PlanKernel(size_t nodeId, uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize,
+                             bool launchWithTiling)
 {
     KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
 
@@ -748,7 +761,7 @@ Status OpsRunner::PlanKernel(size_t nodeId, uint8_t *kernelHostTilingBuffer, uin
         return ERROR_RT_FAIL;
     }
 
-    if (!UpdateNodeBestKernelAndTiling(node, nodeId, kernelHostTilingBuffer, maxTilingSize)) {
+    if (!UpdateNodeBestKernelAndTiling(node, nodeId, kernelHostTilingBuffer, maxTilingSize, launchWithTiling)) {
         ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] get best node's kernel fail";
         return ERROR_INVALID_PARAM;
     }
@@ -1055,7 +1068,7 @@ void OpsRunner::IncreaseStatisticCacheHitCount(bool localCache) const
 }
 
 bool OpsRunner::GetCachedTiling(KernelGraphNode &node, size_t nodeId, uint8_t *kernelHostTilingBuffer,
-                                uint64_t maxTilingSize, uint64_t &tilingSizeFetched)
+                                uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool launchWithTiling)
 {
     if (!node.tilingCacheEnable) {
         return false;
@@ -1064,8 +1077,8 @@ bool OpsRunner::GetCachedTiling(KernelGraphNode &node, size_t nodeId, uint8_t *k
     for (size_t i = 0; i < kernelCaches_.size(); ++i) {
         KernelCache *kernelCache = kernelCaches_.at(i).first;
         bool isLocalCache = kernelCaches_.at(i).second;
-        bool getTilingSuccess =
-            node.impl->GetCachedTiling(*kernelCache, nodeId, kernelHostTilingBuffer, maxTilingSize, tilingSizeFetched);
+        bool getTilingSuccess = node.impl->GetCachedTiling(*kernelCache, nodeId, kernelHostTilingBuffer,
+                                                           maxTilingSize, tilingSizeFetched, launchWithTiling);
         if (getTilingSuccess) {
             ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] kernel cache get last tiling";
             IncreaseStatisticCacheHitCount(isLocalCache);

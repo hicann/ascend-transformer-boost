@@ -23,6 +23,7 @@ import operation_test  # NOQA: E402
 
 MAX_SEQ_LEN = 1024
 
+not_support_device = ['Ascend910A','Ascend310B','Ascend310P']
 
 def generate_data(
         batch=4,
@@ -112,6 +113,10 @@ class ReshapeAndCacheGradOperation(operation_test.OperationTest):
         return torch.equal(out_tensor, golden_out_tensor)
 
     def test(self):
+        # 获取Soc型号
+        if operation_test.get_soc_version() in not_support_device:
+            print("These test cases only support A2/A3")
+            return True
         in_tensors[0] = torch_npu.npu_format_cast(in_tensors[0], 29)
         in_tensors[1] = torch_npu.npu_format_cast(in_tensors[1], 29)
         self.execute_out(OP_NAME, PARAM, [in_tensors[0], in_tensors[1], in_tensors[2], in_tensors[3], in_tensors[6], in_tensors[7]], [in_tensors[4], in_tensors[5]])

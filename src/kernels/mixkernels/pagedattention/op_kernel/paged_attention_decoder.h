@@ -275,7 +275,7 @@ public:
 
     __aicore__ inline void DecodeParallel(const int32_t fm, const int32_t fn, const int32_t fk,
                                           const int32_t bn, const int32_t m_actual, const int32_t n0_actual,
-                                          const int32_t n1_actual, const uint32_t maskType);
+                                          const int32_t n1_actual, const uint32_t maskType, const int32_t nIdx, const int32_t mask_n, const int32_t is_ping);
 
 private:
     int32_t l1PingpongFlag = 0;

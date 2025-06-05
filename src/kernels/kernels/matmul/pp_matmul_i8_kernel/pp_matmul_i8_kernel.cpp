@@ -26,7 +26,7 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(CheckAsdOpsND(launchParam, 4), "CheckAsdOpsND failed", return false); // 输入参数数量为4
+        MKI_CHECK(CheckAsdOpsND(launchParam, 5), "CheckAsdOpsND failed", return false); // 输入参数数量为4
         const auto &inTensor2 = launchParam.GetInTensor(2);
         const auto &attrs = AnyCast<OpParam::MatMul>(launchParam.GetParam());
         if (attrs.withBias) {
@@ -98,7 +98,7 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(launchParam.GetInTensorCount() == size_t(4), "inTensor count invalid", return false);
+        MKI_CHECK(launchParam.GetInTensorCount() == size_t(5), "inTensor count invalid", return false);
         MKI_CHECK(launchParam.GetOutTensorCount() == 1, "outTensor count invalid", return false);
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MatMul), "check param type failed!",
                     return false);
@@ -106,7 +106,8 @@ public:
         const auto &inTensor0 = launchParam.GetInTensor(0);
         const auto &inTensor1 = launchParam.GetInTensor(1);
         const auto &outTensor = launchParam.GetOutTensor(0);
-        
+        const auto &attrs = AnyCast<OpParam::MatMul>(launchParam.GetParam());
+
         MKI_CHECK(inTensor0.desc.format == TENSOR_FORMAT_ND, "tensor format invalid", return false);
         MKI_CHECK(inTensor0.desc.dtype == TENSOR_DTYPE_INT8,
                 "tensor dtype invalid", return false);
@@ -121,7 +122,12 @@ public:
                     inTensor1.desc.dims.size() == 4, "tensor dims invalid", return false);
 
         MKI_CHECK(outTensor.desc.format == TENSOR_FORMAT_ND, "tensor format invalid", return false);
-        MKI_CHECK(outTensor.desc.dtype == TENSOR_DTYPE_BF16, "tensor dtype invalid", return false);
+        if (attrs.quantMode == OpParam::MatMul::QuantMode::PER_TOKEN_SYMM) {
+            MKI_CHECK(outTensor.desc.dtype == TENSOR_DTYPE_BF16 || outTensor.desc.dtype == TENSOR_DTYPE_FLOAT16,
+                      "tensor dtype invalid", return false);
+        } else {
+            MKI_CHECK(outTensor.desc.dtype == TENSOR_DTYPE_BF16, "tensor dtype invalid", return false);
+        }
         MKI_CHECK(outTensor.desc.dims.size() == 2 || outTensor.desc.dims.size() == 3, "tensor dims invalid",
                 return false);
 
@@ -141,7 +147,7 @@ public:
 REG_KERNEL_BASE(PpMatMulI8Bf16Kernel);
 
 class PpMatMulI8WeightNzKernel : public PpMatMulI8CommKernel {
-    static constexpr uint32_t NUM_INPUT = 4;
+    static constexpr uint32_t NUM_INPUT = 5;
 
 public:
     explicit PpMatMulI8WeightNzKernel(const std::string &kernelName, const BinHandle *handle) noexcept

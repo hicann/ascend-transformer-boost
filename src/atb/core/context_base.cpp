@@ -48,7 +48,7 @@ ContextBase::~ContextBase() noexcept
     }
 }
 
-Status ContextBase::Init()
+Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc)
 {
     executeStreams_.resize(DEFAULT_EXECUTE_STREAM_NUMBER);
 
@@ -62,9 +62,20 @@ Status ContextBase::Init()
         ATB_LOG(ERROR) << "ContextBase host tiling buffer pool init fail";
         return st;
     }
-
+    if (alloc && dealloc) {
+        ATB_LOG(INFO) << "Using the Custom Allocate Function and Deallocate Funciton to allocate and deallocate device tiling buffer";
+        allocateFunc_ = alloc;
+        deallocateFunc_ = dealloc;
+    } else if (!alloc && !dealloc) {
+        ATB_LOG(INFO) << "Using the Default Allocate Function and Default Deallocate Function to allocate and deallocate device tiling buffer";
+        allocateFunc_ = [this](size_t size) { return deviceAllocator_->Allocate(size); };
+        deallocateFunc_ = [this](void* addr) { deviceAllocator_->Deallocate(addr); };
+    } else {
+        ATB_LOG(ERROR) << "Can not support to pass in only Allocate Function or Deallocate Function";
+        return ERROR_INVALID_PARAM;
+    }
     deviceTilingBufferPool_ = std::make_unique<DeviceTilingBufferPool>(GetSingleton<Config>().GetDeviceTilingBlockNum(),
-                                                                       TILING_BUFFER_BLOCK_SIZE);
+                                                                       TILING_BUFFER_BLOCK_SIZE, allocateFunc_, deallocateFunc_);
     if (!deviceTilingBufferPool_) {
         return ERROR_OUT_OF_HOST_MEMORY;
     }
@@ -340,4 +351,9 @@ Status ContextBase::FreeArgsHostBuffer(void *addr)
 {
     return hostAllocator_->Deallocate(addr);
 }
+bool ContextBase::GetLaunchWithTilingStatus()
+{
+    return GetSingleton<Config>().IsLaunchKernelWithTiling() && mode_ != GRAPH_LAUNCH_MODE;
+}
+
 } // namespace atb

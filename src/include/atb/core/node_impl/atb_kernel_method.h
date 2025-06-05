@@ -42,12 +42,12 @@ public:
     virtual size_t GetTilingSize() const = 0;
     virtual bool UpdateBestKernel() = 0;
     virtual int64_t GetWorkspaceSize() const = 0;
-    virtual Status InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize) = 0;
+    virtual Status InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool launchWithTiling) = 0;
     virtual void SetWorkspaceDeviceAddr(uint8_t *deviceWorkspaceBuffer) = 0;
     virtual void SetTilingDeviceAddr(uint8_t *deviceTilingBuffer) = 0;
     virtual Status Run(aclrtStream stream) = 0;
     virtual bool GetCachedTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *kernelHostTilingBuffer,
-                                 uint64_t maxTilingSize, uint64_t &tilingSizeFetched) = 0;
+                                 uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool launchWithTiling) = 0;
     virtual void AddTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *hostTilingBuffer,
                            size_t tilingSize) const = 0;
     virtual void SetArgsDeviceBuffer(void *deviceBuffer) = 0;

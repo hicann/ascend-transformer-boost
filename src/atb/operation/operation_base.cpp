@@ -849,7 +849,7 @@ Status OperationBase::PreExecuteThrow(const VariantPack &variantPack, uint8_t *w
     UpdateTensorData(variantPack, workspace);
 
     Status st = NO_ERROR;
-    if (!GetSingleton<Config>().IsLaunchKernelWithTiling()) {
+    if (!(runnerVariantPack_.context->GetLaunchWithTilingStatus())) {
         st = CopyTilingToDevice();
         if (st != 0) {
             return st;
@@ -1079,7 +1079,10 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);
     std::shared_ptr<MstxMemRegister> mstxMemRegister;
     mstxMemRegister = std::make_shared<MstxMemRegister>(workspace, workspaceSize);
-    runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
+    if (mstxMemRegister && mstxMemRegister->IsValid() && workspaceSize) {
+        runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
+        ATB_LOG(INFO) << GetLogPrefix() << "mstxMemHeapRegister success ";
+    }
     Status st = NO_ERROR;
     if (executeType == EXECUTE_NORMAL || executeType == EXECUTE_PRELAUNCH) {
         st = PreLaunch(variantPack, workspace, workspaceSize, context);
@@ -1227,7 +1230,7 @@ void OperationBase::FillHostTilingBuffer()
         }
 
         Mki::Timer runnerFillHostTilingTimer;
-        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize);
+        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize, runnerVariantPack_.context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "fill host tiling buffer fail";
             return;
