@@ -6,9 +6,6 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 
-cmake_minimum_required(VERSION 3.15)
-project("AtbCustomizeOps")
-
 option(USE_MSSANITIZER "USE_MSSANITIZER" OFF)
 option(USE_MSDEBUG "USE_MSDEBUG" OFF)
 message(STATUS "USE_MSSANITIZER:${USE_MSSANITIZER}")
