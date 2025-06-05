@@ -37,7 +37,6 @@ Config::Config()
     isStreamSyncEveryRunnerEnable_ = IsEnable("ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE");
     isStreamSyncEveryOperationEnable_ = IsEnable("ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE");
     isOpsRunnerSetupCacheEnable_ = IsEnable("ATB_OPSRUNNER_SETUP_CACHE_ENABLE", true);
-    isLaunchKernelWithTiling_ = IsEnable("ATB_LAUNCH_KERNEL_WITH_TILING", true);
     const char *envStr = std::getenv("ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE");
     workspaceMemAllocAlgType_ = envStr != nullptr ? static_cast<uint32_t>(strtol(envStr, nullptr, DECIMAL)) :
                                                     DEFAULT_WORKSPACE_MEM_ALLOC_ALG_TYPE;
@@ -60,8 +59,8 @@ Config::Config()
                   << ", HostTilingBufferBlockNum:" << hostTilingBlockNum_
                   << ", DeviceTilingBufferBlockNum:" << deviceTilingBlockNum_
                   << ", ShareMemoryNameSuffix:" << shareMemoryNameSuffix_
-                  << ", IsLaunchKernelWithTiling:" << isLaunchKernelWithTiling_
                   << ", IsMatmulShuffleKEnable:" << isMatmulShuffleKEnable_;
+
 }
 
 Config::~Config() {}
@@ -280,18 +279,9 @@ std::string Config::GetShareMemoryNameSuffix() const
     return shareMemoryNameSuffix_;
 }
 
-bool Config::IsLaunchKernelWithTiling() const
-{
-    return isLaunchKernelWithTiling_;
-}
-
 bool Config::IsMatmulShuffleKEnable() const
 {
     return isMatmulShuffleKEnable_;
 }
 
-void Config::SetLaunchKernelWithTilingStatus(bool status)
-{
-    isLaunchKernelWithTiling_ = status;
-}
 } // namespace atb

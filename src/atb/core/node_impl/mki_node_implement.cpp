@@ -293,6 +293,11 @@ bool MkiNodeImplement::GetTilingFilledFlag() const
     return tilingBufferFilled_;
 }
 
+void MkiNodeImplement::SetTilingFilledFlag(bool flag)
+{
+    tilingBufferFilled_ = flag;
+}
+
 std::string MkiNodeImplement::GetLogPrefix() const
 {
     return logPrefix_;

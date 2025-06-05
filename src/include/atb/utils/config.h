@@ -43,9 +43,7 @@ public:
     bool IsCompareTilingEveryKernelEnable() const;
     bool IsworkspaceMemAllocGlobal() const;
     std::string GetShareMemoryNameSuffix() const;
-    bool IsLaunchKernelWithTiling() const;
     bool IsMatmulShuffleKEnable() const;
-    void SetLaunchKernelWithTilingStatus(bool status);
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
@@ -76,7 +74,6 @@ private:
     uint32_t hostTilingBlockNum_ = 128;
     uint32_t deviceTilingBlockNum_ = 32;
     std::string shareMemoryNameSuffix_;
-    bool isLaunchKernelWithTiling_ = false;
     bool isMatmulShuffleKEnable_ = false;
 };
 } // namespace atb
