@@ -57,6 +57,7 @@ public:
     uint32_t GetBlockDim() const override;
     void ResetLogPrefix(const std::string &prefix, size_t kernelId) override;
     bool GetTilingFilledFlag() const override;
+    void SetTilingFilledFlag(bool flag) override;
 
 private:
     bool OperationGetBestKernel();
