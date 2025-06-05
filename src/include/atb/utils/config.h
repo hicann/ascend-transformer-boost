@@ -35,7 +35,6 @@ public:
     bool Is310B() const;
     bool IsOpsRunnerSetupCacheEnable() const;
     uint32_t GetWorkspaceMemAllocAlgType() const;
-    uint32_t GetKernelCacheType() const;
     uint32_t GetLocalKernelCacheCount() const;
     uint32_t GetGlobalKernelCacheCount() const;
     uint32_t GetHostTilingBlockNum() const;
@@ -71,7 +70,6 @@ private:
     bool is310B_ = false;
     bool isOpsRunnerSetupCacheEnable_ = false;
     uint32_t workspaceMemAllocAlgType_ = 1;
-    uint32_t kernelCacheType_ = 0;
     uint32_t localKernelCacheCount_ = 1;
     uint32_t globalKernelCacheCount_ = 1;
     uint64_t kernelCacheTilingSize_ = 0;
