@@ -425,10 +425,14 @@ class LinearOperation(DataGen):
             if en_accum:
                 return torch_npu.npu_format_cast(MatmulCommon.gen_accum(shapes, i, datatype, data_gen_ranges), format_dict[format])
             out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
-            return torch_npu.npu_format_cast(MatmulCommon.gen_deq(shapes, i, data_gen_ranges, out_data_type), format_dict[format])
+            quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
+            return torch_npu.npu_format_cast(MatmulCommon.gen_deq(shapes, i, data_gen_ranges, out_data_type, quantMode), format_dict[format])
         if i == 3:
             out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
-            return torch_npu.npu_format_cast(MatmulCommon.gen_deq(shapes, i, data_gen_ranges, out_data_type), format_dict[format])
+            quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
+            if quantMode == 2:
+                return torch_npu.npu_format_cast(MatmulCommon.gen_pertoken_scale(shapes, i, data_gen_ranges, out_data_type), format_dict[format])
+            return torch_npu.npu_format_cast(MatmulCommon.gen_deq(shapes, i, data_gen_ranges, out_data_type, quantMode), format_dict[format])
 
     @staticmethod
     def case_postprocess(op_params, operation, input_tensor_list, output_tensor_list):
@@ -440,12 +444,14 @@ class LinearOperation(DataGen):
     def golden(in_tensors, op_params):
         out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
         matmultype = MatmulCommon.get_param_value(op_params, "matmulType", 0)
+        quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
 
         x = MatmulCommon.input_golden
         weight = MatmulCommon.weight_golden
         bias = MatmulCommon.bias_golden
         deq_scale = MatmulCommon.deq_golden
         accum = MatmulCommon.accum_golden
+        pertoken_scale = MatmulCommon.pertoken_scale_golden
         if out_data_type == -1:
             x = x.to(torch.float32)
             weight = weight.to(torch.float32)
@@ -464,6 +470,8 @@ class LinearOperation(DataGen):
                 golden_result = golden_result + bias_expanded
         elif len(x.shape) == 3 and len(weight.shape) == 3:
             output_list = []
+            if quantMode == 2:
+                pertoken_scale = pertoken_scale.unsqueeze(-1)
             for i in range(x.shape[0]):
                 x_i = x[i:i + 1, :].squeeze(0)
                 weight_i = weight[i:i + 1, :].squeeze(0)
@@ -471,7 +479,12 @@ class LinearOperation(DataGen):
                 if bias is not None:
                     output_i = output_i + bias[i:i + 1, :]
                 if deq_scale is not None:
-                    output_i = output_i * deq_scale[i:i + 1, :]
+                    if quantMode == 2:
+                        output_i = output_i * deq_scale
+                    else:
+                        output_i = output_i * deq_scale[i:i + 1, :]
+                if pertoken_scale is not None and quantMode == 2:
+                    output_i = output_i * pertoken_scale
                 if accum is not None:
                     output_i = output_i + accum[i:i + 1, :].squeeze(0)
                 output_list.append(output_i)
@@ -483,6 +496,9 @@ class LinearOperation(DataGen):
                 golden_result = golden_result + bias
             if deq_scale is not None:
                 golden_result = golden_result * deq_scale
+            if pertoken_scale is not None and quantMode == 2:
+                    pertoken_scale = pertoken_scale.unsqueeze(-1)
+                    golden_result = golden_result * pertoken_scale
             if accum is not None:
                 golden_result = golden_result + accum
         if accum is None:
@@ -879,7 +895,7 @@ class LinearSparseOperation(DataGen):
         if i == 2:
             return MatmulCommon.gen_bias(shapes, i, datatype, data_gen_ranges)
         if i == 3:
-            return MatmulCommon.gen_deq(shapes, i, data_gen_ranges, 1)
+            return MatmulCommon.gen_deq(shapes, i, data_gen_ranges, 1, 0)
         if i == 4:
             return LinearSparseOperation.random(shapes[4], datatype, format, data_gen_ranges, op_params)
 
@@ -915,6 +931,7 @@ class MatmulCommon:
     accum_golden = None
     deq_golden = None
     matmultype_golden = None
+    pertoken_scale_golden = None
     linear_type = -1
     groupList_golden = None
 
@@ -1026,9 +1043,12 @@ class MatmulCommon:
         return accum_npu
 
     @staticmethod
-    def gen_deq(shapes, i, data_gen_ranges, out_data_type):
+    def gen_deq(shapes, i, data_gen_ranges, out_data_type, quant_mode):
         shape = shapes[i]
         low, high = MatmulCommon.__get_data_range(data_gen_ranges)
+        if quant_mode == 2:
+            MatmulCommon.deq_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict["float"])
+            return MatmulCommon.deq_golden.npu()
         if out_data_type == 1:
             low_int = int(low)
             high_int = int(high)
@@ -1043,6 +1063,15 @@ class MatmulCommon:
         elif out_data_type == 27:
             MatmulCommon.deq_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict["float"])
             return MatmulCommon.deq_golden.npu()
+        return None
+
+    @staticmethod
+    def gen_pertoken_scale(shapes, i, data_gen_ranges, out_data_type):
+        shape = shapes[i]
+        low, high = MatmulCommon.__get_data_range(data_gen_ranges)
+        if out_data_type == 1 or out_data_type == 27:
+            MatmulCommon.pertoken_scale_golden = ((high - low) * torch.rand(shape) + low).type(dtype_dict["float"])
+            return MatmulCommon.pertoken_scale_golden.npu()
         return None
 
     @staticmethod

@@ -183,9 +183,7 @@ class TestMLAPrepross(op_test.OpTest):
         )
         in_tensors_npu = [tensor.npu() for tensor in in_tensors]
         out_tensors_npu = [out_tensors[i] if isinstance(i, int) else i.npu() for i in outtensors]
-        self.__set_envs({"ASDOPS_MATMUL_PP_FLAG": "1"})
         self.mki.execute(in_tensors_npu, out_tensors_npu)
-        self.__unset_envs({"ASDOPS_MATMUL_PP_FLAG": "1"})
         mm1Out1 = out_tensors_npu[0].to(torch.int32).to(torch.float32)
         # Mul perChannelDescale
         self.mm1_mul_descale_out = torch.zeros((self.input_token_num, dim1), dtype=torch.float32).npu()
@@ -355,9 +353,7 @@ class TestMLAPrepross(op_test.OpTest):
             )
             in_tensors_npu = [tensor.npu() for tensor in in_tensors]
             out_tensors_npu = [out_tensors[i] if isinstance(i, int) else i.npu() for i in out_tensors]
-            self.__set_envs({"ASDOPS_MATMUL_PP_FLAG": "1"})
             self.mki.execute(in_tensors_npu, out_tensors_npu)
-            self.__unset_envs({"ASDOPS_MATMUL_PP_FLAG": "1"})
             self.mm1Out1_npu = out_tensors_npu[0].cpu().clone()
         else:
             in_tensors = [out_tensors_npu[0], self.wdqkv, self.bias1, self.deScale1, pertoken_descale]
@@ -412,9 +408,7 @@ class TestMLAPrepross(op_test.OpTest):
             )
             in_tensors_npu = [tensor.npu() for tensor in in_tensors]
             mm2out_tensors_npu = [out_tensors[i] if isinstance(i, int) else i.npu() for i in out_tensors]
-            self.__set_envs({"ASDOPS_MATMUL_PP_FLAG": "1"})
             self.mki.execute(in_tensors_npu, mm2out_tensors_npu)
-            self.__unset_envs({"ASDOPS_MATMUL_PP_FLAG": "1"})
             self.mm2Out_npu = mm2out_tensors_npu[0].cpu().clone()
         else:
             in_tensors = [out_tensors_npu[0], self.wuq, self.bias2, self.deScale2, pertoken_descale]
@@ -455,9 +449,7 @@ class TestMLAPrepross(op_test.OpTest):
         Einsumout_tensors = [torch.zeros((N, headNum, 512), dtype=data_type)]
         in_tensors_npu = [tensor.npu() for tensor in in_tensors]
         Einsumout_tensors_npu = [tensor.npu() for tensor in Einsumout_tensors]
-        self.__set_envs({"ASDOPS_MATMUL_PP_FLAG": "1"})
         self.mki.execute(in_tensors_npu, Einsumout_tensors_npu)
-        self.__unset_envs({"ASDOPS_MATMUL_PP_FLAG": "1"})
 
         # Einsumout_tensors_npu = [torch.transpose(Einsumout_tensors_npu[0], 0, 1)]
         self.einsumOut = Einsumout_tensors_npu[0].cpu().clone()

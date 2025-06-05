@@ -98,7 +98,9 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     transdataNzToNdParam_.outCrops = {matmulParam_.oriShape.at(0), matmulParam_.oriShape.at(2)};
 
     if (matmulParam_.enDequant) {
-        if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is310B()) {
+        if (GetSingleton<Config>().Is910B() && param_.quantMode == infer::LinearParam::PER_TOKEN) {
+                return SetupKernelGraphMatmulDequantPerToken910B();
+        } else if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is310B()) {
             return SetupKernelGraphMatmulDequant910B();
         }
         return isWeightNz_ ? SetupKernelGraphMatmulDequantWeightNzNot910B() :
@@ -560,6 +562,12 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequant910B()
     ATB_LOG(INFO) << GetLogPrefix() << "SetupKernelGraphMatmulDequantA2";
 
     size_t inTensorNum = param_.hasBias ? SIZE_4 : SIZE_3;
+    if (param_.hasBias) {
+        matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_ASYMM;
+    } else {
+        matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_SYMM;
+    }
+
     InitKernelGraph(inTensorNum, 1, 0, 1);
 
     size_t inTensorId = 0;
@@ -567,6 +575,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequant910B()
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(inTensorId++);
     Mki::Tensor &biasTensor = param_.hasBias ? kernelGraph_.inTensors.at(inTensorId++) : nullTensor_;
     Mki::Tensor &descaleTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::Tensor &perTokenScaleTensor = nullTensor_;
 
     Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
 
@@ -574,7 +583,44 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequant910B()
 
     matmulParam_.withBias = param_.hasBias;
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&xTensor, &weightTensor, &biasTensor, &descaleTensor};
+    matmulNode.inTensors = {&xTensor, &weightTensor, &biasTensor, &descaleTensor, &perTokenScaleTensor};
+    matmulNode.outTensors = {&outTensor};
+    matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
+    if (xNeedMergeAxis_) {
+        matmulNode.inTensorViewFuncs.at(0) = matmulMergeAxis_;
+    }
+    if (isWeightNz_) {
+        matmulNode.inTensorViewFuncs.at(1) = matmulNzReshape_;
+    } else if (weightNeedMergeAxis_) {
+        matmulNode.inTensorViewFuncs.at(1) = matmulMergeAxis_;
+    }
+
+    return NO_ERROR;
+}
+
+Status LinearOpsRunner::SetupKernelGraphMatmulDequantPerToken910B()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "SetupKernelGraphMatmulDequantPerTokenA2";
+
+    size_t inTensorNum = param_.hasBias ? SIZE_5 : SIZE_4;
+    InitKernelGraph(inTensorNum, 1, 0, 1);
+    
+    matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_TOKEN_SYMM;
+
+    size_t inTensorId = 0;
+    Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::Tensor &biasTensor = param_.hasBias ? kernelGraph_.inTensors.at(inTensorId++) : nullTensor_;
+    Mki::Tensor &descaleTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::Tensor &perTokenScaleTensor = kernelGraph_.inTensors.at(inTensorId++);
+
+    Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
+
+    KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
+
+    matmulParam_.withBias = param_.hasBias;
+    matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
+    matmulNode.inTensors = {&xTensor, &weightTensor, &biasTensor, &descaleTensor, &perTokenScaleTensor};
     matmulNode.outTensors = {&outTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (xNeedMergeAxis_) {
@@ -594,6 +640,11 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNdNot910B()
     ATB_LOG(INFO) << GetLogPrefix() << "SetupKernelGraphMatmulDequantWeightNdNotA2";
 
     size_t inTensorNum = param_.hasBias ? SIZE_4 : SIZE_3;
+    if (param_.hasBias) {
+        matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_ASYMM;
+    } else {
+        matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_SYMM;
+    }
     InitKernelGraph(inTensorNum, 1, SIZE_3, SIZE_4);
 
     size_t inTensorId = 0;
@@ -601,6 +652,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNdNot910B()
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(inTensorId++);
     Mki::Tensor &biasTensor = param_.hasBias ? kernelGraph_.inTensors.at(inTensorId++) : nullTensor_;
     Mki::Tensor &deqScaleTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::Tensor &perTokenScaleTensor = nullTensor_;
 
     Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
 
@@ -633,7 +685,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNdNot910B()
 
     matmulParam_.withBias = param_.hasBias;
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor, &biasTensor, &deqScaleTensor};
+    matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor, &biasTensor, &deqScaleTensor, &perTokenScaleTensor};
     matmulNode.outTensors = {&matmulOutTensor};
 
     transdataOutNode.opDesc = {0, "TransdataOperation", transdataNzToNdParam_};
@@ -648,6 +700,11 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNzNot910B()
     ATB_LOG(INFO) << GetLogPrefix() << "SetupKernelGraphMatmulDequantWeightNzNotA2";
 
     size_t inTensorNum = param_.hasBias ? SIZE_4 : SIZE_3;
+    if (param_.hasBias) {
+        matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_ASYMM;
+    } else {
+        matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_SYMM;
+    }
     InitKernelGraph(inTensorNum, 1, SIZE_2, SIZE_3);
 
     size_t inTensorId = 0;
@@ -655,6 +712,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNzNot910B()
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(inTensorId++);
     Mki::Tensor &biasTensor = param_.hasBias ? kernelGraph_.inTensors.at(inTensorId++) : nullTensor_;
     Mki::Tensor &deqScaleTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::Tensor &perTokenScaleTensor = nullTensor_;
 
     Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
 
@@ -676,7 +734,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNzNot910B()
 
     matmulParam_.withBias = param_.hasBias;
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&transdataAOutTensor, &weightTensor, &biasTensor, &deqScaleTensor};
+    matmulNode.inTensors = {&transdataAOutTensor, &weightTensor, &biasTensor, &deqScaleTensor, &perTokenScaleTensor};
     matmulNode.outTensors = {&matmulOutTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (isWeightNz_) {

@@ -48,6 +48,7 @@ atb/cxx_abi_0/lib/libmki.so
 atb/cxx_abi_0/lib/libatbops.so
 atb/cxx_abi_0/lib/libasdops_aicpu_kernels.so
 atb/cxx_abi_0/lib/libtbe_adapter.so
+atb/cxx_abi_0/lib/libcann_ops_adapter.so
 atb/cxx_abi_0/lib/libexp_ops_static.a
 atb/cxx_abi_0/lib/libexp_mixops_static.a
 atb/cxx_abi_1/lib/libasdops.so
@@ -64,6 +65,7 @@ atb/cxx_abi_1/lib/libmki.so
 atb/cxx_abi_1/lib/libatbops.so
 atb/cxx_abi_1/lib/libasdops_aicpu_kernels.so
 atb/cxx_abi_1/lib/libtbe_adapter.so
+atb/cxx_abi_1/lib/libcann_ops_adapter.so
 atb/cxx_abi_1/lib/libexp_ops_static.a
 atb/cxx_abi_1/lib/libexp_mixops_static.a
 whl/torch_atb-0.0.1-cp310-none-any.whl

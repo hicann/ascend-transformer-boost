@@ -82,7 +82,6 @@ class TestPpMatmul310p(op_test.OpTest):
         self.execute(
             [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
 
