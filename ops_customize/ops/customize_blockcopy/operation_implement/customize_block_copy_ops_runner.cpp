@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include <atbops/params/params.h>
+#include <kernel_implement/include/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
 #include "customize_block_copy_ops_runner.h"
@@ -27,7 +27,7 @@ CustomizeBlockCopyOpsRunner::CustomizeBlockCopyOpsRunner(const customize::BlockC
     kernelGraph_.nodes.resize(1);
     auto &blockCopyNode = kernelGraph_.nodes.at(0);
 
-    AtbOps::OpParam::BlockCopy blockCopyNodeParam = {};
+    AtbOps::OpParam::CustomizeBlockCopy blockCopyNodeParam = {};
 
     blockCopyNode.opDesc = {0, "CustomizeBlockCopyOperation", blockCopyNodeParam};
     blockCopyNode.inTensors = {&kCache, &vCache, &srcBlockIndices, &dstBlockIndices, &cumSum};
