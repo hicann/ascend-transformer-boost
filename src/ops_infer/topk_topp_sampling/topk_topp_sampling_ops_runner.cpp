@@ -185,7 +185,6 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKMultinomialSampling()
     auto &topKProbsFilledSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &cumsumedProbsTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &indicesTopPSampledTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    auto &selectRangeTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     kernelGraph_.nodes.resize(MULTINOMIAL_NODE_COUNT); // exponential sampling has 8 nodes
     int64_t nodeNum = 0;
@@ -237,7 +236,7 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKMultinomialSampling()
     toppParam.randSeed = param_.randSeeds;
     mixTopPNode.opDesc = {0, "ToppsampleOperation", toppParam};
     mixTopPNode.inTensors = {&cumsumedProbsTensor, &topPTensor};
-    mixTopPNode.outTensors = {&indicesTopPSampledTensor, &selectRangeTensor};
+    mixTopPNode.outTensors = {&indicesTopPSampledTensor};
 
     indexTopPGatherNode.opDesc = {0, "GatherOperation", AsdOps::OpParam::Gather()};
     indexTopPGatherNode.inTensors = {&indicesSortedTensor, &indicesTopPSampledTensor};
@@ -539,7 +538,6 @@ Status TopkToppSamplingOpsRunner::SetupSingleTopKSampling()
     auto &indicesSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &probsSumedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &indicesSortedSampledTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
-    auto &selectRangeTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     kernelGraph_.nodes.resize(NODE_COUNT); // topp has 5 nodes
     int64_t nodeNum = 0;
@@ -575,7 +573,7 @@ Status TopkToppSamplingOpsRunner::SetupSingleTopKSampling()
     toppParam.randSeed = randSeeds;
     toppSamplingNode.opDesc = {0, "ToppsampleOperation", toppParam};
     toppSamplingNode.inTensors = {&probsSumedTensor, &pTensor};
-    toppSamplingNode.outTensors = {&indicesSortedSampledTensor, &selectRangeTensor};
+    toppSamplingNode.outTensors = {&indicesSortedSampledTensor};
 
     gatherIndicesNode.opDesc = {0, "GatherOperation", AsdOps::OpParam::Gather()};
     gatherIndicesNode.inTensors = {&indicesSortedTensor, &indicesSortedSampledTensor};

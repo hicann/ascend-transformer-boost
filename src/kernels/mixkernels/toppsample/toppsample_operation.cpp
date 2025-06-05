@@ -15,6 +15,7 @@
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/log/log.h>
 #include "atbops/params/params.h"
+#include "sink_common.h"
 
 namespace AtbOps {
 using namespace Mki;
@@ -41,33 +42,13 @@ public:
 
     Status InferShapeImpl(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const override
     {
-        MKI_CHECK(launchParam.GetInTensor(DIM_0).desc.dims.size() == DIM_2, "dim size of inTensor0 is invalid",
-                     return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_FLOAT16
-         || launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_BF16,
-            "inTensor0 dtype invalid, should be float16 or bf16", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(launchParam.GetInTensor(DIM_0).desc.format == TENSOR_FORMAT_ND,
-            "inTensor0 format invalid, should be ND", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(launchParam.GetInTensor(DIM_1).desc.dims.size() == DIM_2, "dim size of inTensor1 is invalid",
-                     return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(launchParam.GetInTensor(DIM_1).desc.dims[DIM_1] == DIM_1, "inTensor1 dim[1] is invalid",
-                     return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(launchParam.GetInTensor(DIM_1).desc.dtype == TENSOR_DTYPE_FLOAT16
-         || launchParam.GetInTensor(DIM_1).desc.dtype == TENSOR_DTYPE_BF16,
-            "inTensor1 dtype invalid, should be float16 or bf16", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(launchParam.GetInTensor(DIM_0).desc.dtype == launchParam.GetInTensor(DIM_1).desc.dtype,
-            "inTensor1 dtype is inconsistent with inTensor0", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        MKI_CHECK(launchParam.GetInTensor(DIM_1).desc.format == TENSOR_FORMAT_ND,
-            "inTensor1 format invalid, should be ND", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        outTensors[DIM_0].desc = launchParam.GetInTensor(DIM_0).desc;
-        outTensors[DIM_0].desc.dims[launchParam.GetInTensor(DIM_0).desc.dims.size() - 1] = 1; // num_samples
-        outTensors[DIM_0].desc.dtype = TENSOR_DTYPE_INT32;
-
-        outTensors[DIM_1].desc.dtype = TENSOR_DTYPE_INT32;
-        outTensors[DIM_1].desc.format = launchParam.GetInTensor(DIM_0).desc.format;
-        outTensors[DIM_1].desc.dims = { launchParam.GetInTensor(DIM_0).desc.dims[0] };
-
-        return Status::OkStatus();
+        for (auto &t: outTensors) {
+            Mki::TensorDesc desc;
+            desc.format = Mki::TENSOR_FORMAT_ND;
+            t.desc = desc;
+        }
+        auto &map = optiling::GetGeTilingMap();
+        return map["TopPSample"](launchParam, outTensors, AsdOps::GetMkiSpecificAttr<OpParam::Toppsample>);
     }
 };
 
