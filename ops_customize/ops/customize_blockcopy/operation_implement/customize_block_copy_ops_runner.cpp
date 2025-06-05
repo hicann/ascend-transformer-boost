@@ -29,7 +29,7 @@ CustomizeBlockCopyOpsRunner::CustomizeBlockCopyOpsRunner(const customize::BlockC
 
     AtbOps::OpParam::BlockCopy blockCopyNodeParam = {};
 
-    blockCopyNode.opDesc = {0, "BlockCopyOperation", blockCopyNodeParam};
+    blockCopyNode.opDesc = {0, "CustomizeBlockCopyOperation", blockCopyNodeParam};
     blockCopyNode.inTensors = {&kCache, &vCache, &srcBlockIndices, &dstBlockIndices, &cumSum};
     blockCopyNode.outTensors = {&kCache, &vCache};
 }
