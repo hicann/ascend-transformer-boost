@@ -11,7 +11,7 @@ target_link_libraries(customize_blockcopy_test
     GTest::gtest_main
 )
 
-set_target_properties(customize_blockcopy_test EXPORT_PROPERTIES
+set_target_properties(customize_blockcopy_test PROPERTIES
     BUILD_RPATH "$<TARGET_FILE_DIR:atb_customize>"
 )
 
