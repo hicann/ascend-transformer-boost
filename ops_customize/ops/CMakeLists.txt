@@ -5,9 +5,9 @@ set(OPS_CONFIG_CMAKE_DIR "$ENV{CACHE_DIR}/cmake/ops")
 include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
 include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
 
+add_compile_options(-I${CMAKE_CURRENT_LIST_DIR})
+
 include_directories(
-    ${CMAKE_CURRENT_LIST_DIR}
-    ${CMAKE_CURRENT_LIST_DIR}/customize_blockcopy/operation_implement/tiling
     ${CMAKE_SOURCE_DIR}/src/kernels
     ${CMAKE_SOURCE_DIR}/src/kernels/include
     ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels
