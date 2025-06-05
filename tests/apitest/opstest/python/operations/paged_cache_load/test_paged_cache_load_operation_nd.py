@@ -4,7 +4,7 @@ import os
 import random
 import sys
 import unittest
-
+import logging
 import numpy as np
 import torch
 import torch_npu
@@ -110,6 +110,9 @@ def generate_data(
 
                 temp_k = key_cache[block_id][block_offset]
                 temp_v = value_cache[block_id][block_offset]
+
+                key_expect[kv_rslt_id] = temp_k
+                value_expect[kv_rslt_id] = temp_v
                 kv_rslt_id += 1
                 
         ret_data = key_cache, value_cache, block_tables, context_lens, key, value, seq_starts, key_expect, value_expect
@@ -173,10 +176,16 @@ def generate_data(
 class PagedCacheLoadOperation(operation_test.OperationTest):
 
     def golden_calc(self, input_tensors):
-        return [self.in_tensors[4], self.in_tensors[5]]
+        return [self.in_tensors[7], self.in_tensors[8]]
     
     def golden_compare(self, out_tensor, golden_out_tensor):
-        return torch.equal(out_tensor, golden_out_tensor)
+        result = []
+        for i in range(len(out_tensor)):
+            actual_output = out_tensor[i]
+            golden_output = golden_out_tensor[i]
+            result.append(torch.equal(actual_output, golden_output))
+        logging.info(f"result is {all(result)}")
+        return all(result)
     
     def _run_test(self, 
                     shape_dtype_idx: int, 
