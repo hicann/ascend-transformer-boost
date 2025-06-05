@@ -55,4 +55,34 @@ public:
 };
 
 REG_KERNEL_BASE(SwiGluForwardKernel);
+
+class SwiGluForwardAptKernel : public KernelBase {
+public:
+    explicit SwiGluForwardAptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : KernelBase(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_LOG(INFO) << "SwiGluForwardCanSupport Start";
+        MKI_CHECK(launchParam.GetInTensorCount() == TENSOR_INPUT_NUM, "in tensor num is invalid", return false);
+        MKI_CHECK(launchParam.GetOutTensorCount() == TENSOR_OUTPUT_NUM, "out tensor num is invalid", return false);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Activation),
+                     "param type is invalid", return false);
+
+        TensorDType xdtype = launchParam.GetInTensor(0).desc.dtype;
+        MKI_CHECK(xdtype == TENSOR_DTYPE_FLOAT || xdtype == TENSOR_DTYPE_FLOAT16 ||
+                     xdtype == TENSOR_DTYPE_BF16,
+                     "Input dtype invalid, should be float or float16 or bf16", return false);
+        MKI_LOG(INFO) << "SwiGluForwardCanSupport Passed";
+        return true;
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return SwiGluForwardAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+};
+REG_KERNEL_BASE(SwiGluForwardAptKernel);
 } // namespace AsdOps

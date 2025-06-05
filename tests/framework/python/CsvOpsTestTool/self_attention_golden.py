@@ -22,7 +22,7 @@ import shutil
 import logging
 import re
 from enum import Enum
-from typing import Any
+from typing import List, Dict, Any
 import copy
 
 
@@ -159,7 +159,7 @@ def get_cache_info_BNSD(shape, head_num):
 
 class SelfAttentionMaskGen():
     def __init__(self, batch=1, heads=1, data_type=torch.float16, mask_type=MASK_TYPE_NO_HEAD, max_seq=2048,
-                    window_size=0, long_seq=False, kv_seqLen=None, dynamic_batch=False, is_decoder=False):
+                 window_size=0, long_seq=False, kv_seqLen=None, dynamic_batch=False, is_decoder=False):
         self.batch = batch
         self.heads = heads
         self.data_type = data_type
@@ -261,7 +261,7 @@ class SelfAttentionMaskGen():
         else:
             swa_mask = np.triu(swa_mask, 1)
         return swa_mask
-    
+
     def get_mask_info(self, mask_type, batch, heads):
         q_max_seq = self.q_max_seq
         kv_max_seq = self.kv_max_seq
@@ -456,7 +456,7 @@ class SelfAttentionGenOutTensor:
         s_offset = 0
         for i, len in enumerate(seq_len):
             kv[c_offset:c_offset + seq_len[i]
-               ][:] = kv[s_offset:s_offset + seq_len[i]][:]
+            ][:] = kv[s_offset:s_offset + seq_len[i]][:]
             c_offset += seq_len[i]
             s_offset += dim1len
         return torch.from_numpy(kv[0:sum(seq_len)][:])
@@ -510,7 +510,7 @@ class SelfAttentionGenOutTensor:
             self.embeddimv = self.embeddim
         if is_decoder:
             self.q_seqLen, self.q_ntokens = __class__.gen_seq_len(batch, [
-                                                             1] * batch)
+                1] * batch)
         else:
             self.q_seqLen, self.q_ntokens = __class__.gen_seq_len(
                 batch, self.q_seqLens)
@@ -546,7 +546,7 @@ class SelfAttentionGenOutTensor:
             print("max_context_len: ", max_context_len)
             print("block_size: ", block_size)
             max_num_blocks_per_seq = (
-                max_context_len + block_size - 1) // block_size
+                                             max_context_len + block_size - 1) // block_size
             block_tables = []   # (batch, max_num_blocks_per_seq)
             offset = 0
             for i in range(batch):
@@ -612,7 +612,7 @@ class SelfAttentionGenOutTensor:
         int8_data = torch.zeros_like(temp)
         for i in range(heads):
             int8_data[:, i, :] = (
-                (temp[:, i, :] / scale[i]).round_() + offset[i])
+                    (temp[:, i, :] / scale[i]).round_() + offset[i])
         int8_data = int8_data.view(shape).to(torch.int8)
         return scale, offset, int8_data
 
@@ -694,7 +694,7 @@ class SelfAttentionGenOutTensor:
                 for j in range(Tc):
 
                     Sij = s_head_idx[i * Br: (i + 1) * Br, start_col_idx +
-                                     j * Bc: start_col_idx + (j + 1) * Bc].to(dtype)
+                                                           j * Bc: start_col_idx + (j + 1) * Bc].to(dtype)
 
                     Vj = V_mat[start_col_idx + j *
                                Bc: start_col_idx + (j + 1) * Bc, :]
@@ -705,7 +705,7 @@ class SelfAttentionGenOutTensor:
                     Pij_hat = torch.exp((Sij - mi_new).to(torch.float32))
                     Pij_hat = Pij_hat.to(dtype)
                     li = torch.exp((mi - mi_new).to(torch.float32)).to(dtype) * \
-                        li + torch.sum(Pij_hat, dim=1)[:, None]
+                         li + torch.sum(Pij_hat, dim=1)[:, None]
                     if self.is_int8_flag:
                         if online:
                             x_q, scales, pp_max_num = self.quantize_tensor_symmetric(
@@ -721,26 +721,26 @@ class SelfAttentionGenOutTensor:
                             pv = x_q.to(torch.int32) @ Vj.to(torch.int32)
                             pv = pv.to(torch.float32)
                             value = self.v_scale[head_idx] * \
-                                self.offline_scale[head_idx]
+                                    self.offline_scale[head_idx]
                             Oi = Oi * \
-                                torch.exp((mi - mi_new).to(torch.float32)
-                                          ).to(dtype) + (pv * value).to(dtype)
+                                 torch.exp((mi - mi_new).to(torch.float32)
+                                           ).to(dtype) + (pv * value).to(dtype)
                     else:
                         Oi = Oi * \
-                            torch.exp((mi - mi_new).to(torch.float32)
-                                      ).to(dtype) + Pij_hat @ Vj.to(dtype)
+                             torch.exp((mi - mi_new).to(torch.float32)
+                                       ).to(dtype) + Pij_hat @ Vj.to(dtype)
 
                     mi = mi_new
 
                 if (q_s % Bc != 0):
                     Bc = q_s % Bc
                     start_row_idx = (
-                        q_s // self.row_block_size) * self.row_block_size
+                                            q_s // self.row_block_size) * self.row_block_size
                     start_col_idx = (
-                        q_s // self.col_block_size) * self.col_block_size
+                                            q_s // self.col_block_size) * self.col_block_size
 
                     Sij = s_head_idx[i * Br: (i + 1) * Br,
-                                     start_col_idx: start_col_idx + Bc].to(dtype)
+                          start_col_idx: start_col_idx + Bc].to(dtype)
                     Vj = V_mat[start_col_idx: start_col_idx + Bc, :]
                     mi_new = torch.max(
                         torch.column_stack([mi, torch.max(Sij, dim=1).values[:, None]]), dim=1
@@ -748,7 +748,7 @@ class SelfAttentionGenOutTensor:
                     Pij_hat = torch.exp((Sij - mi_new).to(torch.float32))
                     Pij_hat = Pij_hat.to(dtype)
                     li = torch.exp((mi - mi_new).to(torch.float32)).to(dtype) * \
-                        li + torch.sum(Pij_hat, dim=1)[:, None]
+                         li + torch.sum(Pij_hat, dim=1)[:, None]
                     if self.is_int8_flag:
                         if online:
                             x_q, scales, pp_max_num = self.quantize_tensor_symmetric(
@@ -764,14 +764,14 @@ class SelfAttentionGenOutTensor:
                             pv = x_q.to(torch.int32) @ Vj.to(torch.int32)
                             pv = pv.to(torch.float32)
                             value = self.v_scale[head_idx] * \
-                                self.offline_scale[head_idx]
+                                    self.offline_scale[head_idx]
                             Oi = Oi * \
-                                torch.exp((mi - mi_new).to(torch.float32)
-                                          ).to(dtype) + (pv * value).to(dtype)
+                                 torch.exp((mi - mi_new).to(torch.float32)
+                                           ).to(dtype) + (pv * value).to(dtype)
                     else:
                         Oi = Oi * \
-                            torch.exp((mi - mi_new).to(torch.float32)
-                                      ).to(dtype) + Pij_hat @ Vj.to(dtype)
+                             torch.exp((mi - mi_new).to(torch.float32)
+                                       ).to(dtype) + Pij_hat @ Vj.to(dtype)
                 Oi = Oi / li
 
                 O[i * Br: (i + 1) * Br, :] = Oi
@@ -1045,7 +1045,7 @@ class SelfAttentionGenOutTensor:
     # 合轴成2维
     def process_qkv(self, q):
         out = q.clone()
-        # BSND:          
+        # BSND:
         if len(q.shape) == 3:
             dim0, dim1, dim2 = q.shape
             out = out.contiguous().view(dim0, dim1*dim2)
@@ -1053,7 +1053,7 @@ class SelfAttentionGenOutTensor:
             dim0, dim1, dim2, dim3 = q.shape
             out = out.contiguous().view(dim0*dim1, dim2*dim3)
         return out
-        
+
     def process_kvcache(self, k):
         # pa encoder 将2维的kvcache转换成3维的
         if k.dim() == 2:
@@ -1062,12 +1062,12 @@ class SelfAttentionGenOutTensor:
 
     def process_before_golden(self):
         # 处理mask
-        
+
         # 为了使golden函数算子golden一致，提供它需要的变量
         self.q = self.in_tensors[self.query_id]
         if not self.bnsd:
             self.q = self.process_qkv(self.q) # q在golen计算过程中是2维的
-        
+
         if self.kcache_id == -1:
             self.kcache_id = self.key_id
         if self.vcache_id == -1:
@@ -1097,7 +1097,7 @@ class SelfAttentionGenOutTensor:
             key = self.in_tensors[self.key_id] # k在kvcache golen计算过程中是2维的
             self.k = self.kvcache(self.process_qkv(key), kcache_nd) # golden里的self.k是kcache
             value = self.in_tensors[self.value_id]# v在kvcache golen计算过程中是2维的
-            self.v = self.kvcache(self.process_qkv(value), vcache_nd) # golden里的self.v是vcache                       
+            self.v = self.kvcache(self.process_qkv(value), vcache_nd) # golden里的self.v是vcache
         else: # pa encoder 将2维的kvcache转换成4维的
             self.q = self.process_qkv(self.q)
             kcache_nd = self.process_qkv(kcache_nd)
@@ -1159,39 +1159,39 @@ class SelfAttentionGenOutTensor:
 
 class SelfAttentionGolden:
     def __init__(
-        self,
-        dynamic_batch=False,
-        batch_state=None,
-        is_mask=False,
-        is_decoder=False,
-        is_alibi=False,
-        alibi_dim=4,
-        batch=0,
-        kv_head=1,
-        heads=1,
-        embeddim=128,
-        embeddimv=0,
-        max_seq=2048,
-        kv_seqLen=[],
-        is_clamp=0,
-        clamp_min=0,
-        q_seqLen=[],
-        clamp_max=0,
-        data_type=torch.float16,
-        op_type=0,
-        mask_type=0,
-        no_cache=False,
-        long_seq=False,
-        is_triu_mask=False,
-        is_multi_layer=False,
-        is_sqrt=False,
-        left_align=False,
-        scaleType=ScaleType.SCALE_TOR.value,
-        fav3=False,
-        is_bypass=False,
-        is_pa_encoder=False,
-        is_bnsd=False,
-        is_mask_compress=False,
+            self,
+            dynamic_batch=False,
+            batch_state=None,
+            is_mask=False,
+            is_decoder=False,
+            is_alibi=False,
+            alibi_dim=4,
+            batch=0,
+            kv_head=1,
+            heads=1,
+            embeddim=128,
+            embeddimv=0,
+            max_seq=2048,
+            kv_seqLen=[],
+            is_clamp=0,
+            clamp_min=0,
+            q_seqLen=[],
+            clamp_max=0,
+            data_type=torch.float16,
+            op_type=0,
+            mask_type=0,
+            no_cache=False,
+            long_seq=False,
+            is_triu_mask=False,
+            is_multi_layer=False,
+            is_sqrt=False,
+            left_align=False,
+            scaleType=ScaleType.SCALE_TOR.value,
+            fav3=False,
+            is_bypass=False,
+            is_pa_encoder=False,
+            is_bnsd=False,
+            is_mask_compress=False,
     ):
         # def __init__(self, op_params: dict[str, Any]):
         # 每个tensor的id表示它对应第几个输入，-1代表这个tensor没有被传入
@@ -1230,9 +1230,9 @@ class SelfAttentionGolden:
         self.embeddimv = embeddimv  # 需要通过tensor shape推理
         self.max_seq = max_seq
         self.q_seqLen = q_seqLen  # 在gen_seqlen_and_token_offset函数中获取
-        
+
         self.kv_seqLen = kv_seqLen  # 在gen_seqlen_and_token_offset函数中获取
-        
+
         self.is_clamp = is_clamp
         self.clamp_min = clamp_min
         self.clamp_max = clamp_max
@@ -1271,7 +1271,7 @@ class SelfAttentionGolden:
         # 用SelfAttentionMaskGen处理mask
         self.mask_generator = None
 
-    def load_from_op_params(self, op_params: dict[str, Any]):
+    def load_from_op_params(self, op_params: Dict[str, Any]):
         for op_k, op_v in op_params.items():
             if hasattr(self, op_k):
                 self.op_k = op_v
@@ -1349,7 +1349,7 @@ class SelfAttentionGolden:
         if "maskType"  in op_params.keys():
             self.mask_type = op_params["maskType"]
         if "batch" in op_params.keys():
-                self.batch = op_params["batch"]
+            self.batch = op_params["batch"]
         index = 0
         if self.pa_encoder:
             self.query_id, self.key_id, self.value_id = range(index, index+3)
@@ -1395,7 +1395,7 @@ class SelfAttentionGolden:
         elif len(shape) == 2:
             self.embeddimv = shape[1] // head_num
 
-    def prepare_in_tensors(self, in_tensors: list[torch.tensor]):
+    def prepare_in_tensors(self, in_tensors: List[torch.tensor]):
         if self.seqlen_id != -1:
             self.q_seqLen = in_tensors[self.seqlen_id]
             self.batch = in_tensors[self.seqlen_id].shape[0]
@@ -1415,9 +1415,9 @@ class SelfAttentionGolden:
             self.embeddimv = self.embeddim
         if self.mask_generator == None:
             self.mask_generator = SelfAttentionMaskGen(batch=self.batch, heads=self.heads,data_type=self.data_type,
-                mask_type=self.mask_type, max_seq=self.max_seq, window_size=self.window_size,
-                long_seq=self.long_seq, kv_seqLen=self.kv_seqLen, dynamic_batch=self.dynamic_batch, 
-                is_decoder=self.is_decoder)
+                                                       mask_type=self.mask_type, max_seq=self.max_seq, window_size=self.window_size,
+                                                       long_seq=self.long_seq, kv_seqLen=self.kv_seqLen, dynamic_batch=self.dynamic_batch,
+                                                       is_decoder=self.is_decoder)
 
         if self.is_mask:
             # golden mask
