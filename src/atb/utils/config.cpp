@@ -21,7 +21,6 @@
 
 namespace atb {
 constexpr int32_t DECIMAL = 10;
-constexpr uint64_t DEFAULT_TILING_SIZE = 10240;
 constexpr uint32_t DEFAULT_WORKSPACE_MEM_ALLOC_ALG_TYPE = 1;
 const size_t MAX_ENV_STRING_LEN = 12800;
 
@@ -53,7 +52,6 @@ Config::Config()
                   << ", GlobalKernelCacheCount: " << globalKernelCacheCount_;
     ATB_LOG(INFO) << "ProfilingLevel0Status: " << GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status()
                   << ", ProfilingLevel1Status: " << GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel1Status()
-                  << ", KernelCacheTilingSize: " << kernelCacheTilingSize_
                   << ", IsCompareTilingEveryKernelEnable: " << isCompareTilingEveryKernelEnable_;
     ATB_LOG(INFO) << "WorkspaceMemAllocAlgType: " << workspaceMemAllocAlgType_
                   << ", IsworkspaceMemAllocGlobal: " << isworkspaceMemAllocGlobal_
@@ -213,17 +211,6 @@ void Config::InitKernelCache()
     if (globalKernelCacheCount_ > maxKernelCacheCount) {
         globalKernelCacheCount_ = maxKernelCacheCount;
     }
-
-    const uint32_t maxTilingSize = 1024 * 1024 * 1024;
-    envStr = std::getenv("ATB_OPSRUNNER_KERNEL_CACHE_TILING_SIZE");
-    kernelCacheTilingSize_ =
-        envStr != nullptr ? static_cast<uint64_t>(strtol(envStr, nullptr, DECIMAL)) : DEFAULT_TILING_SIZE;
-    if (kernelCacheTilingSize_ == 0) {
-        kernelCacheTilingSize_ = DEFAULT_TILING_SIZE;
-    }
-    if (kernelCacheTilingSize_ > maxTilingSize) {
-        kernelCacheTilingSize_ = maxTilingSize;
-    }
 }
 
 uint32_t Config::GetLocalKernelCacheCount() const
@@ -234,11 +221,6 @@ uint32_t Config::GetLocalKernelCacheCount() const
 uint32_t Config::GetGlobalKernelCacheCount() const
 {
     return globalKernelCacheCount_;
-}
-
-uint64_t Config::GetKernelCacheTilingSize() const
-{
-    return kernelCacheTilingSize_;
 }
 
 bool Config::IsCompareTilingEveryKernelEnable() const

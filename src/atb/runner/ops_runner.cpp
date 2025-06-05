@@ -206,7 +206,7 @@ Status OpsRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
         return st;
     }
     InitKernelGraph();
-    InitKernelCache();
+    InitKernelCache(runnerVariantPack.context);
     InitTensorMaxNodeMap();
     ATB_LOG(INFO) << GetLogPrefix() << " Setup start, kernel graph:\n" << kernelGraph_.ToString();
     ATB_LOG(DEBUG) << GetLogPrefix() << " runnerVariantPack inTensor size:" << runnerVariantPack.inTensors.size()
@@ -968,12 +968,13 @@ Status OpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
     return NO_ERROR;
 }
 
-void OpsRunner::InitKernelCache()
+void OpsRunner::InitKernelCache(ContextBase *context)
 {
     if (kernelCacheInited_) {
         return;
     }
 
+    uint64_t kernelCacheTilingSize = context->GetKernelCacheTilingSize();
     uint32_t cacheType = GetSingleton<Config>().GetKernelCacheType();
     uint32_t localCacheCount = GetSingleton<Config>().GetLocalKernelCacheCount();
     uint32_t globalCacheCount = GetSingleton<Config>().GetGlobalKernelCacheCount();
@@ -983,12 +984,12 @@ void OpsRunner::InitKernelCache()
     kernelCaches_.clear();
 
     if (localCacheEnable) {
-        localKernelCache_.Init(kernelGraph_.nodes.size(), localCacheCount);
+        localKernelCache_.Init(kernelGraph_.nodes.size(), localCacheCount, kernelCacheTilingSize);
         kernelCaches_.push_back(std::make_pair(&localKernelCache_, true));
     }
 
     if (globalCacheEnable) {
-        g_globalKernelCaches.at(runnerType_).Init(kernelGraph_.nodes.size(), globalCacheCount);
+        g_globalKernelCaches.at(runnerType_).Init(kernelGraph_.nodes.size(), globalCacheCount, kernelCacheTilingSize);
         kernelCaches_.push_back(std::make_pair(&(g_globalKernelCaches.at(runnerType_)), false));
     }
 

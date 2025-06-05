@@ -21,10 +21,9 @@
 #include "atb/utils/singleton.h"
 
 namespace atb {
-void CacheSlot::Init(uint32_t cacheItemCount)
+void CacheSlot::Init(uint32_t cacheItemCount, uint64_t kernelCacheTilingSize)
 {
     cachedItems.resize(cacheItemCount);
-    uint64_t kernelCacheTilingSize = GetSingleton<Config>().GetKernelCacheTilingSize();
     for (auto &cacheItem : cachedItems) {
         cacheItem.tilingBuffer.reserve(kernelCacheTilingSize);
     }
@@ -91,12 +90,12 @@ KernelCache::KernelCache() noexcept {}
 
 KernelCache::~KernelCache() {}
 
-void KernelCache::Init(uint64_t kernelCount, uint32_t cacheItemCount)
+void KernelCache::Init(uint64_t kernelCount, uint32_t cacheItemCount, uint64_t kernelCacheTilingSize)
 {
     if (cachedSlots_.empty()) {
         cachedSlots_.resize(kernelCount);
         for (auto &cachedSlot : cachedSlots_) {
-            cachedSlot.Init(cacheItemCount);
+            cachedSlot.Init(cacheItemCount, kernelCacheTilingSize);
         }
     }
 }

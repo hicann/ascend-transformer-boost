@@ -25,6 +25,8 @@
 namespace atb {
 static constexpr size_t MAX_COPY_EVENT_NUM = 10;
 static constexpr uint64_t TILING_BUFFER_BLOCK_SIZE = 1024 * 1024 * 3;
+static constexpr uint64_t DEFAULT_TILING_SIZE = 10240;
+static constexpr uint64_t MAX_TILING_SIZE = 1024 * 1024 * 1024;
 static constexpr uint32_t DEFAULT_EXECUTE_STREAM_NUMBER = 1;
 thread_local ExecuteType ContextBase::executeType_ = EXECUTE_NORMAL;
 
@@ -32,6 +34,7 @@ ContextBase::ContextBase()
 {
     deviceAllocator_ = std::make_unique<DefaultDeviceAllocator>();
     hostAllocator_ = std::make_unique<DefaultHostAllocator>();
+    kernelCacheTilingSize_ = DEFAULT_TILING_SIZE;
 }
 
 ContextBase::~ContextBase() noexcept
@@ -351,6 +354,23 @@ Status ContextBase::FreeArgsHostBuffer(void *addr)
 {
     return hostAllocator_->Deallocate(addr);
 }
+
+void ContextBase::SetKernelCacheTilingSize(uint64_t size)
+{
+    kernelCacheTilingSize_ = size;
+    if (kernelCacheTilingSize_ == 0) {
+        kernelCacheTilingSize_ = DEFAULT_TILING_SIZE;
+    }
+    if (kernelCacheTilingSize_ > MAX_TILING_SIZE) {
+        kernelCacheTilingSize_ = MAX_TILING_SIZE;
+    }
+}
+
+uint64_t ContextBase::GetKernelCacheTilingSize() const
+{
+    return kernelCacheTilingSize_;
+}
+
 bool ContextBase::GetLaunchWithTilingStatus()
 {
     return mode_ != GRAPH_LAUNCH_MODE;
