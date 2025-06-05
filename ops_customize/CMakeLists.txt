@@ -66,6 +66,9 @@ install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_customize/customize_ops_configs DESTINATION ./configs)
 
-find_package(GTest 1.13.0 REQUIRED)
+set(GTEST_PATH "${CMAKE_SOURCE_DIR}/3rdparty/googletest")
+find_package(GTest 1.13.0 REQUIRED
+             PATH "${GTEST_PATH}"
+             NO_DEFAULT_PATH)
 enable_testing()
 add_subdirectory(ops/customize_blockcopy/tests)
