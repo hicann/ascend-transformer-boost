@@ -93,7 +93,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -115,7 +114,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -137,7 +135,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -159,7 +156,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -181,7 +177,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -203,7 +198,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -225,7 +219,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -247,7 +240,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -269,7 +261,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
 

@@ -61,7 +61,6 @@ public:
         auto inTensorDescB = launchParam.GetInTensor(1).desc;
         auto outTensorDescC = launchParam.GetOutTensor(0).desc;
         size_t inTensorCount = launchParam.GetInTensorCount();
-        int64_t batchB = GetTensorBatchB(inTensorDescB);
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MatMul), "Invalid specificParam type.",
                   return nullptr);
         auto opParam = AnyCast<OpParam::MatMul>(launchParam.GetParam());
@@ -108,102 +107,55 @@ public:
         kernelKey = (kernelKey << FORMAT_BIT_COUNT) + tensorFormatMap[formatC]; // FormatC
         kernelKey = (kernelKey << INPUT_BIT_COUNT) + (inTensorCount - DIM_2);
         MKI_LOG(INFO) << "kernelKey: " << kernelKey;
-
-        const char *usePpMatMul = Mki::GetEnv("ASDOPS_MATMUL_PP_FLAG");
-        if (usePpMatMul && strcmp(usePpMatMul, "1") == 0) {
-            MKI_LOG(INFO) << ">>> PpMatmulType:" << static_cast<uint32_t>(opParam.matmulType);
-            if (opParam.matmulType == MmType::MATMUL_ACCUM_ATOMIC) {
-                return GetKernelByName("PpMatmulAccumAtomicKernel");
-            }
-            if (opParam.matmulType == MmType::MATMUL_WITH_BIAS) {
-                return GetKernelByName("PpMatmulWithBiasKernel");
-            }
-            if (opParam.matmulType == MmType::MATMUL_EIN_SUM) {
-                MKI_CHECK(!opParam.transposeA, "Unsupported transposed A_matrix", return nullptr);
-                return GetKernelByName("PpMatmulEinSumKernel");
-            }
-            // 先判断w8a8compress
-            if (isSparseDequant) {
-                switch (kernelKey) {
-                    case PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzCompressKernel");
-                    default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
-                }
-            }
-
-            if (opParam.quantMode == OpParam::MatMul::QuantMode::PER_TOKEN_SYMM) {
-                switch (kernelKey) {
-                    case PP_MATMUL_I8_BF16_KERNEL_KEY:
-                    case PP_MATMUL_I8_FP16_KERNEL_KEY:
-                    case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY:
-                    case PP_MATMUL_I8_FP16_WEIGHT_NZ_KERNEL_KEY:
-                        return GetKernelByName("PpMatMulI8Bf16Kernel");
-                    default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
-                }
-            }
-
-            // 判断w8a8
+        MKI_LOG(INFO) << ">>> PpMatmulType:" << static_cast<uint32_t>(opParam.matmulType);
+        if (opParam.matmulType == MmType::MATMUL_ACCUM_ATOMIC) {
+            return GetKernelByName("PpMatmulAccumAtomicKernel");
+        }
+        if (opParam.matmulType == MmType::MATMUL_WITH_BIAS) {
+            return GetKernelByName("PpMatmulWithBiasKernel");
+        }
+        if (opParam.matmulType == MmType::MATMUL_EIN_SUM) {
+            MKI_CHECK(!opParam.transposeA, "Unsupported transposed A_matrix", return nullptr);
+            return GetKernelByName("PpMatmulEinSumKernel");
+        }
+        // 先判断w8a8compress
+        if (isSparseDequant) {
             switch (kernelKey) {
-                case PP_MATMUL_I8_BF16_KERNEL_KEY:
-                case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY:
-                    return GetKernelByName("PpMatMulI8Bf16Kernel");
-                case PP_MATMUL_I8_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
-                case PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8WeightNzKernel");
-                case PP_MATMUL_F16_KERNEL_KEY: return GetKernelByName("PpMatMulF16Kernel");
-                case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
-                case PP_MATMUL_BF16_KERNEL_KEY: return GetKernelByName("PpMatMulBf16Kernel");
-                case PP_MATMUL_F16_OPT_KERNEL_KEY: return GetKernelByName("PpMatMulF16OptKernel");
-                case PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY: return GetKernelByName("PpMatMulBf16NdNzNdKernel");
-                case PP_MATMUL_NZ_F16_KERNEL_KEY: return GetKernelByName("PpMatMulNzF16Kernel");
-                case PP_MATMUL_I8_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzKernel");
-                case PP_MATMUL_FP_ND_ND_KERNEL_KEY: return GetKernelByName("PpMatmulF16NdM300Kernel");
-                case PP_MATMUL_I8_ND_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
-                case PP_MATMUL_I8_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8NdNzKernel");
-                case PP_MATMUL_F16_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatmulF16NzM300Kernel");
+                case PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzCompressKernel");
                 default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
             }
         }
-        if (batchB == 1) {
-            if (!opParam.transposeA && !opParam.transposeB) {
-                if (dtypeB == TENSOR_DTYPE_FLOAT16) {
-                    return formatB == TENSOR_FORMAT_ND ? GetKernelByName("MatMulNdF16Kernel")
-                                                       : GetKernelByName("MatMulNzF16Kernel");
-                } else if (dtypeB == TENSOR_DTYPE_FLOAT) {
-                    return formatB == TENSOR_FORMAT_ND ? GetKernelByName("MatMulNdF32Kernel") : nullptr;
-                } else {
-                    return nullptr;
-                }
-            }
-            if (opParam.transposeA && !opParam.transposeB) {
-                return GetKernelByName("MatMulNzF16TAKernel");
-            }
-            if (!opParam.transposeA && opParam.transposeB) {
-                return formatB == TENSOR_FORMAT_ND ? GetKernelByName("MatMulNdF16TbKernel")
-                                                   : GetKernelByName("MatMulNzF16TBKernel");
-            }
-            if (opParam.transposeA && opParam.transposeB) {
-                return GetKernelByName("MatMulNzF16TATBKernel");
-            }
-            return nullptr;
-        }
-        if (!opParam.transposeA && !opParam.transposeB) {
-            if (dtypeB == TENSOR_DTYPE_FLOAT16) {
-                return formatB == TENSOR_FORMAT_ND ? GetKernelByName("BatchMatMulNdF16Kernel")
-                                                   : GetKernelByName("BatchMatMulNzF16Kernel");
-            } else if (dtypeB == TENSOR_DTYPE_FLOAT) {
-                return formatB == TENSOR_FORMAT_ND ? GetKernelByName("BatchMatMulNdF32Kernel") : nullptr;
-            } else {
-                return nullptr;
+
+        if (opParam.quantMode == OpParam::MatMul::QuantMode::PER_TOKEN_SYMM) {
+            switch (kernelKey) {
+                case PP_MATMUL_I8_BF16_KERNEL_KEY:
+                case PP_MATMUL_I8_FP16_KERNEL_KEY:
+                case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY:
+                case PP_MATMUL_I8_FP16_WEIGHT_NZ_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulI8Bf16Kernel");
+                default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
             }
         }
-        if (opParam.transposeA && !opParam.transposeB) {
-            return GetKernelByName("BatchMatMulNzF16TAKernel");
-        }
-        if (!opParam.transposeA && opParam.transposeB) {
-            return formatB == TENSOR_FORMAT_ND ? GetKernelByName("BatchMatMulNdF16TbKernel")
-                                               : GetKernelByName("BatchMatMulNzF16TBKernel");
-        }
-        if (opParam.transposeA && opParam.transposeB) {
-            return GetKernelByName("BatchMatMulNzF16TATBKernel");
+
+        // 判断w8a8
+        switch (kernelKey) {
+            case PP_MATMUL_I8_BF16_KERNEL_KEY:
+            case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY:
+                return GetKernelByName("PpMatMulI8Bf16Kernel");
+            case PP_MATMUL_I8_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
+            case PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8WeightNzKernel");
+            case PP_MATMUL_F16_KERNEL_KEY: return GetKernelByName("PpMatMulF16Kernel");
+            case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
+            case PP_MATMUL_BF16_KERNEL_KEY: return GetKernelByName("PpMatMulBf16Kernel");
+            case PP_MATMUL_F16_OPT_KERNEL_KEY: return GetKernelByName("PpMatMulF16OptKernel");
+            case PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY: return GetKernelByName("PpMatMulBf16NdNzNdKernel");
+            case PP_MATMUL_NZ_F16_KERNEL_KEY: return GetKernelByName("PpMatMulNzF16Kernel");
+            case PP_MATMUL_I8_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzKernel");
+            case PP_MATMUL_FP_ND_ND_KERNEL_KEY: return GetKernelByName("PpMatmulF16NdM300Kernel");
+            case PP_MATMUL_I8_ND_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
+            case PP_MATMUL_I8_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8NdNzKernel");
+            case PP_MATMUL_F16_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatmulF16NzM300Kernel");
+            default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
         }
         return nullptr;
     }

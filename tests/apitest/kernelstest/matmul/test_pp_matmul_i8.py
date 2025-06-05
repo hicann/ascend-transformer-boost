@@ -109,7 +109,6 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -133,7 +132,6 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -157,7 +155,6 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -181,7 +178,6 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -207,7 +203,6 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -233,7 +228,6 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -259,7 +253,6 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -284,7 +277,6 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -309,7 +301,6 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -340,7 +331,6 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -371,7 +361,6 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -401,7 +390,6 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
 
@@ -433,7 +421,6 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
 

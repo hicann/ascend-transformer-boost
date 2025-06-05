@@ -190,11 +190,6 @@ bool MatmulUndefindCheck(const infer::LinearParam &opParam, ExternalError &error
 
 template <> Status CreateOperation(const infer::LinearParam &opParam, Operation **operation)
 {
-    const char *ppMatmulFlag = Mki::GetEnv("ASDOPS_MATMUL_PP_FLAG");
-    if (!ppMatmulFlag || strcmp(ppMatmulFlag, "1") != 0) {
-        ATB_LOG(ERROR) << "only support ppmatmul, please set env ASDOPS_MATMUL_PP_FLAG as 1.";
-        return ERROR_INVALID_PARAM;
-    }
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
     }
