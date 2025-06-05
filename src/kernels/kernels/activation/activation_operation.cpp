@@ -12,6 +12,7 @@
 #include <mki_loader/op_register.h>
 #include <mki/utils/const/op_const.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/activation.h"
 
 namespace {
@@ -85,6 +86,9 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ACTIVATION_LOG inDtype " << GetStrWithDType(dtype);
                 return nullptr;
             case OpParam::Activation::ACTIVATION_SWIGLU_FORWARD:
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+                    return GetKernelByName("SwiGluForwardAptKernel");
+                }
                 return GetKernelByName("SwiGluForwardKernel");
             case OpParam::Activation::ACTIVATION_SWIGLU_BACKWARD:
                 return GetKernelByName("SwiGluBackwardKernel");

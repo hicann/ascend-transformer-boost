@@ -16,6 +16,7 @@
 #include "asdops/params/params.h"
 #include "kernels/activation/swiglu_forward/tiling/swiglu_forward_backward_common_tiling.h"
 #include "tiling_data.h"
+#include "tbe_tiling_runner.h"
 
 namespace AsdOps {
 using namespace Mki;
@@ -62,5 +63,19 @@ Status SwiGluForwardTiling(const LaunchParam &launchParam, KernelInfo &kernelInf
     kernelInfo.SetTilingId(dataType);
     MKI_LOG(INFO) << "----- tilingKey -----" + std::to_string(dataType);
     return Status::OkStatus();
+}
+
+Status SwiGluForwardAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                          const BinHandle &binHandle)
+{
+    const auto &tensorDesc0 = launchParam.GetInTensor(0).desc;
+    const auto &tensorDescOut = launchParam.GetOutTensor(0).desc;
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("SwiGlu")
+        .SetKernelName(kernelName)
+        .AddInput(tensorDesc0.dtype, tensorDesc0.format, tensorDesc0.dims)
+        .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
+        .AddAttrInt64(-1);
+    return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
 } // namespace AsdOps
