@@ -12,6 +12,7 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/math/tensor_utils.h>
 #include <mki/utils/math/math.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/softmax.h"
 #include "kernels/softmax/tiling/softmax_tiling.h"
 
@@ -35,6 +36,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            return SoftmaxAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        }
         return SoftmaxCommonTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };

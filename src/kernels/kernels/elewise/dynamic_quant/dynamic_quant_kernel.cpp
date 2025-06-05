@@ -10,9 +10,11 @@
 #include <mki/base/kernel_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/params.h"
 #include "dynamic_quant_tiling/dynamic_quant_tiling.h"
 #include "dynamic_quant_tiling/tiling_data.h"
+#include "kernels/elewise/tiling/elewise_tiling.h"
 
 namespace AsdOps {
 class DynamicQuantKernel : public KernelBase {
@@ -66,4 +68,207 @@ public:
     }
 };
 REG_KERNEL_BASE(DynamicQuantKernel);
+
+class DynamicQuantAptKernel : public KernelBase {
+public:
+    explicit DynamicQuantKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : KernelBase(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        const int64_t outTensorIdxTwo = 2;
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise),
+            "elewise: param type invalid", return false);
+        MKI_CHECK(launchParam.GetInTensorCount() == 1, "input num invalid", return false);
+        MKI_CHECK(launchParam.GetOutTensorCount() == 2, "output num invalid", return false);
+        auto opParam = AnyCast<OpParam::Elewise>(launchParam.GetParam());
+        OpParam::Elewise::ElewiseType type = opParam.elewiseType;
+        MKI_CHECK(type == OpParam::Elewise::ELEWISE_DYNAMIC_QUANT, "dynamic quant: param type invalid",
+            return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.format == TENSOR_FORMAT_ND,
+            "input format invalid", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.format == TENSOR_FORMAT_ND,
+            "output1 format invalid", return false);
+        MKI_CHECK(launchParam.GetOutTensor(1).desc.format == TENSOR_FORMAT_ND,
+            "output2 format invalid", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16 ||
+            launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_INT8 ||
+            launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_HIFLOAT8 ||
+            launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT8_E4M3FN ||
+            launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT8_E5M2, 
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(1).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return DynamicQuantAptTiling(launchParam, kernelInfo_);
+    }
+};
+
+// DynamicQuantBF16toInt8
+class DynamicQuantBF16toInt8Kernel : public DynamicQuantAptKernel {
+public:
+    explicit DynamicQuantBF16toInt8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : DynamicQuantAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(DynamicQuantAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_INT8,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(DynamicQuantBF16toInt8Kernel);
+
+// DynamicQuantBF16toHi8
+class DynamicQuantBF16toHi8Kernel : public DynamicQuantAptKernel {
+public:
+    explicit DynamicQuantBF16toHi8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : DynamicQuantAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(DynamicQuantAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_HIFLOAT8,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(DynamicQuantBF16toHi8Kernel);
+
+// DynamicQuantBF16toE4M3
+class DynamicQuantBF16toE4M3Kernel : public DynamicQuantAptKernel {
+public:
+    explicit DynamicQuantBF16toE4M3Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : DynamicQuantAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(DynamicQuantAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT8_E4M3FN,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(DynamicQuantBF16toE4M3Kernel);
+
+// DynamicQuantBF16toE5M2
+class DynamicQuantBF16toE5M2Kernel : public DynamicQuantAptKernel {
+public:
+    explicit DynamicQuantBF16toE5M2Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : DynamicQuantAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(DynamicQuantAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT8_E5M2,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(DynamicQuantBF16toE5M2Kernel);
+
+// DynamicQuantF16toInt8
+class DynamicQuantF16toInt8Kernel : public DynamicQuantAptKernel {
+public:
+    explicit DynamicQuantF16toInt8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : DynamicQuantAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(DynamicQuantAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_INT8,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(DynamicQuantF16toInt8Kernel);
+
+// DynamicQuantF16toHi8
+class DynamicQuantF16toHi8Kernel : public DynamicQuantAptKernel {
+public:
+    explicit DynamicQuantF16toHi8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : DynamicQuantAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(DynamicQuantAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_HIFLOAT8,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(DynamicQuantF16toHi8Kernel);
+
+// DynamicQuantF16toE4M3
+class DynamicQuantF16toE4M3Kernel : public DynamicQuantAptKernel {
+public:
+    explicit DynamicQuantF16toE4M3Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : DynamicQuantAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(DynamicQuantAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT8_E4M3FN,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(DynamicQuantF16toE4M3Kernel);
+
+// DynamicQuantF16toE5M2
+class DynamicQuantF16toE5M2Kernel : public DynamicQuantAptKernel {
+public:
+    explicit DynamicQuantF16toE5M2Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : DynamicQuantAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(DynamicQuantAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT8_E5M2,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(DynamicQuantF16toE5M2Kernel);
 } // namespace AsdOps

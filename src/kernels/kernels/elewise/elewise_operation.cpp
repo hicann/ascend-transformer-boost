@@ -79,6 +79,7 @@ public:
     {
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
         auto inDtype = launchParam.GetInTensor(0).desc.dtype;
+        auto outDtype = launchParam.GetOutTensor(0).desc.dtype;
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise), "OpParam is invalid", return nullptr);
         OpParam::Elewise param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
         switch (param.elewiseType) {
@@ -129,8 +130,28 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_QUANT inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Elewise::ELEWISE_DYNAMIC_QUANT:
-                if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
-                    return GetKernelByName("DynamicQuantKernel");
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+                    if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_INT8) {
+                        return GetKernelByName("DynamicQuantF16toInt8Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_HIFLOAT8) {
+                        return GetKernelByName("DynamicQuantF16toHi8Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_FLOAT8_E4M3FN) {
+                        return GetKernelByName("DynamicQuantF16toE4M3Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_FLOAT8_E5M2) {
+                        return GetKernelByName("DynamicQuantF16toE5M2Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_INT8) {
+                        return GetKernelByName("DynamicQuantBF16toInt8Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_HIFLOAT8) {
+                        return GetKernelByName("DynamicQuantBF16toHi8Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_FLOAT8_E4M3FN) {
+                        return GetKernelByName("DynamicQuantBF16toE4M3Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_FLOAT8_E5M2) {
+                        return GetKernelByName("DynamicQuantBF16toE5M2Kernel");
+                    }
+                } else{
+                    if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("DynamicQuantKernel");
+                    }
                 }
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_DYNAMIC_QUANT inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
@@ -299,7 +320,7 @@ public:
         auto param = AnyCast<OpParam::Elewise>(specificParam);
         switch (param.elewiseType) {
             case OpParam::Elewise::ELEWISE_DYNAMIC_QUANT:
-                return 3; // 3 is out tensor num
+                return PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95 ? 2 : 3;
             default:
                 return 1;
         }
@@ -421,22 +442,40 @@ protected:
                 if (dims.size() < 2) { // 2 is the min allowed dim of intensor
                     return Status::FailStatus(ERROR_INVALID_VALUE, "no matched input desc.dims.size");
                 }
-                if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
-                    outTensors[0].desc.format = format;
-                    outTensors[0].desc.dtype = TENSOR_DTYPE_INT8;
-                    outTensors[0].desc.dims = dims;
-                    outTensors[1].desc.format = format;
-                    outTensors[1].desc.dtype = TENSOR_DTYPE_FLOAT;
-                    SVector<int64_t> outTensorDims;
-                    for (size_t i = 0; i < dims.size() - 1; ++i) {
-                        outTensorDims.push_back(dims[i]);
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+                    if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
+                        outTensors[0].desc.format = format;
+                        outTensors[0].desc.dtype = param.outTensorType;
+                        outTensors[0].desc.dims = dims;
+                        outTensors[1].desc.format = format;
+                        outTensors[1].desc.dtype = TENSOR_DTYPE_FLOAT;
+                        SVector<int64_t> outTensorDims;
+                        for (size_t i = 0; i < dims.size() - 1; ++i) {
+                            outTensorDims.push_back(dims[i]);
+                        }
+                        outTensors[1].desc.dims = outTensorDims;
+                        return Status::OkStatus();
+                    } else {
+                        return Status::FailStatus(ERROR_INVALID_VALUE, "no matched input desc.dtype");
                     }
-                    outTensors[1].desc.dims = outTensorDims;
-
-                    outTensors[2].desc = outTensors[1].desc; // 2 is outtensor
-                    return Status::OkStatus();
                 } else {
-                    return Status::FailStatus(ERROR_INVALID_VALUE, "no matched input desc.dtype");
+                    if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
+                        outTensors[0].desc.format = format;
+                        outTensors[0].desc.dtype = TENSOR_DTYPE_INT8;
+                        outTensors[0].desc.dims = dims;
+                        outTensors[1].desc.format = format;
+                        outTensors[1].desc.dtype = TENSOR_DTYPE_FLOAT;
+                        SVector<int64_t> outTensorDims;
+                        for (size_t i = 0; i < dims.size() - 1; ++i) {
+                            outTensorDims.push_back(dims[i]);
+                        }
+                        outTensors[1].desc.dims = outTensorDims;
+
+                        outTensors[2].desc = outTensors[1].desc; // 2 is outtensor
+                        return Status::OkStatus();
+                    } else {
+                        return Status::FailStatus(ERROR_INVALID_VALUE, "no matched input desc.dtype");
+                    }
                 }
             }
             case OpParam::Elewise::ELEWISE_ADD:

@@ -30,4 +30,21 @@ Status SoftmaxCommonTiling(const std::string &kernelName, const LaunchParam &lau
 
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
+Status SoftmaxAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                        const BinHandle &binHandle)
+{
+    const auto &tensorDesc0 = launchParam.GetInTensor(0).desc;
+    const auto &tensorDescOut = launchParam.GetOutTensor(0).desc;
+    const auto &param = AnyCast<OpParam::Softmax>(launchParam.GetParam());
+
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("SoftmaxV2")
+        .SetKernelName(kernelName)
+        .AddInput(tensorDesc0.dtype, tensorDesc0.format, tensorDesc0.dims)
+        .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
+        .AddAttrIntList(param.axes.data(), param.axes.size())
+        .AddAttrBool(false);
+
+    return GetTilingFromRunner(kernelInfo, runner, binHandle);
+}
 } // namespace AsdOps

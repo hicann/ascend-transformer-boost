@@ -23,6 +23,8 @@ Status AddTiling(const std::string &kernelName, const LaunchParam &launchParam, 
                              const BinHandle &binHandle);
 Status CastTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                              const BinHandle &binHandle);
+Status DynamicQuantTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                             const BinHandle &binHandle);
 Status MulsTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                   const BinHandle &binHandle);
 Status BroadcastCommonTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
