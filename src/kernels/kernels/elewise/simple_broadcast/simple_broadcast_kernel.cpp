@@ -13,7 +13,7 @@
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/log/log.h>
 #include "kernels/elewise/simple_broadcast/tiling/simple_broadcast_tiling.h"
-#include "atbops/params/params.h"
+#include "asdops/params/params.h"
 #include "sink_common.h"
 
 namespace AsdOps {

@@ -444,7 +444,7 @@ protected:
             }
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL: {
                 MKI_LOG(INFO) << "ELEWISE_QUANT_PER_CHANNEL enter";
-                return opInferShape::CallGeInferShape("DequantPerChannel", launchParam, outTensors,
+                return opInferShape::CallGeInferShape("QuantPerChannel", launchParam, outTensors,
                                                       AsdOps::GetMkiSpecificAttr<OpParam::Elewise>);
             }
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL: {
