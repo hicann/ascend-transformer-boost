@@ -1,3 +1,5 @@
+link_directories("${CMAKE_BINARY_DIR}/ops_customize/lib")
+
 add_executable(customize_blockcopy_test customize_blockcopy_test.cpp)
 target_link_libraries(customize_blockcopy_test
   PRIVATE

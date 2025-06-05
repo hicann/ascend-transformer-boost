@@ -18,13 +18,6 @@ set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 
 add_subdirectory(ops)
 
-get_target_property(_ATB_CUSTOMIZE_LIB_PATH atb_customize LOCATION)
-get_filename_component(_ATB_CUSTOMIZE_LIB_DIR "${_ATB_CUSTOMIZE_LIB_PATH}" DIRECTORY)
-
-set(CMAKE_BUILD_RPATH "${_ATB_CUSTOMIZE_LIB_DIR}")
-
-message(STATUS "Setting global BUILD_RPATH to: ${CMAKE_BUILD_RPATH}")
-
 file(GLOB_RECURSE CUSTOMIZE_SRCS
      "${CMAKE_CURRENT_SOURCE_DIR}/ops/*.cpp")
 
