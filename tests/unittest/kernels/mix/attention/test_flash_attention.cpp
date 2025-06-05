@@ -229,18 +229,18 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask1_fp16)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" +
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" +
                           subDir + "/data/unpad_FA_data_gen_renew.py 16 1024 12 1 12 128 2048 0 0 1 1 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -249,20 +249,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask1_fp16)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
     TensorDesc kvTensorDesc = {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {maxSeq, kvHead * edim}};
     std::vector<std::string> kvFiles;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles);
     
     OpParam::UnpadFlashAttention opParam;
@@ -292,7 +292,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask1_fp16)
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {}},                                       // optional alibi coeff
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {batch}},
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
 }
@@ -301,18 +301,18 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask2_fp16)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 2 513 8 1 32 128 2048 0 0 2 1 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -321,20 +321,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask2_fp16)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
     TensorDesc kvTensorDesc = {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {maxSeq, kvHead * edim}};
     std::vector<std::string> kvFiles;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = batchDynamic ? OpParam::UnpadFlashAttention::UNPAD_DYNAMIC_BATCH_FLASH_ATTENTION_DECODER
@@ -363,7 +363,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask2_fp16)
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {}},                                       // optional alibi coeff
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {batch}},
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
 }
@@ -372,18 +372,18 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask3_fp16)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 128 1367 16 1 16 128 2048 0 0 3 1 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -392,20 +392,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask3_fp16)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
     TensorDesc kvTensorDesc = {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {maxSeq, kvHead * edim}};
     std::vector<std::string> kvFiles;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles);
     
     OpParam::UnpadFlashAttention opParam;
@@ -435,7 +435,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask3_fp16)
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {}},                                       // optional alibi coeff
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {batch}},
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
 }
@@ -444,18 +444,18 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask4_fp16)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 128 1634 8 1 8 128 2048 0 0 4 1 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -464,20 +464,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask4_fp16)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
     TensorDesc kvTensorDesc = {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {maxSeq, kvHead * edim}};
     std::vector<std::string> kvFiles;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles);
     
     OpParam::UnpadFlashAttention opParam;
@@ -507,7 +507,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask4_fp16)
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {}},                                       // optional alibi coeff
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {batch}},
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
 }
@@ -516,18 +516,18 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask5_fp16)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 16 114 32 1 32 128 256 0 0 5 1 0";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -536,20 +536,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask5_fp16)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
     TensorDesc kvTensorDesc = {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {maxSeq, kvHead * edim}};
     std::vector<std::string> kvFiles;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles);
     
     OpParam::UnpadFlashAttention opParam;
@@ -579,7 +579,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_mask5_fp16)
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {}},                                       // optional alibi coeff
         {TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {batch}},
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
 }
@@ -588,9 +588,9 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case1)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx;
@@ -610,20 +610,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case1)
     for(int i = 0; i < shareLength; i++){
         shareLen.push_back(1024);
     }
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 60 2048 8 1 32 128 2048 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -632,14 +632,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case1)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -648,7 +648,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case1)
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -670,7 +670,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case1)
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
 }
@@ -679,9 +679,9 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case2)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx;
@@ -701,20 +701,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case2)
     for(int i = 0; i < shareLength; i++){
         shareLen.push_back(1024);
     }
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 20 2048 1 1 8 128 2048 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -723,14 +723,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case2)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -739,7 +739,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case2)
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -761,7 +761,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_case2)
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
 }
@@ -770,28 +770,28 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_datatype_int8_relayAttention)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx = {0, 0};
     uint32_t shareLength = 4;
     std::vector<int> shareLen = {100, 100, 100, 100};
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 2 128 2 1 2 128 128 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -800,14 +800,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_datatype_int8_relayAttention)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -816,7 +816,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_datatype_int8_relayAttention)
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -838,7 +838,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_datatype_int8_relayAttention)
         {TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -848,28 +848,28 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_masktype_alibi_relayAttention
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx = {0, 0};
     uint32_t shareLength = 4;
     std::vector<int> shareLen = {100, 100, 100, 100};
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 2 128 2 1 2 128 128 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -878,14 +878,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_masktype_alibi_relayAttention
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -894,7 +894,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_masktype_alibi_relayAttention
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -916,7 +916,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_masktype_alibi_relayAttention
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -925,28 +925,28 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_dimbiggerthan256_relayAttenti
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx = {0, 0};
     uint32_t shareLength = 4;
     std::vector<int> shareLen = {100, 100, 100, 100};
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 2 128 2 1 2 257 128 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -955,14 +955,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_dimbiggerthan256_relayAttenti
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -971,7 +971,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_dimbiggerthan256_relayAttenti
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -993,7 +993,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_dimbiggerthan256_relayAttenti
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -1003,28 +1003,28 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_head0_relayAttention)
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx = {0, 0};
     uint32_t shareLength = 4;
     std::vector<int> shareLen = {100, 100, 100, 100};
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 2 128 2 1 0 128 128 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -1033,14 +1033,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_head0_relayAttention)
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -1049,7 +1049,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_head0_relayAttention)
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -1071,7 +1071,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_head0_relayAttention)
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -1081,28 +1081,28 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_kvtensornullptr_relayAttentio
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx = {0, 0};
     uint32_t shareLength = 4;
     std::vector<int> shareLen = {100, 100, 100, 100};
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 2 128 2 1 2 128 128 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -1111,14 +1111,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_kvtensornullptr_relayAttentio
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -1127,7 +1127,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_kvtensornullptr_relayAttentio
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -1150,7 +1150,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_kvtensornullptr_relayAttentio
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -1272,9 +1272,9 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx;
@@ -1294,20 +1294,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     for(int i = 0; i < shareLength; i++){
         shareLen.push_back(1024);
     }
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 61 2048 8 1 32 128 2048 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -1316,14 +1316,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -1332,7 +1332,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -1354,7 +1354,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -1363,9 +1363,9 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx;
@@ -1385,20 +1385,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     for(int i = 0; i < shareLength; i++){
         shareLen.push_back(1024);
     }
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 60 2048 9 1 36 128 2048 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -1407,14 +1407,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -1423,7 +1423,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -1445,7 +1445,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -1454,9 +1454,9 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx;
@@ -1476,20 +1476,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     for(int i = 0; i < shareLength; i++){
         shareLen.push_back(1024);
     }
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 60 2048 16 1 32 128 2048 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -1498,14 +1498,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -1514,7 +1514,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -1536,7 +1536,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -1545,9 +1545,9 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx;
@@ -1567,20 +1567,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     for(int i = 0; i < shareLength; i++){
         shareLen.push_back(1024);
     }
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 100 2048 16 1 32 128 2048 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -1589,14 +1589,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -1605,7 +1605,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -1627,7 +1627,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), false);
 }
@@ -1636,9 +1636,9 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
 {
     // should generate data first
     CHECK_DEVICE_VERSION_ASCEND910B();
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
     std::string subDir = "attention";
     bool isRelay = true;
     std::vector<int> shareIdx;
@@ -1658,20 +1658,20 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     for(int i = 0; i < shareLength; i++){
         shareLen.push_back(1024);
     }
-    std::ofstream shareIdxBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
+    std::ofstream shareIdxBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_idx.bin", std::ios::binary);
     shareIdxBin.write((const char *)shareIdx.data(), shareIdx.size() * sizeof(int));
     shareIdxBin.close();
-    std::ofstream shareLenBin(atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
+    std::ofstream shareLenBin(atbHomeDir + "/../../../tests/unittest/kernels/mix/" + subDir + "/data/share_len.bin", std::ios::binary);
     shareLenBin.write((const char *)shareLen.data(), shareLen.size() * sizeof(int));
     shareLenBin.close();
-    std::string dataGen = "python3 " + atbopsHomeDir + "/../../../tests/unittest/kernels/mix/" + 
+    std::string dataGen = "python3 " + atbHomeDir + "/../../../tests/unittest/kernels/mix/" + 
                           subDir + "/data/unpad_FA_data_gen_renew.py 60 2048 8 1 32 128 2048 0 0 5 1 0 1";
     int ret = system(dataGen.c_str());
     ASSERT_EQ(WEXITSTATUS(ret), 0);
     Mki::Test::MkiOpTest opTest;
     std::vector<uint32_t> scalars; // {batch, embd, qHead, kvHead, maxSeq}
     bool batchDynamic = false;
-    PrepareScalarParams(scalars, batchDynamic, opTest, atbopsHomeDir, subDir);
+    PrepareScalarParams(scalars, batchDynamic, opTest, atbHomeDir, subDir);
     uint32_t batch = scalars[0];
     uint32_t edim = scalars[1];
     uint32_t qHead = scalars[2];
@@ -1680,14 +1680,14 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     std::vector<int32_t> q_seqlen(batch, 0);
     std::vector<int32_t> kv_seqlen(batch, 0);
     std::vector<int32_t> batch_state(batch, 0);
-    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbopsHomeDir, subDir);
+    PrepareVectors(q_seqlen, kv_seqlen, batch_state, opTest, atbHomeDir, subDir);
     uint64_t qnTokens = 0;
     for (auto &it : q_seqlen) {
         qnTokens += it;
     }
     std::vector<uint16_t> expect(qnTokens * edim * qHead, 0);
     std::vector<uint32_t> expect_high(qnTokens * edim * qHead, 0);
-    PrepareExpect(expect, expect_high, opTest, atbopsHomeDir, subDir);
+    PrepareExpect(expect, expect_high, opTest, atbHomeDir, subDir);
     std::string dtype = "fp16";
     opTest.Golden(std::bind(FlashAttentionNdGolden, expect.data(), expect_high.data(), dtype, std::placeholders::_1));
     
@@ -1696,7 +1696,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
     opTest.shareIdx = shareIdx;
     opTest.shareLen = shareLen;
     opTest.isRelay = isRelay;
-    PrepareKvFiles(batch, kvFiles, opTest, atbopsHomeDir, subDir, isRelay, shareLength);
+    PrepareKvFiles(batch, kvFiles, opTest, atbHomeDir, subDir, isRelay, shareLength);
     opTest.PrepareKVcacheBatchwiseTensors(batch, kvTensorDesc, kvFiles, shareLength);
     OpParam::UnpadFlashAttention opParam;
     opParam.type = OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND;
@@ -1718,7 +1718,7 @@ TEST(TestFlashAttentionNd, FlashAttentionTestKVPtr_relayAttention_bigbatchkvhead
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {qnTokens, qHead * edim}},       // q
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {}},                       // mask
     };
-    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbopsHomeDir, subDir);
+    SVector<std::string> inDataFiles = Mki::Test::GetInDataFiles(atbHomeDir, subDir);
     Status status = opTest.RunWithDataFileKVPtr(opDesc, inTensorDesc, inDataFiles);
     ASSERT_EQ(status.Ok(), true);
 }

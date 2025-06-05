@@ -33,7 +33,6 @@ Config::Config()
     InitKernelCache();
     InitTilingBuffer();
     InitShareMemoryNameSuffix();
-    InitRunnerPool();
     isStreamSyncEveryKernelEnable_ = IsEnable("ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE");
     isStreamSyncEveryRunnerEnable_ = IsEnable("ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE");
     isStreamSyncEveryOperationEnable_ = IsEnable("ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE");
@@ -49,7 +48,7 @@ Config::Config()
                   << ", IsStreamSyncEveryKernelEnable: " << isStreamSyncEveryKernelEnable_
                   << ", IsStreamSyncEveryOperationEnable: " << isStreamSyncEveryOperationEnable_;
     ATB_LOG(INFO) << "IsOpsRunnerSetupCacheEnable: " << isOpsRunnerSetupCacheEnable_
-                  << ", KernelCacheType: " << kernelCacheType_ << ", LocalKernelCacheCount: " << localKernelCacheCount_
+                  << ", LocalKernelCacheCount: " << localKernelCacheCount_
                   << ", GlobalKernelCacheCount: " << globalKernelCacheCount_;
     ATB_LOG(INFO) << "ProfilingLevel0Status: " << GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel0Status()
                   << ", ProfilingLevel1Status: " << GetSingleton<Mki::ProfilingFuncs>().GetProfilingLevel1Status()
@@ -60,7 +59,7 @@ Config::Config()
                   << ", HostTilingBufferBlockNum:" << hostTilingBlockNum_
                   << ", DeviceTilingBufferBlockNum:" << deviceTilingBlockNum_
                   << ", ShareMemoryNameSuffix:" << shareMemoryNameSuffix_
-                  << ", IsMatmulShuffleKEnable:" << isMatmulShuffleKEnable_ << ", RunnerPoolSize:" << runnerPoolSize_;
+                  << ", IsMatmulShuffleKEnable:" << isMatmulShuffleKEnable_;
 }
 
 Config::~Config() {}
@@ -183,18 +182,12 @@ uint32_t Config::GetWorkspaceMemAllocAlgType() const
     return workspaceMemAllocAlgType_;
 }
 
-uint32_t Config::GetKernelCacheType() const
-{
-    return kernelCacheType_;
-}
 
 void Config::InitKernelCache()
 {
     const uint32_t maxKernelCacheCount = 1024;
 
-    const char *envStr = std::getenv("ATB_OPSRUNNER_KERNEL_CACHE_TYPE");
-    kernelCacheType_ = envStr != nullptr ? static_cast<uint32_t>(strtol(envStr, nullptr, DECIMAL)) :
-                                           KernelCacheType::KERNEL_CACHE_BOTH;
+    const char *envStr = nullptr;
 
     envStr = std::getenv("ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT");
     localKernelCacheCount_ = envStr != nullptr ? static_cast<uint32_t>(strtol(envStr, nullptr, DECIMAL)) : 1;
@@ -290,15 +283,4 @@ bool Config::IsMatmulShuffleKEnable() const
     return isMatmulShuffleKEnable_;
 }
 
-void Config::InitRunnerPool()
-{
-    const uint32_t minRunnerPoolSize = 0;
-    const uint32_t maxRunnerPoolSize = 1024;
-    InitVariable("ATB_RUNNER_POOL_SIZE", minRunnerPoolSize, maxRunnerPoolSize, runnerPoolSize_);
-}
-
-uint32_t Config::GetRunnerPoolSize() const
-{
-    return runnerPoolSize_;
-}
 } // namespace atb

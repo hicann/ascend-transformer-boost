@@ -13,11 +13,13 @@
 #include "atb/runner/runner.h"
 #include "atb/utils/singleton.h"
 
+static const uint32_t DEFAULT_RUNNER_POOL_SIZE = 64;
+
 namespace atb {
 RunnerPool::RunnerPool()
 {
     lock_ = std::make_shared<std::mutex>();
-    poolItems_.resize(GetSingleton<Config>().GetRunnerPoolSize());
+    poolItems_.resize(DEFAULT_RUNNER_POOL_SIZE);
 }
 
 void RunnerPool::FreeRunner(Runner *runner)

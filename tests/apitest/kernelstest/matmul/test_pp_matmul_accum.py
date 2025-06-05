@@ -102,7 +102,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -124,7 +123,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -146,7 +144,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -168,7 +165,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -190,7 +186,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -212,7 +207,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -234,7 +228,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -256,7 +249,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -278,7 +270,6 @@ class TestPpMatmulAccum(op_test.OpTest):
         self.execute(
             [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
             [2],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
 

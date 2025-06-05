@@ -61,9 +61,9 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest1)
     int32_t blockSize = 128;
 
     float tor = 1.0 / sqrt(embeddingSize);
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
 
     OpParam::PagedAttention opParam;
     opParam.type = OpParam::PagedAttention::PAGED_ATTENTION_NZ_MASK;
@@ -76,7 +76,7 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest1)
     int32_t numTokensPad = (numTokens + 15) / 16 * 16;
     std::vector<uint16_t> expect(numTokensPad * numHeads * embeddingSize, 0);
     opTest.ReadFile(expect.data(), expect.size() * sizeof(uint16_t),
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
     opTest.Golden(std::bind(PagedAttentionNzGolden, expect.data(), std::placeholders::_1));
 
     SVector<TensorDesc> inTensorDesc = {
@@ -89,13 +89,13 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest1)
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {0}},
     };
     SVector<std::string> inDataFiles = {
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin",
     };
 
     Status status = opTest.RunWithDataFile(opDesc, inTensorDesc, inDataFiles);
@@ -113,9 +113,9 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest2)
     int32_t blockSize = 128;
 
     float tor = 1.0 / sqrt(embeddingSize);
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
 
     OpParam::PagedAttention opParam;
     opParam.type = OpParam::PagedAttention::PAGED_ATTENTION_NZ_MASK;
@@ -129,7 +129,7 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest2)
     int32_t numTokensPad = (numTokens + 15) / 16 * 16;
     std::vector<uint16_t> expect(numTokensPad * numHeads * embeddingSize, 0);
     opTest.ReadFile(expect.data(), expect.size() * sizeof(uint16_t),
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
     opTest.Golden(std::bind(PagedAttentionNzGolden, expect.data(), std::placeholders::_1));
 
     SVector<TensorDesc> inTensorDesc = {
@@ -142,13 +142,13 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest2)
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {0}} // logn
     };
     SVector<std::string> inDataFiles = {
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin",
     };
 
     Status status = opTest.RunWithDataFile(opDesc, inTensorDesc, inDataFiles);
@@ -166,9 +166,9 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest3)
     int32_t blockSize = 128;
 
     float tor = 1.0 / sqrt(embeddingSize);
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
 
     OpParam::PagedAttention opParam;
     opParam.type = OpParam::PagedAttention::PAGED_ATTENTION_NZ_MASK;
@@ -182,7 +182,7 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest3)
     int32_t numTokensPad = (numTokens + 15) / 16 * 16;
     std::vector<uint16_t> expect(numTokensPad * numHeads * embeddingSize, 0);
     opTest.ReadFile(expect.data(), expect.size() * sizeof(uint16_t),
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
     opTest.Golden(std::bind(PagedAttentionNzGolden, expect.data(), std::placeholders::_1));
 
     SVector<TensorDesc> inTensorDesc = {
@@ -195,13 +195,13 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest3)
         {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {0}} // logn
     };
     SVector<std::string> inDataFiles = {
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin"
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin"
     };
 
     Status status = opTest.RunWithDataFile(opDesc, inTensorDesc, inDataFiles);
@@ -223,9 +223,9 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest4)
     int32_t kvMaskLen = (kvSeqLen + 16 - 1) / 16;
 
     float tor = 1.0 / sqrt(embeddingSize);
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
 
     OpParam::PagedAttention opParam;
     opParam.type = OpParam::PagedAttention::PAGED_ATTENTION_NZ_MASK;
@@ -238,7 +238,7 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest4)
     int32_t numTokensPad = (numTokens + 15) / 16 * 16;
     std::vector<uint16_t> expect(numTokensPad * numHeads * embeddingSize, 0);
     opTest.ReadFile(expect.data(), expect.size() * sizeof(uint16_t),
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
     opTest.Golden(std::bind(PagedAttentionNzGolden, expect.data(), std::placeholders::_1));
 
     SVector<TensorDesc> inTensorDesc = {
@@ -252,13 +252,13 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskTest4)
     };
 
     SVector<std::string> inDataFiles = {
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin",
     };
 
     Status status = opTest.RunWithDataFile(opDesc, inTensorDesc, inDataFiles);
@@ -280,9 +280,9 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskLogNTest5)
     int32_t kvMaskLen = (kvSeqLen + 16 - 1) / 16;
 
     float tor = 1.0 / sqrt(embeddingSize);
-    const char *atbopsHome = std::getenv("ASDOPS_HOME_PATH");
-    ASSERT_NE(atbopsHome, nullptr);
-    std::string atbopsHomeDir(atbopsHome);
+    const char *atbHome = std::getenv("ATB_HOME_PATH");
+    ASSERT_NE(atbHome, nullptr);
+    std::string atbHomeDir(atbHome);
 
     OpParam::PagedAttention opParam;
     opParam.type = OpParam::PagedAttention::PAGED_ATTENTION_NZ_MASK;
@@ -297,7 +297,7 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskLogNTest5)
     int32_t numTokensPad = (numTokens + 15) / 16 * 16;
     std::vector<uint16_t> expect(numTokensPad * numHeads * embeddingSize, 0);
     opTest.ReadFile(expect.data(), expect.size() * sizeof(uint16_t),
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/expect_nz.bin");
     opTest.Golden(std::bind(PagedAttentionNzGolden, expect.data(), std::placeholders::_1));
 
     SVector<TensorDesc> inTensorDesc = {
@@ -311,13 +311,13 @@ TEST(TestPagedAttentionNz, PagedAttentionNzMaskLogNTest5)
     };
 
     SVector<std::string> inDataFiles = {
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
-        atbopsHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/query_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/key_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/value_cache_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/block_tables.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/context_lens.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/alibi_mask_nz.bin",
+        atbHomeDir + "/../../tests/unittest/mix/pagedattention/data/logn_list.bin",
     };
 
     Status status = opTest.RunWithDataFile(opDesc, inTensorDesc, inDataFiles);

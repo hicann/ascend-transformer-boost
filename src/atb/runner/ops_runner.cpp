@@ -623,7 +623,7 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
                     tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
-                }
+            }
             auto &outTensors = node.impl->GetOutTensors();
             for (uint64_t tensorId = 0; tensorId < outTensors.size(); tensorId++) {
                 Mki::Tensor &tensor = outTensors.at(tensorId);
@@ -974,23 +974,16 @@ void OpsRunner::InitKernelCache()
         return;
     }
 
-    uint32_t cacheType = GetSingleton<Config>().GetKernelCacheType();
     uint32_t localCacheCount = GetSingleton<Config>().GetLocalKernelCacheCount();
     uint32_t globalCacheCount = GetSingleton<Config>().GetGlobalKernelCacheCount();
-    bool localCacheEnable = cacheType == KERNEL_CACHE_LOCAL || cacheType == KERNEL_CACHE_BOTH;
-    bool globalCacheEnable = cacheType == KERNEL_CACHE_GLOBAL || cacheType == KERNEL_CACHE_BOTH;
 
     kernelCaches_.clear();
 
-    if (localCacheEnable) {
-        localKernelCache_.Init(kernelGraph_.nodes.size(), localCacheCount);
-        kernelCaches_.push_back(std::make_pair(&localKernelCache_, true));
-    }
+    localKernelCache_.Init(kernelGraph_.nodes.size(), localCacheCount);
+    kernelCaches_.push_back(std::make_pair(&localKernelCache_, true));
 
-    if (globalCacheEnable) {
-        g_globalKernelCaches.at(runnerType_).Init(kernelGraph_.nodes.size(), globalCacheCount);
-        kernelCaches_.push_back(std::make_pair(&(g_globalKernelCaches.at(runnerType_)), false));
-    }
+    g_globalKernelCaches.at(runnerType_).Init(kernelGraph_.nodes.size(), globalCacheCount);
+    kernelCaches_.push_back(std::make_pair(&(g_globalKernelCaches.at(runnerType_)), false));
 
     kernelCacheInited_ = true;
 }

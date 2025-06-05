@@ -95,7 +95,6 @@ class TestPpMatmulF16(op_test.OpTest):
             self.execute(
                 [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
                 [torch.zeros(self.bat_C.shape).half()],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_310b
@@ -112,7 +111,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_310b
@@ -129,7 +127,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_310b
@@ -146,7 +143,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_310b
@@ -163,7 +159,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_310b
@@ -180,7 +175,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_310b
@@ -197,7 +191,6 @@ class TestPpMatmulF16(op_test.OpTest):
         self.execute(
             [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_310b
@@ -215,7 +208,6 @@ class TestPpMatmulF16(op_test.OpTest):
             self.execute(
                 [torch.tensor(self.bat_A).half(), torch.tensor(self.bat_B).half()],
                 [torch.zeros(self.bat_C.shape).half()],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
 if __name__ == "__main__":

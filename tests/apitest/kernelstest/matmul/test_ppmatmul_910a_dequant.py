@@ -127,7 +127,6 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                     torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
                 ],
                 [torch.zeros(self.bat_C.shape).to(torch.half)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910a
@@ -157,7 +156,6 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910a
@@ -187,7 +185,6 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910a
@@ -217,7 +214,6 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910a
@@ -247,7 +243,6 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910a
@@ -277,7 +272,6 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910a
@@ -307,7 +301,6 @@ class TestPpMatmul910aDequant(op_test.OpTest):
                 torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
             ],
             [torch.zeros(self.bat_C.shape).half()],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
 

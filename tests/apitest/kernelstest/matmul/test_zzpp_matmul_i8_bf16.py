@@ -106,7 +106,6 @@ class TestPpMatmulI8(op_test.OpTest):
         self.execute(
             [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
             [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -130,7 +129,6 @@ class TestPpMatmulI8(op_test.OpTest):
         self.execute(
             [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
             [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -154,7 +152,6 @@ class TestPpMatmulI8(op_test.OpTest):
         self.execute(
             [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
             [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -178,7 +175,6 @@ class TestPpMatmulI8(op_test.OpTest):
         self.execute(
             [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
             [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -204,7 +200,6 @@ class TestPpMatmulI8(op_test.OpTest):
             self.execute(
                 [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
                 [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -230,7 +225,6 @@ class TestPpMatmulI8(op_test.OpTest):
             self.execute(
                 [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
                 [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -256,7 +250,6 @@ class TestPpMatmulI8(op_test.OpTest):
             self.execute(
                 [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
                 [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -281,7 +274,6 @@ class TestPpMatmulI8(op_test.OpTest):
         self.execute(
             [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
             [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -306,7 +298,6 @@ class TestPpMatmulI8(op_test.OpTest):
         self.execute(
             [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
             [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-            {"ASDOPS_MATMUL_PP_FLAG": "1"},
         )
 
     @op_test.only_910b
@@ -339,7 +330,6 @@ class TestPpMatmulI8(op_test.OpTest):
             self.execute(
                 [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
                 [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -374,7 +364,6 @@ class TestPpMatmulI8(op_test.OpTest):
             self.execute(
                 [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
                 [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
     @op_test.only_910b
@@ -409,7 +398,6 @@ class TestPpMatmulI8(op_test.OpTest):
             self.execute(
                 [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
                 [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
-                {"ASDOPS_MATMUL_PP_FLAG": "1"},
             )
 
 
