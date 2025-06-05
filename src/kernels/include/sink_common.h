@@ -48,18 +48,14 @@ using GetAttrAdditional = const uint8_t *(*)(void *, size_t, uint64_t &);
 
 // InferShape utils
 namespace opInferShape {
-using CalcInferShapeFunc = Mki::Status (*)(const Mki::LaunchParam &launchParam, Mki::SVector<Mki::Tensor> &outTensors,
-                                           ops::GetAttrAdditional func);
-using GeInferShapeMap = std::unordered_map<std::string, CalcInferShapeFunc>;
-GeInferShapeMap &GetGeInferShapeMap();
+Mki::Status CallGeInferShape(const char *opType, const Mki::LaunchParam &launchParam,
+                             Mki::SVector<Mki::Tensor> &outTensors, ops::GetAttrAdditional func);
 }
 
 // Tiling utils
 namespace optiling {
-using CalcTilingFunc = Mki::Status (*)(const Mki::BinHandle &binHandle, const Mki::LaunchParam &launchParam,
-                                       ops::GetAttrAdditional getAttrFunc, Mki::KernelInfo &kernelInfo);
-using GeTilingMap = std::unordered_map<std::string, CalcTilingFunc>;
-optiling::GeTilingMap &GetGeTilingMap();
+Mki::Status CallGeTiling(const char *opType, const Mki::BinHandle &binHandle, const Mki::LaunchParam &launchParam,
+                         ops::GetAttrAdditional getAttrFunc, Mki::KernelInfo &kernelInfo);
 }   // namespace optiling
 
 #endif  // SINK_COMMON_H_
