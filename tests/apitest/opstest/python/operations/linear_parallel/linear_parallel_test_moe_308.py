@@ -65,12 +65,8 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     weight_tensor = weight_tensor.reshape(local_expert_nums, K, N)
     in_tensors.append(weight_tensor.to(torch.device('npu')))
     if quant_type == 3:
-        dequantOffset = moedata.matrix_dequant_offset
-        dequantOffset = dequantOffset.reshape(N)
-        in_tensors.append(dequantOffset.to(torch.device('npu')))
-
         dequantScale = moedata.matrix_dequant_scale
-        dequantScale = dequantScale.reshape(N)
+        dequantScale = dequantScale.reshape(N * local_expert_nums)
         in_tensors.append(dequantScale.to(torch.device('npu')))
 
         quantScale = moedata.matrix_quant_scale
@@ -158,7 +154,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         TP = 1
         out_data_type = 1
         dequant_granularity = 3
-        has_dequant_offset = 1
+        has_dequant_offset = 0
         data_type = 2
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)

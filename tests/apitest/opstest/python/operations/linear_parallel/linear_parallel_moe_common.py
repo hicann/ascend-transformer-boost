@@ -404,6 +404,7 @@ class MoeTestDate:
             quant_info.get_output_dequant_tensor(self.input_info, l0c_dtype, coc_dtype_desc)
             self.matrix_dequant_scale = quant_info.dequant_scale
             self.matrix_dequant_offset = quant_info.dequant_offset
+            self.matrix_dequant_scale = self.matrix_dequant_scale.repeat(1,self.expert_per_rank)
 
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
                 quant_info.get_pertoken_quant_tensor(self.input_info)
@@ -440,6 +441,7 @@ class MoeTestDate:
             broadcast_offset, broadcast_scale = quant_info.get_output_dequant_tensor(self.input_info, l0c_dtype, coc_dtype_desc)
             self.matrix_dequant_scale = quant_info.dequant_scale
             self.matrix_dequant_offset = quant_info.dequant_offset
+            self.matrix_dequant_scale = self.matrix_dequant_scale.repeat(1,self.expert_per_rank)
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
                 quant_info.get_pertoken_quant_tensor(self.input_info)
                 quant_scale = quant_info.quant_scale
