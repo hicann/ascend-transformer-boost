@@ -267,9 +267,9 @@ inline void PrefillLog(MLAInfo &mmInfo, OpParam::MLA &param)
                   << " mask type is " << mmInfo.maskType;
 }
 
-void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, size_t batch, int32_t embed)
+void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, int32_t batch, int32_t embed)
 {
-    mmInfo.batch = static_cast<int32_t>(batch);
+    mmInfo.batch = batch;
     mmInfo.numHeads = param.headSize;
     mmInfo.embeddingSize = embed;
     mmInfo.embeddingSizeV = embed - NUM64;
@@ -283,7 +283,7 @@ void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, size_t batch, int3
 Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
 {
     OP_TILING_CHECK_STATUS_RETURN(PrefillPreCheck(param));
-    size_t batch = 0;
+    int32_t batch = 0;
     SVector<int64_t> kcacheShape;
     SVector<int64_t> vcacheShape;
     kcacheShape = mmInfo.tensors.kCache.desc.dims;
@@ -296,8 +296,10 @@ Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)
         embed = ((mmInfo.tensors.query.desc.dims).at(1) +
                     (mmInfo.tensors.queryRope.desc.dims).at(1)) / param.headSize;
     }
-    mmInfo.maxKvSeqLen = kcacheShape.at(1);         // MaxSeqLen is the 2st dimension of K
-    batch = static_cast<size_t>(kcacheShape.at(0)); // Batch is the 1th dimension of Q
+    auto kvSeqLen = param.kvSeqLen;
+    batch = kvSeqLen.size();
+    auto maxKvSeq = *std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
+    mmInfo.maxKvSeqLen = maxKvSeq;
     OP_TILING_CHECK_STATUS_RETURN(GetPrefiillMaskInfo(mmInfo, param, mmInfo.tensors.mask));
     MLAPrefillFillInfo(mmInfo, param, batch, embed);
     vcacheShape = mmInfo.tensors.vCache.desc.dims;
