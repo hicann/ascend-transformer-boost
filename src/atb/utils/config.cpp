@@ -60,7 +60,6 @@ Config::Config()
                   << ", DeviceTilingBufferBlockNum:" << deviceTilingBlockNum_
                   << ", ShareMemoryNameSuffix:" << shareMemoryNameSuffix_
                   << ", IsMatmulShuffleKEnable:" << isMatmulShuffleKEnable_;
-
 }
 
 Config::~Config() {}
