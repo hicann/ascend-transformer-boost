@@ -47,7 +47,7 @@ public:
             desc.format = Mki::TENSOR_FORMAT_ND;
             t.desc = desc;
         }
-        auto &map = opInferShape::GetGeTilingMap();
+        auto &map = optiling::GetGeTilingMap();
         return map["TopPSample"](launchParam, outTensors, AsdOps::GetMkiSpecificAttr<OpParam::Toppsample>);
     }
 };
