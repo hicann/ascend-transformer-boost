@@ -50,7 +50,7 @@ set(CUSTOMIZE_DEPS
     mki
     tbe_adapter
     asdops
-    atbops
+    atb_mixops
     customize_ops
     ascendcl
     profapi
