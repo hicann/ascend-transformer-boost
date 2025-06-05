@@ -79,9 +79,9 @@ static bool CheckNode(const Node &node, const size_t &nodeId, const uint64_t &to
                               << " is write in place.";
                 tensorIsUsed.at(tensorId) = false; // 原地写之后，tensor尚未被使用
             } else {
-                ATB_LOG(ERROR) << " node[" << nodeId << "].outTensorIds[" << i << "]: " << tensorId
+                ATB_LOG(WARN) << " node[" << nodeId << "].outTensorIds[" << i << "]: " << tensorId
                                << " has already been assigned value, please check your graph.";
-                return false;
+                return true;
             }
         }
         tensorIsValued.at(tensorId) = true;

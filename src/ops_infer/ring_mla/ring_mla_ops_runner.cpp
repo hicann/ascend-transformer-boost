@@ -45,6 +45,7 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
     Mki::Tensor *seqLen = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *prevOut = isInputSoftmaxLse_ ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
     Mki::Tensor *prevLse = isInputSoftmaxLse_ ? &kernelGraph_.inTensors.at(inTensorStart++) : &nullTensor_;
+
     if (isNoMask_) {
         mask = &nullTensor_;
     }
@@ -68,6 +69,9 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
                              mask,         &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_,
                              &nullTensor_, &nullTensor_, &nullTensor_, prevOut,      prevLse};
 
+    if (isInputSoftmaxLse_) {
+        *attnOut = *prevOut;
+    }
     RingMLANode.outTensors = {attnOut, softmaxLse};
     RingMLANode.inTensorViewFuncs.resize(RingMLANode.inTensors.size()); // view
     RingMLANode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) { // format, dtype 设置
