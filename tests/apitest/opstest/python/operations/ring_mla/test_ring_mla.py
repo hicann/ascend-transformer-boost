@@ -553,7 +553,7 @@ class TestMLAPrefill(operation_test.OperationTest):
             q_len = self.q_seqlens[batch_idx]
 
             if self.kv_seqLen[batch_idx] == 0:
-                batch_out = torch.zeros_like(self.last_o[q_start_idx:(q_start_idx+q_len)].view(-1, self.heads * self.embeddimv))
+                batch_out = self.last_o[q_start_idx:(q_start_idx+q_len)].view(-1, self.heads * self.embeddimv)
                 if result is None:
                     result = batch_out
                 else:
@@ -923,6 +923,31 @@ class TestMLAPrefill(operation_test.OperationTest):
             else:
                 score = torch.cat((score, group_score), 0)
         return score
+
+    def transpose_kv_shape(self, kv_seqLen, kv_head):
+        kv_ntokens = sum(kv_seqLen)
+        new_k = None
+        new_k_rope = None
+        new_v = None
+        for i, kv_len in enumerate(kv_seqLen):
+            if kv_len == 0:
+                continue
+            if new_k == None:
+                new_k = self.k_split1[0][i][:kv_len][:]
+            else:
+                new_k = torch.cat((new_k, self.k_split1[0][i][:kv_len][:]), 0)
+            if new_k_rope == None:
+                new_k_rope = self.k_split2[0][i][:kv_len][:]
+            else:
+                new_k_rope = torch.cat((new_k_rope, self.k_split2[0][i][:kv_len][:]), 0)
+            if new_v == None:
+                new_v = self.v[0][i][:kv_len][:]
+            else:
+                new_v = torch.cat((new_v, self.v[0][i][:kv_len][:]))
+        new_k = new_k.reshape(kv_ntokens, kv_head, 128)
+        new_k_rope = new_k_rope.reshape(kv_ntokens, kv_head, 64)
+        new_v = new_v.reshape(kv_ntokens, kv_head, 128)
+        return new_k, new_k_rope, new_v
 
     def golden_calc(self, in_tensors):
         golden_out = self.golden_out_o.clone().detach().npu()
@@ -1344,7 +1369,7 @@ class TestMLAPrefill(operation_test.OperationTest):
         logging.info(f"mask shape: {self.mask.shape}")
         logging.info(f"mask shape: {self.mask.shape}")
 
-        logging.info("case: test_flash_attention_mla_bf16_512_mask_is_ring")
+        logging.info("case: test_flash_attention_mla_bf16_512_mask_is_ring_kvSeqlen_0")
         logging.info("**********input shape***********")
         logging.info(f"q shape: {self.q.shape}")
         logging.info(f"k shape: {self.k.shape}")
@@ -1377,13 +1402,212 @@ class TestMLAPrefill(operation_test.OperationTest):
         logging.info("input_lse :", old_lse.shape)
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q_split1.reshape(q_ntokens, heads, 128).npu(),
                                                             self.q_split2.reshape(q_ntokens, heads, 64).npu(),          
-                                                    self.k_split1.reshape(max_seq*batch, kv_head, 128).npu(),
-                                                    self.k_split2.reshape(max_seq*batch, kv_head, 64).npu(),
-                                                    self.v.reshape(max_seq*batch, kv_head, 128).npu(),
+                                                    self.k_split1.reshape(kv_ntokens, kv_head, 128).npu(),
+                                                    self.k_split2.reshape(kv_ntokens, kv_head, 64).npu(),
+                                                    self.v.reshape(kv_ntokens, kv_head, 128).npu(),
+                                                    self.mask.to(data_type).npu(), seqlen.npu(),
+                                                    old_out.reshape(q_ntokens, heads, 128).npu(),
+                                                    old_lse.reshape(heads, q_ntokens).npu()
+                                                ])
+        
+
+    def test_flash_attention_mla_bf16_512_mask_is_ring_diff_kvSeqlen(self):
+        '''
+        embeddim > embeddimV, mask, q_seqlen != kv_seqLen, kv_seqLen[i] = kv_seqLen[j], isring = 1
+        '''
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 3
+        kv_head = 16      # kv_head num
+        isdecoder = 0     # prefill or decoder
+        heads = 16        # llama7b  hidden_size 4096
+        embeddim = 192
+        embeddimV = 128
+        max_seq = 234
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        q_seqLen = [128, 128, 128]
+        kv_seqLen = [123, 234, 134]
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+
+        shape_out_1 = (sum(q_seqLen), heads, embeddimV)  # sum(q_seq), head*ebeddimv
+        shape_out_2 = (sum(q_seqLen), heads)
+        data_type = torch.bfloat16
+
+        isring = 1
+        calcType = 0
+        if isring:
+            old_out = torch.rand(shape_out_1).to(data_type)
+            old_lse = (torch.rand(shape_out_2) * 10).to(torch.float32)
+        else:
+            old_out = torch.zeros(shape_out_1, dtype=data_type)
+            old_lse = torch.zeros(shape_out_2, dtype=torch.float32)
+            calcType = 1
+        output_lse = torch.zeros(heads, (sum(q_seqLen)), dtype=torch.float32)
+
+        OP_NAME = "RingMLAOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":q_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads,
+                    "tor": tor, "isTriuMask": 1, "maskType": 1, "kvHead": heads, "isRing":isring}
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                            is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                            embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                            is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                            data_type = data_type, is_alibi = False, is_triu_mask = True,
+                            op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_HEAD, tor = tor, long_seq = True,
+                            lse=old_lse, last_o=old_out, isring=isring, q_seqlens=q_seqLen)
+        self.gen_out_tensor()
+        logging.info(f"mask shape: {self.mask.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+
+        logging.info("case: test_flash_attention_mla_bf16_512_mask_is_ring_diff_kvSeqlen")
+        logging.info("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.info(f"k shape: {self.k.shape}")
+        logging.info(f"v shape: {self.v.shape}")
+        logging.info(f"layer_id shape: {self.layer_id.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+        logging.info(f"k_split1 shape: {self.k_split1.shape}")
+        logging.info(f"k_split2 shape: {self.k_split2.shape}")
+
+        attention_out = np.ones_like(self.golden_out_o.to(torch.float16))
+        
+        self.mask = self.mask.view(batch, 512, 512).to(data_type)
+        
+        PARAM = json.dumps(
+                {"headNum": heads, "calcType": calcType, "maskType": MASK_TYPE_NO_HEAD,
+                "kvHeadNum": kv_head, "qkScale": tor})
+
+        param_seqlen = np.concatenate((self.q_seqlen, self.kv_seqLen), 0).tolist()
+        self.kv_seqLen = torch.from_numpy(np.array(self.kv_seqLen)).to(torch.int32)
+        self.q_seqlen = torch.from_numpy(np.array(self.q_seqlen)).to(torch.int32)
+        seqlen = torch.stack([self.q_seqlen, self.kv_seqLen])
+
+
+        q_ntokens = sum(self.q_seqlen)
+        kv_ntokens = sum(self.kv_seqLen)
+
+        RUN_PARAM = json.dumps({"seqLen": param_seqlen})
+        logging.info("param_seqlen: ", param_seqlen, "seqlen", seqlen)
+        logging.info("old_out.shape", old_out.shape)
+        
+        new_k, new_k_rope, new_v = self.transpose_kv_shape(kv_seqLen, kv_head)
+        logging.info("new_k shape is: ", new_k.shape)
+        logging.info("new_v shape is; ", new_v.shape)
+        
+        
+        old_lse = old_lse.transpose(1, 0)
+        logging.info("input_lse :", old_lse.shape)
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q_split1.reshape(q_ntokens, heads, 128).npu(),
+                                                            self.q_split2.reshape(q_ntokens, heads, 64).npu(),          
+                                                    new_k.reshape(kv_ntokens, kv_head, 128).npu(),
+                                                    new_k_rope.reshape(kv_ntokens, kv_head, 64).npu(),
+                                                    new_v.reshape(kv_ntokens, kv_head, 128).npu(),
                                                     self.mask.to(data_type).npu(), seqlen.npu(),
                                                     old_out.reshape(q_ntokens, heads, 128).npu(),
                                                     old_lse.reshape(heads, q_ntokens).npu()
                                                 ])
 
+    def test_flash_attention_mla_bf16_512_mask_is_ring_kvSeqlen_0(self):
+        '''
+        embeddim > embeddimV, mask, q_seqlen != kv_seqLen, kv_seqLen[i] = 0, isring = 1
+        '''
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 3
+        kv_head = 16      # kv_head num
+        isdecoder = 0     # prefill or decoder
+        heads = 16        # llama7b  hidden_size 4096
+        embeddim = 192
+        embeddimV = 128
+        max_seq = 256
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        q_seqLen = [128, 128, 128]
+        kv_seqLen = [200, 0, 256]
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+
+        shape_out_1 = (sum(q_seqLen), heads, embeddimV)  # sum(q_seq), head*ebeddimv
+        shape_out_2 = (sum(q_seqLen), heads)
+        data_type = torch.bfloat16
+
+        isring = 1
+        calcType = 0
+        if isring:
+            old_out = torch.rand(shape_out_1).to(data_type)
+            old_lse = (torch.rand(shape_out_2) * 10).to(torch.float32)
+        else:
+            old_out = torch.zeros(shape_out_1, dtype=data_type)
+            old_lse = torch.zeros(shape_out_2, dtype=torch.float32)
+            calcType = 1
+        output_lse = torch.zeros(heads, (sum(q_seqLen)), dtype=torch.float32)
+
+        OP_NAME = "RingMLAOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":q_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads,
+                    "tor": tor, "isTriuMask": 0, "maskType": 0, "kvHead": heads, "isRing":isring}
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                            is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                            embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                            is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                            data_type = data_type, is_alibi = False, is_triu_mask = True,
+                            op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_HEAD, tor = tor, long_seq = True,
+                            lse=old_lse, last_o=old_out, isring=isring, q_seqlens=q_seqLen)
+        self.gen_out_tensor()
+        logging.info(f"mask shape: {self.mask.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+
+        logging.info("case: test_flash_attention_mla_bf16_512_mask_is_ring_kvSeqlen_0")
+        logging.info("**********input shape***********")
+        logging.info(f"q shape: {self.q.shape}")
+        logging.info(f"k shape: {self.k.shape}")
+        logging.info(f"v shape: {self.v.shape}")
+        logging.info(f"layer_id shape: {self.layer_id.shape}")
+        logging.info(f"mask shape: {self.mask.shape}")
+        logging.info(f"k_split1 shape: {self.k_split1.shape}")
+        logging.info(f"k_split2 shape: {self.k_split2.shape}")
+
+        attention_out = np.ones_like(self.golden_out_o.to(torch.float16))
+        
+        self.mask = self.mask.view(batch, 512, 512).to(data_type)
+        
+        PARAM = json.dumps(
+                {"headNum": heads, "calcType": calcType, "maskType": MASK_TYPE_NO_HEAD,
+                "kvHeadNum": kv_head, "qkScale": tor})
+
+        param_seqlen = np.concatenate((self.q_seqlen, self.kv_seqLen), 0).tolist()
+        self.kv_seqLen = torch.from_numpy(np.array(self.kv_seqLen)).to(torch.int32)
+        self.q_seqlen = torch.from_numpy(np.array(self.q_seqlen)).to(torch.int32)
+        seqlen = torch.stack([self.q_seqlen, self.kv_seqLen])
+
+
+        q_ntokens = sum(self.q_seqlen)
+        kv_ntokens = sum(self.kv_seqLen)
+
+        RUN_PARAM = json.dumps({"seqLen": param_seqlen})
+        logging.info("param_seqlen: ", param_seqlen, "seqlen", seqlen)
+        logging.info("old_out.shape", old_out.shape)
+
+        new_k, new_k_rope, new_v = self.transpose_kv_shape(kv_seqLen, kv_head)
+        logging.info("new_k shape is: ", new_k.shape)
+        logging.info("new_v shape is; ", new_v.shape)
+        
+        
+        old_lse = old_lse.transpose(1, 0)
+        logging.info("input_lse :", old_lse.shape)
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [self.q_split1.reshape(q_ntokens, heads, 128).npu(),
+                                                            self.q_split2.reshape(q_ntokens, heads, 64).npu(),          
+                                                    new_k.reshape(kv_ntokens, kv_head, 128).npu(),
+                                                    new_k_rope.reshape(kv_ntokens, kv_head, 64).npu(),
+                                                    new_v.reshape(kv_ntokens, kv_head, 128).npu(),
+                                                    self.mask.to(data_type).npu(), seqlen.npu(),
+                                                    old_out.reshape(q_ntokens, heads, 128).npu(),
+                                                    old_lse.reshape(heads, q_ntokens).npu()
+                                                ])
+    
 if __name__ == '__main__':
     unittest.main()

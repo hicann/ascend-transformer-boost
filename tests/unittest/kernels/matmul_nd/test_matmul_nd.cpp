@@ -1574,6 +1574,7 @@ TEST(TestMatMulNd, TestCanSupportPpMatMul29)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT64, TENSOR_FORMAT_ND, {7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     OpParam::MatMul opParam = {false, false, {0, 0, 0}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -1596,6 +1597,7 @@ TEST(TestMatMulNd, PpMatMulI8KernelInitHostLaunchBuffer)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     OpParam::MatMul opParam = {false, false, {0, 0, 0}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -1869,6 +1871,7 @@ TEST(TestMatMulNz, TestCanSupportPpMatMulI8NzKernel)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_UINT64, TENSOR_FORMAT_ND, {7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     OpParam::MatMul opParam = {false, false, {0, 0, 0}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -1936,6 +1939,7 @@ TEST(TestMatMulNz, TestInitRunInfoImplPpMatMulI8NzKernel1)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_UINT64, TENSOR_FORMAT_ND, {7, 7, 7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     OpParam::MatMul opParam = {false, false, {1, 1, 1}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -1975,6 +1979,7 @@ TEST(TestMatMulNz, TestInitlaunchParamImplPpMatMulI8NzKernel2)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     OpParam::MatMul opParam = {false, false, {1, 1, 4294}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
