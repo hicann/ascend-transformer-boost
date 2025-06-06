@@ -115,7 +115,7 @@ bool BlockCopyTilingCheck310P(const LaunchParam &launchParam, KernelInfo &kernel
 
 Status CustomizeBlockCopyTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 {
-    auto param = AnyCast<OpParam::BlockCopy>(launchParam.GetParam());
+    auto param = AnyCast<OpParam::CustomizeBlockCopy>(launchParam.GetParam());
     auto &kShape = launchParam.GetInTensor(DIM_0).desc.dims;
     auto &srcShape = launchParam.GetInTensor(DIM_2).desc.dims;
     auto &dstShape = launchParam.GetInTensor(DIM_3).desc.dims;
@@ -125,7 +125,7 @@ Status CustomizeBlockCopyTiling(const LaunchParam &launchParam, KernelInfo &kern
     uint32_t destinationCount = static_cast<uint32_t>(dstShape.at(DIM_0));
     uint32_t cumSumCount = static_cast<uint32_t>(cumShape.at(DIM_0));
 
-    if (param.type == OpParam::BlockCopy::BLOCK_COPY_CACHE_ND) {
+    if (param.type == OpParam::CustomizeBlockCopy::BLOCK_COPY_CACHE_ND) {
         MKI_CHECK(BlockCopyTilingNd(launchParam, kernelInfo), "K/V Cache size is invalid",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
     } else {
@@ -138,7 +138,7 @@ Status CustomizeBlockCopyTiling(const LaunchParam &launchParam, KernelInfo &kern
                   return Status::FailStatus(ERROR_INVALID_VALUE));
     }
 
-    MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::BlockCopy), "OpParam is invalid",
+    MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid",
               return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
     MKI_CHECK(sourceCount > 0, "sourceCount is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(destinationCount > 0, "destinationCount is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));

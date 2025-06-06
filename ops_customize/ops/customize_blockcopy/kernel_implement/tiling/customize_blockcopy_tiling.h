@@ -18,7 +18,7 @@
 namespace AtbOps {
 using namespace Mki;
 /**
- * @brief 计算 BlockCopy 所需的 tiling 信息，并填充到 kernelInfo 中。
+ * @brief 计算 CustomizeBlockCopy 所需的 tiling 信息，并填充到 kernelInfo 中。
  *
  * 本函数会根据 launchParam 中的 input 张量和参数类型，
  * 选择调用 Nd 或 Nz 版 tiling 计算，并在 310P 平台上做对齐检查。

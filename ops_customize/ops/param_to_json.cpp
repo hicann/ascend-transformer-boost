@@ -33,11 +33,11 @@ template <typename T> std::vector<T> SVectorToVector(const SVector<T> &svector)
 std::string BlockCopyToJson(const Any &param)
 {
     nlohmann::json paramsJson;
-    OpParam::BlockCopy specificParam = AnyCast<OpParam::BlockCopy>(param);
+    OpParam::CustomizeBlockCopy specificParam = AnyCast<OpParam::CustomizeBlockCopy>(param);
     paramsJson["type"] = specificParam.type;
     return paramsJson.dump();
 }
 
 
-REG_STRINGIFY(OpParam::BlockCopy, BlockCopyToJson);
+REG_STRINGIFY(OpParam::CustomizeBlockCopy, BlockCopyToJson);
 } // namespace AtbOps

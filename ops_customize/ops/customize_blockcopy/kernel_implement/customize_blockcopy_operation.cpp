@@ -20,7 +20,7 @@ namespace AtbOps {
 using namespace Mki;
 /**
  * @class CustomizeBlockCopyOperation
- * @brief Mki 层的自定义 BlockCopy 算子，实现参数检查、形状推理及 Kernel 选择。
+ * @brief Mki 层的自定义 CustomizeBlockCopy 算子，实现参数检查、形状推理及 Kernel 选择。
  */
 class CustomizeBlockCopyOperation : public OperationBase {
 public:
@@ -37,7 +37,7 @@ public:
     }
     /**
      * @brief 返回算子期望的输出张量数量。
-     * @param[in] specificParam  包含 op 参数的 Any 对象，应为 OpParam::BlockCopy 类型。
+     * @param[in] specificParam  包含 op 参数的 Any 对象，应为 OpParam::CustomizeBlockCopy 类型。
      * @return int64_t          固定返回 2（in-place 返回 K/V）；检查失败时返回 0。
      */
     int64_t GetOutputNum(const Any &specificParam) const override
