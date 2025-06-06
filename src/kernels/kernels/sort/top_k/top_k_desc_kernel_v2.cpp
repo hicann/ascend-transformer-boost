@@ -14,7 +14,7 @@
 #include <mki/utils/platform/platform_info.h>
 #include <mki_loader/op_register.h>
 #include "asdops/params/sort.h"
-#include "kernels/sort/tiling/sort_tiling_910d.h"
+#include "kernels/sort/tiling/sort_tiling_v2.h"
 
 namespace AsdOps {
 constexpr uint64_t TENSOR_TOPK_CONST_IDX = 1;
