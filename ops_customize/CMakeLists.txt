@@ -20,7 +20,6 @@ set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/ops
-    ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/kernel_implement/include
     ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement
     ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement/tiling
     ${CMAKE_CURRENT_LIST_DIR}/include

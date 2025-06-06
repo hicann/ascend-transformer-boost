@@ -15,7 +15,7 @@
  */
 #ifndef CUSTOMIZE_BLOCK_COPY_BLOCK_COPYOPERATION_H
 #define CUSTOMIZE_BLOCK_COPY_BLOCK_COPYOPERATION_H
-#include "params.h"
+#include "customize_blockcopy/kernel_implement/include/customizeblockcopy.h"
 #include "atb/operation/operation_base.h"
 #include "customize_op_params.h"
 
