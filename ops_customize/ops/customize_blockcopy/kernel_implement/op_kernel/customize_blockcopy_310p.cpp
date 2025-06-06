@@ -1,12 +1,12 @@
 /*
-* Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-* This file is a part of the CANN Open Software.
-* Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
-* Please refer to the License for details. You may not use this file except in compliance with the License.
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
-* See LICENSE in the root of the software repository for the full text of the License.
-*/
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 
 #include "kernel_operator.h"
 #include "kernel_utils.h"
@@ -22,14 +22,12 @@ constexpr int32_t BITS_PER_BYTE = 8;
 constexpr int32_t TRANS_RATIO = 32 / sizeof(int32_t);
 constexpr uint32_t INT32_SIZE = sizeof(int32_t);
 
-template <typename T>
-class CustomizeBlockCopy310P {
+template <typename T> class CustomizeBlockCopy310P {
 public:
     __aicore__ inline CustomizeBlockCopy310P() {}
 
-    __aicore__ inline void Init(GM_ADDR kCache, GM_ADDR vCache,
-                                GM_ADDR srcBlockIndices, GM_ADDR dstBlockIndices,
-                                GM_ADDR cumSum, AtbOps::CustomizeBlockCopyTilingData *tiling_data, TPipe* pipeIn)
+    __aicore__ inline void Init(GM_ADDR kCache, GM_ADDR vCache, GM_ADDR srcBlockIndices, GM_ADDR dstBlockIndices,
+                                GM_ADDR cumSum, AtbOps::CustomizeBlockCopyTilingData *tiling_data, TPipe *pipeIn)
     {
         InitParams(tiling_data);
         kCacheGm.SetGlobalBuffer((__gm__ T *)kCache, blockCount_ * blockSizeofElement_);
@@ -166,8 +164,8 @@ private:
         LocalTensor<int32_t> dstBlockIdxLocal = inQueueY.AllocTensor<int32_t>();
         LocalTensor<int32_t> srcBlockIdxLocal = inQueueX.AllocTensor<int32_t>();
         LocalTensor<int32_t> cumSumLocal = inQueueA.AllocTensor<int32_t>();
-        int32_t cumSumProcessLength = ((sourceCount_ - cumSumOffset_) < processLength ?
-                                       (sourceCount_ - cumSumOffset_) : processLength);
+        int32_t cumSumProcessLength =
+            ((sourceCount_ - cumSumOffset_) < processLength ? (sourceCount_ - cumSumOffset_) : processLength);
 
         auto cumSumCopyLength = (cumSumProcessLength + TRANS_RATIO - 1) / TRANS_RATIO * TRANS_RATIO;
         DataCopy(cumSumLocal, cumSumGm[cumSumOffset_], cumSumCopyLength);
@@ -196,7 +194,8 @@ private:
             int64_t currentCum = static_cast<int64_t>(cumSumLocal.GetValue(processIndex));
             // 在当前核处理范围内，源block地址srcBlockIndex对应的目标block地址数量
             int32_t paddingCount = (currentCum - previousCumSum) > (processLength - completedCount) ?
-                                   (processLength - completedCount) : (currentCum - previousCumSum);
+                                       (processLength - completedCount) :
+                                       (currentCum - previousCumSum);
             if (currentCum - previousCumSum <= processLength - completedCount) {
                 // 在当前核处理范围内，源block地址srcBlockIndex对应的目标block地址已处理完，考虑下一个源block地址
                 processIndex++;
@@ -212,7 +211,7 @@ private:
     }
 
     __aicore__ inline void CopyOneSrc2MultiDst(int32_t srcBlockIdx, int32_t completedCount, int32_t paddingCount,
-                                               LocalTensor<int32_t>& dstIndices)
+                                               LocalTensor<int32_t> &dstIndices)
     {
         for (int i = 0; i < paddingCount; i++) {
             int32_t dstBlockIdx = dstIndices.GetValue(completedCount + i);
@@ -253,7 +252,7 @@ private:
     }
 
 private:
-    TPipe* pipe;
+    TPipe *pipe;
     uint32_t perCoreCopyCount_ = 0;
     uint32_t tailCoreCopyCount_ = 0;
     uint32_t blockIdx_ = 0;
@@ -288,7 +287,8 @@ private:
     TQueBind<QuePosition::VECIN, QuePosition::VECOUT, BUFFER_NUM> src2dstQueueV;
 };
 
-inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps::CustomizeBlockCopyTilingData *tilingdata)
+inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata,
+                                      AtbOps::CustomizeBlockCopyTilingData *tilingdata)
 {
     tilingdata->blockCount = (*(const __gm__ uint32_t *)(p_tilingdata + 0));
     tilingdata->blockSize = (*(const __gm__ uint32_t *)(p_tilingdata + 4));
@@ -303,9 +303,9 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AtbOps
     tilingdata->tailCoreCopyCount = (*(const __gm__ uint32_t *)(p_tilingdata + 40));
 }
 
-extern "C" __global__ __aicore__ void customize_blockcopy(GM_ADDR kCache, GM_ADDR vCache,
-                                             GM_ADDR srcBlockIndices, GM_ADDR dstBlockIndices, GM_ADDR cumSum,
-                                             GM_ADDR kCacheOut, GM_ADDR vCacheOut, GM_ADDR tiling)
+extern "C" __global__ __aicore__ void customize_blockcopy(GM_ADDR kCache, GM_ADDR vCache, GM_ADDR srcBlockIndices,
+                                                          GM_ADDR dstBlockIndices, GM_ADDR cumSum, GM_ADDR kCacheOut,
+                                                          GM_ADDR vCacheOut, GM_ADDR tiling)
 {
     AtbOps::CustomizeBlockCopyTilingData tilingData;
     InitTilingData(tiling, &(tilingData));

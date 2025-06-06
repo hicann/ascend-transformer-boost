@@ -58,7 +58,8 @@ public:
      */
     bool CheckBlockCopy(const LaunchParam &launchParam) const
     {
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid", return false);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid",
+                  return false);
 
         MKI_CHECK(launchParam.GetInTensorCount() == 5, "input num invalid", return false);
 
@@ -98,7 +99,8 @@ public:
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid", return nullptr);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid",
+                  return nullptr);
         return GetKernelByName("CustomizeBlockCopyKernel");
     }
 

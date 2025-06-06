@@ -16,13 +16,13 @@ const int HEADS = 1;
 const int HEAD_SIZE = 1;
 const float INIT_VALUE = 1.0f;
 
-#define CHECK_STATUS(status)                                                                  \
-    do {                                                                                      \
-        if ((status) != 0) {                                                                  \
-            std::cout << __FILE__ << ": " <<__LINE__ << "[error]: " << (status) << std::endl; \
-            exit(1);                                                                          \
-        }                                                                                     \
-    } while(0)
+#define CHECK_STATUS(status)                                                                                           \
+    do {                                                                                                               \
+        if ((status) != 0) {                                                                                           \
+            std::cout << __FILE__ << ": " << __LINE__ << "[error]: " << (status) << std::endl;                         \
+            exit(1);                                                                                                   \
+        }                                                                                                              \
+    } while (0)
 
 atb::Tensor CreateTensor(const aclDataType dataType, const aclFormat format, std::vector<int64_t> shape)
 {
@@ -44,8 +44,8 @@ atb::Tensor CreateTensorFromVector(std::vector<T> data, const aclDataType outTen
 {
     atb::Tensor tensor;
     tensor = CreateTensor(outTensorType, format, shape);
-    CHECK_STATUS(aclrtMemcpy(
-        tensor.deviceData, tensor.dataSize, data.data(), sizeof(T) * data.size(), ACL_MEMCPY_HOST_TO_DEVICE));
+    CHECK_STATUS(aclrtMemcpy(tensor.deviceData, tensor.dataSize, data.data(), sizeof(T) * data.size(),
+                             ACL_MEMCPY_HOST_TO_DEVICE));
     return tensor;
 }
 
@@ -56,8 +56,10 @@ atb::SVector<atb::Tensor> PrepareBlockCopyInTensors()
     for (int i = 0; i < total; ++i) {
         hostKV[i] = static_cast<__fp16>(INIT_VALUE + i);
     }
-    auto keyCache   = CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
-    auto valueCache = CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
+    auto keyCache = CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                           {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
+    auto valueCache = CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                             {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
 
     // 2) srcBlockIndices, cumSum：长度 BLOCK_COUNT = 2，cumSum = [1,2]
     std::vector<int32_t> srcIdx = {0, 1};
@@ -67,9 +69,10 @@ atb::SVector<atb::Tensor> PrepareBlockCopyInTensors()
 
     // 3) dstBlockIndices：长度 cumSum.back() = 2，对应 [1,0] 表示交换两个块
     std::vector<int32_t> dstIdx = {1, 0};
-    auto dstTensor = CreateTensorFromVector(dstIdx, ACL_INT32, aclFormat::ACL_FORMAT_ND, {static_cast<int64_t>(cumSum.back())});
+    auto dstTensor =
+        CreateTensorFromVector(dstIdx, ACL_INT32, aclFormat::ACL_FORMAT_ND, {static_cast<int64_t>(cumSum.back())});
 
-    return { keyCache, valueCache, srcTensor, dstTensor, cumSumTensor };
+    return {keyCache, valueCache, srcTensor, dstTensor, cumSumTensor};
 }
 
 atb::Operation *PrepareOperation()
@@ -80,7 +83,8 @@ atb::Operation *PrepareOperation()
     return op;
 }
 
-TEST(ExampleOpTest, CreateOperation_Success) {
+TEST(ExampleOpTest, CreateOperation_Success)
+{
     atb::Context *context = nullptr;
     void *stream = nullptr;
 
@@ -102,7 +106,7 @@ TEST(ExampleOpTest, CreateOperation_Success) {
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
 
-    //execute
+    // execute
     op->Execute(variantPack, workspacePtr, workspaceSize, context);
     CHECK_STATUS(aclrtSynchronizeStream(stream));
 
@@ -118,7 +122,8 @@ TEST(ExampleOpTest, CreateOperation_Success) {
     CHECK_STATUS(aclFinalize());
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

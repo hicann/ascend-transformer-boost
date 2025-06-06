@@ -41,8 +41,8 @@ public:
     {
         MKI_CHECK(launchParam.GetInTensorCount() == TENSOR_INPUT_NUM, "in tensor num invalid", return false);
         MKI_CHECK(launchParam.GetOutTensorCount() == TENSOR_OUTPUT_NUM, "out tensor num invalid", return false);
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy), "CustomizeBlockCopy: param type invalid",
-                  return false);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy),
+                  "CustomizeBlockCopy: param type invalid", return false);
         return true;
     }
     /**
