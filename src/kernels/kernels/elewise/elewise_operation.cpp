@@ -19,6 +19,7 @@
 #include <mki_loader/op_register.h>
 
 #include "asdops/params/elewise.h"
+#include "sink_common.h"
 
 namespace AsdOps {
 using namespace Mki;
@@ -442,14 +443,14 @@ protected:
                 return status;
             }
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL: {
-                Status status = SimplyBroadcastInferShape(launchParam, outTensors);
-                outTensors[0].desc.dtype = TENSOR_DTYPE_INT8;
-                return status;
+                MKI_LOG(INFO) << "ELEWISE_QUANT_PER_CHANNEL enter";
+                return opInferShape::CallGeInferShape("QuantPerChannel", launchParam, outTensors,
+                                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>);
             }
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL: {
-                Status status = SimplyBroadcastInferShape(launchParam, outTensors);
-                outTensors[0].desc.dtype = TENSOR_DTYPE_FLOAT16;
-                return status;
+                MKI_LOG(INFO) << "ELEWISE_DEQUANT_PER_CHANNEL enter";
+                return opInferShape::CallGeInferShape("DequantPerChannel", launchParam, outTensors,
+                                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>);
             }
             default:
                 return Status::FailStatus(ERROR_INVALID_VALUE, "no matched elewiseType");
