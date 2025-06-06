@@ -30,6 +30,7 @@ add_library(atb_customize_static STATIC ${CUSTOMIZE_SRCS})
 set(CUSTOMIZE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/ops
+    ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/kernel_implement/include
     ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement
     ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement/tiling
     ${CMAKE_CURRENT_LIST_DIR}/include
