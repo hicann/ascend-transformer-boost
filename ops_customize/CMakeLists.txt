@@ -16,18 +16,8 @@ set(OPS_THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/3rdparty")
 set(MKI_PACKAGE_DIR "${OPS_THIRD_PARTY_DIR}/mki")
 set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 
-add_subdirectory(ops)
-
-file(GLOB_RECURSE CUSTOMIZE_SRCS
-     "${CMAKE_CURRENT_SOURCE_DIR}/ops/*.cpp")
-
-list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/kernel_implement/.*")
-list(FILTER CUSTOMIZE_SRCS EXCLUDE REGEX ".*/tests/.*")
-
-add_library(atb_customize SHARED ${CUSTOMIZE_SRCS})
-add_library(atb_customize_static STATIC ${CUSTOMIZE_SRCS})
-
-set(CUSTOMIZE_INCLUDE_DIRS
+# set(CUSTOMIZE_INCLUDE_DIRS
+include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/ops
     ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/kernel_implement/include
@@ -44,8 +34,17 @@ set(CUSTOMIZE_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/3rdparty/mki/include
 )
 
-target_include_directories(atb_customize PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
-target_include_directories(atb_customize_static PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
+add_subdirectory(ops)
+
+file(GLOB_RECURSE CUSTOMIZE_SRCS
+     "${CMAKE_CURRENT_SOURCE_DIR}/ops/*/operation_implement/*.cpp"
+)
+
+add_library(atb_customize SHARED ${CUSTOMIZE_SRCS})
+add_library(atb_customize_static STATIC ${CUSTOMIZE_SRCS})
+
+# target_include_directories(atb_customize PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
+# target_include_directories(atb_customize_static PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 
 set(CUSTOMIZE_DEPS
     mki
