@@ -23,24 +23,6 @@ namespace atb {
 namespace customize {
 
 //!
-//! \struct AddParam
-//!
-//! \brief 两个张量相加
-//!
-struct AddParam {
-    //!
-    //! \brief 占位参数
-    //!
-    //! \note 默认值为0。
-    //!
-    uint32_t paramForNothing = 0;
-    //!
-    //! \brief 预留参数
-    //!
-    uint8_t rsv[64] = {0};
-};
-
-//!
 //! \struct BlockCopyParam
 //!
 //! \brief 将KVCache里通过src indices指定的block数据copy到dst indices指定的block位置上。
