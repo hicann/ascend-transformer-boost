@@ -11,7 +11,7 @@
 #include <vector>
 #include <sstream>
 #include <nlohmann/json.hpp>
-#include "atbops/params/params.h"
+#include "customize_blockcopy/kernel_implement/include/customizeblockcopy.h"
 #include "mki/utils/SVector/SVector.h"
 #include "mki/utils/stringify/stringify.h"
 #include "mki/utils/any/any.h"
@@ -30,7 +30,7 @@ template <typename T> std::vector<T> SVectorToVector(const SVector<T> &svector)
     return tmpVec;
 };
 
-std::string BlockCopyToJson(const Any &param)
+std::string CustomizeBlockCopyToJson(const Any &param)
 {
     nlohmann::json paramsJson;
     OpParam::CustomizeBlockCopy specificParam = AnyCast<OpParam::CustomizeBlockCopy>(param);
@@ -39,5 +39,5 @@ std::string BlockCopyToJson(const Any &param)
 }
 
 
-REG_STRINGIFY(OpParam::CustomizeBlockCopy, BlockCopyToJson);
+REG_STRINGIFY(OpParam::CustomizeBlockCopy, CustomizeBlockCopyToJson);
 } // namespace AtbOps
