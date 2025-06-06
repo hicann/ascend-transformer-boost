@@ -9,7 +9,7 @@ struct CustomizeBlockCopy {
         BLOCK_COPY_CACHE_NZ = 1
     };
     Type type = BLOCK_COPY_CACHE_ND;
-    bool operator==(const BlockCopy &other) const
+    bool operator==(const CustomizeBlockCopy &other) const
     {
         return this->type == other.type;
     }
@@ -17,4 +17,4 @@ struct CustomizeBlockCopy {
 } // namespace OpParam
 } // namespace AtbOps
 
-#endif // ATBOPS_PARAMS_BLOCKCOPY_H
+#endif // CUSTOMIZE_PARAMS_BLOCKCOPY_H

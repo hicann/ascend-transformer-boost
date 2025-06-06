@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include <kernel_implement/include/params.h>
+#include "customize_blockcopy/kernel_implement/include/params.h"
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
 #include "customize_block_copy_ops_runner.h"
