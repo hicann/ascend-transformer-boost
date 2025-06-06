@@ -68,6 +68,10 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_MATMUL_SHUFFLE_K_ENABLE=1 #Shuffle-K使能，默认开
 
     #算子库环境变量
+    export ASDOPS_LOG_LEVEL=ERROR #算子库日志级别
+    export ASDOPS_LOG_TO_STDOUT=0 #算子库日志是否输出到控制台
+    export ASDOPS_LOG_TO_FILE=1   #算子库日志是否输出到文件
+    export ASDOPS_LOG_TO_FILE_FLUSH=0 #日志写文件是否刷新
     export ASDOPS_LOG_TO_BOOST_TYPE=atb #算子库对应加速库日志类型，默认atb
     export ASDOPS_LOG_PATH=~ #算子库日志保存路径
     export LCCL_DETERMINISTIC=0 #LCCL确定性AllReduce(保序加)是否开启，0关闭，1开启。
