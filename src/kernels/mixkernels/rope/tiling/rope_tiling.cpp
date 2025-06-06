@@ -13,6 +13,10 @@
 #include <mki/utils/platform/platform_info.h>
 #include "atbops/params/params.h"
 #include "tiling_data.h"
+#include "tbe_tiling_runner.h"
+#include <mki/utils/SVector/SVector.h>
+#include <mki/utils/any/any.h>
+#include <mki/types.h>
 
 namespace AtbOps {
 static constexpr uint32_t BLOCK_SIZE = 16;
@@ -173,6 +177,12 @@ Status RopeTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         kernelInfo.SetMemsetInfo(NUM_EIGHT, syncWorkspaceSize);
     }
     MKI_LOG(INFO) << "workspace: " << sysWorkspaceSize;
+    return Status::OkStatus();
+}
+
+Status RopeAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                      const BinHandle &binHandle)
+{
     return Status::OkStatus();
 }
 } // namespace AtbOps

@@ -13,9 +13,12 @@
 #include "mki/launch_param.h"
 #include "mki/kernel_info.h"
 #include "mki/utils/status/status.h"
+#include <mki/bin_handle.h>
 
 namespace AtbOps {
 using namespace Mki;
 Status RopeTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo);
+Status RopeAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                      const BinHandle &binHandle);
 } // namespace AtbOps
 #endif
