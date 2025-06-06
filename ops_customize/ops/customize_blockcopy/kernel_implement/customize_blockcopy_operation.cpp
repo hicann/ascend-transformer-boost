@@ -13,7 +13,7 @@
 #include <mki/utils/const/op_const.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/checktensor/check_tensor.h>
-#include "atbops/params/params.h"
+#include "include/customizeblockcopy.h"
 
 
 namespace AtbOps {

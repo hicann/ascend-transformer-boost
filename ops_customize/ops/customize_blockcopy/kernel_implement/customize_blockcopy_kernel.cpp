@@ -12,7 +12,7 @@
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
 #include <mki/utils/platform/platform_info.h>
-#include "atbops/params/params.h"
+#include "include/customizeblockcopy.h"
 #include "mixkernels/utils/common.h"
 #include "tiling/customize_blockcopy_tiling.h"
 #include "tiling/tiling_data.h"
