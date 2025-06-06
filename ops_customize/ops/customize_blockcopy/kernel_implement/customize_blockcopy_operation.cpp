@@ -27,12 +27,12 @@ public:
     explicit CustomizeBlockCopyOperation(const std::string &opName) noexcept : OperationBase(opName) {}
     /**
      * @brief 返回算子期望的输入张量数量。
-     * @param[in] specificParam  包含 op 参数的 Any 对象，应为 OpParam::BlockCopy 类型。
+     * @param[in] specificParam  包含 op 参数的 Any 对象，应为 OpParam::CustomizeBlockCopy 类型。
      * @return int64_t          固定返回 5；检查失败时返回 0。
      */
     int64_t GetInputNum(const Any &specificParam) const override
     {
-        MKI_CHECK(specificParam.Type() == typeid(OpParam::BlockCopy), "OpParam is invalid", return 0);
+        MKI_CHECK(specificParam.Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid", return 0);
         return DIM_5;
     }
     /**
@@ -42,14 +42,14 @@ public:
      */
     int64_t GetOutputNum(const Any &specificParam) const override
     {
-        MKI_CHECK(specificParam.Type() == typeid(OpParam::BlockCopy), "OpParam is invalid", return 0);
+        MKI_CHECK(specificParam.Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid", return 0);
         return DIM_2;
     }
     /**
      * @brief 对 LaunchParam 中的参数和输入张量进行完整性检查。
      *
      * 依次校验：
-     *  - Param 类型是否为 OpParam::BlockCopy
+     *  - Param 类型是否为 OpParam::CustomizeBlockCopy
      *  - 输入张量数量是否为 5
      *  - K/V Cache、src 索引、dst 索引列表格式是否合法
      *
@@ -58,7 +58,7 @@ public:
      */
     bool CheckBlockCopy(const LaunchParam &launchParam) const
     {
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::BlockCopy), "OpParam is invalid", return false);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid", return false);
 
         MKI_CHECK(launchParam.GetInTensorCount() == 5, "input num invalid", return false);
 
@@ -98,7 +98,7 @@ public:
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::BlockCopy), "OpParam is invalid", return nullptr);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::CustomizeBlockCopy), "OpParam is invalid", return nullptr);
         return GetKernelByName("CustomizeBlockCopyKernel");
     }
 
