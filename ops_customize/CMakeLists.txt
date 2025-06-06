@@ -16,7 +16,6 @@ set(OPS_THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/3rdparty")
 set(MKI_PACKAGE_DIR "${OPS_THIRD_PARTY_DIR}/mki")
 set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 
-# set(CUSTOMIZE_INCLUDE_DIRS
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/ops
@@ -41,9 +40,6 @@ file(GLOB_RECURSE CUSTOMIZE_SRCS
 
 add_library(atb_customize SHARED ${CUSTOMIZE_SRCS})
 add_library(atb_customize_static STATIC ${CUSTOMIZE_SRCS})
-
-# target_include_directories(atb_customize PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
-# target_include_directories(atb_customize_static PUBLIC ${CUSTOMIZE_INCLUDE_DIRS})
 
 set(CUSTOMIZE_DEPS
     mki

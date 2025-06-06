@@ -93,10 +93,6 @@ TEST(ExampleOpTest, CreateOperation_Success) {
     atb::Operation *op = PrepareOperation();
     atb::VariantPack variantPack;
     variantPack.inTensors = PrepareBlockCopyInTensors();
-    // auto outKey   = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
-    // auto outValue = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE});
-    // variantPack.outTensors.push_back(outKey);
-    // variantPack.outTensors.push_back(outValue);
 
     // setup
     uint64_t workspaceSize = 0;
