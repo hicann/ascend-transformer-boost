@@ -15,6 +15,7 @@
 #include "mixkernels/utils/common.h"
 #include "tiling/toppsample_tiling.h"
 #include "tiling/tiling_data.h"
+#include "sink_common.h"
 
 static constexpr uint32_t TENSOR_INPUT_NUM = 2;
 static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
@@ -52,7 +53,8 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return ToppsampleTiling(launchParam, kernelInfo_);
+        return optiling::CallGeTiling("TopPSample", *GetBinHandle(), launchParam,
+                                      AsdOps::GetMkiSpecificAttr<OpParam::Toppsample>, kernelInfo_);
     }
 };
 REG_KERNEL_BASE(ToppsampleKernel);
