@@ -85,6 +85,15 @@ uint64_t Utils::GetTensorSize(const TensorDesc &tensorDesc)
         case ACL_COMPLEX128:
             dataItemSize = sizeof(std::complex<double>);
             break;
+        case ACL_HIFLOAT8:
+            dataItemSize = sizeof(int8_t);
+            break;
+        case ACL_FLOAT8_E5M2:
+            dataItemSize = sizeof(int8_t);
+            break;
+        case ACL_FLOAT8_E4M3FN:
+            dataItemSize = sizeof(int8_t);
+            break;
         default:
             ATB_LOG(ERROR)
                 << "Tensor not support dtype:" << tensorDesc.dtype

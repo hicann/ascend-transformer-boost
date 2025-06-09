@@ -12,6 +12,7 @@
 #include "atb/utils/log.h"
 #include "atb/utils/runner_util.h"
 #include "atb/utils/tensor_util.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace atb {
 RepeatOpsRunner::RepeatOpsRunner(const infer::RepeatParam &param)
@@ -26,8 +27,11 @@ RepeatOpsRunner::RepeatOpsRunner(const infer::RepeatParam &param)
 
     kernelGraph_.nodes.resize(1);
     auto &repeatNode = kernelGraph_.nodes.at(0);
-
-    repeatNode.opDesc = {0, "ExpandOperation", {}};
+    if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) {
+        repeatNode.opDesc = {0, "ExpandOperation", {}};
+    } else {
+        repeatNode.opDesc = {0, "TileOperation", {}};
+    }
     repeatNode.inTensors = {&operationInTensor};
     repeatNode.outTensors = {&operationOutTensor};
     repeatNode.inTensorViewFuncs.resize(repeatNode.inTensors.size());

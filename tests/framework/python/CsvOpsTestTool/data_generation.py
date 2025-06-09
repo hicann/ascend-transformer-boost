@@ -26,10 +26,13 @@ from enum import Enum
 
 from self_attention_golden import SelfAttentionGolden, SelfAttentionGenOutTensor
 
+from en_dtypes import hifloat8
+
 dtype_dict = {"float": torch.float32, "float16": torch.float16, "int8": torch.int8, "int32": torch.int32, "uint8": torch.uint8,
               "int16": torch.int16, "uint16": torch.int16, "uint32": torch.int32, "int64": torch.int64, "uint64": torch.int64,
-              "double": torch.double, "bool": torch.bool, "complex64": torch.complex64, "complex128": torch.complex128, "bf16": torch.bfloat16}
-
+              "double": torch.double, "bool": torch.bool, "complex64": torch.complex64, "complex128": torch.complex128, "bf16": torch.bfloat16,
+              "hifloat8": torch.bits8, "float8_e5m2": torch.float8_e5m2, "float8_e4m3fn": torch.float8_e4m3fn}
+'''torch.bits8仅用于占位,不参与实际计算,不要将其它数据类型映射到此数据类型上'''
 format_dict = {"undefined": -1, "nchw": 0, "nhwc": 1, "nd": 2, "nc1hwc0": 3,
                 "fractal_z": 4, "nc1hwc0_c04": 12, "hwcn": 16, "ndhwc": 27,
                 "fractal_nz": 29, "ncdhw": 30, "ndc1hwc0": 32, "fractal_z_3d": 33}
@@ -3781,6 +3784,25 @@ class ElewiseOperation(DataGen):
             out = np.clip((input_y.astype(np.float16) - input_offset.astype(np.float16)) * input_scale, -65504, 65504)
         return [torch.from_numpy(out).to(torch.float16)]
 
+    def elewiseQuantPerChannelV2(in_tensors, op_params):
+        json_data = json.loads(op_params)
+        outType = json_data["outTensorType"]
+        input_x = in_tensors[0].to(torch.float32).cpu().numpy().astype("float32")
+        input_scale = in_tensors[1].to(torch.float32).cpu().numpy().astype("float32")
+        input_offset = in_tensors[2].to(torch.float32).cpu().numpy().astype("float32")
+        out = input_x * input_scale
+        if len(input_offset) != 0:
+            out = out + input_offset
+        out = np.round(out, 8)
+        if outType == 35:
+            out = torch.from_numpy(out).to(torch.float8_e5m2)
+        elif outType == 36:
+            out = torch.from_numpy(out).to(torch.float8_e4m3fn)
+        elif outType == 34:
+            out = out.astype(hifloat8, copy=False).view(np.int8)
+            out = torch.from_numpy(out)
+        return [out]
+
     def elewiseDynamicQuant(in_tensors, op_params):
         input_x = in_tensors[0].to(torch.float).cpu().numpy()
         shape_input = input_x.shape
@@ -3862,6 +3884,8 @@ class ElewiseOperation(DataGen):
             return ElewiseOperation.elewiseDynamicQuant(in_tensors, op_params)
         elif elewiseType == 20:
             return ElewiseOperation.elewiseTanh(in_tensors, op_params)
+        elif elewiseType == 21:
+            return ElewiseOperation.elewiseQuantPerChannelV2(in_tensors, op_params)
 
     @staticmethod
     def get_op_type(op_params):

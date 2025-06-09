@@ -36,6 +36,8 @@ private:
     Status InferShapeCommon(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeImplQuantChannel(const SVector<TensorDesc> &inTensorDescs,
                                       SVector<TensorDesc> &outTensorDescs) const;
+    Status InferShapeImplQuantChannelV2(const SVector<TensorDesc> &inTensorDescs,
+                                        SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeImplDequantChannel(const SVector<TensorDesc> &inTensorDescs,
                                         SVector<TensorDesc> &outTensorDescs) const;
     bool InferShapeCheckDynamicQuant(const SVector<TensorDesc> &inTensorDescs) const;

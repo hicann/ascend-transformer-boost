@@ -15,6 +15,8 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/math/math.h>
 #include <mki/utils/platform/platform_info.h>
+#include "tbe_tiling_runner.h"
+#include "asdops/params/elewise.h"
 
 namespace AsdOps {
 Status SimplyBroadcastTiling(BroadcastInfo &broadcastInfo, const LaunchParam &launchParam, KernelInfo &kernelInfo)
@@ -142,5 +144,41 @@ Status DequantPerChannelTiling(BroadcastInfo &broadcastInfo, const LaunchParam &
     MKI_LOG(INFO) << "Dequant Per Channel tilingKey is : " << tilingKey;
 
     return Status::OkStatus();
+}
+using namespace Mki;
+Status QuantPerChannelV2Tiling(const LaunchParam &launchParam, KernelInfo &kernelInfo, const BinHandle &binHandle)
+{
+    const TensorDesc &inTensorDesc0 = launchParam.GetInTensor(0).desc;
+    const TensorDesc &inTensorDesc1 = launchParam.GetInTensor(1).desc;
+    const TensorDesc &inTensorDesc2 = launchParam.GetInTensor(2).desc;
+    const TensorDesc &outTensorDesc0 = launchParam.GetOutTensor(0).desc;
+    auto param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
+    int dstType = param.outTensorType;
+    std::string kernelName;
+    if (inTensorDesc0.dtype == TENSOR_DTYPE_FLOAT16 && outTensorDesc0.dtype == TENSOR_DTYPE_FLOAT8_E5M2) {
+        kernelName = "QuantPerChannelV2F16FP85Kernel";
+    } else if (inTensorDesc0.dtype == TENSOR_DTYPE_BF16 && outTensorDesc0.dtype == TENSOR_DTYPE_FLOAT8_E5M2) {
+        kernelName = "QuantPerChannelV2BF16FP85Kernel";
+    } else if (inTensorDesc0.dtype == TENSOR_DTYPE_FLOAT16 && outTensorDesc0.dtype == TENSOR_DTYPE_FLOAT8_E4M3FN) {
+        kernelName = "QuantPerChannelV2F16FP84Kernel";
+    } else if (inTensorDesc0.dtype == TENSOR_DTYPE_BF16 && outTensorDesc0.dtype == TENSOR_DTYPE_FLOAT8_E4M3FN) {
+        kernelName = "QuantPerChannelV2BF16FP84Kernel";
+    } else if (inTensorDesc0.dtype == TENSOR_DTYPE_FLOAT16 && outTensorDesc0.dtype == TENSOR_DTYPE_HIFLOAT8) {
+        kernelName = "QuantPerChannelV2F16HF8Kernel";
+    } else if (inTensorDesc0.dtype == TENSOR_DTYPE_BF16 && outTensorDesc0.dtype == TENSOR_DTYPE_HIFLOAT8) {
+        kernelName = "QuantPerChannelV2BF16HF8Kernel";
+    }
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("AscendQuantV2")
+        .SetKernelName(kernelName)
+        .AddInput(inTensorDesc0.dtype, inTensorDesc0.format, inTensorDesc0.dims)
+        .AddInput(inTensorDesc1.dtype, inTensorDesc1.format, inTensorDesc1.dims)
+        .AddInput(inTensorDesc2.dtype, inTensorDesc2.format, inTensorDesc2.dims)
+        .AddOutput(outTensorDesc0.dtype, outTensorDesc0.format, outTensorDesc0.dims)
+        .AddAttrBool(false)
+        .AddAttrStr("round")
+        .AddAttrInt(dstType)
+        .AddAttrInt(-1);
+        return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
 } // namespace AsdOps
