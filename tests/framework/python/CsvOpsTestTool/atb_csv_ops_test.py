@@ -27,15 +27,15 @@ import pickle
 from multiprocessing.connection import Client
 
 dtype_enum_dict = {-1: "undefined", 0: "float", 1: "float16", 2: "int8", 3: "int32", 4: "uint8",
-                    6: "int16", 7: "uint16", 8: "uint32", 9: "int64", 10: "uint64",
-                    11: "double", 12: "bool", 13: "string", 16: "complex64", 17: "complex128", 27: "bf16"}
+                   6: "int16", 7: "uint16", 8: "uint32", 9: "int64", 10: "uint64",
+                   11: "double", 12: "bool", 13: "string", 16: "complex64", 17: "complex128", 27: "bf16"}
 
 format_enum_dict = {-1: "undefined", 0: "nchw", 1: "nhwc", 2: "nd", 3: "nc1hwc0",
-                4: "fractal_z", 12: "nc1hwc0_c04", 16: "hwcn", 27: "ndhwc",
-                29: "fractal_nz", 30: "ncdhw", 32: "ndc1hwc0", 33: "fractal_z_3d"}
+                    4: "fractal_z", 12: "nc1hwc0_c04", 16: "hwcn", 27: "ndhwc",
+                    29: "fractal_nz", 30: "ncdhw", 32: "ndc1hwc0", 33: "fractal_z_3d"}
 
-err_enum_dict = {0: "NO_ERROR", 1: "ERROR_INVALID_PARAM", 2: "ERROR_INVALID_GRAPH", 3: "ERROR_INTERNAL_ERROR", 4: "ERROR_RT_FAIL", 
-                 5: "ERROR_INVALID_IN_TENSOR_NUM", 6: "ERROR_INVALID_TENSOR_DTYPE", 7: "ERROR_INVALID_TENSOR_FORMAT", 8: "ERROR_INVALID_TENSOR_DIM", 
+err_enum_dict = {0: "NO_ERROR", 1: "ERROR_INVALID_PARAM", 2: "ERROR_INVALID_GRAPH", 3: "ERROR_INTERNAL_ERROR", 4: "ERROR_RT_FAIL",
+                 5: "ERROR_INVALID_IN_TENSOR_NUM", 6: "ERROR_INVALID_TENSOR_DTYPE", 7: "ERROR_INVALID_TENSOR_FORMAT", 8: "ERROR_INVALID_TENSOR_DIM",
                  9: "ERROR_INVALID_TENSOR_SIZE", 10: "ERROR_OPERATION_NULL_RUNNER", 11: "ERROR_GRAPH_INFERSHAPE_FUNC_FAIL", 12: "ERROR_CANN_ERROR",
                  13: "ERROR_INVALID_TENSOR_INI_MATCH", 14: "ERROR_INVALID_TENSOR_ADDR", 15: "ERROR_INVALID_TENSOR_NUM", 16: "ERROR_INVALID_TENSOR_DIM_NUM",
                  17: "ERROR_INVALID_SINGLE_OPERATION_PARAM", 18: "ERROR_GRAPH_NODE_RESHAPE_FUNC_FAIL", 19: "ERROR_INVALID_GRAPH_NODE_CHUNK",
@@ -178,7 +178,7 @@ class CsvOpsTest():
     def __dump_tensor(self, tensor, tensor_data_type, index, info):
         if self.args.save_tensor:
             dump_path = self.data_save_path + self.case_name.loc[self.index] + '_' + \
-                str(self.case_num.loc[self.index]) + '_deviceid_' + str(torch.npu.current_device()) + '_' + tensor_data_type + '_index_' + str(index)
+                        str(self.case_num.loc[self.index]) + '_deviceid_' + str(torch.npu.current_device()) + '_' + tensor_data_type + '_index_' + str(index)
             dump_path_pt = dump_path + '.pt'
             dump_path_txt = dump_path + '.txt'
             types =['input','golden','output']
@@ -202,7 +202,7 @@ class CsvOpsTest():
         self.op_param_str = ''
         op_param_str = self.op_param.loc[self.index]
         if isinstance(op_param_str, dict):
-                op_param_str = json.dumps(op_param_str)
+            op_param_str = json.dumps(op_param_str)
         self.op_param_str = op_param_str
         return self.operation.set_param(self.op_param_str)
 
@@ -870,8 +870,10 @@ def get_device_properties():
     re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
     re.search("Ascend910A", device_name, re.I)):
         soc_version = "Ascend910A"
-    elif ("Ascend310B", device_name, re.I):
+    elif re.search("Ascend310B", device_name, re.I):
         soc_version = "Ascend310B"
+    elif re.search("Ascend910_9599", device_name, re.I):
+        soc_version = "Ascend910_95"
     else:
         logging.error("device_name %s is not supported", device_name)
         quit(1)
