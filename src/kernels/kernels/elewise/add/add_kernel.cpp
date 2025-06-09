@@ -11,6 +11,7 @@
 #include <mki/base/kernel_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/params.h"
 #include "kernels/elewise/tiling/elewise_tiling.h"
 
@@ -36,6 +37,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            return AddTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        }
         return BroadcastCommonTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };
@@ -139,4 +143,65 @@ public:
     }
 };
 REG_KERNEL_BASE(AddBF16Kernel);
+
+// AddAptF16
+class AddAptF16Kernel : public AddKernel {
+public:
+    explicit AddAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : AddKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(AddKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(AddAptF16Kernel);
+
+// AddAptF32
+class AddAptF32Kernel : public AddKernel {
+public:
+    explicit AddAptF32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : AddKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(AddKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(AddAptF32Kernel);
+
+// AddAptBF16
+class AddAptBF16Kernel : public AddKernel {
+public:
+    explicit AddAptBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : AddKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(AddKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(AddAptBF16Kernel);
+
 } // namespace AsdOps
