@@ -65,6 +65,25 @@ Status CastTiling(const std::string &kernelName, const LaunchParam &launchParam,
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
 
+Status MulTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                           const BinHandle &binHandle)
+{
+    const auto &tensorDesc0 = launchParam.GetInTensor(0).desc;
+    const auto &tensorDesc1 = launchParam.GetInTensor(1).desc;
+    const auto &tensorDescOut = launchParam.GetOutTensor(0).desc;
+    const auto &param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
+
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("Mul")
+        .SetKernelName(kernelName)
+        .AddInput(tensorDesc0.dtype, tensorDesc0.format, tensorDesc0.dims)
+        .AddInput(tensorDesc1.dtype, tensorDesc1.format, tensorDesc1.dims)
+        .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
+        .AddAttrFloat(param.varAttr);
+
+    return GetTilingFromRunner(kernelInfo, runner, binHandle);
+}
+
 Status MulsTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                   const BinHandle &binHandle)
 {
