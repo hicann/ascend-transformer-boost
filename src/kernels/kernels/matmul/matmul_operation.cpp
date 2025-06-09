@@ -72,6 +72,112 @@ public:
         const TensorDType dtypeC = outTensorDescC.dtype;
         bool isSparseDequant = (opParam.enDequant && opParam.tilingK > 0 && opParam.tilingN > 0);
         if (!isSparseDequant) {
+            MKI_CHECK((formatA == TENSOR_FORMAT_ND) || ValidNzFormat(launchParam.GetInTensor(0)),
+                      "Invalid format of matrix A.", return nullptr);
+            MKI_CHECK((formatB == TENSOR_FORMAT_ND) || ValidNzFormat(launchParam.GetInTensor(1)),
+                      "Invalid format of matrix B.", return nullptr);
+        }
+        PlatformType platform = PlatformInfo::Instance().GetPlatformType();
+        std::unordered_map<PlatformType, uint32_t> archTypeMap = {{PlatformType::ASCEND_310P, 0},
+                                                                  {PlatformType::ASCEND_910A, 0},
+                                                                  {PlatformType::ASCEND_310B, 0},
+                                                                  {PlatformType::ASCEND_910B, 1}};
+        std::unordered_map<TensorFormat, uint32_t> tensorFormatMap = {{TENSOR_FORMAT_ND, 0},
+                                                                      {TENSOR_FORMAT_FRACTAL_NZ, 1}};
+        std::unordered_map<TensorDType, uint32_t> tensorDtypeMap = {
+            {TENSOR_DTYPE_INT8, 0}, {TENSOR_DTYPE_FLOAT16, 1}, {TENSOR_DTYPE_BF16, 2}, {TENSOR_DTYPE_FLOAT, 3}};
+
+        MKI_CHECK(archTypeMap.find(platform) != archTypeMap.end(), "Unsupported platform.", return nullptr);
+        MKI_CHECK(tensorFormatMap.find(formatA) != tensorFormatMap.end(), "Unsupported format of matrix A.",
+                  return nullptr);
+        MKI_CHECK(tensorFormatMap.find(formatB) != tensorFormatMap.end(), "Unsupported format of matrix B.",
+                  return nullptr);
+        MKI_CHECK(tensorDtypeMap.find(dtypeA) != tensorDtypeMap.end(), "Unsupported dtype of matrix A.",
+                  return nullptr);
+        MKI_CHECK(tensorDtypeMap.find(dtypeB) != tensorDtypeMap.end(), "Unsupported dtype of matrix B.",
+                  return nullptr);
+
+        uint32_t kernelKey = archTypeMap[platform];                             // ArchType
+        kernelKey = (kernelKey << DTYPE_BIT_COUNT) + tensorDtypeMap[dtypeA];    // DtypeA
+        kernelKey = (kernelKey << DTYPE_BIT_COUNT) + tensorDtypeMap[dtypeB];    // DtypeB
+        kernelKey = (kernelKey << DTYPE_BIT_COUNT) + tensorDtypeMap[dtypeC];    // DtypeC
+        kernelKey = (kernelKey << FORMAT_BIT_COUNT) + tensorFormatMap[formatA]; // FormatA
+        kernelKey = (kernelKey << FORMAT_BIT_COUNT) + tensorFormatMap[formatB]; // FormatB
+        kernelKey = (kernelKey << FORMAT_BIT_COUNT) + tensorFormatMap[formatC]; // FormatC
+        kernelKey = (kernelKey << INPUT_BIT_COUNT) + (inTensorCount - DIM_2);
+        MKI_LOG(INFO) << "kernelKey: " << kernelKey;
+        MKI_LOG(INFO) << ">>> PpMatmulType:" << static_cast<uint32_t>(opParam.matmulType);
+        if (opParam.matmulType == MmType::MATMUL_ACCUM_ATOMIC) {
+            return GetKernelByName("PpMatmulAccumAtomicKernel");
+        }
+        if (opParam.matmulType == MmType::MATMUL_WITH_BIAS) {
+            return GetKernelByName("PpMatmulWithBiasKernel");
+        }
+        if (opParam.matmulType == MmType::MATMUL_EIN_SUM) {
+            MKI_CHECK(!opParam.transposeA, "Unsupported transposed A_matrix", return nullptr);
+            return GetKernelByName("PpMatmulEinSumKernel");
+        }
+        // 先判断w8a8compress
+        if (isSparseDequant) {
+            switch (kernelKey) {
+                case PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY: return GetKernelByName("PpMatmulW8A8NzCompressKernel");
+                default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
+            }
+        }
+
+        if (opParam.quantMode == OpParam::MatMul::QuantMode::PER_TOKEN_SYMM) {
+            switch (kernelKey) {
+                case PP_MATMUL_I8_FP16_KERNEL_KEY:  return GetKernelByName("PpMatmulW8A8PertokenFP16Kernel");
+                case PP_MATMUL_I8_BF16_KERNEL_KEY: return GetKernelByName("PpMatmulW8A8Bf16NDNDKernel");
+                default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
+            }
+        }
+
+        // 判断w8a8
+        switch (kernelKey) {
+            case PP_MATMUL_I8_BF16_KERNEL_KEY: return GetKernelByName("PpMatmulW8A8Bf16NDNDKernel");
+            case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY: return GetKernelByName("PpMatmulW8A8Bf16NDNZKernel");
+            case PP_MATMUL_I8_KERNEL_KEY: return GetKernelByName("PpMatmulW8A8Kernel"); //2083
+            case PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY: return GetKernelByName("PpMatmulW8A8WeightNzKernel");   //2091
+            case PP_MATMUL_F16_KERNEL_KEY: return GetKernelByName("PpMatMulF16Kernel");
+            case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
+            case PP_MATMUL_BF16_KERNEL_KEY: return GetKernelByName("PpMatMulBf16Kernel");
+            case PP_MATMUL_F16_OPT_KERNEL_KEY: return GetKernelByName("PpMatMulF16OptKernel");
+            case PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY: return GetKernelByName("PpMatMulBf16NdNzNdKernel");
+            case PP_MATMUL_NZ_F16_KERNEL_KEY: return GetKernelByName("PpMatMulNzF16Kernel");
+            case PP_MATMUL_I8_NZ_KERNEL_KEY: 
+                if(platform == PlatformType::ASCEND_910A){
+                    return GetKernelByName("PpMatMulI8NzKernel");
+                }else{
+                    return GetKernelByName("PpMatmulW8A8NzKernel");
+                }
+            case PP_MATMUL_FP_ND_ND_KERNEL_KEY: return GetKernelByName("PpMatmulF16NdM300Kernel");
+            case PP_MATMUL_I8_ND_M300_KERNEL_KEY: return GetKernelByName("PpMatmulW8A8Kernel");
+            case PP_MATMUL_I8_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8NdNzKernel");
+            case PP_MATMUL_F16_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatmulF16NzM300Kernel");
+            default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
+        }
+        return nullptr;
+    }
+    
+    Kernel *GetBestKernelFallback(const LaunchParam &launchParam) const
+    {
+        MKI_CHECK(IsConsistent(launchParam), "Failed to check IsConsistent", return nullptr);
+        auto inTensorDescA = launchParam.GetInTensor(0).desc;
+        auto inTensorDescB = launchParam.GetInTensor(1).desc;
+        auto outTensorDescC = launchParam.GetOutTensor(0).desc;
+        size_t inTensorCount = launchParam.GetInTensorCount();
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MatMul), "Invalid specificParam type.",
+                  return nullptr);
+        auto opParam = AnyCast<OpParam::MatMul>(launchParam.GetParam());
+        const TensorFormat formatA = inTensorDescA.format;
+        const TensorFormat formatB = inTensorDescB.format;
+        const TensorFormat formatC = outTensorDescC.format;
+        const TensorDType dtypeA = inTensorDescA.dtype;
+        const TensorDType dtypeB = inTensorDescB.dtype;
+        const TensorDType dtypeC = outTensorDescC.dtype;
+        bool isSparseDequant = (opParam.enDequant && opParam.tilingK > 0 && opParam.tilingN > 0);
+        if (!isSparseDequant) {
             // Validate input tensor format, excluding PpMatMulI8NzCompressKernel.
             MKI_CHECK((formatA == TENSOR_FORMAT_ND) || ValidNzFormat(launchParam.GetInTensor(0)),
                       "Invalid format of matrix A.", return nullptr);
