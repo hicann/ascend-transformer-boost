@@ -151,4 +151,97 @@ protected:
     }
 };
 REG_KERNEL_BASE(DequantPerChannelKernel);
-} // namespace AsdOps
+
+class QuantPerChannelV2Kernel : public BroadcastKernel {
+    public:
+        explicit QuantPerChannelV2Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : BroadcastKernel(kernelName, handle)
+        {
+        }
+        bool CanSupport(const LaunchParam &launchParam) const override
+        {
+            MKI_CHECK(BroadcastKernel::CanSupport(launchParam), "failed to check support", return false);
+            MKI_CHECK(launchParam.GetInTensorCount() == 3, "in tensor num is invalid", return false);
+            TensorDType dtype = launchParam.GetInTensor(TENSOR_DST_IDX).desc.dtype;
+            MKI_CHECK(dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16, "in tensor dtype is invalid",
+                      return false);
+            const Tensor &tensor = launchParam.GetInTensor(TENSOR_OFFSET_IDX);
+            if (!CheckEmptyTensor(tensor)) {
+                MKI_CHECK(tensor.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensor.desc.dtype == TENSOR_DTYPE_BF16,
+                         "in tensor2 dtype invalid", return false);
+            }
+            MKI_CHECK((launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_INT8 ||
+                       launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_HIFLOAT8 ||
+                       launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT8_E4M3FN ||
+                       launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT8_E5M2),
+                       "tensor dtype unsupported", return false);
+            return true;
+        }
+        Status InitImpl(const LaunchParam &launchParam) override
+        {
+            Status status = QuantPerChannelV2Tiling(launchParam, kernelInfo_, *GetBinHandle());
+            return status;
+        }
+    protected:
+        void FillBroadCastInfoImpl(const LaunchParam &launchParam, BroadcastInfo &broadcastInfo) const override
+        {
+            (void)launchParam;
+            (void)broadcastInfo;
+        }
+        uint64_t GetTilingSize(const LaunchParam &launchParam) const override { return launchBufferSize_;}
+    };
+    
+    class QuantPerChannelV2F16FP85Kernel : public QuantPerChannelV2Kernel {
+    public:
+        explicit QuantPerChannelV2F16FP85Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : QuantPerChannelV2Kernel(kernelName, handle)
+        {
+        }
+    };
+    REG_KERNEL_BASE(QuantPerChannelV2F16FP85Kernel);
+    
+    class QuantPerChannelV2BF16FP85Kernel : public QuantPerChannelV2Kernel {
+    public:
+        explicit QuantPerChannelV2BF16FP85Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : QuantPerChannelV2Kernel(kernelName, handle)
+        {
+        }
+    };
+    REG_KERNEL_BASE(QuantPerChannelV2BF16FP85Kernel);
+    
+    class QuantPerChannelV2F16FP84Kernel : public QuantPerChannelV2Kernel {
+    public:
+        explicit QuantPerChannelV2F16FP84Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : QuantPerChannelV2Kernel(kernelName, handle)
+        {
+        }
+    };
+    REG_KERNEL_BASE(QuantPerChannelV2F16FP84Kernel);
+    
+    class QuantPerChannelV2BF16FP84Kernel : public QuantPerChannelV2Kernel {
+    public:
+        explicit QuantPerChannelV2BF16FP84Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : QuantPerChannelV2Kernel(kernelName, handle)
+        {
+        }
+    };
+    REG_KERNEL_BASE(QuantPerChannelV2BF16FP84Kernel);
+    
+    class QuantPerChannelV2F16HF8Kernel : public QuantPerChannelV2Kernel {
+    public:
+        explicit QuantPerChannelV2F16HF8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : QuantPerChannelV2Kernel(kernelName, handle)
+        {
+        }
+    };
+    REG_KERNEL_BASE(QuantPerChannelV2F16HF8Kernel);
+    
+    class QuantPerChannelV2BF16HF8Kernel : public QuantPerChannelV2Kernel {
+    public:
+        explicit QuantPerChannelV2BF16HF8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : QuantPerChannelV2Kernel(kernelName, handle)
+        {
+        }
+    };
+    REG_KERNEL_BASE(QuantPerChannelV2BF16HF8Kernel);
+    } // namespace AsdOps

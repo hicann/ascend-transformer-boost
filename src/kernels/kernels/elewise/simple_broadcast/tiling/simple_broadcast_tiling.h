@@ -13,6 +13,7 @@
 #include <mki/launch_param.h>
 #include <mki/kernel_info.h>
 #include <mki/utils/status/status.h>
+#include <mki/bin_handle.h>
 #include "simple_broadcast_tiling_data.h"
 
 namespace AsdOps {
@@ -42,5 +43,7 @@ Status SimplyBroadcastTiling(BroadcastInfo &broadcastInfo, const LaunchParam &la
 Status QuantPerChannelTiling(BroadcastInfo &broadcastInfo, const LaunchParam &launchParam, KernelInfo &kernelInfo);
 
 Status DequantPerChannelTiling(BroadcastInfo &broadcastInfo, const LaunchParam &launchParam, KernelInfo &kernelInfo);
+
+Status QuantPerChannelV2Tiling(const LaunchParam &launchParam, KernelInfo &kernelInfo, const BinHandle &binHandle);
 } // namespace AsdOps
 #endif

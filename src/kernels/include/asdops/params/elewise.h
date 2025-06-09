@@ -38,6 +38,7 @@ struct Elewise {
         ELEWISE_QUANT_PER_CHANNEL,
         ELEWISE_DEQUANT_PER_CHANNEL,
         ELEWISE_DYNAMIC_QUANT,
+        ELEWISE_QUANT_PER_CHANNEL_V2,
     };
     ElewiseType elewiseType;
 
