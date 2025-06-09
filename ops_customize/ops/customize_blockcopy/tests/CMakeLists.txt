@@ -16,4 +16,5 @@ set_target_properties(customize_blockcopy_test PROPERTIES
 )
 
 include(GoogleTest)
-gtest_discover_tests(customize_blockcopy_test)
+add_test(NAME customize_blockcopy_test
+         COMMAND customize_blockcopy_test)
