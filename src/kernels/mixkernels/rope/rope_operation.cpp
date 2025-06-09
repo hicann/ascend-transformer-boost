@@ -12,6 +12,7 @@
 #include <mki/utils/const/op_const.h>
 #include <mki_loader/op_register.h>
 #include "atbops/params/params.h"
+#include <mki/utils/platform/platform_info.h>
 
 static constexpr uint32_t ELE_NUM_FP16 = 16;
 
@@ -63,7 +64,11 @@ public:
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Rope), "OpParam is invalid", return nullptr);
-        return GetKernelByName("RopeKernel");
+        if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+            return GetKernelByName("RopeAptKernel");
+        } else {
+            return GetKernelByName("RopeKernel");
+        }
     }
 };
 
