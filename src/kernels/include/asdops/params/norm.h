@@ -25,6 +25,7 @@ struct Norm {
         RMS_NORM_FORWARD,
         RMS_NORM_BACKWARD,
         GATHER_PRE_RMS_NORM,
+        RMS_NORM_LINGQU,
     };
     NormType normType;
     // layernorm

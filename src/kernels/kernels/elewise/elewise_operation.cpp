@@ -79,6 +79,7 @@ public:
     {
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
         auto inDtype = launchParam.GetInTensor(0).desc.dtype;
+        auto outDtype = launchParam.GetOutTensor(0).desc.dtype;
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise), "OpParam is invalid", return nullptr);
         OpParam::Elewise param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
         switch (param.elewiseType) {
@@ -183,12 +184,22 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_SUB inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Elewise::ELEWISE_MUL:
-                if (inDtype == TENSOR_DTYPE_FLOAT16) {
-                    return GetKernelByName("MulF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_FLOAT) {
-                    return GetKernelByName("MulF32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_BF16) {
-                    return GetKernelByName("MulBF16Kernel");
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("MulAptF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("MulAptF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("MulAptBF16Kernel");
+                    }
+                } else {
+                    if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("MulF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("MulF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("MulBF16Kernel");
+                    }
                 }
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_MUL inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
@@ -261,6 +272,26 @@ public:
                 return GetKernelByName("QuantPerChannelKernel");
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL:
                 return GetKernelByName("DequantPerChannelKernel");
+            case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL_V2: {
+                if (PlatformInfo::Instance().GetPlatformType() != PlatformType::ASCEND_910_95) {
+                    return nullptr;
+                }
+                if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == Mki::TENSOR_DTYPE_FLOAT8_E5M2) {
+                    return GetKernelByName("QuantPerChannelV2F16FP85Kernel");
+                } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == Mki::TENSOR_DTYPE_FLOAT8_E5M2) {
+                    return GetKernelByName("QuantPerChannelV2BF16FP85Kernel");
+                } else if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == Mki::TENSOR_DTYPE_FLOAT8_E4M3FN) {
+                    return GetKernelByName("QuantPerChannelV2F16FP84Kernel");
+                } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == Mki::TENSOR_DTYPE_FLOAT8_E4M3FN) {
+                    return GetKernelByName("QuantPerChannelV2BF16FP84Kernel");
+                } else if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == Mki::TENSOR_DTYPE_HIFLOAT8) {
+                    return GetKernelByName("QuantPerChannelV2F16HF8Kernel");
+                } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == Mki::TENSOR_DTYPE_HIFLOAT8) {
+                    return GetKernelByName("QuantPerChannelV2BF16HF8Kernel");
+                } else {
+                    return nullptr;
+                }
+            }
             default:
                 return nullptr;
         }
@@ -296,6 +327,8 @@ public:
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL:
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL:
                 return 3; // 3: x + scale + offset
+            case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL_V2:
+                return 3;
             default:
                 return 0;
         }
@@ -471,6 +504,11 @@ protected:
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL: {
                 Status status = SimplyBroadcastInferShape(launchParam, outTensors);
                 outTensors[0].desc.dtype = TENSOR_DTYPE_FLOAT16;
+                return status;
+            }
+            case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL_V2: {
+                Status status = SimplyBroadcastInferShape(launchParam, outTensors);
+                outTensors[0].desc.dtype = param.outTensorType;
                 return status;
             }
             default:
