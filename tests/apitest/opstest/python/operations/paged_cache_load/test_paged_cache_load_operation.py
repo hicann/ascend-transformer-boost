@@ -119,9 +119,7 @@ class ReshapeAndCacheGradOperation(operation_test.OperationTest):
             return True
         in_tensors[0] = torch_npu.npu_format_cast(in_tensors[0], 29)
         in_tensors[1] = torch_npu.npu_format_cast(in_tensors[1], 29)
-        self.execute_out(OP_NAME, PARAM, [in_tensors[0], in_tensors[1], in_tensors[2], in_tensors[3], in_tensors[6], in_tensors[7]], [in_tensors[4], in_tensors[5]])
-        #RUN_PARAM = json.dumps({"contextLens": in_tensors[3].cpu().numpy().tolist(),"type": 1})
-        #self.execute_with_param(OP_NAME, PARAM, RUN_PARAM, [in_tensors[0], in_tensors[1], in_tensors[2], in_tensors[3]])
+        self.execute_out(OP_NAME, PARAM, [in_tensors[0], in_tensors[1], in_tensors[2], in_tensors[3], in_tensors[6], in_tensors[7]], [in_tensors[6], in_tensors[7]])
 
 if __name__ == '__main__':
     unittest.main()
