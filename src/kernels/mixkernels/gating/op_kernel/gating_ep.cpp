@@ -487,6 +487,8 @@ private:
         uint64_t rsvdCnt = 0;
         LocalTensor<float> gatherMaskTmpLocal = tmp[DOUBLE_TILE_NUM];
         LocalTensor<float> divFloatLocal = tmp[DOUBLE * DOUBLE_TILE_NUM];
+        float topkExpertNumFloat = topkExpertNum;
+        Duplicate(divFloatLocal, topkExpertNumFloat, TILE_NUM);
         for (int i = 0; i < copyTimes; i++) {
             PipeBarrier<PIPE_ALL>();
             // 利用tmpLocal做中转实现gm2gm的拷贝
@@ -501,9 +503,9 @@ private:
             const uint8_t src1RepeatStride = 0;
             GatherMask(gatherMaskTmpLocal, tmp, PATTERN_ODD, REDUCE_MODE_NORMAL, MASK_NORMAL,
                 {src0BlockStride, repeatTimes, src0RepeatStride, src1RepeatStride}, rsvdCnt);
-                LocalTensor<int32_t> gatherMaskTmpLocalInt = gatherMaskTmpLocal.ReinterpretCast<int32_t>();
+            LocalTensor<int32_t> gatherMaskTmpLocalInt = gatherMaskTmpLocal.ReinterpretCast<int32_t>();
 
-                // 尾块可能存在不对齐的情况，需要额外处理
+            // 尾块可能存在不对齐的情况，需要额外处理
             PipeBarrier<PIPE_ALL>();
             if (i == copyTimes - 1) {
                 DataCopyExtParams copyParams{1, static_cast<uint32_t>(tailNum * INT32_SIZE), 0, 0, 0};
@@ -514,12 +516,12 @@ private:
             PipeBarrier<PIPE_ALL>();
 
             if (expertNum > 0) {
-                float div = 1.0f / topkExpertNum;
-                Cast(divFloatLocal, gatherMaskTmpLocalInt, RoundMode::CAST_FLOOR, TILE_NUM);
+                LocalTensor<float> gatherMaskTmpLocalFloat = gatherMaskTmpLocalInt.ReinterpretCast<float>();
+                Cast(gatherMaskTmpLocalFloat, gatherMaskTmpLocalInt, RoundMode::CAST_FLOOR, TILE_NUM);
                 PipeBarrier<PIPE_ALL>();
-                Muls(divFloatLocal, divFloatLocal, div, TILE_NUM);
+                Div(gatherMaskTmpLocalFloat, gatherMaskTmpLocalFloat, divFloatLocal, TILE_NUM);
                 PipeBarrier<PIPE_ALL>();
-                Cast(gatherMaskTmpLocalInt, divFloatLocal, RoundMode::CAST_FLOOR, TILE_NUM);
+                Cast(gatherMaskTmpLocalInt, gatherMaskTmpLocalFloat, RoundMode::CAST_FLOOR, TILE_NUM);
                 PipeBarrier<PIPE_ALL>();
                 if (i == copyTimes - 1) {
                     DataCopyExtParams copyParams{1, static_cast<uint32_t>(tailNum * INT32_SIZE), 0, 0, 0};
