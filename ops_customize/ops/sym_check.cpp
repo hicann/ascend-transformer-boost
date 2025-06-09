@@ -11,7 +11,6 @@
 
 int main()
 {
-    // it is only used to check asdops symbols
     (void)AtbOps::Ops::Instance();
     return 0;
 }
