@@ -297,6 +297,8 @@ private:
                                  SORT_STRUCT_MULTIPLE * i * TILE_NUM],
                      dstLocalTensor,
                      static_cast<uint32_t>(SORT_STRUCT_MULTIPLE * executeNum));
+            SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
+            WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
         }
     }
 
@@ -465,6 +467,8 @@ private:
         LocalTensor<float> tmpLocal = structTileNumTempBuf.Get<float>();
         LocalTensor<float> originIndex = outQueueTopK.AllocTensor<float>();
         LocalTensor<float> divFloatLocal = tileNumTempBuf.Get<float>();
+        float topkExpertNumFloat = topkExpertNum;
+        Duplicate(divFloatLocal, topkExpertNumFloat, TILE_NUM);
 
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
         WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
@@ -484,18 +488,18 @@ private:
             } else {
                 DataCopy(dstGlobal[i * TILE_NUM], originIndexLocalInt, TILE_NUM);
             }
-            SetFlag<HardEvent::MTE3_S>(EVENT_ID0);
-            WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);
+            PipeBarrier<PIPE_ALL>();
 
             if (cumSumNum > 0) {
-                float div = 1.0f / topkExpertNum;
-                Cast(divFloatLocal, originIndexLocalInt, RoundMode::CAST_NONE, TILE_NUM);
+                LocalTensor<float> originIndexLocalFloat = originIndexLocalInt.ReinterpretCast<float>();
+                Cast(originIndexLocalFloat, originIndexLocalInt, RoundMode::CAST_NONE, TILE_NUM);
                 PipeBarrier<PIPE_V>();
-                Muls(divFloatLocal, divFloatLocal, div, TILE_NUM);
+                Div(originIndexLocalFloat, originIndexLocalFloat, divFloatLocal, TILE_NUM);
                 PipeBarrier<PIPE_V>();
-                Cast(originIndexLocalInt, divFloatLocal, RoundMode::CAST_FLOOR, TILE_NUM);
+                Cast(originIndexLocalInt, originIndexLocalFloat, RoundMode::CAST_FLOOR, TILE_NUM);
                 SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
                 WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
+
                 if (i == copyTimes - 1) {
                     uint32_t tailNum = topKNum % TILE_NUM == 0 ? TILE_NUM : topKNum % TILE_NUM;
                     CopyUb2GmPad(tokenIndexGm[i * TILE_NUM], originIndexLocalInt, tailNum);
