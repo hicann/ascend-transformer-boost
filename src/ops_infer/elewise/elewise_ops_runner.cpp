@@ -82,7 +82,9 @@ void ElewiseOpsRunner::SetOuttensor(KernelGraphNode &elewiseNode)
         Mki::Tensor &operationOutTensor = kernelGraph_.outTensors.at(INDEX_ZERO);
         elewiseNode.outTensors = {&operationOutTensor};
     }
-
+    if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2) {
+        elsewiseParam.outTensorType = GetOutTensorType(param_.outTensorType);
+    }
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_MULS) {
         elsewiseParam.varAttr = param_.mulsParam.varAttr;
     }
@@ -122,6 +124,7 @@ uint32_t ElewiseOpsRunner::GetIntensorSize() const
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, NUMTWO},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL, NUMTHREE},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, NUMTHREE},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2, NUMTHREE},
     };
     std::map<infer::ElewiseParam::ElewiseType, uint32_t>::const_iterator it = inTensorNumTable.find(param_.elewiseType);
     return it == inTensorNumTable.end() ? 0 : it->second;
@@ -148,6 +151,8 @@ AsdOps::OpParam::Elewise::ElewiseType ElewiseOpsRunner::GetOpElwiseType() const
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, AsdOps::OpParam::Elewise::ELEWISE_EQUAL},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL,
          AsdOps::OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL},
+        { infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2,
+         AsdOps::OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL_V2},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL,
          AsdOps::OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT, AsdOps::OpParam::Elewise::ELEWISE_DYNAMIC_QUANT},
@@ -167,6 +172,9 @@ Mki::TensorDType ElewiseOpsRunner::GetOutTensorType(const aclDataType outType) c
         {aclDataType::ACL_INT32, Mki::TensorDType::TENSOR_DTYPE_INT32},
         {aclDataType::ACL_INT64, Mki::TensorDType::TENSOR_DTYPE_INT64},
         {aclDataType::ACL_BF16, Mki::TensorDType::TENSOR_DTYPE_BF16},
+        {aclDataType::ACL_HIFLOAT8, Mki::TensorDType::TENSOR_DTYPE_HIFLOAT8},
+        {aclDataType::ACL_FLOAT8_E4M3FN, Mki::TensorDType::TENSOR_DTYPE_FLOAT8_E4M3FN},
+        {aclDataType::ACL_FLOAT8_E5M2, Mki::TensorDType::TENSOR_DTYPE_FLOAT8_E5M2},
     };
     std::map<aclDataType, Mki::TensorDType>::const_iterator it = typeTable.find(outType);
     return it == typeTable.end() ? Mki::TensorDType::TENSOR_DTYPE_UNDEFINED : it->second;

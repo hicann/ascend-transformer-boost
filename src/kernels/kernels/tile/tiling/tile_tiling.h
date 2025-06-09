@@ -7,18 +7,18 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifndef ASCEND_OPS_SOFTMAX_TILING_H
-#define ASCEND_OPS_SOFTMAX_TILING_H
+#ifndef ASCEND_OPS_TILE_TILING_H
+#define ASCEND_OPS_TILE_TILING_H
 
 #include <mki/bin_handle.h>
 #include <mki/kernel_info.h>
 #include <mki/launch_param.h>
+#include <mki/utils/status/status.h>
 
 namespace AsdOps {
-using namespace Mki;
-Status SoftmaxCommonTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
-                           const BinHandle &binHandle);
-Status SoftmaxAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
-                           const BinHandle &binHandle);
+using namespace Mki; 
+Status TileTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                    const BinHandle &binHandle);
 } // namespace AsdOps
-#endif // ASCEND_OPS_SOFTMAX_TILING_H
+
+#endif

@@ -118,4 +118,63 @@ public:
     }
 };
 REG_KERNEL_BASE(SliceInt32Int64Kernel);
+
+// SliceAptF16Int64Kernel
+class SliceAptF16Int64Kernel : public SliceKernel {
+public:
+    explicit SliceAptF16Int64Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SliceKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(SliceKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16 ||
+                     launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+                     "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(SliceAptF16Int64Kernel);
+
+// SliceAptInt8Int64Kernel
+class SliceAptInt8Int64Kernel : public SliceKernel {
+public:
+    explicit SliceAptInt8Int64Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SliceKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(SliceKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(
+            launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_INT8 ||
+            launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_UINT8 ||
+            launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BOOL, "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(SliceAptInt8Int64Kernel);
+
+// SliceAptInt32Int64Kernel
+class SliceAptInt32Int64Kernel : public SliceKernel {
+public:
+    explicit SliceAptInt32Int64Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SliceKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(SliceKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(
+            launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_INT32 ||
+            launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_UINT32 ||
+            launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT, "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(SliceAptInt32Int64Kernel);
 } // namespace AsdOps

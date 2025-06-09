@@ -101,4 +101,83 @@ public:
 };
 
 REG_KERNEL_BASE(RopeKernel);
+
+class RopeAptKernel : public KernelBase {
+public:
+    explicit RopeAptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : KernelBase(kernelName, handle)
+    {
+    }
+
+    bool RopeDtypeCheck(const LaunchParam &launchParam, TensorDType dtypeCheck) const
+    {
+        auto inTensor0 = launchParam.GetInTensor(0);
+        auto inTensor1 = launchParam.GetInTensor(1);
+        MKI_CHECK(inTensor0.desc.format == TENSOR_FORMAT_ND, "in tensor0 format is invalid", return false);
+        MKI_CHECK(launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_BF16
+                || launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+                "in tensor0 dtype is invalid", return false);
+        MKI_CHECK(inTensor0.desc.dtype == inTensor1.desc.dtype,
+            "in tensor0 dtype != tensor1 dtype", return false);
+        MKI_CHECK(inTensor1.desc.format == TENSOR_FORMAT_ND, "in tensor1 format is invalid", return false);
+        for (size_t i = 0; i < TENSOR_OUTPUT_NUM; i++) {
+            auto outTensor = launchParam.GetOutTensor(i);
+            MKI_CHECK(outTensor.desc.format == inTensor0.desc.format, "out tensor format is invalid", return false);
+            MKI_CHECK(outTensor.desc.dtype == inTensor0.desc.dtype, "out tensor dtype is invalid", return false);
+        }
+        if (dtypeCheck == TENSOR_DTYPE_BF16) {
+            MKI_CHECK(launchParam.GetInTensor(DIM_2).desc.dtype == TENSOR_DTYPE_BF16,
+                "in tensor2 dtype is invalid", return false);
+            MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dtype == TENSOR_DTYPE_BF16,
+                "in tensor3 dtype is invalid", return false);
+        } else {
+            if (launchParam.GetInTensor(DIM_2).desc.dtype == dtypeCheck) {
+                MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dtype == dtypeCheck,
+                    "in tensor3 dtype is invalid", return false);
+            } else if (launchParam.GetInTensor(DIM_2).desc.dtype == TENSOR_DTYPE_FLOAT) {
+                MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dtype == TENSOR_DTYPE_FLOAT,
+                    "in tensor3 dtype is invalid", return false);
+            } else {
+                return false;
+            }
+        }
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 2,
+            "in tensor0 dims is invalid", return false);
+        MKI_CHECK(launchParam.GetInTensor(1).desc.dims.size() == 2,
+            "in tensor1 dims is invalid", return false);
+        auto inTensor4 = launchParam.GetInTensor(4);
+        MKI_CHECK(inTensor4.desc.format == TENSOR_FORMAT_ND, "in tensor4 format is invalid", return false);
+        MKI_CHECK((inTensor4.desc.dtype == TENSOR_DTYPE_INT32) ||
+                        (inTensor4.desc.dtype == TENSOR_DTYPE_UINT32), "in tensor4 dtype is invalid", return false);
+        return true;
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(launchParam.GetInTensorCount() == TENSOR_INPUT_NUM, "in tensor num is invalid", return false);
+        MKI_CHECK(launchParam.GetOutTensorCount() == TENSOR_OUTPUT_NUM, "out tensor num is invalid", return false);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Rope),
+            "param type is invalid", return false);
+        auto param = AnyCast<OpParam::Rope>(launchParam.GetParam());
+        auto headdim = launchParam.GetInTensor(DIM_2).desc.dims[DIM_1];
+        MKI_CHECK(param.rotaryCoeff == 2 || param.rotaryCoeff == 4 || param.rotaryCoeff == headdim,
+            "param.rotaryCoeff is invalid", return false);
+        MKI_CHECK(launchParam.GetInTensor(DIM_0).desc.dims[DIM_1] % headdim == 0
+            && launchParam.GetInTensor(DIM_1).desc.dims[DIM_1] % headdim == 0,
+            "hiddenSizeQ, hiddenSizeK should be an integer multiple of headdim",
+            return false);
+        return RopeDtypeCheck(launchParam, TENSOR_DTYPE_FLOAT16) || RopeDtypeCheck(launchParam, TENSOR_DTYPE_BF16);
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return RopeAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(RopeAptKernel);
 } // namespace AtbOps
