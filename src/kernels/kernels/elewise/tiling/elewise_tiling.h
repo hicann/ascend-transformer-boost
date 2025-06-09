@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+* Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ namespace AsdOps {
 using namespace Mki;
 Status ElewiseCommonTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle);
+Status MulTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                  const BinHandle &binHandle);
 Status MulsTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                   const BinHandle &binHandle);
 Status BroadcastCommonTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,

@@ -161,12 +161,22 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_SUB inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Elewise::ELEWISE_MUL:
-                if (inDtype == TENSOR_DTYPE_FLOAT16) {
-                    return GetKernelByName("MulF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_FLOAT) {
-                    return GetKernelByName("MulF32Kernel");
-                } else if (inDtype == TENSOR_DTYPE_BF16) {
-                    return GetKernelByName("MulBF16Kernel");
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+                    if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("MulAptF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("MulAptF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("MulAptBF16Kernel");
+                    }
+                } else {
+                    if (inDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("MulF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_FLOAT) {
+                        return GetKernelByName("MulF32Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("MulBF16Kernel");
+                    }
                 }
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_MUL inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
