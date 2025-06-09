@@ -163,7 +163,7 @@ void Config::InitSocVersion()
     const uint32_t LEN_OF_ASCEND_910B = 10;
     ATB_LOG(INFO) << "SocVersion:" << std::string(socName);
     is910B_ = (std::string(socName).find("Ascend910B") != std::string::npos &&
-                (std::string(socName).find("Ascend910_95") == std::string::npos &&
+               (std::string(socName).find("Ascend910_95") == std::string::npos &&
                std::string(socName).find("Ascend910_9599") == std::string::npos &&
                std::string(socName).length() > LEN_OF_ASCEND_910B)) ||
               std::string(socName).find("Ascend910_93") != std::string::npos;
