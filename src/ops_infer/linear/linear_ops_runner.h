@@ -23,6 +23,8 @@ protected:
     Status SetupKernelGraph(const OpsTensorPack &opsTensorPack) override;
 
 private:
+    Status SetupKernelGraphMatmul91095();
+    Status SetupKernelGraphMatmulWithBias91095();
     Status SetupKernelGraphMatmul910B();
     Status SetupKernelGraphMatmulWeightNdNot910B();
     Status SetupKernelGraphMatmulWeightNzNot910B();

@@ -107,6 +107,8 @@ def get_soc_version():
         soc_version = "Ascend910A"
     elif (re.search("Ascend310B", device_name, re.I)):
         soc_version = "Ascend310B"
+    elif (re.search("Ascend910_9599", device_name, re.I)):
+        soc_version = "Ascend910_95"
     else:
         logging.error("device_name {} is not supported".format(device_name))
         quit(1)
@@ -997,6 +999,8 @@ class MatmulCommon:
         else:
             logging.error("bias datatype error!")
             return None
+        if get_soc_version() == 'Ascend910_95' and len(shape) == 2 and shape[0] > 1:
+            bias_cpu[:] = bias_cpu[0]
         bias_golden = bias_cpu
         bias_npu = bias_cpu.npu()
         MatmulCommon.bias_golden = bias_golden
