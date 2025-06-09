@@ -554,8 +554,7 @@ Status MultiLatentAttentionOperation::KVDimCheckPrefill(const SVector<TensorDesc
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (inTensorDesc.at(IN_TENSOR_3).shape.dims[DIM_2] !=
-        inTensorDesc.at(IN_TENSOR_2).shape.dims[DIM_2] /
-            2) { // 2: embiddim - embeddimV = 64, embeddimV = 128, 128 / 64 = 2
+        inTensorDesc.at(IN_TENSOR_2).shape.dims[DIM_2] / 2) { // 2: embiddim-embeddimV=64,embeddimV=128,128/64 = 2
         ATB_LOG(ERROR) << GetLogPrefix()
                        << "dim 2 of keyRope(intensor3) should be equal to dim 2 of key(intensor2) / 2";
         return ERROR_INVALID_TENSOR_DIM;
