@@ -1,0 +1,38 @@
+#ifndef CUSTOMIZE_OPPARAM_H
+#define CUSTOMIZE_OPPARAM_H
+#include <cstdint>
+#include <string>
+#include <limits>
+#include <hccl/hccl_types.h>
+#include <acl/acl.h>
+#include "atb/svector.h"
+
+//!
+//! \file customize_op_params.h
+//!
+//! \brief 定义加速库所有用户自定义算子参数
+//!
+
+//!
+//! \namespace atb
+//!
+//! \brief 加速库命名空间.
+//!
+namespace atb {
+
+namespace customize {
+
+//!
+//! \struct BlockCopyParam
+//!
+//! \brief 将KVCache里通过src indices指定的block数据copy到dst indices指定的block位置上。
+//!
+struct BlockCopyParam {
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[16] = {0};
+};
+} // namespace customize
+} // namespace atb
+#endif
