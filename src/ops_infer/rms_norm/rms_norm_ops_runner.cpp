@@ -9,6 +9,7 @@
  */
 #include "rms_norm_ops_runner.h"
 #include "atb/utils/log.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT_TWO = 2;
@@ -24,6 +25,17 @@ void RmsNormOpsRunner::SetRmsNormParam(const infer::RmsNormParam &inferParam, As
 {
     asdopsParam.inGamma = true;
     asdopsParam.epsilon = inferParam.normParam.epsilon;
+    asdopsParam.precisionMode = inferParam.normParam.precisionMode;
+    if (inferParam.normParam.modelType == infer::RmsNormParam::GEMMA_MODEL) {
+        asdopsParam.gemmaMode = GEMMA_MODE;
+    }
+}
+
+void RmsNormOpsRunner::SetRmsNormLingQuParam(const infer::RmsNormParam &inferParam, AsdOps::OpParam::Norm &asdopsParam) const
+{
+    asdopsParam.inGamma = true;
+    asdopsParam.epsilon = inferParam.normParam.epsilon;
+    asdopsParam.normType = AsdOps::OpParam::Norm::RMS_NORM_LINGQU;
     asdopsParam.precisionMode = inferParam.normParam.precisionMode;
     if (inferParam.normParam.modelType == infer::RmsNormParam::GEMMA_MODEL) {
         asdopsParam.gemmaMode = GEMMA_MODE;
@@ -94,6 +106,30 @@ void RmsNormOpsRunner::BuildRmsNormGraph(const AsdOps::OpParam::Norm &rmsNormPar
     rmsNormNode.opDesc = {0, "NormOperation", rmsNormParam};
     rmsNormNode.inTensors = {&inputXTensor, &gammaTensor};
     rmsNormNode.outTensors = {&resultTensor};
+}
+
+void RmsNormOpsRunner::BuildRmsNormLingQuGraph(const AsdOps::OpParam::Norm &rmsNormParam)
+{
+        // 2 in -> 1 out, RmsNorm, -1
+        kernelGraph_.inTensors.resize(IN_TENSOR_COUNT_TWO);
+        size_t inId = 0;
+        Mki::Tensor &inputXTensor = kernelGraph_.inTensors.at(inId++);
+        Mki::Tensor &gammaTensor = kernelGraph_.inTensors.at(inId++);
+
+        kernelGraph_.outTensors.resize(OUT_TENSOR_COUNT_TWO);
+        size_t outId = 0;
+        Mki::Tensor &resultTensor = kernelGraph_.outTensors.at(outId++);
+        Mki::Tensor &rstd = nullTensor_;
+        
+    
+        kernelGraph_.nodes.resize(1);
+        auto &rmsNormNode = kernelGraph_.nodes.at(0);
+        rmsNormNode.opDesc = {0, "NormOperation", rmsNormParam};
+        rmsNormNode.inTensors = {&inputXTensor, &gammaTensor};
+        rmsNormNode.outTensors = {&resultTensor};
+        rmsNormNode.outTensors = { &resultTensor, &rstd };
+        rmsNormNode.inTensorViewFuncs.resize(rmsNormNode.inTensors.size());
+        rmsNormNode.inTensorViewFuncs.at(1) = gammaViewFunc;
 }
 
 void RmsNormOpsRunner::BuildRmsNormForwardGraph(const AsdOps::OpParam::Norm &rmsNormParam)
@@ -257,12 +293,22 @@ RmsNormOpsRunner::RmsNormOpsRunner(const infer::RmsNormParam &param)
     : OpsRunner("RmsNormOpsRunner", RUNNER_TYPE_RMS_NORM), param_(param)
 {
     AsdOps::OpParam::Norm rmsNormParam = {AsdOps::OpParam::Norm::RMS_NORM};
+    gammaViewFunc = [&](const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims) {
+        newDims = {oldDims[oldDims.size() - 1]};
+        ATB_LOG(INFO) << " merge axis - before: " << oldDims << "; after: " << newDims;
+    };
     if (param_.layerType == infer::RmsNormParam::RMS_NORM_NORM) {
         if (param_.normParam.quantType == infer::QUANT_UNQUANT) {
-            rmsNormParam = {param_.normParam.rstd ? AsdOps::OpParam::Norm::RMS_NORM_FORWARD :
+            if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+                rmsNormParam = {AsdOps::OpParam::Norm::RMS_NORM};
+                SetRmsNormLingQuParam(param_, rmsNormParam);
+                BuildRmsNormLingQuGraph(rmsNormParam);
+            } else {
+                rmsNormParam = {param_.normParam.rstd ? AsdOps::OpParam::Norm::RMS_NORM_FORWARD :
                                                     AsdOps::OpParam::Norm::RMS_NORM};
-            SetRmsNormParam(param_, rmsNormParam);
-            param_.normParam.rstd ? BuildRmsNormForwardGraph(rmsNormParam) : BuildRmsNormGraph(rmsNormParam);
+                SetRmsNormParam(param_, rmsNormParam);
+                param_.normParam.rstd ? BuildRmsNormForwardGraph(rmsNormParam) : BuildRmsNormGraph(rmsNormParam);
+            }
         } else {
             SetRmsNormQuantParam(param_, rmsNormParam);
             if (param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_UNDEFINED) {
