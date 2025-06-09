@@ -91,6 +91,7 @@ ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : Operation
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, "ElewiseOperationDequantPerChannel"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT, "ElewiseOperationDynamicQuant"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_TANH, "ElewiseOperationTanh"},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2, "ElewiseOperationQuantPerChannelV2"},
     };
     std::map<infer::ElewiseParam::ElewiseType, std::string>::const_iterator it = opIniTable.find(param_.elewiseType);
     if (it != opIniTable.end()) {
@@ -129,6 +130,7 @@ uint32_t ElewiseOperation::GetInputNum() const
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, TENSOR_NUM_TWO},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL, TENSOR_NUM_THREE},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, TENSOR_NUM_THREE},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2, TENSOR_NUM_THREE}
     };
     std::map<infer::ElewiseParam::ElewiseType, uint32_t>::const_iterator it = inTensorNumTable.find(param_.elewiseType);
     if (it != inTensorNumTable.end()) {
@@ -166,6 +168,11 @@ Status ElewiseOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
             return InferShapeImplQuantChannel(inTensorDescs, outTensorDescs);
         case infer::ElewiseParam::ELEWISE_DEQUANT_PER_CHANNEL:
             return InferShapeImplDequantChannel(inTensorDescs, outTensorDescs);
+        case infer::ElewiseParam::ELEWISE_QUANT_PER_CHANNEL_V2: {
+            Status st = InferShapeImplQuantChannelV2(inTensorDescs, outTensorDescs);
+            outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
+            return st;
+        }
         case infer::ElewiseParam::ELEWISE_ADD:
         case infer::ElewiseParam::ELEWISE_MUL:
         case infer::ElewiseParam::ELEWISE_REALDIV:
@@ -321,6 +328,22 @@ Status ElewiseOperation::InferShapeImplQuantChannel(const SVector<TensorDesc> &i
         ATB_LOG(WARN) << "ElewiseOperation InferShapeImpl quant channel: no matched input desc.";
         return ERROR_INVALID_PARAM;
     }
+}
+
+Status ElewiseOperation::InferShapeImplQuantChannelV2(const SVector<TensorDesc> &inTensorDescs,
+    SVector<TensorDesc> &outTensorDescs) const
+{
+aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
+aclDataType dtype1 = inTensorDescs.at(TENSOR_IDX_ONE).dtype;
+aclDataType dtype2 = inTensorDescs.at(TENSOR_IDX_TWO).dtype;
+if (((dtype0 == ACL_FLOAT16) && (dtype1 == ACL_FLOAT16) && (dtype2 == ACL_FLOAT16)) ||
+((dtype0 == ACL_BF16) && (dtype1 == ACL_BF16) && (dtype2 == ACL_BF16))) {
+outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
+return NO_ERROR;
+} else {
+ATB_LOG(WARN) << "ElewiseOperation InferShapeImpl quant channel: no matched input desc.";
+return ERROR_INVALID_PARAM;
+}
 }
 
 Status ElewiseOperation::InferShapeImplDequantChannel(const SVector<TensorDesc> &inTensorDescs,

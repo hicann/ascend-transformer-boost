@@ -379,6 +379,7 @@ struct ElewiseParam {
         ELEWISE_DEQUANT_PER_CHANNEL, //!< 每个通道反量化
         ELEWISE_DYNAMIC_QUANT,       //!< 逐行动态量化
         ELEWISE_TANH,                //!< 逐元素计算双曲正切值
+        ELEWISE_QUANT_PER_CHANNEL_V2, //!< 每个通道量化，支持FP8与HF8
         ELEWISE_TYPE_MAX             //!< 边界值，仅用于判断是否出界，所有情况不能取该值
     };
 
