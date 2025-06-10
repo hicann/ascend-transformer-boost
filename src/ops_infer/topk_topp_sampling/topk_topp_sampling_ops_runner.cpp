@@ -22,6 +22,7 @@ static const uint64_t LOGPROBS_EXPONENTIAL_INTERNAL_TENSOR_COUNT = 16;
 static const uint64_t LOGPROBS_EXPONENTIAL_OUT_TENSOR_COUNT = 3;
 static const uint64_t LOGPROBS_EXPONENTIAL_NODE_COUNT = 17;
 static const uint64_t MULTINOMIAL_INTERNAL_TENSOR_COUNT = 7;
+static const uint64_t LOGPROBS_MULTINOMIAL_INTERNAL_TENSOR_COUNT = 8;
 static const uint64_t MULTINOMIAL_NODE_COUNT = 8;
 static const uint64_t LOGPROBS_MULTINOMIAL_OUT_TENSOR_COUNT = 3;
 static const uint64_t LOGPROBS_MULTINOMIAL_NODE_COUNT = 9;
@@ -435,7 +436,7 @@ Status TopkToppSamplingOpsRunner::SetupLogProbsBatchTopKMultinomialSampling()
     auto &probsSampledTensor = kernelGraph_.outTensors.at(outTensorNum++);      // [batch, 1]
     auto &logProbsTensor = kernelGraph_.outTensors.at(outTensorNum++); // [batch, logprobsSize]
 
-    kernelGraph_.internalTensors.resize(MULTINOMIAL_INTERNAL_TENSOR_COUNT);
+    kernelGraph_.internalTensors.resize(LOGPROBS_MULTINOMIAL_INTERNAL_TENSOR_COUNT);
     int64_t internalTensorNum = 0;
     auto &probsSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &indicesSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
