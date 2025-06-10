@@ -68,7 +68,7 @@ struct MatmulCommonCheckParam {
              linearParallelParam.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
              linearParallelParam.type ==
                  atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) &&
-            (linearParallelParam.quantType > atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+            (linearParallelParam.quantType > atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
              linearParallelParam.quantType < atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX);
         this->hasBias = this->isQuant;
         this->isPerTensor = this->isQuant && linearParallelParam.quantType ==

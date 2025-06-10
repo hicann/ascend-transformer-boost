@@ -50,12 +50,12 @@ LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelPa
             break;
         case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
             lcalType_ = Lcal::LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN;
-            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
                        param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
             lcalType_ = Lcal::LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN;
-            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
                        param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         default:

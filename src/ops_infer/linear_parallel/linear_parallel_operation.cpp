@@ -85,11 +85,11 @@ bool CheckType(const infer::LinearParallelParam &opParam, Status &isOK)
             isOK = ERROR_INVALID_PARAM;
             return true;
         }
-        if (opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+        if (opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
             opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_CHANNEL &&
             opParam.quantType != atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
             ATB_LOG(ERROR) << "LinearParallel type:" << opParam.type
-                           << " support QuantType is QUANT_TYPE_UNQUANT/QUANT_TYPE_PER_CHANNEL/QUANT_TYPE_PER_TOKEN";
+                           << " support QuantType is QUANT_TYPE_UNDEFINED/QUANT_TYPE_PER_CHANNEL/QUANT_TYPE_PER_TOKEN";
             isOK = ERROR_INVALID_PARAM;
             return true;
         }
