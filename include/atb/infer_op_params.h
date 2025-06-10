@@ -1488,7 +1488,6 @@ struct LinearParallelParam {
     //! \brief QuantType类型
     //!
     enum QuantType : int {
-        QUANT_TYPE_UNDEFINED = -1,  //!< 默认值
         QUANT_TYPE_UNQUANT = -1,    //!< 默认值
         QUANT_TYPE_PER_TENSOR = 0,  //!< 对整个张量进行量化
         QUANT_TYPE_PER_CHANNEL = 1, //!< 对张量中每个channel分别进行量化
