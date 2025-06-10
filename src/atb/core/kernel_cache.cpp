@@ -16,17 +16,15 @@
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/core/param_compare.h"
-#include "atb/utils/config.h"
 #include "atb/utils/statistic.h"
-#include "atb/utils/singleton.h"
 
 namespace atb {
+constexpr uint64_t DEFAULT_TILING_SIZE = 10240;
 void CacheSlot::Init(uint32_t cacheItemCount)
 {
     cachedItems.resize(cacheItemCount);
-    uint64_t kernelCacheTilingSize = GetSingleton<Config>().GetKernelCacheTilingSize();
     for (auto &cacheItem : cachedItems) {
-        cacheItem.tilingBuffer.reserve(kernelCacheTilingSize);
+        cacheItem.tilingBuffer.reserve(DEFAULT_TILING_SIZE);
     }
 }
 

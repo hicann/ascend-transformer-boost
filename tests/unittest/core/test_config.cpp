@@ -29,20 +29,16 @@ TEST(TestConfig, InitKernelCacheZero)
 {
     setenv("ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT", "0", true);
     setenv("ATB_OPSRUNNER_KERNEL_CACHE_GLOABL_COUNT", "0", true);
-    setenv("ATB_OPSRUNNER_KERNEL_CACHE_TILING_SIZE", "0", true);
     atb::Config config;
     EXPECT_EQ(config.GetLocalKernelCacheCount(), 1);
     EXPECT_EQ(config.GetLocalKernelCacheCount(), 1);
-    EXPECT_EQ(config.GetKernelCacheTilingSize(), 10240);
 }
 
 TEST(TestConfig, InitKernelCacheMax)
 {
     setenv("ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT", "1025", true);
     setenv("ATB_OPSRUNNER_KERNEL_CACHE_GLOABL_COUNT", "1025", true);
-    setenv("ATB_OPSRUNNER_KERNEL_CACHE_TILING_SIZE", "1073741828", true);
     atb::Config config;
     EXPECT_EQ(config.GetLocalKernelCacheCount(), 1024);
     EXPECT_EQ(config.GetLocalKernelCacheCount(), 1024);
-    EXPECT_EQ(config.GetKernelCacheTilingSize(), 1073741824);
 }
