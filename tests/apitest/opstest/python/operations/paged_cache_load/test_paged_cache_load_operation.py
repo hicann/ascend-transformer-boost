@@ -49,7 +49,6 @@ def convert_nd_to_nz(x):
 def generate_data(
         batch=random.randint(1, 10),
         seq_len=random.randint(1, 10),
-        # num_heads= random.randint(1, 64),
         num_heads= random.choice([32,64]),
         head_size_k=random.randint(1, 128),
         head_size_v=random.randint(1, 128),
