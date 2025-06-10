@@ -43,7 +43,7 @@ class TestToppSample(op_test.OpTest):
         res_index = np.sum(bool_judge_one, axis=-1, keepdims=True) # 要判断是否为0，为0直接返回0
         res_index[res_index < 0] = 0
 
-        return [torch.tensor(res_index).int(), torch.tensor(res_select_range).int()]
+        return [torch.tensor(res_index).int()]
 
     def golden_compare(self, out_tensors, golden_out_tensors):
         if len(out_tensors) != len(golden_out_tensors):
@@ -70,7 +70,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a        
@@ -84,7 +84,7 @@ class TestToppSample(op_test.OpTest):
         topp = torch.empty(shape1, dtype=torch.half).uniform_(0, 1)
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a        
@@ -100,7 +100,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a
@@ -116,7 +116,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a
@@ -132,7 +132,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a
@@ -148,7 +148,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a                     
@@ -164,7 +164,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a
@@ -179,7 +179,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                    [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                    [torch.zeros(shape1).int()])
 
     @op_test.only_910b 
     def test_topp_bf16_case65535(self):
@@ -193,7 +193,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed).bfloat16(), topp], 
-                    [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                    [torch.zeros(shape1).int()])
 
     @op_test.only_910b       
     def test_topp_bf16_case254208(self):
@@ -206,7 +206,7 @@ class TestToppSample(op_test.OpTest):
         topp = torch.empty(shape1, dtype=torch.bfloat16).uniform_(0, 1)
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed).bfloat16(), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.only_910b      
     def test_topp_bf16_case65024(self):
@@ -220,7 +220,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed).bfloat16(), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.only_910b
     def test_topp_bf16_case128000(self):
@@ -234,7 +234,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed).bfloat16(), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.only_910b
     def test_topp_bf16_case32000(self):
@@ -248,7 +248,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed).bfloat16(), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.only_910b
     def test_topp_bf16_case158464(self):
@@ -262,7 +262,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed).bfloat16(), topp],  
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.only_910b                    
     def test_topp_bf16_case100352(self):
@@ -276,7 +276,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed).bfloat16(), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
     @op_test.only_910b
     def test_topp_bf16_case_bug_fix_182744(self):
@@ -290,7 +290,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed).bfloat16(), topp], 
-                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
+                     [torch.zeros(shape1).int()])
 
 if __name__ == '__main__':
     unittest.main()

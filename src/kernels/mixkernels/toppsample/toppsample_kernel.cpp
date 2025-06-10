@@ -18,7 +18,7 @@
 #include "sink_common.h"
 
 static constexpr uint32_t TENSOR_INPUT_NUM = 2;
-static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
+static constexpr uint32_t TENSOR_OUTPUT_NUM = 1;
 
 namespace AtbOps {
 using namespace Mki;

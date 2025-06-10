@@ -31,7 +31,7 @@ public:
     int64_t GetInputNum(const Any &specificParam) const override
     {
         MKI_CHECK(specificParam.Type() == typeid(OpParam::Toppsample), "OpParam is invalid", return 0);
-        return DIM_2; // 2 inputs
+        return DIM_1; // 2 inputs
     }
 
     int64_t GetOutputNum(const Any &specificParam) const override
