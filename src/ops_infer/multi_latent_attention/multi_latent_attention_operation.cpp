@@ -538,12 +538,20 @@ Status MultiLatentAttentionOperation::QDimCheckPrefill(const SVector<TensorDesc>
 
 Status MultiLatentAttentionOperation::KVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const
 {
-    if ((inTensorDesc.at(IN_TENSOR_2).shape.dims[1] != param_.kvHeadNum ||
-         inTensorDesc.at(IN_TENSOR_2).shape.dims[DIM_2] != EM_BED_DIM_V) &&
-        (inTensorDesc.at(IN_TENSOR_2).shape.dims[0] != inTensorDesc.at(IN_TENSOR_5).shape.dims[0] ||
-         inTensorDesc.at(IN_TENSOR_2).shape.dims[DIM_2] != param_.kvHeadNum * EM_BED_DIM_V)) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "key(intensor2) is invalid, only support [B*S,N,D] / [B,S,N*D]";
-        return ERROR_INVALID_TENSOR_DIM;
+    if (param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        if ((inTensorDesc.at(IN_TENSOR_2).shape.dims[1] != param_.kvHeadNum ||
+             inTensorDesc.at(IN_TENSOR_2).shape.dims[DIM_2] != EM_BED_DIM_V) &&
+            (inTensorDesc.at(IN_TENSOR_2).shape.dims[0] != inTensorDesc.at(IN_TENSOR_5).shape.dims[0] ||
+             inTensorDesc.at(IN_TENSOR_2).shape.dims[DIM_2] != param_.kvHeadNum * EM_BED_DIM_V)) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "key(intensor2) is invalid, only support [B*S,N,D] / [B,S,N*D]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    } else {
+        if (inTensorDesc.at(IN_TENSOR_2).shape.dims[0] != inTensorDesc.at(IN_TENSOR_5).shape.dims[0] ||
+            inTensorDesc.at(IN_TENSOR_2).shape.dims[DIM_2] != param_.kvHeadNum * EM_BED_DIM_V) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "key(intensor2) is invalid, only support [B,S,N*D]";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
     if (inTensorDesc.at(IN_TENSOR_3).shape.dims[0] != inTensorDesc.at(IN_TENSOR_2).shape.dims[0]) {
         ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of keyRope(intensor3) and key(intensor2) should be same";
