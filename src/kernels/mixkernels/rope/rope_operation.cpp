@@ -33,7 +33,8 @@ public:
         return DIM_2; // Rope Op has 2 outputs: rope_q, rope_k
     }
 
-    Status InferShapeImpl(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const override
+    Status InferShapeImpl(const LaunchParam &launchParam,
+                          SVector<Tensor> &outTensors) const override
     {
         MKI_LOG(INFO) << "RopeInferShape enter";
         const SVector<int64_t> &inputQ = launchParam.GetInTensor(DIM_0).desc.dims;
