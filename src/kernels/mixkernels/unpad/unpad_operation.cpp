@@ -58,7 +58,7 @@ public:
             t.desc = desc;
         }
         return opInferShape::CallGeInferShape("GetPaddingOffset", launchParam, outTensors,
-                                    AsdOps::GetMkiSpecificAttr<OpParam::Unpad>);
+                                              AsdOps::GetMkiSpecificAttr<OpParam::Unpad>);
     }
 };
 

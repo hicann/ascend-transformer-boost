@@ -101,7 +101,7 @@ public:
     Status InitImpl(const LaunchParam &launchParam) override
     {
         return optiling::CallGeTiling("GetPaddingOffset", *GetBinHandle(), launchParam,
-                        AsdOps::GetMkiSpecificAttr<OpParam::Unpad>, kernelInfo_);
+                                      AsdOps::GetMkiSpecificAttr<OpParam::Unpad>, kernelInfo_);
     }
 };
 REG_KERNEL_BASE(UnpadKernel);

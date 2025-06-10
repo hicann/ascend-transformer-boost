@@ -57,7 +57,7 @@ public:
     Status InitImpl(const LaunchParam &launchParam) override
     {
         return optiling::CallGeTiling("PadInfer", *GetBinHandle(), launchParam,
-                        AsdOps::GetMkiSpecificAttr<OpParam::Pad>, kernelInfo_);
+                                      AsdOps::GetMkiSpecificAttr<OpParam::Pad>, kernelInfo_);
     }
 };
 REG_KERNEL_BASE(PadKernel);

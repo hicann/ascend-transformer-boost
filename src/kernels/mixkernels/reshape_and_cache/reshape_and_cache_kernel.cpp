@@ -59,21 +59,21 @@ public:
         auto param = AnyCast<OpParam::ReshapeAndCache>(launchParam.GetParam());
         if (param.type == OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND_SISO) {
             return optiling::CallGeTiling("ReshapeAndCacheNdSiso", *GetBinHandle(), launchParam,
-                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+                                          AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
         }
         switch (param.type) {
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND:
                 return optiling::CallGeTiling("ReshapeAndCache", *GetBinHandle(), launchParam,
-                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_NZ:
                 return optiling::CallGeTiling("ReshapeAndCacheNz", *GetBinHandle(), launchParam,
-                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS:
                 return optiling::CallGeTiling("ReshapeAndCacheCompress", *GetBinHandle(), launchParam,
-                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS_ROPE:
                 return optiling::CallGeTiling("ReshapeAndCacheCompressRope", *GetBinHandle(), launchParam,
-                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
             default:
                 return Status::OkStatus();
         }

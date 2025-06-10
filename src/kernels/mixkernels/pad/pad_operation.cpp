@@ -58,7 +58,7 @@ public:
             t.desc = desc;
         }
         return opInferShape::CallGeInferShape("PadInfer", launchParam, outTensors,
-                                            AsdOps::GetMkiSpecificAttr<OpParam::Pad>);
+                                              AsdOps::GetMkiSpecificAttr<OpParam::Pad>);
     }
 
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
