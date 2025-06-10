@@ -580,13 +580,11 @@ struct LayerNormWithStrideParam {
     //!
     //! \enum LayerNormType
     //!
-    //! \brief 归一化类型：NORM、PRENORM、POSTNORM。
+    //! \brief 归一化类型：NORM
     //!
     enum LayerNormType : int {
         LAYER_NORM_UNDEFINED = 0, //!< 默认值，未定义
         LAYER_NORM_NORM,          //!< norm
-        LAYER_NORM_PRENORM,       //!< prenorm
-        LAYER_NORM_POSTNORM,      //!< postnorm
         LAYER_NORM_MAX,
     };
     //!
@@ -611,52 +609,10 @@ struct LayerNormWithStrideParam {
         //!
         uint8_t rsv[20] = {0};
     };
-    //!
-    //! \brief PRENORM参数
-    //!
-    struct PreNormParam {
-        //! \brief 量化类型。
-        //! 当前仅支持QUANT_UNQUANT。
-        QuantType quantType = QUANT_UNQUANT;
-        //! \brief Epsilon，归一化时加在分母上防止除零。
-        float epsilon = 1e-5;
-        //! \brief 0：高精度 1：高性能（暂不支持）。
-        uint64_t opMode = 0;
-        //! \brief 缩放因子。
-        float zoomScaleValue = 1.0f;
-        //!
-        //! \brief 预留参数
-        //!
-        uint8_t rsv[20] = {0};
-    };
-    //!
-    //! \brief POSTNORM参数。
-    //!
-    struct PostNormParam {
-        //! \brief 量化类型。
-        //! 当前支持以下类型。
-        //! QUANT_UNQUANT；
-        //! QUANT_INT8
-        QuantType quantType = QUANT_UNQUANT;
-        //! \brief Epsilon，归一化时加在分母上防止除零。
-        float epsilon = 1e-5;
-        //! \brief 0：高精度 1：高性能（暂不支持）。
-        uint64_t opMode = 0;
-        //! \brief 缩放因子。
-        float zoomScaleValue = 1.0f;
-        //!
-        //! \brief 预留参数
-        //!
-        uint8_t rsv[20] = {0};
-    };
     //! \brief layerType
     LayerNormType layerType = LAYER_NORM_UNDEFINED;
     //! \brief normParam
     NormParam normParam;
-    //! \brief preNormParam
-    PreNormParam preNormParam;
-    //! \brief postNormParam
-    PostNormParam postNormParam;
     //!
     //! \brief 预留参数
     //!
