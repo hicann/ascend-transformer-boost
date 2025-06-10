@@ -227,23 +227,26 @@ Status LinearParallelLcocRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPac
         ATB_LOG(ERROR) << GetLogPrefix() << "lcoc_ is null, rank: " << param_.rank;
         return ERROR_COMM_EMPTY;
     }
+    bool isMoe = false;
+    if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+        param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+        isMoe = true;
+    }
     size_t inTensorId = 0;
     const SVector<Tensor> &inTensors = runnerVariantPack.inTensors;
     Lcal::CoCInputPkg inputPkg;
     inputPkg.matrixA = inTensors.at(inTensorId++).deviceData;
     inputPkg.matrixB = inTensors.at(inTensorId++).deviceData;
     if (isQuant_) {
-        inputPkg.dequantOffset = inTensors.at(inTensorId++).deviceData;
+        inputPkg.dequantOffset = isMoe ? nullptr : inTensors.at(inTensorId++).deviceData;
         inputPkg.dequantScale = inTensors.at(inTensorId++).deviceData;
     }
     inputPkg.bias = param_.hasResidual ? inTensors.at(inTensorId++).deviceData : nullptr;
     if (isQuant_ && param_.quantType == infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
         inputPkg.quantScale = inTensors.at(inTensorId++).deviceData;
     }
-    if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
-        param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
-        inputPkg.global_tokens_per_expert_matrix = inTensors.at(inTensorId++).deviceData;
-    }
+
+    inputPkg.global_tokens_per_expert_matrix = isMoe ? inTensors.at(inTensorId++).deviceData : nullptr;
 
     Lcal::CoCOutputPkg outputPkg = {runnerVariantPack.outTensors[0].deviceData,
                                     param_.keepIntermediate ? runnerVariantPack.outTensors[1].deviceData : nullptr};
