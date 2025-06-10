@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-/** 
+/**
  * @brief 符号完整性检测程序，确保正确导出了所有必要符号。
  *
  * 通过仅调用一次 Ops::Instance()，链接并运行它能快速发现缺失的符号。

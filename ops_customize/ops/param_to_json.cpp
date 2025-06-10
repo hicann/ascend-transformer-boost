@@ -8,11 +8,11 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-/** 
+/**
  * @brief 定义了将自定义算子参数结构体序列化为 JSON 的函数，并注册到 stringify 机制中。
  *
- *  - 为每种 OpParam::Customize* 类型生成对应的 ToJson 函数  
- *  - 通过 REG_STRINGIFY 宏自动将其绑定到日志/调试打印机制  
+ *  - 为每种 OpParam::Customize* 类型生成对应的 ToJson 函数
+ *  - 通过 REG_STRINGIFY 宏自动将其绑定到日志/调试打印机制
  */
 
 #include <string>
