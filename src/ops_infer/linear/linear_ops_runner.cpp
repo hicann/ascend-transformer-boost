@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "linear_ops_runner.h"
+#include <mki/utils/platform/platform_info.h>
 #include "atb/utils/config.h"
 #include "atb/utils/log.h"
 #include "atb/utils/runner_util.h"
@@ -97,6 +98,10 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     SetupMatmulOriShape(xTensor, weightTensor);
     transdataNzToNdParam_.outCrops = {matmulParam_.oriShape.at(0), matmulParam_.oriShape.at(2)};
 
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        matmulParam_.withBias = param_.hasBias;
+        return param_.hasBias ? SetupKernelGraphMatmulWithBias91095() : SetupKernelGraphMatmul91095();
+    }
     if (matmulParam_.enDequant) {
         if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is310B()) {
             return SetupKernelGraphMatmulDequant910B();
@@ -126,6 +131,54 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
         }
         return isWeightNz_ ? SetupKernelGraphMatmulWeightNzNot910B() : SetupKernelGraphMatmulWeightNdNot910B();
     }
+}
+
+Status LinearOpsRunner::SetupKernelGraphMatmul91095()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmul91095";
+
+    InitKernelGraph(SIZE_2, 1, 0, 1);
+
+    Mki::Tensor &xTensor = kernelGraph_.inTensors.at(0);
+    Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(1);
+
+    Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
+
+    KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
+
+    matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
+    matmulNode.inTensors = {&xTensor, &weightTensor};
+    matmulNode.outTensors = {&outTensor};
+    matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
+    if (xNeedMergeAxis_) {
+        matmulNode.inTensorViewFuncs.at(0) = matmulMergeAxis_;
+    }
+    return NO_ERROR;
+}
+
+Status LinearOpsRunner::SetupKernelGraphMatmulWithBias91095()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulWithBias91095";
+
+    InitKernelGraph(SIZE_3, 1, 0, 1);
+
+    size_t inTensorId = 0;
+    Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::Tensor &biasTensor = kernelGraph_.inTensors.at(inTensorId++);
+
+    Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
+
+    KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
+
+    matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
+    matmulNode.inTensors = {&xTensor, &weightTensor, &biasTensor};
+    matmulNode.outTensors = {&outTensor};
+    matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
+    if (xNeedMergeAxis_) {
+        matmulNode.inTensorViewFuncs.at(0) = matmulMergeAxis_;
+    }
+    return NO_ERROR;
 }
 
 Status LinearOpsRunner::SetupKernelGraphMatmul910B()
@@ -458,7 +511,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
         transposeNode.inTensors = {&xTensor};
         transposeNode.outTensors = {&transposedXtensor};
 
-        param_.transposeA  = !param_.transposeA;
+        param_.transposeA = !param_.transposeA;
         matmulParam_.transposeA = param_.transposeA;
         SetupMatmulOriShape(transposedXtensor, weightTensor);
 
@@ -491,51 +544,51 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
 Status LinearOpsRunner::SetupKernelGraphMatmulEin()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulEin";
- 
+
     InitKernelGraph(SIZE_2, 1, 0, 1);
- 
+
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(inTensorId++);
- 
+
     Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
- 
+
     KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
- 
+
     matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_EIN_SUM;
-    matmulNode.opDesc = { 0, "MatMulOperation", matmulParam_ };
-    matmulNode.inTensors = { &xTensor, &weightTensor };
-    matmulNode.outTensors = { &outTensor };
+    matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
+    matmulNode.inTensors = {&xTensor, &weightTensor};
+    matmulNode.outTensors = {&outTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (isWeightNz_) {
         matmulNode.inTensorViewFuncs.at(1) = matmulNzReshape_;
     }
- 
+
     return NO_ERROR;
 }
 
 Status LinearOpsRunner::SetupKernelGraphMatmulEinElewiseAdd()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulEinElewiseAdd";
- 
+
     InitKernelGraph(SIZE_3, 1, 1, SIZE_2);
- 
+
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(inTensorId++);
     Mki::Tensor &biasTensor = kernelGraph_.inTensors.at(inTensorId++);
- 
+
     Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
 
     Mki::Tensor &matmuloutTensor = kernelGraph_.internalTensors.at(0);
- 
+
     KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
     KernelGraphNode &addNode = kernelGraph_.nodes.at(1);
- 
+
     matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_EIN_SUM;
-    matmulNode.opDesc = { 0, "MatMulOperation", matmulParam_ };
-    matmulNode.inTensors = { &xTensor, &weightTensor };
-    matmulNode.outTensors = { &matmuloutTensor };
+    matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
+    matmulNode.inTensors = {&xTensor, &weightTensor};
+    matmulNode.outTensors = {&matmuloutTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (isWeightNz_) {
         matmulNode.inTensorViewFuncs.at(1) = matmulNzReshape_;
@@ -546,7 +599,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulEinElewiseAdd()
     addNode.outTensors = {&outTensor};
     addNode.inTensorViewFuncs.resize(addNode.inTensors.size());
     addNode.inTensorViewFuncs.at(1) = elewiseAddUnsqueeze_;
- 
+
     return NO_ERROR;
 }
 

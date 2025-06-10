@@ -24,6 +24,9 @@ set(matmul_srcs
     ${CMAKE_CURRENT_LIST_DIR}/tiling/pp_matmul_i8_nz_tiling.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tiling/pp_matmul_nz_tiling.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tiling/pp_matmul_nd_tiling.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/matmul_910_95_kernel/matmul_910_95_kernel.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/matmul_910_95_kernel/batch_matmul_910_95_kernel.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/tiling/matmul_910_95_tiling.cpp
 )
 
 add_operation(MatMulOperation "${matmul_srcs}")

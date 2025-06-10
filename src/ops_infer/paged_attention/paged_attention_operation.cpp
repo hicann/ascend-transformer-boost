@@ -9,8 +9,10 @@
  */
 #include "paged_attention_operation.h"
 #include <map>
+#include <mki/utils/platform/platform_info.h>
 #include "paged_attention_ops_runner.h"
 #include "paged_attention_ops_runner_910a.h"
+#include "paged_attention_910_95_ops_runner.h"
 #include "atb/utils/tensor_check.h"
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/operation_util.h"
@@ -37,6 +39,7 @@ static const int QKVQUANTONLINE_BIT = 0x00080;
 } // namespace
 
 namespace atb {
+using namespace Mki;
 
 static bool DeviceParamCheck(const infer::PagedAttentionParam &opParam);
 static bool CompressParamCheck(const infer::PagedAttentionParam &opParam);
@@ -324,7 +327,9 @@ PagedAttentionOperation::PagedAttentionOperation(const infer::PagedAttentionPara
         if (param_.calcType == infer::PagedAttentionParam::CalcType::CALC_TYPE_SPEC) {
             opIrKeySs << "Qlens";
         }
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKeySs.str());
+        std::string opIrKey =
+            PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95 ? "" : opIrKeySs.str();
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey);
     } else {
         InitOpIni();
     }
@@ -407,6 +412,9 @@ Status PagedAttentionOperation::InferShapeImpl(const SVector<TensorDesc> &inTens
 
 Status PagedAttentionOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
+    if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+        return NO_ERROR;
+    }
     Status st = NO_ERROR;
     if (param_.inputLayout == infer::InputLayout::TYPE_BNSD && GetSingleton<Config>().Is910B()) {
         st = InferShapeDimCheckBNSD910B(inTensorDescs);
@@ -422,6 +430,9 @@ Status PagedAttentionOperation::InferShapeCheckImpl(const SVector<TensorDesc> &i
 Status PagedAttentionOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
                                                const SVector<Tensor> &outTensors) const
 {
+    if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+        return NO_ERROR;
+    }
     if (inTensors.at(1).desc.shape.dimNum != 4) { // 4: 必须是四维
         ATB_LOG(ERROR) << "ErrorCode: " << ERROR_INVALID_TENSOR_DIM
                        << ". the keyCache dimNum is:" << inTensors.at(1).desc.shape.dimNum
@@ -894,6 +905,9 @@ std::shared_ptr<Runner> PagedAttentionOperation::CreateRunner(Context &context) 
         return nullptr;
     }
     RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_PAGED_ATTENTION);
+    if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+        return std::make_shared<PagedAttentionOpsRunner>(param_);
+    }
     if (!GetSingleton<Config>().Is910B()) {
         Runner *runner = pool.MallocRunner<PagedAttentionOpsRunner910A, infer::PagedAttentionParam>(param_);
         return runner ? std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); }) :
