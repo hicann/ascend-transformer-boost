@@ -22,6 +22,7 @@ import torch_npu
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
+not_support_device = ['Ascend910A','Ascend310B','Ascend310P']
 
 MAX_SEQ_LEN = 1024
 OP_NAME = "PagedCacheLoadOperation"
@@ -158,6 +159,7 @@ a = [print(tensor.dtype, tensor.device, tensor.shape) for tensor in in_tensors]
 
 
 class ReshapeAndCacheGradOperation(operation_test.OperationTest):
+    soc_version = operation_test.get_soc_version()
     def golden_calc(self, input_tensors):
         if in_tensors[4].dtype == torch.float32:
             in_tensors[4] = in_tensors[4].to(torch.bfloat16)
@@ -168,7 +170,10 @@ class ReshapeAndCacheGradOperation(operation_test.OperationTest):
         return torch.allclose(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001)
 
     def test(self):
-        
+        if operation_test.get_soc_version() in not_support_device:
+            print("These test cases only support A2/A3")
+            return True
+
         in_tensors[0] = torch_npu.npu_format_cast(in_tensors[0], 29)
         in_tensors[1] = torch_npu.npu_format_cast(in_tensors[1] , 29)
         if in_tensors[0].dtype == torch.float32:
