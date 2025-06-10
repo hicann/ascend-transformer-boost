@@ -13,7 +13,7 @@
 #include <mki/utils/const/op_const.h>
 #include "tiling/unpad_tiling.h"
 #include "tiling/tiling_data.h"
-#include "mixops/utils/common.h"
+#include "mixkernels/utils/common.h"
 #include "atbops/params/params.h"
 #include "sink_common.h"
 

@@ -11,7 +11,7 @@
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
 #include "atbops/params/params.h"
-#include "mixops/utils/common.h"
+#include "mixkernels/utils/common.h"
 #include "tiling/reshape_and_cache_tiling.h"
 #include "tiling/reshape_and_cache_tiling_dependency.h"
 #include "sink_common.h"

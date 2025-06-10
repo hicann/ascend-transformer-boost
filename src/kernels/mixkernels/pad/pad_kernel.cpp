@@ -14,7 +14,7 @@
 #include "atbops/params/params.h"
 #include "tiling/pad_tiling.h"
 #include "tiling/tiling_data.h"
-#include "mixops/utils/common.h"
+#include "mixkernels/utils/common.h"
 #include "sink_common.h"
 
 static constexpr uint32_t TENSOR_INPUT_NUM = 4;
