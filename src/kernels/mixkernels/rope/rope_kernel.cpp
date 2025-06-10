@@ -28,7 +28,8 @@ public:
     {
     }
 
-    bool RopeDtypeCheck(const LaunchParam &launchParam, TensorDType dtypeCheck) const
+    bool RopeDtypeCheck(const LaunchParam &launchParam,
+                        TensorDType dtypeCheck) const
     {
         auto inTensor0 = launchParam.GetInTensor(0);
         auto inTensor1 = launchParam.GetInTensor(1);
