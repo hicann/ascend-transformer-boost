@@ -11,9 +11,10 @@
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
 #include "atbops/params/params.h"
-#include "mixkernels/utils/common.h"
+#include "mixops/utils/common.h"
 #include "tiling/reshape_and_cache_tiling.h"
 #include "tiling/reshape_and_cache_tiling_dependency.h"
+#include "sink_common.h"
 
 namespace AtbOps {
 using namespace Mki;
@@ -55,7 +56,27 @@ public:
         auto status = ReshapeAndCacheTiling(launchParam, kernelInfo_);
         MKI_CHECK_NO_LOG(status.Ok(), return status);
 
-        return Status::OkStatus();
+        auto param = AnyCast<OpParam::ReshapeAndCache>(launchParam.GetParam());
+        if (param.type == OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND_SISO) {
+            return optiling::CallGeTiling("ReshapeAndCacheNdSiso", *GetBinHandle(), launchParam,
+                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+        }
+        switch (param.type) {
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND:
+                return optiling::CallGeTiling("ReshapeAndCache", *GetBinHandle(), launchParam,
+                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_NZ:
+                return optiling::CallGeTiling("ReshapeAndCacheNz", *GetBinHandle(), launchParam,
+                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS:
+                return optiling::CallGeTiling("ReshapeAndCacheCompress", *GetBinHandle(), launchParam,
+                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS_ROPE:
+                return optiling::CallGeTiling("ReshapeAndCacheCompressRope", *GetBinHandle(), launchParam,
+                        AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            default:
+                return Status::OkStatus();
+        }
     }
 };
 

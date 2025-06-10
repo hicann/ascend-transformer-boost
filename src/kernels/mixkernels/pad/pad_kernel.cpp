@@ -14,7 +14,8 @@
 #include "atbops/params/params.h"
 #include "tiling/pad_tiling.h"
 #include "tiling/tiling_data.h"
-#include "mixkernels/utils/common.h"
+#include "mixops/utils/common.h"
+#include "sink_common.h"
 
 static constexpr uint32_t TENSOR_INPUT_NUM = 4;
 static constexpr uint32_t TENSOR_OUTPUT_NUM = 1;
@@ -53,15 +54,10 @@ public:
         return true;
     }
 
-    uint64_t GetTilingSize(const LaunchParam &launchParam) const override
-    {
-        (void)launchParam;
-        return sizeof(PadTilingData);
-    }
-
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return PadTiling(launchParam, kernelInfo_);
+        return optiling::CallGeTiling("PadInfer", *GetBinHandle(), launchParam,
+                        AsdOps::GetMkiSpecificAttr<OpParam::Pad>, kernelInfo_);
     }
 };
 REG_KERNEL_BASE(PadKernel);
