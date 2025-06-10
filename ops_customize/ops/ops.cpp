@@ -7,6 +7,15 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+
+/**
+ * @brief 实现单例以及 operation 和 Kernel 的注册、查询、调度功能。
+ *
+ *  - 构造并持有唯一的 OpSchedule 对象
+ *  - 通过宏注册（REG_OPERATION、REG_KERNEL_BASE 等）把所有算子/Kernel 加入调度器
+ *  - 提供查询接口，运行时获取已注册的 Operation 或 Kernel
+ */
+
 #include "atbops/ops.h"
 #include "mki_loader/op_schedule_base.h"
 #include "mki_loader/op_register.h"
