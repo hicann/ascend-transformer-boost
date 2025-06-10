@@ -48,7 +48,7 @@ int32_t LcalRunner::ParseCommDomain(const std::string &commDomain) const
     if (commDomain == "") {
         return 0;
     }
-    constexpr int32_t maxNum = 63;
+    constexpr int32_t maxNum = 65535;
     for (char const &c : commDomain) {
         if (!std::isdigit(c)) {
             ATB_LOG(ERROR) << "commDomain must be a number, commDomain : " << commDomain;
@@ -57,7 +57,7 @@ int32_t LcalRunner::ParseCommDomain(const std::string &commDomain) const
     }
     int32_t num = std::stoi(commDomain);
     if (num < 0 || num > maxNum) {
-        ATB_LOG(ERROR) << "commDomain is not in 0-63, commDomain : " << commDomain;
+        ATB_LOG(ERROR) << "commDomain is not in 0-65535, commDomain : " << commDomain;
         return -1;
     }
     return num;
