@@ -42,7 +42,7 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     acl_matmul_allreduce_operation = torch.classes.OperationTorch.OperationTorch(
         "LinearParallelOperation")
 
-    outputSize = 8192 * world_size * local_expert_nums
+    outputSize = 8192 * local_expert_nums
     acl_param = json.dumps({"type": 6, "rank": rank, "rankSize": world_size,
                             "rankRoot": 0, "transWeight": False, "backend": "lcoc",
                             "quantType": quant_type, "outDataType": out_data_ype,
@@ -58,7 +58,10 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     new_M = matrix_a_i_list.shape[1]
     input_tensor = matrix_a_i_list
     input_tensor = input_tensor.reshape(new_M, K)
-    input_tensor = torch.nn.functional.pad(input_tensor, (0, 0, 0, input_tensor.shape[0] * world_size * local_expert_nums - new_M ), mode='constant', value=0)
+    if input_tensor.shape[0] == 0:
+        input_tensor = torch.zeros(outputSize, input_tensor.shape[1], dtype=input_tensor.dtype)
+    else:
+        input_tensor = torch.nn.functional.pad(input_tensor, (0, 0, 0, outputSize - new_M ), mode='constant', value=0)
     in_tensors.append(input_tensor.to(torch.device('npu')))
 
     weight_tensor = moedata.matrix_b
@@ -71,12 +74,14 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
 
         quantScale = moedata.matrix_quant_scale
         quantScale = quantScale.reshape(new_M)
+        empty_tensor = torch.zeros(outputSize-new_M)
+        quantScale = torch.cat([quantScale, empty_tensor], dim=0)
         in_tensors.append(quantScale.to(torch.device('npu')))
 
     global_tokens_per_expert_matrix = moedata.global_tokens_per_expert_matrix
     in_tensors.append(global_tokens_per_expert_matrix.to(torch.device('npu')))
 
-    maxOutputSize = torch.zeros(input_tensor.shape[0] * world_size * local_expert_nums, dtype=torch.int32)
+    maxOutputSize = torch.zeros(outputSize, dtype=torch.int32)
     in_tensors.append(maxOutputSize.to(torch.device('npu')))
 
     out_tensor = acl_matmul_allreduce_operation.execute(in_tensors)
