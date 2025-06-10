@@ -32,7 +32,7 @@ namespace atb {
 namespace customize {
 
 //!
-//! \struct BlockCopyParam
+//! \struct BlockCopyParam (用户自定义目录的示例算子)
 //!
 //! \brief 将KVCache里通过src indices指定的block数据copy到dst indices指定的block位置上。
 //!

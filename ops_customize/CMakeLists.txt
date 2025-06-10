@@ -16,11 +16,15 @@ set(OPS_THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/3rdparty")
 set(MKI_PACKAGE_DIR "${OPS_THIRD_PARTY_DIR}/mki")
 set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 
+file(GLOB ALL_OPS_IMPL_DIRS
+    "${CMAKE_CURRENT_LIST_DIR}/ops/*/operation_implement"
+    "${CMAKE_CURRENT_LIST_DIR}/ops/*/operation_implement/tiling"
+    CONFIGURE_DEPENDS)
+
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/ops
-    ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement
-    ${CMAKE_CURRENT_LIST_DIR}/ops/customize_blockcopy/operation_implement/tiling
+    ${ALL_OPS_IMPL_DIRS}
     ${CMAKE_CURRENT_LIST_DIR}/include
     $ENV{ASCEND_HOME_PATH}/include
     $ENV{ASCEND_HOME_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux/include
@@ -43,14 +47,11 @@ add_library(atb_customize_static STATIC ${CUSTOMIZE_SRCS})
 
 set(CUSTOMIZE_DEPS
     mki
-    tbe_adapter
     asdops
     atb_mixops
     customize_ops
     ascendcl
     profapi
-    lcal
-    hccl
     pthread
     acl_op_compiler
 )

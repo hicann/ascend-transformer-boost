@@ -12,7 +12,6 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels
     ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels/utils
     ${CMAKE_SOURCE_DIR}/src/kernels/mixkernels/utils/common/kernel
-    ${CMAKE_SOURCE_DIR}/src/kernels/tbe_adapter/include
     $ENV{ASCEND_HOME_PATH}/include
 )
 
@@ -54,7 +53,7 @@ add_custom_target(CUSTOMIZE_BINARY_SRC_TARGET ALL
 list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp ${CMAKE_CURRENT_LIST_DIR}/ops.cpp)
 add_library(customize_ops SHARED ${BINARY_SRC_LIST})
 add_dependencies(customize_ops CUSTOMIZE_BINARY_SRC_TARGET)
-target_link_libraries(customize_ops PRIVATE ${ops_objects} atb_mixops mki tbe_adapter tiling_api register)
+target_link_libraries(customize_ops PRIVATE ${ops_objects} atb_mixops mki tiling_api register)
 target_link_libraries(customize_ops PRIVATE
     -Wl,--whole-archive
     exp_mixops_static
@@ -63,7 +62,7 @@ target_link_libraries(customize_ops PRIVATE
 
 add_library(customize_ops_static STATIC $<TARGET_OBJECTS:customize_ops>)
 add_dependencies(customize_ops_static CUSTOMIZE_BINARY_SRC_TARGET)
-target_link_libraries(customize_ops_static PRIVATE ${ops_objects} atb_mixops mki tbe_adapter tiling_api register)
+target_link_libraries(customize_ops_static PRIVATE ${ops_objects} atb_mixops mki tiling_api register)
 target_link_libraries(customize_ops_static PRIVATE
     -Wl,--whole-archive
     exp_mixops_static
