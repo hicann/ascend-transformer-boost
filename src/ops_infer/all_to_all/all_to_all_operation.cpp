@@ -160,12 +160,14 @@ Status AllToAllOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const
             return ERROR_INVALID_TENSOR_DIM_NUM;
         }
         if (outTensors.at(0).desc.shape.dims[0] != inTensors.at(0).desc.shape.dims[0] * param_.rankSize) {
-            ATB_LOG(ERROR) << "invalid outTensor dims[0] should be intensors[0].dims[0]*rankSize, but got "
+            ATB_LOG(ERROR) << "invalid outTensor dims[0] should be intensors[0].dims[0], * rankSize, i.e. "
+                           << inTensors.at(0).desc.shape.dims[0] << " * " << param_.rankSize << ", but got "
                            << outTensors.at(0).desc.shape.dims[0];
             return ERROR_INVALID_TENSOR_DIM;
         }
         if (outTensors.at(0).desc.shape.dims[1] * param_.rankSize != inTensors.at(0).desc.shape.dims[1]) {
-            ATB_LOG(ERROR) << "invalid outTensor dims[1], should be intensors[0].dims[1]/rankSize, but got "
+            ATB_LOG(ERROR) << "invalid outTensor dims[1], should be intensors[0].dims[1]/rankSize, i.e. "
+                           << inTensors.at(0).desc.shape.dims[1] << " / " << param_.rankSize << ", but got "
                            << outTensors.at(0).desc.shape.dims[1];
             return ERROR_INVALID_TENSOR_DIM;
         }

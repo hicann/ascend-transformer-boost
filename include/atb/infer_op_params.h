@@ -1059,7 +1059,7 @@ struct AllGatherParam {
     //!
     std::string rankTableFile;
     //! \brief 通信device组用通信域名标识，多通信域时使用。
-    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-63的数字。
+    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-65535的数字。
     //! commMode为多线程时，不支持确定性计算，"LCCL_DETERMINISTIC"需要为0或者false。
     //! LCCL在多进程/多线程多通信域并发场景下，"LCCL_PARALLEL"需要设置为1或者true。
     //! 多通信域并行功能使用结束后，"LCCL_PARALLEL"需要设置为0或者false，否则会导致基础场景性能下降。
@@ -1187,7 +1187,7 @@ struct AllReduceParam {
     //!
     std::string rankTableFile;
     //! \brief 通信device组用通信域名标识，多通信域时使用。
-    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-63的数字。
+    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-65535的数字。
     //! commMode为多线程时，不支持确定性计算，"LCCL_DETERMINISTIC"需要为0或者false。
     //! LCCL在多进程/多线程多通信域并发场景下，"LCCL_PARALLEL"需要设置为1或者true。
     //! 多通信域并行功能使用结束后，"LCCL_PARALLEL"需要设置为0或者false，否则会导致基础场景性能下降。
@@ -1253,7 +1253,7 @@ struct BroadcastParam {
     //!
     std::string rankTableFile;
     //! \brief 通信device组用通信域名标识，多通信域时使用。
-    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-63的数字。
+    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-65535的数字。
     //! commMode为多线程时，不支持确定性计算，"LCCL_DETERMINISTIC"需要为0或者false。
     //! LCCL在多进程/多线程多通信域并发场景下，"LCCL_PARALLEL"需要设置为1或者true。
     //! 多通信域并行功能使用结束后，"LCCL_PARALLEL"需要设置为0或者false，否则会导致基础场景性能下降。
@@ -1299,7 +1299,7 @@ struct ReduceScatterParam {
     //! \brief 集群信息的配置文件路径。
     std::string rankTableFile;
     //! \brief 通信device组用通信域名标识，多通信域时使用。
-    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-63的数字。
+    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-65535的数字。
     //! commMode为多线程时，不支持确定性计算，"LCCL_DETERMINISTIC"需要为0或者false。
     //! LCCL在多进程/多线程多通信域并发场景下，"LCCL_PARALLEL"需要设置为1或者true。
     //! 多通信域并行功能使用结束后，"LCCL_PARALLEL"需要设置为0或者false，否则会导致基础场景性能下降。
@@ -1542,7 +1542,7 @@ struct LinearParallelParam {
     //! 如ACL_FLOAT16/ACL_BF16
     aclDataType outDataType = ACL_DT_UNDEFINED;
     //! \brief 通信device组用通信域名标识，多通信域时使用。
-    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-63的数字。
+    //! 当backend为"lccl"时，commMode为多进程时，commDomain需要设置为0-65535的数字。
     //! commMode为多线程时，不支持确定性计算，"LCCL_DETERMINISTIC"需要为0或者false。
     //! LCCL在多进程/多线程多通信域并发场景下，"LCCL_PARALLEL"需要设置为1或者true。
     //! 多通信域并行功能使用结束后，"LCCL_PARALLEL"需要设置为0或者false，否则会导致基础场景性能下降。
