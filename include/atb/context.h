@@ -139,6 +139,13 @@ public:
     //!
     //! \return 当前的算子下发模式
     virtual LaunchMode GetLaunchMode() = 0;
+
+    //!
+    //! \brief 设置当前的图是否是自动融合状态的
+    //!
+    //! \param flag 算子是否是自动融合状态
+    virtual void SetAutoFusionFlag(bool flag = false) = 0;
+
 };
 
 //!

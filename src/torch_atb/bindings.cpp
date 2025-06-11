@@ -81,7 +81,7 @@ PYBIND11_MODULE(_C, m)
         .def_property_readonly("name", &TorchAtb::OperationWrapper::GetName)
         .def_property_readonly("input_num", &TorchAtb::OperationWrapper::GetInputNum)
         .def_property_readonly("output_num", &TorchAtb::OperationWrapper::GetOutputNum)
-        .def("forward", &TorchAtb::OperationWrapper::Forward)
+        .def("forward", &TorchAtb::OperationWrapper::Forward, py::arg("inTensors"), py::arg("autoFusionFlag") = bool{false})
         .def("__repr__", [](const TorchAtb::OperationWrapper &opWrapper) {
             std::stringstream ss;
             ss << "op name: " << opWrapper.GetName() << ", input_num: " << opWrapper.GetInputNum()
@@ -178,7 +178,7 @@ PYBIND11_MODULE(_C, m)
         .def("set_input_output", &TorchAtb::GraphOperationBuilder::SetInputOutput)
         .def("reshape", &TorchAtb::GraphOperationBuilder::Reshape)
         .def("add_operation", &TorchAtb::GraphOperationBuilder::AddOperation)
-        .def("build", &TorchAtb::GraphOperationBuilder::Build);
+        .def("build", &TorchAtb::GraphOperationBuilder::Build, py::arg("autoFusionClassArray") = std::set<std::string>{});
 
     py::enum_<aclDataType>(m, "AclDataType")
         .value("ACL_DT_UNDEFINED", aclDataType::ACL_DT_UNDEFINED)
