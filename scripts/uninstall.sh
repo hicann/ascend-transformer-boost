@@ -33,6 +33,7 @@ else
     LOG_PATH="${HOME}${LOG_PATH}"
     log_file=${LOG_PATH}${LOG_NAME}
 fi
+chmod 640 ${log_file}
 
 function print() {
     if [ ! -f "$log_file" ]; then
@@ -155,3 +156,4 @@ function uninstall_torch_atb() {
 install_path=$(cd ${CUR_DIR}/../../${VERSION};pwd)
 uninstall_process ${install_path}
 uninstall_torch_atb
+chmod 440 ${log_file}
