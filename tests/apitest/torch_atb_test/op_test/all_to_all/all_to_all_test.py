@@ -44,7 +44,7 @@ class TestAllToAll(unittest.TestCase):
     def test(self):
         if not is910B():
             print("This test case only supports 910B")
-            exit()
+            return True
         print("----------- all_to_all test begin ------------")
         mp.spawn(run_test, nprocs=rank_size, args=(rank_size,))
         print("----------- all_to_all test success ------------")
