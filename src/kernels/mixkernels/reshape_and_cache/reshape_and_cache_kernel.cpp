@@ -46,22 +46,13 @@ public:
         return true;
     }
 
-    uint64_t GetTilingSize(const LaunchParam &launchParam) const override
-    {
-        return TILING_PARA_SIZE; // 64 is tiling buffer size
-    }
-
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        auto status = ReshapeAndCacheTiling(launchParam, kernelInfo_);
-        MKI_CHECK_NO_LOG(status.Ok(), return status);
-
         auto param = AnyCast<OpParam::ReshapeAndCache>(launchParam.GetParam());
-        if (param.type == OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND_SISO) {
-            return optiling::CallGeTiling("ReshapeAndCacheNdSiso", *GetBinHandle(), launchParam,
-                                          AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
-        }
         switch (param.type) {
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND_SISO:
+                return optiling::CallGeTiling("ReshapeAndCacheNdSiso", *GetBinHandle(), launchParam,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND:
                 return optiling::CallGeTiling("ReshapeAndCache", *GetBinHandle(), launchParam,
                                               AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);

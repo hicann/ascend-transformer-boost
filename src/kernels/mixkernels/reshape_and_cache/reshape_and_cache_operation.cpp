@@ -357,8 +357,6 @@ public:
             MKI_CHECK(CheckReshapeAndCacheNDSISO(launchParam),
                 "Failed to check launch param",
                 return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Failed to check launch param"));
-            auto &tensorKeyCacheIn = launchParam.GetInTensor(DIM_1);
-            outTensors[DIM_0] = tensorKeyCacheIn;
             return opInferShape::CallGeInferShape("ReshapeAndCacheNdSiso", launchParam, outTensors,
                                                   AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>);
         }
@@ -366,10 +364,6 @@ public:
         // 1. 检查多种reshape算子 公共部分
         MKI_CHECK(CheckCommonReshapeAndCache(launchParam), "Failed to check common launch param",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        auto &tensorKeyCacheIn = launchParam.GetInTensor(DIM_2);
-        auto &tensorValueCacheIn = launchParam.GetInTensor(DIM_3);
-        outTensors[DIM_0] = tensorKeyCacheIn;
-        outTensors[DIM_1] = tensorValueCacheIn;
 
         // 2. 检查各自reshape算子 私有部分
         switch (param.type) {
