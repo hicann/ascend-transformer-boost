@@ -76,6 +76,7 @@ PYBIND11_MODULE(_C, m)
         .def(py::init<const LinearSparseParam &>())
         .def(py::init<const RelayAttentionParam &>())
         .def(py::init<const TopkToppSamplingParam &>())
+        .def(py::init<const AllToAllParam &>())
         .def(py::init<const GraphParam &>())
         .def_property_readonly("name", &TorchAtb::OperationWrapper::GetName)
         .def_property_readonly("input_num", &TorchAtb::OperationWrapper::GetInputNum)
@@ -162,6 +163,8 @@ PYBIND11_MODULE(_C, m)
         .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::RelayAttentionParam &>(
                              &TorchAtb::GraphBuilder::AddNode))
         .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::TopkToppSamplingParam &>(
+                             &TorchAtb::GraphBuilder::AddNode))
+        .def("add_node", py::overload_cast<const std::vector<std::string> &, const atb::infer::AllToAllParam &>(
                              &TorchAtb::GraphBuilder::AddNode))
         .def("add_node", py::overload_cast<const std::vector<std::string> &, TorchAtb::OperationWrapper &>(
                              &TorchAtb::GraphBuilder::AddNode))
@@ -1297,4 +1300,27 @@ PYBIND11_MODULE(_C, m)
         .def("__repr__", [](const TopkToppSamplingParam &param) {
             return "TopkToppSamplingParam: " + OpParamToJson(param).dump();
         });
+
+    py::class_<AllToAllParam>(m, "AllToAllParam")
+        .def(py::init<int, int, int, std::string, HcclComm, CommMode, std::string, std::string, bool>(),
+             py::arg("rank") = 0,
+             py::arg("rank_size") = 0,
+             py::arg("rank_root") = 0,
+             py::arg("backend") = "hccl",
+             py::arg("hccl_comm") = nullptr,
+             py::arg("comm_mode") = CommMode::COMM_MULTI_PROCESS,
+             py::arg("rank_table_file") = "",
+             py::arg("comm_domain") = "",
+             py::arg("transpose") = false, )
+        .def_readwrite("rank", &AllToAllParam::rank)
+        .def_readwrite("rank_size", &AllToAllParam::rankSize)
+        .def_readwrite("rank_root", &AllToAllParam::rankRoot)
+        .def_readwrite("backend", &AllToAllParam::backend)
+        .def_readwrite("hccl_comm", &AllToAllParam::hcclComm)
+        .def_readwrite("comm_mode", &AllToAllParam::commMode)
+        .def_readwrite("rank_table_file", &AllToAllParam::rankTableFile)
+        .def_readwrite("comm_domain", &AllToAllParam::commDomain)
+        .def_readwrite("transpose", &AllToAllParam::transpose)
+        .def("__repr__",
+             [](const AllToAllParam &param) { return "AllToAllParam: " + atb::OpParamToJson(param).dump(); })
 }
