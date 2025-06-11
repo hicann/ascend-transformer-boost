@@ -279,7 +279,8 @@ Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t
                                                    uint8_t *kernelHostTilingBuffer, size_t tilingSize,
                                                    ContextBase *context)
 {
-    if (node.impl->GetTilingFilledFlag() && !needKernelGraphModify_) {
+    bool ifGraphLaunchNeedCalcTiling = needKernelGraphModify_ && (context->GetLaunchMode() == GRAPH_LAUNCH_MODE);
+    if (node.impl->GetTilingFilledFlag() && !ifGraphLaunchNeedCalcTiling) {
         return NO_ERROR;
     }
 
