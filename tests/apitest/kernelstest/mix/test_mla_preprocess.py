@@ -683,7 +683,6 @@ class TestMLAPrepross(op_test.OpTest):
                              self.compare_data(self.keyout_npu[..., 512:576].flatten(), out_tensors[3].flatten())
             return result_double1 and result_double2 and result_double3 and result_double4
         elif self.op_desc["specificParam"]["cacheMode"] == 2:
-            diff = out_tensors[0].flatten() - self.qOutNopeQuant.flatten()
             max_diff = torch.max(torch.abs(out_tensors[0].flatten() - self.qOutNopeQuant.flatten()))
             result_double1 = max_diff <= 1
 
