@@ -1322,5 +1322,5 @@ PYBIND11_MODULE(_C, m)
         .def_readwrite("comm_domain", &AllToAllParam::commDomain)
         .def_readwrite("transpose", &AllToAllParam::transpose)
         .def("__repr__",
-             [](const AllToAllParam &param) { return "AllToAllParam: " + atb::OpParamToJson(param).dump(); })
+             [](const AllToAllParam &param) { return "AllToAllParam: " + atb::OpParamToJson(param).dump(); });
 }
