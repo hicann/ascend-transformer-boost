@@ -213,6 +213,11 @@ GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const a
     return AddNodeByParamType(inputs, param);
 }
 
+GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, const atb::infer::AllToAllParam &param)
+{
+    return AddNodeByParamType(inputs, param);
+}
+
 GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, OperationWrapper &opWrapper)
 {
     atb::Operation *operation = opWrapper.ReleaseOperation();
