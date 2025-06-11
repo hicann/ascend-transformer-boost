@@ -24,7 +24,7 @@ public:
                                         const std::vector<std::string> &outTensorNames);
     GraphOperationBuilder &Reshape(const std::string &srcTensorName, const ReshapeHandler &reshapeHandler,
                                    const std::string &reshapedTensorName);
-    OperationWrapper Build();
+    OperationWrapper Build(const std::set<std::string>& autoFusionClassArray = {});
 
 private:
     uint32_t GetTensorId(const std::string &tensorName);
@@ -36,6 +36,8 @@ private:
     std::map<std::string, uint32_t> outTensorIds_;
     std::map<std::string, uint32_t> internalTensorIds_;
     std::map<std::string, std::pair<uint32_t, atb::ReshapeFunc>> reshapedTensorIds_;
+    void UpdateInternalTensorIds();
+    void UpdateReshapeFunc(const std::vector<int>& fusedNodes);
 };
 } // namespace TorchAtb
 #endif // TORCH_ATB_GRAPH_OPERATION_WRAPPER_H

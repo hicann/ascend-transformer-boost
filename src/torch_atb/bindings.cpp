@@ -175,7 +175,7 @@ PYBIND11_MODULE(_C, m)
         .def("set_input_output", &TorchAtb::GraphOperationBuilder::SetInputOutput)
         .def("reshape", &TorchAtb::GraphOperationBuilder::Reshape)
         .def("add_operation", &TorchAtb::GraphOperationBuilder::AddOperation)
-        .def("build", &TorchAtb::GraphOperationBuilder::Build);
+        .def("build", &TorchAtb::GraphOperationBuilder::Build, py::arg("autoFusionClassArray") = std::set<std::string>{});
 
     py::enum_<aclDataType>(m, "AclDataType")
         .value("ACL_DT_UNDEFINED", aclDataType::ACL_DT_UNDEFINED)

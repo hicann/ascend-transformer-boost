@@ -153,8 +153,15 @@ static bool CheckGraphParam(const GraphParam &param)
         tensorIsValued.at(tensorId) = true;
     }
 
+    for (auto erasedTensor : param.internalTensorsErasedByFusion) {
+        tensorIsValued.at(erasedTensor.first)  = true;
+    }
+
     for (size_t nodeId = 0; nodeId < param.nodes.size(); ++nodeId) {
         const auto &node = param.nodes.at(nodeId);
+        if (node.fusedFlag && !node.theMain) {
+            continue;
+        }
         if (!CheckNode(node, nodeId, totalTensorNum, tensorIsValued, tensorIsUsed)) {
             ATB_LOG(ERROR) << "graph: " << param.name << " check failed.";
             return false;
@@ -341,6 +348,9 @@ Status GraphOperation::CreateRunnerNode(const size_t nodeId, GraphRunner::Graph 
         ATB_LOG(ERROR) << GetLogPrefix() << "node[" << nodeId << "] runner is null.";
         return ERROR_INVALID_PARAM;
     }
+    if (!opNode.theMain && opNode.fusedFlag) {
+        return NO_ERROR;
+    }
     runnerNode.runner->SetRunnerInfo(runnerNode.op->GetName(), nodeOperationIds);
 
     runnerNode.inTensorReshapeFuncs = opNode.inTensorReshapeFuncs;
@@ -411,6 +421,9 @@ Status GraphOperation::InferShapeImplDefault(const SVector<TensorDesc> &inTensor
 
     for (size_t nodeId = 0; nodeId < opGraph_.nodes.size(); ++nodeId) {
         auto &opNode = opGraph_.nodes.at(nodeId);
+        if(opNode.fusedFlag && !opNode.theMain) {
+            continue;
+        }
         SVector<TensorDesc> opInTensorDescs;
         opInTensorDescs.reserve(opNode.operation->GetInputNum());
         opInTensorDescs.resize(opNode.operation->GetInputNum());
