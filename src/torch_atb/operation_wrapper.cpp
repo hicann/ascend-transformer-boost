@@ -198,6 +198,11 @@ OperationWrapper::OperationWrapper(const RelayAttentionParam &param)
     CreateOpUniquePtr(param);
 }
 
+OperationWrapper::OperationWrapper(const FusionParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
 OperationWrapper::OperationWrapper(const TopkToppSamplingParam &param)
 {
     CreateOpUniquePtr(param);
@@ -205,6 +210,15 @@ OperationWrapper::OperationWrapper(const TopkToppSamplingParam &param)
 
 OperationWrapper::OperationWrapper(const GraphParam &param)
 {
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(GraphParam &param, const std::set<std::string> &fusionClassArray)
+{
+    if (!fusionClassArray.empty()) {
+        atb::AutoFusion autoFusionTool(param);
+        autoFusionTool.DoAutoFusion(fusionClassArray);
+    }
     CreateOpUniquePtr(param);
 }
 

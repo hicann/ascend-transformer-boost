@@ -763,6 +763,13 @@ template <> nlohmann::json OpParamToJson(const infer::CohereLayerNormParam &opPa
     return cohereLayerNormParamsJson;
 }
 
+template <> nlohmann::json OpParamToJson(const infer::FusionParam &opParam)
+{
+    nlohmann::json fusionParamsJson;
+    fusionParamsJson["type"] = opParam.fusionType;
+    return fusionParamsJson;
+}
+
 template <> nlohmann::json OpParamToJson(const infer::GatherPreRmsNormParam &opParam)
 {
     nlohmann::json gatherPreRmsNormParamJson;

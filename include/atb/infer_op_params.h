@@ -421,6 +421,38 @@ struct ElewiseParam {
 };
 
 //!
+//! \struct FusionParam
+//!
+//! \brief 常用的算子自动融合参数
+//!
+//! 目前支持的算子自动融合类型包括MATMUL_ADD、MATMUL_GELU
+//! 
+//!
+struct FusionParam {
+    //!
+    //! \enum FusionType
+    //!
+    //! \brief 融合类型
+    //!
+    enum FusionType : int {
+        NON_FUSION = 0,
+        MATMUL_ADD = 1,
+        MATMUL_GELU = 2,
+        MATMUL_SIGMOID = 3,
+        MATMUL_SWIGLU = 4,
+    };
+
+    //! 融合方式
+    FusionType fusionType = NON_FUSION;
+    //! 指定的数据类型转换的输出数据类型
+    aclDataType outTensorType = ACL_DT_UNDEFINED;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[8] = {0};
+};
+
+//!
 //! \struct KvCacheParam
 //!
 //! \brief KVCache处理。
