@@ -1311,7 +1311,7 @@ PYBIND11_MODULE(_C, m)
              py::arg("comm_mode") = CommMode::COMM_MULTI_PROCESS,
              py::arg("rank_table_file") = "",
              py::arg("comm_domain") = "",
-             py::arg("transpose") = false, )
+             py::arg("transpose") = false)
         .def_readwrite("rank", &AllToAllParam::rank)
         .def_readwrite("rank_size", &AllToAllParam::rankSize)
         .def_readwrite("rank_root", &AllToAllParam::rankRoot)
