@@ -234,7 +234,9 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKMultinomialSampling()
     };
 
     AtbOps::OpParam::Toppsample toppParam;
-    toppParam.randSeed = param_.randSeeds;
+    toppParam.randSeed.resize(param_.randSeeds.size());
+    std::transform(param_.randSeeds.begin(), param_.randSeeds.end(), toppParam.randSeed.begin(),
+                   [](uint32_t value) { return static_cast<uint64_t>(value); });
     mixTopPNode.opDesc = {0, "ToppsampleOperation", toppParam};
     mixTopPNode.inTensors = {&cumsumedProbsTensor, &topPTensor};
     mixTopPNode.outTensors = {&indicesTopPSampledTensor};
@@ -571,7 +573,9 @@ Status TopkToppSamplingOpsRunner::SetupSingleTopKSampling()
 
     AtbOps::OpParam::Toppsample toppParam;
     std::vector<uint32_t> randSeeds = {param_.randSeed};
-    toppParam.randSeed = randSeeds;
+    toppParam.randSeed.resize(randSeeds.size());
+    std::transform(randSeeds.begin(), randSeeds.end(), toppParam.randSeed.begin(),
+                   [](uint32_t value) { return static_cast<uint64_t>(value); });
     toppSamplingNode.opDesc = {0, "ToppsampleOperation", toppParam};
     toppSamplingNode.inTensors = {&probsSumedTensor, &pTensor};
     toppSamplingNode.outTensors = {&indicesSortedSampledTensor};
