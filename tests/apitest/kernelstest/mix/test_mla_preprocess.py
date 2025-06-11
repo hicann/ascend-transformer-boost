@@ -12,7 +12,8 @@ import numpy as np
 import torch
 import torch_npu
 import torch.nn.functional as F
-import sys, os
+import sys,os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import op_test
 import random
 import logging
@@ -170,7 +171,7 @@ class TestMLAPrepross(op_test.OpTest):
         deScale = torch.ones((dim1), dtype=torch.float32)
         if self.dtype == torch.float16:
             deScale = process_deq_scale(deScale)
-        in_tensors = [intensors[0], intensors[1], bias, deScale]
+        in_tensors = [intensors[0], intensors[1], bias, deScale, torch.Tensor()]
         self.set_param(
             "MatMulOperation",
             {
@@ -341,7 +342,7 @@ class TestMLAPrepross(op_test.OpTest):
         # Ppmatmul
         if quant_mode == 0:
             self.mm1Out1_npu = torch.zeros((N, 2112), dtype=data_type)
-            in_tensors = [out_tensors_npu[0], self.wdqkv, self.bias1, self.deScale1]
+            in_tensors = [out_tensors_npu[0], self.wdqkv, self.bias1, self.deScale1, torch.Tensor()]
             out_tensors = [self.mm1Out1_npu]
             self.set_param(
                 "MatMulOperation",
@@ -398,7 +399,7 @@ class TestMLAPrepross(op_test.OpTest):
         # Ppmatmul
         if quant_mode == 0:
             self.mm2Out_npu = torch.zeros((N, headNum * 192), dtype=data_type)
-            in_tensors = [out_tensors_npu[0], self.wuq, self.bias2, self.deScale2]
+            in_tensors = [out_tensors_npu[0], self.wuq, self.bias2, self.deScale2, torch.Tensor()]
             out_tensors = [self.mm2Out_npu]
             self.set_param(
                 "MatMulOperation",
@@ -683,14 +684,15 @@ class TestMLAPrepross(op_test.OpTest):
             return result_double1 and result_double2 and result_double3 and result_double4
         elif self.op_desc["specificParam"]["cacheMode"] == 2:
             diff = out_tensors[0].flatten() - self.qOutNopeQuant.flatten()
-            max_diff = torch.max(torch.abs(diff))
+            max_diff = torch.max(torch.abs(out_tensors[0].flatten() - self.qOutNopeQuant.flatten()))
             result_double1 = max_diff <= 1
+
+            max_diff = torch.max(torch.abs(self.keyCache1_out.flatten() - out_tensors[1].flatten()))
+            result_double2 = max_diff <= 1
+
             result_double3 = compare_cv(self.qOut_npu[..., 512:576], self.qOut[..., 512:576], out_tensors[2]) or\
                              self.compare_data(self.qOut_npu[..., 512:576].flatten(), out_tensors[2].flatten())
-
-            diff = self.keyCache1_out.flatten() - out_tensors[1].flatten()
-            max_diff = torch.max(torch.abs(diff))
-            result_double2 = max_diff <= 1
+            
             result_double4 = self.compare_data(self.keyCache2_out.flatten(), out_tensors[3].flatten())
             return result_double1 and result_double2 and result_double3 and result_double4
         elif self.op_desc["specificParam"]["cacheMode"] == 3:
