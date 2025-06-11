@@ -169,6 +169,9 @@ bool OpsRunner::SetupCanReuse(RunnerVariantPack &runnerVariantPack, bool &kernel
             }
             if (!needKernelGraphModify_) {
                 bool launchWithTiling = runnerVariantPack.context->GetLaunchWithTilingStatus();
+                if (runnerVariantPack.context->GetAutoFusionFlag()) {
+                    launchWithTiling = false;
+                }
                 SetupCacheGetCachedTiling(runnerVariantPack.hostTilingBuffer, runnerVariantPack.tilingBufferSize,
                                           launchWithTiling);
                 return true; // 组图不改，参数不改，直接返回
@@ -290,6 +293,9 @@ Status OpsRunner::FillSingleKernelHostTilingBuffer(KernelGraphNode &node, size_t
     GetOpSetupStatistic().tilingCacheMissCount += 1;
     Mki::Timer fillTimer;
     bool launchWithTiling = context->GetLaunchWithTilingStatus();
+    if (context->GetAutoFusionFlag()) {
+        launchWithTiling = false;
+    }
     Status status = node.impl->InitKernelInfo(kernelHostTilingBuffer, tilingSize, launchWithTiling);
     if (status != NO_ERROR) {
         ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] InitRunInfo failed!";
@@ -357,6 +363,9 @@ Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPac
     uint8_t *deviceIntermediateBuffer = runnerVariantPack.intermediateBuffer;
     bool isLaunchKernelWithTiling = runnerVariantPack.context->GetLaunchWithTilingStatus();
     bool needSetTiling = !(isLaunchKernelWithTiling || (totalTilingSize_ == 0));
+    if (runnerVariantPack.context->GetAutoFusionFlag()) {
+        needSetTiling = true;
+    }
     bool needSetworkspace = (workspaceSize_ != 0);
     uint64_t tilingOffset = 0;
     uint64_t deviceArgsSizeOffset = 0;
