@@ -195,6 +195,10 @@ Status PagedCacheLoadOperation::DimCheck(const SVector<TensorDesc> &inTensorDesc
             ATB_LOG(ERROR) << GetLogPrefix() << "blockSize cannot be zero";
             return ERROR_INVALID_TENSOR_DIM;
         }
+        if (blockSize % 16 != ZERO) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "blockSize must be aligned to 16";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
         if (lencontext != inTensorDescs.at(IN_TENSOR_3_CONTEXTLENS).shape.dims[0]) {
             ATB_LOG(ERROR) << GetLogPrefix() << "lenscontextlens should be same";
             return ERROR_INVALID_TENSOR_DIM;
