@@ -64,6 +64,8 @@ public:
     explicit OperationWrapper(const atb::infer::TopkToppSamplingParam &param);
     explicit OperationWrapper(const atb::infer::AllToAllParam &param);
     explicit OperationWrapper(const atb::GraphParam &param);
+    explicit OperationWrapper(atb::GraphParam &param, const std::set<std::string> &fusionClassArray = {});
+    explicit OperationWrapper(const atb::infer::FusionParam &param);
     atb::Operation *ReleaseOperation();
     std::string GetName() const;
     uint32_t GetInputNum() const;
