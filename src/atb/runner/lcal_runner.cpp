@@ -47,8 +47,9 @@ void LcalRunner::InitLcalComm()
 
 std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commDomain) const
 {
+    constexpr int32_t defaultDomainSize = 200;
     if (commDomain.empty()) {
-        return {0, 0};
+        return {0, defaultDomainSize};
     }
 
     constexpr int32_t maxDomainId = 65535;
@@ -85,7 +86,7 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
         return {-1, -1};
     }
 
-    return {id, 0};  // 默认 size 为 0
+    return {id, defaultDomainSize};
 }
 
 std::shared_ptr<Lcal::LcalComm> LcalRunner::CreateLcalComm()
@@ -96,7 +97,7 @@ std::shared_ptr<Lcal::LcalComm> LcalRunner::CreateLcalComm()
         ATB_LOG(INFO) << GetLogPrefix() << "Lccl COMM_MULTI_PROCESS commDomain is : "
             << commonId.first << ":" << commonId.second;
         if (commonId.first == -1) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "Invalid commDomain: " << commonId;
+            ATB_LOG(ERROR) << GetLogPrefix() << "Invalid commDomain: " << commonId.first;
             return std::shared_ptr<Lcal::LcalComm>();
         }
         lcalErrorCode_ = LcalCommInitRankWithCustDomainSize(commonId.first, commonId.second, rankSize_, rank_, &comm);
