@@ -20,6 +20,7 @@
 namespace atb {
 static const int32_t DEFAULT_HEAD_NUM = 1;
 static const int32_t DEFAULT_KV_HEAD_NUM = 1;
+static const int64_t DEFAULT_HEAD_SIZE = 128;
 static const int32_t ZERO = 0;
 static const int32_t PRE_TOKENS_BLOCK_SIZE = 128;
 static const int32_t NEXT_TOKENS_BLOCK_SIZE = 128;
@@ -151,28 +152,28 @@ Status RazorFusionAttentionOperation::DimCheck(const SVector<TensorDesc> &inTens
                        << "intensor2Dim0/(razorLen * tileKv + textKvLen).";
         return ERROR_INVALID_TENSOR_DIM;
     }
-
     // 校验query key value的dim1
     int64_t queryDim1 = inTensorDescs.at(IN_TENSOR_0_QUERY).shape.dims[1];
     int64_t keyDim1 = inTensorDescs.at(IN_TENSOR_1_KEY).shape.dims[1];
     int64_t valueDim1 = inTensorDescs.at(IN_TENSOR_2_VALUE).shape.dims[1];
-    if (queryDim1 != keyDim1 || queryDim1 != valueDim1) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "intensor0Dim1 must equal to intensor1Dim1 and intensor2Dim1.";
-        return ERROR_INVALID_TENSOR_DIM;
+    if (queryDimNum == IN_TENSOR_DIM_NUM_2) {
+        if (queryDim1 != DEFAULT_HEAD_SIZE || keyDim1 != DEFAULT_HEAD_SIZE || valueDim1 != DEFAULT_HEAD_SIZE) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "when dimNum is 2, intensor0Dim1, intensor1Dim1 and intensor2Dim1 must equal to 128.";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
-    if (queryDimNum == IN_TENSOR_DIM_NUM_3 && queryDim1 != 1) {
+    if (queryDimNum == IN_TENSOR_DIM_NUM_3 && (queryDim1 != 1 || keyDim1 != 1 || valueDim1 != 1)) {
         ATB_LOG(ERROR) << GetLogPrefix()
                        << "when dimNum is 3, intensor0Dim1, intensor1Dim1, and intensor2Dim1 must be 1";
         return ERROR_INVALID_TENSOR_DIM;
     }
-
     // 校验query key value的dim2
     if (queryDimNum == IN_TENSOR_DIM_NUM_3) {
         int64_t queryDim2 = inTensorDescs.at(IN_TENSOR_0_QUERY).shape.dims[2];
         int64_t keyDim2 = inTensorDescs.at(IN_TENSOR_1_KEY).shape.dims[2];
         int64_t valueDim2 = inTensorDescs.at(IN_TENSOR_2_VALUE).shape.dims[2];
-        if (queryDim2 != keyDim2 || queryDim2 != valueDim2) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "intensor0Dim2 must equal to intensor1Dim2 and intensor2Dim2.";
+        if (queryDim2 != DEFAULT_HEAD_SIZE || keyDim2 != DEFAULT_HEAD_SIZE || valueDim2 != DEFAULT_HEAD_SIZE) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "intensor0Dim2, intensor1Dim2 and intensor2Dim2 must equal to 128.";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
