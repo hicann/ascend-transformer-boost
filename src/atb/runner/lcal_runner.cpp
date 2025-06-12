@@ -61,7 +61,7 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
         if (idStr.empty() || sizeStr.empty() ||
             !std::all_of(idStr.begin(), idStr.end(), ::isdigit) ||
             !std::all_of(sizeStr.begin(), sizeStr.end(), ::isdigit)) {
-            ATB_LOG(ERROR) << "commDomain must contain numeric id and size;
+            ATB_LOG(ERROR) << "commDomain must contain numeric id and size";
             return {-1, -1};
         }
 
@@ -69,7 +69,7 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
         int32_t size = std::stoi(sizeStr);
 
         if (id < 0 || id > maxDomainId || size <= 0) {
-            ATB_LOG(ERROR) << "Invalid range: id should be 0-65535 and size > 0;
+            ATB_LOG(ERROR) << "Invalid range: id should be 0-65535 and size > 0";
             return {-1, -1};
         }
 
@@ -97,7 +97,7 @@ std::shared_ptr<Lcal::LcalComm> LcalRunner::CreateLcalComm()
     if (commMode_ == infer::CommMode::COMM_MULTI_PROCESS) {
         auto commonId = ParseCommDomain(commDomain_);
         ATB_LOG(INFO) << GetLogPrefix() << "Lccl COMM_MULTI_PROCESS commDomain is : "
-                                        << commonId.first << ":" << commonId.second;
+            << commonId.first << ":" << commonId.second;
         if (commonId.first == -1) {
             ATB_LOG(ERROR) << GetLogPrefix() << "Invalid commDomain: " << commonId;
             return std::shared_ptr<Lcal::LcalComm>();
