@@ -64,10 +64,8 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
             ATB_LOG(ERROR) << "commDomain must contain numeric id and size";
             return {-1, -1};
         }
-
         int32_t id = std::stoi(idStr);
         int32_t size = std::stoi(sizeStr);
-
         if (id < 0 || id > maxDomainId || size <= 0) {
             ATB_LOG(ERROR) << "Invalid range: id should be 0-65535 and size > 0";
             return {-1, -1};
