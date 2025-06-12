@@ -69,7 +69,6 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
             ATB_LOG(ERROR) << "Invalid range: id should be 0-65535 and size > 0";
             return {-1, -1};
         }
-
         return {id, size};
     }
 
@@ -84,7 +83,6 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
         ATB_LOG(ERROR) << "commDomain id is not in 0-65535, commDomain: " << commDomain;
         return {-1, -1};
     }
-
     return {id, defaultDomainSize};
 }
 
