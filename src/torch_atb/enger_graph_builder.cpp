@@ -245,9 +245,6 @@ void GraphBuilder::MarkOutput(const std::string &outTensor)
     for (auto &graphNode : graphNodes_) {
         if (graphNode.FindOutput(outTensor)) {
             findOutput = true;
-            graphNode.outTensorIds.erase(
-                std::remove(graphNode.outTensorIds.begin(), graphNode.outTensorIds.end(), "outTensor"),
-                graphNode.outTensorIds.end());
             break;
         }
     }
@@ -261,7 +258,7 @@ void GraphBuilder::MarkOutput(const std::string &outTensor)
 
 OperationWrapper GraphBuilder::Build()
 {
-    graphParam_.nodes.resize(0);
+    graphParam_.nodes.clear();
 
     uint32_t internalId = 0;
     for (auto &graphNode : graphNodes_) {
@@ -283,8 +280,13 @@ OperationWrapper GraphBuilder::Build()
             }
         }
         for (const std::string &outTensorName : graphNode.outTensorIds) {
-            internalTensorIds_[outTensorName] = graphParam_.inTensorNum + graphParam_.outTensorNum + internalId++;
-            node.outTensorIds.push_back(GetTensorId(outTensorName));
+            if (outTensorIds_.count(outTensorName)) {
+                node.outTensorIds.push_back(GetTensorId(outTensorName));
+            } else {
+                uint32_t id = graphParam_.inTensorNum + graphParam_.outTensorNum + internalId++;
+                internalTensorIds_[outTensorName] = id;
+                node.outTensorIds.push_back(id);
+            }
         }
         graphParam_.nodes.push_back(node);
     }
