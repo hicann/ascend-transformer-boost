@@ -35,7 +35,8 @@ private:
     Status QKVDimCheckInt8Nz(const SVector<TensorDesc> &inTensorDesc) const;
     Status QKVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;
     Status QDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;
-    Status KVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;
+    Status KVDimCheckPrefill1(const SVector<TensorDesc> &inTensorDesc) const;
+    Status KVDimCheckPrefill2(const SVector<TensorDesc> &inTensorDesc) const;
 
 private:
     infer::MultiLatentAttentionParam param_;

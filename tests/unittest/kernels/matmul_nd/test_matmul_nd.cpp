@@ -31,12 +31,7 @@ constexpr float RTOL = 0.001;
 constexpr float HALF_FLOAT_MIN = -1.0;
 constexpr float HALF_FLOAT_MAX = 1.0;
 
-namespace {
-const char *ENV_MATMUL_PP_FLAG = "ASDOPS_MATMUL_PP_FLAG";
-}
-
 namespace AsdOps {
-const char *USE_PP_MATMUL = std::getenv(ENV_MATMUL_PP_FLAG);
 Status MatchAtTensorHalf(float atol, float rtol, at::Tensor &out, at::Tensor &gt)
 {
     fp16_t *result = static_cast<fp16_t *>(out.storage().data_ptr().get());
@@ -1579,6 +1574,7 @@ TEST(TestMatMulNd, TestCanSupportPpMatMul29)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT64, TENSOR_FORMAT_ND, {7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     OpParam::MatMul opParam = {false, false, {0, 0, 0}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -1596,12 +1592,12 @@ TEST(TestMatMulNd, TestCanSupportPpMatMul29)
 TEST(TestMatMulNd, PpMatMulI8KernelInitHostLaunchBuffer)
 {
     CHECK_DEVICE_VERSION_ASCEND910B();
-    setenv(ENV_MATMUL_PP_FLAG, "1", 1);
     LaunchParam launchParam;
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     OpParam::MatMul opParam = {false, false, {0, 0, 0}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -1645,7 +1641,6 @@ TEST(TestMatMulNd, PpMatMulI8KernelInitHostLaunchBuffer)
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.SetParam(opDesc.specificParam);
     kernel->Init(launchParam);
-    setenv(ENV_MATMUL_PP_FLAG, "0", 1);
 }
 
 /**
@@ -1654,7 +1649,6 @@ TEST(TestMatMulNd, PpMatMulI8KernelInitHostLaunchBuffer)
 TEST(TestMatMulNz, TestCanSupportPpMatMulF16OptKernel)
 {
     CHECK_DEVICE_VERSION_ASCEND910B();
-    setenv(ENV_MATMUL_PP_FLAG, "1", 1);
     LaunchParam launchParam;
     launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {6, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_FRACTAL_NZ, {6, 1, 16, 16}}});
@@ -1734,7 +1728,6 @@ TEST(TestMatMulNz, TestCanSupportPpMatMulF16OptKernel)
     launchParam.AddOutTensor({{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.SetParam(opDesc.specificParam);
     ASSERT_EQ(kernel->CanSupport(launchParam), false);
-    setenv(ENV_MATMUL_PP_FLAG, "0", 1);
 }
 
 /**
@@ -1878,6 +1871,7 @@ TEST(TestMatMulNz, TestCanSupportPpMatMulI8NzKernel)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_UINT64, TENSOR_FORMAT_ND, {7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     OpParam::MatMul opParam = {false, false, {0, 0, 0}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -1945,6 +1939,7 @@ TEST(TestMatMulNz, TestInitRunInfoImplPpMatMulI8NzKernel1)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_UINT64, TENSOR_FORMAT_ND, {7, 7, 7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     OpParam::MatMul opParam = {false, false, {1, 1, 1}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -1984,6 +1979,7 @@ TEST(TestMatMulNz, TestInitlaunchParamImplPpMatMulI8NzKernel2)
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     launchParam.AddInTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
+    launchParam.AddInTensor({{TENSOR_DTYPE_FLOAT, TENSOR_FORMAT_ND, {7}}});
     launchParam.AddOutTensor({{TENSOR_DTYPE_INT8, TENSOR_FORMAT_FRACTAL_NZ, {7, 7, 7, 7}}});
     OpParam::MatMul opParam = {false, false, {1, 1, 4294}, true, true};
     Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
@@ -2079,101 +2075,76 @@ TEST(TestMatMulNd, TestInferShapeMatMulNd1)
 TEST(TestMatMulNd, PPMatMulSize1)
 {
     CHECK_DEVICE_VERSION_ASCEND910B();
-    setenv(ENV_MATMUL_PP_FLAG, "1", 1);
-    const char *usePPMatmul = std::getenv(ENV_MATMUL_PP_FLAG);
-    if (usePPMatmul && strcmp(usePPMatmul, "1") == 0) {
-        Mki::Test::MkiOpTest opTest;
-        OpParam::MatMul opParam = {false, false};
-        opTest.Golden(std::bind(MatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
-        opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-        Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
+    Mki::Test::MkiOpTest opTest;
+    OpParam::MatMul opParam = {false, false};
+    opTest.Golden(std::bind(MatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
+    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
+    Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
 
-        SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {300, 500}},
-                                            {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {500, 700}}};
-        Status status = opTest.Run(opDesc, inTensorDesc);
-        ASSERT_EQ(status.Ok(), true);
-    }
-    setenv(ENV_MATMUL_PP_FLAG, "0", 1);
+    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {300, 500}},
+                                        {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {500, 700}}};
+    Status status = opTest.Run(opDesc, inTensorDesc);
+    ASSERT_EQ(status.Ok(), true);
 }
 
 TEST(TestMatMulNd, PPMatMulSize2)
 {
     CHECK_DEVICE_VERSION_ASCEND910B();
-    setenv(ENV_MATMUL_PP_FLAG, "1", 1);
-    const char *usePPMatmul = std::getenv(ENV_MATMUL_PP_FLAG);
-    if (usePPMatmul && strcmp(usePPMatmul, "1") == 0) {
-        Mki::Test::MkiOpTest opTest;
-        OpParam::MatMul opParam = {false, false};
-        opTest.Golden(std::bind(MatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
-        opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-        Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
+    Mki::Test::MkiOpTest opTest;
+    OpParam::MatMul opParam = {false, false};
+    opTest.Golden(std::bind(MatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
+    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
+    Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
 
-        SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {7, 4096}},
-                                            {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {4096, 11008}}};
-        Status status = opTest.Run(opDesc, inTensorDesc);
-        ASSERT_EQ(status.Ok(), true);
-    }
-    setenv(ENV_MATMUL_PP_FLAG, "0", 1);
+    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {7, 4096}},
+                                        {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {4096, 11008}}};
+    Status status = opTest.Run(opDesc, inTensorDesc);
+    ASSERT_EQ(status.Ok(), true);
 }
 
 TEST(TestMatMulNd, PPMatMulSize3)
 {
     CHECK_DEVICE_VERSION_ASCEND910B();
-    setenv(ENV_MATMUL_PP_FLAG, "1", 1);
-    const char *usePPMatmul = std::getenv(ENV_MATMUL_PP_FLAG);
-    if (usePPMatmul && strcmp(usePPMatmul, "1") == 0) {
-        Mki::Test::MkiOpTest opTest;
-        OpParam::MatMul opParam = {false, true};
-        opTest.Golden(std::bind(MatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
-        opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-        Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
+    Mki::Test::MkiOpTest opTest;
+    OpParam::MatMul opParam = {false, true};
+    opTest.Golden(std::bind(MatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
+    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
+    Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
 
-        SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {7, 4096}},
-                                            {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {11008, 4096}}};
-        Status status = opTest.Run(opDesc, inTensorDesc);
-        ASSERT_EQ(status.Ok(), true);
-    }
-    setenv(ENV_MATMUL_PP_FLAG, "0", 1);
+    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {7, 4096}},
+                                        {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {11008, 4096}}};
+    Status status = opTest.Run(opDesc, inTensorDesc);
+    ASSERT_EQ(status.Ok(), true);
 }
 
 TEST(TestMatMulNd, PPMatMulSize4)
 {
     CHECK_DEVICE_VERSION_ASCEND910B();
-    setenv(ENV_MATMUL_PP_FLAG, "1", 1);
-    const char *usePPMatmul = std::getenv(ENV_MATMUL_PP_FLAG);
-    if (usePPMatmul && strcmp(usePPMatmul, "1") == 0) {
-        Mki::Test::MkiOpTest opTest;
-        OpParam::MatMul opParam = {false, false};
-        opTest.Golden(std::bind(BatchMatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
-        opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-        Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
+    Mki::Test::MkiOpTest opTest;
+    OpParam::MatMul opParam = {false, false};
+    opTest.Golden(std::bind(BatchMatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
+    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
+    Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
 
-        SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3, 7, 4096}},
-                                            {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3, 4096, 11008}}};
-        Status status = opTest.Run(opDesc, inTensorDesc);
-        ASSERT_EQ(status.Ok(), true);
-    }
-    setenv(ENV_MATMUL_PP_FLAG, "0", 1);
+    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3, 7, 4096}},
+                                        {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3, 4096, 11008}}};
+    Status status = opTest.Run(opDesc, inTensorDesc);
+    ASSERT_EQ(status.Ok(), true);
 }
 
 TEST(TestMatMulNd, PPMatMulSize5)
 {
     CHECK_DEVICE_VERSION_ASCEND910B();
-    setenv(ENV_MATMUL_PP_FLAG, "1", 1);
-    const char *usePPMatmul = std::getenv(ENV_MATMUL_PP_FLAG);
-    if (usePPMatmul && strcmp(usePPMatmul, "1") == 0) {
-        Mki::Test::MkiOpTest opTest;
-        OpParam::MatMul opParam = {false, true};
-        opTest.Golden(std::bind(BatchMatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
-        opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
-        Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
+    Mki::Test::MkiOpTest opTest;
+    OpParam::MatMul opParam = {false, true};
+    opTest.Golden(std::bind(BatchMatMulNdGolden, ATOL, RTOL, opParam, std::placeholders::_1));
+    opTest.FloatRand(HALF_FLOAT_MIN, HALF_FLOAT_MAX);
+    Mki::Test::UtOpDesc opDesc = {"MatMulOperation", opParam};
 
-        SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3, 7, 4096}},
-                                            {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3, 11008, 4096}}};
-        Status status = opTest.Run(opDesc, inTensorDesc);
-        ASSERT_EQ(status.Ok(), true);
-    }
-    setenv(ENV_MATMUL_PP_FLAG, "0", 1);
+    SVector<TensorDesc> inTensorDesc = {{TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3, 7, 4096}},
+                                        {TENSOR_DTYPE_FLOAT16, TENSOR_FORMAT_ND, {3, 11008, 4096}}};
+    Status status = opTest.Run(opDesc, inTensorDesc);
+    ASSERT_EQ(status.Ok(), true);
 }
 
 TEST(TestMatMulNd, MatMulGemvCase1)

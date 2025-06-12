@@ -35,19 +35,15 @@ public:
     bool Is310B() const;
     bool IsOpsRunnerSetupCacheEnable() const;
     uint32_t GetWorkspaceMemAllocAlgType() const;
-    uint32_t GetKernelCacheType() const;
     uint32_t GetLocalKernelCacheCount() const;
     uint32_t GetGlobalKernelCacheCount() const;
     uint32_t GetHostTilingBlockNum() const;
     uint32_t GetDeviceTilingBlockNum() const;
-    uint32_t GetRunnerPoolSize() const;
     uint64_t GetKernelCacheTilingSize() const;
     bool IsCompareTilingEveryKernelEnable() const;
     bool IsworkspaceMemAllocGlobal() const;
     std::string GetShareMemoryNameSuffix() const;
-    bool IsLaunchKernelWithTiling() const;
     bool IsMatmulShuffleKEnable() const;
-    void SetLaunchKernelWithTilingStatus(bool status);
 
 private:
     static bool IsEnable(const char *env, bool enable = false);
@@ -58,7 +54,6 @@ private:
     void InitTilingBuffer();
     void InitVariable(const char *envName, uint32_t min, uint32_t max, uint32_t &value) const;
     void InitShareMemoryNameSuffix();
-    void InitRunnerPool();
 
 private:
     std::string atbHomePath_;
@@ -71,7 +66,6 @@ private:
     bool is310B_ = false;
     bool isOpsRunnerSetupCacheEnable_ = false;
     uint32_t workspaceMemAllocAlgType_ = 1;
-    uint32_t kernelCacheType_ = 0;
     uint32_t localKernelCacheCount_ = 1;
     uint32_t globalKernelCacheCount_ = 1;
     uint64_t kernelCacheTilingSize_ = 0;
@@ -80,9 +74,7 @@ private:
     uint32_t hostTilingBlockNum_ = 128;
     uint32_t deviceTilingBlockNum_ = 32;
     std::string shareMemoryNameSuffix_;
-    bool isLaunchKernelWithTiling_ = false;
     bool isMatmulShuffleKEnable_ = false;
-    uint32_t runnerPoolSize_ = 64;
 };
 } // namespace atb
 #endif

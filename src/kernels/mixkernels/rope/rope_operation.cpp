@@ -12,6 +12,7 @@
 #include <mki/utils/const/op_const.h>
 #include <mki_loader/op_register.h>
 #include "atbops/params/params.h"
+#include "sink_common.h"
 
 static constexpr uint32_t ELE_NUM_FP16 = 16;
 
@@ -36,28 +37,8 @@ public:
     Status InferShapeImpl(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const override
     {
         MKI_LOG(INFO) << "RopeInferShape enter";
-        const SVector<int64_t> &inputQ = launchParam.GetInTensor(DIM_0).desc.dims;
-        const SVector<int64_t> &inputK = launchParam.GetInTensor(DIM_1).desc.dims;
-        const SVector<int64_t> &inputCos = launchParam.GetInTensor(DIM_2).desc.dims;
-        const SVector<int64_t> &inputSin = launchParam.GetInTensor(DIM_3).desc.dims;
-        if (inputQ.size() != inputK.size() || inputQ.size() == 0) {
-            return Status::FailStatus(ERROR_INVALID_VALUE, "dim size of inputQ is wrong");
-        }
-        for (size_t i = 0; i < inputQ.size() - 1; i++) {
-            if (inputQ[i] != inputK[i]) {
-                return Status::FailStatus(ERROR_INVALID_VALUE, "inputQ are not equal to inputK");
-            }
-        }
-        if (inputCos != inputSin) {
-            return Status::FailStatus(ERROR_INVALID_VALUE, "inputCos are not equal to inputSin");
-        }
-        if (inputQ[inputQ.size()-1] % ELE_NUM_FP16 != 0 || inputK[inputK.size()-1] % ELE_NUM_FP16 != 0) {
-            return Status::FailStatus(ERROR_INVALID_VALUE, "the shapes of inputQ and inputK must be 32 bytes aligned.");
-        }
-        outTensors[DIM_0].desc = launchParam.GetInTensor(DIM_0).desc;
-        outTensors[DIM_1].desc = launchParam.GetInTensor(DIM_1).desc;
-
-        return Status::OkStatus();
+        return opInferShape::CallGeInferShape("RotaryPosEmbInfer", launchParam, outTensors,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::Rope>);
     }
 
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override

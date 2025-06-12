@@ -31,6 +31,13 @@ static constexpr uint64_t DIM_NUM_4 = 4;
 namespace atb {
 bool MatmulParamCheck(const infer::LinearParam &opParam, ExternalError &error)
 {
+    if (opParam.quantMode != atb::infer::LinearParam::QUANT_UNDEFINED) {
+        error.errorData = OperationUtil::ConcatInfo(error.errorData, "quantMode = ", opParam.quantMode);
+        error.errorDesc = "QuantMode is not the default value. When outDataType is undefind, quantMode needs to be undefind.";
+        error.solutionDesc = "Please check the quantMode value of input params.";
+        ATB_LOG(ERROR) << error;
+        return false;
+    }
     if (opParam.enAccum) {
         error.errorData = OperationUtil::ConcatInfo(error.errorData, "enAccum = ", opParam.enAccum);
         if (!GetSingleton<Config>().Is910B()) {
@@ -103,6 +110,17 @@ bool MatmulDequantFloat16ParamCheck(const infer::LinearParam &opParam, ExternalE
             ATB_LOG(ERROR) << error;
             return false;
         }
+        if (opParam.quantMode == infer::LinearParam::PER_TOKEN) {
+            error.errorDesc = error.errorDesc + "quantMode should be QUANT_UNDEFINED or PER_CHANNEL.";
+            error.errorData = OperationUtil::ConcatInfo(error.errorData, ", quantMode = ", opParam.quantMode);
+            ATB_LOG(ERROR) << error;
+            return false;
+        }
+    } else if (opParam.quantMode == infer::LinearParam::PER_TOKEN && opParam.hasBias) {
+        error.errorDesc = "PER_TOKEN quantMode is not supported when hasBias is true";
+        error.solutionDesc = "Please check the value of input params.";
+        ATB_LOG(ERROR) << error;
+        return false;
     }
     return true;
 }
@@ -113,6 +131,11 @@ bool MatmulDequantBf16ParamCheck(const infer::LinearParam &opParam, ExternalErro
     if (!GetSingleton<Config>().Is910B()) {
         error.errorDesc = "Platform is not Atlas 800I A2 inference product, outDataType should not be ACL_BF16.";
         error.solutionDesc = "Please check the platform and value of input params.";
+        ATB_LOG(ERROR) << error;
+        return false;
+    } else if (opParam.quantMode == infer::LinearParam::PER_TOKEN && opParam.hasBias) {
+        error.errorDesc = "PER_TOKEN quantMode is not supported when hasBias is true";
+        error.solutionDesc = "Please check the value of input params.";
         ATB_LOG(ERROR) << error;
         return false;
     }
@@ -167,11 +190,6 @@ bool MatmulUndefindCheck(const infer::LinearParam &opParam, ExternalError &error
 
 template <> Status CreateOperation(const infer::LinearParam &opParam, Operation **operation)
 {
-    const char *ppMatmulFlag = Mki::GetEnv("ASDOPS_MATMUL_PP_FLAG");
-    if (!ppMatmulFlag || strcmp(ppMatmulFlag, "1") != 0) {
-        ATB_LOG(ERROR) << "only support ppmatmul, please set env ASDOPS_MATMUL_PP_FLAG as 1.";
-        return ERROR_INVALID_PARAM;
-    }
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
     }
@@ -221,6 +239,9 @@ LinearOperation::LinearOperation(const infer::LinearParam &param) : OperationBas
         }
     } else {
         opIrKey << (param_.hasBias ? "DequantWithBias" : "Dequant");
+        if (param_.quantMode == infer::LinearParam::PER_TOKEN) {
+            opIrKey << "PerToken";
+        }
         if (param_.outDataType == ACL_FLOAT16) {
             opIrKey << "Float16";
             opIrKey << (GetSingleton<Config>().Is910B()                   ? "Atlas800IA2" :
@@ -246,6 +267,8 @@ uint32_t LinearOperation::GetInputNum() const
         }
     } else {
         if (param_.hasBias) {
+            return IN_TENSOR_NUM_4;
+        } else if (param_.quantMode == infer::LinearParam::PER_TOKEN) {
             return IN_TENSOR_NUM_4;
         } else {
             return IN_TENSOR_NUM_3;
@@ -351,7 +374,12 @@ Status LinearOperation::InTensorDescsCheck(const SVector<TensorDesc> &inTensorDe
             }
         }
         const TensorDesc &deqScaleTensorDesc = inTensorDescs.at(inTensorId++);
-        status = DeqScaleCheck(deqScaleTensorDesc, weightTensorDesc);
+        if (param_.quantMode == infer::LinearParam::PER_TOKEN) {
+            const TensorDesc &perTokenDeqScaleTensorDesc = inTensorDescs.at(inTensorId++);
+            status = PerTokenDeqScaleCheck(deqScaleTensorDesc, weightTensorDesc, xTensorDesc, perTokenDeqScaleTensorDesc);
+        } else {
+            status = DeqScaleCheck(deqScaleTensorDesc, weightTensorDesc);
+        }
         if (status != NO_ERROR) {
             return status;
         }
@@ -490,6 +518,41 @@ Status LinearOperation::DeqScaleCheck(const TensorDesc &deqScaleTensorDesc, cons
     return NO_ERROR;
 }
 
+Status LinearOperation::PerTokenDeqScaleCheck(const TensorDesc &deqScaleTensorDesc, const TensorDesc &weightTensorDesc,
+                                              const TensorDesc &xTensorDesc, const TensorDesc &perTokendeqScaleTensorDesc) const
+{
+    ExternalError error;
+    error.solutionDesc = "Please check the shape of inTensors.";
+    if (deqScaleTensorDesc.shape.dimNum != 1 || perTokendeqScaleTensorDesc.shape.dimNum != 1) {
+        error.errorType = ERROR_INVALID_TENSOR_DIM_NUM;
+        error.errorDesc = "inTensor3 and inTensor4 dim num should be 1,";
+        error.errorData = OperationUtil::ConcatInfo("inTensor3 dimNum = ", deqScaleTensorDesc.shape.dimNum);
+        error.errorData = OperationUtil::ConcatInfo("inTensor4 dimNum = ", perTokendeqScaleTensorDesc.shape.dimNum);
+        ATB_LOG(ERROR) << GetLogPrefix() << error;
+        return error.errorType;
+    }
+
+    error.errorType = ERROR_INVALID_TENSOR_DIM;
+
+    int64_t deqScaleN = deqScaleTensorDesc.shape.dims[0];
+    int64_t perTokendeqScaleM = perTokendeqScaleTensorDesc.shape.dims[0];
+    int64_t weightN = OperationUtil::GetYTensorN(weightTensorDesc, param_.transposeB);
+    int64_t xM = OperationUtil::GetXTensorM(xTensorDesc, param_.transposeA, param_.matmulType);
+    if (deqScaleN != weightN) {
+        error.errorDesc = "value of inTensor3 n and value of inTensor1 n should be equal,";
+        error.errorData = OperationUtil::ConcatInfo("inTensor3 n = ", deqScaleN, ", inTensor1 n = ", weightN);
+        ATB_LOG(ERROR) << GetLogPrefix() << error;
+        return error.errorType;
+    }
+    if (perTokendeqScaleM != xM) {
+        error.errorDesc = "value of inTensor4 m and value of inTensor1 m should be equal,";
+        error.errorData = OperationUtil::ConcatInfo("inTensor4 m = ", perTokendeqScaleM, ", inTensor1 m = ", xM);
+        ATB_LOG(ERROR) << GetLogPrefix() << error;
+        return error.errorType;
+    }
+    return NO_ERROR;
+}
+
 Status LinearOperation::OutTensorCheck(const SVector<TensorDesc> &inTensorDescs,
                                        const SVector<Tensor> &outTensors) const
 {
@@ -583,6 +646,23 @@ bool LinearOperation::XWeightDimNumCheck(const TensorDesc &xTensorDesc, const Te
         error.errorData =
             OperationUtil::ConcatInfo("enAccum = ", param_.enAccum, ", inTensor0 dimNum = ", xTensorDesc.shape.dimNum,
                                       ", inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
+        ATB_LOG(ERROR) << GetLogPrefix() << error;
+        return false;
+    } else if (!PerTokenXWeightDimNumCheck(xTensorDesc, weightTensorDesc)) {
+        return false;
+    }
+    return true;
+}
+
+bool LinearOperation::PerTokenXWeightDimNumCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const
+{
+    ExternalError error;
+    error.errorType = ERROR_INVALID_TENSOR_DIM_NUM;
+    error.solutionDesc = "Please check format and shape of inTensors.";
+    if (param_.quantMode == infer::LinearParam::PER_TOKEN && xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_2) {
+        error.errorDesc = "When quantMode is PER_TOKEN and inTensor0 dim num is 3, inTensor1 dim num cannot be 2,";
+        error.errorData = OperationUtil::ConcatInfo("quantMode = ", param_.quantMode, ", inTensor0 dimNum = ", xTensorDesc.shape.dimNum,
+                                                    ", inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
         ATB_LOG(ERROR) << GetLogPrefix() << error;
         return false;
     }

@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 #ifndef C_INTERFACE_UTILS_H
 #define C_INTERFACE_UTILS_H
 #include <gtest/gtest.h>
@@ -7,6 +16,7 @@ namespace cinterfaceTest {
 const int64_t MLAINOUTMLA = 12;
 const int64_t MLAINOUTMLAPP = 28;
 const int64_t MLAPREINOUT = 7;
+const int64_t MLAPPREFILLINOUT = 9;
 const int64_t blockSize = 128;
 const int64_t numTokens = 32;
 const int64_t numHeads = 32;
@@ -19,6 +29,9 @@ const int64_t batch = numTokens * kSeqlen;
 const int64_t numBlocks = 64;
 const int64_t maxNumBlocksPerQuery = 16;
 const int64_t maxSeqLen = 256;
+
+const int64_t embeddimV = 128;
+const int64_t qRopeSzie = 64;
 
 const int64_t dims = 7168;
 const int64_t dimB = 2112;

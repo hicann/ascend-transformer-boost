@@ -55,6 +55,7 @@ atb::Operation *CreateLinearOperation()
  param.outDataType = aclDataType::ACL_DT_UNDEFINED;
  param.enAccum = false;
  param.matmulType = atb::infer::LinearParam::MATMUL_UNDEFINED;
+ param.quantMode = atb::infer::LinearParam::QUANT_UNDEFINED;
  atb::Operation *LinearOp = nullptr;
  CHECK_STATUS(atb::CreateOperation(param, &LinearOp));
  return LinearOp;

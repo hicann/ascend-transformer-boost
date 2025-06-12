@@ -51,7 +51,7 @@ class TestPpMatmul310pDequant(op_test.OpTest):
     def __gen_test_data(self, shpae: tuple) -> None:
         np.random.seed(0)
         bsize, msize, ksize, nsize = shpae
-        bat_A, bat_B, bat_C, scale_n, bias_n = [], [], [], [], []
+        bat_A, bat_B, bat_C, scale_n, bias_n, bat_pertoken_descale = [], [], [], [], [], []
         for _ in range(bsize):
             a = np.random.randint(-2, 2, size=(msize, ksize)).astype(np.int8)
             b = np.random.randint(-2, 2, size=(ksize, nsize)).astype(np.int8)
@@ -71,11 +71,14 @@ class TestPpMatmul310pDequant(op_test.OpTest):
             bat_A.append(a)
             bat_B.append(b)
             bat_C.append(ret)
-        self.scale = np.stack(scale_n)   
-        self.bias =  np.stack(bias_n)   
+        self.scale = np.stack(scale_n)
+        self.bias =  np.stack(bias_n)
         self.bat_A = np.stack(bat_A)
         self.bat_B = np.stack(bat_B)
         self.bat_C = np.stack(bat_C)
+        pertoken_descale = np.empty(msize)
+        bat_pertoken_descale.append(pertoken_descale)
+        self.bat_pertoken_descale = np.stack(bat_pertoken_descale)
         return
 
     def golden_calc(self, in_tensors):
@@ -87,7 +90,7 @@ class TestPpMatmul310pDequant(op_test.OpTest):
         logging.debug(f'out_tensors.half():{out_tensors[0].half()}')
         logging.debug(f'golden_out_tensors.half():{golden_out_tensors[0].half()}')
         return torch.allclose(out_tensors[0].half(), golden_out_tensors[0].half(), rtol=0.002, atol=0.002)
-    
+
     @op_test.only_310p
     def testcase0(self):
         self.trans_A, self.trans_B, self.enDequant = False, True, True
@@ -98,15 +101,15 @@ class TestPpMatmul310pDequant(op_test.OpTest):
                         "transposeB": self.trans_B,
                         "oriShape": [msize, ksize, nsize],
                         "enDequant": self.enDequant})
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
-        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8), 
-                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
+                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
+                      torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
+                     [torch.zeros(self.bat_C.shape).half()])
+
     @op_test.only_310p
     def testcase1(self):
         self.trans_A, self.trans_B, self.enDequant = False, True, True
@@ -117,33 +120,33 @@ class TestPpMatmul310pDequant(op_test.OpTest):
                         "transposeB": self.trans_B,
                         "oriShape": [msize, ksize, nsize],
                         "enDequant": self.enDequant})
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
-        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8), 
-                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
+                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
+                      torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
+                     [torch.zeros(self.bat_C.shape).half()])
+
     @op_test.only_310p
     def testcase2(self):
         self.trans_A, self.trans_B, self.enDequant = False, True, True
         bsize, msize, ksize, nsize = 1, 12, 16384, 128
         logging.debug(f"ppmatmul int8 nz bsize:{bsize}, msize:{msize}, ksize:{ksize}, nsize:{nsize}")
         self.set_param("MatMulOperation",
-                        {"transposeA": self.trans_A,
+                       {"transposeA": self.trans_A,
                         "transposeB": self.trans_B,
                         "oriShape": [msize, ksize, nsize],
                         "enDequant": self.enDequant})
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
-        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8), 
-                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
+        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
+                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
+                      torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
+                     [torch.zeros(self.bat_C.shape).half()])
     @op_test.only_310p
 
     def testcase3(self):
@@ -152,19 +155,19 @@ class TestPpMatmul310pDequant(op_test.OpTest):
         bsize, msize, ksize, nsize = 1, 16, 5120, 640
         logging.debug(f"ppmatmul int8 nz bsize:{bsize}, msize:{msize}, ksize:{ksize}, nsize:{nsize}")
         self.set_param("MatMulOperation",
-                        {"transposeA": self.trans_A,
+                       {"transposeA": self.trans_A,
                         "transposeB": self.trans_B,
                         "oriShape": [msize, ksize, nsize],
                         "enDequant": self.enDequant})
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
-        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8), 
-                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
-    
+        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
+                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
+                      torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
+                     [torch.zeros(self.bat_C.shape).half()])
+
     @op_test.only_310p
     def testcase4(self):
         self.set_support_310p_only()
@@ -176,14 +179,14 @@ class TestPpMatmul310pDequant(op_test.OpTest):
                         "transposeB": self.trans_B,
                         "oriShape": [msize, ksize, nsize],
                         "enDequant": self.enDequant})
-        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nz, self.format_nz, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nz])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         logging.debug(self.bat_A.shape)
-        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8), 
-                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64)],
-                     [torch.zeros(self.bat_C.shape).half()],
-                     {"ASDOPS_MATMUL_PP_FLAG": "1"})
+        self.execute([torch.tensor(self.bat_A).to(torch.int8), torch.tensor(self.bat_B).to(torch.int8),
+                      torch.tensor(self.bias).to(torch.int32), torch.tensor(self.scale).to(torch.int64),
+                      torch.tensor(self.bat_pertoken_descale, dtype=torch.float)],
+                     [torch.zeros(self.bat_C.shape).half()])
 
 
 if __name__ == '__main__':

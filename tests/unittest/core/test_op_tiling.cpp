@@ -22,6 +22,7 @@
 #include "atb/operation.h"
 #include "test_utils/test_common.h"
 #include <cpp-stub/src/stub.h>
+#include "atb/core/context_base.h"
 using namespace atb;
 using namespace Mki;
 
@@ -31,16 +32,10 @@ bool IsLaunchKernelWithTilingStub()
     return false;
 }
 
-uint32_t GetKernelCacheTypeStub()
-{
-    return 0;
-}
-
 TEST(TestOpTiling, GetCurrentOpTiling)
 {
     Stub stub;
-    stub.set(ADDR(Config, IsLaunchKernelWithTiling), IsLaunchKernelWithTilingStub);
-    stub.set(ADDR(Config, GetKernelCacheType), GetKernelCacheTypeStub);
+    stub.set(ADDR(ContextBase, GetLaunchWithTilingStatus), IsLaunchKernelWithTilingStub);
     uint64_t tilingBufferSize = 0;
     void *tilingDeviceBuffer = nullptr;
     atb::infer::ElewiseParam param;

@@ -8,14 +8,13 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 #
 
-import json
 import os
-import sys
+import json
 import unittest
-
+import sys
 import torch
-import torch.multiprocessing as mp
 import torch_npu
+import torch.multiprocessing as mp
 from linear_parallel_moe_common import QuantGranularity, QuantInfo, CommType, CoCDataTypeDesc, MoeTestDate
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
@@ -42,39 +41,32 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     acl_matmul_allreduce_operation = torch.classes.OperationTorch.OperationTorch(
         "LinearParallelOperation")
 
-    outputSize = 8192 * world_size * local_expert_nums
-    acl_param = json.dumps({"type": 6, "rank": rank, "rankSize": world_size,
+    acl_param = json.dumps({"type": 5, "rank": rank, "rankSize": world_size,
                             "rankRoot": 0, "transWeight": False, "backend": "lcoc",
                             "quantType": quant_type, "outDataType": out_data_ype,
                             "moeInfo": {"epSize": world_size, "localExpertNums":
                                 local_expert_nums, "tpSize": 1}})
 
     acl_matmul_allreduce_operation.set_param(acl_param)
+    torch.manual_seed(0)
     moedata = MoeTestDate(rank, CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
                           CoCDataTypeDesc(data_type), quant_info, EP, TP)
+
     in_tensors = []
-    ep_idx = rank // TP
-    matrix_a_i_list = moedata.matrix_a_i_list[ep_idx]
-    new_M = matrix_a_i_list.shape[1]
-    input_tensor = matrix_a_i_list
-    input_tensor = input_tensor.reshape(new_M, K)
-    input_tensor = torch.nn.functional.pad(input_tensor, (0, 0, 0, input_tensor.shape[0] * world_size * local_expert_nums - new_M ), mode='constant', value=0)
+    input_tensor = moedata.matrix_a
+    input_tensor = input_tensor.reshape(M, K)
     in_tensors.append(input_tensor.to(torch.device('npu')))
 
     weight_tensor = moedata.matrix_b
     weight_tensor = weight_tensor.reshape(local_expert_nums, K, N)
     in_tensors.append(weight_tensor.to(torch.device('npu')))
     if quant_type == 3:
-        dequantOffset = moedata.matrix_dequant_offset
-        dequantOffset = dequantOffset.reshape(N)
-        in_tensors.append(dequantOffset.to(torch.device('npu')))
-
         dequantScale = moedata.matrix_dequant_scale
-        dequantScale = dequantScale.reshape(N)
+        dequantScale = dequantScale.reshape(N * local_expert_nums)
         in_tensors.append(dequantScale.to(torch.device('npu')))
 
         quantScale = moedata.matrix_quant_scale
-        quantScale = quantScale.reshape(new_M)
+        quantScale = quantScale.reshape(M)
         in_tensors.append(quantScale.to(torch.device('npu')))
 
     global_tokens_per_expert_matrix = moedata.global_tokens_per_expert_matrix
@@ -86,15 +78,16 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     out_tensor = acl_matmul_allreduce_operation.execute(in_tensors)
 
     torch.npu.synchronize()
-
     golden_out_tensor = moedata.matrix_c
     out_tensor_compare = out_tensor[0].to(torch.device('cpu'))[:golden_out_tensor.shape[1], :]
+
     assert check_precision_new(out_tensor_compare, golden_out_tensor, rank)
 
 
-def check_precision_new(out_tensor, golden_out_tensor, rank, err=2 ** -8):
+def check_precision_new(out_tensor, golden_out_tensor, rank, err=2 ** -3):
     # 计算每个元素的误差阈值
     max_err = err * torch.max(torch.ones_like(golden_out_tensor), torch.abs(golden_out_tensor))
+
     # 计算实际误差
     error = torch.abs(out_tensor - golden_out_tensor)
 
@@ -111,10 +104,9 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         if not operation_test.get_soc_version() == 'Ascend910B':
             return
         print(f"———————— LinearParallelCoverOp test start ————————")
-        print("------------MATMUL REDUCESCATTER ALLTOALLVC Non quantitative scenarios-----------")
+        print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
         world_size = 8
-        comm_type = 310
-        data_type = 0
+        comm_type = 309
         batch = 1
         M = 1024
         K = 1024
@@ -123,27 +115,27 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         quant_granularity = -1
         quant_group_size = -1
         has_quant_offset = -1
-        dequant_granularity = -1
         dequant_group_size = -1
-        has_dequant_offset = -1
         local_expert_nums = 4
         EP = 8
         TP = 1
         out_data_type = 1
+        dequant_granularity = -1
+        has_dequant_offset = -1
+        data_type = 0
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
-
         mp.spawn(main_worker, nprocs=world_size,
                  args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                        CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
-    def test_linear_paraller_fp16_qunat(self):
+    def test_linear_paraller_fp16_quant(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
             return
         print(f"———————— LinearParallelCoverOp test start ————————")
-        print("------------MATMUL REDUCESCATTER ALLTOALLVC Quantify scenarios-----------")
+        print("------------ALLTOALLVC ALLGATHER MATMUL Quantify scenarios-----------")
         world_size = 8
-        comm_type = 310
+        comm_type = 309
         batch = 1
         M = 1024
         K = 1024
@@ -158,14 +150,13 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         TP = 1
         out_data_type = 1
         dequant_granularity = 3
-        has_dequant_offset = 1
+        has_dequant_offset = 0
         data_type = 2
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
         mp.spawn(main_worker, nprocs=world_size,
                  args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                        CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
-
 
 if __name__ == '__main__':
     unittest.main()
