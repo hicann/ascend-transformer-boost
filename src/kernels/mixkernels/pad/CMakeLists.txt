@@ -12,11 +12,3 @@ set(pad_srcs
 )
 
 add_operation(PadOperation "${pad_srcs}")
-
-add_kernel(pad ascend910b vector
-    op_kernel/pad.cpp
-    PadKernel)
-
-add_kernel(pad ascend310p vector
-    op_kernel/pad.cpp
-    PadKernel)
