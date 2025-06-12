@@ -458,7 +458,7 @@ protected:
                     Mki::TensorDesc desc;
                     desc.format = Mki::TENSOR_FORMAT_ND;
                     t.desc = desc;
-                }                
+                }
                 return opInferShape::CallGeInferShape("DequantPerChannel", launchParam, outTensors,
                                                       AsdOps::GetMkiSpecificAttr<OpParam::Elewise>);
             }
