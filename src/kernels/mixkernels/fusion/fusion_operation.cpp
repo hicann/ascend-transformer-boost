@@ -10,6 +10,7 @@
 #include <cstring>
 #include <climits>
 #include <fstream>
+#include <sys/stat.h>
 #include <mki/base/operation_base.h>
 #include <mki/types.h>
 #include <mki/utils/const/op_const.h>
@@ -53,6 +54,10 @@ public:
     {
         static uint8_t matMulAddFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_add.cpp";
+        if (IsSoftLink(path.c_str())) {
+            MKI_LOG(ERROR) << "MatMulAddFusion CPP SHOULD NOT be a symbolic link ";
+            return;
+        }
         std::ifstream cpp(path.c_str());
         std::string line;
         uint32_t counter = 0;
@@ -89,6 +94,10 @@ public:
     {
         static uint8_t matMulGeluFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_gelu.cpp";
+        if (IsSoftLink(path.c_str())) {
+            MKI_LOG(ERROR) << "MatMulGeluFusion CPP SHOULD NOT be a symbolic link ";
+            return;
+        }
         std::ifstream cpp(path.c_str());
         std::string line;
         uint32_t counter = 0;
@@ -125,6 +134,10 @@ public:
     {
         static uint8_t matMulSigmoidFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_sigmoid.cpp";
+        if (IsSoftLink(path.c_str())) {
+            MKI_LOG(ERROR) << "MatMulSigmoidFusion CPP SHOULD NOT be a symbolic link ";
+            return;
+        }
         std::ifstream cpp(path.c_str());
         std::string line;
         uint32_t counter = 0;
@@ -161,6 +174,10 @@ public:
     {
         static uint8_t matMulSwigluFusionKernelBinData[DYNAMICSIZE];
         std::string path = std::string(std::getenv("HOME")) + "/.atb_auto_fusion/bishengir_bin/matmul_swiglu.cpp";
+        if (IsSoftLink(path.c_str())) {
+            MKI_LOG(ERROR) << "MatMulSwigluFusion CPP SHOULD NOT be a symbolic link ";
+            return;
+        }
         std::ifstream cpp(path.c_str());
         std::string line;
         uint32_t counter = 0;
@@ -273,6 +290,15 @@ protected:
             outDims.emplace_back(inTensorDescB.dims[DIM_0]);
         }
         return Status::OkStatus();
+    }
+    
+    bool IsSoftLink(const char *path)
+    {
+        struct stat fileStat;
+        if (lstat(path, &fileStat) != 0) {
+            return false;
+        }
+        return S_ISLNK(fileStat.st_mode);
     }
 };
 REG_OPERATION(FusionOperation);
