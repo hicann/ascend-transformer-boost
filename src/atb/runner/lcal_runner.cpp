@@ -57,7 +57,6 @@ std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commD
     if (colonPos != std::string::npos) {
         std::string idStr = commDomain.substr(0, colonPos);
         std::string sizeStr = commDomain.substr(colonPos + 1);
-
         if (idStr.empty() || sizeStr.empty() ||
             !std::all_of(idStr.begin(), idStr.end(), ::isdigit) ||
             !std::all_of(sizeStr.begin(), sizeStr.end(), ::isdigit)) {
