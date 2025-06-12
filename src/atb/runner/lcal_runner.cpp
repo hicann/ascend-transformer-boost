@@ -48,11 +48,10 @@ void LcalRunner::InitLcalComm()
 std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commDomain) const
 {
     constexpr int32_t defaultDomainSize = 200;
+    constexpr int32_t maxDomainId = 65535;
     if (commDomain.empty()) {
         return {0, defaultDomainSize};
     }
-
-    constexpr int32_t maxDomainId = 65535;
 
     size_t colonPos = commDomain.find(':');
     if (colonPos != std::string::npos) {
