@@ -444,11 +444,21 @@ protected:
             }
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL: {
                 MKI_LOG(INFO) << "ELEWISE_QUANT_PER_CHANNEL enter";
+                for (auto &t: outTensors) {
+                    Mki::TensorDesc desc;
+                    desc.format = Mki::TENSOR_FORMAT_ND;
+                    t.desc = desc;
+                }
                 return opInferShape::CallGeInferShape("QuantPerChannel", launchParam, outTensors,
                                                       AsdOps::GetMkiSpecificAttr<OpParam::Elewise>);
             }
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL: {
                 MKI_LOG(INFO) << "ELEWISE_DEQUANT_PER_CHANNEL enter";
+                for (auto &t: outTensors) {
+                    Mki::TensorDesc desc;
+                    desc.format = Mki::TENSOR_FORMAT_ND;
+                    t.desc = desc;
+                }                
                 return opInferShape::CallGeInferShape("DequantPerChannel", launchParam, outTensors,
                                                       AsdOps::GetMkiSpecificAttr<OpParam::Elewise>);
             }
