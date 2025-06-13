@@ -17,6 +17,15 @@
 #include "atb/utils/singleton.h"
 #include "atb/core/op_param_funcs.h"
 
+
+
+
+
+
+
+
+
+
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t SWIGLU_BACKWARD_IN_TENSOR_NUM = 2;
