@@ -108,8 +108,7 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         return ERROR_INVALID_PARAM;
     }
     if (opParam.rankSize <= 0 || (opParam.rankSize & (opParam.rankSize - 1)) != 0) {
-        ATB_LOG(ERROR) << "LinearParallel requires rankSize to be power of 2 (e.g., 2,4,8,16), but got [" 
-                       << opParam.rankSize << "]";
+        ATB_LOG(ERROR) << "LinearParallel rankSize support power of 2 but got [" << opParam.rankSize << "]";
         return ERROR_INVALID_PARAM;
     }
     if (opParam.backend != "hccl" && opParam.backend != "lccl" && opParam.backend != "lcoc") {
@@ -222,7 +221,7 @@ Status LinearParallelOperation::InferShapeLinearReduceScatter(const SVector<Tens
     if (outTensorDescs.at(0).shape.dims[0] == 1) {
         if (outTensorDescs.at(0).shape.dims[1] % param_.rankSize != 0) {
             return ERROR_INVALID_TENSOR_DIM;
-        } 
+        }
         outTensorDescs.at(0).shape.dims[1] /= param_.rankSize;
     } else {
         if (outTensorDescs.at(0).shape.dims[0] % param_.rankSize != 0) {
@@ -447,7 +446,7 @@ Status LinearParallelOperation::SetupCheckLinearReduceScatter(const SVector<Tens
     if (InferShapeCheckLinearReduceScatter(inTensorDescs) != NO_ERROR) {
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (outTensorDesc.dtype != param_.outDataType) {
+    if (param_.outDataType != ACL_DT_UNDEFINED && outTensorDesc.dtype != param_.outDataType) {
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
     if (inTensorDescs.at(0).shape.dims[0] == 1) {
@@ -466,7 +465,7 @@ Status LinearParallelOperation::SetupCheckAllGatherLinear(SVector<TensorDesc> &i
     if (InferShapeCheckAllGatherLinear(inTensorDescs) != NO_ERROR) {
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (outTensorDescs.at(0).dtype != param_.outDataType) {
+    if (param_.outDataType != ACL_DT_UNDEFINED && outTensorDescs.at(0).dtype != param_.outDataType) {
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
     inTensorDescs.at(0).shape.dims[0] *= param_.rankSize;
