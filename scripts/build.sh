@@ -172,6 +172,10 @@ function fn_build_asdops()
     cd ascend-op-common-lib
     echo  "current commid id of ascend-op-common-lib: $(git rev-parse HEAD)"
     [[ -d "$THIRD_PARTY_DIR/Mind-KernelInfra" ]] && mkdir -p 3rdparty && [[ -d "$THIRD_PARTY_DIR/mki" ]] && cp -r $THIRD_PARTY_DIR/mki 3rdparty
+    if [ ! -d "$THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost" ]; then
+        mkdir -p $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost
+        ln -s $CODE_ROOT/src $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost/
+    fi
 
     if [ "$USE_CXX11_ABI" == "ON" ]; then
         build_options="$build_options --use_cxx11_abi=1"
