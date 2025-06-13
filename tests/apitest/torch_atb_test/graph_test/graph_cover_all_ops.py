@@ -38,7 +38,7 @@ def gen_inputs():
     sel1 = torch.ones(4096, 24, 64, dtype=torch.float16).npu()
     sel2 = torch.ones(4096, 24, 64, dtype=torch.float16).npu()
     sel3 = torch.ones(4096, 24, 64, dtype=torch.float16).npu()
-    sel4 = torch.tensor([4096], dtype=torch.int32).npu()
+    sel4 = torch.tensor([4096], dtype=torch.int32)
 
     spl1 = torch.randn(6, 6, dtype=torch.float16).npu()
 
