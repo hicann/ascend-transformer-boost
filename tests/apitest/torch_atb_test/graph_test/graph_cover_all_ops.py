@@ -164,7 +164,7 @@ def graph_build():
 
     inputs = gen_inputs()
     npu_outputs = Graph.forward(inputs)
-    # logging.info(npu_outputs)
+    logging.info(npu_outputs)
 
     print("----------- graph test success ------------")
 

@@ -219,8 +219,7 @@ GraphNode &GraphBuilder::AddNode(const std::vector<std::string> &inputs, Operati
     return AddNode(inputs, operation);
 }
 
-GraphBuilder &GraphBuilder::Reshape(const std::string &srcTensorName,
-                                    const ReshapeHandler &reshapeHandler,
+GraphBuilder &GraphBuilder::Reshape(const std::string &srcTensorName, const ReshapeHandler &reshapeHandler,
                                     const std::string &reshapedTensorName)
 {
     atb::ReshapeFunc reshapeFunc = [reshapeHandler](const Dims &oldShape, Dims &newShape) {
