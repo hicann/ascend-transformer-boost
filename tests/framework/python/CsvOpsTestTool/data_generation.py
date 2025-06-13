@@ -3802,17 +3802,37 @@ class ElewiseOperation(DataGen):
                     torch.from_numpy(out_scale.squeeze(axis=-1)).to(torch.float32),
                     torch.from_numpy(out_offset.squeeze(axis=-1)).to(torch.float32)]
         else:
+            outDtype = json_data['outTensorType']
+            dmax = 0.0
+            if outDtype == 2:
+                dmax = 127.0
+            elif outDtype == 34:
+                dmax = 32768.0
+            elif outDtype == 35:
+                dmax = 57344.0
+            elif outDtype == 36:
+                dmax = 448.0
+
             input_abs = np.abs(input_x)
             scale = np.max(input_abs, axis=-1, keepdims=True)
             scale = scale.astype(np.float32)
-            out_scale = scale / 127
+            out_scale = scale * (1 / dmax)
 
             input_x = input_x.astype(np.float32)
-            input_x = input_x * 127
-            input_x = input_x / scale
-            out_x = np.round(input_x)
-            return [torch.from_numpy(out_x).to(torch.int8),
-                    torch.from_numpy(out_scale.squeeze(axis=-1)).to(torch.float32)]
+            input_x = input_x / out_scale
+            out_x = np.round(input_x, 0) if outDtype == 2 else np.round(input_x, 8)
+            
+            if outDtype == 2:
+                out = torch.from_numpy(out_x).to(torch.int8)
+            elif outDtype == 34:
+                out = out_x.astype(hifloat8, copy=False).view(np.int8)
+                out = torch.from_numpy(out)
+            elif outDtype == 35:
+                out = torch.from_numpy(out_x).to(torch.float8_e5m2)
+            elif outDtype == 36:
+                out = torch.from_numpy(out_x).to(torch.float8_e4m3fn)
+
+            return [out, torch.from_numpy(out_scale.squeeze(axis=-1)).to(torch.float32)]
 
     def elewiseTanh(in_tensors, op_params):
         golden_result = torch.tanh(in_tensors[0].float())

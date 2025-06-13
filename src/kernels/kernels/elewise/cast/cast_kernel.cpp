@@ -33,8 +33,8 @@ public:
 
         Mki::PlatformType platformType = PlatformInfo::Instance().GetPlatformType();
         if constexpr (IN_TYPE == TENSOR_DTYPE_BF16 || OUT_TYPE == TENSOR_DTYPE_BF16) {
-            MKI_CHECK(platformType == PlatformType::ASCEND_910B, "Only Ascend910B supports bfloat16 datatype.",
-                      return false);
+            MKI_CHECK(platformType == PlatformType::ASCEND_910B || platformType == PlatformType::ASCEND_910_95, 
+                "Only Ascend910B and Ascend910_95 supports bfloat16 datatype.", return false);
         }
 
         auto opParam = AnyCast<OpParam::Elewise>(launchParam.GetParam());
@@ -55,6 +55,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            return CastTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        }
         return ElewiseCommonTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };
@@ -71,6 +74,10 @@ using CastI32F32Kernel = CastKernel<TENSOR_DTYPE_INT32, TENSOR_DTYPE_FLOAT>;
 using CastF32I32Kernel = CastKernel<TENSOR_DTYPE_FLOAT, TENSOR_DTYPE_INT32>;
 using CastI8F16Kernel = CastKernel<TENSOR_DTYPE_INT8, TENSOR_DTYPE_FLOAT16>;
 using CastF16I8Kernel = CastKernel<TENSOR_DTYPE_FLOAT16, TENSOR_DTYPE_INT8>;
+using CastAptF16F32Kernel = CastKernel<TENSOR_DTYPE_FLOAT16, TENSOR_DTYPE_FLOAT>;
+using CastAptF32F16Kernel = CastKernel<TENSOR_DTYPE_FLOAT, TENSOR_DTYPE_FLOAT16>;
+using CastAptI32I64Kernel = CastKernel<TENSOR_DTYPE_INT32, TENSOR_DTYPE_INT64>;
+using CastAptI64I32Kernel = CastKernel<TENSOR_DTYPE_INT64, TENSOR_DTYPE_INT32>;
 
 REG_KERNEL_BASE(CastF16F32Kernel);
 REG_KERNEL_BASE(CastF32F16Kernel);
@@ -84,4 +91,8 @@ REG_KERNEL_BASE(CastI32F32Kernel);
 REG_KERNEL_BASE(CastF32I32Kernel);
 REG_KERNEL_BASE(CastI8F16Kernel);
 REG_KERNEL_BASE(CastF16I8Kernel);
+REG_KERNEL_BASE(CastAptF16F32Kernel);
+REG_KERNEL_BASE(CastAptF32F16Kernel);
+REG_KERNEL_BASE(CastAptI32I64Kernel);
+REG_KERNEL_BASE(CastAptI64I32Kernel);
 } // namespace AsdOps

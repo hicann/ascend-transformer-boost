@@ -11,6 +11,7 @@
 #include <mki/base/operation_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/slice.h"
 
 namespace AsdOps {
@@ -23,14 +24,26 @@ public:
     {
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
         auto dtype = launchParam.GetOutTensor(0).desc.dtype;
-        if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
-            return GetKernelByName("SliceF16Int64Kernel");
-        } else if (dtype == TENSOR_DTYPE_INT8 || dtype == TENSOR_DTYPE_UINT8 || dtype == TENSOR_DTYPE_BOOL) {
-            return GetKernelByName("SliceInt8Int64Kernel");
-        } else if (dtype == TENSOR_DTYPE_FLOAT || dtype == TENSOR_DTYPE_UINT32 || dtype == TENSOR_DTYPE_INT32) {
-            return GetKernelByName("SliceInt32Int64Kernel");
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
+                return GetKernelByName("SliceAptF16Int64Kernel");
+            } else if (dtype == TENSOR_DTYPE_INT8 || dtype == TENSOR_DTYPE_UINT8 || dtype == TENSOR_DTYPE_BOOL) {
+                return GetKernelByName("SliceAptInt8Int64Kernel");
+            } else if (dtype == TENSOR_DTYPE_FLOAT || dtype == TENSOR_DTYPE_UINT32 || dtype == TENSOR_DTYPE_INT32) {
+                return GetKernelByName("SliceAptInt32Int64Kernel");
+            } else {
+                return nullptr;
+            }   
         } else {
-            return nullptr;
+            if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
+                return GetKernelByName("SliceF16Int64Kernel");
+            } else if (dtype == TENSOR_DTYPE_INT8 || dtype == TENSOR_DTYPE_UINT8 || dtype == TENSOR_DTYPE_BOOL) {
+                return GetKernelByName("SliceInt8Int64Kernel");
+            } else if (dtype == TENSOR_DTYPE_FLOAT || dtype == TENSOR_DTYPE_UINT32 || dtype == TENSOR_DTYPE_INT32) {
+                return GetKernelByName("SliceInt32Int64Kernel");
+            } else {
+                return nullptr;
+            }   
         }
     }
 

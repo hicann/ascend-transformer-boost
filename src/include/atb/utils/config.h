@@ -33,6 +33,7 @@ public:
     bool Is310P() const;
     bool Is910A() const;
     bool Is310B() const;
+    bool Is910_95() const;
     bool IsOpsRunnerSetupCacheEnable() const;
     uint32_t GetWorkspaceMemAllocAlgType() const;
     uint32_t GetKernelCacheType() const;
@@ -68,6 +69,7 @@ private:
     bool is310P_ = false;
     bool is910A_ = false;
     bool is310B_ = false;
+    bool is910_95_ = false;
     bool isOpsRunnerSetupCacheEnable_ = false;
     uint32_t workspaceMemAllocAlgType_ = 1;
     uint32_t kernelCacheType_ = 0;
