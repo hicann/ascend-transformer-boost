@@ -38,7 +38,6 @@ def gen_inputs():
     sel1 = torch.ones(4096, 24, 64, dtype=torch.float16).npu()
     sel2 = torch.ones(4096, 24, 64, dtype=torch.float16).npu()
     sel3 = torch.ones(4096, 24, 64, dtype=torch.float16).npu()
-    sel4 = torch.tensor([4096], dtype=torch.int32)
 
     spl1 = torch.randn(6, 6, dtype=torch.float16).npu()
 
@@ -54,7 +53,7 @@ def gen_inputs():
     rms1 = torch.from_numpy(np.random.uniform(low=0, high=100, size=shape).astype(np.float32)).npu()
     rms2 = torch.from_numpy(np.random.uniform(low=0, high=100, size=shape_gamma).astype(np.float32)).npu()
 
-    inputs = [ele1, ele2, lay1, lay2, lay3, lin1, lin2, sof1, rop1, rop2, rop3, rop4, rop5, sel1, sel2, sel3, sel4, spl1, gat1, gat2, act1, rms1, rms2]
+    inputs = [ele1, ele2, lay1, lay2, lay3, lin1, lin2, sof1, rop1, rop2, rop3, rop4, rop5, sel1, sel2, sel3, spl1, gat1, gat2, act1, rms1, rms2]
     return inputs
 
 def graph_build():
@@ -115,12 +114,11 @@ def graph_build():
     sel1 = builder.add_input("sel1")
     sel2 = builder.add_input("sel2")
     sel3 = builder.add_input("sel3")
-    sel4 = builder.add_input("sel4")
     self_attention_param = torch_atb.SelfAttentionParam()
     self_attention_param.head_num = 24
     self_attention_param.kv_head_num = 24
     self_attention_param.calc_type = torch_atb.SelfAttentionParam.CalcType.PA_ENCODER
-    node6 = builder.add_node([sel1, sel2, sel3, sel4], self_attention_param)
+    node6 = builder.add_node([sel1, sel2, sel3], self_attention_param)
     selfattention_out = node6.get_output(0)
 
     # split
@@ -172,7 +170,7 @@ class TestGraph(unittest.TestCase):
     def test(self):
         ret = acl.rt.set_device(0)
         if ret != 0:
-            raise ValueError("ret shoule be 0")
+            self.assertEqual(ret, 0, "ret should be 0")
         graph_build()
         torch.npu.synchronize()
 
