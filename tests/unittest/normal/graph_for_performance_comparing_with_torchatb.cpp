@@ -137,11 +137,12 @@ TEST(TestGraphNullInternalTensor, TestOne)
             exit(0);
         }
     }
- 
-    atb::Status st1 = graphOp->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
- 
-    atb::Status st = (st1 == atb::NO_ERROR) ? atb::NO_ERROR : atb::ERROR_INVALID_GRAPH;
- 
+
+    atb::Status st = atb::NO_ERROR;
+    for (int i = 0; i < 12; ++i) {
+        st = graphOp->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+    }
+
     atb::DestroyOperation(graphOp);
     atb::DestroyContext(context);
     for (size_t i = 0; i < pack.inTensors.size(); i++) {
