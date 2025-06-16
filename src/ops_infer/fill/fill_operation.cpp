@@ -154,5 +154,7 @@ void FillOperation::SetParam(const infer::FillParam &param)
 {
     param_ = param;
     runner_ = nullptr;
+    std::string opIrKey = param_.withMask ? "FillOperationWithMask" : "FillOperationWithoutMask";
+    operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey);
 }
 } // namespace atb
