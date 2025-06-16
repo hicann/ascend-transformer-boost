@@ -703,3 +703,140 @@ TEST(TestGraphLaunchMode, CapturedByUserAndChangeWorkspace)
     aclrtDestroyStream(exeStream);
     aclrtResetDevice(deviceId);
 }
+
+TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
+{
+    const uint32_t batchSize = 1;
+    const uint32_t nTokens = 4;
+    const uint32_t hiddenSizeQ = 16;
+    const uint32_t hiddenSizeK = 16;
+    const uint32_t headSize = 8;
+
+    if (!atb::GetSingleton<atb::Config>().Is910A()) {
+        GTEST_SKIP() << "This test case does not support 910A";
+    }
+
+    uint32_t deviceId = 0; 
+    aclError status = aclrtSetDevice(deviceId);
+    ASSERT_EQ(status, 0);
+    atb::infer::RopeParam param;
+    param.cosFormat = 1;
+    param.rotaryCoeff = 4;
+    atb::Operation * op = nullptr;
+    atb::Status st = atb::CreateOperation(param, &op);
+    ASSERT_EQ(st, 0);
+    
+    atb::Tensor query;
+    query.desc.dtype = ACL_FLOAT16;
+    query.desc.format = ACL_FORMAT_ND;
+    query.desc.shape.dimNum = 2;
+    query.desc.shape.dims[0] = nTokens;
+    query.desc.shape.dims[1] = hiddenSizeQ;
+    query.dataSize = Utils::GetTensorSize(query);
+    status = aclrtMalloc(&query.deviceData, query.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor key;
+    key.desc.dtype = ACL_FLOAT16;
+    key.desc.format = ACL_FORMAT_ND;
+    key.desc.shape.dimNum = 2;
+    key.desc.shape.dims[0] = nTokens;
+    key.desc.shape.dims[1] = hiddenSizeK;
+    key.dataSize = Utils::GetTensorSize(key);
+    status = aclrtMalloc(&key.deviceData, key.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor cos;
+    cos.desc.dtype = ACL_FLOAT16;
+    cos.desc.format = ACL_FORMAT_ND;
+    cos.desc.shape.dimNum = 2;
+    cos.desc.shape.dims[0] = nTokens;
+    cos.desc.shape.dims[1] = headSize;
+    cos.dataSize = Utils::GetTensorSize(cos);
+    status = aclrtMalloc(&cos.deviceData, cos.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor sin;
+    sin.desc.dtype = ACL_FLOAT16;
+    sin.desc.format = ACL_FORMAT_ND;
+    sin.desc.shape.dimNum = 2;
+    sin.desc.shape.dims[0] = nTokens;
+    sin.desc.shape.dims[1] = headSize;
+    sin.dataSize = Utils::GetTensorSize(sin);
+    status = aclrtMalloc(&sin.deviceData, sin.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor seqLen;
+    seqLen.desc.dtype = ACL_INT32;
+    seqLen.desc.format = ACL_FORMAT_ND;
+    seqLen.desc.shape.dimNum = 1;
+    seqLen.desc.shape.dims[0] = batchSize;
+    seqLen.dataSize = Utils::GetTensorSize(seqLen);
+    status = aclrtMalloc(&seqLen.deviceData, seqLen.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor ropeQ;
+    ropeQ.desc.dtype = ACL_FLOAT16;
+    ropeQ.desc.format = ACL_FORMAT_ND;
+    ropeQ.desc.shape.dimNum = 2;
+    ropeQ.desc.shape.dims[0] = nTokens;
+    ropeQ.desc.shape.dims[1] = hiddenSizeQ;
+    ropeQ.dataSize = Utils::GetTensorSize(ropeQ);
+    status = aclrtMalloc(&ropeQ.deviceData, ropeQ.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::Tensor ropeK;
+    ropeK.desc.dtype = ACL_FLOAT16;
+    ropeK.desc.format = ACL_FORMAT_ND;
+    ropeK.desc.shape.dimNum = 2;
+    ropeK.desc.shape.dims[0] = nTokens;
+    ropeK.desc.shape.dims[1] = hiddenSizeK;
+    ropeK.dataSize = Utils::GetTensorSize(ropeK);
+    status = aclrtMalloc(&ropeK.deviceData, ropeK.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+
+    atb::VariantPack variantPack;
+    variantPack.inTensors = {query, key, cos, sin, seqLen};
+    variantPack.outTensors = {ropeQ, ropeK};
+
+    atb::Context *context = nullptr;
+    st = atb::CreateContext(&context);
+    ASSERT_EQ(st, 0);
+    aclrtStream stream = nullptr;
+    status = aclrtCreateStream(&stream);
+    ASSERT_EQ(status, 0);
+    context.SetExecuteStream(stream);
+    uint64_t workspaceSize = 0;
+    st = op->Setup(variantPack, workspaceSize, context);
+    ASSERT_EQ(st, 0);
+    void *workspace = nullptr;
+    status = aclrtMalloc(&workspace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    st = op->Execute(variantPack, (uint8_t*)workspace, workspaceSize, context);
+    ASSERT_EQ(st, 0);
+
+    status = aclrtDestroyStream(stream);
+    ASSERT_EQ(status, 0);
+    status = aclrtFree(workspace);
+    ASSERT_EQ(status, 0);
+    st = atb::DestroyOperation(op);
+    ASSERT_EQ(st, 0);
+    st = atb::DestroyContext(context);
+    ASSERT_EQ(st, 0);
+
+    for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
+        tensor = variantPack.inTensors.at(i);
+        status.aclrtFree(tensor);
+        ASSERT_EQ(status, 0);
+        tensor.deviceData = nullptr;
+        tensor.dataSize = 0;
+    }
+    for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
+        tensor = variantPack.outTensors.at(i);
+        status.aclrtFree(tensor);
+        ASSERT_EQ(status, 0);
+        tensor.deviceData = nullptr;
+        tensor.dataSize = 0;
+    }
+    aclrtResetDevice(deviceId);
+}
