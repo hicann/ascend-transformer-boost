@@ -260,7 +260,6 @@ class TestToppOperation(operation_test.OperationTest):
         PARAM["topkToppSamplingType"] = 4
         PARAM["logProbsSize"] = 512
         self.execute(OP_NAME, PARAM, [probs, topk, topp, exp_div])
-
     
     def test_8_1024_top100_and_1_1024_log_probs_exponential(self):
         if operation_test.get_soc_version() == 'Ascend910A' or \
