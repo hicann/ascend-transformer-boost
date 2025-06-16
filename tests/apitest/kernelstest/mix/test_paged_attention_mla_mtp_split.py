@@ -1623,5 +1623,53 @@ class TestUnpadPagedAttention(op_test.OpTest):
                 ]
             )
 
+    @op_test.only_910b
+    def test_paged_mla_seq3_head32_mtp_bf16(self):
+        self.set_support_910b_only()
+        batch = 13 
+        q_seqlen_list = [3] * batch
+        num_tokens = np.array(q_seqlen_list).sum()
+        k_seqlen_list = [513] * batch
+        num_heads = 32
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 64
+        is_nz_in = True
+        mask_type = 3
+
+        tor = 1.0 / (head_size_qk ** 0.5)
+        dtype = torch.bfloat16
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype, is_nz_in)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads,
+        "tor": tor, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list, "maskType": mask_type}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 8)
+        self.set_output_formats([self.format_nd] * 2)
+        logging.info(f"contex_lens shape: {len(k_seqlen_list)}")
+        logging.info(f"batch: {batch}, numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+            f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+        for i in range (1):
+            self.execute(
+            [
+                self.q_split1,
+                self.q_split2,
+                self.key_cache_split1,
+                self.key_cache_split2,
+                torch.tensor(self.block_tables).int(),
+                self.mask,
+                torch.tensor([1], dtype=torch.float),
+                torch.tensor([1], dtype=torch.float)
+            ],
+            [
+                attention_out, torch.tensor([])
+            ]
+        )
+
 if __name__ == '__main__':
     unittest.main()
