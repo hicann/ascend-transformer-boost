@@ -2345,7 +2345,7 @@ __aicore__ __attribute__((always_inline)) inline void DeQuantPerHeadProc(
         );
     }
 
-    __aicore__ __attribute__((always_inline)) inline void CopyScaleBlock(uint32_t sub_m, uint32_t head_loop_idx, uint32_t l_offset, uint32_t o_offset, uint32_t split_num)
+    __aicore__ __attribute__((always_inline)) inline void CopyScaleBlock(uint32_t sub_m, uint32_t head_loop_idx, uint32_t l_offset, uint32_t o_offset, uint32_t split_num, uint32_t pingpong_flag)
     {
         SET_FLAG(V, MTE3, EVENT_ID2);
         WAIT_FLAG(V, MTE3, EVENT_ID2);
@@ -2367,7 +2367,7 @@ __aicore__ __attribute__((always_inline)) inline void DeQuantPerHeadProc(
         uint32_t src_gap = ((__k % 16 <= 8) && (__k % 16 > 0))? 1 : 0;
         ub_to_gm_align<ArchType::ASCEND_V220, float>(
             o_core_tmp_gm_tensor[(int64_t)o_offset],
-            go32_ubuf_tensor,
+            go32_ubuf_tensor_[pingpong_flag * 8192],
             0,        // sid
             sub_m,    // nBurst
             __k * 4,  // lenBurst
@@ -3555,13 +3555,13 @@ template<typename MASK_DTYPE>
     {
         uint32_t sub_m_d64 = (sub_m + 63) / 64;     // up aligned to 64
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
-        AscendC::LocalTensor<float> lo_ubuf_tensor = pingpong_flag ? lo_ubuf_pong_tensor : lo_ubuf_ping_tensor; 
-        AscendC::LocalTensor<float> go32_ubuf_tensor = go32_ubuf_tensor_[pingpong_flag * 8192]; 
-        auto go_ubuf_tensor = go32_ubuf_tensor.template ReinterpretCast<OUT_DTYPE>();
+        AscendC::LocalTensor<float> lo_ubuf_tensor_cur = pingpong_flag ? lo_ubuf_pong_tensor : lo_ubuf_ping_tensor; 
+        AscendC::LocalTensor<float> go32_ubuf_tensor_cur = go32_ubuf_tensor_[pingpong_flag * 8192]; 
+        auto go_ubuf_tensor = go32_ubuf_tensor_cur.template ReinterpretCast<OUT_DTYPE>();
         WAIT_FLAG(V, MTE2, pingpong_flag * 2);
         if (n_idx != 0) {
             gm_to_ub<ArchType::ASCEND_V220, mm2CopyType>(
-                lo_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),
+                lo_ubuf_tensor_cur.template ReinterpretCast<mm2CopyType>(),
                 o_tmp_gm_tensor,
                 0,                    // sid
                 1,                    // nBurst
@@ -3573,7 +3573,7 @@ template<typename MASK_DTYPE>
             WAIT_FLAG(MTE2, V, pingpong_flag);
 
             DeQuantPerHeadProc(
-                lo_ubuf_tensor, lo_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),// lo_ubuf_tensor use the same ptr
+                lo_ubuf_tensor_cur, lo_ubuf_tensor_cur.template ReinterpretCast<mm2CopyType>(),// lo_ubuf_tensor_cur use the same ptr
                 descale_k1_ubuf_tensor, tv32_ubuf_tensor, pm32_ubuf_tensor, sub_m, round_v, round_v, 1);
 
         }
@@ -3591,7 +3591,7 @@ template<typename MASK_DTYPE>
             PIPE_BARRIER(V);
             if (head_loop > 1) {
                 gm_to_ub<ArchType::ASCEND_V220, float>(
-                    go32_ubuf_tensor,
+                    go32_ubuf_tensor_cur,
                     go_gm_tensor,
                     0,
                     1,
@@ -3606,8 +3606,8 @@ template<typename MASK_DTYPE>
             // *** go = go * dm_block
             SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
             for (uint32_t vmul_idx = 0; vmul_idx < __v / FLOAT_VECTOR_SIZE; ++vmul_idx) {
-                mul_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[vmul_idx * FLOAT_VECTOR_SIZE],
-                    go32_ubuf_tensor[vmul_idx * FLOAT_VECTOR_SIZE],
+                mul_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor_cur[vmul_idx * FLOAT_VECTOR_SIZE],
+                    go32_ubuf_tensor_cur[vmul_idx * FLOAT_VECTOR_SIZE],
                     tv32_ubuf_tensor,
                     sub_m,        // repeat
                     1,            // dstBlockStride
@@ -3620,8 +3620,8 @@ template<typename MASK_DTYPE>
             }
             if (__v % FLOAT_VECTOR_SIZE > 0) {
                 __set_mask(__v % FLOAT_VECTOR_SIZE);
-                mul_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-                    go32_ubuf_tensor[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                mul_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor_cur[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                    go32_ubuf_tensor_cur[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
                     tv32_ubuf_tensor,
                     sub_m,        // repeat
                     1,            // dstBlockStride
@@ -3635,9 +3635,9 @@ template<typename MASK_DTYPE>
             }
             PIPE_BARRIER(V);
             // *** go = lo + go
-            add_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor,
-                go32_ubuf_tensor,
-                lo_ubuf_tensor,
+            add_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor_cur,
+                go32_ubuf_tensor_cur,
+                lo_ubuf_tensor_cur,
                 (sub_m * round_v + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,  // repeat
                 1,                            // dstBlockStride
                 1,                            // src0BlockStride
@@ -3649,7 +3649,7 @@ template<typename MASK_DTYPE>
             PIPE_BARRIER(V);
         } else {
             gm_to_ub<ArchType::ASCEND_V220, mm2CopyType>(
-                go32_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),
+                go32_ubuf_tensor_cur.template ReinterpretCast<mm2CopyType>(),
                 o_tmp_gm_tensor,
                 0,                    // sid
                 1,                    // nBurst
@@ -3661,7 +3661,7 @@ template<typename MASK_DTYPE>
             WAIT_FLAG(MTE2, V, pingpong_flag);
 
             DeQuantPerHeadProc(
-                go32_ubuf_tensor, go32_ubuf_tensor.template ReinterpretCast<mm2CopyType>(),
+                go32_ubuf_tensor_cur, go32_ubuf_tensor_cur.template ReinterpretCast<mm2CopyType>(),
                 descale_k1_ubuf_tensor, tv32_ubuf_tensor, pm32_ubuf_tensor, sub_m, round_v, round_v, 1);
            
         }
@@ -3679,8 +3679,8 @@ template<typename MASK_DTYPE>
             // *** go = go / gl_block
             SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
             for (uint32_t vdiv_idx = 0; vdiv_idx < __v / FLOAT_VECTOR_SIZE; ++vdiv_idx) {
-                div_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[vdiv_idx * FLOAT_VECTOR_SIZE],
-                    go32_ubuf_tensor[vdiv_idx * FLOAT_VECTOR_SIZE],
+                div_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor_cur[vdiv_idx * FLOAT_VECTOR_SIZE],
+                    go32_ubuf_tensor_cur[vdiv_idx * FLOAT_VECTOR_SIZE],
                     tv32_ubuf_tensor,
                     sub_m,                 // repeat
                     1,                     // dstBlockStride
@@ -3693,8 +3693,8 @@ template<typename MASK_DTYPE>
             }
             if (__v % FLOAT_VECTOR_SIZE > 0) {
                 __set_mask(__v % FLOAT_VECTOR_SIZE);
-                div_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
-                    go32_ubuf_tensor[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                div_v<ArchType::ASCEND_V220, float>(go32_ubuf_tensor_cur[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                    go32_ubuf_tensor_cur[__v / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
                     tv32_ubuf_tensor,
                     sub_m,                 // repeat
                     1,                     // dstBlockStride
@@ -3740,11 +3740,11 @@ template<typename MASK_DTYPE>
  
                 uint32_t o_fd_offset = prev_split_num * q_heads * 512 * q_seq_len + cur_nIndx * __k + head_idx * __k * split_num;
                 uint32_t l_offset = prev_split_num * q_heads * q_seq_len + cur_nIndx + head_idx * split_num;
-                CopyScaleBlock(sub_m, head_loop_idx, l_offset * 8, o_fd_offset, split_num);
+                CopyScaleBlock(sub_m, head_loop_idx, l_offset * 8, o_fd_offset, split_num, pingpong_flag);
             } else {
                 // *** go = castfp32to16(go)
                 conv_v<ArchType::ASCEND_V220, float, OUT_DTYPE>(go_ubuf_tensor,
-                    go32_ubuf_tensor,
+                    go32_ubuf_tensor_cur,
                     (sub_m * round_v + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE,  // repeat
                     1,                            // dstBlockStride
                     1,                            // srcBlockStride
@@ -3773,7 +3773,7 @@ template<typename MASK_DTYPE>
             WAIT_FLAG(V, MTE3, pingpong_flag);
             ub_to_gm<ArchType::ASCEND_V220, float>(
                 go_gm_tensor,
-                go32_ubuf_tensor,
+                go32_ubuf_tensor_cur,
                 0,
                 1,
                 sub_m * round_v / FLOAT_BLOCK_SIZE,
