@@ -260,7 +260,38 @@ class TestToppOperation(operation_test.OperationTest):
         PARAM["topkToppSamplingType"] = 4
         PARAM["logProbsSize"] = 512
         self.execute(OP_NAME, PARAM, [probs, topk, topp, exp_div])
+    
+    def test_8_1024_top100_and_1_1024_log_probs_exponential(self):
+        if operation_test.get_soc_version() == 'Ascend910A' or \
+                operation_test.get_soc_version() == 'Ascend310B':
+            logging.info("this testcase don't supports Ascend910A\Ascend310B")
+            return True
+        torch.manual_seed(0)
+        probs = torch.randn(8, 1024).float()
+        sm = nn.Softmax(dim=-1)
+        probs = sm(probs).half().npu()
+        topp = torch.HalfTensor([[0.9]]).npu()
+        PARAM = dict()
+        PARAM["topk"] = 100
+        PARAM["randSeed"] = rand_seed
+        PARAM["topkToppSamplingType"] = 0
+        self.execute(OP_NAME, PARAM, [probs, topp])
 
+        batch_size = 1
+        vocabulary_size = 512
+        torch.manual_seed(0)
+        probs = torch.randn(batch_size, vocabulary_size, dtype=torch.float32)
+        sm = nn.Softmax(dim=-1)
+        probs = sm(probs).half().npu()
+        exp_div = torch.empty_like(probs.cpu()).exponential_(1)
+        exp_div = exp_div.npu()
+        topp = ((0.9 - 0.2) * torch.rand(batch_size, 1, dtype=torch.float16) + 0.2).npu()
+        topk = torch.tensor([[1]]).to(torch.int32).npu()
+        PARAM = dict()
+        PARAM["randSeeds"] = [0]
+        PARAM["topkToppSamplingType"] = 4
+        PARAM["logProbsSize"] = 512
+        self.execute_update_param(OP_NAME, PARAM, [probs, topk, topp, exp_div])
 
 if __name__ == '__main__':
     unittest.main()
