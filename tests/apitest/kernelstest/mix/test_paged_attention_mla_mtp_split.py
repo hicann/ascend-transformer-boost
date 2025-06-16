@@ -237,9 +237,6 @@ class TestUnpadPagedAttention(op_test.OpTest):
 
         self.pre_mask_factor = -10000.0
         self.post_mask_factor = 1.0
-        if self.data_type == torch.bfloat16:
-            self.pre_mask_factor = 1.0
-            self.post_mask_factor = -10000.0
 
         if mask_type == 1:
             mask = np.ones(shape=(max_k_seqlen, max_k_seqlen)).astype(np.float16)
