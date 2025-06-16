@@ -13,12 +13,11 @@ import torch
 import torch_npu
 import torch.nn.functional as F
 import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 import op_test
 import random
 import logging
-
-sys.path.append("../")
-sys.path.append("../..")
 from precision_calcu import *
 
 OP_NAME = "MlaPreprocessOperation"
@@ -170,7 +169,7 @@ class TestMLAPrepross(op_test.OpTest):
         deScale = torch.ones((dim1), dtype=torch.float32)
         if self.dtype == torch.float16:
             deScale = process_deq_scale(deScale)
-        in_tensors = [intensors[0], intensors[1], bias, deScale]
+        in_tensors = [intensors[0], intensors[1], bias, deScale, torch.Tensor()]
         self.set_param(
             "MatMulOperation",
             {
@@ -339,7 +338,7 @@ class TestMLAPrepross(op_test.OpTest):
         # Ppmatmul
         if quant_mode == 0:
             self.mm1Out1_npu = torch.zeros((N, 2112), dtype=data_type)
-            in_tensors = [out_tensors_npu[0], self.wdqkv, self.bias1, self.deScale1]
+            in_tensors = [out_tensors_npu[0], self.wdqkv, self.bias1, self.deScale1, torch.Tensor()]
             out_tensors = [self.mm1Out1_npu]
             self.set_param(
                 "MatMulOperation",
@@ -394,7 +393,7 @@ class TestMLAPrepross(op_test.OpTest):
         # Ppmatmul
         if quant_mode == 0:
             self.mm2Out_npu = torch.zeros((N, headNum * 192), dtype=data_type)
-            in_tensors = [out_tensors_npu[0], self.wuq, self.bias2, self.deScale2]
+            in_tensors = [out_tensors_npu[0], self.wuq, self.bias2, self.deScale2, torch.Tensor()]
             out_tensors = [self.mm2Out_npu]
             self.set_param(
                 "MatMulOperation",
