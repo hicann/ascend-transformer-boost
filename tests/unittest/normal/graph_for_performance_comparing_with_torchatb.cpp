@@ -87,7 +87,7 @@ static void CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVector
     }
 }
  
-TEST(TestGraphNullInternalTensor, TestOne)
+TEST(TestGraphPerformanceComparing, TestOne)
 {
     if (!atb::GetSingleton<atb::Config>().Is910B() && !atb::GetSingleton<atb::Config>().Is310P()) {
         GTEST_SKIP() << "This test case does not support 910A";
