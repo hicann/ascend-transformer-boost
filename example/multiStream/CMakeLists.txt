@@ -7,6 +7,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 
 cmake_minimum_required(VERSION 3.15)
+option(USE_CXX11_ABI "USE_CXX11_ABI" ON)
 include_directories(
     $ENV{ATB_HOME_PATH}/include
     $ENV{ASCEND_HOME_PATH}/include)
@@ -14,12 +15,10 @@ include_directories(
 link_directories(
     $ENV{ATB_HOME_PATH}/lib
     $ENV{ASCEND_HOME_PATH}/lib64)
-include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-D_GLIBCXX_USE_CXX11_ABI=0" HAS_GLIBCXX_ABI_0)
-if (HAS_GLIBCXX_ABI_0)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -D_GLIBCXX_USE_CXX11_ABI=0")
+if(USE_CXX11_ABI)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=1")
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -D_GLIBCXX_USE_CXX11_ABI=1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 add_executable(multiStreamDemo multiStream_singleGraph_demo.cpp)
 target_link_libraries(multiStreamDemo atb ascendcl runtime)

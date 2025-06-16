@@ -753,6 +753,7 @@ class LinearParallelOperation(DataGen):
         golden_result = chunks[rank]
         if LinearParallelOperation.residual_golden is not None:
             golden_result = golden_result + LinearParallelOperation.residual_golden
+        LinearParallelOperation.residual_golden = None
         MatmulCommon.reset()
         return [golden_result]
 
@@ -764,6 +765,7 @@ class LinearParallelOperation(DataGen):
         golden_result = LinearParallelOperation.golden_pure_linear(golden_mid_tensor, quant_type, group_size, out_data_type)[0]
         if LinearParallelOperation.residual_golden is not None:
             golden_result = golden_result + LinearParallelOperation.residual_golden
+        LinearParallelOperation.residual_golden = None
         MatmulCommon.reset()
         return [golden_result]
 

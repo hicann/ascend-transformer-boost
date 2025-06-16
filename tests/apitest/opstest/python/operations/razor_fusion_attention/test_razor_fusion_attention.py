@@ -409,8 +409,7 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         print("golden_compare")
         print(out_tensors.shape)
         result_double = compare_cv(self.golden_out_true.flatten(), golden_tensors.cpu().flatten(), out_tensors.cpu().flatten())
-        result_old = self.compare_output_data(out_tensors.half(), golden_tensors.half(), [0.001, 0.001, 0.005, 0.005])
-        self.rfa_compare_result = (result_double or result_old)
+        self.rfa_compare_result = result_double
         return self.rfa_compare_result
 
     def test_razor_fusion_attention_case_fa_razor_fusion_norm_bfloat16(self):

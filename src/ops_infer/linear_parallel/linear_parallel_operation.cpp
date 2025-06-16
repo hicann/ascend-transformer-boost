@@ -25,6 +25,7 @@ static const uint32_t IN_TENSOR_NUM_WITH_RESIDUAL = 3;
 static const uint32_t IN_TENSOR_NUM_WITHOUT_RESIDUAL = 2;
 static const uint32_t IN_TENSOR_NUM_WITH_MOE = 2;
 static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_QUANT = 2;
+static const uint32_t MOE_IN_TENSOR_NUM_REMOVE_OFFSET = 1;
 static const uint32_t EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT  = 1;
 static const uint32_t OUT_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM_WITH_MID = 2;
@@ -106,6 +107,10 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         ATB_LOG(ERROR) << "LinearParallelOperation DistributedInitCheck failed.";
         return ERROR_INVALID_PARAM;
     }
+    if (opParam.rankSize <= 0 || (opParam.rankSize & (opParam.rankSize - 1)) != 0) {
+        ATB_LOG(ERROR) << "LinearParallel rankSize support power of 2 but got [" << opParam.rankSize << "]";
+        return ERROR_INVALID_PARAM;
+    }
     if (opParam.backend != "hccl" && opParam.backend != "lccl" && opParam.backend != "lcoc") {
         ATB_LOG(ERROR) << "LinearParallel backend support hccl/lccl/lcoc but get [" << opParam.backend << "]";
         return ERROR_INVALID_PARAM;
@@ -154,12 +159,19 @@ LinearParallelOperation::~LinearParallelOperation() {}
 
 uint32_t LinearParallelOperation::GetInputNum() const
 {
-    uint32_t inTensorNum = param_.hasResidual ? IN_TENSOR_NUM_WITH_RESIDUAL : IN_TENSOR_NUM_WITHOUT_RESIDUAL;
+    bool isMoe = false;
     if (param_.type == atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
         param_.type == atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+        isMoe = true;
+    }
+    uint32_t inTensorNum = param_.hasResidual ? IN_TENSOR_NUM_WITH_RESIDUAL : IN_TENSOR_NUM_WITHOUT_RESIDUAL;
+    if (isMoe) {
         inTensorNum += IN_TENSOR_NUM_WITH_MOE;
-        }
+    }
     if (commonCheckParam_.isQuant) {
+        if (isMoe) {
+            inTensorNum -= MOE_IN_TENSOR_NUM_REMOVE_OFFSET;
+        }
         inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_QUANT;
         if (param_.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN) {
             inTensorNum += EXTRA_IN_TENSOR_NUM_WITH_PER_TOKEN_QUANT;
@@ -206,7 +218,17 @@ Status LinearParallelOperation::InferShapeLinearReduceScatter(const SVector<Tens
     if (st != NO_ERROR) {
         return st;
     }
-    outTensorDescs.at(0).shape.dims[0] /= param_.rankSize;
+    if (outTensorDescs.at(0).shape.dims[0] == 1) {
+        if (outTensorDescs.at(0).shape.dims[1] % param_.rankSize != 0) {
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        outTensorDescs.at(0).shape.dims[1] /= param_.rankSize;
+    } else {
+        if (outTensorDescs.at(0).shape.dims[0] % param_.rankSize != 0) {
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        outTensorDescs.at(0).shape.dims[0] /= param_.rankSize;
+    }
     return NO_ERROR;
 }
 
@@ -362,9 +384,6 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(
 
 Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs) const
 {
-    if (!OperationUtil::MatmulInTensorDescsCheck(inTensorDescs, GetLogPrefix(), commonCheckParam_)) {
-        return ERROR_INVALID_TENSOR_DIM;
-    }
     int64_t globalTokensPerExpertMatrixM = OperationUtil::GetXTensorM(inTensorDescs.at(inTensorDescs.size() - 2));
     int64_t globalTokensPerExpertMatrixK = OperationUtil::GetXTensorK(inTensorDescs.at(inTensorDescs.size() - 2));
     int64_t expertNums = param_.moeInfo.epSize * param_.moeInfo.localExpertNums;
@@ -427,7 +446,14 @@ Status LinearParallelOperation::SetupCheckLinearReduceScatter(const SVector<Tens
     if (InferShapeCheckLinearReduceScatter(inTensorDescs) != NO_ERROR) {
         return ERROR_INVALID_TENSOR_DIM;
     }
-    outTensorDesc.shape.dims[0] *= param_.rankSize;
+    if (param_.outDataType != ACL_DT_UNDEFINED && outTensorDesc.dtype != param_.outDataType) {
+        return ERROR_INVALID_TENSOR_INI_MATCH;
+    }
+    if (inTensorDescs.at(0).shape.dims[0] == 1) {
+        outTensorDesc.shape.dims[1] *= param_.rankSize;
+    } else {
+        outTensorDesc.shape.dims[0] *= param_.rankSize;
+    }
     return OperationUtil::MatmulOutTensorCheck(outTensorDesc, inTensorDescs, GetLogPrefix(), commonCheckParam_) ?
                NO_ERROR :
                ERROR_INVALID_TENSOR_DIM;
@@ -438,6 +464,9 @@ Status LinearParallelOperation::SetupCheckAllGatherLinear(SVector<TensorDesc> &i
 {
     if (InferShapeCheckAllGatherLinear(inTensorDescs) != NO_ERROR) {
         return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (param_.outDataType != ACL_DT_UNDEFINED && outTensorDescs.at(0).dtype != param_.outDataType) {
+        return ERROR_INVALID_TENSOR_INI_MATCH;
     }
     inTensorDescs.at(0).shape.dims[0] *= param_.rankSize;
     if (!OperationUtil::MatmulOutTensorCheck(outTensorDescs.at(0), inTensorDescs, GetLogPrefix(), commonCheckParam_)) {

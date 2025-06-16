@@ -58,7 +58,6 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_OPSRUNNER_SETUP_CACHE_ENABLE=1 #是否开启SetupCache，当检查到输入和输出没有变化时，不做setup
     export ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT=1 #本地缓存个数，支持范围1~1024
     export ATB_OPSRUNNER_KERNEL_CACHE_GLOABL_COUNT=5 #全局缓存个数，支持范围1~1024
-    export ATB_OPSRUNNER_KERNEL_CACHE_TILING_SIZE=10240 #tiling默认大小，支持范围1~1073741824
     export ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE=1 #0:暴力算法 1:block分配算法 2:有序heap算法 3:引入block合并(SOMAS算法退化版)
     export ATB_WORKSPACE_MEM_ALLOC_GLOBAL=0 #0:不开启 1:开启全局中间tensor内存分配
     export ATB_COMPARE_TILING_EVERY_KERNEL=0 #每个Kernel运行后，比较运行前和后的NPU上tiling内容是否变化
@@ -68,6 +67,10 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_MATMUL_SHUFFLE_K_ENABLE=1 #Shuffle-K使能，默认开
 
     #算子库环境变量
+    export ASDOPS_LOG_LEVEL=ERROR #算子库日志级别
+    export ASDOPS_LOG_TO_STDOUT=0 #算子库日志是否输出到控制台
+    export ASDOPS_LOG_TO_FILE=1   #算子库日志是否输出到文件
+    export ASDOPS_LOG_TO_FILE_FLUSH=0 #日志写文件是否刷新
     export ASDOPS_LOG_TO_BOOST_TYPE=atb #算子库对应加速库日志类型，默认atb
     export ASDOPS_LOG_PATH=~ #算子库日志保存路径
     export LCCL_DETERMINISTIC=0 #LCCL确定性AllReduce(保序加)是否开启，0关闭，1开启。

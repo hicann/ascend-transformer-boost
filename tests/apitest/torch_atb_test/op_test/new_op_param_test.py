@@ -520,6 +520,29 @@ class Test(unittest.TestCase):
         self.assertEqual(test_topk_topp_sampling_param.rand_seed, expected_rand_seed)
         self.assertEqual(test_topk_topp_sampling_param.topk, expected_topk)
         self.assertEqual(test_topk_topp_sampling_param.log_probs_size, expected_log_probs_size)
+        
+    def test_all_to_all(self):
+        all_to_all_param = torch_atb.AllToAllParam()
+        
+        expected_rank = 0
+        expected_rank_size = 0
+        expected_rank_root = 0
+        expected_backend = "hccl"
+        expected_hccl_comm = None
+        expected_comm_mode = 0
+        expected_rank_table_file = ""
+        expected_comm_domain = ""
+        expected_transpose = False
+        
+        self.assertEqual(all_to_all_param.rank, expected_rank)
+        self.assertEqual(all_to_all_param.rank_size, expected_rank_size)
+        self.assertEqual(all_to_all_param.rank_root, expected_rank_root)
+        self.assertEqual(all_to_all_param.backend, expected_backend)
+        self.assertEqual(all_to_all_param.hccl_comm, expected_hccl_comm)
+        self.assertEqual(all_to_all_param.comm_mode, expected_comm_mode)
+        self.assertEqual(all_to_all_param.rank_table_file, expected_rank_table_file)
+        self.assertEqual(all_to_all_param.comm_domain, expected_comm_domain)
+        self.assertEqual(all_to_all_param.transpose, expected_transpose)
 
 if __name__ == "__main__":
     print("----------- new_op_param test begin ------------")

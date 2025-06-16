@@ -203,6 +203,11 @@ OperationWrapper::OperationWrapper(const TopkToppSamplingParam &param)
     CreateOpUniquePtr(param);
 }
 
+OperationWrapper::OperationWrapper(const AllToAllParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
 OperationWrapper::OperationWrapper(const GraphParam &param)
 {
     CreateOpUniquePtr(param);

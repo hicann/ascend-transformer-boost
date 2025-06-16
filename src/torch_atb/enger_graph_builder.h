@@ -53,6 +53,7 @@ public:
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::LinearSparseParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::RelayAttentionParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::TopkToppSamplingParam &param);
+    GraphNode &AddNode(const std::vector<std::string> &inputs, const atb::infer::AllToAllParam &param);
     GraphNode &AddNode(const std::vector<std::string> &inputs, OperationWrapper &opWrapper);
     GraphBuilder &Reshape(const std::string &srcTensorName, const ReshapeHandler &reshapeHandler,
                                 const std::string &reshapedTensorName);

@@ -34,7 +34,7 @@ VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
 
-BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc"
+BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
     "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
     "--src-only")
@@ -172,6 +172,10 @@ function fn_build_asdops()
     cd ascend-op-common-lib
     echo  "current commid id of ascend-op-common-lib: $(git rev-parse HEAD)"
     [[ -d "$THIRD_PARTY_DIR/Mind-KernelInfra" ]] && mkdir -p 3rdparty && [[ -d "$THIRD_PARTY_DIR/mki" ]] && cp -r $THIRD_PARTY_DIR/mki 3rdparty
+    if [ ! -d "$THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost" ]; then
+        mkdir -p $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost
+        ln -s $CODE_ROOT/src $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost/
+    fi
 
     if [ "$USE_CXX11_ABI" == "ON" ]; then
         build_options="$build_options --use_cxx11_abi=1"
@@ -755,7 +759,7 @@ function fn_main()
     fn_init_env
 
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND"
+    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_MSSANITIZER=$USE_MSSANITIZER"
     case "${arg1}" in
         "default")
             MKI_BUILD_MODE=Dev
@@ -848,9 +852,15 @@ function fn_main()
             fn_build_3rdparty_for_doc
             fn_gen_doc
             ;;
+        "customizeops")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
+            fn_build_googletest
+            fn_build
+            generate_atb_version_info
+            ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
             ;;
     esac
 }

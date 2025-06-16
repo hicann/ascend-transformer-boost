@@ -20,10 +20,16 @@ multiStream_multiGraph_demo.cpp
         add_executable(multiStreamDemo multiStream_multiGraph_demo.cpp)
         ```
 - 生成构建系统
-    ```sh
-    mkdir build && cd build    # 创建并且进入build目录
-    cmake ..                   # 生成构建系统
-    ```
+    - 使用cxx_abi=0
+        ```sh
+        mkdir build && cd build    # 创建并且进入build目录
+        cmake .. -DUSE_CXX11_ABI=OFF                   # 生成构建系统
+        ```
+    - 使用cxx_abi=1
+        ```sh
+        mkdir build && cd build    # 创建并且进入build目录
+        cmake .. -DUSE_CXX11_ABI=ON                   # 生成构建系统
+        ```
 - 编译并运行
     ```sh
     cmake --build .            # 编译项目

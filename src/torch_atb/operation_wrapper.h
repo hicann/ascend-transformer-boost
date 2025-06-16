@@ -62,6 +62,7 @@ public:
     explicit OperationWrapper(const atb::infer::LinearSparseParam &param);
     explicit OperationWrapper(const atb::infer::RelayAttentionParam &param);
     explicit OperationWrapper(const atb::infer::TopkToppSamplingParam &param);
+    explicit OperationWrapper(const atb::infer::AllToAllParam &param);
     explicit OperationWrapper(const atb::GraphParam &param);
     atb::Operation *ReleaseOperation();
     std::string GetName() const;
