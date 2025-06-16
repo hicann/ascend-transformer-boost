@@ -59,6 +59,10 @@ const int64_t numBlocksP5 = 256;
 void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int64_t headSizeK, const int64_t headSizeV,
                           const int64_t blockSize, const int64_t numBlocks, const aclDataType dataType)
 {
+    if (!GetSingleton<Config>().Is910B()) {
+        std::cout << "PageCacheLoad only supports A2/A3" << std::endl;
+        return;
+    }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;
@@ -166,6 +170,10 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
                           const int64_t blockSize, const int64_t numBlocks, const aclDataType dataType,
                           bool isSeqLensCumsumType, bool hasSeqStarts)
 {
+    if (!GetSingleton<Config>().Is910B()) {
+        std::cout << "PageCacheLoad only supports A2/A3" << std::endl;
+        return;
+    }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;

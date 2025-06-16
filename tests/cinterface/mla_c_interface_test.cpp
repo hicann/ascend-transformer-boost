@@ -16,7 +16,8 @@ using namespace atb::cinterfaceTest;
 TEST(TestATBACL, TestMLAM0C2C1)
 {
     if (!GetSingleton<Config>().Is910B()) {
-        exit(0);  
+        std::cout << "MLA only supports A2/A3" << std::endl;
+        return;
     }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;

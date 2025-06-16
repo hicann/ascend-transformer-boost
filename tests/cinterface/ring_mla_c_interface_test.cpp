@@ -30,7 +30,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
 {
     if (!GetSingleton<Config>().Is910B()) {
         std::cout << "RingMLA only supports A2/A3" << std::endl;
-        exit(0);
+        return;
     }
     int inputNum = INOUT_TENSOR_NUM;
     atb::Context *context = nullptr;
