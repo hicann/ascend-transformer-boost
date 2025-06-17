@@ -794,7 +794,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     std::vector<int32_t> seqLenData(atb::Utils::GetTensorNumel(seqLen), 4);
     status = aclrtMalloc(&seqLen.deviceData, seqLen.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     ASSERT_EQ(status, 0);
-    status = aclrtMemcpy(seqLen.deviceData, seqLen.dataSize, seqLenData.data(), seqLenData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
+    status = aclrtMemcpy(seqLen.deviceData, seqLen.dataSize, seqLenData.data(), seqLenData.size() * sizeof(int32_t), ACL_MEMCPY_HOST_TO_DEVICE);
     ASSERT_EQ(status, 0);
 
     atb::Tensor ropeQ;
