@@ -37,7 +37,8 @@ struct MLA {
         MASK_TYPE_ALIBI = 2,
         MASK_TYPE_LOOK_AHEAD = 3,
         MASK_TYPE_MASK_FREE = 4,
-        MASK_TYPE_CAUSAL_MASK = 5
+        MASK_TYPE_CAUSAL_MASK = 5,
+        MASK_TYPE_SWA_NORM = 6
     };
 
     MaskType maskType = MASK_TYPE_NONE;
@@ -54,13 +55,14 @@ struct MLA {
     std::vector<int32_t> kvSeqLen;
 
     int32_t isRing = 0;
+    int32_t windowSize = 0;
 
     bool operator==(const MLA &other) const
     {
         return this->headSize == other.headSize && this->isTriuMask == other.isTriuMask &&
                this->qSeqLen == other.qSeqLen && this->kvSeqLen == other.kvSeqLen && this->type == other.type &&
                Mki::Utils::Compare<float>::IsEqual(this->tor, other.tor) && this->kvHead == other.kvHead &&
-               this->isRing == other.isRing;
+               this->isRing == other.isRing && this->windowSize == other.windowSize;
     }
 };
 } // namespace OpParam
