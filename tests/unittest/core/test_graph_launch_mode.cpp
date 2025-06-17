@@ -814,6 +814,8 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     ASSERT_EQ(status, 0);
     st = op->Execute(variantPack, (uint8_t*)workspace, workspaceSize, context);
     ASSERT_EQ(st, 0);
+    status = aclrtSynchronizeStream(stream);
+    ASSERT_EQ(status, 0);
 
     status = aclrtDestroyStream(stream);
     ASSERT_EQ(status, 0);
