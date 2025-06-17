@@ -76,6 +76,12 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
+        PlatformType platform = PlatformInfo::Instance().GetPlatformType();
+        if (platform == PlatformType::ASCEND_910A || platform == PlatformType::ASCEND_310B) {
+            BroadcastInfo broadcastInfo;
+            FillBroadCastInfoImpl(launchParam, broadcastInfo);
+            return QuantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
+        }
         return optiling::CallGeTiling("QuantPerChannel", *GetBinHandle(), launchParam,
                                       AsdOps::GetMkiSpecificAttr<OpParam::Elewise>, kernelInfo_);
     }
