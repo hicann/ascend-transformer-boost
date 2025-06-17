@@ -708,9 +708,9 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
 {
     const uint32_t batchSize = 1;
     const uint32_t nTokens = 4;
-    const uint32_t hiddenSizeQ = 16;
-    const uint32_t hiddenSizeK = 16;
-    const uint32_t headSize = 8;
+    const uint32_t hiddenSizeQ = 4096;
+    const uint32_t hiddenSizeK = 4096;
+    const uint32_t headSize = 128;
 
     if (atb::GetSingleton<atb::Config>().Is910A()) {
         GTEST_SKIP() << "This test case does not support 910A";
@@ -719,11 +719,18 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     uint32_t deviceId = 0; 
     aclError status = aclrtSetDevice(deviceId);
     ASSERT_EQ(status, 0);
+    atb::Context *context = nullptr;
+    atb::Status st = atb::CreateContext(&context);
+    ASSERT_EQ(st, 0);
+    aclrtStream stream = nullptr;
+    status = aclrtCreateStream(&stream);
+    ASSERT_EQ(status, 0);
+    context->SetExecuteStream(stream);
     atb::infer::RopeParam param;
     param.cosFormat = 1;
     param.rotaryCoeff = 4;
     atb::Operation * op = nullptr;
-    atb::Status st = atb::CreateOperation(param, &op);
+    st = atb::CreateOperation(param, &op);
     ASSERT_EQ(st, 0);
     
     atb::Tensor query;
@@ -733,7 +740,10 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     query.desc.shape.dims[0] = nTokens;
     query.desc.shape.dims[1] = hiddenSizeQ;
     query.dataSize = atb::Utils::GetTensorSize(query);
+    std::vector<uint16_t> queryData(atb::Utils::GetTensorNumel(query), 1);
     status = aclrtMalloc(&query.deviceData, query.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(query.deviceData, query.dataSize, queryData.data(), queryData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
     ASSERT_EQ(status, 0);
 
     atb::Tensor key;
@@ -743,7 +753,10 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     key.desc.shape.dims[0] = nTokens;
     key.desc.shape.dims[1] = hiddenSizeK;
     key.dataSize = atb::Utils::GetTensorSize(key);
+    std::vector<uint16_t> keyData(atb::Utils::GetTensorNumel(key), 1);
     status = aclrtMalloc(&key.deviceData, key.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(key.deviceData, key.dataSize, keyData.data(), keyData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
     ASSERT_EQ(status, 0);
 
     atb::Tensor cos;
@@ -753,7 +766,10 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     cos.desc.shape.dims[0] = nTokens;
     cos.desc.shape.dims[1] = headSize;
     cos.dataSize = atb::Utils::GetTensorSize(cos);
+    std::vector<uint16_t> cosData(atb::Utils::GetTensorNumel(cos), 1);
     status = aclrtMalloc(&cos.deviceData, cos.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(cos.deviceData, cos.dataSize, cosData.data(), cosData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
     ASSERT_EQ(status, 0);
 
     atb::Tensor sin;
@@ -763,7 +779,10 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     sin.desc.shape.dims[0] = nTokens;
     sin.desc.shape.dims[1] = headSize;
     sin.dataSize = atb::Utils::GetTensorSize(sin);
+    std::vector<uint16_t> sinData(atb::Utils::GetTensorNumel(sin), 1);
     status = aclrtMalloc(&sin.deviceData, sin.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(sin.deviceData, sin.dataSize, sinData.data(), sinData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
     ASSERT_EQ(status, 0);
 
     atb::Tensor seqLen;
@@ -772,7 +791,10 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     seqLen.desc.shape.dimNum = 1;
     seqLen.desc.shape.dims[0] = batchSize;
     seqLen.dataSize = atb::Utils::GetTensorSize(seqLen);
+    std::vector<int32_t> seqLenData(atb::Utils::GetTensorNumel(seqLen), 4);
     status = aclrtMalloc(&seqLen.deviceData, seqLen.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ASSERT_EQ(status, 0);
+    status = aclrtMemcpy(seqLen.deviceData, seqLen.dataSize, seqLenData.data(), seqLenData.size() * sizeof(uint16_t), ACL_MEMCPY_HOST_TO_DEVICE);
     ASSERT_EQ(status, 0);
 
     atb::Tensor ropeQ;
@@ -799,13 +821,6 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     variantPack.inTensors = {query, key, cos, sin, seqLen};
     variantPack.outTensors = {ropeQ, ropeK};
 
-    atb::Context *context = nullptr;
-    st = atb::CreateContext(&context);
-    ASSERT_EQ(st, 0);
-    aclrtStream stream = nullptr;
-    status = aclrtCreateStream(&stream);
-    ASSERT_EQ(status, 0);
-    context->SetExecuteStream(stream);
     uint64_t workspaceSize = 0;
     st = op->Setup(variantPack, workspaceSize, context);
     ASSERT_EQ(st, 0);
