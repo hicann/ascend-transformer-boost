@@ -303,7 +303,9 @@ Status LinearParallelOperation::InferShapeCheckLinearAllReduce(const SVector<Ten
         return ERROR_INVALID_TENSOR_DIM;
     }
 
-    if (inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+    bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+    if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
     return CheckResidual(inTensorDescs);
