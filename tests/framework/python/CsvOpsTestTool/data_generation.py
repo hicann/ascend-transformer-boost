@@ -797,6 +797,12 @@ class LinearParallelOperation(DataGen):
             golden_result = golden_result + LinearParallelOperation.residual_golden
         MatmulCommon.reset()
         return [golden_result, golden_mid_tensor]
+    
+    def golden_linear_all_to_all(in_tensors, rank, rank_size):
+        linear_result = LinearParallelOperation.golden_pure_linear(in_tensors, quant_type = -1, group_size = 0, out_data_type = -1)[0]
+        chunks = torch.chunk(linear_result,rank_size,dim=1)
+        golden_result = [chunk.repeat(rank_size, 1) for chunk in chunks]
+        return [golden_result[rank]]
 
     @staticmethod
     def golden(in_tensors, op_params):
@@ -834,6 +840,8 @@ class LinearParallelOperation(DataGen):
             return LinearParallelOperation.golden_pure_linear(in_tensors, quant_type, group_size, out_data_type)
         elif type == 4:
             return LinearParallelOperation.golden_all_gather_linear_reduce_scatter(in_tensors, rank, ag_dim, rs_dim, inner_dim_is_ag)
+        elif type == 7:
+            return LinearParallelOperation.golden_linear_all_to_all(in_tensors, rank, rank_size)
 
     @staticmethod
     def get_op_type(op_params):
