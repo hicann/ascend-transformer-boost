@@ -239,6 +239,10 @@ public:
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL:
                 return GetKernelByName("QuantPerChannelKernel");
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL:
+                if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_310P) {
+                    MKI_LOG(ERROR) << "No kernel for dequantperchannel";
+                    return nullptr;
+                }
                 return GetKernelByName("DequantPerChannelKernel");
             default:
                 return nullptr;
@@ -444,6 +448,14 @@ protected:
             }
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL: {
                 MKI_LOG(INFO) << "ELEWISE_QUANT_PER_CHANNEL enter";
+
+                Mki::PlatformType platform = Mki::PlatformInfo::Instance().GetPlatformType();
+                if (platform == Mki::PlatformType::ASCEND_910A || platform == Mki::PlatformType::ASCEND_310B) {
+                    Status status = SimplyBroadcastInferShape(launchParam, outTensors);
+                    outTensors[0].desc.dtype = TENSOR_DTYPE_INT8;
+                    return status;
+                }
+
                 for (auto &t: outTensors) {
                     Mki::TensorDesc desc;
                     desc.format = Mki::TENSOR_FORMAT_ND;
