@@ -88,6 +88,7 @@ target_link_libraries(asdops_static PRIVATE
 
 add_executable(asdops_sym_check sym_check.cpp)
 target_link_libraries(asdops_sym_check PRIVATE tbe_adapter asdops mki)
+set_target_properties(asdops_sym_check PROPERTIES LINK_FLAGS "-Wl,-rpath-link,${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/")
 
 install(TARGETS asdops DESTINATION lib)
 install(TARGETS asdops_static DESTINATION lib)

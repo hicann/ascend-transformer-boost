@@ -19,7 +19,7 @@ namespace AtbOps {
 namespace OpParam {
 struct Toppsample {
     // TOPP_SAMPLE
-    std::vector<uint32_t> randSeed;
+    std::vector<int64_t> randSeed;
     bool operator==(const Toppsample &other) const
     {
         return this->randSeed == other.randSeed;
