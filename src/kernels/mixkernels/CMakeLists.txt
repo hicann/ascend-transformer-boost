@@ -91,6 +91,7 @@ target_link_libraries(atb_mixops_static PRIVATE
 
 add_executable(atbops_sym_check sym_check.cpp)
 target_link_libraries(atbops_sym_check PRIVATE atb_mixops mki)
+set_target_properties(atbops_sym_check PROPERTIES LINK_FLAGS "-Wl,-rpath-link,${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/")
 
 install(TARGETS atb_mixops DESTINATION lib)
 install(TARGETS atb_mixops_static DESTINATION lib)
