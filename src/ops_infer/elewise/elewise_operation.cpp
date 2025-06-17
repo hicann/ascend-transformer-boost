@@ -237,6 +237,7 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
         if (param_.quantParam.asymmetric) {
             outTensorDescs.at(TENSOR_IDX_TWO) = outTensorDescs.at(TENSOR_IDX_ONE);
         }
+        return NO_ERROR;
     } else {
         if (dtype == ACL_FLOAT16) {
             if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
@@ -276,7 +277,6 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
             return ERROR_INVALID_PARAM;
         }
     }
-    
 }
 
 Status ElewiseOperation::InferShapeCommon(const SVector<TensorDesc> &inTensorDescs,

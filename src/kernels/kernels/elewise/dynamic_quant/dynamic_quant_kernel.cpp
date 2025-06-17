@@ -71,7 +71,7 @@ REG_KERNEL_BASE(DynamicQuantKernel);
 
 class DynamicQuantAptKernel : public KernelBase {
 public:
-    explicit DynamicQuantKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : KernelBase(kernelName, handle)
     {
     }
@@ -107,7 +107,7 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return DynamicQuantAptTiling(launchParam, kernelInfo_);
+        return DynamicQuantAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };
 

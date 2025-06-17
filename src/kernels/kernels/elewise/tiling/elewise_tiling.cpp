@@ -74,7 +74,7 @@ Status DynamicQuantAptTiling(const std::string &kernelName, const LaunchParam &l
     const auto &param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
 
     auto runner = AsdOpsGeRt::TbeTilingRunner()
-        .SetNmae("DynamicQuant")
+        .SetName("DynamicQuant")
         .SetKernelName(kernelName)
         .AddInput(tensorDesc.dtype, tensorDesc.format, tensorDesc.dims)
         .AddOutput(tensorDescOut0.dtype, tensorDescOut0.format, tensorDescOut0.dims)
