@@ -65,7 +65,7 @@ Status CastTiling(const std::string &kernelName, const LaunchParam &launchParam,
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
 
-Status DynamicQuantTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+Status DynamicQuantAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                   const BinHandle &binHandle)
 {
     const auto &tensorDesc = launchParam.GetInTensor(0).desc;

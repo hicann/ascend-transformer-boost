@@ -78,21 +78,20 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        const int64_t outTensorIdxTwo = 2;
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Elewise),
             "elewise: param type invalid", return false);
-        MKI_CHECK(launchParam.GetInTensorCount() == 1, "input num invalid", return false);
-        MKI_CHECK(launchParam.GetOutTensorCount() == 2, "output num invalid", return false);
+        // MKI_CHECK(launchParam.GetInTensorCount() == 1, "input num invalid", return false);
+        // MKI_CHECK(launchParam.GetOutTensorCount() == 2, "output num invalid", return false);
         auto opParam = AnyCast<OpParam::Elewise>(launchParam.GetParam());
         OpParam::Elewise::ElewiseType type = opParam.elewiseType;
         MKI_CHECK(type == OpParam::Elewise::ELEWISE_DYNAMIC_QUANT, "dynamic quant: param type invalid",
             return false);
-        MKI_CHECK(launchParam.GetInTensor(0).desc.format == TENSOR_FORMAT_ND,
-            "input format invalid", return false);
-        MKI_CHECK(launchParam.GetOutTensor(0).desc.format == TENSOR_FORMAT_ND,
-            "output1 format invalid", return false);
-        MKI_CHECK(launchParam.GetOutTensor(1).desc.format == TENSOR_FORMAT_ND,
-            "output2 format invalid", return false);
+        // MKI_CHECK(launchParam.GetInTensor(0).desc.format == TENSOR_FORMAT_ND,
+        //     "input format invalid", return false);
+        // MKI_CHECK(launchParam.GetOutTensor(0).desc.format == TENSOR_FORMAT_ND,
+        //     "output1 format invalid", return false);
+        // MKI_CHECK(launchParam.GetOutTensor(1).desc.format == TENSOR_FORMAT_ND,
+        //     "output2 format invalid", return false);
         MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16 ||
             launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
             "tensor dtype unsupported", return false);
@@ -112,10 +111,10 @@ public:
     }
 };
 
-// DynamicQuantBF16toInt8
-class DynamicQuantBF16toInt8Kernel : public DynamicQuantAptKernel {
+// DynamicQuantAptBF16toInt8
+class DynamicQuantAptBF16toInt8Kernel : public DynamicQuantAptKernel {
 public:
-    explicit DynamicQuantBF16toInt8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptBF16toInt8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : DynamicQuantAptKernel(kernelName, handle)
     {
     }
@@ -130,12 +129,12 @@ public:
         return true;
     }
 };
-REG_KERNEL_BASE(DynamicQuantBF16toInt8Kernel);
+REG_KERNEL_BASE(DynamicQuantAptBF16toInt8Kernel);
 
-// DynamicQuantBF16toHi8
-class DynamicQuantBF16toHi8Kernel : public DynamicQuantAptKernel {
+// DynamicQuantAptBF16toHi8
+class DynamicQuantAptBF16toHi8Kernel : public DynamicQuantAptKernel {
 public:
-    explicit DynamicQuantBF16toHi8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptBF16toHi8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : DynamicQuantAptKernel(kernelName, handle)
     {
     }
@@ -150,12 +149,12 @@ public:
         return true;
     }
 };
-REG_KERNEL_BASE(DynamicQuantBF16toHi8Kernel);
+REG_KERNEL_BASE(DynamicQuantAptBF16toHi8Kernel);
 
-// DynamicQuantBF16toE4M3
-class DynamicQuantBF16toE4M3Kernel : public DynamicQuantAptKernel {
+// DynamicQuantAptBF16toE4M3
+class DynamicQuantAptBF16toE4M3Kernel : public DynamicQuantAptKernel {
 public:
-    explicit DynamicQuantBF16toE4M3Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptBF16toE4M3Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : DynamicQuantAptKernel(kernelName, handle)
     {
     }
@@ -170,12 +169,12 @@ public:
         return true;
     }
 };
-REG_KERNEL_BASE(DynamicQuantBF16toE4M3Kernel);
+REG_KERNEL_BASE(DynamicQuantAptBF16toE4M3Kernel);
 
-// DynamicQuantBF16toE5M2
-class DynamicQuantBF16toE5M2Kernel : public DynamicQuantAptKernel {
+// DynamicQuantAptBF16toE5M2
+class DynamicQuantAptBF16toE5M2Kernel : public DynamicQuantAptKernel {
 public:
-    explicit DynamicQuantBF16toE5M2Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptBF16toE5M2Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : DynamicQuantAptKernel(kernelName, handle)
     {
     }
@@ -190,12 +189,12 @@ public:
         return true;
     }
 };
-REG_KERNEL_BASE(DynamicQuantBF16toE5M2Kernel);
+REG_KERNEL_BASE(DynamicQuantAptBF16toE5M2Kernel);
 
-// DynamicQuantF16toInt8
-class DynamicQuantF16toInt8Kernel : public DynamicQuantAptKernel {
+// DynamicQuantAptF16toInt8
+class DynamicQuantAptF16toInt8Kernel : public DynamicQuantAptKernel {
 public:
-    explicit DynamicQuantF16toInt8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptF16toInt8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : DynamicQuantAptKernel(kernelName, handle)
     {
     }
@@ -210,12 +209,12 @@ public:
         return true;
     }
 };
-REG_KERNEL_BASE(DynamicQuantF16toInt8Kernel);
+REG_KERNEL_BASE(DynamicQuantAptF16toInt8Kernel);
 
-// DynamicQuantF16toHi8
-class DynamicQuantF16toHi8Kernel : public DynamicQuantAptKernel {
+// DynamicQuantAptF16toHi8
+class DynamicQuantAptF16toHi8Kernel : public DynamicQuantAptKernel {
 public:
-    explicit DynamicQuantF16toHi8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptF16toHi8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : DynamicQuantAptKernel(kernelName, handle)
     {
     }
@@ -230,12 +229,12 @@ public:
         return true;
     }
 };
-REG_KERNEL_BASE(DynamicQuantF16toHi8Kernel);
+REG_KERNEL_BASE(DynamicQuantAptF16toHi8Kernel);
 
-// DynamicQuantF16toE4M3
-class DynamicQuantF16toE4M3Kernel : public DynamicQuantAptKernel {
+// DynamicQuantAptF16toE4M3
+class DynamicQuantAptF16toE4M3Kernel : public DynamicQuantAptKernel {
 public:
-    explicit DynamicQuantF16toE4M3Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptF16toE4M3Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : DynamicQuantAptKernel(kernelName, handle)
     {
     }
@@ -250,12 +249,12 @@ public:
         return true;
     }
 };
-REG_KERNEL_BASE(DynamicQuantF16toE4M3Kernel);
+REG_KERNEL_BASE(DynamicQuantAptF16toE4M3Kernel);
 
-// DynamicQuantF16toE5M2
-class DynamicQuantF16toE5M2Kernel : public DynamicQuantAptKernel {
+// DynamicQuantAptF16toE5M2
+class DynamicQuantAptF16toE5M2Kernel : public DynamicQuantAptKernel {
 public:
-    explicit DynamicQuantF16toE5M2Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit DynamicQuantAptF16toE5M2Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : DynamicQuantAptKernel(kernelName, handle)
     {
     }
@@ -270,5 +269,5 @@ public:
         return true;
     }
 };
-REG_KERNEL_BASE(DynamicQuantF16toE5M2Kernel);
+REG_KERNEL_BASE(DynamicQuantAptF16toE5M2Kernel);
 } // namespace AsdOps

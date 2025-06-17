@@ -132,21 +132,21 @@ public:
             case OpParam::Elewise::ELEWISE_DYNAMIC_QUANT:
                 if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
                     if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_INT8) {
-                        return GetKernelByName("DynamicQuantF16toInt8Kernel");
+                        return GetKernelByName("DynamicQuantAptF16toInt8Kernel");
                     } else if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_HIFLOAT8) {
-                        return GetKernelByName("DynamicQuantF16toHi8Kernel");
+                        return GetKernelByName("DynamicQuantAptF16toHi8Kernel");
                     } else if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_FLOAT8_E4M3FN) {
-                        return GetKernelByName("DynamicQuantF16toE4M3Kernel");
+                        return GetKernelByName("DynamicQuantAptF16toE4M3Kernel");
                     } else if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_FLOAT8_E5M2) {
-                        return GetKernelByName("DynamicQuantF16toE5M2Kernel");
+                        return GetKernelByName("DynamicQuantAptF16toE5M2Kernel");
                     } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_INT8) {
-                        return GetKernelByName("DynamicQuantBF16toInt8Kernel");
+                        return GetKernelByName("DynamicQuantAptBF16toInt8Kernel");
                     } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_HIFLOAT8) {
-                        return GetKernelByName("DynamicQuantBF16toHi8Kernel");
+                        return GetKernelByName("DynamicQuantAptBF16toHi8Kernel");
                     } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_FLOAT8_E4M3FN) {
-                        return GetKernelByName("DynamicQuantBF16toE4M3Kernel");
+                        return GetKernelByName("DynamicQuantAptBF16toE4M3Kernel");
                     } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_FLOAT8_E5M2) {
-                        return GetKernelByName("DynamicQuantBF16toE5M2Kernel");
+                        return GetKernelByName("DynamicQuantAptBF16toE5M2Kernel");
                     }
                 } else{
                     if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
@@ -320,7 +320,8 @@ public:
         auto param = AnyCast<OpParam::Elewise>(specificParam);
         switch (param.elewiseType) {
             case OpParam::Elewise::ELEWISE_DYNAMIC_QUANT:
-                return PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95 ? 2 : 3;
+                // return PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95 ? 2 : 3;
+                return 3;
             default:
                 return 1;
         }

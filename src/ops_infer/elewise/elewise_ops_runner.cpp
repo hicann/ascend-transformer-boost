@@ -9,7 +9,9 @@
  */
 
 #include <iostream>
+#include "atb/utils/config.h"
 #include "atb/utils/log.h"
+#include "atb/utils/singleton.h"
 #include "elewise_ops_runner.h"
 
 namespace atb {
@@ -75,6 +77,9 @@ void ElewiseOpsRunner::SetOuttensor(KernelGraphNode &elewiseNode)
         Mki::Tensor &operationOutTensor1 = kernelGraph_.outTensors.at(INDEX_ONE);
         Mki::Tensor &operationOutTensor2 =
             param_.quantParam.asymmetric ? kernelGraph_.outTensors.at(INDEX_TWO) : nullTensor_; // 2 : outtensor idx
+        if (GetSingleton<Config>().Is910_95()) {
+            elsewiseParam.outTensorType = GetOutTensorType(param_.outTensorType);
+        }
         elewiseNode.outTensors = {&operationOutTensor0, &operationOutTensor1, &operationOutTensor2};
         elsewiseParam.asymmetric = param_.quantParam.asymmetric;
     } else {
