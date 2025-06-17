@@ -183,12 +183,16 @@ private:
     bool CheckNdMask(const Tensor &tensorMask, Tensor &q, const ShapeParam &shapePara,
                      const OpParam::MLA &param) const
     {
+        auto maxQ = shapePara.maxQ;
+        auto maxKv = shapePara.maxKv;
         auto currentShape = tensorMask.desc.dims;
         auto maskShape = currentShape.size();
         MKI_CHECK(maskShape == DIM_2, "mask invalid, please check.", return false);
         auto normCompress = param.maskType == OpParam::MLA::MASK_TYPE_MASK_FREE;
+        auto isSwa = param.maskType == OpParam::MLA::MASK_TYPE_SWA_NORM;
         // 全量mask当前仅支持512,512的压缩mask，其余不支持，需配合isTriuMask开启
         std::vector<std::pair<SVector<int64_t>, bool>> supports = {
+            {{maxQ, maxKv}, isSwa},
             {{LONG_SEQ_LEN_COMPRESS, LONG_SEQ_LEN_COMPRESS}, normCompress},
         };
         // 保证mask一定能覆盖S，核内不会出现异常，用户保证1.避免多传;2.数值正常
@@ -207,6 +211,8 @@ private:
         auto maxQ = maxQSeqlenIter != qSeqLen.end() ? *maxQSeqlenIter : 1;
         if (param.maskType == OpParam::MLA::MASK_TYPE_NONE || param.maskType == OpParam::MLA::MASK_TYPE_CAUSAL_MASK) {
             MKI_CHECK(CheckEmptyTensor(mask), "mask type inconsistent", return false);
+        } else if (param.maskType == OpParam::MLA::MASK_TYPE_SWA_NORM && maxQ == 1) {
+            MKI_CHECK(!CheckEmptyTensor(mask), "mask type inconsistent", return false);
         } else {
             MKI_CHECK(!CheckEmptyTensor(mask), "mask type inconsistent", return false);
         }
