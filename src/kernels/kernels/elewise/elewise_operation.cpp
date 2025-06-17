@@ -444,6 +444,14 @@ protected:
             }
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL: {
                 MKI_LOG(INFO) << "ELEWISE_QUANT_PER_CHANNEL enter";
+
+                PlatformType platform = PlatformInfo::Instance().GetPlatformType();
+                if (platform == PlatformType::ASCEND_910A || platform == PlatformType::ASCEND_310B) {
+                    Status status = SimplyBroadcastInferShape(launchParam, outTensors);
+                    outTensors[0].desc.dtype = TENSOR_DTYPE_INT8;
+                    return status;
+                }
+
                 for (auto &t: outTensors) {
                     Mki::TensorDesc desc;
                     desc.format = Mki::TENSOR_FORMAT_ND;
