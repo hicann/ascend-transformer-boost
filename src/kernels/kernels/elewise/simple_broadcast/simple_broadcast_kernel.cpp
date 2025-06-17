@@ -13,6 +13,8 @@
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/log/log.h>
 #include "kernels/elewise/simple_broadcast/tiling/simple_broadcast_tiling.h"
+#include "asdops/params/params.h"
+#include "sink_common.h"
 
 namespace AsdOps {
 using namespace Mki;
@@ -74,9 +76,8 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        BroadcastInfo broadcastInfo;
-        FillBroadCastInfoImpl(launchParam, broadcastInfo);
-        return QuantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
+        return optiling::CallGeTiling("QuantPerChannel", *GetBinHandle(), launchParam,
+                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>, kernelInfo_);
     }
 
 protected:
@@ -129,9 +130,8 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        BroadcastInfo broadcastInfo;
-        FillBroadCastInfoImpl(launchParam, broadcastInfo);
-        return DequantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
+        return optiling::CallGeTiling("DequantPerChannel", *GetBinHandle(), launchParam,
+                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>, kernelInfo_);
     }
 
 protected:

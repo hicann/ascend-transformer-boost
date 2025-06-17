@@ -15,6 +15,7 @@
 #include "atbops/params/params.h"
 #include "tiling/rope_tiling.h"
 #include "tiling/tiling_data.h"
+#include "sink_common.h"
 
 static constexpr uint32_t TENSOR_INPUT_NUM = 5;
 static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
@@ -88,15 +89,10 @@ public:
         return RopeDtypeCheck(launchParam, TENSOR_DTYPE_FLOAT16) || RopeDtypeCheck(launchParam, TENSOR_DTYPE_BF16);
     }
 
-    uint64_t GetTilingSize(const LaunchParam &launchParam) const override
-    {
-        (void)launchParam;
-        return sizeof(RopeTilingData);
-    }
-
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return RopeTiling(launchParam, kernelInfo_);
+        return optiling::CallGeTiling("RotaryPosEmbInfer", *GetBinHandle(), launchParam,
+                                      AsdOps::GetMkiSpecificAttr<OpParam::Rope>, kernelInfo_);
     }
 };
 
