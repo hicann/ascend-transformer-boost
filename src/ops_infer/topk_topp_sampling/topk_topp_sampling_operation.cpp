@@ -343,6 +343,10 @@ void TopkToppSamplingOperation::SetParam(const infer::TopkToppSamplingParam &par
 {
     param_ = param;
     runner_ = nullptr;
+    operationIr_ = GetOperationIrForTopkToppSampling(param_);
+    if (!operationIr_) {
+        ATB_LOG(ERROR) << "GetOperationIrForTopkToppSampling failed.";
+    }
 }
 
 } // namespace atb
