@@ -712,7 +712,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     const uint32_t hiddenSizeK = 16;
     const uint32_t headSize = 8;
 
-    if (!atb::GetSingleton<atb::Config>().Is910A()) {
+    if (atb::GetSingleton<atb::Config>().Is910A()) {
         GTEST_SKIP() << "This test case does not support 910A";
     }
 
@@ -732,7 +732,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     query.desc.shape.dimNum = 2;
     query.desc.shape.dims[0] = nTokens;
     query.desc.shape.dims[1] = hiddenSizeQ;
-    query.dataSize = Utils::GetTensorSize(query);
+    query.dataSize = atb::Utils::GetTensorSize(query);
     status = aclrtMalloc(&query.deviceData, query.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     ASSERT_EQ(status, 0);
 
@@ -742,7 +742,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     key.desc.shape.dimNum = 2;
     key.desc.shape.dims[0] = nTokens;
     key.desc.shape.dims[1] = hiddenSizeK;
-    key.dataSize = Utils::GetTensorSize(key);
+    key.dataSize = atb::Utils::GetTensorSize(key);
     status = aclrtMalloc(&key.deviceData, key.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     ASSERT_EQ(status, 0);
 
@@ -752,7 +752,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     cos.desc.shape.dimNum = 2;
     cos.desc.shape.dims[0] = nTokens;
     cos.desc.shape.dims[1] = headSize;
-    cos.dataSize = Utils::GetTensorSize(cos);
+    cos.dataSize = atb::Utils::GetTensorSize(cos);
     status = aclrtMalloc(&cos.deviceData, cos.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     ASSERT_EQ(status, 0);
 
@@ -762,7 +762,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     sin.desc.shape.dimNum = 2;
     sin.desc.shape.dims[0] = nTokens;
     sin.desc.shape.dims[1] = headSize;
-    sin.dataSize = Utils::GetTensorSize(sin);
+    sin.dataSize = atb::Utils::GetTensorSize(sin);
     status = aclrtMalloc(&sin.deviceData, sin.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     ASSERT_EQ(status, 0);
 
@@ -771,7 +771,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     seqLen.desc.format = ACL_FORMAT_ND;
     seqLen.desc.shape.dimNum = 1;
     seqLen.desc.shape.dims[0] = batchSize;
-    seqLen.dataSize = Utils::GetTensorSize(seqLen);
+    seqLen.dataSize = atb::Utils::GetTensorSize(seqLen);
     status = aclrtMalloc(&seqLen.deviceData, seqLen.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     ASSERT_EQ(status, 0);
 
@@ -781,7 +781,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     ropeQ.desc.shape.dimNum = 2;
     ropeQ.desc.shape.dims[0] = nTokens;
     ropeQ.desc.shape.dims[1] = hiddenSizeQ;
-    ropeQ.dataSize = Utils::GetTensorSize(ropeQ);
+    ropeQ.dataSize = atb::Utils::GetTensorSize(ropeQ);
     status = aclrtMalloc(&ropeQ.deviceData, ropeQ.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     ASSERT_EQ(status, 0);
 
@@ -791,7 +791,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     ropeK.desc.shape.dimNum = 2;
     ropeK.desc.shape.dims[0] = nTokens;
     ropeK.desc.shape.dims[1] = hiddenSizeK;
-    ropeK.dataSize = Utils::GetTensorSize(ropeK);
+    ropeK.dataSize = atb::Utils::GetTensorSize(ropeK);
     status = aclrtMalloc(&ropeK.deviceData, ropeK.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     ASSERT_EQ(status, 0);
 
@@ -805,7 +805,7 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     aclrtStream stream = nullptr;
     status = aclrtCreateStream(&stream);
     ASSERT_EQ(status, 0);
-    context.SetExecuteStream(stream);
+    context->SetExecuteStream(stream);
     uint64_t workspaceSize = 0;
     st = op->Setup(variantPack, workspaceSize, context);
     ASSERT_EQ(st, 0);
@@ -825,15 +825,15 @@ TEST(TestGraphLaunchMode, RopeWorkspaceFullOfDirtyData)
     ASSERT_EQ(st, 0);
 
     for (size_t i = 0; i < variantPack.inTensors.size(); ++i) {
-        tensor = variantPack.inTensors.at(i);
-        status.aclrtFree(tensor);
+        atb::Tensor tensor = variantPack.inTensors.at(i);
+        status = aclrtFree(tensor.deviceData);
         ASSERT_EQ(status, 0);
         tensor.deviceData = nullptr;
         tensor.dataSize = 0;
     }
     for (size_t i = 0; i < variantPack.outTensors.size(); ++i) {
-        tensor = variantPack.outTensors.at(i);
-        status.aclrtFree(tensor);
+        atb::Tensor tensor = variantPack.outTensors.at(i);
+        status = aclrtFree(tensor.deviceData);
         ASSERT_EQ(status, 0);
         tensor.deviceData = nullptr;
         tensor.dataSize = 0;
