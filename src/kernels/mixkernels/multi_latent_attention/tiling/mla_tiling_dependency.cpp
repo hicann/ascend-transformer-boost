@@ -439,13 +439,13 @@ void PrefillTilingHead(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffse
     tilingParam[NUM9] = static_cast<uint32_t>(addrOffsets.totalQBlkNum);
     tilingParam[NUM10] = static_cast<uint32_t>(TILING_HEAD_SIZE_PREFILL);
     tilingParam[NUM11] = static_cast<uint32_t>(TILING_PARA_SIZE_PREFILL);
-    tilingParam[NUM12] = isTriu? 2 : 1;
+    tilingParam[NUM12] = isTriu ? 2 : 1;
     tilingParam[NUM13] = 0;
     tilingParam[NUM14] = mmInfo.maxKvSeqLen;
     tilingParam[NUM15] = mmInfo.maskType;
     tilingParam[NUM16] = static_cast<uint32_t>(mmInfo.embeddingSizeV);
     tilingParam[NUM17] = mmInfo.maxKvSeqLen; // for bnsd, not used
-    tilingParam[NUM18] = mmInfo.windowSize; 
+    tilingParam[NUM18] = mmInfo.windowSize;
 }
 
 

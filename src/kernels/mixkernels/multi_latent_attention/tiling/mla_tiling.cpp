@@ -221,14 +221,14 @@ inline Status PrefillPreCheck(OpParam::MLA &param)
 Status GetSwaMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param, const Tensor tensorMask)
 {
     auto maxQSeq = std::max_element(param.qSeqLen.begin(), param.qSeqLen.end());
-    if (*maxQSeq != 1){
+    if (*maxQSeq != 1) {
         auto maskShape = tensorMask.desc.dims;
         auto maskDim = maskShape.size();
         int32_t maxSeq = maskShape.at(maskDim - 1);
         mmInfo.maxSeqLen = maxSeq;
         MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
             return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(maskShape.at(0) <= maskShape.at(1), 
+        MKI_CHECK(maskShape.at(0) <= maskShape.at(1),
             "mask shape invalid, maxkv should be larger than maxq",
             return Status::FailStatus(ERROR_INVALID_VALUE));
     }
@@ -273,7 +273,7 @@ inline Status MLAPrefillPostCheck(MLAInfo &mmInfo, OpParam::MLA &param)
                 return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.embeddingSizeV <= MAX_EMBEDDING && mmInfo.embeddingSizeV > 0, "headdimV is invalid",
                 return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK((mmInfo.maskType == OpParam::MLA::MASK_TYPE_SWA_NORM) == (mmInfo.windowSize > 0), 
+    MKI_CHECK((mmInfo.maskType == OpParam::MLA::MASK_TYPE_SWA_NORM) == (mmInfo.windowSize > 0),
                 "swa windowSize should be greater than 0", return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
 }
