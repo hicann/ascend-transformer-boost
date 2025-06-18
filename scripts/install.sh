@@ -591,7 +591,7 @@ function install_torch_atb() {
     fi
 
     wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
-    wheel_path="${OUTPUT_DIR}/whl/${wheel_file}"
+    wheel_path="${sourcedir}/whl/${wheel_file}"
 
     if [ ! -f "$wheel_path" ]; then
         echo "ERROR: Wheel file ${wheel_file} not found at ${wheel_path}."
