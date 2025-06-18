@@ -441,6 +441,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWithBias()
 Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulAccum";
+    isParamUpdated_ = false;
 
     kernelGraph_.inTensors.resize(SIZE_3);
 
