@@ -408,6 +408,15 @@ Status OpsRunner::PreExecuteImpl(RunnerVariantPack &runnerVariantPack)
 
 Status OpsRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
 {
+    if (runnerVariantPack.mstxMemRegister != nullptr && runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
+        for (size_t i = 0; i < kernelGraph_.inTensors.size(); ++i) {
+            Mki::Tensor *tensor = &kernelGraph_.inTensors.at(i);
+            auto it = isInTensorCanFree_.find(tensor);
+            if (it == isInTensorCanFree_.end() || !it->second) {
+                runnerVariantPack.mstxMemRegister->MstxMemRegionsUnregister();
+            }
+        }
+    }
     Status st = RunAllKernel(runnerVariantPack);
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << "RunAllKernel failed! ret:" << st;
