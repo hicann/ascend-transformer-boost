@@ -442,7 +442,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulAccum";
 
-    InitKernelGraph(SIZE_3, 1, 0, 1);
+    kernelGraph_.inTensors.resize(SIZE_3);
 
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -452,10 +452,12 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
     Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
 
     if (xTensor.desc.dims.size() == SIZE_2 && xTensor.desc.dims.at(1) > MATMUL_TRANSPOSE_THRESHOLD) {
-        kernelGraph_.internalTensors.resize(1);
+        if (kernelGraph_.nodes.size() != 2) {
+            isParamUpdated_ = true;
+        }
+        InitKernelGraph(SIZE_3, 1, 1, 2);
         Mki::Tensor &transposedXtensor = kernelGraph_.internalTensors.at(0);
 
-        kernelGraph_.nodes.resize(SIZE_2);
         size_t nodeId = 0;
         KernelGraphNode &transposeNode = kernelGraph_.nodes.at(nodeId++);
         KernelGraphNode &matmulNode = kernelGraph_.nodes.at(nodeId++);
@@ -477,21 +479,22 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
         if (xNeedMergeAxis_) {
             matmulNode.inTensorViewFuncs.at(0) = matmulMergeAxis_;
         }
+    } else {
+        if (kernelGraph_.nodes.size() != 1) {
+            isParamUpdated_ = true;
+        }
+        InitKernelGraph(SIZE_3, 1, 0, 1);
+        KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
 
-        return NO_ERROR;
+        matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_ACCUM_ATOMIC;
+        matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
+        matmulNode.inTensors = {&xTensor, &weightTensor, &accumTensor};
+        matmulNode.outTensors = {&outTensor};
+        matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
+        if (xNeedMergeAxis_) {
+            matmulNode.inTensorViewFuncs.at(0) = matmulMergeAxis_;
+        }
     }
-
-    KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
-
-    matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_ACCUM_ATOMIC;
-    matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&xTensor, &weightTensor, &accumTensor};
-    matmulNode.outTensors = {&outTensor};
-    matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
-    if (xNeedMergeAxis_) {
-        matmulNode.inTensorViewFuncs.at(0) = matmulMergeAxis_;
-    }
-
     return NO_ERROR;
 }
 
