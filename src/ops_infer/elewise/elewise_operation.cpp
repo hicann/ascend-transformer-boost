@@ -229,19 +229,7 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     aclDataType dtype = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
-    if (dtype == ACL_FLOAT16) {
-        if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
-            ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
-                << " when the dtype of the first tensor is float16,"
-                << " the size of the last dimension does not exceed 26624.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        if (!GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant310P(inTensorDescs)) {
-            ATB_LOG(ERROR) << "In Atlas inference products, ElewiseOperation InferShapeImplDynamicQuant:"
-                << " when the dtype of the first tensor is float16,"
-                << " the size of the last dimension does not exceed 4096.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
+    if (GetSingleton<Config>().Is910_95()){
         outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
         outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
         outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
@@ -250,21 +238,44 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
             outTensorDescs.at(TENSOR_IDX_TWO) = outTensorDescs.at(TENSOR_IDX_ONE);
         }
         return NO_ERROR;
-    } else if (dtype == ACL_BF16) {
-        if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
-            ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
-                           << " when the dtype of the first tensor is BF16,"
-                           << " the size of the last dimension does not exceed 7552.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
-        outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
-        outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
-        outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
-        return NO_ERROR;
     } else {
-        ATB_LOG(WARN) << "ElewiseOperation InferShapeImplDynamicQuant: inTensor only support FP16 and BF16 now.";
-        return ERROR_INVALID_PARAM;
+        if (dtype == ACL_FLOAT16) {
+            if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
+                ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
+                    << " when the dtype of the first tensor is float16,"
+                    << " the size of the last dimension does not exceed 26624.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            if (!GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant310P(inTensorDescs)) {
+                ATB_LOG(ERROR) << "In Atlas inference products, ElewiseOperation InferShapeImplDynamicQuant:"
+                    << " when the dtype of the first tensor is float16,"
+                    << " the size of the last dimension does not exceed 4096.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
+            outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
+            outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
+            outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
+            if (param_.quantParam.asymmetric) {
+                outTensorDescs.at(TENSOR_IDX_TWO) = outTensorDescs.at(TENSOR_IDX_ONE);
+            }
+            return NO_ERROR;
+        } else if (dtype == ACL_BF16) {
+            if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
+                ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
+                            << " when the dtype of the first tensor is BF16,"
+                            << " the size of the last dimension does not exceed 7552.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
+            outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
+            outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
+            outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
+            return NO_ERROR;
+        } else {
+            ATB_LOG(WARN) << "ElewiseOperation InferShapeImplDynamicQuant: inTensor only support FP16 and BF16 now.";
+            return ERROR_INVALID_PARAM;
+        }
     }
 }
 
