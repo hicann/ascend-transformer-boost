@@ -53,8 +53,10 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return optiling::CallGeTiling("TopPSample", *GetBinHandle(), launchParam,
+        auto geTiling = optiling::CallGeTiling("TopPSample", *GetBinHandle(), launchParam,
                                       AsdOps::GetMkiSpecificAttr<OpParam::Toppsample>, kernelInfo_);
+        kernelInfo.SetMemsetInfo(TENSOR_INPUT_NUM + TENSOR_OUTPUT_NUM, sysWorkspaceSize);
+        return geTiling;  
     }
 };
 REG_KERNEL_BASE(ToppsampleKernel);
