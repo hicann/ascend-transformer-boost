@@ -320,8 +320,6 @@ inline Status FlashAttentionPostCheck(UnpadFlashAttentionInfo &mmInfo, OpParam::
 
 inline Status FlashAttentionSwaCheck(const UnpadFlashAttentionInfo mmInfo)
 {
-    MKI_CHECK(mmInfo.isMLA == 0, "swa not support MLA",
-                return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.dataShapeType == 0, "swa not support BNSD input",
                 return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.quantType == 0, "swa not support quant",
