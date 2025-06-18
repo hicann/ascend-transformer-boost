@@ -70,7 +70,7 @@ Status DynamicQuantAptTiling(const std::string &kernelName, const LaunchParam &l
 {
     const auto &tensorDesc = launchParam.GetInTensor(0).desc;
     const auto &tensorDescOut0 = launchParam.GetOutTensor(0).desc;
-    const auto &tensorDescOut1 = launchParam.GetOutTensor(0).desc;
+    const auto &tensorDescOut1 = launchParam.GetOutTensor(1).desc;
     const auto &param = AnyCast<OpParam::Elewise>(launchParam.GetParam());
 
     auto runner = AsdOpsGeRt::TbeTilingRunner()

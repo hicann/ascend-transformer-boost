@@ -222,7 +222,7 @@ Status ElewiseOperation::InferShapeImplQuant(const SVector<TensorDesc> &inTensor
 }
 
 Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &inTensorDescs,
-                                                    SVector<TensorDesc> &outTensorDescs) const
+                                                    SVector<TensorDesc> &outTensorDescs) constzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 {
     if (inTensorDescs.at(TENSOR_IDX_ZERO).shape.dimNum < 2) { // 2: min support dims
         ATB_LOG(ERROR) << "InferShapeImplDynamicQuant: input dims must greater than or equal to 2.";
