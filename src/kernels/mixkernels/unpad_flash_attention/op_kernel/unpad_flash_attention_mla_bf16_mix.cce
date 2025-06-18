@@ -39,7 +39,7 @@ constexpr int32_t TMP_SIZET = 16384;
 constexpr int32_t BLOCK_QK = 128;
 constexpr int32_t LOCAL_SIZE = 6;
 
-template<typename IN_DATA_TYPE>
+template<typename IN_DATA_TYPE, bool swa_flag=false, bool swa_compress=false>
 class FlashAttentionEncoderHighPrecision {
 public:
     __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderHighPrecision(
@@ -71,6 +71,8 @@ public:
         this->tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
         this->max_kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 18));
         this->tiling_data_shape = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 24));
+        this->window_size = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 27));
+
         this->group_num = q_heads / kv_heads;
         this->stride_qo = q_heads * embd;
         this->stride_o = q_heads * embdv;
@@ -248,16 +250,25 @@ public:
             }
             
             uint32_t n_end = n_loop;
-            if (is_triu_mask) {
+            if (is_triu_mask || window_size > 0) {
                 n_end = m_idx + 1;
+            }
+            uint32_t window_start = (window_size + pp_n_scalar - 1) / pp_n_scalar;
+            uint32_t n_start = 0;
+            if constexpr (swa_flag) {
+                if (window_size > 0 && window_size < kv_seqlen){
+                    n_start = (m_idx < window_start) ? 0 : m_idx - window_start;
+                    k_offset += n_start * stride_k * pp_n_scalar;
+                    v_offset += n_start * stride_v * pp_n_scalar;
+                }
             }
             uint32_t s_block_stack = n_end > 4 ? 2 : 1; // Currently not splitting K
             uint32_t launch_delay = s_block_stack * 2;
             uint32_t vect_mod = 2 * launch_delay;
-            for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
+            for (uint32_t n_idx = n_start; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
                 if (n_idx < n_end) {
                     for (uint32_t split_idx = 0; split_idx < s_block_stack && n_idx + split_idx < n_end; split_idx++) {
-                        pingpong_flag = (n_idx + split_idx) % 2;
+                        pingpong_flag = (n_idx + split_idx - n_start) % 2;
                         offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
                         if (n_idx + split_idx == (n_loop - 1)) {
                             qk_n = (kv_seqlen - (n_idx + split_idx) * pp_n_scalar);
@@ -363,7 +374,7 @@ public:
                     uint32_t sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                     // copy S to gm
                     l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
-                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod],
+                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod],
                         l0c_buf_tensor,
                         qk_m,        // MSize
                         sv_round_n,  // NSize
@@ -374,8 +385,8 @@ public:
                     SET_FLAG(FIX, M, EVENT_ID1);  
                     FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY);
                 }
-                if (n_idx >= launch_delay) {
-                    uint32_t l0c_pingpong_flag = n_idx % 2;
+                if (n_idx >= launch_delay + n_start) {
+                    uint32_t l0c_pingpong_flag = (n_idx - n_start) % 2;
                     uint32_t l0c_offset = l0c_pingpong_flag * L0AB_HALF_BUF_SIZE;
                     uint32_t sv_n_triu = n_end * pp_n_scalar;
                     if (n_idx + s_block_stack > n_end + launch_delay - 1) {
@@ -423,7 +434,7 @@ public:
                             if (qk_m == 1) {
                                 gm_to_l1<ArchType::ASCEND_V220, IN_DATA_TYPE, DataFormat::ND, DataFormat::ND>(
                                     l1p_buf_addr_tensor,
-                                    p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - launch_delay) % vect_mod * TMP_SIZE / vect_mod],
+                                    p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - launch_delay - n_start) % vect_mod * TMP_SIZE / vect_mod],
                                     1,
                                     0,
                                     0,
@@ -434,7 +445,7 @@ public:
                             } else {
                                 gm_to_l1<ArchType::ASCEND_V220, IN_DATA_TYPE, DataFormat::ND, DataFormat::NZ>(
                                     l1p_buf_addr_tensor,
-                                    p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - launch_delay) % vect_mod * TMP_SIZE / vect_mod],
+                                    p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - launch_delay - n_start) % vect_mod * TMP_SIZE / vect_mod],
                                     qk_m,        // nValue
                                     qk_round_m,  // dstNzC0Stride
                                     0,            // dstNzMatrixStride, unused
@@ -498,7 +509,7 @@ public:
                         WAIT_FLAG(M, FIX, l0c_pingpong_flag);
                         // copy O to gm
                         l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
-                            o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE * LOCAL_SIZE + k_idx * TMP_SIZET + (n_idx - launch_delay) % vect_mod * TMP_SIZE / vect_mod * loopV],
+                            o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE * LOCAL_SIZE + k_idx * TMP_SIZET + (n_idx - launch_delay - n_start) % vect_mod * TMP_SIZE / vect_mod * loopV],
                             l0c_buf_tensor[l0c_offset],
                             qk_m,        // MSize
                             qk_round_k,     // NSize
@@ -569,6 +580,7 @@ private:
     uint32_t tiling_head_size{0};
     uint32_t tiling_para_size{0};
     uint32_t tiling_data_shape{0};
+    uint32_t window_size{0};
 };
 extern "C" __global__ __aicore__ void unpad_flashattention_mla_bf16(
     __gm__ uint8_t *__restrict__ sync,
@@ -596,8 +608,14 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla_bf16(
     if (tilingKey == 1) {
         FlashAttentionEncoderHighPrecision<__bf16> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_cube.Run<true>();
+    } else if (tilingKey == 4) {
+        FlashAttentionEncoderHighPrecision<__bf16, true, false> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run<true>();
+    } else if (tilingKey == 5) {
+        FlashAttentionEncoderHighPrecision<__bf16, true, true> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run<true>();
     } else {
-        FlashAttentionEncoderHighPrecision<half> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        FlashAttentionEncoderHighPrecision<half, false, false> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_cube.Run<false>();
     }
 }
@@ -621,7 +639,7 @@ constexpr int32_t BLOCK_QK = 128;
 constexpr float BASE_Y = 128;
 constexpr int32_t LOCAL_SIZE = 6;
 
-template<typename IN_DATA_TYPE>
+template<typename IN_DATA_TYPE, bool swa_flag=false, bool swa_compress=false>
 class FlashAttentionEncoderHighPrecisionVec {
 public:
     __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderHighPrecisionVec(
@@ -662,6 +680,7 @@ public:
         this->alibi_left_align = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 22));
  
         this->tiling_data_shape_type = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 24));
+        this->window_size = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 27));
         this->stride_qo = q_heads * embdv;
 
         if (tiling_data_shape_type == 1)
@@ -841,8 +860,18 @@ public:
                 o_offset = addr_o_scalar + head_idx * embdv * max_seqlen + (uint64_t)m_idx * pp_m_scalar * stride_qo;
             }
             uint32_t n_end = n_loop;
-            if (is_triu_mask) {
+            if (is_triu_mask || window_size > 0) {
                 n_end = m_idx + 1;
+            }
+            uint32_t window_start = (window_size + pp_n_scalar - 1) / pp_n_scalar;
+            uint32_t n_start = 0;
+            if constexpr (swa_flag) {
+                if (window_size > 0 && window_size < kv_seqlen) {
+                    n_start = (m_idx < window_start) ? 0 : m_idx - window_start;
+                    if constexpr (!swa_compress) {
+                        mask_offset += n_start * pp_n_scalar;
+                    }
+                }
             }
             uint32_t qk_n_triu = n_end * pp_n_scalar; 
             uint32_t s_block_stack = n_end > 4 ? 2 : 1;
@@ -850,13 +879,37 @@ public:
             uint32_t vect_mod = 2 * launch_delay;
             uint32_t m_slice = sub_m > 32 ? 32 : 0; // s_block_stack=2时，UB可以放下
             uint32_t m_end = sub_m > 32 ? 2 : 1;
-            for (uint32_t n_idx = 0; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
+            for (uint32_t n_idx = n_start; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
                 if (n_idx < n_end) {
                     if (n_idx + s_block_stack > n_end - 1) {
                         qk_n = qk_n_triu > kv_seqlen ? kv_seqlen - n_idx * pp_n_scalar : qk_n_triu - n_idx * pp_n_scalar;
                     } else {
                         qk_n = pp_n_scalar * s_block_stack;
                     }
+
+                    uint32_t delta_idx = m_idx - n_idx;
+                    bool skip_mask = window_start > 3 && delta_idx > 1 && delta_idx < window_start - 1;
+                    if constexpr (swa_compress) {
+                        mask_offset = 0;
+                        if (window_start <= 3) {
+                            if (m_idx < n_idx) {
+                                mask_offset = pp_n_scalar;
+                            } else {
+                                mask_offset = delta_idx * max_seqlen * pp_m_scalar;
+                            }
+                        } else {
+                            if (delta_idx == 0){
+                                mask_offset = 0;
+                            } else if (delta_idx == window_start) {
+                                mask_offset = 3 * max_seqlen * pp_m_scalar;
+                            } else if (delta_idx == 1) {
+                                mask_offset = max_seqlen * pp_m_scalar;
+                            } else if (delta_idx == window_start - 1) {
+                                mask_offset = 2 * max_seqlen * pp_m_scalar;
+                            }
+                        }
+                    }
+
                     qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                     if (qk_n <= VECTOR_SIZE) {
                         if (sub_m > 0 && mask_type != 0) {
@@ -889,28 +942,59 @@ public:
                             }
                             if (long_seq == 0) {
                                 WAIT_FLAG(V, MTE2, EVENT_ID1);
-                                gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
-                                    mask16_ubuf_tensor,
-                                    mask_gm_tensor[mask_offset + sub_block_idx * qk_m / 2 * max_seqlen],
-                                    0,                       // sid
-                                    sub_m,                   // nBurst
-                                    qk_n * 2,                // lenBurst
-                                    0,                       // leftPaddingNum
-                                    0,                       // rightPaddingNum
-                                    (max_seqlen - qk_n) * 2, // srcGap
-                                    0                        // dstGap
-                                );
+                                if constexpr (!swa_compress) {
+                                    gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
+                                        mask16_ubuf_tensor,
+                                        mask_gm_tensor[mask_offset + sub_block_idx * qk_m / 2 * max_seqlen],
+                                        0,                       // sid
+                                        sub_m,                   // nBurst
+                                        qk_n * 2,                // lenBurst
+                                        0,                       // leftPaddingNum
+                                        0,                       // rightPaddingNum
+                                        (max_seqlen - qk_n) * 2, // srcGap
+                                        0                        // dstGap
+                                    );
+                                } else {
+                                    if (!skip_mask) {
+                                        gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
+                                            mask16_ubuf_tensor,
+                                            mask_gm_tensor[mask_offset + sub_block_idx * qk_m / 2 * max_seqlen],
+                                            0,                       // sid
+                                            sub_m,                   // nBurst
+                                            qk_n * 2,                // lenBurst
+                                            0,                       // leftPaddingNum
+                                            0,                       // rightPaddingNum
+                                            (max_seqlen - qk_n) * 2, // srcGap
+                                            0                        // dstGap
+                                        );
+                                    }
+                                }
                                 SET_FLAG(MTE2, V, EVENT_ID1);
-                                mask_offset += qk_n;
+                                if constexpr (!swa_compress) {
+                                    mask_offset += qk_n;
+                                }
                                 WAIT_FLAG(MTE2, V, EVENT_ID1);
-                                conv_v<ArchType::ASCEND_V220, IN_DATA_TYPE, float>(
-                                    mask_ubuf_tensor, mask16_ubuf_tensor,
-                                    (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                                    1,                                                                // dstBlockStride
-                                    1,                                                                // srcBlockStride
-                                    8,                                                                // dstRepeatStride
-                                    4                                                                 // srcRepeatStride
-                                );
+                                if constexpr (!swa_compress) {
+                                    conv_v<ArchType::ASCEND_V220, IN_DATA_TYPE, float>(
+                                        mask_ubuf_tensor, mask16_ubuf_tensor,
+                                        (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                        1,                                                                // dstBlockStride
+                                        1,                                                                // srcBlockStride
+                                        8,                                                                // dstRepeatStride
+                                        4                                                                 // srcRepeatStride
+                                    );
+                                } else {
+                                    if (!skip_mask) {
+                                        conv_v<ArchType::ASCEND_V220, IN_DATA_TYPE, float>(
+                                            mask_ubuf_tensor, mask16_ubuf_tensor,
+                                            (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                            1,                                                                // dstBlockStride
+                                            1,                                                                // srcBlockStride
+                                            8,                                                                // dstRepeatStride
+                                            4                                                                 // srcRepeatStride
+                                        );
+                                    }
+                                }
                                 if (alibi_coeff_gm != nullptr) {
                                     PIPE_BARRIER(V);
                                     if (is_sqrt == 1 && m_idx != n_idx) {
@@ -961,16 +1045,31 @@ public:
                                 }
                                 PIPE_BARRIER(V);
                                 if (head_stride == 0 && mask_type != 2) {
-                                    muls_v<ArchType::ASCEND_V220, float>(
-                                        mask_ubuf_tensor,
-                                        mask_ubuf_tensor,
-                                        (float)-3e38,
-                                        (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                                        1, // dstBlockStride
-                                        1, // srcBlockStride
-                                        8, // dstRepeatStride
-                                        8  // srcRepeatStride
-                                    );
+                                    if constexpr (!swa_compress) {
+                                        muls_v<ArchType::ASCEND_V220, float>(
+                                            mask_ubuf_tensor,
+                                            mask_ubuf_tensor,
+                                            (float)-3e38,
+                                            (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                            1, // dstBlockStride
+                                            1, // srcBlockStride
+                                            8, // dstRepeatStride
+                                            8  // srcRepeatStride
+                                        );
+                                    } else {
+                                        if (!skip_mask) {
+                                            muls_v<ArchType::ASCEND_V220, float>(
+                                                mask_ubuf_tensor,
+                                                mask_ubuf_tensor,
+                                                (float)-3e38,
+                                                (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                                1, // dstBlockStride
+                                                1, // srcBlockStride
+                                                8, // dstRepeatStride
+                                                8  // srcRepeatStride
+                                            );
+                                        }
+                                    }
                                     PIPE_BARRIER(V);
                                 }
                             }
@@ -981,7 +1080,7 @@ public:
                             // input QK
                             gm_to_ub<ArchType::ASCEND_V220, float>(
                                 ls_ubuf_tensor,
-                                s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
+                                s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod +
                                     (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n],
                                 0,                                // sid
                                 sub_m,                                // nBurst
@@ -1028,18 +1127,35 @@ public:
                             // *** ls = ls + mask
                             if (mask_type != 0) {
                                 if (long_seq == 0) {
-                                    add_v<ArchType::ASCEND_V220, float>(
-                                        ls_ubuf_tensor, 
-                                        ls_ubuf_tensor,
-                                        mask_ubuf_tensor,
-                                        (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                                        1,                                                                // dstBlockStride
-                                        1,                                                                // src0BlockStride
-                                        1,                                                                // src1BlockStride
-                                        8,                                                                // dstRepeatStride
-                                        8,                                                                // src0RepeatStride
-                                        8                                                                 // src1RepeatStride
-                                    );
+                                    if constexpr (!swa_compress) {
+                                        add_v<ArchType::ASCEND_V220, float>(
+                                            ls_ubuf_tensor, 
+                                            ls_ubuf_tensor,
+                                            mask_ubuf_tensor,
+                                            (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                            1,                                                                // dstBlockStride
+                                            1,                                                                // src0BlockStride
+                                            1,                                                                // src1BlockStride
+                                            8,                                                                // dstRepeatStride
+                                            8,                                                                // src0RepeatStride
+                                            8                                                                 // src1RepeatStride
+                                        );
+                                    } else {
+                                        if (!skip_mask) {
+                                            add_v<ArchType::ASCEND_V220, float>(
+                                                ls_ubuf_tensor, 
+                                                ls_ubuf_tensor,
+                                                mask_ubuf_tensor,
+                                                (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                                1,                                                                // dstBlockStride
+                                                1,                                                                // src0BlockStride
+                                                1,                                                                // src1BlockStride
+                                                8,                                                                // dstRepeatStride
+                                                8,                                                                // src0RepeatStride
+                                                8                                                                 // src1RepeatStride
+                                            );
+                                        }
+                                    }
                                     SET_FLAG(V, MTE2, EVENT_ID1);
                                 } else if (pp_n_scalar == FLOAT_VECTOR_SIZE && s_block_stack == 2 && n_idx == n_end - 2) {
                                     __set_mask(qk_n - FLOAT_VECTOR_SIZE);
@@ -1194,7 +1310,7 @@ public:
                                 SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
                             }
                             PIPE_BARRIER(V);
-                            if (n_idx == 0) {
+                            if (n_idx == n_start) {
                                 // *** hm = lm
                                 ub_to_ub<ArchType::ASCEND_V220, float>(
                                     hm_ubuf_tensor,
@@ -1223,7 +1339,7 @@ public:
                                 PIPE_BARRIER(V);
                                 // *** dm = gm - hm
                                 sub_v<ArchType::ASCEND_V220, float>(
-                                    dm_ubuf_tensor[(n_idx / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE],
+                                    dm_ubuf_tensor[((n_idx - n_start) / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE],
                                     gm_ubuf_tensor,
                                     hm_ubuf_tensor,
                                     sub_m_d64, // repeat
@@ -1237,8 +1353,8 @@ public:
                                 PIPE_BARRIER(V);
                                 // *** dm = exp(dm)
                                 exp_v<ArchType::ASCEND_V220, float>(
-                                    dm_ubuf_tensor[(n_idx / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE],
-                                    dm_ubuf_tensor[(n_idx / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE],
+                                    dm_ubuf_tensor[((n_idx - n_start) / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE],
+                                    dm_ubuf_tensor[((n_idx - n_start) / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE],
                                     sub_m_d64, // repeat
                                     1,         // dstBlockStride
                                     1,         // srcBlockStride
@@ -1336,7 +1452,7 @@ public:
                             SET_FLAG(V, MTE3, EVENT_ID0);
                             WAIT_FLAG(V, MTE3, EVENT_ID0);
                             ub_to_gm<ArchType::ASCEND_V220, IN_DATA_TYPE>(
-                                p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
+                                p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod +
                                             (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n],
                                 lp_ubuf_tensor.ReinterpretCast<IN_DATA_TYPE>(),
                                 0,                               // sid
@@ -1401,7 +1517,7 @@ public:
                                 );
                             }
                             PIPE_BARRIER(V);
-                            if (n_idx == 0) {
+                            if (n_idx == n_start) {
                                 // *** gl = ll
                                 ub_to_ub<ArchType::ASCEND_V220, float>(
                                     gl_ubuf_tensor,
@@ -1417,7 +1533,7 @@ public:
                                 // *** gl = dm * gl
                                 mul_v<ArchType::ASCEND_V220, float>(
                                     gl_ubuf_tensor,
-                                    dm_ubuf_tensor[(n_idx / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE],
+                                    dm_ubuf_tensor[((n_idx - n_start) / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE],
                                     gl_ubuf_tensor,
                                     sub_m_d64, // repeat
                                     1,         // dstBlockStride
@@ -1496,17 +1612,33 @@ public:
                                         8                                 // dstGap
                                     );
                                 } else {
-                                    gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
-                                        mask16_ubuf_tensor,
-                                        mask_gm_tensor[mask_offset + (sub_block_idx * qk_m / 2 + split_idx * m_slice) * max_seqlen],
-                                        0,                       // sid
-                                        m_split,                   // nBurst
-                                        qk_n * 2,                // lenBurst
-                                        0,                       // leftPaddingNum
-                                        0,                       // rightPaddingNum
-                                        (max_seqlen - qk_n) * 2, // srcGap
-                                        0                        // dstGap
-                                    );
+                                    if constexpr (!swa_compress) {
+                                        gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
+                                            mask16_ubuf_tensor,
+                                            mask_gm_tensor[mask_offset + (sub_block_idx * qk_m / 2 + split_idx * m_slice) * max_seqlen],
+                                            0,                       // sid
+                                            m_split,                   // nBurst
+                                            qk_n * 2,                // lenBurst
+                                            0,                       // leftPaddingNum
+                                            0,                       // rightPaddingNum
+                                            (max_seqlen - qk_n) * 2, // srcGap
+                                            0                        // dstGap
+                                        );
+                                    } else {
+                                        if (!skip_mask) {
+                                            gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
+                                                mask16_ubuf_tensor,
+                                                mask_gm_tensor[mask_offset + (sub_block_idx * qk_m / 2 + split_idx * m_slice) * max_seqlen],
+                                                0,                       // sid
+                                                m_split,                   // nBurst
+                                                qk_n * 2,                // lenBurst
+                                                0,                       // leftPaddingNum
+                                                0,                       // rightPaddingNum
+                                                (max_seqlen - qk_n) * 2, // srcGap
+                                                0                        // dstGap
+                                            );
+                                        }
+                                    }
                                 }
                                 SET_FLAG(MTE2, V, EVENT_ID1);
                             }
@@ -1517,15 +1649,29 @@ public:
                                 if (m_split > 0) {
                                     if (mask_type != 0 && long_seq == 0) {
                                         WAIT_FLAG(MTE2, V, EVENT_ID1);
-                                        conv_v<ArchType::ASCEND_V220, IN_DATA_TYPE, float>(
-                                            mask_ubuf_tensor, 
-                                            mask16_ubuf_tensor,
-                                            (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                                            1,                                                                // dstBlockStride
-                                            1,                                                                // srcBlockStride
-                                            8,                                                                // dstRepeatStride
-                                            4                                                                 // srcRepeatStride
-                                        );
+                                        if constexpr (!swa_compress) {
+                                            conv_v<ArchType::ASCEND_V220, IN_DATA_TYPE, float>(
+                                                mask_ubuf_tensor, 
+                                                mask16_ubuf_tensor,
+                                                (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                                1,                                                                // dstBlockStride
+                                                1,                                                                // srcBlockStride
+                                                8,                                                                // dstRepeatStride
+                                                4                                                                 // srcRepeatStride
+                                            );
+                                        } else {
+                                            if (!skip_mask) {
+                                                conv_v<ArchType::ASCEND_V220, IN_DATA_TYPE, float>(
+                                                    mask_ubuf_tensor, 
+                                                    mask16_ubuf_tensor,
+                                                    (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                                    1,                                                                // dstBlockStride
+                                                    1,                                                                // srcBlockStride
+                                                    8,                                                                // dstRepeatStride
+                                                    4                                                                 // srcRepeatStride
+                                                );
+                                            }
+                                        }
                                         SET_FLAG(V, MTE2, EVENT_ID1);
                                         if (alibi_coeff_gm != nullptr) {
                                             PIPE_BARRIER(V);
@@ -1639,16 +1785,31 @@ public:
                                         }
                                         PIPE_BARRIER(V);
                                         if (head_stride == 0 && mask_type != 2) {
-                                            muls_v<ArchType::ASCEND_V220, float>(
-                                                mask_ubuf_tensor,
-                                                mask_ubuf_tensor,
-                                                (float)-3e38,
-                                                (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                                                1, // dstBlockStride
-                                                1, // srcBlockStride
-                                                8, // dstRepeatStride
-                                                8  // srcRepeatStride
-                                            );
+                                            if constexpr (!swa_compress) {
+                                                muls_v<ArchType::ASCEND_V220, float>(
+                                                    mask_ubuf_tensor,
+                                                    mask_ubuf_tensor,
+                                                    (float)-3e38,
+                                                    (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                                    1, // dstBlockStride
+                                                    1, // srcBlockStride
+                                                    8, // dstRepeatStride
+                                                    8  // srcRepeatStride
+                                                );
+                                            } else {
+                                                if (!skip_mask) {
+                                                    muls_v<ArchType::ASCEND_V220, float>(
+                                                        mask_ubuf_tensor,
+                                                        mask_ubuf_tensor,
+                                                        (float)-3e38,
+                                                        (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                                        1, // dstBlockStride
+                                                        1, // srcBlockStride
+                                                        8, // dstRepeatStride
+                                                        8  // srcRepeatStride
+                                                    );
+                                                }
+                                            }
                                             PIPE_BARRIER(V);
                                         }
                                     }
@@ -1656,7 +1817,7 @@ public:
                                     // input QK
                                     gm_to_ub<ArchType::ASCEND_V220, float>(
                                         ls_ubuf_tensor,
-                                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
+                                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod +
                                             (uint64_t)(sub_block_idx * qk_m / 2 + split_idx * m_slice) * qk_round_n],
                                         0,                                // sid
                                         m_split,                                // nBurst
@@ -1707,18 +1868,35 @@ public:
                                     // *** ls = ls + mask
                                     if (mask_type != 0) {
                                         if (long_seq == 0) {
-                                            add_v<ArchType::ASCEND_V220, float>(
-                                                ls_ubuf_tensor, 
-                                                ls_ubuf_tensor,
-                                                mask_ubuf_tensor,
-                                                (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                                                1,                                                                // dstBlockStride
-                                                1,                                                                // src0BlockStride
-                                                1,                                                                // src1BlockStride
-                                                8,                                                                // dstRepeatStride
-                                                8,                                                                // src0RepeatStride
-                                                8                                                                 // src1RepeatStride
-                                            );
+                                            if constexpr (!swa_compress) {
+                                                add_v<ArchType::ASCEND_V220, float>(
+                                                    ls_ubuf_tensor, 
+                                                    ls_ubuf_tensor,
+                                                    mask_ubuf_tensor,
+                                                    (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                                    1,                                                                // dstBlockStride
+                                                    1,                                                                // src0BlockStride
+                                                    1,                                                                // src1BlockStride
+                                                    8,                                                                // dstRepeatStride
+                                                    8,                                                                // src0RepeatStride
+                                                    8                                                                 // src1RepeatStride
+                                                );
+                                            } else {
+                                                if (!skip_mask) {
+                                                    add_v<ArchType::ASCEND_V220, float>(
+                                                        ls_ubuf_tensor, 
+                                                        ls_ubuf_tensor,
+                                                        mask_ubuf_tensor,
+                                                        (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                                        1,                                                                // dstBlockStride
+                                                        1,                                                                // src0BlockStride
+                                                        1,                                                                // src1BlockStride
+                                                        8,                                                                // dstRepeatStride
+                                                        8,                                                                // src0RepeatStride
+                                                        8                                                                 // src1RepeatStride
+                                                    );
+                                                }
+                                            }
                                         } else if (n_idx == n_end - 2) {
                                             if (qk_n - pp_n_scalar < FLOAT_VECTOR_SIZE){
                                                 __set_mask(qk_n - pp_n_scalar);
@@ -1867,7 +2045,7 @@ public:
                                         }
                                     }
                                     PIPE_BARRIER(V);
-                                    if (n_idx == 0) {
+                                    if (n_idx == n_start) {
                                         // *** hm = lm
                                         ub_to_ub<ArchType::ASCEND_V220, float>(
                                             hm_ubuf_tensor[split_idx * m_slice],
@@ -1896,7 +2074,7 @@ public:
                                         PIPE_BARRIER(V);
                                         // *** dm = gm - hm
                                         sub_v<ArchType::ASCEND_V220, float>(
-                                            dm_ubuf_tensor[(n_idx / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE + split_idx * m_slice],
+                                            dm_ubuf_tensor[((n_idx - n_start) / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE + split_idx * m_slice],
                                             gm_ubuf_tensor[split_idx * m_slice],
                                             hm_ubuf_tensor[split_idx * m_slice],
                                             1,         // repeat
@@ -1910,8 +2088,8 @@ public:
                                         PIPE_BARRIER(V);
                                         // *** dm = exp(dm)
                                         exp_v<ArchType::ASCEND_V220, float>(
-                                            dm_ubuf_tensor[(n_idx / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE + split_idx * m_slice],
-                                            dm_ubuf_tensor[(n_idx / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE + split_idx * m_slice],
+                                            dm_ubuf_tensor[((n_idx - n_start) / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE + split_idx * m_slice],
+                                            dm_ubuf_tensor[((n_idx - n_start) / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE + split_idx * m_slice],
                                             1,         // repeat
                                             1,         // dstBlockStride
                                             1,         // srcBlockStride
@@ -2010,7 +2188,7 @@ public:
                                     SET_FLAG(V, MTE3, EVENT_ID0);
                                     WAIT_FLAG(V, MTE3, EVENT_ID0);
                                     ub_to_gm<ArchType::ASCEND_V220, IN_DATA_TYPE>(
-                                        p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + n_idx % vect_mod * TMP_SIZE / vect_mod +
+                                        p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod +
                                             ((uint64_t)sub_block_idx * qk_m / 2 + split_idx * m_slice) * qk_round_n],
                                         lp_ubuf_tensor.ReinterpretCast<IN_DATA_TYPE>(),
                                         0,                                // sid
@@ -2062,7 +2240,7 @@ public:
                                         qk_round_n / FLOAT_BLOCK_SIZE  // srcRepeatStride
                                     );
                                     PIPE_BARRIER(V);
-                                    if (n_idx == 0) {
+                                    if (n_idx == n_start) {
                                         // *** gl = ll
                                         ub_to_ub<ArchType::ASCEND_V220, float>(
                                             gl_ubuf_tensor[split_idx * m_slice],
@@ -2079,7 +2257,7 @@ public:
                                         // *** gl = dm * gl
                                         mul_v<ArchType::ASCEND_V220, float>(
                                             gl_ubuf_tensor[split_idx * m_slice],
-                                            dm_ubuf_tensor[(n_idx / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE + split_idx * m_slice],
+                                            dm_ubuf_tensor[((n_idx - n_start) / s_block_stack) % 4 * UB_FLOAT_LINE_SIZE + split_idx * m_slice],
                                             gl_ubuf_tensor[split_idx * m_slice],
                                             1, // repeat
                                             1,         // dstBlockStride
@@ -2109,22 +2287,24 @@ public:
                                 }
                             }
                         }
-                        mask_offset += qk_n;
+                        if constexpr (!swa_compress) {
+                            mask_offset += qk_n;
+                        }
                     }
                     FftsCrossCoreSync<PIPE_MTE3, 2>(SOFTMAX_READY);
                 }
-                if (n_idx >= launch_delay) {
+                if (n_idx >= launch_delay + n_start) {
                     WaitFlagDev(UPDATE_READY);
                     for(uint32_t k_idx = 0; k_idx < loopV; k_idx++){
                         uint64_t o_offsetk = o_offset + k_idx * BLOCK_QK;
                         qk_k = (k_idx == (loopV - 1))? embdv - k_idx * BLOCK_QK : BLOCK_QK;
                         qk_round_k = (qk_k + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                         if (sub_m > 0) {
-                            if(n_idx == launch_delay){
+                            if(n_idx == launch_delay + n_start){
                                 WAIT_FLAG(MTE3, MTE2, EVENT_ID2);
                                 gm_to_ub<ArchType::ASCEND_V220, float>(
                                     go_ubuf_tensor,
-                                    o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE * LOCAL_SIZE + k_idx * TMP_SIZET  + (n_idx - launch_delay) % vect_mod * TMP_SIZE / vect_mod * loopV +
+                                    o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE * LOCAL_SIZE + k_idx * TMP_SIZET  + (n_idx - launch_delay - n_start) % vect_mod * TMP_SIZE / vect_mod * loopV +
                                             (uint64_t)sub_block_idx * qk_m / 2 * qk_round_k],
                                     0,                                   // sid
                                     1,                                   // nBurst
@@ -2152,7 +2332,7 @@ public:
                                 WAIT_FLAG(V, MTE2, EVENT_ID2);
                                 gm_to_ub<ArchType::ASCEND_V220, float>(
                                     lo_ubuf_tensor,
-                                    o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE * LOCAL_SIZE + k_idx * TMP_SIZET  + (n_idx - launch_delay) % vect_mod * TMP_SIZE / vect_mod * loopV +
+                                    o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE * LOCAL_SIZE + k_idx * TMP_SIZET  + (n_idx - launch_delay - n_start) % vect_mod * TMP_SIZE / vect_mod * loopV +
                                             (uint64_t)sub_block_idx * qk_m / 2 * qk_round_k],
                                     0,                                   // sid
                                     1,                                   // nBurst
@@ -2167,7 +2347,7 @@ public:
                                 // *** dm_block = expand_to_block(dm), 存放于 tv
                                 brcb_v<ArchType::ASCEND_V220, uint32_t>(
                                     tv_ubuf_tensor.ReinterpretCast<uint32_t>(),
-                                    dm_ubuf_tensor[((n_idx - launch_delay) / s_block_stack % 4) * UB_FLOAT_LINE_SIZE].ReinterpretCast<uint32_t>(),
+                                    dm_ubuf_tensor[((n_idx - launch_delay - n_start) / s_block_stack % 4) * UB_FLOAT_LINE_SIZE].ReinterpretCast<uint32_t>(),
                                     1,                             // dstBlockStride
                                     8,                             // dstRepeatStride
                                     round_sub_m / FLOAT_BLOCK_SIZE // repeat
@@ -2400,6 +2580,7 @@ private:
     uint32_t alibi_compress_offset{0};
     uint32_t alibi_left_align{0};
     uint32_t tiling_data_shape_type{0};
+    uint32_t window_size{0};
 };
 
 extern "C" __global__ __aicore__ void unpad_flashattention_mla_bf16(
@@ -2426,10 +2607,16 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla_bf16(
     uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
     // 仅在tilingKey为1的时候是bf，其余场景均当做half处理
     if (tilingKey == 1) {
-        FlashAttentionEncoderHighPrecisionVec<__bf16> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        FlashAttentionEncoderHighPrecisionVec<__bf16, false, false> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_vec.Run<true>();
+    } else if (tilingKey == 4) {
+        FlashAttentionEncoderHighPrecisionVec<__bf16, true, false> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_vec.Run<true>();
+    } else if (tilingKey == 5) {
+        FlashAttentionEncoderHighPrecisionVec<__bf16, true, true> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_vec.Run<true>();
     } else {
-        FlashAttentionEncoderHighPrecisionVec<half> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        FlashAttentionEncoderHighPrecisionVec<half, false, false> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_vec.Run<false>();
     }
 }
