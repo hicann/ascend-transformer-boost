@@ -9,6 +9,7 @@
 */
 #include <numeric>
 #include <algorithm>
+#include <functional>
 #include "mki/utils/assert/assert.h"
 #include "mki/utils/checktensor/check_tensor.h"
 #include "mki/utils/platform/platform_info.h"
@@ -23,6 +24,7 @@ const int32_t NUM4 = 4;
 const int32_t NUM5 = 5;
 const int32_t NUM6 = 6;
 const int32_t NUM8 = 8;
+const int32_t NUM12 = 12;
 const int32_t NUM16 = 16;
 const int32_t NUM32 = 32;
 const int32_t NUM64 = 64;
@@ -30,6 +32,7 @@ const int32_t NUM256 = 256;
 const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
 const float SPLITKV_SEQLEN = 2048;
+const float SPLITKV_RATIO = 0.72;
 
 int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int32_t blockSize)
 {
@@ -55,6 +58,27 @@ int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int
     return NUM1;
 }
 
+Status BatchSeqSort(MLAInfo &mmInfo, uint32_t endIndex, uint32_t sortDim)
+{
+    if (sortDim <= 0 || endIndex <= 0) {
+        return Status::OkStatus();
+    }
+    std::sort(mmInfo.batchList.begin(), mmInfo.batchList.end());
+    std::reverse(mmInfo.batchList.begin(), mmInfo.batchList.begin() + endIndex);
+    uint32_t batchSortInfo = (mmInfo.batch + sortDim - 1) / sortDim;
+    for (uint32_t sortIdx = 0; sortIdx < batchSortInfo; sortIdx++) {
+        uint32_t startIndex = sortIdx * sortDim;
+        uint32_t sortEnd = std::min(startIndex + sortDim, endIndex);
+        if (sortIdx % NUM2 == 0) {
+            std::sort(mmInfo.batchList.begin() + startIndex, mmInfo.batchList.begin() + sortEnd);
+        } else {
+            std::sort(mmInfo.batchList.begin() + startIndex,
+                      mmInfo.batchList.begin() + sortEnd, std::greater<BatchNode>());
+        }
+    }
+    return Status::OkStatus();
+}
+
 Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t blockDim)
 {
     if (blockDim == 0) {
@@ -71,16 +95,14 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
                            ((minQSeqlen == NUM2 && maxQSeqlen == NUM2) ||
                            (minQSeqlen == 1 && maxQSeqlen == 1));
     if (!mmInfo.flashDecoding) {
+        OP_TILING_CHECK_STATUS_RETURN(BatchSeqSort(mmInfo, mmInfo.batch, blockDim));
         return Status::OkStatus();
     }
+    OP_TILING_CHECK_STATUS_RETURN(BatchSeqSort(mmInfo, mmInfo.batch - mmInfo.flashDecodingTaskNum, blockDim));
     mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
                         CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize);
     mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
     if (mmInfo.flashDecoding) {
-        for (int32_t batchIdx = 0; batchIdx < mmInfo.batch; batchIdx++) {
-            mmInfo.batchList.push_back(BatchNode(batchIdx, *(mmInfo.kvSeqLen + batchIdx)));
-        }
-        std::sort(mmInfo.batchList.begin(), mmInfo.batchList.end());
         int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
         mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
     }
@@ -118,6 +140,11 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT);
     if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
         mmInfo.maskType = 0;
+    }
+    int32_t beginQ = 0;
+    for (int32_t batchIdx = 0; batchIdx < mmInfo.batch; batchIdx++) {
+        mmInfo.batchList.push_back(BatchNode(batchIdx, *(mmInfo.kvSeqLen + batchIdx), beginQ));
+        beginQ = mmInfo.qSeqLen == nullptr ? beginQ + 1 : beginQ + *(mmInfo.qSeqLen + batchIdx);
     }
     mmInfo.totalTaskNum = mmInfo.qSeqLen != nullptr ?
                           std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
@@ -230,16 +257,16 @@ inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
     auto maskShape = tensorMask.desc.dims;
     auto maxKvSeq = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     MKI_LOG(INFO) << "max kv seq" << *maxKvSeq;
-    auto maskDim = maskShape.size();
-    int32_t maxSeq = maskShape.at(maskDim - 1);
-    mmInfo.maxSeqLen = maxSeq;
+        auto maskDim = maskShape.size();
+        int32_t maxSeq = maskShape.at(maskDim - 1);
+        mmInfo.maxSeqLen = maxSeq;
     MKI_CHECK(maskType == OpParam::MLA::MASK_TYPE_MASK_FREE,
-                "mask type invalid",
-                return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
-                return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK(maskShape.at(1) == NORM_CMP_MASK_LEN, "compress mask shape should be 512, 512",
-                return Status::FailStatus(ERROR_INVALID_VALUE));
+                    "mask type invalid",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(maskShape.at(1) == NORM_CMP_MASK_LEN, "compress mask shape should be 512, 512",
+                    return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
 }
 

@@ -72,11 +72,17 @@ using AddrOffsets = struct AddressOffsetInfo {
 struct BatchNode {
     int32_t batchIdx;
     int32_t kvSeqlen;
+    int32_t startQIdx;
     BatchNode() {}
-    BatchNode(int32_t batchIdxIn, int32_t kvSeqlenIn) : batchIdx(batchIdxIn), kvSeqlen(kvSeqlenIn) {}
+    BatchNode(int32_t batchIdxIn, int32_t kvSeqlenIn, int32_t startQIdxIn) : batchIdx(batchIdxIn),
+        kvSeqlen(kvSeqlenIn), startQIdx(startQIdxIn) {}
     bool operator < (const BatchNode &other) const
     {
         return other.kvSeqlen > this->kvSeqlen;
+    }
+    bool operator > (const BatchNode &other) const
+    {
+        return other.kvSeqlen < this->kvSeqlen;
     }
 };
 
