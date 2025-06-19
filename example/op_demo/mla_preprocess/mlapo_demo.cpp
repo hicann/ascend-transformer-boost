@@ -7,13 +7,6 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include <iostream>
-#include <vector>
-#include <numeric>
-#include "acl/acl.h"
-#include "atb/operation.h"
-#include "atb/types.h"
-#include <atb/atb_infer.h>
 
 #include "demo_util.h"
 
@@ -21,15 +14,15 @@ const int32_t DEVICE_ID = 2;
 const uint32_t blockSize = 128;
 const uint32_t blockNum = 64;
 
+
 /**
- * @brief 准备atb::VariantPack
+ * @brief 准备atb::VariantPack中的输入tensor
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> atb::VariantPack
- * @note 需要传入所有host侧tensor
+ * @param inTensors atb::SVector<atb::Tensor> *atb::VariantPack中的输入tensor
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDataType dtype, int tokenNum,
-                                          int headNum)
+void PrepareInTensor1(atb::Context *contextPtr, aclrtStream stream, aclDataType dtype, int tokenNum,
+                      atb::SVector<atb::Tensor> *inTensors)
 {
     // 创建shape为[tokenNum, 7168]的输入input tensor
     atb::Tensor input = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * 7168, 0), dtype,
@@ -73,6 +66,19 @@ atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream 
     // 创建shape为[1]的输入quantOffset1 tensor
     atb::Tensor quantOffset1 =
         CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(1, 1), ACL_INT8, aclFormat::ACL_FORMAT_ND, {1});
+    *inTensors = {input,    gamma0, beta0,  quantScale0, quantOffset0, wdqkv,
+                  deScale0, bias0,  gamma1, beta1,       quantScale1,  quantOffset1};
+}
+
+/**
+ * @brief 准备atb::VariantPack中的输入tensor
+ * @param contextPtr context指针
+ * @param stream stream
+ * @param inTensors atb::SVector<atb::Tensor> *atb::VariantPack中的输入tensor
+ */
+void PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDataType dtype, int tokenNum, int headNum,
+                      atb::SVector<atb::Tensor> *inTensors)
+{
     // 创建shape为[1,48,headNum*192,32]的输入wuq tensor
     atb::Tensor wuq = CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(48 * headNum * 192 * 32, 1),
                                              ACL_INT8, aclFormat::ACL_FORMAT_FRACTAL_NZ, {1, 48, headNum * 192, 32});
@@ -120,11 +126,11 @@ atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream 
     // 创建shape为[headNum]的输入qNopeScale tensor
     atb::Tensor qNopeScale = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(headNum, 0), dtype,
                                                     aclFormat::ACL_FORMAT_ND, {headNum});
-    atb::SVector<atb::Tensor> inTensors = {input,    gamma0,   beta0,       quantScale0, quantOffset0, wdqkv,
-                                           deScale0, bias0,    gamma1,      beta1,       quantScale1,  quantOffset1,
-                                           wuq,      deScale1, bias1,       gamma2,      cos,          sin,
-                                           wuk,      kvCache,  kvCacheRope, slotmapping, ctkvScale,    qNopeScale};
-    return inTensors;
+    atb::SVector<atb::Tensor> tempTensors = {wuq, deScale1, bias1,       gamma2,      cos,       sin,
+                                             wuk, kvCache,  kvCacheRope, slotmapping, ctkvScale, qNopeScale};
+    for (auto &tensor : tempTensors) {
+        inTensors->push_back(tensor);
+    }
 }
 
 /**
@@ -139,6 +145,65 @@ atb::Operation *CreateMlaPreprocessOperation()
     atb::CreateOperation(param, &mlaPreprocessOp);
     return mlaPreprocessOp;
 }
+
+/**
+ * @brief 进行MlaPreprocessOperation的循环调用
+ * @param context context指针
+ * @param stream stream
+ * @param dtype 指定部分输入/输出vector数据类型
+ * @param tokenNum 词元数
+ * @param headNum 头数
+ */
+void RunDemo(atb::Context *context, void *stream, aclDataType dtype, int tokenNum, int headNum)
+{
+    // 创建op
+    atb::Operation *mlaPreprocessOp = CreateMlaPreprocessOperation();
+    // 准备输入tensor
+    atb::VariantPack variantPack;
+    // 放入rmsNormQuant_0，matmul_0，rmsNormQuant_1输入tensor
+    PrepareInTensor1(context, stream, dtype, tokenNum, &variantPack.inTensors);
+    // 放入matmul_1，rmsNorm，rope，matmulEin，reshapeAndCache，quant输入tensor
+    PrepareInTensor2(context, stream, dtype, tokenNum, headNum, &variantPack.inTensors);
+    // 准备输出tensor
+    atb::Tensor qOut0 = CreateTensor(ACL_INT8, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512});
+    atb::Tensor &kvCacheOut0 = variantPack.inTensors.at(19);
+    atb::Tensor qOut1 = CreateTensor(dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 64});
+    atb::Tensor &kvCacheOut1 = variantPack.inTensors.at(20);
+    variantPack.outTensors = {qOut0, kvCacheOut0, qOut1, kvCacheOut1}; // 放入输出tensor
+
+    uint64_t workspaceSize = 0;
+    // 计算workspaceSize大小
+    CHECK_STATUS(mlaPreprocessOp->Setup(variantPack, workspaceSize, context));
+    uint8_t *workspacePtr = nullptr;
+    if (workspaceSize > 0) {
+        CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
+    }
+    for (size_t i = 0; i < 10; i++) {
+        std::cout << "tokenNum: " << tokenNum << " headNum: " << headNum << " loop: " << i << std::endl;
+        // mlaPreprocess执行
+        mlaPreprocessOp->Execute(variantPack, workspacePtr, workspaceSize, context);
+        CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
+    }
+    for (atb::Tensor &inTensor : variantPack.inTensors) {
+        CHECK_STATUS(aclrtFree(inTensor.deviceData));
+        for (atb::Tensor &outTensor : variantPack.outTensors) {
+            if (outTensor.deviceData == inTensor.deviceData) {
+                outTensor.deviceData = nullptr;
+            }
+        }
+        inTensor.deviceData = nullptr;
+    }
+    for (atb::Tensor &outTensor : variantPack.outTensors) {
+        if (outTensor.deviceData == nullptr)
+            continue;
+        CHECK_STATUS(aclrtFree(outTensor.deviceData));
+    }
+    if (workspaceSize > 0) {
+        CHECK_STATUS(aclrtFree(workspacePtr));
+    }
+    CHECK_STATUS(atb::DestroyOperation(mlaPreprocessOp)); // operation，对象概念，先释放
+}
+
 
 int main(int argc, char **argv)
 {
@@ -163,51 +228,8 @@ int main(int argc, char **argv)
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
-
-    // 创建op
-    atb::Operation *mlaPreprocessOp = CreateMlaPreprocessOperation();
-    // 准备输入tensor
-    atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream, dtype, tokenNum, headNum); // 放入输入tensor
-    // 准备输出tensor
-    atb::Tensor qOut0 = CreateTensor(ACL_INT8, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512});
-    atb::Tensor &kvCacheOut0 = variantPack.inTensors.at(19);
-    atb::Tensor qOut1 = CreateTensor(dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 64});
-    atb::Tensor &kvCacheOut1 = variantPack.inTensors.at(20);
-    variantPack.outTensors = {qOut0, kvCacheOut0, qOut1, kvCacheOut1}; // 放入输出tensor
-
-    uint64_t workspaceSize = 0;
-    // 计算workspaceSize大小
-    CHECK_STATUS(mlaPreprocessOp->Setup(variantPack, workspaceSize, context));
-    uint8_t *workspacePtr = nullptr;
-    if (workspaceSize > 0) {
-        CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
-    }
-    for (size_t i = 0; i < 10; i++) {
-        std::cout << "tokenNum: " << tokenNum << " headNum: " << headNum << " loop: " << i << std::endl;
-        // mlaPreprocess执行
-        mlaPreprocessOp->Execute(variantPack, workspacePtr, workspaceSize, context);
-        CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
-    }
+    RunDemo(context, stream, dtype, tokenNum, headNum);
     // 释放资源
-    for (atb::Tensor &inTensor : variantPack.inTensors) {
-        CHECK_STATUS(aclrtFree(inTensor.deviceData));
-        for (atb::Tensor &outTensor : variantPack.outTensors) {
-            if (outTensor.deviceData == inTensor.deviceData) {
-                outTensor.deviceData = nullptr;
-            }
-        }
-        inTensor.deviceData = nullptr;
-    }
-    for (atb::Tensor &outTensor : variantPack.outTensors) {
-        if (outTensor.deviceData == nullptr)
-            continue;
-        CHECK_STATUS(aclrtFree(outTensor.deviceData));
-    }
-    if (workspaceSize > 0) {
-        CHECK_STATUS(aclrtFree(workspacePtr));
-    }
-    CHECK_STATUS(atb::DestroyOperation(mlaPreprocessOp)); // operation，对象概念，先释放
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());

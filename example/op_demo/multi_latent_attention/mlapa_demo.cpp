@@ -7,15 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#include <atb/atb_infer.h>
 
-#include <iostream>
-#include <numeric>
-#include <vector>
-
-#include "acl/acl.h"
-#include "atb/operation.h"
-#include "atb/types.h"
 #include "demo_util.h"
 
 const int32_t DEVICE_ID = 1;
@@ -86,31 +78,17 @@ atb::Operation *CreateMultiLatentAttentionOperation(int headNum)
     return mlaOp;
 }
 
-int main(int argc, char **argv)
+/**
+ * @brief 进行MlaPreprocessOperation的循环调用
+ * @param context context指针
+ * @param stream stream
+ * @param dtype 指定部分输入/输出vector数据类型
+ * @param tokenNum 词元数
+ * @param headNum 头数
+ * @param kSeqLen key/value 的单个词元长度
+ */
+void RunDemo(atb::Context *context, void *stream, aclDataType dtype, int tokenNum, int headNum, int kSeqLen)
 {
-    std::string dtypeStr;
-    int tokenNum = 4;
-    int headNum = 128;
-    int kSeqLen = 1500;
-    aclDataType dtype = ACL_FLOAT16;
-    if (argc == 5) {
-        dtypeStr = argv[1];
-        tokenNum = std::stoi(argv[2]);
-        headNum = std::stoi(argv[3]);
-        kSeqLen = std::stoi(argv[4]);
-    }
-    if (dtypeStr == "bf16") {
-        dtype = ACL_BF16;
-    }
-    // 设置卡号、创建context、设置stream
-    atb::Context *context = nullptr;
-    void *stream = nullptr;
-
-    CHECK_STATUS(aclInit(nullptr));
-    CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
-    CHECK_STATUS(atb::CreateContext(&context));
-    CHECK_STATUS(aclrtCreateStream(&stream));
-    context->SetExecuteStream(stream);
     // 创建op
     atb::Operation *mlaOp = CreateMultiLatentAttentionOperation(headNum);
 
@@ -152,8 +130,36 @@ int main(int argc, char **argv)
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
-
     CHECK_STATUS(atb::DestroyOperation(mlaOp)); // operation，对象概念，先释放
+}
+
+int main(int argc, char **argv)
+{
+    std::string dtypeStr;
+    int tokenNum = 4;
+    int headNum = 128;
+    int kSeqLen = 1500;
+    aclDataType dtype = ACL_FLOAT16;
+    if (argc == 5) {
+        dtypeStr = argv[1];
+        tokenNum = std::stoi(argv[2]);
+        headNum = std::stoi(argv[3]);
+        kSeqLen = std::stoi(argv[4]);
+    }
+    if (dtypeStr == "bf16") {
+        dtype = ACL_BF16;
+    }
+    // 设置卡号、创建context、设置stream
+    atb::Context *context = nullptr;
+    void *stream = nullptr;
+
+    CHECK_STATUS(aclInit(nullptr));
+    CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
+    CHECK_STATUS(atb::CreateContext(&context));
+    CHECK_STATUS(aclrtCreateStream(&stream));
+    CHECK_STATUS(context->SetExecuteStream(stream));
+    // 执行demo
+    RunDemo(context, stream, dtype, tokenNum, headNum, kSeqLen);
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());

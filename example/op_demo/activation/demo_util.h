@@ -9,6 +9,7 @@
  */
 #ifndef DEMO_UTIL_H
 #define DEMO_UTIL_H
+
 #include <iostream>
 #include <numeric>
 #include <vector>
@@ -18,20 +19,20 @@
 #include "atb/operation.h"
 #include "atb/types.h"
 
-#define CHECK_STATUS(status)                                                                                           \
-    do {                                                                                                               \
-        if ((status) != 0) {                                                                                           \
-            std::cout << __FILE__ << ":" << __LINE__ << " [error]: " << (status) << std::endl;                         \
-            exit(1);                                                                                                   \
-        }                                                                                                              \
+#define CHECK_STATUS(status)                                                                   \
+    do {                                                                                       \
+        if ((status) != 0) {                                                                   \
+            std::cout << __FILE__ << ":" << __LINE__ << " [error]: " << (status) << std::endl; \
+            exit(1);                                                                           \
+        }                                                                                      \
     } while (0)
 
-#define CHECK_STATUS_EXPR(status, expr)                                                                                \
-    do {                                                                                                               \
-        if ((status) != 0) {                                                                                           \
-            std::cout << __FILE__ << ":" << __LINE__ << " [error]: " << (status) << std::endl;                         \
-            expr;                                                                                                      \
-        }                                                                                                              \
+#define CHECK_STATUS_EXPR(status, expr)                                                        \
+    do {                                                                                       \
+        if ((status) != 0) {                                                                   \
+            std::cout << __FILE__ << ":" << __LINE__ << " [error]: " << (status) << std::endl; \
+            expr;                                                                              \
+        }                                                                                      \
     } while (0)
 
 /**
@@ -52,7 +53,7 @@ atb::Tensor CreateTensor(const aclDataType dataType, const aclFormat format, std
         tensor.desc.shape.dims[i] = shape.at(i);
     }
     tensor.dataSize = atb::Utils::GetTensorSize(tensor); // 计算Tensor的数据大小
-    aclrtMalloc(&tensor.deviceData, tensor.dataSize, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST);
+    CHECK_STATUS(aclrtMalloc(&tensor.deviceData, tensor.dataSize, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
     return tensor;
 }
 
@@ -66,7 +67,7 @@ atb::Tensor CreateTensor(const aclDataType dataType, const aclFormat format, std
  * @return atb::Tensor 转换后的tensor
  */
 atb::Tensor CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tensor inTensor,
-                   const aclDataType outTensorType, std::vector<int64_t> shape)
+    const aclDataType outTensorType, std::vector<int64_t> shape)
 {
     uint64_t workspaceSize = 0;
     void *workspace = nullptr;
@@ -75,21 +76,21 @@ atb::Tensor CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tens
     castParam.elewiseType = atb::infer::ElewiseParam::ELEWISE_CAST;
     castParam.outTensorType = outTensorType;
     atb::Operation *castOp = nullptr;
-    CreateOperation(castParam, &castOp);
+    CHECK_STATUS(CreateOperation(castParam, &castOp));
     atb::Tensor outTensor = CreateTensor(outTensorType, aclFormat::ACL_FORMAT_ND, shape); // cast输出tensor
     atb::VariantPack castVariantPack;                                                     // 参数包
     castVariantPack.inTensors = {inTensor};
     castVariantPack.outTensors = {outTensor};
     // 在Setup接口调用时对输入tensor和输出tensor进行校验。
-    castOp->Setup(castVariantPack, workspaceSize, contextPtr);
+    CHECK_STATUS(castOp->Setup(castVariantPack, workspaceSize, contextPtr));
     if (workspaceSize > 0) {
-        aclrtMalloc(&workspace, workspaceSize, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST);
+        CHECK_STATUS(aclrtMalloc(&workspace, workspaceSize, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
     }
     // ELEWISE_CAST执行
-    castOp->Execute(castVariantPack, (uint8_t *)workspace, workspaceSize, contextPtr);
-    aclrtSynchronizeStream(stream); // 流同步，等待device侧任务计算完成
+    CHECK_STATUS(castOp->Execute(castVariantPack, (uint8_t *)workspace, workspaceSize, contextPtr));
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     if (workspaceSize > 0) {
-        aclrtFree(workspace); // 清理工作空间
+        CHECK_STATUS(aclrtFree(workspace)); // 清理工作空间
     }
     return outTensor;
 }
@@ -107,12 +108,15 @@ atb::Tensor CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tens
  */
 template <typename T>
 atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream, std::vector<T> data,
-                                   const aclDataType outTensorType, const aclFormat format, std::vector<int64_t> shape,
-                                   const aclDataType inTensorType = ACL_DT_UNDEFINED)
+    const aclDataType outTensorType, const aclFormat format, std::vector<int64_t> shape,
+    const aclDataType inTensorType = ACL_DT_UNDEFINED)
 {
     atb::Tensor tensor;
-    aclDataType intermediateType = outTensorType;
+    aclDataType intermediateType;
     switch (outTensorType) {
+        case aclDataType::ACL_FLOAT:
+        case aclDataType::ACL_FLOAT16:
+        case aclDataType::ACL_BF16:
         case aclDataType::ACL_DOUBLE:
             intermediateType = aclDataType::ACL_FLOAT;
             break;
@@ -123,7 +127,8 @@ atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
         intermediateType = outTensorType;
     }
     tensor = CreateTensor(intermediateType, format, shape);
-    aclrtMemcpy(tensor.deviceData, tensor.dataSize, data.data(), sizeof(T) * data.size(), ACL_MEMCPY_HOST_TO_DEVICE);
+    CHECK_STATUS(aclrtMemcpy(
+        tensor.deviceData, tensor.dataSize, data.data(), sizeof(T) * data.size(), ACL_MEMCPY_HOST_TO_DEVICE));
     if (intermediateType == outTensorType) {
         // 原始创建的tensor类型，不需要转换
         return tensor;
