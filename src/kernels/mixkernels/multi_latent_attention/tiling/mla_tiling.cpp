@@ -102,10 +102,8 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
     mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
                         CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize);
     mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
-    if (mmInfo.flashDecoding) {
-        int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
-        mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
-    }
+    int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
+    mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
     MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
 }
@@ -257,16 +255,16 @@ inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
     auto maskShape = tensorMask.desc.dims;
     auto maxKvSeq = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     MKI_LOG(INFO) << "max kv seq" << *maxKvSeq;
-        auto maskDim = maskShape.size();
-        int32_t maxSeq = maskShape.at(maskDim - 1);
-        mmInfo.maxSeqLen = maxSeq;
+    auto maskDim = maskShape.size();
+    int32_t maxSeq = maskShape.at(maskDim - 1);
+    mmInfo.maxSeqLen = maxSeq;
     MKI_CHECK(maskType == OpParam::MLA::MASK_TYPE_MASK_FREE,
-                    "mask type invalid",
-                    return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
-                    return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(maskShape.at(1) == NORM_CMP_MASK_LEN, "compress mask shape should be 512, 512",
-                    return Status::FailStatus(ERROR_INVALID_VALUE));
+                "mask type invalid",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(maskShape.at(1) == NORM_CMP_MASK_LEN, "compress mask shape should be 512, 512",
+                return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
 }
 
