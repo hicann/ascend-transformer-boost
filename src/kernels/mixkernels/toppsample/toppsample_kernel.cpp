@@ -56,7 +56,8 @@ public:
         auto geTiling = optiling::CallGeTiling("TopPSample", *GetBinHandle(), launchParam,
                                                AsdOps::GetMkiSpecificAttr<OpParam::Toppsample>, kernelInfo_);
         auto scratchSizes = kernelInfo_.GetScratchSizes();
-        MKI_CHECK(!scratchSizes.empty() && scratchSizes.size() >= 1, "scratchSizes is empty", return false);
+        MKI_CHECK(!scratchSizes.empty() && scratchSizes.size() >= 1, "scratchSizes is empty", 
+                  return Status::FailStatus(ERROR_INVALID_VALUE, "scratchSizes should not be empty"));
         kernelInfo_.SetMemsetInfo(TENSOR_INPUT_NUM + TENSOR_OUTPUT_NUM, scratchSizes[0]);
         return geTiling;
     }
