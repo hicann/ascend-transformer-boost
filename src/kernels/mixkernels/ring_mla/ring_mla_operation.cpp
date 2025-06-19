@@ -228,9 +228,15 @@ private:
         auto minQSeqlenIter = std::min_element(qSeqLen.begin(), qSeqLen.end());
         MKI_CHECK((minQSeqlenIter == qSeqLen.end()) || ((minQSeqlenIter != qSeqLen.end() && *minQSeqlenIter >= 0)),
                   "qSeqlen min value invalid, please check", return false);
+        for (uint32_t i = 0; i < batch; ++i) {
+            if (kvSeqLen[i] == 0) {
+                continue;
+            }
+            MKI_CHECK((kvSeqLen[i] >= qSeqLen[i]), "if  kvSeqlen[i] > 0, then kvSeqlen[i] >= qSeqLen[i], please check",
+                      return false);
+        }
         MKI_LOG(INFO) << "[batch, head, maxQ, maxKv]: [" << batch << ", " << head << ", " << maxQ << ", "
                       << *maxKvSeqlenIter << "]";
-        MKI_CHECK(*maxKvSeqlenIter >= maxQ, "maxQ & maxKv inconsistent.", return false);
         ShapeParam shapePara = {maxQ, *maxKvSeqlenIter, batch};
         return CheckNdMask(mask, q, shapePara, param);
     }
