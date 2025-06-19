@@ -239,8 +239,10 @@ bool MlaParamCheck(const infer::SelfAttentionParam &opParam)
             return false;
         }
         if (opParam.maskType != infer::SelfAttentionParam::MASK_TYPE_UNDEFINED &&
-            opParam.maskType != infer::SelfAttentionParam::MASK_TYPE_NORM) {
-            ATB_LOG(ERROR) << "mla mode does not support alibi mask or compress mask";
+            opParam.maskType != infer::SelfAttentionParam::MASK_TYPE_NORM &&
+            opParam.maskType != infer::SelfAttentionParam::MASK_TYPE_SLIDING_WINDOW_NORM &&
+            opParam.maskType != infer::SelfAttentionParam::MASK_TYPE_SLIDING_WINDOW_COMPRESS) {
+            ATB_LOG(ERROR) << "mla mode does not support alibi mask";
             return false;
         }
         if (opParam.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR) {
@@ -279,10 +281,9 @@ bool SWAParamCheck(const infer::SelfAttentionParam &opParam)
         if (opParam.batchRunStatusEnable || opParam.kernelType != infer::SelfAttentionParam::KERNELTYPE_DEFAULT ||
             opParam.clampType != infer::SelfAttentionParam::CLAMP_TYPE_UNDEFINED ||
             opParam.quantType != infer::SelfAttentionParam::TYPE_QUANT_UNQUANT ||
-            opParam.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR || opParam.inputLayout != infer::TYPE_BSND ||
-            opParam.mlaVHeadSize > 0) {
+            opParam.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR || opParam.inputLayout != infer::TYPE_BSND) {
             ATB_LOG(ERROR) << "Sliding Window Attention does not support dynamic batch, high precision kernel, "
-                              "clamp, qkvquant, MLA, logN func and BNSD feature";
+                              "clamp, qkvquant, logN func and BNSD feature";
             return false;
         }
     } else {
@@ -1035,6 +1036,9 @@ Status SelfAttentionOperation::SWAMaskDimCheck(const SVector<TensorDesc> &inTens
         param_.calcType == infer::SelfAttentionParam::PA_ENCODER) {
         maskId -= 2; // 2: key,value 不传
     }
+    if (isMla_) {
+        maskId = 2;
+    }
     if (GetSingleton<Config>().Is910B()) {
         if (inTensorDescs.at(maskId).shape.dimNum != 2) { // 2: mask dimNum
             ATB_LOG(ERROR) << "dimNum of swa mask should be two";
@@ -1096,7 +1100,7 @@ Status SelfAttentionOperation::HeadSizeDimCheck910B(const SVector<TensorDesc> &i
         }
     }
     int64_t maxHeadSize = MAX_HEAD_SIZE_MLA;
-    if (param_.windowSize > 0 || param_.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR ||
+    if ((param_.windowSize > 0 && !isMla_) || param_.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR ||
         param_.inputLayout == atb::infer::InputLayout::TYPE_BNSD ||
         (!isMla_ && param_.quantType != infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT)) {
         maxHeadSize = 256; // 256: 不支持mla的场景headsize小于等于256
