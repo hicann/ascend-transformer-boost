@@ -24,7 +24,6 @@ const int32_t NUM4 = 4;
 const int32_t NUM5 = 5;
 const int32_t NUM6 = 6;
 const int32_t NUM8 = 8;
-const int32_t NUM12 = 12;
 const int32_t NUM16 = 16;
 const int32_t NUM32 = 32;
 const int32_t NUM64 = 64;
@@ -32,7 +31,6 @@ const int32_t NUM256 = 256;
 const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
 const float SPLITKV_SEQLEN = 2048;
-const float SPLITKV_RATIO = 0.72;
 
 int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int32_t blockSize)
 {
