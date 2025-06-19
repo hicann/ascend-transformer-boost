@@ -58,7 +58,7 @@ int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int
 
 Status BatchSeqSort(MLAInfo &mmInfo, uint32_t endIndex, uint32_t sortDim)
 {
-    if (sortDim <= 0 || endIndex <= 0) {
+    if (sortDim == 0 || endIndex <= 0) {
         return Status::OkStatus();
     }
     std::sort(mmInfo.batchList.begin(), mmInfo.batchList.end());
