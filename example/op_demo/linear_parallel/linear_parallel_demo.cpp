@@ -101,7 +101,7 @@ int main(int argc, const char *argv[])
     }
     // 父进程等待子进程执行完成
     for (int i = 0; i < processCount; ++i) {
-        wait(NULL);
+        wait(nullptr);
     }
     std::cout << "The communication operator is successfully executed. Parent process exit" << std::endl;
     return 0;
