@@ -14,7 +14,6 @@ const int32_t DEVICE_ID = 2;
 const uint32_t blockSize = 128;
 const uint32_t blockNum = 64;
 
-
 /**
  * @brief 准备atb::VariantPack中的输入tensor
  * @param contextPtr context指针

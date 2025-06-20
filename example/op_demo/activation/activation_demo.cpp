@@ -68,7 +68,7 @@ atb::Operation *SwigluOperation()
 }
 
 /**
- * @brief 进行Activation的Gelu示例调用
+ * @brief 进行Activation Gelu示例调用
  * @param context context指针
  * @param stream stream
  */
@@ -105,7 +105,7 @@ void RunGeluDemo(atb::Context *context, void *stream)
 }
 
 /**
- * @brief 进行Activation的Swiglu示例调用
+ * @brief 进行Activation Swiglu示例调用
  * @param context context指针
  * @param stream stream
  */

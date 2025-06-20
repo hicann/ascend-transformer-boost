@@ -14,6 +14,7 @@ const int32_t DEVICE_ID = 1;
 const uint32_t blockSize = 128;
 int32_t blockNum = 64;
 std::vector<int32_t> contextLensHost;
+
 /**
  * @brief 准备atb::VariantPack
  * @param contextPtr context指针
