@@ -468,8 +468,8 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
         transposeNode.inTensors = {&xTensor};
         transposeNode.outTensors = {&transposedXtensor};
 
-        param_.transposeA  = !param_.transposeA;
-        matmulParam_.transposeA = param_.transposeA;
+        bool matmulTransposeA  = !param_.transposeA;
+        matmulParam_.transposeA = matmulTransposeA;
         SetupMatmulOriShape(transposedXtensor, weightTensor);
 
         matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_ACCUM_ATOMIC;
