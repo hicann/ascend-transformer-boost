@@ -25,16 +25,16 @@ void PrepareInTensor1(atb::Context *contextPtr, aclrtStream stream, aclDataType 
 {
     // 创建shape为[tokenNum, 7168]的输入input tensor
     atb::Tensor input = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * 7168, 0), dtype,
-                                               aclFormat::ACL_FORMAT_ND, {tokenNum, 7168});
+                                               aclFormat::ACL_FORMAT_ND, {tokenNum, 7168}, dtype);
     // 创建shape为[7168]的输入gamma0 tensor
     atb::Tensor gamma0 = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(7168, 0), dtype,
-                                                aclFormat::ACL_FORMAT_ND, {7168});
+                                                aclFormat::ACL_FORMAT_ND, {7168}, dtype);
     // 创建shape为[7168]的输入beta0 tensor
     atb::Tensor beta0 = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(7168, 0), dtype,
-                                               aclFormat::ACL_FORMAT_ND, {7168});
+                                               aclFormat::ACL_FORMAT_ND, {7168}, dtype);
     // 创建shape为[1]的输入quantScale0 tensor
-    atb::Tensor quantScale0 =
-        CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1, 0), dtype, aclFormat::ACL_FORMAT_ND, {1});
+    atb::Tensor quantScale0 = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1, 0), dtype,
+                                                     aclFormat::ACL_FORMAT_ND, {1}, dtype);
     // 创建shape为[1]的输入quantOffset0 tensor
     atb::Tensor quantOffset0 =
         CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(1, 1), ACL_INT8, aclFormat::ACL_FORMAT_ND, {1});
@@ -55,13 +55,13 @@ void PrepareInTensor1(atb::Context *contextPtr, aclrtStream stream, aclDataType 
                                                aclFormat::ACL_FORMAT_ND, {2112});
     // 创建shape为[1536]的输入gamma1 tensor
     atb::Tensor gamma1 = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1536, 0), dtype,
-                                                aclFormat::ACL_FORMAT_ND, {1536});
+                                                aclFormat::ACL_FORMAT_ND, {1536}, dtype);
     // 创建shape为[1536]的输入beta1 tensor
     atb::Tensor beta1 = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1536, 0), dtype,
-                                               aclFormat::ACL_FORMAT_ND, {1536});
+                                               aclFormat::ACL_FORMAT_ND, {1536}, dtype);
     // 创建shape为[1]的输入quantScale1 tensor
-    atb::Tensor quantScale1 =
-        CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1, 0), dtype, aclFormat::ACL_FORMAT_ND, {1});
+    atb::Tensor quantScale1 = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1, 0), dtype,
+                                                     aclFormat::ACL_FORMAT_ND, {1}, dtype);
     // 创建shape为[1]的输入quantOffset1 tensor
     atb::Tensor quantOffset1 =
         CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(1, 1), ACL_INT8, aclFormat::ACL_FORMAT_ND, {1});
@@ -94,17 +94,17 @@ void PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDataType 
     atb::Tensor bias1 = CreateTensorFromVector(contextPtr, stream, std::vector<int32_t>(headNum * 192, 1), ACL_INT32,
                                                aclFormat::ACL_FORMAT_ND, {headNum * 192});
     // 创建shape为[512]的输入gamma2 tensor
-    atb::Tensor gamma2 =
-        CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(512, 0), dtype, aclFormat::ACL_FORMAT_ND, {512});
+    atb::Tensor gamma2 = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(512, 0), dtype,
+                                                aclFormat::ACL_FORMAT_ND, {512}, dtype);
     // 创建shape为[tokenNum,64]的输入cos tensor
     atb::Tensor cos = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * 64, 0), dtype,
-                                             aclFormat::ACL_FORMAT_ND, {tokenNum, 64});
+                                             aclFormat::ACL_FORMAT_ND, {tokenNum, 64}, dtype);
     // 创建shape为[tokenNum,64]的输入sin tensor
     atb::Tensor sin = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * 64, 0.5), dtype,
-                                             aclFormat::ACL_FORMAT_ND, {tokenNum, 64});
+                                             aclFormat::ACL_FORMAT_ND, {tokenNum, 64}, dtype);
     // 创建shape为[headNum,32,128,16]的输入wuk tensor
     atb::Tensor wuk = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(headNum * 32 * 128 * 16, 0), dtype,
-                                             aclFormat::ACL_FORMAT_FRACTAL_NZ, {headNum, 32, 128, 16});
+                                             aclFormat::ACL_FORMAT_FRACTAL_NZ, {headNum, 32, 128, 16}, dtype);
     // 创建shape为[blockNum, headNum*512/32,block_size, 32]的输入kvCache tensor
     atb::Tensor kvCache = CreateTensorFromVector(
         contextPtr, stream, std::vector<int8_t>(blockNum * headNum * 512 * blockSize, 1), ACL_INT8,
@@ -112,7 +112,7 @@ void PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDataType 
     // 创建shape为[blockNum, headNum*64/16 ,block_size, 16]的输入kvCacheRope tensor
     atb::Tensor kvCacheRope = CreateTensorFromVector(
         contextPtr, stream, std::vector<__fp16>(blockNum * headNum * 64 / 16 * blockSize * 16, 0), dtype,
-        aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, headNum * 64 / 16, blockSize, 16});
+        aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, headNum * 64 / 16, blockSize, 16}, dtype);
     auto slotmappingHost = std::vector<int32_t>(1, tokenNum);
     for (size_t i = 0; i < slotmappingHost.size(); i++)
         slotmappingHost[i] = static_cast<int32_t>(i);
@@ -120,11 +120,11 @@ void PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDataType 
     atb::Tensor slotmapping =
         CreateTensorFromVector(contextPtr, stream, slotmappingHost, ACL_INT32, aclFormat::ACL_FORMAT_ND, {tokenNum});
     // 创建shape为[1]的输入ctkvScale tensor
-    atb::Tensor ctkvScale =
-        CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1, 0), dtype, aclFormat::ACL_FORMAT_ND, {1});
+    atb::Tensor ctkvScale = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1, 0), dtype,
+                                                   aclFormat::ACL_FORMAT_ND, {1}, dtype);
     // 创建shape为[headNum]的输入qNopeScale tensor
     atb::Tensor qNopeScale = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(headNum, 0), dtype,
-                                                    aclFormat::ACL_FORMAT_ND, {headNum});
+                                                    aclFormat::ACL_FORMAT_ND, {headNum}, dtype);
     atb::SVector<atb::Tensor> tempTensors = {wuq, deScale1, bias1,       gamma2,      cos,       sin,
                                              wuk, kvCache,  kvCacheRope, slotmapping, ctkvScale, qNopeScale};
 

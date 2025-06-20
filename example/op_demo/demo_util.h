@@ -115,7 +115,6 @@ atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
     aclDataType intermediateType;
     switch (outTensorType) {
         case aclDataType::ACL_FLOAT:
-        case aclDataType::ACL_FLOAT16:
         case aclDataType::ACL_BF16:
         case aclDataType::ACL_DOUBLE:
             intermediateType = aclDataType::ACL_FLOAT;
@@ -135,4 +134,33 @@ atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
     }
     return CastOp(contextPtr, stream, tensor, outTensorType, shape);
 }
+
+// 简单soc判断型号是否为Atlas A2/A3
+bool isA2orA3() {
+    const char *socName = aclrtGetSocName();
+    if (!socName) {
+        std::cout << "aclrtGetSocName failed!";
+        return;
+    }
+
+    const uint32_t LEN_OF_ASCEND_910B = 10;
+    std::cout << "SocVersion: " << std::string(socName);
+    return (std::string(socName).find("Ascend910B") != std::string::npos &&
+            std::string(socName).length() > LEN_OF_ASCEND_910B) ||
+            std::string(socName).find("Ascend910_93") != std::string::npos;
+}
+
+// 简单soc判断型号是否为Atlas推理系列
+bool isAtlasInference() {
+    const char *socName = aclrtGetSocName();
+    if (!socName) {
+        std::cout << "aclrtGetSocName failed!";
+        return;
+    }
+
+    const uint32_t LEN_OF_ASCEND_910B = 10;
+    std::cout << "SocVersion: " << std::string(socName);
+    return std::string(socName).find("Ascend310B") != std::string::npos;
+}
+
 #endif
