@@ -945,11 +945,13 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
         // 上述的preLaunch当前只做了地址更新及tiling拷贝，后续考虑改名。当前为保证已有代码的质量不修改原有流程，后续需要考虑EAGER_MODE与GRAPH_MODE的流程归纳与复用。
     } else {
         ATB_LOG(INFO) << GetLogPrefix() << "begin update tensor addr.";
+        bool isWorkspaceChange = false;
         if (workspace == runnerVariantPack_.workspaceBuffer) {
             // 如果workspace地址没有变化，intermediateBuffer作为偏移量为0
             runnerVariantPack_.intermediateBuffer = nullptr;
         } else if (workspace > runnerVariantPack_.workspaceBuffer) {
             // 如果workspace发生了变化，计算workspace变化带来的偏移量时需要再加上workspaceBufferSize才是中间tensor对应内存的起始地址
+            isWorkspaceChange = true;
             runnerVariantPack_.intermediateBuffer = workspace -
             reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
@@ -958,6 +960,8 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
                           << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
 #endif
             runnerVariantPack_.workspaceBuffer = workspace;
+            // 刷新图中所有node的workpsaceBuffer
+            st = runner_->UpdateWorkspaceBuffer(runnerVariantPack_);
         } else {
             runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
             reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
@@ -967,8 +971,9 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
                           << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
 #endif
             runnerVariantPack_.workspaceBuffer = workspace;
+            st = runner_->UpdateWorkspaceBuffer(runnerVariantPack_);
         }
-        if (needUpdateTensorAddr_) {
+        if (needUpdateTensorAddr_ || isWorkspaceChange) {
             st = runner_->UpdateTensorAddr(runnerVariantPack_);
             ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "UpdateTensorAddr failed! ret:" << st;
             needUpdateTensorAddr_ = false;

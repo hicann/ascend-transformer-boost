@@ -1051,4 +1051,14 @@ Status GraphRunner::UpdateTensorAddr(RunnerVariantPack &runnerVariantPack)
     }
     return NO_ERROR;
 }
+
+Status GraphRunner::UpdateWorkspaceBuffer(RunnerVariantPack &runnerVariantPack)
+{
+    for (size_t i = 0; i < runnerGraph_.nodes.size(); i++) {
+        auto &node = runnerGraph_.nodes.at(i);
+        node.runnerVariantPack.workspaceBuffer = runnerVariantPack.workspaceBuffer;
+        node.runner->UpdateWorkspaceBuffer(node.runnerVariantPack);
+    }
+    return NO_ERROR;
+}
 } // namespace atb

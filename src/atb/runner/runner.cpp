@@ -302,4 +302,10 @@ Status Runner::UpdateTensorAddr(RunnerVariantPack &runnerVariantPack)
     (void)runnerVariantPack;
     return NO_ERROR;
 }
+
+Status Runner::UpdateWorkspaceBuffer(RunnerVariantPack &runnerVariantPack)
+{
+    (void)runnerVariantPack;
+    return NO_ERROR;
+}
 } // namespace atb
