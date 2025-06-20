@@ -41,8 +41,7 @@ tests/apitest/opstest/python/operations/paged_attention/
 2. 不带mask：
     paged_attention_inference_demo.cpp
     - 更改编译脚本为：
-    `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
-        paged_attention_inference_demo.cpp demo_util.h -l atb -l ascendcl -o paged_attention_inference_demo`
+    `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" paged_attention_inference_demo.cpp demo_util.h -l atb -l ascendcl -o paged_attention_inference_demo`
     - 运行时调用：
     `./paged_attention_inference_demo`
     - 该demo仅支持在Atlas推理系列产品上运行

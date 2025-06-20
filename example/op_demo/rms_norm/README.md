@@ -22,7 +22,6 @@
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=1 -I ...
         ```
-    - 提供的build脚本仅用于编译和运行rms_norm_demo.cpp，如需编译其他demo，需要替换“rms_norm_demo”为对应的cpp文件名
 
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：

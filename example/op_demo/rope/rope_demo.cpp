@@ -1,0 +1,101 @@
+/*
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#include "demo_util.h"
+
+const uint32_t BATCH_SIZE = 1;    // 批处理大小
+const uint32_t NTOKENS = 4;       // TOKEN大小
+const uint32_t HIDDENSIZEQ = 16;  // Q 隐藏层大小
+const uint32_t HIDDENSIZEK = 16;  // K 隐藏层大小
+const uint32_t HEAD_SIZE = 8;       // 头大小
+
+/**
+ * @brief 创建一个ROPE的Operation，并设置参数
+ * @return atb::Operation * 返回一个Operation指针
+ */
+atb::Operation *PrepareOperation()
+{
+    atb::infer::RopeParam opParam;
+    atb::Operation *ropeOp = nullptr;
+    CHECK_STATUS(atb::CreateOperation(opParam, &ropeOp));
+    return ropeOp;
+}
+
+/**
+ * @brief 准备atb::VariantPack中的所有输入tensor
+ * @param contextPtr context指针
+ * @param stream stream
+ * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
+ * @note 需要传入所有host侧tensor
+ */
+atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream)
+{
+    std::vector<float> qData(NTOKENS * HIDDENSIZEQ, 1.0);
+    atb::Tensor tensorQ = CreateTensorFromVector(
+        contextPtr, stream, qData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEQ});
+    std::vector<float> kData(NTOKENS * HIDDENSIZEK, 1.0);
+    atb::Tensor tensorK = CreateTensorFromVector(
+        contextPtr, stream, kData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEK});
+    std::vector<float> cos(NTOKENS * HEAD_SIZE, 1.0);
+    atb::Tensor tensorCos =
+        CreateTensorFromVector(contextPtr, stream, cos, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_SIZE});
+    std::vector<float> sin(NTOKENS * HEAD_SIZE, 1.0);
+    atb::Tensor tensorSin =
+        CreateTensorFromVector(contextPtr, stream, sin, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_SIZE});
+    std::vector<int32_t> seqLenHost(BATCH_SIZE, 4);
+    atb::Tensor tensorSeqLen = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE});
+    tensorSeqLen.hostData = seqLenHost.data();
+    atb::SVector<atb::Tensor> inTensors = {tensorQ, tensorK, tensorCos, tensorSin, tensorSeqLen};
+    return inTensors;
+}
+
+int main(int argc, char **argv)
+{
+    // 设置卡号、创建context、设置stream
+    CHECK_STATUS(aclInit(nullptr));
+    int32_t deviceId = 0;
+    CHECK_STATUS(aclrtSetDevice(deviceId));
+    atb::Context *context = nullptr;
+    CHECK_STATUS(atb::CreateContext(&context));
+    void *stream = nullptr;
+    CHECK_STATUS(aclrtCreateStream(&stream));
+    context->SetExecuteStream(stream);
+    // 算子实例
+    atb::Operation *ropeOp = PrepareOperation();
+    // 准备输入张量
+    atb::VariantPack variantPack;
+    variantPack.inTensors = PrepareInTensor(context, stream);
+    // 准备输入张量ropeQ和ropeK
+    atb::Tensor ropeQ = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEQ});
+    atb::Tensor ropeK = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEK});
+    variantPack.outTensors = {ropeQ, ropeK};
+    uint64_t workspaceSize = 0;
+    CHECK_STATUS(ropeOp->Setup(variantPack, workspaceSize, context));
+    uint8_t *workspacePtr = nullptr;
+    if (workspaceSize > 0) {
+        CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
+    }
+    // 算子执行
+    ropeOp->Execute(variantPack, workspacePtr, workspaceSize, context);
+    CHECK_STATUS(aclrtSynchronizeStream(stream));
+    for (atb::Tensor &inTensor : variantPack.inTensors) {
+        CHECK_STATUS(aclrtFree(inTensor.deviceData));
+    }
+    if (workspaceSize > 0) {
+        CHECK_STATUS(aclrtFree(workspacePtr));
+    }
+    // 资源释放
+    CHECK_STATUS(atb::DestroyOperation(ropeOp));
+    CHECK_STATUS(aclrtDestroyStream(stream));
+    CHECK_STATUS(atb::DestroyContext(context));
+    CHECK_STATUS(aclFinalize());
+    std::cout << "Rope demo success!" << std::endl;
+    return 0;
+}
