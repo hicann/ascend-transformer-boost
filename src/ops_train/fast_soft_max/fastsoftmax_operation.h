@@ -12,6 +12,7 @@
 #include "atb/operation/operation_base.h"
 #include "atb/train_op_params.h"
 
+
 namespace atb {
 class FastSoftMaxOperation : public OperationBase {
 public:
