@@ -128,6 +128,7 @@ void PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDataType 
                                                     aclFormat::ACL_FORMAT_ND, {headNum});
     atb::SVector<atb::Tensor> tempTensors = {wuq, deScale1, bias1,       gamma2,      cos,       sin,
                                              wuk, kvCache,  kvCacheRope, slotmapping, ctkvScale, qNopeScale};
+
     for (auto &tensor : tempTensors) {
         inTensors->push_back(tensor);
     }
