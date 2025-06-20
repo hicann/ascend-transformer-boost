@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "demo_util.h"
+#include "../demo_util.h"
 
 const int32_t DEVICE_ID = 1;
 const uint32_t blockSize = 128;

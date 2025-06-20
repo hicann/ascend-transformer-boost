@@ -10,7 +10,7 @@
 
 #include <unistd.h>
 #include <sys/wait.h>
-#include "demo_util.h"
+#include "../demo_util.h"
 
 void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context)
 {
