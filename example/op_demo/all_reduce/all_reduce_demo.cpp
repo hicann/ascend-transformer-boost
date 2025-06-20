@@ -10,7 +10,7 @@
 
 #include <string>
 #include <future>
-#include "demo_util.h"
+#include "../demo_util.h"
 
 struct Args {
     int rankId;

@@ -15,5 +15,5 @@ else
 fi
 
 g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
-gather_demo.cpp demo_util.h -l atb -l ascendcl -o gather_demo
+gather_demo.cpp ../demo_util.h -l atb -l ascendcl -o gather_demo
 ./gather_demo
