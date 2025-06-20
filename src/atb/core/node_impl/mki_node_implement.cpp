@@ -84,6 +84,23 @@ bool MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors,
     return true;
 }
 
+bool MkiNodeImplement::AddLens2LaunchParam(const SVector<int> &inputLens, const SVector<int> &outputLens)
+{
+    Mki::SVector<int> mkiInputLens;
+    Mki::SVector<int> mkiOutputLens;
+    TensorUtil::AtbSVector2OpsSVector(inputLens, mkiInputLens);
+    TensorUtil::AtbSVector2OpsSVector(inputLens, mkiOutputLens);
+    if (inputLens.size() > 0) {
+        launchParam_.SetInputLens(mkiInputLens);
+    }
+    if (outputLens.size() > 0) {
+        launchParam_.SetOutputLens(mkiOutputLens);
+    }
+    kernel_->SetLaunchWithTensorlist(true);
+    ATB_LOG(DEBUG) << GetLogPrefix() << " add lens to launchParam finish";
+    return true;
+}
+
 bool MkiNodeImplement::OperationGetBestKernel()
 {
     Mki::Kernel *kernel = operation_->GetBestKernel(launchParam_);

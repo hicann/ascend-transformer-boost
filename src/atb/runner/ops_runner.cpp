@@ -704,6 +704,12 @@ Status OpsRunner::PlanKernel(size_t nodeId, uint8_t *kernelHostTilingBuffer, uin
         return ERROR_INVALID_PARAM;
     }
 
+    if (node.inputLens.size() > 0 || node.outputLens.size() > 0) {
+        if (!node.impl->AddLens2LaunchParam(node.inputLens, node.outputLens)) {
+            ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] add lens to launchParam fail";
+            return ERROR_INVALID_PARAM;
+        }
+    }
     if (!node.impl->PlanKernelInferShape()) {
         ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] plan kernel inferShape fail";
         return ERROR_RT_FAIL;
