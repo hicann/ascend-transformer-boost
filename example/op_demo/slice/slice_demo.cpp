@@ -67,9 +67,9 @@ int main(int argc, char **argv)
     atb::Operation *op = PrepareOperation();
     // 准备输入张量
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream);                           // 放入输入tensor
-    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {2, 4});  // 创建输出tensor
-    variantPack.outTensors.push_back(tensorOut);                                        // 放入输出tensor
+    variantPack.inTensors = PrepareInTensor(context, stream);                          // 放入输入tensor
+    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {2, 4}); // 创建输出tensor
+    variantPack.outTensors.push_back(tensorOut);                                       // 放入输出tensor
 
     // 计算workspace大小
     uint64_t workspaceSize = 0;
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
 
     // execute阶段
     op->Execute(variantPack, workspacePtr, workspaceSize, context);
-    CHECK_STATUS(aclrtSynchronizeStream(stream));  // 流同步，等待device侧任务计算完成
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
 
     // 释放内存
     for (atb::Tensor &inTensor : variantPack.inTensors) {
@@ -91,9 +91,9 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
     // 资源释放
-    CHECK_STATUS(atb::DestroyOperation(op));  // operation，对象概念，先释放
+    CHECK_STATUS(atb::DestroyOperation(op)); // operation，对象概念，先释放
     CHECK_STATUS(aclrtDestroyStream(stream));
-    CHECK_STATUS(atb::DestroyContext(context));  // context，全局资源，后释放
+    CHECK_STATUS(atb::DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS((aclFinalize()));
     std::cout << "slice demo success!" << std::endl;
     return 0;
