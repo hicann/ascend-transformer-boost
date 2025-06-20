@@ -39,7 +39,6 @@ tests/apitest/opstest/python/operations/linear/
 2. 量化场景：
     linear_parallel_demo.cpp
     - 即更改编译脚本为：
-    `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
-linear_parallel_demo.cpp demo_util.h -l atb -l ascendcl -o linear_parallel_demo`
+    `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" linear_parallel_demo.cpp demo_util.h -l atb -l ascendcl -o linear_parallel_demo`
     - 运行时调用：
     `./linear_parallel_demo`

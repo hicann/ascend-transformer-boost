@@ -34,13 +34,12 @@ tests/apitest/opstest/python/operations/linear/
 ### 场景说明
 提供demo分别对应，编译运行时需要对应更改build脚本：
 1. 基础场景：
-    linaer_demo.cpp
+    linear_demo.cpp
     - 默认编译脚本可编译运行
 2. 爱因斯坦乘场景：
     linear_einsum_demo.cpp
     - 即更改编译脚本为：
-    `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
-linear_einsum_demo.cpp demo_util.h -l atb -l ascendcl -o linear_einsum_demo`
+    `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" linear_einsum_demo.cpp demo_util.h -l atb -l ascendcl -o linear_einsum_demo`
     - 运行时调用：
     `./linear_einsum_demo`
 3. 量化场景
