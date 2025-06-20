@@ -10,7 +10,7 @@
 
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
-#include "demo_util.h"
+#include "../demo_util.h"
 
 void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context)
 {

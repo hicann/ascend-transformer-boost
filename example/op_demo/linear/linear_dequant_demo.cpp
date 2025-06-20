@@ -10,7 +10,7 @@
 
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
-#include "demo_util.h"
+#include "../demo_util.h"
 
 const int32_t DEVICE_ID = 0;
 const uint32_t XDIM_0 = 2;
