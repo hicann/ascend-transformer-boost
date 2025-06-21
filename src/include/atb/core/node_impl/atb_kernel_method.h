@@ -36,6 +36,7 @@ public:
     virtual void Reset() = 0;
     virtual bool BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors, SVector<ViewFunc> &inTensorViewFuncs,
                                   const Mki::OpDesc &opDesc, size_t outTensorNum) = 0;
+    virtual bool AddLens2LaunchParam(const SVector<int> &inputLens, const SVector<int> &outputLens) = 0;
     virtual bool PlanKernelInferShape() = 0;
     virtual size_t GetTilingSize() const = 0;
     virtual bool UpdateBestKernel() = 0;
