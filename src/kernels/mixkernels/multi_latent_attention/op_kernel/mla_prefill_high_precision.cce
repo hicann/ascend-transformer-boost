@@ -471,7 +471,7 @@ public:
                                     l1p_buf_addr_tensor[l1_offset],
                                     p_gm_tensor[((uint64_t)block_idx * TMP_SIZE +
                                                 (n_idx - launch_delay) % vect_mod * TMP_SIZE / vect_mod) *
-                                                2 / sizeof(QKV_DT) + gm_p_offset],
+                                                2 / sizeof(QKV_DT) + l1_k_split_idx * n_slice + gm_p_offset],
                                     1, 0, 0, RoundUp<uint64_t>(sv_round_n, BlockSize<QKV_DT>()), // lenBurst
                                     0, 0);
                             } else {
