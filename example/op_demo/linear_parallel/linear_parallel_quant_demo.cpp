@@ -8,8 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "atb/utils/config.h"
-#include "atb/utils/singleton.h"
 #include "../demo_util.h"
 
 void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context)
@@ -23,16 +21,21 @@ void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *
     CHECK_STATUS(op->Execute(variantPack, (uint8_t *)workspace, workspaceSize, context));
 
     if (workspace) {
-        CHECK_STATUS(aclrtFree(workspace));  // 销毁workspace
+        CHECK_STATUS(aclrtFree(workspace)); // 销毁workspace
     }
 }
 
 void LinearParallelSample(int rank, int rankSize)
 {
     int ret = aclInit(nullptr);
+    if (!Is910B()) {
+        std::cout << "Linear parallel only supports A2/A3" << std::endl;
+        return;
+    }
     // 设置每个进程对应的deviceId
     int deviceId = rank;
     CHECK_STATUS(aclrtSetDevice(deviceId));
+
 
     atb::Context *context = nullptr;
     CHECK_STATUS(atb::CreateContext(&context));
@@ -40,17 +43,17 @@ void LinearParallelSample(int rank, int rankSize)
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
 
-    atb::Tensor input = CreateTensorFromVector(
-        context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 32});
+    atb::Tensor input = CreateTensorFromVector(context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16,
+                                               aclFormat::ACL_FORMAT_ND, {2, 32});
 
-    atb::Tensor weight = CreateTensorFromVector(
-        context, stream, std::vector<int8_t>(64, 2), aclDataType::ACL_INT8, aclFormat::ACL_FORMAT_ND, {32, 2});
+    atb::Tensor weight = CreateTensorFromVector(context, stream, std::vector<int8_t>(64, 2), aclDataType::ACL_INT8,
+                                                aclFormat::ACL_FORMAT_ND, {32, 2});
 
-    atb::Tensor bias = CreateTensorFromVector(
-        context, stream, std::vector<float>(1, 1.0), aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {1});
+    atb::Tensor bias = CreateTensorFromVector(context, stream, std::vector<float>(1, 1.0), aclDataType::ACL_FLOAT16,
+                                              aclFormat::ACL_FORMAT_ND, {1});
 
-    atb::Tensor deqScale = CreateTensorFromVector(
-        context, stream, std::vector<float>(1, 1.0), aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {1});
+    atb::Tensor deqScale = CreateTensorFromVector(context, stream, std::vector<float>(1, 1.0), aclDataType::ACL_FLOAT16,
+                                                  aclFormat::ACL_FORMAT_ND, {1});
 
     atb::Tensor output = CreateTensor(aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 2});
 
@@ -74,19 +77,15 @@ void LinearParallelSample(int rank, int rankSize)
     std::cout << "rank: " << rank << " executed END." << std::endl;
 
     // 资源释放
-    CHECK_STATUS(atb::DestroyOperation(op));     // 销毁op对象
-    CHECK_STATUS(aclrtDestroyStream(stream));    // 销毁stream
-    CHECK_STATUS(atb::DestroyContext(context));  // 销毁context
+    CHECK_STATUS(atb::DestroyOperation(op));    // 销毁op对象
+    CHECK_STATUS(aclrtDestroyStream(stream));   // 销毁stream
+    CHECK_STATUS(atb::DestroyContext(context)); // 销毁context
     CHECK_STATUS(aclFinalize());
     std::cout << "demo excute success" << std::endl;
 }
 
 int main(int argc, const char *argv[])
 {
-    if (!GetSingleton<Config>().Is910B()) {
-        std::cout << "Linear parallel only supports A2/A3" << std::endl;
-        return;
-    }
     const int processCount = 2;
     for (int i = 0; i < processCount; i++) {
         pid_t pid = fork();

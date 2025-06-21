@@ -8,8 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "atb/utils/config.h"
-#include "atb/utils/singleton.h"
 #include "../demo_util.h"
 
 const int32_t DEVICE_ID = 0;
@@ -65,16 +63,17 @@ atb::Operation *CreateLinearOperation()
 
 int main(int argc, char **argv)
 {
-    if (!GetSingleton<Config>().Is910B()) {
-        std::cout << "This linear demo only supports A2/A3" << std::endl;
-        return;
-    }
-    
     // 设置卡号、创建context、设置stream
     atb::Context *context = nullptr;
     void *stream = nullptr;
 
     CHECK_STATUS(aclInit(nullptr));
+    if (!Is910B()) {
+        std::cout << "This linear demo only supports A2/A3" << std::endl;
+        CHECK_STATUS(aclFinalize());
+        return 0;
+    }
+    
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));
