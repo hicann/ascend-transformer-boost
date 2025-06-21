@@ -445,6 +445,13 @@ void PrefillTilingHead(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffse
     tilingParam[NUM17] = mmInfo.maxKvSeqLen; // for bnsd, not used
 }
 
+int32_t GetKvFactor(const MLAInfo &mmInfo, int32_t kvSeqlen)
+{
+    auto kFirstDimVal = mmInfo.tensors.kCache.desc.dims.at(DIM_0);
+    int32_t kvFactor = (static_cast<int64_t>(mmInfo.batch) * static_cast<int64_t>(mmInfo.maxKvSeqLen)
+        == kFirstDimVal) ? mmInfo.maxKvSeqLen : kvSeqlen;
+    return kvFactor;
+}
 
 Status PrefillTilingParam(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffsets &addrOffsets,
                           int32_t kvRealHeads, uint32_t *tilingParam)
@@ -469,7 +476,7 @@ Status PrefillTilingParam(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOf
         tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM13] =
             static_cast<uint32_t>(addrOffsets.totalQBlkNum);
         tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM14] = 1;
-        auto kvFactor = mmInfo.maxKvSeqLen;
+        auto kvFactor = GetKvFactor(mmInfo, kvSeqlen);
         addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.numHeads * mmInfo.embeddingSizeV;
         addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
         addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
