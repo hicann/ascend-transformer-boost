@@ -761,7 +761,6 @@ private:
                         embed_split_size,   // k
                         embed_split_idx == 0     // cmatrixInitVal
                     );
-
                     PIPE_BARRIER(M);
                     SET_FLAG(M, MTE1, embed_split_idx % 2);
                     SET_FLAG(M, MTE1, embed_split_idx % 2 + 2);
@@ -949,6 +948,7 @@ private:
         SET_FLAG(MTE2, MTE1, EVENT_ID0);
         WAIT_FLAG(MTE2, MTE1, EVENT_ID0);
         uint32_t q_load_coeff = q_heads;
+        uint32_t q_load_coeff_round = RoundUp<16>(q_load_coeff);
         uint32_t l0a_pingpong_size = L0AB_UINT8_BUF_SIZE / sizeof(IN_DTYPE);
         uint32_t l0b_pingpong_size = L0AB_UINT8_BUF_SIZE / sizeof(IN_DTYPE);
         uint32_t l0c_pingpong_size = L0C_FLOAT_BUF_SIZE;
@@ -1034,7 +1034,7 @@ private:
                             uint32_t qk_c_pingpong_flag = (now_idx * cur_q_seqlen + q_i) % 2;
                             uint32_t qk_0_pingpong_flag = (embed_split_idx * cur_q_seqlen + q_i) % 2;
                             WAIT_FLAG(M, MTE1, qk_0_pingpong_flag);
-                            for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff / BLOCK_SIZE; ++loa_load_idx) {
+                            for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff_round / BLOCK_SIZE; ++loa_load_idx) {
                                 l1_to_l0_a<ArchType::ASCEND_V220, IN_DTYPE, false, DataFormat::VECTOR, DataFormat::VECTOR>(
                                     l0a_buf_tensor[qk_0_pingpong_flag * l0a_pingpong_size + loa_load_idx * round_embed_split_size * BLOCK_SIZE],
                                     l1q_buf_addr_tensor[q_i * q_heads * BLOCK_SIZE + embed_split_idx * m * round_embed_split_size + loa_load_idx * T_CUBE_MATRIX_SIZE],
@@ -1119,7 +1119,7 @@ private:
                         uint32_t qk_c_pingpong_flag = (now_idx * cur_q_seqlen + q_i) % 2;
                         uint32_t qk_0_pingpong_flag = (embed_split_idx * cur_q_seqlen + q_i) % 2;
                         WAIT_FLAG(M, MTE1, qk_0_pingpong_flag);
-                        for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff / BLOCK_SIZE; ++loa_load_idx) {
+                        for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff_round / BLOCK_SIZE; ++loa_load_idx) {
                             l1_to_l0_a<ArchType::ASCEND_V220, IN_ROPE_DTYPE, false, DataFormat::VECTOR, DataFormat::VECTOR>(
                                 l0a_buf_tensor[qk_0_pingpong_flag * 16384 + loa_load_idx * round_embed_split_size * BLOCK_SIZE],
                                 l1q_buf_addr_tensor[q_i * q_heads * BLOCK_SIZE + embed_split_idx * m * 128 + loa_load_idx * CUBE_MATRIX_SIZE],
@@ -1611,7 +1611,7 @@ public:
         WAIT_FLAG(V, MTE2, EVENT_ID4);
         WAIT_FLAG(V, MTE2, EVENT_ID7);
         WAIT_FLAG(MTE3, V, EVENT_ID2);
-
+        PIPE_BARRIER(ALL);
         if constexpr (flashDecoding) {
             int reduce_flag_id = 3;
             FftsCrossCoreSync<PIPE_MTE3, 0>(reduce_flag_id);
@@ -2406,11 +2406,8 @@ private:
             (split_num - 1) * __k * 4  // dstGap
         );
 
-        WAIT_FLAG(MTE3, V, EVENT_ID3);
         SET_FLAG(MTE3, V, EVENT_ID3);
-
-        WAIT_FLAG(MTE3, MTE2, EVENT_ID1);
-        SET_FLAG(MTE3, MTE2, EVENT_ID1);
+        WAIT_FLAG(MTE3, V, EVENT_ID3);
     }
 
     __aicore__ __attribute__((always_inline)) inline void CombineScaleBlock(uint32_t num_tokens, uint32_t q_heads, uint32_t kv_split_core_num, uint32_t embedding_size)
@@ -3391,6 +3388,9 @@ private:
         if constexpr (std::is_same_v<IN_DTYPE,int8_t>) {
             oPingPongFlag = 0;
         }
+        if (head_loop <= 1 && q_seq_len <= 1) {
+            oPingPongFlag = 0;
+        }
         uint32_t oUbOffset = oPingPongFlag * 4096; // oPingPongFlag * 8 * 512
         WAIT_FLAG(V, MTE2, oPingPongFlag);
         if (n_idx != 4) {
@@ -3423,7 +3423,7 @@ private:
                 round_sub_m / FLOAT_BLOCK_SIZE  // repeat
             );
             PIPE_BARRIER(V);
-            if (head_loop > 1) {
+            if (head_loop > 1 || q_seq_len > 1) {
                 gm_to_ub<ArchType::ASCEND_V220, float>(
                     go32_ubuf_tensor[oUbOffset],
                     go_gm_tensor,
@@ -3657,7 +3657,7 @@ private:
                 }
             }
         }
-        else if (head_loop > 1) {
+        else if (head_loop > 1 || q_seq_len > 1) {
             SET_FLAG(V, MTE3, EVENT_ID5);
             WAIT_FLAG(V, MTE3, EVENT_ID5);
             ub_to_gm<ArchType::ASCEND_V220, float>(

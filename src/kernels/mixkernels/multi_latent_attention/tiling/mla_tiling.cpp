@@ -73,7 +73,7 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
     if (!mmInfo.flashDecoding) {
         return Status::OkStatus();
     }
-    mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
+    mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ? blockDim / mmInfo.flashDecodingTaskNum :
                         CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize);
     mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
     if (mmInfo.flashDecoding) {
@@ -84,7 +84,6 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
         int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
         mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
     }
-    MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
 }
 
@@ -115,16 +114,17 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.numHeads = static_cast<int32_t>(param.headSize);
     mmInfo.maskType = static_cast<int32_t>(param.maskType);
     mmInfo.quantFlag = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
-    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT);
-    if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
-        mmInfo.maskType = 0;
-    }
     mmInfo.totalTaskNum = mmInfo.qSeqLen != nullptr ?
                           std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
                           mmInfo.batch;
-    if (mmInfo.mtpTp1Flag) {
-        OP_TILING_CHECK_STATUS_RETURN(GetFlashDecodingInfo(mmInfo, param, blockDim));
+    OP_TILING_CHECK_STATUS_RETURN(GetFlashDecodingInfo(mmInfo, param, blockDim));
+    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT ||
+                         (mmInfo.flashDecoding && !mmInfo.quantFlag && mmInfo.numHeads % NUM8 == 0));
+    mmInfo.flashDecoding = !mmInfo.mtpTp1Flag ? false : mmInfo.flashDecoding;
+    if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
+        mmInfo.maskType = 0;
     }
+    MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
 }
 
