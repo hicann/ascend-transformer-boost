@@ -19,46 +19,37 @@ const uint32_t DIM_2 = 128;
  * @brief 准备atb::VariantPack中的所有输入tensor
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
- * @note 需要传入所有host侧tensor
+ * @param inTensors atb::VariantPack中的输入tensor
+ * @return atb::Status 错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建shape为[32, 64, 128]的tensor
-    atb::Tensor dy = CreateTensorFromVector(contextPtr,
-        stream,
-        std::vector<float>(DIM_0 * DIM_1 * DIM_2, 2.0),
-        ACL_FLOAT,
-        aclFormat::ACL_FORMAT_ND,
-        {DIM_0, DIM_1, DIM_2});
-    atb::Tensor x = CreateTensorFromVector(contextPtr,
-        stream,
-        std::vector<float>(DIM_0 * DIM_1 * DIM_2, 2.0),
-        ACL_FLOAT,
-        aclFormat::ACL_FORMAT_ND,
-        {DIM_0, DIM_1, DIM_2});
-    atb::Tensor rstd = CreateTensorFromVector(contextPtr,
-        stream,
-        std::vector<float>(DIM_0 * DIM_1, 2.0),
-        ACL_FLOAT,
-        aclFormat::ACL_FORMAT_ND,
-        {DIM_0, DIM_1, 1});
-    atb::Tensor gamma = CreateTensorFromVector(
-        contextPtr, stream, std::vector<float>(DIM_2, 2.0), ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {DIM_2});
-    atb::SVector<atb::Tensor> inTensors = {dy, x, rstd, gamma};
-    return inTensors;
+    atb::Tensor dy;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1 * DIM_2, 2.0), ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, dy));
+    atb::Tensor x;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1 * DIM_2, 2.0), ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, x));
+    atb::Tensor rstd;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1, 2.0), ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, 1}, rstd));
+    atb::Tensor gamma;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_2, 2.0), ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {DIM_2}, gamma));
+    inTensors = {dy, x, rstd, gamma};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个rmsnorm backward operation
- * @return atb::Operation * 返回一个Operation指针
+ * @param rmsNormOp 创建一个Operation指针
+ * @return atb::Status 错误码
  */
-atb::Operation *CreateRmsNormBackwardOperation()
+atb::Status CreateRmsNormBackwardOperation(atb::Operation **rmsNormBackwardOp)
 {
     atb::train::RmsNormBackwardParam param;
-    atb::Operation *rmsNormBackwardOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(param, &rmsNormBackwardOp));
-    return rmsNormBackwardOp;
+    return atb::CreateOperation(param, rmsNormBackwardOp);
 }
 
 int main(int argc, char **argv)
@@ -66,21 +57,27 @@ int main(int argc, char **argv)
     // 设置卡号、创建context、设置stream
     atb::Context *context = nullptr;
     void *stream = nullptr;
-
     CHECK_STATUS(aclInit(nullptr));
+    if (!Is910B()) {
+        std::cout << "This self attention demo only supports Atlas A2/A3 products" << std::endl;
+        return 0;
+    }
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));
-    context->SetExecuteStream(stream);
+    CHECK_STATUS(context->SetExecuteStream(stream));
 
     // 创建op
-    atb::Operation *rmsnormBackwardOp = CreateRmsNormBackwardOperation();
+    atb::Operation *rmsnormBackwardOp = nullptr;
+    CHECK_STATUS(CreateRmsNormBackwardOperation(&rmsnormBackwardOp));
     // 准备输入tensor
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream);  // 放入输入tensor
-    atb::Tensor dx = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2});
-    atb::Tensor dgamma = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {DIM_2});
-    variantPack.outTensors = {dx, dgamma};  // 放入输出tensor
+    CHECK_STATUS(PrepareInTensor(context, stream, variantPack.inTensors)); // 放入输入tensor
+    atb::Tensor dx;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, dx));
+    atb::Tensor dgamma;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {DIM_2}, dgamma));
+    variantPack.outTensors = {dx, dgamma}; // 放入输出tensor
 
     uint64_t workspaceSize = 0;
     // 计算workspace大小
@@ -91,7 +88,7 @@ int main(int argc, char **argv)
     }
     // rmsnorm执行
     rmsnormBackwardOp->Execute(variantPack, workspacePtr, workspaceSize, context);
-    CHECK_STATUS(aclrtSynchronizeStream(stream));  // 流同步，等待device侧任务计算完成
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
 
     // 释放资源
     for (atb::Tensor &inTensor : variantPack.inTensors) {
@@ -103,9 +100,9 @@ int main(int argc, char **argv)
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
-    CHECK_STATUS(atb::DestroyOperation(rmsnormBackwardOp));  // operation，对象概念，先释放
+    CHECK_STATUS(atb::DestroyOperation(rmsnormBackwardOp)); // operation，对象概念，先释放
     CHECK_STATUS(aclrtDestroyStream(stream));
-    CHECK_STATUS(DestroyContext(context));  // context，全局资源，后释放
+    CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());
     std::cout << "Rmsnorm backward demo success!" << std::endl;
     return 0;

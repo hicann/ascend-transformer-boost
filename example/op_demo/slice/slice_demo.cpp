@@ -14,34 +14,35 @@
  * @brief 准备atb::VariantPack中的所有输入tensor
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
+ * @param inTensors atb::VariantPack中的输入tensor
+ * @return atb::Status atb错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     uint32_t dim0 = 3;
     uint32_t dim1 = 6;
     // 创建tensor0
     std::vector<float> tensorzero{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
-    atb::Tensor tensorZero =
-        CreateTensorFromVector(contextPtr, stream, tensorzero, ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
+    atb::Tensor tensorZero;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, tensorzero, ACL_FLOAT, aclFormat::ACL_FORMAT_ND,
+                                        {dim0, dim1}, tensorZero));
 
     // 根据顺序将所有输入tensor放入SVector
-    atb::SVector<atb::Tensor> inTensors = {tensorZero};
-    return inTensors;
+    inTensors = {tensorZero};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个slice的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @param 创建一个Operation指针
+ * @return atb::Status atb错误码
  */
-atb::Operation *PrepareOperation()
+atb::Status PrepareOperation(atb::Operation **op)
 {
     atb::infer::SliceParam sliceParam;
     sliceParam.offsets = {1, 2};
     sliceParam.size = {2, 4};
-    atb::Operation *op = nullptr;
-    CHECK_STATUS(atb::CreateOperation(sliceParam, &op));
-    return op;
+    return atb::CreateOperation(sliceParam, op);
 }
 
 int main(int argc, char **argv)
@@ -54,15 +55,17 @@ int main(int argc, char **argv)
     CHECK_STATUS(atb::CreateContext(&context));
     void *stream = nullptr;
     CHECK_STATUS(aclrtCreateStream(&stream));
-    context->SetExecuteStream(stream);
+    CHECK_STATUS(context->SetExecuteStream(stream));
 
     // Slice示例
-    atb::Operation *op = PrepareOperation();
+    atb::Operation *op = nullptr;
+    CHECK_STATUS(PrepareOperation(&op));
     // 准备输入张量
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream);                          // 放入输入tensor
-    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {2, 4}); // 创建输出tensor
-    variantPack.outTensors.push_back(tensorOut);                                       // 放入输出tensor
+    CHECK_STATUS(PrepareInTensor(context, stream, variantPack.inTensors)); // 放入输入tensor
+    atb::Tensor tensorOut;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {2, 4}, tensorOut)); // 创建输出tensor
+    variantPack.outTensors.push_back(tensorOut);                                        // 放入输出tensor
 
     // 计算workspace大小
     uint64_t workspaceSize = 0;
@@ -73,7 +76,7 @@ int main(int argc, char **argv)
     }
 
     // execute阶段
-    op->Execute(variantPack, workspacePtr, workspaceSize, context);
+    CHECK_STATUS(op->Execute(variantPack, workspacePtr, workspaceSize, context));
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
 
     // 释放内存

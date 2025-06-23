@@ -14,8 +14,9 @@
  * @brief 进行Activation Split示例调用
  * @param context context指针
  * @param stream stream
+ * @return atb::Status atb错误码
  */
-void RunSplitDemo(atb::Context *context, void *stream)
+atb::Status RunSplitDemo(atb::Context *context, void *stream)
 {
     // 配置Op参数
     atb::infer::SplitParam opParam;
@@ -33,10 +34,13 @@ void RunSplitDemo(atb::Context *context, void *stream)
     std::vector<float> output1RefData = {0, 1, 2, 3};
     std::vector<float> output2RefData = {4, 5, 6, 7, 8, 9};
 
-    atb::Tensor inTensorX =
-        CreateTensorFromVector(context, stream, inTensorXData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, inputXShape);
-    atb::Tensor outTensor1 = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, output1Shape);
-    atb::Tensor outTensor2 = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, output2Shape);
+    atb::Tensor inTensorX;
+    CHECK_STATUS(CreateTensorFromVector(context, stream, inTensorXData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        inputXShape, inTensorX));
+    atb::Tensor outTensor1;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, output1Shape, outTensor1));
+    atb::Tensor outTensor2;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, output2Shape, outTensor2));
 
     variantPack.inTensors = {inTensorX};
     variantPack.outTensors = {outTensor1, outTensor2};
@@ -65,7 +69,7 @@ void RunSplitDemo(atb::Context *context, void *stream)
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
-    CHECK_STATUS(atb::DestroyOperation(splitOp));
+    return atb::DestroyOperation(splitOp);
 }
 
 int main(int argc, char **argv)
@@ -79,7 +83,7 @@ int main(int argc, char **argv)
     void *stream = nullptr;
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
-    RunSplitDemo(context, stream);
+    CHECK_STATUS(RunSplitDemo(context, stream));
 
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(atb::DestroyContext(context));

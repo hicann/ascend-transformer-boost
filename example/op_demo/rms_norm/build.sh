@@ -19,6 +19,6 @@ except ImportError:
 
 echo "Using cxx_abi=$cxx_abi"
 
-g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi-I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
+g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" \
 rms_norm_demo.cpp ../demo_util.h -l atb -l ascendcl -o rms_norm_demo
 ./rms_norm_demo

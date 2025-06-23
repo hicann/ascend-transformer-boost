@@ -8,6 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
 #include <random>
 #include <unordered_set>
 #include "../demo_util.h"
@@ -24,7 +27,7 @@ uint32_t BLOCK_SIZE = 128;
  * @param kvflag 0:key; 1:value
  * @return 输入tensorK或输入tensorV
  */
-std::vector<int8_t> KvGeneration(bool kvflag)
+std::vector<float> KvGeneration(bool kvflag)
 {
     // 创建随机数生成器
     std::random_device rd;
@@ -34,7 +37,7 @@ std::vector<int8_t> KvGeneration(bool kvflag)
     // 定义要生成的随机数的个数
     size_t num_elements = kvflag ? NUM_TOKENS * NUM_HEAD * V_HEAD_SIZE : NUM_TOKENS * NUM_HEAD * K_HEAD_SIZE;
     // 创建一个 vector 并填充随机数
-    std::vector<int8_t> intensorKV;
+    std::vector<float> intensorKV;
     for (size_t i = 0; i < num_elements; ++i) {
         intensorKV.push_back(dis(gen));
     }
@@ -72,65 +75,67 @@ std::vector<int32_t> SlotmappingGeneration(int slotRange, size_t num_tokens)
  * @brief 准备atb::VariantPack
  * @param contextPtr context指针
  * @param stream stream
- * @param seqLenHost host侧tensor。序列长度向量，等于1时，为增量或全量；大于1时，为全量
- * @param tokenOffsetHost host侧tensor。计算完成后的token偏移
- * @param layerId layerId，取cache的kv中哪一个kv进行计算
- * @return atb::VariantPack
+ * @param variantPack atb::VariantPack
+ * @return atb::Status 错误码
  */
-atb::VariantPack PrepareVariantPack(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareVariantPack(atb::Context *contextPtr, aclrtStream stream, atb::VariantPack &variantPack)
 {
     // 创建key，value tensor
-    std::vector<int8_t> keyData = KvGeneration(false);
-    atb::Tensor tensorKey = CreateTensorFromVector(contextPtr, stream, keyData, ACL_INT8, aclFormat::ACL_FORMAT_ND,
-                                                   {NUM_TOKENS, NUM_HEAD, K_HEAD_SIZE});
-    std::vector<int8_t> valueData = KvGeneration(true);
-    atb::Tensor tensorValue = CreateTensorFromVector(contextPtr, stream, valueData, ACL_INT8, aclFormat::ACL_FORMAT_ND,
-                                                     {NUM_TOKENS, NUM_HEAD, V_HEAD_SIZE});
+    std::vector<float> keyData = KvGeneration(false);
+    atb::Tensor tensorKey;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, keyData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NUM_TOKENS, NUM_HEAD, K_HEAD_SIZE}, tensorKey));
+    std::vector<float> valueData = KvGeneration(true);
+    atb::Tensor tensorValue;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, valueData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NUM_TOKENS, NUM_HEAD, V_HEAD_SIZE}, tensorValue));
     // 创建kvCache tensor
-    std::vector<int8_t> kCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * K_HEAD_SIZE, 0);
-    atb::Tensor tensorKCache =
-        CreateTensorFromVector(contextPtr, stream, kCacheData, ACL_INT8, aclFormat::ACL_FORMAT_FRACTAL_NZ,
-                               {NUM_BLOCKS, NUM_HEAD * K_HEAD_SIZE / 16, BLOCK_SIZE, 16});
-    std::vector<int8_t> vCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * V_HEAD_SIZE, 0);
-    atb::Tensor tensorVCache =
-        CreateTensorFromVector(contextPtr, stream, vCacheData, ACL_INT8, aclFormat::ACL_FORMAT_FRACTAL_NZ,
-                               {NUM_BLOCKS, NUM_HEAD * V_HEAD_SIZE / 16, BLOCK_SIZE, 16});
+    // std::vector<float> kCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * K_HEAD_SIZE, 0);
+    std::vector<unsigned int16_t> kCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * K_HEAD_SIZE, 0);
+    atb::Tensor tensorKCache;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
+                                        {NUM_BLOCKS, NUM_HEAD * K_HEAD_SIZE / 16, BLOCK_SIZE, 16}, tensorKCache,
+                                        ACL_FLOAT16));
+    std::vector<unsigned int16_t> vCacheData(NUM_BLOCKS * BLOCK_SIZE * NUM_HEAD * V_HEAD_SIZE, 0);
+    atb::Tensor tensorVCache;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, vCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
+                                        {NUM_BLOCKS, NUM_HEAD * V_HEAD_SIZE / 16, BLOCK_SIZE, 16}, tensorVCache,
+                                        ACL_FLOAT16));
     // 创建SlotMapping
     std::vector<int32_t> slotMappingData = SlotmappingGeneration(NUM_BLOCKS * BLOCK_SIZE, NUM_TOKENS);
-    atb::Tensor tensorSlotMapping = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {NUM_TOKENS});
+    atb::Tensor tensorSlotMapping;
+    CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {NUM_TOKENS}, tensorSlotMapping));
     CHECK_STATUS(aclrtMemcpy(tensorSlotMapping.deviceData, tensorSlotMapping.dataSize, slotMappingData.data(),
                              sizeof(int32_t) * slotMappingData.size(), ACL_MEMCPY_HOST_TO_DEVICE));
     // 根据顺序将所有输入tensor放入SVector
     atb::SVector<atb::Tensor> inTensors = {tensorKey, tensorValue, tensorKCache, tensorVCache, tensorSlotMapping};
     // 准备输入张量
-    atb::VariantPack variantPack;
     variantPack.inTensors = inTensors;                     // 放入输入tensor
     variantPack.outTensors = {tensorKCache, tensorVCache}; // 放入输出tensor
-    return variantPack;
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个Reshape and Cache的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @param reshapeAndCacheOp 创建一个Operation指针
+ * @return atb::Status 错误码
  */
-atb::Operation *PrepareOperation()
+atb::Status PrepareOperation(atb::Operation **reshapeAndCacheOp)
 {
     atb::infer::ReshapeAndCacheParam opParam;
     opParam.compressType = atb::infer::ReshapeAndCacheParam::CompressType::COMPRESS_TYPE_UNDEFINED;
     opParam.kvCacheCfg = atb::infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_CACHE;
-    atb::Operation *reshapeAndCacheOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(opParam, &reshapeAndCacheOp));
-    return reshapeAndCacheOp;
+    return atb::CreateOperation(opParam, reshapeAndCacheOp);
 }
 
 int main(int argc, char **argv)
 {
+    // 设置卡号、创建context、设置stream
+    CHECK_STATUS(aclInit(nullptr));
     if (!Is310P()) {
         std::cout << "This ReshapeAndCache demo only supports Atlas inference products" << std::endl;
         return 0;
     }
-    // 设置卡号、创建context、设置stream
-    CHECK_STATUS(aclInit(nullptr));
     int32_t deviceId = 0;
     CHECK_STATUS(aclrtSetDevice(deviceId));
     atb::Context *context = nullptr;
@@ -140,9 +145,11 @@ int main(int argc, char **argv)
     context->SetExecuteStream(stream);
 
     // RAC示例
-    atb::Operation *reshapeAndCacheOp = PrepareOperation();
+    atb::Operation *reshapeAndCacheOp = nullptr;
+    CHECK_STATUS(PrepareOperation(&reshapeAndCacheOp));
     // 准备variantPack
-    atb::VariantPack variantPack = PrepareVariantPack(context, stream);
+    atb::VariantPack variantPack;
+    CHECK_STATUS(PrepareVariantPack(context, stream, variantPack));
     uint64_t workspaceSize = 0;
     // 对输入tensor和输出tensor进行校验
     CHECK_STATUS(reshapeAndCacheOp->Setup(variantPack, workspaceSize, context));
@@ -151,7 +158,7 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     // RAC执行
-    reshapeAndCacheOp->Execute(variantPack, workspacePtr, workspaceSize, context);
+    CHECK_STATUS(reshapeAndCacheOp->Execute(variantPack, workspacePtr, workspaceSize, context));
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     for (atb::Tensor &inTensor : variantPack.inTensors) {
         CHECK_STATUS(aclrtFree(inTensor.deviceData));

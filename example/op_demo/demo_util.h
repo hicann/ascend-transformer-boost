@@ -149,7 +149,7 @@ bool Is910B()
         return false;
     }
     const uint32_t LEN_OF_ASCEND_910B = 10;
-    std::cout << "SocVersion: " << std::string(socName);
+    std::cout << "SocVersion: " << std::string(socName) << std::endl;
     return (std::string(socName).find("Ascend910B") != std::string::npos &&
             std::string(socName).length() > LEN_OF_ASCEND_910B) ||
            std::string(socName).find("Ascend910_93") != std::string::npos;
@@ -164,8 +164,8 @@ bool Is310P()
         return false;
     }
     const uint32_t LEN_OF_ASCEND_910B = 10;
-    std::cout << "SocVersion: " << std::string(socName);
-    return std::string(socName).find("Ascend310B") != std::string::npos;
+    std::cout << "SocVersion: " << std::string(socName) << std::endl;
+    return std::string(socName).find("Ascend310P") != std::string::npos;
 }
 
 #endif

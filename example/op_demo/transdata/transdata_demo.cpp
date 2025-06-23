@@ -18,30 +18,31 @@ const uint32_t HIDDEN_SIZE = 30; // 隐藏层维度
  * @brief 准备atb::VariantPack中的所有输入tensor
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> 返回一个{[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]}的输入Tensors
+ * @param inTensors 创建输入Tensors
+ * @return atb::Status atb错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensors(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareInTensors(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建一个[BATCH_SIZE*SEQ_LEN*HIDDEN_SIZE]的vector，其中各个值为取值范围为[-100,100)的随机数
     std::vector<float> inTensorData(BATCH_SIZE * SEQ_LEN * HIDDEN_SIZE, 1.0);
     // 创建输入Tensor
-    atb::Tensor inTensor = CreateTensorFromVector(contextPtr, stream, inTensorData, ACL_FLOAT16,
-                                                  aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE});
-    atb::SVector<atb::Tensor> inTensors = {inTensor};
-    return inTensors;
+    atb::Tensor inTensor;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, inTensorData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE}, inTensor));
+    inTensors = {inTensor};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
- * @brief 创建一个 ND转NZ的TransdataOperation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @brief 创建一个ND转NZ的TransdataOperation，并设置参数
+ * @param atb::Operation * 创建一个Operation指针
+ * @return atb::Status atb错误码
  */
-atb::Operation *PrepareOperation()
+atb::Status PrepareOperation(atb::Operation **transdataOp)
 {
     atb::infer::TransdataParam opParam;
     opParam.transdataType = atb::infer::TransdataParam::TransdataType::ND_TO_FRACTAL_NZ;
-    atb::Operation *transdataOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(opParam, &transdataOp));
-    return transdataOp;
+    return atb::CreateOperation(opParam, transdataOp);
 }
 
 int main(int argc, char **argv)
@@ -57,14 +58,17 @@ int main(int argc, char **argv)
     context->SetExecuteStream(stream);
 
     // TransdataOp ND to NZ示例
-    atb::Operation *transdataOp = PrepareOperation();
+    atb::Operation *transdataOp;
+    PrepareOperation(&transdataOp);
     // 准备VariantPack
     uint32_t ALIGN_16 = 16;
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensors(context, stream); // 放入输入tensor
-    atb::Tensor outTensor = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
-                                         {BATCH_SIZE, (HIDDEN_SIZE + ALIGN_16 - 1) / ALIGN_16,
-                                          (SEQ_LEN + ALIGN_16 - 1) / ALIGN_16 * ALIGN_16, ALIGN_16});
+    CHECK_STATUS(PrepareInTensors(context, stream, variantPack.inTensors)); // 放入输入tensor
+    atb::Tensor outTensor;
+    CHECK_STATUS(CreateTensor(
+        ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
+        {BATCH_SIZE, (HIDDEN_SIZE + ALIGN_16 - 1) / ALIGN_16, (SEQ_LEN + ALIGN_16 - 1) / ALIGN_16 * ALIGN_16, ALIGN_16},
+        outTensor));
     variantPack.outTensors.push_back(outTensor); // 放入输出tensor
     uint64_t workspaceSize = 0;
     // Transdata ND to NZ准备工作
@@ -74,7 +78,7 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     // Transdata ND to NZ执行
-    transdataOp->Execute(variantPack, workspacePtr, workspaceSize, context);
+    CHECK_STATUS(transdataOp->Execute(variantPack, workspacePtr, workspaceSize, context));
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
 
     for (atb::Tensor &inTensor : variantPack.inTensors) {

@@ -10,50 +10,54 @@
 
 #include "../demo_util.h"
 
-const uint32_t BATCH_SIZE = 1;    // 批处理大小
-const uint32_t NTOKENS = 4;       // TOKEN大小
-const uint32_t HIDDENSIZEQ = 16;  // Q 隐藏层大小
-const uint32_t HIDDENSIZEK = 16;  // K 隐藏层大小
-const uint32_t HEAD_SIZE = 8;       // 头大小
+const uint32_t BATCH_SIZE = 1;   // 批处理大小
+const uint32_t NTOKENS = 4;      // TOKEN大小
+const uint32_t HIDDENSIZEQ = 16; // Q 隐藏层大小
+const uint32_t HIDDENSIZEK = 16; // K 隐藏层大小
+const uint32_t HEAD_SIZE = 8;    // 头大小
 
 /**
- * @brief 创建一个ROPE的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @brief 创建一个rope operation
+ * @param rmsNormOp 创建一个Operation指针
+ * @return atb::Status 错误码
  */
-atb::Operation *PrepareOperation()
+atb::Status PrepareOperation(atb::Operation **ropeOp)
 {
     atb::infer::RopeParam opParam;
-    atb::Operation *ropeOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(opParam, &ropeOp));
-    return ropeOp;
+    return atb::CreateOperation(opParam, ropeOp);
 }
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
- * @note 需要传入所有host侧tensor
+ * @param inTensors atb::VariantPack中的输入tensor
+ * @return atb::Status 错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     std::vector<float> qData(NTOKENS * HIDDENSIZEQ, 1.0);
-    atb::Tensor tensorQ = CreateTensorFromVector(
-        contextPtr, stream, qData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEQ});
+    atb::Tensor tensorQ;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, qData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NTOKENS, HIDDENSIZEQ}, tensorQ));
     std::vector<float> kData(NTOKENS * HIDDENSIZEK, 1.0);
-    atb::Tensor tensorK = CreateTensorFromVector(
-        contextPtr, stream, kData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEK});
+    atb::Tensor tensorK;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NTOKENS, HIDDENSIZEK}, tensorK));
     std::vector<float> cos(NTOKENS * HEAD_SIZE, 1.0);
-    atb::Tensor tensorCos =
-        CreateTensorFromVector(contextPtr, stream, cos, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_SIZE});
+    atb::Tensor tensorCos;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, cos, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NTOKENS, HEAD_SIZE}, tensorCos));
     std::vector<float> sin(NTOKENS * HEAD_SIZE, 1.0);
-    atb::Tensor tensorSin =
-        CreateTensorFromVector(contextPtr, stream, sin, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_SIZE});
+    atb::Tensor tensorSin;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, sin, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NTOKENS, HEAD_SIZE}, tensorSin));
     std::vector<int32_t> seqLenHost(BATCH_SIZE, 4);
-    atb::Tensor tensorSeqLen = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE});
+    atb::Tensor tensorSeqLen;
+    CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorSeqLen));
     tensorSeqLen.hostData = seqLenHost.data();
-    atb::SVector<atb::Tensor> inTensors = {tensorQ, tensorK, tensorCos, tensorSin, tensorSeqLen};
-    return inTensors;
+    inTensors = {tensorQ, tensorK, tensorCos, tensorSin, tensorSeqLen};
+    return atb::ErrorType::NO_ERROR;
 }
 
 int main(int argc, char **argv)
@@ -68,13 +72,16 @@ int main(int argc, char **argv)
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
     // 算子实例
-    atb::Operation *ropeOp = PrepareOperation();
+    atb::Operation *ropeOp = nullptr;
+    CHECK_STATUS(PrepareOperation(&ropeOp));
     // 准备输入张量
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream);
+    CHECK_STATUS(PrepareInTensor(context, stream, variantPack.inTensors));
     // 准备输入张量ropeQ和ropeK
-    atb::Tensor ropeQ = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEQ});
-    atb::Tensor ropeK = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEK});
+    atb::Tensor ropeQ;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEQ}, ropeQ));
+    atb::Tensor ropeK;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HIDDENSIZEK}, ropeK));
     variantPack.outTensors = {ropeQ, ropeK};
     uint64_t workspaceSize = 0;
     CHECK_STATUS(ropeOp->Setup(variantPack, workspaceSize, context));

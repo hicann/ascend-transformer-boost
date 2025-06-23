@@ -28,67 +28,74 @@ const uint32_t LAYER_NUM = 1;                                                 //
  * @param seqLenHost host侧tensor。序列长度向量，等于1时，为增量或全量；大于1时，为全量
  * @param tokenOffsetHost host侧tensor。计算完成后的token偏移
  * @param layerId layerId，取cache的kv中哪一个kv进行计算
- * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
+ * @param inTensors atb::VariantPack中的输入tensor
+ * @return atb::Status 错误码
  * @note 需要传入所有host侧tensor
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream,
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream,
                                           std::vector<int32_t> &seqLenHost, std::vector<int32_t> &tokenOffsetHost,
-                                          std::vector<int32_t> &layerId)
+                                          std::vector<int32_t> &layerId, atb::SVector<atb::Tensor> &inTensors)
 {
     uint32_t qHiddenSize = HEAD_NUM * HEAD_SIZE;
     uint32_t kvHiddenSize = KV_HEAD_NUM * HEAD_SIZE;
 
     // 创建query tensor
     std::vector<float> qData(NTOKENS * qHiddenSize, 1.0);
-    atb::Tensor tensorQ = CreateTensorFromVector(contextPtr, stream, qData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                                 {NTOKENS, qHiddenSize});
+    atb::Tensor tensorQ;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, qData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NTOKENS, qHiddenSize}, tensorQ));
     // 创建key，value tensor
     std::vector<float> kvData(NTOKENS * kvHiddenSize, 1.0);
-    atb::Tensor tensorK = CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                                 {NTOKENS, qHiddenSize});
-    atb::Tensor tensorV = CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                                 {NTOKENS, qHiddenSize});
+    atb::Tensor tensorK;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NTOKENS, qHiddenSize}, tensorK));
+    atb::Tensor tensorV;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {NTOKENS, qHiddenSize}, tensorV));
     std::vector<unsigned int16_t> kvCacheData(LAYER_NUM * BATCH_SIZE * MAX_SEQ_LEN * kvHiddenSize, 0x3C00);
     std::vector<int64_t> kvCacheShape = {LAYER_NUM, BATCH_SIZE, kvHiddenSize / 16, MAX_SEQ_LEN, 16};
-    atb::Tensor tensorCacheK = CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16,
-                                                      aclFormat::ACL_FORMAT_FRACTAL_NZ, kvCacheShape, ACL_FLOAT16);
-    atb::Tensor tensorCacheV = CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16,
-                                                      aclFormat::ACL_FORMAT_FRACTAL_NZ, kvCacheShape, ACL_FLOAT16);
+    atb::Tensor tensorCacheK;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
+                                        kvCacheShape, tensorCacheK, ACL_FLOAT16));
+    atb::Tensor tensorCacheV;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
+                                        kvCacheShape, tensorCacheV, ACL_FLOAT16));
     // 创建tokenOffset，host侧tensor
-    atb::Tensor tensorTokenOffset = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE});
+    atb::Tensor tensorTokenOffset;
+    CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorTokenOffset));
     tensorTokenOffset.hostData = tokenOffsetHost.data(); // host侧tensor，拷贝值
     // 创建seqLen，host侧tensor
-    atb::Tensor tensorSeqLen = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE});
+    atb::Tensor tensorSeqLen;
+    CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorSeqLen));
     tensorSeqLen.hostData = seqLenHost.data(); // host侧tensor，拷贝值
     // 创建layerId
-    atb::Tensor tensorLayerId = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {1});
+    atb::Tensor tensorLayerId;
+    CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {1}, tensorLayerId));
     CHECK_STATUS(aclrtMemcpy(tensorLayerId.deviceData, tensorLayerId.dataSize, layerId.data(),
                              sizeof(short) * layerId.size(), ACL_MEMCPY_HOST_TO_DEVICE));
     // 根据顺序将所有输入tensor放入SVector
-    atb::SVector<atb::Tensor> inTensors = {tensorQ,      tensorK,           tensorV,      tensorCacheK,
-                                           tensorCacheV, tensorTokenOffset, tensorSeqLen, tensorLayerId};
-    return inTensors;
+    inTensors = {tensorQ, tensorK, tensorV, tensorCacheK, tensorCacheV, tensorTokenOffset, tensorSeqLen, tensorLayerId};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个FA encoder的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @param 创建一个Operation指针
+ * @return atb::Status atb错误码
  */
-atb::Operation *PrepareOperation()
+atb::Status PrepareOperation(atb::Operation **encoderOp)
 {
     atb::infer::SelfAttentionParam opParam;
     opParam.headNum = HEAD_NUM;
     opParam.kvHeadNum = KV_HEAD_NUM;
     opParam.calcType = atb::infer::SelfAttentionParam::CalcType::ENCODER;
-    atb::Operation *encoderOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(opParam, &encoderOp));
-    return encoderOp;
+    return atb::CreateOperation(opParam, encoderOp);
 }
 
 int main(int argc, char **argv)
 {
     if (!Is310P()) {
-        std::cout << "This self attention demo only supports Atlas A2/A3 products" << std::endl;
+        std::cout << "This self attention demo only supports Atlas inference products" << std::endl;
         return 0;
     }
     // kv隐藏层大小，用于输出tensor shape
@@ -102,14 +109,17 @@ int main(int argc, char **argv)
     CHECK_STATUS(atb::CreateContext(&context));
     void *stream = nullptr;
     CHECK_STATUS(aclrtCreateStream(&stream));
-    context->SetExecuteStream(stream);
+    CHECK_STATUS(context->SetExecuteStream(stream));
 
     // FA Encoder示例
-    atb::Operation *encoderOp = PrepareOperation();
+    atb::Operation *encoderOp = nullptr;
+    CHECK_STATUS(PrepareOperation(&encoderOp));
     // 准备输入张量
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream, seqLenHost, tokenOffsetHost, layerId); // 放入输入tensor
-    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, kvHiddenSize});
+    CHECK_STATUS(PrepareInTensor(context, stream, seqLenHost, tokenOffsetHost, layerId,
+                                 variantPack.inTensors)); // 放入输入tensor
+    atb::Tensor tensorOut;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, kvHiddenSize}, tensorOut));
     variantPack.outTensors.push_back(tensorOut); // 放入输出tensor
     uint64_t workspaceSize = 0;
     // 计算workspaceSize大小

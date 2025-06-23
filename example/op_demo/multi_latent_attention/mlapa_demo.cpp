@@ -19,27 +19,31 @@ std::vector<int32_t> contextLensHost;
  * @brief 准备atb::VariantPack
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> atb::VariantPack
- * @note 需要传入所有host侧tensor
+ * @param inTensors atb::VariantPack中的输入tensor
+ * @return atb::Status 错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDataType dtype, int tokenNum,
-                                          int headNum, int kSeqLen)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDataType dtype, int tokenNum, int headNum,
+                            int kSeqLen, atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建shape为[tokenNum, headNum, 512]的输入qNope tensor
-    atb::Tensor qNope = CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(tokenNum * headNum * 512, 1),
-                                               ACL_INT8, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512});
+    atb::Tensor qNope;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(tokenNum * headNum * 512, 1), ACL_INT8,
+                                        aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512}, qNope));
     // 创建shape为[tokenNum, headNum, 64]的输入qRope tensor
-    atb::Tensor qRope = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * headNum * 64, 0),
-                                               dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 64});
+    atb::Tensor qRope;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * headNum * 64, 0), dtype,
+                                        aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 64}, qRope, dtype));
     int maxBlockNumPerSeq = (kSeqLen + blockSize - 1) / blockSize;
     blockNum = tokenNum * maxBlockNumPerSeq;
     // 创建shape为[blockNum, 16, blockSize, 32]的输入ctKV tensor
-    atb::Tensor ctKV =
-        CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(blockNum * blockSize * 512, 1), ACL_INT8,
-                               aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, 16, blockSize, 32});
+    atb::Tensor ctKV;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(blockNum * blockSize * 512, 1),
+                                        ACL_INT8, aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, 16, blockSize, 32},
+                                        ctKV));
     // 创建shape为[blockNum, 4, blockSize, 16]的输入kRope tensor
-    atb::Tensor kRope = CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(blockNum * blockSize * 64, 0),
-                                               dtype, aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, 4, blockSize, 16});
+    atb::Tensor kRope;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(blockNum * blockSize * 64, 0), dtype,
+                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, 4, blockSize, 16}, kRope, dtype));
     // 创建shape为[tokenNum, maxBlockNumPerSeq]的输入blockTables tensor
     auto blockTablesHost = std::vector<int32_t>(tokenNum * maxBlockNumPerSeq);
     for (size_t i = 0; i < tokenNum; i++) {
@@ -47,36 +51,39 @@ atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream 
             blockTablesHost[i * maxBlockNumPerSeq + j] = i * maxBlockNumPerSeq + j;
         }
     }
-    atb::Tensor blockTables = CreateTensorFromVector(contextPtr, stream, blockTablesHost, ACL_INT32,
-                                                     aclFormat::ACL_FORMAT_ND, {tokenNum, maxBlockNumPerSeq});
+    atb::Tensor blockTables;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, blockTablesHost, ACL_INT32, aclFormat::ACL_FORMAT_ND,
+                                        {tokenNum, maxBlockNumPerSeq}, blockTables));
     // 创建shape为[tokenNum]的输入contextLens hostTensor
     contextLensHost = std::vector<int32_t>(tokenNum, kSeqLen);
-    atb::Tensor contextLens = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {tokenNum});
+    atb::Tensor contextLens;
+    CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {tokenNum}, contextLens);
     contextLens.hostData = contextLensHost.data();
     // 创建shape为[headNum]的输入qkDescale tensor
-    atb::Tensor qkDescale = CreateTensorFromVector(contextPtr, stream, std::vector<float>(headNum, 0), ACL_FLOAT,
-                                                   aclFormat::ACL_FORMAT_ND, {headNum});
+    atb::Tensor qkDescale;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(headNum, 0), ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {headNum}, qkDescale));
     // 创建shape为[headNum]的输入pvDescale tensor
-    atb::Tensor pvDescale = CreateTensorFromVector(contextPtr, stream, std::vector<float>(headNum, 0), ACL_FLOAT,
-                                                   aclFormat::ACL_FORMAT_ND, {headNum});
-    atb::SVector<atb::Tensor> inTensors = {qNope, qRope, ctKV, kRope, blockTables, contextLens, qkDescale, pvDescale};
-    return inTensors;
+    atb::Tensor pvDescale;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(headNum, 0), ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {headNum}, pvDescale));
+    inTensors = {qNope, qRope, ctKV, kRope, blockTables, contextLens, qkDescale, pvDescale};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个MultiLatentAttentionOperation operation
- * @return atb::Operation * 返回一个Operation指针
+ * @param mlaOp 创建一个Operation指针
+ * @return atb::Status 错误码
  */
-atb::Operation *CreateMultiLatentAttentionOperation(int headNum)
+atb::Status CreateMultiLatentAttentionOperation(int headNum, atb::Operation **mlaOp)
 {
     atb::infer::MultiLatentAttentionParam param;
     param.headNum = headNum;
     param.qkScale = 0.0416666679084301;
     param.kvHeadNum = 1;
     param.cacheMode = atb::infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE;
-    atb::Operation *mlaOp = nullptr;
-    atb::CreateOperation(param, &mlaOp);
-    return mlaOp;
+    return atb::CreateOperation(param, mlaOp);
 }
 
 /**
@@ -87,17 +94,21 @@ atb::Operation *CreateMultiLatentAttentionOperation(int headNum)
  * @param tokenNum 词元数
  * @param headNum 头数
  * @param kSeqLen key/value 的单个词元长度
+ * @return atb::Status 错误码
  */
-void RunDemo(atb::Context *context, void *stream, aclDataType dtype, int tokenNum, int headNum, int kSeqLen)
+atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int tokenNum, int headNum, int kSeqLen)
 {
     // 创建op
-    atb::Operation *mlaOp = CreateMultiLatentAttentionOperation(headNum);
+    atb::Operation *mlaOp = nullptr;
+    CreateMultiLatentAttentionOperation(headNum, &mlaOp);
 
     // 准备输入tensor
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream, dtype, tokenNum, headNum, kSeqLen); // 放入输入tensor
+    CHECK_STATUS(
+        PrepareInTensor(context, stream, dtype, tokenNum, headNum, kSeqLen, variantPack.inTensors)); // 放入输入tensor
     // 准备输出tensor
-    atb::Tensor attenOut = CreateTensor(dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512});
+    atb::Tensor attenOut;
+    CHECK_STATUS(CreateTensor(dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512}, attenOut));
     variantPack.outTensors = {attenOut}; // 放入输出tensor
 
     uint64_t workspaceSize = 0;
@@ -132,6 +143,7 @@ void RunDemo(atb::Context *context, void *stream, aclDataType dtype, int tokenNu
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
     CHECK_STATUS(atb::DestroyOperation(mlaOp)); // operation，对象概念，先释放
+    return atb::ErrorType::NO_ERROR;
 }
 
 int main(int argc, char **argv)
@@ -160,7 +172,7 @@ int main(int argc, char **argv)
     CHECK_STATUS(aclrtCreateStream(&stream));
     CHECK_STATUS(context->SetExecuteStream(stream));
     // 执行demo
-    RunDemo(context, stream, dtype, tokenNum, headNum, kSeqLen);
+    CHECK_STATUS(RunDemo(context, stream, dtype, tokenNum, headNum, kSeqLen));
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());

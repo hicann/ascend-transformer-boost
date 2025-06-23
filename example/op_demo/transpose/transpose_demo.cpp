@@ -17,32 +17,33 @@ const uint32_t DIM2 = 3;
  * @brief 准备atb::VariantPack中的所有输入tensor
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
- * @note 需要传入所有host侧tensor
+ * @param inTensors 创建输入Tensors
+ * @return atb::Status atb错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream,
+                                          atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建x tensor
     std::vector<float> xData(DIM1 * DIM2, 1.0);
     std::vector<int64_t> xShape = {DIM1, DIM2};
-    atb::Tensor tensorX =
-        CreateTensorFromVector(contextPtr, stream, xData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, xShape);
-    atb::SVector<atb::Tensor> inTensors = {tensorX};
-    return inTensors;
+    atb::Tensor tensorX;
+    CHECK_STATUS(
+        CreateTensorFromVector(contextPtr, stream, xData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, xShape, tensorX));
+    inTensors = {tensorX};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
- * @brief 创建一个Reduce的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @brief 创建一个ND转NZ的TransdataOperation，并设置参数
+ * @param transposeOp 创建一个Operation指针
+ * @return atb::Status atb错误码
  */
-atb::Operation *PrepareOperation()
+atb::Status PrepareOperation(atb::Operation **transposeOp)
 {
     atb::infer::TransposeParam transposeOpParam;
     atb::SVector<int32_t> perm = {1, 0};
     transposeOpParam.perm = perm;
-    atb::Operation *transposeOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(transposeOpParam, &transposeOp));
-    return transposeOp;
+    return atb::CreateOperation(transposeOpParam, transposeOp);
 }
 
 int main(int argc, char **argv)
@@ -55,15 +56,17 @@ int main(int argc, char **argv)
     CHECK_STATUS(atb::CreateContext(&context));
     void *stream = nullptr;
     CHECK_STATUS(aclrtCreateStream(&stream));
-    context->SetExecuteStream(stream);
+    CHECK_STATUS(context->SetExecuteStream(stream));
 
     // Transpose示例
-    atb::Operation *transposeOp = PrepareOperation();
+    atb::Operation *transposeOp;
+     PrepareOperation(&transposeOp);
     // 准备输入tensor
     atb::VariantPack transposeVariantPack;
-    transposeVariantPack.inTensors = PrepareInTensor(context, stream);  // 放入输入tensor
-    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM2, DIM1});
-    transposeVariantPack.outTensors = {tensorOut};  // 放入输出tensor
+    PrepareInTensor(context, stream, transposeVariantPack.inTensors); // 放入输入tensor
+    atb::Tensor tensorOut;
+    CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM2, DIM1}, tensorOut);
+    transposeVariantPack.outTensors = {tensorOut}; // 放入输出tensor
 
     uint64_t workspaceSize = 0;
     // 计算workspace大小
@@ -73,17 +76,17 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     // reduce执行
-    transposeOp->Execute(transposeVariantPack, workspacePtr, workspaceSize, context);
-    CHECK_STATUS(aclrtSynchronizeStream(stream));  // 流同步，等待device侧任务计算完成
+    CHECK_STATUS(transposeOp->Execute(transposeVariantPack, workspacePtr, workspaceSize, context));
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     for (atb::Tensor &inTensor : transposeVariantPack.inTensors) {
         CHECK_STATUS(aclrtFree(inTensor.deviceData));
     }
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
-    CHECK_STATUS(atb::DestroyOperation(transposeOp));  // operation，对象概念，先释放
+    CHECK_STATUS(atb::DestroyOperation(transposeOp)); // operation，对象概念，先释放
     CHECK_STATUS(aclrtDestroyStream(stream));
-    CHECK_STATUS(DestroyContext(context));  // context，全局资源，后释放
+    CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     std::cout << "Transpose demo success!" << std::endl;
     return 0;
 }
