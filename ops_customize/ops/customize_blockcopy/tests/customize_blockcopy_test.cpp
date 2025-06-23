@@ -97,7 +97,7 @@ TEST(ExampleOpTest, CreateOperation_Success)
     void *stream = nullptr;
 
     ASSERT_EQ(aclInit(nullptr), 0);
-    ASSERT_EQ(aclrtSetDevice(DEVICE_ID). 0);
+    ASSERT_EQ(aclrtSetDevice(DEVICE_ID), 0);
     ASSERT_EQ(CreateContext(&context), 0);
     ASSERT_EQ(aclrtCreateStream(&stream), 0);
     context->SetExecuteStream(stream);
