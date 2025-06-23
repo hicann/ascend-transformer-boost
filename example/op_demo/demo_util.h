@@ -131,13 +131,13 @@ atb::Status CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
     CHECK_STATUS(CreateTensor(intermediateType, format, shape, tensor));
     CHECK_STATUS(aclrtMemcpy(tensor.deviceData, tensor.dataSize, data.data(), sizeof(T) * data.size(),
                              ACL_MEMCPY_HOST_TO_DEVICE));
-    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape, outTensor, outTensor));
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape, outTensor));
     if (intermediateType == outTensorType) {
         // 原始创建的tensor类型，不需要转换
         outTensor = tensor;
         return atb::ErrorType::NO_ERROR;
     }
-    return CastOp(contextPtr, stream, tensor, outTensorType, shape, outTensor, outTensor);
+    return CastOp(contextPtr, stream, tensor, outTensorType, outTensor);
 }
 
 // 判断soc型号是否为Atlas A2/A3

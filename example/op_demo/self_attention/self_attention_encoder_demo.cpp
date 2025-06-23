@@ -87,7 +87,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     CHECK_STATUS(aclrtMemcpy(tensorLayerId.deviceData, tensorLayerId.dataSize, layerId.data(),
                              sizeof(short) * layerId.size(), ACL_MEMCPY_HOST_TO_DEVICE));
     // 根据顺序将所有输入tensor放入SVector
-    return atb::ErrorType::NO_ERRORq;
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**

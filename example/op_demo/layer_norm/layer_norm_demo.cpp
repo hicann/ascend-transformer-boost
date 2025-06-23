@@ -19,37 +19,35 @@ const int32_t BEGIN_NORM_AXIS = 1;
  * @brief 准备atb::VariantPack中的所有输入tensor
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
- * @note 需要传入所有host侧tensor
+ * @param inTensors atb::VariantPack中的输入tensor
+ * @return atb::Status 错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
-    atb::Tensor x = CreateTensorFromVector(contextPtr,
-        stream,
-        std::vector<float>(DIM_0 * DIM_1, 2.0),
-        ACL_FLOAT16,
-        aclFormat::ACL_FORMAT_ND,
-        {DIM_0, DIM_1});
-    atb::Tensor gamma = CreateTensorFromVector(
-        contextPtr, stream, std::vector<float>(DIM_1, 2.0), ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_1});
-    atb::Tensor beta = CreateTensorFromVector(
-        contextPtr, stream, std::vector<float>(DIM_1, 1.0), ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_1});
-    atb::SVector<atb::Tensor> inTensors = {x, gamma, beta};
-    return inTensors;
+    atb::Tensor x;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1, 2.0), ACL_FLOAT16,
+                                        aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1}, x));
+    atb::Tensor gamma;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_1, 2.0), ACL_FLOAT16,
+                                        aclFormat::ACL_FORMAT_ND, {DIM_1}, gamma));
+    atb::Tensor beta;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_1, 1.0), ACL_FLOAT16,
+                                        aclFormat::ACL_FORMAT_ND, {DIM_1}, beta));
+    inTensors = {x, gamma, beta};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个beginNormAxis为1的layernorm operation
- * @return atb::Operation * 返回一个Operation指针
+ * @param layerNormOp 创建一个Operation指针
+ * @return atb::Status 错误码
  */
-atb::Operation *CreateLayerNormOperation()
+atb::Status CreateLayerNormOperation(atb::Operation **layerNormOp)
 {
     atb::infer::LayerNormParam param;
     param.layerType = atb::infer::LayerNormParam::LayerNormType::LAYER_NORM_NORM;
     param.normParam.beginNormAxis = BEGIN_NORM_AXIS;
-    atb::Operation *layerNormOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(param, &layerNormOp));
-    return layerNormOp;
+    return atb::CreateOperation(param, layerNormOp);
 }
 
 int main(int argc, char **argv)
@@ -65,12 +63,14 @@ int main(int argc, char **argv)
     context->SetExecuteStream(stream);
 
     // 创建op
-    atb::Operation *layerNormOp = CreateLayerNormOperation();
+    atb::Operation *layerNormOp = nullptr;
+    CHECK_STATUS(CreateLayerNormOperation(&layerNormOp));
     // 准备输入tensor
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream);  // 放入输入tensor
-    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1});
-    variantPack.outTensors = {tensorOut};  // 放入输出tensor
+    CHECK_STATUS(PrepareInTensor(context, stream,  variantPack.inTensors)); // 放入输入tensor
+    atb::Tensor tensorOut;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1}, tensorOut));
+    variantPack.outTensors = {tensorOut}; // 放入输出tensor
 
     uint64_t workspaceSize = 0;
     // 计算workspace大小
@@ -80,8 +80,8 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     // layernorm执行
-    layerNormOp->Execute(variantPack, workspacePtr, workspaceSize, context);
-    CHECK_STATUS(aclrtSynchronizeStream(stream));  // 流同步，等待device侧任务计算完成
+    CHECK_STATUS(layerNormOp->Execute(variantPack, workspacePtr, workspaceSize, context));
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
 
     // 释放资源
     for (atb::Tensor &inTensor : variantPack.inTensors) {
@@ -91,9 +91,9 @@ int main(int argc, char **argv)
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
-    CHECK_STATUS(atb::DestroyOperation(layerNormOp));  // operation，对象概念，先释放
+    CHECK_STATUS(atb::DestroyOperation(layerNormOp)); // operation，对象概念，先释放
     CHECK_STATUS(aclrtDestroyStream(stream));
-    CHECK_STATUS(DestroyContext(context));  // context，全局资源，后释放
+    CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());
     std::cout << "Layernorm demo success!" << std::endl;
     return 0;

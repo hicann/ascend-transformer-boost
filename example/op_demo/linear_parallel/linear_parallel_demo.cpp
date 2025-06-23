@@ -13,7 +13,7 @@
 
 #include "../demo_util.h"
 
-void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context)
+atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context, aclrtStream &stream)
 {
     uint64_t workspaceSize = 0;
     CHECK_STATUS(op->Setup(variantPack, workspaceSize, context));
@@ -25,16 +25,17 @@ void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
 
     if (workspace) {
-        CHECK_STATUS(aclrtFree(workspace));  // 销毁workspace
+        CHECK_STATUS(aclrtFree(workspace)); // 销毁workspace
     }
+    return atb::ErrorType::NO_ERROR;
 }
 
-void LinearParallelSample(int rank, int rankSize)
+atb::Status LinearParallelSample(int rank, int rankSize)
 {
     int ret = aclInit(nullptr);
     if (!Is910B()) {
         std::cout << "Linear parallel only supports A2/A3" << std::endl;
-        return;
+        return atb::ErrorType::NO_ERROR;
     }
     // 设置每个进程对应的deviceId
     int deviceId = rank;
@@ -46,10 +47,12 @@ void LinearParallelSample(int rank, int rankSize)
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
 
-    atb::Tensor input = CreateTensorFromVector(
-        context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 32});
-    atb::Tensor weight = CreateTensorFromVector(
-        context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {32, 2});
+    atb::Tensor input;
+    CHECK_STATUS(CreateTensorFromVector(context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16,
+                                        aclFormat::ACL_FORMAT_ND, {2, 32}, input));
+    atb::Tensor weight;
+    CHECK_STATUS(CreateTensorFromVector(context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16,
+                                        aclFormat::ACL_FORMAT_ND, {32, 2}, weight));
 
     atb::Tensor output;
     output.desc.dtype = ACL_FLOAT16;
@@ -72,15 +75,16 @@ void LinearParallelSample(int rank, int rankSize)
     atb::VariantPack variantPack;
     variantPack.inTensors = {input, weight};
     variantPack.outTensors = {output};
-    ExcuteImpl(op, variantPack, context);
+    ExcuteImpl(op, variantPack, context, stream);
     std::cout << "rank: " << rank << " executed END." << std::endl;
 
     // 资源释放
-    CHECK_STATUS(atb::DestroyOperation(op));     // 销毁op对象
-    CHECK_STATUS(aclrtDestroyStream(stream));    // 销毁stream
-    CHECK_STATUS(atb::DestroyContext(context));  // 销毁context
+    CHECK_STATUS(atb::DestroyOperation(op));    // 销毁op对象
+    CHECK_STATUS(aclrtDestroyStream(stream));   // 销毁stream
+    CHECK_STATUS(atb::DestroyContext(context)); // 销毁context
     CHECK_STATUS(aclFinalize());
     std::cout << "demo excute success" << std::endl;
+    return atb::ErrorType::NO_ERROR;
 }
 
 int main(int argc, const char *argv[])
@@ -90,7 +94,7 @@ int main(int argc, const char *argv[])
         pid_t pid = fork();
         // 子进程
         if (pid == 0) {
-            LinearParallelSample(i, processCount);
+            CHECK_STATUS(LinearParallelSample(i, processCount));
             return 0;
         } else if (pid < 0) {
             std::cerr << "Failed to create process." << std::endl;

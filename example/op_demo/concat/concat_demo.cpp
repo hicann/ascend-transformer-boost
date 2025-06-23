@@ -15,8 +15,9 @@
  * @brief 进行Concat示例调用
  * @param context context指针
  * @param stream stream
+ * @return atb::Status 错误码
  */
-void RunSwigluDemo(atb::Context *context, void *stream)
+atb::Status RunSwigluDemo(atb::Context *context, void *stream)
 {
     // 配置Op参数
     atb::infer::ConcatParam opParam;
@@ -29,11 +30,14 @@ void RunSwigluDemo(atb::Context *context, void *stream)
     std::vector<float> inTensorXData = {0, 1, 2, 3, 4, 5};
     std::vector<float> inTensorYData = {6, 7, 8, 9};
     std::vector<float> outputRefData = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    atb::Tensor inTensorX =
-        CreateTensorFromVector(context, stream, inTensorXData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, inputXShape);
-    atb::Tensor inTensorY =
-        CreateTensorFromVector(context, stream, inTensorYData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, inputYShape);
-    atb::Tensor outTensor = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, outputShape);
+    atb::Tensor inTensorX;
+    CHECK_STATUS(CreateTensorFromVector(context, stream, inTensorXData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        inputXShape, inTensorX));
+    atb::Tensor inTensorY;
+    CHECK_STATUS(CreateTensorFromVector(context, stream, inTensorYData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        inputYShape, inTensorY));
+    atb::Tensor outTensor;
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, outputShape, outTensor));
     variantPack.inTensors = {inTensorX, inTensorY};
     variantPack.outTensors = {outTensor};
     // 申请ConcatOp
@@ -60,6 +64,7 @@ void RunSwigluDemo(atb::Context *context, void *stream)
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
     CHECK_STATUS(atb::DestroyOperation(concatOp));
+    return atb::ErrorType::NO_ERROR;
 }
 
 
@@ -74,7 +79,7 @@ int main(int argc, char **argv)
     void *stream = nullptr;
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
-    RunSwigluDemo(context, stream);
+    CHECK_STATUS(RunSwigluDemo(context, stream));
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(atb::DestroyContext(context));
     CHECK_STATUS(aclFinalize());

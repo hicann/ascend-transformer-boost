@@ -11,9 +11,9 @@
 #include <random>
 #include "../demo_util.h"
 
-const uint32_t BATCH_SIZE = 16;     // 批处理大小
-const uint32_t SEQ_LEN = 1024;      // 序列长度
-const uint32_t HIDDEN_SIZE = 4096;  // 隐藏层维度
+const uint32_t BATCH_SIZE = 16;    // 批处理大小
+const uint32_t SEQ_LEN = 1024;     // 序列长度
+const uint32_t HIDDEN_SIZE = 4096; // 隐藏层维度
 
 /**
  * @brief 准备atb::VariantPack中的输入tensor
@@ -32,56 +32,57 @@ atb::Status PrepareInTensor(atb::SVector<atb::Tensor> &inTensors)
     // 创建输入tensor
     atb::Tensor inTensor;
     CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE}, inTensor);
-    CHECK_STATUS(aclrtMemcpy(inTensor.deviceData,
-        inTensor.dataSize,
-        inTensorData.data(),
-        sizeof(float) * inTensorData.size(),
-        ACL_MEMCPY_HOST_TO_DEVICE));
+    CHECK_STATUS(aclrtMemcpy(inTensor.deviceData, inTensor.dataSize, inTensorData.data(),
+                             sizeof(float) * inTensorData.size(), ACL_MEMCPY_HOST_TO_DEVICE));
     inTensors = {inTensor};
+    std::cout << "finished PrepareInTensor!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
     return atb::NO_ERROR;
 }
 
 /**
  * @brief 创建一个Gelu Activation的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @param opPtr 创建一个Operation指针
+ * @return atb::Status atb错误码
  */
-atb::Operation *GeluOperation(atb::Operation * opPtr)
+atb::Status GeluOperation(atb::Operation **opPtr)
 {
     atb::infer::ActivationParam opParam;
     opParam.activationType = atb::infer::ActivationType::ACTIVATION_FASTER_GELU_FORWARD;
-    CHECK_STATUS(atb::CreateOperation(opParam, &opPtr));
-    return atb::NO_ERROR;
+    CHECK_STATUS(atb::CreateOperation(opParam, opPtr));
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个Swiglu_forward Activation的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @param atb::Operation * 创建一个Operation指针
+ * @return atb::Status atb错误码
  */
-atb::Operation *SwigluOperation(atb::Operation * opPtr)
+atb::Status SwigluOperation(atb::Operation **opPtr)
 {
     atb::infer::ActivationParam opParam;
     opParam.activationType = atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD;
     opParam.dim = -1;
-    CHECK_STATUS(atb::CreateOperation(opParam, &opPtr));
-    return atb::NO_ERROR;
+    CHECK_STATUS(atb::CreateOperation(opParam, opPtr));
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 进行Activation Gelu示例调用
  * @param context context指针
  * @param stream stream
+ * @return atb::Status atb错误码
  */
-void RunGeluDemo(atb::Context *context, void *stream)
+atb::Status RunGeluDemo(atb::Context *context, void *stream)
 {
     // Activation Gelu示例
     atb::Operation *geluOp = nullptr;
-    CHECK_STATUS(GeluOperation(geluOp));
+    CHECK_STATUS(GeluOperation(&geluOp));
     // 准备VariantPack
     atb::VariantPack geluVariantPack;
-    CHECK_STATUS(PrepareInTensor(geluVariantPack.inTensors));  // 放入输入tensor
+    CHECK_STATUS(PrepareInTensor(geluVariantPack.inTensors)); // 放入输入tensor
     atb::Tensor tensorOut;
     CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE}, tensorOut);
-    geluVariantPack.outTensors.push_back(tensorOut);  // 放入输出tensor
+    geluVariantPack.outTensors.push_back(tensorOut); // 放入输出tensor
     uint64_t geluWorkspaceSize = 0;
     // Gelu Activation准备工作
     CHECK_STATUS(geluOp->Setup(geluVariantPack, geluWorkspaceSize, context));
@@ -91,7 +92,7 @@ void RunGeluDemo(atb::Context *context, void *stream)
     }
     // Gelu Activation执行
     geluOp->Execute(geluVariantPack, geluWorkspacePtr, geluWorkspaceSize, context);
-    CHECK_STATUS(aclrtSynchronizeStream(stream));  // 流同步，等待device侧任务计算完成
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     for (atb::Tensor &inTensor : geluVariantPack.inTensors) {
         CHECK_STATUS(aclrtFree(inTensor.deviceData));
     }
@@ -101,26 +102,27 @@ void RunGeluDemo(atb::Context *context, void *stream)
     if (geluWorkspaceSize > 0) {
         CHECK_STATUS(aclrtFree(geluWorkspacePtr));
     }
-    CHECK_STATUS(atb::DestroyOperation(geluOp));  // operation，对象概念，先释放
+    CHECK_STATUS(atb::DestroyOperation(geluOp)); // operation，对象概念，先释放
     std::cout << "Gelu Activation demo success!" << std::endl;
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 进行Activation Swiglu示例调用
  * @param context context指针
- * @param stream stream
+ * @return atb::Status atb错误码
  */
-void RunSwigluDemo(atb::Context *context, void *stream)
+atb::Status RunSwigluDemo(atb::Context *context, void *stream)
 {
     // Activation Swiglu_forward示例
     atb::Operation *swigluOp = nullptr;
-    CHECK_STATUS(GeluOperation(swigluOp));
+    CHECK_STATUS(SwigluOperation(&swigluOp));
     // 准备VariantPack
     atb::VariantPack swigluVariantPack;
-    swigluVariantPack.inTensors = PrepareInTensor();  // 放入输入tensor
+    CHECK_STATUS(PrepareInTensor(swigluVariantPack.inTensors)); // 放入输入tensor
     atb::Tensor tensorOut;
     CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE / 2}, tensorOut);
-    swigluVariantPack.outTensors.push_back(tensorOut);  // 放入输出tensor
+    swigluVariantPack.outTensors.push_back(tensorOut); // 放入输出tensor
     uint64_t swigluWorkspaceSize = 0;
     // Swiglu Activation准备工作
     CHECK_STATUS(swigluOp->Setup(swigluVariantPack, swigluWorkspaceSize, context));
@@ -130,7 +132,7 @@ void RunSwigluDemo(atb::Context *context, void *stream)
     }
     // Swiglu Activation执行
     swigluOp->Execute(swigluVariantPack, swigluWorkspacePtr, swigluWorkspaceSize, context);
-    CHECK_STATUS(aclrtSynchronizeStream(stream));  // 流同步，等待device侧任务计算完成
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     for (atb::Tensor &inTensor : swigluVariantPack.inTensors) {
         CHECK_STATUS(aclrtFree(inTensor.deviceData));
     }
@@ -140,8 +142,9 @@ void RunSwigluDemo(atb::Context *context, void *stream)
     if (swigluWorkspaceSize > 0) {
         CHECK_STATUS(aclrtFree(swigluWorkspacePtr));
     }
-    CHECK_STATUS(atb::DestroyOperation(swigluOp));  // operation，对象概念，先释放
+    CHECK_STATUS(atb::DestroyOperation(swigluOp)); // operation，对象概念，先释放
     std::cout << "Swiglu_forward Activation demo success!" << std::endl;
+    return atb::ErrorType::NO_ERROR;
 }
 
 int main(int argc, char **argv)
@@ -159,7 +162,7 @@ int main(int argc, char **argv)
     RunSwigluDemo(context, stream);
     // 资源释放
     CHECK_STATUS(aclrtDestroyStream(stream));
-    CHECK_STATUS(atb::DestroyContext(context));  // context，全局资源，后释放
+    CHECK_STATUS(atb::DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());
     return 0;
 }

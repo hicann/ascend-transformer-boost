@@ -17,36 +17,41 @@ const uint32_t WEIGHTDIM_0 = 3;
 const uint32_t WEIGHTDIM_1 = 2;
 
 /**
- * @brief 准备atb::VariantPack中的所有输入tensor
+ * @brief 准备atb::VariantPack
  * @param contextPtr context指针
  * @param stream stream
- * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
- * @note 需要传入所有host侧tensor
+ * @param inTensors atb::VariantPack中的输入tensor
+ * @return atb::Status 错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建shape为[2, 3]的输入x tensor
-    atb::Tensor x = CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>{1, 2, 3, 4, 5, 6},
-                                           aclDataType::ACL_INT8, aclFormat::ACL_FORMAT_ND, {XDIM_0, XDIM_1});
+    atb::Tensor x;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>{1, 2, 3, 4, 5, 6},
+                                        aclDataType::ACL_INT8, aclFormat::ACL_FORMAT_ND, {XDIM_0, XDIM_1}, x));
     // 创建shape为[3, 2]的输入weight tensor
-    atb::Tensor weight =
-        CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>{1, 2, 3, 4, 5, 6}, aclDataType::ACL_INT8,
-                               aclFormat::ACL_FORMAT_ND, {WEIGHTDIM_0, WEIGHTDIM_1});
+    atb::Tensor weight;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>{1, 2, 3, 4, 5, 6},
+                                        aclDataType::ACL_INT8, aclFormat::ACL_FORMAT_ND, {WEIGHTDIM_0, WEIGHTDIM_1},
+                                        weight));
     // 创建shape为[2]bias tensor
-    atb::Tensor bias = CreateTensorFromVector(contextPtr, stream, std::vector<int32_t>(2, 1), aclDataType::ACL_INT32,
-                                              aclFormat::ACL_FORMAT_ND, {1, 2});
+    atb::Tensor bias;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int32_t>(2, 1), aclDataType::ACL_INT32,
+                                        aclFormat::ACL_FORMAT_ND, {1, 2}, bias));
     // 创建shape为[2]的输入deqScale tensor
-    atb::Tensor deqScale = CreateTensorFromVector(contextPtr, stream, std::vector<float>(2, 1), aclDataType::ACL_FLOAT,
-                                                  aclFormat::ACL_FORMAT_ND, {1, 2});
-    atb::SVector<atb::Tensor> inTensors = {x, weight, bias, deqScale};
-    return inTensors;
+    atb::Tensor deqScale;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(2, 1), aclDataType::ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {1, 2}, deqScale));
+    inTensors = {x, weight, bias, deqScale};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个linear operation
- * @return atb::Operation * 返回一个Operation指针
+ * @param linearOp 创建一个Operation指针
+ * @return atb::Status 错误码
  */
-atb::Operation *CreateLinearOperation()
+atb::Status CreateLinearOperation(atb::Operation **linearOp)
 {
     atb::infer::LinearParam param;
     param.transposeA = false;
@@ -54,11 +59,9 @@ atb::Operation *CreateLinearOperation()
     param.hasBias = true;
     param.outDataType = aclDataType::ACL_BF16;
     param.enAccum = false;
-    param.matmulType = atb::infer::LinearParam::MATMUL_UNDEFINED;
-    param.quantMode = PER_CHANNEL;
-    atb::Operation *LinearOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(param, &LinearOp));
-    return LinearOp;
+    param.matmulType = atb::infer::LinearParam::MatmulType::MATMUL_UNDEFINED;
+    param.quantMode =  atb::infer::LinearParam::QuantMode::PER_CHANNEL;
+    return atb::CreateOperation(param, linearOp);
 }
 
 int main(int argc, char **argv)
@@ -73,19 +76,21 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclFinalize());
         return 0;
     }
-    
+
     CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));
     context->SetExecuteStream(stream);
 
     // 创建op
-    atb::Operation *linearOp = CreateLinearOperation();
+    atb::Operation *linearOp = nullptr;
+    CHECK_STATUS(CreateLinearOperation(&linearOp));
     // 准备输入tensor
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream); // 放入输入tensor
+    CHECK_STATUS(PrepareInTensor(context, stream, variantPack.inTensors)); // 放入输入tensor
     // 准备输出tensor
-    atb::Tensor output = CreateTensor(aclDataType::ACL_BF16, aclFormat::ACL_FORMAT_ND, {XDIM_0, WEIGHTDIM_1});
+    atb::Tensor output;
+    CHECK_STATUS(CreateTensor(aclDataType::ACL_BF16, aclFormat::ACL_FORMAT_ND, {XDIM_0, WEIGHTDIM_1}, output));
     variantPack.outTensors = {output}; // 放入输出tensor
 
     uint64_t workspaceSize = 0;

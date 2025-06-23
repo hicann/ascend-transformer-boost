@@ -20,40 +20,39 @@ const float INIT_VALUE = 2.0f; // 向量的初始值
  * @brief 准备atb::VariantPack中的所有输入tensor
  * @param contextPtr context指针
  * @param stream stream
- * @param seqLenHost host侧tensor。序列长度向量，等于1时，为增量或全量；大于1时，为全量
- * @param tokenOffsetHost host侧tensor。计算完成后的token偏移
- * @param layerId layerId，取cache的kv中哪一个kv进行计算
- * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
+ * @param inTensors atb::VariantPack中的输入tensor
  * @note 需要传入所有host侧tensor
+ * @return atb::Status 错误码
  */
-atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     uint32_t dim0 = 2;
     uint32_t dim1 = 2;
     // 创建tensor0
     std::vector<float> tensormul0(VECTOR_SIZE, INIT_VALUE);
-    atb::Tensor tensorMul0 =
-        CreateTensorFromVector(contextPtr, stream, tensormul0, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
+    atb::Tensor tensorMul0;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, tensormul0, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {dim0, dim1}, tensorMul0));
     // 创建tensor1
     std::vector<float> tensormul1(VECTOR_SIZE, INIT_VALUE);
-    atb::Tensor tensorMul1 =
-        CreateTensorFromVector(contextPtr, stream, tensormul1, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {dim0, dim1});
+    atb::Tensor tensorMul1;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, tensormul1, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                        {dim0, dim1}, tensorMul1));
     // 根据顺序将所有输入tensor放入SVector
-    atb::SVector<atb::Tensor> inTensors = {tensorMul0, tensorMul1};
-    return inTensors;
+    inTensors = {tensorMul0, tensorMul1};
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
  * @brief 创建一个ELEWISE_MUL的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @param atb::Operation * 创建一个Operation指针
+ * @return atb::Status 错误码
  */
-atb::Operation *PrepareOperation()
+atb::Status PrepareOperation(atb::Operation **op)
 {
     atb::infer::ElewiseParam mulParam;
     mulParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_MUL;
-    atb::Operation *op = nullptr;
-    CHECK_STATUS(atb::CreateOperation(mulParam, &op));
-    return op;
+    return atb::CreateOperation(mulParam, op);
 }
 
 int main(int argc, char **argv)
@@ -69,12 +68,14 @@ int main(int argc, char **argv)
     context->SetExecuteStream(stream);
 
     // ELEWISE_MUL示例
-    atb::Operation *op = PrepareOperation();
+    atb::Operation *op = nullptr;
+    CHECK_STATUS(PrepareOperation(&op));
     // 准备输入张量
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareInTensor(context, stream);                            // 放入输入tensor
-    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 2}); // 创建输出tensor
-    variantPack.outTensors.push_back(tensorOut);                                         // 放入输出tensor
+    PrepareInTensor(context, stream, variantPack.inTensors); // 放入输入tensor
+    atb::Tensor tensorOut;
+    CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 2}, tensorOut); // 创建输出tensor
+    variantPack.outTensors.push_back(tensorOut);                            // 放入输出tensor
 
     // setup阶段，计算workspace大小
     uint64_t workspaceSize = 0;

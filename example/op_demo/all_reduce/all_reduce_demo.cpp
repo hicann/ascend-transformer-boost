@@ -32,10 +32,11 @@ atb::VariantPack PrepareVariantPack(Args &args)
     std::vector<float> xHostData(shape[0] * shape[1], 2.0);
     std::vector<float> outputHostData(shape[0] * shape[1], 0);
     // 生成ATB tensor
-    atb::Tensor tensorX =
-        CreateTensorFromVector(args.context, args.stream, xHostData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape);
-    atb::Tensor tensorOutput =
-        CreateTensorFromVector(args.context, args.stream, outputHostData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape);
+    atb::Tensor tensorX;
+    CreateTensorFromVector(args.context, args.stream, xHostData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape, tensorX);
+    atb::Tensor tensorOutput;
+    CreateTensorFromVector(args.context, args.stream, outputHostData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape,
+                           tensorOutput);
     // 根据顺序将所有输入tensor放入SVector
     variantPack.inTensors = {tensorX};
     variantPack.outTensors = {tensorOutput};

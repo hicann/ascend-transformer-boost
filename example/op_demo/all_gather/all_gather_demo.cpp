@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include "../demo_util.h"
 
-void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context)
+atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context)
 {
     uint64_t workspaceSize = 0;
     CHECK_STATUS(op->Setup(variantPack, workspaceSize, context));
@@ -24,9 +24,10 @@ void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *
     if (workspace) {
         CHECK_STATUS(aclrtFree(workspace));  // 销毁workspace
     }
+    return atb::ErrorType::NO_ERROR;
 }
 
-void AllGatherSample(int rank, int rankSize)
+atb::Status AllGatherSample(int rank, int rankSize)
 {
     int ret = aclInit(nullptr);
     // 设置每个进程对应的deviceId
@@ -64,7 +65,7 @@ void AllGatherSample(int rank, int rankSize)
     atb::VariantPack variantPack;
     variantPack.inTensors = {input};
     variantPack.outTensors = {output};
-    ExcuteImpl(op, variantPack, context);
+    CHECK_STATUS(ExcuteImpl(op, variantPack, context));
     std::cout << "rank: " << rank << " executed END." << std::endl;
     // 资源释放
     CHECK_STATUS(atb::DestroyOperation(op));     // 销毁op对象
@@ -72,6 +73,7 @@ void AllGatherSample(int rank, int rankSize)
     CHECK_STATUS(atb::DestroyContext(context));  // 销毁context
     CHECK_STATUS(aclFinalize());
     std::cout << "demo excute success" << std::endl;
+    return atb::ErrorType::NO_ERROR;
 }
 
 int main(int argc, const char *argv[])
@@ -81,7 +83,7 @@ int main(int argc, const char *argv[])
         pid_t pid = fork();
         // 子进程
         if (pid == 0) {
-            AllGatherSample(i, processCount);
+            CHECK_STATUS(AllGatherSample(i, processCount));
             return 0;
         } else if (pid < 0) {
             std::cerr << "Failed to create process." << std::endl;
