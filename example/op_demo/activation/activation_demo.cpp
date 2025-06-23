@@ -17,9 +17,9 @@ const uint32_t HIDDEN_SIZE = 4096;  // 隐藏层维度
 
 /**
  * @brief 准备atb::VariantPack中的输入tensor
- * @return atb::SVector<atb::Tensor> 返回{[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]}的输入tensor
+ * @param atb::SVector<atb::Tensor> 返回{[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]}的输入tensor
  */
-atb::SVector<atb::Tensor> PrepareInTensor()
+atb::Status PrepareInTensor(atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建一个[BATCH_SIZE*SEQ_LEN*HIDDEN_SIZE]的vector，其中各个值为取值范围为[-100,100)的随机数
     std::vector<float> inTensorData(BATCH_SIZE * SEQ_LEN * HIDDEN_SIZE);
@@ -36,35 +36,33 @@ atb::SVector<atb::Tensor> PrepareInTensor()
         inTensorData.data(),
         sizeof(float) * inTensorData.size(),
         ACL_MEMCPY_HOST_TO_DEVICE));
-    atb::SVector<atb::Tensor> inTensors = {inTensor};
-    return inTensors;
+    inTensors = {inTensor};
+    return atb::NO_ERROR;
 }
 
 /**
  * @brief 创建一个Gelu Activation的Operation，并设置参数
  * @return atb::Operation * 返回一个Operation指针
  */
-atb::Operation *GeluOperation()
+atb::Operation *GeluOperation(atb::Operation * opPtr)
 {
     atb::infer::ActivationParam opParam;
     opParam.activationType = atb::infer::ActivationType::ACTIVATION_FASTER_GELU_FORWARD;
-    atb::Operation *geluOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(opParam, &geluOp));
-    return geluOp;
+    CHECK_STATUS(atb::CreateOperation(opParam, &opPtr));
+    return atb::NO_ERROR;
 }
 
 /**
  * @brief 创建一个Swiglu_forward Activation的Operation，并设置参数
  * @return atb::Operation * 返回一个Operation指针
  */
-atb::Operation *SwigluOperation()
+atb::Operation *SwigluOperation(atb::Operation * opPtr)
 {
     atb::infer::ActivationParam opParam;
     opParam.activationType = atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD;
     opParam.dim = -1;
-    atb::Operation *swigluOp = nullptr;
-    CHECK_STATUS(atb::CreateOperation(opParam, &swigluOp));
-    return swigluOp;
+    CHECK_STATUS(atb::CreateOperation(opParam, &opPtr));
+    return atb::NO_ERROR;
 }
 
 /**
@@ -75,10 +73,11 @@ atb::Operation *SwigluOperation()
 void RunGeluDemo(atb::Context *context, void *stream)
 {
     // Activation Gelu示例
-    atb::Operation *geluOp = GeluOperation();
+    atb::Operation *geluOp = nullptr;
+    CHECK_STATUS(GeluOperation(geluOp));
     // 准备VariantPack
     atb::VariantPack geluVariantPack;
-    geluVariantPack.inTensors = PrepareInTensor();  // 放入输入tensor
+    CHECK_STATUS(PrepareInTensor(geluVariantPack.inTensors));  // 放入输入tensor
     atb::Tensor tensorOut = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE});
     geluVariantPack.outTensors.push_back(tensorOut);  // 放入输出tensor
     uint64_t geluWorkspaceSize = 0;
@@ -112,7 +111,8 @@ void RunGeluDemo(atb::Context *context, void *stream)
 void RunSwigluDemo(atb::Context *context, void *stream)
 {
     // Activation Swiglu_forward示例
-    atb::Operation *swigluOp = SwigluOperation();
+    atb::Operation *swigluOp = nullptr;
+    CHECK_STATUS(GeluOperation(swigluOp));
     // 准备VariantPack
     atb::VariantPack swigluVariantPack;
     swigluVariantPack.inTensors = PrepareInTensor();  // 放入输入tensor

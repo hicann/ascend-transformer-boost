@@ -23,7 +23,7 @@
     do {                                                                                                               \
         if ((status) != 0) {                                                                                           \
             std::cout << __FILE__ << ":" << __LINE__ << " [error]: " << (status) << std::endl;                         \
-            exit(1);                                                                                                   \
+            return status;                                                                                             \
         }                                                                                                              \
     } while (0)
 
@@ -40,9 +40,11 @@
  * @param  dataType 数据类型
  * @param  format 数据格式
  * @param  shape 数据shape
- * @return atb::Tensor 返回创建的Tensor对象
+ * @param atb::Tensor 返回创建的Tensor对象
+ * @return atb::Status atb错误码
  */
-atb::Tensor CreateTensor(const aclDataType dataType, const aclFormat format, std::vector<int64_t> shape)
+atb::Status CreateTensor(const aclDataType dataType, const aclFormat format, std::vector<int64_t> shape,
+                         atb::Tensor &tensor)
 {
     atb::Tensor tensor;
     tensor.desc.dtype = dataType;
@@ -54,7 +56,7 @@ atb::Tensor CreateTensor(const aclDataType dataType, const aclFormat format, std
     }
     tensor.dataSize = atb::Utils::GetTensorSize(tensor); // 计算Tensor的数据大小
     CHECK_STATUS(aclrtMalloc(&tensor.deviceData, tensor.dataSize, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
-    return tensor;
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
@@ -64,10 +66,11 @@ atb::Tensor CreateTensor(const aclDataType dataType, const aclFormat format, std
  * @param inTensor 输入tensor
  * @param outTensorType 输出tensor的数据类型
  * @param shape 输出tensor的shape
- * @return atb::Tensor 转换后的tensor
+ * @param atb::Tensor 转换后的tensor
+ * @return atb::Status atb错误码
  */
-atb::Tensor CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tensor inTensor,
-                   const aclDataType outTensorType, std::vector<int64_t> shape)
+atb::Status CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tensor inTensor,
+                   const aclDataType outTensorType, atb::Tensor &outTensor)
 {
     uint64_t workspaceSize = 0;
     void *workspace = nullptr;
@@ -77,8 +80,9 @@ atb::Tensor CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tens
     castParam.outTensorType = outTensorType;
     atb::Operation *castOp = nullptr;
     CHECK_STATUS(CreateOperation(castParam, &castOp));
-    atb::Tensor outTensor = CreateTensor(outTensorType, aclFormat::ACL_FORMAT_ND, shape); // cast输出tensor
-    atb::VariantPack castVariantPack;                                                     // 参数包
+    // atb::Tensor outTensor;
+    // CreateTensor(outTensorType, aclFormat::ACL_FORMAT_ND, shape, outTensor); // cast输出tensor
+    atb::VariantPack castVariantPack; // 参数包
     castVariantPack.inTensors = {inTensor};
     castVariantPack.outTensors = {outTensor};
     // 在Setup接口调用时对输入tensor和输出tensor进行校验。
@@ -92,7 +96,7 @@ atb::Tensor CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tens
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspace)); // 清理工作空间
     }
-    return outTensor;
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
@@ -104,12 +108,12 @@ atb::Tensor CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tens
  * @param outTensorType 期望输出tensor数据类型
  * @param format 输出tensor的格式，即NZ，ND等
  * @param shape 输出tensor的shape
- * @return atb::Tensor 返回创建的tensor
+ * @param outTensor 返回创建的tensor
  */
 template <typename T>
-atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream, std::vector<T> data,
+atb::Status CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream, std::vector<T> data,
                                    const aclDataType outTensorType, const aclFormat format, std::vector<int64_t> shape,
-                                   const aclDataType inTensorType = ACL_DT_UNDEFINED)
+                                   atb::Tensor &outTensor, const aclDataType inTensorType = ACL_DT_UNDEFINED)
 {
     atb::Tensor tensor;
     aclDataType intermediateType;
@@ -125,14 +129,16 @@ atb::Tensor CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
     if (inTensorType == outTensorType && inTensorType != ACL_DT_UNDEFINED) {
         intermediateType = outTensorType;
     }
-    tensor = CreateTensor(intermediateType, format, shape);
+    CHECK_STATUS(CreateTensor(intermediateType, format, shape, tensor));
     CHECK_STATUS(aclrtMemcpy(tensor.deviceData, tensor.dataSize, data.data(), sizeof(T) * data.size(),
                              ACL_MEMCPY_HOST_TO_DEVICE));
+    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape, outTensor, outTensor));
     if (intermediateType == outTensorType) {
         // 原始创建的tensor类型，不需要转换
-        return tensor;
+        outTensor = tensor;
+        return atb::ErrorType::NO_ERROR;
     }
-    return CastOp(contextPtr, stream, tensor, outTensorType, shape);
+    return CastOp(contextPtr, stream, tensor, outTensorType, shape, outTensor, outTensor);
 }
 
 // 判断soc型号是否为Atlas A2/A3
@@ -143,7 +149,6 @@ bool Is910B()
         std::cout << "aclrtGetSocName failed!";
         return false;
     }
-
     const uint32_t LEN_OF_ASCEND_910B = 10;
     std::cout << "SocVersion: " << std::string(socName);
     return (std::string(socName).find("Ascend910B") != std::string::npos &&
@@ -159,7 +164,6 @@ bool Is310P()
         std::cout << "aclrtGetSocName failed!";
         return false;
     }
-
     const uint32_t LEN_OF_ASCEND_910B = 10;
     std::cout << "SocVersion: " << std::string(socName);
     return std::string(socName).find("Ascend310B") != std::string::npos;

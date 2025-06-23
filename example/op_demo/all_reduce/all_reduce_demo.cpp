@@ -44,7 +44,7 @@ atb::VariantPack PrepareVariantPack(Args &args)
 
 /**
  * @brief 创建一个AllReduce的Operation，并设置参数
- * @return atb::Operation * 返回一个Operation指针
+ * @return 错误码
  */
 int RunAllReduceOp(Args &args)
 {
