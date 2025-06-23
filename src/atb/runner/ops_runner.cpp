@@ -1388,13 +1388,14 @@ Status OpsRunner::UpdateWorkspaceBuffer(RunnerVariantPack &runnerVariantPack)
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         if (needSetworkspace) {
 #ifdef _DEBUG
-        ATB_LOG(INFO) << GetLogPrefix << "node[" << nodeId << "] update kernel runinfo workspaceBuffer, and new workspaceBuffer is "
+        ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] update kernel runinfo workspaceBuffer, and new workspaceBuffer is "
                       << static_cast<void *>(runnerVariantPack.workspaceBuffer);
 #else
-        ATB_LOG(INFO) << GetLogPrefix << "node[" << nodeId << "] update kernel runinfo workspaceBuffer";
+        ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] update kernel runinfo workspaceBuffer";
 #endif
             node.impl->SetWorkspaceDeviceAddr(runnerVariantPack.workspaceBuffer);
         }
     }
+    return NO_ERROR;
 }
 } // namespace atb
