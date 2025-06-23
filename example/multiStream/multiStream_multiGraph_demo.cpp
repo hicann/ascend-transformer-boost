@@ -23,7 +23,7 @@ static void CreateInTensorDescs(atb::SVector<atb::TensorDesc> &intensorDescs)
     }
 }
 
-static void CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<atb::TensorDesc> &intensorDescs)
+static aclError CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<atb::TensorDesc> &intensorDescs)
 {
     std::vector<char> zeroData(8, 0); // 一段全0的hostBuffer
     for (size_t i = 0; i < inTensors.size(); i++) {
@@ -32,19 +32,19 @@ static void CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<a
         int ret = aclrtMalloc(&inTensors.at(i).deviceData, inTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST); // 分配NPU内存
         if (ret != 0) {
             std::cout << "alloc error!";
-            exit(1);
+            return ret;
         }
         // 拷贝CPU内存到NPU侧
         ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(), ACL_MEMCPY_HOST_TO_DEVICE);
         if (ret != 0) {
             std::cout << "memcpy error!";
-            exit(1);
+            return ret;
         }
     }
 }
 
 // 设置各个outtensor并且为outtensor分配内存空间，同intensor设置
-static void CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVector<atb::TensorDesc> &outtensorDescs)
+static aclError CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVector<atb::TensorDesc> &outtensorDescs)
 {
     for (size_t i = 0; i < outTensors.size(); i++) {
         outTensors.at(i).desc = outtensorDescs.at(i);
@@ -52,7 +52,7 @@ static void CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVector
         int ret = aclrtMalloc(&outTensors.at(i).deviceData, outTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
         if (ret != 0) {
             std::cout << "alloc error!";
-            exit(1);
+            return ret;
         }
     }
 }
@@ -233,10 +233,23 @@ int main()
     packRW.outTensors.resize(outTensorNum);
     operationWR->InferShape(intensorDescs, outtensorDescs);
 
-    CreateInTensors(packWR.inTensors, intensorDescs);
-    CreateOutTensors(packWR.outTensors, outtensorDescs);
-    CreateInTensors(packRW.inTensors, intensorDescs);
-    CreateOutTensors(packRW.outTensors, outtensorDescs);
+    aclError ret; 
+    ret = CreateInTensors(packWR.inTensors, intensorDescs);
+    if (ret != 0) {
+        exit(ret);
+    }
+    ret = CreateOutTensors(packWR.outTensors, outtensorDescs);
+    if (ret != 0) {
+        exit(ret);
+    }
+    ret = CreateInTensors(packRW.inTensors, intensorDescs);
+    if (ret != 0) {
+        exit(ret);
+    }
+    ret = CreateOutTensors(packRW.outTensors, outtensorDescs);
+    if (ret != 0) {
+        exit(ret);
+    }
 
     // 初始化workspace
     uint64_t workspaceSizeWR = 0;
