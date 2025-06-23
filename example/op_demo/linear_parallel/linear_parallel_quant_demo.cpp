@@ -19,6 +19,7 @@ void ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *
         CHECK_STATUS(aclrtMalloc(&workspace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     CHECK_STATUS(op->Execute(variantPack, (uint8_t *)workspace, workspaceSize, context));
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
 
     if (workspace) {
         CHECK_STATUS(aclrtFree(workspace)); // 销毁workspace
@@ -35,8 +36,6 @@ void LinearParallelSample(int rank, int rankSize)
     // 设置每个进程对应的deviceId
     int deviceId = rank;
     CHECK_STATUS(aclrtSetDevice(deviceId));
-
-
     atb::Context *context = nullptr;
     CHECK_STATUS(atb::CreateContext(&context));
     aclrtStream stream = nullptr;

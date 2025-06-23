@@ -44,13 +44,13 @@ uint64_t CalcTilingKey(const LaunchParam &launchParam, const PostRmsNormTilingDa
     auto numCol = tilingDataPtr.numCol;
     bool longSeq = numCol > tilingDataPtr.sliceSize ? true : false;
     bool isSmallNumCol = numCol <= SLICE_SIZE_DOUBLE_BUFFER ? true : false;
-    bool Is910B = PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B ? true : false;
+    bool isA2orA3 = PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B ? true : false;
     bool biasEmpty = CheckEmptyTensor(launchParam.GetInTensor(TENSOR_BIAS_IDX));
     bool isBf16 = launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16;
     uint64_t tilingKey = longSeq;
     tilingKey = (tilingKey << 1) + static_cast<uint64_t>(biasEmpty);
     tilingKey = (tilingKey << 1) + static_cast<uint64_t>(isBf16);
-    if (isSmallNumCol && Is910B) {
+    if (isSmallNumCol && isA2orA3) {
         tilingKey += TILING_KEY_DOUBLE_BUFFER_OFFSET;
     }
     return tilingKey;
