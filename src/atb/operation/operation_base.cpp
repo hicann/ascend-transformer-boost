@@ -963,6 +963,7 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
             // 刷新图中所有node的workpsaceBuffer
             st = runner_->UpdateWorkspaceBuffer(runnerVariantPack_);
         } else {
+            isWorkspaceChange = true;
             runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
             reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
