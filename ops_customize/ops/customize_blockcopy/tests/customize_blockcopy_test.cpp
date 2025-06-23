@@ -55,7 +55,7 @@ aclError CreateTensorFromVector(std::vector<T> data, const aclDataType outTensor
                        ACL_MEMCPY_HOST_TO_DEVICE);
 }
 
-atb::SVector<atb::Tensor> PrepareBlockCopyInTensors()
+aclError PrepareBlockCopyInTensors(atb::SVector<atb::Tensor> tensors)
 {
     int total = BLOCK_COUNT * BLOCK_SIZE;
     std::vector<__fp16> hostKV(total);
@@ -64,10 +64,10 @@ atb::SVector<atb::Tensor> PrepareBlockCopyInTensors()
     }
     atb::Tensor keyCache;
     CHECK_STATUS(CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, tensorKey));
+                                        {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, keyCache));
     atb::Tensor valueCache;
     CHECK_STATUS(CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, tensorValue));
+                                        {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, valueCache));
 
     // 2) srcBlockIndices, cumSum：长度 BLOCK_COUNT = 2，cumSum = [1,2]
     std::vector<int32_t> srcIdx = {0, 1};
@@ -82,8 +82,7 @@ atb::SVector<atb::Tensor> PrepareBlockCopyInTensors()
     atb::Tensor dstTensor;
     CHECK_STATUS(CreateTensorFromVector(dstIdx, ACL_INT32, aclFormat::ACL_FORMAT_ND,
                                         {static_cast<int64_t>(cumSum.back())}, dstTensor));
-
-    return {keyCache, valueCache, srcTensor, dstTensor, cumSumTensor};
+    tensors = {keyCache, valueCache, srcTensor, dstTensor, cumSumTensor};
 }
 
 atb::Status PrepareOperation(atb::Operation **op)
@@ -106,7 +105,7 @@ TEST(ExampleOpTest, CreateOperation_Success)
     atb::Operation *op = nullptr;
     CHECK_STATUS(PrepareOperation(&op));
     atb::VariantPack variantPack;
-    variantPack.inTensors = PrepareBlockCopyInTensors();
+    CHECK_STATUS(PrepareBlockCopyInTensors(variantPack.inTensors));
 
     // setup
     uint64_t workspaceSize = 0;
