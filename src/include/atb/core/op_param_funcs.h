@@ -11,7 +11,7 @@
 #define ATB_OP_PARAM_FUNC_H
 
 #define OPERATION_PARAM_FUNCS(OpName, OpParamType)                                                                     \
-    template <> Status CreateOperation(const(OpParamType) & opParam, Operation * *operation)                           \
+    template <> Status CreateOperation(const (OpParamType) & opParam, Operation **operation)                           \
     {                                                                                                                  \
         if (operation == nullptr) {                                                                                    \
             return ERROR_INVALID_PARAM;                                                                                \
