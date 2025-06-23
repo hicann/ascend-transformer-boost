@@ -56,7 +56,7 @@ def run_test():
     run_perf_test(layernorm, [embedding_npu, weight, bias])
     print("----------- layernorm test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestLayerNorm(unittest.TestCase):
     def test(self):
         run_test()
 

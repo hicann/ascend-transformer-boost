@@ -16,7 +16,7 @@ import logging
 decimal_palace = 6
 message = "almost equal assertion failed"
 
-class Test(unittest.TestCase):
+class TestOpParam(unittest.TestCase):
     def test_layer_norm(self):
         layer_norm_param = torch_atb.LayerNormParam()
 

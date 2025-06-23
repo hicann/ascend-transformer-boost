@@ -52,7 +52,7 @@ def run_test():
     run_perf_test(cumsum, [intensor_npu])
     print("----------- cumsum test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestCumsum(unittest.TestCase):
     def test(self):
         run_test()
 

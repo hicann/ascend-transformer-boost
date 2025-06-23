@@ -46,7 +46,7 @@ def run_test():
     run_perf_test(multinomial, [normalized_tensor_npu])
     print("----------- multinomial test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestMultinomial(unittest.TestCase):
     def test(self):
         run_test()
 

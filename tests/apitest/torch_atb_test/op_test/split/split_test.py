@@ -46,7 +46,7 @@ def run_test():
     run_perf_test(split, [input_npu])
     print("----------- split test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestSplit(unittest.TestCase):
     def test(self):
         run_test()
 

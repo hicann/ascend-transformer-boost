@@ -58,7 +58,7 @@ def run_test():
     run_perf_test(activation, [intensor_npu])
     print("----------- activation test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestActivation(unittest.TestCase):
     def test(self):
         run_test()
 

@@ -52,7 +52,7 @@ def run_test():
     run_perf_test(linear, [input, weight])
     print("----------- linear test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestLinear(unittest.TestCase):
     def test(self):
         run_test()
 

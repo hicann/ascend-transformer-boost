@@ -49,7 +49,7 @@ def run_test():
     run_perf_test(as_strided, [intensor_npu])
     print("----------- as_strided test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestAsStrided(unittest.TestCase):
     def test(self):
         run_test()
 

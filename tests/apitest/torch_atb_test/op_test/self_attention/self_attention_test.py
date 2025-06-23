@@ -42,7 +42,7 @@ def run_test():
     run_perf_test(self_attention, intensors)
     print("----------- self_attention test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestSelfAttention(unittest.TestCase):
     def test(self):
         run_test()
 
