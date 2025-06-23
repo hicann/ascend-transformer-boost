@@ -43,7 +43,12 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
 {
     uint32_t qHiddenSize = HEAD_NUM * HEAD_SIZE;
     uint32_t kvHiddenSize = KV_HEAD_NUM * HEAD_SIZE;
-    atb::Tensor tensorQ, tensorK, tensorV, tensorCacheK, tensorCacheV, tensorMask;
+    atb::Tensor tensorQ;
+    atb::Tensor tensorK;
+    atb::Tensor tensorV;
+    atb::Tensor tensorCacheK;
+    atb::Tensor tensorCacheV;
+    atb::Tensor tensorMask;
     // 创建query tensor
     std::vector<float> qData(NTOKENS * qHiddenSize, 1.0);
     std::vector<float> kvData(NTOKENS * kvHiddenSize, 1.0);
@@ -58,7 +63,9 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
         }
     }
     // 创建tokenOffset，host侧tensor
-    atb::Tensor tensorTokenOffset, tensorSeqLen, tensorLayerId;
+    atb::Tensor tensorTokenOffset;
+    atb::Tensor tensorSeqLen
+    atb::Tensor tensorLayerId;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorTokenOffset));
     tensorTokenOffset.hostData = tokenOffsetHost.data(); // host侧tensor，拷贝值
     // 创建seqLen，host侧tensor
