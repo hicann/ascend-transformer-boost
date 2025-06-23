@@ -52,7 +52,7 @@ def run_test():
     run_perf_test(softmax, [input_npu])
     print("----------- softmax test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestSoftmax(unittest.TestCase):
     def test(self):
         run_test()
 

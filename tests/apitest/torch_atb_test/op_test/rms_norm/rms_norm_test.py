@@ -66,7 +66,7 @@ def run_test():
     run_perf_test(rms_norm, in_tensors)
     print("----------- rms_norm test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestRMSNorm(unittest.TestCase):
     def test(self):
         run_test()
 

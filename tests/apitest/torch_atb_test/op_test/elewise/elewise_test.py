@@ -48,7 +48,7 @@ def run_test():
     run_perf_test(elewise, [input1_npu, input2_npu])
     print("----------- elewise test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestElewise(unittest.TestCase):
     def test(self):
         run_test()
 

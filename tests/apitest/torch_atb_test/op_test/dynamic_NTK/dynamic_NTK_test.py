@@ -97,7 +97,7 @@ def run_test():
     run_perf_test(dynamic_NTK, [position_ids, inv_freqs, seq_lens])
     print("----------- dynamic_NTK test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestDynamicNTK(unittest.TestCase):
     def test(self):
         run_test()
 

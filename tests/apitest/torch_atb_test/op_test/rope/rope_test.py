@@ -80,7 +80,7 @@ def run_test():
     run_perf_test(rope, in_tensors_npu)
     print("----------- rope test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestRope(unittest.TestCase):
     def test(self):
         run_test()
 

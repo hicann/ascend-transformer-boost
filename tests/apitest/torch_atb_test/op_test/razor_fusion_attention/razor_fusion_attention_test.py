@@ -47,7 +47,7 @@ def run_test():
     run_perf_test(self_attention, intensors, 10)
     print("----------- razor fusion attention test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestRazorFusionAttention(unittest.TestCase):
     def test(self):
         run_test()
 

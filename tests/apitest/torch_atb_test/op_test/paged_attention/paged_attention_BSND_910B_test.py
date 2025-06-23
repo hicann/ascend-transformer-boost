@@ -468,7 +468,7 @@ def main():
     logging.info("golden_output", in_tensors[6])
     print("----------- paged_attention test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestSelfAttentionPAEncoder(unittest.TestCase):
     def test(self):
         torch.npu.synchronize()
         main()

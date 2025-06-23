@@ -44,7 +44,7 @@ def run_test():
     run_perf_test(concat, [intensor1_npu, intensor2_npu])
     print("----------- concat test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestConcat(unittest.TestCase):
     def test(self):
         run_test()
 

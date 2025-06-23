@@ -58,7 +58,7 @@ def run_test(rank, size):
     
     assert check_float(npu_outputs, cpu_goldens), "Test failed"
 
-class TestMultiRankMultiStream(unittest.TestCase):
+class TestAllGather(unittest.TestCase):
     def test(self):
         if not is910B():
             print("This test case only supports 910B")

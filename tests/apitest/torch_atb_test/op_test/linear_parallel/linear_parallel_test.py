@@ -2,19 +2,17 @@ import torch
 import torch_atb
 import torch_npu
 import torch.multiprocessing as mp
-import sys
-import os
 import re
 import unittest
 import logging
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s %(levelname)-8s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-rank_size = 8
+rank_size = 4
 rank_root = 0
 backend = "lcoc"
 random_seed = 123
@@ -90,10 +88,14 @@ def run_test(rank, size):
 
     assert check_precision(npu_res_cur_rank, cpu_res_cur_rank, rank), "Test failed"
 
+class TestLinearParallel(unittest.TestCase):
+    def test(self):
+        if not is910B():
+            print("This test case only supports 910B")
+            return True
+        print("----------- linear_parallel test begin ------------")
+        mp.spawn(run_test, nprocs=rank_size, args=(rank_size,))
+        print("----------- linear_parallel test success ------------")
+
 if __name__ == "__main__":
-    # if not is910B():
-    #     print("This test case only supports 910B")
-    #     return True
-    print("----------- linear_parallel test begin ------------")
-    mp.spawn(run_test, nprocs=rank_size, args=(rank_size,))
-    print("----------- linear_parallel test success ------------")
+    unittest.main()

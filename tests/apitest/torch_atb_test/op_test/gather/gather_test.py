@@ -75,7 +75,7 @@ def run_test():
     run_perf_test(gather, [intensor0_npu, intensor1_npu])
     print("----------- gather test success ------------")
 
-class TestGraph(unittest.TestCase):
+class TestGather(unittest.TestCase):
     def test(self):
         run_test()
 
