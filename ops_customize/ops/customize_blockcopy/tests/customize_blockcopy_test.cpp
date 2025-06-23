@@ -83,6 +83,7 @@ aclError PrepareBlockCopyInTensors(atb::SVector<atb::Tensor> &tensors)
     CHECK_STATUS(CreateTensorFromVector(dstIdx, ACL_INT32, aclFormat::ACL_FORMAT_ND,
                                         {static_cast<int64_t>(cumSum.back())}, dstTensor));
     tensors = {keyCache, valueCache, srcTensor, dstTensor, cumSumTensor};
+    return 0;
 }
 
 atb::Status PrepareOperation(atb::Operation **op)
