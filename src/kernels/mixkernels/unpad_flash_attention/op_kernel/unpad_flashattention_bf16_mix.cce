@@ -3458,6 +3458,7 @@ public:
                     uint32_t p_scale_offset = (n_idx - launch_delay) / s_block_stack % pv_stage * RoundUp<uint32_t>(pp_m_scalar, FLOAT_VECTOR_SIZE);
                     if(sub_m == 0) {
                         WaitFlagDev(UPDATE_READY); // 4
+                        continue;
                     }
                     if (n_idx != launch_delay + n_start) {
                         brcb_v<ArchType::ASCEND_V220, uint32_t>(
