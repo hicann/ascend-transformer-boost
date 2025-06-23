@@ -55,7 +55,7 @@ aclError CreateTensorFromVector(std::vector<T> data, const aclDataType outTensor
                        ACL_MEMCPY_HOST_TO_DEVICE);
 }
 
-aclError PrepareBlockCopyInTensors(atb::SVector<atb::Tensor> tensors)
+aclError PrepareBlockCopyInTensors(atb::SVector<atb::Tensor> &tensors)
 {
     int total = BLOCK_COUNT * BLOCK_SIZE;
     std::vector<__fp16> hostKV(total);
