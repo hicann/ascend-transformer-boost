@@ -27,6 +27,8 @@ int LcalCommInitRankLocal(int rankSize, int rank, LcalCommPtr *comm);
 
 int LcalCommInitRank(LcalUniqueId commId, int rankSize, int rank, LcalCommPtr *comm);
 
+int LcalCommInitRankWithCustDomainSize(int commDomain, int bufferSize, int rankSize, int rank, LcalCommPtr *comm);
+
 int LcalCommInitRankWithDomain(int commDomain, int rankSize, int rank, LcalCommPtr *comm);
 
 int LcalGetCommArgsDev(LcalCommPtr comm, GM_ADDR &commArgsPtr);
