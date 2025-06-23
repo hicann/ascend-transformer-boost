@@ -46,7 +46,6 @@
 atb::Status CreateTensor(const aclDataType dataType, const aclFormat format, std::vector<int64_t> shape,
                          atb::Tensor &tensor)
 {
-    atb::Tensor tensor;
     tensor.desc.dtype = dataType;
     tensor.desc.format = format;
     tensor.desc.shape.dimNum = shape.size();

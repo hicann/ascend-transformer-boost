@@ -30,7 +30,8 @@ atb::Status PrepareInTensor(atb::SVector<atb::Tensor> &inTensors)
         val = dis(gen);
     }
     // 创建输入tensor
-    atb::Tensor inTensor = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE});
+    atb::Tensor inTensor;
+    CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE}, inTensor);
     CHECK_STATUS(aclrtMemcpy(inTensor.deviceData,
         inTensor.dataSize,
         inTensorData.data(),
@@ -78,7 +79,8 @@ void RunGeluDemo(atb::Context *context, void *stream)
     // 准备VariantPack
     atb::VariantPack geluVariantPack;
     CHECK_STATUS(PrepareInTensor(geluVariantPack.inTensors));  // 放入输入tensor
-    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE});
+    atb::Tensor tensorOut;
+    CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE}, tensorOut);
     geluVariantPack.outTensors.push_back(tensorOut);  // 放入输出tensor
     uint64_t geluWorkspaceSize = 0;
     // Gelu Activation准备工作
@@ -116,7 +118,8 @@ void RunSwigluDemo(atb::Context *context, void *stream)
     // 准备VariantPack
     atb::VariantPack swigluVariantPack;
     swigluVariantPack.inTensors = PrepareInTensor();  // 放入输入tensor
-    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE / 2});
+    atb::Tensor tensorOut;
+    CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE / 2}, tensorOut);
     swigluVariantPack.outTensors.push_back(tensorOut);  // 放入输出tensor
     uint64_t swigluWorkspaceSize = 0;
     // Swiglu Activation准备工作
