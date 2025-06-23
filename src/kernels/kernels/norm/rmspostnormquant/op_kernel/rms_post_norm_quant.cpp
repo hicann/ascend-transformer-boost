@@ -314,7 +314,7 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata,
 
 #define GET_TILING_DATA(tilingData, tilingArg)                                                                       \
     AsdOps::RmsNormQuantCommonTilingData tilingData;                                                                  \
-    InitTilingData(tilingArg, &tilingData)
+    InitTilingData((tilingArg), &(tilingData))
 
 extern "C" __global__ __aicore__ void rms_post_norm_quant(GM_ADDR x, GM_ADDR r, GM_ADDR g, GM_ADDR scale,
                                                           GM_ADDR offset, GM_ADDR y, GM_ADDR res, GM_ADDR tiling)
