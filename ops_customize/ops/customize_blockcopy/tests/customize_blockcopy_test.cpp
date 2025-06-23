@@ -96,39 +96,39 @@ TEST(ExampleOpTest, CreateOperation_Success)
     atb::Context *context = nullptr;
     void *stream = nullptr;
 
-    CHECK_STATUS(aclInit(nullptr));
-    CHECK_STATUS(aclrtSetDevice(DEVICE_ID));
-    CHECK_STATUS(CreateContext(&context));
-    CHECK_STATUS(aclrtCreateStream(&stream));
+    ASSERT_EQ(aclInit(nullptr), 0);
+    ASSERT_EQ(aclrtSetDevice(DEVICE_ID). 0);
+    ASSERT_EQ(CreateContext(&context), 0);
+    ASSERT_EQ(aclrtCreateStream(&stream), 0);
     context->SetExecuteStream(stream);
 
     atb::Operation *op = nullptr;
-    CHECK_STATUS(PrepareOperation(&op));
+    ASSERT_EQ(PrepareOperation(&op), 0);
     atb::VariantPack variantPack;
-    CHECK_STATUS(PrepareBlockCopyInTensors(variantPack.inTensors));
+    ASSERT_EQ(PrepareBlockCopyInTensors(variantPack.inTensors), 0);
 
     // setup
     uint64_t workspaceSize = 0;
-    CHECK_STATUS(op->Setup(variantPack, workspaceSize, context));
+    ASSERT_EQ(op->Setup(variantPack, workspaceSize, context), 0);
     uint8_t *workspacePtr = nullptr;
     if (workspaceSize > 0) {
-        CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
+        ASSERT_EQ(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST), 0);
     }
 
     // execute
     op->Execute(variantPack, workspacePtr, workspaceSize, context);
-    CHECK_STATUS(aclrtSynchronizeStream(stream));
+    ASSERT_EQ(aclrtSynchronizeStream(stream), 0);
 
     for (atb::Tensor &inTensor : variantPack.inTensors) {
-        CHECK_STATUS(aclrtFree(inTensor.deviceData));
+        ASSERT_EQ(aclrtFree(inTensor.deviceData), 0);
     }
     if (workspaceSize > 0) {
-        CHECK_STATUS(aclrtFree(workspacePtr));
+        ASSERT_EQ(aclrtFree(workspacePtr), 0);
     }
-    CHECK_STATUS(atb::DestroyOperation(op));
-    CHECK_STATUS(aclrtDestroyStream(stream));
-    CHECK_STATUS(atb::DestroyContext(context));
-    CHECK_STATUS(aclFinalize());
+    ASSERT_EQ(atb::DestroyOperation(op), 0);
+    ASSERT_EQ(aclrtDestroyStream(stream), 0);
+    ASSERT_EQ(atb::DestroyContext(context), 0);
+    ASSERT_EQ(aclFinalize(), 0);
 }
 
 int main(int argc, char **argv)
