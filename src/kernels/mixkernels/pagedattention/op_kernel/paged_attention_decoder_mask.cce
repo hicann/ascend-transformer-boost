@@ -3376,7 +3376,7 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
                 kvOffset1 = numBlocksId1 * blockSize * kvHeads * embeddingSize + (headId / groupNum) * strideKV;
             }
             int64_t qOffset = curQOffset + headId * strideQO + mIdx * pp_m_scalar * BLOCK_SIZE;
-            int64_t maskOffset = 0;
+            int64_t maskOffset = curBatchMaskStride + mIdx * pp_m_scalar * BLOCK_SIZE + nIdx * maskStride * blockSize;
             int32_t wrapO = (nIdx == (nLoop - 1) || (nIdx + 1) == (nLoop - 1)) ? 1 : 0;
             int32_t initG = (nIdx == 0) ? 1 : 0;
             int32_t m_actual = (mIdx == (mLoop - 1)) ? (q_seqlen_real - mIdx * pp_m_scalar) : pp_m_scalar;
@@ -3395,6 +3395,7 @@ __aicore__ inline void RunPrefill(uint32_t startBlk, uint32_t endBlk, uint32_t n
             int32_t is_ping = 0;
             int32_t mask_n = 0;
             if (maskType == 4) {
+                maskOffset = 0;
                 if (prefix_size % 2 == 1) {
                     mask_n = (prefix_size / 2) * 2 + ((mIdx + 1) / 2 ) *2;
                 } else {

@@ -94,9 +94,11 @@ namespace Lcal {
         int32_t rank = -1;
         int32_t rankSize = -1;
         int32_t blockDim = -1;
+        int32_t bufferSize = -1;
         ChipName chipName = ChipName::CHIP_910B3;
         // param info
         CoCParamDesc cocParamDesc = {};
+
         // type
         LcalType lcalType = LcalType::ALL_REDUCE;
     };
