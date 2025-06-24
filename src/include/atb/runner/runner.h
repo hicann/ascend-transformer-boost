@@ -35,6 +35,7 @@ public:
     virtual uint64_t GetArgsSize();
     virtual Status BuildArgs();
     virtual Status UpdateTensorAddr(RunnerVariantPack &runnerVariantPack);
+    virtual Status UpdateWorkspaceBuffer(RunnerVariantPack &runnerVariantPack);
 
 protected:
     virtual void SetSaveTensorDir(const std::string &tensorDir);

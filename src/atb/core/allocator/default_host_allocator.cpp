@@ -15,7 +15,7 @@ const int ALIGN_INT = 32;
 DefaultHostAllocator::DefaultHostAllocator() {}
 DefaultHostAllocator::~DefaultHostAllocator()
 {
-    // 释放所有管理的device侧地址
+    // 释放所有管理的host侧地址
     for (auto it = memMap.begin(); it != memMap.end(); ++it) {
         Status st = aclrtFreeHost(it->first);
         if (st != 0) {
