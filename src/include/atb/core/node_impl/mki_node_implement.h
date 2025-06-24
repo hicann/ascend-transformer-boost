@@ -26,6 +26,7 @@ public:
     void Reset() override;
     bool BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors, SVector<ViewFunc> &inTensorViewFuncs,
                           const Mki::OpDesc &opDesc, size_t outTensorNum) override;
+    bool AddLens2LaunchParam(const SVector<int> &inputLens, const SVector<int> &outputLens) override;
     bool PlanKernelInferShape() override;
     size_t GetTilingSize() const override;
     bool UpdateBestKernel() override;
