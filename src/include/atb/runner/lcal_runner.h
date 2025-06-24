@@ -12,6 +12,7 @@
 
 #include <lcal/lcal.h>
 #include <memory>
+#include <utility>
 #include "atb/runner/runner.h"
 #include "atb/core/runner_type.h"
 #include "atb/infer_op_params.h"
@@ -36,7 +37,7 @@ protected:
 
 private:
     void InitLcalComm();
-    int32_t ParseCommDomain(const std::string &commDomain) const;
+    std::pair<int32_t, int32_t> ParseCommDomain(const std::string &commDomain) const;
     std::shared_ptr<Lcal::LcalComm> CreateLcalComm();
 
 private:

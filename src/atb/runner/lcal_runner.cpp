@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "atb/runner/lcal_runner.h"
+#include <algorithm>
+#include <cctype>
 #include <atb/utils/log.h>
 #include <acl/acl.h>
 #include "atb/utils/config.h"
@@ -43,38 +45,59 @@ void LcalRunner::InitLcalComm()
     }
 }
 
-int32_t LcalRunner::ParseCommDomain(const std::string &commDomain) const
+std::pair<int32_t, int32_t> LcalRunner::ParseCommDomain(const std::string &commDomain) const
 {
-    if (commDomain == "") {
-        return 0;
+    constexpr int32_t defaultDomainSize = 200;
+    constexpr int32_t maxDomainId = 65535;
+    if (commDomain.empty()) {
+        return {0, defaultDomainSize};
     }
-    constexpr int32_t maxNum = 65535;
-    for (char const &c : commDomain) {
-        if (!std::isdigit(c)) {
-            ATB_LOG(ERROR) << "commDomain must be a number, commDomain : " << commDomain;
-            return -1;
+
+    size_t colonPos = commDomain.find(':');
+    if (colonPos != std::string::npos) {
+        std::string idStr = commDomain.substr(0, colonPos);
+        std::string sizeStr = commDomain.substr(colonPos + 1);
+        if (idStr.empty() || sizeStr.empty() ||
+            !std::all_of(idStr.begin(), idStr.end(), ::isdigit) ||
+            !std::all_of(sizeStr.begin(), sizeStr.end(), ::isdigit)) {
+            ATB_LOG(ERROR) << "commDomain must contain numeric id and size";
+            return {-1, -1};
         }
+        int32_t id = std::stoi(idStr);
+        int32_t size = std::stoi(sizeStr);
+        if (id < 0 || id > maxDomainId || size <= 0) {
+            ATB_LOG(ERROR) << "Invalid range: id should be 0-65535 and size > 0";
+            return {-1, -1};
+        }
+        return {id, size};
     }
-    int32_t num = std::stoi(commDomain);
-    if (num < 0 || num > maxNum) {
-        ATB_LOG(ERROR) << "commDomain is not in 0-65535, commDomain : " << commDomain;
-        return -1;
+
+    // 兼容旧格式：只传编号
+    if (!std::all_of(commDomain.begin(), commDomain.end(), ::isdigit)) {
+        ATB_LOG(ERROR) << "commDomain must be a number or in id:size format, got: " << commDomain;
+        return {-1, -1};
     }
-    return num;
+
+    int32_t id = std::stoi(commDomain);
+    if (id < 0 || id > maxDomainId) {
+        ATB_LOG(ERROR) << "commDomain id is not in 0-65535, commDomain: " << commDomain;
+        return {-1, -1};
+    }
+    return {id, defaultDomainSize};
 }
 
 std::shared_ptr<Lcal::LcalComm> LcalRunner::CreateLcalComm()
 {
     LcalCommPtr comm = nullptr;
-    int commonId = -1;
     if (commMode_ == infer::CommMode::COMM_MULTI_PROCESS) {
-        commonId = ParseCommDomain(commDomain_);
-        ATB_LOG(INFO) << GetLogPrefix() << "Lccl COMM_MULTI_PROCESS commDomain is : " << commonId;
-        if (commonId == -1) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "Invalid commDomain: " << commonId;
+        auto commonId = ParseCommDomain(commDomain_);
+        ATB_LOG(INFO) << GetLogPrefix() << "Lccl COMM_MULTI_PROCESS commDomain is : "
+            << commonId.first << ":" << commonId.second;
+        if (commonId.first == -1) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Invalid commDomain: " << commonId.first;
             return std::shared_ptr<Lcal::LcalComm>();
         }
-        lcalErrorCode_ = LcalCommInitRankWithDomain(commonId, rankSize_, rank_, &comm);
+        lcalErrorCode_ = LcalCommInitRankWithCustDomainSize(commonId.first, commonId.second, rankSize_, rank_, &comm);
     } else if (commMode_ == infer::CommMode::COMM_MULTI_THREAD) {
         lcalErrorCode_ = LcalCommInitThread(rank_, rankSize_, commDomain_.c_str(), &comm);
     } else {
