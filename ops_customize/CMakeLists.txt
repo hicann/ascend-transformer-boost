@@ -17,9 +17,10 @@ set(MKI_PACKAGE_DIR "${OPS_THIRD_PARTY_DIR}/mki")
 set(MKI_SCRIPT_DIR "${MKI_PACKAGE_DIR}/scripts")
 
 file(GLOB ALL_OPS_IMPL_DIRS
+    CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/ops/*/operation_implement"
     "${CMAKE_CURRENT_LIST_DIR}/ops/*/operation_implement/tiling"
-    CONFIGURE_DEPENDS)
+)
 
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
