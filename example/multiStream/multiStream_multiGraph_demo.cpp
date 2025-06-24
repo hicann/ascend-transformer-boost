@@ -30,13 +30,15 @@ static aclError CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVect
     for (size_t i = 0; i < inTensors.size(); i++) {
         inTensors.at(i).desc = intensorDescs.at(i);
         inTensors.at(i).dataSize = atb::Utils::GetTensorSize(inTensors.at(i));
-        ret = aclrtMalloc(&inTensors.at(i).deviceData, inTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST); // 分配NPU内存
+        ret = aclrtMalloc(&inTensors.at(i).deviceData, inTensors.at(i).dataSize,
+                          ACL_MEM_MALLOC_HUGE_FIRST); // 分配NPU内存
         if (ret != 0) {
             std::cout << "alloc error!";
             return ret;
         }
         // 拷贝CPU内存到NPU侧
-        ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(), ACL_MEMCPY_HOST_TO_DEVICE);
+        ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(),
+                          ACL_MEMCPY_HOST_TO_DEVICE);
         if (ret != 0) {
             std::cout << "memcpy error!";
         }
@@ -61,7 +63,7 @@ static aclError CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVe
 
 static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **operation)
 {
-	// 构子图流程
+    // 构子图流程
     opGraph.inTensorNum = 2;
     opGraph.outTensorNum = 1;
     opGraph.internalTensorNum = 2;
@@ -184,7 +186,7 @@ static void CreateGraphOperationWithRWEvent(atb::GraphParam &opGraph, atb::Opera
 int main()
 {
     aclInit(nullptr);
-	// 设置卡号、创建stream、创建context、设置stream
+    // 设置卡号、创建stream、创建context、设置stream
     uint32_t deviceId = 1;
     aclrtSetDevice(deviceId);
     // 创建多个stream
@@ -213,7 +215,7 @@ int main()
     atb::GraphParam opGraphRW;
     CreateGraphOperationWithRWEvent(opGraphRW, &operationRW, event);
 
-	// 输入输出tensor准备
+    // 输入输出tensor准备
     atb::VariantPack packWR;
     atb::VariantPack packRW;
     atb::SVector<atb::TensorDesc> intensorDescs;
@@ -227,15 +229,15 @@ int main()
     packWR.inTensors.resize(inTensorNum);
     packRW.inTensors.resize(inTensorNum);
     intensorDescs.resize(inTensorNum);
-    
+
     CreateInTensorDescs(intensorDescs);
-    
+
     outtensorDescs.resize(outTensorNum);
     packWR.outTensors.resize(outTensorNum);
     packRW.outTensors.resize(outTensorNum);
     operationWR->InferShape(intensorDescs, outtensorDescs);
 
-    aclError ret; 
+    aclError ret;
     ret = CreateInTensors(packWR.inTensors, intensorDescs);
     if (ret != 0) {
         exit(ret);
@@ -277,9 +279,9 @@ int main()
             exit(1);
         }
     }
-    operationWR->Execute(packWR, (uint8_t*)workSpaceWR, workspaceSizeWR, contextWR);
+    operationWR->Execute(packWR, (uint8_t *)workSpaceWR, workspaceSizeWR, contextWR);
 
-    operationRW->Execute(packRW, (uint8_t*)workSpaceRW, workspaceSizeRW, contextRW);
+    operationRW->Execute(packRW, (uint8_t *)workSpaceRW, workspaceSizeRW, contextRW);
 
     // 流同步
     ret = aclrtSynchronizeStream(stream1);
@@ -294,7 +296,7 @@ int main()
         exit(1);
     }
 
-	// 资源释放
+    // 资源释放
     atb::DestroyOperation(operationWR);
     atb::DestroyContext(contextWR);
     for (size_t i = 0; i < packWR.inTensors.size(); i++) {

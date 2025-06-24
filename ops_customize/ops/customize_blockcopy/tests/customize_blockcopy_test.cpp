@@ -64,10 +64,10 @@ aclError PrepareBlockCopyInTensors(atb::SVector<atb::Tensor> &tensors)
     }
     atb::Tensor keyCache;
     CHECK_STATUS(CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, keyCache));
+                                       {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, keyCache));
     atb::Tensor valueCache;
     CHECK_STATUS(CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, valueCache));
+                                       {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, valueCache));
 
     // 2) srcBlockIndices, cumSum：长度 BLOCK_COUNT = 2，cumSum = [1,2]
     std::vector<int32_t> srcIdx = {0, 1};
@@ -81,7 +81,7 @@ aclError PrepareBlockCopyInTensors(atb::SVector<atb::Tensor> &tensors)
     std::vector<int32_t> dstIdx = {1, 0};
     atb::Tensor dstTensor;
     CHECK_STATUS(CreateTensorFromVector(dstIdx, ACL_INT32, aclFormat::ACL_FORMAT_ND,
-                                        {static_cast<int64_t>(cumSum.back())}, dstTensor));
+                                       {static_cast<int64_t>(cumSum.back())}, dstTensor));
     tensors = {keyCache, valueCache, srcTensor, dstTensor, cumSumTensor};
     return 0;
 }
