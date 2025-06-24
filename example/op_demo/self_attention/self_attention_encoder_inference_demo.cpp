@@ -32,9 +32,9 @@ const uint32_t LAYER_NUM = 1;                                                 //
  * @return atb::Status 错误码
  * @note 需要传入所有host侧tensor
  */
-atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream,
-                                          std::vector<int32_t> &seqLenHost, std::vector<int32_t> &tokenOffsetHost,
-                                          std::vector<int32_t> &layerId, atb::SVector<atb::Tensor> &inTensors)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::vector<int32_t> &seqLenHost,
+                            std::vector<int32_t> &tokenOffsetHost, std::vector<int32_t> &layerId,
+                            atb::SVector<atb::Tensor> &inTensors)
 {
     uint32_t qHiddenSize = HEAD_NUM * HEAD_SIZE;
     uint32_t kvHiddenSize = KV_HEAD_NUM * HEAD_SIZE;

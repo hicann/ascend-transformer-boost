@@ -35,15 +35,18 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
 {
     // 创建query tensor
     atb::Tensor tensorQ;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(NTOKENS * HEAD_NUM * HEAD_SIZE, 1.0), ACL_FLOAT16,
-                           aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_NUM, HEAD_SIZE}, tensorQ));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(NTOKENS * HEAD_NUM * HEAD_SIZE, 1.0),
+                                        ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_NUM, HEAD_SIZE},
+                                        tensorQ));
     // 创建key，value tensor
     std::vector<float> kvData(NUM_BLOCKS * BLOCK_SIZE * KV_HEAD_NUM * HEAD_SIZE, 1.0);
     std::vector<int64_t> kvShape = {NUM_BLOCKS, BLOCK_SIZE, KV_HEAD_NUM, HEAD_SIZE};
     atb::Tensor tensorK;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, kvShape, tensorK));
+    CHECK_STATUS(
+        CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, kvShape, tensorK));
     atb::Tensor tensorV;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, kvShape, tensorV));
+    CHECK_STATUS(
+        CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, kvShape, tensorV));
     // 创建blockTables
     atb::Tensor tensorBlockTables;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, 4}, tensorBlockTables));
@@ -62,7 +65,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     }
     atb::Tensor tensorMask;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, maskData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                           {HEAD_NUM, NTOKENS, 128}, tensorMask));
+                                        {HEAD_NUM, NTOKENS, 128}, tensorMask));
     // 创建seqLen，host侧tensor
     atb::Tensor tensorSeqLen;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorSeqLen));

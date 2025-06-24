@@ -103,7 +103,7 @@ int main(int argc, char **argv)
     paVariantPack.inTensors;
     CHECK_STATUS(PrepareInTensor(context, stream, seqLenHost, paVariantPack.inTensors)); // 放入输入tensor
     atb::Tensor tensorOut;
-     CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, KV_HEAD_NUM, HEAD_SIZE}, tensorOut);
+    CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, KV_HEAD_NUM, HEAD_SIZE}, tensorOut);
     paVariantPack.outTensors.push_back(tensorOut); // 放入输出tensor
 
     uint64_t workspaceSize = 0;

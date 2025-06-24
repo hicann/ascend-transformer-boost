@@ -20,8 +20,7 @@ const uint32_t DIM2 = 3;
  * @param inTensors 创建输入Tensors
  * @return atb::Status atb错误码
  */
-atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream,
-                                          atb::SVector<atb::Tensor> &inTensors)
+atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建x tensor
     std::vector<float> xData(DIM1 * DIM2, 1.0);
@@ -60,7 +59,7 @@ int main(int argc, char **argv)
 
     // Transpose示例
     atb::Operation *transposeOp;
-     PrepareOperation(&transposeOp);
+    PrepareOperation(&transposeOp);
     // 准备输入tensor
     atb::VariantPack transposeVariantPack;
     PrepareInTensor(context, stream, transposeVariantPack.inTensors); // 放入输入tensor
