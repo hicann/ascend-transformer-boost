@@ -50,10 +50,6 @@ ascend-transformer-boost/
         └── CMakeLists.txt
 ```
 
-## 调用结构
-
-![](https://wiki.huawei.com/vision-file-storage/api/file/download/upload-v2/WIKI202505307002410/23032147/bd08f158aa3e4c7cad0d6bdf6f7f6f07.png)
-
 ## 宏与注册机制
 
 - Operation注册
