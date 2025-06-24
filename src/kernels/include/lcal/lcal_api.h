@@ -27,7 +27,8 @@ int LcalCommInitRankLocal(int rankSize, int rank, LcalCommPtr *comm);
 
 int LcalCommInitRank(LcalUniqueId commId, int rankSize, int rank, LcalCommPtr *comm);
 
-int LcalCommInitRankWithCustDomainSize(int commDomain, int bufferSize, int rankSize, int rank, LcalCommPtr *comm);
+int LcalCommInitRankWithCustDomainSize(int commDomain, int bufferSize, int rankSize, int rank, LcalCommPtr *comm,
+                                       const bool isEnableAutoMagicNum = false);
 
 int LcalCommInitRankWithDomain(int commDomain, int rankSize, int rank, LcalCommPtr *comm);
 
