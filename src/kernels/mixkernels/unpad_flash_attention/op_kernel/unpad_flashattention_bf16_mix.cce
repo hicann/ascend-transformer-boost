@@ -319,7 +319,7 @@ public:
                         WAIT_FLAG(MTE1, M, pingpong_flag + 2);
                         if constexpr (int8_flag) {
                             mmad<ArchType::ASCEND_V220, QKV_DT, QKV_DT, int32_t, false>(
-                                l0c_buf_tensor.ReinterpretCast<int32_t>()[split_idx * qk_round_m * pp_n_scalar],
+                                l0c_buf_tensor.ReinterpretCast<int32_t>()[pingpong_flag * L0AB_HALF_BUF_SIZE + split_idx * qk_round_m * pp_n_scalar],
                                 l0a_buf_tensor[offset],
                                 l0b_buf_tensor[offset],
                                 qk_m,  // m
