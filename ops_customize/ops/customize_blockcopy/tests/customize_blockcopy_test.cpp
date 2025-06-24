@@ -63,11 +63,10 @@ aclError PrepareBlockCopyInTensors(atb::SVector<atb::Tensor> &tensors)
         hostKV[i] = static_cast<__fp16>(INIT_VALUE + i);
     }
     atb::Tensor keyCache;
-    CHECK_STATUS(CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                       {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, keyCache));
+    std::vector<int64_t> shape = {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE};
+    CHECK_STATUS(CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape, keyCache));
     atb::Tensor valueCache;
-    CHECK_STATUS(CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                       {BLOCK_COUNT, BLOCK_SIZE, HEADS, HEAD_SIZE}, valueCache));
+    CHECK_STATUS(CreateTensorFromVector(hostKV, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape, valueCache));
 
     // 2) srcBlockIndices, cumSum：长度 BLOCK_COUNT = 2，cumSum = [1,2]
     std::vector<int32_t> srcIdx = {0, 1};
@@ -80,8 +79,9 @@ aclError PrepareBlockCopyInTensors(atb::SVector<atb::Tensor> &tensors)
     // 3) dstBlockIndices：长度 cumSum.back() = 2，对应 [1,0] 表示交换两个块
     std::vector<int32_t> dstIdx = {1, 0};
     atb::Tensor dstTensor;
-    CHECK_STATUS(CreateTensorFromVector(dstIdx, ACL_INT32, aclFormat::ACL_FORMAT_ND,
-                                       {static_cast<int64_t>(cumSum.back())}, dstTensor));
+    int64_t dstBlockCount = static_cast<int64_t>(cumSum.back());
+    std::vector<int64_t> dstShape = {dstBlockCount};
+    CHECK_STATUS(CreateTensorFromVector(dstIdx, ACL_INT32, aclFormat::ACL_FORMAT_ND, dstShape, dstTensor));
     tensors = {keyCache, valueCache, srcTensor, dstTensor, cumSumTensor};
     return 0;
 }
