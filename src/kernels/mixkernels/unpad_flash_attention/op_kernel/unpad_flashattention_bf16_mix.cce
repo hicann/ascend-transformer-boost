@@ -279,9 +279,6 @@ public:
                         if (n_idx + split_idx == (n_loop - 1)) {
                             qk_n = (kv_seqlen - (n_idx + split_idx) * pp_n_scalar);
                             qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-                        } else {
-                            qk_n = pp_n_scalar;
-                            qk_round_n = pp_n_scalar;
                         }
                         bool last_split = split_idx == s_block_stack - 1 || n_idx + split_idx == n_end - 1;
                         WAIT_FLAG(M, MTE1, pingpong_flag);
@@ -299,7 +296,7 @@ public:
                             0,            // dstNzMatrixStride, unused
                             stride_kv   // srcDValue
                         );
-
+                        k_offset += pp_n_scalar * stride_kv;
                         SET_FLAG(MTE2, MTE1, pingpong_flag);
                         WAIT_FLAG(M, MTE1, pingpong_flag + 2);
                         WAIT_FLAG(MTE2, MTE1, pingpong_flag);
@@ -353,7 +350,6 @@ public:
                             sv_round_n,  // dstStride_dst_D
                             0b11
                         );
-                        k_offset += pp_n_scalar * stride_kv;
                     }
                     FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY);
                 }
@@ -2868,6 +2864,7 @@ public:
                                     );
                                     SET_FLAG(MTE2, V, 1 - pingpong_flag_s + 2);
                                 }
+                                WAIT_FLAG(MTE2, V, pingpong_flag_s + 2);
                                 if constexpr (int8_flag) {
                                     DeqPerHeadS322F32(ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], deq_qk_gm, off_qk_gm, head_idx,
                                                         m_split * qk_round_n);
@@ -2895,7 +2892,6 @@ public:
                                         round_m_split / FLOAT_BLOCK_SIZE  // repeat
                                     );
                                     PIPE_BARRIER(V);
-                                    WAIT_FLAG(MTE2, V, pingpong_flag_s + 2);
                                     SET_FLAG(V, MTE2, EVENT_ID7);
                                     for (uint32_t vdiv_idx = 0; vdiv_idx < qk_n / FLOAT_VECTOR_SIZE; ++vdiv_idx) {
                                         mul_v<ArchType::ASCEND_V220, float>(
@@ -2972,7 +2968,6 @@ public:
                                         round_m_split / FLOAT_BLOCK_SIZE  // repeat
                                     );
                                     PIPE_BARRIER(V);
-                                    WAIT_FLAG(MTE2, V, pingpong_flag_s + 2);
                                     SET_FLAG(V, MTE2, EVENT_ID7);
                                     for (uint32_t vdiv_idx = 0; vdiv_idx < qk_n / FLOAT_VECTOR_SIZE; ++vdiv_idx) {
                                         mul_v<ArchType::ASCEND_V220, float>(
@@ -3017,7 +3012,6 @@ public:
                                         8                                                                 // srcRepeatStride
                                     );
                                 } else {
-                                    WAIT_FLAG(MTE2, V, pingpong_flag_s + 2);
                                     // *** ls = tor * ls
                                     muls_v<ArchType::ASCEND_V220, float>(
                                         ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
