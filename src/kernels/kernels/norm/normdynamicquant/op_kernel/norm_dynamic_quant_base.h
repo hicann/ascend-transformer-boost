@@ -193,6 +193,6 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata,
 
 #define GET_TILING_DATA(tilingData, tiling_arg)           \
     AsdOps::NormDynamicQuantTilingData tilingData;        \
-    InitTilingData(tiling_arg, &tilingData)
+    InitTilingData((tiling_arg), &(tilingData))
 
 #endif
