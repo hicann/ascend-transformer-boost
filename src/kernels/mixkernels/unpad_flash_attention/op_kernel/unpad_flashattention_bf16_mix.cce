@@ -454,7 +454,6 @@ public:
                     SET_FLAG(MTE1, MTE2, EVENT_ID3);
                     WAIT_FLAG(MTE1, M, EVENT_ID5);
                     WAIT_FLAG(MTE1, M, EVENT_ID6);
-                    WAIT_FLAG(FIX, M, l0c_pingpong_flag);
                     if constexpr (int8_flag) {
                         mmad<ArchType::ASCEND_V220, QKV_DT, QKV_DT, int32_t, false>(
                             l0c_buf_tensor.template ReinterpretCast<int32_t>()[l0c_offset], l0a_buf_tensor,
@@ -481,8 +480,6 @@ public:
                     SET_FLAG(M, MTE1, EVENT_ID1);
                     SET_FLAG(M, MTE1, EVENT_ID2);
                     SET_FLAG(M, MTE1, EVENT_ID3);
-                    SET_FLAG(M, FIX, l0c_pingpong_flag);
-                    WAIT_FLAG(M, FIX, l0c_pingpong_flag);
                     // copy O to gm
                     l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
                         o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - launch_delay - n_start) % vect_mod * TMP_SIZE / vect_mod],
@@ -493,7 +490,6 @@ public:
                         round_k,     // dstStride_dst_D
                         0b11
                     );
-                    SET_FLAG(FIX, M, l0c_pingpong_flag);
                     FftsCrossCoreSync<PIPE_FIX, 2>(UPDATE_READY);
                 }
             }
