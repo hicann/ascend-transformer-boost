@@ -52,7 +52,7 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, AsdOps
 
 #define GET_TILING_DATA(tiling_data, tiling_arg)    \
     AsdOps::DynamicNTKTilingData tiling_data;      \
-    InitTilingData(tiling_arg, &tiling_data)
+    InitTilingData((tiling_arg), &(tiling_data))
 
 
 extern "C" __global__ __aicore__ void dynamic_ntk(GM_ADDR positionIds,
