@@ -181,10 +181,12 @@ struct PpTilingData {
     uint32_t splitk{0};
     uint32_t enShuffleK{0};
     uint32_t quantMode{0};
+    uint32_t enUnitFlag{0};
 
     void SetBaseShape(uint32_t batchSize, uint32_t m, uint32_t k, uint32_t n);
     void SetBaseOp(uint32_t coreNum, uint32_t mBase, uint32_t nBase, const MatMulInfo &mmInfo);
     void SetTilingKey(const MatMulInfo &mmInfo, uint32_t swizzleDirect, uint32_t enSplitK);
+    void SetUnitFlagSwitch();
     uint32_t End(const MatMulInfo &mmInfo);
 };
 } // namespace AsdOps
