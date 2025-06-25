@@ -274,6 +274,6 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *p_tilingdata, Broadc
 
 #define GET_TILING_DATA(tilingData, tilingArg)                                                                         \
     BroadcastTilingData tilingData;                                                                              \
-    InitTilingData(tilingArg, &tilingData)
+    InitTilingData((tilingArg), &(tilingData))
 
 #endif
