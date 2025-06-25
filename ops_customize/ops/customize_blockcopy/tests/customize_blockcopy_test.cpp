@@ -97,6 +97,7 @@ TEST(ExampleOpTest, CreateOperation_Success)
     atb::Context *context = nullptr;
     void *stream = nullptr;
 
+    // 0 represents success in assertion
     ASSERT_EQ(aclInit(nullptr), 0);
     ASSERT_EQ(aclrtSetDevice(DEVICE_ID), 0);
     ASSERT_EQ(CreateContext(&context), 0);
