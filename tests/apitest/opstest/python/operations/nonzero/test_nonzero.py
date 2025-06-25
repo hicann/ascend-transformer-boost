@@ -34,7 +34,7 @@ class TestNonzeroOperation(operation_test.OperationTest):
         return torch.allclose(out_tensor, golden_out_tensor, rtol=0, atol=0)
     
     def test(self):
-        if  operation_test.get_soc_version() == 'Ascend310B':
+        if operation_test.get_soc_version() != 'Ascend910B':
             print("this testcase don't supports Ascend310B")
             return True
         input0 = np.random.randint(0, 2, [2, 490]).astype(np.int64)
