@@ -16,8 +16,6 @@
 #include "atb/utils.h"
 #include "atb/context.h"
 
-using namespace atb;
-
 const int32_t DEVICE_ID = 0;
 const int BLOCK_COUNT = 2;
 const int BLOCK_SIZE = 2;
@@ -100,7 +98,7 @@ TEST(ExampleOpTest, CreateOperation_Success)
     // 0 represents success in assertion
     ASSERT_EQ(aclInit(nullptr), 0);
     ASSERT_EQ(aclrtSetDevice(DEVICE_ID), 0);
-    ASSERT_EQ(CreateContext(&context), 0);
+    ASSERT_EQ(atb::CreateContext(&context), 0);
     ASSERT_EQ(aclrtCreateStream(&stream), 0);
     context->SetExecuteStream(stream);
 
