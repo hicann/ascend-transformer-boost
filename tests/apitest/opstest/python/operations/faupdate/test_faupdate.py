@@ -13,6 +13,8 @@ import sys
 import os
 import unittest
 import torch
+import logging
+from itertools import product
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
@@ -158,6 +160,19 @@ class TestDecodeUpdate(operation_test.OperationTest):
         sp = 2
         hc = 32
         self.execute_faupdate(hDim, b, s, sp, hc)
+        
+    def test_fp32_case7_Prefill(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        print("TEST case6 Prefill starting")
+        hDims = [16, 256, 512]
+        batchs = [1, 2, 10]
+        seqlens = [1, 16, 64]
+        sps = [1, 5, 10]
+        hcs = [1, 10, 16, 32]
+        for hDim, batch, seqlen, sp, hc in product(hDims, batchs, seqlens, sps, hcs):
+            self.execute_faupdate(hDim, batch, seqlen, sp, hc)
 
 
 if __name__ == '__main__':
