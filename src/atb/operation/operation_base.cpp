@@ -1360,7 +1360,8 @@ Status OperationBase::CopyArgsToDevice(Context *context)
     Status st = NO_ERROR;
 #ifdef _DEBUG
     ATB_LOG(DEBUG) << GetLogPrefix() << "args in graphMode is:";
-    for (size_t i = 0; i < argsBufferSize_ / sizeof(void *); i++) {
+    const size_t counter =  argsBufferSize_ / sizeof(void *);
+    for (size_t i = 0; i < counter; i++) {
         ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
     }
 #endif

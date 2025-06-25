@@ -77,18 +77,20 @@ void OpsRunner::InitTensorFromRunnerPack(const RunnerVariantPack &runnerVariantP
 {
     TensorUtil::FastCopyTensors(opsTensorPack_.inTensors, kernelGraph_.inTensors);
     TensorUtil::FastCopyTensors(opsTensorPack_.outTensors, kernelGraph_.outTensors);
-
-    for (size_t i = 0; i < kernelGraph_.inTensors.size(); i++) {
+    const size_t kernelGraphInTensorsSize = kernelGraph_.inTensors.size();
+    for (size_t i = 0; i < kernelGraphInTensorsSize; i++) {
         isInTensorCanFree_[&kernelGraph_.inTensors.at(i)] = runnerVariantPack.isInTensorCanFree.at(i);
     }
-    for (size_t i = 0; i < kernelGraph_.outTensors.size(); i++) {
+    const size_t kernelGraphOutTensorsSize = kernelGraph_.outTensors.size();
+    for (size_t i = 0; i < kernelGraphOutTensorsSize; i++) {
         isOutTensorNeedMalloc_[&kernelGraph_.outTensors.at(i)] = runnerVariantPack.isOutTensorNeedMalloc.at(i);
     }
 }
 
 void OpsRunner::UpdateOutTensorDeviceData(RunnerVariantPack &runnerVariantPack)
 {
-    for (size_t i = 0; i < kernelGraph_.outTensors.size(); i++) {
+    const size_t kernelGraphOutTensorsSize = kernelGraph_.outTensors.size();
+    for (size_t i = 0; i < kernelGraphOutTensorsSize; i++) {
         Mki::Tensor *outTensor = &kernelGraph_.outTensors.at(i);
         auto it = isOutTensorNeedMalloc_.find(outTensor);
         if (it == isOutTensorNeedMalloc_.end()) {
@@ -433,7 +435,8 @@ static std::string GetUpdateRunInfoTensorDataString(size_t nodeId, std::string t
 void OpsRunner::UpdateRunInfoTensorData(KernelGraphNode &node, size_t nodeId, uint8_t *deviceIntermediateBuffer) const
 {
     auto &inTensors = node.impl->GetInTensors();
-    for (uint64_t tensorId = 0; tensorId < inTensors.size(); tensorId++) {
+    const uint64_t inTensorsSize = inTensors.size();
+    for (uint64_t tensorId = 0; tensorId < inTensorsSize; tensorId++) {
         Mki::Tensor &tensor = inTensors.at(tensorId);
         if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
             tensor.data = deviceIntermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
@@ -447,7 +450,8 @@ void OpsRunner::UpdateRunInfoTensorData(KernelGraphNode &node, size_t nodeId, ui
         }
     }
     auto &outTensors = node.impl->GetOutTensors();
-    for (uint64_t tensorId = 0; tensorId < outTensors.size(); tensorId++) {
+    const uint64_t outTensorsSize = outTensors.size();
+    for (uint64_t tensorId = 0; tensorId < outTensorsSize; tensorId++) {
         Mki::Tensor &tensor = outTensors.at(tensorId);
         if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
             tensor.data = deviceIntermediateBuffer + reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
@@ -618,7 +622,8 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
                 runnerVariantPack.mstxMemRegister->AddTensorMemRegions(runnerVariantPack.workspaceBuffer, runnerVariantPack.workspaceBufferSize);
             }
             auto &inTensors = node.impl->GetInTensors();
-            for (uint64_t tensorId = 0; tensorId < inTensors.size(); tensorId++) {
+            const uint64_t inTensorsSize = inTensors.size();
+            for (uint64_t tensorId = 0; tensorId < inTensorsSize; tensorId++) {
                 Mki::Tensor &tensor = inTensors.at(tensorId);
                 if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                     tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
@@ -626,7 +631,8 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
                 }
             }
             auto &outTensors = node.impl->GetOutTensors();
-            for (uint64_t tensorId = 0; tensorId < outTensors.size(); tensorId++) {
+            const uint64_t outTensorsSize = outTensors.size();
+            for (uint64_t tensorId = 0; tensorId < outTensorsSize; tensorId++) {
                 Mki::Tensor &tensor = outTensors.at(tensorId);
                 if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
                     tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
@@ -701,9 +707,10 @@ void OpsRunner::Reset()
 Status OpsRunner::PlanKernelGraph(uint8_t *kernelHostTilingBuffer, uint64_t maxTilingSize, bool launchWithTiling)
 {
     ATB_LOG(DEBUG) << GetLogPrefix() << " plan kernel graph start";
-    tilingSizes_.resize(kernelGraph_.nodes.size());
+    const size_t kernelGraphNodesSize = kernelGraph_.nodes.size();
+    tilingSizes_.resize(kernelGraphNodesSize);
 
-    for (size_t nodeId = 0; nodeId < kernelGraph_.nodes.size(); ++nodeId) {
+    for (size_t nodeId = 0; nodeId < kernelGraphNodesSize; ++nodeId) {
         if (maxTilingSize < totalTilingSize_) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] tiling buffer is not enough";
             return ERROR_OUT_OF_HOST_MEMORY;
@@ -911,7 +918,8 @@ void OpsRunner::InitTensorMaxNodeMap()
     }
 
     if (GetSingleton<Config>().IsworkspaceMemAllocGlobal()) {
-        for (size_t i = 0; i < kernelGraph_.inTensors.size(); ++i) {
+        const size_t kernelGraphInTensorsSize = kernelGraph_.inTensors.size();
+        for (size_t i = 0; i < kernelGraphInTensorsSize; ++i) {
             Mki::Tensor *tensor = &kernelGraph_.inTensors.at(i);
             auto it = isInTensorCanFree_.find(tensor);
             if (it == isInTensorCanFree_.end() || !it->second) {
@@ -933,8 +941,8 @@ void OpsRunner::InitTensorMaxNodeMap()
             }
         }
     }
-
-    for (size_t i = 0; i < kernelGraph_.internalTensors.size(); ++i) {
+    const size_t kernelGraphInternalTensorsSize = kernelGraph_.internalTensors.size();
+    for (size_t i = 0; i < kernelGraphInternalTensorsSize; ++i) {
         Mki::Tensor *tensor = &kernelGraph_.internalTensors[i];
         uint64_t maxNodeId = 0;
         uint64_t dependNodeCount = 0;
@@ -1071,8 +1079,8 @@ bool OpsRunner::GetCachedTiling(KernelGraphNode &node, size_t nodeId, uint8_t *k
     if (!node.tilingCacheEnable) {
         return false;
     }
-
-    for (size_t i = 0; i < kernelCaches_.size(); ++i) {
+    const size_t kernelCachesSize = kernelCaches_.size();
+    for (size_t i = 0; i < kernelCachesSize; ++i) {
         KernelCache *kernelCache = kernelCaches_.at(i).first;
         bool isLocalCache = kernelCaches_.at(i).second;
         bool getTilingSuccess = node.impl->GetCachedTiling(*kernelCache, nodeId, kernelHostTilingBuffer,
@@ -1093,7 +1101,8 @@ void OpsRunner::UpdateCacheTiling(KernelGraphNode &node, size_t nodeId, uint8_t 
         return;
     }
 
-    for (size_t i = 0; i < kernelCaches_.size(); ++i) {
+    const size_t kernelCachesSize = kernelCaches_.size();
+    for (size_t i = 0; i < kernelCachesSize; ++i) {
         KernelCache *kernelCache = kernelCaches_.at(i).first;
         node.impl->AddTiling(*kernelCache, nodeId, kernelHostTilingBuffer, tilingSize);
     }
@@ -1126,7 +1135,8 @@ void OpsRunner::BuildTensorData(
     MsprofTensorInfo &tensorDataInfo) const
 {
     // 依次构造本批次内tensor数据
-    for (size_t i = 0; i < batchTensors.size(); i++) {
+    const size_t batchTensorsSize = batchTensors.size();
+    for (size_t i = 0; i < batchTensorsSize; i++) {
         const auto &tensor = batchTensors.at(i);
         tensorDataInfo.tensorData[i].tensorType =
             tensor.first ? MSPROF_GE_TENSOR_TYPE_INPUT : MSPROF_GE_TENSOR_TYPE_OUTPUT;
@@ -1162,8 +1172,9 @@ void OpsRunner::SetNodesSaveTensorFlag()
     std::vector<int64_t> nodeIds(runnerIds_);
     nodeIds.push_back(0);
     size_t idx = nodeIds.size() - 1;
-    nodesSaveTensorFlag_.resize(kernelGraph_.nodes.size());
-    for (size_t i = 0; i < kernelGraph_.nodes.size(); i++) {
+    const size_t kernelGraphNodesSize = kernelGraph_.nodes.size();
+    nodesSaveTensorFlag_.resize(kernelGraphNodesSize);
+    for (size_t i = 0; i < kernelGraphNodesSize; i++) {
         nodeIds.at(idx) = static_cast<int64_t>(i);
         nodesSaveTensorFlag_.at(i) = Probe::IsTensorNeedSave(nodeIds, GetOperationName());
     }
@@ -1171,15 +1182,17 @@ void OpsRunner::SetNodesSaveTensorFlag()
 
 void OpsRunner::DumpKernelIOTensorInfo(KernelGraphNode &node) const
 {
-    std::vector<Probe::Tensor> inTensors(node.inTensors.size());
+    const size_t nodeInTensorsSize = node.inTensors.size();
+    std::vector<Probe::Tensor> inTensors(nodeInTensorsSize);
     std::string tensorDir = tensorDir_ + "/" + (Probe::IsSaveTensorBefore() ? "before" : "after");
-    for (size_t i = 0; i < node.inTensors.size(); ++i) {
+    for (size_t i = 0; i < nodeInTensorsSize; ++i) {
         std::string fileName = "intensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
         std::string tensorPath = Mki::FileSystem::Join({tensorDir, fileName});
         Probe::AsdopsTensorToProbeTensor(*node.inTensors[i], inTensors[i], tensorPath);
     }
-    std::vector<Probe::Tensor> outTensors(node.outTensors.size());
-    for (size_t i = 0; i < node.outTensors.size(); ++i) {
+    const size_t nodeOutTensorsSize = node.outTensors.size();
+    std::vector<Probe::Tensor> outTensors(nodeOutTensorsSize);
+    for (size_t i = 0; i < nodeOutTensorsSize; ++i) {
         std::string fileName = "outtensor" + std::to_string(i) + TENSOR_FILE_NAME_EXT;
         std::string tensorPath = Mki::FileSystem::Join({tensorDir, fileName});
         Probe::AsdopsTensorToProbeTensor(*node.outTensors[i], outTensors[i], tensorPath);
@@ -1264,7 +1277,8 @@ bool OpsRunner::ExecuteOverFlowCheckKernel(const std::string &opName, ContextBas
 
 bool OpsRunner::CheckOverFlowByTensor(const std::string &opName) const
 {
-    for (size_t i = 0; i < opsTensorPack_.outTensors.size(); i++) {
+    const size_t opsTensorPackOutTensorsSize = opsTensorPack_.outTensors.size();
+    for (size_t i = 0; i < opsTensorPackOutTensorsSize; i++) {
         const Mki::Tensor &tensor = opsTensorPack_.outTensors.at(i);
         std::vector<uint8_t> hostBuffer(tensor.dataSize);
         Status st =
@@ -1290,7 +1304,8 @@ bool OpsRunner::JudgeOverflowTensor(const std::string &opName, const Mki::Tensor
     if (tensor.desc.dtype == Mki::TensorDType::TENSOR_DTYPE_FLOAT16 ||
         tensor.desc.dtype == Mki::TensorDType::TENSOR_DTYPE_BF16) {
         Mki::fp16_t *bufferAddr = reinterpret_cast<Mki::fp16_t *>(hostBuffer);
-        for (size_t i = 0; i < tensor.dataSize / sizeof(Mki::fp16_t); i++) {
+        const size_t counter = tensor.dataSize / sizeof(Mki::fp16_t);
+        for (size_t i = 0; i < counter; i++) {
             if (bufferAddr[i].IsInf()) {
                 Probe::ReportOverflowKernel(opName);
                 return true;
@@ -1300,7 +1315,8 @@ bool OpsRunner::JudgeOverflowTensor(const std::string &opName, const Mki::Tensor
 
     if (tensor.desc.dtype == Mki::TensorDType::TENSOR_DTYPE_FLOAT) {
         float *bufferAddr = reinterpret_cast<float *>(hostBuffer);
-        for (size_t i = 0; i < tensor.dataSize / sizeof(float); i++) {
+        const size_t counter = tensor.dataSize / sizeof(float);
+        for (size_t i = 0; i < counter; i++) {
             if (std::isinf(bufferAddr[i])) {
                 Probe::ReportOverflowKernel(opName);
                 return true;
@@ -1312,12 +1328,14 @@ bool OpsRunner::JudgeOverflowTensor(const std::string &opName, const Mki::Tensor
 
 void OpsRunner::InitOpsTensorPack(const RunnerVariantPack &runnerPack)
 {
-    opsTensorPack_.inTensors.resize(runnerPack.inTensors.size());
-    opsTensorPack_.outTensors.resize(runnerPack.outTensors.size());
-    for (size_t i = 0; i < opsTensorPack_.inTensors.size(); i++) {
+    size_t opsTensorPackInTensorsSize = runnerPack.inTensors.size();
+    size_t opsTensorPackOutTensorsSize = runnerPack.outTensors.size();
+    opsTensorPack_.inTensors.resize(opsTensorPackInTensorsSize);
+    opsTensorPack_.outTensors.resize(opsTensorPackOutTensorsSize);
+    for (size_t i = 0; i < opsTensorPackInTensorsSize; i++) {
         TensorUtil::ConvertAtbTensor2OpsTensor(runnerPack.inTensors.at(i), opsTensorPack_.inTensors.at(i));
     }
-    for (size_t i = 0; i < opsTensorPack_.outTensors.size(); i++) {
+    for (size_t i = 0; i < opsTensorPackOutTensorsSize; i++) {
         TensorUtil::ConvertAtbTensor2OpsTensor(runnerPack.outTensors.at(i), opsTensorPack_.outTensors.at(i));
     }
 }
@@ -1353,10 +1371,12 @@ Status OpsRunner::BuildArgs()
 
 Status OpsRunner::UpdateTensorAddr(RunnerVariantPack &runnerVariantPack)
 {
-    for (size_t i = 0; i < kernelGraph_.inTensors.size(); i++) {
+    const size_t kernelGraphInTensorsSize = kernelGraph_.inTensors.size();
+    for (size_t i = 0; i < kernelGraphInTensorsSize; i++) {
         TensorUtil::ConvertAtbTensor2OpsTensor(runnerVariantPack.inTensors.at(i), kernelGraph_.inTensors.at(i));
     }
-    for (size_t i = 0; i < kernelGraph_.outTensors.size(); i++) {
+    const size_t kernelGraphOutTensorsSize = kernelGraph_.outTensors.size();
+    for (size_t i = 0; i < kernelGraphOutTensorsSize; i++) {
         TensorUtil::ConvertAtbTensor2OpsTensor(runnerVariantPack.outTensors.at(i), kernelGraph_.outTensors.at(i));
     }
 
