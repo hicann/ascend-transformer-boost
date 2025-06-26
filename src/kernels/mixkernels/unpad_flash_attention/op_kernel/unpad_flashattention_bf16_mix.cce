@@ -2480,21 +2480,12 @@ public:
                                 8                                                                 // srcRepeatStride
                             );
                             PIPE_BARRIER(V);
-                            if (qk_n == 256) {
-                                Rowsum<float, RowCalcTile::SPEC_TILE_256>(
-                                    ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                    ll_ubuf_tensor,
-                                    tv_ubuf_tensor,
-                                    round_sub_m, qk_n, qk_round_n
-                                );
-                            } else {
-                                Rowsum<float, RowCalcTile::TAIL_TILE>(
-                                    ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                    ll_ubuf_tensor,
-                                    tv_ubuf_tensor,
-                                    round_sub_m, qk_n, qk_round_n
-                                );
-                            }
+                            Rowsum<float, RowCalcTile::TAIL_TILE>(
+                                ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                ll_ubuf_tensor,
+                                tv_ubuf_tensor,
+                                round_sub_m, qk_n, qk_round_n
+                            );
                             PIPE_BARRIER(V);
                             if constexpr (int8_flag) {
                                 SymmetricQuant(lp_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], lm_ubuf_tensor, hm_ubuf_tensor,
@@ -2570,8 +2561,7 @@ public:
                             }
                         }
                         pingpong_flag_s = 1 - pingpong_flag_s;
-                    }
-                    else {
+                    } else {
                         bool last_n_loop = n_idx + s_block_stack > n_end - 1;
                         for (uint32_t split_idx = 0; split_idx < m_end; split_idx++) {
                             bool last_m_loop = split_idx == m_end - 1;
@@ -2845,7 +2835,6 @@ public:
                                         PIPE_BARRIER(V);
                                     }
                                 }
-
                                 if (split_idx != m_end - 1) {
                                     WAIT_FLAG(MTE3, MTE2, 1 - pingpong_flag_s);
                                     // input QK
@@ -2858,7 +2847,7 @@ public:
                                         0,                                // srcGap
                                         0                                 // dstGap
                                     );
-                                    SET_FLAG(MTE2, V, 1 - pingpong_flag_s + 2);
+                                    SET_FLAG(MTE2, V, 3 - pingpong_flag_s);
                                 }
                                 WAIT_FLAG(MTE2, V, pingpong_flag_s + 2);
                                 if constexpr (int8_flag) {
