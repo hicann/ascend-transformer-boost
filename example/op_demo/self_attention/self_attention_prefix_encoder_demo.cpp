@@ -1,0 +1,146 @@
+/*
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#include "atb/utils/config.h"
+#include "atb/utils/singleton.h"
+#include "demo_util.h"
+
+const uint32_t BATCH_SIZE = 4;                      // 批处理大小
+std::vector<int32_t> seqLenHost = {16, 16, 32, 32}; // host侧tensor值，用于存储Query每个批处理中的序列长度
+const uint32_t NTOKENS = accumulate(seqLenHost.begin(), seqLenHost.end(), 0); // sum(seqLenHost)
+std::vector<int32_t> kvSeqLenHost = {16, 144, 32, 288}; // host侧tensor值，用于存储Key, Value每个批处理中的序列长度
+const uint32_t NUM_BLOCKS = accumulate(kvSeqLenHost.begin(), kvSeqLenHost.end(), 0); // sum(kvSeqLenHost)
+const uint32_t HEAD_NUM = 32;                                                        // query头数
+const uint32_t KV_HEAD_NUM = 32;                                                     // kv头数
+const uint32_t HEAD_SIZE = 64;                                                       // 头大小
+const uint32_t BLOCK_SIZE = 128;                                                     // 以block存放的kv块大小
+
+/**
+ * @brief 准备atb::VariantPack中的所有输入tensor
+ * @param contextPtr context指针
+ * @param stream stream
+ * @param seqLenHost host侧tensor。Query序列长度向量
+ * @param kvSeqLenHost host侧tensor。Key, Value序列长度向量
+ * @return atb::SVector<atb::Tensor> atb::VariantPack中的输入tensor
+ * @note 需要传入所有host侧tensor
+ */
+atb::SVector<atb::Tensor> PrepareInTensor(atb::Context *contextPtr, aclrtStream stream,
+                                          std::vector<int32_t> &seqLenHost, std::vector<int32_t> &kvSeqLenHost)
+{
+    // 创建query tensor
+    atb::Tensor tensorQ =
+        CreateTensorFromVector(contextPtr, stream, std::vector<float>(NTOKENS * HEAD_NUM * HEAD_SIZE, 1.0), ACL_FLOAT16,
+                               aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_NUM, HEAD_SIZE});
+    // 创建key，value tensor
+    std::vector<float> kvData(NUM_BLOCKS * BLOCK_SIZE * KV_HEAD_NUM * HEAD_SIZE, 1.0);
+    std::vector<int64_t> kvShape = {NUM_BLOCKS, BLOCK_SIZE, KV_HEAD_NUM, HEAD_SIZE};
+    atb::Tensor tensorK =
+        CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, kvShape);
+    atb::Tensor tensorV =
+        CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, kvShape);
+    // 创建blockTables
+    atb::Tensor tensorBlockTables = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, 4});
+    std::vector<int32_t> blockTablesData(16);
+    std::iota(blockTablesData.begin(), blockTablesData.end(), 0);
+    CHECK_STATUS(aclrtMemcpy(tensorBlockTables.deviceData, tensorBlockTables.dataSize, blockTablesData.data(),
+                             sizeof(int32_t) * blockTablesData.size(), ACL_MEMCPY_HOST_TO_DEVICE));
+    // 创建alibi128mask，值为1的上三角
+    std::vector<float> maskData = std::vector<float>(HEAD_NUM * NTOKENS * 128, 0); // alibi128 mask
+    for (int i = 0; i < HEAD_NUM; ++i) {
+        for (int j = 0; j < NTOKENS; ++j) {
+            for (int k = j + 1; k < 128; ++k) {
+                maskData[i * NTOKENS * 128 + j * 128 + k] = 1;
+            }
+        }
+    }
+    atb::Tensor tensorMask = CreateTensorFromVector(contextPtr, stream, maskData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
+                                                    {HEAD_NUM, NTOKENS, 128});
+    // 创建seqLen，host侧tensor
+    atb::Tensor tensorSeqLen = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE});
+    tensorSeqLen.hostData = seqLenHost.data();
+    // 创建kvSeqLen，host侧tensor
+    atb::Tensor tensorKvSeqLen = CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE});
+    tensorKvSeqLen.hostData = kvSeqLenHost.data();
+    atb::Tensor tensorSlopes = CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {HEAD_SIZE});
+    std::vector<float> slData(HEAD_SIZE, 1.0);
+    CHECK_STATUS(aclrtMemcpy(tensorSlopes.deviceData, tensorSlopes.dataSize, slData.data(),
+                             sizeof(float) * slData.size(), ACL_MEMCPY_HOST_TO_DEVICE));
+    atb::SVector<atb::Tensor> inTensors = {tensorQ,    tensorK,      tensorV,        tensorBlockTables,
+                                           tensorMask, tensorSeqLen, tensorKvSeqLen, tensorSlopes};
+    return inTensors;
+}
+
+/**
+ * @brief 创建一个FA encoder的Operation，并设置参数
+ * @return atb::Operation * 返回一个Operation指针
+ */
+atb::Operation *PrepareOperation()
+{
+    atb::infer::SelfAttentionParam prefixOpParam;
+    prefixOpParam.headNum = HEAD_NUM;
+    prefixOpParam.kvHeadNum = KV_HEAD_NUM;
+    prefixOpParam.calcType = atb::infer::SelfAttentionParam::CalcType::PREFIX_ENCODER;
+    prefixOpParam.kernelType = atb::infer::SelfAttentionParam::KernelType::KERNELTYPE_HIGH_PRECISION;
+    prefixOpParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_ALIBI_COMPRESS;
+    prefixOpParam.isTriuMask = 1;
+    atb::Operation *prefixEncoderOp = nullptr;
+    CHECK_STATUS(atb::CreateOperation(prefixOpParam, &prefixEncoderOp));
+    return prefixEncoderOp;
+}
+
+int main(int argc, char **argv)
+{
+    if (!GetSingleton<Config>().Is910B()) {
+        std::cout << "Self attention PrefixEncoder demo only supports Atlas A2/A3 products" << std::endl;
+        return;
+    }
+    // 设置卡号、创建context、设置stream
+    CHECK_STATUS(aclInit(nullptr));
+    int32_t deviceId = 0;
+    CHECK_STATUS(aclrtSetDevice(deviceId));
+    atb::Context *context = nullptr;
+    CHECK_STATUS(atb::CreateContext(&context));
+    void *stream = nullptr;
+    CHECK_STATUS(aclrtCreateStream(&stream));
+    context->SetExecuteStream(stream);
+
+    // FA Prefix Encoder示例
+    atb::Operation *prefixEncoderOp = PrepareOperation();
+    // 准备输入tensor
+    atb::VariantPack prefixVariantPack;
+    prefixVariantPack.inTensors = PrepareInTensor(context, stream, seqLenHost, kvSeqLenHost); // 放入输入tensor
+    atb::Tensor tensorOut = CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, KV_HEAD_NUM, HEAD_SIZE});
+    prefixVariantPack.outTensors = {tensorOut}; // 放入输出tensor
+
+    uint64_t workspaceSize = 0;
+    // 计算workspaceSize大小
+    CHECK_STATUS(prefixEncoderOp->Setup(prefixVariantPack, workspaceSize, context));
+    uint8_t *workspacePtr = nullptr;
+    if (workspaceSize > 0) {
+        CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
+    }
+    // FA Prefix Encoder执行
+    prefixEncoderOp->Execute(prefixVariantPack, workspacePtr, workspaceSize, context);
+    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
+
+    CHECK_STATUS(aclrtFree(tensorOut.deviceData));
+    for (atb::Tensor &inTensor : prefixVariantPack.inTensors) {
+        CHECK_STATUS(aclrtFree(inTensor.deviceData));
+    }
+    if (workspaceSize > 0) {
+        CHECK_STATUS(aclrtFree(workspacePtr));
+    }
+    CHECK_STATUS(atb::DestroyOperation(prefixEncoderOp)); // operation，对象概念，先释放
+    CHECK_STATUS(aclrtDestroyStream(stream));
+    CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
+    CHECK_STATUS((aclFinalize()));
+    std::cout << "FA Prefix Encoder demo success!" << std::endl;
+    return 0;
+}
