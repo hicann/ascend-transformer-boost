@@ -29,12 +29,12 @@ ascend-transformer-boost/
         |   ├── kernel_implement/
         │   │   ├── include/example.h // 实现算子在 AICore/硬件上的底层逻辑
         │   │   ├── op_kernel/example.cpp
-        │   │   ├── tiling/
+        │   │   ├── tiling/ // 数据分块策略
         │   │   │   ├── example_tiling.cpp
         │   │   │   ├── example_tiling.h
         │   │   │   └── tiling_data.h
-        │   │   ├── example_kernel.cpp
-        │   │   ├── example_operation.cpp
+        │   │   ├── example_kernel.cpp // 将高层参数和张量信息转换为硬件可调度的kernel信息
+        │   │   ├── example_operation.cpp // 用于ATB高层接口
         │   │   └── CMakeLists.txt
         │   ├── operation_implement/ // 实现算子在ATB上层框架中的包装与调用
         │   │   ├── example_operation.cpp // 算子的高层接口与前置逻辑，如：校验输入、推断输出形状、数据转换(atb::Tensor -> LaunchParam)等
@@ -105,6 +105,8 @@ add_kernel(example ascend910b vector "${kernel_src}" ) # files in kernel_impleme
 ## 编译并运行
 
 执行编译脚本时添加编译选项 `customizeops`，对应test目录下的可执行文件位于build目录下
+
+自定义算子编译产物为 `libcustomize_ops.so` 与 `libcustomize_ops.a` ，位于 `ascend-transformer-boost/output/atb/cxx_abi_0/lib` 或 `ascend-transformer-boost/output/atb/cxx_abi_1/lib` 目录下
 
 ```sh
 bash scripts/build.sh customizeops
