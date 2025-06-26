@@ -944,8 +944,7 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]" << "graphrunner start";
-        if (runnerVariantPack.mstxMemRegister != nullptr &&
-            !(dynamic_cast<OpsRunner*>(node.runner.get()) || dynamic_cast<GraphRunner*>(node.runner.get()))) {
+        if (runnerVariantPack.mstxMemRegister != nullptr) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
             for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.inTensors.at(i);
