@@ -35,10 +35,6 @@ template <> Status CreateOperation(const infer::ReduceScatterParam &opParam, Ope
         ATB_LOG(ERROR) << "backend is " << opParam.backend << "backend must either be hccl or lccl";
         return ERROR_INVALID_PARAM;
     }
-    if (GetSingleton<Config>().Is310P()) {
-        ATB_LOG(ERROR) << "ReduceScatter is not support in Atlas 300I Duo inference products";
-        return ERROR_INVALID_PARAM;
-    }
     if (opParam.reduceType != "sum" && opParam.reduceType != "prod" && opParam.reduceType != "max" &&
         opParam.reduceType != "min") {
         ATB_LOG(ERROR) << "reduceType is " << opParam.reduceType
