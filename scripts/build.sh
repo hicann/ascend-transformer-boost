@@ -207,7 +207,7 @@ function fn_build_mki()
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
         echo  "current branch for mki: $branch"
-        git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
+        git clone --branch master --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
     fi
     cd Mind-KernelInfra
     echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"
@@ -309,7 +309,7 @@ function fn_build_3rdparty_for_compile()
     fn_build_act
     fn_build_asdops
     fn_build_cann_dependency
-    if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
+    if [ "$BUILD_PYBIND" == "ON" ]; then
         fn_build_pybind11
     fi
 }
@@ -420,7 +420,7 @@ function fn_gen_atb_whl()
     cp -rf $CODE_ROOT/pyproject.toml .
     mkdir -p ./torch_atb
     cp -rf $CODE_ROOT/torch_atb/* ./torch_atb
-    cp -rf ./atb/cxx_abi_0/* ./torch_atb
+    cp -rf ./atb/cxx_abi_1/* ./torch_atb
     pip wheel --no-deps --no-build-isolation --wheel-dir ./whl .
     rename_whl_file
     rm -rf ./torch_atb
@@ -476,7 +476,7 @@ function fn_build()
     cmake --build . --parallel $COMPILE_VERBOSE
     cmake --install .
 
-    if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
+    if [ "$BUILD_PYBIND" == "ON" ]; then
         fn_gen_atb_whl
     fi
 }

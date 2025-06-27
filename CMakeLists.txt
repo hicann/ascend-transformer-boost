@@ -72,7 +72,7 @@ else()
     set(cxx_abi 0)
 endif()
 
-if(BUILD_PYBIND AND NOT USE_CXX11_ABI)
+if(BUILD_PYBIND)
     add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/pybind11)
 endif()
 
