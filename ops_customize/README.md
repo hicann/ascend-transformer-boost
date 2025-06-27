@@ -50,30 +50,6 @@ ascend-transformer-boost/
         └── CMakeLists.txt
 ```
 
-## 宏与注册机制
-
-- Operation注册
-
-```
-// ascend-transformer-boost/ops_customize/ops/xxx/kernel_implement/op_operation.cpp
-REG_OPERATION(ExampleOperation);
-```
-
-- Kernel注册
-
-```
-// ascend-transformer-boost/ops_customize/ops/xxx/kernel_implement/op_kernel.cpp
-REG_KERNEL_BASE(ExampleKernel);
-```
-
-- CMake宏
-
-```
-# ascend-transformer-boost/ops_customize/ops/xxx/kernel_implement/CMakeLists.txt
-add_operation(ExampleOperation "${srcs}") # including operation kernel and tiling files in kernel_implement
-add_kernel(example ascend910b vector "${kernel_src}" ) # files in kernel_implement/op_kernel; ascend910b can be replaced with ascend310p etc.
-```
-
 ## 如何创建一个自定义算子
 
 具体样例可参考 `customize_blockcopy` 实现

@@ -183,5 +183,5 @@ private:
     }
 };
 
-REG_OPERATION(CustomizeBlockCopyOperation);
+REG_OPERATION(CustomizeBlockCopyOperation); // Operation注册
 } // namespace AtbOps
