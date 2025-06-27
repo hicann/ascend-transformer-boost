@@ -266,13 +266,6 @@ public:
             uint32_t vect_mod = 2 * launch_delay;
             for (uint32_t n_idx = n_start; n_idx < n_end + launch_delay; n_idx += s_block_stack) {
                 if (n_idx < n_end) {
-                    uint32_t sv_n_triu = n_end * pp_n_scalar;
-                    if (n_idx + s_block_stack > n_end - 1) {
-                        sv_n = sv_n_triu > kv_seqlen ? kv_seqlen - n_idx * pp_n_scalar : sv_n_triu - n_idx * pp_n_scalar;
-                    } else {
-                        sv_n = pp_n_scalar * s_block_stack;
-                    }
-                    uint32_t sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                     for (uint32_t split_idx = 0; split_idx < s_block_stack && n_idx + split_idx < n_end; split_idx++) {
                         pingpong_flag = (n_idx + split_idx - n_start) % 2;
                         offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
@@ -297,6 +290,7 @@ public:
                             stride_kv   // srcDValue
                         );
                         k_offset += pp_n_scalar * stride_kv;
+
                         SET_FLAG(MTE2, MTE1, pingpong_flag);
                         WAIT_FLAG(M, MTE1, pingpong_flag + 2);
                         WAIT_FLAG(MTE2, MTE1, pingpong_flag);
@@ -316,7 +310,7 @@ public:
                         WAIT_FLAG(MTE1, M, pingpong_flag + 2);
                         if constexpr (int8_flag) {
                             mmad<ArchType::ASCEND_V220, QKV_DT, QKV_DT, int32_t, false>(
-                                l0c_buf_tensor.ReinterpretCast<int32_t>()[pingpong_flag * L0AB_HALF_BUF_SIZE + split_idx * qk_round_m * pp_n_scalar],
+                                l0c_buf_tensor.ReinterpretCast<int32_t>()[split_idx * qk_round_m * pp_n_scalar],
                                 l0a_buf_tensor[offset],
                                 l0b_buf_tensor[offset],
                                 qk_m,  // m
@@ -327,7 +321,7 @@ public:
                             );
                         } else {
                             mmad<ArchType::ASCEND_V220, QKV_DT, QKV_DT, float, false>(
-                                l0c_buf_tensor[pingpong_flag * L0AB_HALF_BUF_SIZE],
+                                l0c_buf_tensor[split_idx * qk_round_m * pp_n_scalar],
                                 l0a_buf_tensor[offset],
                                 l0b_buf_tensor[offset],
                                 qk_m,  // m
@@ -340,17 +334,24 @@ public:
                         PIPE_BARRIER(M);
                         SET_FLAG(M, MTE1, pingpong_flag);
                         SET_FLAG(M, MTE1, pingpong_flag + 2);
-                        // copy S to gm
-                        l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
-                            s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod + split_idx * pp_n_scalar],
-                            l0c_buf_tensor[pingpong_flag * L0AB_HALF_BUF_SIZE],
-                            qk_m,        // MSize
-                            qk_round_n,  // NSize
-                            qk_round_m,  // srcStride
-                            sv_round_n,  // dstStride_dst_D
-                            0b11
-                        );
                     }
+                    uint32_t sv_n_triu = n_end * pp_n_scalar;
+                    if (n_idx + s_block_stack > n_end - 1) {
+                        sv_n = sv_n_triu > kv_seqlen ? kv_seqlen - n_idx * pp_n_scalar : sv_n_triu - n_idx * pp_n_scalar;
+                    } else {
+                        sv_n = pp_n_scalar * s_block_stack;
+                    }
+                    uint32_t sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
+                    // copy S to gm
+                    l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
+                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod],
+                        l0c_buf_tensor,
+                        qk_m,        // MSize
+                        sv_round_n,  // NSize
+                        qk_round_m,  // srcStride
+                        sv_round_n,  // dstStride_dst_D
+                        0b11
+                    );
                     FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY);
                 }
                 if (n_idx >= launch_delay + n_start) {
@@ -461,7 +462,7 @@ public:
                             qk_m, // m
                             __k,  // n
                             sv_n, // k
-                            1,     // cmatrixInitVal
+                            1,      // cmatrixInitVal
                             0b11
                         );
                     } else {
@@ -471,7 +472,7 @@ public:
                             qk_m, // m
                             __k,  // n
                             sv_n, // k
-                            1,     // cmatrixInitVal
+                            1,      // cmatrixInitVal
                             0b11
                         );
                     }
@@ -487,7 +488,7 @@ public:
                         qk_m,        // MSize
                         round_k,     // NSize
                         qk_round_m,  // srcStride
-                        round_k,     // dstStride_dst_D
+                        round_k,      // dstStride_dst_D
                         0b11
                     );
                     FftsCrossCoreSync<PIPE_FIX, 2>(UPDATE_READY);
