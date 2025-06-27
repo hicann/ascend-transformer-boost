@@ -1494,7 +1494,9 @@ struct LinearParallelParam {
         ALL_GATHER_LINEAR_REDUCE_SCATTER = 4, //!< AllGather+linear+reduce_scatter
         ALLTOALLVC_ALL_GATHER_GMM = 5,        //!< AllToAllvc+AllGather+GroupMatmul
         GMM_REDUCE_SCATTER_ALLTOALLVC = 6,    //!< GroupMatmul+ReduceScatter+AllToAllvc
-        MAX = 7,                              //!< 枚举类型最大值
+        LINEAR_ALL_TO_ALL = 7,                //!< linear+AllToAll
+        ALL_TO_ALL_MATMUL = 8,                //!< AllToAll+Transpose+Matmul
+        MAX = 9,                              //!< 枚举类型最大值
     };
     //!
     //! \enum QuantType
