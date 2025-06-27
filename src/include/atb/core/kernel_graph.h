@@ -23,6 +23,8 @@ struct KernelGraphNode {
     Mki::OpDesc opDesc;
     SVector<Mki::Tensor *> inTensors;
     SVector<Mki::Tensor *> outTensors;
+    SVector<int> inputLens;
+    SVector<int> outputLens;
     SVector<ViewFunc> inTensorViewFuncs;
     AsdOpsInferShapePreFunc inferShapePreFunc = nullptr;
     MkiInferShapePreFunc mkiInferShapePreFunc = nullptr;

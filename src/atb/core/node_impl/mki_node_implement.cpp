@@ -84,6 +84,22 @@ bool MkiNodeImplement::BuildLaunchParam(const SVector<Mki::Tensor *> &inTensors,
     return true;
 }
 
+bool MkiNodeImplement::AddLens2LaunchParam(const SVector<int> &inputLens, const SVector<int> &outputLens)
+{
+    Mki::SVector<int> mkiInputLens;
+    Mki::SVector<int> mkiOutputLens;
+    TensorUtil::AtbSVector2OpsSVector(inputLens, mkiInputLens);
+    TensorUtil::AtbSVector2OpsSVector(outputLens, mkiOutputLens);
+    if (inputLens.size() > 0) {
+        launchParam_.SetInputLens(mkiInputLens);
+    }
+    if (outputLens.size() > 0) {
+        launchParam_.SetOutputLens(mkiOutputLens);
+    }
+    ATB_LOG(DEBUG) << GetLogPrefix() << " add lens to launchParam finish";
+    return true;
+}
+
 bool MkiNodeImplement::OperationGetBestKernel()
 {
     Mki::Kernel *kernel = operation_->GetBestKernel(launchParam_);
@@ -175,6 +191,9 @@ Status MkiNodeImplement::InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tili
         ATB_LOG(DEBUG) << GetLogPrefix() << " set tiling info, tilingSize: " << tilingSize;
         kernel_->SetLaunchWithTiling(false);
         kernel_->SetTilingHostAddr(hostTilingBuffer, tilingSize);
+    }
+    if (launchParam_.GetInputLenCount() > 0 || launchParam_.GetOutputLenCount() > 0) {
+        kernel_->SetLaunchWithTensorlist(true);
     }
     Mki::Status status = kernel_->Init(launchParam_);
     if (!status.Ok()) {
