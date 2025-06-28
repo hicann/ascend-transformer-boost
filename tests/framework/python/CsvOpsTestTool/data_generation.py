@@ -521,6 +521,10 @@ class LinearOperation(DataGen):
         input = bin.get_tensor()
         input_cpu = input.cpu()
         shape = input_cpu.shape
+        has_bias = MatmulCommon.get_param_value(op_params, "hasBias", True)
+        en_accum = MatmulCommon.get_param_value(op_params, "enAccum", False)
+        out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
+        quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
         if i == 0:
             input_golden = input_cpu
             transpose_a = MatmulCommon.get_param_value(op_params, "transposeA", False)
@@ -543,9 +547,26 @@ class LinearOperation(DataGen):
                 weight_golden = torch.transpose(weight_golden, 0, 1) if dim_num == 2 else torch.transpose(weight_golden, 1, 2)
             MatmulCommon.weight_golden = weight_golden
         if i == 2:
-            MatmulCommon.bias_golden = input_cpu
+            if has_bias:
+                MatmulCommon.bias_golden = input_cpu
+            elif en_accum:
+                MatmulCommon.accum_golden = input_cpu
+            elif out_data_type == 1 and get_soc_version() != "Ascend910A":
+                deq_np = np.frombuffer(input_cpu.numpy().astype(np.uint32).tobytes(), dtype=np.float32).copy()
+                deq_tensor = torch.from_numpy(deq_np)
+                MatmulCommon.deq_golden = deq_tensor
+            else:
+                MatmulCommon.deq_golden = input_cpu
+
         if i == 3:
-            MatmulCommon.deq_golden = input_cpu
+            if quantMode == 2:
+                MatmulCommon.pertoken_scale_golden = input_cpu
+            elif out_data_type == 1 and get_soc_version() != "Ascend910A":
+                deq_np = np.frombuffer(input_cpu.numpy().astype(np.uint32).tobytes(), dtype=np.float32).copy()
+                deq_tensor = torch.from_numpy(deq_np)
+                MatmulCommon.deq_golden = deq_tensor
+            else:
+                MatmulCommon.deq_golden = input_cpu
         return input_cpu.npu()
 
 class GroupedMatmulInplaceAddOperation(DataGen):
@@ -1102,6 +1123,7 @@ class MatmulCommon:
         deq = MatmulCommon.deq_golden
         accum = MatmulCommon.accum_golden
         groupList = MatmulCommon.groupList_golden
+        pertoken_deq = MatmulCommon.pertoken_scale_golden
         if MatmulCommon.linear_type == LinearType.fp16fp16_fp32_fp16 or input.dtype == torch.float16:
             golden_result = torch.matmul(input.to(torch.float32), weight.to(torch.float32))
         elif MatmulCommon.linear_type == LinearType.bf16bf16_fp32_bf16 or input.dtype == torch.bfloat16:
@@ -1118,6 +1140,8 @@ class MatmulCommon:
             golden_result = golden_result * deq
         if accum is not None:
             golden_result = golden_result + accum
+        if pertoken_deq is not None:
+            golden_result = golden_result * pertoken_deq
 
         MatmulCommon.reset()
         return golden_result
@@ -1131,6 +1155,7 @@ class MatmulCommon:
         MatmulCommon.deq_golden = None
         MatmulCommon.linear_type = -1
         MatmulCommon.groupList_golden = None
+        MatmulCommon.pertoken_scale_golden = None
 
 class GatherOperation(DataGen):
     @staticmethod
