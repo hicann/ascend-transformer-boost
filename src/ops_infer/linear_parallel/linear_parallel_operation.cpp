@@ -291,7 +291,7 @@ Status LinearParallelOperation::InferShapeMatmulAllToAll(const SVector<TensorDes
     return NO_ERROR;
 }
 
-Status LinearParallelOperation::InferShapeAllToAllMatmul(const std::vertor<TensorDesc> &inTensorDescs, std::vector<TensorDesc> &outTensorDescs) const
+Status LinearParallelOperation::InferShapeAllToAllMatmul(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const
 {
     outTensorDescs.at(0).shape.dims[0] /= param_.rankSize;
     outTensorDescs.at(0).shape.dims[1] *= param_.rankSize;
@@ -454,7 +454,7 @@ Status LinearParallelOperation::InferShapeCheckMatmulAllToAll(const SVector<Tens
     return NO_ERROR;
 }
 
-Status LinearParallelOperation::InferShapeCheckAlltoAllMatmul(const SVector<TensorDesc> &inTensorDescs) const
+Status LinearParallelOperation::InferShapeCheckAllToAllMatmul(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (inTensorDescs.at(0).shape.dimNum != TRANSPOSE_IN_TENSOR_DIM_NUM) {
         ATB_LOG(ERROR) << "inTensor[0] dimNum should be " << TRANSPOSE_IN_TENSOR_DIM_NUM
@@ -496,9 +496,9 @@ Status LinearParallelOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
         case atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
             return SetupCheckAllToAllvcAllGatherGmm(inTensorDescs, outTensorDescs.at(0));
         case atb::infer::LinearParallelParam::ParallelType::LINEAR_ALL_TO_ALL:
-            return SetupCheckMatmulAllToAll(inTensorDescs, outTensorDesc.at(0));
+            return SetupCheckMatmulAllToAll(inTensorDescs, outTensorDescs.at(0));
         case atb::infer::LinearParallelParam::ParallelType::ALL_TO_ALL_MATMUL:
-            return SetupCheckALLToAllMatmul(inTensorDescs, outTensorDesc.at(0));
+            return SetupCheckALLToAllMatmul(inTensorDescs, outTensorDescs.at(0));
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "not support type:" << param_.type;
             return ERROR_INVALID_PARAM;
@@ -609,7 +609,7 @@ Status LinearParallelOperation::SetupCheckMatmulAllToAll(const SVector<TensorDes
 Status LinearParallelOperation::SetupCheckALLToAllMatmul(const SVector<TensorDesc> &inTensorDescs,
                                                          const TensorDesc &outTensorDesc) const
 {
-    if (InferShapeCheckAlltoAllMatmul(inTensorDescs) != NO_ERROR) {
+    if (InferShapeCheckAllToAllMatmul(inTensorDescs) != NO_ERROR) {
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (outTensorDesc.shape.dims[0] * param_.rankSize != inTensorDescs.at(0).shape.dims[0]) {
