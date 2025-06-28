@@ -2471,29 +2471,39 @@ public:
                             }
                             PIPE_BARRIER(V);
                             // *** ls = exp(ls)
-                            exp_v<ArchType::ASCEND_V220, float>(
-                                ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                                1,                                                                // dstBlockStride
-                                1,                                                                // srcBlockStride
-                                8,                                                                // dstRepeatStride
-                                8                                                                 // srcRepeatStride
-                            );
-                            PIPE_BARRIER(V);
-                            Rowsum<float, RowCalcTile::TAIL_TILE>(
-                                ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                ll_ubuf_tensor,
-                                tv_ubuf_tensor,
-                                round_sub_m, qk_n, qk_round_n
-                            );
-                            PIPE_BARRIER(V);
                             if constexpr (int8_flag) {
-                                SymmetricQuant(lp_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], lm_ubuf_tensor, hm_ubuf_tensor,
+                                exp_v<ArchType::ASCEND_V220, float>(
+                                    ls32_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                    ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                    (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                    1,                                                                // dstBlockStride
+                                    1,                                                                // srcBlockStride
+                                    8,                                                                // dstRepeatStride
+                                    8                                                                 // srcRepeatStride
+                                );
+                                PIPE_BARRIER(V);
+                                SymmetricQuant(lp_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], ls32_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], lm_ubuf_tensor, hm_ubuf_tensor,
                                                p_scale_ubuf_tensor[p_scale_offset], sub_m, round_sub_m, qk_n,
                                                qk_round_n, head_idx);
                             } else {
                                 // *** lp = castfp32to16(ls)
+                                exp_v<ArchType::ASCEND_V220, float>(
+                                    ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                    ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                    (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                    1,                                                                // dstBlockStride
+                                    1,                                                                // srcBlockStride
+                                    8,                                                                // dstRepeatStride
+                                    8                                                                 // srcRepeatStride
+                                );
+                                PIPE_BARRIER(V);
+                                Rowsum<float, RowCalcTile::TAIL_TILE>(
+                                    ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                    ll_ubuf_tensor,
+                                    tv_ubuf_tensor,
+                                    round_sub_m, qk_n, qk_round_n
+                                );
+                                PIPE_BARRIER(V);
                                 conv_v<ArchType::ASCEND_V220, float, IN_DATA_TYPE>(
                                     lp_ubuf_tensor[pingpong_flag_s * S_DB_SIZE].ReinterpretCast<IN_DATA_TYPE>(), ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
                                     (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
@@ -2517,6 +2527,61 @@ public:
                                 0                                        // dstGap
                             );
                             SET_FLAG(MTE3, MTE2, pingpong_flag_s);
+                            if constexpr (int8_flag) {
+                                if (qk_n <= FLOAT_VECTOR_SIZE) {
+                                    __set_mask(qk_n);
+                                    cadd_v<ArchType::ASCEND_V220, float>(
+                                        ll_ubuf_tensor,
+                                        ls32_ubuf_tensor,
+                                        sub_m,                         // repeat
+                                        1,                             // dstRepeatStride
+                                        1,                             // srcBlockStride
+                                        qk_round_n / FLOAT_BLOCK_SIZE  // srcRepeatStride
+                                    );
+                                    SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+                                } else {
+                                    for (uint32_t rowSumIdx = 1; rowSumIdx < qk_n / FLOAT_VECTOR_SIZE; ++rowSumIdx) {
+                                        add_v<ArchType::ASCEND_V220, float>(
+                                            ls32_ubuf_tensor,
+                                            ls32_ubuf_tensor,
+                                            ls32_ubuf_tensor[rowSumIdx * FLOAT_VECTOR_SIZE],
+                                            sub_m,                         // repeat
+                                            1,                             // dstBlockStride
+                                            1,                             // src0BlockStride
+                                            1,                             // src1BlockStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE, // dstRepeatStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE, // src0RepeatStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE  // src1RepeatStride
+                                        );
+                                        PIPE_BARRIER(V);
+                                    }
+                                    if (qk_n % FLOAT_VECTOR_SIZE > 0) {
+                                        __set_mask(qk_n % FLOAT_VECTOR_SIZE);
+                                        add_v<ArchType::ASCEND_V220, float>(
+                                            ls32_ubuf_tensor,
+                                            ls32_ubuf_tensor,
+                                            ls32_ubuf_tensor[qk_n / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                                            sub_m,                         // repeat
+                                            1,                             // dstBlockStride
+                                            1,                             // src0BlockStride
+                                            1,                             // src1BlockStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE, // dstRepeatStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE, // src0RepeatStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE  // src1RepeatStride
+                                        );
+                                    }
+                                    SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+                                    PIPE_BARRIER(V);
+                                    cadd_v<ArchType::ASCEND_V220, float>(
+                                        ll_ubuf_tensor,
+                                        ls32_ubuf_tensor,
+                                        sub_m,                         // repeat
+                                        1,                             // dstRepeatStride
+                                        1,                             // srcBlockStride
+                                        qk_round_n / FLOAT_BLOCK_SIZE  // srcRepeatStride
+                                    );
+                                }
+                            }
                             PIPE_BARRIER(V);
                             if (n_idx == n_start) {
                                 // *** gl = ll
@@ -2561,8 +2626,10 @@ public:
                                 PIPE_BARRIER(V);
                             }
                         }
-                        pingpong_flag_s = 1 - pingpong_flag_s;
-                    } else {
+                        if constexpr (!int8_flag) {
+                            pingpong_flag_s = 1 - pingpong_flag_s;
+                        }
+                    }  else {
                         bool last_n_loop = n_idx + s_block_stack > n_end - 1;
                         for (uint32_t split_idx = 0; split_idx < m_end; split_idx++) {
                             bool last_m_loop = split_idx == m_end - 1;
@@ -2654,20 +2721,22 @@ public:
                                 WaitFlagDev(QK_READY);
                             }
                             if (sub_m > 0) {
-                                if (split_idx == 0) {
-                                    WAIT_FLAG(MTE3, MTE2, pingpong_flag_s);
-                                    // input QK
-                                    gm_to_ub<ArchType::ASCEND_V220, float>(
-                                        ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod +
-                                            (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n + split_idx * m_slice * qk_round_n],
-                                        0,                                // sid
-                                        m_split,                                // nBurst
-                                        qk_round_n / FLOAT_BLOCK_SIZE,  // lenBurst
-                                        0,                                // srcGap
-                                        0                                 // dstGap
-                                    );
-                                    SET_FLAG(MTE2, V, pingpong_flag_s + 2);
+                                if constexpr (!int8_flag) {
+                                    if (split_idx == 0) {
+                                        WAIT_FLAG(MTE3, MTE2, pingpong_flag_s);
+                                        // input QK
+                                        gm_to_ub<ArchType::ASCEND_V220, float>(
+                                            ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                            s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod +
+                                                (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n + split_idx * m_slice * qk_round_n],
+                                            0,                                // sid
+                                            m_split,                                // nBurst
+                                            qk_round_n / FLOAT_BLOCK_SIZE,  // lenBurst
+                                            0,                                // srcGap
+                                            0                                 // dstGap
+                                        );
+                                        SET_FLAG(MTE2, V, pingpong_flag_s + 2);
+                                    }
                                 }
                                 if (mask_type != 0 && long_seq == 0) {
                                     WAIT_FLAG(MTE2, V, EVENT_ID1);
@@ -2836,19 +2905,35 @@ public:
                                         PIPE_BARRIER(V);
                                     }
                                 }
-                                if (split_idx != m_end - 1) {
-                                    WAIT_FLAG(MTE3, MTE2, 1 - pingpong_flag_s);
+                                if constexpr (!int8_flag) {
+                                    if (split_idx != m_end - 1) {
+                                        WAIT_FLAG(MTE3, MTE2, 1 - pingpong_flag_s);
+                                        // input QK
+                                        gm_to_ub<ArchType::ASCEND_V220, float>(
+                                            ls_ubuf_tensor[(1 - pingpong_flag_s) * S_DB_SIZE],
+                                            s_gm_tensor[s_gm_offset],
+                                            0,                                // sid
+                                            curr_m_nxt,                                // nBurst
+                                            qk_round_n / FLOAT_BLOCK_SIZE,  // lenBurst
+                                            0,                                // srcGap
+                                            0                                 // dstGap
+                                        );
+                                        SET_FLAG(MTE2, V, 3 - pingpong_flag_s);
+                                    }
+                                } else {
+                                    WAIT_FLAG(MTE3, MTE2, pingpong_flag_s);
                                     // input QK
                                     gm_to_ub<ArchType::ASCEND_V220, float>(
-                                        ls_ubuf_tensor[(1 - pingpong_flag_s) * S_DB_SIZE],
-                                        s_gm_tensor[s_gm_offset],
+                                        ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod +
+                                            (uint64_t)sub_block_idx * qk_m / 2 * qk_round_n + split_idx * m_slice * qk_round_n],
                                         0,                                // sid
-                                        curr_m_nxt,                                // nBurst
+                                        m_split,                                // nBurst
                                         qk_round_n / FLOAT_BLOCK_SIZE,  // lenBurst
                                         0,                                // srcGap
                                         0                                 // dstGap
                                     );
-                                    SET_FLAG(MTE2, V, 3 - pingpong_flag_s);
+                                    SET_FLAG(MTE2, V, pingpong_flag_s + 2);
                                 }
                                 WAIT_FLAG(MTE2, V, pingpong_flag_s + 2);
                                 if constexpr (int8_flag) {
@@ -3325,37 +3410,47 @@ public:
                                 }
                                 PIPE_BARRIER(V);
                                 // *** ls = exp(ls)
-                                exp_v<ArchType::ASCEND_V220, float>(
-                                    ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                    ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                    (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
-                                    1,                                                                // dstBlockStride
-                                    1,                                                                // srcBlockStride
-                                    8,                                                                // dstRepeatStride
-                                    8                                                                 // srcRepeatStride
-                                );
-                                PIPE_BARRIER(V);
-                                if (qk_n == 256) {
-                                    Rowsum<float, RowCalcTile::SPEC_TILE_256>(
-                                        ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                        ll_ubuf_tensor,
-                                        tv_ubuf_tensor,
-                                        round_m_split, qk_n, qk_round_n
-                                    );
-                                } else {
-                                    Rowsum<float, RowCalcTile::TAIL_TILE>(
-                                        ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
-                                        ll_ubuf_tensor,
-                                        tv_ubuf_tensor,
-                                        round_m_split, qk_n, qk_round_n
-                                    );
-                                }
                                 if constexpr (int8_flag) {
-                                    SymmetricQuant(lp_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], lm_ubuf_tensor,
+                                    exp_v<ArchType::ASCEND_V220, float>(
+                                        ls32_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                        ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                        (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                        1,                                                                // dstBlockStride
+                                        1,                                                                // srcBlockStride
+                                        8,                                                                // dstRepeatStride
+                                        8                                                                 // srcRepeatStride
+                                    );
+                                    PIPE_BARRIER(V);
+                                    SymmetricQuant(lp_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], ls32_ubuf_tensor[pingpong_flag_s * S_DB_SIZE], lm_ubuf_tensor,
                                                     hm_ubuf_tensor[split_idx * m_slice],
                                                     p_scale_ubuf_tensor[p_scale_offset + split_idx * m_slice],
                                                     m_split, round_m_split, qk_n, qk_round_n, head_idx);
                                 } else {
+                                    exp_v<ArchType::ASCEND_V220, float>(
+                                        ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                        ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                        (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
+                                        1,                                                                // dstBlockStride
+                                        1,                                                                // srcBlockStride
+                                        8,                                                                // dstRepeatStride
+                                        8                                                                 // srcRepeatStride
+                                    );
+                                    PIPE_BARRIER(V);
+                                    if (qk_n == 256) {
+                                        Rowsum<float, RowCalcTile::SPEC_TILE_256>(
+                                            ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                            ll_ubuf_tensor,
+                                            tv_ubuf_tensor,
+                                            round_m_split, qk_n, qk_round_n
+                                        );
+                                    } else {
+                                        Rowsum<float, RowCalcTile::TAIL_TILE>(
+                                            ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
+                                            ll_ubuf_tensor,
+                                            tv_ubuf_tensor,
+                                            round_m_split, qk_n, qk_round_n
+                                        );
+                                    }
                                     conv_v<ArchType::ASCEND_V220, float, IN_DATA_TYPE>(
                                         lp_ubuf_tensor[pingpong_flag_s * S_DB_SIZE].ReinterpretCast<IN_DATA_TYPE>(), ls_ubuf_tensor[pingpong_flag_s * S_DB_SIZE],
                                         (m_split * qk_round_n + FLOAT_VECTOR_SIZE - 1) /
@@ -3382,7 +3477,49 @@ public:
                                     0                                   // dstGap
                                 );
                                 SET_FLAG(MTE3, MTE2, pingpong_flag_s);
-                                PIPE_BARRIER(V);
+                                if constexpr (int8_flag) {
+                                    for (uint32_t rowsum_idx = 1; rowsum_idx < qk_n / FLOAT_VECTOR_SIZE; ++rowsum_idx) {
+                                        add_v<ArchType::ASCEND_V220, float>(
+                                            ls32_ubuf_tensor,
+                                            ls32_ubuf_tensor,
+                                            ls32_ubuf_tensor[rowsum_idx * FLOAT_VECTOR_SIZE],
+                                            m_split,                         // repeat
+                                            1,                             // dstBlockStride
+                                            1,                             // src0BlockStride
+                                            1,                             // src1BlockStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE, // dstRepeatStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE, // src0RepeatStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE  // src1RepeatStride
+                                        );
+                                        PIPE_BARRIER(V);
+                                    }
+                                    if (qk_n % FLOAT_VECTOR_SIZE > 0) {
+                                        __set_mask(qk_n % FLOAT_VECTOR_SIZE);
+                                        add_v<ArchType::ASCEND_V220, float>(
+                                            ls32_ubuf_tensor,
+                                            ls32_ubuf_tensor,
+                                            ls32_ubuf_tensor[qk_n / FLOAT_VECTOR_SIZE * FLOAT_VECTOR_SIZE],
+                                            m_split,                         // repeat
+                                            1,                             // dstBlockStride
+                                            1,                             // src0BlockStride
+                                            1,                             // src1BlockStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE, // dstRepeatStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE, // src0RepeatStride
+                                            qk_round_n / FLOAT_BLOCK_SIZE  // src1RepeatStride
+                                        );
+                                        SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
+                                    }
+                                    PIPE_BARRIER(V);
+                                    cadd_v<ArchType::ASCEND_V220, float>(
+                                        ll_ubuf_tensor,
+                                        ls32_ubuf_tensor,
+                                        m_split,                         // repeat
+                                        1,                             // dstRepeatStride
+                                        1,                             // srcBlockStride
+                                        qk_round_n / FLOAT_BLOCK_SIZE  // srcRepeatStride
+                                    );
+                                    PIPE_BARRIER(V);
+                                }
                                 if (n_idx == n_start) {
                                     // *** gl = ll
                                     ub_to_ub<ArchType::ASCEND_V220, float>(
@@ -3427,7 +3564,9 @@ public:
                                     PIPE_BARRIER(V);
                                     SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
                                 }
-                                pingpong_flag_s = 1 - pingpong_flag_s;
+                                if constexpr (!int8_flag) {
+                                    pingpong_flag_s = 1 - pingpong_flag_s;
+                                }
                             }
                         }
                         if constexpr(!swa_compress) {
