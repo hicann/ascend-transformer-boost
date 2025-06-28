@@ -1,12 +1,12 @@
 /*
-* Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-* This file is a part of the CANN Open Software.
-* Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
-* Please refer to the License for details. You may not use this file except in compliance with the License.
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
-* See LICENSE in the root of the software repository for the full text of the License.
-*/
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 #include <mki/base/operation_base.h>
 #include <mki/utils/log/log.h>
 #include <mki/utils/const/op_const.h>
@@ -29,13 +29,12 @@ public:
         auto &tensorQ = launchParam.GetInTensor(DIM_0);
         auto inDtype = tensorQ.desc.dtype;
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::RINGMLA),
-            "OpParam is invalid", return nullptr);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::RINGMLA), "OpParam is invalid", return nullptr);
         auto param = AnyCast<OpParam::RINGMLA>(launchParam.GetParam());
         switch (param.type) {
             case OpParam::RINGMLA::PREFILL_SPLIT_CACHE:
                 return inDtype == TENSOR_DTYPE_BF16 ? GetKernelByName("RINGMLAPrefillBF16Kernel") :
-                                                    GetKernelByName("RINGMLAPrefillKernel");
+                                                      GetKernelByName("RINGMLAPrefillKernel");
             default:
                 break;
         }
@@ -74,8 +73,8 @@ public:
 protected:
     Status InferShapeImpl(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const override
     {
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::RINGMLA),
-            "OpParam is invalid", return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::RINGMLA), "OpParam is invalid",
+                  return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
         auto param = AnyCast<OpParam::RINGMLA>(launchParam.GetParam());
         switch (param.type) {
             case OpParam::RINGMLA::PREFILL_SPLIT_CACHE:
@@ -192,8 +191,7 @@ private:
             {{batch, maxQ, maxKv}, norm},
             {{headSize, maxQ, maxKv}, alibi},
             {{headSize, maxQ, LONG_SEQ_LEN}, isAlibiCompress},
-            {{batch, headSize, maxQ, maxKv}, true}
-        };
+            {{batch, headSize, maxQ, maxKv}, true}};
         // 保证mask一定能覆盖S，核内不会出现异常，用户保证1.避免多传;2.数值正常
         MKI_CHECK(FindMask(supports, currentShape, false), "current mask shape is unsupported!", return false);
         return true;
@@ -232,8 +230,13 @@ private:
             if (kvSeqLen[i] == 0) {
                 continue;
             }
-            MKI_CHECK((kvSeqLen[i] >= qSeqLen[i]), "if  kvSeqlen[i] > 0, then kvSeqlen[i] >= qSeqLen[i], please check",
-                      return false);
+            if (kvSeqLen[i] < qSeqLen[i]) {
+                MKI_LOG(ERROR) << "If kvSeqlen[" << i << "] > 0, then kvSeqlen[" << i
+                               << "] must be no smaller than qSeqLen[" << i << "], but got kvSeqlen[" << i
+                               << "] = " << kvSeqlen[i] << ", qSeqLen[" << i << "] = ",
+                    qSeqLen[i];
+                return false;
+            }
         }
         MKI_LOG(INFO) << "[batch, head, maxQ, maxKv]: [" << batch << ", " << head << ", " << maxQ << ", "
                       << *maxKvSeqlenIter << "]";
@@ -247,8 +250,7 @@ private:
         auto &tensorQ = launchParam.GetInTensor(DIM_0); // Q.shape = [batch*seqlen, hiddensize]
         auto &tensorlse = launchParam.GetInTensor(DIM_14);
         MKI_CHECK(tensorQ.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorQ.desc.dtype == TENSOR_DTYPE_BF16,
-                  "Input0 dtype " << GetStrWithDType(tensorQ.desc.dtype)
-                                  << " invalid, should be float16 or bfloat16",
+                  "Input0 dtype " << GetStrWithDType(tensorQ.desc.dtype) << " invalid, should be float16 or bfloat16",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         auto &tensorKcache = launchParam.GetInTensor(DIM_2);
         auto &tensorVcache = launchParam.GetInTensor(DIM_4);
@@ -259,8 +261,8 @@ private:
             MKI_CHECK(CheckPrefillBatchwise(param, tensorQ), "kv batchwise settings invalid",
                       return Status::FailStatus(ERROR_INVALID_VALUE));
         } else {
-            MKI_CHECK(CheckPrefilShape(tensorKcache, tensorVcache, tensorQ),
-                     "check datashape invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+            MKI_CHECK(CheckPrefilShape(tensorKcache, tensorVcache, tensorQ), "check datashape invalid",
+                      return Status::FailStatus(ERROR_INVALID_VALUE));
         }
         auto ret = CheckMask(launchParam, tensorQ, launchParam.GetInTensor(DIM_5));
         MKI_CHECK(ret, "check mask shape fail", return Status::FailStatus(ERROR_INVALID_VALUE));
