@@ -950,7 +950,7 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
                 auto &tensor = node.runnerVariantPack.inTensors.at(i);
                 if (node.inTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
-                    ATB_LOG(INFO) << GetLogPrefix() << "just test";
+                    // just for test
                 }
             }
             for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); ++i) {
