@@ -328,6 +328,8 @@ Status LinearParallelOperation::InferShapeCheckLinearAllReduce(const SVector<Ten
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                 param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
+                                         << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
@@ -343,6 +345,8 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                 param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
+                                         << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
@@ -360,6 +364,8 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinear(const SVector<Ten
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                 param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
+                                         << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
@@ -406,6 +412,8 @@ Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVec
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                 param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(2).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
+                                         << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
