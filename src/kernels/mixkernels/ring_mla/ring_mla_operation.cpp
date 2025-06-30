@@ -231,9 +231,9 @@ private:
                 continue;
             }
             if (kvSeqLen[i] < qSeqLen[i]) {
-                MKI_LOG(ERROR) << "If kvSeqlen[" << i << "] > 0, then kvSeqlen[" << i
-                               << "] must be no smaller than qSeqLen[" << i << "], but got kvSeqlen[" << i
-                               << "] = " << kvSeqlen[i] << ", qSeqLen[" << i << "] = ",
+                MKI_LOG(ERROR) << "If kvSeqLen[" << i << "] > 0, then kvSeqLen[" << i
+                               << "] must be no smaller than qSeqLen[" << i << "], but got kvSeqLen[" << i
+                               << "] = " << kvSeqLen[i] << ", qSeqLen[" << i << "] = ",
                     qSeqLen[i];
                 return false;
             }
