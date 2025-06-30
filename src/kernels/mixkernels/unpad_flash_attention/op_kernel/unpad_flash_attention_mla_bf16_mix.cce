@@ -39,7 +39,7 @@ constexpr int32_t TMP_SIZET = 16384;
 constexpr int32_t BLOCK_QK = 128;
 constexpr int32_t LOCAL_SIZE = 6;
 
-template<typename IN_DATA_TYPE, bool swa_flag=false, bool swa_compress=false>
+template<typename IN_DATA_TYPE, bool swa_flag = false, bool swa_compress = false>
 class FlashAttentionEncoderHighPrecision {
 public:
     __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderHighPrecision(
@@ -639,7 +639,7 @@ constexpr int32_t BLOCK_QK = 128;
 constexpr float BASE_Y = 128;
 constexpr int32_t LOCAL_SIZE = 6;
 
-template<typename IN_DATA_TYPE, bool swa_flag=false, bool swa_compress=false>
+template<typename IN_DATA_TYPE, bool swa_flag = false, bool swa_compress = false>
 class FlashAttentionEncoderHighPrecisionVec {
 public:
     __aicore__ __attribute__((always_inline)) inline FlashAttentionEncoderHighPrecisionVec(

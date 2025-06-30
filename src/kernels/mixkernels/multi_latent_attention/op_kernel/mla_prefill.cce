@@ -44,7 +44,6 @@ constexpr int32_t UB_FLOAT_LINE_SIZE = 128;     // 128
 constexpr int32_t UB_HALF_LINE_SIZE = 128;       // UB_FLOAT_sLINE_SIZE * 2
 constexpr int32_t BLOCK_QK = 128;
 constexpr int32_t S_BLOCK_STACK = 4;
-constexpr int32_t FP16_SWA_MASK = 6;
 
 #ifdef __DAV_C220_CUBE__
 constexpr int32_t BLOCK_SIZE = 16;
@@ -85,13 +84,10 @@ public:
         this->tiling_para_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 11));
         this->tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
         this->max_kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 14));
-        this->tiling_mask_type = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 15));
         this->window_size = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 18));
 
-        if constexpr(MASK_TYPE != 0) {
-            if (tiling_mask_type < FP16_SWA_MASK){
-                this->is_triu_mask = 1;
-            }
+        if constexpr(MASK_TYPE == 1) {
+            this->is_triu_mask = 1;
         }
 
         this->data_shape_type = 0;
@@ -192,7 +188,8 @@ public:
         uint32_t cur_total_q_blk_num = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 13 + offset_tiling));
         uint32_t process_num = total_q_blk_num * q_heads;
         uint32_t next_process = 0;
-        bool swa_flag = (window_size > 0);
+        bool swa_flag = (window_size > 0 && MASK_TYPE == 2);
+        
         for (uint32_t process = block_idx; process < process_num; process = next_process) {
             while (process >= cur_total_q_blk_num * q_heads) {
                 cur_batch++;
@@ -642,7 +639,6 @@ private:
     uint32_t tilingKey{0};
     uint32_t tiling_head_size{0};
     uint32_t tiling_para_size{0};
-    uint32_t tiling_mask_type{0};
     uint32_t window_size{0};
 };
 
@@ -674,6 +670,9 @@ extern "C" __global__ __aicore__ void mla_prefill(
         fa_cube.Run();
     } else if (tilingKey == 2) {
         FlashAttentionEncoder<half, half, half, 1> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run();
+    } else if (tilingKey == 3) {
+        FlashAttentionEncoder<half, half, half, 2> fa_cube(sync, q_gm, q_rope_gm, k_gm, k_rope_gm, v_gm, s_gm, p_gm, o_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_cube.Run();
     }
 
@@ -720,7 +719,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1FP16(
     const AscendC::GlobalTensor<P_DTYPE> &p_gm,
     bool first_n_iter, half tor,
     uint32_t m, uint32_t n_real, uint32_t n_stride, uint32_t pingpong_flag,
-    bool move_flag, uint32_t tiling_mask_type)
+    bool move_flag)
 {
     uint32_t round_m = (m + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
     uint32_t round_m_8 = (m + FLOAT_BLOCK_SIZE - 1) / FLOAT_BLOCK_SIZE * FLOAT_BLOCK_SIZE;
@@ -751,7 +750,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1FP16(
 
     PIPE_BARRIER(V);
 
-    if constexpr(MASK_TYPE != 0) {
+    if constexpr(MASK_TYPE == 1) {
         if (move_flag) {
             WAIT_FLAG(MTE2, V, EVENT_ID6);
             add_v<ArchType::ASCEND_V220, S_DTYPE>(
@@ -770,7 +769,7 @@ __aicore__ __attribute__((always_inline)) void OnlineSoftmaxStage1FP16(
             PIPE_BARRIER(V);
         }
     } else {
-        if (tiling_mask_type >= FP16_SWA_MASK) {
+        if constexpr(MASK_TYPE == 2) {
             WAIT_FLAG(MTE2, V, EVENT_ID6);
             add_v<ArchType::ASCEND_V220, S_DTYPE>(
                 s_ub,
@@ -1077,16 +1076,13 @@ public:
         this->tiling_para_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 11));
         this->tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 12));
         this->long_seq = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 13));
-        this->tiling_mask_type = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 15));
         this->window_size = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 18));
         
         this->data_shape_type = 0;
         this->stride_qo = q_heads * embdv;
 
-        if constexpr(MASK_TYPE != 0) {
-            if (tiling_mask_type < FP16_SWA_MASK){
-                this->is_triu_mask = 1;
-            }
+        if constexpr(MASK_TYPE == 1) {
+            this->is_triu_mask = 1;
         }
 
         if (this->data_shape_type == 1) {
@@ -1149,7 +1145,8 @@ public:
         logN_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__  IN_DATA_TYPE*>(logN_gm));
         logN_float_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(logN_gm));
         uint32_t next_process = 0;
-        bool swa_flag = (window_size > 0);
+        bool swa_flag = (window_size > 0 && MASK_TYPE == 2);
+
         for (uint32_t process = block_idx; process < process_num; process = next_process) {
             while (process >= cur_total_q_blk_num * q_heads) {
                 cur_batch++;
@@ -1252,7 +1249,7 @@ public:
                         uint32_t curr_m = m_ind == m_end - 1 ? sub_m - m_ind * m_slice : m_slice;
                         uint32_t s_ub_offset = pingpong_flag * S_DB_SIZE;
                         uint32_t row_offset = m_ind * m_slice;
-                        if constexpr(MASK_TYPE != 0) {
+                        if constexpr(MASK_TYPE == 1) {
                             if (move_flag) {
                                 uint64_t cmp_mask_offset = (m_idx - n_idx) * 512 * 128;
                                 WAIT_FLAG(V, MTE2, EVENT_ID6);
@@ -1271,7 +1268,7 @@ public:
                                 SET_FLAG(MTE2, V, EVENT_ID6);
                             }
                         } else {
-                            if (tiling_mask_type >= FP16_SWA_MASK) {
+                            if constexpr(MASK_TYPE == 2) {
                                 WAIT_FLAG(V, MTE2, EVENT_ID6);
                                 gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
                                     mask_ubuf_tensor,
@@ -1312,7 +1309,7 @@ public:
                             p_gm_tensor[((uint64_t)block_idx * TMP_SIZE + (n_idx - n_start) % vect_mod * TMP_SIZE / vect_mod +
                                             ((uint64_t)sub_block_idx * qk_m / 2 + m_ind * m_slice) * qk_round_n) * 2 / sizeof(QKV_DT)],
                             n_idx == n_start, this->tor,
-                            curr_m, qk_n, qk_round_n, pingpong_flag, move_flag, tiling_mask_type
+                            curr_m, qk_n, qk_round_n, pingpong_flag, move_flag
                         );
                         pingpong_flag = 1 - pingpong_flag;
                     }
@@ -1589,7 +1586,6 @@ private:
     uint32_t alibi_left_align{0};
     uint32_t data_shape_type{0};
     uint32_t quantType{0};
-    uint32_t tiling_mask_type{0};
     uint32_t window_size{0};
 };
 
@@ -1623,6 +1619,11 @@ extern "C" __global__ __aicore__ void mla_prefill(
         fa_vec.Run();
     } else if (tilingKey == 2) {
         FlashAttentionEncoderVec<half, half, half, 1> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
+                                                        tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm, deq_pv_gm,
+                                                        off_pv_gm, logN_gm);
+        fa_vec.Run();
+    } else if (tilingKey == 3) {
+        FlashAttentionEncoderVec<half, half, half, 2> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm,
                                                         tiling_para_gm, deq_qk_gm, off_qk_gm, quant_p_gm, deq_pv_gm,
                                                         off_pv_gm, logN_gm);
         fa_vec.Run();
