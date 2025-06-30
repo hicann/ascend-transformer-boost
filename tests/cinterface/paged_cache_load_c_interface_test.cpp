@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- #include <vector>
+#include <vector>
 #include <algorithm>
 #include <numeric>
 #include <random>
@@ -59,6 +59,10 @@ const int64_t numBlocksP5 = 256;
 void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int64_t headSizeK, const int64_t headSizeV,
                           const int64_t blockSize, const int64_t numBlocks, const aclDataType dataType)
 {
+    if (!GetSingleton<Config>().Is910B()) {
+        std::cout << "Paged Cache Load only supports A2/A3" << std::endl;
+        GTEST_SKIP();
+    }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;
@@ -68,7 +72,7 @@ void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int
     aclTensor *tensorList[PCLINOUTPCL];
     int64_t numTokens = batch * seqLen;
 
-    //contextLens
+    // contextLens
     size_t dataSizeContextLens = numTokens * sizeof(int32_t);
     int32_t *hostDataContextLens = (int32_t *)malloc(dataSizeContextLens);
     std::random_device rd;
@@ -78,7 +82,7 @@ void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int
         hostDataContextLens[i] = distribContextLens(gen);
     }
 
-    //blockTables
+    // blockTables
     std::vector<int32_t> vec(hostDataContextLens, hostDataContextLens + numTokens);
     int32_t maxVal = *std::max_element(vec.begin(), vec.end());
     int64_t sum = std::accumulate(vec.begin(), vec.end(), int64_t(0));
@@ -166,6 +170,10 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
                           const int64_t blockSize, const int64_t numBlocks, const aclDataType dataType,
                           bool isSeqLensCumsumType, bool hasSeqStarts)
 {
+    if (!GetSingleton<Config>().Is910B()) {
+        std::cout << "Paged Cache Load only supports A2/A3" << std::endl;
+        GTEST_SKIP();
+    }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;
@@ -175,7 +183,7 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
     aclTensor *tensorList[PCLINOUTPCL];
     int64_t numTokens = batch * seqLen;
 
-    //contextLens
+    // contextLens
     size_t dataSizeContextLens = numTokens * sizeof(int32_t);
     int32_t *hostDataContextLens = (int32_t *)malloc(dataSizeContextLens);
     std::random_device rd;
@@ -185,7 +193,7 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
         hostDataContextLens[i] = distribContextLens(gen);
     }
 
-    //累加和模式
+    // 累加和模式
     size_t dataSizeCuContextLens = (numTokens + 1) * sizeof(int32_t);
     int32_t *hostDataCuContextLens = (int32_t *)malloc(dataSizeCuContextLens);
     hostDataCuContextLens[0] = 0;
@@ -193,7 +201,7 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
         hostDataCuContextLens[i] = hostDataCuContextLens[i - 1] + hostDataContextLens[i];
     }
 
-    //blockTables
+    // blockTables
     std::vector<int32_t> vec(hostDataContextLens, hostDataContextLens + numTokens);
     int32_t maxVal = *std::max_element(vec.begin(), vec.end());
     size_t maxNumBlocksPerSeq = (maxVal + blockSize - 1) / blockSize + 4;
@@ -258,9 +266,10 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
     uint64_t workspaceSize = 0;
     atb::Operation *op = nullptr;
 
-    Status ret = AtbPagedCacheLoadGetWorkspaceSize(
-        tensorList[0], tensorList[1], tensorList[2], tensorList[3], tensorList[4], tensorList[5], tensorList[6],
-        atb::infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_ND, isSeqLensCumsumType, hasSeqStarts, &workspaceSize, &op, context);
+    Status ret = AtbPagedCacheLoadGetWorkspaceSize(tensorList[0], tensorList[1], tensorList[2], tensorList[3],
+                                                   tensorList[4], tensorList[5], tensorList[6],
+                                                   atb::infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_ND,
+                                                   isSeqLensCumsumType, hasSeqStarts, &workspaceSize, &op, context);
     EXPECT_EQ(ret, NO_ERROR);
     void *workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -329,7 +338,8 @@ TEST(TestATBACL, TestPagedCacheLoadNZP3INT8)
 
 TEST(TestATBACL, TestPagedCacheLoadNDP4FP16)
 {
-    TestPagedCacheLoadND(batchP4, numHeadsP4, headSizeKP4, headSizeVP4, blockSizeP4, numBlocksP4, ACL_FLOAT16, true, true);
+    TestPagedCacheLoadND(batchP4, numHeadsP4, headSizeKP4, headSizeVP4, blockSizeP4, numBlocksP4, ACL_FLOAT16, true,
+                         true);
 }
 
 TEST(TestATBACL, TestPagedCacheLoadNDP4BF16)
@@ -344,7 +354,8 @@ TEST(TestATBACL, TestPagedCacheLoadNDP4INT8)
 
 TEST(TestATBACL, TestPagedCacheLoadNDP5FP16)
 {
-    TestPagedCacheLoadND(batchP5, numHeadsP5, headSizeKP5, headSizeVP5, blockSizeP5, numBlocksP5, ACL_FLOAT16, true, true);
+    TestPagedCacheLoadND(batchP5, numHeadsP5, headSizeKP5, headSizeVP5, blockSizeP5, numBlocksP5, ACL_FLOAT16, true,
+                         true);
 }
 
 TEST(TestATBACL, TestPagedCacheLoadNDP5BF16)

@@ -4,10 +4,18 @@
 using namespace atb;
 using namespace atb::cinterfaceTest;
 
+const int64_t MLAPPREFILLINOUT = 9;
+const int64_t maxSeqLen = 256;
+const int64_t embeddimV = 128;
+const int64_t sizeofFP16 = 2;
+const int64_t kvHeads = 1;
+const int64_t numTokens = 32;
+
 TEST(TestATBACL, TestMLAPreFillM0C2C1)
 {
     if (!GetSingleton<Config>().Is910B()) {
-        exit(0);
+        std::cout << "MLA prefill only supports A2/A3" << std::endl;
+        GTEST_SKIP();
     }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;

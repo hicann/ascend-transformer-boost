@@ -27,8 +27,8 @@ void TestSelfAttentionPrefixEncoder(const int64_t headNum, const int64_t kvHeadN
                                     std::vector<int32_t> qSeqLen, std::vector<int32_t> kvSeqLen)
 {
     if (!GetSingleton<Config>().Is910B()) {
-        std::cout << "SelfAttentionPrefixEncoder only supports A2/A3" << std::endl;
-        exit(0);
+        std::cout << "SelfAttention PrefixEncoder only supports A2/A3" << std::endl;
+        GTEST_SKIP();
     }
     int inputNum = INOUT_TENSOR_NUM;
     atb::Context *context = nullptr;
@@ -75,7 +75,7 @@ void TestSelfAttentionPrefixEncoder(const int64_t headNum, const int64_t kvHeadN
         for (int j = 0; j < tensorDim[i].size(); ++j) {
             total *= tensorDim[i][j];
         }
-        inoutSize[i] = total * GetDataTypeSize(inputTypes[i]);
+        inoutSize[i] = total * aclDataTypeSize(inputTypes[i]);
     }
     CreateInOutData(inputNum, inoutHost, inoutDevice, inoutSize);
     size_t i = 0;
@@ -113,7 +113,7 @@ void TestSelfAttentionPrefixEncoder(const int64_t headNum, const int64_t kvHeadN
     }
     EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
     Destroy(&context, &stream);
-    for (i = 0; i < MLAINOUTMLA; i++) {
+    for (i = 0; i < INOUT_TENSOR_NUM; i++) {
         aclrtFreeHost(inoutHost[i]);
         aclrtFree(inoutDevice[i]);
     }
