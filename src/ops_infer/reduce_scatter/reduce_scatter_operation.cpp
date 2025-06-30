@@ -152,7 +152,7 @@ std::shared_ptr<Runner> ReduceScatterOperation::CreateRunner(Context &context) c
 {
     (void)context;
     if (param_.backend == "lccl") {
-        return std::make_shared<ReduceScatterLcclRunner>(param_);
+        return std::make_shared<ReduceScatterLcclRunner>(param_, context);
     } else if (param_.backend == "hccl") {
         if (param_.hcclComm == nullptr) {
             return std::make_shared<ReduceScatterHcclRunner>(param_, !param_.rankTableFile.empty());

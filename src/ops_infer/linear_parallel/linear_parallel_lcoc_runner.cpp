@@ -17,9 +17,9 @@ namespace atb {
 static constexpr size_t DIM_2 = 2;
 static constexpr size_t DIM_3 = 3;
 
-LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelParam &param)
+LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelParam &param, Context &context)
     : LcocRunner("LinearParallelLcocRunner", RUNNER_TYPE_LINEAR_PARALLEL, param.rank, param.rankSize, param.commMode,
-                 param.commDomain),
+                 context, param.commDomain),
       param_(param)
 {
     ATB_LOG(INFO) << "LinearParallelLcocRunner::LinearParallelLcocRunner called";

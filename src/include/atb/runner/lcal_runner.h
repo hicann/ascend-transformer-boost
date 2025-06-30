@@ -21,7 +21,7 @@ namespace atb {
 class LcalRunner : public Runner {
 public:
     explicit LcalRunner(const std::string &name, RunnerType runnerType, int32_t rank, int32_t rankSize,
-                        const infer::CommMode commMode, const std::string &commDomain);
+                        const infer::CommMode commMode, const std::string &commDomain, Context &context);
     ~LcalRunner() override;
 
 protected:
@@ -43,6 +43,7 @@ private:
 private:
     std::shared_ptr<Lcal::LcalComm> lcalComm_;
     int32_t lcalErrorCode_ = 0;
+    bool magicNumberDisabled_ = false;
 };
 } // namespace atb
 #endif

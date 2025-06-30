@@ -135,7 +135,6 @@ private:
     aclmdlRICaptureStatus streamStatus_ = ACL_MODEL_RI_CAPTURE_STATUS_INVALIDATED;
     void *lastWorkspaceAddr_ = nullptr;
     bool isCaptured_ = false;
-    bool needUpdateTensorAddr_ = false;
 };
 } // namespace atb
 #endif

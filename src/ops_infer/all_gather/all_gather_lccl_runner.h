@@ -12,11 +12,12 @@
 #define ATB_ALL_GATHER_LCCL_RUNNER_H
 #include "atb/runner/lccl_runner.h"
 #include "atb/infer_op_params.h"
+#include "atb/context.h"
 
 namespace atb {
 class AllGatherLcclRunner : public LcclRunner {
 public:
-    explicit AllGatherLcclRunner(const infer::AllGatherParam &param);
+    explicit AllGatherLcclRunner(const infer::AllGatherParam &param, Context &context);
     ~AllGatherLcclRunner() override;
 
 protected:
