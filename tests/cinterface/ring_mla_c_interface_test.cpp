@@ -28,7 +28,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
                  const float qkscale, const int kernelType, const int maskType, const int calcType,
                  const aclDataType dtype, std::vector<int32_t> seqLen)
 {
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!Is910B()) {
         std::cout << "RingMLA only supports A2/A3" << std::endl;
         GTEST_SKIP();
     }

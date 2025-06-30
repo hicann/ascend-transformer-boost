@@ -59,7 +59,7 @@ const int64_t numBlocksP5 = 256;
 void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int64_t headSizeK, const int64_t headSizeV,
                           const int64_t blockSize, const int64_t numBlocks, const aclDataType dataType)
 {
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!Is910B()) {
         std::cout << "Paged Cache Load only supports A2/A3" << std::endl;
         GTEST_SKIP();
     }
@@ -170,7 +170,7 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
                           const int64_t blockSize, const int64_t numBlocks, const aclDataType dataType,
                           bool isSeqLensCumsumType, bool hasSeqStarts)
 {
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!Is910B()) {
         std::cout << "Paged Cache Load only supports A2/A3" << std::endl;
         GTEST_SKIP();
     }

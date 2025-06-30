@@ -26,7 +26,7 @@ void TestSelfAttentionPrefixEncoder(const int64_t headNum, const int64_t kvHeadN
                                     const float qkScale, const int maskType, const aclDataType dtype,
                                     std::vector<int32_t> qSeqLen, std::vector<int32_t> kvSeqLen)
 {
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!Is910B()) {
         std::cout << "SelfAttention PrefixEncoder only supports A2/A3" << std::endl;
         GTEST_SKIP();
     }

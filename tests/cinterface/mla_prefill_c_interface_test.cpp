@@ -13,7 +13,7 @@ const int64_t numTokens = 32;
 
 TEST(TestATBACL, TestMLAPreFillM0C2C1)
 {
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!Is910B()) {
         std::cout << "MLA prefill only supports A2/A3" << std::endl;
         GTEST_SKIP();
     }

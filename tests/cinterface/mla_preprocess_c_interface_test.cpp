@@ -74,7 +74,7 @@ const int64_t outTensor3C2 = numBlocks * numHeads * 64 / 16 * blockSize * 16;
 
 TEST(TestATBACL, TestMLAPreProcesscomb0Q0C0)
 {
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!Is910B()) {
         std::cout << "MLA PreProcess only supports A2/A3" << std::endl;
         GTEST_SKIP();
     }

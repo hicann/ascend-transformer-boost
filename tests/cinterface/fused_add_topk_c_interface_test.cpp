@@ -9,9 +9,6 @@
  */
 #include "c_interface_utils.h"
 
-#include "atb/utils/config.h"
-#include "atb/utils/singleton.h"
-
 using namespace atb;
 using namespace atb::cinterfaceTest;
 
@@ -25,7 +22,7 @@ void TestFusedAddTopK(const int64_t batchSize, const int64_t expertNum, const in
                       const int activationType, const bool isNorm, const float scale, const bool enableExpertMapping,
                       const aclDataType dtype)
 {
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!Is910B()) {
         std::cout << "FusedAddTopK with only supports A2/A3" << std::endl;
         GTEST_SKIP();
     }
