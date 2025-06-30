@@ -56,25 +56,25 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
 
     ATB_LOG(INFO) << GetLogPrefix() << "Ctor seqLen dataSize: " << seqLen->dataSize;
     kernelGraph_.nodes.resize(1);
-    auto &RingMLANode = kernelGraph_.nodes.at(0);
+    auto &ringMLANode = kernelGraph_.nodes.at(0);
 
-    AtbOps::OpParam::RINGMLA RingMLAParam;
-    SetRingMLAParam(RingMLAParam);
+    AtbOps::OpParam::RINGMLA ringMLAParam;
+    SetRingMLAParam(ringMLAParam);
 
-    RingMLANode.opDesc = {0, "RINGMLAOperation", RingMLAParam};
+    ringMLANode.opDesc = {0, "RINGMLAOperation", ringMLAParam};
 
     // flashAttentionEncoderNode.inTensors = {&query_split1, query_split2, &key_split1, key_split2, value,
     // mask, slopes, qkDescale, qkOffset, vpvDescale, vpvOffset, pScale, logN, prevOut, prevLse};
-    RingMLANode.inTensors = {query_split1, query_split2, key_split1,   key_split2,   value,
+    ringMLANode.inTensors = {query_split1, query_split2, key_split1,   key_split2,   value,
                              mask,         &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_,
                              &nullTensor_, &nullTensor_, &nullTensor_, prevOut,      prevLse};
 
     if (isInputSoftmaxLse_) {
         *attnOut = *prevOut;
     }
-    RingMLANode.outTensors = {attnOut, softmaxLse};
-    RingMLANode.inTensorViewFuncs.resize(RingMLANode.inTensors.size()); // view
-    RingMLANode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) { // format, dtype 设置
+    ringMLANode.outTensors = {attnOut, softmaxLse};
+    ringMLANode.inTensorViewFuncs.resize(ringMLANode.inTensors.size()); // view
+    ringMLANode.inferShapePreFunc = [](Mki::LaunchParam &launchParam) { // format, dtype 设置
         for (size_t i = 0; i < launchParam.GetInTensorCount(); i++) {
             launchParam.GetInTensor(i).desc.format = Mki::TENSOR_FORMAT_ND;
         }
@@ -90,40 +90,40 @@ Status RingMLAOpsRunner::ModifyKernelGraph(const OpsTensorPack &opsTensorPack)
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;
     }
-    auto &RingMLANode = kernelGraph_.nodes.at(0); // 0: RingMLA节点位置
+    auto &ringMLANode = kernelGraph_.nodes.at(0); // 0: RingMLA节点位置
 
-    AtbOps::OpParam::RINGMLA RingMLAParam;
-    SetRingMLAParam(RingMLAParam);
-    RingMLAParam.qSeqLen = newParam.qSeqLen;
-    RingMLAParam.kvSeqLen = newParam.kvSeqLen;
-    if (RingMLAParam.kvSeqLen.size() == 0) {
-        RingMLAParam.kvSeqLen = newParam.qSeqLen;
+    AtbOps::OpParam::RINGMLA ringMLAParam;
+    SetRingMLAParam(ringMLAParam);
+    ringMLAParam.qSeqLen = newParam.qSeqLen;
+    ringMLAParam.kvSeqLen = newParam.kvSeqLen;
+    if (ringMLAParam.kvSeqLen.size() == 0) {
+        ringMLAParam.kvSeqLen = newParam.qSeqLen;
     }
 
     ATB_LOG(INFO) << GetLogPrefix() << "seqLen dataSize: " << newParam.qSeqLen.size();
     ATB_LOG(INFO) << GetLogPrefix() << "kvSeqLen dataSize: " << newParam.kvSeqLen.size();
-    RingMLANode.opDesc = {0, "RINGMLAOperation", RingMLAParam};
-    ATB_LOG(INFO) << GetLogPrefix() << " update AsdOps::OpParam::RINGMLAParam.type: " << RingMLAParam.type
-                  << ", headNum: " << param_.headNum << ", qSeqLen.size: " << RingMLAParam.qSeqLen.size()
-                  << ", kvSeqLen.size: " << RingMLAParam.kvSeqLen.size() << ", qkScale: " << RingMLAParam.tor
-                  << ", kvHead: " << RingMLAParam.kvHead << ", maskType: " << RingMLAParam.maskType;
+    ringMLANode.opDesc = {0, "RINGMLAOperation", ringMLAParam};
+    ATB_LOG(INFO) << GetLogPrefix() << " update AsdOps::OpParam::RINGMLAParam.type: " << ringMLAParam.type
+                  << ", headNum: " << param_.headNum << ", qSeqLen.size: " << ringMLAParam.qSeqLen.size()
+                  << ", kvSeqLen.size: " << ringMLAParam.kvSeqLen.size() << ", qkScale: " << ringMLAParam.tor
+                  << ", kvHead: " << ringMLAParam.kvHead << ", maskType: " << ringMLAParam.maskType;
     return NO_ERROR;
 }
 
-void RingMLAOpsRunner::SetRingMLAParam(AtbOps::OpParam::RINGMLA &RingMLAParam)
+void RingMLAOpsRunner::SetRingMLAParam(AtbOps::OpParam::RINGMLA &ringMLAParam)
 {
-    RingMLAParam.isRing = isInputSoftmaxLse_;
-    RingMLAParam.headSize = param_.headNum;
-    RingMLAParam.kvHead = param_.kvHeadNum;
-    RingMLAParam.tor = param_.qkScale;
-    RingMLAParam.type = AtbOps::OpParam::RINGMLA::Type::PREFILL_SPLIT_CACHE;
+    ringMLAParam.isRing = isInputSoftmaxLse_;
+    ringMLAParam.headSize = param_.headNum;
+    ringMLAParam.kvHead = param_.kvHeadNum;
+    ringMLAParam.tor = param_.qkScale;
+    ringMLAParam.type = AtbOps::OpParam::RINGMLA::Type::PREFILL_SPLIT_CACHE;
     if (param_.maskType == infer::RingMLAParam::MaskType::NO_MASK) {
-        RingMLAParam.maskType =
+        ringMLAParam.maskType =
             static_cast<AtbOps::OpParam::RINGMLA::MaskType>(AtbOps::OpParam::RINGMLA::MaskType::MASK_TYPE_NONE);
     } else if (param_.maskType == infer::RingMLAParam::MaskType::MASK_TYPE_TRIU) {
-        RingMLAParam.maskType =
+        ringMLAParam.maskType =
             static_cast<AtbOps::OpParam::RINGMLA::MaskType>(AtbOps::OpParam::RINGMLA::MaskType::MASK_TYPE_NORM);
-        RingMLAParam.isTriuMask = 1;
+        ringMLAParam.isTriuMask = 1;
     }
 }
 
