@@ -35,6 +35,8 @@ public:
         aclrtStream stream = nullptr);
     int MatmulReduceScatterAllToAllVHidden(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
         aclrtStream stream = nullptr);
+    int MatmulAllToAll(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+        aclrtStream stream = nullptr);
     int64_t GetWorkspaceSize();
     LcalComm *GetComm();
     MatMulInfo &GetMatMulInfo();

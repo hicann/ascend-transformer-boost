@@ -58,6 +58,11 @@ LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelPa
             isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
                        param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
+        case infer::LinearParallelParam::ParallelType::LINEAR_ALL_TO_ALL:
+            lcalType_ = Lcal::LcalType::MATMUL_ALL2ALL;
+            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
+                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+            break;
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "UnSupported type: " << param_.type;
     }
@@ -209,6 +214,10 @@ Status LinearParallelLcocRunner::LaunchKernel(Lcal::CoCInputPkg inputPkg, Lcal::
         case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
             ret = lcoc_->MatmulReduceScatterAllToAllVHidden(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
                                                             runnerVariantPack.context->GetExecuteStream());
+            break;
+        case infer::LinearParallelParam::ParallelType::LINEAR_ALL_TO_ALL:
+            ret = lcoc_->MatmulAllToAll(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                        GetExecuteStream(runnerVariantPack.context));
             break;
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "UnSupported type: " << param_.type;

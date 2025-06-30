@@ -1159,6 +1159,7 @@ PYBIND11_MODULE(_C, m)
         .value("ALL_GATHER_LINEAR", LinearParallelParam::ParallelType::ALL_GATHER_LINEAR)
         .value("PURE_LINEAR", LinearParallelParam::ParallelType::PURE_LINEAR)
         .value("ALL_GATHER_LINEAR_REDUCE_SCATTER", LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER)
+        .value("LINEAR_ALL_TO_ALL", LinearParallelParam::ParallelType::LINEAR_ALL_TO_ALL)
         .value("MAX", LinearParallelParam::ParallelType::MAX);
 
     py::enum_<LinearParallelParam::QuantType>(linearParallel, "QuantType")
