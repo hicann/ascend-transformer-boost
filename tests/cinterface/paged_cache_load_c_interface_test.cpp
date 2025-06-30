@@ -12,6 +12,10 @@
 #include <numeric>
 #include <random>
 #include "c_interface_utils.h"
+#include "atb/utils/config.h"
+#include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
+
 using namespace atb;
 
 const int64_t PCLINOUTPCL = 7;
@@ -59,8 +63,8 @@ const int64_t numBlocksP5 = 256;
 void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int64_t headSizeK, const int64_t headSizeV,
                           const int64_t blockSize, const int64_t numBlocks, const aclDataType dataType)
 {
-    if (!Is910B()) {
-        std::cout << "Paged Cache Load only supports A2/A3" << std::endl;
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "Paged Cache Load only supports A2/A3";
         GTEST_SKIP();
     }
     atb::Context *context = nullptr;
@@ -170,8 +174,8 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
                           const int64_t blockSize, const int64_t numBlocks, const aclDataType dataType,
                           bool isSeqLensCumsumType, bool hasSeqStarts)
 {
-    if (!Is910B()) {
-        std::cout << "Paged Cache Load only supports A2/A3" << std::endl;
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "Paged Cache Load only supports A2/A3";
         GTEST_SKIP();
     }
     atb::Context *context = nullptr;

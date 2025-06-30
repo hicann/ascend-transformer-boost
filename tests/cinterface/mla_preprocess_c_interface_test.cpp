@@ -10,6 +10,8 @@
 #include "c_interface_utils.h"
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
+
 using namespace atb;
 using namespace atb::cinterfaceTest;
 
@@ -74,8 +76,8 @@ const int64_t outTensor3C2 = numBlocks * numHeads * 64 / 16 * blockSize * 16;
 
 TEST(TestATBACL, TestMLAPreProcesscomb0Q0C0)
 {
-    if (!Is910B()) {
-        std::cout << "MLA PreProcess only supports A2/A3" << std::endl;
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "MLA PreProcess only supports A2/A3";
         GTEST_SKIP();
     }
     atb::Context *context = nullptr;

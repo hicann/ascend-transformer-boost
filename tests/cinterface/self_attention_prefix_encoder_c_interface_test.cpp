@@ -11,6 +11,7 @@ See LICENSE in the root of the software repository for the full text of the Lice
 #include "c_interface_utils.h"
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
 
 using namespace atb;
 using namespace atb::cinterfaceTest;
@@ -26,8 +27,8 @@ void TestSelfAttentionPrefixEncoder(const int64_t headNum, const int64_t kvHeadN
                                     const float qkScale, const int maskType, const aclDataType dtype,
                                     std::vector<int32_t> qSeqLen, std::vector<int32_t> kvSeqLen)
 {
-    if (!Is910B()) {
-        std::cout << "SelfAttention PrefixEncoder only supports A2/A3" << std::endl;
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "SelfAttention PrefixEncoder only supports A2/A3";
         GTEST_SKIP();
     }
     int inputNum = INOUT_TENSOR_NUM;

@@ -54,31 +54,5 @@ void CreateACLTensorInOut(const std::vector<int64_t> dims, aclDataType type, acl
 {
     list[i++] = aclCreateTensor(dims.data(), dims.size(), type, nullptr, 0, format, nullptr, 0, inout);
 }
-
-bool is910B()
-{
-    const char *socName = aclrtGetSocName();
-    if (!socName) {
-        ATB_LOG(ERROR) << "aclrtGetSocName failed!";
-        return;
-    }
-    const uint32_t LEN_OF_ASCEND_910B = 10;
-    ATB_LOG(INFO) << "SocVersion: " << std::string(socName);
-    return (std::string(socName).find("Ascend910B") != std::string::npos &&
-            std::string(socName).length() > LEN_OF_ASCEND_910B) ||
-           std::string(socName).find("Ascend910_93") != std::string::npos;
-}
-
-bool is310P()
-{
-    const char *socName = aclrtGetSocName();
-    if (!socName) {
-        ATB_LOG(ERROR) << "aclrtGetSocName failed!";
-        return;
-    }
-    const uint32_t LEN_OF_ASCEND_910B = 10;
-    ATB_LOG(INFO) << "SocVersion: " << std::string(socName);
-    return std::string(socName).find("Ascend310P") != std::string::npos;
-}
 } // namespace cinterfaceTest
 } // namespace atb

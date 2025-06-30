@@ -19,10 +19,6 @@ aclnnStatus Destroy(atb::Context **context, aclrtStream *stream);
 aclnnStatus CreateInOutData(size_t num, uint8_t **inoutHost, uint8_t **inoutDevice, size_t *inoutSize);
 void CreateACLTensorInOut(const std::vector<int64_t> dims, aclDataType type, aclFormat format, aclTensor **list,
                           size_t &i, void *inout);
-
-bool Is910B();
-
-bool Is310P();
 } // namespace cinterfaceTest
 } // namespace atb
 #endif

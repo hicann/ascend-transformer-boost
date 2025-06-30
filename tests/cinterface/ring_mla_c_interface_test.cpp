@@ -13,6 +13,7 @@
 #include <iostream>
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
 
 using namespace atb;
 using namespace atb::cinterfaceTest;
@@ -28,8 +29,8 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
                  const float qkscale, const int kernelType, const int maskType, const int calcType,
                  const aclDataType dtype, std::vector<int32_t> seqLen)
 {
-    if (!Is910B()) {
-        std::cout << "RingMLA only supports A2/A3" << std::endl;
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "RingMLA only supports A2/A3";
         GTEST_SKIP();
     }
     int inputNum = INOUT_TENSOR_NUM;
@@ -48,7 +49,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
     if (!hasKvSeqlen && batch != seqLen.size()) {
         std::cout << "wrong seqlen size, expect [batch]/[2 * batch], batch = " << batch
                   << ", but got: " << seqLen.size() << std::endl;
-        return;
+        GTEST_SKIP();
     }
     for (int i = 0; i < batch; ++i) {
         qNTokens += seqLen[i];

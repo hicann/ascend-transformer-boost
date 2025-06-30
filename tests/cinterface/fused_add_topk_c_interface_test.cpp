@@ -8,6 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "c_interface_utils.h"
+#include "atb/utils/config.h"
+#include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
 
 using namespace atb;
 using namespace atb::cinterfaceTest;
@@ -22,8 +25,8 @@ void TestFusedAddTopK(const int64_t batchSize, const int64_t expertNum, const in
                       const int activationType, const bool isNorm, const float scale, const bool enableExpertMapping,
                       const aclDataType dtype)
 {
-    if (!Is910B()) {
-        std::cout << "FusedAddTopK with only supports A2/A3" << std::endl;
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "FusedAddTopK with only supports A2/A3";
         GTEST_SKIP();
     }
     atb::Context *context = nullptr;
