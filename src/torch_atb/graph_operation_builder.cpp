@@ -101,10 +101,50 @@ GraphOperationBuilder &GraphOperationBuilder::Reshape(const std::string &srcTens
     return *this;
 }
 
-OperationWrapper GraphOperationBuilder::Build()
+OperationWrapper GraphOperationBuilder::Build(const std::set<std::string> &autoFusionClassArray)
 {
     graphParam_.internalTensorNum = internalTensorNum_;
+    if (!autoFusionClassArray.empty()) {
+        OperationWrapper operationWrapper = OperationWrapper(graphParam_, autoFusionClassArray);
+        UpdateInternalTensorIds();
+        return operationWrapper;
+    }
     return OperationWrapper(graphParam_);
+}
+
+
+void GraphOperationBuilder::UpdateInternalTensorIds()
+{
+    auto &internalTensorsErasedByFusion = graphParam_.internalTensorsErasedByFusion;
+    auto iter = internalTensorIds_.begin();
+    while (iter != internalTensorIds_.end()) {
+        if (internalTensorsErasedByFusion.find(iter->second) != internalTensorsErasedByFusion.end()) {
+            iter = internalTensorIds_.erase(iter);
+            internalTensorNum_--;
+        } else {
+            iter++;
+        }
+    }
+    return;
+}
+
+void GraphOperationBuilder::UpdateReshapeFunc(const std::vector<int> &fusedNodes)
+{
+    const size_t sizeOfInterIds = graphParam_.nodes[fusedNodes[0]].inTensorIds.size();
+    for (size_t i = 0; i < sizeOfInterIds; i++) {
+        bool flagHaveReshapeFunc = false;
+        for (auto reshapeFunc : reshapedTensorIds_) {
+            if (reshapeFunc.second.first == graphParam_.nodes[fusedNodes[0]].inTensorIds.at(i)) {
+                graphParam_.nodes[fusedNodes[0]].inTensorReshapeFuncs.at(i) = reshapeFunc.second.second;
+                flagHaveReshapeFunc = true;
+                break;
+            }
+        }
+        if (!flagHaveReshapeFunc) {
+            graphParam_.nodes[fusedNodes[0]].inTensorReshapeFuncs.at(i) = nullptr;
+        }
+    }
+    return ;
 }
 
 uint32_t GraphOperationBuilder::GetTensorId(const std::string &tensorName)

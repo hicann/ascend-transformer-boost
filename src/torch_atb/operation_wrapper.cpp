@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <mki/utils/time/timer.h>
 #include "atb/utils/log.h"
+#include "atb/auto_fusion.h"
 #include "resource/utils.h"
 #include "resource/memory_manager.h"
 #include "prof/prof_stats.h"
@@ -198,6 +199,11 @@ OperationWrapper::OperationWrapper(const RelayAttentionParam &param)
     CreateOpUniquePtr(param);
 }
 
+OperationWrapper::OperationWrapper(const FusionParam &param)
+{
+    CreateOpUniquePtr(param);
+}
+
 OperationWrapper::OperationWrapper(const TopkToppSamplingParam &param)
 {
     CreateOpUniquePtr(param);
@@ -210,6 +216,15 @@ OperationWrapper::OperationWrapper(const AllToAllParam &param)
 
 OperationWrapper::OperationWrapper(const GraphParam &param)
 {
+    CreateOpUniquePtr(param);
+}
+
+OperationWrapper::OperationWrapper(GraphParam &param, const std::set<std::string> &fusionClassArray)
+{
+    if (!fusionClassArray.empty()) {
+        atb::AutoFusion autoFusionTool(param);
+        autoFusionTool.DoAutoFusion(fusionClassArray);
+    }
     CreateOpUniquePtr(param);
 }
 

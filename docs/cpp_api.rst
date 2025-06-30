@@ -72,3 +72,9 @@ atb_acl.h
 
 .. doxygenfile:: atb_acl.h
    :project: ATB_CPP_API
+
+auto_fusion.h
+-----------------------
+
+.. doxygenfile:: auto_fusion.h
+   :project: ATB_CPP_API

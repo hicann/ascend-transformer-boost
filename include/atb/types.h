@@ -162,6 +162,10 @@ struct Node {
     SVector<ReshapeFunc> inTensorReshapeFuncs;
     //! \brief 存放chunk
     SVector<Chunk> inTensorChunks;
+    //! \brief 自动融合标志
+    bool fusedFlag = false;
+    //! \brief 是否是自动融合之后的主要节点
+    bool theMain = false;
 };
 
 //!
@@ -188,6 +192,8 @@ struct GraphParam {
     std::vector<Node> nodes;
     //! \brief inferShape函数指针。
     InferShapeFunc inferShapeFunc = nullptr;
+    //! \brief 因为算子自动融合被消除的internal tensors
+    std::unordered_map<int, int> internalTensorsErasedByFusion;
 };
 } // namespace atb
 #endif
