@@ -11,6 +11,7 @@
 #define SELF_ATTENTION_ENCODER_FUSION_OPS_RUNNER_H
 
 
+
 #include <atbops/params/params.h>
 #include "atb/runner/ops_runner.h"
 #include "atb/infer_op_params.h"
