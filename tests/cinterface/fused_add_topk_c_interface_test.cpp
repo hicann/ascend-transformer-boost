@@ -25,9 +25,9 @@ void TestFusedAddTopK(const int64_t batchSize, const int64_t expertNum, const in
                      const int activationType, const bool isNorm, const float scale, const bool enableExpertMapping,
                      const aclDataType dtype)
 {
-    if (enableExpertMapping && !GetSingleton<Config>().Is910B()) {
-        std::cout << "FusedAddTopK with expert mapping only supports A2/A3" << std::endl;
-        exit(0); 
+    if (!GetSingleton<Config>().Is910B()) {
+        std::cout << "FusedAddTopK only supports A2/A3" << std::endl;
+        return;
     }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;

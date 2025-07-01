@@ -28,7 +28,7 @@ void TestSelfAttentionPrefixEncoder(const int64_t headNum, const int64_t kvHeadN
 {
     if (!GetSingleton<Config>().Is910B()) {
         std::cout << "SelfAttentionPrefixEncoder only supports A2/A3" << std::endl;
-        exit(0);
+        return;
     }
     int inputNum = INOUT_TENSOR_NUM;
     atb::Context *context = nullptr;

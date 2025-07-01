@@ -30,7 +30,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
 {
     if (!GetSingleton<Config>().Is910B()) {
         std::cout << "RingMLA only supports A2/A3" << std::endl;
-        exit(0);
+        return;
     }
     int inputNum = INOUT_TENSOR_NUM;
     atb::Context *context = nullptr;
@@ -48,7 +48,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
     if (!hasKvSeqlen && batch != seqLen.size()) {
         std::cout << "wrong seqlen size, expect [batch]/[2 * batch], batch = " << batch
                   << ", but got: " << seqLen.size() << std::endl;
-        exit(1);
+        EXPECT_EQ(true, false);
     }
     for (int i = 0; i < batch; ++i) {
         qNTokens += seqLen[i];
