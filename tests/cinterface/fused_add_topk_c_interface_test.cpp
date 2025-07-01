@@ -26,7 +26,7 @@ void TestFusedAddTopK(const int64_t batchSize, const int64_t expertNum, const in
                       const aclDataType dtype)
 {
     if (!atb::GetSingleton<atb::Config>().Is910B()) {
-        ATB_LOG(ERROR) << "FusedAddTopK with only supports A2/A3";
+        ATB_LOG(ERROR) << "FusedAddTopK only supports A2/A3";
         GTEST_SKIP();
     }
     atb::Context *context = nullptr;
