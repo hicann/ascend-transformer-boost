@@ -67,5 +67,5 @@ public:
         return Status::OkStatus();
     }
 };
-REG_KERNEL_BASE(CustomizeBlockCopyKernel);
+REG_KERNEL_BASE(CustomizeBlockCopyKernel); // Kernel注册
 } // namespace AtbOps

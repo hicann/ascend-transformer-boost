@@ -27,7 +27,9 @@ constexpr int64_t LCAL_INVALID_VALUE = -1;
 
 // shared buffer size，这里要和collectives.cce文件中的常量联动修改！！！
 constexpr int LCAL_BUFF_BYTES = 204 * 1024 * 1024;
+constexpr int LCAL_FLAG_BUFF_BYTES = 4 * 1024 * 1024;
 constexpr int LCAL_COMM_BUFFER_SIZE = 200; // 单位MB
+
 enum class ChipName {
     CHIP_310P3 = 0,
     CHIP_910B1,
