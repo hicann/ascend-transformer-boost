@@ -25,7 +25,7 @@ file(GLOB_RECURSE C_INTERFACE_SOURCE "${c_interface_directory}/*.cpp")
 
 add_subdirectory(kernels)
 
-if(BUILD_PYBIND AND NOT USE_CXX11_ABI)
+if(BUILD_PYBIND)
     add_subdirectory(torch_atb)
 endif()
 
