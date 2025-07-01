@@ -24,10 +24,8 @@ public:
         : KernelBase(kernelName, handle)
     {
     }
-
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-
         MKI_CHECK(PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910B, "platform not support",
                      return false);
         MKI_CHECK(launchParam.GetInTensorCount() == 4, "check inTensor count failed", return false);
@@ -41,9 +39,7 @@ public:
 
         MKI_CHECK(descB.format == TENSOR_FORMAT_ND, "tensor format invalid", return false);
         MKI_CHECK(descB.dtype == TENSOR_DTYPE_FLOAT16, "tensor dtype invalid", return false);
-
-       MKI_CHECK((descA.dims.size() == 2) || (descA.dims[0] == descB.dims[0]), "tensor dims invalid: batchA != batchB", return false);
-
+        MKI_CHECK((descA.dims.size() == 2) || (descA.dims[0] == descB.dims[0]), "tensor dims invalid: batchA != batchB", return false);
         return true;
     }
 

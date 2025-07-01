@@ -128,7 +128,7 @@ public:
                 default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
             }
         }
-
+        
         // 判断w8a8
         switch (kernelKey) {
             case PP_MATMUL_I8_BF16_KERNEL_KEY:
@@ -148,7 +148,14 @@ public:
             case PP_MatMul_BF16ND_BF16ND_F32ND_KERNEL_KEY: return GetKernelByName("PpMatMulBF16NDBF16NDF32NDKernel");
             case PP_MatMul_F16ND_F16NZ_F16ND_KERNEL_KEY: return GetKernelByName("PpMatMulF16NDF16NZF16NDKernel");
             case PP_MatMul_BF16ND_BF16NZ_BF16ND_KERNEL_KEY: return GetKernelByName("PpMatMulBF16NDBF16NZBF16NDKernel");
-            case PP_MatMul_F16NZ_F16NZ_F16NZ_KERNEL_KEY: return GetKernelByName("PpMatMulF16NZF16NZF16NZKernel");
+            case PP_MatMul_F16NZ_F16NZ_F16NZ_KERNEL_KEY: 
+                {
+                    if (platform == PlatformType::ASCEND_910A) {
+                        return GetKernelByName("PpMatMulNzF16Kernel");
+                    } else {
+                        return GetKernelByName("PpMatMulF16NZF16NZF16NZKernel");
+                    }
+                }
             default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
         }
 
