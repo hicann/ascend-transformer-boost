@@ -17,7 +17,16 @@
 static constexpr int32_t DEVICE_UNDEFINED_STATUS = -1;
 
 namespace atb {
-MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
+MstxMemRegister::MstxMemRegister() {}
+
+MstxMemRegister::~MstxMemRegister()
+{
+    if (memPool_) {
+        mstxMemHeapUnregister(GetRegisterDomain(), memPool_);
+    }
+}
+
+MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
 {
     mstxMemVirtualRangeDesc_t rangeDesc = {};
     rangeDesc.deviceId = GetMstxDevice();
@@ -30,11 +39,6 @@ MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.typeSpecificDesc = &rangeDesc;
     
     memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
-}
-
-MstxMemRegister::~MstxMemRegister()
-{
-    mstxMemHeapUnregister(GetRegisterDomain(), memPool_);
 }
 
 mstxDomainHandle_t &MstxMemRegister::GetRegisterDomain()
