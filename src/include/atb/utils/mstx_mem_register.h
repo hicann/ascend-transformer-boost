@@ -32,7 +32,7 @@ public:
     bool IsValid() const noexcept;
 
 private:
-    mstxMemHeapHandle_t memPool_ = 0;
+    mstxMemHeapHandle_t memPool_ = nullptr;
     static mstxDomainHandle_t domain_;
     std::vector<mstxMemVirtualRangeDesc_t> rangesDesc_ = {};
     std::vector<mstxMemRegionHandle_t> regionHandles_ = {};
