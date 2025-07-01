@@ -237,7 +237,7 @@ Status FusedAddTopkDivOperation::OutTensorCheck(const SVector<Tensor> &outTensor
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (yTensorDesc.shape.dims[1] != param_.k) {
-        ATB_LOG(ERROR) << "outTensor0 dim0 should be k";
+        ATB_LOG(ERROR) << "outTensor0 dim1 should be k";
         return ERROR_INVALID_TENSOR_DIM;
     }
 
