@@ -9,6 +9,7 @@ set(matmul_srcs
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_f16_m300_kernel/pp_matmul_f16_m300_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_i8_nz_kernel/pp_matmul_i8_nz_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_i8_nz_compress_kernel/pp_matmul_i8_nz_compress_kernel.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pp_matmul_kernel/pp_matmul_nz_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tiling/matmul_nd_tiling.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tiling/matmul_nz_tiling.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tiling/pp_matmul_mix_tiling.cpp

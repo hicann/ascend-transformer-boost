@@ -128,7 +128,10 @@ public:
                 default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
             }
         }
-
+        // 兼容之前的910A, 走之前的kernel
+        if (platform == PlatformType::ASCEND_910A && kernelKey == PP_MatMul_F16NZ_F16NZ_F16NZ_KERNEL_KEY) {
+            return GetKernelByName("PpMatMulNzF16Kernel");
+        }
         // 判断w8a8
         switch (kernelKey) {
             case PP_MATMUL_I8_BF16_KERNEL_KEY:
