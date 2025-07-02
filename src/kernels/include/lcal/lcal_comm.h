@@ -26,7 +26,6 @@ class LcalSockExchange;
 class LcalComm {
 public:
     LcalComm(int rank, int rankSize);
-    LcalComm(int rank, int rankSize, int bufferSize);
     LcalComm(int rank, int rankSize, int commDomain, int bufferSize, int isEnableMagic);
     LcalComm(int rank, int rankSize, LcalUniqueId commId);
     ~LcalComm();
@@ -37,7 +36,6 @@ public:
     int GetRank() const;
     int GetRankSize() const;
     int GetCommSize() const;
-    int GetBufferSize() const;
     const PhysicalInfo &GetPhysicalInfo() const;
     GM_ADDR GetCommArgsPtr() const;
     CommArgs* GetCommArgs();

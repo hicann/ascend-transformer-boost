@@ -270,6 +270,11 @@ Status LinearParallelOperation::InferShapeAllToAllvcAllGatherGmm(const SVector<T
     if (st != NO_ERROR) {
         return st;
     }
+    int maxOutputSize = inTensorDescs.at(inTensorDescs.size() - 1).shape.dims[0];
+    if (maxOutputSize > 200* 1024 *1024 / 256 / 2 / 2) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "maxOutputSize is too large." << maxOutputSize;
+        return ERROR_INVALID_TENSOR_SIZE;
+    }
     outTensorDescs.at(0).shape.dims[0] = inTensorDescs.at(inTensorDescs.size() - 1).shape.dims[0];
     return NO_ERROR;
 }
