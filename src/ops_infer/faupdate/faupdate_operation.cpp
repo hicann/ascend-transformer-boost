@@ -21,7 +21,7 @@
 
 
 static const uint32_t SP_MIN = 1;
-static const uint32_t SP_MAX = 16;
+static const uint32_t SP_MAX = 8;
 static const int32_t IN_TENSOR_NUM = 2;
 static const int32_t OUT_TENSOR_NUM = 1;
 static const uint32_t IN_TENSOR_0 = 0;
@@ -55,7 +55,7 @@ template <> Status CreateOperation(const infer::FaUpdateParam &opParam, Operatio
             return ERROR_INVALID_PARAM;
         }
         if (opParam.sp < SP_MIN || opParam.sp > SP_MAX) {
-            ATB_LOG(ERROR) << "param sp should be in range: [" << SP_MIN << " - " << SP_MAX << "].";
+            ATB_LOG(ERROR) << "param sp should be in range 1 - 8.";
             return ERROR_INVALID_PARAM;
         }
     }

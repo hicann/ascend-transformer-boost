@@ -117,17 +117,6 @@ function fn_build_pybind11()
     git clone --branch v2.10.3 --depth 1 https://github.com/pybind/pybind11.git 
 }
  
-function fn_build_catlass()
-{
-    if [ -d "$THIRD_PARTY_DIR/catlass" ]; then
-        return $?
-    fi
-    cd $THIRD_PARTY_DIR
-    branch=catlass-v1-stable
-    echo "current branch for catlass: $branch"
-    git clone --branch $branch --depth 1 https://gitee.com/ascend/catlass.git
-}
-
 function fn_init_env()
 {
     res=$(python3 -c "import torch" &> /dev/null || echo "torch_not_exist")
@@ -304,7 +293,6 @@ function fn_main()
             [[ -d "$THIRD_PARTY_DIR"/mki ]] && rm -rf $THIRD_PARTY_DIR/mki
             fn_build_mki
             fn_build_asdops
-            fn_build_catlass
             fn_build_cann_dependency
             [[ "$USE_CXX11_ABI" == "ON" ]] && COMPILE_OPTIONS="-DUSE_CXX11_ABI=ON"
             [[ "$USE_CXX11_ABI" == "OFF" ]] && COMPILE_OPTIONS="-DUSE_CXX11_ABI=OFF"

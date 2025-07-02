@@ -31,13 +31,11 @@ Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         MKI_LOG(ERROR) << "host tiling load error!";
         return Status::FailStatus(-1, "Can not open the binary!");
     }
-    char *errorInfo = nullptr;
     TILING_FUNC_GET tilingFunc = nullptr;
     std::string tilingFuncName = inferWorkspaceFuncName + "tiling_func";
     *(void **)(&tilingFunc) = dlsym(handle, tilingFuncName.c_str());
-    errorInfo = dlerror();
     KernelArgs *kernelArgs = new (std::nothrow) KernelArgs;
-    if (errorInfo != nullptr || tilingFunc == nullptr || kernelArgs == nullptr) {
+    if (tilingFunc == nullptr || kernelArgs == nullptr) {
         return Status::FailStatus(-1, "Get tilingFunc or Malloc for binary params failed!");
     }
     kernelArgs->tilingDevice = static_cast<void *>(tilingDataPtr);
@@ -47,10 +45,9 @@ Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     inferWorkspaceFuncName += std::to_string(tilingDataPtr->key) + "_infer_workspace_shape_function";
     MKI_LOG(INFO) << "now inferWorkspaceFuncName is" << inferWorkspaceFuncName;
     *(void **)(&inferworkspaceFunc) = dlsym(handle, inferWorkspaceFuncName.c_str());
-    errorInfo = dlerror();
     KernelArgsForInferShapeWorkspaceWithTiling *wsWithTiling =
         new (std::nothrow) KernelArgsForInferShapeWorkspaceWithTiling;
-    if (errorInfo != nullptr || inferworkspaceFunc == nullptr || wsWithTiling == nullptr) {
+    if (inferworkspaceFunc == nullptr || wsWithTiling == nullptr) {
         return Status::FailStatus(-1, "Get workspaceFunc or Get workspace tiling failed!");
     }
     wsWithTiling->tilingDevice = tilingDataPtr;
@@ -61,7 +58,6 @@ Status FusionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     kernelInfo.GetScratchSizes().push_back(static_cast<uint64_t>(workSpaceSize));
     kernelInfo.SetTilingId(tilingDataPtr->key);
     kernelInfo.SetBlockDim(BLOCK_DIM);
-    dlclose(handle);
     delete kernelArgs;
     delete wsWithTiling;
     return Status::OkStatus();

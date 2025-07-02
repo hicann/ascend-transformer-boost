@@ -493,8 +493,6 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
             context->SetExecuteType(atb::EXECUTE_LAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace1, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
-            aclrtFree(workSpace1);
-            workSpace1 = nullptr;
         } else if (i >= 6 && i < 8) {
             // 支持workSpace更新
             operation->Setup(pack, workspaceSize, context);
@@ -508,8 +506,6 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
             context->SetExecuteType(atb::EXECUTE_LAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace2, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
-            aclrtFree(workSpace2);
-            workSpace2 = nullptr;
         } else if (i >= 8 && i <= 9) {
             // 支持workSpace更新
             operation->Setup(pack, workspaceSize, context);
@@ -523,8 +519,6 @@ TEST(TestGraphLaunchMode, CapturedByAtbAndChangeWorkspace)
             context->SetExecuteType(atb::EXECUTE_LAUNCH);
             operation->Execute(pack, (uint8_t*)workSpace3, workspaceSize, context);
             context->SetExecuteType(atb::EXECUTE_NORMAL);
-            aclrtFree(workSpace3);
-            workSpace3 = nullptr;
         } else {
             std::cout << "workspace:" << workSpace << ", workspaceSize:" << workspaceSize << std::endl;
             operation->Setup(pack, workspaceSize, context);

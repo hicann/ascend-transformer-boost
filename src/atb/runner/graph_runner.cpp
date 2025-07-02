@@ -944,7 +944,8 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
         ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]" << "graphrunner start";
-        if (runnerVariantPack.mstxMemRegister != nullptr && !(dynamic_cast<GraphRunner*>(node.runner.get()))) {
+        if (runnerVariantPack.mstxMemRegister != nullptr &&
+            !(dynamic_cast<OpsRunner*>(node.runner.get()) || dynamic_cast<GraphRunner*>(node.runner.get()))) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
             for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.inTensors.at(i);
@@ -1047,16 +1048,6 @@ Status GraphRunner::UpdateTensorAddr(RunnerVariantPack &runnerVariantPack)
         auto &node = runnerGraph_.nodes.at(i);
         node.runnerVariantPack.intermediateBuffer = runnerVariantPack.intermediateBuffer;
         node.runner->UpdateTensorAddr(node.runnerVariantPack);
-    }
-    return NO_ERROR;
-}
-
-Status GraphRunner::UpdateWorkspaceBuffer(RunnerVariantPack &runnerVariantPack)
-{
-    for (size_t i = 0; i < runnerGraph_.nodes.size(); i++) {
-        auto &node = runnerGraph_.nodes.at(i);
-        node.runnerVariantPack.workspaceBuffer = runnerVariantPack.workspaceBuffer;
-        node.runner->UpdateWorkspaceBuffer(node.runnerVariantPack);
     }
     return NO_ERROR;
 }

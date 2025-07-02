@@ -235,15 +235,13 @@ function fn_build_mki()
     bash scripts/build.sh $build_type $build_options
 }
 
-function fn_build_catlass()
+function fn_build_act()
 {
     if [ -d "$THIRD_PARTY_DIR/catlass" ]; then
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    branch=catlass-v1-stable
-    echo  "current branch for catlass: $branch"
-    git clone --branch $branch --depth 1 https://gitee.com/ascend/catlass.git
+    git clone https://gitee.com/ascend/catlass.git
 }
 
 function fn_build_nlohmann_json()
@@ -308,7 +306,7 @@ function fn_build_3rdparty_for_compile()
 {
     fn_build_nlohmann_json
     fn_build_mki
-    fn_build_catlass
+    fn_build_act
     fn_build_asdops
     fn_build_cann_dependency
     if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then

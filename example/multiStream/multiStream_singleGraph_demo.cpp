@@ -23,40 +23,38 @@ static void CreateInTensorDescs(atb::SVector<atb::TensorDesc> &intensorDescs)
     }
 }
 
-static aclError CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<atb::TensorDesc> &intensorDescs)
+static void CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<atb::TensorDesc> &intensorDescs)
 {
     std::vector<char> zeroData(8, 0); // 一段全0的hostBuffer
-    int ret;
     for (size_t i = 0; i < inTensors.size(); i++) {
         inTensors.at(i).desc = intensorDescs.at(i);
         inTensors.at(i).dataSize = atb::Utils::GetTensorSize(inTensors.at(i));
-        ret = aclrtMalloc(&inTensors.at(i).deviceData, inTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST); // 分配NPU内存
+        int ret = aclrtMalloc(&inTensors.at(i).deviceData, inTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST); // 分配NPU内存
         if (ret != 0) {
             std::cout << "alloc error!";
-            return ret;
+            exit(1);
         }
         // 拷贝CPU内存到NPU侧
         ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(), ACL_MEMCPY_HOST_TO_DEVICE);
         if (ret != 0) {
             std::cout << "memcpy error!";
+            exit(1);
         }
     }
-    return ret;
 }
 
 // 设置各个outtensor并且为outtensor分配内存空间，同intensor设置
-static aclError CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVector<atb::TensorDesc> &outtensorDescs)
+static void CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVector<atb::TensorDesc> &outtensorDescs)
 {
-    int ret;
     for (size_t i = 0; i < outTensors.size(); i++) {
         outTensors.at(i).desc = outtensorDescs.at(i);
         outTensors.at(i).dataSize = atb::Utils::GetTensorSize(outTensors.at(i));
-        ret = aclrtMalloc(&outTensors.at(i).deviceData, outTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
+        int ret = aclrtMalloc(&outTensors.at(i).deviceData, outTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
         if (ret != 0) {
             std::cout << "alloc error!";
+            exit(1);
         }
     }
-    return ret;
 }
 
 static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **operation)
@@ -264,21 +262,15 @@ int main()
     outtensorDescs.resize(outTensorNum);
     pack.outTensors.resize(outTensorNum);
     operation->InferShape(intensorDescs, outtensorDescs);
-    aclError ret;
-    ret = CreateOutTensors(pack.outTensors, outtensorDescs);
-    if (ret != 0) {
-        exit(ret);
-    }
+    CreateOutTensors(pack.outTensors, outtensorDescs);
 
     // 初始化workspace
     uint64_t workspaceSize = 0;
     void *workSpace = nullptr;
+    int ret = 0;
     // 图内多流并行
     std::cout << "Single graph multi-stream demo start" << std::endl;
-    ret = CreateInTensors(pack.inTensors, intensorDescs);
-    if (ret != 0) {
-        exit(ret);
-    }
+    CreateInTensors(pack.inTensors, intensorDescs);
     operation->Setup(pack, workspaceSize, context);
     if (workspaceSize != 0 && workSpace == nullptr) {
         ret = aclrtMalloc(&workSpace, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);

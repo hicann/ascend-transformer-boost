@@ -70,7 +70,6 @@ public:
     uint64_t GetArgsSize() override;
     Status BuildArgs() override;
     Status UpdateTensorAddr(RunnerVariantPack &runnerVariantPack) override;
-    Status UpdateWorkspaceBuffer(RunnerVariantPack &runnerVariantPack) override;
 
 protected:
     Status SetupImpl(RunnerVariantPack &runnerVariantPack) override;

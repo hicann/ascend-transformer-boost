@@ -27,7 +27,7 @@ class LcalComm {
 public:
     LcalComm(int rank, int rankSize);
     LcalComm(int rank, int rankSize, int bufferSize);
-    LcalComm(int rank, int rankSize, int commDomain, int bufferSize, int isEnableMagic);
+    LcalComm(int rank, int rankSize, int commDomain, int bufferSize);
     LcalComm(int rank, int rankSize, LcalUniqueId commId);
     ~LcalComm();
     LcalComm(const LcalComm &) = delete;
@@ -89,7 +89,6 @@ private:
     LcalSockExchange *socketExchange_ = nullptr;
     bool deterministic_ = false;
     bool isEnableMsprofOp_ = false;
-    bool isEnableMix_ = false;
 };
 } // Lcal
 
