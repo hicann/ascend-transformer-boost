@@ -2137,11 +2137,8 @@ class TopkToppSamplingOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         json_data = json.loads(op_params)
-        if json_data["topkToppSamplingType"]==0:
-            rand_seed = json_data["randSeed"] if "randSeed" in json_data else 0
-            torch.manual_seed(rand_seed)
-        else:
-            torch.manual_seed(0)
+        rand_seed = json_data["randSeed"] if "randSeed" in json_data else 0
+        torch.manual_seed(rand_seed)
         low = float(data_gen_ranges.split(',')[0])
         high = float(data_gen_ranges.split(',')[1])
         probs = ((high - low) * torch.rand(shapes[i]) + low).float()
@@ -4035,7 +4032,7 @@ class PagedAttentionOperation(DataGen):
     def load_tensor_from_file(intensor_file, i, op_params) -> torch.Tensor:
         bin = TensorBinFile(intensor_file)
         tensor = bin.get_tensor()
-        needScale = i == 1 # kcache
+        needScale = i == 1 or i == 5 # kcache, mask
         if i == 2: # vcache
             json_data = json.loads(op_params)
             if "mlaVHeadSize" in json_data and json_data["mlaVHeadSize"] > 0:
@@ -4976,14 +4973,14 @@ class PagedAttentionOperation(DataGen):
                     dim1 = mask.shape[1]
                     dim2 = mask.shape[2]
                     dim3 = mask.shape[3]
-                    mask = mask.view(dim0, dim1, dim2*dim3)
+                    mask = mask.contiguous().view(dim0, dim1, dim2*dim3)
                     if maskType == 2:
-                        batch = len(context_lens)
+                        batch = golden_tensors[4].shape[0]
                         if dim0 != json_data["headNum"]:
                             mask = mask.contiguous().view(batch, json_data["headNum"], dim1, dim2*dim3)
                         else:
                             mask = mask.contiguous().view(1, json_data["headNum"], dim1, dim2*dim3)
-                    golden_tensors[5] = mask
+                    golden_tensors[5] = mask[:,:,:1,:]
                     if maskType == 4 :
                         num_tokens = in_tensors[6].sum().item()
                         max_k_seqlen = max(in_tensors[4]).item()

@@ -118,9 +118,9 @@ namespace Lcal {
         int32_t splitK = -1;
         int32_t write2OtherRank = -1;
         int32_t withSerialMode = -1;
-
         // 控制融合算子实现的参数
         int32_t is91093 = -1;
+        int32_t bufferSize = -1;
     };
 
     struct CoCTilingData : CoCTiling {

@@ -12,7 +12,6 @@
 
 #include <vector>
 #include <string>
-#include <unordered_map>
 
 #include <hccl.h>
 #include "lcal_types.h"
@@ -27,7 +26,8 @@ class LcalSockExchange;
 class LcalComm {
 public:
     LcalComm(int rank, int rankSize);
-    LcalComm(int rank, int rankSize, int commDomain);
+    LcalComm(int rank, int rankSize, int bufferSize);
+    LcalComm(int rank, int rankSize, int commDomain, int bufferSize);
     LcalComm(int rank, int rankSize, LcalUniqueId commId);
     ~LcalComm();
     LcalComm(const LcalComm &) = delete;
@@ -37,6 +37,7 @@ public:
     int GetRank() const;
     int GetRankSize() const;
     int GetCommSize() const;
+    int GetBufferSize() const;
     const PhysicalInfo &GetPhysicalInfo() const;
     GM_ADDR GetCommArgsPtr() const;
     CommArgs* GetCommArgs();
@@ -61,6 +62,7 @@ private:
     int GetPid(uint32_t *pids);
     int GetName(std::string &name, char names[LCAL_MAX_RANK_SIZE][IPC_NAME_SIZE]) const;
     int SyncCommArgs();
+    int InitDumpAddr();
 
 private:
     int rank_ = 0;  // global rank id
@@ -76,6 +78,7 @@ private:
     std::vector<int> devList_ = {};
     std::vector<int> rankList_ = {};
     int commDomain_ = {};
+    int bufferSize_ = LCAL_COMM_BUFFER_SIZE;
 
     // shared ping pong buff，这个地址就是一开始申请在HBM上的，所以host上可以取到，但不能直接修改。
     GM_ADDR peerMem_[LCAL_MAX_RANK_SIZE] = {};
@@ -85,6 +88,7 @@ private:
     LcalUniqueId commId_ = {};
     LcalSockExchange *socketExchange_ = nullptr;
     bool deterministic_ = false;
+    bool isEnableMsprofOp_ = false;
 };
 } // Lcal
 
