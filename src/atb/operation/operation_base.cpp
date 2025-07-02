@@ -1086,7 +1086,7 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
     std::shared_ptr<MstxMemRegister> mstxMemRegister;
     mstxMemRegister = std::make_shared<MstxMemRegister>();
     if (workspaceSize) {
-        mstxMemRegister->MstxHeapRegister(void *workspace, uint64_t workspaceSize);
+        mstxMemRegister->MstxHeapRegister(workspace, workspaceSize);
         if (mstxMemRegister && mstxMemRegister->IsValid()) {
             runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
             ATB_LOG(INFO) << GetLogPrefix() << "mstxMemHeapRegister success ";
