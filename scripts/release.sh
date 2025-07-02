@@ -288,6 +288,9 @@ function fn_main()
         "--use_cxx11_abi=0")
             USE_CXX11_ABI=OFF
             ;;
+        "--build_customize_ops")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
+            ;;
         esac
         shift
     }

@@ -855,7 +855,7 @@ function fn_main()
             fn_gen_doc
             ;;
         "customizeops")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON -DBUILD_CUSTOMIZE_OPS_TESTS=ON"
             fn_build_googletest
             fn_build
             generate_atb_version_info
