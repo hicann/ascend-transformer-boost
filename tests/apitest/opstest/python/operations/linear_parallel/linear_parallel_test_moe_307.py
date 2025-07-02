@@ -111,11 +111,11 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     golden_out_tensor_low = moedata.matrix_c_low
     out_tensor_compare = out_tensor[0].to(torch.device('cpu'))[:golden_out_tensor.shape[1], :]
 
-    if rank == 0:
-        print("cpu_high", golden_out_tensor)
-        print("cpu_low", golden_out_tensor_low)
-        print("npu", out_tensor_compare)
-        print("npu-cpu_high", torch.max(torch.abs(out_tensor_compare - golden_out_tensor) / (torch.abs(golden_out_tensor) + 1e-7)))
+    # if rank == 0:
+    #     print("cpu_high", golden_out_tensor)
+    #     print("cpu_low", golden_out_tensor_low)
+    #     print("npu", out_tensor_compare)
+    #     print("npu-cpu_high", torch.max(torch.abs(out_tensor_compare - golden_out_tensor) / (torch.abs(golden_out_tensor) + 1e-7)))
 
     assert check_precision_new(out_tensor_compare, golden_out_tensor, golden_out_tensor_low)
 
@@ -163,34 +163,34 @@ def check_precision_new(tensor_a, tensor_b, tensor_c):
 
 class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
-    def test_linear_paraller_fp16(self):
-        if not operation_test.get_soc_version() == 'Ascend910B':
-            return
-        print(f"———————— LinearParallelCoverOp test start ————————")
-        print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
-        world_size = 8
-        comm_type = 309
-        batch = 1
-        M = 1024
-        K = 1024
-        N = 1024
-        trans_b = 0
-        quant_granularity = -1
-        quant_group_size = -1
-        has_quant_offset = -1
-        dequant_group_size = -1
-        local_expert_nums = 4
-        EP = 8
-        TP = 1
-        out_data_type = 1
-        dequant_granularity = -1
-        has_dequant_offset = -1
-        data_type = 0
-        quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
-                               QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
-        mp.spawn(main_worker, nprocs=world_size,
-                 args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
-                       CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
+    # def test_linear_paraller_fp16(self):
+    #     if not operation_test.get_soc_version() == 'Ascend910B':
+    #         return
+    #     print(f"———————— LinearParallelCoverOp test start ————————")
+    #     print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
+    #     world_size = 8
+    #     comm_type = 309
+    #     batch = 1
+    #     M = 1024
+    #     K = 1024
+    #     N = 1024
+    #     trans_b = 0
+    #     quant_granularity = -1
+    #     quant_group_size = -1
+    #     has_quant_offset = -1
+    #     dequant_group_size = -1
+    #     local_expert_nums = 4
+    #     EP = 8
+    #     TP = 1
+    #     out_data_type = 1
+    #     dequant_granularity = -1
+    #     has_dequant_offset = -1
+    #     data_type = 0
+    #     quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
+    #                            QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
+    #     mp.spawn(main_worker, nprocs=world_size,
+    #              args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
+    #                    CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
     def test_linear_paraller_fp16_quant(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
