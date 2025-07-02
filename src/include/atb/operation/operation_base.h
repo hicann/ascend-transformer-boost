@@ -71,6 +71,7 @@ protected:
     mutable SVector<bool> emptyOutTensorPerms_;
     RunnerVariantPack runnerVariantPack_;
     std::shared_ptr<Runner> runner_;
+    bool isGraphLaunchMode_ = false;
 
 private:
     void Reset();
