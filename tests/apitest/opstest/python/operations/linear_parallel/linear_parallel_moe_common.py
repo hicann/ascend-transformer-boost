@@ -185,7 +185,7 @@ class QuantInfo:
     def get_moe_dequant_tensor(self, output_split, n, TP, l0c_dtype):
         shape_info = [sum(output_split) * TP, n]
         broadcast_scale = self.broadcast_quant_args(self.dequant_scale_origin, shape_info)
-        if self.has_dequant_offset:
+        if self.has_dequant_offset == 1:
             broadcast_offset = self.broadcast_quant_args(self.dequant_offset, shape_info)
         else:
             broadcast_offset = torch.zeros(self.dequant_args_shape, dtype=l0c_dtype)
@@ -209,6 +209,9 @@ class MoeTestDate:
         self.matrix_dequant_offset = []
         self.matrix_dequant_scale = []
         self.matrix_quant_scale = []
+        self.m = m 
+        self.k = k 
+        self.n = n 
         self.input_splits, self.output_splits, self.num_local_tokens_per_expert = self.get_moe_input_output_splits(
             expert_per_rank, EP)
         if comm_type is CommType.ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN or comm_type is CommType.MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN:
@@ -394,10 +397,22 @@ class MoeTestDate:
 
     def generate_matrix_c_for_moe_309(self, coc_dtype_desc, rank, TP, EP, l0c_dtype, output_dtype, quant_info):
         # self.write_to_bin(self.matrix_a, "matrix_a")
+        pValue = 1
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
             ep_idx = rank // TP
-            self.matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(l0c_dtype), self.matrix_b.to(l0c_dtype)).to(
-                output_dtype)
+            matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
+            matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
+            loop = math.ceil(self.k / (pValue * 256))
+            for j in range(loop):
+                st = j * pValue * 256
+                ed = min(self.k, (j + 1) * pValue * 256)
+                matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
+                matrix_c_j_low = matrix_c_j.to(output_dtype)
+                matrix_c = matrix_c + matrix_c_j
+                matrix_c_low = matrix_c_low + matrix_c_j_low
+            self.matrix_c = matrix_c
+            self.matrix_c_low = matrix_c_low
+
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
             assert quant_info.dequant_granularity in [QuantGranularity.PER_CHANNEL, QuantGranularity.PER_TENSOR,
                                                       QuantGranularity.PER_TOKEN, QuantGranularity.FLOAT32_SCALE_PER_CHANNEL]
@@ -419,12 +434,26 @@ class MoeTestDate:
 
 
             ep_idx = rank // TP
-            matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(torch.float32), self.matrix_b.to(torch.float32)).to(l0c_dtype)
+            matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
+            matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
+            loop = math.ceil(self.k / (pValue * 256))
+            for j in range(loop):
+                st = j * pValue * 256
+                ed = min(self.k, (j + 1) * pValue * 256)
+                matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
+                matrix_c_j_low = matrix_c_j.to(output_dtype)
+                matrix_c = matrix_c + matrix_c_j
+                matrix_c_low = matrix_c_low + matrix_c_j_low
+            matrix_c_low = matrix_c_low.to(l0c_dtype)
             broadcast_offset, broadcast_scale = quant_info.get_moe_dequant_tensor(self.output_splits[ep_idx], self.input_info[2], TP, l0c_dtype)
-            matrix_c = ((matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale).to(output_dtype)
+            matrix_c = ((matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale)
+            matrix_c_low = ((matrix_c_low + broadcast_offset).to(torch.float32) * broadcast_scale)
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
                 broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale_alltoall[ep_idx], [sum(self.output_splits[ep_idx]) * TP, self.input_info[2]])
-                self.matrix_c = (matrix_c * broadcast_quant_scale).to(output_dtype)
+                matrix_c = (matrix_c * broadcast_quant_scale)
+                matrix_c_low = (matrix_c_low * broadcast_quant_scale)
+            self.matrix_c = matrix_c
+            self.matrix_c_low = matrix_c_low.to(output_dtype)
 
     def generate_matrix_c_for_moe_310(self, coc_dtype_desc, rank, TP, EP, l0c_dtype, l0c_dtype_low,
                                       quant_info):
