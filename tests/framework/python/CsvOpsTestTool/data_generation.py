@@ -5668,7 +5668,10 @@ class SelfAttentionOperation(DataGen):
                     if q.dtype == torch.bfloat16:
                         qk_result = qk_result.to(torch.float32) * scale
                     else:
-                        qk_result = qk_result.to(torch.float16) * scale
+                        if is_mask:
+                            qk_result = qk_result.to(torch.float16) * scale
+                        else:
+                            qk_result = qk_result.to(torch.float32) * scale
                     if is_mask:
                         if mask_compress:
                             if q_start // context_size == kv_start // context_size:
