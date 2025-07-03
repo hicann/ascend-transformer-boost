@@ -98,8 +98,6 @@ class UnpadPagedAttention():
                 sub_k = qk_k - qk_k_split
             query_k = query[:, :, qk_k_split : qk_k_split + sub_k]
             key_k = key[:, qk_k_split : qk_k_split + sub_k, :]
-            # print(f"query data type: {query.dtype}")
-            # print(f"key data type: {key.dtype}")
             result_split = torch.matmul(query_k.to(torch.float32), key_k.to(torch.float32))
             if result is None:
                 result = result_split
@@ -353,8 +351,6 @@ class UnpadPagedAttention():
             mask_pad[:,:max_q, :max_k_seqlen] = mask
             self.mask = mask_pad.reshape((batch_size, max_q_pad, max_k_seq_pad // 16, 16)).permute(0, 2, 1, 3)
         else:
-            # mask_pad = torch.zeros((1, tokens_pad, max_k_seq_pad))
-            # mask_pad[0][:num_tokens, :max_k_seqlen] = mask
             seq_len = 128
             # 创建一个矩阵，初始为全 0
             mask = np.zeros((seq_len, seq_len), dtype=np.float16)
@@ -371,8 +367,6 @@ class UnpadPagedAttention():
         return query.view(num_tokens, num_heads, head_size), self.key_cache, self.value_cache, self.block_tables, self.k_seqlen_list, \
             self.mask.half(), self.q_seqlen_list, ref_output.view(num_tokens, num_heads, head_size), ref_output_high.view(num_tokens, num_heads, head_size)
  
- 
-
 batch = np.random.randint(1, 6)
 block_size = 128
 num_blocks = 1024
