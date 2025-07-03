@@ -5591,7 +5591,7 @@ class SelfAttentionOperation(DataGen):
                 sub_k = 64
             query_k = query[:, :, qk_k_split : qk_k_split + sub_k]
             key_k = key[:, qk_k_split : qk_k_split + sub_k, :]
-            result_split = torch.matmul(query_k, key_k)
+            result_split = torch.matmul(query_k.to(torch.float32), key_k.to(torch.float32))
             if result is None:
                 result = result_split
             else:
@@ -5664,10 +5664,7 @@ class SelfAttentionOperation(DataGen):
                     sub_key = key[:, :, kv_start : kv_start + sub_len] # [14, 128, 128]
                     sub_value = value[:, kv_start : kv_start + sub_len, :]
                     
-                    if q.dtype == torch.bfloat16:
-                        qk_result = SelfAttentionOperation.qkMM1(query, sub_key) 
-                    else:
-                        qk_result = SelfAttentionOperation.qkMM1(query.to(torch.float16), sub_key.to(torch.float16)) 
+                    qk_result = SelfAttentionOperation.qkMM1(query, sub_key)  
                     if q.dtype == torch.bfloat16:
                         qk_result = qk_result.to(torch.float32) * scale
                     else:
@@ -5681,8 +5678,12 @@ class SelfAttentionOperation(DataGen):
                     p_result, row_sum, dm, gm = SelfAttentionOperation.softmax1(qk_result, kv_start == 0, gm)
                     if kv_start == 0:
                         gm_high = None
-                    lo = torch.matmul(p_result.to(torch.float32), sub_value.to(torch.float32))
-                    lo = lo.to(torch.float16)
+                    if q.dtype == torch.bfloat16:
+                        lo = torch.matmul(p_result.to(q.dtype), sub_value)
+                        lo = lo.to(torch.float32)
+                    elif q.dtype == torch.float16:
+                        lo = torch.matmul(p_result.to(torch.float32), sub_value.to(torch.float32))
+                        lo = lo.to(torch.float16)
                     lo = lo.numpy()
                     if kv_start == 0:
                         gl = row_sum
