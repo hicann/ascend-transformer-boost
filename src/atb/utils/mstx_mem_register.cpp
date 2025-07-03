@@ -109,6 +109,6 @@ Status MstxMemRegister::CheckTensorRange()
 
 bool MstxMemRegister::IsValid() const noexcept
 {
-    return memPool_ != 0;
+    return memPool_ != nullptr;
 }
 }  // namespace atb
