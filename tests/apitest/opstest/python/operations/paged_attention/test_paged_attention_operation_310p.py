@@ -18,7 +18,7 @@ import collections
 import numpy as np
 import torch
 import torch_npu
-
+from precision_calcu import *
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
@@ -91,10 +91,131 @@ def ref_masked_attention(
     out = group_matmul(query.shape[0], key.shape[0], p, value)
     out = np.transpose(out, (1, 0, 2))
     return out
- 
+
+def qkMM1(
+    query,
+    key
+):
+    result = None
+    qk_k = key.shape[1]
+    for qk_k_split in range(0, qk_k, 128):
+        sub_k = 128
+        if qk_k_split == 512:
+            sub_k = 64
+        query_k = query[:, :, qk_k_split : qk_k_split + sub_k]
+        key_k = key[:, qk_k_split : qk_k_split + sub_k, :]
+        result_split = torch.matmul(query_k.to(torch.float32), key_k.to(torch.float32))
+        if result is None:
+            result = result_split
+        else:
+            result = result + result_split
+    return result
+
+def softmax1(
+    qk_result,
+    is_first,
+    gm
+):
+    sim = qk_result.numpy()
+    lm = np.max(sim, axis=-1, keepdims=True)
+    if is_first:
+        hm = lm
+        dm = 0
+    else:
+        hm = np.maximum(gm, lm)
+        dm = gm - hm
+    gm = hm
+    sim_sub = sim - hm
+    sim_sub = np.exp(sim_sub.astype(np.float32))
+    if qk_result.dtype == torch.float16:
+        sim_sub = sim_sub.astype(np.float16)
+    row_sum = np.sum(sim_sub, axis=-1, keepdims=True)
+    return torch.from_numpy(sim_sub), row_sum, dm, gm
+
+def ref_flash_attention(
+        query,
+        key,
+        value,
+        scale: float,
+        alibi_bias,
+        mask_data_type = torch.bfloat16,
+        query_rope = None,
+        key_rope = None,
+        context_len = 0,
+):
+    if not torch.is_tensor(query):
+        query = torch.from_numpy(query)
+    if not torch.is_tensor(key):
+        key = torch.from_numpy(key)
+    if not torch.is_tensor(value):
+        value = torch.from_numpy(value)
+    if not torch.is_tensor(alibi_bias):
+        alibi_bias = torch.from_numpy(alibi_bias)
+    query = torch.permute(query, (1, 0, 2))
+    key = torch.permute(key, (1, 2, 0))
+    value = torch.permute(value, (1, 0, 2))
+    context_size = 128
+    group_num = query.shape[0] // key.shape[0]
+    if group_num != 1:
+        key = key.repeat_interleave(group_num, dim=0)
+        value = value.repeat_interleave(group_num, dim=0)
+    gl = None
+    gl_high = None
+    go = None
+    go_high = None
+    for kv_start in range(0, context_len - 1, context_size):
+        sub_len = context_size
+        if kv_start + context_size > context_len:
+            sub_len = context_len - kv_start
+        sub_key = key[:, :, kv_start : kv_start + sub_len]
+        sub_mask = alibi_bias[:, :, kv_start : kv_start + sub_len]
+        sub_value = value[:, kv_start : kv_start + sub_len, :]
+        qk_result = qkMM1(query, sub_key)
+        qk_result_high = qkMM1(query.to(torch.float32), sub_key.to(torch.float32))
+        qk_result = qk_result.to(torch.float16) * scale
+        qk_result_high = qk_result_high * scale
+        if MASK_TYPE != 0:
+            qk_result += sub_mask
+            qk_result_high += sub_mask.to(torch.float32)
+        if kv_start == 0:
+            gm = None
+        p_result, row_sum, dm, gm = softmax1(qk_result, kv_start == 0, gm)
+        if kv_start == 0:
+            gm_high = None
+        p_result_high, row_sum_high, dm_high, gm_high = softmax1(qk_result_high, kv_start == 0, gm_high)
+        lo = torch.matmul(p_result.to(torch.float32), sub_value.to(torch.float32))
+        lo = lo.to(torch.float16)
+        lo_high = torch.matmul(p_result_high, sub_value.to(torch.float32))
+        lo = lo.numpy()
+        lo_high = lo_high.numpy()
+        if kv_start == 0:
+            gl = row_sum
+            gl_high = row_sum_high
+            go = lo
+            go_high = lo_high
+        else:
+            dm = np.exp(dm)
+            dm_high = np.exp(dm_high)
+            gl = gl * dm
+            gl = gl + row_sum
+
+            go = go * dm
+            go = go + lo
+
+            gl_high = gl_high * dm_high
+            gl_high = gl_high + row_sum_high
+
+            go_high = go_high * dm_high
+            go_high = go_high + lo_high
+    go = go / gl
+    go_high = go_high / gl_high
+    go = np.transpose(go, (1, 0, 2))
+    go_high = np.transpose(go_high, (1, 0, 2))
+    return torch.from_numpy(go), torch.from_numpy(go_high)
 
 def ref_single_query_cached_kv_attention(
         output,
+        output_gt,
         query,
         key_cache,   # (num_blocks, block_size, num_heads, head_size)
         value_cache,  # (num_blocks, block_size, num_heads, head_size)
@@ -133,8 +254,11 @@ def ref_single_query_cached_kv_attention(
               f"context_len: {context_len}, keyblocknum: {(context_len + block_size - 1) // block_size}, "
               f"tail: {context_len % block_size}, alibi_bias.shape: {alibi_mask[i].shape}")
 
-        out = ref_masked_attention(q, keys, values, scale, alibi_mask[i, :, :, :context_len])
+        out, out_high = ref_flash_attention(q, keys, values, scale, alibi_bias = alibi_mask[i, :, :, :context_len], context_len = context_len)
+
+        out_high = out_high.reshape(num_heads, head_size)
         out = out.reshape(num_heads, head_size)
+        output_gt[i] = out_high
         output[i] = out
 
 
@@ -148,10 +272,10 @@ def generate_data(
         k_seqlen=500,
         dtype="float16",
 ):
-    query = np.random.uniform(-1.0, 1.0, size=(num_tokens, num_heads, head_size)).astype(dtype)
+    query = np.random.uniform(-5.0, 5.0, size=(num_tokens, num_heads, head_size)).astype(dtype)
     # kv cache shape: (num_blocks, block_size, num_heads, head_size)
-    key_cache = np.random.uniform(-1.0, 1.0, size=(num_blocks, block_size, kv_heads, head_size)).astype(dtype) 
-    value_cache = np.random.uniform(-1.0, 1.0, size=(num_blocks, block_size, kv_heads, head_size)).astype(dtype)
+    key_cache = np.random.uniform(-5.0, 5.0, size=(num_blocks, block_size, kv_heads, head_size)).astype(dtype) 
+    value_cache = np.random.uniform(-5.0, 5.0, size=(num_blocks, block_size, kv_heads, head_size)).astype(dtype)
     context_lens = [random.randint(1, MAX_SEQ_LEN) for _ in range(num_tokens)]# 一个token处理多少个key
     context_lens = [k_seqlen] * num_tokens
     max_context_len = max(context_lens)
@@ -179,8 +303,10 @@ def generate_data(
  
     # alibi_slopes = np.zeros(num_heads)
     ref_output = np.zeros_like(query)
+    output_gt = np.zeros_like(query).astype(np.float32)
     ref_single_query_cached_kv_attention(
         ref_output,
+        output_gt,
         query,
         key_cache,
         value_cache,
@@ -209,7 +335,7 @@ def generate_data(
     value_cache_nz = np.ascontiguousarray(value_cache_nz)
     alibi_mask_nz = np.ascontiguousarray(alibi_mask_nz)
     logn_tensor = np.array([rand_list[x] for x in range(query.shape[0])]).astype(np.float16)
-    return query, key_cache_nz, value_cache_nz, block_tables, context_lens, alibi_mask_nz, logn_tensor, ref_output
+    return query, key_cache_nz, value_cache_nz, block_tables, context_lens, alibi_mask_nz, logn_tensor, ref_output, output_gt
 
 
 data = generate_data()
@@ -220,10 +346,11 @@ a = [print(tensor.dtype, tensor.device, tensor.shape) for tensor in in_tensors]
 
 class TestPagedAttentionAttentionOperation(operation_test.OperationTest):
     def golden_calc(self, input_tensors):
-        return [in_tensors[-1]]
+        return [in_tensors[-2]]
 
     def golden_compare(self, out_tensor, golden_out_tensor):
-        return torch.allclose(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001)
+        result_double = compare_cv(in_tensors[-1], golden_out_tensor.npu(), out_tensor.npu())
+        return result_double
 
     def test(self):
         if not operation_test.get_soc_version() == 'Ascend310P':
