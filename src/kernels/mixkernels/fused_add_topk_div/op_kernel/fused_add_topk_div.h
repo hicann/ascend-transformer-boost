@@ -22,6 +22,9 @@ constexpr uint32_t BASE_COUNT = 256;
 constexpr uint32_t REPEAT_BYTES = 256;
 constexpr uint32_t BLOCK_BYTES = 32;
 constexpr uint32_t SORT_UNIT = 32;
+constexpr uint32_t ADD_COUNT_THIRTY_TWO = 32;
+constexpr uint32_t ADD_COUNT_SIXTY_FOUR = 64;
+constexpr uint32_t ADD_COUNT_ONE_TWENTY_EIGHT = 128;
 constexpr uint32_t BUFFER_NUM = 1;
 constexpr uint32_t BUFFER_NUM_ONE = 1;
 constexpr float FLOAT32_NEG_INF = -3.4e38;
@@ -279,10 +282,14 @@ __aicore__ inline void FusedAddTopkDiv<inputT, calT, enableExpertMapping>::CopyF
     DataCopyExtParams xWorkspaceGroupCopyParams{(uint16_t)1, (uint32_t)(groupEles_ * sizeof(float)), 0, 0, 0};
     DataCopyPadExtParams<float> xWorkspaceGroupPadParams{true, 0, (uint8_t)(groupElesAlignBlockCountFp32_ - groupEles_),
                                                           (float)FLOAT32_NEG_INF};
+    ArithProgression(assistLocal.template ReinterpretCast<int32_t>(), 0, 1, ADD_COUNT_THIRTY_TWO);
+    AscendC::PipeBarrier<PIPE_V>();
     event_t eventIDMTE3ToV = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE3_V));
     SetFlag<HardEvent::MTE3_V>(eventIDMTE3ToV);
     WaitFlag<HardEvent::MTE3_V>(eventIDMTE3ToV);
     Duplicate<float>(xLocal, FLOAT32_NEG_INF, groupElesAlignSortCount_ * groupNum_);
+    Adds(assistLocal[ADD_COUNT_THIRTY_TWO].template ReinterpretCast<int32_t>(),
+         assistLocal.template ReinterpretCast<int32_t>(), int32_t(0), ADD_COUNT_THIRTY_TWO);
     event_t eventIDVToMTE2 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_MTE2));
     SetFlag<HardEvent::V_MTE2>(eventIDVToMTE2);
     WaitFlag<HardEvent::V_MTE2>(eventIDVToMTE2);
@@ -291,9 +298,12 @@ __aicore__ inline void FusedAddTopkDiv<inputT, calT, enableExpertMapping>::CopyF
         DataCopyPad(xLocal[groupElesAlignSortCount_ * i], mGmWorkspace_[wsOffset_ + groupEles_ * i],
                     xWorkspaceGroupCopyParams, xWorkspaceGroupPadParams);
     }
-    DataCopyPad(assistLocal, mGmAssist_,
-                {(uint16_t)1, (uint32_t)(BASE_COUNT * sizeof(uint32_t)), 0, 0, 0},
-                {false, 0, 0, 0});
+    AscendC::PipeBarrier<PIPE_V>();
+    Adds(assistLocal[ADD_COUNT_SIXTY_FOUR].template ReinterpretCast<int32_t>(),
+         assistLocal.template ReinterpretCast<int32_t>(), int32_t(0), ADD_COUNT_SIXTY_FOUR);
+    AscendC::PipeBarrier<PIPE_V>();
+    Adds(assistLocal[ADD_COUNT_ONE_TWENTY_EIGHT].template ReinterpretCast<int32_t>(),
+         assistLocal.template ReinterpretCast<int32_t>(), int32_t(0), ADD_COUNT_ONE_TWENTY_EIGHT);
     event_t eventIDMTE2ToV = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE2_V));
     SetFlag<HardEvent::MTE2_V>(eventIDMTE2ToV);
     WaitFlag<HardEvent::MTE2_V>(eventIDMTE2ToV);
