@@ -265,12 +265,12 @@ Status GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t blockDim, uint32_t
                 tilingParam[tilingOffset] = batchIdx;
                 tilingParam[tilingOffset + 1] = qSeqLen;
                 tilingParam[tilingOffset + NUM2] = kvBlockIdx == splitNum - 1 ?
-                nowKVSeqlen - prevKVSeqlen : nowBlocks * mmInfo.blockSize;
-                tilingParam[tilingOffset + NUM3] = prevKVSeqlen;
-                tilingParam[tilingOffset + NUM4] = mmInfo.quantFlag ? batchIdx * qSeqLen + qSeq : batchIdx * qSeqLen;
-                tilingParam[tilingOffset + NUM5] = splitNum;
-                tilingParam[tilingOffset + NUM6] = mmInfo.prevSplitNumSum;
-                prevKVSeqlen += tilingParam[tilingOffset + NUM2];
+                nowKVSeqlen - prevKVSeqlen : nowBlocks * static_cast<int32_t>(mmInfo.blockSize);
+                tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(prevKVSeqlen);
+                tilingParam[tilingOffset + NUM4] = static_cast<uint32_t>(mmInfo.quantFlag ? batchIdx * qSeqLen + qSeq : batchIdx * qSeqLen);
+                tilingParam[tilingOffset + NUM5] = static_cast<uint32_t>(splitNum);
+                tilingParam[tilingOffset + NUM6] = static_cast<uint32_t>(mmInfo.prevSplitNumSum);
+                prevKVSeqlen += static_cast<int32_t>(tilingParam[tilingOffset + NUM2]);
                 tilingOffset += TILING_PARA_SIZE_TP1;
                 prevTaskNum++;
             }
@@ -301,10 +301,10 @@ void GetNdMLAMtpTilingTP1(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *t
             int32_t tilingOffset = TILING_HEAD_SIZE + TILING_PARA_SIZE_TP1 * prevTaskNum;
             int32_t curQLen = ((qSeqLen - qSeq) > maxQPerJob) ? maxQPerJob : (qSeqLen - qSeq);
             curKvSeq += curQLen;
-            tilingParam[tilingOffset] = batchIdx;
-            tilingParam[tilingOffset + NUM1] = beginQ + qSeq;
-            tilingParam[tilingOffset + NUM2] = curKvSeq;
-            tilingParam[tilingOffset + NUM3] = curQLen;
+            tilingParam[tilingOffset] = static_cast<uint32_t>(batchIdx);
+            tilingParam[tilingOffset + NUM1] = static_cast<uint32_t>(beginQ + qSeq);
+            tilingParam[tilingOffset + NUM2] = static_cast<uint32_t>(curKvSeq);
+            tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(curQLen);
             prevTaskNum++;
             totalTaskNum -= curQLen;
             MKI_LOG(INFO) << "seqIdx = " << tilingParam[tilingOffset];
@@ -319,6 +319,8 @@ void GetNdMLAMtpTilingTP1(const MLAInfo &mmInfo, uint32_t &blockDim, uint32_t *t
 void GetTilingHead(const MLAInfo &mmInfo, const OpParam::MLA &param, uint32_t *tilingParam,
                    const uint32_t *torPtr, uint32_t blockDim)
 {
+    UNUSED_VALUE(param);
+    UNUSED_VALUE(blockDim);
     tilingParam[TILING_BATCH] = static_cast<uint32_t>(mmInfo.batch);
     tilingParam[TILING_HEADSIZE] = static_cast<uint32_t>(TILING_HEAD_SIZE);
     tilingParam[TILING_PARASIZE] = mmInfo.mtpTp1Flag ? static_cast<uint32_t>(TILING_PARA_SIZE_TP1) :
@@ -383,6 +385,7 @@ Status GetMLATilingParam(const LaunchParam &launchParam, MLAInfo &mmInfo,
 void InitTilingKWithN(const MLAInfo &mmInfo, int32_t &embeddingSizeAligned, int32_t &nIbd,
     int32_t seqIdx, uint32_t *tilingParam)
 {
+    UNUSED_VALUE(embeddingSizeAligned);
     int32_t kvSeqlen = *(mmInfo.kvSeqLen + seqIdx);
     int32_t kvSeqlenAligned = (kvSeqlen + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
     int32_t nUbd = std::min(LONG_SEQ_LEN, kvSeqlenAligned);
@@ -395,6 +398,7 @@ Status CheckSeqlen(const MLAInfo &mmInfo, const AddrOffsets &addrOffsets, int32_
                    int32_t kvSeqlen, int32_t seqIdx)
 {
     UNUSED_VALUE(seqIdx);
+    UNUSED_VALUE(mmInfo);
     MKI_CHECK(qSeqlen >= 0, "qSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(kvSeqlen >= 0, "kvSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(addrOffsets.totalQBlkNum >= 0, "totalQBlkNum overflow",
@@ -477,10 +481,14 @@ Status PrefillTilingParam(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOf
             static_cast<uint32_t>(addrOffsets.totalQBlkNum);
         tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM14] = 1;
         auto kvFactor = GetKvFactor(mmInfo, kvSeqlen);
-        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.numHeads * mmInfo.embeddingSizeV;
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
-        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.numHeads * mmInfo.embeddingSizeV;
+        int64_t qSeqlenInt64 = static_cast<int64_t>(qSeqlen);
+        int64_t numHeadsInt64 = static_cast<int64_t>(mmInfo.numHeads);
+        int64_t embeddingSizeVInt64 = static_cast<int64_t>(mmInfo.embeddingSizeV);
+        int64_t kvRealHeadsInt64 = static_cast<int64_t>(kvRealHeads);
+        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlenInt64 * numHeadsInt64 * embeddingSizeVInt64);
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeadsInt64 * embeddingSizeVInt64);
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor * kvRealHeadsInt64 * embeddingSizeVInt64);
+        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlenInt64 * numHeadsInt64 * embeddingSizeVInt64);
     }
     PrefillTilingHead(mmInfo, torUptr, addrOffsets, tilingParam, kvRealHeads);
     addrOffsets.block = static_cast<int64_t>(mmInfo.numHeads) * addrOffsets.totalQBlkNum;

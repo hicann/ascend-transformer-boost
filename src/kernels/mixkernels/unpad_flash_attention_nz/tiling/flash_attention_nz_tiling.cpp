@@ -236,7 +236,7 @@ Status FillFlashAttentionNzInfo(UnpadFlashAttentionNzInfo &mmInfo, const LaunchP
     mmInfo.alibiLeftAlign = param.alibiLeftAlign;
     MKI_CHECK(param.windowSize >= 0, "invalid param.windowSize < 0, which is: " << param.windowSize,
               return Status::FailStatus(Mki::ERROR_INVALID_VALUE));
-    mmInfo.windowLen = param.windowSize;
+    mmInfo.windowLen = static_cast<uint32_t>(param.windowSize);
     mmInfo.cacheType = param.cacheType;
     if (mmInfo.maskType != OpParam::UnpadFlashAttentionNz::MASK_TYPE_NONE
         && !(param.type == OpParam::UnpadFlashAttentionNz::UNPAD_FLASH_ATTENTION_NZ_DECODER

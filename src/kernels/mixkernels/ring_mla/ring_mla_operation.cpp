@@ -284,6 +284,7 @@ private:
 
     bool CheckMLA(const LaunchParam &launchParam) const
     {
+        (void)launchParam;
         return true;
     }
 };

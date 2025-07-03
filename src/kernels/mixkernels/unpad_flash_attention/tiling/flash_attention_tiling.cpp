@@ -136,7 +136,7 @@ Status FlashAttentionTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
         uint64_t glWorkSize = static_cast<uint64_t>(mmInfo.batchSize) *
                               static_cast<uint64_t>(mmInfo.innerBatchSize) * 4 * 2;
         uint64_t goWorkSize = static_cast<uint64_t>(mmInfo.batchSize) * static_cast<uint64_t>(mmInfo.innerBatchSize) *
-                              mmInfo.embeddingSize * 4 * 2;
+                              static_cast<uint64_t>(mmInfo.embeddingSize) * 4 * 2;
         kernelInfo.GetScratchSizes() = {workSize, workSize, workSize, goWorkSize, glWorkSize};
         blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     } else {
@@ -629,7 +629,7 @@ Status InitMaxKVSeqlen(size_t &batch, Mki::SVector<int64_t> &kcacheShape, UnpadF
         mmInfo.isNoCache = true;
     } else if (param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND) {
         mmInfo.isNoCache = true;
-        mmInfo.maxKvSeqLen = kcacheShape.at(0) * kcacheShape.at(0) / batch;
+        mmInfo.maxKvSeqLen = static_cast<int32_t>(kcacheShape.at(0) * kcacheShape.at(0)) / static_cast<int32_t>(batch);
         OP_TILING_CHECK_STATUS_RETURN(GetFlashAttentionNoCacheMaskInfo(mmInfo, param, mmInfo.tensors.mask));
     } else {
         if (param.dataShapeType == 1) {

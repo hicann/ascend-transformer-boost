@@ -293,7 +293,7 @@ Status GetUnpadFlashAttentionTilingParam(const UnpadFlashAttentionNzInfo mmInfo,
     }
     const uint32_t nzRealCoreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     uint32_t initSize = static_cast<uint32_t>(mmInfo.batchSize * NZ_REAL_CORE_TILING_SIZE * sizeof(uint32_t) +
-                                              GetNzRealCoreTilingOffset());
+                                              static_cast<uint32_t>(GetNzRealCoreTilingOffset()));
     auto ret = memset_s(tilingParam, tilingParamSize, 0, initSize);
     MKI_CHECK(ret == EOK, "Failed to clear the array", return Status::FailStatus(-1));
     AddrOffsetsNz addrOffsets;

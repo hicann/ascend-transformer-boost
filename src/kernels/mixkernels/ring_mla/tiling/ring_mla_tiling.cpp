@@ -1,12 +1,12 @@
 /*
-* Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-* This file is a part of the CANN Open Software.
-* Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
-* Please refer to the License for details. You may not use this file except in compliance with the License.
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
-* See LICENSE in the root of the software repository for the full text of the License.
-*/
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 #include <algorithm>
 #include <numeric>
 #include "mki/utils/assert/assert.h"
@@ -29,16 +29,15 @@ const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
 const float SPLITKV_RATION = 0.8;
 
-Status GetMLANdInfo(const LaunchParam &launchParam, RINGMLAInfo &mmInfo,
-                    OpParam::RINGMLA &param)
+Status GetMLANdInfo(const LaunchParam &launchParam, RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
 {
     auto kcacheShape = launchParam.GetInTensor(DIM_2).desc.dims;
     auto KDims = kcacheShape.size();
     auto tableShape = launchParam.GetInTensor(DIM_4).desc.dims;
     mmInfo.kNz = (kcacheShape.at(KDims - 1) == NUM16 || kcacheShape.at(KDims - 1) == NUM32) ? 1 : 0;
     if (mmInfo.kNz) {
-        mmInfo.embeddingSize = static_cast<int32_t>(kcacheShape.at(DIM_3)) *
-                            static_cast<int32_t>(kcacheShape.at(DIM_1));
+        mmInfo.embeddingSize =
+            static_cast<int32_t>(kcacheShape.at(DIM_3)) * static_cast<int32_t>(kcacheShape.at(DIM_1));
         mmInfo.blockSize = static_cast<int32_t>(kcacheShape.at(DIM_2));
     } else {
         mmInfo.embeddingSize = static_cast<int32_t>(kcacheShape.at(DIM_3));
@@ -92,8 +91,9 @@ Status GetTilingKeyTypeBase(RINGMLAInfo &mmInfo, const Tensor &qTensor, const Te
 
 Status GenTilingKey(RINGMLAInfo &mmInfo, KernelInfo &kernelInfo, OpParam::RINGMLA &param)
 {
-    uint32_t dataType = static_cast<int32_t>(mmInfo.type);
-    uint32_t tilingKey = dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) + (param.isRing << NUM5);
+    uint32_t dataType = static_cast<uint32_t>(mmInfo.type);
+    uint32_t tilingKey =
+        dataType + (mmInfo.kNz << NUM4) + (mmInfo.mtpTp1Flag << NUM2) + (static_cast<uint32_t>(param.isRing) << NUM5);
     kernelInfo.SetTilingId(tilingKey);
     MKI_LOG(INFO) << "TILING KEY IS = " << tilingKey;
     return Status::OkStatus();
@@ -107,7 +107,7 @@ Status RINGMLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 
     RINGMLAInfo mmInfo;
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
-    Status ret1  = GetRINGMLAInfo(launchParam, mmInfo, param);
+    Status ret1 = GetRINGMLAInfo(launchParam, mmInfo, param);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
@@ -124,15 +124,14 @@ Status RINGMLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
         uint64_t pWorkSpaceSize = basicWorkSpaceInt8;
         uint64_t oTempWorkSpcaceSize = basicWorkSpaceInt8 * 2;
-        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, sWorkSpaceSize, pWorkSpaceSize,
-                                        oTempWorkSpcaceSize, basicWorkSpaceFloat};
+        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, sWorkSpaceSize, pWorkSpaceSize, oTempWorkSpcaceSize,
+                                        basicWorkSpaceFloat};
     } else {
         uint64_t sWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
         uint64_t pWorkSpaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceHalf * 4 : basicWorkSpaceHalf * 2;
         uint64_t oTempWorkSpcaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 4 : basicWorkSpaceFloat * 2;
         uint64_t goWorkSpcaceSize = mmInfo.mtpTp1Flag ? basicWorkSpaceFloat * 2 : basicWorkSpaceFloat;
-        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, NUM512, pWorkSpaceSize, oTempWorkSpcaceSize,
-                                        goWorkSpcaceSize};
+        kernelInfo.GetScratchSizes() = {sWorkSpaceSize, NUM512, pWorkSpaceSize, oTempWorkSpcaceSize, goWorkSpcaceSize};
     }
     Status ret2 = GenTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret2);
@@ -158,20 +157,20 @@ inline Status PrefillPreCheck(OpParam::RINGMLA &param)
     return Status::OkStatus();
 }
 
-Status GetAlibiMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, const Tensor &tensorMask,
-                        int32_t maxSeq)
+Status GetAlibiMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, const Tensor &tensorMask, int32_t maxSeq)
 {
+    UNUSED_VALUE(param);
     auto maskShape = tensorMask.desc.dims;
     auto maskDim = maskShape.size();
     MKI_CHECK(maskDim <= DIM_4 && maskDim >= DIM_2, "maskdim invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     if (maskDim == DIM_3) { // [h, ms, ms]
         mmInfo.maskStride = 0;
-        mmInfo.headStride = static_cast<uint32_t>(maxSeq);
+        mmInfo.headStride = maxSeq;
     } else if (maskDim == DIM_4) { // [bs,1,ms,ms]  [bs,headnum,ms,ms]
         MKI_CHECK(maskShape.at(DIM_2) * maskShape.at(1) <= UINT32_MAX, "maxSeq * headnum can not large than UINT32_MAX",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         mmInfo.maskStride = maskShape.at(1) * maskShape.at(DIM_2);
-        mmInfo.headStride = static_cast<uint32_t>(maxSeq);
+        mmInfo.headStride = maxSeq;
     } else if (maskDim == DIM_2) {
         MKI_CHECK(maxSeq == LONG_SEQ_ALIBI_LEN, "alibi mask shape must be [256, 256] for long seq opt",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
@@ -181,8 +180,7 @@ Status GetAlibiMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, const Tens
     return Status::OkStatus();
 }
 
-inline Status GetPrefiillMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param,
-                                  const Tensor &tensorMask)
+inline Status GetPrefiillMaskInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, const Tensor &tensorMask)
 {
     auto &tensorAlibiCoeff = mmInfo.tensors.alibiCoeff;
     auto maskShape = tensorMask.desc.dims;
@@ -232,22 +230,22 @@ inline Status MLAPrefillPostCheck(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
     MKI_CHECK(mmInfo.isTriuMask == 0 || mmInfo.isTriuMask == 1, "param isTriuMask is invalid",
               return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.embeddingSize <= MAX_EMBEDDING && mmInfo.embeddingSize > 0, "headdimQ is invalid",
-                return Status::FailStatus(ERROR_INVALID_VALUE));
+              return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.embeddingSizeV <= MAX_EMBEDDING && mmInfo.embeddingSizeV > 0, "headdimV is invalid",
-                return Status::FailStatus(ERROR_INVALID_VALUE));
+              return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
 }
 
 inline void PrefillLog(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
 {
+    UNUSED_VALUE(param);
     MKI_LOG(INFO) << "batch is: " << mmInfo.batch << " kvMaxSeq is: " << mmInfo.maxKvSeqLen
                   << " maskMaxSeq is: " << mmInfo.maxSeqLen << " head is: " << mmInfo.numHeads
                   << " qSeq  is: " << *(mmInfo.qSeqLen) << " kvSeq is: " << *(mmInfo.kvSeqLen)
-                  << " tor is : " << mmInfo.tor
-                  << " kv_head is: " << mmInfo.kvHeads << " embed is: " << mmInfo.embeddingSize
-                  << " maskStrid is: " << mmInfo.maskStride << " headStride is: " << mmInfo.headStride << " isTriuMask "
-                  << mmInfo.isTriuMask << " mask type is " << mmInfo.maskType <<  " longseq is " << mmInfo.isLongSeq
-                  << "isRing is" << mmInfo.isRing;
+                  << " tor is : " << mmInfo.tor << " kv_head is: " << mmInfo.kvHeads
+                  << " embed is: " << mmInfo.embeddingSize << " maskStrid is: " << mmInfo.maskStride
+                  << " headStride is: " << mmInfo.headStride << " isTriuMask " << mmInfo.isTriuMask << " mask type is "
+                  << mmInfo.maskType << " longseq is " << mmInfo.isLongSeq << "isRing is" << mmInfo.isRing;
 }
 
 void MLAPrefillFillInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, size_t batch, int32_t embed)
@@ -263,9 +261,9 @@ void MLAPrefillFillInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param, size_t bat
     mmInfo.isTriuMask = param.isTriuMask;
     mmInfo.kTensorList = param.kTensorList;
     mmInfo.vTensorList = param.vTensorList;
-    mmInfo.maskType = static_cast<uint32_t>(param.maskType);
+    mmInfo.maskType = static_cast<int32_t>(param.maskType);
     mmInfo.quantType = static_cast<uint32_t>(param.quantType);
-    mmInfo.isRing =  param.isRing;
+    mmInfo.isRing = static_cast<uint32_t>(param.isRing);
 }
 
 Status InitInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
@@ -318,7 +316,7 @@ Status RINGMLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     MKI_CHECK(blockDim > 0, "blockDim cannot <= 0", return Status::FailStatus(ERROR_INVALID_VALUE));
-    mmInfo.blockDim = blockDim;
+    mmInfo.blockDim = static_cast<int32_t>(blockDim);
     uint8_t *tilingHost = kernelInfo.GetTilingHostAddr();
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(tilingHost);

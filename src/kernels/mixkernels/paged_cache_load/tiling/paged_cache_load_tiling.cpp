@@ -51,7 +51,7 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
     int32_t numblkTabCol = static_cast<int32_t>(blockTablesShape.at(DIM_1)); // block tables column
 
     TensorDType inDtype = launchParam.GetInTensor(DIM_0).desc.dtype;
-    uint32_t typeByte = static_cast<uint32_t>(GetTensorElementSize(inDtype));
+    uint32_t typeByte = GetTensorElementSize(inDtype);
 
     MKI_CHECK(blockSize > 0 && blockSize <= INT_MAX, "blockSize is invalid", return false);
     MKI_CHECK(numTokens > 0 && numTokens <= INT_MAX, "numTokens is invalid", return false);
@@ -68,7 +68,7 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
     tilingDataPtr->numblkTabCol = numblkTabCol;
     tilingDataPtr->tokenSizeK = tokenSizeK;
     tilingDataPtr->tokenSizeV = tokenSizeV;
-    tilingDataPtr->typeByte = typeByte;
+    tilingDataPtr->typeByte = static_cast<int32_t>(typeByte);
     tilingDataPtr->hasSeqStarts = param.hasSeqStarts;
     tilingDataPtr->cuSeqLens = param.cuSeqLens;
 
