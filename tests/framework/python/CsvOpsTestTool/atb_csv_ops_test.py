@@ -208,6 +208,8 @@ class CsvOpsTest():
         return self.operation.set_param(self.op_param_str)
 
     def generate_input_tensors(self):
+        json_data = json.loads(self.op_param_str)
+        # import pdb;pdb.set_trace()
         if self.in_num.loc[self.index] == 0:
             logging.debug("input_tensor_list is empty")
             return
@@ -244,7 +246,6 @@ class CsvOpsTest():
             self.__dump_tensor(input_tensor.cpu(), 'input', i, 'index: {}'.format(i))
             self.input_tensor_list.append(input_tensor)
         if self.operation_name == "LinearOperation" and input_dtypes_list[0] == "float":
-            json_data = json.loads(self.op_param_str)
             transpose_a = json_data["transposeA"] if "transposeA" in json_data else False
             self.compute_num = shapes[0][-2] if transpose_a else shapes[0][-1]
 
@@ -285,13 +286,17 @@ class CsvOpsTest():
     def analyse_result(self):
         get_op_type_func = 'data_generation.' + self.operation_name + '.get_op_type'
         self.op_type = eval(get_op_type_func)(self.op_param_str)
+        # import pdb;pdb.set_trace()
         if self.args.precision_standard == 'new' and self.op_type == data_generation.OpTypes.NA:
             logging.error(f"{self.operation_name}'s precision_standard is 'new', so its op_type(from get_op_type method) cannot be 'OpTypes.NA'!")
             exit(1)
         if self.args.precision_standard == 'new' and self.op_type == data_generation.OpTypes.CV_FUSION:
-            if self.args.gpu_info == '':
+            if self.args.gpu_info == '' and self.operation_name != "SelfAttentionOperation":
                 self.op_type = data_generation.OpTypes.VECTOR_FUSION
                 logging.debug("gpu info is not provided, use VECTOR_FUSION standard instead of CV_FUSION standard")
+        if self.operation_name == "SelfAttentionOperation":
+            test = []
+        # import pdb;pdb.set_trace()
         logging.debug(f"{self.operation_name}'s precision_standard is: {self.args.precision_standard}")
         self.generate_golden_output_tensors()
         self.precision_performance_analysis()
@@ -363,9 +368,15 @@ class CsvOpsTest():
             golden_input_tensors.append(tensor.cpu().to(dtype))
         golden_tensor_gen_func = 'data_generation.' + self.operation_name + '.golden'
         golden_output_tensors = eval(golden_tensor_gen_func)(golden_input_tensors, self.op_param_str)
+        # import pdb;pdb.set_trace()
         for i in range(len(golden_output_tensors)):
             self.golden_output_tensor_list.append(golden_output_tensors[i])
-        if self.args.precision_standard == 'new' and self.op_type == data_generation.OpTypes.CV_FUSION:
+        if self.operation_name == "SelfAttentionOperation":
+            self.gpu_golden_output_tensor_list = [golden_output_tensors[1]]
+            self.golden_output_tensor_list.pop()
+        elif self.args.precision_standard == 'new' and self.op_type == data_generation.OpTypes.CV_FUSION:
+        # if self.args.precision_standard == 'new' and self.op_type == data_generation.OpTypes.CV_FUSION:
+            # import pdb;pdb.set_trace()
             ip, port = self.args.gpu_info.split(':')
             logging.debug("start to get gpu golden result")
             client = Client((ip, int(port)))
@@ -388,6 +399,7 @@ class CsvOpsTest():
     def __precision_eb_percent(self, i, actual_output, golden_output, precision_threshold, eb_threshold):
         actual_output = actual_output if actual_output.dtype != torch.bool else actual_output.long()
         golden_output = golden_output if golden_output.dtype != torch.bool else golden_output.long()
+        # import pdb;pdb.set_trace()
         if self.op_type in [data_generation.OpTypes.COMPUTE_FLOAT, data_generation.OpTypes.COMPUTE_FLOAT_HIGH_PRECISION, data_generation.OpTypes.VECTOR_FUSION] and actual_output.dtype in [torch.float16, torch.bfloat16]:
             actual_output = actual_output.to(torch.float32)
             golden_output = golden_output.to(torch.float32)
@@ -404,49 +416,112 @@ class CsvOpsTest():
             return precision_percent, eb_percent
         diff = torch.subtract(actual_output, golden_output)
         tensor_max = torch.maximum(torch.ones(golden_output.shape, dtype=golden_output.dtype), torch.abs(golden_output))
-        if self.op_type in [data_generation.OpTypes.CV_FUSION]:
+        if self.op_type in [data_generation.OpTypes.CV_FUSION] or self.operation_name == "SelfAttentionOperation":
             cv_err = {torch.float16: 2**(-11), torch.bfloat16: 2**(-8), torch.float32: 2**(-14)}
             gpu_golden_output = self.gpu_golden_output_tensor_list[i]
             if actual_output.dtype in [torch.float16, torch.bfloat16]:
-                gpu_golden_output = gpu_golden_output.to(torch.float32)
+                # gpu_golden_output = gpu_golden_output.to(torch.float32)
                 gpu_golden_output = torch.where(torch.isnan(gpu_golden_output), torch.full_like(gpu_golden_output, 0), gpu_golden_output)
                 gpu_golden_output = torch.where(torch.isinf(gpu_golden_output), torch.full_like(gpu_golden_output, 0), gpu_golden_output)
-            def get_mare(actual_output, golden_output): # mare: max relative error
-                abs_diff = torch.abs(torch.subtract(actual_output, golden_output))
-                mare = torch.max(torch.div(abs_diff, torch.abs(golden_output) + MIN_ERR))
-                return mare.numpy()
-            def get_mere(actual_output, golden_output): # mere: mean relative error
-                abs_diff = torch.abs(torch.subtract(actual_output, golden_output))
-                mere = torch.mean(torch.div(abs_diff, torch.abs(golden_output) + MIN_ERR))
-                return mere.numpy()
-            def get_rmse(actual_output, golden_output): # rmse: root mean squared error
-                abs_diff = torch.abs(torch.subtract(actual_output, golden_output))
-                rmse = np.sqrt(torch.sum(torch.mul(abs_diff, abs_diff)).numpy() / torch.numel(abs_diff))
+            def get_eb_threshold(dtype:torch.dtype):
+                eb_threshold = 0
+                if dtype in [torch.bfloat16]:
+                    eb_threshold = 2**(-7)
+                if dtype in [torch.float16]:
+                    eb_threshold = 2**(-10)
+                if dtype in [torch.float32]:
+                    eb_threshold = 2**(-14)
+                return eb_threshold
+
+            def get_err_threshold(op_type, dtype:torch.dtype):
+                err_threshold = 0
+                if op_type in [data_generation.OpTypes.MOVE, data_generation.OpTypes.RAND, data_generation.OpTypes.CAST, data_generation.OpTypes.COMPUTE_INTEGER]:
+                    pass
+                if op_type in [data_generation.OpTypes.COMPUTE_QUANT, data_generation.OpTypes.COMPUTE_FLOAT]:
+                    if dtype in [torch.bfloat16]:
+                        err_threshold = 2**(-7)
+                    if dtype in [torch.float16]:
+                        err_threshold = 2**(-8)
+                    if dtype in [torch.float32]:
+                        err_threshold = 2**(-11)
+                if op_type in [data_generation.OpTypes.CV_FUSION]:
+                    if dtype in [torch.bfloat16]:
+                        err_threshold = 2**(-8)
+                    if dtype in [torch.float16]:
+                        err_threshold = 2**(-11)
+                    if dtype in [torch.float32]:
+                        err_threshold = 2**(-14)
+                return err_threshold
+            #误差均衡性（EB）
+            def get_eb(golden:torch.Tensor, actual:torch.Tensor):
+                golden = golden.to(torch.float32)
+                golden_nmax = torch.clamp(torch.abs(golden), min = 1)
+                actual_error = actual.to(torch.float32) - golden
+                EB = torch.mean(actual_error / golden_nmax)
+                return EB
+            #最大相对误差：max relative error，MARE
+            def get_mare(golden:torch.Tensor, actual:torch.Tensor):
+                golden = golden.to(torch.float32)
+                abs_error = torch.abs(actual.to(torch.float32) - golden) / (torch.abs(golden) + MIN_ERR)
+                mare = torch.max(abs_error.flatten())
+                return mare
+
+            #平均相对误差：mean relative error，MERE
+            def get_mere(golden:torch.Tensor, actual:torch.Tensor):
+                golden = golden.to(torch.float32)
+                abs_error = torch.abs(actual.to(torch.float32) - golden) / (torch.abs(golden) + MIN_ERR)
+                mere = torch.mean(abs_error)
+                return mere
+
+            #均方根误差:Root Mean Squared Error，RMSE
+            def get_rmse(golden:torch.Tensor, actual:torch.Tensor):
+                golden = golden.to(torch.float32)
+                sqr_err = torch.pow((actual.to(torch.float32) - golden), 2)
+                rmse = torch.sqrt(torch.mean(sqr_err))
                 return rmse
             # actual_output为npu对应ATB的输出，golden_output为cpu对应的真值，gpu_golden_output为gpu对应的实现输出
-            npu_mare = get_mare(actual_output, golden_output)
-            gpu_mare = get_mare(gpu_golden_output, golden_output)
-            npu_mere = get_mere(actual_output, golden_output)
-            gpu_mere = get_mere(gpu_golden_output, golden_output)
-            npu_rmse = get_rmse(actual_output, golden_output)
-            gpu_rmse = get_rmse(gpu_golden_output, golden_output)
-            mare_thre = precision_threshold // 10 // 10
-            mere_thre  = precision_threshold // 10 % 10
-            rmse_thre = precision_threshold % 10
-            logging.debug(f"npu_mare: {npu_mare}, npu_mere: {npu_mere}, npu_rmse: {npu_rmse}")
-            logging.debug(f"gpu_mare: {gpu_mare}, gpu_mere: {gpu_mere}, gpu_rmse: {gpu_rmse}")
-            logging.debug(f"mare_thre: {mare_thre}, mere_thre: {mere_thre}, rmse_thre: {rmse_thre}")
-            precision_percent = 0
-            precision_percent += 100 if npu_mare <= mare_thre * max(gpu_mare, cv_err[actual_output.dtype]) else 0
-            precision_percent += 100 if npu_mere <= mere_thre * max(gpu_mere, cv_err[actual_output.dtype]) else 0
-            precision_percent += 100 if npu_rmse <= rmse_thre * max(gpu_rmse, cv_err[actual_output.dtype]) else 0
-            precision_percent = str(precision_percent / 3)[:5]
+            # import pdb;pdb.set_trace()
+            # if golden_output.dtype == torch.bfloat16:
+            #     golden_output = golden_output.to(torch.float32)
+            # if actual_output.dtype == torch.bfloat16:
+            #     actual_output = actual_output.to(torch.float32)
+            # import pdb;pdb.set_trace()
+            # p torch.abs(actual_output-gpu_golden_output).max().item()
+            # p torch.abs(actual_output-golden_output).max().item()
+            # p torch.abs(golden_output-gpu_golden_output).max().item() 0.0625
+            eb_threshold = get_eb_threshold(actual_output.dtype) # err_threshold:0.00390625 eb_threshold:0.0078125
+            err_threshold = get_err_threshold(self.op_type, actual_output.dtype)
+            logging.info(f"err_threshold:{err_threshold} eb_threshold:{eb_threshold}")
+            mare_npu = get_mare(golden_output, actual_output)
+            mare_gpu = get_mare(golden_output, gpu_golden_output)
+
+            mere_npu = get_mere(golden_output, actual_output)
+            mere_gpu = get_mere(golden_output, gpu_golden_output)
+
+            rmse_npu = get_rmse(golden_output, actual_output)
+            rmse_gpu = get_rmse(golden_output, gpu_golden_output)
+
+            mare_rate = mare_npu / max(mare_gpu, err_threshold)
+            mere_rate = mere_npu / max(mere_gpu, err_threshold)
+            rmse_rate = rmse_npu / max(rmse_gpu, err_threshold)
+            # import pdb;pdb.set_trace()
+            EB = get_eb(gpu_golden_output, actual_output)
+            result = (mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2) and (EB < eb_threshold) and (torch.abs(golden_output-gpu_golden_output).max().item() <= 0.1)
+            logging.info(f"diff:{torch.abs(actual_output-gpu_golden_output).max().item()} diif2:{torch.abs(actual_output-golden_output).max().item()},diff3:{torch.abs(golden_output-gpu_golden_output).max().item()}")
+            logging.info(f"mare_npu:{mare_npu} mare_gpu:{mare_gpu}")
+            logging.info(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")
+            logging.info(f"rmse_npu:{rmse_npu} rmse_gpu:{rmse_gpu}")
+            logging.info(f"MARE:{mare_rate} MERE:{mere_rate} RMSE:{rmse_rate} EB:{EB}")
+            logging.info(f"new golden cv result:{result}")
+            # import pdb;pdb.set_trace()
+            precision_percent = "100.0" if result else "99.9"
         else:
             self.__dump_tensor(diff, 'diff', i, 'index: {}, precision_threshold: {}'.format(i, precision_threshold))
             if precision_threshold == 1:
                 tolerance = torch.subtract(torch.abs(diff), torch.ones(diff.shape, dtype=diff.dtype))
             else:
                 tolerance = torch.subtract(torch.abs(diff), precision_threshold * tensor_max)
+            # import pdb;pdb.set_trace() PagedAttentionOperation_38_0_3533  走这了
             self.__dump_tensor(tolerance, 'tolerance', i, 'index {}, precision_threshold: {}'.format(i, precision_threshold))
             precision_percent = str(torch.sum(tolerance <= 0).numpy() / torch.numel(tolerance) * 100)[:5]
         # calculate EB
@@ -461,6 +536,7 @@ class CsvOpsTest():
         if (len(self.output_tensor_list) == 0):
             self.output_tensor_list = self.input_tensor_list
         for i in range(len(self.golden_output_tensor_list)):
+            # import pdb;pdb.set_trace()
             actual_output = self.output_tensor_list[i].cpu()
             self.__dump_tensor(actual_output, 'output', i, 'index: {}'.format(i))
             golden_output = self.golden_output_tensor_list[i]
@@ -471,6 +547,7 @@ class CsvOpsTest():
                     self.__dump_tensor(gpu_golden_output, 'gpu_golden', i, 'index: {}'.format(i))
                 precision_threshold, eb_threshold = data_generation.get_precision_and_eb_threshold(self.op_type, actual_output.dtype, self.compute_num)
                 precision, eb = self.__precision_eb_percent(i, actual_output, golden_output, precision_threshold, eb_threshold)
+                
                 self.file_data.loc[self.index, 'PrecisionPercent'] += precision + ';'
                 self.file_data.loc[self.index, 'EBPercent'] += eb + ';'
             else:

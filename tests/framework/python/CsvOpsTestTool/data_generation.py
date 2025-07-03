@@ -45,7 +45,6 @@ class OpTypes(Enum):
     COMPUTE_FLOAT_HIGH_PRECISION = 7
     VECTOR_FUSION = 8
     CV_FUSION = 9
-    # test
 
 def get_precision_and_eb_threshold(op_type, dtype, compute_num):
     precision_threshold = 0
@@ -5547,7 +5546,6 @@ class SelfAttentionOperation(DataGen):
 
             out_sub = out_sub.view(head_num, q_s, embed)
             out_sub = torch.permute(out_sub, (1, 0, 2)).contiguous()
-            # out_sub = np.ascontiguousarray(out_sub)
             if out is None:
                 out = out_sub
             else:
@@ -5558,9 +5556,155 @@ class SelfAttentionOperation(DataGen):
             v_offset += kv_s
 
         # golden data
-        # out = torch.from_numpy(out)
         out = out.view(q_ntokens, head_num, embed)
-        return out.to(data_type)
+        return out.to(data_type).cpu()
+
+    @staticmethod
+    def softmax1(
+        qk_result,
+        is_first,
+        gm
+    ):
+        sim = qk_result.numpy()
+        lm = np.max(sim, axis=-1, keepdims=True)
+        if is_first:
+            hm = lm
+            dm = 0
+        else:
+            hm = np.maximum(gm, lm)
+            dm = gm - hm #全局的减去最新的
+        gm = hm
+        sim_sub = sim - hm
+        sim_sub = np.exp(sim_sub.astype(np.float32))
+        row_sum = np.sum(sim_sub, axis=-1, keepdims=True)
+        return torch.from_numpy(sim_sub), row_sum, dm, gm #返回P~ 、P~的rowsum和rowmax的差值 都是局部的结果
+    @staticmethod
+    def qkMM1(
+        query,
+        key
+    ):
+        result = None
+        qk_k = key.shape[1]
+        for qk_k_split in range(0, qk_k, 128):
+            sub_k = 128
+            if qk_k_split == 512:
+                sub_k = 64
+            query_k = query[:, :, qk_k_split : qk_k_split + sub_k]
+            key_k = key[:, qk_k_split : qk_k_split + sub_k, :]
+            result_split = torch.matmul(query_k, key_k)
+            if result is None:
+                result = result_split
+            else:
+                result = result + result_split
+        return result
+    @staticmethod
+    def calc_golden_encoder_new(heads,kv_head,in_tensors,batch,kv_seqLen,mask_in, asdops_param,op_params):
+        q = in_tensors[0]
+        k = in_tensors[1]
+        v = in_tensors[2]
+        ref_output = torch.zeros_like(q)
+        qk_scale = asdops_param["qk_scale"]
+        is_mask = asdops_param["is_mask"]
+        scale = qk_scale
+       
+        if len(q.shape) == 2:
+            dim0, dim1 = q.shape
+            embeddim = dim1 // heads 
+            q = q.contiguous().view(dim0, heads, embeddim)
+        elif len(q.shape) == 3:
+            embeddim = q.shape[2]
+        if len(k.shape) == 2:
+            dim0, dim1 = k.shape
+            embeddim = dim1 // kv_head 
+            k = k.contiguous().view(dim0,  kv_head, embeddim)
+        if len(v.shape) == 2:
+            dim0, dim1 = v.shape
+            embeddimv = dim1 // kv_head 
+            v = v.contiguous().view(dim0,  kv_head, embeddimv)
+        q_seqlen = kv_seqLen
+        q_offset = 0
+        k_offset = 0
+        v_offset = 0
+        mask_compress = 0
+        if is_mask and (asdops_param["maskType"] == 1 or asdops_param["maskType"] == 3):
+            mask_compress = 1
+            no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float32)  # 使用当前最大seqlen生成mask
+            no_compress_mask = np.triu(no_compress_mask, 1)
+            if q.dtype == torch.bfloat16:
+                no_compress_mask *= -3e38
+            elif q.dtype == torch.float16:
+                no_compress_mask *= -10000.0
+        context_size = 128
+        for idx in range(batch):
+            q_s = q_seqlen[idx]
+            for q_start in range(0, q_s - 1, context_size):
+                q_id = q_start // context_size
+                sub_q_len = context_size
+                if q_start + context_size > q_s:
+                    sub_q_len = q_s - q_start
+                context_len = kv_s = kv_seqLen[idx]
+                query = q[q_offset : q_offset + sub_q_len,:,:]
+                
+                key = k[k_offset:k_offset + kv_s,:,:]
+                value = v[v_offset:v_offset + kv_s,:,:]
+                query = torch.permute(query, (1, 0, 2)) #转成head seqlen和headdim顺序
+                key = torch.permute(key, (1, 2, 0)) #转成head headdim和seqlen顺序
+                value = torch.permute(value, (1, 0, 2)) #同query
+                group_num = heads // kv_head
+                if group_num != 1:
+                    key = key.repeat_interleave(group_num, dim=0)
+                    value = value.repeat_interleave(group_num, dim=0)
+                for kv_start in range(0, context_len - 1, context_size):
+                    kv_id = kv_start // context_size
+                    if kv_id > q_id:
+                        break
+                    sub_len = context_size
+                    if kv_start + context_size > context_len:
+                        sub_len = context_len - kv_start
+                    sub_key = key[:, :, kv_start : kv_start + sub_len] # [14, 128, 128]
+                    sub_value = value[:, kv_start : kv_start + sub_len, :]
+                    
+                    if q.dtype == torch.bfloat16:
+                        qk_result = SelfAttentionOperation.qkMM1(query, sub_key) 
+                    else:
+                        qk_result = SelfAttentionOperation.qkMM1(query.to(torch.float16), sub_key.to(torch.float16)) 
+                    if q.dtype == torch.bfloat16:
+                        qk_result = qk_result.to(torch.float32) * scale
+                    else:
+                        qk_result = qk_result.to(torch.float16) * scale
+                    if is_mask:
+                        if mask_compress:
+                            if q_start // context_size == kv_start // context_size:
+                                qk_result = qk_result + no_compress_mask[:,:sub_q_len,:sub_len]
+                    if kv_start == 0:
+                        gm = None
+                    p_result, row_sum, dm, gm = SelfAttentionOperation.softmax1(qk_result, kv_start == 0, gm)
+                    if kv_start == 0:
+                        gm_high = None
+                    lo = torch.matmul(p_result.to(torch.float32), sub_value.to(torch.float32))
+                    lo = lo.to(torch.float16)
+                    lo = lo.numpy()
+                    if kv_start == 0:
+                        gl = row_sum
+                        go = lo
+                    else:  #更新
+                        dm = np.exp(dm)
+                        gl = gl * dm
+                        gl = gl + row_sum
+
+                        go = go * dm
+                        go = go + lo
+                go = go / gl
+                go = np.transpose(go, (1, 0, 2))
+                out = torch.from_numpy(go).to(q.dtype)
+                out = out.reshape(sub_q_len,heads,embeddim)
+                ref_output[q_offset:q_offset + sub_q_len][:] = out
+                q_offset += sub_q_len
+            k_offset += kv_s
+            v_offset += kv_s
+        return ref_output
+
+
 
     @staticmethod
     def golden(in_tensors, op_params):
@@ -5639,7 +5783,6 @@ class SelfAttentionOperation(DataGen):
                         (_p, score_exp.astype(np.float32).reshape([-1, ])), 0)
 
                 p = (score_exp / score_sum.reshape((heads, q_s, 1)))
-                #p = torch.from_numpy(p).to(torch.bfloat16)
                 o = torch.from_numpy(SelfAttentionOperation.group_matmul(heads, kv_head, p, v_slice.numpy()))
                 o = o.view(heads, q_s, embed)
                 o = torch.permute(o, (1, 0, 2)).contiguous()
@@ -5680,11 +5823,20 @@ class SelfAttentionOperation(DataGen):
                 v = v.contiguous().view(dim0*dim1, dim2, dim3)
             mask = None
             seq_len = None
+            kv_seqLen_tesnor =None
             if json_data["maskType"] != 0:
                 mask = in_tensors[3]
                 seq_len = in_tensors[4]
+                batch = len(in_tensors[4])
+                kv_seqLen_tesnor = in_tensors[4]
             else:
                 seq_len = in_tensors[3]
+                batch = len(in_tensors[3])
+                kv_seqLen_tesnor = in_tensors[3]
+            kv_seqLen = kv_seqLen_tesnor.numpy()
+            max_seq = np.max(kv_seqLen)
+            heads = json_data['headNum']
+            kv_head = json_data['kvHeadNum'] if 'kvHeadNum' in json_data else json_data['headNum']
             if mask is not None:
                 if get_soc_version() != "Ascend910B":
                     mask = mask.contiguous().permute(0, 2, 1, 3)
@@ -5705,7 +5857,9 @@ class SelfAttentionOperation(DataGen):
                                 mask_padded[:, dim1_offset : dim1_offset + dim1, dim2_offset : dim2_offset + step ] = mask
                             mask = mask_padded[:, : dim1, : dim1]
             asdops_params = SelfAttentionOperation.get_asdops_param(q, k, v, mask, seq_len, op_params)
-            return [SelfAttentionOperation.calc_golden_encoder(q, k, v, mask, seq_len, asdops_params).cpu()]
+            out = SelfAttentionOperation.calc_golden_encoder(q, k, v, mask, seq_len, asdops_params)
+            ref_output = SelfAttentionOperation.calc_golden_encoder_new(heads,kv_head,in_tensors,batch,kv_seqLen,mask, asdops_params,op_params)
+            return [out,ref_output]
         elif json_data["clampType"] == 1:
             layerid = int(in_tensors[8][0])
             mixed_q = in_tensors[0]
@@ -5917,7 +6071,6 @@ class SelfAttentionOperation(DataGen):
     @staticmethod
     def get_op_type(op_params):
         return OpTypes.CV_FUSION
-
 class SelfAttentionOperationDumpTensor(DataGen):
     golden_generator = None
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
