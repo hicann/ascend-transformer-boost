@@ -156,6 +156,7 @@ Status GetPagedAttentionMaskInfo(const LaunchParam &launchParam, PagedAttentionI
 Status CheckPagedAttentionNdEnhance(const LaunchParam &launchParam, PagedAttentionInfo &mmInfo,
                                     OpParam::PagedAttention &param)
 {
+    (void)param;
     auto qTensor = launchParam.GetInTensor(DIM_0);
     auto kTensor = launchParam.GetInTensor(DIM_1);
     if ((qTensor.desc.dtype == TENSOR_DTYPE_FLOAT16 || qTensor.desc.dtype == TENSOR_DTYPE_BF16) &&

@@ -653,7 +653,7 @@ void GetMlaMtpBatchTiling(uint32_t *tilingParam, const OpParam::PagedAttention &
         int32_t kvSeqlen = *(mmInfo.kvSeqLen + seqIdx);
         maxKVseqLen = std::max(maxKVseqLen, kvSeqlen);
         int32_t mUbd = qSeqlenAligned;
-        int32_t mIbd = ConvertValueToIndexMM(mUbd, PP_MM_NUM - 1);
+        std::size_t mIbd = static_cast<std::size_t>(ConvertValueToIndexMM(mUbd, PP_MM_NUM - 1));
         int32_t tilingOffset = TILING_HEAD_SIZE;
         int32_t curQSBlockTile = PP_MM[mIbd];
         int32_t curQSBlockNum = (qSeqLen + curQSBlockTile - 1) / curQSBlockTile; // 对齐处理
@@ -909,6 +909,7 @@ Status GetNzPagedAttentionTiling(const PagedAttentionInfo &mmInfo, uint32_t &blo
         return Status::FailStatus(ERROR_INVALID_VALUE));
     uint32_t taskNum = static_cast<uint32_t>(taskNumI64);
     blockDim = taskNum < blockDim ? taskNum : blockDim;
+    MKI_CHECK(blockDim > 0, "blockDim is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     if (tilingParam[tilingDecodeTypeOffset] == static_cast<uint32_t>(CalcType::CALC_TYPE_PREFILL)) {
         GetPaBlockTilingParallel(tilingParam, mmInfo, taskNum, blockDim);
     } else {
@@ -937,10 +938,11 @@ Status GetPagedAttentionTilingParam(const LaunchParam &launchParam, const PagedA
             return Status::FailStatus(ERROR_INVALID_VALUE));
     } else {
         auto tilingHeadSize = is910A ? TILING_HEAD_SIZE_910A : TILING_HEAD_SIZE_NZ;
-        curTilingParamSize = (tilingHeadSize + TILING_PARA_SIZE_NZ * param.qSeqLen.size()) * sizeof(uint32_t);
-        MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0,
-            curTilingParamSize) == EOK,
-            "init tiling failed", return Status::FailStatus(ERROR_INVALID_VALUE));
+        curTilingParamSize = static_cast<uint64_t>((static_cast<uint64_t>(tilingHeadSize) +
+                                                    static_cast<uint64_t>(TILING_PARA_SIZE_NZ) * param.qSeqLen.size()) *
+                                                   sizeof(uint32_t));
+        MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0, curTilingParamSize) == EOK, "init tiling failed",
+                  return Status::FailStatus(ERROR_INVALID_VALUE));
     }
     float tor = mmInfo.tor;
     uint32_t *torPtr = reinterpret_cast<uint32_t *>(&tor);
