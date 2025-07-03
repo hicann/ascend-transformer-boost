@@ -26,7 +26,7 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
                                    const aclTensor *kRope, const aclTensor *blockTables, const aclTensor *contextLens,
                                    const aclTensor *mask, const aclTensor *qSeqLen, const aclTensor *qkDescale,
                                    const aclTensor *pvDescale, int32_t headNum, float qkScale, int32_t kvHeadNum,
-                                   int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut, aclTensor *ise,
+                                   int maskType, int calcType, uint8_t cacheMode, aclTensor *attenOut, aclTensor *lse,
                                    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
 {
     atb::infer::MultiLatentAttentionParam param;
@@ -101,8 +101,8 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
         pack.outTensors.resize(g_MLAOUTTENSORNUMCALCRING);
         status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[i++]));
         ATB_CHECK(status == atb::NO_ERROR, "calc_type_ring attenOut create failed!", return status);
-        status = aclTensorToAtbTensor(ise, &(pack.outTensors[i++]));
-        ATB_CHECK(status == atb::NO_ERROR, "calc_type_ring ise create failed!", return status);
+        status = aclTensorToAtbTensor(lse, &(pack.outTensors[i++]));
+        ATB_CHECK(status == atb::NO_ERROR, "calc_type_ring lse create failed!", return status);
     }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);

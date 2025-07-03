@@ -1,13 +1,33 @@
+/*
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
 #include "c_interface_utils.h"
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
+
 using namespace atb;
 using namespace atb::cinterfaceTest;
 
+const int64_t MLAPPREFILLINOUT = 9;
+const int64_t maxSeqLen = 256;
+const int64_t embeddimV = 128;
+const int64_t sizeofFP16 = 2;
+const int64_t kvHeads = 1;
+const int64_t numTokens = 32;
+
 TEST(TestATBACL, TestMLAPreFillM0C2C1)
 {
-    if (!GetSingleton<Config>().Is910B()) {
-        exit(0);
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "MLA prefill only supports A2/A3";
+        GTEST_SKIP();
     }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;

@@ -10,13 +10,34 @@
 #include "c_interface_utils.h"
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
+
+
 using namespace atb;
 using namespace atb::cinterfaceTest;
 
+const int64_t MLAINOUTMLA = 12;
+const int64_t headSizeQk = 576;
+const int64_t headSizeVo = 512;
+const int64_t maxNumBlocksPerQuery = 16;
+const int64_t dimD = 1;
+const int64_t dimE = 125;
+const int64_t dimF = 512;
+const int64_t dimG = 2;
+const int64_t sizeofFP16 = 2;
+const int64_t numHeads = 32;
+const int64_t kvHeads = 1;
+const int64_t blockSize = 128;
+const int64_t kSeqlen = 256;
+const int64_t numTokens = 32;
+const int64_t batch = numTokens * kSeqlen;
+const int64_t numBlocks = 64;
+
 TEST(TestATBACL, TestMLAM0C2C1)
 {
-    if (!GetSingleton<Config>().Is910B()) {
-        exit(0);  
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "MLA only supports A2/A3";
+        GTEST_SKIP();
     }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
@@ -43,19 +64,20 @@ TEST(TestATBACL, TestMLAM0C2C1)
     size_t i = 0;
     aclDataType inputFormat = ACL_FLOAT16;
     // 0
-    std::vector<std::vector<int64_t>> viewDim = {{numTokens, numHeads, headSizeVo}, //0
-                                                 {numTokens, numHeads, headSizeQk - headSizeVo}, //1
-                                                 {numBlocks, blockSize, kvHeads, 512}, //2
-                                                 {numBlocks, blockSize, kvHeads, 64},//3
-                                                 {batch, maxNumBlocksPerQuery}, //4
-                                                 {batch}, //5
-                                                 {(dimE + dimG * batch), blockSize}, //6
-                                                 {batch}, //7
-                                                 {numHeads}, //8
-                                                 {numHeads}, //9
-                                                 {numTokens, numHeads, 512}, //10
-                                                 {numTokens, numHeads, 1}, //11
-                                                  };
+    std::vector<std::vector<int64_t>> viewDim = {
+        {numTokens, numHeads, headSizeVo},              // 0
+        {numTokens, numHeads, headSizeQk - headSizeVo}, // 1
+        {numBlocks, blockSize, kvHeads, 512},           // 2
+        {numBlocks, blockSize, kvHeads, 64},            // 3
+        {batch, maxNumBlocksPerQuery},                  // 4
+        {batch},                                        // 5
+        {(dimE + dimG * batch), blockSize},             // 6
+        {batch},                                        // 7
+        {numHeads},                                     // 8
+        {numHeads},                                     // 9
+        {numTokens, numHeads, 512},                     // 10
+        {numTokens, numHeads, 1},                       // 11
+    };
     while (i < viewDim.size()) {
         if (i == 4) {
             CreateACLTensorInOut(viewDim[i], ACL_INT32, ACL_FORMAT_ND, tensorList, i, inoutDevice[i]);
@@ -70,14 +92,9 @@ TEST(TestATBACL, TestMLAM0C2C1)
     uint64_t workspaceSize = 0;
     atb::Operation *op = nullptr;
 
-    Status ret = AtbMLAGetWorkspaceSize(tensorList[0], tensorList[1],
-                                                   tensorList[2], tensorList[3],
-                                                   tensorList[4], tensorList[5],
-                                                   tensorList[6], tensorList[7],
-                                                   tensorList[8], tensorList[9],
-                                                   32, 1.0, 1, 0, 2, 1,
-                                                   tensorList[10], tensorList[11],
-                                                   &workspaceSize, &op, context);
+    Status ret = AtbMLAGetWorkspaceSize(tensorList[0], tensorList[1], tensorList[2], tensorList[3], tensorList[4],
+                                        tensorList[5], tensorList[6], tensorList[7], tensorList[8], tensorList[9], 32,
+                                        1.0, 1, 0, 2, 1, tensorList[10], tensorList[11], &workspaceSize, &op, context);
     EXPECT_EQ(ret, ACL_ERROR_NONE);
     void *workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -89,9 +106,9 @@ TEST(TestATBACL, TestMLAM0C2C1)
 
     ret = aclrtSynchronizeStream(stream);
     EXPECT_EQ(ret, ACL_ERROR_NONE);
-    
+
     if (workspaceSize > 0) {
-        EXPECT_EQ(aclrtFree(workspaceAddr),ACL_ERROR_NONE);
+        EXPECT_EQ(aclrtFree(workspaceAddr), ACL_ERROR_NONE);
     }
     EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
     Destroy(&context, &stream);
