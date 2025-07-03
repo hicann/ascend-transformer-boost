@@ -265,7 +265,7 @@ Status GetNdMLADecodingMtpTilingTP1(MLAInfo &mmInfo, uint32_t blockDim, uint32_t
                 tilingParam[tilingOffset] = batchIdx;
                 tilingParam[tilingOffset + 1] = qSeqLen;
                 tilingParam[tilingOffset + NUM2] = kvBlockIdx == splitNum - 1 ?
-                nowKVSeqlen - prevKVSeqlen : nowBlocks * mmInfo.blockSize;
+                nowKVSeqlen - prevKVSeqlen : nowBlocks * static_cast<int32_t>(mmInfo.blockSize);
                 tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(prevKVSeqlen);
                 tilingParam[tilingOffset + NUM4] = static_cast<uint32_t>(mmInfo.quantFlag ? batchIdx * qSeqLen + qSeq : batchIdx * qSeqLen);
                 tilingParam[tilingOffset + NUM5] = static_cast<uint32_t>(splitNum);
