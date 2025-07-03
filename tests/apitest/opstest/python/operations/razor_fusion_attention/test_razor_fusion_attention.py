@@ -172,7 +172,10 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         mask[:, razorLen * tileKv:] = 1
         mask = mask[None, None, :]
         mask = 1 - mask
-        return mask * -10000
+        if self.data_type == torch.float16:
+            return mask * -10000
+        else:
+            return mask * -3e38
 
     def gen_out_tensor(self):
         q_offset = 0
@@ -239,94 +242,25 @@ class TestRazorFusionAttention(operation_test.OperationTest):
             v_slice = v_slice.view(kv_s, kv_head, embedv)
             v_slice = torch.permute(v_slice, (1, 0, 2))
 
-            if self.fav3:
-                score = self.group_mm_torch(heads, kv_head, q_slice, k_slice_t, torch.int32)
-            else:
-                score = self.group_mm_torch(heads, kv_head, q_slice, k_slice_t)
-
-            if s is None:
-                s = score.view([-1, ])
-            else:
-                s = torch.cat((s, score.view([-1, ])), 0)
-
-            if self.scaleType == ScaleType.SCALE_LOGN_FP32.value:
-                if is_decoder:
-                    score *= self.decoder_logN[idx]
-                else:
-                    score *= self.encoder_logN[None, :q_s, None]
-
-            score *= self.tor
-
-            if self.is_clamp == 1:
-                clamp_min_brc = np.ones((score.shape)) * self.clamp_min
-                clamp_max_brc = np.ones((score.shape)) * self.clamp_max
-                score = np.float16(np.maximum(score, clamp_min_brc))
-                score = torch.from_numpy(np.float16(np.minimum(score, clamp_max_brc)))
-            temp_mask = self.mask_info[1](self.mask, idx, q_s, kv_s) * self.post_mask_coff
-            if is_mask or is_razor_fusion:
-                score = score + temp_mask
-
-            s_qk = score
-            s_qk_true = score.to(torch.float32)
-            score = score.numpy().astype(np.float32)
-
-            score_max = np.max(score, axis=-1)
-            score = score - score_max.reshape((heads, q_s, 1))
-            score_exp = np.exp(score)
-            score_sum = np.sum(score_exp, axis=-1)
-
-            if _p is None:
-                _p = score_exp.astype(np.float32).reshape([-1, ])
-            else:
-                _p = np.concatenate(
-                    (_p, score_exp.astype(np.float32).reshape([-1, ])), 0)
-            if self.fav3:
-                p = score_exp
-                p = p * 127
-                p = torch.from_numpy(p).to(torch.int8)
-            else:
-                p_true = (score_exp / score_sum.reshape((heads, q_s, 1)))
-                p_true = torch.from_numpy(p_true)
-                p = p_true.to(torch.bfloat16)
-                o_true = self.group_mm_torch(heads, kv_head, p_true, v_slice)
-
-            o = self.group_mm_torch(heads, kv_head, p, v_slice)
-            if self.fav3:
-                o = o.to(torch.float)
-                v_scale = self.v_scale
-                v_scale = v_scale.view(heads, 1, 1)
-                o = o * v_scale
-                o = o / 127
-                o = o / score_sum.reshape((heads, q_s, 1))
-            else:
-                o_true = o_true.view(heads, q_s, embedv)
-                o_true = torch.permute(o_true, (1, 0, 2)).contiguous()
-            o = o.view(heads, q_s, embedv)
-            o = torch.permute(o, (1, 0, 2)).contiguous()
+            o_t, o_t_high = self.fa_prefill_causal_mask(idx, q_slice, k_slice_t, v_slice)
             if out is None:
-                out = o
+                out = o_t
                 if not self.fav3:
-                    out_true = o_true
+                    out_true = o_t_high
             else:
-                out = torch.cat((out, o), 0)
+                out = torch.cat((out, o_t), 0)
                 if not self.fav3:
-                    out_true = torch.cat((out_true, o_true), 0)
+                    out_true = torch.cat((out_true, o_t_high), 0)
 
             q_offset += q_s
             k_offset += max_seq
             v_offset += max_seq
         # golden data
 
-        if self.is_int8_flag:
-            ans_concat = ans_concat.view(q_ntokens, heads * embedv)
-            ans_concat_true = ans_concat_true.view(q_ntokens, heads * embedv)
-            self.golden_out = ans_concat
-            self.golden_out_true = ans_concat_true
-        else:
-            out = out.view(q_ntokens, heads * embedv)
-            self.golden_out = out.to(self.data_type)
-            out_true = out_true.view(q_ntokens, heads * embedv)
-            self.golden_out_true = out_true.to(torch.float32)
+        out = out.view(q_ntokens, heads * embedv)
+        self.golden_out = out.to(self.data_type)
+        out_true = out_true.view(q_ntokens, heads * embedv)
+        self.golden_out_true = out_true.to(torch.float32)
 
         if self.no_cache:
             self.k = self.close_pack(self.k.to(torch.float32), kv_seqlen).to(self.data_type)
@@ -336,65 +270,110 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         ntokens = sum(seq_len)
         return seq_len, ntokens
 
-    def compare_output_data(self, out, golden, ratios):
-        golden = golden.flatten().to(torch.float32)
-        out = out.flatten().to(torch.float32)
-        out_len = out.shape[0]
-        diff = torch.abs(golden - out)
-        max_diff = diff.max().item()
-        limit_error = torch.maximum(torch.abs(golden * ratios[0]), torch.tensor(ratios[1]))
-        strict_limit_error = torch.maximum(torch.abs(golden * ratios[2]), torch.tensor(ratios[3]))
-        error_count = torch.gt(diff, limit_error).sum().item()
-        strict_error_count = torch.gt(diff, strict_limit_error).sum().item()
-        logging.info(f"maxDiff {max_diff}")
-        logging.info("1/1000 Accuracy is %f",  1 - float(error_count) / out_len)
-        logging.info("5/1000 Accuracy is %f",  1 - float(strict_error_count) / out_len)
-        if self.data_type == torch.bfloat16:
-            logging.debug("accuracy is correct in old standard: %r", (float(strict_error_count) / out_len) <= ratios[2])
-        else:
-            logging.debug("accuracy is correct in old standard: %r", (float(strict_error_count) / out_len) <= ratios[0])
-        calc_times = self.heads * self.max_seq + 4
-        if self.data_type == torch.bfloat16:
-            if calc_times < 2048:
-                error = 2**(-7)
-            else :
-                error = 2**(-6)
-            error_threshold = torch.clamp(torch.abs(golden), min = 1) * error
-            res = (diff <= error_threshold).all().item()
-            logging.debug("accuracy is correct in new standard: %r", res)
-            return res
-        elif self.data_type == torch.float16:
-            if calc_times < 2048:
-                error = 2**(-8)
-            else :
-                error = 2**(-7)
-            error_threshold = torch.clamp(torch.abs(golden), min = 1) * error
-            res = (diff <= error_threshold).all().item()
-            logging.debug("accuracy is correct in new standard: %r", res)
-            return res
-        else :
-            if calc_times < 2048:
-                error = 2**(-11)
-            elif calc_times >= 2048 and calc_times < 16384:
-                error = 2**(-10)
+    def qkMM(self, query,key):
+        result = None
+        qk_k = key.shape[1]
+        for qk_k_split in range(0, qk_k, 128):
+            sub_k = 128
+            if qk_k_split == 512:
+                sub_k = 64
+            query_k = query[:, :, qk_k_split : qk_k_split + sub_k]
+            key_k = key[:, qk_k_split : qk_k_split + sub_k, :]
+            result_split = torch.matmul(query_k.to(torch.float32), key_k.to(torch.float32))
+            if result is None:
+                result = result_split
             else:
-                error = 2**(-14)
-            error_threshold = torch.clamp(torch.abs(golden), min = 1) * error
-            res = (diff <= error_threshold).all().item()
-            logging.debug("accuracy is correct in new standard: %r", res)
-            return res
+                result = result + result_split
+        return result
 
-    def group_mm_torch(self, heads, group_num, A, B, dtype=torch.float32):
-        group_head = heads // group_num
-        score = None
-        for i in range(group_num):
-            group_score = torch.matmul(
-                A[i * group_head: (i + 1) * group_head, :, :].to(dtype), B[i:(i + 1), :, :].to(dtype))
-            if score is None:
-                score = group_score
-            else:
-                score = torch.cat((score, group_score), 0)
-        return score
+    def softmax(self,
+        qk_result,
+        is_first,
+        gm
+    ):
+        sim = qk_result.numpy()
+        lm = np.max(sim, axis=-1, keepdims=True)
+        if is_first:
+            hm = lm
+            dm = 0
+        else:
+            hm = np.maximum(gm, lm)
+            dm = gm - hm #全局的减去最新的
+        gm = hm
+        sim_sub = sim - hm
+        sim_sub = np.exp(sim_sub.astype(np.float32))
+        if qk_result.dtype == torch.float16:
+            sim_sub = sim_sub.astype(np.float16)
+        row_sum = np.sum(sim_sub, axis=-1, keepdims=True)
+        return torch.from_numpy(sim_sub), row_sum, dm, gm #返回P~ 、P~的rowsum和rowmax的差值 都是局部的结果
+
+    def fa_prefill_causal_mask(self, batch_idx, query, key, value):
+        if not torch.is_tensor(query):
+            query = torch.from_numpy(query, dtype=self.data_type)
+        if not torch.is_tensor(key):
+            key = torch.from_numpy(key, dtype=self.data_type)
+        if not torch.is_tensor(value):
+            value = torch.from_numpy(value, dtype=self.data_type)
+        gl = None
+        gl_high = None
+        go = None
+        go_high = None
+        block_size = 128
+        kv_seqlen = key.shape[2]
+        print("query.shape", query.shape)
+        mask = self.mask_info[1](self.mask, batch_idx, query.shape[1], kv_seqlen)[0]
+        print(mask.shape)
+        for kv_start in range(0, kv_seqlen - 1, block_size):
+            sub_len = block_size
+            if kv_start + block_size > kv_seqlen:
+                sub_len = kv_seqlen - kv_start
+            sub_key = key[:, :, kv_start : kv_start + sub_len]
+            sub_mask = mask[:, :, kv_start : kv_start + sub_len]
+            sub_value = value[:, kv_start : kv_start + sub_len, :]
+            qk_result = self.qkMM(query, sub_key) #低精度结果
+            qk_result_high = self.qkMM(query.to(torch.float32), sub_key.to(torch.float32)) #高精度结果
+            qk_result = qk_result.to(torch.float16) * self.tor
+            qk_result_high = qk_result_high * self.tor
+            if self.is_mask or self.is_razor_fusion:
+                qk_result += sub_mask
+                qk_result_high += sub_mask.to(torch.float32)
+            if kv_start == 0:
+                gm = None
+            p_result, row_sum, dm, gm = self.softmax(qk_result, kv_start == 0, gm)
+            if kv_start == 0:
+                gm_high = None
+            p_result_high, row_sum_high, dm_high, gm_high = self.softmax(qk_result_high, kv_start == 0, gm_high)
+            lo = torch.matmul(p_result.to(torch.float32), sub_value.to(torch.float32))
+            lo = lo.to(torch.float16)
+            lo_high = torch.matmul(p_result_high, sub_value.to(torch.float32))
+            lo = lo.numpy()
+            lo_high = lo_high.numpy()
+            if kv_start == 0:
+                gl = row_sum
+                gl_high = row_sum_high
+                go = lo
+                go_high = lo_high
+            else:  #更新
+                dm = np.exp(dm)
+                dm_high = np.exp(dm_high)
+                gl = gl * dm
+                gl = gl + row_sum
+
+                go = go * dm
+                go = go + lo
+
+                gl_high = gl_high * dm_high
+                gl_high = gl_high + row_sum_high
+
+                go_high = go_high * dm_high
+                go_high = go_high + lo_high
+        go = go / gl
+        go_high = go_high / gl_high
+        go = np.transpose(go, (1, 0, 2))
+        go_high = np.transpose(go_high, (1, 0, 2))
+        go = go.reshape((go.shape[0], -1))
+        go_high = go_high.reshape((go_high.shape[0], -1))
+        return torch.from_numpy(go), torch.from_numpy(go_high)
 
     def golden_calc(self, in_tensors):
         print("golden_calc")
