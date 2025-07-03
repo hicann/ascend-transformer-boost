@@ -26,7 +26,6 @@ uint8_t *DeviceTilingBufferPool::MallocTotalBuffer(uint64_t bufferSize)
         int ret = aclrtMalloc(&buffer, bufferSize, ACL_MEM_MALLOC_HUGE_FIRST);
         ATB_LOG_IF(ret != 0, ERROR) << "aclrtMalloc fail, bufferSize: " << bufferSize << ", ret: " << ret;
         return static_cast<uint8_t *>(buffer);
-
     }
     ATB_LOG(INFO) << "allocate device tiling buffer, and the buffersize is: " << bufferSize;
     return static_cast<uint8_t *>(allocateFunc_(static_cast<size_t>(bufferSize)));
