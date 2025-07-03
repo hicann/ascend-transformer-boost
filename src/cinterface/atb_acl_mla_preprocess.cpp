@@ -36,8 +36,8 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     param.qRopeDim = qRopeDim;
     param.kRopeDim = kRopeDim;
     param.epsilon = epsilon;
-    param.qRotaryCoeff = qRotaryCoeff;
-    param.kRotaryCoeff = kRotaryCoeff;
+    param.qRotaryCoeff = static_cast<int32_t>(qRotaryCoeff);
+    param.kRotaryCoeff = static_cast<int32_t>(kRotaryCoeff);
     param.transposeWdq = transposeWdq;
     param.transposeWuq = transposeWuq;
     param.transposeWuk = transposeWuk;
@@ -47,6 +47,7 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create MLAPreprocess Operation failed!";
             return st;
         }
     }
@@ -153,6 +154,10 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
         ATB_CHECK(status == ACL_ERROR_NONE, "qOut0 create failed!", return status);
         status = aclTensorToAtbTensor(kvCacheOut0, &(pack.outTensors[i++]));
         ATB_CHECK(status == ACL_ERROR_NONE, "kvCacheOut0 create failed!", return status);
+    }
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbMLAPreprocessGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
     }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreprocess Setup failed!", return st);

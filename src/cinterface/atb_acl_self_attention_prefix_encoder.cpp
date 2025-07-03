@@ -48,6 +48,7 @@ atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create SelfAttention Operation Prefix Encoder failed!";
             return st;
         }
     }
@@ -89,6 +90,10 @@ atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query
     status = aclTensorToAtbTensor(attnOut, &(pack.outTensors[index]));
     ATB_CHECK(status == atb::NO_ERROR, "attnOut create failed!", return status);
 
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbSelfAttentionPrefixEncoderGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
+    }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbSelfAttentionPrefixEncoder Setup failed!", return st);
     return atb::NO_ERROR;

@@ -44,7 +44,7 @@ public:
     void SetArgsHostBuffer(void *hostBuffer) override;
     void *GetArgsDeviceBuffer() override;
     void *GetArgsHostBuffer() override;
-    Status BuildArgs();
+    Status BuildArgs() override;
     uint64_t GetArgsSize() override;
 
     // utils

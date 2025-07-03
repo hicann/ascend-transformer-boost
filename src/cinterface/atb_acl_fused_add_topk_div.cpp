@@ -36,6 +36,7 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create FusedAddTopkDiv Operation failed!";
             return st;
         }
     }
@@ -64,6 +65,10 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
     ATB_CHECK(status == atb::NO_ERROR, "y create failed!", return status);
     status = aclTensorToAtbTensor(indices, &(pack.outTensors[index++]));
     ATB_CHECK(status == atb::NO_ERROR, "indices create failed!", return status);
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbFusedAddTopkDivGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
+    }
     (*op)->Setup(pack, *workspaceSize, context);
     return atb::NO_ERROR;
 }

@@ -74,7 +74,7 @@ Status Runner::FillHostTilingBuffer(uint8_t *hostTilingBuffer, uint64_t tilingBu
 std::vector<uint64_t> &Runner::GetWorkspaceBufferSize()
 {
     multiStreamWorkspaceSizes_.at(GetExecuteStreamId(operation_)) =
-        TensorUtil::AlignInt(GetWorkspaceBufferSizeImpl(), WORKSPACE_ALIGN);
+        static_cast<uint64_t>(TensorUtil::AlignInt(GetWorkspaceBufferSizeImpl(), WORKSPACE_ALIGN));
     return multiStreamWorkspaceSizes_;
 }
 
