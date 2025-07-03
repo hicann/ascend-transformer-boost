@@ -71,7 +71,6 @@ protected:
     mutable SVector<bool> emptyOutTensorPerms_;
     RunnerVariantPack runnerVariantPack_;
     std::shared_ptr<Runner> runner_;
-    bool isGraphLaunchMode_ = false;
 
 private:
     void Reset();
@@ -137,6 +136,7 @@ private:
     void *lastWorkspaceAddr_ = nullptr;
     bool isCaptured_ = false;
     bool needUpdateTensorAddr_ = false;
+    bool isGraphLaunchMode_ = false;  // 规避先调用DestroyContext再调用DestroyOperation的core问题
 };
 } // namespace atb
 #endif

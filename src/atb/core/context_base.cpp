@@ -68,8 +68,6 @@ Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::f
         deallocateFunc_ = dealloc;
     } else if (!alloc && !dealloc) {
         ATB_LOG(INFO) << "Using the Default Allocate Function and Default Deallocate Function to allocate and deallocate device tiling buffer";
-        allocateFunc_ = [this](size_t size) { return deviceAllocator_->Allocate(size); };
-        deallocateFunc_ = [this](void* addr) { deviceAllocator_->Deallocate(addr); };
     } else {
         ATB_LOG(ERROR) << "Can not support to pass in only Allocate Function or Deallocate Function";
         return ERROR_INVALID_PARAM;

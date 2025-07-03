@@ -59,6 +59,7 @@ OperationBase::OperationBase(const std::string &name) : name_(name)
 OperationBase::~OperationBase()
 {
     if (isGraphLaunchMode_) {
+        // 只有整图下沉的情况下需要销毁Args的buffer，规避context析构和operation析构顺序问题
         // 对于GraphOperation来说，里面的子Op都不会有runnerVariantPack_
         if (runnerVariantPack_.context) {
             ATB_LOG(INFO) << GetLogPrefix() << "will free deviceArgsBuffer_ and hostArgsBuffer_";
