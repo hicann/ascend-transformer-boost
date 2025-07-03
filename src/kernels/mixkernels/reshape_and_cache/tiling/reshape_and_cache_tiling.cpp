@@ -61,10 +61,10 @@ Status ReshapeAndCacheTilingNd(const LaunchParam &launchParam, KernelInfo &kerne
         auto &offsetV = value.desc.offset;
 
         tilingDataPtr->headSizeV = static_cast<uint32_t>(headSizeV);
-        tilingDataPtr->offsetK = static_cast<int64_t>(offsetK);
-        tilingDataPtr->offsetV = static_cast<int64_t>(offsetV);
+        tilingDataPtr->offsetK = static_cast<uint32_t>(offsetK);
+        tilingDataPtr->offsetV = static_cast<uint32_t>(offsetV);
         for (uint32_t i = 0; i < SHAPE_DIMS; ++i) {
-            tilingDataPtr->stride[i] = static_cast<int64_t>(key.desc.strides[i]);
+            tilingDataPtr->stride[i] = static_cast<uint32_t>(key.desc.strides[i]);
         }
         blockDim = tilingDataPtr->numTokens < blockDim ? tilingDataPtr->numTokens : blockDim;
         bool isAlign = ((tilingDataPtr->numHeads * tilingDataPtr->headSizeK * tilingDataPtr->typeByte) % ALIGN == 0

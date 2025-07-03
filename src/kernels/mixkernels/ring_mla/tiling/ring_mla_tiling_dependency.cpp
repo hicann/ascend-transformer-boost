@@ -167,9 +167,9 @@ int32_t GetMaxKVseqlen(const OpParam::RINGMLA &param)
 Status GetNdMLATiling(const RINGMLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam,
                       const OpParam::RINGMLA &param)
 {
+    UNUSED_VALUE(blockDim);
     AddrOffsets addrOffsets {};
 
-    auto qSeqLen = param.qSeqLen;
     int32_t maxQseqlen =  GetMaxQseqlen(param);
     MKI_CHECK(maxQseqlen > 0, "qSeqlen max value invalid, please check",
         return AtbOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
@@ -208,6 +208,7 @@ Status GetNdMLATiling(const RINGMLAInfo &mmInfo, uint32_t &blockDim, uint32_t *t
 void GetNdMLAMtpTilingTP1(const RINGMLAInfo &mmInfo, uint32_t &blockDim, uint32_t *tilingParam,
                           const OpParam::RINGMLA &param)
 {
+    UNUSED_VALUE(param);
     bool isFP16 = static_cast<int32_t>(mmInfo.type) < NUM2;
     int32_t maxQPerJob = isFP16 ? NUM2 : NUM1;
     int32_t prevTaskNum = 0;
@@ -224,10 +225,10 @@ void GetNdMLAMtpTilingTP1(const RINGMLAInfo &mmInfo, uint32_t &blockDim, uint32_
             int32_t tilingOffset = TILING_HEAD_SIZE + TILING_PARA_SIZE_TP1 * prevTaskNum;
             int32_t curQLen = ((qSeqLen - qSeq) > maxQPerJob) ? maxQPerJob : (qSeqLen - qSeq);
             curKvSeq += curQLen;
-            tilingParam[tilingOffset] = seqIdx;
-            tilingParam[tilingOffset + NUM1] = qRowIdx;
-            tilingParam[tilingOffset + NUM2] = curKvSeq;
-            tilingParam[tilingOffset + NUM3] = curQLen;
+            tilingParam[tilingOffset] = static_cast<uint32_t>(seqIdx);
+            tilingParam[tilingOffset + NUM1] = static_cast<uint32_t>(qRowIdx);
+            tilingParam[tilingOffset + NUM2] = static_cast<uint32_t>(curKvSeq);
+            tilingParam[tilingOffset + NUM3] = static_cast<uint32_t>(curQLen);
             prevTaskNum++;
             qRowIdx += curQLen;
             totalTaskNum -= curQLen;
@@ -243,6 +244,7 @@ void GetNdMLAMtpTilingTP1(const RINGMLAInfo &mmInfo, uint32_t &blockDim, uint32_
 void GetTilingHead(const RINGMLAInfo &mmInfo, const OpParam::RINGMLA &param, uint32_t *tilingParam,
                    const uint32_t *torPtr)
 {
+    UNUSED_VALUE(param);
     tilingParam[TILING_BATCH] = static_cast<uint32_t>(mmInfo.batch);
     tilingParam[TILING_HEADSIZE] = static_cast<uint32_t>(TILING_HEAD_SIZE);
     tilingParam[TILING_PARASIZE] = mmInfo.mtpTp1Flag ? static_cast<uint32_t>(TILING_PARA_SIZE_TP1) :
@@ -295,6 +297,7 @@ Status GetRINGMLATilingParam(const LaunchParam &launchParam, const RINGMLAInfo &
 void InitTilingKWithN(const RINGMLAInfo &mmInfo, int32_t &embeddingSizeAligned, int32_t &nIbd,
     int32_t seqIdx, uint32_t *tilingParam)
 {
+    UNUSED_VALUE(embeddingSizeAligned);
     int32_t kvSeqlen = *(mmInfo.kvSeqLen + seqIdx);
     int32_t kvSeqlenAligned = (kvSeqlen + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
     int32_t nUbd = std::min(LONG_SEQ_LEN, kvSeqlenAligned);
@@ -307,6 +310,7 @@ Status CheckSeqlen(const RINGMLAInfo &mmInfo, const AddrOffsets &addrOffsets, in
                    int32_t kvSeqlen, int32_t seqIdx)
 {
     UNUSED_VALUE(seqIdx);
+    UNUSED_VALUE(mmInfo);
     MKI_CHECK(qSeqlen >= 0, "qSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(kvSeqlen >= 0, "kvSeqlen is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(addrOffsets.totalQBlkNum >= 0, "totalQBlkNum overflow",

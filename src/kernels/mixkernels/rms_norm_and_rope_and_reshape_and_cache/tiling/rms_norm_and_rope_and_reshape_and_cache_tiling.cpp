@@ -48,6 +48,7 @@ T CeilDiv(T x, T y)
 namespace AtbOps {
     Status TilingKeyChose(const LaunchParam &launchParam, KernelInfo &kernelInfo, RmsNormAndRopeAndReshapeAndCacheTilingData *tilingDataPtr)
 {
+    (void)tilingDataPtr;
     auto platformType = PlatformInfo::Instance().GetPlatformType();
     if (platformType != PlatformType::ASCEND_910B) {
         MKI_LOG(ERROR) << "BF16 only supports 800I A2";

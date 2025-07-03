@@ -265,11 +265,11 @@ public:
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
                   "unpad_flash_attention: param type invalid", return false);
         auto &param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
-        auto batch = param.qSeqLen.size();
-        auto kvHead = param.kvHead == 0 ? param.headSize : param.kvHead;
+        const size_t batch = param.qSeqLen.size();
+        const size_t kvHead = param.kvHead == 0 ? param.headSize : param.kvHead;
         MKI_CHECK(batch <= 60, "batch should not larger than 60", return false);
         MKI_CHECK(kvHead <= 8, "kvhead should not larger than 8", return false);
-        auto blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+        const size_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
         MKI_CHECK(batch > 0 && batch <= ND_BATCH_LIMIT, "batch is invalid", return 0);
         auto shareBlockTiling = ((batch * kvHead + blockDim - 1) / blockDim + 1) * RELAY_BLOCK_TILING;
         uint64_t bufferSize =

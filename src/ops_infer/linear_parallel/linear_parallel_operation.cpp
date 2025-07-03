@@ -107,8 +107,9 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         ATB_LOG(ERROR) << "LinearParallelOperation DistributedInitCheck failed.";
         return ERROR_INVALID_PARAM;
     }
-    if (opParam.rankSize <= 0 || (opParam.rankSize & (opParam.rankSize - 1)) != 0) {
-        ATB_LOG(ERROR) << "LinearParallel rankSize support power of 2 but got [" << opParam.rankSize << "]";
+    int rankSize = opParam.rankSize;
+    if (opParam.rankSize <= 0 || (rankSize & (rankSize - 1)) != 0) {
+        ATB_LOG(ERROR) << "LinearParallel rankSize only support positive power of 2 but got [" << rankSize << "]";
         return ERROR_INVALID_PARAM;
     }
     if (opParam.backend != "hccl" && opParam.backend != "lccl" && opParam.backend != "lcoc") {
