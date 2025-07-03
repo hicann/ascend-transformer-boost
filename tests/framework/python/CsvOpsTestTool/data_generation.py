@@ -45,6 +45,7 @@ class OpTypes(Enum):
     COMPUTE_FLOAT_HIGH_PRECISION = 7
     VECTOR_FUSION = 8
     CV_FUSION = 9
+    # test
 
 def get_precision_and_eb_threshold(op_type, dtype, compute_num):
     precision_threshold = 0
