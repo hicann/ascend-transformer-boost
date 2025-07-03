@@ -39,6 +39,7 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create MLA Operation failed!";
             return st;
         }
     }
@@ -104,6 +105,10 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
         status = aclTensorToAtbTensor(lse, &(pack.outTensors[i++]));
         ATB_CHECK(status == atb::NO_ERROR, "calc_type_ring lse create failed!", return status);
     }
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbMLAGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
+    }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);
     return atb::NO_ERROR;
@@ -134,6 +139,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create MLA Operation prefill failed!";
             return st;
         }
     }
@@ -170,8 +176,12 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[0]));
     ATB_CHECK(status == atb::NO_ERROR, "attenOut create failed!", return status);
 
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbMLAPreFillGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
+    }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
-    ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);
+    ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreFill Setup failed!", return st);
     return atb::NO_ERROR;
 }
 
@@ -179,7 +189,7 @@ atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operatio
 {
     atb::VariantPack pack;
     atb::Status st = op->Execute(pack, (uint8_t*)(workspace), workspaceSize, context);
-    ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
+    ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreFill Execute failed!", return st);
     return st;
 }
 

@@ -37,6 +37,7 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create RingMLA Operation failed!";
             return st;
         }
     }
@@ -75,6 +76,10 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
     ATB_CHECK(status == atb::NO_ERROR, "output create failed!", return status);
     status = aclTensorToAtbTensor(softmaxLse, &(pack.outTensors[index++]));
     ATB_CHECK(status == atb::NO_ERROR, "softmaxLse create failed!", return status);
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbRingMLAGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
+    }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbRingMLA Setup failed!", return st);
     return atb::NO_ERROR;
