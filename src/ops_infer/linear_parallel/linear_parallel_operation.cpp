@@ -335,8 +335,11 @@ Status LinearParallelOperation::InferShapeCheckLinearAllReduce(const SVector<Ten
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                 param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
     if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
+                                         << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
     }
+
     return CheckResidual(inTensorDescs);
 }
 
@@ -345,6 +348,15 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
     if (!OperationUtil::MatmulInTensorDescsCheck(inTensorDescs, GetLogPrefix(), commonCheckParam_)) {
         return ERROR_INVALID_TENSOR_DIM;
     }
+
+    bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+    if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
+                                         << "outputDataType do not support float16_t";
+        return ERROR_INVALID_TENSOR_INI_MATCH;
+    }
+
     int64_t xTensorM = OperationUtil::GetXTensorM(inTensorDescs.at(0));
     if (xTensorM % param_.rankSize != 0) {
         ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 m [" << xTensorM
@@ -356,6 +368,14 @@ Status LinearParallelOperation::InferShapeCheckLinearReduceScatter(const SVector
 
 Status LinearParallelOperation::InferShapeCheckAllGatherLinear(const SVector<TensorDesc> &inTensorDescs) const
 {
+    bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+    if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
+                                         << "outputDataType do not support float16_t";
+        return ERROR_INVALID_TENSOR_INI_MATCH;
+    }
+
     SVector<TensorDesc> newInTensorDescs;
     newInTensorDescs = inTensorDescs;
     newInTensorDescs.at(0).shape.dims[0] *= param_.rankSize;
@@ -396,6 +416,14 @@ Status LinearParallelOperation::InferShapeCheckAllGatherLinearReduceScatter(
 
 Status LinearParallelOperation::InferShapeCheckAllToAllvcAllGatherGmm(const SVector<TensorDesc> &inTensorDescs) const
 {
+    bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+    if (isQuant && inTensorDescs.at(2).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
+                                         << "outputDataType do not support float16_t";
+        return ERROR_INVALID_TENSOR_INI_MATCH;
+    }
+
     int64_t globalTokensPerExpertMatrixM = OperationUtil::GetXTensorM(inTensorDescs.at(inTensorDescs.size() - 2));
     int64_t globalTokensPerExpertMatrixK = OperationUtil::GetXTensorK(inTensorDescs.at(inTensorDescs.size() - 2));
     int64_t expertNums = param_.moeInfo.epSize * param_.moeInfo.localExpertNums;

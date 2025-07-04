@@ -10,13 +10,75 @@
 #include "c_interface_utils.h"
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
+
 using namespace atb;
 using namespace atb::cinterfaceTest;
 
+const int64_t MLAINOUTMLAPP = 28;
+const int64_t dims = 7168;
+const int64_t dimB = 2112;
+const int64_t dimC = 1536;
+const int64_t dimD = 1;
+const int64_t quantScale0 = 0;
+const int64_t quantOffset0 = 0;
+const int64_t wdqkv = 1 * 224 * 2112 * 32;
+const int64_t deScale0 = 2112;
+const int64_t bias0 = 2112;
+const int64_t beta1 = 1536;
+const int64_t gamma1 = 1536;
+const int64_t quantScale1 = 1;
+const int64_t quantOffset1 = 1;
+
+const int64_t blockSize = 128;
+const int64_t numTokens = 32;
+const int64_t numHeads = 32;
+const int64_t kvHeads = 1;
+const int64_t kSeqlen = 256;
+const int64_t batch = numTokens * kSeqlen;
+const int64_t numBlocks = 64;
+
+const int64_t sizeofFP16 = 2;
+const int64_t wuq = 1 * 48 * numHeads * 192 * 32;
+const int64_t deScale1 = numHeads * 192;
+const int64_t bias1 = numHeads * 192;
+const int64_t gamma2 = 512;
+const int64_t cosNum = numTokens * 64;
+const int64_t sinNum = numTokens * 64;
+const int64_t wuk = numHeads * 128 * 512;
+
+const int64_t kvCache = numBlocks * blockSize * 1 * 512;
+const int64_t kvCacheC0 = numBlocks * blockSize * 1 * 576;
+const int64_t kvCacheC2 = numBlocks * numHeads * 512 / 32 * blockSize * 32;
+const int64_t kvCacheC3 = numBlocks * numHeads * 512 / 16 * blockSize * 16;
+
+const int64_t kvCacheRope = numBlocks * blockSize * 1 * 64;
+const int64_t kvCacheRopeC2 = numBlocks * numHeads * 64 / 16 * blockSize * 16;
+const int64_t kvCacheRopeC3 = numBlocks * numHeads * 64 / 16 * blockSize * 16;
+const int64_t slotmapping = numTokens;
+const int64_t ctkvScale = 1;
+const int64_t qNopeScale = numHeads;
+
+const int64_t outTensor0C0 = numTokens * numHeads * 576;
+const int64_t outTensor0C1 = numTokens * numHeads * 512;
+const int64_t outTensor0C2 = numTokens * numHeads * 512;
+
+const int64_t outTensor1C0 = numBlocks * blockSize * 576;
+const int64_t outTensor1C1 = numBlocks * blockSize * 512;
+const int64_t outTensor1C2 = numBlocks * numHeads * 512 / 32 * blockSize * 32;
+const int64_t outTensor1C3 = numBlocks * numHeads * 512 / 16 * blockSize * 16;
+
+const int64_t outTensor2 = numTokens * numHeads * 64;
+
+const int64_t outTensor3C1 = numBlocks * blockSize * 1 * 64;
+const int64_t outTensor3C2 = numBlocks * numHeads * 64 / 16 * blockSize * 16;
+
+
 TEST(TestATBACL, TestMLAPreProcesscomb0Q0C0)
 {
-    if (!GetSingleton<Config>().Is910B()) {
-        exit(0);        
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "MLA PreProcess only supports A2/A3";
+        GTEST_SKIP();
     }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
@@ -154,7 +216,7 @@ TEST(TestATBACL, TestMLAPreProcesscomb0Q0C0)
     // 23
     viewDim = {qNopeScale};
     CreateACLTensorInOut(viewDim, inputFormat, ACL_FORMAT_ND, tensorList, i, inoutDevice[i]);
-   
+
     // out
     // 0
     viewDim = {numTokens, numHeads, 576};
@@ -174,23 +236,12 @@ TEST(TestATBACL, TestMLAPreProcesscomb0Q0C0)
     uint64_t workspaceSize = 0;
     atb::Operation *op = nullptr;
 
-    Status ret = AtbMLAPreprocessGetWorkspaceSize(tensorList[0], tensorList[1],
-                                                             tensorList[2], tensorList[3],
-                                                             tensorList[4], tensorList[5],
-                                                             tensorList[6], tensorList[7],
-                                                             tensorList[8], tensorList[9],
-                                                             tensorList[10], tensorList[11],
-                                                             tensorList[12], tensorList[13],
-                                                             tensorList[14], tensorList[15],
-                                                             tensorList[16], tensorList[17],
-                                                             tensorList[18], tensorList[19],
-                                                             tensorList[20], tensorList[21],
-                                                             tensorList[22], tensorList[23],
-                                                             0, 0, 0, 1e-5, 2, 3, true, true,
-                                                             true, 0, 0, tensorList[24],
-                                                             tensorList[25],tensorList[26],
-                                                             tensorList[27],&workspaceSize, &op, 
-                                                             context);
+    Status ret = AtbMLAPreprocessGetWorkspaceSize(
+        tensorList[0], tensorList[1], tensorList[2], tensorList[3], tensorList[4], tensorList[5], tensorList[6],
+        tensorList[7], tensorList[8], tensorList[9], tensorList[10], tensorList[11], tensorList[12], tensorList[13],
+        tensorList[14], tensorList[15], tensorList[16], tensorList[17], tensorList[18], tensorList[19], tensorList[20],
+        tensorList[21], tensorList[22], tensorList[23], 0, 0, 0, 1e-5, 2, 3, true, true, true, 0, 0, tensorList[24],
+        tensorList[25], tensorList[26], tensorList[27], &workspaceSize, &op, context);
 
     EXPECT_EQ(ret, ACL_ERROR_NONE);
     void *workspaceAddr = nullptr;
@@ -201,9 +252,9 @@ TEST(TestATBACL, TestMLAPreProcesscomb0Q0C0)
     ret = AtbMLAPreprocess(workspaceAddr, workspaceSize, op, context);
     EXPECT_EQ(ret, ACL_ERROR_NONE);
     ret = aclrtSynchronizeStream(stream);
-    
+
     if (workspaceSize > 0) {
-        EXPECT_EQ(aclrtFree(workspaceAddr),ACL_ERROR_NONE);
+        EXPECT_EQ(aclrtFree(workspaceAddr), ACL_ERROR_NONE);
     }
     EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
     Destroy(&context, &stream);

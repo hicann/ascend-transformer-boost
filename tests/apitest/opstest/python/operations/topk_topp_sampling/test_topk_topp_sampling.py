@@ -66,10 +66,10 @@ class TestToppOperation(operation_test.OperationTest):
             probs_cumsumed = torch.from_numpy(probs_cumsumed)
             probs_masked_topk = torch.from_numpy(probs_masked_topk)
             if topkToppSamplingType == 2 or topkToppSamplingType == 4:
-                exp = in_tensors[3].cpu().to(torch.float32)
+                exp = in_tensors[3].cpu()
                 topp_mask = torch.gt(probs_cumsumed, topp).to(torch.bool)
                 probs_masked_topp = probs_masked_topk.masked_fill(topp_mask, 0)
-                divided_probs = torch.div(probs_masked_topp, exp)
+                divided_probs = torch.div(probs_masked_topp.to(exp.dtype), exp)
                 argmax_probs, argmax_idx = torch.sort(divided_probs, descending=True, stable=True)
                 argmax_probs = argmax_probs[..., :1]
                 argmax_idx = argmax_idx[..., :1]

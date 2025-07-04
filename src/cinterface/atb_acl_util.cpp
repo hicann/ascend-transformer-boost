@@ -51,7 +51,7 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     atbTensorDst->desc = desc;
     atbTensorDst->deviceData = aclTensorSrc->GetData();
     atbTensorDst->hostData = nullptr;
-    atbTensorDst->dataSize = GetTensorSize(aclTensorSrc);
+    atbTensorDst->dataSize = GetTensorSize(aclTensorSrc) * aclDataTypeSize(dataType);
     return atb::NO_ERROR;
 }
 
