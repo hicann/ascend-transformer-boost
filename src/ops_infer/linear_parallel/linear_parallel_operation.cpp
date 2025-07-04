@@ -559,7 +559,7 @@ std::shared_ptr<Runner> LinearParallelOperation::CreateRunner(Context &context) 
     if (param_.backend == "hccl" || param_.backend == "lccl") {
         return std::make_shared<LinearParallelGraphRunner>(param_, *contextBase);
     } else if (param_.backend == "lcoc") {
-        return std::make_shared<LinearParallelLcocRunner>(param_);
+        return std::make_shared<LinearParallelLcocRunner>(param_, context);
     }
     return std::shared_ptr<Runner>();
 }

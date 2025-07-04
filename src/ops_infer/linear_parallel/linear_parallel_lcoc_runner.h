@@ -15,7 +15,7 @@
 namespace atb {
 class LinearParallelLcocRunner : public LcocRunner {
 public:
-    explicit LinearParallelLcocRunner(const infer::LinearParallelParam &param);
+    explicit LinearParallelLcocRunner(const infer::LinearParallelParam &param, Context &context);
     ~LinearParallelLcocRunner() override;
 
 protected:

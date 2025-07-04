@@ -15,9 +15,9 @@
 #include "atb/utils/common_utils.h"
 
 namespace atb {
-ReduceScatterLcclRunner::ReduceScatterLcclRunner(const infer::ReduceScatterParam &param)
+ReduceScatterLcclRunner::ReduceScatterLcclRunner(const infer::ReduceScatterParam &param, Context &context)
     : LcclRunner("ReduceScatterLcclRunner", RUNNER_TYPE_REDUCE_SCATTER, param.rank, param.rankSize, param.commMode,
-                 param.commDomain),
+                 context, param.commDomain),
       param_(param)
 {
     ATB_LOG(INFO) << "ReduceScatterLcclRunner::ReduceScatterLcclRunner called";

@@ -21,7 +21,7 @@ namespace atb {
 class LcclRunner : public LcalRunner {
 public:
     explicit LcclRunner(const std::string &name, RunnerType runnerType, int32_t rank, int32_t rankSize,
-                        const infer::CommMode commMode, const std::string &commDomain = "");
+                        const infer::CommMode commMode, Context &context, const std::string &commDomain = "");
     ~LcclRunner() override;
 
 protected:

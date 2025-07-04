@@ -16,7 +16,7 @@
 namespace atb {
 class AllReduceLcclRunner : public LcclRunner {
 public:
-    explicit AllReduceLcclRunner(const infer::AllReduceParam &param);
+    explicit AllReduceLcclRunner(const infer::AllReduceParam &param, Context &context);
     ~AllReduceLcclRunner() override;
 
 protected:

@@ -16,7 +16,7 @@
 namespace atb {
 class AllToAllLcclRunner : public LcclRunner {
 public:
-    explicit AllToAllLcclRunner(const infer::AllToAllParam &param);
+    explicit AllToAllLcclRunner(const infer::AllToAllParam &param, Context &context);
     ~AllToAllLcclRunner() override;
 
 protected:

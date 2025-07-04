@@ -15,9 +15,9 @@
 #include "atb/utils/common_utils.h"
 
 namespace atb {
-AllToAllLcclRunner::AllToAllLcclRunner(const infer::AllToAllParam &param)
+AllToAllLcclRunner::AllToAllLcclRunner(const infer::AllToAllParam &param, Context &context)
     : LcclRunner("AllToAllLcclRunner", RUNNER_TYPE_ALL_TO_ALL, param.rank, param.rankSize, param.commMode,
-                 param.commDomain),
+                 context, param.commDomain),
       param_(param)
 {
     ATB_LOG(INFO) << "AllToAllLcclRunner::AllToAllLcclRunner called";
