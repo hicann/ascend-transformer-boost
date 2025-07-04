@@ -58,12 +58,15 @@ OperationBase::OperationBase(const std::string &name) : name_(name)
 
 OperationBase::~OperationBase()
 {
-    // 对于GraphOperation来说，里面的子Op都不会有runnerVariantPack_
-    if (runnerVariantPack_.context) {
-        ATB_LOG(INFO) << GetLogPrefix() << "will free deviceArgsBuffer_ and hostArgsBuffer_";
-        // 此处如果先destroy了context再destroy operation，里面调用aclrtFree接口会报错
-        runnerVariantPack_.context->FreeArgsDeviceBuffer(deviceArgsBuffer_);
-        runnerVariantPack_.context->FreeArgsHostBuffer(hostArgsBuffer_);
+    if (isGraphLaunchMode_) {
+        // 只有整图下沉的情况下需要销毁Args的buffer，规避context析构和operation析构顺序问题
+        // 对于GraphOperation来说，里面的子Op都不会有runnerVariantPack_
+        if (runnerVariantPack_.context) {
+            ATB_LOG(INFO) << GetLogPrefix() << "will free deviceArgsBuffer_ and hostArgsBuffer_";
+            // 此处如果先destroy了context再destroy operation，里面调用aclrtFree接口会报错
+            runnerVariantPack_.context->FreeArgsDeviceBuffer(deviceArgsBuffer_);
+            runnerVariantPack_.context->FreeArgsHostBuffer(hostArgsBuffer_);
+        }
     }
 }
 
@@ -584,6 +587,7 @@ Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceS
     }
     if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
         ATB_LOG(INFO) << GetLogPrefix() << "run in GRAPH_LAUNCH_MODE";
+        isGraphLaunchMode_ = true;
         st = GraphModeSetup(variantPack, workspaceSize, context);
     } else {
         ATB_LOG(INFO) << GetLogPrefix() << "run in KERNEL_LAUNCH_MODE";
@@ -876,6 +880,7 @@ Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspa
         return ERROR_INVALID_PARAM;
     }
     if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        isGraphLaunchMode_ = true;
         return GraphModePreLaunch(variantPack, workspace, workspaceSize, context);
     } else {
         return EagerModePreLaunch(variantPack, workspace, workspaceSize, context);
@@ -980,6 +985,7 @@ Status OperationBase::Launch()
 {
     Status st = NO_ERROR;
     if (runnerVariantPack_.context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        isGraphLaunchMode_ = true;
         aclmdlRI tmpModel = nullptr;
         st = aclmdlRICaptureGetInfo(GetExecuteStream(runnerVariantPack_.context), &streamStatus_, &tmpModel);
         if (tmpModel != nullptr) {
