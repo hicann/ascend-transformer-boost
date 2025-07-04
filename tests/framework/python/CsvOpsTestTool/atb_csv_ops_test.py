@@ -208,7 +208,6 @@ class CsvOpsTest():
         return self.operation.set_param(self.op_param_str)
 
     def generate_input_tensors(self):
-        json_data = json.loads(self.op_param_str)
         if self.in_num.loc[self.index] == 0:
             logging.debug("input_tensor_list is empty")
             return
@@ -290,7 +289,7 @@ class CsvOpsTest():
             logging.error(f"{self.operation_name}'s precision_standard is 'new', so its op_type(from get_op_type method) cannot be 'OpTypes.NA'!")
             exit(1)
         if self.args.precision_standard == 'new' and self.op_type == data_generation.OpTypes.CV_FUSION:
-            if self.args.gpu_info == '' and self.operation_name != "SelfAttentionOperation":
+            if self.args.gpu_info == '':
                 self.op_type = data_generation.OpTypes.VECTOR_FUSION
                 logging.debug("gpu info is not provided, use VECTOR_FUSION standard instead of CV_FUSION standard")
         logging.debug(f"{self.operation_name}'s precision_standard is: {self.args.precision_standard}")
@@ -366,9 +365,10 @@ class CsvOpsTest():
         golden_output_tensors = eval(golden_tensor_gen_func)(golden_input_tensors, self.op_param_str)
         for i in range(len(golden_output_tensors)):
             self.golden_output_tensor_list.append(golden_output_tensors[i])
-        if self.operation_name == "SelfAttentionOperation":
+        if self.operation_name == "SelfAttentionOperation" and len(golden_output_tensors) == 2:
             self.gpu_golden_output_tensor_list = [golden_output_tensors[1]]
             self.golden_output_tensor_list.pop()
+            self.op_type = data_generation.OpTypes.CV_FUSION
         elif self.args.precision_standard == 'new' and self.op_type == data_generation.OpTypes.CV_FUSION:
             ip, port = self.args.gpu_info.split(':')
             logging.debug("start to get gpu golden result")
@@ -408,7 +408,7 @@ class CsvOpsTest():
             return precision_percent, eb_percent
         diff = torch.subtract(actual_output, golden_output)
         tensor_max = torch.maximum(torch.ones(golden_output.shape, dtype=golden_output.dtype), torch.abs(golden_output))
-        if self.op_type in [data_generation.OpTypes.CV_FUSION] or self.operation_name == "SelfAttentionOperation":
+        if self.op_type in [data_generation.OpTypes.CV_FUSION]:
             cv_err = {torch.float16: 2**(-11), torch.bfloat16: 2**(-8), torch.float32: 2**(-14)}
             gpu_golden_output = self.gpu_golden_output_tensor_list[i]
             if actual_output.dtype in [torch.float16, torch.bfloat16]:
@@ -470,6 +470,7 @@ class CsvOpsTest():
                 sqr_err = torch.pow((actual.to(torch.float32) - golden), 2)
                 rmse = torch.sqrt(torch.mean(sqr_err))
                 return rmse
+            # actual_output为npu对应ATB的输出，golden_output为cpu对应的真值，gpu_golden_output为gpu对应的实现输出
             eb_threshold = get_eb_threshold(actual_output.dtype)
             err_threshold = get_err_threshold(self.op_type, actual_output.dtype)
             logging.info(f"err_threshold:{err_threshold} eb_threshold:{eb_threshold}")
@@ -523,7 +524,6 @@ class CsvOpsTest():
                     self.__dump_tensor(gpu_golden_output, 'gpu_golden', i, 'index: {}'.format(i))
                 precision_threshold, eb_threshold = data_generation.get_precision_and_eb_threshold(self.op_type, actual_output.dtype, self.compute_num)
                 precision, eb = self.__precision_eb_percent(i, actual_output, golden_output, precision_threshold, eb_threshold)
-                
                 self.file_data.loc[self.index, 'PrecisionPercent'] += precision + ';'
                 self.file_data.loc[self.index, 'EBPercent'] += eb + ';'
             else:
