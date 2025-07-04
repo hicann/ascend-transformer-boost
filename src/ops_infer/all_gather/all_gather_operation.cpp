@@ -117,7 +117,7 @@ std::shared_ptr<Runner> AllGatherOperation::CreateRunner(Context &context) const
             return std::make_shared<AllGatherHcclRunner>(param_, param_.hcclComm);
         }
     } else if (param_.backend == "lccl") {
-        return std::make_shared<AllGatherLcclRunner>(param_);
+        return std::make_shared<AllGatherLcclRunner>(param_, context);
     }
     ATB_LOG(FATAL) << "AllGatherOperation::AllGatherOperation backend " << param_.backend << "is not exist.";
     return std::shared_ptr<Runner>();

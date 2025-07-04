@@ -241,7 +241,7 @@ std::shared_ptr<Runner> AllReduceOperation::CreateRunner(Context &context) const
             return std::make_shared<AllReduceHcclRunner>(param_, param_.hcclComm);
         }
     } else if (param_.backend == "lccl") {
-        return std::make_shared<AllReduceLcclRunner>(param_);
+        return std::make_shared<AllReduceLcclRunner>(param_, context);
     }
     return std::shared_ptr<Runner>();
 }
