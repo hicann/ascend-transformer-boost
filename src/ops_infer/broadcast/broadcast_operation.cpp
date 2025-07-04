@@ -86,7 +86,7 @@ std::shared_ptr<Runner> BroadcastOperation::CreateRunner(Context &context) const
             return std::make_shared<BroadcastHcclRunner>(param_, param_.hcclComm);
         }
     } else if (param_.backend == "lccl") {
-        return std::make_shared<BroadcastLcclRunner>(param_);
+        return std::make_shared<BroadcastLcclRunner>(param_, context);
     }
     return std::shared_ptr<Runner>();
 }

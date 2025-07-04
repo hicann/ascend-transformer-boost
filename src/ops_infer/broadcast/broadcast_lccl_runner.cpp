@@ -15,9 +15,9 @@
 #include "atb/utils/common_utils.h"
 
 namespace atb {
-BroadcastLcclRunner::BroadcastLcclRunner(const infer::BroadcastParam &param)
+BroadcastLcclRunner::BroadcastLcclRunner(const infer::BroadcastParam &param, Context &context)
     : LcclRunner("BroadcastLcclRunner", RUNNER_TYPE_BROADCAST, param.rank, param.rankSize, param.commMode,
-                 param.commDomain),
+                 context, param.commDomain),
       param_(param)
 {
     ATB_LOG(INFO) << "BroadcastLcclRunner::BroadcastLcclRunner called";

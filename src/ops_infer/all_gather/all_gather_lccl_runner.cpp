@@ -15,9 +15,9 @@
 #include "atb/utils/common_utils.h"
 
 namespace atb {
-AllGatherLcclRunner::AllGatherLcclRunner(const infer::AllGatherParam &param)
+AllGatherLcclRunner::AllGatherLcclRunner(const infer::AllGatherParam &param, Context &context)
     : LcclRunner("AllGatherLcclRunner", RUNNER_TYPE_ALL_GATHER, param.rank, param.rankSize, param.commMode,
-                 param.commDomain),
+                 context, param.commDomain),
       param_(param)
 {
     ATB_LOG(INFO) << "AllGatherLcclRunner::AllGatherLcclRunner called";

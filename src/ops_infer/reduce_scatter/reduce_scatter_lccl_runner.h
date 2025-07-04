@@ -16,7 +16,7 @@
 namespace atb {
 class ReduceScatterLcclRunner : public LcclRunner {
 public:
-    explicit ReduceScatterLcclRunner(const infer::ReduceScatterParam &param);
+    explicit ReduceScatterLcclRunner(const infer::ReduceScatterParam &param, Context &context);
     ~ReduceScatterLcclRunner() override;
 
 protected:

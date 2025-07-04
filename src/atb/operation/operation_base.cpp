@@ -650,11 +650,7 @@ Status OperationBase::GraphModeSetup(const VariantPack &variantPack, uint64_t &w
             ATB_LOG(ERROR) << "Tensor shape is not support to change in GRAPH_MODE";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        if (!TensorUtil::IsTensorAddrEqual(variantPack, runnerVariantPack_)) {
-            needUpdateTensorAddr_ = true;
-        }
         InitRunnerVariantPack(variantPack);
-        // todo:各种校验
         return NO_ERROR;
     }
 }
@@ -925,33 +921,25 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
         if (deviceArgsBuffer_ == nullptr) {
             // 调用Context分配deviceArgsBuffer_
             deviceArgsBuffer_ = runnerVariantPack_.context->GetArgsDeviceBuffer(argsBufferSize_);
-            if (deviceArgsBuffer_ == nullptr) {
-                return ERROR_CANN_ERROR;
-            }
         }
 
         if (hostArgsBuffer_ == nullptr) {
             // 调用Context分配hostArgsBuffer_
             hostArgsBuffer_ = runnerVariantPack_.context->GetArgsHostBuffer(argsBufferSize_);
-            if (hostArgsBuffer_ == nullptr) {
-                return ERROR_CANN_ERROR;
-            }
         }
 
         runnerVariantPack_.argsDeviceBuffer = reinterpret_cast<uint8_t *>(deviceArgsBuffer_);
         runnerVariantPack_.argsHostBuffer = reinterpret_cast<uint8_t *>(hostArgsBuffer_);
         st = EagerModePreLaunch(variantPack, workspace, workspaceSize, context);
-        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "EagerModePreLaunch failed! ret:" << st;
+        ATB_CHECK(st == 0, "EagerModePreLaunch failed!", return st);
         // 上述的preLaunch当前只做了地址更新及tiling拷贝，后续考虑改名。当前为保证已有代码的质量不修改原有流程，后续需要考虑EAGER_MODE与GRAPH_MODE的流程归纳与复用。
     } else {
         ATB_LOG(INFO) << GetLogPrefix() << "begin update tensor addr.";
-        bool isWorkspaceChange = false;
         if (workspace == runnerVariantPack_.workspaceBuffer) {
             // 如果workspace地址没有变化，intermediateBuffer作为偏移量为0
             runnerVariantPack_.intermediateBuffer = nullptr;
         } else if (workspace > runnerVariantPack_.workspaceBuffer) {
             // 如果workspace发生了变化，计算workspace变化带来的偏移量时需要再加上workspaceBufferSize才是中间tensor对应内存的起始地址
-            isWorkspaceChange = true;
             runnerVariantPack_.intermediateBuffer = workspace -
             reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
@@ -963,7 +951,6 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
             // 刷新图中所有node的workpsaceBuffer
             st = runner_->UpdateWorkspaceBuffer(runnerVariantPack_);
         } else {
-            isWorkspaceChange = true;
             runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
             reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
@@ -974,20 +961,17 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
             runnerVariantPack_.workspaceBuffer = workspace;
             st = runner_->UpdateWorkspaceBuffer(runnerVariantPack_);
         }
-        if (needUpdateTensorAddr_ || isWorkspaceChange) {
-            st = runner_->UpdateTensorAddr(runnerVariantPack_);
-            ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "UpdateTensorAddr failed! ret:" << st;
-            needUpdateTensorAddr_ = false;
-        }
+        st = runner_->UpdateTensorAddr(runnerVariantPack_);
+        ATB_CHECK(st == 0, GetLogPrefix() + "UpdateTensorAddr failed!", return st);
         FillHostTilingBuffer();
         st = CopyTilingToDevice();
-        ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "CopyTilingToDevice failed! ret:" << st;
+        ATB_CHECK(st == 0, GetLogPrefix() + "CopyTilingToDevice failed!", return st);
     }
     st = runner_->BuildArgs();
-    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "BuildArgs failed! ret:" << st;
+    ATB_CHECK(st == 0, GetLogPrefix() + "BuildArgs failed!", return st);
 
     st = CopyArgsToDevice(context);
-    ATB_LOG_IF(st != 0, ERROR) << GetLogPrefix() << "CopyArgsToDevice failed! ret:" << st;
+    ATB_CHECK(st == 0, GetLogPrefix() + "CopyArgsToDevice failed!", return st);
 
     return st;
 }
@@ -1368,6 +1352,10 @@ Status OperationBase::CopyArgsToDevice(Context *context)
         ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
     }
 #endif
+    if (deviceArgsBuffer_ == nullptr || hostArgsBuffer_ == nullptr) {
+        ATB_LOG(INFO) << "deviceArgsBuffer of hostArgsBuffer is nullptr, no need to copy args";
+        return NO_ERROR;
+    }
     if (!isCaptured_) {
         st = aclrtMemcpy(deviceArgsBuffer_, argsBufferSize_, hostArgsBuffer_, argsBufferSize_,
                          ACL_MEMCPY_HOST_TO_DEVICE);

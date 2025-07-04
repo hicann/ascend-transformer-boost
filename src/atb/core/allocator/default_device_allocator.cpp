@@ -36,7 +36,7 @@ DefaultDeviceAllocator::~DefaultDeviceAllocator()
 void *DefaultDeviceAllocator::Allocate(size_t bufferSize)
 {
     if (bufferSize == 0) {
-        ATB_LOG(ERROR) << "bufferSize can not be 0, please check the bufferSize";
+        ATB_LOG(WARN) << "bufferSize can not be 0, please check the bufferSize";
         return nullptr;
     }
     void *addr = nullptr;

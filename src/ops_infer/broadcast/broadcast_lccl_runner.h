@@ -15,7 +15,7 @@
 namespace atb {
 class BroadcastLcclRunner : public LcclRunner {
 public:
-    explicit BroadcastLcclRunner(const infer::BroadcastParam &param);
+    explicit BroadcastLcclRunner(const infer::BroadcastParam &param, Context &context);
     ~BroadcastLcclRunner() override;
 
 protected:
