@@ -172,10 +172,7 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         mask[:, razorLen * tileKv:] = 1
         mask = mask[None, None, :]
         mask = 1 - mask
-        if self.data_type == torch.float16:
-            return mask * -10000
-        else:
-            return mask * -3e38
+        return mask * -10000
 
     def gen_out_tensor(self):
         q_offset = 0
