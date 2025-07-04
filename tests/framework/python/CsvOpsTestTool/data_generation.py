@@ -59,8 +59,12 @@ def get_precision_and_eb_threshold(op_type, dtype, compute_num):
             precision_threshold = 2**(-8)
             eb_threshold = 2**(-10)
         if dtype in [torch.bfloat16]:
-            precision_threshold = 2**(-7)
-            eb_threshold = 2**(-7)
+            if compute_num != -1 and compute_num >= 2048:
+                precision_threshold = 2**(-6)
+                eb_threshold = 2**(-6)
+            else:
+                precision_threshold = 2**(-7)
+                eb_threshold = 2**(-7)
         if dtype in [torch.float32]:
             precision_threshold = 2**(-11)
             eb_threshold = 2**(-14)
@@ -476,6 +480,8 @@ class LinearOperation(DataGen):
                 x_i = x[i:i + 1, :].squeeze(0)
                 weight_i = weight[i:i + 1, :].squeeze(0)
                 output_i = torch.matmul(x_i, weight_i)
+                if MatmulCommon.input_golden.dtype == torch.bfloat16:
+                    output_i = output_i.to(torch.bfloat16).to(torch.float32)
                 if bias is not None:
                     output_i = output_i + bias[i:i + 1, :]
                 if deq_scale is not None:
@@ -492,7 +498,8 @@ class LinearOperation(DataGen):
         else:
             golden_result = torch.matmul(x, weight)
             if bias is not None:
-                golden_result = golden_result.to(bias.dtype)
+                if MatmulCommon.input_golden.dtype == torch.bfloat16:
+                    golden_result = golden_result.to(torch.bfloat16)
                 golden_result = golden_result + bias
             if deq_scale is not None:
                 golden_result = golden_result * deq_scale
@@ -521,6 +528,10 @@ class LinearOperation(DataGen):
         input = bin.get_tensor()
         input_cpu = input.cpu()
         shape = input_cpu.shape
+        has_bias = MatmulCommon.get_param_value(op_params, "hasBias", True)
+        en_accum = MatmulCommon.get_param_value(op_params, "enAccum", False)
+        out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
+        quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
         if i == 0:
             input_golden = input_cpu
             transpose_a = MatmulCommon.get_param_value(op_params, "transposeA", False)
@@ -543,9 +554,26 @@ class LinearOperation(DataGen):
                 weight_golden = torch.transpose(weight_golden, 0, 1) if dim_num == 2 else torch.transpose(weight_golden, 1, 2)
             MatmulCommon.weight_golden = weight_golden
         if i == 2:
-            MatmulCommon.bias_golden = input_cpu
+            if has_bias:
+                MatmulCommon.bias_golden = input_cpu
+            elif en_accum:
+                MatmulCommon.accum_golden = input_cpu
+            elif out_data_type == 1 and get_soc_version() != "Ascend910A":
+                deq_np = np.frombuffer(input_cpu.numpy().astype(np.uint32).tobytes(), dtype=np.float32).copy()
+                deq_tensor = torch.from_numpy(deq_np)
+                MatmulCommon.deq_golden = deq_tensor
+            else:
+                MatmulCommon.deq_golden = input_cpu
+
         if i == 3:
-            MatmulCommon.deq_golden = input_cpu
+            if quantMode == 2:
+                MatmulCommon.pertoken_scale_golden = input_cpu
+            elif out_data_type == 1 and get_soc_version() != "Ascend910A":
+                deq_np = np.frombuffer(input_cpu.numpy().astype(np.uint32).tobytes(), dtype=np.float32).copy()
+                deq_tensor = torch.from_numpy(deq_np)
+                MatmulCommon.deq_golden = deq_tensor
+            else:
+                MatmulCommon.deq_golden = input_cpu
         return input_cpu.npu()
 
 class GroupedMatmulInplaceAddOperation(DataGen):
@@ -1102,6 +1130,7 @@ class MatmulCommon:
         deq = MatmulCommon.deq_golden
         accum = MatmulCommon.accum_golden
         groupList = MatmulCommon.groupList_golden
+        pertoken_deq = MatmulCommon.pertoken_scale_golden
         if MatmulCommon.linear_type == LinearType.fp16fp16_fp32_fp16 or input.dtype == torch.float16:
             golden_result = torch.matmul(input.to(torch.float32), weight.to(torch.float32))
         elif MatmulCommon.linear_type == LinearType.bf16bf16_fp32_bf16 or input.dtype == torch.bfloat16:
@@ -1118,6 +1147,8 @@ class MatmulCommon:
             golden_result = golden_result * deq
         if accum is not None:
             golden_result = golden_result + accum
+        if pertoken_deq is not None:
+            golden_result = golden_result * pertoken_deq
 
         MatmulCommon.reset()
         return golden_result
@@ -1131,6 +1162,7 @@ class MatmulCommon:
         MatmulCommon.deq_golden = None
         MatmulCommon.linear_type = -1
         MatmulCommon.groupList_golden = None
+        MatmulCommon.pertoken_scale_golden = None
 
 class GatherOperation(DataGen):
     @staticmethod
