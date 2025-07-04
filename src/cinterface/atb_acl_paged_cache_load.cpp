@@ -32,6 +32,7 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create PagedCacheLoad Operation failed!";
             return st;
         }
     }
@@ -67,6 +68,10 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
     status = aclTensorToAtbTensor(value, &(pack.outTensors[i++]));
     ATB_CHECK(status == atb::NO_ERROR, "value create failed!", return status);
 
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbPagedCacheLoadGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
+    }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbPagedCacheLoad Setup failed!", return st);
     return atb::NO_ERROR;

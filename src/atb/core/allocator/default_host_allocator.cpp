@@ -40,7 +40,7 @@ void *DefaultHostAllocator::Allocate(size_t bufferSize)
         return nullptr;
     }
     void *addr = nullptr;
-    bufferSize = TensorUtil::AlignInt(bufferSize, ALIGN_INT);
+    bufferSize = static_cast<size_t>(TensorUtil::AlignInt(bufferSize, ALIGN_INT));
     ATB_LOG(INFO) << "bufferSize should be 32-bit alignment, automate align upwards to " << bufferSize;
     // aclrtMallocHost会自动对于bufferSize+32，不论bufferSize是否是32的整数倍
     Status st = aclrtMallocHost(&addr, bufferSize);

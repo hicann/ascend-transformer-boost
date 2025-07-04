@@ -3253,8 +3253,8 @@ struct RingMLAParam {
     //! \brief mask类型
     //!
     enum MaskType : int {
-        NO_MASK = 0,    //!< 默认值，全0mask
-        MASK_TYPE_TRIU, //!< 上三角mask
+        NO_MASK = 0,    //!< 全0mask
+        MASK_TYPE_TRIU, //!< 默认值，上三角mask
     };
 
     //! 计算类型

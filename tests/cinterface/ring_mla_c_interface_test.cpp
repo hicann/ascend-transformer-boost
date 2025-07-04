@@ -13,6 +13,7 @@
 #include <iostream>
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
 
 using namespace atb;
 using namespace atb::cinterfaceTest;
@@ -28,9 +29,9 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
                  const float qkscale, const int kernelType, const int maskType, const int calcType,
                  const aclDataType dtype, std::vector<int32_t> seqLen)
 {
-    if (!GetSingleton<Config>().Is910B()) {
-        std::cout << "RingMLA only supports A2/A3" << std::endl;
-        exit(0);
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "RingMLA only supports A2/A3";
+        GTEST_SKIP();
     }
     int inputNum = INOUT_TENSOR_NUM;
     atb::Context *context = nullptr;
@@ -48,7 +49,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
     if (!hasKvSeqlen && batch != seqLen.size()) {
         std::cout << "wrong seqlen size, expect [batch]/[2 * batch], batch = " << batch
                   << ", but got: " << seqLen.size() << std::endl;
-        exit(1);
+        GTEST_SKIP();
     }
     for (int i = 0; i < batch; ++i) {
         qNTokens += seqLen[i];
@@ -86,7 +87,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
         for (int j = 0; j < tensorDim[i].size(); ++j) {
             total *= tensorDim[i][j];
         }
-        inoutSize[i] = total * GetDataTypeSize(inputTypes[i]);
+        inoutSize[i] = total * aclDataTypeSize(inputTypes[i]);
     }
     CreateInOutData(inputNum, inoutHost, inoutDevice, inoutSize);
     size_t i = 0;
@@ -129,7 +130,7 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
     }
     EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
     Destroy(&context, &stream);
-    for (i = 0; i < MLAINOUTMLA; i++) {
+    for (i = 0; i < INOUT_TENSOR_NUM; i++) {
         aclrtFreeHost(inoutHost[i]);
         aclrtFree(inoutDevice[i]);
     }

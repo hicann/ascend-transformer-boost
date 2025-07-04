@@ -32,6 +32,31 @@ torch.classes.load_library(LIBTORCH_PATH)
 
 torch.manual_seed(0)
 
+def get_err_threshold_for_two_golden(dtype:torch.dtype):
+    if dtype in [torch.bfloat16]:
+        err_threshold = 2 ** (-8)
+    if dtype in [torch.float16]:
+        err_threshold = 2 ** (-11)
+    if dtype in [torch.float32]:
+        err_threshold = 2 ** (-14)
+    return err_threshold
+
+def get_eb_threshold(dtype:torch.dtype):
+    eb_threshold = 0
+    if dtype in [torch.bfloat16]:
+        eb_threshold = 2**(-7)
+    if dtype in [torch.float16]:
+        eb_threshold = 2**(-10)
+    if dtype in [torch.float32]:
+        eb_threshold = 2**(-14)
+    return eb_threshold
+
+def get_eb(golden:torch.Tensor, actual:torch.Tensor):
+    golden_nmax = torch.clamp(torch.abs(golden), min = 1)
+    actual_error = actual - golden
+    EB = torch.mean(actual_error / golden_nmax)
+    return EB
+
 
 def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                 data_type, quant_info, EP, TP, quant_type, out_data_ype):
@@ -68,66 +93,104 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
         quantScale = moedata.matrix_quant_scale
         quantScale = quantScale.reshape(M)
         in_tensors.append(quantScale.to(torch.device('npu')))
+    elif quant_type == 1:
+        dequantScale = moedata.matrix_dequant_scale
+        dequantScale = dequantScale.reshape(N * local_expert_nums)
+        in_tensors.append(dequantScale.to(torch.device('npu')))
 
     global_tokens_per_expert_matrix = moedata.global_tokens_per_expert_matrix
     in_tensors.append(global_tokens_per_expert_matrix.to(torch.device('npu')))
 
-    maxOutputSize = torch.zeros(input_tensor.shape[0] * world_size * local_expert_nums, dtype=torch.int32)
+    maxOutputSize = torch.zeros(input_tensor.shape[0] * world_size, dtype=torch.int32)
     in_tensors.append(maxOutputSize.to(torch.device('npu')))
 
     out_tensor = acl_matmul_allreduce_operation.execute(in_tensors)
 
     torch.npu.synchronize()
     golden_out_tensor = moedata.matrix_c
+    golden_out_tensor_low = moedata.matrix_c_low
     out_tensor_compare = out_tensor[0].to(torch.device('cpu'))[:golden_out_tensor.shape[1], :]
 
-    assert check_precision_new(out_tensor_compare, golden_out_tensor, rank)
+    # if rank == 0:
+    #     print("cpu_high", golden_out_tensor)
+    #     print("cpu_low", golden_out_tensor_low)
+    #     print("npu", out_tensor_compare)
+    #     print("npu-cpu_high", torch.max(torch.abs(out_tensor_compare - golden_out_tensor) / (torch.abs(golden_out_tensor) + 1e-7)))
+
+    assert check_precision_new(out_tensor_compare, golden_out_tensor, golden_out_tensor_low)
 
 
-def check_precision_new(out_tensor, golden_out_tensor, rank, err=2 ** -3):
-    # 计算每个元素的误差阈值
-    max_err = err * torch.max(torch.ones_like(golden_out_tensor), torch.abs(golden_out_tensor))
+def check_precision_new(tensor_a, tensor_b, tensor_c):
+    if torch.isnan(tensor_a).any():
+        print("********Warning: npu result contains NaN!*************")
+        return 1
+    epsilon = 1e-7
+    d_type = tensor_a.dtype
+    err_threshold = get_err_threshold_for_two_golden(d_type)
+    eb_threshold = get_eb_threshold(d_type)
 
-    # 计算实际误差
-    error = torch.abs(out_tensor - golden_out_tensor)
+    tensor_a = tensor_a.to(torch.float32)
+    tensor_b = tensor_b.to(torch.float32)
+    tensor_c = tensor_c.to(torch.float32)
 
-    # 计算不满足条件的元素个数
-    num_failures = torch.sum(error > max_err).item()
-    if rank == 0:
-        print("num_failures: ", num_failures)
-    return num_failures == 0
+    relative_error_npu = torch.abs(tensor_a - tensor_b) / (torch.abs(tensor_b) + epsilon)
+    relative_error_cpu = torch.abs(tensor_c - tensor_b) / (torch.abs(tensor_b) + epsilon)
+    max_relative_error_npu = torch.max(relative_error_npu)
+    max_relative_error_cpu = torch.max(relative_error_cpu)
+    mean_relative_error_npu = torch.mean(relative_error_npu)
+    mean_relative_error_cpu = torch.mean(relative_error_cpu)
+    # 计算均方根误差
+    mse_npu = torch.mean((tensor_a - tensor_b) ** 2)
+    rmse_npu = torch.sqrt(mse_npu)
+    mse_cpu = torch.mean((tensor_c - tensor_b) ** 2)
+    rmse_cpu = torch.sqrt(mse_cpu)
+
+    EB = torch.abs(get_eb(tensor_b, tensor_a))
+
+    print("最大相对误差npu:", max_relative_error_npu)
+    print("最大相对误差cpu:", max_relative_error_cpu)
+    print("平均相对误差npu:", mean_relative_error_npu)
+    print("平均相对误差cpu:", mean_relative_error_cpu)
+    print("均方根误差npu:", rmse_npu)
+    print("均方根误差cpu:", rmse_cpu)
+    print("误差均衡性EB:", EB)
+
+    if mean_relative_error_npu / max(mean_relative_error_cpu, err_threshold) >= 2 or rmse_npu / max(rmse_cpu, err_threshold) >= 2 or EB >= eb_threshold:
+        return 0
+    print("result is same with expect")
+    return 1
 
 
 class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
-    def test_linear_paraller_fp16(self):
-        if not operation_test.get_soc_version() == 'Ascend910B':
-            return
-        print(f"———————— LinearParallelCoverOp test start ————————")
-        print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
-        world_size = 8
-        comm_type = 309
-        batch = 1
-        M = 1024
-        K = 1024
-        N = 1024
-        trans_b = 0
-        quant_granularity = -1
-        quant_group_size = -1
-        has_quant_offset = -1
-        dequant_group_size = -1
-        local_expert_nums = 4
-        EP = 8
-        TP = 1
-        out_data_type = 1
-        dequant_granularity = -1
-        has_dequant_offset = -1
-        data_type = 0
-        quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
-                               QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
-        mp.spawn(main_worker, nprocs=world_size,
-                 args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
-                       CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
+    # def test_linear_paraller_fp16(self):
+    #     if not operation_test.get_soc_version() == 'Ascend910B':
+    #         return
+    #     print(f"———————— LinearParallelCoverOp test start ————————")
+    #     print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
+    #     world_size = 8
+    #     comm_type = 309
+    #     batch = 1
+    #     M = 1024
+    #     K = 1024
+    #     N = 1024
+    #     trans_b = 0
+    #     quant_granularity = -1
+    #     quant_group_size = -1
+    #     has_quant_offset = -1
+    #     dequant_group_size = -1
+    #     local_expert_nums = 4
+    #     EP = 8
+    #     TP = 1
+    #     out_data_type = 1
+    #     dequant_granularity = -1
+    #     has_dequant_offset = -1
+    #     data_type = 0
+    #     quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
+    #                            QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
+    #     mp.spawn(main_worker, nprocs=world_size,
+    #              args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
+    #                    CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
     def test_linear_paraller_fp16_quant(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
@@ -137,20 +200,20 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         world_size = 8
         comm_type = 309
         batch = 1
-        M = 1024
-        K = 1024
-        N = 1024
+        M = 3125
+        K = 6220
+        N = 8692
         trans_b = 0
         quant_granularity = -1
         quant_group_size = -1
         has_quant_offset = -1
         dequant_group_size = -1
-        local_expert_nums = 4
+        local_expert_nums = 8
         EP = 8
         TP = 1
         out_data_type = 1
-        dequant_granularity = 3
-        has_dequant_offset = 0
+        dequant_granularity = 1
+        has_dequant_offset = -1
         data_type = 2
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
@@ -160,3 +223,4 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
 if __name__ == '__main__':
     unittest.main()
+

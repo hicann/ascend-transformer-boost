@@ -378,13 +378,13 @@ Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPac
         if (runnerVariantPack.argsDeviceBuffer != nullptr) {
             node.impl->SetArgsDeviceBuffer(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
             ATB_LOG(DEBUG) << GetLogPrefix() << "argsDeviceBuffer from workSpace is "
-                           << (void *)(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
+                           << reinterpret_cast<void *>(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
             deviceArgsSizeOffset += node.impl->GetArgsSize();
         }
         if (runnerVariantPack.argsHostBuffer != nullptr) {
             node.impl->SetArgsHostBuffer(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
             ATB_LOG(DEBUG) << GetLogPrefix() << "argsHostBuffer from workSpace is "
-                           << (void *)(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
+                           << reinterpret_cast<void *>(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
             hostArgsSizeOffset += node.impl->GetArgsSize();
         }
     }

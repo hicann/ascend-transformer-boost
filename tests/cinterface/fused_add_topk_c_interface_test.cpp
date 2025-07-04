@@ -8,9 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "c_interface_utils.h"
-
 #include "atb/utils/config.h"
 #include "atb/utils/singleton.h"
+#include "atb/utils/log.h"
 
 using namespace atb;
 using namespace atb::cinterfaceTest;
@@ -21,13 +21,13 @@ const int MAPPING_NUM_INDEX = 2;
 const int MAPPING_TABLE_INDEX = 3;
 
 void TestFusedAddTopK(const int64_t batchSize, const int64_t expertNum, const int maxRedundantExpertNum,
-                     const uint32_t groupNum, const uint32_t groupTopk, const uint32_t n, const uint32_t k,
-                     const int activationType, const bool isNorm, const float scale, const bool enableExpertMapping,
-                     const aclDataType dtype)
+                      const uint32_t groupNum, const uint32_t groupTopk, const uint32_t n, const uint32_t k,
+                      const int activationType, const bool isNorm, const float scale, const bool enableExpertMapping,
+                      const aclDataType dtype)
 {
-    if (enableExpertMapping && !GetSingleton<Config>().Is910B()) {
-        std::cout << "FusedAddTopK with expert mapping only supports A2/A3" << std::endl;
-        exit(0); 
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "FusedAddTopK only supports A2/A3";
+        GTEST_SKIP();
     }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
@@ -54,9 +54,9 @@ void TestFusedAddTopK(const int64_t batchSize, const int64_t expertNum, const in
         }
         total = 1;
         for (int j = 0; j < tensorDim[i].size(); ++j) {
-            total *= tensorDim[i][j] * GetDataTypeSize(inputTypes[i]);
+            total *= tensorDim[i][j];
         }
-        inoutSize[i] = total;
+        inoutSize[i] = total * aclDataTypeSize(inputTypes[i]);
     }
     CreateInOutData(INOUT_TENSOR_NUM, inoutHost, inoutDevice, inoutSize);
     size_t i = 0;
@@ -73,9 +73,9 @@ void TestFusedAddTopK(const int64_t batchSize, const int64_t expertNum, const in
     uint64_t workspaceSize = 0;
     atb::Operation *op = nullptr;
 
-    Status ret = AtbFusedAddTopkDivGetWorkspaceSize(tensorList[0], tensorList[1], tensorList[2], tensorList[3], groupNum, groupTopk,
-                                        n, k, activationType, isNorm, scale, enableExpertMapping, tensorList[4],
-                                        tensorList[5], &workspaceSize, &op, context);
+    Status ret = AtbFusedAddTopkDivGetWorkspaceSize(
+        tensorList[0], tensorList[1], tensorList[2], tensorList[3], groupNum, groupTopk, n, k, activationType, isNorm,
+        scale, enableExpertMapping, tensorList[4], tensorList[5], &workspaceSize, &op, context);
     EXPECT_EQ(ret, ACL_ERROR_NONE);
     void *workspaceAddr = nullptr;
     if (workspaceSize > 0) {
@@ -93,7 +93,7 @@ void TestFusedAddTopK(const int64_t batchSize, const int64_t expertNum, const in
     }
     EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
     Destroy(&context, &stream);
-    for (i = 0; i < MLAINOUTMLA; i++) {
+    for (i = 0; i < INOUT_TENSOR_NUM; i++) {
         aclrtFreeHost(inoutHost[i]);
         aclrtFree(inoutDevice[i]);
     }
