@@ -12,8 +12,8 @@
 
 namespace atb {
 LcclRunner::LcclRunner(const std::string &name, RunnerType runnerType, int32_t rank, int32_t rankSize,
-                       const infer::CommMode commMode, const std::string &commDomain)
-    : LcalRunner(name, runnerType, rank, rankSize, commMode, commDomain)
+                       const infer::CommMode commMode, Context &context, const std::string &commDomain)
+    : LcalRunner(name, runnerType, rank, rankSize, commMode, commDomain, context)
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LcclRunner::LcclRunner called, rank : " << rank << "/" << rankSize;
     Initlccl();

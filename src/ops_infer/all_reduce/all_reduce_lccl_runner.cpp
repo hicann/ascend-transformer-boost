@@ -15,9 +15,9 @@
 #include "atb/utils/common_utils.h"
 
 namespace atb {
-AllReduceLcclRunner::AllReduceLcclRunner(const infer::AllReduceParam &param)
+AllReduceLcclRunner::AllReduceLcclRunner(const infer::AllReduceParam &param, Context &context)
     : LcclRunner("AllReduceLcclRunner", RUNNER_TYPE_ALL_REDUCE, param.rank, param.rankSize, param.commMode,
-                 param.commDomain),
+                 context, param.commDomain),
       param_(param)
 {
     ATB_LOG(INFO) << "AllReduceLcclRunner::AllReduceLcclRunner called";

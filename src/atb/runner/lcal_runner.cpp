@@ -18,12 +18,14 @@
 
 namespace atb {
 LcalRunner::LcalRunner(const std::string &name, RunnerType runnerType, int32_t rank, int32_t rankSize,
-                       const infer::CommMode commMode, const std::string &commDomain)
+                       const infer::CommMode commMode, const std::string &commDomain, Context &context)
     : Runner(name), runnerType_(runnerType), rank_(rank), rankSize_(rankSize), commMode_(commMode),
       commDomain_(commDomain)
 {
-    ATB_LOG(INFO) << GetLogPrefix() << "LcalRunner::LcalRunner " << runnerType_ << " called, rank : " << rank << "/"
-                  << rankSize << " commMode: " << commMode_ << " commDomain: " << commDomain_;
+    magicNumberDisabled_ = context.GetLaunchMode() == GRAPH_LAUNCH_MODE;
+    ATB_LOG(INFO) << GetLogPrefix() << "LcalRunner::LcalRunner " << runnerType_ << " called, rank : "
+                  << rank << "/" << rankSize << " commMode: " << commMode_
+                  << " commDomain: " << commDomain_ << " magicNumberDisabled: " << magicNumberDisabled_;
     InitLcalComm();
 }
 
@@ -97,7 +99,8 @@ std::shared_ptr<Lcal::LcalComm> LcalRunner::CreateLcalComm()
             ATB_LOG(ERROR) << GetLogPrefix() << "Invalid commDomain: " << commonId.first;
             return std::shared_ptr<Lcal::LcalComm>();
         }
-        lcalErrorCode_ = LcalCommInitRankWithCustDomainSize(commonId.first, commonId.second, rankSize_, rank_, &comm);
+        lcalErrorCode_ = LcalCommInitRankWithCustDomainSize(commonId.first, commonId.second, rankSize_,
+                                                            rank_, &comm, magicNumberDisabled_);
     } else if (commMode_ == infer::CommMode::COMM_MULTI_THREAD) {
         lcalErrorCode_ = LcalCommInitThread(rank_, rankSize_, commDomain_.c_str(), &comm);
     } else {
