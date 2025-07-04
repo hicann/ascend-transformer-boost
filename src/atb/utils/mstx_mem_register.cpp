@@ -26,12 +26,6 @@ MstxMemRegister::~MstxMemRegister()
     }
 }
 
-mstxDomainHandle_t &MstxMemRegister::GetRegisterDomain()
-{
-    static mstxDomainHandle_t domain = mstxDomainCreateA("atb");
-    return domain;
-}
-
 void MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
 {
     mstxMemVirtualRangeDesc_t rangeDesc = {};
@@ -45,6 +39,12 @@ void MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.typeSpecificDesc = &rangeDesc;
     
     memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
+}
+
+mstxDomainHandle_t &MstxMemRegister::GetRegisterDomain()
+{
+    static mstxDomainHandle_t domain = mstxDomainCreateA("atb");
+    return domain;
 }
 
 void MstxMemRegister::MstxMemRegionsRegister()
@@ -113,6 +113,6 @@ Status MstxMemRegister::CheckTensorRange()
 
 bool MstxMemRegister::IsValid() const noexcept
 {
-    return memPool_ != 0;
+    return memPool_ != nullptr;
 }
 }  // namespace atb

@@ -452,14 +452,14 @@ Status RingMLAOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const 
         if (!TensorUtil::TensorDescEqual(outTensorDescs.at(i), targetOutTensorDescs.at(i))) {
             extError.errorDesc = OperationUtil::ConcatInfo("Invalid outTensor shape at outTensors[", i, "].");
             ss << "Target outTensor shape: [";
-            int dimNum = (int)targetOutTensorDescs.at(i).shape.dimNum;
-            for (int j = 0; j < dimNum - 1; ++j) {
+            int32_t dimNum = static_cast<int32_t>(targetOutTensorDescs.at(i).shape.dimNum);
+            for (int32_t j = 0; j < dimNum - 1; ++j) {
                 ss << targetOutTensorDescs.at(i).shape.dims[j] << ", ";
             }
             ss << targetOutTensorDescs.at(i).shape.dims[dimNum - 1] << "], ";
             ss << "but got outTensor shape: [";
-            dimNum = (int)outTensorDescs.at(i).shape.dimNum;
-            for (int j = 0; j < dimNum - 1; ++j) {
+            dimNum = static_cast<int32_t>(outTensorDescs.at(i).shape.dimNum);
+            for (int32_t j = 0; j < dimNum - 1; ++j) {
                 ss << outTensorDescs.at(i).shape.dims[j] << ", ";
             }
             ss << outTensorDescs.at(i).shape.dims[dimNum - 1] << "]. ";
