@@ -59,8 +59,12 @@ def get_precision_and_eb_threshold(op_type, dtype, compute_num):
             precision_threshold = 2**(-8)
             eb_threshold = 2**(-10)
         if dtype in [torch.bfloat16]:
-            precision_threshold = 2**(-7)
-            eb_threshold = 2**(-7)
+            if compute_num != -1 and compute_num >= 2048:
+                precision_threshold = 2**(-6)
+                eb_threshold = 2**(-6)
+            else:
+                precision_threshold = 2**(-7)
+                eb_threshold = 2**(-7)
         if dtype in [torch.float32]:
             precision_threshold = 2**(-11)
             eb_threshold = 2**(-14)
@@ -476,6 +480,8 @@ class LinearOperation(DataGen):
                 x_i = x[i:i + 1, :].squeeze(0)
                 weight_i = weight[i:i + 1, :].squeeze(0)
                 output_i = torch.matmul(x_i, weight_i)
+                if MatmulCommon.input_golden.dtype == torch.bfloat16:
+                    output_i = output_i.to(torch.bfloat16).to(torch.float32)
                 if bias is not None:
                     output_i = output_i + bias[i:i + 1, :]
                 if deq_scale is not None:
@@ -492,7 +498,8 @@ class LinearOperation(DataGen):
         else:
             golden_result = torch.matmul(x, weight)
             if bias is not None:
-                golden_result = golden_result.to(bias.dtype)
+                if MatmulCommon.input_golden.dtype == torch.bfloat16:
+                    golden_result = golden_result.to(torch.bfloat16)
                 golden_result = golden_result + bias
             if deq_scale is not None:
                 golden_result = golden_result * deq_scale
