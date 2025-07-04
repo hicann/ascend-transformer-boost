@@ -58,12 +58,15 @@ OperationBase::OperationBase(const std::string &name) : name_(name)
 
 OperationBase::~OperationBase()
 {
-    // 对于GraphOperation来说，里面的子Op都不会有runnerVariantPack_
-    if (runnerVariantPack_.context) {
-        ATB_LOG(INFO) << GetLogPrefix() << "will free deviceArgsBuffer_ and hostArgsBuffer_";
-        // 此处如果先destroy了context再destroy operation，里面调用aclrtFree接口会报错
-        runnerVariantPack_.context->FreeArgsDeviceBuffer(deviceArgsBuffer_);
-        runnerVariantPack_.context->FreeArgsHostBuffer(hostArgsBuffer_);
+    if (isGraphLaunchMode_) {
+        // 只有整图下沉的情况下需要销毁Args的buffer，规避context析构和operation析构顺序问题
+        // 对于GraphOperation来说，里面的子Op都不会有runnerVariantPack_
+        if (runnerVariantPack_.context) {
+            ATB_LOG(INFO) << GetLogPrefix() << "will free deviceArgsBuffer_ and hostArgsBuffer_";
+            // 此处如果先destroy了context再destroy operation，里面调用aclrtFree接口会报错
+            runnerVariantPack_.context->FreeArgsDeviceBuffer(deviceArgsBuffer_);
+            runnerVariantPack_.context->FreeArgsHostBuffer(hostArgsBuffer_);
+        }
     }
 }
 
@@ -584,6 +587,7 @@ Status OperationBase::Setup(const VariantPack &variantPack, uint64_t &workspaceS
     }
     if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
         ATB_LOG(INFO) << GetLogPrefix() << "run in GRAPH_LAUNCH_MODE";
+        isGraphLaunchMode_ = true;
         st = GraphModeSetup(variantPack, workspaceSize, context);
     } else {
         ATB_LOG(INFO) << GetLogPrefix() << "run in KERNEL_LAUNCH_MODE";
@@ -728,18 +732,18 @@ Status OperationBase::CopyTilingToDevice()
 template <typename TensorType>
 Status OperationBase::ExecuteVariantPackInTensorCheck(const SVector<TensorType> &inTensors) const
 {
-    std::string Prefix = GetLogPrefix();
+    std::string prefix = GetLogPrefix();
     if (inTensors.size() != runnerVariantPack_.inTensors.size()) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "execute inTensors.size:" << inTensors.size()
+        ATB_LOG(ERROR) << prefix << "execute inTensors.size:" << inTensors.size()
                        << " != setup inTensors.size:" << runnerVariantPack_.inTensors.size();
         return ERROR_INVALID_PARAM;
     }
     SVector<bool> emptyInTensorPerms = GetEmptyInTensorPermissions();
     for (size_t i = 0; i < inTensors.size(); i++) {
         const Tensor &variantPackInTensor = inTensors.at(i);
-        if (Prefix.find("WithStride") == std::string::npos && // "WithStride" indicates non continuous tensors
+        if (prefix.find("WithStride") == std::string::npos && // "WithStride" indicates non continuous tensors
             variantPackInTensor.dataSize != Utils::GetTensorSize(runnerVariantPack_.inTensors.at(i).desc)) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.inTensors(" << i
+            ATB_LOG(ERROR) << prefix << "execute variantPack.inTensors(" << i
                            << ").dataSize is Not equal to the setup dataSize";
             return ERROR_INVALID_PARAM;
         }
@@ -757,9 +761,9 @@ Status OperationBase::ExecuteVariantPackInTensorCheck(const SVector<TensorType> 
 template <typename TensorType>
 Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType> &outTensors) const
 {
-    std::string Prefix = GetLogPrefix();
+    std::string prefix = GetLogPrefix();
     if (outTensors.size() != runnerVariantPack_.outTensors.size()) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "execute outTensors.size:" << outTensors.size()
+        ATB_LOG(ERROR) << prefix << "execute outTensors.size:" << outTensors.size()
                        << " != setup outTensors.size:" << runnerVariantPack_.outTensors.size();
         return ERROR_INVALID_PARAM;
     }
@@ -767,7 +771,7 @@ Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType>
     for (size_t i = 0; i < outTensors.size(); i++) {
         const Tensor &variantPackOutTensor = outTensors.at(i);
         if (variantPackOutTensor.dataSize != Utils::GetTensorSize(runnerVariantPack_.outTensors.at(i).desc)) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.outTensors(" << i
+            ATB_LOG(ERROR) << prefix << "execute variantPack.outTensors(" << i
                            << ").dataSize is Not equal to the setup dataSize";
             return ERROR_INVALID_PARAM;
         }
@@ -776,7 +780,7 @@ Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType>
             continue;
         }
         if (!variantPackOutTensor.deviceData && !variantPackOutTensor.hostData) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.outTensors(" << i
+            ATB_LOG(ERROR) << prefix << "execute variantPack.outTensors(" << i
                            << ") deviceData&hostData is null";
             return ERROR_INVALID_PARAM;
         }
@@ -880,6 +884,7 @@ Status OperationBase::PreLaunch(const VariantPack &variantPack, uint8_t *workspa
         return ERROR_INVALID_PARAM;
     }
     if (context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        isGraphLaunchMode_ = true;
         return GraphModePreLaunch(variantPack, workspace, workspaceSize, context);
     } else {
         return EagerModePreLaunch(variantPack, workspace, workspaceSize, context);
@@ -996,6 +1001,7 @@ Status OperationBase::Launch()
 {
     Status st = NO_ERROR;
     if (runnerVariantPack_.context->GetLaunchMode() == GRAPH_LAUNCH_MODE) {
+        isGraphLaunchMode_ = true;
         aclmdlRI tmpModel = nullptr;
         st = aclmdlRICaptureGetInfo(GetExecuteStream(runnerVariantPack_.context), &streamStatus_, &tmpModel);
         if (tmpModel != nullptr) {
@@ -1010,7 +1016,7 @@ Status OperationBase::Launch()
 
 Status OperationBase::EagerModeLaunch()
 {
-    Mki::Timer ExecuteTime;
+    Mki::Timer executeTime;
     void *executeStream = GetExecuteStream(runnerVariantPack_.context);
 #ifdef _DEBUG
     ATB_LOG(INFO) << GetLogPrefix() << "execute " << runner_->GetName() << "_" << runner_.get() << " start";
@@ -1041,7 +1047,7 @@ Status OperationBase::EagerModeLaunch()
         int ret = aclrtSynchronizeStream(executeStream);
         ATB_LOG_IF(ret != 0, ERROR) << GetLogPrefix() << "stream sync fail, ret:" << ret;
     }
-    GetOpExecuteStatistic().launchTime += ExecuteTime.ElapsedMicroSecond();
+    GetOpExecuteStatistic().launchTime += executeTime.ElapsedMicroSecond();
     GetOpExecuteStatistic().totalTime += GetOpExecuteStatistic().preLaunchTime + GetOpExecuteStatistic().launchTime;
     ATB_LOG(INFO) << GetLogPrefix() << "execute statistic:" << GetOpExecuteStatistic().ToString();
     return st;
@@ -1084,10 +1090,13 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
                                      OPERATION_EXECUTE :
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);
     std::shared_ptr<MstxMemRegister> mstxMemRegister;
-    mstxMemRegister = std::make_shared<MstxMemRegister>(workspace, workspaceSize);
-    if (mstxMemRegister && mstxMemRegister->IsValid() && workspaceSize) {
-        runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
-        ATB_LOG(INFO) << GetLogPrefix() << "mstxMemHeapRegister success ";
+    mstxMemRegister = std::make_shared<MstxMemRegister>();
+    if (workspaceSize) {
+        mstxMemRegister->MstxHeapRegister(workspace, workspaceSize);
+        if (mstxMemRegister && mstxMemRegister->IsValid()) {
+            runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
+            ATB_LOG(INFO) << GetLogPrefix() << "mstxMemHeapRegister success ";
+        }
     }
     Status st = NO_ERROR;
     if (executeType == EXECUTE_NORMAL || executeType == EXECUTE_PRELAUNCH) {

@@ -15,12 +15,12 @@
 extern "C" {
 #endif
 
-const size_t g_MLAINTENSORNUMINT8NOMASK = 9;
-const size_t g_MLAINTENSORNUMINT8MASK = 10;
-const size_t g_MLAINTENSORNUMNOMASK = 7;
-const size_t g_MLAINTENSORNUMMASK = 8;
-const size_t g_MLAOUTTENSORNUMCALCRING = 2;
-const size_t g_MLAOUTTENSORNUMNOCALCRING = 1;
+const size_t MLA_INTENSOR_NUM_INT8_NO_MASK = 9;
+const size_t MLA_INTENSOR_NUM_INT8_MASK = 10;
+const size_t MLA_INTENSOR_NUM_NO_MASK = 7;
+const size_t MLA_INTENSOR_NUM_MASK = 8;
+const size_t MLA_OUTTENSOR_NUM_CALCRING = 2;
+const size_t MLA_OUTTENSOR_NUM_NO_CALCRING = 1;
 
 atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRope, const aclTensor *ctKV,
                                    const aclTensor *kRope, const aclTensor *blockTables, const aclTensor *contextLens,
@@ -39,6 +39,7 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create MLA Operation failed!";
             return st;
         }
     }
@@ -47,19 +48,19 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
     size_t counter = 0;
     if (param.cacheMode == atb::infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
         if (param.maskType == atb::infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
-            pack.inTensors.resize(g_MLAINTENSORNUMINT8NOMASK);
-            counter = g_MLAINTENSORNUMINT8NOMASK;
+            pack.inTensors.resize(MLA_INTENSOR_NUM_INT8_NO_MASK);
+            counter = MLA_INTENSOR_NUM_INT8_NO_MASK;
         } else {
-            pack.inTensors.resize(g_MLAINTENSORNUMINT8MASK);
-            counter = g_MLAINTENSORNUMINT8MASK;
+            pack.inTensors.resize(MLA_INTENSOR_NUM_INT8_MASK);
+            counter = MLA_INTENSOR_NUM_INT8_MASK;
         }
     } else {
         if (param.maskType == atb::infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
-            pack.inTensors.resize(g_MLAINTENSORNUMNOMASK);
-            counter = g_MLAINTENSORNUMNOMASK;
+            pack.inTensors.resize(MLA_INTENSOR_NUM_NO_MASK);
+            counter = MLA_INTENSOR_NUM_NO_MASK;
         } else {
-            pack.inTensors.resize(g_MLAINTENSORNUMMASK);
-            counter = g_MLAINTENSORNUMMASK;
+            pack.inTensors.resize(MLA_INTENSOR_NUM_MASK);
+            counter = MLA_INTENSOR_NUM_MASK;
         }
     }
     if (param.calcType != atb::infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC) {
@@ -94,15 +95,19 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
     }
     i = 0;
     if (param.calcType != atb::infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING) {
-        pack.outTensors.resize(g_MLAOUTTENSORNUMNOCALCRING);
+        pack.outTensors.resize(MLA_OUTTENSOR_NUM_NO_CALCRING);
         status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[i++]));
         ATB_CHECK(status == atb::NO_ERROR, "attenOut create failed!", return status);
     } else {
-        pack.outTensors.resize(g_MLAOUTTENSORNUMCALCRING);
+        pack.outTensors.resize(MLA_OUTTENSOR_NUM_CALCRING);
         status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[i++]));
         ATB_CHECK(status == atb::NO_ERROR, "calc_type_ring attenOut create failed!", return status);
         status = aclTensorToAtbTensor(ise, &(pack.outTensors[i++]));
         ATB_CHECK(status == atb::NO_ERROR, "calc_type_ring ise create failed!", return status);
+    }
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbMLAGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
     }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);
@@ -134,6 +139,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create MLA Operation prefill failed!";
             return st;
         }
     }
@@ -141,9 +147,9 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     size_t i = 0;
 
     if (param.maskType == atb::infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
-        pack.inTensors.resize(g_MLAINTENSORNUMNOMASK);
+        pack.inTensors.resize(MLA_INTENSOR_NUM_NO_MASK);
     } else {
-        pack.inTensors.resize(g_MLAINTENSORNUMMASK);
+        pack.inTensors.resize(MLA_INTENSOR_NUM_MASK);
     }
 
     auto status = aclTensorToAtbTensor(q, &(pack.inTensors[i++]));
@@ -166,12 +172,16 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
         ATB_CHECK(status == atb::NO_ERROR, "mask create failed!", return status);
     }
   
-    pack.outTensors.resize(g_MLAOUTTENSORNUMNOCALCRING);
+    pack.outTensors.resize(MLA_OUTTENSOR_NUM_NO_CALCRING);
     status = aclTensorToAtbTensor(attenOut, &(pack.outTensors[0]));
     ATB_CHECK(status == atb::NO_ERROR, "attenOut create failed!", return status);
 
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbMLAPreFillGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
+    }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
-    ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Setup failed!", return st);
+    ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreFill Setup failed!", return st);
     return atb::NO_ERROR;
 }
 
@@ -179,7 +189,7 @@ atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operatio
 {
     atb::VariantPack pack;
     atb::Status st = op->Execute(pack, (uint8_t*)(workspace), workspaceSize, context);
-    ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
+    ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreFill Execute failed!", return st);
     return st;
 }
 

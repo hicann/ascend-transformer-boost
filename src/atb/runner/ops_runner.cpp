@@ -378,13 +378,13 @@ Status OpsRunner::UpdateDeviceRealAddr(const RunnerVariantPack &runnerVariantPac
         if (runnerVariantPack.argsDeviceBuffer != nullptr) {
             node.impl->SetArgsDeviceBuffer(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
             ATB_LOG(DEBUG) << GetLogPrefix() << "argsDeviceBuffer from workSpace is "
-                           << (void *)(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
+                           << reinterpret_cast<void *>(runnerVariantPack.argsDeviceBuffer + deviceArgsSizeOffset);
             deviceArgsSizeOffset += node.impl->GetArgsSize();
         }
         if (runnerVariantPack.argsHostBuffer != nullptr) {
             node.impl->SetArgsHostBuffer(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
             ATB_LOG(DEBUG) << GetLogPrefix() << "argsHostBuffer from workSpace is "
-                           << (void *)(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
+                           << reinterpret_cast<void *>(runnerVariantPack.argsHostBuffer + hostArgsSizeOffset);
             hostArgsSizeOffset += node.impl->GetArgsSize();
         }
     }
@@ -618,16 +618,21 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
         if (runnerVariantPack.mstxMemRegister != nullptr) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
             if (runnerVariantPack.workspaceBufferSize) {
-                runnerVariantPack.workspaceBufferSize = static_cast<uint64_t>(TensorUtil::AlignInt(runnerVariantPack.workspaceBufferSize, ALIGN_INT));
-                runnerVariantPack.mstxMemRegister->AddTensorMemRegions(runnerVariantPack.workspaceBuffer, runnerVariantPack.workspaceBufferSize);
+                runnerVariantPack.workspaceBufferSize =
+                    static_cast<uint64_t>(TensorUtil::AlignInt(runnerVariantPack.workspaceBufferSize, ALIGN_INT));
+                runnerVariantPack.mstxMemRegister->AddTensorMemRegions(runnerVariantPack.workspaceBuffer,
+                                                                       runnerVariantPack.workspaceBufferSize);
             }
             auto &inTensors = node.impl->GetInTensors();
             const uint64_t inTensorsSize = inTensors.size();
             for (uint64_t tensorId = 0; tensorId < inTensorsSize; tensorId++) {
                 Mki::Tensor &tensor = inTensors.at(tensorId);
                 if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
-                    tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
-                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
+                    // 转化指针data为uint64_t，计算
+                    tensor.data = runnerVariantPack.intermediateBuffer +
+                                  reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(
+                        tensor.data, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
             auto &outTensors = node.impl->GetOutTensors();
@@ -635,8 +640,10 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
             for (uint64_t tensorId = 0; tensorId < outTensorsSize; tensorId++) {
                 Mki::Tensor &tensor = outTensors.at(tensorId);
                 if (node.outTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
-                    tensor.data = runnerVariantPack.intermediateBuffer + reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
-                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.data, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
+                    tensor.data = runnerVariantPack.intermediateBuffer +
+                                  reinterpret_cast<uint64_t>(node.outTensors.at(tensorId)->data);
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(
+                        tensor.data, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
             if (runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
@@ -735,8 +742,8 @@ bool OpsRunner::UpdateNodeBestKernelAndTiling(KernelGraphNode &node, size_t node
                                               uint64_t maxTilingSize, bool launchWithTiling)
 {
     uint64_t tilingSize = 0;
-    bool getTilingSuccess = GetCachedTiling(node, nodeId, kernelHostTilingBuffer,
-                                            maxTilingSize, tilingSize, launchWithTiling);
+    bool getTilingSuccess =
+        GetCachedTiling(node, nodeId, kernelHostTilingBuffer, maxTilingSize, tilingSize, launchWithTiling);
     if (!node.impl->UpdateBestKernel()) {
         ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId << "] " << node.GetName()
                        << " update best kernel failed";
@@ -1083,8 +1090,8 @@ bool OpsRunner::GetCachedTiling(KernelGraphNode &node, size_t nodeId, uint8_t *k
     for (size_t i = 0; i < kernelCachesSize; ++i) {
         KernelCache *kernelCache = kernelCaches_.at(i).first;
         bool isLocalCache = kernelCaches_.at(i).second;
-        bool getTilingSuccess = node.impl->GetCachedTiling(*kernelCache, nodeId, kernelHostTilingBuffer,
-                                                           maxTilingSize, tilingSizeFetched, launchWithTiling);
+        bool getTilingSuccess = node.impl->GetCachedTiling(*kernelCache, nodeId, kernelHostTilingBuffer, maxTilingSize,
+                                                           tilingSizeFetched, launchWithTiling);
         if (getTilingSuccess) {
             ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] kernel cache get last tiling";
             IncreaseStatisticCacheHitCount(isLocalCache);
@@ -1408,10 +1415,11 @@ Status OpsRunner::UpdateWorkspaceBuffer(RunnerVariantPack &runnerVariantPack)
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         if (needSetworkspace) {
 #ifdef _DEBUG
-        ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] update kernel runinfo workspaceBuffer, and new workspaceBuffer is "
-                      << static_cast<void *>(runnerVariantPack.workspaceBuffer);
+            ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId
+                          << "] update kernel runinfo workspaceBuffer, and new workspaceBuffer is "
+                          << static_cast<void *>(runnerVariantPack.workspaceBuffer);
 #else
-        ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] update kernel runinfo workspaceBuffer";
+            ATB_LOG(INFO) << GetLogPrefix() << "node[" << nodeId << "] update kernel runinfo workspaceBuffer";
 #endif
             node.impl->SetWorkspaceDeviceAddr(runnerVariantPack.workspaceBuffer);
         }

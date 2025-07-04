@@ -25,11 +25,12 @@ const uint32_t DIM_2 = 5120;
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建shape为[4, 1024, 5120]的tensor
+    const float value = 2.0;
     atb::Tensor x;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1 * DIM_2, 2.0), ACL_FLOAT16,
-                                        aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, x));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1 * DIM_2, value),
+                                        ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, x));
     atb::Tensor gamma;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_2, 2.0), ACL_FLOAT16,
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_2, value), ACL_FLOAT16,
                                         aclFormat::ACL_FORMAT_ND, {DIM_2}, gamma));
     inTensors = {x, gamma};
     return atb::ErrorType::NO_ERROR;

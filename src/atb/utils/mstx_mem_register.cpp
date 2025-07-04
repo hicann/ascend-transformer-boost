@@ -8,8 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "atb/utils/mstx_mem_register.h"
-#include <unistd.h>
-#include <syscall.h>
 #include <mstx/ms_tools_ext.h>
 #include <mstx/ms_tools_ext_mem.h>
 #include "atb/utils/log.h"
@@ -17,7 +15,16 @@
 static constexpr int32_t DEVICE_UNDEFINED_STATUS = -1;
 
 namespace atb {
-MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
+MstxMemRegister::MstxMemRegister() {}
+
+MstxMemRegister::~MstxMemRegister()
+{
+    if (memPool_) {
+        mstxMemHeapUnregister(GetRegisterDomain(), memPool_);
+    }
+}
+
+void MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
 {
     mstxMemVirtualRangeDesc_t rangeDesc = {};
     rangeDesc.deviceId = GetMstxDevice();
@@ -30,11 +37,6 @@ MstxMemRegister::MstxMemRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.typeSpecificDesc = &rangeDesc;
     
     memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
-}
-
-MstxMemRegister::~MstxMemRegister()
-{
-    mstxMemHeapUnregister(GetRegisterDomain(), memPool_);
 }
 
 mstxDomainHandle_t &MstxMemRegister::GetRegisterDomain()
@@ -98,17 +100,13 @@ void MstxMemRegister::AddTensorMemRegions(void *ptr, uint64_t size)
     }
 }
 
-Status MstxMemRegister::CheckTensorRange()
+bool MstxMemRegister::CheckTensorRange()
 {
-    if (rangesDesc_.empty()) {
-        return false;
-    } else {
-        return true;
-    }
+    return !rangesDesc_.empty();
 }
 
 bool MstxMemRegister::IsValid() const noexcept
 {
-    return memPool_ != 0;
+    return memPool_ != nullptr;
 }
 }  // namespace atb

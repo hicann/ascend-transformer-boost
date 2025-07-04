@@ -19,6 +19,7 @@ const uint32_t HEAD_NUM = 32;                                                   
 const uint32_t KV_HEAD_NUM = 32;                                                     // kv头数
 const uint32_t HEAD_SIZE = 64;                                                       // 头大小
 const uint32_t BLOCK_SIZE = 128;                                                     // 以block存放的kv块大小
+const uint32_t BLOCK_TABLES_SIZE = 16;                                               // blockTables大小
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
@@ -50,7 +51,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     // 创建blockTables
     atb::Tensor tensorBlockTables;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE, 4}, tensorBlockTables));
-    std::vector<int32_t> blockTablesData(16);
+    std::vector<int32_t> blockTablesData(BLOCK_TABLES_SIZE);
     std::iota(blockTablesData.begin(), blockTablesData.end(), 0);
     CHECK_STATUS(aclrtMemcpy(tensorBlockTables.deviceData, tensorBlockTables.dataSize, blockTablesData.data(),
                              sizeof(int32_t) * blockTablesData.size(), ACL_MEMCPY_HOST_TO_DEVICE));
@@ -58,14 +59,14 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     std::vector<float> maskData = std::vector<float>(HEAD_NUM * NTOKENS * 128, 0); // alibi128 mask
     for (int i = 0; i < HEAD_NUM; ++i) {
         for (int j = 0; j < NTOKENS; ++j) {
-            for (int k = j + 1; k < 128; ++k) {
-                maskData[i * NTOKENS * 128 + j * 128 + k] = 1;
+            for (int k = j + 1; k < BLOCK_SIZE; ++k) {
+                maskData[i * NTOKENS * BLOCK_SIZE + j * BLOCK_SIZE + k] = 1;
             }
         }
     }
     atb::Tensor tensorMask;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, maskData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {HEAD_NUM, NTOKENS, 128}, tensorMask));
+                                        {HEAD_NUM, NTOKENS, BLOCK_SIZE}, tensorMask));
     // 创建seqLen，host侧tensor
     atb::Tensor tensorSeqLen;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorSeqLen));

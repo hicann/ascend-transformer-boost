@@ -13,6 +13,10 @@
 
 #include "../demo_util.h"
 
+const int DIM_M = 2;
+const int DIM_N = 2;
+const int DIM_K = 32;
+
 atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context, aclrtStream &stream)
 {
     uint64_t workspaceSize = 0;
@@ -47,23 +51,24 @@ atb::Status LinearParallelSample(int rank, int rankSize)
     context->SetExecuteStream(stream);
 
     atb::Tensor input;
-    CreateTensorFromVector(context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16,
-                           aclFormat::ACL_FORMAT_ND, {2, 32}, input);
+    const float value = 2.0;
+    CreateTensorFromVector(context, stream, std::vector<float>(DIM_M * DIM_K, value), aclDataType::ACL_FLOAT16,
+                           aclFormat::ACL_FORMAT_ND, {DIM_M, DIM_K}, input);
 
     atb::Tensor weight;
-    CreateTensorFromVector(context, stream, std::vector<int8_t>(64, 2), aclDataType::ACL_INT8, aclFormat::ACL_FORMAT_ND,
-                           {32, 2}, weight);
+    CreateTensorFromVector(context, stream, std::vector<int8_t>(DIM_K * DIM_N, value), aclDataType::ACL_INT8,
+                           aclFormat::ACL_FORMAT_ND, {DIM_K, DIM_N}, weight);
 
     atb::Tensor bias;
-    CreateTensorFromVector(context, stream, std::vector<float>(1, 1.0), aclDataType::ACL_FLOAT16,
+    CreateTensorFromVector(context, stream, std::vector<float>(1, value), aclDataType::ACL_FLOAT16,
                            aclFormat::ACL_FORMAT_ND, {1}, bias);
 
     atb::Tensor deqScale;
-    CreateTensorFromVector(context, stream, std::vector<float>(1, 1.0), aclDataType::ACL_FLOAT16,
+    CreateTensorFromVector(context, stream, std::vector<float>(1, value), aclDataType::ACL_FLOAT16,
                            aclFormat::ACL_FORMAT_ND, {1}, deqScale);
 
     atb::Tensor output;
-    CreateTensor(aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 2}, output);
+    CreateTensor(aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_M, DIM_N}, output);
 
     atb::infer::LinearParallelParam param;
     param.transWeight = false;

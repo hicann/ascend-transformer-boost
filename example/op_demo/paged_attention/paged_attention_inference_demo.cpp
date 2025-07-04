@@ -9,18 +9,20 @@
  */
 
 #include <random>
+#include <cmath>
 #include "../demo_util.h"
 
-const uint32_t NTOKENS = 2;                            // token数量
-const uint32_t BATCH_SIZE = NTOKENS;                   // batch数量
-const uint32_t MAX_SEQ_LEN = 1024;                     // 最大序列长度
-const uint32_t HEAD_NUM = 32;                          // 头数
-const uint32_t KV_HEAD_NUM = 32;                       // kv头数
-const uint32_t HEAD_SIZE = 128;                        // 头大小
-const uint32_t BLOCK_NUM = 16;                         // 块数量
-const uint32_t BLOCK_SIZE = 128;                       // 块大小
-const uint32_t MAX_CONTEXT_LEN = 1024;                 // 上下文最大长度
-std::vector<int32_t> contextLensData(BATCH_SIZE, 256); // contextLens的host侧数据
+const uint32_t NTOKENS = 2;                                     // token数量
+const uint32_t BATCH_SIZE = NTOKENS;                            // batch数量
+const uint32_t MAX_SEQ_LEN = 1024;                              // 最大序列长度
+const uint32_t HEAD_NUM = 32;                                   // 头数
+const uint32_t KV_HEAD_NUM = 32;                                // kv头数
+const uint32_t HEAD_SIZE = 128;                                 // 头大小
+const uint32_t BLOCK_NUM = 16;                                  // 块数量
+const uint32_t BLOCK_SIZE = 128;                                // 块大小
+const uint32_t MAX_CONTEXT_LEN = 1024;                          // 上下文最大长度
+const int32_t SEQLEN_VALUE = 256;                               // 每batch对应seqlen长度
+std::vector<int32_t> contextLensData(BATCH_SIZE, SEQLEN_VALUE); // contextLens的host侧数据
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
@@ -51,7 +53,8 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::S
     std::vector<int32_t> blockTablesData(NTOKENS * maxNumBlocksPerQuery, 0);
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(0, BLOCK_NUM - 2);
+    const int diff = 2;
+    std::uniform_int_distribution<int> dist(0, BLOCK_NUM - diff);
     for (size_t i = 0; i < blockTablesData.size(); i++) {
         blockTablesData[i] = dist(gen);
     }
@@ -78,7 +81,7 @@ atb::Status PrepareOperation(atb::Operation **paOp)
     atb::infer::PagedAttentionParam paOpParam;
     paOpParam.headNum = HEAD_NUM;
     paOpParam.kvHeadNum = KV_HEAD_NUM;
-    paOpParam.qkScale = 0.08838834764831843;
+    paOpParam.qkScale = 1 / sqrt(HEAD_SIZE);
     return atb::CreateOperation(paOpParam, paOp);
 }
 

@@ -12,31 +12,50 @@
 #include <vector>
 #include "atb/atb_infer.h"
 
+namespace {
+const int GRAPH_IN_TENSOR_NUM = 2;
+const int GRAPH_OUT_TENSOR_NUM = 1;
+const int GRAPH_INTERNAL_TENSOR_NUM = 2;
+
+const int DIM_NUM = 2;
+const int DIM2 = 2;
+
+const int TENSOR_ID0 = 0;
+const int TENSOR_ID1 = 1;
+const int TENSOR_ID2 = 2;
+const int TENSOR_ID3 = 3;
+const int TENSOR_ID4 = 4;
+const int TENSOR_ID5 = 5;
+} // namespace
+
 static void CreateInTensorDescs(atb::SVector<atb::TensorDesc> &intensorDescs)
 {
     for (size_t i = 0; i < intensorDescs.size(); i++) {
         intensorDescs.at(i).dtype = ACL_FLOAT16;
         intensorDescs.at(i).format = ACL_FORMAT_ND;
-        intensorDescs.at(i).shape.dimNum = 2;
-        intensorDescs.at(i).shape.dims[0] = 2;
-        intensorDescs.at(i).shape.dims[1] = 2;
+        intensorDescs.at(i).shape.dimNum = DIM_NUM;
+        intensorDescs.at(i).shape.dims[0] = DIM2;
+        intensorDescs.at(i).shape.dims[1] = DIM2;
     }
 }
 
 static aclError CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<atb::TensorDesc> &intensorDescs)
 {
-    std::vector<char> zeroData(8, 0); // 一段全0的hostBuffer
+    const int HOST_BUFFER_SIZE = 8;
+    std::vector<char> zeroData(HOST_BUFFER_SIZE, 0); // 一段全0的hostBuffer
     int ret;
     for (size_t i = 0; i < inTensors.size(); i++) {
         inTensors.at(i).desc = intensorDescs.at(i);
         inTensors.at(i).dataSize = atb::Utils::GetTensorSize(inTensors.at(i));
-        ret = aclrtMalloc(&inTensors.at(i).deviceData, inTensors.at(i).dataSize, ACL_MEM_MALLOC_HUGE_FIRST); // 分配NPU内存
+        ret = aclrtMalloc(&inTensors.at(i).deviceData, inTensors.at(i).dataSize,
+                          ACL_MEM_MALLOC_HUGE_FIRST); // 分配NPU内存
         if (ret != 0) {
             std::cout << "alloc error!";
             return ret;
         }
         // 拷贝CPU内存到NPU侧
-        ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(), ACL_MEMCPY_HOST_TO_DEVICE);
+        ret = aclrtMemcpy(inTensors.at(i).deviceData, inTensors.at(i).dataSize, zeroData.data(), zeroData.size(),
+                          ACL_MEMCPY_HOST_TO_DEVICE);
         if (ret != 0) {
             std::cout << "memcpy error!";
         }
@@ -61,11 +80,12 @@ static aclError CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVe
 
 static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **operation)
 {
-	// 构子图流程
-    opGraph.inTensorNum = 2;
-    opGraph.outTensorNum = 1;
-    opGraph.internalTensorNum = 2;
-    opGraph.nodes.resize(3);
+    // 构子图流程
+    opGraph.inTensorNum = GRAPH_IN_TENSOR_NUM;
+    opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
+    opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
+    const int NODE_SIZE = 3;
+    opGraph.nodes.resize(NODE_SIZE);
 
     size_t nodeId = 0;
     atb::Node &addNode = opGraph.nodes.at(nodeId++);
@@ -75,20 +95,20 @@ static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **
     atb::infer::ElewiseParam addParam;
     addParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam, &addNode.operation);
-    addNode.inTensorIds = {0, 1};
-    addNode.outTensorIds = {3};
+    addNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    addNode.outTensorIds = {TENSOR_ID3};
 
     atb::infer::ElewiseParam addParam2;
     addParam2.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam2, &addNode2.operation);
-    addNode2.inTensorIds = {3, 1};
-    addNode2.outTensorIds = {4};
+    addNode2.inTensorIds = {TENSOR_ID3, TENSOR_ID1};
+    addNode2.outTensorIds = {TENSOR_ID4};
 
     atb::infer::ElewiseParam addParam3;
     addParam3.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     CreateOperation(addParam3, &addNode3.operation);
-    addNode3.inTensorIds = {4, 1};
-    addNode3.outTensorIds = {2};
+    addNode3.inTensorIds = {TENSOR_ID4, TENSOR_ID1};
+    addNode3.outTensorIds = {TENSOR_ID2};
 
     atb::CreateOperation(opGraph, operation);
 }
@@ -96,10 +116,11 @@ static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **
 static void CreateGraphOperationForMultiStream(atb::GraphParam &opGraph, atb::Operation **operation)
 {
     // 构单图多流大图
-    opGraph.inTensorNum = 2;
-    opGraph.outTensorNum = 2;
-    opGraph.internalTensorNum = 2;
-    opGraph.nodes.resize(4);
+    opGraph.inTensorNum = GRAPH_IN_TENSOR_NUM;
+    opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
+    opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
+    const int NODE_SIZE = 4;
+    opGraph.nodes.resize(NODE_SIZE);
 
     size_t nodeId = 0;
     atb::Node &mulNode = opGraph.nodes.at(nodeId++);
@@ -110,24 +131,24 @@ static void CreateGraphOperationForMultiStream(atb::GraphParam &opGraph, atb::Op
     atb::infer::ElewiseParam mulParam;
     mulParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_MUL;
     atb::CreateOperation(mulParam, &mulNode.operation);
-    mulNode.inTensorIds = {0, 1};
-    mulNode.outTensorIds = {3};
+    mulNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    mulNode.outTensorIds = {TENSOR_ID3};
 
     atb::infer::ElewiseParam addParam2;
     addParam2.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam2, &addNode2.operation);
-    addNode2.inTensorIds = {0, 1};
-    addNode2.outTensorIds = {4};
+    addNode2.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    addNode2.outTensorIds = {TENSOR_ID4};
 
     atb::GraphParam graphParam;
     CreateMiniGraphOperation(graphParam, &graphNode.operation);
-    graphNode.inTensorIds = {4, 1};
-    graphNode.outTensorIds = {5};
+    graphNode.inTensorIds = {TENSOR_ID4, TENSOR_ID1};
+    graphNode.outTensorIds = {TENSOR_ID5};
     SetExecuteStreamId(graphNode.operation, 1);
 
     atb::CreateOperation(mulParam, &mulNode1.operation);
-    mulNode1.inTensorIds = {5, 1};
-    mulNode1.outTensorIds = {2};
+    mulNode1.inTensorIds = {TENSOR_ID5, TENSOR_ID1};
+    mulNode1.outTensorIds = {TENSOR_ID2};
     SetExecuteStreamId(mulNode1.operation, 1);
 
     atb::CreateOperation(opGraph, operation);
@@ -135,10 +156,11 @@ static void CreateGraphOperationForMultiStream(atb::GraphParam &opGraph, atb::Op
 
 static void CreateGraphOperationWithWREvent(atb::GraphParam &opGraph, atb::Operation **operation, aclrtEvent event)
 {
-    opGraph.inTensorNum = 2;
-    opGraph.outTensorNum = 1;
-    opGraph.internalTensorNum = 2;
-    opGraph.nodes.resize(5);
+    opGraph.inTensorNum = GRAPH_IN_TENSOR_NUM;
+    opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
+    opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
+    const int NODE_SIZE = 5;
+    opGraph.nodes.resize(NODE_SIZE);
 
     size_t nodeId = 0;
     atb::Node &mulNode = opGraph.nodes.at(nodeId++);
@@ -150,8 +172,8 @@ static void CreateGraphOperationWithWREvent(atb::GraphParam &opGraph, atb::Opera
     atb::infer::ElewiseParam mulParam;
     mulParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_MUL;
     atb::CreateOperation(mulParam, &mulNode.operation);
-    mulNode.inTensorIds = {0, 1};
-    mulNode.outTensorIds = {3};
+    mulNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    mulNode.outTensorIds = {TENSOR_ID3};
 
     atb::common::EventParam waitParam;
     waitParam.event = event;
@@ -160,14 +182,14 @@ static void CreateGraphOperationWithWREvent(atb::GraphParam &opGraph, atb::Opera
 
     atb::GraphParam graphParam;
     CreateMiniGraphOperation(graphParam, &graphNode.operation);
-    graphNode.inTensorIds = {3, 4};
-    graphNode.outTensorIds = {2};
+    graphNode.inTensorIds = {TENSOR_ID3, TENSOR_ID4};
+    graphNode.outTensorIds = {TENSOR_ID2};
 
     atb::infer::ElewiseParam addParam;
     addParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam, &addNode.operation);
-    addNode.inTensorIds = {0, 1};
-    addNode.outTensorIds = {4};
+    addNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    addNode.outTensorIds = {TENSOR_ID4};
     SetExecuteStreamId(addNode.operation, 1);
 
     atb::common::EventParam recordParam;
@@ -181,10 +203,11 @@ static void CreateGraphOperationWithWREvent(atb::GraphParam &opGraph, atb::Opera
 
 static void CreateGraphOperationWithRWEvent(atb::GraphParam &opGraph, atb::Operation **operation, aclrtEvent event)
 {
-    opGraph.inTensorNum = 2;
-    opGraph.outTensorNum = 1;
-    opGraph.internalTensorNum = 2;
-    opGraph.nodes.resize(5);
+    opGraph.inTensorNum = GRAPH_IN_TENSOR_NUM;
+    opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
+    opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
+    const int NODE_SIZE = 5;
+    opGraph.nodes.resize(NODE_SIZE);
 
     size_t nodeId = 0;
     atb::Node &mulNode = opGraph.nodes.at(nodeId++);
@@ -196,8 +219,8 @@ static void CreateGraphOperationWithRWEvent(atb::GraphParam &opGraph, atb::Opera
     atb::infer::ElewiseParam mulParam;
     mulParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_MUL;
     atb::CreateOperation(mulParam, &mulNode.operation);
-    mulNode.inTensorIds = {0, 1};
-    mulNode.outTensorIds = {3};
+    mulNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    mulNode.outTensorIds = {TENSOR_ID3};
 
     atb::common::EventParam waitParam;
     waitParam.event = event;
@@ -206,14 +229,14 @@ static void CreateGraphOperationWithRWEvent(atb::GraphParam &opGraph, atb::Opera
 
     atb::GraphParam graphParam;
     CreateMiniGraphOperation(graphParam, &graphNode.operation);
-    graphNode.inTensorIds = {3, 4};
-    graphNode.outTensorIds = {2};
+    graphNode.inTensorIds = {TENSOR_ID3, TENSOR_ID4};
+    graphNode.outTensorIds = {TENSOR_ID2};
 
     atb::infer::ElewiseParam addParam;
     addParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam, &addNode.operation);
-    addNode.inTensorIds = {0, 1};
-    addNode.outTensorIds = {4};
+    addNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    addNode.outTensorIds = {TENSOR_ID4};
     SetExecuteStreamId(addNode.operation, 1);
 
     atb::common::EventParam recordParam;
@@ -228,7 +251,7 @@ static void CreateGraphOperationWithRWEvent(atb::GraphParam &opGraph, atb::Opera
 int main()
 {
     aclInit(nullptr);
-	// 设置卡号、创建stream、创建context、设置stream
+    // 设置卡号、创建stream、创建context、设置stream
     uint32_t deviceId = 1;
     aclrtSetDevice(deviceId);
     // 创建多个stream
@@ -246,7 +269,7 @@ int main()
     atb::GraphParam opGraph;
     CreateGraphOperationForMultiStream(opGraph, &operation);
 
-	// 输入输出tensor准备
+    // 输入输出tensor准备
     atb::VariantPack pack;
     atb::SVector<atb::TensorDesc> intensorDescs;
     atb::SVector<atb::TensorDesc> outtensorDescs;
@@ -258,9 +281,9 @@ int main()
 
     pack.inTensors.resize(inTensorNum);
     intensorDescs.resize(inTensorNum);
-    
+
     CreateInTensorDescs(intensorDescs);
-    
+
     outtensorDescs.resize(outTensorNum);
     pack.outTensors.resize(outTensorNum);
     operation->InferShape(intensorDescs, outtensorDescs);
@@ -287,7 +310,7 @@ int main()
             exit(1);
         }
     }
-    operation->Execute(pack, (uint8_t*)workSpace, workspaceSize, context);
+    operation->Execute(pack, (uint8_t *)workSpace, workspaceSize, context);
     // 流同步
     ret = aclrtSynchronizeStream(stream1);
     if (ret != 0) {
@@ -301,7 +324,7 @@ int main()
         exit(1);
     }
 
-	// 资源释放
+    // 资源释放
     atb::DestroyOperation(operation);
     atb::DestroyContext(context);
     for (size_t i = 0; i < pack.inTensors.size(); i++) {

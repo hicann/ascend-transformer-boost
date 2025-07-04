@@ -32,19 +32,19 @@ public:
     size_t GetTilingSize() const override;
     bool UpdateBestKernel() override;
     int64_t GetWorkspaceSize() const override;
-    Status InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool launchWithTiling) override;
+    Status InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool isLaunchWithTiling) override;
     void SetWorkspaceDeviceAddr(uint8_t *deviceWorkspaceBuffer) override;
     void SetTilingDeviceAddr(uint8_t *deviceTilingBuffer) override;
     Status Run(aclrtStream stream) override;
     bool GetCachedTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *kernelHostTilingBuffer,
-                         uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool launchWithTiling) override;
+                         uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool isLaunchWithTiling) override;
     void AddTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *hostTilingBuffer,
                    size_t tilingSize) const override;
     void SetArgsDeviceBuffer(void *deviceBuffer) override;
     void SetArgsHostBuffer(void *hostBuffer) override;
     void *GetArgsDeviceBuffer() override;
     void *GetArgsHostBuffer() override;
-    Status BuildArgs();
+    Status BuildArgs() override;
     uint64_t GetArgsSize() override;
 
     // utils
@@ -76,23 +76,7 @@ private:
     void *argsHostBuffer_ = nullptr;
 };
 
-static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
-{
-    return {{Mki::ErrorType::NO_ERROR, atb::ErrorType::NO_ERROR},
-            {Mki::ErrorType::ERROR_INVALID_VALUE, atb::ErrorType::ERROR_INVALID_PARAM},
-            {Mki::ErrorType::ERROR_OPERATION_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
-            {Mki::ErrorType::ERROR_TACTIC_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
-            {Mki::ErrorType::ERROR_KERNEL_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
-            {Mki::ErrorType::ERROR_ATTR_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
-            {Mki::ErrorType::ERROR_ATTR_INVALID_TYPE, atb::ErrorType::ERROR_INVALID_PARAM},
-            {Mki::ErrorType::ERROR_LAUNCH_KERNEL_ERROR, atb::ErrorType::ERROR_RT_FAIL},
-            {Mki::ErrorType::ERROR_SYNC_STREAM_ERROR, atb::ErrorType::ERROR_RT_FAIL},
-            {Mki::ErrorType::ERROR_INFERSHAPE_ERROR, atb::ErrorType::ERROR_RT_FAIL},
-            {Mki::ErrorType::ERROR_NOT_CONSISTANT, atb::ErrorType::ERROR_INVALID_PARAM},
-            {Mki::ErrorType::ERROR_ALLOC_HOST, atb::ErrorType::ERROR_OUT_OF_HOST_MEMORY},
-            {Mki::ErrorType::ERROR_MEMERY_COPY_ERROR, atb::ErrorType::ERROR_COPY_HOST_MEMORY_FAIL},
-            {Mki::ErrorType::ERROR_RUN_TIME_ERROR, atb::ErrorType::ERROR_RT_FAIL}};
-}
+static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept;
 
 static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> ATB_MKI_ERROR_HASH = InitAtbMkiErrorHash();
 } // namespace atb

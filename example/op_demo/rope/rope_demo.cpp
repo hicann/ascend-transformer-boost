@@ -52,7 +52,8 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::S
     atb::Tensor tensorSin;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, sin, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
                                         {NTOKENS, HEAD_SIZE}, tensorSin));
-    std::vector<int32_t> seqLenHost(BATCH_SIZE, 4);
+    const int32_t seqlenValue = 4;
+    std::vector<int32_t> seqLenHost(BATCH_SIZE, seqlenValue);
     atb::Tensor tensorSeqLen;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorSeqLen));
     tensorSeqLen.hostData = seqLenHost.data();

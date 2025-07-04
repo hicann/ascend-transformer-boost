@@ -23,7 +23,7 @@ public:
 
 private:
     Status ModifyKernelGraph(const OpsTensorPack &opsTensorPack) override;
-    void SetRingMLAParam(AtbOps::OpParam::RINGMLA &RingMLAParam);
+    void SetRingMLAParam(AtbOps::OpParam::RINGMLA &ringMLAParam);
 
     infer::RingMLAParam param_;
     bool isInputSoftmaxLse_ = false;

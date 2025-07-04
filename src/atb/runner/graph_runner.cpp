@@ -68,8 +68,9 @@ void GraphRunner::Graph::SetNonReuseTensors()
     for (size_t nodeId = 0; nodeId < nodes.size(); ++nodeId) {
         auto &node = nodes.at(nodeId);
         uint32_t streamId = GetExecuteStreamId(node.op.get());
-        if (streamId == 0)
+        if (streamId == 0) {
             continue;
+        }
         for (auto inTensorIt : node.inTensors) {
             auto it = isInTensorCanFree.find(inTensorIt);
             if (it != isInTensorCanFree.end()) {
@@ -872,7 +873,7 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
             node.runnerVariantPack.argsDeviceBuffer = runnerVariantPack.argsDeviceBuffer + offset;
             offset += node.runner->GetArgsSize();
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsDeviceAddr is "
-                << (void*)node.runnerVariantPack.argsDeviceBuffer;
+                << reinterpret_cast<void *>(node.runnerVariantPack.argsDeviceBuffer);
         }
     }
 
@@ -883,7 +884,7 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
             node.runnerVariantPack.argsHostBuffer = runnerVariantPack.argsHostBuffer + offset;
             offset += node.runner->GetArgsSize();
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsHostAddr is "
-                << (void*)node.runnerVariantPack.argsHostBuffer;
+                << reinterpret_cast<void *>(node.runnerVariantPack.argsHostBuffer);
         }
     }
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's buffer end";

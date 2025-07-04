@@ -9,8 +9,6 @@
  */
 #ifndef ATB_UTILS_MSTX_REGISTER_H
 #define ATB_UTILS_MSTX_REGISTER_H
-#include <unistd.h>
-#include <syscall.h>
 #include <vector>
 #include <mstx/ms_tools_ext.h>
 #include <mstx/ms_tools_ext_mem.h>
@@ -19,10 +17,11 @@
 namespace atb {
 class MstxMemRegister {
 public:
-    MstxMemRegister(void *workspace, uint64_t workspaceSize);
+    MstxMemRegister();
     ~MstxMemRegister();
     static mstxDomainHandle_t &GetRegisterDomain();
-    Status CheckTensorRange();
+    bool CheckTensorRange();
+    void MstxHeapRegister(void *workspace, uint64_t workspaceSize);
     void MstxMemRegionsRegister();
     void MstxMemRegionsUnregister();
     void ClearMstxMemRegions() noexcept;
@@ -31,7 +30,7 @@ public:
     bool IsValid() const noexcept;
 
 private:
-    mstxMemHeapHandle_t memPool_;
+    mstxMemHeapHandle_t memPool_ = nullptr;
     static mstxDomainHandle_t domain_;
     std::vector<mstxMemVirtualRangeDesc_t> rangesDesc_ = {};
     std::vector<mstxMemRegionHandle_t> regionHandles_ = {};

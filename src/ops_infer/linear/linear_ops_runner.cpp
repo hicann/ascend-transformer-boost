@@ -14,6 +14,8 @@
 #include "atb/utils/singleton.h"
 #include "atb/utils/utils_internal.h"
 
+static constexpr size_t SIZE_0 = 0;
+static constexpr size_t SIZE_1 = 1;
 static constexpr size_t SIZE_2 = 2;
 static constexpr size_t SIZE_3 = 3;
 static constexpr size_t SIZE_4 = 4;
@@ -139,7 +141,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmul910B()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulA2";
 
-    InitKernelGraph(SIZE_2, 1, 0, 1);
+    InitKernelGraph(SIZE_2, SIZE_1, SIZE_0, SIZE_1);
 
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(0);
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(1);
@@ -168,7 +170,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWeightNdNot910B()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulWeightNdNotA2";
 
-    InitKernelGraph(SIZE_2, 1, SIZE_3, SIZE_4);
+    InitKernelGraph(SIZE_2, SIZE_1, SIZE_3, SIZE_4);
 
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(0);
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(1);
@@ -217,7 +219,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWeightNzNot910B()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulWeightNzNotA2";
 
-    InitKernelGraph(SIZE_2, 1, SIZE_2, SIZE_3);
+    InitKernelGraph(SIZE_2, SIZE_1, SIZE_2, SIZE_3);
 
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(0);
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(1);
@@ -259,7 +261,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulElewiseAdd910B()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulElewiseAddA2";
 
-    InitKernelGraph(SIZE_3, 1, 1, SIZE_2);
+    InitKernelGraph(SIZE_3, SIZE_1, SIZE_1, SIZE_2);
 
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -299,7 +301,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulElewiseAddWeightNdNot910B()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulElewiseAddWeightNdNotA2";
 
-    InitKernelGraph(SIZE_3, 1, SIZE_4, SIZE_5);
+    InitKernelGraph(SIZE_3, SIZE_1, SIZE_4, SIZE_5);
 
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -358,7 +360,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulElewiseAddWeightNzNot910B()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulElewiseAddWeightNzNotA2";
 
-    InitKernelGraph(SIZE_3, 1, SIZE_3, SIZE_4);
+    InitKernelGraph(SIZE_3, SIZE_1, SIZE_3, SIZE_4);
 
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -411,7 +413,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWithBias()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulWithBias";
 
-    InitKernelGraph(SIZE_3, 1, 0, 1);
+    InitKernelGraph(SIZE_3, SIZE_1, SIZE_0, SIZE_1);
 
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -453,10 +455,10 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
     Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
 
     if (xTensor.desc.dims.size() == SIZE_2 && xTensor.desc.dims.at(1) > MATMUL_TRANSPOSE_THRESHOLD) {
-        if (kernelGraph_.nodes.size() != 2) {
+        if (kernelGraph_.nodes.size() != SIZE_2) {
             isParamUpdated_ = true;
         }
-        InitKernelGraph(SIZE_3, 1, 1, 2);
+        InitKernelGraph(SIZE_3, SIZE_1, SIZE_1, SIZE_2);
         Mki::Tensor &transposedXtensor = kernelGraph_.internalTensors.at(0);
 
         size_t nodeId = 0;
@@ -484,7 +486,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
         if (kernelGraph_.nodes.size() != 1) {
             isParamUpdated_ = true;
         }
-        InitKernelGraph(SIZE_3, 1, 0, 1);
+        InitKernelGraph(SIZE_3, SIZE_1, SIZE_0, SIZE_1);
         KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
 
         matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_ACCUM_ATOMIC;
@@ -503,7 +505,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulEin()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulEin";
  
-    InitKernelGraph(SIZE_2, 1, 0, 1);
+    InitKernelGraph(SIZE_2, SIZE_1, SIZE_0, SIZE_1);
  
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -529,7 +531,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulEinElewiseAdd()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMatmulEinElewiseAdd";
  
-    InitKernelGraph(SIZE_3, 1, 1, SIZE_2);
+    InitKernelGraph(SIZE_3, SIZE_1, SIZE_1, SIZE_2);
  
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -572,7 +574,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequant910B()
         matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_SYMM;
     }
 
-    InitKernelGraph(inTensorNum, 1, 0, 1);
+    InitKernelGraph(inTensorNum, SIZE_1, SIZE_0, SIZE_1);
 
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -607,7 +609,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantPerToken910B()
     ATB_LOG(INFO) << GetLogPrefix() << "SetupKernelGraphMatmulDequantPerTokenA2";
 
     size_t inTensorNum = param_.hasBias ? SIZE_5 : SIZE_4;
-    InitKernelGraph(inTensorNum, 1, 0, 1);
+    InitKernelGraph(inTensorNum, SIZE_1, SIZE_0, SIZE_1);
     
     matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_TOKEN_SYMM;
 
@@ -649,7 +651,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNdNot910B()
     } else {
         matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_SYMM;
     }
-    InitKernelGraph(inTensorNum, 1, SIZE_3, SIZE_4);
+    InitKernelGraph(inTensorNum, SIZE_1, SIZE_3, SIZE_4);
 
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -709,7 +711,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulDequantWeightNzNot910B()
     } else {
         matmulParam_.quantMode = AsdOps::OpParam::MatMul::QuantMode::PER_CHANNEL_SYMM;
     }
-    InitKernelGraph(inTensorNum, 1, SIZE_2, SIZE_3);
+    InitKernelGraph(inTensorNum, SIZE_1, SIZE_2, SIZE_3);
 
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
@@ -756,7 +758,7 @@ Status LinearOpsRunner::SetupKernelGraphMoeGateCorr()
 {
     ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphMoeGateCorr";
 
-    InitKernelGraph(SIZE_2, 1, 0, 1);
+    InitKernelGraph(SIZE_2, SIZE_1, SIZE_0, SIZE_1);
 
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(0);
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(1);

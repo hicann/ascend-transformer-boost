@@ -15,9 +15,9 @@
 extern "C" {
 #endif
 
-const size_t g_MLAPPINTENSORNUM = 24;
-const size_t g_MLAPPOUTTENSORNUMCACHEMODE = 4;
-const size_t g_MLAPPOUTTENSORNUM = 2;
+const size_t MLAPPINTENSORNUM = 24;
+const size_t MLAPPOUTTENSORNUMCACHEMODE = 4;
+const size_t MLAPPOUTTENSORNUM = 2;
 
 atb::Status AtbMLAPreprocessGetWorkspaceSize(
     const aclTensor *input, const aclTensor *gamma0, const aclTensor *beta0, const aclTensor *quantScale0,
@@ -36,8 +36,8 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     param.qRopeDim = qRopeDim;
     param.kRopeDim = kRopeDim;
     param.epsilon = epsilon;
-    param.qRotaryCoeff = qRotaryCoeff;
-    param.kRotaryCoeff = kRotaryCoeff;
+    param.qRotaryCoeff = static_cast<int32_t>(qRotaryCoeff);
+    param.kRotaryCoeff = static_cast<int32_t>(kRotaryCoeff);
     param.transposeWdq = transposeWdq;
     param.transposeWuq = transposeWuq;
     param.transposeWuk = transposeWuk;
@@ -47,12 +47,13 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create MLAPreprocess Operation failed!";
             return st;
         }
     }
     atb::VariantPack pack;
     size_t i = 0;
-    pack.inTensors.resize(g_MLAPPINTENSORNUM);
+    pack.inTensors.resize(MLAPPINTENSORNUM);
     auto status = aclTensorToAtbTensor(input, &(pack.inTensors[i++]));
     ATB_CHECK(status == ACL_ERROR_NONE, "input create failed!", return status);
     status = aclTensorToAtbTensor(gamma0, &(pack.inTensors[i++]));
@@ -138,7 +139,7 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
 
     i = 0;
     if (param.cacheMode != atb::infer::MlaPreprocessParam::CacheMode::KVCACHE) {
-        pack.outTensors.resize(g_MLAPPOUTTENSORNUMCACHEMODE);
+        pack.outTensors.resize(MLAPPOUTTENSORNUMCACHEMODE);
         status = aclTensorToAtbTensor(qOut0, &(pack.outTensors[i++]));
         ATB_CHECK(status == ACL_ERROR_NONE, "qOut0 create failed!", return status);
         status = aclTensorToAtbTensor(kvCacheOut0, &(pack.outTensors[i++]));
@@ -148,11 +149,15 @@ atb::Status AtbMLAPreprocessGetWorkspaceSize(
         status = aclTensorToAtbTensor(kvCacheOut1, &(pack.outTensors[i++]));
         ATB_CHECK(status == ACL_ERROR_NONE, "kvCacheOut1 create failed!", return status);
     } else {
-        pack.outTensors.resize(g_MLAPPOUTTENSORNUM);
+        pack.outTensors.resize(MLAPPOUTTENSORNUM);
         status = aclTensorToAtbTensor(qOut0, &(pack.outTensors[i++]));
         ATB_CHECK(status == ACL_ERROR_NONE, "qOut0 create failed!", return status);
         status = aclTensorToAtbTensor(kvCacheOut0, &(pack.outTensors[i++]));
         ATB_CHECK(status == ACL_ERROR_NONE, "kvCacheOut0 create failed!", return status);
+    }
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbMLAPreprocessGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
     }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreprocess Setup failed!", return st);

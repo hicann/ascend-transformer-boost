@@ -11,6 +11,8 @@ See LICENSE in the root of the software repository for the full text of the Lice
 #ifndef ATB_ACL_UTIL_H
 #define ATB_ACL_UTIL_H
 
+#include "atb/types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

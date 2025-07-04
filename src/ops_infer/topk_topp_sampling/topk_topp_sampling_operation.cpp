@@ -41,6 +41,8 @@ static const uint32_t LOG_PROBS_OUT_TENSOR_INDEX = 2;
 static const uint32_t LOG_PROBS_OUT_TENSOR_DIM = 2;
 static const uint32_t LAST_DIM = 1;
 
+using atbInferTopkToppSamplingType = atb::infer::TopkToppSamplingParam::TopkToppSamplingType;
+
 bool ParamCheck(const atb::infer::TopkToppSamplingParam &opParam)
 {
     if (opParam.topkToppSamplingType <= atb::infer::TopkToppSamplingParam::SAMPLING_UNDEFINED ||
@@ -58,15 +60,15 @@ OPERATION_PARAM_FUNCS(TopkToppSamplingOperation, infer::TopkToppSamplingParam)
 static Mki::OperationIr *GetOperationIrForTopkToppSampling(const infer::TopkToppSamplingParam &param)
 {
     switch (param.topkToppSamplingType) {
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_SAMPLING:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("TopkToppSamplingBatchTopKExpOperation");
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("TopkToppSamplingBatchTopKLogProbsExpOperation");
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_SAMPLING:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("TopkToppSamplingBatchTopKMultiOperation");
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("TopkToppSamplingBatchTopKLogProbsMultiOperation");
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::SINGLE_TOPK_SAMPLING:
+        case atbInferTopkToppSamplingType::SINGLE_TOPK_SAMPLING:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("TopkToppSamplingSingleTopKOperation");
         default:
             ATB_LOG(ERROR) << "UnSupported TopkToppSamplingType: " << param.topkToppSamplingType;
@@ -87,15 +89,15 @@ TopkToppSamplingOperation::~TopkToppSamplingOperation() {}
 uint32_t TopkToppSamplingOperation::GetInputNum() const
 {
     switch (param_.topkToppSamplingType) {
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_SAMPLING:
             return BATCH_TOPK_EXP_IN_TENSOR_NUM;
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_SAMPLING:
             return BATCH_TOPK_MULTI_IN_TENSOR_NUM;
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING:
             return BATCH_TOPK_EXP_IN_TENSOR_NUM;
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING:
             return BATCH_TOPK_MULTI_LOGPROBS_IN_TENSOR_NUM;
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::SINGLE_TOPK_SAMPLING:
+        case atbInferTopkToppSamplingType::SINGLE_TOPK_SAMPLING:
             return SINGLE_TOPK_IN_TENSOR_NUM;
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "UnSupported TopkToppSamplingType: " << param_.topkToppSamplingType;
@@ -106,9 +108,9 @@ uint32_t TopkToppSamplingOperation::GetInputNum() const
 uint32_t TopkToppSamplingOperation::GetOutputNum() const
 {
     switch (param_.topkToppSamplingType) {
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING:
             return LOG_PROBS_OUT_TENSOR_NUM;
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING:
             return LOG_PROBS_OUT_TENSOR_NUM;
         default:
             return OUT_TENSOR_NUM;
@@ -126,10 +128,8 @@ Status TopkToppSamplingOperation::InferShapeImpl(const SVector<TensorDesc> &inTe
     outTensorDescs.at(1) = inTensorDescs.at(0);
     outTensorDescs.at(1).shape.dims[dimNum - 1] = 1;
 
-    if (param_.topkToppSamplingType ==
-            atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
-        param_.topkToppSamplingType ==
-            atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
+    if (param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
+        param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
         outTensorDescs.at(OUT_TENSOR_LOGPROBS) = inTensorDescs.at(0);
         outTensorDescs.at(OUT_TENSOR_LOGPROBS).dtype = ACL_FLOAT;
         outTensorDescs.at(OUT_TENSOR_LOGPROBS).shape.dims[dimNum - 1] = param_.logProbsSize;
@@ -250,15 +250,15 @@ Status TopkToppSamplingOperation::CheckIntensorAndParam(const SVector<TensorDesc
         return ERROR_INVALID_TENSOR_DIM;
     }
     switch (param_.topkToppSamplingType) {
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::SINGLE_TOPK_SAMPLING:
+        case atbInferTopkToppSamplingType::SINGLE_TOPK_SAMPLING:
             return CheckSingleTopk(inTensorDescs);
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_SAMPLING:
             return CheckMutinomial(inTensorDescs);
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_SAMPLING:
             return CheckExponential(inTensorDescs);
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING:
             return CheckExponentialLogProbs(inTensorDescs);
-        case atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING:
+        case atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING:
             return CheckMutinomialLogProbs(inTensorDescs);
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "UnSupported TopkToppSamplingType: " << param_.topkToppSamplingType;
@@ -311,13 +311,11 @@ Status TopkToppSamplingOperation::SetupCheckImpl(const SVector<Tensor> &inTensor
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
-    if (param_.topkToppSamplingType ==
-            atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
-        param_.topkToppSamplingType ==
-            atb::infer::TopkToppSamplingParam::TopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
-        Status LogProbsOutTensorCheckRes = TopkToppLogProbsOutTensorCheck(outTensorDescs);
-        if (LogProbsOutTensorCheckRes != NO_ERROR) {
-            return LogProbsOutTensorCheckRes;
+    if (param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
+        param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
+        Status logProbsOutTensorCheckRes = TopkToppLogProbsOutTensorCheck(outTensorDescs);
+        if (logProbsOutTensorCheckRes != NO_ERROR) {
+            return logProbsOutTensorCheckRes;
         }
     }
     return CheckIntensorAndParam(inTensorDescs);

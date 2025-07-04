@@ -15,8 +15,8 @@
 extern "C" {
 #endif
 
-const size_t g_PAGED_CACHE_LOAD_INTENSOR_NUM = 6;
-const size_t g_PAGED_CACHE_LOAD_OUTTENSOR_NUM = 2;
+const size_t PAGED_CACHE_LOAD_INTENSOR_NUM = 6;
+const size_t PAGED_CACHE_LOAD_OUTTENSOR_NUM = 2;
 
 atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const aclTensor *valueCache,
                                               const aclTensor *blockTables, const aclTensor *contextLens,
@@ -32,15 +32,16 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
     if (op != nullptr && *op == nullptr) {
         auto st = CreateOperation(param, op);
         if (st != atb::NO_ERROR) {
+            ATB_LOG(ERROR) << "Create PagedCacheLoad Operation failed!";
             return st;
         }
     }
     atb::VariantPack pack;
     size_t i = 0;
     if (param.hasSeqStarts) {
-        pack.inTensors.resize(g_PAGED_CACHE_LOAD_INTENSOR_NUM + 1);
+        pack.inTensors.resize(PAGED_CACHE_LOAD_INTENSOR_NUM + 1);
     } else {
-        pack.inTensors.resize(g_PAGED_CACHE_LOAD_INTENSOR_NUM);
+        pack.inTensors.resize(PAGED_CACHE_LOAD_INTENSOR_NUM);
     }
 
     auto status = aclTensorToAtbTensor(keyCache, &(pack.inTensors[i++]));
@@ -61,12 +62,16 @@ atb::Status AtbPagedCacheLoadGetWorkspaceSize(const aclTensor *keyCache, const a
     }
 
     i = 0;
-    pack.outTensors.resize(g_PAGED_CACHE_LOAD_OUTTENSOR_NUM);
+    pack.outTensors.resize(PAGED_CACHE_LOAD_OUTTENSOR_NUM);
     status = aclTensorToAtbTensor(key, &(pack.outTensors[i++]));
     ATB_CHECK(status == atb::NO_ERROR, "key create failed!", return status);
     status = aclTensorToAtbTensor(value, &(pack.outTensors[i++]));
     ATB_CHECK(status == atb::NO_ERROR, "value create failed!", return status);
 
+    if (op == nullptr || *op == nullptr) {
+        ATB_LOG(ERROR) << "AtbPagedCacheLoadGetWorkspaceSize opeartion pointer is nullptr!";
+        return atb::ERROR_INVALID_OPERATION_ADDR;
+    }
     atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbPagedCacheLoad Setup failed!", return st);
     return atb::NO_ERROR;
