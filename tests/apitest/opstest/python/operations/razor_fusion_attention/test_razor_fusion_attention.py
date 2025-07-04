@@ -116,10 +116,10 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         self.layer_id = torch.from_numpy(np.array([0], dtype=np.int32)).to(torch.int32)
         self.q_max_seq = np.max(self.q_seqlen)
         self.kv_max_seq = np.max(self.kv_seqlen)
-        q = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(self.q_ntokens, heads * self.embeddim)))
+        q = torch.from_numpy(np.random.uniform(-5.0, 5.0, size=(self.q_ntokens, heads * self.embeddim)))
         self.q = q.to(data_type)
-        self.k = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(self.layer_id[0] + 1, batch, self.max_seq, kv_head * self.embeddim))).to(data_type)
-        self.v = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(self.layer_id[0] + 1, batch, self.max_seq, kv_head * self.embeddimv))).to(data_type)
+        self.k = torch.from_numpy(np.random.uniform(-5.0, 5.0, size=(self.layer_id[0] + 1, batch, self.max_seq, kv_head * self.embeddim))).to(data_type)
+        self.v = torch.from_numpy(np.random.uniform(-5.0, 5.0, size=(self.layer_id[0] + 1, batch, self.max_seq, kv_head * self.embeddimv))).to(data_type)
 
         self.gen_mask(batch, data_type, mask_type)
         logging.debug("**********data gen shape***********")
