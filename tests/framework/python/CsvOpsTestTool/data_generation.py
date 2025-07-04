@@ -457,8 +457,12 @@ class LinearOperation(DataGen):
         accum = MatmulCommon.accum_golden
         pertoken_scale = MatmulCommon.pertoken_scale_golden
         if out_data_type == -1:
-            x = x.to(torch.float64)
-            weight = weight.to(torch.float64)
+            if accum is not None:
+                x = x.to(torch.float32)
+                weight = weight.to(torch.float32)
+            else:
+                x = x.to(torch.float64)
+                weight = weight.to(torch.float64)
             if bias is not None and MatmulCommon.input_golden.dtype != torch.float16:
                 bias = bias.to(torch.float32)
         else:
@@ -480,7 +484,7 @@ class LinearOperation(DataGen):
                 x_i = x[i:i + 1, :].squeeze(0)
                 weight_i = weight[i:i + 1, :].squeeze(0)
                 output_i = torch.matmul(x_i, weight_i)
-                if MatmulCommon.input_golden.dtype == torch.bfloat16:
+                if MatmulCommon.input_golden.dtype == torch.bfloat16 and bias is not None:
                     output_i = output_i.to(torch.bfloat16)
                 if bias is not None:
                     output_i = output_i.to(bias.dtype) + bias[i:i + 1, :]
@@ -498,7 +502,7 @@ class LinearOperation(DataGen):
         else:
             golden_result = torch.matmul(x, weight)
             if bias is not None:
-                if MatmulCommon.input_golden.dtype == torch.bfloat16:
+                if MatmulCommon.input_golden.dtype == torch.bfloat16 and bias is not None:
                     golden_result = golden_result.to(torch.bfloat16)
                 golden_result = golden_result.to(bias.dtype) + bias
             if deq_scale is not None:
