@@ -317,9 +317,7 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         go_high = None
         block_size = 128
         kv_seqlen = key.shape[2]
-        print("query.shape", query.shape)
         mask = self.mask_info[1](self.mask, batch_idx, query.shape[1], kv_seqlen)[0]
-        print(mask.shape)
         for kv_start in range(0, kv_seqlen - 1, block_size):
             sub_len = block_size
             if kv_start + block_size > kv_seqlen:
@@ -372,13 +370,9 @@ class TestRazorFusionAttention(operation_test.OperationTest):
         go_high = go_high.reshape((go_high.shape[0], -1))
         return torch.from_numpy(go), torch.from_numpy(go_high)
 
+
     def golden_calc(self, in_tensors):
-        print("golden_calc")
-        if self.dim_num == 3:
-            self.golden_out = self.golden_out.unsqueeze(1)
-        golden_out = self.golden_out.half().npu()
-        print(golden_out.shape)
-        print("golden_calc end")
+        golden_out = self.golden_out.clone().detach().requires_grad_(True).half().npu()
         return [golden_out]
 
     def golden_compare(self, out_tensors, golden_tensors):
