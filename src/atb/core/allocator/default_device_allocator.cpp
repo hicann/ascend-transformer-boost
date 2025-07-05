@@ -24,11 +24,11 @@ DefaultDeviceAllocator::~DefaultDeviceAllocator()
         currentAllocateSize_ -= it->second;
 #ifdef _DEBUG
         ATB_LOG(INFO) << "DefaultDeviceAllocator::~DefaultDeviceAllocator aclrtFree free device buffer: " << it->first
-                      << ", which the device bufferSize is " << it->second << ", currentAllocateSize_: "
-                      << currentAllocateSize_;
+                      << ", which the device bufferSize is " << it->second
+                      << ", currentAllocateSize_: " << currentAllocateSize_;
 #else
-        ATB_LOG(INFO) << "DefaultDeviceAllocator::~DefaultDeviceAllocator aclrtFree free device bufferSize: " << it->second
-                      << ", and currentAllocateSize_: " << currentAllocateSize_;
+        ATB_LOG(INFO) << "DefaultDeviceAllocator::~DefaultDeviceAllocator aclrtFree free device bufferSize: "
+                      << it->second << ", and currentAllocateSize_: " << currentAllocateSize_;
 #endif
     }
 }
@@ -52,10 +52,11 @@ void *DefaultDeviceAllocator::Allocate(size_t bufferSize)
     memMap.insert(std::make_pair(addr, bufferSize));
 #ifdef _DEBUG
     ATB_LOG(INFO) << "DefaultDeviceAllocator::Allocate device buffer success, deivce buffer is " << addr
-                  << ", which bufferSize is " << bufferSize << " and the currentAllocateSize_: " << currentAllocateSize_;
+                  << ", which bufferSize is " << bufferSize
+                  << " and the currentAllocateSize_: " << currentAllocateSize_;
 #else
-    ATB_LOG(INFO) << "DefaultDeviceAllocator::Allocate device buffer success, bufferSize is " << bufferSize << " currentAllocateSize_: "
-                  << currentAllocateSize_;
+    ATB_LOG(INFO) << "DefaultDeviceAllocator::Allocate device buffer success, bufferSize is " << bufferSize
+                  << " currentAllocateSize_: " << currentAllocateSize_;
 #endif
     return addr;
 }
@@ -80,9 +81,9 @@ Status DefaultDeviceAllocator::Deallocate(void *addr)
     currentAllocateSize_ -= it->second;
 #ifdef _DEBUG
     ATB_LOG(INFO) << "DefaultDeviceAllocator::Deallocate device buffer success, free device buffer: " << addr
-                  << ", which bufferSize is "<< it->second << ", currentAllocateSize_: " << currentAllocateSize_;
+                  << ", which bufferSize is " << it->second << ", currentAllocateSize_: " << currentAllocateSize_;
 #else
-    ATB_LOG(INFO) << "DefaultDeviceAllocator::Deallocate device buffer success, free bufferSize: "<< it->second
+    ATB_LOG(INFO) << "DefaultDeviceAllocator::Deallocate device buffer success, free bufferSize: " << it->second
                   << ", currentAllocateSize_: " << currentAllocateSize_;
 #endif
     memMap.erase(addr);

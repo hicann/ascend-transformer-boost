@@ -287,8 +287,7 @@ int main()
     outtensorDescs.resize(outTensorNum);
     pack.outTensors.resize(outTensorNum);
     operation->InferShape(intensorDescs, outtensorDescs);
-    aclError ret;
-    ret = CreateOutTensors(pack.outTensors, outtensorDescs);
+    aclError ret = CreateOutTensors(pack.outTensors, outtensorDescs);
     if (ret != 0) {
         exit(ret);
     }

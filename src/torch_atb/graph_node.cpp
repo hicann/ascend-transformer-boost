@@ -32,7 +32,7 @@ bool GraphNode::FindOutput(const std::string &id) const
     return it != outTensorIds.end();
 }
 
-void GraphNode::SetStreamId(uint32_t streamId)
+void GraphNode::SetStreamId(uint32_t streamId) const
 {
     if (!operation) {
         throw std::runtime_error("Set execute stream id fail, operation is nullptr");

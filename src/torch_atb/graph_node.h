@@ -22,7 +22,7 @@ public:
     void SetOperation(atb::Operation *op);
     std::string GetOutput(size_t index) const;
     bool FindOutput(const std::string &id) const;
-    void SetStreamId(uint32_t streamId);
+    void SetStreamId(uint32_t streamId) const;
     uint32_t GetStreamId() const;
 
     std::vector<std::string> inTensorIds;

@@ -48,7 +48,7 @@ ContextBase::~ContextBase() noexcept
     }
 }
 
-Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc)
+Status ContextBase::Init(const std::function<void *(size_t)> &alloc, const std::function<void(void *)> &dealloc)
 {
     executeStreams_.resize(DEFAULT_EXECUTE_STREAM_NUMBER);
 
@@ -63,17 +63,19 @@ Status ContextBase::Init(const std::function<void*(size_t)>& alloc, const std::f
         return st;
     }
     if (alloc && dealloc) {
-        ATB_LOG(INFO) << "Using the Custom Allocate Function and Deallocate Funciton to allocate and deallocate device tiling buffer";
+        ATB_LOG(INFO) << "Using the Custom Allocate Function and Deallocate Funciton to allocate and "
+                         "deallocate device tiling buffer";
         allocateFunc_ = alloc;
         deallocateFunc_ = dealloc;
     } else if (!alloc && !dealloc) {
-        ATB_LOG(INFO) << "Using the Default Allocate Function and Default Deallocate Function to allocate and deallocate device tiling buffer";
+        ATB_LOG(INFO) << "Using the Default Allocate Function and Default Deallocate Function to allocate and "
+                         "deallocate device tiling buffer";
     } else {
         ATB_LOG(ERROR) << "Can not support to pass in only Allocate Function or Deallocate Function";
         return ERROR_INVALID_PARAM;
     }
-    deviceTilingBufferPool_ = std::make_unique<DeviceTilingBufferPool>(GetSingleton<Config>().GetDeviceTilingBlockNum(),
-                                                                       TILING_BUFFER_BLOCK_SIZE, allocateFunc_, deallocateFunc_);
+    deviceTilingBufferPool_ = std::make_unique<DeviceTilingBufferPool>(
+        GetSingleton<Config>().GetDeviceTilingBlockNum(), TILING_BUFFER_BLOCK_SIZE, allocateFunc_, deallocateFunc_);
     if (!deviceTilingBufferPool_) {
         return ERROR_OUT_OF_HOST_MEMORY;
     }
@@ -175,7 +177,7 @@ uint8_t *ContextBase::GetHostTilingBuffer()
     // 如果走图模式的话直接使用hostAllocator申请内存
     if (mode_ == GRAPH_LAUNCH_MODE) {
         ATB_LOG(INFO) << "At GRAPH_LAUNCH_MODE, contextBase start allocate host tiling buffer using Allocator";
-        return reinterpret_cast<uint8_t*>(hostAllocator_->Allocate(TILING_BUFFER_BLOCK_SIZE));
+        return reinterpret_cast<uint8_t *>(hostAllocator_->Allocate(TILING_BUFFER_BLOCK_SIZE));
     }
     return hostTilingBufferPool_ ? hostTilingBufferPool_->GetBuffer() : nullptr;
 }
@@ -185,7 +187,7 @@ uint8_t *ContextBase::GetDeviceTilingBuffer()
     // 如果走图模式的话直接使用deviceAllocator申请内存
     if (mode_ == GRAPH_LAUNCH_MODE) {
         ATB_LOG(INFO) << "At GRAPH_LAUNCH_MODE, contextBase start allocate device tiling buffer using Allocator";
-        return reinterpret_cast<uint8_t*>(deviceAllocator_->Allocate(TILING_BUFFER_BLOCK_SIZE));
+        return reinterpret_cast<uint8_t *>(deviceAllocator_->Allocate(TILING_BUFFER_BLOCK_SIZE));
     }
     return deviceTilingBufferPool_ ? deviceTilingBufferPool_->GetBuffer() : nullptr;
 }
@@ -349,7 +351,7 @@ Status ContextBase::FreeArgsHostBuffer(void *addr)
 {
     return hostAllocator_->Deallocate(addr);
 }
-bool ContextBase::GetLaunchWithTilingStatus()
+bool ContextBase::GetLaunchWithTilingStatus() const
 {
     return mode_ != GRAPH_LAUNCH_MODE;
 }

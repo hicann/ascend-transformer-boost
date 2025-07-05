@@ -81,8 +81,7 @@ Status BlockCopyOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTens
         ATB_LOG(ERROR) << GetLogPrefix() << "indices shape is not " << INDICES_DIM;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (!TensorUtil::TensorShapeEqual(inTensorDescs.at(INPUT_CUMSUM).shape,
-                                      inTensorDescs.at(INPUT_SRC_BLOCK).shape)) {
+    if (!TensorUtil::TensorShapeEqual(inTensorDescs.at(INPUT_CUMSUM).shape, inTensorDescs.at(INPUT_SRC_BLOCK).shape)) {
         ATB_LOG(ERROR) << GetLogPrefix() << "cumSum shape is not equal srcBlockIndices shape";
         return ERROR_INVALID_TENSOR_DIM;
     }
