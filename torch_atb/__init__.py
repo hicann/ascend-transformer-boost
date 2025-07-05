@@ -13,7 +13,6 @@ from pathlib import Path
 import ctypes
 import torch
 import torch_npu
-from torch_atb._C import *
 
 package_dir = Path(__file__).resolve().parent
 
@@ -36,6 +35,7 @@ def _init_env_params():
 _load_atb_libs()
 _init_env_params()
 
+from torch_atb._C import *
 
 def get_atb_home_path():
     return os.environ.get("ATB_HOME_PATH")
