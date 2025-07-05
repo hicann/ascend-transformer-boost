@@ -13,29 +13,29 @@ import acl
 import torch
 import torch_atb
 
-s = 128 # Sequence Length
-h = 16 # Number of Heads
-d_k = 64 # Head Dimension
-d_v = 64 # Value Dimension (vHiddenSize)
-output_dim = 64
-output_dim_1 = 128
+S = 128 # Sequence Length
+H = 16 # Number of Heads
+D_K = 64 # Head Dimension
+D_V = 64 # Value Dimension (vHiddenSize)
+OUTPUT_DIM = 64
+OUTPUT_DIM_1 = 128
 
 
 def get_inputs():
     torch.manual_seed(233)
     # 单batch场景，batch不为1时s应为seq len * batch
-    query = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
-    key = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
-    value = (torch.randn((s, 16, d_v), dtype=torch.float16)).npu()
-    seqLen = (torch.tensor([s], dtype=torch.int32))
-    input_0 = (torch.randn((16, d_k), dtype=torch.float16)).npu()
-    gamma = (torch.randn((s, 16, d_k), dtype=torch.float16)).npu()
-    beta = (torch.zeros((s, 16, d_k), dtype=torch.float16)).npu()
-    weight_0 = (torch.randn((output_dim_1, output_dim), dtype=torch.float16)).npu()
-    bias_0 = (torch.randn((output_dim_1,), dtype=torch.float16)).npu()
-    weight_1 = (torch.randn((output_dim_1, output_dim_1), dtype=torch.float16)).npu()
-    bias_1 = (torch.randn((output_dim_1,), dtype=torch.float16)).npu()
-    inputs = [query, key, value, seqLen, input_0, gamma, beta, weight_0, bias_0, weight_1, bias_1]
+    query = (torch.randn((S, 16, D_K), dtype=torch.float16)).npu()
+    key = (torch.randn((S, 16, D_K), dtype=torch.float16)).npu()
+    value = (torch.randn((S, 16, D_V), dtype=torch.float16)).npu()
+    seqlen = (torch.tensor([S], dtype=torch.int32))
+    input_0 = (torch.randn((16, D_K), dtype=torch.float16)).npu()
+    gamma = (torch.randn((S, 16, D_K), dtype=torch.float16)).npu()
+    beta = (torch.zeros((S, 16, D_K), dtype=torch.float16)).npu()
+    weight_0 = (torch.randn((OUTPUT_DIM_1, OUTPUT_DIM), dtype=torch.float16)).npu()
+    bias_0 = (torch.randn((OUTPUT_DIM_1,), dtype=torch.float16)).npu()
+    weight_1 = (torch.randn((OUTPUT_DIM_1, OUTPUT_DIM_1), dtype=torch.float16)).npu()
+    bias_1 = (torch.randn((OUTPUT_DIM_1,), dtype=torch.float16)).npu()
+    inputs = [query, key, value, seqlen, input_0, gamma, beta, weight_0, bias_0, weight_1, bias_1]
     return inputs
 
 
@@ -44,12 +44,12 @@ def graph_build():
     query = graph.add_input("query")
     key = graph.add_input("key")
     value = graph.add_input("value")
-    seqLen = graph.add_input("seqLen")
+    seqlen = graph.add_input("seqLen")
     self_attention_param = torch_atb.SelfAttentionParam()
     self_attention_param.head_num = 16
     self_attention_param.kv_head_num = 16
     self_attention_param.calc_type = torch_atb.SelfAttentionParam.CalcType.PA_ENCODER
-    self_attention = graph.add_node([query, key, value, seqLen], self_attention_param)
+    self_attention = graph.add_node([query, key, value, seqlen], self_attention_param)
     self_attention_out = self_attention.get_output(0)
 
     input_0 = graph.add_input("input_0")
@@ -81,14 +81,14 @@ def graph_build():
     linear_1_out = linear_1.get_output(0)
 
     graph.mark_output(linear_1_out)
-    Graph = graph.build()
-    return Graph
+    graph_out = graph.build()
+    return graph_out
 
 
 def run():
-    Graph = graph_build()
+    graph_op = graph_build()
     inputs = get_inputs()
-    results = Graph.forward(inputs)
+    results = graph_op.forward(inputs)
     logging.info(results)
 
 

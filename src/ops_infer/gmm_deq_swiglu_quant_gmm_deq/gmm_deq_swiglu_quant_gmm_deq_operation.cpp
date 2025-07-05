@@ -341,7 +341,7 @@ std::shared_ptr<Runner> GmmDeqSwigluQuantGmmDeqOperation::CreateRunner(Context &
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
         return std::make_shared<GmmDeqSwigluQuantGmmDeqOpsRunner>(param_);
     }
-    return std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); });
+    return std::shared_ptr<Runner>(runner, [poolPtr = &pool](Runner *runner) { poolPtr->FreeRunner(runner); });
 }
 
 nlohmann::json GmmDeqSwigluQuantGmmDeqOperation::GetParamJson() const

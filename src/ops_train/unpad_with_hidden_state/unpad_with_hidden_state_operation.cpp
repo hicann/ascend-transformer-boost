@@ -149,7 +149,7 @@ std::shared_ptr<Runner> UnpadWithHiddenStateOperation::CreateRunner(Context &con
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
         return std::make_shared<UnpadWithHiddenStateOpsRunner>(param_);
     }
-    return std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); });
+    return std::shared_ptr<Runner>(runner, [poolPtr = &pool](Runner *runner) { poolPtr->FreeRunner(runner); });
 }
 
 train::UnpadWithHiddenStateParam UnpadWithHiddenStateOperation::GetParam() const

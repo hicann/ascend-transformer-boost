@@ -13,7 +13,6 @@
 #include "../demo_util.h"
 
 namespace {
-namespace {
 const int32_t DEVICE_ID = 1;
 const uint32_t BLOCK_SIZE = 128;
 int32_t blockNum = 64;
@@ -25,15 +24,6 @@ const int32_t ALIGN16 = 16;
 const int32_t NUM4 = 4;
 
 std::vector<int32_t> contextLensHost;
-
-const int32_t INPUT_NUM = 5;
-const int32_t DTYPE_IDX = 1;
-const int32_t TOKEN_NUM_IDX = 2;
-const int32_t HEAD_NUM_IDX = 3;
-const int32_t K_SEQLEN_IDX = 4;
-
-const int32_t RUNS = 2;
-} // namespace
 
 const int32_t INPUT_NUM = 5;
 const int32_t DTYPE_IDX = 1;
