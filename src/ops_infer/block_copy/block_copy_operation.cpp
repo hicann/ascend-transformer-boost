@@ -76,18 +76,18 @@ Status BlockCopyOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTens
         ATB_LOG(ERROR) << GetLogPrefix() << "cache shape is not " << CACHE_DIM;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (inTensorDescs.at(INPUT_SRC_BLOCK_IDX).shape.dimNum != INDICES_DIM ||
-        inTensorDescs.at(INPUT_DST_BLOCK_IDX).shape.dimNum != INDICES_DIM) {
+    if (inTensorDescs.at(INPUT_SRC_BLOCK).shape.dimNum != INDICES_DIM ||
+        inTensorDescs.at(INPUT_DST_BLOCK).shape.dimNum != INDICES_DIM) {
         ATB_LOG(ERROR) << GetLogPrefix() << "indices shape is not " << INDICES_DIM;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (!TensorUtil::TensorShapeEqual(inTensorDescs.at(INPUT_CUMSUM_IDX).shape,
-                                      inTensorDescs.at(INPUT_SRC_BLOCK_IDX).shape)) {
+    if (!TensorUtil::TensorShapeEqual(inTensorDescs.at(INPUT_CUMSUM).shape,
+                                      inTensorDescs.at(INPUT_SRC_BLOCK).shape)) {
         ATB_LOG(ERROR) << GetLogPrefix() << "cumSum shape is not equal srcBlockIndices shape";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (inTensorDescs.at(INPUT_SRC_BLOCK_IDX).shape.dims[0] > blockCount ||
-        inTensorDescs.at(INPUT_DST_BLOCK_IDX).shape.dims[0] > blockCount) {
+    if (inTensorDescs.at(INPUT_SRC_BLOCK).shape.dims[0] > blockCount ||
+        inTensorDescs.at(INPUT_DST_BLOCK).shape.dims[0] > blockCount) {
         ATB_LOG(ERROR) << GetLogPrefix() << "indices shape[0] is greater than blockCount";
         return ERROR_INVALID_TENSOR_DIM;
     }
@@ -115,18 +115,18 @@ Status BlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         ATB_LOG(ERROR) << GetLogPrefix() << "cache shape is not 4";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (inTensors.at(INPUT_SRC_BLOCK_IDX).desc.shape.dimNum != INDICES_DIM ||
-        inTensors.at(INPUT_DST_BLOCK_IDX).desc.shape.dimNum != INDICES_DIM) {
+    if (inTensors.at(INPUT_SRC_BLOCK).desc.shape.dimNum != INDICES_DIM ||
+        inTensors.at(INPUT_DST_BLOCK).desc.shape.dimNum != INDICES_DIM) {
         ATB_LOG(ERROR) << GetLogPrefix() << "indices shape is not 1";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (!TensorUtil::TensorShapeEqual(inTensors.at(INPUT_CUMSUM_IDX).desc.shape,
-                                      inTensors.at(INPUT_SRC_BLOCK_IDX).desc.shape)) {
+    if (!TensorUtil::TensorShapeEqual(inTensors.at(INPUT_CUMSUM).desc.shape,
+                                      inTensors.at(INPUT_SRC_BLOCK).desc.shape)) {
         ATB_LOG(ERROR) << GetLogPrefix() << "cumSum shape is not equal srcBlockIndices shape";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (inTensors.at(INPUT_SRC_BLOCK_IDX).desc.shape.dims[0] > blockCount ||
-        inTensors.at(INPUT_DST_BLOCK_IDX).desc.shape.dims[0] > blockCount) {
+    if (inTensors.at(INPUT_SRC_BLOCK).desc.shape.dims[0] > blockCount ||
+        inTensors.at(INPUT_DST_BLOCK).desc.shape.dims[0] > blockCount) {
         ATB_LOG(ERROR) << GetLogPrefix() << "indices shape[0] is greater than blockCount";
         return ERROR_INVALID_TENSOR_DIM;
     }

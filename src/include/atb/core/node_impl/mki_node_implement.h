@@ -76,8 +76,20 @@ private:
     void *argsHostBuffer_ = nullptr;
 };
 
-static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept;
-
-static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> ATB_MKI_ERROR_HASH = InitAtbMkiErrorHash();
+static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> ATB_MKI_ERROR_HASH = {
+    {Mki::ErrorType::NO_ERROR, atb::ErrorType::NO_ERROR},
+    {Mki::ErrorType::ERROR_INVALID_VALUE, atb::ErrorType::ERROR_INVALID_PARAM},
+    {Mki::ErrorType::ERROR_OPERATION_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
+    {Mki::ErrorType::ERROR_TACTIC_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
+    {Mki::ErrorType::ERROR_KERNEL_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
+    {Mki::ErrorType::ERROR_ATTR_NOT_EXIST, atb::ErrorType::ERROR_INVALID_PARAM},
+    {Mki::ErrorType::ERROR_ATTR_INVALID_TYPE, atb::ErrorType::ERROR_INVALID_PARAM},
+    {Mki::ErrorType::ERROR_LAUNCH_KERNEL_ERROR, atb::ErrorType::ERROR_RT_FAIL},
+    {Mki::ErrorType::ERROR_SYNC_STREAM_ERROR, atb::ErrorType::ERROR_RT_FAIL},
+    {Mki::ErrorType::ERROR_INFERSHAPE_ERROR, atb::ErrorType::ERROR_RT_FAIL},
+    {Mki::ErrorType::ERROR_NOT_CONSISTANT, atb::ErrorType::ERROR_INVALID_PARAM},
+    {Mki::ErrorType::ERROR_ALLOC_HOST, atb::ErrorType::ERROR_OUT_OF_HOST_MEMORY},
+    {Mki::ErrorType::ERROR_MEMERY_COPY_ERROR, atb::ErrorType::ERROR_COPY_HOST_MEMORY_FAIL},
+    {Mki::ErrorType::ERROR_RUN_TIME_ERROR, atb::ErrorType::ERROR_RT_FAIL}};
 } // namespace atb
 #endif

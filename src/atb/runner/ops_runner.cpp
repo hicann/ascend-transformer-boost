@@ -628,7 +628,6 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
             for (uint64_t tensorId = 0; tensorId < inTensorsSize; tensorId++) {
                 Mki::Tensor &tensor = inTensors.at(tensorId);
                 if (node.inTensorsType.at(tensorId) == TensorType::INTERMEDIATE_TENSOR) {
-                    // 转化指针data为uint64_t，计算
                     tensor.data = runnerVariantPack.intermediateBuffer +
                                   reinterpret_cast<uint64_t>(node.inTensors.at(tensorId)->data);
                     runnerVariantPack.mstxMemRegister->AddTensorMemRegions(

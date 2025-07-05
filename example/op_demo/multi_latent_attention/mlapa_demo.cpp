@@ -63,8 +63,8 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDat
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * headNum * ROPE_HEAD_SIZE, 0),
                                         dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, ROPE_HEAD_SIZE}, qRope,
                                         dtype));
-    int maxBLOCK_NUMPerSeq = (kSeqLen + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    blockNum = tokenNum * maxBLOCK_NUMPerSeq;
+    int maxBlockNumPerSeq = (kSeqLen + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    blockNum = tokenNum * maxBlockNumPerSeq;
     // 创建shape为[blockNum, 16, BLOCK_SIZE, 32]的输入ctKV tensor
     atb::Tensor ctKV;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(blockNum * BLOCK_SIZE * DIM512, 1),
@@ -76,19 +76,16 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDat
     CHECK_STATUS(CreateTensorFromVector(
         contextPtr, stream, std::vector<__fp16>(blockNum * BLOCK_SIZE * ROPE_HEAD_SIZE, 0), dtype,
         aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, NUM4, BLOCK_SIZE, ALIGN16}, kRope, dtype));
-    // 创建shape为[tokenNum, maxBLOCK_NUMPerSeq]的输入blockTables tensor
-    auto blockTablesHost = std::vector<int32_t>(tokenNum * maxBLOCK_NUMPerSeq);
+    // 创建shape为[tokenNum, maxBlockNumPerSeq]的输入blockTables tensor
+    auto blockTablesHost = std::vector<int32_t>(tokenNum * maxBlockNumPerSeq);
     for (size_t i = 0; i < tokenNum; i++) {
-        for (size_t j = 0; j < maxBLOCK_NUMPerSeq; j++) {
-            blockTablesHost[i * maxBLOCK_NUMPerSeq + j] = i * maxBLOCK_NUMPerSeq + j;
-        for (size_t j = 0; j < maxBLOCK_NUMPerSeq; j++) {
-            blockTablesHost[i * maxBLOCK_NUMPerSeq + j] = i * maxBLOCK_NUMPerSeq + j;
+        for (size_t j = 0; j < maxBlockNumPerSeq; j++) {
+            blockTablesHost[i * maxBlockNumPerSeq + j] = i * maxBlockNumPerSeq + j;
         }
     }
     atb::Tensor blockTables;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, blockTablesHost, ACL_INT32, aclFormat::ACL_FORMAT_ND,
-                                        {tokenNum, maxBLOCK_NUMPerSeq}, blockTables));
-                                        {tokenNum, maxBLOCK_NUMPerSeq}, blockTables));
+                                        {tokenNum, maxBlockNumPerSeq}, blockTables));
     // 创建shape为[tokenNum]的输入contextLens hostTensor
     contextLensHost = std::vector<int32_t>(tokenNum, kSeqLen);
     atb::Tensor contextLens;
@@ -154,7 +151,6 @@ atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int 
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     for (size_t i = 0; i < RUNS; i++) {
-    for (size_t i = 0; i < RUNS; i++) {
         std::cout << "tokenNum: " << tokenNum << " headNum: " << headNum << " loop: " << i << std::endl;
         // mlaPreprocess执行
         mlaOp->Execute(variantPack, workspacePtr, workspaceSize, context);
@@ -189,11 +185,6 @@ int main(int argc, char **argv)
     int headNum = 128;
     int kSeqLen = 1500;
     aclDataType dtype = ACL_FLOAT16;
-    if (argc == INPUT_NUM) {
-        dtypeStr = argv[DTYPE_IDX];
-        tokenNum = std::stoi(argv[TOKEN_NUM_IDX]);
-        headNum = std::stoi(argv[HEAD_NUM_IDX]);
-        kSeqLen = std::stoi(argv[K_SEQLEN_IDX]);
     if (argc == INPUT_NUM) {
         dtypeStr = argv[DTYPE_IDX];
         tokenNum = std::stoi(argv[TOKEN_NUM_IDX]);

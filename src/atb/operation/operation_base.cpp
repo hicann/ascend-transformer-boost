@@ -157,7 +157,7 @@ void OperationBase::InitEmptyOutTensorPerms() const
     }
     ATB_LOG(INFO) << GetLogPrefix() << "InitEmptyOutTensorPerms finished:" << emptyOutTensorPerms_;
 }
- 
+
 SVector<bool> OperationBase::GetEmptyOutTensorPermissions() const
 {
     if (emptyOutTensorPerms_.size() == 0) {
@@ -780,15 +780,14 @@ Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType>
             continue;
         }
         if (!variantPackOutTensor.deviceData && !variantPackOutTensor.hostData) {
-            ATB_LOG(ERROR) << prefix << "execute variantPack.outTensors(" << i
-                           << ") deviceData&hostData is null";
+            ATB_LOG(ERROR) << prefix << "execute variantPack.outTensors(" << i << ") deviceData&hostData is null";
             return ERROR_INVALID_PARAM;
         }
     }
     return NO_ERROR;
 }
 
-Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
+Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack) const
 {
     Status st = NO_ERROR;
     st = ExecuteVariantPackInTensorCheck(variantPack.inTensors);
@@ -958,10 +957,13 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
             // 如果workspace发生了变化，计算workspace变化带来的偏移量时需要再加上workspaceBufferSize才是中间tensor对应内存的起始地址
             isWorkspaceChange = true;
             runnerVariantPack_.intermediateBuffer = workspace -
-            reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPack_.workspaceBufferSize;
+                                                    reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) +
+                                                    runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
-            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
-                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+            ATB_LOG(INFO) << GetLogPrefix()
+                          << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace)
+                          << ", and the runnerVariantPack_.intermediateBuffer: "
                           << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
 #endif
             runnerVariantPack_.workspaceBuffer = workspace;
@@ -970,10 +972,13 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
         } else {
             isWorkspaceChange = true;
             runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
-            reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
+                                                    reinterpret_cast<uint64_t>(workspace) +
+                                                    runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
-            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
-                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+            ATB_LOG(INFO) << GetLogPrefix()
+                          << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace)
+                          << ", and the runnerVariantPack_.intermediateBuffer: "
                           << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
 #endif
             runnerVariantPack_.workspaceBuffer = workspace;
@@ -1245,7 +1250,8 @@ void OperationBase::FillHostTilingBuffer()
         }
 
         Mki::Timer runnerFillHostTilingTimer;
-        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize, runnerVariantPack_.context);
+        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize,
+                                                  runnerVariantPack_.context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "fill host tiling buffer fail";
             return;
@@ -1364,12 +1370,12 @@ aclrtStream OperationBase::GetExecuteStream(Context *context) const
     return streams.at(streamId_);
 }
 
-Status OperationBase::CopyArgsToDevice(Context *context)
+Status OperationBase::CopyArgsToDevice(Context *context) const
 {
     Status st = NO_ERROR;
 #ifdef _DEBUG
     ATB_LOG(DEBUG) << GetLogPrefix() << "args in graphMode is:";
-    const size_t counter =  argsBufferSize_ / sizeof(void *);
+    const size_t counter = argsBufferSize_ / sizeof(void *);
     for (size_t i = 0; i < counter; i++) {
         ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
     }

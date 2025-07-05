@@ -23,7 +23,7 @@ public:
     std::string GetOutput(size_t index) const;
     bool FindOutput(const std::string &id) const;
     void SetStreamId(uint32_t streamId);
-    uint32_t GetStreamId();
+    uint32_t GetStreamId() const;
 
     std::vector<std::string> inTensorIds;
     std::vector<std::string> outTensorIds;

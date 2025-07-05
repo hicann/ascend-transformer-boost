@@ -87,7 +87,7 @@ private:
                         Context *context);
     template <typename TensorType> Status ExecuteVariantPackInTensorCheck(const SVector<TensorType> &inTensors) const;
     template <typename TensorType> Status ExecuteVariantPackOutTensorCheck(const SVector<TensorType> &outTensors) const;
-    Status ExecuteVariantPackCheck(const VariantPack &variantPack);
+    Status ExecuteVariantPackCheck(const VariantPack &variantPack) const;
     void InitRunnerVariantPack(const VariantPack &variantPack);
     Status CopyHostTilingToDevice(aclrtStream stream);
     Status CopyTilingToDevice();
@@ -116,7 +116,7 @@ private:
     Status EagerModeLaunch();
     Status GraphModeLaunch();
     void ProfilingPrepare();
-    Status CopyArgsToDevice(Context *context);
+    Status CopyArgsToDevice(Context *context) const;
 
 private:
     std::string logPrefix_;

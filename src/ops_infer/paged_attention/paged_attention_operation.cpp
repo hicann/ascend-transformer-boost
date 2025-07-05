@@ -520,9 +520,7 @@ Status PagedAttentionOperation::KVCacheDimCheck910B(const SVector<TensorDesc> &i
             ATB_LOG(ERROR) << "headSize of keyCache and valueCache should be same";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        if (headSize > MAX_BLOCK_SIZE ||
-            headSize * blockSize >
-                BLOCK_SIZE_DIM128 * BLOCK_SIZE_DIM128) { // 256: 310p headSize大小限制  // 128: 大小限制
+        if (headSize > MAX_BLOCK_SIZE || headSize * blockSize > BLOCK_SIZE_DIM128 * BLOCK_SIZE_DIM128) {
             ATB_LOG(ERROR) << "head_size of keyCache should be no greater than 256 and "
                            << "block_size * head_size should be no greater than 128 * 128";
             return ERROR_INVALID_TENSOR_DIM;

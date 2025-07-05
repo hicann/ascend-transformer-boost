@@ -111,8 +111,8 @@ uint32_t PagedCacheLoadOperation::GetOutputNum() const
 Status PagedCacheLoadOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
                                                SVector<TensorDesc> &outTensorDescs) const
 {
-    outTensorDescs.at(DIM0) = inTensorDescs.at(IN_TENSOR_4_KEY);
-    outTensorDescs.at(DIM1) = inTensorDescs.at(IN_TENSOR_5_VALUE);
+    outTensorDescs.at(IN_TENSOR_0_KEYCACHE) = inTensorDescs.at(IN_TENSOR_4_KEY);
+    outTensorDescs.at(IN_TENSOR_1_VALUECACHE) = inTensorDescs.at(IN_TENSOR_5_VALUE);
     return NO_ERROR;
 }
 
@@ -129,25 +129,33 @@ Status PagedCacheLoadOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
         inTensorDescs.push_back(inTensors.at(i).desc);
     }
     if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) { // NZ
-        if (outTensors.at(DIM0).desc.shape.dims[DIM1] !=
-                inTensorDescs.at(DIM0).shape.dims[DIM1] * inTensorDescs.at(DIM0).shape.dims[OUT_DIM] ||
-            outTensors.at(DIM1).desc.shape.dims[DIM1] !=
-                inTensorDescs.at(DIM1).shape.dims[DIM1] * inTensorDescs.at(DIM1).shape.dims[OUT_DIM]) {
+        int64_t AlignCacheK = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM1] *
+                              inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM3];
+        int64_t AlignCacheV = inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM1] *
+                              inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM3];
+        if (outTensors.at(IN_TENSOR_0_KEYCACHE).desc.shape.dims[DIM1] != AlignCacheK ||
+            outTensors.at(IN_TENSOR_1_VALUECACHE).desc.shape.dims[DIM1] != AlignCacheV) {
             ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
             return ERROR_INVALID_TENSOR_DIM;
         }
-    } else if (outTensors.at(DIM0).desc.shape.dims[DIM1] != inTensorDescs.at(DIM0).shape.dims[DIM2] ||
-               outTensors.at(DIM0).desc.shape.dims[DIM2] != inTensorDescs.at(DIM0).shape.dims[DIM3] ||
-               outTensors.at(DIM1).desc.shape.dims[DIM1] != inTensorDescs.at(DIM1).shape.dims[DIM2] ||
-               outTensors.at(DIM1).desc.shape.dims[DIM2] != inTensorDescs.at(DIM1).shape.dims[DIM3]) {
+    } else if (outTensors.at(IN_TENSOR_0_KEYCACHE).desc.shape.dims[DIM1] !=
+               inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM2]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
+        return ERROR_INVALID_TENSOR_DIM;
+    } else if (outTensors.at(IN_TENSOR_0_KEYCACHE).desc.shape.dims[DIM2] !=
+               inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM3]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
+        return ERROR_INVALID_TENSOR_DIM;
+    } else if (outTensors.at(IN_TENSOR_1_VALUECACHE).desc.shape.dims[DIM1] !=
+               inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM2]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
+        return ERROR_INVALID_TENSOR_DIM;
+    } else if (outTensors.at(IN_TENSOR_1_VALUECACHE).desc.shape.dims[DIM2] !=
+               inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM3]) {
         ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    Status st = DimCheck(inTensorDescs);
-    if (st != NO_ERROR) {
-        return st;
-    }
-    return NO_ERROR;
+    return DimCheck(inTensorDescs);
 }
 
 Status PagedCacheLoadOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
@@ -165,7 +173,7 @@ Status PagedCacheLoadOperation::DimCheck(const SVector<TensorDesc> &inTensorDesc
     }
     if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_ND) {
         int64_t blockSize = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX_ND]; // 1: keyCache
-        int64_t numHeads = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX];    // 1: keyCache
+        int64_t numHeads = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[BLOCKSIZEINDEX];     // 1: keyCache
         if (blockSize != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[BLOCKSIZEINDEX_ND]) {
             ATB_LOG(ERROR) << GetLogPrefix() << "blockSizes should be same";
             return ERROR_INVALID_TENSOR_DIM;
@@ -261,10 +269,10 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BND(const SVector<TensorDesc> 
         ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    int64_t numHeads = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[NUM_HEADS_INDEX];     // 2: num heads
+    int64_t numHeads = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[NUM_HEADS_INDEX];    // 2: num heads
     int64_t headSizeK = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[HEAD_SIZE_INDEX];   // 3: headSizeK
     int64_t headSizeV = inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[HEAD_SIZE_INDEX]; // 3: headSizeV
-    if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).dtype == ACL_INT8) {                             // keyCache: int8
+    if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).dtype == ACL_INT8) {                           // keyCache: int8
         if (numHeads * headSizeK % ALIGN_INT8 != 0) {
             ATB_LOG(ERROR) << GetLogPrefix() << "int8 ND format numHeads*headSizeK should be aligned to 32!";
             return ERROR_INVALID_TENSOR_DIM;
@@ -283,8 +291,9 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BND(const SVector<TensorDesc> 
         return ERROR_INVALID_TENSOR_DIM;
     }
     int64_t lenContext =
-        inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dims[DIM0];                // 2: blockTable-batch(len(contextLens))
-    int64_t seqstart = inTensorDescs.at(IN_TENSOR_6_SEQ_STARTS).shape.dims[DIM0]; // 6: seq_start-batch(len(contextLens))
+        inTensorDescs.at(IN_TENSOR_2_BLOCKTABLE).shape.dims[DIM0]; // 2: blockTable-batch(len(contextLens))
+    int64_t seqstart =
+        inTensorDescs.at(IN_TENSOR_6_SEQ_STARTS).shape.dims[DIM0]; // 6: seq_start-batch(len(contextLens))
     if (param_.hasSeqStarts) {
         if (seqstart != lenContext) {
             ATB_LOG(ERROR) << GetLogPrefix()

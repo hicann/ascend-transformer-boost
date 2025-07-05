@@ -40,7 +40,7 @@ void GraphNode::SetStreamId(uint32_t streamId)
     SetExecuteStreamId(operation, streamId);
 }
 
-uint32_t GraphNode::GetStreamId()
+uint32_t GraphNode::GetStreamId() const
 {
     if (!operation) {
         throw std::runtime_error("Get execute stream id fail, operation is nullptr");
