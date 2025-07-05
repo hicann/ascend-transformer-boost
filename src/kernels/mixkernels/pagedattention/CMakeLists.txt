@@ -8,8 +8,10 @@
 set(paged_attention_srcs
     ${CMAKE_CURRENT_LIST_DIR}/paged_attention_operation.cpp
     ${CMAKE_CURRENT_LIST_DIR}/paged_attention_kernel.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/paged_attention_910_95_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tiling/paged_attention_tiling.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tiling/paged_attention_tiling_dependency.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/tiling/paged_attention_910_95_tiling.cpp
 )
 
 add_operation(PagedAttentionOperation "${paged_attention_srcs}")

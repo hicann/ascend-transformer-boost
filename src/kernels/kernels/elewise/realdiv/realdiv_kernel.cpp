@@ -10,6 +10,7 @@
 #include <mki/base/kernel_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/params.h"
 #include "kernels/elewise/tiling/elewise_tiling.h"
 
@@ -36,6 +37,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            return RealDivTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        }
         return BroadcastCommonTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };
@@ -105,4 +109,67 @@ public:
     }
 };
 REG_KERNEL_BASE(RealDivBF16Kernel);
+
+class RealDivAptF32Kernel : public RealDivKernel {
+public:
+    explicit RealDivAptF32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : RealDivKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(RealDivKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetInTensor(1).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(RealDivAptF32Kernel);
+
+class RealDivAptF16Kernel : public RealDivKernel {
+public:
+    explicit RealDivAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : RealDivKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(RealDivKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetInTensor(1).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(RealDivAptF16Kernel);
+
+class RealDivAptBF16Kernel : public RealDivKernel {
+public:
+    explicit RealDivAptBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : RealDivKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(RealDivKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetInTensor(1).desc.dtype == TENSOR_DTYPE_BF16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(RealDivAptBF16Kernel);
 } // namespace AsdOps

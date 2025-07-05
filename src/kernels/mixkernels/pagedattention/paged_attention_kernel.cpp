@@ -279,6 +279,4 @@ REG_KERNEL_BASE(PagedAttentionMaskNdKernel);
 REG_KERNEL_BASE(PagedMultiLatentAttentionSplitCacheMaskNdKernel);
 REG_KERNEL_BASE(PagedMultiLatentAttentionCombineCacheMaskNdKernel);
 REG_KERNEL_BASE(PagedMultiLatentAttentionMultiTokenPredictionMaskNdKernel);
-
 } // namespace AtbOps
-

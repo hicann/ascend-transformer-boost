@@ -40,7 +40,9 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
         ATB_LOG(ERROR) << "Elewise dequant only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
     }
-    if ((!GetSingleton<Config>().Is910B()) &&
+    if (GetSingleton<Config>().Is910_95()){
+
+    }else if ((!GetSingleton<Config>().Is910B()) &&
         (opParam.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT)) {
         ATB_LOG(ERROR) << "Elewise quant only support Atlas 800I A2 inference product";
         return ERROR_INVALID_PARAM;
@@ -66,6 +68,7 @@ template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation
 ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : OperationBase("ElewiseOperation"), param_(param)
 {
     bool IS_310B = GetSingleton<Config>().Is310B();
+    bool IS_910_95 = GetSingleton<Config>().Is910_95();
     static std::map<infer::ElewiseParam::ElewiseType, std::string> opIniTable = {
         {infer::ElewiseParam::ElewiseType::ELEWISE_CAST,
          IS_310B ? "ElewiseOperationCastAtlas200I500A2" : "ElewiseOperationCast"},
@@ -91,11 +94,16 @@ ElewiseOperation::ElewiseOperation(const infer::ElewiseParam &param) : Operation
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, "ElewiseOperationDequantPerChannel"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT, "ElewiseOperationDynamicQuant"},
         {infer::ElewiseParam::ElewiseType::ELEWISE_TANH, "ElewiseOperationTanh"},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2, "ElewiseOperationQuantPerChannelV2"},
     };
     std::map<infer::ElewiseParam::ElewiseType, std::string>::const_iterator it = opIniTable.find(param_.elewiseType);
     if (it != opIniTable.end()) {
         if (it->first == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT && param_.quantParam.asymmetric) {
-            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(it->second + "Asymmetric");
+            if(!IS_910_95) {
+                operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(it->second + "Asymmetric");
+            } else {
+                ATB_LOG(ERROR) << GetLogPrefix() << "DynamicQuant on 910_95 not support Asymmetric=true";
+            }
         } else {
             operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(it->second);
         }
@@ -129,6 +137,7 @@ uint32_t ElewiseOperation::GetInputNum() const
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, TENSOR_NUM_TWO},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL, TENSOR_NUM_THREE},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, TENSOR_NUM_THREE},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2, TENSOR_NUM_THREE},
     };
     std::map<infer::ElewiseParam::ElewiseType, uint32_t>::const_iterator it = inTensorNumTable.find(param_.elewiseType);
     if (it != inTensorNumTable.end()) {
@@ -141,7 +150,11 @@ uint32_t ElewiseOperation::GetInputNum() const
 uint32_t ElewiseOperation::GetOutputNum() const
 {
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT) {
-        return param_.quantParam.asymmetric ? TENSOR_NUM_THREE : TENSOR_NUM_TWO;
+        if (GetSingleton<Config>().Is910_95()) {
+            return 2;
+        } else {
+            return param_.quantParam.asymmetric ? TENSOR_NUM_THREE : TENSOR_NUM_TWO;
+        }
     }
     return TENSOR_NUM_ONE;
 }
@@ -160,12 +173,24 @@ Status ElewiseOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs
     switch (type) {
         case infer::ElewiseParam::ELEWISE_CAST:
             return InferShapeImplCast(inTensorDescs, outTensorDescs);
-        case infer::ElewiseParam::ELEWISE_QUANT:
-            return InferShapeImplQuant(inTensorDescs, outTensorDescs);
+        case infer::ElewiseParam::ELEWISE_QUANT: {
+            if (GetSingleton<Config>().Is910_95()) {
+                Status st = InferShapeImplQuantPerTensor(inTensorDescs, outTensorDescs);
+                outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
+                return st;
+            } else {
+                return InferShapeImplQuant(inTensorDescs, outTensorDescs);       
+            }
+        }
         case infer::ElewiseParam::ELEWISE_QUANT_PER_CHANNEL:
             return InferShapeImplQuantChannel(inTensorDescs, outTensorDescs);
         case infer::ElewiseParam::ELEWISE_DEQUANT_PER_CHANNEL:
             return InferShapeImplDequantChannel(inTensorDescs, outTensorDescs);
+        case infer::ElewiseParam::ELEWISE_QUANT_PER_CHANNEL_V2: {
+            Status st = InferShapeImplQuantChannelV2(inTensorDescs, outTensorDescs);
+            outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
+            return st;
+        }
         case infer::ElewiseParam::ELEWISE_ADD:
         case infer::ElewiseParam::ELEWISE_MUL:
         case infer::ElewiseParam::ELEWISE_REALDIV:
@@ -229,43 +254,60 @@ Status ElewiseOperation::InferShapeImplDynamicQuant(const SVector<TensorDesc> &i
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     aclDataType dtype = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
-    if (dtype == ACL_FLOAT16) {
-        if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
-            ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
-                << " when the dtype of the first tensor is float16,"
-                << " the size of the last dimension does not exceed 26624.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        if (!GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant310P(inTensorDescs)) {
-            ATB_LOG(ERROR) << "In Atlas inference products, ElewiseOperation InferShapeImplDynamicQuant:"
-                << " when the dtype of the first tensor is float16,"
-                << " the size of the last dimension does not exceed 4096.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
-        outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
-        outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
-        outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
+    if (GetSingleton<Config>().Is910_95()) {
         if (param_.quantParam.asymmetric) {
-            outTensorDescs.at(TENSOR_IDX_TWO) = outTensorDescs.at(TENSOR_IDX_ONE);
+            ATB_LOG(ERROR) << "DynamicQuant on 910_95 not support Asymmetric=true";
+            return ERROR_INVALID_PARAM;
         }
-        return NO_ERROR;
-    } else if (dtype == ACL_BF16) {
-        if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
-            ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
-                           << " when the dtype of the first tensor is BF16,"
-                           << " the size of the last dimension does not exceed 7552.";
-            return ERROR_INVALID_TENSOR_DIM;
+        if ((dtype == ACL_FLOAT16) || (dtype == ACL_BF16)) {
+            outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
+            outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
+            outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
+            outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
+            return NO_ERROR;
+        } else {
+            ATB_LOG(WARN) << "ElewiseOperation InferShapeImplQuantPerToken: no matched input desc.";
+            return ERROR_INVALID_PARAM;
         }
-        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
-        outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
-        outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
-        outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
-        return NO_ERROR;
     } else {
-        ATB_LOG(WARN) << "ElewiseOperation InferShapeImplDynamicQuant: inTensor only support FP16 and BF16 now.";
-        return ERROR_INVALID_PARAM;
-    }
+        if (dtype == ACL_FLOAT16) {
+            if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
+                ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
+                    << " when the dtype of the first tensor is float16,"
+                    << " the size of the last dimension does not exceed 26624.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            if (!GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant310P(inTensorDescs)) {
+                ATB_LOG(ERROR) << "In Atlas inference products, ElewiseOperation InferShapeImplDynamicQuant:"
+                    << " when the dtype of the first tensor is float16,"
+                    << " the size of the last dimension does not exceed 4096.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
+            outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
+            outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
+            outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
+            if (param_.quantParam.asymmetric) {
+                outTensorDescs.at(TENSOR_IDX_TWO) = outTensorDescs.at(TENSOR_IDX_ONE);
+            }
+            return NO_ERROR;
+        } else if (dtype == ACL_BF16) {
+            if (GetSingleton<Config>().Is910B() && !InferShapeCheckDynamicQuant(inTensorDescs)) {
+                ATB_LOG(ERROR) << "In Atlas 800I A2 inference product, ElewiseOperation InferShapeImplDynamicQuant:"
+                            << " when the dtype of the first tensor is BF16,"
+                            << " the size of the last dimension does not exceed 7552.";
+                return ERROR_INVALID_TENSOR_DIM;
+            }
+            outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
+            outTensorDescs.at(TENSOR_IDX_ONE) = inTensorDescs.at(TENSOR_IDX_ZERO);
+            outTensorDescs.at(TENSOR_IDX_ONE).dtype = ACL_FLOAT;
+            outTensorDescs.at(TENSOR_IDX_ONE).shape.dimNum--;
+            return NO_ERROR;
+        } else {
+            ATB_LOG(WARN) << "ElewiseOperation InferShapeImplDynamicQuant: inTensor only support FP16 and BF16 now.";
+            return ERROR_INVALID_PARAM;
+        }
+    }   
 }
 
 Status ElewiseOperation::InferShapeCommon(const SVector<TensorDesc> &inTensorDescs,
@@ -319,6 +361,35 @@ Status ElewiseOperation::InferShapeImplQuantChannel(const SVector<TensorDesc> &i
         return NO_ERROR;
     } else {
         ATB_LOG(WARN) << "ElewiseOperation InferShapeImpl quant channel: no matched input desc.";
+        return ERROR_INVALID_PARAM;
+    }
+}
+
+Status ElewiseOperation::InferShapeImplQuantChannelV2(const SVector<TensorDesc> &inTensorDescs,
+    SVector<TensorDesc> &outTensorDescs) const
+{
+aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
+aclDataType dtype1 = inTensorDescs.at(TENSOR_IDX_ONE).dtype;
+aclDataType dtype2 = inTensorDescs.at(TENSOR_IDX_TWO).dtype;
+if (((dtype0 == ACL_FLOAT16) && (dtype1 == ACL_FLOAT16) && (dtype2 == ACL_FLOAT16)) ||
+((dtype0 == ACL_BF16) && (dtype1 == ACL_BF16) && (dtype2 == ACL_BF16))) {
+outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
+return NO_ERROR;
+} else {
+ATB_LOG(WARN) << "ElewiseOperation InferShapeImpl quant channel: no matched input desc.";
+return ERROR_INVALID_PARAM;
+}
+}
+
+Status ElewiseOperation::InferShapeImplQuantPerTensor(const SVector<TensorDesc> &inTensorDescs,
+                                                      SVector<TensorDesc> &outTensorDescs) const
+{
+    aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
+    if ((dtype0 == ACL_FLOAT16) && (dtype0 == ACL_FLOAT16)) {
+        outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
+        return NO_ERROR;
+    } else {
+        ATB_LOG(WARN) << "ElewiseOperation InferShapeImplQuantPerTensor: no matched input desc.";
         return ERROR_INVALID_PARAM;
     }
 }

@@ -10,6 +10,7 @@
 #include "reduce_tiling.h"
 
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/reduce.h"
 #include "tbe_tiling_runner.h"
 
@@ -30,6 +31,10 @@ Status ReduceCommonTiling(const std::string &kernelName, const LaunchParam &laun
         .AddConstInput(TENSOR_DTYPE_INT64, TENSOR_FORMAT_ND, axisDim, axis.data(), axis.size() * sizeof(int64_t))
         .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
         .AddAttrBool(false);
+
+    if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+        runner.SetName("ReduceSum");
+    }
 
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }

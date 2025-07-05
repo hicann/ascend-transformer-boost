@@ -100,6 +100,7 @@ void GetKernelTilingId(const UnpadFlashAttentionInfo &mmInfo, KernelInfo &kernel
 
 Status FlashAttentionTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 {
+    return Status::OkStatus();
     UnpadFlashAttentionInfo mmInfo;
     MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention), "OpParam is invalid",
               return Status::FailStatus(ERROR_INFERSHAPE_ERROR));

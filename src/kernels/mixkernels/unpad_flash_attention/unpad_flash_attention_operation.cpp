@@ -14,6 +14,7 @@
 #include <mki/utils/const/op_const.h>
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "atbops/params/params.h"
 
 static constexpr int32_t LONG_SEQ_LEN = 128;
@@ -56,7 +57,17 @@ Kernel *GetFlashAttentionEncoderNdKernel(TensorDType inDtype, const OpParam::Unp
         if (launchParam.GetInTensor(0).desc.dims.size() == DIM_3) {
             embed = (launchParam.GetInTensor(0).desc.dims).at(2); // 2 is head_size dim
         }
+        if (launchParam.GetInTensor(0).desc.dims.size() == DIM_4) {
+            embed = (launchParam.GetInTensor(0).desc.dims).at(3); // 3 is head_size dim
+        }
         auto isMla = (param.headDimV != 0 && (embed != param.headDimV || embed > MLA_THRESHOLD)) ? true : false;
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+            if (launchParam.GetInTensor(4).desc.dims.size() == DIM_3 ||
+                launchParam.GetInTensor(4).desc.dims.size() == DIM_4) {
+                    return GetKernelByName("UnpadFlashAttentionNd91095Mask1Kernel");
+            }
+            return GetKernelByName("UnpadFlashAttentionNd91095Mask0Kernel");
+        }
         switch (param.type) {
             case OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ND:
             case OpParam::UnpadFlashAttention::UNPAD_DYNAMIC_BATCH_FLASH_ATTENTION:
@@ -190,6 +201,10 @@ private:
         auto param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
         auto &tensorQ = launchParam.GetInTensor(DIM_0);
         MKI_CHECK(param.headSize > 0, "headSize is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+            outTensors[DIM_0].desc = tensorQ.desc;
+            return Status::OkStatus();
+        }
         if (param.dataShapeType == 1) {
             outTensors[DIM_0].desc = tensorQ.desc;
             if (tensorQ.desc.dims.size() == DIM_4) {
@@ -857,22 +872,33 @@ private:
     {
         // Q.shape = [num_tokens, num_heads, head_size] or [num_tokens, num_heads,* head_size]
         auto &tensorQ = launchParam.GetInTensor(DIM_0);
+        auto &tensorK = launchParam.GetInTensor(DIM_1);
+        auto &tensorV = launchParam.GetInTensor(DIM_2);
+        auto &blockTable = launchParam.GetInTensor(DIM_3);
+        auto &tensorMask = launchParam.GetInTensor(DIM_4);
         auto param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
         MKI_CHECK(tensorQ.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorQ.desc.dtype == TENSOR_DTYPE_BF16,
                   "Input0 dtype " << GetStrWithDType(tensorQ.desc.dtype)
                                   << " invalid, should be float16 or BF16",
                   return false);
+        MKI_CHECK(tensorK.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorK.desc.dtype == TENSOR_DTYPE_BF16,
+                  "Input1 dtype " << tensorK.desc.dtype << " invalid, should be float16 or BF16", return false);
+        MKI_CHECK(tensorV.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorV.desc.dtype == TENSOR_DTYPE_BF16,
+                  "Input2 dtype " << tensorV.desc.dtype << " invalid, should be float16 or BF16", return false);
         MKI_CHECK(tensorQ.desc.dims.size() == DIM_3 || tensorQ.desc.dims.size() == DIM_2,
                   "Input0 dim num " << tensorQ.desc.dims.size() << " invalid, dim should be 2 or 3", return false);
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+            MKI_CHECK(tensorQ.desc.dims.size() == DIM_4,
+                      "Input0 dim num " << tensorQ.desc.dims.size() << " invalid, dim should be 4", return false);
+            MKI_CHECK(tensorK.desc.dims.size() == DIM_4,
+                      "Input1 dim num " << tensorK.desc.dims.size() << " invalid, dim should be 4", return false);
+            MKI_CHECK(tensorV.desc.dims.size() == DIM_4,
+                      "Input2 dim num " << tensorV.desc.dims.size() << " invalid, dim should be 4", return false);
+            return CheckMask91095(launchParam, tensorQ, tensorMask);
+        }
 
         // K.shape = [num_blocks, blockSize, head_num * head_size] or [num_blocks, blockSize, head_num, head_size]
         // V.shape = [num_blocks, blockSize, head_num * head_size] or [num_blocks, blockSize, head_num, head_size]
-        auto &tensorK = launchParam.GetInTensor(DIM_1);
-        MKI_CHECK(tensorK.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorK.desc.dtype == TENSOR_DTYPE_BF16,
-                  "Input1 dtype " << tensorK.desc.dtype << " invalid, should be float16 or BF16", return false);
-        auto &tensorV = launchParam.GetInTensor(DIM_2);
-        MKI_CHECK(tensorV.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorV.desc.dtype == TENSOR_DTYPE_BF16,
-                  "Input2 dtype " << tensorV.desc.dtype << " invalid, should be float16 or BF16", return false);
         //   cl todo remove == 2 just for testcase now
         MKI_CHECK(tensorK.desc.dims.size() == DIM_3 || tensorK.desc.dims.size() == DIM_4,
                   "Input1 dim num " << tensorK.desc.dims.size() << " invalid, dim should be 3 or 4", return false);
@@ -882,12 +908,10 @@ private:
             "prefix based FlashAttention don't support quant", return false);
         MKI_CHECK(param.scaleType == OpParam::UnpadFlashAttention::ScaleType::SCALE_TOR,
             "prefix based FlashAttention only support scale tor", return false);
-        auto &blockTable = launchParam.GetInTensor(DIM_3);
         MKI_CHECK(blockTable.desc.dtype == TENSOR_DTYPE_INT32, "blockTable dtype " << blockTable.desc.dtype
             << " invalid, should be int32", return false);
         MKI_CHECK(blockTable.desc.dims.size() == DIM_2,
             "blockTable dim num " << blockTable.desc.dims.size() << " invalid, dim should be 2", return false);
-        auto &tensorMask = launchParam.GetInTensor(DIM_4);
         return CheckMask(launchParam, tensorQ, tensorMask);
     }
 
@@ -1045,6 +1069,55 @@ private:
         MKI_CHECK((minKvSeqlenIter != kvSeqLen.end() && *minKvSeqlenIter >= 0),
                   "kvSeqlen min value invalid, please check", return false);
         // maxQSeqlen
+        MKI_CHECK(maxQ > 0, "qSeqlen max value invalid, please check", return false);
+        auto minQSeqlenIter = std::min_element(qSeqLen.begin(), qSeqLen.end());
+        MKI_CHECK((minQSeqlenIter == qSeqLen.end()) || ((minQSeqlenIter != qSeqLen.end() && *minQSeqlenIter >= 0)),
+                  "qSeqlen min value invalid, please check", return false);
+        MKI_LOG(INFO) << "[batch, head, maxQ, maxKv]: [" << batch << ", " << head << ", " << maxQ << ", "
+                      << *maxKvSeqlenIter << "]";
+        MKI_CHECK(*maxKvSeqlenIter >= maxQ, "maxQ & maxKv inconsistent.", return false);
+        ShapeParam shapePara = {maxQ, *maxKvSeqlenIter, batch};
+        return CheckNdMask(mask, q, shapePara, param);
+    }
+
+    bool CheckMaskPre91095(const Tensor &tensorMask, const Tensor &q) const
+    {
+        MKI_CHECK(q.desc.dtype == tensorMask.desc.dtype || q.desc.dtype == TENSOR_DTYPE_INT8,
+                  "mask data type not consitent with q", return false);
+        // MKI_CHECK(tensorMask.desc.dtype == TENSOR_DTYPE_INT8 || tensorMask.desc.dtype == TENSOR_DTYPE_UINT8 ||
+        //           tensorMask.desc.dtype == TENSOR_DTYPE_BOOL,
+        //           "Input4 dtype should be bool/int8/uint8", return false);
+        MKI_CHECK(tensorMask.desc.dims.size() == DIM_3 || tensorMask.desc.dims.size() == DIM_4,
+                  "Input4 dim num " << tensorMask.desc.dims.size() << " invalid, dim should be 3 or 4", return false);
+        return true;
+    }
+
+    bool CheckMask91095(const LaunchParam &launchParam, Tensor q, Tensor mask) const
+    {
+        auto param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
+        MKI_CHECK((param.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_NONE) ^ (!CheckEmptyTensor(mask)),
+                  "mask type inconsistent", return false);
+        if (CheckEmptyTensor(mask)) {
+            return true;
+        }
+        MKI_CHECK_NO_LOG(CheckMaskPre91095(mask, q), return false);
+        auto head = param.headSize;
+        auto qSeqLen = param.qSeqLen;
+        auto kvSeqLen = param.kvSeqLen;
+        uint32_t batch = kvSeqLen.size();
+        MKI_CHECK(batch > 0, "batch invalid, please check", return false);
+        // head
+        MKI_CHECK(head > 0, "head invalid, please check", return false);
+        // maxKvSeqlen
+        auto maxKvSeqlenIter = std::max_element(kvSeqLen.begin(), kvSeqLen.end());
+        MKI_CHECK(maxKvSeqlenIter != kvSeqLen.end() && *maxKvSeqlenIter > 0, "kvSeqlen invalid, please check",
+                  return false);
+        auto minKvSeqlenIter = std::min_element(kvSeqLen.begin(), kvSeqLen.end());
+        MKI_CHECK((minKvSeqlenIter != kvSeqLen.end() && *minKvSeqlenIter >= 0),
+                  "kvSeqlen min value invalid, please check", return false);
+        // maxQSeqlen
+        auto maxQSeqlenIter = std::max_element(qSeqLen.begin(), qSeqLen.end());
+        auto maxQ = maxQSeqlenIter != qSeqLen.end() ? *maxQSeqlenIter : 1;
         MKI_CHECK(maxQ > 0, "qSeqlen max value invalid, please check", return false);
         auto minQSeqlenIter = std::min_element(qSeqLen.begin(), qSeqLen.end());
         MKI_CHECK((minQSeqlenIter == qSeqLen.end()) || ((minQSeqlenIter != qSeqLen.end() && *minQSeqlenIter >= 0)),

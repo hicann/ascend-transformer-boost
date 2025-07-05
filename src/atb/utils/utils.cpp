@@ -85,6 +85,24 @@ uint64_t Utils::GetTensorSize(const TensorDesc &tensorDesc)
         case ACL_COMPLEX128:
             dataItemSize = sizeof(std::complex<double>);
             break;
+        case ACL_HIFLOAT8:
+            dataItemSize = sizeof(int8_t);
+            break;
+        case ACL_FLOAT8_E5M2:
+            dataItemSize = sizeof(int8_t);
+            break;
+        case ACL_FLOAT8_E4M3FN:
+            dataItemSize = sizeof(int8_t);
+            break;
+        case ACL_FLOAT8_E8M0:
+            dataItemSize = sizeof(int8_t);
+            break;
+        case ACL_FLOAT4_E2M1:
+            dataItemSize = sizeof(int8_t);
+            break;
+        case ACL_FLOAT4_E1M2:
+            dataItemSize = sizeof(int8_t);
+            break;
         default:
             ATB_LOG(ERROR)
                 << "Tensor not support dtype:" << tensorDesc.dtype
@@ -104,7 +122,15 @@ uint64_t Utils::GetTensorSize(const TensorDesc &tensorDesc)
         ATB_LOG(ERROR) << "GetTensorSize Overflow!";
         return 0;
     }
-    return dataItemSize * elementCount;
+    uint64_t realTensorSize = dataItemSize * elementCount;
+    if (tensorDesc.dtype == ACL_FLOAT4_E2M1 ||
+        tensorDesc.dtype == ACL_FLOAT4_E1M2) {
+        if (realTensorSize % 2 != 0) {
+            realTensorSize += 1;
+        }
+        realTensorSize /= 2;
+    }
+    return realTensorSize;
 }
 
 uint64_t Utils::GetTensorNumel(const Tensor &tensor)

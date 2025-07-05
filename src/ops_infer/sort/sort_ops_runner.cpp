@@ -12,6 +12,7 @@
 #include <atb/utils/log.h>
 #include <asdops/params/params.h>
 #include "atb/utils/tensor_util.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace atb {
 static const uint64_t OUT_TENSOR_COUNT = 2;
@@ -35,7 +36,11 @@ SortOpsRunner::SortOpsRunner(const infer::SortParam &param)
     TensorUtil::AtbSVector2OpsSVector(param_.num, num);
     AsdOps::OpParam::Sort sortNodeParam = {num};
 
-    sortNode.opDesc = {0, "SortOperation", sortNodeParam};
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        sortNode.opDesc = {0, "TopKOperation", sortNodeParam};
+    } else {
+        sortNode.opDesc = {0, "SortOperation", sortNodeParam};
+    }
     sortNode.inTensors = {&xTensor};
     sortNode.outTensors = {&outTensor, &indices};
 }

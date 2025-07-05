@@ -22,7 +22,7 @@ import shutil
 import logging
 import re
 from enum import Enum
-from typing import Any
+from typing import List, Dict, Any
 import copy
 
 
@@ -1045,7 +1045,7 @@ class SelfAttentionGenOutTensor:
     # 合轴成2维
     def process_qkv(self, q):
         out = q.clone()
-        # BSND:          
+        # BSND:
         if len(q.shape) == 3:
             dim0, dim1, dim2 = q.shape
             out = out.contiguous().view(dim0, dim1*dim2)
@@ -1097,7 +1097,7 @@ class SelfAttentionGenOutTensor:
             key = self.in_tensors[self.key_id] # k在kvcache golen计算过程中是2维的
             self.k = self.kvcache(self.process_qkv(key), kcache_nd) # golden里的self.k是kcache
             value = self.in_tensors[self.value_id]# v在kvcache golen计算过程中是2维的
-            self.v = self.kvcache(self.process_qkv(value), vcache_nd) # golden里的self.v是vcache                       
+            self.v = self.kvcache(self.process_qkv(value), vcache_nd) # golden里的self.v是vcache
         else: # pa encoder 将2维的kvcache转换成4维的
             self.q = self.process_qkv(self.q)
             kcache_nd = self.process_qkv(kcache_nd)
@@ -1271,7 +1271,7 @@ class SelfAttentionGolden:
         # 用SelfAttentionMaskGen处理mask
         self.mask_generator = None
 
-    def load_from_op_params(self, op_params: dict[str, Any]):
+    def load_from_op_params(self, op_params: Dict[str, Any]):
         for op_k, op_v in op_params.items():
             if hasattr(self, op_k):
                 self.op_k = op_v
@@ -1395,7 +1395,7 @@ class SelfAttentionGolden:
         elif len(shape) == 2:
             self.embeddimv = shape[1] // head_num
 
-    def prepare_in_tensors(self, in_tensors: list[torch.tensor]):
+    def prepare_in_tensors(self, in_tensors: List[torch.tensor]):
         if self.seqlen_id != -1:
             self.q_seqLen = in_tensors[self.seqlen_id]
             self.batch = in_tensors[self.seqlen_id].shape[0]

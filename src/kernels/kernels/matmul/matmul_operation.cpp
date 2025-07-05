@@ -55,6 +55,10 @@ public:
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(IsConsistent(launchParam), "Failed to check IsConsistent", return nullptr);
+        PlatformType platform = PlatformInfo::Instance().GetPlatformType();
+        if (platform == PlatformType::ASCEND_910_95) {
+            return GetKernelByName(Get91095KernelName(launchParam));
+        }
         auto inTensorDescA = launchParam.GetInTensor(0).desc;
         auto inTensorDescB = launchParam.GetInTensor(1).desc;
         auto outTensorDescC = launchParam.GetOutTensor(0).desc;
@@ -77,7 +81,6 @@ public:
             MKI_CHECK((formatB == TENSOR_FORMAT_ND) || ValidNzFormat(launchParam.GetInTensor(1)),
                       "Invalid format of matrix B.", return nullptr);
         }
-        PlatformType platform = PlatformInfo::Instance().GetPlatformType();
         std::unordered_map<PlatformType, uint32_t> archTypeMap = {{PlatformType::ASCEND_310P, 0},
                                                                   {PlatformType::ASCEND_910A, 0},
                                                                   {PlatformType::ASCEND_310B, 0},
@@ -124,28 +127,44 @@ public:
                 case PP_MATMUL_I8_BF16_KERNEL_KEY:
                 case PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY:
                     return GetKernelByName("PpMatMulI8Bf16Kernel");
-                case PP_MATMUL_I8_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
-                case PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8WeightNzKernel");
-                case PP_MATMUL_F16_KERNEL_KEY: return GetKernelByName("PpMatMulF16Kernel");
-                case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
-                case PP_MATMUL_BF16_KERNEL_KEY: return GetKernelByName("PpMatMulBf16Kernel");
-                case PP_MATMUL_F16_OPT_KERNEL_KEY: return GetKernelByName("PpMatMulF16OptKernel");
-                case PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY: return GetKernelByName("PpMatMulBf16NdNzNdKernel");
-                case PP_MATMUL_NZ_F16_KERNEL_KEY: return GetKernelByName("PpMatMulNzF16Kernel");
-                case PP_MATMUL_I8_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzKernel");
-                case PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzCompressKernel");
-                case PP_MATMUL_FP_ND_ND_KERNEL_KEY: return GetKernelByName("PpMatmulF16NdM300Kernel");
-                case PP_MATMUL_I8_ND_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
-                case PP_MATMUL_I8_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8NdNzKernel");
-                case PP_MATMUL_F16_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatmulF16NzM300Kernel");
-                default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
+                case PP_MATMUL_I8_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulI8Kernel");
+                case PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulI8WeightNzKernel");
+                case PP_MATMUL_F16_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulF16Kernel");
+                case PP_MATMUL_F16_MIX_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulF16MixKernel");
+                case PP_MATMUL_BF16_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulBf16Kernel");
+                case PP_MATMUL_F16_OPT_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulF16OptKernel");
+                case PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulBf16NdNzNdKernel");
+                case PP_MATMUL_NZ_F16_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulNzF16Kernel");
+                case PP_MATMUL_I8_NZ_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulI8NzKernel");
+                case PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulI8NzCompressKernel");
+                case PP_MATMUL_FP_ND_ND_KERNEL_KEY:
+                    return GetKernelByName("PpMatmulF16NdM300Kernel");
+                case PP_MATMUL_I8_ND_M300_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulI8Kernel");
+                case PP_MATMUL_I8_NZ_M300_KERNEL_KEY:
+                    return GetKernelByName("PpMatMulI8NdNzKernel");
+                case PP_MATMUL_F16_NZ_M300_KERNEL_KEY:
+                    return GetKernelByName("PpMatmulF16NzM300Kernel");
+                default:
+                    MKI_LOG(ERROR) << "No matched kernel for matmul operation.";
+                    return nullptr;
             }
         }
         if (batchB == 1) {
             if (!opParam.transposeA && !opParam.transposeB) {
                 if (dtypeB == TENSOR_DTYPE_FLOAT16) {
-                    return formatB == TENSOR_FORMAT_ND ? GetKernelByName("MatMulNdF16Kernel")
-                                                       : GetKernelByName("MatMulNzF16Kernel");
+                    return formatB == TENSOR_FORMAT_ND ? GetKernelByName("MatMulNdF16Kernel") :
+                                                         GetKernelByName("MatMulNzF16Kernel");
                 } else if (dtypeB == TENSOR_DTYPE_FLOAT) {
                     return formatB == TENSOR_FORMAT_ND ? GetKernelByName("MatMulNdF32Kernel") : nullptr;
                 } else {
@@ -156,8 +175,8 @@ public:
                 return GetKernelByName("MatMulNzF16TAKernel");
             }
             if (!opParam.transposeA && opParam.transposeB) {
-                return formatB == TENSOR_FORMAT_ND ? GetKernelByName("MatMulNdF16TbKernel")
-                                                   : GetKernelByName("MatMulNzF16TBKernel");
+                return formatB == TENSOR_FORMAT_ND ? GetKernelByName("MatMulNdF16TbKernel") :
+                                                     GetKernelByName("MatMulNzF16TBKernel");
             }
             if (opParam.transposeA && opParam.transposeB) {
                 return GetKernelByName("MatMulNzF16TATBKernel");
@@ -166,8 +185,8 @@ public:
         }
         if (!opParam.transposeA && !opParam.transposeB) {
             if (dtypeB == TENSOR_DTYPE_FLOAT16) {
-                return formatB == TENSOR_FORMAT_ND ? GetKernelByName("BatchMatMulNdF16Kernel")
-                                                   : GetKernelByName("BatchMatMulNzF16Kernel");
+                return formatB == TENSOR_FORMAT_ND ? GetKernelByName("BatchMatMulNdF16Kernel") :
+                                                     GetKernelByName("BatchMatMulNzF16Kernel");
             } else if (dtypeB == TENSOR_DTYPE_FLOAT) {
                 return formatB == TENSOR_FORMAT_ND ? GetKernelByName("BatchMatMulNdF32Kernel") : nullptr;
             } else {
@@ -178,8 +197,8 @@ public:
             return GetKernelByName("BatchMatMulNzF16TAKernel");
         }
         if (!opParam.transposeA && opParam.transposeB) {
-            return formatB == TENSOR_FORMAT_ND ? GetKernelByName("BatchMatMulNdF16TbKernel")
-                                               : GetKernelByName("BatchMatMulNzF16TBKernel");
+            return formatB == TENSOR_FORMAT_ND ? GetKernelByName("BatchMatMulNdF16TbKernel") :
+                                                 GetKernelByName("BatchMatMulNzF16TBKernel");
         }
         if (opParam.transposeA && opParam.transposeB) {
             return GetKernelByName("BatchMatMulNzF16TATBKernel");
@@ -239,16 +258,19 @@ protected:
         }
 
         switch (inTensorDescA.format) {
-            case TENSOR_FORMAT_ND: {
-                if (inTensorDescB.format == TENSOR_FORMAT_FRACTAL_NZ) {
-                    return GetOutDimsWeightNz(batchA, opParam, outDims);
+            case TENSOR_FORMAT_ND:
+                {
+                    if (inTensorDescB.format == TENSOR_FORMAT_FRACTAL_NZ) {
+                        return GetOutDimsWeightNz(batchA, opParam, outDims);
+                    }
+                    return GetOutDimsNd(inTensorDescA, inTensorDescB, opParam, outDims);
                 }
-                return GetOutDimsNd(inTensorDescA, inTensorDescB, opParam, outDims);
-            }
-            case TENSOR_FORMAT_FRACTAL_NZ: {
-                return GetOutDimsNz(inTensorDescA, inTensorDescB, opParam, outDims);
-            }
-            default: return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Invalid infershape format");
+            case TENSOR_FORMAT_FRACTAL_NZ:
+                {
+                    return GetOutDimsNz(inTensorDescA, inTensorDescB, opParam, outDims);
+                }
+            default:
+                return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Invalid infershape format");
         }
 
         // check tensor num
@@ -258,24 +280,31 @@ protected:
     int64_t GetTensorBatchA(const TensorDesc &tensorDesc, const MmType mmType = MmType::MATMUL_DEFAULT) const
     {
         switch (tensorDesc.format) {
-            case TENSOR_FORMAT_ND: {
-                // make sure dims.size() == 2 or 3
-                if (tensorDesc.dims.size() == DIM_2) {
-                    return DIM_1;
+            case TENSOR_FORMAT_ND:
+                {
+                    // make sure dims.size() == 2 or 3
+                    if (tensorDesc.dims.size() == DIM_2) {
+                        return DIM_1;
+                    }
+                    if (tensorDesc.dims.size() == DIM_3 && mmType == MmType::MATMUL_EIN_SUM) {
+                        return tensorDesc.dims[DIM_1];
+                    }
+                    return tensorDesc.dims[DIM_0];
                 }
-                if (tensorDesc.dims.size() == DIM_3 && mmType == MmType::MATMUL_EIN_SUM) {
-                    return tensorDesc.dims[DIM_1];
+            case TENSOR_FORMAT_FRACTAL_NZ:
+                {
+                    return tensorDesc.dims[DIM_0];
                 }
-                return tensorDesc.dims[DIM_0];
-            }
-            case TENSOR_FORMAT_FRACTAL_NZ: {
-                return tensorDesc.dims[DIM_0];
-            }
-            default: MKI_LOG(ERROR) << "tensor format error"; return DIM_1;
+            default:
+                MKI_LOG(ERROR) << "tensor format error";
+                return DIM_1;
         }
     }
 
-    int64_t GetTensorBatchB(const TensorDesc &tensorDesc) const { return GetTensorBatchA(tensorDesc); }
+    int64_t GetTensorBatchB(const TensorDesc &tensorDesc) const
+    {
+        return GetTensorBatchA(tensorDesc);
+    }
 
     Status InferShapeMatmulEinSum(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const
     {
@@ -293,30 +322,33 @@ protected:
         uint64_t kSizeB = 0;
         uint64_t nSize = 0;
         if (inTensorDescB.format == TENSOR_FORMAT_FRACTAL_NZ) {
-            kSizeB = opParam.transposeB ? inTensorDims1.at(DIM_1) *  inTensorDims1.at(DIM_3): inTensorDims1.at(DIM_2);
-            nSize = opParam.transposeB ? inTensorDims1.at(DIM_2) : inTensorDims1.at(DIM_1) *  inTensorDims1.at(DIM_3);
+            kSizeB = opParam.transposeB ? inTensorDims1.at(DIM_1) * inTensorDims1.at(DIM_3) : inTensorDims1.at(DIM_2);
+            nSize = opParam.transposeB ? inTensorDims1.at(DIM_2) : inTensorDims1.at(DIM_1) * inTensorDims1.at(DIM_3);
         } else {
             kSizeB = opParam.transposeB ? inTensorDims1.at(DIM_2) : inTensorDims1.at(DIM_1);
             nSize = opParam.transposeB ? inTensorDims1.at(DIM_1) : inTensorDims1.at(DIM_2);
         }
         switch (inTensorDescB.format) {
-            case TENSOR_FORMAT_ND: {
-                MKI_CHECK(kSizeA == kSizeB, "Invalid input shape: KA != KB.",
-                  return AsdOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-                outTensorDims.clear();
-                outTensorDims.emplace_back(mSize); // m
-                outTensorDims.emplace_back(bSize); // batch
-                outTensorDims.emplace_back(nSize); // n
-                return AsdOps::Status::OkStatus();
-            }
-            case TENSOR_FORMAT_FRACTAL_NZ: {
-                outTensorDims.clear();
-                outTensorDims.emplace_back(opParam.oriShape[0]); // 0: M
-                outTensorDims.emplace_back(bSize);
-                outTensorDims.emplace_back(opParam.oriShape[2]); // 2: N
-                return Status::OkStatus();
-            }
-            default: return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Invalid infershape format");
+            case TENSOR_FORMAT_ND:
+                {
+                    MKI_CHECK(kSizeA == kSizeB, "Invalid input shape: KA != KB.",
+                              return AsdOps::Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+                    outTensorDims.clear();
+                    outTensorDims.emplace_back(mSize); // m
+                    outTensorDims.emplace_back(bSize); // batch
+                    outTensorDims.emplace_back(nSize); // n
+                    return AsdOps::Status::OkStatus();
+                }
+            case TENSOR_FORMAT_FRACTAL_NZ:
+                {
+                    outTensorDims.clear();
+                    outTensorDims.emplace_back(opParam.oriShape[0]); // 0: M
+                    outTensorDims.emplace_back(bSize);
+                    outTensorDims.emplace_back(opParam.oriShape[2]); // 2: N
+                    return Status::OkStatus();
+                }
+            default:
+                return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Invalid infershape format");
         }
     }
 
@@ -453,11 +485,81 @@ protected:
         const uint32_t kAlignBase16 = 16;
         const uint32_t kAlignBase32 = 32;
         switch (tensor.desc.dtype) {
-            case TENSOR_DTYPE_INT8: return (dims.at(DIM_3) == kAlignBase32) && (dims.at(DIM_2) % kAlignBase16 == 0);
+            case TENSOR_DTYPE_INT8:
+                return (dims.at(DIM_3) == kAlignBase32) && (dims.at(DIM_2) % kAlignBase16 == 0);
             case TENSOR_DTYPE_BF16:
-            case TENSOR_DTYPE_FLOAT16: return (dims.at(DIM_3) == kAlignBase16) && (dims.at(DIM_2) % kAlignBase16 == 0);
-            default: return false;
+            case TENSOR_DTYPE_FLOAT16:
+                return (dims.at(DIM_3) == kAlignBase16) && (dims.at(DIM_2) % kAlignBase16 == 0);
+            default:
+                return false;
         }
+    }
+
+private:
+    std::string Get91095KernelName(const LaunchParam &launchParam) const
+    {
+        auto opParam = AnyCast<OpParam::MatMul>(launchParam.GetParam());
+        size_t inTensorIndex = 0;
+        auto x1TensorDesc = launchParam.GetInTensor(inTensorIndex++).desc;
+        auto x2TensorDesc = launchParam.GetInTensor(inTensorIndex++).desc;
+        std::string kernelName = (x2TensorDesc.dims.size() == 2 ? "MatMul" : "BatchMatMul");
+
+        kernelName += "X1";
+        if (x1TensorDesc.dtype == TENSOR_DTYPE_FLOAT16) {
+            kernelName += "Float16";
+        } else if (x1TensorDesc.dtype == TENSOR_DTYPE_BF16) {
+            kernelName += "Bf16";
+        } else {
+            MKI_LOG(ERROR) << "inTensor x1 dtype invalid";
+            return "";
+        }
+        if (x1TensorDesc.format == TENSOR_FORMAT_ND) {
+            kernelName += "Nd";
+        } else {
+            MKI_LOG(ERROR) << "inTensor x1 format invalid";
+            return "";
+        }
+
+        kernelName += "X2";
+        if (x2TensorDesc.dtype == TENSOR_DTYPE_FLOAT16) {
+            kernelName += "Float16";
+        } else if (x2TensorDesc.dtype == TENSOR_DTYPE_BF16) {
+            kernelName += "Bf16";
+        } else {
+            MKI_LOG(ERROR) << "inTensor x2 dtype invalid";
+            return "";
+        }
+        if (x2TensorDesc.format == TENSOR_FORMAT_ND) {
+            kernelName += "Nd";
+        } else {
+            MKI_LOG(ERROR) << "inTensor x2 format invalid";
+            return "";
+        }
+
+        kernelName += "Bias";
+        if (opParam.withBias) {
+            auto biasTensorDesc = launchParam.GetInTensor(inTensorIndex++).desc;
+            if (biasTensorDesc.dtype == TENSOR_DTYPE_FLOAT16) {
+                kernelName += "Float16";
+            } else if (biasTensorDesc.dtype == TENSOR_DTYPE_BF16) {
+                kernelName += "Bf16";
+            } else if (biasTensorDesc.dtype == TENSOR_DTYPE_FLOAT) {
+                kernelName += "Float";
+            } else {
+                MKI_LOG(ERROR) << "inTensor bias dtype invalid";
+                return "";
+            }
+            if (biasTensorDesc.format == TENSOR_FORMAT_ND) {
+                kernelName += "Nd";
+            } else {
+                MKI_LOG(ERROR) << "inTensor bias format invalid";
+                return "";
+            }
+        } else {
+            kernelName += "FloatNd";
+        }
+        kernelName += "91095Kernel";
+        return kernelName;
     }
 };
 REG_OPERATION(MatMulOperation);

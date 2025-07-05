@@ -12,6 +12,7 @@
 #include <mki/utils/const/op_const.h>
 #include <mki_loader/op_register.h>
 #include "atbops/params/params.h"
+#include <mki/utils/platform/platform_info.h>
 
 static constexpr uint32_t ELE_NUM_FP16 = 16;
 
@@ -24,6 +25,9 @@ public:
     int64_t GetInputNum(const Any &specificParam) const override
     {
         MKI_CHECK(specificParam.Type() == typeid(OpParam::Rope), "OpParam is invalid", return 0);
+        if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+            return 4;
+        }
         return DIM_5; // Rope Op has 5 inputs: q, k, cos, sin, seqlen
     }
 
@@ -45,6 +49,9 @@ public:
         }
         for (size_t i = 0; i < inputQ.size() - 1; i++) {
             if (inputQ[i] != inputK[i]) {
+                if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95 && i == 2) {
+                    continue;
+                }
                 return Status::FailStatus(ERROR_INVALID_VALUE, "inputQ are not equal to inputK");
             }
         }
@@ -52,7 +59,9 @@ public:
             return Status::FailStatus(ERROR_INVALID_VALUE, "inputCos are not equal to inputSin");
         }
         if (inputQ[inputQ.size()-1] % ELE_NUM_FP16 != 0 || inputK[inputK.size()-1] % ELE_NUM_FP16 != 0) {
-            return Status::FailStatus(ERROR_INVALID_VALUE, "the shapes of inputQ and inputK must be 32 bytes aligned.");
+            if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) {
+                return Status::FailStatus(ERROR_INVALID_VALUE, "the shapes of inputQ and inputK must be 32 bytes aligned.");
+            }
         }
         outTensors[DIM_0].desc = launchParam.GetInTensor(DIM_0).desc;
         outTensors[DIM_1].desc = launchParam.GetInTensor(DIM_1).desc;
@@ -63,7 +72,17 @@ public:
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Rope), "OpParam is invalid", return nullptr);
-        return GetKernelByName("RopeKernel");
+        if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+            if (launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_FLOAT16) {
+                return GetKernelByName("RopeAptF16Kernel");
+            } else if (launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_BF16) {
+                return GetKernelByName("RopeAptBF16Kernel");
+            } else {
+                return nullptr;
+            }
+        } else {
+            return GetKernelByName("RopeKernel");
+        }
     }
 };
 

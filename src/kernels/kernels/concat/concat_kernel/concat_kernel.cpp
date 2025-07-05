@@ -12,6 +12,7 @@
 #include <mki/utils/log/log.h>
 #include "asdops/params/concat.h"
 #include "kernels/concat/tiling/concat_tiling.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace AsdOps {
 using namespace Mki;
@@ -66,4 +67,119 @@ public:
     }
 };
 REG_KERNEL_BASE(ConcatF32Input2Kernel);
+
+
+class ConcatI8Kernel : public ConcatKernel {
+public:
+    explicit ConcatI8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatKernel(kernelName, handle)
+    {
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(ConcatI8Kernel);
+
+class ConcatI16Kernel : public ConcatKernel {
+public:
+    explicit ConcatI16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatKernel(kernelName, handle)
+    {
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(ConcatI16Kernel);
+
+class ConcatF16Kernel : public ConcatKernel {
+public:
+    explicit ConcatF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatKernel(kernelName, handle)
+    {
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(ConcatF16Kernel);
+
+class ConcatI32Kernel : public ConcatKernel {
+public:
+    explicit ConcatI32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatKernel(kernelName, handle)
+    {
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(ConcatI32Kernel);
+
+class ConcatF32Kernel : public ConcatKernel {
+public:
+    explicit ConcatF32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatKernel(kernelName, handle)
+    {
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(ConcatF32Kernel);
+
+class ConcatI64Kernel : public ConcatKernel {
+public:
+    explicit ConcatI64Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatKernel(kernelName, handle)
+    {
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(ConcatI64Kernel);
 } // namespace AsdOps

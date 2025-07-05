@@ -102,4 +102,59 @@ public:
     }
 };
 REG_KERNEL_BASE(SplitInt64Output2Kernel);
+
+class SplitAptKernel : public SplitKernel {
+public:
+    explicit SplitAptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SplitKernel(kernelName, handle)
+    {
+    }
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        size_t outputNum = launchParam.GetOutTensorCount();
+        if (outputNum == 2 || outputNum == 3) {
+            return SplitAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        }
+        return Status::FailStatus(1);
+    }
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return AsdOps::Status::OkStatus();
+    }
+};
+
+// SplitAptF16Kernel
+class SplitAptF16Kernel : public SplitAptKernel {
+public:
+    explicit SplitAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SplitAptKernel(kernelName, handle)
+    {
+    }
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(SplitAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16 ||
+                  launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+                  "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(SplitAptF16Kernel);
+
+// SplitAptInt64Kernel
+class SplitAptInt64Kernel : public SplitAptKernel {
+public:
+    explicit SplitAptInt64Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SplitAptKernel(kernelName, handle)
+    {
+    }
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(SplitAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_INT64,
+                  "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(SplitAptInt64Kernel);
 } // namespace AsdOps

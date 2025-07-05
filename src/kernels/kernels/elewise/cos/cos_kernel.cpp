@@ -11,6 +11,7 @@
 #include <mki/base/kernel_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/params.h"
 #include "kernels/elewise/tiling/elewise_tiling.h"
 
@@ -37,6 +38,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            return CosTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        }
         return ElewiseCommonTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };
@@ -100,4 +104,40 @@ public:
     }
 };
 REG_KERNEL_BASE(CosBF16Kernel);
+
+// CosAptF16
+class CosAptF16Kernel : public CosKernel {
+public:
+    explicit CosAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : CosKernel(kernelName, handle) {}
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(CosKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(CosAptF16Kernel);
+
+// CosAptF32
+class CosAptF32Kernel : public CosKernel {
+public:
+    explicit CosAptF32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : CosKernel(kernelName, handle) {}
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(CosKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(CosAptF32Kernel);
 } // namespace AsdOps

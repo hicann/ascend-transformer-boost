@@ -11,6 +11,7 @@
 #include <sstream>
 #include <cstring>
 #include <mki/utils/env/env.h>
+#include <mki/utils/platform/platform_info.h>
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
@@ -209,28 +210,36 @@ LinearOperation::LinearOperation(const infer::LinearParam &param) : OperationBas
     commonCheckParam_ = param_;
     std::stringstream opIrKey;
     opIrKey << "LinearOperationMatmul";
-    if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
-        opIrKey << "EinSum";
-        opIrKey << (param_.hasBias ? "ElewiseAdd" : "");
-    } else if (param_.outDataType == ACL_DT_UNDEFINED) {
-        if (param_.enAccum) {
-            opIrKey << "Accum";
-        } else {
-            opIrKey << (param_.hasBias ? "WithBias" : "");
-            opIrKey << (GetSingleton<Config>().Is910B() ? "Atlas800IA2" : "NotAtlas800IA2");
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (param_.hasBias) {
+            opIrKey << "WithBias";
         }
+        opIrKey << "91095";
     } else {
-        opIrKey << (param_.hasBias ? "DequantWithBias" : "Dequant");
-        if (param_.outDataType == ACL_FLOAT16) {
-            opIrKey << "Float16";
-            opIrKey << (GetSingleton<Config>().Is910B()                   ? "Atlas800IA2" :
-                        GetSingleton<Config>().Is910A() && param_.hasBias ? "AtlasTrain" :
-                                                                            "NotAtlas800IA2");
-        } else if (param_.outDataType == ACL_BF16) {
-            opIrKey << "Bf16";
-            opIrKey << (GetSingleton<Config>().Is910B() ? "Atlas800IA2" : "NotAtlas800IA2");
+        if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
+            opIrKey << "EinSum";
+            opIrKey << (param_.hasBias ? "ElewiseAdd" : "");
+        } else if (param_.outDataType == ACL_DT_UNDEFINED) {
+            if (param_.enAccum) {
+                opIrKey << "Accum";
+            } else {
+                opIrKey << (param_.hasBias ? "WithBias" : "");
+                opIrKey << (GetSingleton<Config>().Is910B() ? "Atlas800IA2" : "NotAtlas800IA2");
+            }
+        } else {
+            opIrKey << (param_.hasBias ? "DequantWithBias" : "Dequant");
+            if (param_.outDataType == ACL_FLOAT16) {
+                opIrKey << "Float16";
+                opIrKey << (GetSingleton<Config>().Is910B()                   ? "Atlas800IA2" :
+                            GetSingleton<Config>().Is910A() && param_.hasBias ? "AtlasTrain" :
+                                                                                "NotAtlas800IA2");
+            } else if (param_.outDataType == ACL_BF16) {
+                opIrKey << "Bf16";
+                opIrKey << (GetSingleton<Config>().Is910B() ? "Atlas800IA2" : "NotAtlas800IA2");
+            }
         }
     }
+
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey.str());
 }
 

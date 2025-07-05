@@ -52,13 +52,25 @@ add_custom_target(BINARY_SRC_TARGET ALL
     DEPENDS ${BINARY_SRC_LIST} ${BINARY_TARGET_LIST}
 )
 
+# build attribute_utils.cpp for canndev ops infer code
+file(GLOB ATTIBUTES_DEPENDS_FILES "${PROJECT_SOURCE_DIR}/src/kernels/include/asdops/params/*.h")
+set(ATTRIBUTE_UTILS_CPP ${CMAKE_CURRENT_LIST_DIR}/attribute_utils.cpp)
+add_custom_command(
+    OUTPUT ${ATTRIBUTE_UTILS_CPP}
+    DEPENDS ${ATTIBUTES_DEPENDS_FILES}
+    COMMAND python3 ${PROJECT_SOURCE_DIR}/scripts/build_attribute_utils.py --namespace ${NAMESPACE}
+                                                                           --params_path ${PROJECT_SOURCE_DIR}/src/kernels/include/asdops/params
+                                                                           --dest_file_path ${ATTRIBUTE_UTILS_CPP}
+)
+add_custom_target(OPS_ATTRIBUTE_UTILS_CPP_TARGET DEPENDS ${ATTRIBUTE_UTILS_CPP})
+set_source_files_properties(${ATTRIBUTE_UTILS_CPP} PROPERTIES GENERATED TRUE)
 
 #########################
 # 设置target名称
 #########################
-add_library(asdops SHARED ${BINARY_SRC_LIST} param_to_json.cpp ops.cpp)
+add_library(asdops SHARED ${BINARY_SRC_LIST} param_to_json.cpp ops.cpp ${ATTRIBUTE_UTILS_CPP})
 add_dependencies(asdops BINARY_SRC_TARGET)
-target_link_libraries(asdops PRIVATE ${ops_objects} tbe_adapter mki)
+target_link_libraries(asdops PRIVATE ${ops_objects} tbe_adapter mki cann_ops_adapter)
 target_link_libraries(asdops PRIVATE
     -Wl,--whole-archive
     exp_ops_static
@@ -67,7 +79,7 @@ target_link_libraries(asdops PRIVATE
 
 add_library(asdops_static STATIC $<TARGET_OBJECTS:asdops>)
 add_dependencies(asdops_static BINARY_SRC_TARGET)
-target_link_libraries(asdops_static PRIVATE ${ops_objects} tbe_adapter mki)
+target_link_libraries(asdops_static PRIVATE ${ops_objects} tbe_adapter mki cann_ops_adapter)
 target_link_libraries(asdops_static PRIVATE
     -Wl,--whole-archive
     exp_ops_static
@@ -76,6 +88,7 @@ target_link_libraries(asdops_static PRIVATE
 
 add_executable(asdops_sym_check sym_check.cpp)
 target_link_libraries(asdops_sym_check PRIVATE tbe_adapter asdops mki)
+set_target_properties(asdops_sym_check PROPERTIES LINK_FLAGS "-Wl,-rpath-link,${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/")
 
 install(TARGETS asdops DESTINATION lib)
 install(TARGETS asdops_static DESTINATION lib)

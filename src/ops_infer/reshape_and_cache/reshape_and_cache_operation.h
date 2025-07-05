@@ -34,6 +34,7 @@ private:
     Status KVCacheDimCheck910BNZ(const SVector<TensorDesc> &inTensorDescs) const;
     infer::ReshapeAndCacheParam param_;
     bool is910b_ = false;
+    bool is910_95_ = false;
 };
 } // namespace atb
 #endif

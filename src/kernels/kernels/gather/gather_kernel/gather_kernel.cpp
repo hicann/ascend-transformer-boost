@@ -12,6 +12,7 @@
 #include <mki/utils/math/math.h>
 #include <mki/utils/math/tensor_utils.h>
 #include <mki_loader/op_register.h>
+#include <mki/utils/platform/platform_info.h>
 
 #include "asdops/params/params.h"
 #include "kernels/gather/tiling/gather_tiling.h"
@@ -40,14 +41,16 @@ public:
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Gather), "check param type failed!", return false);
         MKI_CHECK(launchParam.GetInTensorCount() == 2, "check inTensor count failed", return false);
         MKI_CHECK(launchParam.GetOutTensorCount() == 1, "check outTensor count failed", return false);
-        TensorDType xDType = launchParam.GetInTensor(IN_X).desc.dtype;
-        TensorDType indicesDType = launchParam.GetInTensor(IN_INDICES).desc.dtype;
-        MKI_CHECK(GetTensorElementSize(xDType) == ELEM_SIZE, "data width not matched", return false);
-        // support unsigned type, use GetTensorElementSize wrapped
-        MKI_CHECK(GetTensorElementSize(indicesDType) == GetTensorElementSize(INDICE_TYPE), "indices dtype not matched",
-                  return false);
-        TensorDType yDType = launchParam.GetInTensor(IN_X).desc.dtype;
-        MKI_CHECK(xDType == yDType, "in tensor type is different from out tensor type", return false);
+        if (PlatformInfo::Instance().GetPlatformType() != PlatformType::ASCEND_910_95){
+            TensorDType xDType = launchParam.GetInTensor(IN_X).desc.dtype;
+            TensorDType indicesDType = launchParam.GetInTensor(IN_INDICES).desc.dtype;
+            MKI_CHECK(GetTensorElementSize(xDType) == ELEM_SIZE, "data width not matched", return false);
+            // support unsigned type, use GetTensorElementSize wrapped
+            MKI_CHECK(GetTensorElementSize(indicesDType) == GetTensorElementSize(INDICE_TYPE), "indices dtype not matched",
+                      return false);
+            TensorDType yDType = launchParam.GetInTensor(IN_X).desc.dtype;
+            MKI_CHECK(xDType == yDType, "in tensor type is different from out tensor type", return false);
+        }
 
         return true;
     }
@@ -62,8 +65,13 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        Status status = GatherTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-        MKI_CHECK_NO_LOG(status.Ok(), return status);
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            Status status = Gather95Tiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+            MKI_CHECK_NO_LOG(status.Ok(), return status);
+        } else {
+            Status status = GatherTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+            MKI_CHECK_NO_LOG(status.Ok(), return status);
+        }
         kernelInfo_.SetConstTensorOffset(launchBufferSize_);
         auto param = AnyCast<OpParam::Gather>(launchParam.GetParam());
         kernelInfo_.AddConstTensorData<int64_t>(TENSOR_GATHER_AXIS_IDX, param.axis);
@@ -84,4 +92,75 @@ REG_KERNEL_BASE(Gather32I64Kernel);
 REG_KERNEL_BASE(Gather32I32Kernel);
 REG_KERNEL_BASE(Gather64I64Kernel);
 REG_KERNEL_BASE(Gather64I32Kernel);
+
+class Gather95F16I64Kernel : public GatherKernel<BYTES_16BITS, TENSOR_DTYPE_INT64> {
+public:
+    explicit Gather95F16I64Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : GatherKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK_NO_LOG(GatherKernel::CanSupport(launchParam), return false);
+        TensorDType dtype0 = launchParam.GetInTensor(0).desc.dtype;
+        TensorDType dtype1 = launchParam.GetInTensor(1).desc.dtype;
+        return (dtype0 == TENSOR_DTYPE_BF16 || dtype0 == TENSOR_DTYPE_FLOAT16) && (dtype1 == TENSOR_DTYPE_INT64);
+    }
+};
+REG_KERNEL_BASE(Gather95F16I64Kernel);
+
+class GatherF16I32Kernel : public GatherKernel<BYTES_16BITS, TENSOR_DTYPE_INT32> {
+public:
+    explicit GatherF16I32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : GatherKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK_NO_LOG(GatherKernel::CanSupport(launchParam), return false);
+        TensorDType dtype0 = launchParam.GetInTensor(0).desc.dtype;
+        TensorDType dtype1 = launchParam.GetInTensor(1).desc.dtype;
+        return (dtype0 == TENSOR_DTYPE_BF16 || dtype0 == TENSOR_DTYPE_FLOAT16) &&
+               (dtype1 == TENSOR_DTYPE_INT32 || dtype1 == TENSOR_DTYPE_UINT32);
+    }
+};
+REG_KERNEL_BASE(GatherF16I32Kernel);
+
+class Gather95F32I64Kernel : public GatherKernel<BYTES_32BITS, TENSOR_DTYPE_INT64> {
+public:
+    explicit Gather95F32I64Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : GatherKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK_NO_LOG(GatherKernel::CanSupport(launchParam), return false);
+        TensorDType dtype0 = launchParam.GetInTensor(0).desc.dtype;
+        TensorDType dtype1 = launchParam.GetInTensor(1).desc.dtype;
+        return (dtype0 == TENSOR_DTYPE_FLOAT || dtype0 == TENSOR_DTYPE_UINT32 || dtype0 == TENSOR_DTYPE_INT32) &&
+               (dtype1 == TENSOR_DTYPE_INT64);
+    }
+};
+REG_KERNEL_BASE(Gather95F32I64Kernel);
+
+class Gather95F32I32Kernel : public GatherKernel<BYTES_32BITS, TENSOR_DTYPE_INT32> {
+public:
+    explicit Gather95F32I32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : GatherKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK_NO_LOG(GatherKernel::CanSupport(launchParam), return false);
+        TensorDType dtype0 = launchParam.GetInTensor(0).desc.dtype;
+        TensorDType dtype1 = launchParam.GetInTensor(1).desc.dtype;
+        return (dtype0 == TENSOR_DTYPE_FLOAT || dtype0 == TENSOR_DTYPE_UINT32 || dtype0 == TENSOR_DTYPE_INT32) &&
+               (dtype1 == TENSOR_DTYPE_INT32 || dtype1 == TENSOR_DTYPE_UINT32);
+    }
+};
+REG_KERNEL_BASE(Gather95F32I32Kernel);
 } // namespace AsdOps

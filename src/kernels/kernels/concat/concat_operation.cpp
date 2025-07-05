@@ -11,6 +11,7 @@
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
 #include "asdops/params/params.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace AsdOps {
 using namespace Mki;
@@ -22,11 +23,29 @@ public:
     {
         MKI_CHECK(IsConsistent(launchParam), "Fail to check consistent", return nullptr);
         auto dtype = launchParam.GetOutTensor(0).desc.dtype;
-        if (dtype == TENSOR_DTYPE_FLOAT) {
-            return GetKernelByName("ConcatF32Input2Kernel");
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            if (dtype == TENSOR_DTYPE_FLOAT) {
+                return GetKernelByName("ConcatF32Kernel");
+            } else if (dtype == TENSOR_DTYPE_FLOAT16) {
+                return GetKernelByName("ConcatF16Kernel");
+            } else if (dtype == TENSOR_DTYPE_INT8) {
+                return GetKernelByName("ConcatI8Kernel");
+            } else if (dtype == TENSOR_DTYPE_INT16) {
+                return GetKernelByName("ConcatI16Kernel");
+            } else if (dtype == TENSOR_DTYPE_INT32) {
+                return GetKernelByName("ConcatI32Kernel");
+            } else if (dtype == TENSOR_DTYPE_INT64) {
+                return GetKernelByName("ConcatI64Kernel");
+            }
         } else {
-            return GetKernelByName("ConcatF16Input2Kernel");
+            if (dtype == TENSOR_DTYPE_FLOAT) {
+                return GetKernelByName("ConcatF32Input2Kernel");
+            } else {
+                return GetKernelByName("ConcatF16Input2Kernel");
+            }
         }
+        MKI_LOG(ERROR) << "No kernel for Concat inDtype " << GetStrWithDType(dtype);
+        return nullptr;
     }
 
     int64_t GetInputNum(const Any &specificParam) const override

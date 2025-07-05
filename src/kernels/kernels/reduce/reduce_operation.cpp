@@ -12,6 +12,7 @@
 #include <mki/base/operation_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/params/reduce.h"
 #include "kernels/utils/common.h"
 
@@ -45,10 +46,18 @@ public:
                 MKI_LOG(ERROR) << "No kernel for REDUCE_MIN inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Reduce::REDUCE_SUM:
-                if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_FLOAT16) {
-                    return GetKernelByName("ReduceSumF16Kernel");
-                } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_BF16) {
-                    return GetKernelByName("ReduceSumBF16Kernel");
+                if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+                    if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("ReduceSumAptF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("ReduceSumAptBF16Kernel");
+                    }
+                } else {
+                    if (inDtype == TENSOR_DTYPE_FLOAT16 && outDtype == TENSOR_DTYPE_FLOAT16) {
+                        return GetKernelByName("ReduceSumF16Kernel");
+                    } else if (inDtype == TENSOR_DTYPE_BF16 && outDtype == TENSOR_DTYPE_BF16) {
+                        return GetKernelByName("ReduceSumBF16Kernel");
+                    }
                 }
                 MKI_LOG(ERROR) << "No kernel for REDUCE_SUM inDtype " << GetStrWithDType(inDtype);
                 return nullptr;

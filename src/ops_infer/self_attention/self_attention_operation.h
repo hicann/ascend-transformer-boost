@@ -20,6 +20,7 @@ bool SWAParamCheck(const infer::SelfAttentionParam &opParam);
 bool DeviceParamCheck(const infer::SelfAttentionParam &opParam);
 bool PrefixEncoderParamCheck(const infer::SelfAttentionParam &opParam);
 bool BNSDParamCheck(const infer::SelfAttentionParam &opParam);
+bool ParamCheck91095(const infer::SelfAttentionParam &opParam);
 
 class SelfAttentionOperation : public OperationBase {
 public:
@@ -39,6 +40,7 @@ private:
     Status BypassInferShapeImpl910B(const SVector<TensorDesc> &inTensorDescs,
                                     SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeImpl910B(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
+    Status InferShapeImpl91095(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const;
     Status InferShapeDimCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapePADimNumCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapePADimCheck(const SVector<TensorDesc> &inTensorDescs) const;
@@ -46,6 +48,7 @@ private:
     Status InferShapePADimNumCheckBNSD(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeHiddenSizeCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeDimNumCheck(const SVector<TensorDesc> &inTensorDescs) const;
+    Status HeadSizeDimCheck91095(const SVector<TensorDesc> &inTensorDescs) const;
     Status HeadSizeDimCheck910B(const SVector<TensorDesc> &inTensorDescs) const;
     Status HeadSizeDimCheck310P(const SVector<TensorDesc> &inTensorDescs) const;
     Status SWAMaskDimCheck(const SVector<TensorDesc> &inTensorDescs) const;

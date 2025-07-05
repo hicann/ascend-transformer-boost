@@ -9,6 +9,7 @@ set(reshape_and_cache_srcs
     ${CMAKE_CURRENT_LIST_DIR}/reshape_and_cache_operation.cpp
     ${CMAKE_CURRENT_LIST_DIR}/reshape_and_cache_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/tiling/reshape_and_cache_tiling.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/tiling/reshape_and_cache_95_tiling.cpp
 )
 
 add_operation(ReshapeAndCacheOperation "${reshape_and_cache_srcs}")

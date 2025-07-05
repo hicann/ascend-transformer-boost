@@ -41,6 +41,8 @@ constexpr size_t TENSOR_THE_FIFTH = 4;
 constexpr size_t TENSOR_THE_SIXTH = 5;
 constexpr size_t RMSNORMFORWARD_TENSOR_IN_COUNT = 2;
 constexpr size_t RMSNORMFORWARD_TENSOR_OUT_COUNT = 2;
+constexpr size_t RMSNORM_LINGQU_TENSOR_IN_COUNT = 2;
+constexpr size_t RMSNORM_LINGQU_TENSOR_OUT_COUNT = 2;
 constexpr size_t RMSNORM_BACKWARD_IN_COUNT = 4;
 constexpr size_t RMSNORM_BACKWARD_OUT_COUNT = 2;
 constexpr size_t QUANT_TENSOR_IN_COUNT = 2;
@@ -136,6 +138,13 @@ public:
                 }
             case OpParam::Norm::RMS_NORM_FORWARD:
                 return GetKernelByName("RmsNormForwardKernel");
+            case OpParam::Norm::RMS_NORM_LINGQU: {
+                if (dtype == TENSOR_DTYPE_BF16) {
+                    return GetKernelByName("RmsNormLingQuBF16Kernel");
+                } else {
+                    return GetKernelByName("RmsNormLingQuF16Kernel");
+                }
+            }
             case OpParam::Norm::RMS_NORM_BACKWARD:
                 return GetKernelByName("RmsNormBackwardKernel");
             case OpParam::Norm::GATHER_PRE_RMS_NORM:
@@ -171,6 +180,9 @@ public:
         if (param.normType == OpParam::Norm::RMS_NORM_FORWARD) {
             inputNum = RMSNORMFORWARD_TENSOR_IN_COUNT;
         }
+        if (param.normType == OpParam::Norm::RMS_NORM_LINGQU) {
+            inputNum = RMSNORM_LINGQU_TENSOR_IN_COUNT;
+        }
         if (param.normType == OpParam::Norm::RMS_NORM_BACKWARD) {
             inputNum = RMSNORM_BACKWARD_IN_COUNT;
         }
@@ -200,6 +212,9 @@ public:
         }
         if (param.normType == OpParam::Norm::RMS_NORM_FORWARD) {
             outputNum = RMSNORMFORWARD_TENSOR_OUT_COUNT;
+        }
+        if (param.normType == OpParam::Norm::RMS_NORM_LINGQU) {
+            outputNum = RMSNORM_LINGQU_TENSOR_OUT_COUNT;
         }
         if (param.normType == OpParam::Norm::RMS_NORM_BACKWARD) {
             outputNum = RMSNORM_BACKWARD_OUT_COUNT;
@@ -271,12 +286,28 @@ protected:
             return RmsNormBackwardInferShape(launchParam, outTensors);
         } else if (type == OpParam::Norm::GATHER_PRE_RMS_NORM) {
             return GatherPreRmsNormInferShape(launchParam, outTensors);
+        } else if (type == OpParam::Norm::RMS_NORM_LINGQU){
+            return RmsNormLinqQuInferShape(launchParam, outTensors);
         } else {
             return Status::FailStatus(ERROR_INVALID_VALUE, "inferShape failed");
         }
     }
 
 private:
+    Status RmsNormLinqQuInferShape(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const
+    {
+        MKI_CHECK(CheckRmsNormLaunchParam(launchParam), "Failed to Check RmsNormInferShape",
+                     return Status::FailStatus(ERROR_INFERSHAPE_ERROR,
+                                               "Failed to Check RmsNormInferShape"));
+        const SVector<int64_t> &inDims0 = launchParam.GetInTensor(0).desc.dims;
+        const SVector<int64_t> &inDims1 = launchParam.GetInTensor(1).desc.dims;
+        if (inDims0.empty() || inDims1.empty() || inDims0[inDims0.size() - 1] != inDims1[inDims1.size() - 1]) {
+            return Status::FailStatus(ERROR_INVALID_VALUE, "inDims is empty or the last dimension should be the same");
+        }
+        outTensors[0].desc = launchParam.GetInTensor(0).desc;
+
+        return Status::OkStatus();
+    }
     Status RmsNormInferShape(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const
     {
         MKI_CHECK(CheckRmsNormLaunchParam(launchParam), "Failed to Check RmsNormInferShape",

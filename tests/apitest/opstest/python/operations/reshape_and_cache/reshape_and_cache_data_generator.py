@@ -49,13 +49,20 @@ class ReshapeAndCacheDataGenerator():
 
         self.slot_mapping = np.array(value).astype(np.int32)
 
-        
-        self.key_cache = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
-        self.value_cache = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
+        if self.dtype == "bfloat16":
+            self.key_cache= np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(np.float32)
+            self.value_cache = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(np.float32)
+        else:
+            self.key_cache = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
+            self.value_cache = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
 
     def generate_test_data(self):
-        key_expect = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
-        value_expect = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
+        if self.dtype == "bfloat16":
+            key_expect = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(np.float32)
+            value_expect = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(np.float32)
+        else:
+            key_expect = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
+            value_expect = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
         self.new_seq = self.seqLen
         self.new_seq[0] = self.seqLen[0]
 
@@ -100,5 +107,5 @@ class ReshapeAndCacheDataGenerator():
         head_size = 128
         block_size = 128
         num_blocks = 8
-        dtype = "int8"
+        dtype = "float16"
         self.set_reshape_and_cache_param(num_heads, head_size, block_size, num_blocks, dtype, batch)

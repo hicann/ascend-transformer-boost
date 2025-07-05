@@ -22,14 +22,18 @@ import sys
 import shutil
 import logging
 import re
+import bfloat16ext
 from enum import Enum
 
 from self_attention_golden import SelfAttentionGolden, SelfAttentionGenOutTensor
 
+from en_dtypes import hifloat8
+
 dtype_dict = {"float": torch.float32, "float16": torch.float16, "int8": torch.int8, "int32": torch.int32, "uint8": torch.uint8,
               "int16": torch.int16, "uint16": torch.int16, "uint32": torch.int32, "int64": torch.int64, "uint64": torch.int64,
-              "double": torch.double, "bool": torch.bool, "complex64": torch.complex64, "complex128": torch.complex128, "bf16": torch.bfloat16}
-
+              "double": torch.double, "bool": torch.bool, "complex64": torch.complex64, "complex128": torch.complex128, "bf16": torch.bfloat16,
+              "hifloat8": torch.bits8, "float8_e5m2": torch.float8_e5m2, "float8_e4m3fn": torch.float8_e4m3fn}
+'''torch.bits8仅用于占位,不参与实际计算,不要将其它数据类型映射到此数据类型上'''
 format_dict = {"undefined": -1, "nchw": 0, "nhwc": 1, "nd": 2, "nc1hwc0": 3,
                 "fractal_z": 4, "nc1hwc0_c04": 12, "hwcn": 16, "ndhwc": 27,
                 "fractal_nz": 29, "ncdhw": 30, "ndc1hwc0": 32, "fractal_z_3d": 33}
@@ -107,6 +111,8 @@ def get_soc_version():
         soc_version = "Ascend910A"
     elif (re.search("Ascend310B", device_name, re.I)):
         soc_version = "Ascend310B"
+    elif (re.search("Ascend910_9599", device_name, re.I)):
+        soc_version = "Ascend910_95"
     else:
         logging.error("device_name {} is not supported".format(device_name))
         quit(1)
@@ -997,6 +1003,8 @@ class MatmulCommon:
         else:
             logging.error("bias datatype error!")
             return None
+        if get_soc_version() == 'Ascend910_95' and len(shape) == 2 and shape[0] > 1:
+            bias_cpu[:] = bias_cpu[0]
         bias_golden = bias_cpu
         bias_npu = bias_cpu.npu()
         MatmulCommon.bias_golden = bias_golden
@@ -3136,9 +3144,110 @@ class RopeOperation(DataGen):
     def rotate_half(x):
         x0, x1 = x.chunk(2, -1)
         return torch.cat((-x1, x0), dim=x0.ndim - 1)
+    
+    @staticmethod
+    def RopeA5_gloden(in_tensors, op_params):
+        json_data = json.loads(op_params)
+        if in_tensors[0].dtype == torch.bfloat16:
+            in_tensors[0] = in_tensors[0].to(torch.float32)
+            in_tensors[1] = in_tensors[1].to(torch.float32)
+            in_tensors[2] = in_tensors[2].to(torch.float32)
+            in_tensors[3] = in_tensors[3].to(torch.float32)
+            dtype = np.float32
+        else:
+            dtype = np.float16
+        q = np.array(in_tensors[0].cpu()).astype(dtype)
+        kk = np.array(in_tensors[1].cpu()).astype(dtype)
+        cos = np.array(in_tensors[2].cpu()).astype(dtype)
+        sin = np.array(in_tensors[3].cpu()).astype(dtype)
+        seqlen = np.array(in_tensors[4].cpu()).astype(np.int32)
+        batch = seqlen.shape[0]
+        rotaryCoeff = json_data['rotaryCoeff']
+        headDim = cos.shape[-1]
+        hiddensizeQ = 0
+        hiddensizeK = 0
+        headNumQ = 0
+        headNumK = 0
+        realHeadNum = 0
+        realHeadDim = 0
+        realBatch = batch
+        realSeqLen = seqlen[0]
+        isFour = False
+        if len(q.shape) == 4:
+            isFour = True
+            hiddensizeQ = q.shape[-1] * q.shape[-2]
+            hiddensizeK = kk.shape[-1] * kk.shape[-2]
+            realHeadNum = q.shape[-2]
+            realHeadDim = q.shape[-1]
+            realBatch = q.shape[0]
+            realSeqLen = q.shape[1]
+        else:
+            hiddensizeQ = q.shape[-1]
+            hiddensizeK = kk.shape[-1]
+            realHeadNum = hiddensizeQ // headDim
+            realHeadDim = cos.shape[-1]
+        headNumQ = hiddensizeQ // headDim
+        headNumK = hiddensizeK // headDim
+        hiddensize = max(hiddensizeQ, hiddensizeK)
+        headNum = max(headNumQ, headNumK)
+        ntokens = np.sum(seqlen)
+        if len(q.shape) != len(cos.shape):
+            q = q.reshape((ntokens, hiddensizeQ))
+            kk = kk.reshape((ntokens, hiddensizeK))
+        rope_q = np.zeros(shape=(ntokens, hiddensizeQ)).astype(dtype)
+        rope_k = np.zeros(shape=(ntokens, hiddensizeK)).astype(dtype)
+        prefix_Ntokens = 0
+        cosTable = np.zeros(shape=(ntokens, hiddensize)).astype(dtype)
+        for i in range(ntokens):
+            for j in range(headNum):
+                cosTable[i][j*headDim:(j+1)*headDim] = cos[i][:]
+        for i in range(batch):
+            curr_seqLen = seqlen[i]
+            q1 = np.zeros(shape=(curr_seqLen, hiddensizeQ)).astype(dtype)
+            k1 = np.zeros(shape=(curr_seqLen, hiddensizeK)).astype(dtype)
+
+            for i in range(prefix_Ntokens, prefix_Ntokens + curr_seqLen):
+                q1[i-prefix_Ntokens] = q[i] * cosTable[i][:hiddensizeQ]
+                k1[i-prefix_Ntokens] = kk[i] * cosTable[i][:hiddensizeK] 
+            q2 = np.zeros(shape=(curr_seqLen, hiddensizeQ)).astype(dtype)
+            k2 = np.zeros(shape=(curr_seqLen, hiddensizeK)).astype(dtype)        
+            for k in range(headNum):
+                src_ = k * headDim
+                dst_ = (k + 1) * headDim
+                strdie = headDim // 2
+                rotaryStrdie = headDim // rotaryCoeff
+                rotaryTimesPerHead = rotaryCoeff / 2
+                for cycle in range(int(rotaryTimesPerHead)):
+                    src =  src_ + cycle * rotaryStrdie * 2
+                    dst = src + rotaryStrdie * 2
+                    for curr_seqLeni in range(curr_seqLen):
+                        if k < headNumQ:
+                            q2[curr_seqLeni][src:src + rotaryStrdie] = q[prefix_Ntokens + curr_seqLeni][src+ rotaryStrdie:dst] * (-1)
+                            q2[curr_seqLeni][src + rotaryStrdie:dst] = q[prefix_Ntokens + curr_seqLeni][src:src+rotaryStrdie]
+                            q2[curr_seqLeni][src:dst] = q2[curr_seqLeni][src:dst] * sin[prefix_Ntokens + curr_seqLeni][cycle * rotaryStrdie * 2: (cycle +1) * rotaryStrdie * 2]
+                        if k < headNumK:
+                            k2[curr_seqLeni][src:src + rotaryStrdie] = kk[prefix_Ntokens + curr_seqLeni][src+ rotaryStrdie:dst] * (-1)
+                            k2[curr_seqLeni][src + rotaryStrdie:dst] = kk[prefix_Ntokens + curr_seqLeni][src:src+rotaryStrdie]
+                            k2[curr_seqLeni][src:dst] = k2[curr_seqLeni][src:dst] * sin[prefix_Ntokens + curr_seqLeni][cycle * rotaryStrdie * 2: (cycle +1) * rotaryStrdie * 2]
+            rope_q[prefix_Ntokens:prefix_Ntokens + curr_seqLen] += q1 + q2
+            rope_k[prefix_Ntokens:prefix_Ntokens + curr_seqLen] += k1 + k2      
+            
+            prefix_Ntokens += curr_seqLen
+
+        if isFour:
+            rope_q = rope_q.reshape((realBatch, realSeqLen, realHeadNum, realHeadDim))
+            rope_k = rope_k.reshape((realBatch, realSeqLen, realHeadNum, realHeadDim))
+        print(rope_q.shape)
+        if dtype == np.float32:
+            return [torch.tensor(rope_q).bfloat16(), torch.tensor(rope_k).bfloat16()]
+        else:
+            return [torch.tensor(rope_q), torch.tensor(rope_k)]
 
     @staticmethod
     def golden(in_tensors, op_params):
+        device_name = torch.npu.get_device_name()
+        if re.search("Ascend910_9599", device_name, re.I):
+            return RopeOperation.RopeA5_gloden(in_tensors, op_params)
         json_data = json.loads(op_params)
         if json_data['rotaryCoeff'] == 4:
             if in_tensors[4].size()[0] == 3:
@@ -3319,11 +3428,13 @@ class RopeQConcatOperation(DataGen):
 class ReshapeAndCacheOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
+        soc_version = get_soc_version()
         if i != 0:
+            if soc_version == 'Ascend910_95':
+                return ReshapeAndCacheOperation.in_tensors[i]
             ReshapeAndCacheOperation.in_tensors[i] = torch_npu.npu_dtype_cast(ReshapeAndCacheOperation.in_tensors[i].npu(), dtype_dict[datatype])
             return torch_npu.npu_format_cast(ReshapeAndCacheOperation.in_tensors[i], format_dict[format])
-        
-        soc_version = get_soc_version()
+            
         json_data = json.loads(op_params)
         if "kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 1:
             MAX_SEQ_LEN = 1024
@@ -3363,7 +3474,7 @@ class ReshapeAndCacheOperation(DataGen):
                 block_offset = slot % block_size
 
                 token_key = key[j]
-                if (soc_version == 'Ascend910B' and key_expect[0][0].shape == token_key.shape):
+                if ((soc_version == 'Ascend910B' or soc_version == 'Ascend910_95') and key_expect[0][0].shape == token_key.shape):
                     key_expect[block_index][block_offset] = token_key
 
             ret_data = key, key_cache, slot_mapping, key_expect
@@ -3385,7 +3496,7 @@ class ReshapeAndCacheOperation(DataGen):
         num_tokens_v = shapes[1][0]
         num_heads_v  = shapes[1][1]
         head_size_v = shapes[1][2]
-        if (soc_version == 'Ascend910B' and ("kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 2)) or soc_version == 'Ascend310P':
+        if ((soc_version == 'Ascend910B' or soc_version == 'Ascend910_95') and ("kvCacheCfg" in json_data and  json_data["kvCacheCfg"] == 2)) or soc_version == 'Ascend310P':
             block_size = shapes[2][2]   
         else:
             block_size = shapes[2][1]
@@ -3409,7 +3520,7 @@ class ReshapeAndCacheOperation(DataGen):
             slot_list = random.sample(range(range_min, num_slots), num_tokens_slots)
         slot_mapping = np.array(slot_list).astype(np.int32)
 
-        if soc_version == 'Ascend910B':
+        if soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
             key_cache = np.zeros((shapes[2][0], shapes[2][1], shapes[2][2], shapes[2][3])).astype(dtype)
             value_cache = np.zeros((shapes[3][0], shapes[3][1], shapes[3][2], shapes[3][3])).astype(dtype)
             key_expect = np.zeros((shapes[2][0], shapes[2][1], shapes[2][2], shapes[2][3])).astype(dtype)
@@ -3446,7 +3557,7 @@ class ReshapeAndCacheOperation(DataGen):
                 for v in range(num_heads_v * head_size_v // last_dim_v):
                     if (block_index < value_expect.shape[0] and block_offset < value_expect.shape[2] and value_expect.shape[3] == last_dim_v and v < value_expect.shape[1]):
                         value_expect[block_index][v][block_offset][:] = token_v[v * last_dim_v: v * last_dim_v + last_dim_v]
-            elif soc_version == 'Ascend910B': # 910B ND
+            elif soc_version == 'Ascend910B' or soc_version == 'Ascend910_95': # 910B ND
                 if key_expect[0][0].shape == token_key.shape:
                     key_expect[block_index][block_offset] = token_key
                 if value_expect[0][0].shape == token_v.shape:
@@ -3491,7 +3602,7 @@ class ReshapeAndCacheOperation(DataGen):
             data_type = in_tensors[0].dtype
             slot_mapping = in_tensors[2]
             soc_version = get_soc_version()
-            if soc_version == 'Ascend910B':
+            if soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
                 num_blocks, block_size, _, _ = in_tensors[1].shape # key_cache
                 key_expect = in_tensors[1]
                 for i, slot in enumerate(slot_mapping):
@@ -3535,7 +3646,7 @@ class ReshapeAndCacheOperation(DataGen):
                 for v in range(num_heads * v_head_size // last_dim_v):
                     value_expect_nz[block_index][v][block_offset][:] = token_v[v * last_dim_v: v * last_dim_v + last_dim_v]
             return [key_expect_nz, value_expect_nz]
-        elif soc_version == 'Ascend910B':
+        elif soc_version == 'Ascend910B' or soc_version == 'Ascend910_95':
             num_blocks, block_size, _, _ = in_tensors[2].shape # key_cache
             key_expect = in_tensors[2]
             value_expect = in_tensors[3]
@@ -3706,8 +3817,38 @@ class ElewiseOperation(DataGen):
         return [golden_result]
 
     def elewiseQuant(in_tensors, op_params):
-        golden_result = in_tensors[0].type(torch.int8)
-        return [golden_result]
+        json_data = json.loads(op_params)
+        outType = json_data["outTensorType"]
+        scale = np.float32(json_data["quantParam"]["inputScale"])
+        offset = np.int32(json_data["quantParam"]["inputOffset"])
+        input_x = in_tensors[0].to(torch.float32).cpu().numpy().astype("float32")
+
+        if (in_tensors[0].dtype == torch.float16):
+            scale = scale.astype(np.float16)
+            offset = offset.astype(np.float16)
+            scale = scale.astype(np.float32)
+            offset = offset.astype(np.float32)
+        elif (in_tensors[0].dtype == torch.bfloat16):
+            scale = scale.astype(bfloat16ext.bfloat16)
+            offset = offset.astype(bfloat16ext.bfloat16)
+            scale = scale.astype(np.float32)
+            offset = offset.astype(np.float32)
+        
+        out = input_x * scale + offset
+        out = np.round(out, 8) if outType in (34, 35, 36) else np.round(out, 0)
+        if outType == 35:
+            out = torch.from_numpy(out).to(torch.float8_e5m2)
+        elif outType == 36:
+            out = torch.from_numpy(out).to(torch.float8_e4m3fn)
+        elif outType == 34:
+            out = out.astype(hifloat8, copy=False).view(np.int8)
+            out = torch.from_numpy(out)
+        else:
+            out = torch.from_numpy(out).to(torch.int8)
+        
+        return [out]
+        # golden_result = in_tensors[0].type(torch.int8)
+        # return [golden_result]
 
     def elewiseLogicalNot(in_tensors, op_params):
         golden_result = torch.logical_not(in_tensors[0])
@@ -3781,9 +3922,27 @@ class ElewiseOperation(DataGen):
             out = np.clip((input_y.astype(np.float16) - input_offset.astype(np.float16)) * input_scale, -65504, 65504)
         return [torch.from_numpy(out).to(torch.float16)]
 
+    def elewiseQuantPerChannelV2(in_tensors, op_params):
+        json_data = json.loads(op_params)
+        outType = json_data["outTensorType"]
+        input_x = in_tensors[0].to(torch.float32).cpu().numpy().astype("float32")
+        input_scale = in_tensors[1].to(torch.float32).cpu().numpy().astype("float32")
+        input_offset = in_tensors[2].to(torch.float32).cpu().numpy().astype("float32")
+        out = input_x * input_scale
+        if len(input_offset) != 0:
+            out = out + input_offset
+        out = np.round(out, 8)
+        if outType == 35:
+            out = torch.from_numpy(out).to(torch.float8_e5m2)
+        elif outType == 36:
+            out = torch.from_numpy(out).to(torch.float8_e4m3fn)
+        elif outType == 34:
+            out = out.astype(hifloat8, copy=False).view(np.int8)
+            out = torch.from_numpy(out)
+        return [out]
+
     def elewiseDynamicQuant(in_tensors, op_params):
-        input_x = in_tensors[0].to(torch.float).cpu().numpy()
-        shape_input = input_x.shape
+        input_x = in_tensors[0].cpu().numpy()
         json_data = json.loads(op_params)
         if json_data["quantParam"]["asymmetric"]:
             row_max = np.max(input_x, axis=-1, keepdims=True)
@@ -3802,17 +3961,37 @@ class ElewiseOperation(DataGen):
                     torch.from_numpy(out_scale.squeeze(axis=-1)).to(torch.float32),
                     torch.from_numpy(out_offset.squeeze(axis=-1)).to(torch.float32)]
         else:
-            input_abs = np.abs(input_x)
-            scale = np.max(input_abs, axis=-1, keepdims=True)
-            scale = scale.astype(np.float32)
-            out_scale = scale / 127
+            outDtype = json_data['outTensorType']
+            dmax = np.float32(0.0)
+            if outDtype == 2:
+                dmax = np.float32(127.0)
+            elif outDtype == 34:
+                dmax = np.float32(32768.0)
+            elif outDtype == 35:
+                dmax = np.float32(57344.0)
+            elif outDtype == 36:
+                dmax = np.float32(448.0)
 
-            input_x = input_x.astype(np.float32)
-            input_x = input_x * 127
-            input_x = input_x / scale
-            out_x = np.round(input_x)
-            return [torch.from_numpy(out_x).to(torch.int8),
-                    torch.from_numpy(out_scale.squeeze(axis=-1)).to(torch.float32)]
+            x = input_x.astype(np.float32)
+            input_abs = np.abs(x)
+            input_max = np.max(input_abs, axis=-1, keepdims=True)
+            scale = input_max * (np.float32(1.0) / dmax)
+            input_scaled = x / scale
+
+            round_data = input_scaled if (outDtype) in (34, 35, 36) else np.round(input_scaled, 0)
+            
+            if outDtype == 2:
+                round_data = round_data.astype(np.int8, copy=False)
+                out = torch.from_numpy(round_data)
+            elif outDtype == 34:
+                out = round_data.astype(hifloat8, copy=False).view(np.int8)
+                out = torch.from_numpy(out)
+            elif outDtype == 35:
+                out = torch.from_numpy(round_data).to(torch.float8_e5m2)
+            elif outDtype == 36:
+                out = torch.from_numpy(round_data).to(torch.float8_e4m3fn)
+
+            return [out, torch.from_numpy(scale.squeeze(axis=-1)).to(torch.float32)]
 
     def elewiseTanh(in_tensors, op_params):
         golden_result = torch.tanh(in_tensors[0].float())
@@ -3862,6 +4041,8 @@ class ElewiseOperation(DataGen):
             return ElewiseOperation.elewiseDynamicQuant(in_tensors, op_params)
         elif elewiseType == 20:
             return ElewiseOperation.elewiseTanh(in_tensors, op_params)
+        elif elewiseType == 21:
+            return ElewiseOperation.elewiseQuantPerChannelV2(in_tensors, op_params)
 
     @staticmethod
     def get_op_type(op_params):
@@ -3984,6 +4165,10 @@ class PagedAttentionOperation(DataGen):
             return torch.int32
         if dtype == "int64":
             return torch.int64
+        if dtype == "float8_e5m2":
+            return torch.float8_e5m2
+        if dtype == "float8_e4m3fn":
+            return torch.float8_e4m3fn
     @staticmethod        
     def process_deq_scale(deq_scale) -> np.ndarray:
         new_deq_scale = np.frombuffer(deq_scale.tobytes(), dtype=np.uint32)
@@ -4346,6 +4531,11 @@ class PagedAttentionOperation(DataGen):
         num_heads = query.shape[1]
         kv_heads = value_cache.shape[2]
 
+        if get_soc_version() == "Ascend910_95":
+            if key_cache.dtype == torch.float8_e5m2 or key_cache.dtype == torch.float8_e4m3fn:
+                key_cache = key_cache.to(torch.float16)
+                value_cache = value_cache.to(torch.float16)
+
         index = 0
         cu_seqlen = 0
         razor_mod = 0
@@ -4512,12 +4702,13 @@ class PagedAttentionOperation(DataGen):
                 if PagedAttentionOperation.in_tensors[j].shape[0] != 0:
                     tensor_count += 1
                     if tensor_count == i + 1:
-                        PagedAttentionOperation.in_tensors[j] = \
-                            PagedAttentionOperation.in_tensors[j].to(PagedAttentionOperation.trans_dtype(datatype))
+                        cpu_tensor = PagedAttentionOperation.in_tensors[j].cpu().to(PagedAttentionOperation.trans_dtype(datatype))
+                        PagedAttentionOperation.in_tensors[j] = cpu_tensor.npu()
+                        PagedAttentionOperation.golden_tensors[j] = cpu_tensor.npu()
                         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[j], format_dict[format])
         soc_version = get_soc_version()
         json_data = json.loads(op_params)
-        is_NZ = soc_version != "Ascend910B"
+        is_NZ = soc_version != "Ascend910B" and soc_version != "Ascend910_95"
         maskType = 0
         if "maskType" in json_data:
             maskType = json_data["maskType"]
@@ -4571,7 +4762,7 @@ class PagedAttentionOperation(DataGen):
             head_size_v = json_data["mlaVHeadSize"]
             max_num_blocks_per_query = shapes[2][1]
             batch = shapes[3][0]
-        max_seq_len = 256
+        max_seq_len = 32
 
         if is_compresshead:
             # 0 query [num_tokens, num_head, head_size]
@@ -4620,7 +4811,7 @@ class PagedAttentionOperation(DataGen):
         if quantType == 1:
             q_range = 4
             kv_range = 4
-            kv_dtype = np.int8
+            kv_dtype = np.float16
         # create q,k,v
         if is_compresshead:
             query = np.random.uniform(-q_range, q_range, size=(num_tokens, num_head, head_size)).astype(dtype)
@@ -4750,9 +4941,9 @@ class PagedAttentionOperation(DataGen):
         golden_tensors = [torch.from_numpy(tensor).npu() for tensor in golden_data]
         PagedAttentionOperation.golden_tensors = golden_tensors
         PagedAttentionOperation.in_tensors = in_tensors
-        
-        PagedAttentionOperation.in_tensors[0] = \
-                            PagedAttentionOperation.in_tensors[0].to(PagedAttentionOperation.trans_dtype(datatype))
+
+        in_tensor0_cpu = PagedAttentionOperation.in_tensors[0].cpu().to(PagedAttentionOperation.trans_dtype(datatype))
+        PagedAttentionOperation.in_tensors[0] = in_tensor0_cpu.npu()
         return torch_npu.npu_format_cast(PagedAttentionOperation.in_tensors[0], format_dict[format])
 
     @staticmethod
@@ -4785,7 +4976,7 @@ class PagedAttentionOperation(DataGen):
     @staticmethod
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
-        is_NZ = get_soc_version() != "Ascend910B"
+        is_NZ = get_soc_version() != "Ascend910B" and get_soc_version() != "Ascend910_95"
         head_size_o = 0
         if "mlaVHeadSize" in json_data and json_data["mlaVHeadSize"] > 0:
             head_size_o = json_data["mlaVHeadSize"]

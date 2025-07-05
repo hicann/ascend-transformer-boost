@@ -13,6 +13,7 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/SVector/SVector.h>
 #include "asdops/params/split.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace AsdOps {
 using namespace Mki;
@@ -30,6 +31,14 @@ public:
         auto param = AnyCast<OpParam::Split>(launchParam.GetParam());
         size_t outputNum = launchParam.GetOutTensorCount();
         if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
+            if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+                if (outputNum == SPLIT_SUPPORT_SPLIT_NUM2 || outputNum == SPLIT_SUPPORT_SPLIT_NUM3) {
+                    return GetKernelByName("SplitAptF16Kernel");
+                } else {
+                    MKI_LOG(ERROR) << "outputNum is wrong:" << outputNum;
+                    return nullptr;
+                }
+            }
             if (outputNum == SPLIT_SUPPORT_SPLIT_NUM2) {
                 if (param.splitSize.size() > 0) {
                     return GetKernelByName("SplitVF16Output2Kernel");
@@ -47,6 +56,14 @@ public:
                 return nullptr;
             }
         } else if (dtype == TENSOR_DTYPE_INT64) {
+            if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+                if (outputNum == SPLIT_SUPPORT_SPLIT_NUM2 || outputNum == SPLIT_SUPPORT_SPLIT_NUM3) {
+                    return GetKernelByName("SplitAptInt64Kernel");
+                } else {
+                    MKI_LOG(ERROR) << "outputNum is wrong:" << outputNum;
+                    return nullptr;
+                }
+            }
             if (outputNum == SPLIT_SUPPORT_SPLIT_NUM2) {
                 if (param.splitSize.size() > 0) {
                     return GetKernelByName("SplitVInt64Output2Kernel");

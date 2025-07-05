@@ -9,7 +9,9 @@
  */
 
 #include <iostream>
+#include "atb/utils/config.h"
 #include "atb/utils/log.h"
+#include "atb/utils/singleton.h"
 #include "elewise_ops_runner.h"
 
 namespace atb {
@@ -68,21 +70,31 @@ void ElewiseOpsRunner::SetOuttensor(KernelGraphNode &elewiseNode)
     AsdOps::OpParam::Elewise elsewiseParam = {opElewiseType};
 
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT) {
-        // atb outtensor num, asymmetric:true=>3 false=>2
-        size_t resizeNum = param_.quantParam.asymmetric ? NUMTHREE : NUMTWO;
-        kernelGraph_.outTensors.resize(resizeNum);
-        Mki::Tensor &operationOutTensor0 = kernelGraph_.outTensors.at(INDEX_ZERO);
-        Mki::Tensor &operationOutTensor1 = kernelGraph_.outTensors.at(INDEX_ONE);
-        Mki::Tensor &operationOutTensor2 =
-            param_.quantParam.asymmetric ? kernelGraph_.outTensors.at(INDEX_TWO) : nullTensor_; // 2 : outtensor idx
-        elewiseNode.outTensors = {&operationOutTensor0, &operationOutTensor1, &operationOutTensor2};
+        if (GetSingleton<Config>().Is910_95()) {
+            kernelGraph_.outTensors.resize(2);
+            Mki::Tensor &operationOutTensor0 = kernelGraph_.outTensors.at(INDEX_ZERO);
+            Mki::Tensor &operationOutTensor1 = kernelGraph_.outTensors.at(INDEX_ONE);
+            elsewiseParam.outTensorType = GetOutTensorType(param_.outTensorType);
+            elewiseNode.outTensors = {&operationOutTensor0, &operationOutTensor1};
+        } else {
+            // atb outtensor num, asymmetric:true=>3 false=>2
+            size_t resizeNum = param_.quantParam.asymmetric ? NUMTHREE : NUMTWO;
+            kernelGraph_.outTensors.resize(resizeNum);
+            Mki::Tensor &operationOutTensor0 = kernelGraph_.outTensors.at(INDEX_ZERO);
+            Mki::Tensor &operationOutTensor1 = kernelGraph_.outTensors.at(INDEX_ONE);
+            Mki::Tensor &operationOutTensor2 =
+                param_.quantParam.asymmetric ? kernelGraph_.outTensors.at(INDEX_TWO) : nullTensor_; // 2 : outtensor idx
+            elewiseNode.outTensors = {&operationOutTensor0, &operationOutTensor1, &operationOutTensor2};
+        }
         elsewiseParam.asymmetric = param_.quantParam.asymmetric;
     } else {
         kernelGraph_.outTensors.resize(INDEX_ONE);
         Mki::Tensor &operationOutTensor = kernelGraph_.outTensors.at(INDEX_ZERO);
         elewiseNode.outTensors = {&operationOutTensor};
     }
-
+    if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2) {
+        elsewiseParam.outTensorType = GetOutTensorType(param_.outTensorType);
+    }
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_MULS) {
         elsewiseParam.varAttr = param_.mulsParam.varAttr;
     }
@@ -90,8 +102,10 @@ void ElewiseOpsRunner::SetOuttensor(KernelGraphNode &elewiseNode)
         elsewiseParam.varAttr = 0.0f;
         elsewiseParam.inputScale = param_.quantParam.inputScale;
         elsewiseParam.inputOffset = param_.quantParam.inputOffset;
+        if (GetSingleton<Config>().Is910_95()) {
+            elsewiseParam.outTensorType = GetOutTensorType(param_.outTensorType);
+        }
     }
-
     if (param_.elewiseType == infer::ElewiseParam::ElewiseType::ELEWISE_CAST) {
         elsewiseParam.outTensorType = GetOutTensorType(param_.outTensorType);
     }
@@ -122,6 +136,7 @@ uint32_t ElewiseOpsRunner::GetIntensorSize() const
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, NUMTWO},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL, NUMTHREE},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL, NUMTHREE},
+        {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2, NUMTHREE},
     };
     std::map<infer::ElewiseParam::ElewiseType, uint32_t>::const_iterator it = inTensorNumTable.find(param_.elewiseType);
     return it == inTensorNumTable.end() ? 0 : it->second;
@@ -148,6 +163,8 @@ AsdOps::OpParam::Elewise::ElewiseType ElewiseOpsRunner::GetOpElwiseType() const
         {infer::ElewiseParam::ElewiseType::ELEWISE_EQUAL, AsdOps::OpParam::Elewise::ELEWISE_EQUAL},
         {infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL,
          AsdOps::OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL},
+        { infer::ElewiseParam::ElewiseType::ELEWISE_QUANT_PER_CHANNEL_V2,
+         AsdOps::OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL_V2},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DEQUANT_PER_CHANNEL,
          AsdOps::OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL},
         {infer::ElewiseParam::ElewiseType::ELEWISE_DYNAMIC_QUANT, AsdOps::OpParam::Elewise::ELEWISE_DYNAMIC_QUANT},
@@ -167,6 +184,9 @@ Mki::TensorDType ElewiseOpsRunner::GetOutTensorType(const aclDataType outType) c
         {aclDataType::ACL_INT32, Mki::TensorDType::TENSOR_DTYPE_INT32},
         {aclDataType::ACL_INT64, Mki::TensorDType::TENSOR_DTYPE_INT64},
         {aclDataType::ACL_BF16, Mki::TensorDType::TENSOR_DTYPE_BF16},
+        {aclDataType::ACL_HIFLOAT8, Mki::TensorDType::TENSOR_DTYPE_HIFLOAT8},
+        {aclDataType::ACL_FLOAT8_E4M3FN, Mki::TensorDType::TENSOR_DTYPE_FLOAT8_E4M3FN},
+        {aclDataType::ACL_FLOAT8_E5M2, Mki::TensorDType::TENSOR_DTYPE_FLOAT8_E5M2},
     };
     std::map<aclDataType, Mki::TensorDType>::const_iterator it = typeTable.find(outType);
     return it == typeTable.end() ? Mki::TensorDType::TENSOR_DTYPE_UNDEFINED : it->second;

@@ -76,7 +76,7 @@ in_tensors = [torch.from_numpy(tensor) for tensor in data]
 in_tensors = [tensor.npu() for tensor in in_tensors]
 a = [print(tensor.dtype, tensor.device) for tensor in in_tensors]
  
-data1 = generate_data()
+data1 = data
 in_tensors1 = [torch.from_numpy(tensor).bfloat16() for tensor in data1]
 in_tensors1 = [tensor.npu() for tensor in in_tensors1]
  
@@ -86,10 +86,10 @@ class TestReshapeAndCacheOperation(operation_test.OperationTest):
         return [in_tensors[5], in_tensors[6]]
  
     def golden_compare(self, out_tensor, golden_out_tensor):
-        return torch.equal(out_tensor, golden_out_tensor)
+        return torch.equal(out_tensor.cpu(), golden_out_tensor.cpu())
  
     def test(self):
-        if not TestReshapeAndCacheOperation.soc_version == 'Ascend910B':
+        if not TestReshapeAndCacheOperation.soc_version in ['Ascend910B', 'Ascend910_9599']:
             print("this testcase only supports Ascend910B")
             return
         self.execute_out(OP_NAME, PARAM, [in_tensors[0], in_tensors[1], in_tensors[2],
@@ -100,10 +100,16 @@ class TestReshapeAndCacheOperationBF16(operation_test.OperationTest):
         return [in_tensors1[5], in_tensors1[6]]
  
     def golden_compare(self, out_tensor, golden_out_tensor):
-        return torch.equal(out_tensor, golden_out_tensor)
+        out = out_tensor.cpu()
+        golden = golden_out_tensor.cpu()
+
+        out = out.to(torch.float32)
+        golden = golden.to(torch.float32)
+
+        return torch.equal(out, golden)
  
     def test(self):
-        if not operation_test.get_soc_version() == 'Ascend910B':
+        if not operation_test.get_soc_version() in ['Ascend910B', 'Ascend910_9599']:
             print("this testcase only supports Ascend910B")
             return
         self.execute_out(OP_NAME, PARAM, [in_tensors1[0], in_tensors1[1], in_tensors1[2],

@@ -12,6 +12,7 @@
 #include <mki/utils/log/log.h>
 #include "asdops/params/params.h"
 #include "kernels/elewise/tiling/elewise_tiling.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace AsdOps {
 using namespace Mki;
@@ -36,6 +37,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            return SinTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        }
         return ElewiseCommonTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };
@@ -99,4 +103,40 @@ public:
     }
 };
 REG_KERNEL_BASE(SinBF16Kernel);
+
+// SinAptF16
+class SinAptF16Kernel : public SinKernel {
+public:
+    explicit SinAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SinKernel(kernelName, handle) {}
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(SinKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(SinAptF16Kernel);
+
+// SinAptF32
+class SinAptF32Kernel : public SinKernel {
+public:
+    explicit SinAptF32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : SinKernel(kernelName, handle) {}
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(SinKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(SinAptF32Kernel);
 } // namespace AsdOps

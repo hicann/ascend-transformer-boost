@@ -220,4 +220,10 @@ Status DynamicQuantTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo
     kernelInfo.SetTilingId(tilingKey);
     return Status::OkStatus();
 }
+
+Status DynamicQuantAptF16Tiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                           const BinHandle &binHandle)
+{
+    return Status::OkStatus();
+}
 } // namespace AsdOps

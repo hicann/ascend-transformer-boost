@@ -58,6 +58,9 @@ public:
             kernelInfo_.SetHwsyncIdx(0);
             kernelInfo_.AddConstTensorData<int64_t>(TENSOR_REDUCE_AXIS_IDX + 1, param.axis);
             kernelInfo_.SetMemsetInfo(TENSOR_REDUCE_WORKSPACE_IDX + 1, kernelInfo_.GetScratchSizes().at(1));
+        } else if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+            kernelInfo_.AddConstTensorData<int64_t>(TENSOR_REDUCE_AXIS_IDX, param.axis);
+            kernelInfo_.SetMemsetInfo(TENSOR_REDUCE_WORKSPACE_IDX - 1, kernelInfo_.GetScratchSizes().at(0));
         } else {
             kernelInfo_.AddConstTensorData<int64_t>(TENSOR_REDUCE_AXIS_IDX, param.axis);
             kernelInfo_.SetMemsetInfo(TENSOR_REDUCE_WORKSPACE_IDX, kernelInfo_.GetScratchSizes().at(1));
@@ -125,4 +128,33 @@ public:
     }
 };
 REG_KERNEL_BASE(ReduceSumBF16Kernel);
+
+// SumAptF16
+class ReduceSumAptF16Kernel : public ReduceKernel {
+public:
+    explicit ReduceSumAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ReduceKernel(kernelName, handle)
+    {
+    }
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return AsdOps::Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(ReduceSumAptF16Kernel);
+
+// SumAptBF16
+class ReduceSumAptBF16Kernel : public ReduceKernel {
+public:
+    explicit ReduceSumAptBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ReduceKernel(kernelName, handle)
+    {
+    }
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return AsdOps::Status::OkStatus();
+    }
+};
+REG_KERNEL_BASE(ReduceSumAptBF16Kernel);
+
 } // namespace AsdOps

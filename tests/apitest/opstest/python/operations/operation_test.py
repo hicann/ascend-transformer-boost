@@ -51,6 +51,8 @@ def get_soc_version():
         soc_version = "Ascend910A"
     elif re.search("Ascend310B", device_name, re.I):
         soc_version = "Ascend310B"
+    elif re.search("Ascend910_9599", device_name, re.I):
+        soc_version = "Ascend910_9599"
     else:
         print("device_name {} is not supported".format(device_name))
         quit(1)

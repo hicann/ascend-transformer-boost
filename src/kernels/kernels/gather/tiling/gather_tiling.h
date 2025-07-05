@@ -19,6 +19,8 @@ namespace AsdOps {
 using namespace Mki;
 Status GatherTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                     const BinHandle &binHandle);
+Status Gather95Tiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                    const BinHandle &binHandle);
 } // namespace AsdOps
 
 #endif

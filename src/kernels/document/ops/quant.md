@@ -8,8 +8,8 @@
 | 名称  | 类型  | 描述 |
 | ------------ | ------------ | ------------ |
 | elewiseType | enum  | ELEWISE_QUANT |
-| scale  |  int  | 缩放系数|
-| offset  | float |偏置数|
+| scale  |  float  | 缩放系数|
+| offset  | int |偏置数|
 - **In/Out Tensor**
 
 |名称 | 类型  | dims  | dtype  |format|

@@ -43,7 +43,7 @@ template <> Status CreateOperation(const infer::ReshapeAndCacheParam &opParam, O
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    if (!GetSingleton<Config>().Is910B()) {
+    if (!GetSingleton<Config>().Is910B() && !GetSingleton<Config>().Is910_95()) {
         if (opParam.compressType != infer::ReshapeAndCacheParam::CompressType::COMPRESS_TYPE_UNDEFINED) {
             ATB_LOG(ERROR) << "head compress only support Atlas 800I A2 inference product";
             return ERROR_INVALID_PARAM;
@@ -85,7 +85,8 @@ ReshapeAndCacheOperation::ReshapeAndCacheOperation(const infer::ReshapeAndCacheP
     : OperationBase("ReshapeAndCacheOperation"), param_(param)
 {
     is910b_ = GetSingleton<Config>().Is910B();
-    if (!is910b_) {
+    is910_95_ = GetSingleton<Config>().Is910_95();
+    if (!is910b_ && !is910_95_) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationAtlas300");
     } else if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationSISO");
@@ -226,7 +227,7 @@ Status ReshapeAndCacheOperation::DimCheck(const SVector<TensorDesc> &inTensorDes
         ATB_LOG(ERROR) << GetLogPrefix() << "blockSizes should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    return is910b_ ? KVCacheDimCheck910B(inTensorDescs) : KVCacheDimCheck310P(inTensorDescs);
+    return is910b_ || is910_95_ ? KVCacheDimCheck910B(inTensorDescs) : KVCacheDimCheck310P(inTensorDescs);
 }
 
 Status ReshapeAndCacheOperation::DimCheckSISO(const SVector<TensorDesc> &inTensorDescs) const
@@ -387,7 +388,7 @@ Status ReshapeAndCacheOperation::KVCacheDimCheck310P(const SVector<TensorDesc> &
 std::shared_ptr<Runner> ReshapeAndCacheOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (GetSingleton<Config>().Is910B()) {
+    if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is910_95()) {
         if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
             return std::make_shared<ReshapeAndCacheOpsRunnerSISO>(param_);
         } else if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {

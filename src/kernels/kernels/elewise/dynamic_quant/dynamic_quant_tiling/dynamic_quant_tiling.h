@@ -13,9 +13,11 @@
 #include <mki/launch_param.h>
 #include <mki/kernel_info.h>
 #include <mki/utils/status/status.h>
+#include <mki/bin_handle.h>
 
 namespace AsdOps {
 using namespace Mki;
 Status DynamicQuantTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo);
+Status DynamicQuantAptF16Tiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,const BinHandle &binHandle);
 } // namespace AsdOps
 #endif

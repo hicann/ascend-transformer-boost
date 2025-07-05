@@ -10,7 +10,7 @@
 #include <mki/base/operation_base.h>
 #include <mki/utils/log/log.h>
 #include <mki_loader/op_register.h>
-
+#include <mki/utils/platform/platform_info.h>
 #include "asdops/common.h"
 #include "asdops/params/params.h"
 
@@ -25,25 +25,42 @@ public:
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
         auto dtype = launchParam.GetInTensor(0).desc.dtype;
         auto dtype1 = launchParam.GetInTensor(1).desc.dtype;
-        if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
-            if (dtype1 == TENSOR_DTYPE_UINT32 || dtype1 == TENSOR_DTYPE_INT32) {
-                return GetKernelByName("Gather16I32Kernel");
-            } else if (dtype1 == TENSOR_DTYPE_INT64) {
-                return GetKernelByName("Gather16I64Kernel");
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
+                if (dtype1 == TENSOR_DTYPE_UINT32 || dtype1 == TENSOR_DTYPE_INT32) {
+                    return GetKernelByName("Gather95F16I32Kernel");
+                } else if (dtype1 == TENSOR_DTYPE_INT64) {
+                    return GetKernelByName("Gather95F16I64Kernel");
+                }
+            } else if (dtype == TENSOR_DTYPE_FLOAT || dtype == TENSOR_DTYPE_INT32 || dtype == TENSOR_DTYPE_UINT32) {
+                if (dtype1 == TENSOR_DTYPE_UINT32 || dtype1 == TENSOR_DTYPE_INT32) {
+                    return GetKernelByName("Gather95F32I32Kernel");
+                } else if (dtype1 == TENSOR_DTYPE_INT64) {
+                    return GetKernelByName("Gather95F32I64Kernel");
+                }
             }
-        } else if (dtype == TENSOR_DTYPE_FLOAT || dtype == TENSOR_DTYPE_INT32 || dtype == TENSOR_DTYPE_UINT32) {
-            if (dtype1 == TENSOR_DTYPE_UINT32 || dtype1 == TENSOR_DTYPE_INT32) {
-                return GetKernelByName("Gather32I32Kernel");
-            } else if (dtype1 == TENSOR_DTYPE_INT64) {
-                return GetKernelByName("Gather32I64Kernel");
-            }
-        } else if (dtype == TENSOR_DTYPE_INT64) {
-            if (dtype1 == TENSOR_DTYPE_UINT32 || dtype1 == TENSOR_DTYPE_INT32) {
-                return GetKernelByName("Gather64I32Kernel");
-            } else if (dtype1 == TENSOR_DTYPE_INT64) {
-                return GetKernelByName("Gather64I64Kernel");
+        } else {
+            if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
+                if (dtype1 == TENSOR_DTYPE_UINT32 || dtype1 == TENSOR_DTYPE_INT32) {
+                    return GetKernelByName("Gather16I32Kernel");
+                } else if (dtype1 == TENSOR_DTYPE_INT64) {
+                    return GetKernelByName("Gather16I64Kernel");
+                }
+            } else if (dtype == TENSOR_DTYPE_FLOAT || dtype == TENSOR_DTYPE_INT32 || dtype == TENSOR_DTYPE_UINT32) {
+                if (dtype1 == TENSOR_DTYPE_UINT32 || dtype1 == TENSOR_DTYPE_INT32) {
+                    return GetKernelByName("Gather32I32Kernel");
+                } else if (dtype1 == TENSOR_DTYPE_INT64) {
+                    return GetKernelByName("Gather32I64Kernel");
+                }
+            } else if (dtype == TENSOR_DTYPE_INT64) {
+                if (dtype1 == TENSOR_DTYPE_UINT32 || dtype1 == TENSOR_DTYPE_INT32) {
+                    return GetKernelByName("Gather64I32Kernel");
+                } else if (dtype1 == TENSOR_DTYPE_INT64) {
+                    return GetKernelByName("Gather64I64Kernel");
+                }
             }
         }
+
         MKI_LOG(ERROR) << "No kernel for Gather dtype " << GetStrWithDType(dtype) << ", " << GetStrWithDType(dtype1);
         return nullptr;
     }
@@ -81,18 +98,21 @@ protected:
         SVector<int64_t> tensorDims = launchParam.GetInTensor(0).desc.dims;
         SVector<int64_t> indicesDims = launchParam.GetInTensor(1).desc.dims;
         SVector<int64_t> outTensorDims;
-        uint64_t dim1 = static_cast<uint64_t>(axisVector[0]);
-        uint64_t dim2 = indicesDims.size() - static_cast<uint64_t>(param.batchDims);
-        uint64_t dim3 = tensorDims.size() - dim1 - 1;
-        uint64_t outTensordimNum = dim1 + dim2 + dim3;
-        MKI_CHECK(outTensordimNum <= DIM_8, "outTensorDescs dimNum is out of range",
-                  return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(static_cast<uint64_t>(axisVector[0]) < tensorDims.size(),
-                  "param.axis should  < inTensorDescs(0) dimNum", return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(static_cast<uint64_t>(param.batchDims) <= indicesDims.size(),
-                  "param.batchDims should  <= inTensorDescs(1) dimNum", return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(tensorDims.size() + indicesDims.size() <= 9, "x dim + indices dim should <= 9",
-                  return Status::FailStatus(ERROR_INVALID_VALUE));
+
+        if (PlatformInfo::Instance().GetPlatformType() != PlatformType::ASCEND_910_95) {
+            uint64_t dim1 = static_cast<uint64_t>(axisVector[0]);
+            uint64_t dim2 = indicesDims.size() - static_cast<uint64_t>(param.batchDims);
+            uint64_t dim3 = tensorDims.size() - dim1 - 1;
+            uint64_t outTensordimNum = dim1 + dim2 + dim3;
+            MKI_CHECK(outTensordimNum <= DIM_8, "outTensorDescs dimNum is out of range",
+                      return Status::FailStatus(ERROR_INVALID_VALUE));
+            MKI_CHECK(static_cast<uint64_t>(axisVector[0]) < tensorDims.size(),
+                      "param.axis should  < inTensorDescs(0) dimNum", return Status::FailStatus(ERROR_INVALID_VALUE));
+            MKI_CHECK(static_cast<uint64_t>(param.batchDims) <= indicesDims.size(),
+                      "param.batchDims should  <= inTensorDescs(1) dimNum", return Status::FailStatus(ERROR_INVALID_VALUE));
+            MKI_CHECK(tensorDims.size() + indicesDims.size() <= 9, "x dim + indices dim should <= 9",
+                      return Status::FailStatus(ERROR_INVALID_VALUE));
+        }
 
         for (size_t i = 0; i < axis && i < tensorDims.size(); i++) {
             outTensorDims.push_back(tensorDims[i]);

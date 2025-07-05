@@ -21,6 +21,8 @@ Status Split2OutputsTiling(const std::string &kernelName, const LaunchParam &lau
                            const BinHandle &binHandle);
 Status Split3OutputsTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle);
+Status SplitAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                           const BinHandle &binHandle);
 } // namespace AsdOps
 
 #endif

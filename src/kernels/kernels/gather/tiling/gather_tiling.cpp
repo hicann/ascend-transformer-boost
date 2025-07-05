@@ -33,4 +33,26 @@ Status GatherTiling(const std::string &kernelName, const LaunchParam &launchPara
 
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
+
+Status Gather95Tiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                    const BinHandle &binHandle)
+{
+    const TensorDesc &tensorDesc0 = launchParam.GetInTensor(0).desc;
+    const TensorDesc &tensorDesc1 = launchParam.GetInTensor(1).desc;
+    const TensorDesc &tensorDescOut = launchParam.GetOutTensor(0).desc;
+    auto param = AnyCast<OpParam::Gather>(launchParam.GetParam());
+    SVector<int64_t> axisShape = {1};
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("GatherV2")
+        .SetKernelName(kernelName)
+        .AddInput(tensorDesc0.dtype, tensorDesc0.format, tensorDesc0.dims)
+        .AddInput(tensorDesc1.dtype, tensorDesc1.format, tensorDesc1.dims)
+        .AddConstInput(TENSOR_DTYPE_INT64, TENSOR_FORMAT_ND,
+                       axisShape, param.axis.data(), param.axis.size() * sizeof(int64_t))
+        .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
+        .AddAttrInt64(param.batchDims)
+        .AddAttrBool(false);
+
+    return GetTilingFromRunner(kernelInfo, runner, binHandle);
+}
 }

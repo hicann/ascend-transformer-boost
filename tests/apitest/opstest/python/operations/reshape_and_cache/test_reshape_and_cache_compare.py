@@ -206,9 +206,9 @@ class TestReshapeAndCacheOperationCompressRope(operation_test.OperationTest):
         return data_generator.golden_compare(out_tensor, golden_out_tensor)
  
     def test(self):
-        if not TestReshapeAndCacheOperationCompressRope.soc_version == 'Ascend910B':
-            print("this testcase only supports Ascend910B")
-            return
+        # if not TestReshapeAndCacheOperationCompressRope.soc_version == 'Ascend910B':
+        #     print("this testcase only supports Ascend910B")
+        #     return
         self.execute_out(OP_NAME, PARAM_ROPE, [in_tensors_compress[0], in_tensors_compress[1], in_tensors_compress[2],\
                 in_tensors_compress[3], in_tensors_compress[4], in_tensors_compress[5], in_tensors_compress[6], in_tensors_compress[7]],
                 [in_tensors_compress[2], in_tensors_compress[3]])
@@ -222,9 +222,9 @@ class TestReshapeAndCacheOperationPlain(operation_test.OperationTest):
         return data_generator.golden_compare(out_tensor, golden_out_tensor)
  
     def test(self):
-        if not TestReshapeAndCacheOperationPlain.soc_version == 'Ascend910B':
-            print("this testcase only supports Ascend910B")
-            return
+        # if not TestReshapeAndCacheOperationPlain.soc_version == 'Ascend910B':
+        #     print("this testcase only supports Ascend910B")
+        #     return
         self.execute_out(OP_NAME, PARAM_PLAIN, [in_tensors_plain[0], in_tensors_plain[1], in_tensors_plain[2],\
                 in_tensors_plain[3], in_tensors_plain[4]],
                 [in_tensors_plain[2], in_tensors_plain[3]])

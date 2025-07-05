@@ -74,10 +74,10 @@ class TestReshapeAndCacheOperationInt8(operation_test.OperationTest):
         return [in_tensors[5], in_tensors[6]]
 
     def golden_compare(self, out_tensor, golden_out_tensor):
-        return torch.equal(out_tensor, golden_out_tensor)
+        return torch.equal(out_tensor.cpu(), golden_out_tensor.cpu())
 
     def test(self):
-        if not operation_test.get_soc_version() == 'Ascend910B':
+        if not operation_test.get_soc_version() in ['Ascend910B', 'Ascend910_9599']:
             print("this testcase only supports Ascend910B")
             return
         self.execute_out(OP_NAME, PARAM, [in_tensors[0], in_tensors[1], in_tensors[2],

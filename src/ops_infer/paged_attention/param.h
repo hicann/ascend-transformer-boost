@@ -24,6 +24,7 @@ struct PagedAttentionFusionVariantPackParam {
     bool BuildFromTensor(const SVector<Mki::Tensor> &inTensors, bool batchRunStatusEnable, size_t batchRunStatusIndex,
                          bool needQLens, size_t qLensIndex, size_t contextLensTensorId);
     bool BuildFromTensor310P(const SVector<Mki::Tensor> &inTensors, bool needQLens, int qLensIndex);
+    bool BuildFromTensor91095(const SVector<Mki::Tensor> &inTensors);
     bool ParseQLens(const SVector<Mki::Tensor> &inTensors, int qLensIndex);
 };
 } // namespace atb

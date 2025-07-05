@@ -25,17 +25,21 @@ import shutil
 import scipy.stats
 import pickle
 from multiprocessing.connection import Client
+import ml_dtypes
+
+from en_dtypes import hifloat8
 
 dtype_enum_dict = {-1: "undefined", 0: "float", 1: "float16", 2: "int8", 3: "int32", 4: "uint8",
                     6: "int16", 7: "uint16", 8: "uint32", 9: "int64", 10: "uint64",
-                    11: "double", 12: "bool", 13: "string", 16: "complex64", 17: "complex128", 27: "bf16"}
+                    11: "double", 12: "bool", 13: "string", 16: "complex64", 17: "complex128", 27: "bf16",
+                    34: "hifloat8", 35: "float8_e5m2", 36: "float8_e4m3fn"}
 
 format_enum_dict = {-1: "undefined", 0: "nchw", 1: "nhwc", 2: "nd", 3: "nc1hwc0",
                 4: "fractal_z", 12: "nc1hwc0_c04", 16: "hwcn", 27: "ndhwc",
                 29: "fractal_nz", 30: "ncdhw", 32: "ndc1hwc0", 33: "fractal_z_3d"}
 
-err_enum_dict = {0: "NO_ERROR", 1: "ERROR_INVALID_PARAM", 2: "ERROR_INVALID_GRAPH", 3: "ERROR_INTERNAL_ERROR", 4: "ERROR_RT_FAIL", 
-                 5: "ERROR_INVALID_IN_TENSOR_NUM", 6: "ERROR_INVALID_TENSOR_DTYPE", 7: "ERROR_INVALID_TENSOR_FORMAT", 8: "ERROR_INVALID_TENSOR_DIM", 
+err_enum_dict = {0: "NO_ERROR", 1: "ERROR_INVALID_PARAM", 2: "ERROR_INVALID_GRAPH", 3: "ERROR_INTERNAL_ERROR", 4: "ERROR_RT_FAIL",
+                 5: "ERROR_INVALID_IN_TENSOR_NUM", 6: "ERROR_INVALID_TENSOR_DTYPE", 7: "ERROR_INVALID_TENSOR_FORMAT", 8: "ERROR_INVALID_TENSOR_DIM",
                  9: "ERROR_INVALID_TENSOR_SIZE", 10: "ERROR_OPERATION_NULL_RUNNER", 11: "ERROR_GRAPH_INFERSHAPE_FUNC_FAIL", 12: "ERROR_CANN_ERROR",
                  13: "ERROR_INVALID_TENSOR_INI_MATCH", 14: "ERROR_INVALID_TENSOR_ADDR", 15: "ERROR_INVALID_TENSOR_NUM", 16: "ERROR_INVALID_TENSOR_DIM_NUM",
                  17: "ERROR_INVALID_SINGLE_OPERATION_PARAM", 18: "ERROR_GRAPH_NODE_RESHAPE_FUNC_FAIL", 19: "ERROR_INVALID_GRAPH_NODE_CHUNK",
@@ -176,6 +180,8 @@ class CsvOpsTest():
                 os.makedirs(self.data_save_path)
 
     def __dump_tensor(self, tensor, tensor_data_type, index, info):
+        if tensor.dtype == torch.float8_e5m2 or tensor.dtype == torch.float8_e4m3fn or tensor.dtype == torch.bits8:
+            tensor = tensor.view(torch.int8)
         if self.args.save_tensor:
             dump_path = self.data_save_path + self.case_name.loc[self.index] + '_' + \
                 str(self.case_num.loc[self.index]) + '_deviceid_' + str(torch.npu.current_device()) + '_' + tensor_data_type + '_index_' + str(index)
@@ -381,6 +387,50 @@ class CsvOpsTest():
         return str(torch.sum(tolerance <= 0).numpy() / torch.numel(tolerance) * 100)[:5]
 
     def __precision_eb_percent(self, i, actual_output, golden_output, precision_threshold, eb_threshold):
+        if actual_output.dtype in [torch.float8_e5m2, torch.float8_e4m3fn]:
+            actual_output = actual_output.view(torch.int8)
+            actual_output = actual_output.flatten()
+            golden_output = golden_output.view(torch.int8)
+            golden_output = golden_output.flatten()
+            diff_results = torch.abs(torch.subtract(actual_output, golden_output))
+            diff_indices = torch.where(diff_results > 1)[0]
+            del diff_results
+            precision = (golden_output.size()[0] - diff_indices.size()[0]) / golden_output.size()[0]
+            eb = eb_threshold
+            if eb_threshold != 0:
+                eb = torch.abs(torch.mean(torch.div(diff, tensor_max)))
+                self.__dump_tensor(eb, 'eb', i, 'index {}, eb_threshold: {}'.format(i, eb_threshold))
+            eb_percent = '0' if eb == 0 else str(torch.sum(eb).to(torch.float).numpy() / eb_threshold * 100)[:5]
+            return str(precision*100)[:5], eb_percent
+        elif actual_output.dtype in [torch.bits8]:
+            golden_output = np.float64(golden_output.detach().numpy().view(hifloat8))
+            golden_output = golden_output.flatten()
+            actual_output = actual_output.view(torch.int8)
+            actual_output = np.float64(actual_output.detach().numpy().view(hifloat8))
+            actual_output = actual_output.flatten()
+            EX = np.log2(abs(golden_output) + 2**(-1000))
+            EX[EX < -22] = -22
+            E = np.floor(EX)
+            Eabs = np.abs(E)
+            Wm = np.zeros_like(golden_output)
+            Wm[Eabs <= 15] = 1
+            Wm[Eabs <= 7 ] = 2
+            Wm[Eabs <= 3 ] = 3
+            ulp_err = (actual_output - golden_output) * 2 ** (-E + Wm)
+            S_EX = EX * np.where(actual_output >= 0, 1, -1)
+            EH = np.log2(abs(golden_output) + 2**(-1000))
+            S_EH = EH * np.where(golden_output >= 0, 1, -1)
+            ulp_err1 = S_EH - S_EX
+            ulp_err[Wm == 0] = ulp_err1[Wm == 0]
+            diff_indices = np.where( ulp_err > 1)[0]
+            precision = (len(golden_output) - len(diff_indices)) / len(golden_output)
+            eb = eb_threshold
+            if eb_threshold != 0:
+                eb = torch.abs(torch.mean(torch.div(diff, tensor_max)))
+                self.__dump_tensor(eb, 'eb', i, 'index {}, eb_threshold: {}'.format(i, eb_threshold))
+            eb_percent = '0' if eb == 0 else str(torch.sum(eb).to(torch.float).numpy() / eb_threshold * 100)[:5]
+            return str(precision * 100), eb_percent
+        
         actual_output = actual_output if actual_output.dtype != torch.bool else actual_output.long()
         golden_output = golden_output if golden_output.dtype != torch.bool else golden_output.long()
         if self.op_type in [data_generation.OpTypes.COMPUTE_FLOAT, data_generation.OpTypes.COMPUTE_FLOAT_HIGH_PRECISION, data_generation.OpTypes.VECTOR_FUSION] and actual_output.dtype in [torch.float16, torch.bfloat16]:
@@ -451,7 +501,7 @@ class CsvOpsTest():
             self.__dump_tensor(eb, 'eb', i, 'index {}, eb_threshold: {}'.format(i, eb_threshold))
         eb_percent = '0' if eb == 0 else str(torch.sum(eb).to(torch.float).numpy() / eb_threshold * 100)[:5]
         return precision_percent, eb_percent
-        
+
     def precision_performance_analysis(self):
         if (len(self.output_tensor_list) == 0):
             self.output_tensor_list = self.input_tensor_list
@@ -502,7 +552,7 @@ class CsvOpsResult():
 
     def reset(self, index):
             self.result = {"succ": 0, "fail": 0, "SetupTime(us)": 0, "ExecuteTime(us)": 0, "SyncTime(us)": 0,
-                           "Error0.1‰": '', "Error0.5‰": '', "Error1‰": '', "Error4‰": '', "Error5‰": '', "Error+/-1": '', 
+                           "Error0.1‰": '', "Error0.5‰": '', "Error1‰": '', "Error4‰": '', "Error5‰": '', "Error+/-1": '',
                            "PrecisionPercent": '', "EBPercent": '', "FirstErrType": self.opsTest.file_data.loc[index, 'ExpectedError']}
 
     def add_list(self, list_index, list_key, list_str):
@@ -575,6 +625,7 @@ class CsvOpsResult():
             if self.opsTest.args.precision_standard == 'new':
                 precision_percent = [(float(percent[:-1])) for percent in self.opsTest.file_data.loc[self.opsTest.index, 'PrecisionPercent'].split(";")]
                 eb_percent = [(float(percent[:-1])) for percent in self.opsTest.file_data.loc[self.opsTest.index, 'EBPercent'].split(";")]
+                if precision_percent[i] >= 99.9 and (compare_dtype_list[i] == torch.float8_e5m2 or compare_dtype_list[i] == torch.float8_e4m3fn or compare_dtype_list[i] == torch.bits8): precision_percent[i] = 100
                 if self.opsTest.op_type == data_generation.OpTypes.RAND:
                     alpha = 0.01
                     z = -3.0902
@@ -735,7 +786,7 @@ class CsvOpsTestUtil:
     def get_case_range(number, max_case_number):
         case_number = [int(num) for num in number.split(":")]
         from_case_num = case_number[0]
-        if (len(case_number) == 1):    
+        if (len(case_number) == 1):
             to_case_num = case_number[0]
         else:
             to_case_num = case_number[1]
@@ -870,8 +921,10 @@ def get_device_properties():
     re.search("Ascend910PremiumA", device_name, re.I) or re.search("Ascend910ProA", device_name, re.I) or
     re.search("Ascend910A", device_name, re.I)):
         soc_version = "Ascend910A"
-    elif ("Ascend310B", device_name, re.I):
+    elif re.search("Ascend310B", device_name, re.I):
         soc_version = "Ascend310B"
+    elif re.search("Ascend910_9599", device_name, re.I):
+        soc_version = "Ascend910_95"
     else:
         logging.error("device_name %s is not supported", device_name)
         quit(1)

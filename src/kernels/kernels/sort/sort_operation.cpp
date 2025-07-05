@@ -11,6 +11,7 @@
 #include <mki_loader/op_register.h>
 #include <mki/utils/log/log.h>
 #include "asdops/params/sort.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace AsdOps {
 using namespace Mki;

@@ -99,4 +99,58 @@ public:
     }
 };
 REG_KERNEL_BASE(MulsF32Kernel);
+
+// MulsAptF16
+class MulsAptF16Kernel : public MulsKernel {
+public:
+    explicit MulsAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : MulsKernel(kernelName, handle) {}
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(MulsKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(MulsAptF16Kernel);
+
+// MulsAptBF16
+class MulsAptBF16Kernel : public MulsKernel {
+public:
+    explicit MulsAptBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : MulsKernel(kernelName, handle) {}
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(MulsKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(MulsAptBF16Kernel);
+
+// MulsAptF32
+class MulsAptF32Kernel : public MulsKernel {
+public:
+    explicit MulsAptF32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : MulsKernel(kernelName, handle) {}
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(MulsKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(MulsAptF32Kernel);
 } // namespace AsdOps

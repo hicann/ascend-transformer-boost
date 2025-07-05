@@ -18,6 +18,7 @@
 #include "atbops/params/params.h"
 #include "tiling/flash_attention_tiling.h"
 #include "mixkernels/utils/common.h"
+#include "sink_common.h"
 
 
 namespace AtbOps {
@@ -25,6 +26,15 @@ using namespace Mki;
 constexpr uint64_t TENSOR_Q_SEQLEN_IDX = 6;
 constexpr uint64_t TENSOR_KV_SEQLEN_IDX = 7;
 constexpr uint32_t TILINGMIN = 512;
+static const int KVLISTLEN = 1;
+static const int TENSORLEN = 0;
+static const int IDX_QUERY = 0;
+static const int IDX_KEY = 1;
+static const int IDX_VALUE = 2;
+static const int IDX_PSESHIFT = 3;
+static const int IDX_MASK = 4;
+static const int IDX_ATTENTION_OUT = 0;
+static const int IDX_SOFTMAXLSE = 1;
 class UnpadFlashAttentionKernel : public KernelBase {
 public:
     explicit UnpadFlashAttentionKernel(const std::string &kernelName, const BinHandle *handle) noexcept
@@ -293,6 +303,134 @@ public:
     }
 };
 
+class UnpadFlashAttentionNd91095KernelBase : public KernelBase {
+    public:
+        explicit UnpadFlashAttentionNd91095KernelBase(const std::string &kernelName, const BinHandle *handle) noexcept
+            : KernelBase(kernelName, handle)
+        {
+        }
+    
+        bool CanSupport(const LaunchParam &launchParam) const override
+        {
+            size_t inputNum = launchParam.GetInTensorCount();
+            size_t outputNum = launchParam.GetOutTensorCount();
+            MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
+                        "unpad_flash_attention: param type invalid", return false);
+            MKI_CHECK(inputNum == 26, "input num invalid", return false);
+            auto &param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
+            auto dataShapeType = param.dataShapeType;
+            if (dataShapeType == OpParam::UnpadFlashAttention::DataShapeType::TYPE_BNSD) {
+                // encoder shape [B,N,S,D], // decoder shape [numTokens,hiddenSize]
+                MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 2 ||
+                                launchParam.GetInTensor(0).desc.dims.size() == 4,
+                            "input 0 dim num invalid", return false);
+                MKI_CHECK(param.quantType == OpParam::UnpadFlashAttention::QuantType::TYPE_QUANT_UNDEFINED &&
+                                param.compressHead == false &&
+                                param.scaleType == OpParam::UnpadFlashAttention::ScaleType::SCALE_TOR,
+                            "BNSD is can not support quant,compressHead and logN", return false);
+            } else {
+                MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 3 ||
+                                launchParam.GetInTensor(0).desc.dims.size() == 2 ||
+                                launchParam.GetInTensor(0).desc.dims.size() == 4,
+                            "input 0 dim num invalid", return false);
+            }
+    
+            MKI_CHECK(outputNum == 2, "output num invalid", return false);
+            return true;
+        }
+    
+        Status InitImpl(const LaunchParam &launchParam) override
+        {
+            return Status::OkStatus();
+        }
+    
+        Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+        {
+            LaunchParam runLaunchParam;
+            runLaunchParam.GetInTensors() = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                                                {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
+            runLaunchParam.GetOutTensors() = {{}, {}};
+            runLaunchParam.GetInTensor(IDX_QUERY).data = launchParam.GetInTensor(IDX_QUERY).data;
+            runLaunchParam.GetInTensor(IDX_KEY).data = launchParam.GetInTensor(IDX_KEY).data;
+            runLaunchParam.GetInTensor(IDX_VALUE).data = launchParam.GetInTensor(IDX_VALUE).data; // 2:Value
+            runLaunchParam.GetOutTensor(IDX_ATTENTION_OUT).data = launchParam.GetOutTensor(IDX_ATTENTION_OUT).data;
+            runLaunchParam.GetOutTensor(IDX_SOFTMAXLSE).data = launchParam.GetOutTensor(IDX_ATTENTION_OUT).data;
+            return KernelBase::Run(runLaunchParam, runInfo);
+        }
+    
+        Status Init(const LaunchParam &launchParam) override
+        {
+            LaunchParam runLaunchParam;
+            Mki::SVector<Mki::Tensor> vecInput = {launchParam.GetInTensor(IDX_QUERY),
+                                                 launchParam.GetInTensor(IDX_KEY),
+                                                 launchParam.GetInTensor(IDX_VALUE),
+                                                 {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                                                 {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                                                 {}, {}, {}};
+            runLaunchParam.GetInTensors() = vecInput;
+            Mki::SVector<Mki::Tensor> vecOutput = {launchParam.GetOutTensor(IDX_ATTENTION_OUT),
+                                                  launchParam.GetOutTensor(IDX_ATTENTION_OUT)};
+            runLaunchParam.GetOutTensors() = vecOutput;
+            auto &param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
+            runLaunchParam.SetParam(param);
+            return KernelBase::Init(runLaunchParam);
+        }
+    };
+    
+    class UnpadFlashAttentionNd91095Mask0Kernel : public UnpadFlashAttentionNd91095KernelBase {
+    public:
+        explicit UnpadFlashAttentionNd91095Mask0Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : UnpadFlashAttentionNd91095KernelBase(kernelName, handle)
+        {
+        }
+        Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+        {
+            return Status::OkStatus();
+        }
+    };
+    
+    class UnpadFlashAttentionNd91095Mask1Kernel : public UnpadFlashAttentionNd91095KernelBase {
+    public:
+        explicit UnpadFlashAttentionNd91095Mask1Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+            : UnpadFlashAttentionNd91095KernelBase(kernelName, handle)
+        {
+        }
+    
+        Status InitImpl(const LaunchParam &launchParam) override
+        {
+            return Status::OkStatus();
+        }
+    
+        Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+        {
+            return Status::OkStatus();
+        }
+    
+        Status Init(const LaunchParam &launchParam) override
+        {
+            LaunchParam runLaunchParam;
+            Mki::SVector<Mki::Tensor> vecInput = {launchParam.GetInTensor(IDX_QUERY),
+                                                 launchParam.GetInTensor(IDX_KEY),
+                                                 launchParam.GetInTensor(IDX_VALUE),
+                                                 launchParam.GetInTensor(IDX_MASK), {},
+                                                 {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                                                 {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                                                 {}};
+            runLaunchParam.GetInTensors() = vecInput;
+            Mki::SVector<Mki::Tensor> vecOutput = {launchParam.GetOutTensor(IDX_ATTENTION_OUT),
+                                                  launchParam.GetOutTensor(IDX_ATTENTION_OUT)};
+            runLaunchParam.GetOutTensors() = vecOutput;
+            auto &param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
+            runLaunchParam.SetParam(param);
+            // SVector<int> tempInputLens = {TENSORLEN, KVLISTLEN, KVLISTLEN, TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN,
+            //                               TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN,
+            //                               TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN,
+            //                               TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN, TENSORLEN};
+            // runLaunchParam.SetInputLens(tempInputLens);
+            return KernelBase::Init(runLaunchParam);
+        }
+    };
+
 REG_KERNEL_BASE(UnpadFlashAttentionNdKernel);
 REG_KERNEL_BASE(UnpadFlashAttentionRazorFusionKernel);
 REG_KERNEL_BASE(UnpadDynamicBatchFlashAttentionNdKernel);
@@ -305,4 +443,6 @@ REG_KERNEL_BASE(UnpadFlashAttentionMlaDecoderNdKernel);
 REG_KERNEL_BASE(MultiLatentAttentionEncoderCombineCacheKernel);
 REG_KERNEL_BASE(MultiLatentAttentionEncoderCombineCacheBFKernel);
 REG_KERNEL_BASE(RelayAttentionKernel);
+REG_KERNEL_BASE(UnpadFlashAttentionNd91095Mask0Kernel);
+REG_KERNEL_BASE(UnpadFlashAttentionNd91095Mask1Kernel);
 } // namespace AtbOps

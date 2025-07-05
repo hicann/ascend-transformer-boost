@@ -12,10 +12,15 @@
 #include <atbops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace atb {
 static const uint64_t IN_TENSOR_COUNT = 5;
 static const uint64_t OUT_TENSOR_COUNT = 2;
+static long int batch = 1;
+static long int seqlen = 1;
+static long int headNumQ = 1;
+static long int headNumK = 1;
 
 void RopeKqView(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
@@ -26,6 +31,29 @@ void RopeKqView(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &new
     } else {
         ATB_LOG(ERROR) << "rope intensor qLayer or kLayer dimNum need 2 or 4";
     }
+}
+
+void RopeQViewFuncs(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
+{
+    if (oldDims.size() == 2) {
+        newDims = {1, oldDims[0], headNumQ, oldDims[1] / headNumQ};
+    } else {
+        newDims = oldDims;
+    }
+}
+
+void RopeKViewFuncs(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
+{
+    if (oldDims.size() == 2) {
+        newDims = {1, oldDims[0], headNumK, oldDims[1] / headNumK};
+    } else {
+        newDims = oldDims;
+    }
+}
+
+void RopeCosSinViewFuncs(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
+{
+    newDims = {batch, seqlen, 1, oldDims[1]};
 }
 
 RopeOpsRunner::RopeOpsRunner(const infer::RopeParam &param)
@@ -60,13 +88,33 @@ Status RopeOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     ropeParam.rotaryCoeff = param_.rotaryCoeff;
     ropeParam.cosFormat = param_.cosFormat;
     ropeNode.opDesc = {0, "RopeOperation", ropeParam};
-    ropeNode.inTensors = {&qLayer, &kLayer, &cos, &sin, &seqLen};
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        ropeNode.inTensors = {&qLayer, &kLayer, &cos, &sin};
+    } else {
+        ropeNode.inTensors = {&qLayer, &kLayer, &cos, &sin, &seqLen};
+    }
     ropeNode.outTensors = {&qEmbedded, &kEmbedded};
-    ropeNode.inTensorViewFuncs = {&RopeKqView, &RopeKqView};
-    ropeNode.mkiInferShapePreFunc = [](Mki::LaunchParam &launchParam) {
-        launchParam.GetInTensor(4).desc.dtype = Mki::TENSOR_DTYPE_UINT32; // 4 ： 设置第五个输入张量的dtype
-    };
-
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        if (qLayer.desc.dims.size() == 4) {
+            batch = qLayer.desc.dims[0];
+            seqlen = qLayer.desc.dims[1];
+            headNumQ = qLayer.desc.dims[2];
+            headNumK = kLayer.desc.dims[2];
+        } else {
+            batch = 1;
+            seqlen = qLayer.desc.dims[0];
+            headNumQ = qLayer.desc.dims[1] / cos.desc.dims[1];
+            headNumK = kLayer.desc.dims[1] / cos.desc.dims[1];
+        }
+        ropeNode.inTensorViewFuncs = {&RopeQViewFuncs, &RopeKViewFuncs, &RopeCosSinViewFuncs, &RopeCosSinViewFuncs};
+    } else {
+        ropeNode.inTensorViewFuncs = {&RopeKqView, &RopeKqView};
+    }
+    if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) {
+            ropeNode.mkiInferShapePreFunc = [](Mki::LaunchParam &launchParam) {
+            launchParam.GetInTensor(4).desc.dtype = Mki::TENSOR_DTYPE_UINT32; // 4 ： 设置第五个输入张量的dtype
+        };
+    }
     return NO_ERROR;
 }
 

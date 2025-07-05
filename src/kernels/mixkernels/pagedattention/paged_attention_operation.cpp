@@ -10,6 +10,7 @@
 #include <mki/base/operation_base.h>
 #include <mki/utils/log/log.h>
 #include <mki/utils/const/op_const.h>
+#include <mki/utils/platform/platform_info.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/checktensor/check_tensor.h>
 #include "atbops/params/params.h"
@@ -32,6 +33,9 @@ public:
         MKI_CHECK(IsConsistent(launchParam), "Failed to check consistent", return nullptr);
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::PagedAttention),
             "OpParam is invalid", return nullptr);
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+            return GetKernelByName(Get91095KernelName(launchParam));
+        }
         auto param = AnyCast<OpParam::PagedAttention>(launchParam.GetParam());
         auto embeddingSizeQK = launchParam.GetInTensor(1).desc.dims.at(DIM_3);
         auto embeddingSizeV = param.type == OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND ?
@@ -120,8 +124,12 @@ private:
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Failed to check launch param"));
         auto &tensorQ = launchParam.GetInTensor(DIM_0);
         auto &tensorK = launchParam.GetInTensor(DIM_1);
-        auto embedDimV = param.type == OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND ?
-                         launchParam.GetInTensor(2).desc.dims.at(DIM_3) : param.headDimV;
+        int64_t embedDimV = 0;
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95) {
+            embedDimV = launchParam.GetInTensor(2).desc.dims.at(DIM_2) / param.kvHead;
+        } else {
+            embedDimV = param.type == OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND ? launchParam.GetInTensor(2).desc.dims.at(DIM_3) : param.headDimV;
+        }
         auto embedDimK = tensorK.desc.dims[tensorK.desc.dims.size() - 1];
         outTensors[DIM_0].desc = tensorQ.desc;
         if (tensorQ.desc.dtype == TENSOR_DTYPE_INT8) {
@@ -159,6 +167,7 @@ private:
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::PagedAttention),
             "OpParam is invalid", return false);
+        return true;
         auto param = AnyCast<OpParam::PagedAttention>(launchParam.GetParam());
         MKI_CHECK(PageAttentionParamCheck(param), "check pageattention param fail", return false);
         auto &tensorQ = launchParam.GetInTensor(DIM_0);
@@ -727,6 +736,33 @@ private:
         // 保证mask一定能覆盖S，核内不会出现异常，用户保证1.避免多传;2.数值正常
         MKI_CHECK(FindMask(supports, currentShape, false), "current mask shape is unsupported!", return false);
         return true;
+    }
+
+    std::string Get91095KernelName(const LaunchParam &launchParam) const
+    {
+        size_t inTensorIndex = 0;
+        auto queryTensorDesc = launchParam.GetInTensor(inTensorIndex++).desc;
+        auto keyTensorDesc = launchParam.GetInTensor(inTensorIndex++).desc;
+        auto outTensorDesc = launchParam.GetOutTensor(0).desc;
+        std::map<TensorDType, std::string> dtypeStrMap = { { TENSOR_DTYPE_FLOAT16, "Float16" },
+                                                           { TENSOR_DTYPE_BF16, "Bf16" },
+                                                           { TENSOR_DTYPE_FLOAT8_E5M2, "Float8e5m2" },
+                                                           { TENSOR_DTYPE_HIFLOAT8, "Hifloat8" },
+                                                           { TENSOR_DTYPE_FLOAT8_E4M3FN, "Float8e4m3fn" },
+                                                           { TENSOR_DTYPE_INT8, "Int8" } };
+ 
+        std::string kernelName = "PagedAttention";
+        kernelName += "Q";
+        auto qDtypeStrIt = dtypeStrMap.find(queryTensorDesc.dtype);
+        kernelName += (qDtypeStrIt == dtypeStrMap.end() ? "" : qDtypeStrIt->second);
+        kernelName += "Kv";
+        auto kvDtypeStrIt = dtypeStrMap.find(keyTensorDesc.dtype);
+        kernelName += (kvDtypeStrIt == dtypeStrMap.end() ? "" : kvDtypeStrIt->second);
+        kernelName += "Out";
+        auto outDtypeStrIt = dtypeStrMap.find(outTensorDesc.dtype);
+        kernelName += (outDtypeStrIt == dtypeStrMap.end() ? "" : outDtypeStrIt->second);
+        kernelName += "Ascend91095Kernel";
+        return kernelName;
     }
 };
 

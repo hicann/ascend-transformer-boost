@@ -58,4 +58,10 @@ Status Split3OutputsTiling(const std::string &kernelName, const LaunchParam &lau
 
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
+
+Status SplitAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                           const BinHandle &binHandle)
+{
+    return Status::OkStatus();
+}
 } // namespace AsdOps

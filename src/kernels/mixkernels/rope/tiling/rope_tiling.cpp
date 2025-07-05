@@ -13,6 +13,10 @@
 #include <mki/utils/platform/platform_info.h>
 #include "atbops/params/params.h"
 #include "tiling_data.h"
+#include "tbe_tiling_runner.h"
+#include <mki/utils/SVector/SVector.h>
+#include <mki/utils/any/any.h>
+#include <mki/types.h>
 
 namespace AtbOps {
 static constexpr uint32_t BLOCK_SIZE = 16;
@@ -174,5 +178,40 @@ Status RopeTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     }
     MKI_LOG(INFO) << "workspace: " << sysWorkspaceSize;
     return Status::OkStatus();
+}
+
+Status RopeAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                      const BinHandle &binHandle)
+{
+    auto &param = AnyCast<AtbOps::OpParam::Rope>(launchParam.GetParam());
+    const auto &tensorDescin0 = launchParam.GetInTensor(0).desc;
+    const auto &tensorDescin1 = launchParam.GetInTensor(1).desc;
+    const auto &tensorDescin2 = launchParam.GetInTensor(2).desc;
+    const auto &tensorDescin3 = launchParam.GetInTensor(3).desc;
+    const auto &tensorDescout0 = launchParam.GetOutTensor(0).desc;
+    const auto &tensorDescout1 = launchParam.GetOutTensor(1).desc;
+
+    std::string rotaryMode = "half";
+    if (param.rotaryCoeff == 2) {
+        rotaryMode = "half";
+    } else if (param.rotaryCoeff == 4) {
+        rotaryMode = "quarter";
+    } else {
+        rotaryMode = "interleave";
+    }
+
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+         .SetName("ApplyRotaryPosEmb")
+         .SetKernelName(kernelName)
+         .AddInput(tensorDescin0.dtype, tensorDescin0.format, tensorDescin0.dims)
+         .AddInput(tensorDescin1.dtype, tensorDescin1.format, tensorDescin1.dims)
+         .AddInput(tensorDescin2.dtype, tensorDescin2.format, tensorDescin2.dims)
+         .AddInput(tensorDescin3.dtype, tensorDescin3.format, tensorDescin3.dims)
+         .AddOutput(tensorDescout0.dtype, tensorDescout0.format, tensorDescout0.dims)
+         .AddOutput(tensorDescout1.dtype, tensorDescout1.format, tensorDescout1.dims)
+         .AddAttrInt(1)
+         .AddAttrStr(rotaryMode.c_str());
+
+    return AsdOps::GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
 } // namespace AtbOps

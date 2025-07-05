@@ -17,5 +17,6 @@
 namespace AsdOps {
 using namespace Mki;
 Status QuantF16Tiling(const LaunchParam &launchParam, KernelInfo &kernelInfo);
+Status QuantF16Tiling_910_95(const LaunchParam &launchParam, KernelInfo &kernelInfo);
 } // namespace AsdOps
 #endif

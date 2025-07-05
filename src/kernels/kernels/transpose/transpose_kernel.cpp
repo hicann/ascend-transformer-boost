@@ -74,4 +74,13 @@ using Transpose32Kernel = TransposeKernel<BYTES_32BITS>;
 REG_KERNEL_BASE(Transpose32Kernel);
 using Transpose64Kernel = TransposeKernel<BYTES_64BITS>;
 REG_KERNEL_BASE(Transpose64Kernel);
+
+using TransposeApt8Kernel = TransposeKernel<BYTES_8BITS>;
+REG_KERNEL_BASE(TransposeApt8Kernel);
+using TransposeApt16Kernel = TransposeKernel<BYTES_16BITS>;
+REG_KERNEL_BASE(TransposeApt16Kernel);
+using TransposeApt32Kernel = TransposeKernel<BYTES_32BITS>;
+REG_KERNEL_BASE(TransposeApt32Kernel);
+using TransposeApt64Kernel = TransposeKernel<BYTES_64BITS>;
+REG_KERNEL_BASE(TransposeApt64Kernel);
 } // namespace AsdOps

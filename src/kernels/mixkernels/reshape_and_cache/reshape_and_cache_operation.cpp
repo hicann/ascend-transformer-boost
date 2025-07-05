@@ -13,6 +13,7 @@
 #include <mki_loader/op_register.h>
 #include <mki/utils/checktensor/check_tensor.h>
 #include "atbops/params/params.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace AtbOps {
 using namespace Mki;
@@ -32,6 +33,9 @@ public:
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::ReshapeAndCache),
             "OpParam is invalid", return nullptr);
         auto param = AnyCast<OpParam::ReshapeAndCache>(launchParam.GetParam());
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            return GetKernelByName(Get95BestKernel(launchParam));
+        }
         switch (param.type) {
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND:
                 return GetKernelByName("ReshapeAndCacheNdKernel");
@@ -386,6 +390,42 @@ public:
         }
 
         return Status::OkStatus();
+    }
+
+private:
+    std::string Get95BestKernel(const LaunchParam &launchParam) const
+    {
+        auto param = AnyCast<OpParam::ReshapeAndCache>(launchParam.GetParam());
+        auto inTensorDesc = launchParam.GetInTensor(0).desc;
+        if (param.type == OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND) {
+            if (inTensorDesc.dtype == TENSOR_DTYPE_FLOAT16) {
+                return "ReshapeAndCacheF16Nd95Kernel";
+            } else if (inTensorDesc.dtype == TENSOR_DTYPE_BF16) {
+                return "ReshapeAndCacheBF16Nd95Kernel";
+            } else if (inTensorDesc.dtype == TENSOR_DTYPE_INT8) {
+                return "ReshapeAndCacheINT8Nd95Kernel";
+            } else if (inTensorDesc.dtype == TENSOR_DTYPE_FLOAT8_E4M3FN) {
+                return "ReshapeAndCacheF8e4m3Nd95Kernel";
+            } else if (inTensorDesc.dtype == TENSOR_DTYPE_FLOAT8_E5M2) {
+                return "ReshapeAndCacheF8e5m2Nd95Kernel";
+            }
+        } else if (param.type == OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS) {
+            if (inTensorDesc.dtype == TENSOR_DTYPE_FLOAT16) {
+                return "ReshapeAndCacheF16CompressAlibi95Kernel";
+            } else if (inTensorDesc.dtype == TENSOR_DTYPE_BF16) {
+                return "ReshapeAndCacheBF16CompressAlibi95Kernel";
+            } else if (inTensorDesc.dtype == TENSOR_DTYPE_INT8) {
+                return "ReshapeAndCacheINT8CompressAlibi95Kernel";
+            }
+        } else if (param.type == OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS_ROPE) {
+            if (inTensorDesc.dtype == TENSOR_DTYPE_FLOAT16) {
+                return "ReshapeAndCacheF16CompressRope95Kernel";
+            } else if (inTensorDesc.dtype == TENSOR_DTYPE_BF16) {
+                return "ReshapeAndCacheBF16CompressRope95Kernel";
+            }
+        }
+        MKI_LOG(ERROR) << "Unsupport reshape_and_cache type " << param.type;
+        return nullptr;
     }
 };
 REG_OPERATION(ReshapeAndCacheOperation);

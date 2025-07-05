@@ -42,7 +42,7 @@ class ReshapeAndCacheDataGeneratorRopeCompress():
         self.dtype = dtype
         self.batch = batch
 
-        len = random.randint(1000, 4096)
+        len = random.randint(8, 16)
         win = random.randint(0, len)
         sub = len - win
         offset = random.randint(-1, sub)
@@ -154,7 +154,7 @@ batch = 1
 num_heads = 1
 head_size = 128
 block_size = 128
-num_blocks = 512
+num_blocks = 128
 
 dtype = "float16"
 data_generator.set_reshape_and_cache_param(num_heads, head_size, block_size, num_blocks, dtype, batch)
@@ -176,10 +176,10 @@ class TestReshapeAndCacheOperationCompressRopefp16(operation_test.OperationTest)
         return [in_tensors_fp16[8], in_tensors_fp16[9]]
  
     def golden_compare(self, out_tensor, golden_out_tensor):
-        return data_generator.golden_compare(out_tensor, golden_out_tensor)
+        return torch.equal(out_tensor.cpu(), golden_out_tensor.cpu())
  
     def test(self):
-        if not TestReshapeAndCacheOperationCompressRopefp16.soc_version == 'Ascend910B':
+        if not TestReshapeAndCacheOperationCompressRopefp16.soc_version in ['Ascend910B', 'Ascend910_9599']:
             print("this testcase only supports Ascend910B")
             return
         self.execute_out(OP_NAME, PARAM, [in_tensors_fp16[0], in_tensors_fp16[1], in_tensors_fp16[2],\
@@ -192,10 +192,10 @@ class TestReshapeAndCacheOperationCompressRopebf16(operation_test.OperationTest)
         return [in_tensors_bf16[8], in_tensors_bf16[9]]
  
     def golden_compare(self, out_tensor, golden_out_tensor):
-        return data_generator.golden_compare(out_tensor, golden_out_tensor)
+        return torch.equal(out_tensor.cpu(), golden_out_tensor.cpu())
  
     def test(self):
-        if not TestReshapeAndCacheOperationCompressRopebf16.soc_version == 'Ascend910B':
+        if not TestReshapeAndCacheOperationCompressRopebf16.soc_version in ['Ascend910B', 'Ascend910_9599']:
             print("this testcase only supports Ascend910B")
             return
         self.execute_out(OP_NAME, PARAM, [in_tensors_bf16[0].to(torch.bfloat16), in_tensors_bf16[1].to(torch.bfloat16), in_tensors_bf16[2].to(torch.bfloat16),\

@@ -78,6 +78,31 @@ bool PagedAttentionFusionVariantPackParam::BuildFromTensor310P(const SVector<Mki
     return true;
 }
 
+bool PagedAttentionFusionVariantPackParam::BuildFromTensor91095(const SVector<Mki::Tensor> &inTensors)
+{
+    batchRunStatus.clear();
+    contextLens.clear();
+    qLens.clear();
+
+    const size_t contextLensTensorId = 4;
+    const Mki::Tensor &contextLensTensor = inTensors.at(contextLensTensorId);
+    if (!contextLensTensor.hostData) {
+#ifdef _DEBUG
+        ATB_LOG(ERROR) << "tensor.hostData is null, contextLensTensor.hostData:" << contextLensTensor.hostData;
+#else
+        ATB_LOG(ERROR) << "tensor.hostData is null";
+#endif
+        return false;
+    }
+    contextLens.resize(contextLensTensor.Numel());
+    int32_t *contextLensTensorHostData = (int32_t *)contextLensTensor.hostData;
+    for (size_t i = 0; i < contextLens.size(); ++i) {
+        contextLens[i] = contextLensTensorHostData[i];
+    }
+
+    return true;
+}
+
 bool PagedAttentionFusionVariantPackParam::ParseQLens(const SVector<Mki::Tensor> &inTensors, int qLensIndex)
 {
     const Mki::Tensor &qLensTensor = inTensors.at(qLensIndex);

@@ -101,4 +101,88 @@ public:
 };
 
 REG_KERNEL_BASE(RopeKernel);
+
+class RopeAptKernel : public KernelBase {
+public:
+    explicit RopeAptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : KernelBase(kernelName, handle)
+    {
+    }
+
+    bool RopeDtypeCheck(const LaunchParam &launchParam, TensorDType dtypeCheck) const
+    {
+        auto inTensor0 = launchParam.GetInTensor(0);
+        auto inTensor1 = launchParam.GetInTensor(1);
+        MKI_CHECK(inTensor0.desc.format == TENSOR_FORMAT_ND, "in tensor0 format is invalid", return false);
+        MKI_CHECK(launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_BF16
+                || launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+                "in tensor0 dtype is invalid", return false);
+        MKI_CHECK(inTensor0.desc.dtype == inTensor1.desc.dtype,
+            "in tensor0 dtype != tensor1 dtype", return false);
+        MKI_CHECK(inTensor1.desc.format == TENSOR_FORMAT_ND, "in tensor1 format is invalid", return false);
+        for (size_t i = 0; i < TENSOR_OUTPUT_NUM; i++) {
+            auto outTensor = launchParam.GetOutTensor(i);
+            MKI_CHECK(outTensor.desc.format == inTensor0.desc.format, "out tensor format is invalid", return false);
+            MKI_CHECK(outTensor.desc.dtype == inTensor0.desc.dtype, "out tensor dtype is invalid", return false);
+        }
+        if (dtypeCheck == TENSOR_DTYPE_BF16) {
+            MKI_CHECK(launchParam.GetInTensor(DIM_2).desc.dtype == TENSOR_DTYPE_BF16,
+                "in tensor2 dtype is invalid", return false);
+            MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dtype == TENSOR_DTYPE_BF16,
+                "in tensor3 dtype is invalid", return false);
+        } else {
+            if (launchParam.GetInTensor(DIM_2).desc.dtype == dtypeCheck) {
+                MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dtype == dtypeCheck,
+                    "in tensor3 dtype is invalid", return false);
+            } else if (launchParam.GetInTensor(DIM_2).desc.dtype == TENSOR_DTYPE_FLOAT) {
+                MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dtype == TENSOR_DTYPE_FLOAT,
+                    "in tensor3 dtype is invalid", return false);
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(launchParam.GetInTensorCount() == 4, "in tensor num is invalid", return false);
+        MKI_CHECK(launchParam.GetOutTensorCount() == TENSOR_OUTPUT_NUM, "out tensor num is invalid", return false);
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Rope),
+            "param type is invalid", return false);
+        auto param = AnyCast<OpParam::Rope>(launchParam.GetParam());
+        auto headdim = launchParam.GetInTensor(2).desc.dims[3];
+        MKI_CHECK(param.rotaryCoeff == 2 || param.rotaryCoeff == 4 || param.rotaryCoeff == headdim,
+            "param.rotaryCoeff is invalid", return false);
+        MKI_CHECK(launchParam.GetInTensor(DIM_0).desc.dims[3] % headdim == 0
+            && launchParam.GetInTensor(DIM_1).desc.dims[3] % headdim == 0,
+            "hiddenSizeQ, hiddenSizeK should be an integer multiple of headdim",
+            return false);
+        return RopeDtypeCheck(launchParam, TENSOR_DTYPE_FLOAT16) || RopeDtypeCheck(launchParam, TENSOR_DTYPE_BF16);
+    }
+
+    Status InitImpl(const LaunchParam &launchParam) override
+    {
+        return RopeAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+    }
+};
+// RopeAptF16Kernel
+class RopeAptF16Kernel : public RopeAptKernel {
+public:
+    explicit RopeAptF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : RopeAptKernel(kernelName, handle)
+    {
+    }
+};
+REG_KERNEL_BASE(RopeAptF16Kernel);
+
+// RopeAptBF16Kernel
+class RopeAptBF16Kernel : public RopeAptKernel {
+public:
+    explicit RopeAptBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : RopeAptKernel(kernelName, handle)
+    {
+    }
+};
+REG_KERNEL_BASE(RopeAptBF16Kernel);
 } // namespace AtbOps
