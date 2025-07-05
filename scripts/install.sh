@@ -469,7 +469,6 @@ function check_owner() {
 function uninstall() {
     install_dir=${default_install_path}/${VERSION}
     uninstall_process ${install_dir} y
-    uninstall_torch_atb
 }
 
 function check_uninstall_path() {
