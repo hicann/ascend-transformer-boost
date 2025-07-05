@@ -44,7 +44,7 @@ if [[ -n "$ZSH_VERSION" ]]; then
     set_env_path="$0"
 fi
 
-if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ /set_env\.sh$ ]];then
+if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ set_env.sh ]];then
     atb_path=$(cd $(dirname $set_env_path); pwd)
     get_cxx_abi_option "$@"
     export ATB_HOME_PATH="${atb_path}/cxx_abi_${cxx_abi}"
