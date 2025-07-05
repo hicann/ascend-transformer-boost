@@ -360,6 +360,63 @@ function check_csv_exist() {
     fi
 }
 
+function version_control() {
+    local mode=$1
+    local atb_dir=$2
+    local version=$3
+    cfg_path=${atb_dir}/version.cfg
+    if [ ! -f $cfg_path ]
+    then
+        touch $cfg_path
+    fi
+    chmod 666 $cfg_path
+    running_version=$(grep -m 1 '^\[running_version\]=' $cfg_path | sed -e 's/^\[running_version\]=//')
+    installed_version=$(grep -m 1 '^\[installed_version\]=' $cfg_path | sed -e 's/^\[installed_version\]=//')
+    readarray -t running_version_array < <(grep -oP '\[\K[^\]]*' <<< "$running_version")
+    readarray -t installed_version_array < <(grep -oP '\[\K[^\]]*' <<< "$installed_version")
+    found_indices=()
+    for i in "${!installed_version_array[@]}"
+    do
+        if [[ "${installed_version_array[i]}" == "$version" ]]
+        then
+            found_indices+=("$i")
+        fi
+    done
+    if (( ${#found_indices[@]} > 0 ))
+    then
+        for (( i=${#found_indices[@]}-1; i>=0; i-- ))
+        do
+            unset "installed_version_array[${found_indices[i]}]"
+        done
+        installed_version_array=("${installed_version_array[@]}")
+    fi
+
+    if [[ "$mode" == "push" ]]
+    then 
+        installed_version_array+=("$version")
+    fi
+
+    if (( ${#installed_version_array[@]} == 0 ))
+    then
+        rm $cfg_path
+    else
+        running_version_array=("${installed_version_array[-1]}")
+        running_version=$(printf "[%s]" "${running_version_array[@]}")
+        installed_version=$(printf "[%s]" "${installed_version_array[@]}")
+        > $cfg_path
+        echo "[running_version]=$running_version" >> $cfg_path
+        echo "[installed_version]=$installed_version" >> $cfg_path
+        chmod 444 $cfg_path
+        if [[ "$mode" != "push" ]]
+        then 
+            cd ${atb_dir}
+            latest_version="${installed_version_array[-1]}"
+            cp ${latest_version}/atb/set_env.sh ${atb_dir}
+            ln -snf ${latest_version} latest
+        fi
+    fi
+}
+
 function uninstall_process() {
     #检查对应版本目录下的文件是否需要删除，是则进行删除
     if [ ! -d $1 ];then
@@ -373,6 +430,7 @@ function uninstall_process() {
     if [ -d $1 ];then
         delete_empty_recursion $1
     fi
+    version_control "pull" ${atb_dir} $(basename $1)
     if [ "$2" == "y" -a -z "$(ls $atb_dir)" ];then
         rm -rf $atb_dir
     fi
@@ -387,6 +445,7 @@ function install_to_path() {
     uninstall_process ${install_dir}
     check_target_dir_owner ${install_dir}
     check_path
+    version_control "push" ${default_install_path} ${VERSION}
     cd ${install_dir}
     install_torch_atb
     copy_files
@@ -542,6 +601,7 @@ function recover_old_version() {
     mv ${back_up_dir} ${version_dir}
     mv ${default_install_path}/set_env_recover.sh ${default_install_path}/set_env.sh
     local version=$(basename ${version_dir})
+    version_control "push" ${default_install_path} ${version}
     cd ${default_install_path}
     ln -snf ${version} latest
     print "INFO" "recover old Ascend-cann-atb version success!"
