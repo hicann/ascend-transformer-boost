@@ -23,6 +23,7 @@ default_install_path="/usr/local/Ascend/atb"
 target_dir=""
 version_dir=""
 sourcedir=$PWD
+torch_atb_install_status=n
 VERSION=VERSION_PLACEHOLDER
 LOG_PATH=LOG_PATH_PLACEHOLDER
 LOG_NAME=LOG_NAME_PLACEHOLDER
@@ -360,6 +361,112 @@ function check_csv_exist() {
     fi
 }
 
+function version_control_get_torch_atb_install_status() {
+    if pip show "torch_atb" > /dev/null 2>&1
+    then
+        torch_atb_install_status=y
+    fi
+}
+
+function version_control() {
+    local version_control_mode=$1
+    local atb_dir=$2
+    local version=$3
+    cfg_path=${atb_dir}/version.cfg
+    if [ ! -f $cfg_path ]
+    then
+        touch $cfg_path
+    fi
+    chmod 666 $cfg_path
+    running_version=$(grep -m 1 '^\[running_version\]=' $cfg_path | sed -e 's/^\[running_version\]=//')
+    installed_version=$(grep -m 1 '^\[installed_version\]=' $cfg_path | sed -e 's/^\[installed_version\]=//')
+    legacy_version=$(grep -m 1 '^\[legacy_version\]=' $cfg_path | sed -e 's/^\[legacy_version\]=//')
+    readarray -t running_version_array < <(grep -oP '\[\K[^\]]*' <<< "$running_version")
+    readarray -t installed_version_array < <(grep -oP '\[\K[^\]]*' <<< "$installed_version")
+    readarray -t legacy_version_array < <(grep -oP '\[\K[^\]]*' <<< "$legacy_version")
+    exist_installed_version=()
+    for i in "${installed_version_array[@]}"
+    do
+        if [[ -d "${atb_dir}/${i}" ]] && [[ ! -L "${atb_dir}/${i}" ]]
+        then
+            exist_installed_version+=("${i}")
+        fi
+    done
+    installed_version_array=("${exist_installed_version[@]}")
+    
+    if [[ "$version_control_mode" == "push" ]]
+    then 
+        if [[ -d "${default_install_path}/latest" ]]
+        then
+            latest_link_dir=$(basename $(readlink -f "${default_install_path}/latest"))
+            if (( ${#installed_version_array[@]} == 0 )) || [[ "$latest_link_dir" != "${installed_version_array[-1]}" ]]
+            then
+                installed_version_array+=("$latest_link_dir")
+                legacy_version_array=("$latest_link_dir")
+            fi
+        fi
+        installed_version_array+=("$version")
+    fi
+    if (( ${#installed_version_array[@]} == 0 ))
+    then
+        rm $cfg_path
+    else
+        running_version_array=("${installed_version_array[-1]}")
+        running_version=$(printf "[%s]" "${running_version_array[@]}")
+        installed_version=$(printf "[%s]" "${installed_version_array[@]}")
+        legacy_version=$(printf "[%s]" "${legacy_version_array[@]}")
+        > $cfg_path
+        echo "[running_version]=$running_version" >> $cfg_path
+        echo "[installed_version]=$installed_version" >> $cfg_path
+        echo "[legacy_version]=$legacy_version" >> $cfg_path
+        chmod 444 $cfg_path
+        if [[ "$version_control_mode" != "push" ]]
+        then
+            latest_version="${installed_version_array[-1]}"
+            if (( ${#legacy_version_array[@]} != 0 )) && [[ "${installed_version_array[-1]}" == "${legacy_version_array[0]}" ]]
+            then
+                rm $cfg_path
+            fi
+            cd ${atb_dir}
+            cp ${latest_version}/atb/set_env.sh ${atb_dir}
+            ln -snf ${latest_version} latest
+            if [[ "$torch_atb_install_status" == "y" ]]
+            then
+                torch_atb_install_status=n
+                
+                py_version=$(python -c 'import sys; print(sys.version_info[0], ".", sys.version_info[1])' | tr -d ' ')
+                py_major_version=${py_version%%.*}
+                py_minor_version=${py_version##*.}
+
+                if [ "$py_major_version" == "3" ] && { [ "$py_minor_version" == "10" ] || [ "$py_minor_version" == "11" ]; }; then
+                    wheel_file="torch_atb-0.0.1-cp${py_major_version}${py_minor_version}-none-any.whl"
+                    wheel_path="latest/whl/$wheel_file"
+
+                    if [ -f "$wheel_path" ]; then
+                        if ! [ $(pip install "$wheel_path" > /dev/null 2>&1; echo $?) -eq 0 ]; then
+                            print "ERROR" "torch_atb installation failed!"
+                            exit 1
+                        else
+                            install_torch_atb_dir=$(pip show torch_atb | grep Location | awk '{print $2}')/torch_atb
+                            if [ ! -d "$install_torch_atb_dir" ]; then
+                                print "ERROR" "torch_atb installation directory not found."
+                                exit 1
+                            fi
+                            print "INFO" "torch_atb installation succeeded!"
+                        fi
+                    else
+                        print "ERROR" "Wheel file ${wheel_file} not found."
+                        exit 1
+                    fi
+                else
+                    print "ERROR" "Unsupported Python version. Only Python 3.10, and 3.11 are supported."
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+}
+
 function uninstall_process() {
     #检查对应版本目录下的文件是否需要删除，是则进行删除
     if [ ! -d $1 ];then
@@ -369,10 +476,12 @@ function uninstall_process() {
     atb_dir=$(cd $1/..;pwd)
     delete_latest $1
     delete_installed_files $1
+    version_control_get_torch_atb_install_status
     uninstall_torch_atb
     if [ -d $1 ];then
         delete_empty_recursion $1
     fi
+    version_control "pull" ${atb_dir} $(basename $1)
     if [ "$2" == "y" -a -z "$(ls $atb_dir)" ];then
         rm -rf $atb_dir
     fi
@@ -387,6 +496,7 @@ function install_to_path() {
     uninstall_process ${install_dir}
     check_target_dir_owner ${install_dir}
     check_path
+    version_control "push" ${default_install_path} ${VERSION}
     cd ${install_dir}
     install_torch_atb
     copy_files
@@ -469,7 +579,6 @@ function check_owner() {
 function uninstall() {
     install_dir=${default_install_path}/${VERSION}
     uninstall_process ${install_dir} y
-    uninstall_torch_atb
 }
 
 function check_uninstall_path() {
@@ -539,9 +648,10 @@ function recover_old_version() {
         chmod 700 ${default_install_path}/set_env.sh
         rm -f ${default_install_path}/set_env.sh
     fi
+    local version=$(basename ${version_dir})
+    version_control "push" ${default_install_path} ${version}
     mv ${back_up_dir} ${version_dir}
     mv ${default_install_path}/set_env_recover.sh ${default_install_path}/set_env.sh
-    local version=$(basename ${version_dir})
     cd ${default_install_path}
     ln -snf ${version} latest
     print "INFO" "recover old Ascend-cann-atb version success!"
