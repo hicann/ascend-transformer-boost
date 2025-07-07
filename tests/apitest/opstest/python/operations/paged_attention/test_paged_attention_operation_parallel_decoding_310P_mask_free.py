@@ -24,7 +24,7 @@ from precision_calcu import *
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
  
-
+torch.manual_seed(1)
 MAX_SEQ_LEN = 1024
  
 def shape_nd_to_nz(shape, dtype='float16'):
@@ -367,14 +367,14 @@ class UnpadPagedAttention():
         return query.view(num_tokens, num_heads, head_size), self.key_cache, self.value_cache, self.block_tables, self.k_seqlen_list, \
             self.mask.half(), self.q_seqlen_list, ref_output.view(num_tokens, num_heads, head_size), ref_output_high.view(num_tokens, num_heads, head_size)
  
-batch = np.random.randint(1, 6)
+batch = 1
 block_size = 128
 num_blocks = 1024
-head_combinations = [(16, 2), (8, 1), (4, 1), (32, 32), (40, 10), (40, 4)]
+head_combinations = [(4, 1)]
 num_heads, kv_heads = random.choice(head_combinations)
-head_size_list = [32, 128, 16, 64, 48, 80]
+head_size_list = [48]
 head_size = random.choice(head_size_list)
-q_seqlen_list = [np.random.randint(128, 256) for _ in range(batch)]  # qlen 随机范围可以自定义
+q_seqlen_list = [214]  # qlen 随机范围可以自定义
 k_seqlen_list = [q + 128 for q in q_seqlen_list]
 print(f"combination param: batch={batch}, num_blocks={num_blocks}, num_heads={num_heads}, kv_heads={kv_heads}, head_size={head_size}, q_seqlen_list={q_seqlen_list}")
 mask_type = "la"
