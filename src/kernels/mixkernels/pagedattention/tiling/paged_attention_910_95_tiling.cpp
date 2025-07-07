@@ -62,6 +62,7 @@ Status PagedAttentionBaseAscend91095Tiling(const std::string &kernelName, const 
             .AddInputPlaceHolder(TENSOR_DTYPE_UNDEFINED, TENSOR_FORMAT_UNDEFINED, {}) // actual_shared_prefix_len
             .AddInputPlaceHolder(TENSOR_DTYPE_UNDEFINED, TENSOR_FORMAT_UNDEFINED, {}) // query_rope
             .AddInputPlaceHolder(TENSOR_DTYPE_UNDEFINED, TENSOR_FORMAT_UNDEFINED, {}) // key_rope
+            .AddInputPlaceHolder(TENSOR_DTYPE_UNDEFINED, TENSOR_FORMAT_UNDEFINED, {}) // key_rope_antiquant_scale
             .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
             .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
             .AddAttrInt(param.headSize) // num_heads
@@ -128,6 +129,7 @@ Status PagedAttentionW8A16Ascend91095Tiling(const std::string &kernelName, const
             .AddInputPlaceHolder(TENSOR_DTYPE_UNDEFINED, TENSOR_FORMAT_UNDEFINED, {}) // actual_shared_prefix_len
             .AddInputPlaceHolder(TENSOR_DTYPE_UNDEFINED, TENSOR_FORMAT_UNDEFINED, {}) // query_rope
             .AddInputPlaceHolder(TENSOR_DTYPE_UNDEFINED, TENSOR_FORMAT_UNDEFINED, {}) // key_rope
+            .AddInputPlaceHolder(TENSOR_DTYPE_UNDEFINED, TENSOR_FORMAT_UNDEFINED, {}) // key_rope_antiquant_scale
             .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
             .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
             .AddAttrInt(param.headSize) // num_heads

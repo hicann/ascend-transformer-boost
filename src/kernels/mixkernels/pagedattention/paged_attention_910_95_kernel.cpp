@@ -74,7 +74,6 @@ public:
 
     Status Init(const LaunchParam &launchParam) override
     {
-        return Status::OkStatus();
         LaunchParam runLaunchParam;
         runLaunchParam.GetInTensors() = {launchParam.GetInTensor(0),
                                          launchParam.GetInTensor(1),
@@ -115,7 +114,6 @@ public:
 
     Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
     {
-        return Status::OkStatus();
         LaunchParam runLaunchParam;
         runLaunchParam.GetInTensors() = {{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
                                          {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}};
@@ -136,7 +134,6 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return Status::OkStatus();
         auto ret = PagedAttentionBaseAscend91095Tiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
         MKI_CHECK_NO_LOG(ret.Ok(), return ret);
         // When in a non-emulator environment, add "kernelInfo_.SetHwsyncIdx(0);" here.

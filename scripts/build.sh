@@ -201,9 +201,9 @@ function fn_build_mki()
     cd $THIRD_PARTY_DIR
     if [ ! -d "Mind-KernelInfra" ]; then
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_personal/l00833259/premerge
+        [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_feature_cann_8.2.RC1_0506POC_20251030
         echo  "current branch for mki: $branch"
-        git clone --branch $branch --depth 1 https://gitee.com/lilele0802/Mind-KernelInfra.git
+        git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra-for-lingqu2.0.git Mind-KernelInfra/
     fi
     cd Mind-KernelInfra
     echo  "current commid id of Mind-KernelInfra: $(git rev-parse HEAD)"
