@@ -60,7 +60,7 @@ def get_precision_and_eb_threshold(op_type, dtype, compute_num):
             eb_threshold = 2**(-10)
         if dtype in [torch.bfloat16]:
             if compute_num != -1 and compute_num >= 2048:
-                precision_threshold = 2**(-5)
+                precision_threshold = 2**(-6)
                 eb_threshold = 2**(-6)
             else:
                 precision_threshold = 2**(-7)
@@ -514,7 +514,10 @@ class LinearOperation(DataGen):
                 golden_result = golden_result + accum
         if accum is None:
             if out_data_type == -1:
-                golden_result = golden_result.to(torch.float32)
+                if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
+                    golden_result = golden_result.to(torch.bfloat16)
+                else:
+                    golden_result = golden_result.to(torch.float32)
             elif out_data_type == 27:
                 golden_result = golden_result.to(torch.bfloat16)
             else:
