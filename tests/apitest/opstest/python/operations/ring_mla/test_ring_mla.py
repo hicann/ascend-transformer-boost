@@ -1039,7 +1039,7 @@ class TestMLAPrefill(operation_test.OperationTest):
         heads = 16        # llama7b  hidden_size 4096
         embeddim = 192
         embeddimV = 128
-        max_seq = 200
+        max_seq = 100
         tor = 1.0 / math.sqrt(1.0 * embeddim)
         dynamic_batch = False
         kv_seqLen = [100] * batch
