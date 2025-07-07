@@ -34,8 +34,6 @@ constexpr uint32_t BROADCAST_AXIS = 1;
 constexpr uint32_t SORTED_COEF = 2;
 constexpr int32_t FLOAT_BYTES = 4;
 constexpr uint8_t REPEAT_STRIDE_EIGHT = 8;
-constexpr int32_t RANDOM_ADD_NUM = 7;
-constexpr int32_t RANDOM_SEED = 100000007;
 
 template <typename inputT, typename calT, uint32_t enableExpertMapping>
 class FusedAddTopkDiv {
@@ -85,8 +83,6 @@ private:
     TBuf<TPosition::VECCALC> tempBuf_;
 
     TQue<QuePosition::VECIN, BUFFER_NUM_ONE> mappingNumQueue_;
-    TQue<QuePosition::VECIN, BUFFER_NUM_ONE> mappingNumFp32Queue_;
-    TQue<QuePosition::VECIN, BUFFER_NUM_ONE> newIndicesQueue_;
 
     uint32_t secondDimSize_ = 0;
     uint32_t groupNum_ = 0;
@@ -190,8 +186,6 @@ __aicore__ inline void FusedAddTopkDiv<inputT, calT, enableExpertMapping>::InitB
     pipe_->InitBuffer(assistQueue_, BUFFER_NUM_ONE, sizeof(uint32_t) * BASE_COUNT);
     // new mapping
     pipe_->InitBuffer(mappingNumQueue_, BUFFER_NUM_ONE, sizeof(int32_t) * expertNum_);
-    pipe_->InitBuffer(mappingNumFp32Queue_, BUFFER_NUM_ONE, sizeof(float) * expertNum_);
-    pipe_->InitBuffer(newIndicesQueue_, BUFFER_NUM_ONE, sizeof(int32_t));
 }
 
 template <typename inputT, typename calT, uint32_t enableExpertMapping>
@@ -460,52 +454,25 @@ __aicore__ inline void FusedAddTopkDiv<inputT, calT, enableExpertMapping>::CopyO
     LocalTensor<int32_t> indicesLocal = indicesOutQueue_.DeQue<int32_t>();
     
     if constexpr (enableExpertMapping) {
-        // CalRandom
-        int32_t randomOffset = indicesLocal.GetValue(groupTopk_ * groupEles_ - 1) + RANDOM_ADD_NUM;
-        float randomValue = (RANDOM_SEED % randomOffset) / static_cast<float>(randomOffset);
-
         // CopyIn mappingNum
         CopyInMappingNum();
         
         // Compute
         LocalTensor<int32_t> mappingNumLocal = mappingNumQueue_.DeQue<int32_t>();
-        LocalTensor<float> mappingNumFp32Local = mappingNumFp32Queue_.AllocTensor<float>();
-
-        event_t eventIdSToV = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_V));
-        SetFlag<HardEvent::S_V>(eventIdSToV);
-        WaitFlag<HardEvent::S_V>(eventIdSToV);
-
-        Cast<float, int32_t>(mappingNumFp32Local, mappingNumLocal, RoundMode::CAST_NONE, expertNum_);
-        AscendC::PipeBarrier<PIPE_V>();
-        Muls(mappingNumFp32Local, mappingNumFp32Local, randomValue, expertNum_);
-        AscendC::PipeBarrier<PIPE_V>();
-        Cast<int32_t, float>(mappingNumLocal, mappingNumFp32Local, RoundMode::CAST_FLOOR, expertNum_);
 
         // Update Indices
-        LocalTensor<int32_t> newIndicesLocal = newIndicesQueue_.AllocTensor<int32_t>();
-        event_t eventIdVToS = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_S));
-        SetFlag<HardEvent::V_S>(eventIdVToS);
-        WaitFlag<HardEvent::V_S>(eventIdVToS);
+        event_t eventIdMte2ToS = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE2_S));
+        SetFlag<HardEvent::MTE2_S>(eventIdMte2ToS);
+        WaitFlag<HardEvent::MTE2_S>(eventIdMte2ToS);
 
         for (size_t kI = 0; kI < k_; kI++) {
             uint32_t expertId = indicesLocal.GetValue(kI);
-            uint32_t tableOffset = expertId * tableDim_ + mappingNumLocal.GetValue(expertId);
-            DataCopyExtParams idxCopyParams{1, static_cast<uint32_t>(sizeof(int32_t)), 0, 0, 0};
-            
-            event_t eventIdSToMte2 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_MTE2));
-            SetFlag<HardEvent::S_MTE2>(eventIdSToMte2);
-            WaitFlag<HardEvent::S_MTE2>(eventIdSToMte2);
-
-            DataCopyPadExtParams<int32_t> padParams{true, 0, 0, 0};
-            DataCopyPad(newIndicesLocal, mappingTableGm_[tableOffset], idxCopyParams, padParams);
-            event_t eventIdMte2ToS = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE2_S));
-            SetFlag<HardEvent::MTE2_S>(eventIdMte2ToS);
-            WaitFlag<HardEvent::MTE2_S>(eventIdMte2ToS);
-            indicesLocal.SetValue(kI, newIndicesLocal.GetValue(0));
+            uint32_t expertMappingNum = mappingNumLocal.GetValue(expertId);
+            uint32_t redundantOffset = expertMappingNum == 0 ? 0 : (batchOffset_ + loop) % expertMappingNum;
+            uint32_t tableOffset = expertId * tableDim_ + redundantOffset;
+            indicesLocal.SetValue(kI, mappingTableGm_[tableOffset].GetValue(0));
         }
         mappingNumQueue_.FreeTensor<int32_t>(mappingNumLocal);
-        mappingNumFp32Queue_.FreeTensor<float>(mappingNumFp32Local);
-        newIndicesQueue_.FreeTensor<int32_t>(newIndicesLocal);
         event_t eventIdSToMte3 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_MTE3));
         SetFlag<HardEvent::S_MTE3>(eventIdSToMte3);
         WaitFlag<HardEvent::S_MTE3>(eventIdSToMte3);

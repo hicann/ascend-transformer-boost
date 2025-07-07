@@ -62,12 +62,10 @@ def golden(input_x, input_add_num, mapping_num, mapping_table, group_num, group_
     if (mapping_num.numel() != 0) and (mapping_table.numel() != 0):
         out_indices_clone = out_indices.clone().detach()
         for bs in range(token_num):
-            indices_offset = torch.tensor(sort_res.indices[bs][group_topk * group_eles - 1] + offset, dtype=torch.int32)
-            rand_value =  torch.remainder(prime, indices_offset) / indices_offset.to(torch.float32)
-            mapping_indices = torch.floor(mapping_num.to(torch.float32) * rand_value).to(torch.int32)
             for ki in range(k):
                 expert_id = out_indices_clone[bs][ki]
-                out_indices[bs][ki] = mapping_table[expert_id][mapping_indices[expert_id]]
+                redundantOffset = bs % max(1, mapping_num[expert_id])
+                out_indices[bs][ki] = mapping_table[expert_id][redundantOffset]
 
     return res, out_indices[:, 0:k]
 
