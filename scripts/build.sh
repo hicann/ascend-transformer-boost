@@ -468,7 +468,7 @@ function fn_build()
     fi
     fn_build_3rdparty_for_compile
     cd $CACHE_DIR
-    if [ "$CMAKE_CXX_COMPILER_LAUNCHER" == ""] && [command -v ccache &> /dev/null]; then
+    if [ "$CMAKE_CXX_COMPILER_LAUNCHER" == "" ] && [ command -v ccache &> /dev/null ] ; then
         COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     fi
     echo "COMPILE_OPTIONS:$COMPILE_OPTIONS"

@@ -9,7 +9,6 @@
  */
 
 #include <cmath>
-#include <cmath>
 #include "../demo_util.h"
 
 namespace {
@@ -59,7 +58,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDat
     atb::Tensor ctKV;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(blockNum * BLOCK_SIZE * DIM512, 1),
                                         ACL_INT8, aclFormat::ACL_FORMAT_FRACTAL_NZ,
-                                        {blockNum, KV_HEAD_NUM * DIM512 / ALIGN16, BLOCK_SIZE, CTKV_HEAD_SIZE_CACHE2},
+                                        {blockNum, ALIGN16, BLOCK_SIZE, CTKV_HEAD_SIZE_CACHE2},
                                         ctKV));
     // 创建shape为[blockNum, 4, BLOCK_SIZE, 16]的输入kRope tensor
     atb::Tensor kRope;
