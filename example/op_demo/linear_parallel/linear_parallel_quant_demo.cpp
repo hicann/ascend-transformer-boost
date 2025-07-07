@@ -13,9 +13,11 @@
 
 #include "../demo_util.h"
 
+namespace {
 const int DIM_M = 2;
 const int DIM_N = 2;
 const int DIM_K = 32;
+}
 
 atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context, aclrtStream &stream)
 {

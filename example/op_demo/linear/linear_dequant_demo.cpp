@@ -10,12 +10,14 @@
 
 #include "../demo_util.h"
 
+namespace {
 const int32_t DEVICE_ID = 0;
 const int32_t SIZE_2 = 2;
 const uint32_t XDIM_0 = 2;
 const uint32_t XDIM_1 = 3;
 const uint32_t WEIGHTDIM_0 = 3;
 const uint32_t WEIGHTDIM_1 = 2;
+}
 
 /**
  * @brief 准备atb::VariantPack

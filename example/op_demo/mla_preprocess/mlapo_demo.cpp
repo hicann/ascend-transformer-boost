@@ -22,7 +22,6 @@ const int32_t HEAD_NUM_IDX = 3;
 const int32_t KV_CACHE_NOPE_IDX = 19;
 const int32_t KV_CACHE_ROPE_IDX = 20;
 
-
 const int32_t RUNS = 10;
 
 const int32_t ROPE_DIM64 = 64;

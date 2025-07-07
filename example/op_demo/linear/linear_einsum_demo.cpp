@@ -10,6 +10,7 @@
 
 #include "../demo_util.h"
 
+namespace {
 const int32_t DEVICE_ID = 0;
 const uint32_t XDIM_0 = 2;
 const uint32_t XDIM_1 = 3;
@@ -17,6 +18,7 @@ const uint32_t WEIGHTDIM_0 = 3;
 const uint32_t WEIGHTDIM_1 = 2;
 const uint32_t BIASDIM_0 = 2;
 const uint32_t BATCHSIZE = 1;
+}
 
 /**
  * @brief 准备atb::VariantPack

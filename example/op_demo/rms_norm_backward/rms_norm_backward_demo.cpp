@@ -10,10 +10,12 @@
 
 #include "../demo_util.h"
 
+namespace {
 const int32_t DEVICE_ID = 0;
 const uint32_t DIM_0 = 32;
 const uint32_t DIM_1 = 64;
 const uint32_t DIM_2 = 128;
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
