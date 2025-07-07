@@ -11,7 +11,6 @@
 #include "atb/core/runner_pool.h"
 #include "atb/utils/config.h"
 #include "atb/runner/runner.h"
-#include "atb/utils/singleton.h"
 
 static const uint32_t DEFAULT_RUNNER_POOL_SIZE = 64;
 

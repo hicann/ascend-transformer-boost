@@ -100,12 +100,12 @@ bool ParamCheck(const atb::infer::GmmDeqSwigluQuantGmmDeqParam &opParam)
         return false;
     }
 
-    if (opParam.transposeWeightUp != false) {
+    if (opParam.transposeWeightUp) {
         ATB_LOG(ERROR) << "Param transposeWeightUp only support false.";
         return false;
     }
 
-    if (opParam.transposeWeightDown != true) {
+    if (!opParam.transposeWeightDown) {
         ATB_LOG(ERROR) << "Param transposeWeightDown only support true.";
         return false;
     }

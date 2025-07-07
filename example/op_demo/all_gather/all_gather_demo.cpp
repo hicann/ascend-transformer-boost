@@ -12,6 +12,15 @@
 #include <sys/wait.h>
 #include "../demo_util.h"
 
+const int64_t INTPUT_DIM_NUM = 2;
+const int64_t DIM2 = 2;
+const int64_t DIM3 = 3;
+const int64_t DIM5 = 5;
+
+const int64_t IDX0 = 0;
+const int64_t IDX1 = 1;
+const int64_t IDX2 = 2;
+
 atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context)
 {
     uint64_t workspaceSize = 0;
@@ -41,18 +50,18 @@ atb::Status AllGatherSample(int rank, int rankSize)
     atb::Tensor input;
     input.desc.dtype = ACL_FLOAT16;
     input.desc.format = ACL_FORMAT_ND;
-    input.desc.shape.dimNum = 2;
-    input.desc.shape.dims[0] = 3;
-    input.desc.shape.dims[1] = 5;
+    input.desc.shape.dimNum = INTPUT_DIM_NUM;
+    input.desc.shape.dims[IDX0] = DIM3;
+    input.desc.shape.dims[IDX1] = DIM5;
     input.dataSize = atb::Utils::GetTensorSize(input);
     CHECK_STATUS(aclrtMalloc(&input.deviceData, input.dataSize, ACL_MEM_MALLOC_HUGE_FIRST));
     atb::Tensor output;
     output.desc.dtype = ACL_FLOAT16;
     output.desc.format = ACL_FORMAT_ND;
     output.desc.shape.dimNum = 3;
-    output.desc.shape.dims[0] = 2;
-    output.desc.shape.dims[1] = 3;
-    output.desc.shape.dims[2] = 5;
+    output.desc.shape.dims[IDX0] = DIM2;
+    output.desc.shape.dims[IDX1] = DIM3;
+    output.desc.shape.dims[IDX2] = DIM5;
     output.dataSize = atb::Utils::GetTensorSize(output);
     CHECK_STATUS(aclrtMalloc(&output.deviceData, output.dataSize, ACL_MEM_MALLOC_HUGE_FIRST));
     atb::infer::AllGatherParam param;

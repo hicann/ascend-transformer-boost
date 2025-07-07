@@ -11,6 +11,7 @@
 #include "../demo_util.h"
 
 const int32_t DEVICE_ID = 0;
+const int32_t SIZE_2 = 2;
 const uint32_t XDIM_0 = 2;
 const uint32_t XDIM_1 = 3;
 const uint32_t WEIGHTDIM_0 = 3;
@@ -36,11 +37,11 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::S
                                         weight));
     // 创建shape为[2]bias tensor
     atb::Tensor bias;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int32_t>(2, 1), aclDataType::ACL_INT32,
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int32_t>(SIZE_2, 1), aclDataType::ACL_INT32,
                                         aclFormat::ACL_FORMAT_ND, {1, 2}, bias));
     // 创建shape为[2]的输入deqScale tensor
     atb::Tensor deqScale;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(2, 1), aclDataType::ACL_FLOAT,
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(SIZE_2, 1), aclDataType::ACL_FLOAT,
                                         aclFormat::ACL_FORMAT_ND, {1, 2}, deqScale));
     inTensors = {x, weight, bias, deqScale};
     return atb::ErrorType::NO_ERROR;
@@ -60,7 +61,7 @@ atb::Status CreateLinearOperation(atb::Operation **linearOp)
     param.outDataType = aclDataType::ACL_BF16;
     param.enAccum = false;
     param.matmulType = atb::infer::LinearParam::MatmulType::MATMUL_UNDEFINED;
-    param.quantMode =  atb::infer::LinearParam::QuantMode::PER_CHANNEL;
+    param.quantMode = atb::infer::LinearParam::QuantMode::PER_CHANNEL;
     return atb::CreateOperation(param, linearOp);
 }
 

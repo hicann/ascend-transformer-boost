@@ -313,9 +313,9 @@ Status TopkToppSamplingOperation::SetupCheckImpl(const SVector<Tensor> &inTensor
     }
     if (param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
         param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
-        Status LogProbsOutTensorCheckRes = TopkToppLogProbsOutTensorCheck(outTensorDescs);
-        if (LogProbsOutTensorCheckRes != NO_ERROR) {
-            return LogProbsOutTensorCheckRes;
+        Status logProbsOutTensorCheckRes = TopkToppLogProbsOutTensorCheck(outTensorDescs);
+        if (logProbsOutTensorCheckRes != NO_ERROR) {
+            return logProbsOutTensorCheckRes;
         }
     }
     return CheckIntensorAndParam(inTensorDescs);

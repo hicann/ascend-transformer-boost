@@ -30,7 +30,7 @@ struct RelayAttentionVariantPackParam {
     std::vector<Tensor> valueShare;
     bool BuildFromTensor(const SVector<Mki::Tensor> &inTensors);
     bool HostDataCheck(const SVector<Mki::Tensor> &inTensors);
-    void ReintCastShapeFix(const Mki::Tensor tensor, std::vector<atb::Tensor> &tensorList);
+    void ReintCastShapeFix(const Mki::Tensor tensor, std::vector<atb::Tensor> &tensorList) const;
 };
 } // namespace atb
 #endif
