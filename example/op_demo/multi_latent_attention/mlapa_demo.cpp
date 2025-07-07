@@ -14,7 +14,6 @@
 namespace {
 const int32_t DEVICE_ID = 1;
 const uint32_t BLOCK_SIZE = 128;
-int32_t blockNum = 64;
 const int32_t DIM512 = 512;
 const int32_t ROPE_HEAD_SIZE = 64;
 const int32_t KV_HEAD_NUM = 1;
@@ -54,6 +53,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDat
                                         dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, ROPE_HEAD_SIZE}, qRope,
                                         dtype));
     int maxBlockNumPerSeq = (kSeqLen + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    int32_t blockNum = 64;
     blockNum = tokenNum * maxBlockNumPerSeq;
     // 创建shape为[blockNum, 16, BLOCK_SIZE, 32]的输入ctKV tensor
     atb::Tensor ctKV;
