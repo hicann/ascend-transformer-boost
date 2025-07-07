@@ -12,14 +12,15 @@
 #include <sys/wait.h>
 #include "../demo_util.h"
 
+namespace {
 const int64_t INTPUT_DIM_NUM = 2;
 const int64_t DIM2 = 2;
 const int64_t DIM3 = 3;
 const int64_t DIM5 = 5;
-
 const int64_t IDX0 = 0;
 const int64_t IDX1 = 1;
 const int64_t IDX2 = 2;
+}
 
 atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context)
 {

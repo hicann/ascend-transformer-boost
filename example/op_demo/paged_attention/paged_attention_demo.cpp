@@ -12,6 +12,7 @@
 #include <cmath>
 #include "../demo_util.h"
 
+namespace {
 const uint32_t NTOKENS = 2;                                     // token数量
 const uint32_t BATCH_SIZE = NTOKENS;                            // batch数量
 const uint32_t MAX_SEQ_LEN = 1024;                              // 最大序列长度
@@ -23,6 +24,7 @@ const uint32_t BLOCK_SIZE = 128;                                // 块大小
 const uint32_t MAX_CONTEXT_LEN = 1024;                          // 上下文最大长度
 const int32_t SEQLEN_VALUE = 256;                               // 每batch对应seqlen长度
 std::vector<int32_t> contextLensData(BATCH_SIZE, SEQLEN_VALUE); // contextLens的host侧数据
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor

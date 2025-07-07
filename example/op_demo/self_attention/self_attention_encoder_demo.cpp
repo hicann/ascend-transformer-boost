@@ -10,6 +10,7 @@
 
 #include "../demo_util.h"
 
+namespace {
 const uint32_t BATCH_SIZE = 100;                           // 批处理大小
 const int32_t SEQLEN_VALUE = 16;                           // 每个batch对应seqlen长度
 std::vector<int32_t> seqLenHost(BATCH_SIZE, SEQLEN_VALUE); // host侧tensor值，用于存储每个批处理中的序列长度
@@ -26,6 +27,7 @@ const int32_t IN_V_INDEX = 2;
 const int32_t IN_CACHE_K_INDEX = 3;
 const int32_t IN_CACHE_V_INDEX = 4;
 const int32_t IN_CACHE_MASK_INDEX = 5;
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor

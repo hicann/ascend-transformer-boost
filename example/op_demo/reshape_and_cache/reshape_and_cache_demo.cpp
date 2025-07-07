@@ -15,12 +15,14 @@
 
 #include "../demo_util.h"
 
+namespace {
 uint32_t NUM_TOKENS = 2;
 uint32_t NUM_HEAD = 32;
 uint32_t K_HEAD_SIZE = 128;
 uint32_t V_HEAD_SIZE = K_HEAD_SIZE;
 uint32_t NUM_BLOCKS = 512;
 uint32_t BLOCK_SIZE = 128;
+}
 
 /**
  * @brief 准备随机输入tensorK或输入tensorV的内容

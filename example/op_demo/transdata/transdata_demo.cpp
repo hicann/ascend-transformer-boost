@@ -10,9 +10,11 @@
 
 #include "../demo_util.h"
 
+namespace {
 const uint32_t BATCH_SIZE = 8;   // 批处理大小
 const uint32_t SEQ_LEN = 100;    // 序列长度
 const uint32_t HIDDEN_SIZE = 30; // 隐藏层维度
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor

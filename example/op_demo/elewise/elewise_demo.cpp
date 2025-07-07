@@ -13,8 +13,10 @@
 using namespace atb;
 using namespace std;
 
+namespace {
 const int VECTOR_SIZE = 4;     // 向量的大小
 const float INIT_VALUE = 2.0f; // 向量的初始值
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor

@@ -10,8 +10,10 @@
 
 #include "../demo_util.h"
 
+namespace {
 const uint32_t DIM1 = 2;
 const uint32_t DIM2 = 3;
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor

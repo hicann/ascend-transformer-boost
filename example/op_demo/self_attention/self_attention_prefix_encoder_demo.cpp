@@ -10,6 +10,7 @@
 
 #include "../demo_util.h"
 
+namespace {
 const uint32_t BATCH_SIZE = 4;                      // 批处理大小
 std::vector<int32_t> seqLenHost = {16, 16, 32, 32}; // host侧tensor值，用于存储Query每个批处理中的序列长度
 const uint32_t NTOKENS = accumulate(seqLenHost.begin(), seqLenHost.end(), 0); // sum(seqLenHost)
@@ -20,6 +21,7 @@ const uint32_t KV_HEAD_NUM = 32;                                                
 const uint32_t HEAD_SIZE = 64;                                                       // 头大小
 const uint32_t BLOCK_SIZE = 128;                                                     // 以block存放的kv块大小
 const uint32_t BLOCK_TABLES_SIZE = 16;                                               // blockTables大小
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
