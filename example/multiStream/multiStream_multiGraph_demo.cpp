@@ -12,20 +12,37 @@
 #include <vector>
 #include "atb/atb_infer.h"
 
+namespace {
+const int GRAPH_IN_TENSOR_NUM = 2;
+const int GRAPH_OUT_TENSOR_NUM = 1;
+const int GRAPH_INTERNAL_TENSOR_NUM = 2;
+
+const int DIM_NUM = 2;
+const int DIM2 = 2;
+
+const int TENSOR_ID0 = 0;
+const int TENSOR_ID1 = 1;
+const int TENSOR_ID2 = 2;
+const int TENSOR_ID3 = 3;
+const int TENSOR_ID4 = 4;
+const int TENSOR_ID5 = 5;
+} // namespace
+
 static void CreateInTensorDescs(atb::SVector<atb::TensorDesc> &intensorDescs)
 {
     for (size_t i = 0; i < intensorDescs.size(); i++) {
         intensorDescs.at(i).dtype = ACL_FLOAT16;
         intensorDescs.at(i).format = ACL_FORMAT_ND;
-        intensorDescs.at(i).shape.dimNum = 2;
-        intensorDescs.at(i).shape.dims[0] = 2;
-        intensorDescs.at(i).shape.dims[1] = 2;
+        intensorDescs.at(i).shape.dimNum = DIM_NUM;
+        intensorDescs.at(i).shape.dims[0] = DIM2;
+        intensorDescs.at(i).shape.dims[1] = DIM2;
     }
 }
 
 static aclError CreateInTensors(atb::SVector<atb::Tensor> &inTensors, atb::SVector<atb::TensorDesc> &intensorDescs)
 {
-    std::vector<char> zeroData(8, 0); // 一段全0的hostBuffer
+    const int HOST_BUFFER_SIZE = 8;
+    std::vector<char> zeroData(HOST_BUFFER_SIZE, 0); // 一段全0的hostBuffer
     int ret;
     for (size_t i = 0; i < inTensors.size(); i++) {
         inTensors.at(i).desc = intensorDescs.at(i);
@@ -64,9 +81,10 @@ static aclError CreateOutTensors(atb::SVector<atb::Tensor> &outTensors, atb::SVe
 static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **operation)
 {
     // 构子图流程
-    opGraph.inTensorNum = 2;
-    opGraph.outTensorNum = 1;
-    opGraph.internalTensorNum = 2;
+    opGraph.inTensorNum = GRAPH_IN_TENSOR_NUM;
+    opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
+    opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
+    const int GRAPH_NODE_NUM = 3;
     opGraph.nodes.resize(3);
 
     size_t nodeId = 0;
@@ -77,30 +95,31 @@ static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **
     atb::infer::ElewiseParam addParam;
     addParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam, &addNode.operation);
-    addNode.inTensorIds = {0, 1};
-    addNode.outTensorIds = {3};
+    addNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    addNode.outTensorIds = {TENSOR_ID3};
 
     atb::infer::ElewiseParam addParam2;
     addParam2.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam2, &addNode2.operation);
-    addNode2.inTensorIds = {3, 1};
-    addNode2.outTensorIds = {4};
+    addNode2.inTensorIds = {TENSOR_ID3, TENSOR_ID1};
+    addNode2.outTensorIds = {TENSOR_ID4};
 
     atb::infer::ElewiseParam addParam3;
     addParam3.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     CreateOperation(addParam3, &addNode3.operation);
-    addNode3.inTensorIds = {4, 1};
-    addNode3.outTensorIds = {2};
+    addNode3.inTensorIds = {TENSOR_ID4, TENSOR_ID1};
+    addNode3.outTensorIds = {TENSOR_ID2};
 
     atb::CreateOperation(opGraph, operation);
 }
 
 static void CreateGraphOperationWithWREvent(atb::GraphParam &opGraph, atb::Operation **operation, aclrtEvent event)
 {
-    opGraph.inTensorNum = 2;
-    opGraph.outTensorNum = 1;
-    opGraph.internalTensorNum = 2;
-    opGraph.nodes.resize(5);
+    opGraph.inTensorNum = GRAPH_IN_TENSOR_NUM;
+    opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
+    opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
+    const int GRAPH_NODE_NUM = 5;
+    opGraph.nodes.resize(GRAPH_NODE_NUM);
 
     size_t nodeId = 0;
     atb::Node &mulNode = opGraph.nodes.at(nodeId++);
@@ -112,8 +131,8 @@ static void CreateGraphOperationWithWREvent(atb::GraphParam &opGraph, atb::Opera
     atb::infer::ElewiseParam mulParam;
     mulParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_MUL;
     atb::CreateOperation(mulParam, &mulNode.operation);
-    mulNode.inTensorIds = {0, 1};
-    mulNode.outTensorIds = {3};
+    mulNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    mulNode.outTensorIds = {TENSOR_ID3};
 
     atb::common::EventParam waitParam;
     waitParam.event = event;
@@ -122,14 +141,14 @@ static void CreateGraphOperationWithWREvent(atb::GraphParam &opGraph, atb::Opera
 
     atb::GraphParam graphParam;
     CreateMiniGraphOperation(graphParam, &graphNode.operation);
-    graphNode.inTensorIds = {3, 4};
-    graphNode.outTensorIds = {2};
+    graphNode.inTensorIds = {TENSOR_ID3, TENSOR_ID4};
+    graphNode.outTensorIds = {TENSOR_ID2};
 
     atb::infer::ElewiseParam addParam;
     addParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam, &addNode.operation);
-    addNode.inTensorIds = {0, 1};
-    addNode.outTensorIds = {4};
+    addNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    addNode.outTensorIds = {TENSOR_ID4};
 
     atb::common::EventParam recordParam;
     recordParam.event = event;
@@ -141,10 +160,11 @@ static void CreateGraphOperationWithWREvent(atb::GraphParam &opGraph, atb::Opera
 
 static void CreateGraphOperationWithRWEvent(atb::GraphParam &opGraph, atb::Operation **operation, aclrtEvent event)
 {
-    opGraph.inTensorNum = 2;
-    opGraph.outTensorNum = 1;
-    opGraph.internalTensorNum = 2;
-    opGraph.nodes.resize(5);
+    opGraph.inTensorNum = GRAPH_IN_TENSOR_NUM;
+    opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
+    opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
+    const int GRAPH_NODE_NUM = 5;
+    opGraph.nodes.resize(GRAPH_NODE_NUM);
 
     size_t nodeId = 0;
     atb::Node &mulNode = opGraph.nodes.at(nodeId++);
@@ -156,8 +176,8 @@ static void CreateGraphOperationWithRWEvent(atb::GraphParam &opGraph, atb::Opera
     atb::infer::ElewiseParam mulParam;
     mulParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_MUL;
     atb::CreateOperation(mulParam, &mulNode.operation);
-    mulNode.inTensorIds = {0, 1};
-    mulNode.outTensorIds = {3};
+    mulNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    mulNode.outTensorIds = {TENSOR_ID3};
 
     atb::common::EventParam recordParam;
     recordParam.event = event;
@@ -166,14 +186,14 @@ static void CreateGraphOperationWithRWEvent(atb::GraphParam &opGraph, atb::Opera
 
     atb::GraphParam graphParam;
     CreateMiniGraphOperation(graphParam, &graphNode.operation);
-    graphNode.inTensorIds = {3, 4};
-    graphNode.outTensorIds = {2};
+    graphNode.inTensorIds = {TENSOR_ID3, TENSOR_ID4};
+    graphNode.outTensorIds = {TENSOR_ID2};
 
     atb::infer::ElewiseParam addParam;
     addParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
     atb::CreateOperation(addParam, &addNode.operation);
-    addNode.inTensorIds = {0, 1};
-    addNode.outTensorIds = {4};
+    addNode.inTensorIds = {TENSOR_ID0, TENSOR_ID1};
+    addNode.outTensorIds = {TENSOR_ID4};
 
     atb::common::EventParam waitParam;
     waitParam.event = event;

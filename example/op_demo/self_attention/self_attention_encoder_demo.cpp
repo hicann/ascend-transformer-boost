@@ -10,9 +10,11 @@
 
 #include "../demo_util.h"
 
-const uint32_t BATCH_SIZE = 100;                 // 批处理大小
-std::vector<int32_t> seqLenHost(BATCH_SIZE, 16); // host侧tensor值，用于存储每个批处理中的序列长度
-std::vector<int32_t> tokenOffsetHost(BATCH_SIZE, 16);                         // host侧tensor值，token偏移
+namespace {
+const uint32_t BATCH_SIZE = 100;                           // 批处理大小
+const int32_t SEQLEN_VALUE = 16;                           // 每个batch对应seqlen长度
+std::vector<int32_t> seqLenHost(BATCH_SIZE, SEQLEN_VALUE); // host侧tensor值，用于存储每个批处理中的序列长度
+std::vector<int32_t> tokenOffsetHost(BATCH_SIZE, SEQLEN_VALUE);               // host侧tensor值，token偏移
 std::vector<int32_t> layerId(1, 0);                                           // device侧，kvCache中取哪个计算
 const uint32_t NTOKENS = accumulate(seqLenHost.begin(), seqLenHost.end(), 0); // sum(seqLenHost)
 const uint32_t MAX_SEQ_LEN = 1024;                                            // 最大序列长度
@@ -25,6 +27,7 @@ const int32_t IN_V_INDEX = 2;
 const int32_t IN_CACHE_K_INDEX = 3;
 const int32_t IN_CACHE_V_INDEX = 4;
 const int32_t IN_CACHE_MASK_INDEX = 5;
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
@@ -55,17 +58,17 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     std::vector<float> kvCacheData(BATCH_SIZE * MAX_SEQ_LEN * kvHiddenSize, 1.0);
     // 创建norm mask，值为-inf的上三角mask
     std::vector<float> maskData(BATCH_SIZE * MAX_SEQ_LEN * MAX_SEQ_LEN, 0);
+    const float negtiveInf = -32768;
     for (int i = 0; i < BATCH_SIZE; ++i) {
         for (int j = 0; j < MAX_SEQ_LEN; ++j) {
             for (int k = j + 1; k < MAX_SEQ_LEN; ++k) {
-                maskData[i * MAX_SEQ_LEN * MAX_SEQ_LEN + j * MAX_SEQ_LEN + k] = -32768;
+                maskData[i * MAX_SEQ_LEN * MAX_SEQ_LEN + j * MAX_SEQ_LEN + k] = negtiveInf;
             }
         }
     }
     // 创建tokenOffset，host侧tensor
     atb::Tensor tensorTokenOffset;
-    atb::Tensor tensorSeqLen
-    atb::Tensor tensorLayerId;
+    atb::Tensor tensorSeqLen atb::Tensor tensorLayerId;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorTokenOffset));
     tensorTokenOffset.hostData = tokenOffsetHost.data(); // host侧tensor，拷贝值
     // 创建seqLen，host侧tensor

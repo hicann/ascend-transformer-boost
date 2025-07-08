@@ -15,12 +15,14 @@
 #include <unordered_set>
 #include "../demo_util.h"
 
+namespace {
 uint32_t NUM_TOKENS = 3;
 uint32_t NUM_HEAD = 4;
 uint32_t K_HEAD_SIZE = 128;
 uint32_t V_HEAD_SIZE = K_HEAD_SIZE;
 uint32_t NUM_BLOCKS = 512;
 uint32_t BLOCK_SIZE = 128;
+}
 
 /**
  * @brief 准备随机输入tensorK或输入tensorV的内容
@@ -29,11 +31,12 @@ uint32_t BLOCK_SIZE = 128;
  */
 std::vector<float> KvGeneration(bool kvflag)
 {
+    const float range = 100;
     // 创建随机数生成器
     std::random_device rd;
     std::mt19937 gen(rd());
     // 定义随机数分布范围
-    std::uniform_real_distribution<> dis(-100.0, 100.0);
+    std::uniform_real_distribution<> dis(-range, range);
     // 定义要生成的随机数的个数
     size_t num_elements = kvflag ? NUM_TOKENS * NUM_HEAD * V_HEAD_SIZE : NUM_TOKENS * NUM_HEAD * K_HEAD_SIZE;
     // 创建一个 vector 并填充随机数

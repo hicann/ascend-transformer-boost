@@ -14,8 +14,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-const size_t g_FUSED_ADD_TOPK_INTENSOR_NUM = 2;
-const size_t g_FUSED_ADD_TOPK_OUTTENSOR_NUM = 2;
+const size_t FUSED_ADD_TOPK_INTENSOR_NUM = 2;
+const size_t FUSED_ADD_TOPK_OUTTENSOR_NUM = 2;
 
 atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTensor *addNum, const aclTensor *mappingNum,
                                                const aclTensor *mappingTable, uint32_t groupNum, uint32_t groupTopk,
@@ -42,7 +42,7 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
     }
     atb::VariantPack pack;
 
-    size_t intensorNum = g_FUSED_ADD_TOPK_INTENSOR_NUM;
+    size_t intensorNum = FUSED_ADD_TOPK_INTENSOR_NUM;
     if (enableExpertMapping) {
         intensorNum += 2; // 2: mappingNum, mappingTable
     }
@@ -60,7 +60,7 @@ atb::Status AtbFusedAddTopkDivGetWorkspaceSize(const aclTensor *x, const aclTens
     }
 
     index = 0;
-    pack.outTensors.resize(g_FUSED_ADD_TOPK_OUTTENSOR_NUM);
+    pack.outTensors.resize(FUSED_ADD_TOPK_OUTTENSOR_NUM);
     status = aclTensorToAtbTensor(y, &(pack.outTensors[index++]));
     ATB_CHECK(status == atb::NO_ERROR, "y create failed!", return status);
     status = aclTensorToAtbTensor(indices, &(pack.outTensors[index++]));

@@ -158,14 +158,15 @@ Status CreateContext(Context **context);
 //! 在当前进程或线程中显式创建一个由用户管理Tiling内存的Context.
 //!
 //! \param context 传入的context
-//！
+// ！
 //! \param alloc 传入的Tiling内存分配方法
 //!
 //! \param dealloc 传入的Tiling内存释放方法
 //!
 //! \return 状态值.如果设置成功，返回NO_ERROR.
 //!
-Status CreateContext(Context **context, const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc);
+Status CreateContext(Context **context, const std::function<void *(size_t)> &alloc,
+                     const std::function<void(void *)> &dealloc);
 
 //!
 //! \brief 销毁上下文.

@@ -13,6 +13,13 @@
 
 #include "../demo_util.h"
 
+namespace {
+const int OUTPUT_DIM_NUM = 2;
+const int DIM_M = 2;
+const int DIM_N = 2;
+const int DIM_K = 32;
+}
+
 atb::Status ExcuteImpl(atb::Operation *op, atb::VariantPack variantPack, atb::Context *context, aclrtStream &stream)
 {
     uint64_t workspaceSize = 0;
@@ -48,18 +55,20 @@ atb::Status LinearParallelSample(int rank, int rankSize)
     context->SetExecuteStream(stream);
 
     atb::Tensor input;
-    CHECK_STATUS(CreateTensorFromVector(context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16,
-                                        aclFormat::ACL_FORMAT_ND, {2, 32}, input));
+    const int TENSOR_SIZE = 64;
+    const float tensorValue = 2.0;
+    CHECK_STATUS(CreateTensorFromVector(context, stream, std::vector<float>(TENSOR_SIZE, tensorValue),
+                                        aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_M, DIM_K}, input));
     atb::Tensor weight;
-    CHECK_STATUS(CreateTensorFromVector(context, stream, std::vector<float>(64, 2.0), aclDataType::ACL_FLOAT16,
-                                        aclFormat::ACL_FORMAT_ND, {32, 2}, weight));
+    CHECK_STATUS(CreateTensorFromVector(context, stream, std::vector<float>(TENSOR_SIZE, tensorValue),
+                                        aclDataType::ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_K, DIM_N}, weight));
 
     atb::Tensor output;
     output.desc.dtype = ACL_FLOAT16;
     output.desc.format = ACL_FORMAT_ND;
-    output.desc.shape.dimNum = 2;
-    output.desc.shape.dims[0] = 2;
-    output.desc.shape.dims[1] = 2;
+    output.desc.shape.dimNum = OUTPUT_DIM_NUM;
+    output.desc.shape.dims[0] = DIM_M;
+    output.desc.shape.dims[1] = DIM_N;
     output.dataSize = atb::Utils::GetTensorSize(output);
     CHECK_STATUS(aclrtMalloc(&output.deviceData, output.dataSize, ACL_MEM_MALLOC_HUGE_FIRST));
 

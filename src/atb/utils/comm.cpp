@@ -210,7 +210,7 @@ std::shared_ptr<void> CreateHcclCommByClusterInfo(uint32_t subCommRankId, const 
                        << ret;
         return std::shared_ptr<HcclComm>();
     }
-    return std::shared_ptr<HcclComm>(static_cast<HcclComm *>(newHcclComm), [=](void *hcclComm) {
+    return std::shared_ptr<HcclComm>(static_cast<HcclComm *>(newHcclComm), [=](const void *hcclComm) {
         (void)hcclComm;
         ATB_LOG(INFO) << "destroy hcclComm, but not call HcclCommDestroy hcclComm:" << hcclComm;
     });

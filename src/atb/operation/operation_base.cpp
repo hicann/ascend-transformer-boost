@@ -157,7 +157,7 @@ void OperationBase::InitEmptyOutTensorPerms() const
     }
     ATB_LOG(INFO) << GetLogPrefix() << "InitEmptyOutTensorPerms finished:" << emptyOutTensorPerms_;
 }
- 
+
 SVector<bool> OperationBase::GetEmptyOutTensorPermissions() const
 {
     if (emptyOutTensorPerms_.size() == 0) {
@@ -728,18 +728,18 @@ Status OperationBase::CopyTilingToDevice()
 template <typename TensorType>
 Status OperationBase::ExecuteVariantPackInTensorCheck(const SVector<TensorType> &inTensors) const
 {
-    std::string Prefix = GetLogPrefix();
+    std::string prefix = GetLogPrefix();
     if (inTensors.size() != runnerVariantPack_.inTensors.size()) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "execute inTensors.size:" << inTensors.size()
+        ATB_LOG(ERROR) << prefix << "execute inTensors.size:" << inTensors.size()
                        << " != setup inTensors.size:" << runnerVariantPack_.inTensors.size();
         return ERROR_INVALID_PARAM;
     }
     SVector<bool> emptyInTensorPerms = GetEmptyInTensorPermissions();
     for (size_t i = 0; i < inTensors.size(); i++) {
         const Tensor &variantPackInTensor = inTensors.at(i);
-        if (Prefix.find("WithStride") == std::string::npos && // "WithStride" indicates non continuous tensors
+        if (prefix.find("WithStride") == std::string::npos && // "WithStride" indicates non continuous tensors
             variantPackInTensor.dataSize != Utils::GetTensorSize(runnerVariantPack_.inTensors.at(i).desc)) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.inTensors(" << i
+            ATB_LOG(ERROR) << prefix << "execute variantPack.inTensors(" << i
                            << ").dataSize is Not equal to the setup dataSize";
             return ERROR_INVALID_PARAM;
         }
@@ -757,9 +757,9 @@ Status OperationBase::ExecuteVariantPackInTensorCheck(const SVector<TensorType> 
 template <typename TensorType>
 Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType> &outTensors) const
 {
-    std::string Prefix = GetLogPrefix();
+    std::string prefix = GetLogPrefix();
     if (outTensors.size() != runnerVariantPack_.outTensors.size()) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "execute outTensors.size:" << outTensors.size()
+        ATB_LOG(ERROR) << prefix << "execute outTensors.size:" << outTensors.size()
                        << " != setup outTensors.size:" << runnerVariantPack_.outTensors.size();
         return ERROR_INVALID_PARAM;
     }
@@ -767,7 +767,7 @@ Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType>
     for (size_t i = 0; i < outTensors.size(); i++) {
         const Tensor &variantPackOutTensor = outTensors.at(i);
         if (variantPackOutTensor.dataSize != Utils::GetTensorSize(runnerVariantPack_.outTensors.at(i).desc)) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.outTensors(" << i
+            ATB_LOG(ERROR) << prefix << "execute variantPack.outTensors(" << i
                            << ").dataSize is Not equal to the setup dataSize";
             return ERROR_INVALID_PARAM;
         }
@@ -776,15 +776,14 @@ Status OperationBase::ExecuteVariantPackOutTensorCheck(const SVector<TensorType>
             continue;
         }
         if (!variantPackOutTensor.deviceData && !variantPackOutTensor.hostData) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "execute variantPack.outTensors(" << i
-                           << ") deviceData&hostData is null";
+            ATB_LOG(ERROR) << prefix << "execute variantPack.outTensors(" << i << ") deviceData&hostData is null";
             return ERROR_INVALID_PARAM;
         }
     }
     return NO_ERROR;
 }
 
-Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack)
+Status OperationBase::ExecuteVariantPackCheck(const VariantPack &variantPack) const
 {
     Status st = NO_ERROR;
     st = ExecuteVariantPackInTensorCheck(variantPack.inTensors);
@@ -946,10 +945,13 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
         } else if (workspace > runnerVariantPack_.workspaceBuffer) {
             // 如果workspace发生了变化，计算workspace变化带来的偏移量时需要再加上workspaceBufferSize才是中间tensor对应内存的起始地址
             runnerVariantPack_.intermediateBuffer = workspace -
-            reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) + runnerVariantPack_.workspaceBufferSize;
+                                                    reinterpret_cast<uint64_t>(runnerVariantPack_.workspaceBuffer) +
+                                                    runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
-            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
-                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+            ATB_LOG(INFO) << GetLogPrefix()
+                          << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace)
+                          << ", and the runnerVariantPack_.intermediateBuffer: "
                           << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
 #endif
             runnerVariantPack_.workspaceBuffer = workspace;
@@ -957,10 +959,13 @@ Status OperationBase::GraphModePreLaunch(const VariantPack &variantPack, uint8_t
             st = runner_->UpdateWorkspaceBuffer(runnerVariantPack_);
         } else {
             runnerVariantPack_.intermediateBuffer = runnerVariantPack_.workspaceBuffer -
-            reinterpret_cast<uint64_t>(workspace) + runnerVariantPack_.workspaceBufferSize;
+                                                    reinterpret_cast<uint64_t>(workspace) +
+                                                    runnerVariantPack_.workspaceBufferSize;
 #ifdef _DEBUG
-            ATB_LOG(INFO) << GetLogPrefix() << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
-                          << " to new workspace: " << static_cast<void *>(workspace) << ", and the runnerVariantPack_.intermediateBuffer: "
+            ATB_LOG(INFO) << GetLogPrefix()
+                          << "changing the old workspace: " << static_cast<void *>(runnerVariantPack_.workspaceBuffer)
+                          << " to new workspace: " << static_cast<void *>(workspace)
+                          << ", and the runnerVariantPack_.intermediateBuffer: "
                           << static_cast<void *>(runnerVariantPack_.intermediateBuffer);
 #endif
             runnerVariantPack_.workspaceBuffer = workspace;
@@ -1000,7 +1005,7 @@ Status OperationBase::Launch()
 
 Status OperationBase::EagerModeLaunch()
 {
-    Mki::Timer ExecuteTime;
+    Mki::Timer executeTime;
     void *executeStream = GetExecuteStream(runnerVariantPack_.context);
 #ifdef _DEBUG
     ATB_LOG(INFO) << GetLogPrefix() << "execute " << runner_->GetName() << "_" << runner_.get() << " start";
@@ -1031,7 +1036,7 @@ Status OperationBase::EagerModeLaunch()
         int ret = aclrtSynchronizeStream(executeStream);
         ATB_LOG_IF(ret != 0, ERROR) << GetLogPrefix() << "stream sync fail, ret:" << ret;
     }
-    GetOpExecuteStatistic().launchTime += ExecuteTime.ElapsedMicroSecond();
+    GetOpExecuteStatistic().launchTime += executeTime.ElapsedMicroSecond();
     GetOpExecuteStatistic().totalTime += GetOpExecuteStatistic().preLaunchTime + GetOpExecuteStatistic().launchTime;
     ATB_LOG(INFO) << GetLogPrefix() << "execute statistic:" << GetOpExecuteStatistic().ToString();
     return st;
@@ -1229,7 +1234,8 @@ void OperationBase::FillHostTilingBuffer()
         }
 
         Mki::Timer runnerFillHostTilingTimer;
-        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize, runnerVariantPack_.context);
+        Status st = runner_->FillHostTilingBuffer(hostTilingBuffer_, runnerVariantPack_.tilingBufferSize,
+                                                  runnerVariantPack_.context);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "fill host tiling buffer fail";
             return;
@@ -1348,12 +1354,12 @@ aclrtStream OperationBase::GetExecuteStream(Context *context) const
     return streams.at(streamId_);
 }
 
-Status OperationBase::CopyArgsToDevice(Context *context)
+Status OperationBase::CopyArgsToDevice(Context *context) const
 {
     Status st = NO_ERROR;
 #ifdef _DEBUG
     ATB_LOG(DEBUG) << GetLogPrefix() << "args in graphMode is:";
-    const size_t counter =  argsBufferSize_ / sizeof(void *);
+    const size_t counter = argsBufferSize_ / sizeof(void *);
     for (size_t i = 0; i < counter; i++) {
         ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
     }

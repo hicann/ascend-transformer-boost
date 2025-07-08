@@ -119,7 +119,7 @@ std::shared_ptr<Runner> GroupedMatmulInplaceAddOperation::CreateRunner(Context &
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
         return std::make_shared<GroupedMatmulInplaceAddOpsRunner>(param_);
     }
-    return std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); });
+    return std::shared_ptr<Runner>(runner, [poolPtr = &pool](Runner *runner) { poolPtr->FreeRunner(runner); });
 }
 
 nlohmann::json GroupedMatmulInplaceAddOperation::GetParamJson() const

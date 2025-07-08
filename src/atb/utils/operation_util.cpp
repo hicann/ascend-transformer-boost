@@ -475,8 +475,9 @@ bool OperationUtil::MatmulInputWeightShapeCheck(const SVector<TensorDesc> &inTen
     // check batch
     if (!param.isMoe) {
         bool isPass;
-        if (CheckBatch(inTensorDescs, logPrefix, param, isPass))
+        if (CheckBatch(inTensorDescs, logPrefix, param, isPass)) {
             return isPass;
+        }
     }
 
     // check k

@@ -15,8 +15,8 @@ See LICENSE in the root of the software repository for the full text of the Lice
 extern "C" {
 #endif
 
-const size_t g_SELF_ATTENTION_PREFIX_ENCODER_INTENSOR_NUM = 6;
-const size_t g_SELF_ATTENTION_PREFIX_ENCODER_OUTTENSOR_NUM = 1;
+const size_t SELF_ATTENTION_PREFIX_ENCODER_INTENSOR_NUM = 6;
+const size_t SELF_ATTENTION_PREFIX_ENCODER_OUTTENSOR_NUM = 1;
 
 atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query, const aclTensor *key,
                                                           const aclTensor *value, const aclTensor *blockTables,
@@ -57,11 +57,11 @@ atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query
     bool isAlibiMask = param.maskType == atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_ALIBI_COMPRESS ||
                        param.maskType == atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_ALIBI_COMPRESS_SQRT;
     if (isAlibiMask) {
-        pack.inTensors.resize(g_SELF_ATTENTION_PREFIX_ENCODER_INTENSOR_NUM + 2); // 2: mask, slopes
+        pack.inTensors.resize(SELF_ATTENTION_PREFIX_ENCODER_INTENSOR_NUM + 2); // 2: mask, slopes
     } else if (param.maskType == atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
-        pack.inTensors.resize(g_SELF_ATTENTION_PREFIX_ENCODER_INTENSOR_NUM); // mask auto-generated
+        pack.inTensors.resize(SELF_ATTENTION_PREFIX_ENCODER_INTENSOR_NUM); // mask auto-generated
     } else {
-        pack.inTensors.resize(g_SELF_ATTENTION_PREFIX_ENCODER_INTENSOR_NUM + 1); // 1: mask
+        pack.inTensors.resize(SELF_ATTENTION_PREFIX_ENCODER_INTENSOR_NUM + 1); // 1: mask
     }
 
     auto status = aclTensorToAtbTensor(query, &(pack.inTensors[index++]));
@@ -86,7 +86,7 @@ atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query
     }
 
     index = 0;
-    pack.outTensors.resize(g_SELF_ATTENTION_PREFIX_ENCODER_OUTTENSOR_NUM);
+    pack.outTensors.resize(SELF_ATTENTION_PREFIX_ENCODER_OUTTENSOR_NUM);
     status = aclTensorToAtbTensor(attnOut, &(pack.outTensors[index]));
     ATB_CHECK(status == atb::NO_ERROR, "attnOut create failed!", return status);
 

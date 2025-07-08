@@ -15,7 +15,8 @@
 namespace atb {
 class DeviceTilingBufferPool : public TilingBufferPool {
 public:
-    DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize, const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc);
+    DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize, const std::function<void *(size_t)> &alloc,
+                           const std::function<void(void *)> &dealloc);
     ~DeviceTilingBufferPool() override;
 
 protected:
@@ -24,8 +25,8 @@ protected:
     bool IsDeviceBufferPool() override;
 
 private:
-    std::function<void*(size_t size)> allocateFunc_;
-    std::function<void(void*)> deallocateFunc_;
+    std::function<void *(size_t size)> allocateFunc_;
+    std::function<void(void *)> deallocateFunc_;
 };
 } // namespace atb
 #endif

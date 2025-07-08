@@ -155,7 +155,7 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
 //! \param context MLA算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLA(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+atb::Status AtbMLA(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief MLA prefill 前处理接口
@@ -181,10 +181,11 @@ atb::Status AtbMLA(void* workspace, uint64_t workspaceSize, atb::Operation *op, 
 //!
 //! \return 表示函数是否执行成功的状态码
 atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *qRope, const aclTensor *k,
-    const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen, const aclTensor *kvSeqLen,
-    const aclTensor *mask, int32_t headNum, float qkScale, int32_t kvHeadNum,
-    int maskType, uint8_t cacheMode, aclTensor *attenOut,
-    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context);
+                                          const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen,
+                                          const aclTensor *kvSeqLen, const aclTensor *mask, int32_t headNum,
+                                          float qkScale, int32_t kvHeadNum, int maskType, uint8_t cacheMode,
+                                          aclTensor *attenOut, uint64_t *workspaceSize, atb::Operation **op,
+                                          atb::Context *context);
 
 //!
 //! \brief MLA prefill 处理接口
@@ -195,7 +196,7 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
 //! \param context MLA算子的上下文参数
 //!
 //! \return 表示函数是否执行成功的状态码
-atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
+atb::Status AtbMLAPreFill(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context);
 
 //!
 //! \brief 关于MlaPreprocess算子使用aclnn风格调用的2段式接口的第1段，
@@ -368,7 +369,8 @@ atb::Status AtbRingMLA(void *workspace, uint64_t workspaceSize, atb::Operation *
 //! \param mask SelfAttentionPrefixEncoder算子的输入tensor（maskType为MASK_TYPE_CASUAL_MASK时，需要置为nullptr）
 //! \param seqLen SelfAttentionPrefixEncoder算子的输入tensor
 //! \param kvSeqLen SelfAttentionPrefixEncoder算子的输入tensor
-//! \param slopes SelfAttentionPrefixEncoder算子的输入tensor（maskType不为MASK_TYPE_ALIBI_COMPRESS或MASK_TYPE_ALIBI_COMPRESS_SQRT时，需要置为nullptr）
+//! \param slopes SelfAttentionPrefixEncoder算子的输入tensor
+//!         maskType不为MASK_TYPE_ALIBI_COMPRESS或MASK_TYPE_ALIBI_COMPRESS_SQRT时，需要置为nullptr）
 
 //! \param maskType SelfAttentionPrefixEncoder mask类型
 //! \param headNum SelfAttentionPrefixEncoder算子头大小

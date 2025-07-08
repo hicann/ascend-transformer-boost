@@ -39,7 +39,8 @@ bool RelayAttentionVariantPackParam::BuildFromTensor(const SVector<Mki::Tensor> 
     return true;
 }
 
-void RelayAttentionVariantPackParam::ReintCastShapeFix(const Mki::Tensor tensor, std::vector<atb::Tensor> &tensorList)
+void RelayAttentionVariantPackParam::ReintCastShapeFix(const Mki::Tensor tensor,
+                                                       std::vector<atb::Tensor> &tensorList) const
 {
     if (tensor.desc.dims.size() - 1 != tensorList[0].desc.shape.dimNum) {
         size_t diffDimNum = static_cast<size_t>(tensorList[0].desc.shape.dimNum);

@@ -32,12 +32,12 @@ public:
     size_t GetTilingSize() const override;
     bool UpdateBestKernel() override;
     int64_t GetWorkspaceSize() const override;
-    Status InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool launchWithTiling) override;
+    Status InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool isLaunchWithTiling) override;
     void SetWorkspaceDeviceAddr(uint8_t *deviceWorkspaceBuffer) override;
     void SetTilingDeviceAddr(uint8_t *deviceTilingBuffer) override;
     Status Run(aclrtStream stream) override;
     bool GetCachedTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *kernelHostTilingBuffer,
-                         uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool launchWithTiling) override;
+                         uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool isLaunchWithTiling) override;
     void AddTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *hostTilingBuffer,
                    size_t tilingSize) const override;
     void SetArgsDeviceBuffer(void *deviceBuffer) override;

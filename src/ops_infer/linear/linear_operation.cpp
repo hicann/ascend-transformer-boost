@@ -33,7 +33,8 @@ bool MatmulParamCheck(const infer::LinearParam &opParam, ExternalError &error)
 {
     if (opParam.quantMode != atb::infer::LinearParam::QUANT_UNDEFINED) {
         error.errorData = OperationUtil::ConcatInfo(error.errorData, "quantMode = ", opParam.quantMode);
-        error.errorDesc = "QuantMode is not the default value. When outDataType is undefind, quantMode needs to be undefind.";
+        error.errorDesc =
+            "QuantMode is not the default value. When outDataType is undefind, quantMode needs to be undefind.";
         error.solutionDesc = "Please check the quantMode value of input params.";
         ATB_LOG(ERROR) << error;
         return false;
@@ -376,7 +377,8 @@ Status LinearOperation::InTensorDescsCheck(const SVector<TensorDesc> &inTensorDe
         const TensorDesc &deqScaleTensorDesc = inTensorDescs.at(inTensorId++);
         if (param_.quantMode == infer::LinearParam::PER_TOKEN) {
             const TensorDesc &perTokenDeqScaleTensorDesc = inTensorDescs.at(inTensorId++);
-            status = PerTokenDeqScaleCheck(deqScaleTensorDesc, weightTensorDesc, xTensorDesc, perTokenDeqScaleTensorDesc);
+            status =
+                PerTokenDeqScaleCheck(deqScaleTensorDesc, weightTensorDesc, xTensorDesc, perTokenDeqScaleTensorDesc);
         } else {
             status = DeqScaleCheck(deqScaleTensorDesc, weightTensorDesc);
         }
@@ -519,7 +521,8 @@ Status LinearOperation::DeqScaleCheck(const TensorDesc &deqScaleTensorDesc, cons
 }
 
 Status LinearOperation::PerTokenDeqScaleCheck(const TensorDesc &deqScaleTensorDesc, const TensorDesc &weightTensorDesc,
-                                              const TensorDesc &xTensorDesc, const TensorDesc &perTokendeqScaleTensorDesc) const
+                                              const TensorDesc &xTensorDesc,
+                                              const TensorDesc &perTokendeqScaleTensorDesc) const
 {
     ExternalError error;
     error.solutionDesc = "Please check the shape of inTensors.";
@@ -654,14 +657,17 @@ bool LinearOperation::XWeightDimNumCheck(const TensorDesc &xTensorDesc, const Te
     return true;
 }
 
-bool LinearOperation::PerTokenXWeightDimNumCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const
+bool LinearOperation::PerTokenXWeightDimNumCheck(const TensorDesc &xTensorDesc,
+                                                 const TensorDesc &weightTensorDesc) const
 {
     ExternalError error;
     error.errorType = ERROR_INVALID_TENSOR_DIM_NUM;
     error.solutionDesc = "Please check format and shape of inTensors.";
-    if (param_.quantMode == infer::LinearParam::PER_TOKEN && xTensorDesc.shape.dimNum == DIM_NUM_3 && weightTensorDesc.shape.dimNum == DIM_NUM_2) {
+    if (param_.quantMode == infer::LinearParam::PER_TOKEN && xTensorDesc.shape.dimNum == DIM_NUM_3 &&
+        weightTensorDesc.shape.dimNum == DIM_NUM_2) {
         error.errorDesc = "When quantMode is PER_TOKEN and inTensor0 dim num is 3, inTensor1 dim num cannot be 2,";
-        error.errorData = OperationUtil::ConcatInfo("quantMode = ", param_.quantMode, ", inTensor0 dimNum = ", xTensorDesc.shape.dimNum,
+        error.errorData = OperationUtil::ConcatInfo("quantMode = ", param_.quantMode,
+                                                    ", inTensor0 dimNum = ", xTensorDesc.shape.dimNum,
                                                     ", inTensor1 dimNum = ", weightTensorDesc.shape.dimNum);
         ATB_LOG(ERROR) << GetLogPrefix() << error;
         return false;

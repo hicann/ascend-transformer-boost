@@ -15,8 +15,8 @@
 extern "C" {
 #endif
 
-const size_t g_RING_MLA_INTENSOR_NUM = 7;
-const size_t g_RING_MLA_OUTTENSOR_NUM = 2;
+const size_t RING_MLA_INTENSOR_NUM = 7;
+const size_t RING_MLA_OUTTENSOR_NUM = 2;
 
 atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTensor *querySplit2,
                                        const aclTensor *keySplit1, const aclTensor *keySplit2, const aclTensor *value,
@@ -44,9 +44,9 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
     atb::VariantPack pack;
     size_t index = 0;
     if (param.calcType == atb::infer::RingMLAParam::CalcType::CALC_TYPE_DEFAULT) {
-        pack.inTensors.resize(g_RING_MLA_INTENSOR_NUM + 2); // 2: prevOut, prevLse
+        pack.inTensors.resize(RING_MLA_INTENSOR_NUM + 2); // 2: prevOut, prevLse
     } else {
-        pack.inTensors.resize(g_RING_MLA_INTENSOR_NUM);
+        pack.inTensors.resize(RING_MLA_INTENSOR_NUM);
     }
 
     auto status = aclTensorToAtbTensor(querySplit1, &(pack.inTensors[index++]));
@@ -71,7 +71,7 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
     }
 
     index = 0;
-    pack.outTensors.resize(g_RING_MLA_OUTTENSOR_NUM);
+    pack.outTensors.resize(RING_MLA_OUTTENSOR_NUM);
     status = aclTensorToAtbTensor(output, &(pack.outTensors[index++]));
     ATB_CHECK(status == atb::NO_ERROR, "output create failed!", return status);
     status = aclTensorToAtbTensor(softmaxLse, &(pack.outTensors[index++]));

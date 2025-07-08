@@ -18,10 +18,11 @@
  */
 atb::Status RunSplitDemo(atb::Context *context, void *stream)
 {
+    const int32_t splitNum = 2;
     // 配置Op参数
     atb::infer::SplitParam opParam;
     opParam.splitDim = 1;        // 设定切分轴为1
-    opParam.splitNum = 2;        // 设置切分后得到的块数
+    opParam.splitNum = splitNum; // 设置切分后得到的块数
     opParam.splitSizes = {2, 3}; // 设置不均匀切分时每块大小
 
     // 准备VariantPack
