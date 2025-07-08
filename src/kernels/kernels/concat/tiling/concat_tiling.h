@@ -19,7 +19,7 @@ namespace AsdOps {
 using namespace Mki;
 Status Concat2InputsTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle);
-Status Concat2InputsTiling_910_95(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+Status ConcatAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle);
 } // namespace AsdOps
 

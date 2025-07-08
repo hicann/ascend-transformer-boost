@@ -25,17 +25,17 @@ public:
         auto dtype = launchParam.GetOutTensor(0).desc.dtype;
         if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
             if (dtype == TENSOR_DTYPE_FLOAT) {
-                return GetKernelByName("ConcatF32Kernel");
+                return GetKernelByName("ConcatF32AptKernel");
             } else if (dtype == TENSOR_DTYPE_FLOAT16) {
-                return GetKernelByName("ConcatF16Kernel");
+                return GetKernelByName("ConcatF16AptKernel");
             } else if (dtype == TENSOR_DTYPE_INT8) {
-                return GetKernelByName("ConcatI8Kernel");
+                return GetKernelByName("ConcatI8AptKernel");
             } else if (dtype == TENSOR_DTYPE_INT16) {
-                return GetKernelByName("ConcatI16Kernel");
+                return GetKernelByName("ConcatI16AptKernel");
             } else if (dtype == TENSOR_DTYPE_INT32) {
-                return GetKernelByName("ConcatI32Kernel");
+                return GetKernelByName("ConcatI32AptKernel");
             } else if (dtype == TENSOR_DTYPE_INT64) {
-                return GetKernelByName("ConcatI64Kernel");
+                return GetKernelByName("ConcatI64AptKernel");
             }
         } else {
             if (dtype == TENSOR_DTYPE_FLOAT) {
@@ -60,29 +60,52 @@ protected:
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Concat), "concat: no match param type",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
         OpParam::Concat param = AnyCast<OpParam::Concat>(launchParam.GetParam());
-        TensorDType dtype0 = launchParam.GetInTensor(0).desc.dtype;
-        TensorDType dtype1 = launchParam.GetInTensor(1).desc.dtype;
-        SVector<int64_t> dims = launchParam.GetInTensor(0).desc.dims;
-        SVector<int64_t> dims1 = launchParam.GetInTensor(1).desc.dims;
-
-        TensorFormat format = launchParam.GetInTensor(0).desc.format;
-        int64_t dimSize = static_cast<int64_t>(dims.size());
-        int64_t dim1Size = static_cast<int64_t>(dims1.size());
-        int64_t concatDim = param.concatDim;
-        if (concatDim < 0) {
-            concatDim += dimSize;
-        }
-        if (concatDim < 0 || concatDim >= dimSize || concatDim >= dim1Size) {
-            return Status::FailStatus(ERROR_INVALID_VALUE, "Incorrect concatDim.");
-        }
-
-        if ((dtype0 == TENSOR_DTYPE_FLOAT16 || dtype0 == TENSOR_DTYPE_FLOAT || dtype0 == TENSOR_DTYPE_BF16) &&
-            (dtype1 == dtype0)) {
-            dims.at(concatDim) = dims.at(concatDim) + dims1.at(concatDim);
-            outTensors[0].desc = {dtype0, format, dims, {}, 0};
+        if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
+            SVector<Tensor> inTensors = launchParam.GetInTensors();
+            int len = launchParam.GetInputLen(0);
+            SVector<int64_t> dims = inTensors[0].desc.dims;
+            TensorDType dtype = inTensors[0].desc.dtype;
+            TensorFormat format = inTensors[0].desc.format;
+            int64_t dimSize = static_cast<int64_t>(dims.size());
+            int64_t concatDim = param.concatDim;
+            if (concatDim < 0) {
+                concatDim += dimSize;
+            }
+            if (concatDim < 0 || concatDim >= dimSize) {
+                return Status::FailStatus(ERROR_INVALID_VALUE, "Incorrect concatDim.");
+            }
+            int64_t dimSum = 0;
+            for (int i = 0; i < len; i++){
+                dimSum += inTensors[i].desc.dims.at(concatDim);
+            }
+            dims.at(concatDim) = dimSum;
+            outTensors[0].desc = {dtype, format, dims, {}, 0};
             return Status::OkStatus();
         } else {
-            return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Unsupported input descriptor.");
+            TensorDType dtype0 = launchParam.GetInTensor(0).desc.dtype;
+            TensorDType dtype1 = launchParam.GetInTensor(1).desc.dtype;
+            SVector<int64_t> dims = launchParam.GetInTensor(0).desc.dims;
+            SVector<int64_t> dims1 = launchParam.GetInTensor(1).desc.dims;
+
+            TensorFormat format = launchParam.GetInTensor(0).desc.format;
+            int64_t dimSize = static_cast<int64_t>(dims.size());
+            int64_t dim1Size = static_cast<int64_t>(dims1.size());
+            int64_t concatDim = param.concatDim;
+            if (concatDim < 0) {
+                concatDim += dimSize;
+            }
+            if (concatDim < 0 || concatDim >= dimSize || concatDim >= dim1Size) {
+                return Status::FailStatus(ERROR_INVALID_VALUE, "Incorrect concatDim.");
+            }
+
+            if ((dtype0 == TENSOR_DTYPE_FLOAT16 || dtype0 == TENSOR_DTYPE_FLOAT || dtype0 == TENSOR_DTYPE_BF16) &&
+                (dtype1 == dtype0)) {
+                dims.at(concatDim) = dims.at(concatDim) + dims1.at(concatDim);
+                outTensors[0].desc = {dtype0, format, dims, {}, 0};
+                return Status::OkStatus();
+            } else {
+                return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Unsupported input descriptor.");
+            }
         }
     }
 };

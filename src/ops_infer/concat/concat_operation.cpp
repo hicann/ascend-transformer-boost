@@ -11,10 +11,12 @@
 #include "atb/utils/log.h"
 #include "concat_ops_runner.h"
 #include "atb/utils/tensor_check.h"
+#include "atb/utils/config.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/utils/singleton.h"
 #include "atb/core/op_param_funcs.h"
+#include "atb/utils/tensor_util.h"
 
 namespace atb {
 template <> Status CreateOperation(const infer::ConcatParam &opParam, Operation **operation)
@@ -28,7 +30,18 @@ template <> Status CreateOperation(const infer::ConcatParam &opParam, Operation 
 }
 
 ConcatOperation::ConcatOperation(const infer::ConcatParam &param) : OperationBase("ConcatOperation"), param_(param)
-{
+{   
+    if (GetSingleton<Config>().Is910_95()) {
+        SVector<int> tempInput = {2};
+        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ConcatOperation");
+        Mki::SVector<int> input;
+        TensorUtil::AtbSVector2OpsSVector(tempInput, input);
+        ATB_LOG(INFO) << GetLogPrefix() << "ExtendInTensorIrByinputLens";
+        auto &tmp = operationIr_->GetInTensorInfoIrs();
+        if(tmp.size() == 1){
+            operationIr_->ExtendInTensorIrByInputlens(input);
+        }
+    }
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ConcatOperation");
 }
 
@@ -48,13 +61,24 @@ uint32_t ConcatOperation::GetOutputNum() const
 Status ConcatOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
                                        SVector<TensorDesc> &outTensorDescs) const
 {
-    int64_t dim = InferDimFromInTensorDesc(inTensorDescs.at(0).shape);
-    Dims shape = inTensorDescs.at(0).shape;
-    Dims shape1 = inTensorDescs.at(1).shape;
-    aclDataType dtype = inTensorDescs.at(0).dtype;
-    shape.dims[dim] = shape.dims[dim] + shape1.dims[dim];
-    outTensorDescs.at(0) = {dtype, inTensorDescs.at(0).format, shape};
-    return NO_ERROR;
+    if (GetSingleton<Config>().Is910_95()) {
+        int64_t dim = InferDimFromInTensorDesc(inTensorDescs.at(0).shape);
+        Dims shape = inTensorDescs.at(0).shape;
+        aclDataType dtype = inTensorDescs.at(0).dtype;
+        for (size_t i = 1; i < 2; i++) {
+            shape.dims[dim] = shape.dims[dim] + inTensorDescs.at(i).shape.dims[dim];
+        }
+        outTensorDescs.at(0) = {dtype, inTensorDescs.at(0).format, shape};
+        return NO_ERROR;
+    } else {
+        int64_t dim = InferDimFromInTensorDesc(inTensorDescs.at(0).shape);
+        Dims shape = inTensorDescs.at(0).shape;
+        Dims shape1 = inTensorDescs.at(1).shape;
+        aclDataType dtype = inTensorDescs.at(0).dtype;
+        shape.dims[dim] = shape.dims[dim] + shape1.dims[dim];
+        outTensorDescs.at(0) = {dtype, inTensorDescs.at(0).format, shape};
+        return NO_ERROR;
+    }
 }
 
 Status ConcatOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const

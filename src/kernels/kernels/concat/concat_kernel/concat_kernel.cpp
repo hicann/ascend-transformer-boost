@@ -68,118 +68,156 @@ public:
 };
 REG_KERNEL_BASE(ConcatF32Input2Kernel);
 
-
-class ConcatI8Kernel : public ConcatKernel {
+class ConcatAptKernel : public KernelBase {
 public:
-    explicit ConcatI8Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : ConcatKernel(kernelName, handle)
+    explicit ConcatAptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : KernelBase(kernelName, handle)
     {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        size_t inputNum = launchParam.GetInputLenCount() > 0 ? launchParam.GetInputLenCount() : launchParam.GetInTensorCount();
+        size_t outputNum = launchParam.GetOutputLenCount() > 0 ? launchParam.GetOutputLenCount() : launchParam.GetOutTensorCount();
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Concat),
+            "transpose: param type invalid", return false);
+        OpParam::Concat param = AnyCast<OpParam::Concat>(launchParam.GetParam());
+        MKI_CHECK(inputNum == 1, "input num invalid", return false);
+        MKI_CHECK(outputNum == 1, "output num invalid", return false);
+        TensorDType dtype = launchParam.GetInTensor(0).desc.dtype;
+        MKI_CHECK(dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_FLOAT || dtype == TENSOR_DTYPE_INT8
+                || dtype == TENSOR_DTYPE_INT16 || dtype == TENSOR_DTYPE_INT32 || dtype == TENSOR_DTYPE_INT64,
+                  "input data type error", return false);
+        SVector<int64_t> dims = launchParam.GetInTensor(0).desc.dims;
+        if (param.concatDim < 0) {
+            int realConcatDim = static_cast<int>(dims.size()) + param.concatDim;
+            MKI_CHECK((realConcatDim >= 0), "Incorrect concatDim.", return false);
+        } else {
+            MKI_CHECK((param.concatDim < static_cast<int>(dims.size())), "ConcatDim Oversize.", return false);
+        }
+
+        return true;
     }
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-    }
-
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return Status::OkStatus();
+        return ConcatAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
     }
 };
-REG_KERNEL_BASE(ConcatI8Kernel);
 
-class ConcatI16Kernel : public ConcatKernel {
+// ConcatI8Apt
+class ConcatI8AptKernel : public ConcatAptKernel {
 public:
-    explicit ConcatI16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : ConcatKernel(kernelName, handle)
+    explicit ConcatI8AptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatAptKernel(kernelName, handle)
     {
     }
 
-    Status InitImpl(const LaunchParam &launchParam) override
+    bool CanSupport(const LaunchParam &launchParam) const override
     {
-        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-    }
-
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return Status::OkStatus();
+        MKI_CHECK(ConcatAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_INT8,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_INT8,
+            "out tensor dtype unsupported", return false);
+        return true;
     }
 };
-REG_KERNEL_BASE(ConcatI16Kernel);
+REG_KERNEL_BASE(ConcatI8AptKernel);
 
-class ConcatF16Kernel : public ConcatKernel {
+// ConcatI16Apt
+class ConcatI16AptKernel : public ConcatAptKernel {
 public:
-    explicit ConcatF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : ConcatKernel(kernelName, handle)
+    explicit ConcatI16AptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatAptKernel(kernelName, handle)
     {
     }
 
-    Status InitImpl(const LaunchParam &launchParam) override
+    bool CanSupport(const LaunchParam &launchParam) const override
     {
-        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-    }
-
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return Status::OkStatus();
+        MKI_CHECK(ConcatAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_INT16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_INT16,
+            "out tensor dtype unsupported", return false);
+        return true;
     }
 };
-REG_KERNEL_BASE(ConcatF16Kernel);
+REG_KERNEL_BASE(ConcatI16AptKernel);
 
-class ConcatI32Kernel : public ConcatKernel {
+class ConcatF16AptKernel : public ConcatAptKernel {
 public:
-    explicit ConcatI32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : ConcatKernel(kernelName, handle)
+    explicit ConcatF16AptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatAptKernel(kernelName, handle)
     {
     }
 
-    Status InitImpl(const LaunchParam &launchParam) override
+    bool CanSupport(const LaunchParam &launchParam) const override
     {
-        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-    }
-
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return Status::OkStatus();
+        MKI_CHECK(ConcatAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT16,
+            "out tensor dtype unsupported", return false);
+        return true;
     }
 };
-REG_KERNEL_BASE(ConcatI32Kernel);
+REG_KERNEL_BASE(ConcatF16AptKernel);
 
-class ConcatF32Kernel : public ConcatKernel {
+class ConcatI32AptKernel : public ConcatAptKernel {
 public:
-    explicit ConcatF32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : ConcatKernel(kernelName, handle)
+    explicit ConcatI32AptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatAptKernel(kernelName, handle)
     {
     }
 
-    Status InitImpl(const LaunchParam &launchParam) override
+    bool CanSupport(const LaunchParam &launchParam) const override
     {
-        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-    }
-
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return Status::OkStatus();
+        MKI_CHECK(ConcatAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_INT32,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_INT32,
+            "out tensor dtype unsupported", return false);
+        return true;
     }
 };
-REG_KERNEL_BASE(ConcatF32Kernel);
+REG_KERNEL_BASE(ConcatI32AptKernel);
 
-class ConcatI64Kernel : public ConcatKernel {
+class ConcatF32AptKernel : public ConcatAptKernel {
 public:
-    explicit ConcatI64Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : ConcatKernel(kernelName, handle)
+    explicit ConcatF32AptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatAptKernel(kernelName, handle)
     {
     }
 
-    Status InitImpl(const LaunchParam &launchParam) override
+    bool CanSupport(const LaunchParam &launchParam) const override
     {
-        return Concat2InputsTiling_910_95(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-    }
-
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return Status::OkStatus();
+        MKI_CHECK(ConcatAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_FLOAT,
+            "out tensor dtype unsupported", return false);
+        return true;
     }
 };
-REG_KERNEL_BASE(ConcatI64Kernel);
+REG_KERNEL_BASE(ConcatF32AptKernel);
+
+class ConcatI64AptKernel : public ConcatAptKernel {
+public:
+    explicit ConcatI64AptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(ConcatAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_INT64,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_INT64,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(ConcatI64AptKernel);
 } // namespace AsdOps

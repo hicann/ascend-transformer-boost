@@ -32,23 +32,19 @@ Status Concat2InputsTiling(const std::string &kernelName, const LaunchParam &lau
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
 
-Status Concat2InputsTiling_910_95(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+Status ConcatAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle)
-{
-    return Status::OkStatus();
-    
-    const auto &tensorDesc0 = launchParam.GetInTensor(0).desc;
-    const auto &tensorDesc1 = launchParam.GetInTensor(1).desc;
+{    
     const auto &tensorDescOut = launchParam.GetOutTensor(0).desc;
     const auto &param = AnyCast<OpParam::Concat>(launchParam.GetParam());
 
     auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("ConcatD")
         .SetKernelName(kernelName)
-        .AddInput(tensorDesc0.dtype, tensorDesc0.format, tensorDesc0.dims)
-        .AddInput(tensorDesc1.dtype, tensorDesc1.format, tensorDesc1.dims)
+        .AddInTensorList(&launchParam.GetInTensor(0), launchParam.GetInputLen(0))
         .AddOutput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
         .AddAttrInt64(param.concatDim);
 
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
-}
+} // namespace AsdOps
