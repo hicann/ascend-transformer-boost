@@ -165,8 +165,7 @@ function fn_build_asdops()
     fi
     cd $THIRD_PARTY_DIR
     rm -rf ascend-op-common-lib
-    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_personal/l00833259/premerge
+    branch=br_personal/l00833259/premerge
     echo  "current branch for atb and asdops: $branch"
     git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
