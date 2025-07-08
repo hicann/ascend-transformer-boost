@@ -7135,13 +7135,10 @@ class FusedAddTopkDivOperation(DataGen):
             mapping_table = in_tensors[3]
             out_indices_clone = out_indices.clone().detach()
             for bs in range(token_num):
-                indices_offset = sort_output.indices[bs][group_topk * group_eles - 1] + offset
-                indices_offset = indices_offset.to(torch.int32)
-                rand_value =  torch.remainder(prime, indices_offset) / indices_offset.to(torch.float32)
-                mapping_indices = torch.floor(mapping_num.to(torch.float32) * rand_value).to(torch.int32)
                 for ki in range(k):
                     expert_id = out_indices_clone[bs][ki]
-                    out_indices[bs][ki] = mapping_table[expert_id][mapping_indices[expert_id]]
+                    redundantOffset = bs % max(1, mapping_num[expert_id])
+                    out_indices[bs][ki] = mapping_table[expert_id][redundantOffset]
 
         return y, out_indices[:, 0:k]
 
