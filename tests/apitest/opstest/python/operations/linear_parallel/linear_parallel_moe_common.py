@@ -464,6 +464,7 @@ class MoeTestDate:
             tmp_matrix_c = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
             matrix_c_out = tmp_matrix_c.clone()
             self.matrix_c = matrix_c_out
+            self.matrix_c_low = matrix_c_out.to(l0c_dtype_low)
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
             assert quant_info.dequant_granularity in [QuantGranularity.PER_CHANNEL, QuantGranularity.PER_TENSOR,
                                                       QuantGranularity.PER_TOKEN, QuantGranularity.FLOAT32_SCALE_PER_CHANNEL]
@@ -483,10 +484,11 @@ class MoeTestDate:
                 self.matrix_quant_scale = quant_scale_alltoall[ep_idx]
                 broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale, [self.input_info[0], self.input_info[2]])
             tmp_matrix_c = torch.matmul(self.matrix_a.to(torch.float32), self.matrix_b.to(torch.float32)).to(l0c_dtype)
-            matrix_c_out = ((tmp_matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale).to(l0c_dtype_low)
+            matrix_c_out = ((tmp_matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale).to(torch.float32)
 
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
-                matrix_c_out = (matrix_c_out * broadcast_quant_scale).to(l0c_dtype_low)
+                matrix_c_out = (matrix_c_out * broadcast_quant_scale).to(torch.float32)
 
             self.matrix_c = matrix_c_out
+            self.matrix_c_low = matrix_c_out.to(l0c_dtype_low)
 
