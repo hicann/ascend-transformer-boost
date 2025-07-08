@@ -19,12 +19,12 @@ import numpy as np
 import torch
 import torch_npu
 from paged_attention.paged_attention_test_data_generator import PagedAttentionDataGenerator
+from precision_calcu import *
  
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
  
-np.random.seed(1)
-random.seed(1)
+torch.manual_seed(1)
 MAX_SEQ_LEN = 1024
  
 def shape_nd_to_nz(shape, dtype='float16'):
@@ -85,8 +85,135 @@ class UnpadPagedAttention():
         out = out.permute(1, 0, 2)
         return out.reshape((1, out.shape[0], out.shape[1] * out.shape[2]))
  
+    def qkMM1(
+        self,
+        query,
+        key
+    ):
+        result = None
+        qk_k = key.shape[1]
+        for qk_k_split in range(0, qk_k, 128):
+            sub_k = 128
+            if qk_k_split + sub_k > qk_k:
+                sub_k = qk_k - qk_k_split
+            query_k = query[:, :, qk_k_split : qk_k_split + sub_k]
+            key_k = key[:, qk_k_split : qk_k_split + sub_k, :]
+            result_split = torch.matmul(query_k.to(torch.float32), key_k.to(torch.float32))
+            if result is None:
+                result = result_split
+            else:
+                result = result + result_split
+        return result
+
+    def softmax1(
+        self,
+        qk_result,
+        is_first,
+        gm
+    ):
+        sim = qk_result.numpy()
+        lm = np.max(sim, axis=-1, keepdims=True)
+        if is_first:
+            hm = lm
+            dm = 0
+        else:
+            hm = np.maximum(gm, lm)
+            dm = gm - hm #全局的减去最新的
+        gm = hm
+        sim_sub = sim - hm
+        sim_sub = np.exp(sim_sub.astype(np.float32))
+        if qk_result.dtype == torch.float16:
+            sim_sub = sim_sub.astype(np.float16)
+        row_sum = np.sum(sim_sub, axis=-1, keepdims=True)
+        return torch.from_numpy(sim_sub), row_sum, dm, gm #返回P~ 、P~的rowsum和rowmax的差值 都是局部的结果
+    
+    def ref_flash_attention(
+            self,
+            query,
+            key,
+            value,
+            scale: float,
+            mask,
+            context_len = 0,
+    ):
+        # 控制QKV的输入数据类型？
+        # print("qkv数据类型：",query.dtype, key.dtype, value.dtype)
+        # 检查并转换 query, key, value 为 PyTorch 张量
+        if not torch.is_tensor(query):
+            query = torch.from_numpy(query)
+        if not torch.is_tensor(key):
+            key = torch.from_numpy(key)
+        if not torch.is_tensor(value):
+            value = torch.from_numpy(value)
+        query = torch.permute(query, (1, 0, 2)) #转成head seqlen和headdim顺序
+        key = torch.permute(key, (1, 2, 0)) #转成head headdim和seqlen顺序
+        value = torch.permute(value, (1, 0, 2)) #同query
+        context_size = 128
+        group_num = query.shape[0] // key.shape[0]
+        if group_num != 1:
+            key = key.repeat_interleave(group_num, dim=0)
+            value = value.repeat_interleave(group_num, dim=0)
+        
+        gl = None
+        gl_high = None
+        go = None
+        go_high = None
+        # print(context_len)
+        for kv_start in range(0, context_len - 1, context_size):
+            sub_len = context_size
+            if kv_start + context_size > context_len:
+                sub_len = context_len - kv_start
+            sub_key = key[:, :, kv_start : kv_start + sub_len]
+            sub_value = value[:, kv_start : kv_start + sub_len, :]
+
+            qk_result = self.qkMM1(query, sub_key) #低精度结果
+            qk_result_high = self.qkMM1(query.to(torch.float32), sub_key.to(torch.float32)) #高精度结果
+            qk_result = qk_result.to(torch.float16) * scale
+            qk_result_high = qk_result_high * scale
+
+            qk_result += mask[:, kv_start:kv_start + sub_len]
+            qk_result_high += mask[:, kv_start:kv_start + sub_len].to(torch.float32)
+
+            if kv_start == 0:
+                gm = None
+            p_result, row_sum, dm, gm = self.softmax1(qk_result, kv_start == 0, gm)
+            if kv_start == 0:
+                gm_high = None
+            p_result_high, row_sum_high, dm_high, gm_high = self.softmax1(qk_result_high, kv_start == 0, gm_high)
+            lo = torch.matmul(p_result.to(torch.float32), sub_value.to(torch.float32))
+            lo = lo.to(torch.float16)
+            lo_high = torch.matmul(p_result_high, sub_value.to(torch.float32))
+            lo = lo.numpy()
+            lo_high = lo_high.numpy()
+            if kv_start == 0:
+                gl = row_sum
+                gl_high = row_sum_high
+                go = lo
+                go_high = lo_high
+            else:  #更新
+                dm = np.exp(dm)
+                dm_high = np.exp(dm_high)
+                gl = gl * dm
+                gl = gl + row_sum
+
+                go = go * dm
+                go = go + lo
+
+                gl_high = gl_high * dm_high
+                gl_high = gl_high + row_sum_high
+
+                go_high = go_high * dm_high
+                go_high = go_high + lo_high
+        go = go / gl
+        go_high = go_high / gl_high
+        go = np.transpose(go, (1, 0, 2))
+        go_high = np.transpose(go_high, (1, 0, 2))
+        return torch.from_numpy(go), torch.from_numpy(go_high)
+
+
     def ref_single_query_cached_kv_attention(self,
         output,
+        output_high,
         query,
         key_cache,    # (num_blocks, block_size, num_heads, head_size)
         value_cache,  # (num_blocks, block_size, num_heads, head_size)
@@ -133,10 +260,12 @@ class UnpadPagedAttention():
             if masktype == "norm":
                 out = self.ref_masked_attention(q, keys, values, scale, mask[i])
             else:
-                out = self.ref_masked_attention(q, keys, values, scale, mask[cu_seqlen:(cu_seqlen + q_seqlen),:])
+                out, out_high = self.ref_flash_attention(q, keys, values, scale, mask=mask[cu_seqlen:(cu_seqlen + q_seqlen),:],context_len = k_seqlen)
             out = out.reshape(-1, num_heads, head_size)
+            out_high = out_high.reshape(-1, num_heads, head_size)
             print(f"out.shape: {out.shape}")
             output[cu_seqlen: cu_seqlen + q_seqlen, :, :] = out
+            output_high[cu_seqlen: cu_seqlen + q_seqlen, :, :] = out_high
             cu_seqlen += q_seqlen_list[i]
  
     def calc_data(self,
@@ -153,13 +282,13 @@ class UnpadPagedAttention():
         max_q = max(q_seqlen_list)
         batch_size = len(q_seqlen_list)
         query = torch.zeros((num_tokens, num_heads, head_size)).half()
-        query.uniform_(-1, 1)
+        query.uniform_(-5, 5)
         # (num_blocks, block_size, num_heads, head_size)
         key_cache = torch.zeros((num_blocks, block_size, kv_heads, head_size)).half()
-        key_cache.uniform_(-1, 1)
+        key_cache.uniform_(-5, 5)
         # (num_blocks, block_size, num_heads, head_size)
         value_cache = torch.zeros((num_blocks, block_size, kv_heads, head_size)).half()
-        value_cache.uniform_(-1, 1)
+        value_cache.uniform_(-5, 5)
  
         max_k_seqlen = max(k_seqlen_list)
         max_num_blocks_per_seq = (max_k_seqlen + block_size - 1) // block_size
@@ -190,8 +319,10 @@ class UnpadPagedAttention():
                 mask[prev_qseq:(prev_qseq + qseq), start:kseq] = tri
                 prev_qseq += qseq
         ref_output = torch.zeros_like(query)
+        ref_output_high = torch.zeros_like(query)
         self.ref_single_query_cached_kv_attention(
             ref_output,
+            ref_output_high,
             query,
             key_cache,
             value_cache,
@@ -203,6 +334,7 @@ class UnpadPagedAttention():
         )
         query = query.reshape(num_tokens, num_heads * head_size)
         ref_output = ref_output.reshape(num_tokens, num_heads * head_size)
+        ref_output_high = ref_output_high.reshape(num_tokens, num_heads * head_size)
         tokens_pad = (num_tokens + 15) // 16 * 16
         max_k_seq_pad = (max_k_seqlen + 15) // 16 * 16
         max_q_pad = (max_q + 15) // 16 * 16
@@ -219,8 +351,6 @@ class UnpadPagedAttention():
             mask_pad[:,:max_q, :max_k_seqlen] = mask
             self.mask = mask_pad.reshape((batch_size, max_q_pad, max_k_seq_pad // 16, 16)).permute(0, 2, 1, 3)
         else:
-            # mask_pad = torch.zeros((1, tokens_pad, max_k_seq_pad))
-            # mask_pad[0][:num_tokens, :max_k_seqlen] = mask
             seq_len = 128
             # 创建一个矩阵，初始为全 0
             mask = np.zeros((seq_len, seq_len), dtype=np.float16)
@@ -235,26 +365,26 @@ class UnpadPagedAttention():
         self.q_seqlen_list = torch.from_numpy(np.array(q_seqlen_list).astype(np.int32))
         self.k_seqlen_list = torch.from_numpy(np.array(k_seqlen_list).astype(np.int32))
         return query.view(num_tokens, num_heads, head_size), self.key_cache, self.value_cache, self.block_tables, self.k_seqlen_list, \
-            self.mask.half(), self.q_seqlen_list, ref_output.view(num_tokens, num_heads, head_size)
+            self.mask.half(), self.q_seqlen_list, ref_output.view(num_tokens, num_heads, head_size), ref_output_high.view(num_tokens, num_heads, head_size)
  
  
+
 batch = 1
 block_size = 128
 num_blocks = 1024
-kv_heads = 1
-num_heads = 1
-head_size = 128
-k_seqlen = 512
-q_seqlen_list=[random.randint(256, 256) for _ in range(batch)]
-k_seqlen_list=[random.randint(512, 512) for _ in range(batch)]
-
+head_combinations = [(4, 1)]
+num_heads, kv_heads = random.choice(head_combinations)
+head_size_list = [48]
+head_size = random.choice(head_size_list)
+q_seqlen_list = [214]  # qlen 随机范围可以自定义
+k_seqlen_list = [q + 128 for q in q_seqlen_list]
+print(f"combination param: batch={batch}, num_blocks={num_blocks}, num_heads={num_heads}, kv_heads={kv_heads}, head_size={head_size}, q_seqlen_list={q_seqlen_list}")
 mask_type = "la"
 pa = UnpadPagedAttention() 
 data = pa.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size, q_seqlen_list, k_seqlen_list, mask_type)
 data_generator = PagedAttentionDataGenerator()
-data_generator.data_type = torch.bfloat16
+data_generator.data_type = torch.float16
 data_generator.is_int8_flag = False
-data_generator.max_context_len = k_seqlen
 
 OP_NAME = "PagedAttentionOperation"
 PARAM = json.dumps({"headNum": num_heads, "qkScale": (1 / float(math.sqrt(head_size))), "kvHeadNum": kv_heads, "maskType": 4, "calcType": 1})
@@ -264,11 +394,11 @@ RUN_PARAM = json.dumps({"contextLens": data[4].tolist(), "qLens": data[6].tolist
 in_tensors = [tensor.npu().contiguous() for tensor in data]
 class TestPagedAttentionAttentionOperation(operation_test.OperationTest):
     def golden_calc(self, input_tensors):
-        return [in_tensors[-1]]
+        return [in_tensors[-2]]
  
     def golden_compare(self, out_tensor, golden_out_tensor):
-        ratios = [0.001, 0.001, 0.005, 0.005]
-        return data_generator.compare_output_data(out_tensor.cpu(), golden_out_tensor.cpu(), ratios)
+        result_double = compare_cv(in_tensors[-1], golden_out_tensor.npu(), out_tensor.npu())
+        return result_double
  
  
     def test(self):
