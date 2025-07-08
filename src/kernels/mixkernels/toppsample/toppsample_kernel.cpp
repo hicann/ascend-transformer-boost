@@ -55,7 +55,10 @@ public:
     {
         auto geTiling = optiling::CallGeTiling("TopPSample", *GetBinHandle(), launchParam,
                                                AsdOps::GetMkiSpecificAttr<OpParam::Toppsample>, kernelInfo_);
-        kernelInfo_.SetMemsetInfo(TENSOR_INPUT_NUM + TENSOR_OUTPUT_NUM, kernelInfo_.GetScratchSizes()[0]);
+        auto scratchSizes = kernelInfo_.GetScratchSizes();
+        if (!scratchSizes.empty() && scratchSizes.size() >= 1) {
+            kernelInfo_.SetMemsetInfo(TENSOR_INPUT_NUM + TENSOR_OUTPUT_NUM, scratchSizes[0]);
+        }
         return geTiling;
     }
 };
