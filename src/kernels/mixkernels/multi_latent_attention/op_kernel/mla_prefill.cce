@@ -1182,8 +1182,7 @@ public:
                     if (sub_m == 0) {
                         WaitFlagDev(QK_READY);
                         FftsCrossCoreSync<PIPE_MTE3, 2>(SOFTMAX_READY);
-                        continue;
-                    }
+                    } else {
                     uint32_t p_scale_offset = n_idx / S_BLOCK_STACK % pv_stage * pp_m_scalar;
                     if (n_idx + S_BLOCK_STACK > n_end - 1) {
                         qk_n = qk_n_triu > kv_seqlen ? kv_seqlen - n_idx * pp_n_scalar : qk_n_triu - n_idx * pp_n_scalar;
@@ -1251,6 +1250,7 @@ public:
                     }
                     FftsCrossCoreSync<PIPE_MTE3, 2>(SOFTMAX_READY);
                     mask_offset += qk_n;
+                    }
                 }
                 if (n_idx >= launch_delay) {
                     uint32_t qk_round_k = 128;
