@@ -243,7 +243,7 @@ class CsvOpsTest():
                     quit(1)
             self.__dump_tensor(input_tensor.cpu(), 'input', i, 'index: {}'.format(i))
             self.input_tensor_list.append(input_tensor)
-        if self.operation_name == "LinearOperation" and input_dtypes_list[0] == "float":
+        if self.operation_name == "LinearOperation":
             json_data = json.loads(self.op_param_str)
             transpose_a = json_data["transposeA"] if "transposeA" in json_data else False
             self.compute_num = shapes[0][-2] if transpose_a else shapes[0][-1]
