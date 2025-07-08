@@ -54,8 +54,7 @@ static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam);
 static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam);
 static bool ParamPrefillCheck(const infer::MultiLatentAttentionParam &opParam);
 
-template <>
-Status CreateOperation(const infer::MultiLatentAttentionParam &opParam, Operation **operation)
+template <> Status CreateOperation(const infer::MultiLatentAttentionParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
         return ERROR_INVALID_PARAM;
@@ -87,8 +86,8 @@ Status CreateOperation(const infer::MultiLatentAttentionParam &opParam, Operatio
 
 static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
 {
-    if (opParam.headNum != 8 && opParam.headNum != 16 && opParam.headNum != 32 &&  // 8, 16, 32: headNum
-        opParam.headNum != 64 && opParam.headNum != 128) {                         // 64, 128: headNum
+    if (opParam.headNum != 8 && opParam.headNum != 16 && opParam.headNum != 32 && // 8, 16, 32: headNum
+        opParam.headNum != 64 && opParam.headNum != 128) {                        // 64, 128: headNum
         ATB_LOG(ERROR) << "headNum should be {8,16,32,64,128}";
         return false;
     }
@@ -101,7 +100,8 @@ static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
         return false;
     }
     if (opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE &&
-        opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC && opParam.headNum != 128) {
+        opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC &&
+        opParam.headNum != 128) { // 128: CALC_TYPE_SPEC max headNum
         ATB_LOG(ERROR) << "mtp quant only support headNum 128";
         return false;
     }
@@ -177,12 +177,12 @@ MultiLatentAttentionOperation::MultiLatentAttentionOperation(const infer::MultiL
         param_.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         opIrKeyStr += "Mask";
     }
-    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
-                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
+    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC ||
+        param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
         opIrKeyStr += "Qlens";
     }
-    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
-                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
+    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
+        param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
         opIrKeyStr += "IsRing";
     }
     if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
@@ -209,8 +209,8 @@ uint32_t MultiLatentAttentionOperation::GetInputNum() const
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_PREFILL) {
         intensorNumBase++;
     }
-    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC || param_.
-                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
+    if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC ||
+        param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
         intensorNumBase++;
     }
     if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
@@ -221,8 +221,8 @@ uint32_t MultiLatentAttentionOperation::GetInputNum() const
 
 uint32_t MultiLatentAttentionOperation::GetOutputNum() const
 {
-    bool isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
-                  calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
+    bool isRing = param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
+                  param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING;
     return isRing ? OUT_TENSOR_NUM_2 : OUT_TENSOR_NUM_1;
 }
 
@@ -231,8 +231,8 @@ Status MultiLatentAttentionOperation::InferShapeImpl(const SVector<TensorDesc> &
 {
     outTensorDescs.at(0) = inTensorDescs.at(0);
     outTensorDescs.at(0).dtype = inTensorDescs.at(1).dtype;
-    if ((param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
-                      calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING)) {
+    if ((param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
+         param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING)) {
         outTensorDescs.at(1) = outTensorDescs.at(0);
         outTensorDescs.at(1).shape.dims[2] = 1; // 2: dim2
     }

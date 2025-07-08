@@ -119,8 +119,9 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
     }
     if (opParam.backend == "lcoc") {
         Status isOk;
-        if (CheckType(opParam, isOk))
+        if (CheckType(opParam, isOk)) {
             return isOk;
+        }
     }
     *operation = new (std::nothrow) LinearParallelOperation(opParam);
     if (*operation == nullptr) {

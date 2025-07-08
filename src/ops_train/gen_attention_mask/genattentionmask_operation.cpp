@@ -144,7 +144,7 @@ std::shared_ptr<Runner> GenAttentionMaskOperation::CreateRunner(Context &context
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
         return std::make_shared<GenAttentionMaskOpsRunner>(param_);
     }
-    return std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); });
+    return std::shared_ptr<Runner>(runner, [poolPtr = &pool](Runner *runner) { poolPtr->FreeRunner(runner); });
 }
 
 nlohmann::json GenAttentionMaskOperation::GetParamJson() const

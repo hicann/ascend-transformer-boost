@@ -100,12 +100,12 @@ bool ParamCheck(const atb::infer::GmmDeqSwigluQuantGmmDeqParam &opParam)
         return false;
     }
 
-    if (opParam.transposeWeightUp != false) {
+    if (opParam.transposeWeightUp) {
         ATB_LOG(ERROR) << "Param transposeWeightUp only support false.";
         return false;
     }
 
-    if (opParam.transposeWeightDown != true) {
+    if (!opParam.transposeWeightDown) {
         ATB_LOG(ERROR) << "Param transposeWeightDown only support true.";
         return false;
     }
@@ -341,7 +341,7 @@ std::shared_ptr<Runner> GmmDeqSwigluQuantGmmDeqOperation::CreateRunner(Context &
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
         return std::make_shared<GmmDeqSwigluQuantGmmDeqOpsRunner>(param_);
     }
-    return std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); });
+    return std::shared_ptr<Runner>(runner, [poolPtr = &pool](Runner *runner) { poolPtr->FreeRunner(runner); });
 }
 
 nlohmann::json GmmDeqSwigluQuantGmmDeqOperation::GetParamJson() const

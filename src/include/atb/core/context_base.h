@@ -24,7 +24,8 @@ public:
     ~ContextBase() override;
     ContextBase(const ContextBase &other) = delete;
     ContextBase &operator=(const ContextBase &other) = delete;
-    Status Init(const std::function<void*(size_t)>& alloc = nullptr, const std::function<void(void*)>& dealloc = nullptr);
+    Status Init(const std::function<void *(size_t)> &alloc = nullptr,
+                const std::function<void(void *)> &dealloc = nullptr);
     void Destroy();
     Status SetExecuteStream(aclrtStream stream) override;
     aclrtStream GetExecuteStream() const override;
@@ -49,7 +50,7 @@ public:
     void *GetArgsHostBuffer(size_t bufferSize);
     Status FreeArgsDeviceBuffer(void *addr);
     Status FreeArgsHostBuffer(void *addr);
-    bool GetLaunchWithTilingStatus();
+    bool GetLaunchWithTilingStatus() const;
 
 private:
     Status CreateCopyStreamAndEvents();
@@ -70,10 +71,10 @@ private:
     Tensor overflowOutTensor_;
     static thread_local ExecuteType executeType_;
     LaunchMode mode_ = KERNEL_LAUNCH_MODE;
-    std::unique_ptr<Allocator> deviceAllocator_;  // 一开始就赋值为defaultDeviceAllocator
-    std::unique_ptr<Allocator> hostAllocator_;  // 一开始就赋值为defaultHostAllocator
-    std::function<void*(size_t size)> allocateFunc_;  // 默认使用defaultDeviceAllocator中的Allocate方法
-    std::function<void(void*)> deallocateFunc_;       // 默认使用defaultDeviceAllocator中的Deallocate方法
+    std::unique_ptr<Allocator> deviceAllocator_;      // 一开始就赋值为defaultDeviceAllocator
+    std::unique_ptr<Allocator> hostAllocator_;        // 一开始就赋值为defaultHostAllocator
+    std::function<void *(size_t size)> allocateFunc_; // 默认使用defaultDeviceAllocator中的Allocate方法
+    std::function<void(void *)> deallocateFunc_;      // 默认使用defaultDeviceAllocator中的Deallocate方法
 };
 } // namespace atb
 #endif

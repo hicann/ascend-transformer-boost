@@ -184,7 +184,7 @@ std::shared_ptr<Runner> RopeOperation::CreateRunner(Context &context) const
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
         return std::make_shared<RopeOpsRunner>(param_);
     }
-    return std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); });
+    return std::shared_ptr<Runner>(runner, [poolPtr = &pool](Runner *runner) { poolPtr->FreeRunner(runner); });
 }
 
 nlohmann::json RopeOperation::GetParamJson() const

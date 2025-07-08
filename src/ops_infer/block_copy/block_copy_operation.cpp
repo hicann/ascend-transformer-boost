@@ -21,6 +21,9 @@
 namespace {
 constexpr static uint32_t CACHE_DIM = 4;
 constexpr static uint32_t INDICES_DIM = 1;
+
+constexpr static size_t INPUT_K_CACHE = 0;
+constexpr static size_t INPUT_V_CACHE = 1;
 constexpr static size_t INPUT_SRC_BLOCK = 2;
 constexpr static size_t INPUT_DST_BLOCK = 3;
 constexpr static size_t INPUT_CUMSUM = 4;
@@ -63,12 +66,13 @@ uint32_t BlockCopyOperation::GetOutputNum() const
 
 Status BlockCopyOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
-    int64_t blockCount = inTensorDescs.at(0).shape.dims[0];
-    if (!TensorUtil::TensorShapeEqual(inTensorDescs.at(0).shape, inTensorDescs.at(1).shape)) {
+    int64_t blockCount = inTensorDescs.at(INPUT_K_CACHE).shape.dims[0];
+    if (!TensorUtil::TensorShapeEqual(inTensorDescs.at(INPUT_K_CACHE).shape, inTensorDescs.at(INPUT_V_CACHE).shape)) {
         ATB_LOG(ERROR) << GetLogPrefix() << "kCache shape is not equal vCache shape";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (inTensorDescs.at(0).shape.dimNum != CACHE_DIM || inTensorDescs.at(1).shape.dimNum != CACHE_DIM) {
+    if (inTensorDescs.at(INPUT_K_CACHE).shape.dimNum != CACHE_DIM ||
+        inTensorDescs.at(INPUT_V_CACHE).shape.dimNum != CACHE_DIM) {
         ATB_LOG(ERROR) << GetLogPrefix() << "cache shape is not " << CACHE_DIM;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
@@ -100,12 +104,13 @@ Status BlockCopyOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDes
 Status BlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
     (void)outTensors;
-    int64_t blockCount = inTensors.at(0).desc.shape.dims[0];
-    if (!TensorUtil::TensorDescEqual(inTensors.at(0).desc, inTensors.at(1).desc)) {
+    int64_t blockCount = inTensors.at(INPUT_K_CACHE).desc.shape.dims[0];
+    if (!TensorUtil::TensorDescEqual(inTensors.at(INPUT_K_CACHE).desc, inTensors.at(INPUT_V_CACHE).desc)) {
         ATB_LOG(ERROR) << GetLogPrefix() << "kCache desc is not equal vCache desc";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (inTensors.at(0).desc.shape.dimNum != CACHE_DIM || inTensors.at(1).desc.shape.dimNum != CACHE_DIM) {
+    if (inTensors.at(INPUT_K_CACHE).desc.shape.dimNum != CACHE_DIM ||
+        inTensors.at(INPUT_V_CACHE).desc.shape.dimNum != CACHE_DIM) {
         ATB_LOG(ERROR) << GetLogPrefix() << "cache shape is not 4";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
@@ -125,8 +130,8 @@ Status BlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         return ERROR_INVALID_TENSOR_DIM;
     }
     if (GetSingleton<Config>().Is310P()) {
-        if ((inTensors.at(0).desc.dtype != ACL_FLOAT16) ||
-            (inTensors.at(1).desc.dtype != ACL_FLOAT16)) {
+        if ((inTensors.at(INPUT_K_CACHE).desc.dtype != ACL_FLOAT16) ||
+            (inTensors.at(INPUT_V_CACHE).desc.dtype != ACL_FLOAT16)) {
             ATB_LOG(ERROR) << "Atlas 300I Duo inference products only support fp16";
             return ERROR_INVALID_TENSOR_DTYPE;
         }
@@ -134,45 +139,51 @@ Status BlockCopyOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         if (status != NO_ERROR) {
             return status;
         }
-    } else if (inTensors.at(0).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ ||
-            inTensors.at(1).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ) {
-                return ERROR_INVALID_TENSOR_FORMAT;
+    } else if (inTensors.at(INPUT_K_CACHE).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ ||
+               inTensors.at(INPUT_V_CACHE).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ) {
+        return ERROR_INVALID_TENSOR_FORMAT;
     }
     return NO_ERROR;
 }
 
 Status BlockCopyOperation::SetupDimCheck310P(const SVector<atb::Tensor> &inTensors) const
 {
-    if ((inTensors.at(0).desc.shape.dimNum != 4) ||  // kCache: 4 dim
-        (inTensors.at(1).desc.shape.dimNum != 4) ||  // vCache: 4 dim
-        (inTensors.at(2).desc.shape.dimNum != 1) ||  // 2: src
-        (inTensors.at(3).desc.shape.dimNum != 1) ||  // 3: dst
-        (inTensors.at(4).desc.shape.dimNum != 1)  // 4: cumsum
+    if ((inTensors.at(INPUT_K_CACHE).desc.shape.dimNum != 4) ||   // kCache: 4 dim
+        (inTensors.at(INPUT_V_CACHE).desc.shape.dimNum != 4) ||   // vCache: 4 dim
+        (inTensors.at(INPUT_SRC_BLOCK).desc.shape.dimNum != 1) || // 2: src, 1: dimNum
+        (inTensors.at(INPUT_DST_BLOCK).desc.shape.dimNum != 1) || // 3: dst, 1: dimNum
+        (inTensors.at(INPUT_CUMSUM).desc.shape.dimNum != 1)       // 4: cumsum, 1: dimNum
     ) {
         ATB_LOG(ERROR) << "invalid intensor dimNums";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (inTensors.at(0).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ ||
-        inTensors.at(1).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ) {
-            if ((inTensors.at(0).desc.shape.dims[3] != NZBLOCKSIZE) ||
-                (inTensors.at(1).desc.shape.dims[3] != NZBLOCKSIZE) ||
-                (inTensors.at(0).desc.shape.dims[2] % NZBLOCKSIZE != 0) ||
-                (inTensors.at(1).desc.shape.dims[2] % NZBLOCKSIZE != 0)) { // 2: dim
-                    ATB_LOG(ERROR) << GetLogPrefix() << "NZ format tensor dim should be aligned to 16";
-                    return ERROR_INVALID_TENSOR_DIM;
-                }
+    if (inTensors.at(INPUT_K_CACHE).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ ||
+        inTensors.at(INPUT_V_CACHE).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ) {
+        if ((inTensors.at(INPUT_K_CACHE).desc.shape.dims[INPUT_DST_BLOCK] != NZBLOCKSIZE) ||
+            (inTensors.at(INPUT_V_CACHE).desc.shape.dims[INPUT_DST_BLOCK] != NZBLOCKSIZE) ||
+            (inTensors.at(INPUT_K_CACHE).desc.shape.dims[2] % NZBLOCKSIZE != 0) ||
+            (inTensors.at(INPUT_V_CACHE).desc.shape.dims[2] % NZBLOCKSIZE != 0)) { // 2: dim
+            ATB_LOG(ERROR) << GetLogPrefix() << "NZ format tensor dim should be aligned to 16";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     } else {
-        if ((inTensors.at(0).desc.shape.dims[3] * inTensors.at(0).desc.shape.dims[2] * inTensors.at(0).desc.shape.dims[1]) % NZBLOCKSIZE != 0 ||
-            (inTensors.at(1).desc.shape.dims[3] * inTensors.at(1).desc.shape.dims[2] * inTensors.at(0).desc.shape.dims[1]) % NZBLOCKSIZE != 0) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "ND format product of the first three tensor dim should be aligned to 16";
-                return ERROR_INVALID_TENSOR_DIM;
-            }
+        const int64_t ndPruduct1 = inTensors.at(INPUT_K_CACHE).desc.shape.dims[3] * // 3: dim
+                                   inTensors.at(INPUT_K_CACHE).desc.shape.dims[2] * // 2: dim
+                                   inTensors.at(INPUT_K_CACHE).desc.shape.dims[1];  // 1: dim
+        const int64_t ndPruduct2 = inTensors.at(INPUT_V_CACHE).desc.shape.dims[3] * // 3: dim
+                                   inTensors.at(INPUT_V_CACHE).desc.shape.dims[2] * // 2: dim
+                                   inTensors.at(INPUT_K_CACHE).desc.shape.dims[1];  // 1: dim
+        if ((ndPruduct1 % NZBLOCKSIZE != 0) || (ndPruduct2 % NZBLOCKSIZE != 0)) {
+            ATB_LOG(ERROR) << GetLogPrefix()
+                           << "ND format product of the first three tensor dim should be aligned to 16";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
-    if (inTensors.at(2).desc.shape.dims[0] != inTensors.at(4).desc.shape.dims[0]) {
+    if (inTensors.at(INPUT_SRC_BLOCK).desc.shape.dims[0] != inTensors.at(INPUT_CUMSUM).desc.shape.dims[0]) {
         ATB_LOG(ERROR) << "src dim should be same as cumsum";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    return  NO_ERROR;
+    return NO_ERROR;
 }
 
 std::shared_ptr<Runner> BlockCopyOperation::CreateRunner(Context &context) const

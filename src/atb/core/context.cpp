@@ -38,7 +38,8 @@ Status CreateContext(Context **context)
     return NO_ERROR;
 }
 
-Status CreateContext(Context **context, const std::function<void*(size_t)>& alloc, const std::function<void(void*)>& dealloc)
+Status CreateContext(Context **context, const std::function<void *(size_t)> &alloc,
+                     const std::function<void(void *)> &dealloc)
 {
     if (!context) {
         ATB_LOG(ERROR) << "param context is null, CreateContext fail";

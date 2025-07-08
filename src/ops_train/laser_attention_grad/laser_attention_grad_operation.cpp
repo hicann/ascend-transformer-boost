@@ -172,7 +172,7 @@ std::shared_ptr<Runner> LaserAttentionGradOperation::CreateRunner(Context &conte
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
         return std::make_shared<LaserAttentionGradOpsRunner>(param_);
     }
-    return std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); });
+    return std::shared_ptr<Runner>(runner, [poolPtr = &pool](Runner *runner) { poolPtr->FreeRunner(runner); });
 }
 
 nlohmann::json LaserAttentionGradOperation::GetParamJson() const

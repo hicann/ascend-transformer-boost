@@ -46,8 +46,7 @@ struct XDimIndex {
 };
 
 constexpr size_t WEIGHT_DIMS = 2;
-template <bool IsTrans = false>
-struct WeightDimIndex {
+template <bool IsTrans = false> struct WeightDimIndex {
     static constexpr size_t K = IsTrans ? 1 : 0;
     static constexpr size_t N = IsTrans ? 0 : 1;
 };
@@ -86,12 +85,12 @@ bool ParamCheck(const atb::infer::MmDeqSwigluQuantMmDeqParam &opParam)
         return false;
     }
 
-    if (opParam.transposeWeightUp != false) {
+    if (opParam.transposeWeightUp) {
         ATB_LOG(ERROR) << "Param transposeWeightUp only support false.";
         return false;
     }
 
-    if (opParam.transposeWeightDown != true) {
+    if (!opParam.transposeWeightDown) {
         ATB_LOG(ERROR) << "Param transposeWeightDown only support true.";
         return false;
     }
@@ -113,8 +112,8 @@ atb::Status CheckInTensorsDescDimNum(const atb::SVector<atb::TensorDesc> &inTens
         ATB_LOG(ERROR) << "scale1 dim num is not support for MmDeqSwigluQuantMmDeqOperation.";
         return atb::ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (!atb::TensorCheck::IsTensorDescDimNumValid(
-        inTensorDescs.at(InTensorIndex::PER_TOKEN_SCALE1), PER_TOKEN_SCALE_DIMS)) {
+    if (!atb::TensorCheck::IsTensorDescDimNumValid(inTensorDescs.at(InTensorIndex::PER_TOKEN_SCALE1),
+                                                   PER_TOKEN_SCALE_DIMS)) {
         ATB_LOG(ERROR) << "pertokenScale1 dim num is not support for MmDeqSwigluQuantMmDeqOperation.";
         return atb::ERROR_INVALID_TENSOR_DIM_NUM;
     }
@@ -131,14 +130,13 @@ atb::Status CheckInTensorsDescDimNum(const atb::SVector<atb::TensorDesc> &inTens
 
 bool CheckX1Shape(const atb::TensorDesc &x1Desc, int64_t m)
 {
-    return x1Desc.shape.dims[XDimIndex::M] == m &&
-        x1Desc.shape.dims[XDimIndex::K] == SUPPORTED_K1;
+    return x1Desc.shape.dims[XDimIndex::M] == m && x1Desc.shape.dims[XDimIndex::K] == SUPPORTED_K1;
 }
 
 bool CheckWeight1Shape(const atb::TensorDesc &weight1Desc)
 {
     return weight1Desc.shape.dims[WeightDimIndex<false>::K] == SUPPORTED_K1 &&
-        weight1Desc.shape.dims[WeightDimIndex<false>::N] == SUPPORTED_N1;
+           weight1Desc.shape.dims[WeightDimIndex<false>::N] == SUPPORTED_N1;
 }
 
 bool CheckScale1Shape(const atb::TensorDesc &scale1Desc)
@@ -154,7 +152,7 @@ bool CheckPerTokenScale1Shape(const atb::TensorDesc &perTokenScale1Desc, int64_t
 bool CheckWeight2Shape(const atb::TensorDesc &weight2Desc)
 {
     return weight2Desc.shape.dims[WeightDimIndex<true>::N] == SUPPORTED_N2 &&
-        weight2Desc.shape.dims[WeightDimIndex<true>::K] == SUPPORTED_K2;
+           weight2Desc.shape.dims[WeightDimIndex<true>::K] == SUPPORTED_K2;
 }
 
 bool CheckScale2Shape(const atb::TensorDesc &scale2Desc)
@@ -264,7 +262,7 @@ void MmDeqSwigluQuantMmDeqOperation::SetParam(const infer::MmDeqSwigluQuantMmDeq
 }
 
 Status MmDeqSwigluQuantMmDeqOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
-    SVector<TensorDesc> &outTensorDescs) const
+                                                      SVector<TensorDesc> &outTensorDescs) const
 {
     int64_t m = OperationUtil::GetXTensorM(inTensorDescs.at(InTensorIndex::X1), false);
     auto &outDesc = outTensorDescs.at(0);
@@ -282,7 +280,7 @@ Status MmDeqSwigluQuantMmDeqOperation::InferShapeCheckImpl(const SVector<TensorD
 }
 
 Status MmDeqSwigluQuantMmDeqOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
-    const SVector<Tensor> &outTensors) const
+                                                      const SVector<Tensor> &outTensors) const
 {
     Status status = CheckInTensors(inTensors);
     if (status != NO_ERROR) {

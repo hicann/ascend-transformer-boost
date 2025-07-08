@@ -8,12 +8,30 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <cmath>
 #include "../demo_util.h"
 
+namespace {
 const int32_t DEVICE_ID = 1;
-const uint32_t blockSize = 128;
+const uint32_t BLOCK_SIZE = 128;
 int32_t blockNum = 64;
+const int32_t DIM512 = 512;
+const int32_t ROPE_HEAD_SIZE = 64;
+const int32_t KV_HEAD_NUM = 1;
+const int32_t CTKV_HEAD_SIZE_CACHE2 = 32;
+const int32_t ALIGN16 = 16;
+const int32_t NUM4 = 4;
+
 std::vector<int32_t> contextLensHost;
+
+const int32_t INPUT_NUM = 5;
+const int32_t DTYPE_IDX = 1;
+const int32_t TOKEN_NUM_IDX = 2;
+const int32_t HEAD_NUM_IDX = 3;
+const int32_t K_SEQLEN_IDX = 4;
+
+const int32_t RUNS = 2;
+} // namespace
 
 /**
  * @brief 准备atb::VariantPack
@@ -27,23 +45,26 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, aclDat
 {
     // 创建shape为[tokenNum, headNum, 512]的输入qNope tensor
     atb::Tensor qNope;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(tokenNum * headNum * 512, 1), ACL_INT8,
-                                        aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512}, qNope));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(tokenNum * headNum * DIM512, 1),
+                                        ACL_INT8, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, DIM512}, qNope));
     // 创建shape为[tokenNum, headNum, 64]的输入qRope tensor
     atb::Tensor qRope;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * headNum * 64, 0), dtype,
-                                        aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 64}, qRope, dtype));
-    int maxBlockNumPerSeq = (kSeqLen + blockSize - 1) / blockSize;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * headNum * ROPE_HEAD_SIZE, 0),
+                                        dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, ROPE_HEAD_SIZE}, qRope,
+                                        dtype));
+    int maxBlockNumPerSeq = (kSeqLen + BLOCK_SIZE - 1) / BLOCK_SIZE;
     blockNum = tokenNum * maxBlockNumPerSeq;
-    // 创建shape为[blockNum, 16, blockSize, 32]的输入ctKV tensor
+    // 创建shape为[blockNum, 16, BLOCK_SIZE, 32]的输入ctKV tensor
     atb::Tensor ctKV;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(blockNum * blockSize * 512, 1),
-                                        ACL_INT8, aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, 16, blockSize, 32},
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(blockNum * BLOCK_SIZE * DIM512, 1),
+                                        ACL_INT8, aclFormat::ACL_FORMAT_FRACTAL_NZ,
+                                        {blockNum, ALIGN16, BLOCK_SIZE, CTKV_HEAD_SIZE_CACHE2},
                                         ctKV));
-    // 创建shape为[blockNum, 4, blockSize, 16]的输入kRope tensor
+    // 创建shape为[blockNum, 4, BLOCK_SIZE, 16]的输入kRope tensor
     atb::Tensor kRope;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(blockNum * blockSize * 64, 0), dtype,
-                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, 4, blockSize, 16}, kRope, dtype));
+    CHECK_STATUS(CreateTensorFromVector(
+        contextPtr, stream, std::vector<__fp16>(blockNum * BLOCK_SIZE * ROPE_HEAD_SIZE, 0), dtype,
+        aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, NUM4, BLOCK_SIZE, ALIGN16}, kRope, dtype));
     // 创建shape为[tokenNum, maxBlockNumPerSeq]的输入blockTables tensor
     auto blockTablesHost = std::vector<int32_t>(tokenNum * maxBlockNumPerSeq);
     for (size_t i = 0; i < tokenNum; i++) {
@@ -80,7 +101,7 @@ atb::Status CreateMultiLatentAttentionOperation(int headNum, atb::Operation **ml
 {
     atb::infer::MultiLatentAttentionParam param;
     param.headNum = headNum;
-    param.qkScale = 0.0416666679084301;
+    param.qkScale = 1 / sqrt(DIM512);
     param.kvHeadNum = 1;
     param.cacheMode = atb::infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE;
     return atb::CreateOperation(param, mlaOp);
@@ -108,7 +129,7 @@ atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int 
         PrepareInTensor(context, stream, dtype, tokenNum, headNum, kSeqLen, variantPack.inTensors)); // 放入输入tensor
     // 准备输出tensor
     atb::Tensor attenOut;
-    CHECK_STATUS(CreateTensor(dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512}, attenOut));
+    CHECK_STATUS(CreateTensor(dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, DIM512}, attenOut));
     variantPack.outTensors = {attenOut}; // 放入输出tensor
 
     uint64_t workspaceSize = 0;
@@ -118,7 +139,7 @@ atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int 
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
-    for (size_t i = 0; i < 2; i++) {
+    for (size_t i = 0; i < RUNS; i++) {
         std::cout << "tokenNum: " << tokenNum << " headNum: " << headNum << " loop: " << i << std::endl;
         // mlaPreprocess执行
         mlaOp->Execute(variantPack, workspacePtr, workspaceSize, context);
@@ -153,11 +174,11 @@ int main(int argc, char **argv)
     int headNum = 128;
     int kSeqLen = 1500;
     aclDataType dtype = ACL_FLOAT16;
-    if (argc == 5) {
-        dtypeStr = argv[1];
-        tokenNum = std::stoi(argv[2]);
-        headNum = std::stoi(argv[3]);
-        kSeqLen = std::stoi(argv[4]);
+    if (argc == INPUT_NUM) {
+        dtypeStr = argv[DTYPE_IDX];
+        tokenNum = std::stoi(argv[TOKEN_NUM_IDX]);
+        headNum = std::stoi(argv[HEAD_NUM_IDX]);
+        kSeqLen = std::stoi(argv[K_SEQLEN_IDX]);
     }
     if (dtypeStr == "bf16") {
         dtype = ACL_BF16;

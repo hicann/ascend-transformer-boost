@@ -86,13 +86,13 @@ Status SelfAttentionPrefixEncoderOpsRunner::ModifyKernelGraph(const OpsTensorPac
 {
     // query, key, value, blockTables, mask, seqlen, kvSeqLen, slopes
     SelfAttentionFusionVariantPackParam newParam;
-    uint32_t seqlen_pos = SEQLEN_TENSOR_POS;
-    uint32_t kvSeqlen_pos = KVSEQLEN_TENSOR_POS;
+    uint32_t seqlenPos = SEQLEN_TENSOR_POS;
+    uint32_t kvSeqlenPos = KVSEQLEN_TENSOR_POS;
     if (!needMask_) {
-        seqlen_pos = SEQLEN_TENSOR_POS - 1;
-        kvSeqlen_pos = KVSEQLEN_TENSOR_POS - 1;
+        seqlenPos = SEQLEN_TENSOR_POS - 1;
+        kvSeqlenPos = KVSEQLEN_TENSOR_POS - 1;
     }
-    bool ret = newParam.BuildFromTensorPrefixEncoder(opsTensorPack.inTensors, seqlen_pos, kvSeqlen_pos);
+    bool ret = newParam.BuildFromTensorPrefixEncoder(opsTensorPack.inTensors, seqlenPos, kvSeqlenPos);
     if (!ret) {
         ATB_LOG(ERROR) << GetLogPrefix() << " build param from host tensor fail";
         return ERROR_INVALID_PARAM;

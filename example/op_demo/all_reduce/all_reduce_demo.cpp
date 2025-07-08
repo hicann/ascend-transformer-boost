@@ -29,7 +29,8 @@ atb::VariantPack PrepareVariantPack(Args &args)
     atb::VariantPack variantPack;
     std::vector<int64_t> shape = {2, 1024};
     // 创建Host侧数据
-    std::vector<float> xHostData(shape[0] * shape[1], 2.0);
+    const float value = 2.0;
+    std::vector<float> xHostData(shape[0] * shape[1], value);
     std::vector<float> outputHostData(shape[0] * shape[1], 0);
     // 生成ATB tensor
     atb::Tensor tensorX;

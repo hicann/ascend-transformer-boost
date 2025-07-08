@@ -24,7 +24,7 @@
 namespace atb {
 //! \brief 通信域指针
 //!
-using HcclComm = void*;
+using HcclComm = void *;
 //!
 //! \namespace Comm
 //!
@@ -52,8 +52,7 @@ HcclComm CreateHcclComm(int32_t rank, int32_t rankRoot, int32_t rankSize, char *
 //!
 //! \return 返回通信域指针
 //!
-HcclComm CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, const char *rankTableFile,
-                                       char *commName);
+HcclComm CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, const char *rankTableFile, char *commName);
 
 //!
 //! \brief 创建HCCL多机通信域

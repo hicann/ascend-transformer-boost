@@ -147,7 +147,7 @@ std::shared_ptr<Runner> FastSoftMaxGradOperation::CreateRunner(Context &context)
         ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
         return std::make_shared<FastSoftMaxGradOpsRunner>(param_);
     }
-    return std::shared_ptr<Runner>(runner, [&pool](Runner *runner) { pool.FreeRunner(runner); });
+    return std::shared_ptr<Runner>(runner, [poolPtr = &pool](Runner *runner) { poolPtr->FreeRunner(runner); });
 }
 
 nlohmann::json FastSoftMaxGradOperation::GetParamJson() const
