@@ -104,22 +104,48 @@ public:
 REG_KERNEL_BASE(SplitInt64Output2Kernel);
 
 class SplitAptKernel : public SplitKernel {
+    int64_t DIM_0 = 0;
 public:
     explicit SplitAptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : SplitKernel(kernelName, handle)
     {
     }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Split),
+                     "split: param type invalid", return false);
+        OpParam::Split param = AnyCast<OpParam::Split>(launchParam.GetParam());
+        MKI_CHECK(launchParam.GetInTensorCount() == 1, "input num invalid", return false);
+        MKI_CHECK(launchParam.GetOutTensorCount() == static_cast<size_t>(param.splitNum), "output num invalid",
+                     return false);
+        SVector<int64_t> dims = launchParam.GetInTensor(0).desc.dims;
+        if (param.splitDim < 0) {
+            int realSplitDim = static_cast<int>(dims.size()) + param.splitDim;
+            MKI_CHECK((realSplitDim >= 0), "Incorrect splitDim.", return false);
+        } else {
+            MKI_CHECK((param.splitDim < static_cast<int>(dims.size())), "SplitDim Oversize.", return false);
+        }
+        return true;
+    }
+
+    uint64_t GetTilingSize(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Split), "OpParam is invalid",
+                     return 0);
+        auto param = AnyCast<OpParam::Split>(launchParam.GetParam());
+        SVector<int64_t> splitDim = {param.splitDim};
+        return launchBufferSize_ + Utils::GetConstTensorSize<int32_t>(splitDim);
+    }
+
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        size_t outputNum = launchParam.GetOutTensorCount();
-        if (outputNum == 2 || outputNum == 3) {
-            return SplitAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
-        }
-        return Status::FailStatus(1);
-    }
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return AsdOps::Status::OkStatus();
+        auto status = SplitAptTiling(GetName(), launchParam, kernelInfo_, *GetBinHandle());
+        kernelInfo_.SetConstTensorOffset(launchBufferSize_);
+        auto param = AnyCast<OpParam::Split>(launchParam.GetParam());
+        SVector<int32_t> splitDim = {param.splitDim};
+        kernelInfo_.AddConstTensorData<int32_t>(DIM_0, splitDim);
+        return Status::OkStatus();
     }
 };
 

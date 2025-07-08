@@ -16,6 +16,8 @@
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
 #include "atb/core/op_param_funcs.h"
+#include <mki/utils/platform/platform_info.h>
+#include "atb/utils/tensor_util.h"
 
 namespace atb {
 static const uint32_t OUT_TENSOR_NUM_BISECT = 2;
@@ -42,8 +44,19 @@ template <> Status CreateOperation(const infer::SplitParam &opParam, Operation *
 
 SplitOperation::SplitOperation(const infer::SplitParam &param) : OperationBase("SplitOperation"), param_(param)
 {
-    std::string opIrKey = param_.splitNum == OUT_TENSOR_NUM_BISECT ? "SplitOperationBISECT" : "SplitOperationTRISECT";
+    std::string opIrKey;
+    opIrKey = param_.splitNum == OUT_TENSOR_NUM_BISECT ? "SplitOperationBISECT" : "SplitOperationTRISECT";
     operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr(opIrKey);
+    if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) {
+        SVector<int> temp = {static_cast<int>(param.splitNum)};
+        Mki::SVector<int> outputLens;
+        TensorUtil::AtbSVector2OpsSVector(temp, outputLens);
+        ATB_LOG(INFO) << GetLogPrefix() << "ExtendInTensorIrByoutputLens";
+        auto& tmp = operationIr_->GetOutTensorInfoIrs();
+        if (tmp.size() == 1) {
+            operationIr_->ExtendOutTensorIrByOutputlens(outputLens);
+        }
+    }
 }
 
 SplitOperation::~SplitOperation() {}
@@ -81,9 +94,16 @@ Status SplitOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
     } else {
         outTensorDescs.at(0) = xTensorDesc;
         outTensorDescs.at(0).shape.dims[dim] = xTensorDesc.shape.dims[dim] / param_.splitNum;
-        outTensorDescs.at(1) = outTensorDescs.at(0);
-        if (param_.splitNum == 3) {                      // splitNum: 3
-            outTensorDescs.at(2) = outTensorDescs.at(0); // dim: 2
+        if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) {
+            for (int i = 1; i < param_.splitNum; i++) {
+                outTensorDescs.at(i) = outTensorDescs.at(0);
+            }
+            return NO_ERROR;
+        } else {
+            outTensorDescs.at(1) = outTensorDescs.at(0);
+            if (param_.splitNum == 3) {                      // splitNum: 3
+                outTensorDescs.at(2) = outTensorDescs.at(0); // dim: 2
+            }
         }
     }
     return NO_ERROR;

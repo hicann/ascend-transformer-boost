@@ -62,6 +62,17 @@ Status Split3OutputsTiling(const std::string &kernelName, const LaunchParam &lau
 Status SplitAptTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle)
 {
-    return Status::OkStatus();
+    auto &param = AnyCast<OpParam::Split>(launchParam.GetParam());
+    const auto &tensorDesc0 = launchParam.GetInTensor(0).desc;
+    SVector<int64_t> splitDim = {param.splitDim};
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("Split")
+        .SetKernelName(kernelName)
+        .AddConstInput(TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {static_cast<int64_t>(splitDim.size())},
+                        splitDim.data(), splitDim.size() * sizeof(int32_t))
+        .AddInput(tensorDesc0.dtype, tensorDesc0.format, tensorDesc0.dims)
+        .AddOutTensorList(&launchParam.GetOutTensor(0), launchParam.GetOutTensorCount())
+        .AddAttrInt(param.splitNum);
+    return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
 } // namespace AsdOps

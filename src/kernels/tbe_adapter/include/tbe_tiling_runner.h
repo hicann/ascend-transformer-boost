@@ -40,6 +40,7 @@ public:
     TbeTilingRunner &AddInputPlaceHolder(Mki::TensorDType dtype, Mki::TensorFormat format,
                                            const Mki::SVector<int64_t> &dims);
     TbeTilingRunner &AddInTensorList(const Tensor *inTensors, size_t len);
+    TbeTilingRunner &AddOutTensorList(const Tensor *outTensors, size_t len);
 
     TbeTilingRunner &AddAttrBool(bool value);
     TbeTilingRunner &AddAttrInt(int32_t attr);

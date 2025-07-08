@@ -12,6 +12,7 @@
 #include <asdops/params/params.h>
 #include "atb/utils/log.h"
 #include "atb/utils/tensor_util.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace atb {
 static constexpr uint32_t DIM_2 = 2;
@@ -33,19 +34,29 @@ SplitOpsRunner::SplitOpsRunner(const infer::SplitParam &param)
     splitParam.splitSize = asdSplitSizes;
     splitNode.opDesc = {0, "SplitOperation", splitParam};
     splitNode.inTensors = {&aTensor};
-    if (param_.splitNum == DIM_2) {
-        ATB_LOG(INFO) << GetName() << " split by 2";
-        kernelGraph_.outTensors.resize(DIM_2);
-        Mki::Tensor &operationOutTensor0 = kernelGraph_.outTensors.at(0);
-        Mki::Tensor &operationOutTensor1 = kernelGraph_.outTensors.at(1);
-        splitNode.outTensors = {&operationOutTensor0, &operationOutTensor1};
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
+        size_t outTensorCount = static_cast<size_t>(param_.splitNum);
+        kernelGraph_.outTensors.resize(outTensorCount);
+        for (size_t i = 0 ; i < outTensorCount ; i++) {
+            Mki::Tensor &tensor = kernelGraph_.outTensors.at(i);
+            splitNode.outTensors.push_back(&tensor);
+        }
+        splitNode.outputLens = {static_cast<int>(param.splitNum)};
     } else {
-        ATB_LOG(INFO) << GetName() << " split by 3";
-        kernelGraph_.outTensors.resize(DIM_3);
-        Mki::Tensor &operationOutTensor0 = kernelGraph_.outTensors.at(0);
-        Mki::Tensor &operationOutTensor1 = kernelGraph_.outTensors.at(1);
-        Mki::Tensor &operationOutTensor2 = kernelGraph_.outTensors.at(2);
-        splitNode.outTensors = {&operationOutTensor0, &operationOutTensor1, &operationOutTensor2};
+        if (param_.splitNum == DIM_2) {
+            ATB_LOG(INFO) << GetName() << " split by 2";
+            kernelGraph_.outTensors.resize(DIM_2);
+            Mki::Tensor &operationOutTensor0 = kernelGraph_.outTensors.at(0);
+            Mki::Tensor &operationOutTensor1 = kernelGraph_.outTensors.at(1);
+            splitNode.outTensors = {&operationOutTensor0, &operationOutTensor1};
+        } else {
+            ATB_LOG(INFO) << GetName() << " split by 3";
+            kernelGraph_.outTensors.resize(DIM_3);
+            Mki::Tensor &operationOutTensor0 = kernelGraph_.outTensors.at(0);
+            Mki::Tensor &operationOutTensor1 = kernelGraph_.outTensors.at(1);
+            Mki::Tensor &operationOutTensor2 = kernelGraph_.outTensors.at(2);
+            splitNode.outTensors = {&operationOutTensor0, &operationOutTensor1, &operationOutTensor2};
+        }
     }
 }
 

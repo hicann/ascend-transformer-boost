@@ -20,6 +20,7 @@ using namespace Mki;
 static const int SPLIT_SUPPORT_SPLIT_NUM2 = 2;
 static const int SPLIT_SUPPORT_SPLIT_NUM3 = 3;
 static const int MAX_SUPPORT_SPLIT_NUM = 3;
+static const int A5_OUT_PUT_NUM = 1;
 class SplitOperation : public OperationBase {
 public:
     explicit SplitOperation(const std::string &opName) noexcept : OperationBase(opName) {}
@@ -32,12 +33,7 @@ public:
         size_t outputNum = launchParam.GetOutTensorCount();
         if (dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_BF16) {
             if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
-                if (outputNum == SPLIT_SUPPORT_SPLIT_NUM2 || outputNum == SPLIT_SUPPORT_SPLIT_NUM3) {
-                    return GetKernelByName("SplitAptF16Kernel");
-                } else {
-                    MKI_LOG(ERROR) << "outputNum is wrong:" << outputNum;
-                    return nullptr;
-                }
+                return GetKernelByName("SplitAptF16Kernel");
             }
             if (outputNum == SPLIT_SUPPORT_SPLIT_NUM2) {
                 if (param.splitSize.size() > 0) {
@@ -57,12 +53,7 @@ public:
             }
         } else if (dtype == TENSOR_DTYPE_INT64) {
             if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95) {
-                if (outputNum == SPLIT_SUPPORT_SPLIT_NUM2 || outputNum == SPLIT_SUPPORT_SPLIT_NUM3) {
-                    return GetKernelByName("SplitAptInt64Kernel");
-                } else {
-                    MKI_LOG(ERROR) << "outputNum is wrong:" << outputNum;
-                    return nullptr;
-                }
+                return GetKernelByName("SplitAptInt64Kernel");
             }
             if (outputNum == SPLIT_SUPPORT_SPLIT_NUM2) {
                 if (param.splitSize.size() > 0) {
@@ -84,10 +75,14 @@ public:
     {
         MKI_CHECK(specificParam.Type() == typeid(OpParam::Split), "OpParam is invalid", return 0);
         auto param = AnyCast<OpParam::Split>(specificParam);
-        if (param.splitNum == SPLIT_SUPPORT_SPLIT_NUM2) {
-            return 2; // split has 2 inputs
-        } else if (param.splitNum == SPLIT_SUPPORT_SPLIT_NUM3) {
-            return 3; // split has 3 inputs
+        if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) {
+            return A5_OUT_PUT_NUM;
+        } else {
+            if (param.splitNum == SPLIT_SUPPORT_SPLIT_NUM2) {
+                return 2; // split has 2 inputs
+            } else if (param.splitNum == SPLIT_SUPPORT_SPLIT_NUM3) {
+                return 3; // split has 3 inputs
+            }
         }
         MKI_LOG(ERROR) << "splitNum is wrong";
         return 0;
@@ -101,6 +96,7 @@ protected:
         OpParam::Split param = AnyCast<OpParam::Split>(launchParam.GetParam());
         SVector<int64_t> dims = launchParam.GetInTensor(0).desc.dims;
         TensorFormat format = launchParam.GetInTensor(0).desc.format;
+        TensorDType dtype = launchParam.GetInTensor(0).desc.dtype;
         int64_t realSplitDim = param.splitDim;
         if ((param.splitDim < 0)) {
             if ((static_cast<int>(dims.size()) + param.splitDim) >= 0) {
@@ -109,6 +105,13 @@ protected:
             } else {
                 return Status::FailStatus(ERROR_INVALID_VALUE, "Incorrect splitDim.");
             }
+        }
+        if (Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95) {
+            dims.at(param.splitDim) = dims.at(param.splitDim) / static_cast<int64_t>(launchParam.GetOutTensorCount());
+            for (size_t i = 0; i < launchParam.GetOutTensorCount(); i++) {
+                outTensors[i].desc = {dtype, format, dims, {}, 0};
+            }
+            return Status::OkStatus();
         }
         if (param.splitNum <= 0 || param.splitNum > MAX_SUPPORT_SPLIT_NUM) {
             return Status::FailStatus(ERROR_INVALID_VALUE, "Incorrect splitNum.");
