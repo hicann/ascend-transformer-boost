@@ -30,16 +30,18 @@ ATB加速库采用了一系列优化策略，包括算法优化、硬件优化�
     > bash scripts/build.sh
     > source output/atb/set_env.sh
     ```
- - 无法获取ascend-op-common-lib代码仓时，可通过安装atb或nnal软件包获取对应so文件<br>
+ - 无法获取ascend-op-common-lib代码仓时，可通过安装nnal软件包获取对应so文件<br>
     - 安装步骤可参考 `run包使用`
+    - 版本配套关系：nnal软件包需保持和toolkit及kernels软件包版本一致
     - 执行 
         ```sh
-        # 环境变量设置二选一执行
-        source {install path}/atb/set_env.sh # 安装atb软件包时使用
-        source {install path}/nnal/atb/set_env.sh # 安装nnal软件包时使用
+        source {install path}/nnal/atb/set_env.sh
         export ATB_BUILD_DEPENDENCY_PATH=${ATB_HOME_PATH}
         ```
  - run包使用<br>
+    - run包获取
+    1. 进入网址：https://www.hiascend.com/developer/download/commercial
+    2. 产品系列选择服务器，产品型号根据设备型号选择，选择所需解决方案版本，随后在CANN区域选择软件包跟随指引即可获取相关run包
     - 软件包名为：Ascend-cann-atb_{version}_linux-{arch}.run <br>
     其中，{version}表示软件版本号，{arch}表示CPU架构。
     - 安装run包（需要依赖cann环境）
