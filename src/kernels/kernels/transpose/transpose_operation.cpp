@@ -73,7 +73,7 @@ public:
         auto inDtype = launchParam.GetInTensor(0).desc.dtype;
         auto platformType = PlatformInfo::Instance().GetPlatformType();
         if (PlatformInfo::Instance().GetPlatformType() == PlatformType::ASCEND_910_95){
-            MKI_CHECK(inDtype == TENSOR_DTYPE_FLOAT || inDtype == TENSOR_DTYPE_INT32,
+            MKI_CHECK(inDtype != TENSOR_DTYPE_FLOAT && inDtype != TENSOR_DTYPE_INT32,
                             "INT32/FP32 is not supported by current Soc", return nullptr);
             if (inDtype == TENSOR_DTYPE_FLOAT16 || inDtype == TENSOR_DTYPE_BF16) {
                 return GetKernelByName("TransposeApt16Kernel");
