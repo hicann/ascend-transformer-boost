@@ -36,6 +36,8 @@ public:
                 return GetKernelByName("ConcatI32AptKernel");
             } else if (dtype == TENSOR_DTYPE_INT64) {
                 return GetKernelByName("ConcatI64AptKernel");
+            } else if (dtype == TENSOR_DTYPE_BF16) {
+                return GetKernelByName("ConcatBF16AptKernel");
             }
         } else {
             if (dtype == TENSOR_DTYPE_FLOAT) {
