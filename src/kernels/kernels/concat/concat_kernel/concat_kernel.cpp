@@ -86,8 +86,8 @@ public:
         MKI_CHECK(outputNum == 1, "output num invalid", return false);
         TensorDType dtype = launchParam.GetInTensor(0).desc.dtype;
         MKI_CHECK(dtype == TENSOR_DTYPE_FLOAT16 || dtype == TENSOR_DTYPE_FLOAT || dtype == TENSOR_DTYPE_INT8
-                || dtype == TENSOR_DTYPE_INT16 || dtype == TENSOR_DTYPE_INT32 || dtype == TENSOR_DTYPE_INT64,
-                  "input data type error", return false);
+                || dtype == TENSOR_DTYPE_INT16 || dtype == TENSOR_DTYPE_INT32 || dtype == TENSOR_DTYPE_INT64
+                || dtype == TENSOR_DTYPE_BF16, "input data type error", return false);
         SVector<int64_t> dims = launchParam.GetInTensor(0).desc.dims;
         if (param.concatDim < 0) {
             int realConcatDim = static_cast<int>(dims.size()) + param.concatDim;
@@ -163,6 +163,25 @@ public:
     }
 };
 REG_KERNEL_BASE(ConcatF16AptKernel);
+
+class ConcatBF16AptKernel : public ConcatAptKernel {
+public:
+    explicit ConcatBF16AptKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+        : ConcatAptKernel(kernelName, handle)
+    {
+    }
+
+    bool CanSupport(const LaunchParam &launchParam) const override
+    {
+        MKI_CHECK(ConcatAptKernel::CanSupport(launchParam), "failed to check support", return false);
+        MKI_CHECK(launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "in tensor dtype unsupported", return false);
+        MKI_CHECK(launchParam.GetOutTensor(0).desc.dtype == TENSOR_DTYPE_BF16,
+            "out tensor dtype unsupported", return false);
+        return true;
+    }
+};
+REG_KERNEL_BASE(ConcatBF16AptKernel);
 
 class ConcatI32AptKernel : public ConcatAptKernel {
 public:
