@@ -44,9 +44,9 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
     (void)qSeqLen;
     Mki::Tensor &kvSeqLen = kernelGraph_.inTensors.at(inTensorStart++);
     (void)kvSeqLen;
-    Mki::Tensor &mask = param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE ?
-                            kernelGraph_.inTensors.at(inTensorStart++) :
-                            nullTensor_;
+    Mki::Tensor &mask = (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) ||
+                            (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SWA_NORM) ?
+                            kernelGraph_.inTensors.at(inTensorStart++) : nullTensor_;
     Mki::Tensor &alibiCoeff = nullTensor_;
     Mki::Tensor &dequantQK = nullTensor_;
     Mki::Tensor &offsetQK = nullTensor_;
@@ -66,10 +66,13 @@ Status MultiLatentAttentionOpsRunnerPrefill::SetupKernelGraph(const OpsTensorPac
     asdParam.tor = param_.qkScale;
     asdParam.kvHead = param_.kvHeadNum;
     asdParam.isRing = 0;
+    asdParam.windowSize = param_.windowSize;
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE;
     } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_MASK;
+    } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SWA_NORM) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_SWA_NORM;
     } else {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
     }
@@ -102,10 +105,13 @@ Status MultiLatentAttentionOpsRunnerPrefill::ModifyKernelGraph(const OpsTensorPa
     asdParam.kvSeqLen = newParam_.contextLens;
     asdParam.qSeqLen = newParam_.qSeqlen;
     asdParam.isRing = 0;
+    asdParam.windowSize = param_.windowSize;
     if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_MASK_FREE;
     } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_CAUSAL_MASK;
+    } else if (param_.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SWA_NORM) {
+        asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_SWA_NORM;
     } else {
         asdParam.maskType = AtbOps::OpParam::MLA::MaskType::MASK_TYPE_NONE;
     }

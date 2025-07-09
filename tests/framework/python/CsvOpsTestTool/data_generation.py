@@ -5302,9 +5302,68 @@ class SelfAttentionOperation(DataGen):
             run_param = json.dumps(run_param)
         operation.set_varaintpack_param(run_param)
 
+    
+    def gen_swa_mask(max_seq, window_size, pre_mask_coff, mask_info, cache_type=0):
+        swa_mask = np.ones(shape=mask_info[0] * pre_mask_coff)
+        if window_size < max_seq:
+            triu_mask = np.triu(swa_mask, 1)
+            tril_mask = np.tril(swa_mask, -window_size)
+            swa_mask = triu_mask + tril_mask
+        return swa_mask
+
+    def gen_mla_swa_mask(batch, heads, data_type, mask_type, window_size):
+        import random
+        q_max_seq = 512
+        kv_max_seq = 512
+        max_seq = 512
+        post_mask_coff = 1
+        pre_mask_coff = -10000.0
+
+        if window_size > 0:
+            select_zero =False
+
+        mask_info = ((1, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[:, :q_s, :kv_s])))
+        mask = np.ones(shape=mask_info[0]) * pre_mask_coff
+        mask = np.triu(mask, 1)
+        zero_indice = random.choices(range(max_seq), k = 300)
+        if window_size > 0:
+            mask = SelfAttentionOperation.gen_swa_mask(max_seq, window_size, pre_mask_coff, mask_info)
+        if select_zero:
+            mask.flat[zero_indice] = 0
+        
+        mask = torch.from_numpy(mask).to(torch.float16)
+        post_mask_coff = post_mask_coff
+        pre_mask_coff = pre_mask_coff
+
+        return mask.reshape(max_seq, max_seq)
+
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         json_data = json.loads(op_params)
+        if 'windowSize' in json_data.keys() and 'mlaVHeadSize' in json_data.keys():
+            if json_data['windowSize'] > 1 and json_data['maskType'] == 7:
+                data_type = torch.float16
+                batch = 4
+                kvseqlen = 512
+                kv_head = 1
+                heads = 1
+                max_seq = kvseqlen
+                embeddim = 192
+                embeddimv = 128
+                q = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(batch * kvseqlen, heads * embeddim)))
+                q = q.to(data_type)
+                k = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(1, batch, max_seq, kv_head * embeddim))).to(data_type).npu()
+                v = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(1, batch, max_seq, kv_head * embeddimv))).to(data_type).npu()
+                mask = SelfAttentionOperation.gen_mla_swa_mask(batch, heads, data_type, 6, 128*3+58)
+                if i == 0:
+                    return q.npu()
+                elif i == 1:
+                    return k.npu()
+                elif i == 2:
+                    return mask.npu()
+                else:
+                    return torch.tensor([512] * 4).to(torch.int32).npu()
+
         if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1:
             MASK_TYPE_NO_HEAD_DECODER = 5
             mask_type =MASK_TYPE_NO_HEAD_DECODER

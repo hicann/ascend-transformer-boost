@@ -2310,9 +2310,13 @@ static atb::Status MultiLatentAttentionOperationCreate(const nlohmann::json &par
     if (paramJson.contains("cacheMode")) {
         param.cacheMode = atb::infer::MultiLatentAttentionParam::CacheMode(paramJson["cacheMode"].get<uint8_t>());
     }
+    if (paramJson.contains("windowSize")) {
+        param.windowSize = atb::infer::MultiLatentAttentionParam::MaskType(paramJson["windowSize"].get<int32_t>());
+    }
     ATB_LOG(INFO) << "PagedAttentionOperationCreate headNum:" << param.headNum << ", scale:" << param.qkScale
                   << ", kvHeadNum:" << param.kvHeadNum << ", maskType:" << param.maskType
-                  << ", calcType:" << param.calcType << ", cacheMode:" << param.cacheMode;
+                  << ", calcType:" << param.calcType << ", cacheMode:" << param.cacheMode
+                  << ", windowSize:" << param.windowSize;
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
