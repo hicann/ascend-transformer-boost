@@ -400,7 +400,7 @@ class MoeTestDate:
         pValue = 1
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
             ep_idx = rank // TP
-            matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
+            # matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
             matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
             loop = math.ceil(self.k / (pValue * 256))
             for j in range(loop):
@@ -408,9 +408,9 @@ class MoeTestDate:
                 ed = min(self.k, (j + 1) * pValue * 256)
                 matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
                 matrix_c_j_low = matrix_c_j.to(output_dtype)
-                matrix_c = matrix_c + matrix_c_j
+                # matrix_c = matrix_c + matrix_c_j
                 matrix_c_low = matrix_c_low + matrix_c_j_low
-            self.matrix_c = matrix_c
+            self.matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(l0c_dtype), self.matrix_b.to(l0c_dtype))
             self.matrix_c_low = matrix_c_low
 
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
@@ -434,7 +434,7 @@ class MoeTestDate:
 
 
             ep_idx = rank // TP
-            matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
+            # matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
             matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
             loop = math.ceil(self.k / (pValue * 256))
             for j in range(loop):
@@ -442,9 +442,10 @@ class MoeTestDate:
                 ed = min(self.k, (j + 1) * pValue * 256)
                 matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
                 matrix_c_j_low = matrix_c_j.to(output_dtype)
-                matrix_c = matrix_c + matrix_c_j
+                # matrix_c = matrix_c + matrix_c_j
                 matrix_c_low = matrix_c_low + matrix_c_j_low
             matrix_c_low = matrix_c_low.to(l0c_dtype)
+            matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(torch.float32), self.matrix_b.to(torch.float32)).to(l0c_dtype)
             broadcast_offset, broadcast_scale = quant_info.get_moe_dequant_tensor(self.output_splits[ep_idx], self.input_info[2], TP, l0c_dtype)
             matrix_c = ((matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale)
             matrix_c_low = ((matrix_c_low + broadcast_offset).to(torch.float32) * broadcast_scale)
