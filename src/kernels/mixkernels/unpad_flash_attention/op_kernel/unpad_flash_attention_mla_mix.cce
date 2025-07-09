@@ -98,7 +98,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
     uint32_t data_shape_type = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 24));
     uint32_t tilingKey = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 16));
     uint32_t window_size = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 27));
-    bool swa_flag = (window_size > 0);
+    bool swa_flag = (window_size > 0 && (tilingKey == 4 || tilingKey == 5));
 
     uint32_t group_num = q_heads / kv_heads;
     uint64_t stride_qo = q_heads * embd;
@@ -682,7 +682,7 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla(
     uint32_t data_shape_type =(uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 24));
     uint32_t window_size = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 27));
     uint32_t tilingKey = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 16));
-    bool swa_flag = (window_size > 0);
+    bool swa_flag = (window_size > 0 && (tilingKey == 4 || tilingKey == 5));
     bool swa_compress = (tilingKey == 5);
     
     uint64_t stride_qo = q_heads * embdv;

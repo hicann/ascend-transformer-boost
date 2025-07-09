@@ -582,43 +582,6 @@ private:
     uint32_t tiling_data_shape{0};
     uint32_t window_size{0};
 };
-extern "C" __global__ __aicore__ void unpad_flashattention_mla_bf16(
-    __gm__ uint8_t *__restrict__ sync,
-    __gm__ uint8_t *__restrict__ q_gm,
-    __gm__ uint8_t *__restrict__ k_gm,
-    __gm__ uint8_t *__restrict__ v_gm,
-    __gm__ uint8_t *__restrict__ layerID_gm,
-    __gm__ uint8_t *__restrict__ mask_gm,
-    __gm__ uint8_t *__restrict__ alibi_coeff_gm,
-    __gm__ uint8_t *__restrict__ deq_qk_gm,
-    __gm__ uint8_t *__restrict__ off_qk_gm,
-    __gm__ uint8_t *__restrict__ deq_pv_gm,
-    __gm__ uint8_t *__restrict__ off_pv_gm,
-    __gm__ uint8_t *__restrict__ quant_p_gm,
-    __gm__ uint8_t *__restrict__ logN_gm,
-    __gm__ uint8_t *__restrict__ o_gm,
-    __gm__ uint8_t *__restrict__ s_gm,
-    __gm__ uint8_t *__restrict__ p_gm,
-    __gm__ uint8_t *__restrict__ o_tmp_gm,
-    __gm__ uint8_t *__restrict__ upo_tmp_gm,
-    __gm__ uint8_t *__restrict__ tiling_para_gm)
-{
-    uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
-    // 仅在tilingKey为1的时候是bf，其余场景均当做half处理
-    if (tilingKey == 1) {
-        FlashAttentionEncoderHighPrecision<__bf16> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run<true>();
-    } else if (tilingKey == 4) {
-        FlashAttentionEncoderHighPrecision<__bf16, true, false> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run<true>();
-    } else if (tilingKey == 5) {
-        FlashAttentionEncoderHighPrecision<__bf16, true, true> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run<true>();
-    } else {
-        FlashAttentionEncoderHighPrecision<half, false, false> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
-        fa_cube.Run<false>();
-    }
-}
 
 #elif __DAV_C220_VEC__
 constexpr int32_t BLOCK_SIZE = 16;
@@ -2582,6 +2545,7 @@ private:
     uint32_t tiling_data_shape_type{0};
     uint32_t window_size{0};
 };
+#endif
 
 extern "C" __global__ __aicore__ void unpad_flashattention_mla_bf16(
     __gm__ uint8_t *__restrict__ sync,
@@ -2606,18 +2570,37 @@ extern "C" __global__ __aicore__ void unpad_flashattention_mla_bf16(
 {
     uint32_t tilingKey = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 16));
     // 仅在tilingKey为1的时候是bf，其余场景均当做half处理
-    if (tilingKey == 1) {
+    if (TILING_KEY_IS(1)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<__bf16> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run<true>();
+#elif __DAV_C220_VEC__
         FlashAttentionEncoderHighPrecisionVec<__bf16, false, false> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_vec.Run<true>();
-    } else if (tilingKey == 4) {
+#endif
+    } else if (TILING_KEY_IS(4)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<__bf16, true, false> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run<true>();
+#elif __DAV_C220_VEC__
         FlashAttentionEncoderHighPrecisionVec<__bf16, true, false> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_vec.Run<true>();
-    } else if (tilingKey == 5) {
+#endif
+    } else if (TILING_KEY_IS(5)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<__bf16, true, true> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run<true>();
+#elif __DAV_C220_VEC__
         FlashAttentionEncoderHighPrecisionVec<__bf16, true, true> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_vec.Run<true>();
-    } else {
+#endif
+    } else if (TILING_KEY_IS(0)) {
+#ifdef __DAV_C220_CUBE__
+        FlashAttentionEncoderHighPrecision<half, false, false> fa_cube(sync, q_gm, k_gm, v_gm, layerID_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
+        fa_cube.Run<false>();
+#elif __DAV_C220_VEC__
         FlashAttentionEncoderHighPrecisionVec<half, false, false> fa_vec(sync, mask_gm, alibi_coeff_gm, o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         fa_vec.Run<false>();
+#endif
     }
 }
-#endif
