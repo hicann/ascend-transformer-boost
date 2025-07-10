@@ -3942,7 +3942,7 @@ class ElewiseOperation(DataGen):
         return [out]
 
     def elewiseDynamicQuant(in_tensors, op_params):
-        input_x = in_tensors[0].cpu().numpy()
+        input_x = in_tensors[0].to(torch.float32).cpu().numpy()
         json_data = json.loads(op_params)
         if json_data["quantParam"]["asymmetric"]:
             row_max = np.max(input_x, axis=-1, keepdims=True)
@@ -3972,11 +3972,10 @@ class ElewiseOperation(DataGen):
             elif outDtype == 36:
                 dmax = np.float32(448.0)
 
-            x = input_x.astype(np.float32)
-            input_abs = np.abs(x)
+            input_abs = np.abs(input_x)
             input_max = np.max(input_abs, axis=-1, keepdims=True)
             scale = input_max * (np.float32(1.0) / dmax)
-            input_scaled = x / scale
+            input_scaled = input_x / scale
 
             round_data = input_scaled if (outDtype) in (34, 35, 36) else np.round(input_scaled, 0)
             
