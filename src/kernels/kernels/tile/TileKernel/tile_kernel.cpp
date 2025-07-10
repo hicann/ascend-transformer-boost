@@ -74,11 +74,6 @@ public:
                      return false);
         return true;
     }
-    
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return AsdOps::Status::OkStatus();
-    }
 };
 REG_KERNEL_BASE(TileF16Kernel);
 } // namespace AsdOps
