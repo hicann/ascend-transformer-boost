@@ -465,7 +465,10 @@ class MoeTestDate:
             tmp_matrix_c = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
             matrix_c_out = tmp_matrix_c.clone()
             self.matrix_c = matrix_c_out
-            self.matrix_c_low = matrix_c_out.to(l0c_dtype_low)
+            if coc_dtype_desc == CoCDataTypeDesc.BF16BF16_FP32_BF16:
+                self.matrix_c_low = torch.matmul(self.matrix_a, self.matrix_b)
+            else:
+                self.matrix_c_low = matrix_c_out.to(l0c_dtype_low)
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
             assert quant_info.dequant_granularity in [QuantGranularity.PER_CHANNEL, QuantGranularity.PER_TENSOR,
                                                       QuantGranularity.PER_TOKEN, QuantGranularity.FLOAT32_SCALE_PER_CHANNEL]
