@@ -86,7 +86,6 @@ def one_golden_compare(tensor_a, tensor_b):
     if result:
         return 0
     else:
-        output_error_item(tensor_a, tensor_b)
         return 1
 
 
