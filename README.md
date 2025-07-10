@@ -32,7 +32,12 @@ ATB加速库采用了一系列优化策略，包括算法优化、硬件优化�
     ```
  - 无法获取ascend-op-common-lib代码仓时，可通过安装nnal软件包获取对应so文件<br>
     - 安装步骤可参考 `run包使用`
-    - 版本配套关系：nnal软件包需保持和toolkit及kernels软件包版本一致
+    - 代码及软件包版本对应关系：<br>
+        nnal软件包需保持和toolkit及kernels软件包版本一致
+        |CANN|代码分支|
+        |-|-|
+        |CANN 8.1.RC1|br_feature_cann_8.2.RC1_0515POC_20250630|
+
     - 执行 
         ```sh
         source {install path}/nnal/atb/set_env.sh
