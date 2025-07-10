@@ -4,7 +4,6 @@ import torch_npu
 import acl
 import unittest
 
-device_id = 7
 class topktopp:
     def __init__(self):
         self.param = torch_atb.TopkToppSamplingParam()
@@ -12,7 +11,7 @@ class topktopp:
         self.param.log_probs_size = 15
         self.op = torch_atb.Operation(self.param)
     
-    def forward(self, tensor: list[torch.tensor]) -> list[torch.tensor]:
+    def forward(self, tensor: List[torch.Tensor]) -> List[torch.Tensor]:
         return self.op.forward(tensor)
 
 def gen_inputs():
@@ -25,8 +24,8 @@ def gen_inputs():
 
 def run_test():
     print("----------- topk_topp_sampling test begin ------------")
-    topktopsampling = topktopp()
-    topktopsampling.forward(gen_inputs())
+    topktoppsampling = topktopp()
+    topktoppsampling.forward(gen_inputs())
     print("----------- topk_topp_sampling test success ------------")
     
 class TestTopkToppSampling(unittest.TestCase):
