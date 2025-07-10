@@ -33,6 +33,7 @@ set(norm_srcs
     ${CMAKE_CURRENT_LIST_DIR}/rmspostnormquant/tiling/rms_post_norm_quant_tiling.cpp
     ${CMAKE_CURRENT_LIST_DIR}/gatherprermsnorm/gather_pre_rms_norm_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/gatherprermsnorm/tiling/gather_pre_rms_norm_tiling.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/common/mki_specific_attr/norm_attr.cpp
 )
 
 add_operation(NormOperation "${norm_srcs}")
@@ -60,12 +61,6 @@ add_kernel(ada_layer_norm
 
 add_kernel(ada_layer_norm
     ascend310p vector adalayernorm/op_kernel/ada_layernorm.cpp AdaLayerNormKernel)
-
-add_kernel(post_layer_norm
-    ascend910b vector postlayernorm/op_kernel/post_layer_norm.cpp PostLayerNormF16Kernel)
-
-add_kernel(post_layer_norm
-    ascend310p vector postlayernorm/op_kernel/post_layer_norm.cpp PostLayerNormF16Kernel)
 
 add_kernel(post_layer_norm_quant
     ascend910b vector postlayernorm/op_kernel/post_layer_norm_quant.cpp
