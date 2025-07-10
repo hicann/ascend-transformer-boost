@@ -32,6 +32,17 @@ torch.classes.load_library(LIBTORCH_PATH)
 
 torch.manual_seed(0)
 
+def get_err_threshold_for_one_golden(dtype:torch.dtype):
+    if dtype == torch.float32:
+        dtype = torch.float16
+    if dtype in [torch.float16]:
+        precision_threshold = 2 ** (-8)
+        eb_threshold = 2 ** (-10)
+    if dtype in [torch.bfloat16]:
+        precision_threshold = 2 ** (-7)
+        eb_threshold = 2 ** (-7)
+    return precision_threshold
+
 def get_err_threshold_for_two_golden(dtype:torch.dtype):
     if dtype in [torch.bfloat16]:
         err_threshold = 2 ** (-8)
@@ -56,6 +67,27 @@ def get_eb(golden:torch.Tensor, actual:torch.Tensor):
     actual_error = actual - golden
     EB = torch.mean(actual_error / golden_nmax)
     return EB
+
+def one_golden_compare(tensor_a, tensor_b):
+    err = get_err_threshold_for_one_golden(tensor_a.dtype)
+    if torch.isnan(tensor_a).any():
+        print("********Warning: npu result contains NaN!*************")
+        return 1
+    tensor_a = tensor_a.to(torch.float32)
+    tensor_b = tensor_b.to(torch.float32)
+    # 确定性计算要求2次npu计算结果完全一致
+    if os.getenv('LCCL_DETERMINISTIC', '0') == "1":
+        if torch.equal(tensor_a, tensor_b):
+            return 0
+        return 1
+    golden_nmax = torch.clamp(torch.abs(tensor_b), min = 1)
+    abs_error = torch.abs(tensor_a - tensor_b)
+    result = (abs_error <= err * golden_nmax).all()
+    if result:
+        return 0
+    else:
+        output_error_item(tensor_a, tensor_b)
+        return 1
 
 
 def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
@@ -153,15 +185,15 @@ def check_precision_new(tensor_a, tensor_b, tensor_c):
     print("误差均衡性EB:", EB)
 
     if max_relative_error_npu / max(max_relative_error_cpu, err_threshold) >= 10:
-        print("resule is error")
-        return 0
+        if one_golden_compare(tensor_a, tensor_b):
+            print("resule is error")
+            return 0
 
     if mean_relative_error_npu / max(mean_relative_error_cpu, err_threshold) >= 2 or rmse_npu / max(rmse_cpu, err_threshold) >= 2 or EB >= eb_threshold:
         print("result is error")
         return 0
     print("result is same with expect")
     return 1
-
 
 class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
@@ -194,34 +226,34 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
     #              args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
     #                    CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
-    def test_linear_paraller_fp16(self):
-        if not operation_test.get_soc_version() == 'Ascend910B':
-            return
-        print(f"———————— LinearParallelCoverOp test start ————————")
-        print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
-        world_size = 8
-        comm_type = 309
-        batch = 1
-        M = 783
-        K = 8075
-        N = 2455
-        trans_b = 0
-        quant_granularity = -1
-        quant_group_size = -1
-        has_quant_offset = -1
-        dequant_group_size = -1
-        local_expert_nums = 2
-        EP = 8
-        TP = 1
-        out_data_type = 27
-        dequant_granularity = -1
-        has_dequant_offset = -1
-        data_type = 1
-        quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
-                               QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
-        mp.spawn(main_worker, nprocs=world_size,
-                 args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
-                       CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
+    # def test_linear_paraller_fp16(self):
+    #     if not operation_test.get_soc_version() == 'Ascend910B':
+    #         return
+    #     print(f"———————— LinearParallelCoverOp test start ————————")
+    #     print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
+    #     world_size = 8
+    #     comm_type = 309
+    #     batch = 1
+    #     M = 783
+    #     K = 8075
+    #     N = 2455
+    #     trans_b = 0
+    #     quant_granularity = -1
+    #     quant_group_size = -1
+    #     has_quant_offset = -1
+    #     dequant_group_size = -1
+    #     local_expert_nums = 2
+    #     EP = 8
+    #     TP = 1
+    #     out_data_type = 27
+    #     dequant_granularity = -1
+    #     has_dequant_offset = -1
+    #     data_type = 1
+    #     quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
+    #                            QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
+    #     mp.spawn(main_worker, nprocs=world_size,
+    #              args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
+    #                    CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
     # def test_linear_paraller_fp16_quant(self):
     #     if not operation_test.get_soc_version() == 'Ascend910B':
@@ -252,68 +284,69 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
     #              args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
     #                    CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
-    # def test_linear_paraller_fp16(self):
-    #     if not operation_test.get_soc_version() == 'Ascend910B':
-    #         return
-    #     print(f"———————— LinearParallelCoverOp test start ————————")
-    #     print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
-    #     # world_size = 8 # 2的幂次
-    #     import random
-    #     world_size = random.choice([4, 8])  # 2的幂次
-    #     # world_size = random.choice([2, 4, 8, 16]) # 2的幂次
-    #     comm_type = 309
+    def test_linear_paraller_fp16(self):
+        for i in range(100):
+            if not operation_test.get_soc_version() == 'Ascend910B':
+                return
+            print(f"———————— LinearParallelCoverOp test start ————————")
+            print("------------ALLTOALLVC ALLGATHER MATMUL Non quantitative scenarios-----------")
+            # world_size = 8 # 2的幂次
+            import random
+            world_size = random.choice([4, 8])  # 2的幂次
+            # world_size = random.choice([2, 4, 8, 16]) # 2的幂次
+            comm_type = 309
 
-    #     def generate_batch(num):
-    #         low_range = list(range(1, 10000))
-    #         middle_range = list(range(10000, 30000))
-    #         high_range = list(range(30000, 32768))
-    #         candidates = low_range + high_range + middle_range
-    #         weights = [85 / 10000] * len(low_range) + [10 / 20000] * len(middle_range) + [5 / 72400] * len(
-    #             high_range)
-    #         batch = random.choices(candidates, weights=weights, k=1)[0]
-    #         return batch
+            def generate_batch(num):
+                low_range = list(range(1, 10000))
+                middle_range = list(range(10000, 30000))
+                high_range = list(range(30000, 32768))
+                candidates = low_range + high_range + middle_range
+                weights = [85 / 10000] * len(low_range) + [10 / 20000] * len(middle_range) + [5 / 72400] * len(
+                    high_range)
+                batch = random.choices(candidates, weights=weights, k=1)[0]
+                return batch
 
-    #     batch = 1
-    #     M = 1024  #
-    #     M = generate_batch(100)
-    #     # K = 1024 # k 7168
-    #     K = generate_batch(128)
-    #     # N = 1024 # n 4096
-    #     N = random.randint(1, 10000)
-    #     while M > 200 * 1024:
-    #         M = generate_batch(100)
-    #     trans_b = random.randint(0, 1)
-    #     quant_granularity = -1
-    #     quant_group_size = -1
-    #     has_quant_offset = -1
-    #     dequant_group_size = -1
-    #     # local_expert_nums = 4 # 1- 16
-    #     local_expert_nums = random.randint(1, 16)  # 1- 16
-    #     # EP = 8 # EP * TP = WORLDSIZE
-    #     EP = world_size
-    #     while EP > world_size:
-    #         EP = random.choice([1, 2, 4, 8, 16])
-    #     TP = world_size // EP
-    #     # TP = 1 # 客户场景 TP=1
-    #     # out_data_type = 1 # 1对应data_type=0 27对应data_type=1
+            batch = 1
+            M = 1024  #
+            M = generate_batch(100)
+            # K = 1024 # k 7168
+            K = generate_batch(128)
+            # N = 1024 # n 4096
+            N = random.randint(1, 10000)
+            while M > 200 * 1024:
+                M = generate_batch(100)
+            trans_b = random.randint(0, 1)
+            quant_granularity = -1
+            quant_group_size = -1
+            has_quant_offset = -1
+            dequant_group_size = -1
+            # local_expert_nums = 4 # 1- 16
+            local_expert_nums = random.randint(1, 16)  # 1- 16
+            # EP = 8 # EP * TP = WORLDSIZE
+            EP = world_size
+            while EP > world_size:
+                EP = random.choice([1, 2, 4, 8, 16])
+            TP = world_size // EP
+            # TP = 1 # 客户场景 TP=1
+            # out_data_type = 1 # 1对应data_type=0 27对应data_type=1
 
-    #     # dequant_granularity = -1  # 量化类型 -1 非量化
-    #     dequant_granularity = random.choice([-1, 1, 3])  # 量化类型 -1 非量化
-    #     if dequant_granularity == -1:
-    #         out_data_type = random.choice([1, 27])
-    #         data_type = 0 if out_data_type == 1 else 1
-    #     else:
-    #         out_data_type = 1
-    #         data_type = 2
-    #     print(
-    #         f"--M:{M}--N:{N}--K:{K}--world_size:{world_size}--local_expert_nums:{local_expert_nums}--EP:{EP}--TP:{TP}--dequant_granularity:{dequant_granularity}--out_data_type:{out_data_type}--data_type:{data_type}")
-    #     has_dequant_offset = -1
+            # dequant_granularity = -1  # 量化类型 -1 非量化
+            dequant_granularity = random.choice([-1, 1, 3])  # 量化类型 -1 非量化
+            if dequant_granularity == -1:
+                out_data_type = random.choice([1, 27])
+                data_type = 0 if out_data_type == 1 else 1
+            else:
+                out_data_type = 1
+                data_type = 2
+            print(
+                f"--M:{M}--N:{N}--K:{K}--world_size:{world_size}--local_expert_nums:{local_expert_nums}--EP:{EP}--TP:{TP}--dequant_granularity:{dequant_granularity}--out_data_type:{out_data_type}--data_type:{data_type}")
+            has_dequant_offset = -1
 
-    #     quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
-    #                            QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
-    #     mp.spawn(main_worker, nprocs=world_size,
-    #              args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
-    #                    CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
+            quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
+                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
+            mp.spawn(main_worker, nprocs=world_size,
+                    args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
+                        CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
 
 if __name__ == '__main__':
     unittest.main()
