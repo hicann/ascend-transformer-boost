@@ -16,6 +16,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/core/op_param_funcs.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace atb {
 static const uint32_t IN_TENSOR_NUM = 1;
@@ -62,8 +63,10 @@ Status SortOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
 Status SortOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
     const TensorDesc &xTensorDesc = inTensorDescs.at(0);
-    if (!GetSingleton<Config>().Is910B() && xTensorDesc.dtype == ACL_FLOAT) {
-        ATB_LOG(ERROR) << "SortOperation of the float type supports only the Atlas 800 A2 inference products.";
+    if (!GetSingleton<Config>().Is910B() &&
+        Mki::PlatformInfo::Instance().GetPlatformType() != Mki::PlatformType::ASCEND_910_95 &&
+        xTensorDesc.dtype == ACL_FLOAT) {
+        ATB_LOG(ERROR) << "SortOperation of the float type supports only the Atlas 800 A2 or A5 inference products.";
         return ERROR_INVALID_TENSOR_DTYPE;
     }
     Status status = ParamCheckImpl(xTensorDesc);
