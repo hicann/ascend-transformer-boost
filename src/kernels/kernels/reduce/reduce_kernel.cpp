@@ -136,25 +136,7 @@ public:
         : ReduceKernel(kernelName, handle)
     {
     }
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return AsdOps::Status::OkStatus();
-    }
 };
 REG_KERNEL_BASE(ReduceSumAptF16Kernel);
-
-// SumAptBF16
-class ReduceSumAptBF16Kernel : public ReduceKernel {
-public:
-    explicit ReduceSumAptBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
-        : ReduceKernel(kernelName, handle)
-    {
-    }
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return AsdOps::Status::OkStatus();
-    }
-};
-REG_KERNEL_BASE(ReduceSumAptBF16Kernel);
 
 } // namespace AsdOps

@@ -54,10 +54,6 @@ public:
         : RmsNormLingQuKernel(kernelName, handle)
     {
     }
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return AsdOps::Status::OkStatus();
-    }
 };
 REG_KERNEL_BASE(RmsNormLingQuF16Kernel);
 class RmsNormLingQuBF16Kernel : public RmsNormLingQuKernel {
@@ -65,10 +61,6 @@ public:
     explicit RmsNormLingQuBF16Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : RmsNormLingQuKernel(kernelName, handle)
     {
-    }
-    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
-    {
-        return AsdOps::Status::OkStatus();
     }
 };
 REG_KERNEL_BASE(RmsNormLingQuBF16Kernel);
