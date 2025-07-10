@@ -127,7 +127,7 @@ static bool ParamRangeCheck(const infer::MultiLatentAttentionParam &opParam)
         return false;
     }
     if (opParam.maskType < infer::MultiLatentAttentionParam::MaskType::UNDEFINED ||
-        opParam.maskType > infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
+        opParam.maskType > infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SWA_NORM) {
         ATB_LOG(ERROR) << "invalid maskType";
         return false;
     }
@@ -157,13 +157,20 @@ static bool ParamPrefillCheck(const infer::MultiLatentAttentionParam &opParam)
     }
     if (opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
         opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_MASK_FREE &&
-        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK) {
-        ATB_LOG(ERROR) << "Prefill, maskType support UNDEFINED and MASK_TYPE_MASK_FREE";
+        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_CAUSAL_MASK &&
+        opParam.maskType != infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SWA_NORM) {
+        ATB_LOG(ERROR) << "Prefill, maskType support UNDEFINED, MASK_TYPE_MASK_FREE and MASK_TYPE_SWA_NORM";
         return false;
     }
     if (opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
         ATB_LOG(ERROR) << "Prefill, cacheMode should be KROPE_CTKV";
         return false;
+    }
+    if (opParam.maskType == infer::MultiLatentAttentionParam::MaskType::MASK_TYPE_SWA_NORM) {
+        if (opParam.windowSize <= 0) {
+            ATB_LOG(ERROR) << "Prefill, windowSize in swa mode should be greater than 0";
+            return false;
+        }
     }
     return true;
 }

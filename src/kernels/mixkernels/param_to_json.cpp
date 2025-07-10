@@ -163,6 +163,7 @@ std::string MLAToJson(const Any &param)
     paramsJson["qSeqLen"] = specificParam.qSeqLen;
     paramsJson["kvSeqLen"] = specificParam.kvSeqLen;
     paramsJson["isRing"] = specificParam.isRing;
+    paramsJson["windowSize"] = specificParam.windowSize;
     return paramsJson.dump();
 }
 

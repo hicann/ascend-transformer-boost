@@ -241,6 +241,22 @@ inline Status PrefillPreCheck(OpParam::MLA &param)
     return Status::OkStatus();
 }
 
+Status GetSwaMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param, const Tensor tensorMask)
+{
+    auto maxQSeq = std::max_element(param.qSeqLen.begin(), param.qSeqLen.end());
+    if (*maxQSeq != 1) {
+        auto maskShape = tensorMask.desc.dims;
+        auto maskDim = maskShape.size();
+        int32_t maxSeq = maskShape.at(maskDim - 1);
+        mmInfo.maxSeqLen = maxSeq;
+        MKI_CHECK(maskDim == DIM_2, "maskdim invalid",
+            return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(maskShape.at(0) <= maskShape.at(1),
+            "mask shape invalid, maxkv should be larger than maxq",
+            return Status::FailStatus(ERROR_INVALID_VALUE));
+    }
+    return Status::OkStatus();
+}
 
 inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
                                   const Tensor &tensorMask)
@@ -253,6 +269,10 @@ inline Status GetPrefiillMaskInfo(MLAInfo &mmInfo, OpParam::MLA &param,
     auto maskShape = tensorMask.desc.dims;
     auto maxKvSeq = std::max_element(param.kvSeqLen.begin(), param.kvSeqLen.end());
     MKI_LOG(INFO) << "max kv seq" << *maxKvSeq;
+    if (maskType == OpParam::MLA::MASK_TYPE_SWA_NORM) {
+        auto ret = GetSwaMaskInfo(mmInfo, param, tensorMask);
+        return ret;
+    }
     auto maskDim = maskShape.size();
     int32_t maxSeq = maskShape.at(maskDim - 1);
     mmInfo.maxSeqLen = maxSeq;
@@ -276,6 +296,8 @@ inline Status MLAPrefillPostCheck(MLAInfo &mmInfo, OpParam::MLA &param)
                 return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.embeddingSizeV <= MAX_EMBEDDING && mmInfo.embeddingSizeV > 0, "headdimV is invalid",
                 return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK((mmInfo.maskType == OpParam::MLA::MASK_TYPE_SWA_NORM) == (mmInfo.windowSize > 0),
+                "swa windowSize should be greater than 0", return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
 }
 
@@ -301,6 +323,7 @@ void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, int32_t batch, int
     mmInfo.tor = param.tor;
     mmInfo.kvHeads = param.kvHead == 0 ? param.headSize : param.kvHead;
     mmInfo.maskType = static_cast<uint32_t>(param.maskType);
+    mmInfo.windowSize = static_cast<uint32_t>(param.windowSize);
 }
 
 Status InitInfo(MLAInfo &mmInfo, OpParam::MLA &param)

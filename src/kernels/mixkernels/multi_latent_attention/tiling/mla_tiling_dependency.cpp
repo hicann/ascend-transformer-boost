@@ -63,6 +63,7 @@ const int32_t NUM14 = 14;
 const int32_t NUM15 = 15;
 const int32_t NUM16 = 16;
 const int32_t NUM17 = 17;
+const int32_t NUM18 = 18;
 const int32_t NUM32 = 32;
 const int32_t NUM64 = 64;
 const int32_t NUM128 = 128;
@@ -422,9 +423,25 @@ void FillPrefillTilingOffsetParam(int32_t seqIdx, AddrOffsets &addrOffsets, uint
                                         GetLoww32Bit(addrOffsets.addrOSeqOffset);
 }
 
+uint32_t GetPrefillTilingKey(const MLAInfo &mmInfo)
+{
+    uint32_t prefillTilingKey = 0;
+    if (mmInfo.maskType == 0) {
+        prefillTilingKey = 1;
+    } else if (mmInfo.maskType == 6) {
+        prefillTilingKey = 3;
+    } else if (mmInfo.maskType > 0) {
+        prefillTilingKey = 2;
+    } else {
+        MKI_LOG(ERROR) << "prefill maskType should be larger than 0!";
+    }
+    return prefillTilingKey;
+}
+
 void PrefillTilingHead(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffsets &addrOffsets,
                        uint32_t *tilingParam, int32_t kvRealHeads)
 {
+    uint32_t prefillTilingKey = GetPrefillTilingKey(mmInfo);
     tilingParam[NUM0] = static_cast<uint32_t>(mmInfo.batch);
     tilingParam[NUM1] = static_cast<uint32_t>(mmInfo.maxSeqLen);
     tilingParam[NUM2] = static_cast<uint32_t>(mmInfo.numHeads);
@@ -437,12 +454,13 @@ void PrefillTilingHead(const MLAInfo &mmInfo, const uint32_t &torUptr, AddrOffse
     tilingParam[NUM9] = static_cast<uint32_t>(addrOffsets.totalQBlkNum);
     tilingParam[NUM10] = static_cast<uint32_t>(TILING_HEAD_SIZE_PREFILL);
     tilingParam[NUM11] = static_cast<uint32_t>(TILING_PARA_SIZE_PREFILL);
-    tilingParam[NUM12] = mmInfo.maskType == 0 ? 1 : 2;
+    tilingParam[NUM12] = static_cast<uint32_t>(prefillTilingKey);
     tilingParam[NUM13] = 0;
     tilingParam[NUM14] = mmInfo.maxKvSeqLen;
     tilingParam[NUM15] = mmInfo.maskType;
     tilingParam[NUM16] = static_cast<uint32_t>(mmInfo.embeddingSizeV);
     tilingParam[NUM17] = mmInfo.maxKvSeqLen; // for bnsd, not used
+    tilingParam[NUM18] = mmInfo.windowSize;
 }
 
 int32_t GetKvFactor(const MLAInfo &mmInfo, int32_t kvSeqlen)

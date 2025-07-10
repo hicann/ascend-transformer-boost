@@ -24,7 +24,7 @@ constexpr int32_t BLOCK_SIZE = 16;
 constexpr int32_t BLOCK_SIZE_32 = 32;
 constexpr int32_t TILING_PARA_SIZE = 8;
 constexpr int32_t TILING_PARA_SIZE_PREFILL = 27;
-constexpr int32_t TILING_HEAD_SIZE_PREFILL = 18;
+constexpr int32_t TILING_HEAD_SIZE_PREFILL = 19;
 constexpr int32_t MAX_EMBEDDING = 576;
 constexpr int32_t TILING_PARA_SIZE_TP1 = 7;
 constexpr int32_t TILING_HEAD_SIZE = 18;
@@ -112,6 +112,7 @@ using MLAInfo = struct MLATilingParams {
     int32_t maskStride = 0;
     int32_t headStride = 0;
     int32_t blockDim = 0;
+    int32_t windowSize = 0;
     PrefillTensor tensors;
     std::vector<BatchNode> batchList = {};
     bool quantFlag = false;
