@@ -5278,114 +5278,114 @@ class SelfAttentionOperation(DataGen):
         ret_data = q, k, v, q_len, out
         return ret_data
 
-def calc_expect_func_encoder(batch, seqlen, heads, embed, embed_v, group_num=32, is_mask=False):
-    logging.info(f"Encoder param: batch {batch}, seqlen {seqlen}, heads {heads}, embed {embed}, embed_v {embed_v}, group_num {group_num}")
-    is_mask = is_mask
-    variate_seq = False
-    is_decoder = False
-    max_seq = 2048
-    src_type = 'float16'
-    fp32 = True
-    logging.debug(f"group_num: {group_num}")
-    logging.debug("q_seq is:")
-    if is_decoder:
-        q_seqlen, q_seqlen_aligned, q_ntokens = SelfAttentionOperation.gen_seq_len(batch, 1, variate_seq)
-        kv_seqlen, kv_seqlen_aligned, kv_ntokens = SelfAttentionOperation.gen_seq_len(batch, seqlen, variate_seq)
-    else:
-        q_seqlen, q_seqlen_aligned, q_ntokens = SelfAttentionOperation.gen_seq_len(batch, seqlen, variate_seq)
-        kv_seqlen, kv_seqlen_aligned, kv_ntokens = q_seqlen, q_seqlen_aligned, q_ntokens   # crossattention时，q_seqlen != k_seqlen
-
-    logging.debug("q_seqlen", q_seqlen)
-
-    max_s = np.max(q_seqlen)
-    ntokens2 = (q_seqlen * kv_seqlen).sum()
-
-    q = np.random.uniform(-1.0, 1.0, size=(q_ntokens, heads * embed)).astype(np.float16)
-    k = np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed)).astype(np.float16)
-    v = np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed_v)).astype(np.float16)
-
-    # TODO：增加compress mask based on isTriuMask = 1
-    mask = np.ones(shape=(1, max_s, max_s)).astype(np.float16)  # 使用当前最大seqlen生成mask
-    mask = np.triu(mask, 1)
-    mask *= -10000.0
-    logging.debug(mask)
-
-    q_offset = 0
-    k_offset = 0
-    v_offset = 0
-
-    s = None
-    _p = None
-    out = None
-
-    for idx in range(batch):
-        q_s = q_seqlen[idx]
-        kv_s = kv_seqlen[idx]
-        q_slice = q[q_offset:q_offset + q_s][:]
-        q_slice = q_slice.reshape(q_s, heads, embed)
-        q_slice = np.transpose(q_slice, (1, 0, 2))  # (heads, q_seq, embed)
-        k_slice = k[k_offset:k_offset + kv_s][:]
-        k_slice = k_slice.reshape(kv_s, group_num, embed)
-        k_slice = np.transpose(k_slice, (1, 0, 2))
-        k_slice_t = np.transpose(k_slice, (0, 2, 1))   # get K^T (kv_heads, embed, k_seq)
-        v_slice = v[v_offset:v_offset + kv_s][:]
-        v_slice = v_slice.reshape(kv_s, group_num, embed_v)
-        v_slice = np.transpose(v_slice, (1, 0, 2))
-        score = SelfAttentionOperation.group_matmul(heads, group_num, q_slice, k_slice_t)
-        if s is None:
-            s = score.reshape([-1, ])
+    def calc_expect_func_encoder(batch, seqlen, heads, embed, embed_v, group_num=32, is_mask=False):
+        logging.info(f"Encoder param: batch {batch}, seqlen {seqlen}, heads {heads}, embed {embed}, embed_v {embed_v}, group_num {group_num}")
+        is_mask = is_mask
+        variate_seq = False
+        is_decoder = False
+        max_seq = 2048
+        src_type = 'float16'
+        fp32 = True
+        logging.debug(f"group_num: {group_num}")
+        logging.debug("q_seq is:")
+        if is_decoder:
+            q_seqlen, q_seqlen_aligned, q_ntokens = SelfAttentionOperation.gen_seq_len(batch, 1, variate_seq)
+            kv_seqlen, kv_seqlen_aligned, kv_ntokens = SelfAttentionOperation.gen_seq_len(batch, seqlen, variate_seq)
         else:
-            s = np.concatenate((s, score.reshape([-1, ])), 0)
+            q_seqlen, q_seqlen_aligned, q_ntokens = SelfAttentionOperation.gen_seq_len(batch, seqlen, variate_seq)
+            kv_seqlen, kv_seqlen_aligned, kv_ntokens = q_seqlen, q_seqlen_aligned, q_ntokens   # crossattention时，q_seqlen != k_seqlen
 
-        tor = np.float16(1.0 / math.sqrt(1.0 * embed))
-        score = score * tor
+        logging.debug("q_seqlen", q_seqlen)
+
+        max_s = np.max(q_seqlen)
+        ntokens2 = (q_seqlen * kv_seqlen).sum()
+
+        q = np.random.uniform(-1.0, 1.0, size=(q_ntokens, heads * embed)).astype(np.float16)
+        k = np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed)).astype(np.float16)
+        v = np.random.uniform(-1.0, 1.0, size=(kv_ntokens, group_num * embed_v)).astype(np.float16)
+
+        # TODO：增加compress mask based on isTriuMask = 1
+        mask = np.ones(shape=(1, max_s, max_s)).astype(np.float16)  # 使用当前最大seqlen生成mask
+        mask = np.triu(mask, 1)
+        mask *= -10000.0
+        logging.debug(mask)
+
+        q_offset = 0
+        k_offset = 0
+        v_offset = 0
+
+        s = None
+        _p = None
+        out = None
+
+        for idx in range(batch):
+            q_s = q_seqlen[idx]
+            kv_s = kv_seqlen[idx]
+            q_slice = q[q_offset:q_offset + q_s][:]
+            q_slice = q_slice.reshape(q_s, heads, embed)
+            q_slice = np.transpose(q_slice, (1, 0, 2))  # (heads, q_seq, embed)
+            k_slice = k[k_offset:k_offset + kv_s][:]
+            k_slice = k_slice.reshape(kv_s, group_num, embed)
+            k_slice = np.transpose(k_slice, (1, 0, 2))
+            k_slice_t = np.transpose(k_slice, (0, 2, 1))   # get K^T (kv_heads, embed, k_seq)
+            v_slice = v[v_offset:v_offset + kv_s][:]
+            v_slice = v_slice.reshape(kv_s, group_num, embed_v)
+            v_slice = np.transpose(v_slice, (1, 0, 2))
+            score = SelfAttentionOperation.group_matmul(heads, group_num, q_slice, k_slice_t)
+            if s is None:
+                s = score.reshape([-1, ])
+            else:
+                s = np.concatenate((s, score.reshape([-1, ])), 0)
+
+            tor = np.float16(1.0 / math.sqrt(1.0 * embed))
+            score = score * tor
+            if is_mask:
+                score = score + mask[:, :q_s, :kv_s]
+            score_max = np.max(score, axis=-1)
+            score = score - score_max.reshape((heads, q_s, 1))
+            score_exp = np.exp(score.astype(np.float32))
+            if not fp32:
+                score_sum = np.sum(score_exp.astype(np.float16), axis=-1)
+                if _p is None:
+                    _p = score_exp.astype(np.float16).reshape([-1, ])
+                else:
+                    _p = np.concatenate((_p, score_exp.astype(np.float16).reshape([-1, ])), 0)
+                p = score_exp.astype(np.float16) / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
+                out_sub = SelfAttentionOperation.group_matmul(heads, group_num, p, v_slice)
+            else:
+                score_sum = np.sum(score_exp, axis=-1)
+                if _p is None:
+                    _p = score_exp.astype(np.float16).reshape([-1, ])
+                else:
+                    _p = np.concatenate((_p, score_exp.astype(np.float16).reshape([-1, ])), 0)
+                p = score_exp.astype(np.float16)
+                out_sub = SelfAttentionOperation.group_matmul(heads, group_num, p, v_slice)
+                out_sub = out_sub / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
+
+            out_sub = out_sub.reshape(heads, q_s, embed_v)
+            out_sub = np.transpose(out_sub, (1, 0, 2))
+            out_sub = np.ascontiguousarray(out_sub)
+            if out is None:
+                out = out_sub
+            else:
+                out = np.concatenate((out, out_sub), 0)
+
+            q_offset += q_s
+            k_offset += kv_s
+            v_offset += kv_s
+
+        logging.info("==> data generate finished!")
+
+        q = q.astype(src_type).reshape(-1, heads, embed)
+        k = k.astype(src_type).reshape(-1, group_num, embed)
+        v = v.astype(src_type).reshape(-1, group_num, embed_v)
+        mask = mask.astype(src_type).reshape(max_s, max_s)
+        q_len = q_seqlen.astype(np.int32)
+        out = out.astype(src_type).reshape(-1, heads, embed_v)
+        logging.info("calc_expect_func_encoder out shape", out.shape)
         if is_mask:
-            score = score + mask[:, :q_s, :kv_s]
-        score_max = np.max(score, axis=-1)
-        score = score - score_max.reshape((heads, q_s, 1))
-        score_exp = np.exp(score.astype(np.float32))
-        if not fp32:
-            score_sum = np.sum(score_exp.astype(np.float16), axis=-1)
-            if _p is None:
-                _p = score_exp.astype(np.float16).reshape([-1, ])
-            else:
-                _p = np.concatenate((_p, score_exp.astype(np.float16).reshape([-1, ])), 0)
-            p = score_exp.astype(np.float16) / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
-            out_sub = SelfAttentionOperation.group_matmul(heads, group_num, p, v_slice)
-        else:
-            score_sum = np.sum(score_exp, axis=-1)
-            if _p is None:
-                _p = score_exp.astype(np.float16).reshape([-1, ])
-            else:
-                _p = np.concatenate((_p, score_exp.astype(np.float16).reshape([-1, ])), 0)
-            p = score_exp.astype(np.float16)
-            out_sub = SelfAttentionOperation.group_matmul(heads, group_num, p, v_slice)
-            out_sub = out_sub / score_sum.reshape((heads, q_s, 1)).astype(np.float16)
-
-        out_sub = out_sub.reshape(heads, q_s, embed_v)
-        out_sub = np.transpose(out_sub, (1, 0, 2))
-        out_sub = np.ascontiguousarray(out_sub)
-        if out is None:
-            out = out_sub
-        else:
-            out = np.concatenate((out, out_sub), 0)
-
-        q_offset += q_s
-        k_offset += kv_s
-        v_offset += kv_s
-
-    logging.debug("==> data generate finished!")
-
-    q = q.astype(src_type).reshape(-1, heads, embed)
-    k = k.astype(src_type).reshape(-1, group_num, embed)
-    v = v.astype(src_type).reshape(-1, group_num, embed_v)
-    mask = mask.astype(src_type).reshape(max_s, max_s)
-    q_len = q_seqlen.astype(np.int32)
-    out = out.astype(src_type).reshape(-1, heads, embed_v)
-    print("calc_expect_func_encoder out shape", out.shape)
-    if is_mask:
-        return q, k, v, mask, q_len, out
-    return q, k, v, q_len, out
+            return q, k, v, mask, q_len, out
+        return q, k, v, q_len, out
 
     @staticmethod
     def case_preprocess(op_params, operation, input_tensor_list):
@@ -5458,7 +5458,6 @@ def calc_expect_func_encoder(batch, seqlen, heads, embed, embed_v, group_num=32,
 
         if json_data["calcType"] == 3:
             if i == 0:
-                SelfAttentionOperation.reset()
                 q_idx = 0
                 v_idx = 2
                 mask_idx = -1
