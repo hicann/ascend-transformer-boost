@@ -1,8 +1,8 @@
 import torch
 import torch_atb
 import torch_npu
-import acl
 import unittest
+from typing import List
 
 class topktopp:
     def __init__(self):
