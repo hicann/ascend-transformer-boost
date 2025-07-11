@@ -2,6 +2,7 @@ import torch
 import torch_atb
 import torch_npu
 import unittest
+import re
 from typing import List
 
 class topktopp:
@@ -22,7 +23,14 @@ def gen_inputs():
 
     return [t1, t2, t3, t4]
 
+def isValid():
+    device_name = torch.npu.get_device_name()
+    return (re.search("Ascend910B|Ascend910C|Ascend310P", device_name, re.I) and len(device_name) > 10)
+
 def run_test():
+    if not isValid():
+        print("This test case only supports 910B|910C|310P")
+        return True
     print("----------- topk_topp_sampling test begin ------------")
     topktoppsampling = topktopp()
     topktoppsampling.forward(gen_inputs())
