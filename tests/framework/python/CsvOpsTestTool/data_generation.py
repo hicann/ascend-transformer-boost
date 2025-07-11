@@ -5727,11 +5727,13 @@ class SelfAttentionOperation(DataGen):
         mask_compress = 0
         if is_mask and (asdops_param["maskType"] == 1 or asdops_param["maskType"] == 3):
             mask_compress = 1
-            no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float32)
-            no_compress_mask = np.triu(no_compress_mask, 1)
             if q.dtype == torch.bfloat16:
+                no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float32)
+                no_compress_mask = np.triu(no_compress_mask, 1)
                 no_compress_mask *= -3e38
             elif q.dtype == torch.float16:
+                no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float16)
+                no_compress_mask = np.triu(no_compress_mask, 1)
                 no_compress_mask *= -10000.0
         context_size = 128
         for idx in range(batch):
