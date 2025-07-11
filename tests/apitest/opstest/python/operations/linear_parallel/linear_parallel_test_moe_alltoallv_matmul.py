@@ -204,10 +204,10 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         world_size = 8
         comm_type = 309
         batch = 1
-        M = 3125
-        K = 6220
-        N = 8692
-        trans_b = 1
+        M = 19651
+        K = 7168
+        N = 4096
+        trans_b = 0
         quant_granularity = -1
         quant_group_size = -1
         has_quant_offset = -1
@@ -218,7 +218,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         out_data_type = 1
         dequant_granularity = 1
         has_dequant_offset = -1
-        data_type = 2
+        data_type = 0
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
         mp.spawn(main_worker, nprocs=world_size,

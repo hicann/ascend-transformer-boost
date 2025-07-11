@@ -210,24 +210,24 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
             return
         print(f"———————— LinearParallelCoverOp test start ————————")
         print("------------MATMUL REDUCESCATTER ALLTOALLVC Quantify scenarios-----------")
-        world_size = 4
+        world_size = 8
         comm_type = 310
         batch = 1
-        M = 1024
-        K = 1024
-        N = 1024
+        M = 19651
+        K = 7168
+        N = 4096
         trans_b = 0
         quant_granularity = -1
         quant_group_size = -1
         has_quant_offset = -1
         dequant_group_size = -1
-        local_expert_nums = 4
-        EP = 4
+        local_expert_nums = 8
+        EP = 8
         TP = 1
         out_data_type = 1
-        dequant_granularity = 3
-        has_dequant_offset = 0
-        data_type = 2
+        dequant_granularity = -1
+        has_dequant_offset = -1
+        data_type = 0
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
         mp.spawn(main_worker, nprocs=world_size,
