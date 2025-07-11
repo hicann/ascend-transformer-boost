@@ -3772,7 +3772,6 @@ class ElewiseOperation(DataGen):
             out = torch.from_numpy(data).to(torch.float8_e4m3fn).npu()
         else:
             return DataGen.zero(shape, datatype, format, data_gen_ranges, op_params)
-        out = [out]
         return out
 
     @staticmethod
@@ -3790,7 +3789,6 @@ class ElewiseOperation(DataGen):
             out = torch.from_numpy(data).to(torch.float8_e4m3fn).npu()
         else:
             return DataGen.one(shape, datatype, format, data_gen_ranges, op_params)
-        out = [out]
         return out
 
     @staticmethod
