@@ -3758,40 +3758,6 @@ class ElewiseOperation(DataGen):
     ELEWISE_DYNAMIC_QUANT = 19
 
     @staticmethod
-    def zero(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
-        json_data = json.loads(op_params)
-        elewiseType = json_data["outTensorType"]
-        data = np.zeros(shape)
-        out = None
-        if elewiseType == 34:
-            data = data.astype(hifloat8, copy=False).view(np.int8)
-            out = torch.from_numpy(data).npu()
-        elif elewiseType == 35:
-            out = torch.from_numpy(data).to(torch.float8_e5m2).npu()
-        elif elewiseType == 36:
-            out = torch.from_numpy(data).to(torch.float8_e4m3fn).npu()
-        else:
-            return DataGen.zero(shape, datatype, format, data_gen_ranges, op_params)
-        return out
-
-    @staticmethod
-    def one(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
-        json_data = json.loads(op_params)
-        elewiseType = json_data["outTensorType"]
-        data = np.ones(shape)
-        out = None
-        if elewiseType == 34:
-            data = data.astype(hifloat8, copy=False).view(np.int8)
-            out = torch.from_numpy(data).npu()
-        elif elewiseType == 35:
-            out = torch.from_numpy(data).to(torch.float8_e5m2).npu()
-        elif elewiseType == 36:
-            out = torch.from_numpy(data).to(torch.float8_e4m3fn).npu()
-        else:
-            return DataGen.one(shape, datatype, format, data_gen_ranges, op_params)
-        return out
-
-    @staticmethod
     def random(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
         json_data = json.loads(op_params)
         elewiseType = json_data["elewiseType"]
