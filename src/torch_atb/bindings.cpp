@@ -1167,6 +1167,7 @@ PYBIND11_MODULE(_C, m)
         .value("QUANT_TYPE_PER_TENSOR", LinearParallelParam::QuantType::QUANT_TYPE_PER_TENSOR)
         .value("QUANT_TYPE_PER_CHANNEL", LinearParallelParam::QuantType::QUANT_TYPE_PER_CHANNEL)
         .value("QUANT_TYPE_PER_GROUP", LinearParallelParam::QuantType::QUANT_TYPE_PER_GROUP)
+        .value("QUANT_TYPE_PER_TOKEN", LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN)
         .value("QUANT_TYPE_MAX", LinearParallelParam::QuantType::QUANT_TYPE_MAX);
 
     py::class_<LinearParallelParam::TwoDimTPInfo>(linearParallel, "TwoDimTPInfo")
