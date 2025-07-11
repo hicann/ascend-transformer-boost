@@ -36,6 +36,7 @@ static const uint32_t WORK_SPACE_INDEX = 6;
 static const uint32_t DTYPE_WEIGHT = 100;
 static const uint32_t BLOCK_WEIGHT = 10;
 static const int32_t NEG_ONE = -1;
+static const int32_t TWICE_WORKSPACE = 2;
 
 static bool LargeNSmallD(KernelInfo &kernelInfo, RmsNormGradTilingData &tilingDataPointer, uint32_t bufferSize,
                          uint32_t rowVal, uint32_t colVal, uint32_t coreNum)
@@ -229,7 +230,8 @@ Status RmsNormGradTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     tilingDataPointer->col = static_cast<uint32_t>(colVal);
     tilingDataPointer->avg = avgVal;
     kernelInfo.SetTilingId(tilingKey);
-    uint64_t sysWorkspaceSize = static_cast<uint64_t>(BLOCK_SIZE);
+    uint64_t sysWorkspaceSize =
+        static_cast<uint64_t>(BLOCK_SIZE + tilingDataPointer->blockDim * BLOCK_SIZE * TWICE_WORKSPACE);
     kernelInfo.GetScratchSizes().push_back(sysWorkspaceSize);
     kernelInfo.SetMemsetInfo(WORK_SPACE_INDEX, sysWorkspaceSize);
     return Status::OkStatus();
