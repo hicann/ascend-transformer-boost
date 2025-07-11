@@ -369,6 +369,14 @@ class CsvOpsTest():
             self.gpu_golden_output_tensor_list = [golden_output_tensors[1]]
             self.golden_output_tensor_list.pop()
             self.op_type = data_generation.OpTypes.CV_FUSION
+            json_data = json.loads(self.op_param_str)
+            if json_data["maskType"] != 0:
+                kv_seqLen_tesnor = golden_input_tensors[4]
+            else:
+                kv_seqLen_tesnor = golden_input_tensors[3]
+            kv_seqLen = kv_seqLen_tesnor.numpy()
+            self.max_seq = np.max(kv_seqLen)
+            self.heads = json_data['headNum']
         elif self.args.precision_standard == 'new' and self.op_type == data_generation.OpTypes.CV_FUSION:
             ip, port = self.args.gpu_info.split(':')
             logging.debug("start to get gpu golden result")
@@ -487,7 +495,56 @@ class CsvOpsTest():
             mere_rate = mere_npu / max(mere_gpu, err_threshold)
             rmse_rate = rmse_npu / max(rmse_gpu, err_threshold)
             EB = get_eb(gpu_golden_output, actual_output)
-            result = (mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2) and (EB < eb_threshold)
+            def compare_output_data(out, golden, ratios):
+                error_count = 0
+                strict_error_count = 0
+                golden = golden.flatten().to(torch.float32)
+                out = out.flatten().to(torch.float32)
+                out_len = out.shape[0]
+                diff = torch.abs(golden - out)
+                max_diff = diff.max().item()
+                limit_error = torch.maximum(torch.abs(golden * ratios[0]), torch.tensor(ratios[1]))
+                strict_limit_error = torch.maximum(torch.abs(golden * ratios[2]), torch.tensor(ratios[3]))
+                error_count = torch.gt(diff, limit_error).sum().item()
+                strict_error_count = torch.gt(diff, strict_limit_error).sum().item()
+                logging.info(f"maxDiff {max_diff}")
+                logging.info("1/1000 Accuracy is %f",  1 - float(error_count) / out_len)
+                logging.info("5/1000 Accuracy is %f",  1 - float(strict_error_count) / out_len)
+                if self.op_type == torch.bfloat16:
+                    logging.debug("accuracy is correct in old standard: %r", (float(strict_error_count) / out_len) <= ratios[2])
+                else:
+                    logging.debug("accuracy is correct in old standard: %r", (float(strict_error_count) / out_len) <= ratios[0])
+                calc_times = self.heads * self.max_seq + 4
+                if self.op_type == torch.bfloat16:
+                    if calc_times < 2048:
+                        error = 2**(-7)
+                    else :
+                        error = 2**(-6)
+                    error_threshold = torch.clamp(torch.abs(golden), min = 1) * error
+                    res = (diff <= error_threshold).all().item()
+                    logging.debug("accuracy is correct in new standard: %r", res)
+                    return res
+                elif self.op_type == torch.float16:
+                    if calc_times < 2048:
+                        error = 2**(-8)
+                    else :
+                        error = 2**(-7)
+                    error_threshold = torch.clamp(torch.abs(golden), min = 1) * error
+                    res = (diff <= error_threshold).all().item()
+                    logging.debug("accuracy is correct in new standard: %r", res)
+                    return res
+                else :
+                    if calc_times < 2048:
+                        error = 2**(-11)
+                    elif calc_times >= 2048 and calc_times < 16384:
+                        error = 2**(-10)
+                    else:
+                        error = 2**(-14)
+                    error_threshold = torch.clamp(torch.abs(golden), min = 1) * error
+                    res = (diff <= error_threshold).all().item()
+                    logging.debug("accuracy is correct in new standard: %r", res)
+                    return res
+            result = ((mare_rate < 10) and (mere_rate < 2) and (rmse_rate < 2) and (EB < eb_threshold)) or (compare_output_data(actual_output.half(), golden_output.half(), [0.001, 0.001, 0.005, 0.005]))
             logging.info(f"mare_npu:{mare_npu} mare_gpu:{mare_gpu}")
             logging.info(f"mere_npu:{mere_npu} mere_gpu:{mere_gpu}")
             logging.info(f"rmse_npu:{rmse_npu} rmse_gpu:{rmse_gpu}")
