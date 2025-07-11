@@ -110,9 +110,9 @@ public:
 };
 REG_KERNEL_BASE(Gather95F16I64Kernel);
 
-class GatherF16I32Kernel : public GatherKernel<BYTES_16BITS, TENSOR_DTYPE_INT32> {
+class Gather95F16I32Kernel : public GatherKernel<BYTES_16BITS, TENSOR_DTYPE_INT32> {
 public:
-    explicit GatherF16I32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit Gather95F16I32Kernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : GatherKernel(kernelName, handle)
     {
     }
@@ -126,7 +126,7 @@ public:
                (dtype1 == TENSOR_DTYPE_INT32 || dtype1 == TENSOR_DTYPE_UINT32);
     }
 };
-REG_KERNEL_BASE(GatherF16I32Kernel);
+REG_KERNEL_BASE(Gather95F16I32Kernel);
 
 class Gather95F32I64Kernel : public GatherKernel<BYTES_32BITS, TENSOR_DTYPE_INT64> {
 public:

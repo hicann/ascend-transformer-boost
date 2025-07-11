@@ -18,6 +18,7 @@
 #include "atb/utils/singleton.h"
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/core/op_param_funcs.h"
+#include <mki/utils/platform/platform_info.h>
 
 namespace atb {
 static const int32_t IN_TENSOR_NUM = 5;
@@ -142,6 +143,13 @@ Status RopeOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) const
                        << "cos : " << TensorUtil::TensorDescToString(inTensorDescs.at(2))   // index: 2
                        << ", sin: " << TensorUtil::TensorDescToString(inTensorDescs.at(3)); // index: 3
         return ERROR_INVALID_TENSOR_SIZE;
+    }
+
+    if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_910_95 &&
+        inTensorDescs.at(0).shape.dimNum != inTensorDescs.at(1).shape.dimNum)
+    {
+        ATB_LOG(ERROR) << GetLogPrefix() << "q k shape size should be same.";
+        return ERROR_INVALID_TENSOR_INI_MATCH;
     }
 
     return HiddenSizeCheck(inTensorDescs);

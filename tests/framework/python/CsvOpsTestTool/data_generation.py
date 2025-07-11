@@ -3168,7 +3168,8 @@ class RopeOperation(DataGen):
         hiddensizeK = 0
         headNumQ = 0
         headNumK = 0
-        realHeadNum = 0
+        realHeadNumQ = 0
+        realHeadNumK = 0
         realHeadDim = 0
         realBatch = batch
         realSeqLen = seqlen[0]
@@ -3177,14 +3178,16 @@ class RopeOperation(DataGen):
             isFour = True
             hiddensizeQ = q.shape[-1] * q.shape[-2]
             hiddensizeK = kk.shape[-1] * kk.shape[-2]
-            realHeadNum = q.shape[-2]
+            realHeadNumQ = q.shape[-2]
+            realHeadNumK = kk.shape[-2]
             realHeadDim = q.shape[-1]
             realBatch = q.shape[0]
             realSeqLen = q.shape[1]
         else:
             hiddensizeQ = q.shape[-1]
             hiddensizeK = kk.shape[-1]
-            realHeadNum = hiddensizeQ // headDim
+            realHeadNumQ = hiddensizeQ // headDim
+            realHeadNumK = hiddensizeK // headDim
             realHeadDim = cos.shape[-1]
         headNumQ = hiddensizeQ // headDim
         headNumK = hiddensizeK // headDim
@@ -3235,8 +3238,8 @@ class RopeOperation(DataGen):
             prefix_Ntokens += curr_seqLen
 
         if isFour:
-            rope_q = rope_q.reshape((realBatch, realSeqLen, realHeadNum, realHeadDim))
-            rope_k = rope_k.reshape((realBatch, realSeqLen, realHeadNum, realHeadDim))
+            rope_q = rope_q.reshape((realBatch, realSeqLen, realHeadNumQ, realHeadDim))
+            rope_k = rope_k.reshape((realBatch, realSeqLen, realHeadNumK, realHeadDim))
         print(rope_q.shape)
         if dtype == np.float32:
             return [torch.tensor(rope_q).bfloat16(), torch.tensor(rope_k).bfloat16()]
@@ -3753,6 +3756,40 @@ class ElewiseOperation(DataGen):
     ELEWISE_QUANT_PER_CHANNEL = 17
     ELEWISE_DEQUANT_PER_CHANNEL = 18
     ELEWISE_DYNAMIC_QUANT = 19
+
+    @staticmethod
+    def zero(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
+        json_data = json.loads(op_params)
+        elewiseType = json_data["outTensorType"]
+        data = np.zeros(shape)
+        out = None
+        if elewiseType == 34:
+            data = data.astype(hifloat8, copy=False).view(np.int8)
+            out = torch.from_numpy(data).npu()
+        elif elewiseType == 35:
+            out = torch.from_numpy(data).to(torch.float8_e5m2).npu()
+        elif elewiseType == 36:
+            out = torch.from_numpy(data).to(torch.float8_e4m3fn).npu()
+        else:
+            return DataGen.zero(shape, datatype, format, data_gen_ranges, op_params)
+        return out
+
+    @staticmethod
+    def one(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
+        json_data = json.loads(op_params)
+        elewiseType = json_data["outTensorType"]
+        data = np.ones(shape)
+        out = None
+        if elewiseType == 34:
+            data = data.astype(hifloat8, copy=False).view(np.int8)
+            out = torch.from_numpy(data).npu()
+        elif elewiseType == 35:
+            out = torch.from_numpy(data).to(torch.float8_e5m2).npu()
+        elif elewiseType == 36:
+            out = torch.from_numpy(data).to(torch.float8_e4m3fn).npu()
+        else:
+            return DataGen.one(shape, datatype, format, data_gen_ranges, op_params)
+        return out
 
     @staticmethod
     def random(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
