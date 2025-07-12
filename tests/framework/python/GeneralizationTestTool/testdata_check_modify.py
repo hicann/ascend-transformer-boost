@@ -2576,6 +2576,8 @@ class BlockCopyOperation(OperationValidation):
             tensor_desc.dtypes[2] = 'int32'
             tensor_desc.dtypes[3] = 'int32'
             tensor_desc.dtypes[4] = 'int32'
+            tensor_desc.formats[0] = "nd"
+            tensor_desc.formats[1] = "nd"
             tensor_desc.formats[2] = "nd"
             tensor_desc.formats[3] = "nd"
             tensor_desc.formats[4] = "nd"
@@ -2596,8 +2598,6 @@ class BlockCopyOperation(OperationValidation):
             if tensor_desc.shapes[2][0] > tensor_desc.shapes[3][0]:
                 return False
             if tensor_desc.shapes[2][0] + tensor_desc.shapes[3][0] > tensor_desc.shapes[0][0]:
-                return False
-            if tensor_desc.formats[0] == "nd" or tensor_desc.formats[1] == "nd":
                 return False
             tensor_desc.data_gen_types = ["random", "random", "customize", "customize", "customize"]
             return True
