@@ -52,7 +52,10 @@ public:
             "paged attention: param type invalid", return false);
         auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
         auto batch = param.kvSeqLen.size();
-        if (param.headSize == M_LIMIT) {
+        auto maxQSeqlen = param.qSeqLen.data() != nullptr ? *std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+        auto mtpTp1Flag = ((param.headSize == M_LIMIT) ||
+                           (launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_INT8 && maxQSeqlen > 1));
+        if (mtpTp1Flag) {
             uint64_t taskNum = param.qSeqLen.data() == nullptr ? batch :
                                std::accumulate(param.qSeqLen.data(),
                                                param.qSeqLen.data() + batch, static_cast<int32_t>(0));
