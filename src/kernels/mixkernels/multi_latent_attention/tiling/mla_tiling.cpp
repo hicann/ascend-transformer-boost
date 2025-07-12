@@ -100,8 +100,8 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
     mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
                         CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize);
     mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
-        int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
-        mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
+    int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
+    mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
     return Status::OkStatus();
 }
 
@@ -141,6 +141,11 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.flashDecoding = !mmInfo.mtpTp1Flag ? false : mmInfo.flashDecoding;
     if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
         mmInfo.maskType = 0;
+    }
+    int32_t beginQ = 0;
+    for (int32_t batchIdx = 0; batchIdx < mmInfo.batch; batchIdx++) {
+        mmInfo.batchList.push_back(BatchNode(batchIdx, *(mmInfo.kvSeqLen + batchIdx), beginQ));
+        beginQ = mmInfo.qSeqLen == nullptr ? beginQ + 1 : beginQ + *(mmInfo.qSeqLen + batchIdx);
     }
     MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
