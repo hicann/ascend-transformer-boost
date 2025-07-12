@@ -206,7 +206,12 @@ class DataGen():
         Returns:
             torch.Tensor.npu()
         '''
-        data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
+        if datatype == "float8_e4m3fn":
+            data = torch.zeros(shape, dtype=torch.float16).to(dtype=torch.float8_e4m3fn).npu()
+        elif datatype == "float8_e5m2":
+            data = torch.zeros(shape, dtype=torch.float16).to(dtype=torch.float8_e5m2).npu()
+        else:
+            data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
         return torch_npu.npu_format_cast(data, format_dict[format])
 
     @staticmethod
@@ -3505,11 +3510,15 @@ class ReshapeAndCacheOperation(DataGen):
             block_size = shapes[2][1]
         num_blocks = shapes[2][0]
         hidden_size = 4096
-        datatype_dict = {"float16": "float16", "bf16": "bfloat16", "int8": "int8"}
+        datatype_dict = {"float16": "float16", "bf16": "bfloat16", "int8": "int8", "float8_e4m3fn":"float8_e4m3fn", "float8_e5m2":"float8_e5m2"}
         dtype1 = datatype_dict[datatype]
         dtype = datatype_dict[datatype]
         if dtype1 == "bfloat16":
             dtype = "float32"
+        elif dtype1 == "float8_e4m3fn":
+            dtype = "float16"
+        elif dtype1 == "float8_e5m2":
+            dtype = "float16"
         key = np.random.uniform(-1.0, 1.0, size=(num_tokens, num_heads, head_size_k)).astype(dtype)
         value = np.random.uniform(-1.0, 1.0, size=(num_tokens_v, num_heads_v, head_size_v)).astype(dtype)
         
@@ -3579,6 +3588,14 @@ class ReshapeAndCacheOperation(DataGen):
         in_tensors = ret_data
         if dtype1 == "bfloat16":
             in_tensors = [torch.from_numpy(tensor).bfloat16() for tensor in ret_data]
+            in_tensors[4] = torch.from_numpy(ret_data[4])
+            in_tensors = [tensor.npu() for tensor in in_tensors]
+        elif dtype1 == "float8_e4m3fn":
+            in_tensors = [torch.from_numpy(tensor).to(torch.float8_e4m3fn) for tensor in ret_data]
+            in_tensors[4] = torch.from_numpy(ret_data[4])
+            in_tensors = [tensor.npu() for tensor in in_tensors]
+        elif dtype1 == "float8_e5m2":
+            in_tensors = [torch.from_numpy(tensor).to(torch.float8_e5m2) for tensor in ret_data]
             in_tensors[4] = torch.from_numpy(ret_data[4])
             in_tensors = [tensor.npu() for tensor in in_tensors]
         else:

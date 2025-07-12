@@ -24,5 +24,15 @@ private:
     infer::ReshapeAndCacheParam param_;
     Mki::Tensor nullTensor_ = {}; // 空tensor
 };
+
+class ReshapeAndCacheOpsA5Runner : public OpsRunner {
+public:
+    explicit ReshapeAndCacheOpsA5Runner(const infer::ReshapeAndCacheParam &param);
+    ~ReshapeAndCacheOpsA5Runner() override;
+
+private:
+    infer::ReshapeAndCacheParam param_;
+    Mki::Tensor nullTensor_ = {}; // 空tensor
+};
 } // namespace atb
 #endif

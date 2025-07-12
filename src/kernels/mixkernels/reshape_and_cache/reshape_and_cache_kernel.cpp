@@ -220,6 +220,10 @@ public:
         : ReshapeAndCache95Kernel(kernelName, handle)
     {
     }
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
+    }
 };
 
 class ReshapeAndCacheF8e5m2Nd95Kernel : public ReshapeAndCache95Kernel {
@@ -227,6 +231,10 @@ public:
     explicit ReshapeAndCacheF8e5m2Nd95Kernel(const std::string &kernelName, const BinHandle *handle)
         : ReshapeAndCache95Kernel(kernelName, handle)
     {
+    }
+    Status Run(const LaunchParam &launchParam, RunInfo &runInfo) override
+    {
+        return Status::OkStatus();
     }
 };
 
@@ -369,6 +377,8 @@ REG_KERNEL_BASE(ReshapeAndCacheOmniCompressKernel);
 REG_KERNEL_BASE(ReshapeAndCacheF16Nd95Kernel);
 REG_KERNEL_BASE(ReshapeAndCacheBF16Nd95Kernel);
 REG_KERNEL_BASE(ReshapeAndCacheINT8Nd95Kernel);
+REG_KERNEL_BASE(ReshapeAndCacheF8e5m2Nd95Kernel);
+REG_KERNEL_BASE(ReshapeAndCacheF8e4m3Nd95Kernel);
 REG_KERNEL_BASE(ReshapeAndCacheF16CompressAlibi95Kernel);
 REG_KERNEL_BASE(ReshapeAndCacheBF16CompressAlibi95Kernel);
 REG_KERNEL_BASE(ReshapeAndCacheINT8CompressAlibi95Kernel);

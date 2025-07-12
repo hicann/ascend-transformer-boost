@@ -88,16 +88,28 @@ ReshapeAndCacheOperation::ReshapeAndCacheOperation(const infer::ReshapeAndCacheP
     is910_95_ = GetSingleton<Config>().Is910_95();
     if (!is910b_ && !is910_95_) {
         operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationAtlas300");
-    } else if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationSISO");
-    } else if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationAtlas800A2NZ");
-    } else if (param_.compressType == infer::ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationKvHeadCompressAlibi");
-    } else if (param_.compressType == infer::ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD_ROPE) {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationKvHeadCompressRope");
-    } else {
-        operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
+    } else if (is910b_ && !is910_95_) {
+        if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationSISO");
+        } else if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationAtlas800A2NZ");
+        } else if (param_.compressType == infer::ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationKvHeadCompressAlibi");
+        } else if (param_.compressType == infer::ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD_ROPE) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationKvHeadCompressRope");
+        } else {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperation");
+        }
+    } else if (!is910b_ && is910_95_) {
+        if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationSISO");
+        } else if (param_.compressType == infer::ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationKvHeadCompressAlibi");
+        } else if (param_.compressType == infer::ReshapeAndCacheParam::COMPRESS_TYPE_KVHEAD_ROPE) {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheOperationKvHeadCompressRope");
+        } else {
+            operationIr_ = GetSingleton<AtbOperationIrCfg>().GetOperationIr("ReshapeAndCacheA5Operation");
+        }
     }
 }
 
@@ -388,7 +400,7 @@ Status ReshapeAndCacheOperation::KVCacheDimCheck310P(const SVector<TensorDesc> &
 std::shared_ptr<Runner> ReshapeAndCacheOperation::CreateRunner(Context &context) const
 {
     (void)context;
-    if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is910_95()) {
+    if (GetSingleton<Config>().Is910B()) {
         if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
             return std::make_shared<ReshapeAndCacheOpsRunnerSISO>(param_);
         } else if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
@@ -396,7 +408,15 @@ std::shared_ptr<Runner> ReshapeAndCacheOperation::CreateRunner(Context &context)
         } else {
             return std::make_shared<ReshapeAndCacheOpsRunner>(param_);
         }
-    } else {
+    } else if(GetSingleton<Config>().Is910_95()) {
+        if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_BYPASS) {
+            return std::make_shared<ReshapeAndCacheOpsRunnerSISO>(param_);
+        } else if (param_.kvCacheCfg == infer::ReshapeAndCacheParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) {
+            return std::make_shared<ReshapeAndCacheOpsRunnerA2NZ>(param_);
+        } else {
+            return std::make_shared<ReshapeAndCacheOpsA5Runner>(param_);
+        }
+    }else {
         /* NZ的场景 */
         return std::make_shared<ReshapeAndCacheOpsRunner310P>(param_);
     }

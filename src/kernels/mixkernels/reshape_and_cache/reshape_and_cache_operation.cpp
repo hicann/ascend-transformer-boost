@@ -167,7 +167,7 @@ public:
         auto offsetV = value.desc.offset;
 
         auto indtype = key.desc.dtype;
-        MKI_CHECK((indtype == TENSOR_DTYPE_FLOAT16 || indtype == TENSOR_DTYPE_BF16 || indtype == TENSOR_DTYPE_INT8),
+        MKI_CHECK((indtype == TENSOR_DTYPE_FLOAT16 || indtype == TENSOR_DTYPE_BF16 || indtype == TENSOR_DTYPE_INT8 || indtype == TENSOR_DTYPE_FLOAT8_E5M2 || indtype == TENSOR_DTYPE_FLOAT8_E4M3FN),
             "K&V&KCache&VCache should be either int8 OR float16 OR bfloat16",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
         MKI_CHECK(slot.desc.dims[DIM_0] == numTokens, "slot's dim_0 should be same as numTokens",
