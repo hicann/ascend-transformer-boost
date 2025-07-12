@@ -100,9 +100,8 @@ Status GetFlashDecodingInfo(MLAInfo &mmInfo, OpParam::MLA &param, uint32_t block
     mmInfo.splitKVNum = blockDim / mmInfo.flashDecodingTaskNum > 1 ?  blockDim / mmInfo.flashDecodingTaskNum :
                         CalcSplitNum(mmInfo, blockDim, *minKVSeqlen, mmInfo.blockSize);
     mmInfo.flashDecoding = mmInfo.splitKVNum == 1 ? false : true;
-    int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
-    mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
-    MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
+        int32_t taskNum = mmInfo.quantFlag ? mmInfo.totalTaskNum : mmInfo.batch;
+        mmInfo.normalTaskNum = taskNum / blockDim * blockDim;
     return Status::OkStatus();
 }
 
@@ -133,21 +132,17 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.numHeads = static_cast<int32_t>(param.headSize);
     mmInfo.maskType = static_cast<int32_t>(param.maskType);
     mmInfo.quantFlag = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
-    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT);
-    if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
-        mmInfo.maskType = 0;
-    }
-    int32_t beginQ = 0;
-    for (int32_t batchIdx = 0; batchIdx < mmInfo.batch; batchIdx++) {
-        mmInfo.batchList.push_back(BatchNode(batchIdx, *(mmInfo.kvSeqLen + batchIdx), beginQ));
-        beginQ = mmInfo.qSeqLen == nullptr ? beginQ + 1 : beginQ + *(mmInfo.qSeqLen + batchIdx);
-    }
     mmInfo.totalTaskNum = mmInfo.qSeqLen != nullptr ?
                           std::accumulate(mmInfo.qSeqLen, mmInfo.qSeqLen + mmInfo.batch, static_cast<int32_t>(0)) :
                           mmInfo.batch;
-    if (mmInfo.mtpTp1Flag) {
-        OP_TILING_CHECK_STATUS_RETURN(GetFlashDecodingInfo(mmInfo, param, blockDim));
+    OP_TILING_CHECK_STATUS_RETURN(GetFlashDecodingInfo(mmInfo, param, blockDim));
+    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT ||
+                         (mmInfo.flashDecoding && !mmInfo.quantFlag && mmInfo.numHeads % NUM8 == 0));
+    mmInfo.flashDecoding = !mmInfo.mtpTp1Flag ? false : mmInfo.flashDecoding;
+    if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
+        mmInfo.maskType = 0;
     }
+    MKI_LOG(INFO) << "flashDecoding is = " << mmInfo.flashDecoding;
     return Status::OkStatus();
 }
 
