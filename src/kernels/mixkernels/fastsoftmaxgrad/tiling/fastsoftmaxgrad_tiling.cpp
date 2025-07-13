@@ -51,10 +51,10 @@ inline void SetSampleTilingData(FastSoftMaxGradSampleTilingData *sampleTilingDat
         uint32_t maxCoreTileNum = Utils::CeilDiv(outerSize, maxTileRowNum * coreNum);
         uint32_t tileRowNum = Utils::CeilDiv(outerSize, maxCoreTileNum * coreNum);
         uint32_t tailTileRowNum = outerSize % tileRowNum;
-        uint32_t formerCoreNum = (outerSize / tileRowNum - 1) % coreNum + 1;
-        uint32_t latterCoreNum = coreNum - formerCoreNum;
         uint32_t formerCoreTileNum = maxCoreTileNum;
         uint32_t latterCoreTileNum = maxCoreTileNum - 1;
+        uint32_t formerCoreNum = outerSize / tileRowNum - coreNum * latterCoreTileNum;
+        uint32_t latterCoreNum = coreNum - formerCoreNum;
 
         sampleTilingDataPointer->sampleSeqLenOrigin = sampleSeqLenOrigin;
         sampleTilingDataPointer->sampleSeqLen = sampleSeqLen;
