@@ -67,9 +67,11 @@ bool CheckType(const infer::LinearParallelParam &opParam, Status &isOK)
     }
     if (opParam.quantType == atb::infer::LinearParallelParam::QuantType::QUANT_TYPE_PER_TOKEN &&
         opParam.type != atb::infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM &&
-        opParam.type != atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
-        ATB_LOG(ERROR) << "LinearParallel backend lcoc only ALLTOALLVC_ALL_GATHER_GMM and "
-                       << "GMM_REDUCE_SCATTER_ALLTOALLVC support quantType[QUANT_TYPE_PER_TOKEN]";
+        opParam.type != atb::infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC &&
+        opParam.type != atb::infer::LinearParallelParam::ParallelType::LINEAR_ALL_REDUCE) {
+        ATB_LOG(ERROR) << "When LinearParallel backend is lcoc, "
+                       << "only ALLTOALLVC_ALL_GATHER_GMM, GMM_REDUCE_SCATTER_ALLTOALLVC and LINEAR_ALL_REDUCE"
+                       << " support quantType[QUANT_TYPE_PER_TOKEN]";
         isOK = ERROR_INVALID_PARAM;
         return true;
     }
