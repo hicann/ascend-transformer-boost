@@ -56,7 +56,6 @@ inline void SetSampleTilingData(FastSoftMaxGradSampleTilingData *sampleTilingDat
         uint32_t formerCoreNum = outerSize / tileRowNum - coreNum * latterCoreTileNum;
         uint32_t latterCoreNum = coreNum - formerCoreNum;
 
-
         sampleTilingDataPointer->sampleSeqLenOrigin = sampleSeqLenOrigin;
         sampleTilingDataPointer->sampleSeqLen = sampleSeqLen;
         sampleTilingDataPointer->outerSize = outerSize;
