@@ -12,6 +12,7 @@
 #include <mki/utils/const/op_const.h>
 #include <mki_loader/op_register.h>
 #include "atbops/params/params.h"
+#include "sink_common.h"
 
 namespace AtbOps {
 using namespace Mki;
@@ -49,14 +50,15 @@ public:
 
     Status InferShapeImpl(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const override
     {
-       MKI_CHECK(CheckPad(launchParam), "Failed to check launch param",
+        MKI_CHECK(CheckPad(launchParam), "Failed to check launch param",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Failed to check launch param"));
-        outTensors[0].desc = launchParam.GetInTensor(DIM_0).desc; // out
-        auto hiddenDim = launchParam.GetInTensor(DIM_0).desc.dims[1];
-        outTensors[0].desc.dims[1] = hiddenDim;
-        outTensors[0].desc.dims[0] = launchParam.GetInTensor(DIM_3).desc.dims[0];
-
-        return Status::OkStatus();
+        for (auto &t: outTensors) {
+            Mki::TensorDesc desc;
+            desc.format = Mki::TENSOR_FORMAT_ND;
+            t.desc = desc;
+        }
+        return opInferShape::CallGeInferShape("PadInfer", launchParam, outTensors,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::Pad>);
     }
 
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override

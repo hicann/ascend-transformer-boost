@@ -14,6 +14,7 @@
 #include "mixkernels/utils/common.h"
 #include "tiling/reshape_and_cache_tiling.h"
 #include "tiling/reshape_and_cache_tiling_dependency.h"
+#include "sink_common.h"
 
 namespace AtbOps {
 using namespace Mki;
@@ -45,17 +46,28 @@ public:
         return true;
     }
 
-    uint64_t GetTilingSize(const LaunchParam &launchParam) const override
-    {
-        return TILING_PARA_SIZE; // 64 is tiling buffer size
-    }
-
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        auto status = ReshapeAndCacheTiling(launchParam, kernelInfo_);
-        MKI_CHECK_NO_LOG(status.Ok(), return status);
-
-        return Status::OkStatus();
+        auto param = AnyCast<OpParam::ReshapeAndCache>(launchParam.GetParam());
+        switch (param.type) {
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND_SISO:
+                return optiling::CallGeTiling("ReshapeAndCacheNdSiso", *GetBinHandle(), launchParam,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND:
+                return optiling::CallGeTiling("ReshapeAndCache", *GetBinHandle(), launchParam,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_NZ:
+                return optiling::CallGeTiling("ReshapeAndCacheNz", *GetBinHandle(), launchParam,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS:
+                return optiling::CallGeTiling("ReshapeAndCacheCompress", *GetBinHandle(), launchParam,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS_ROPE:
+                return optiling::CallGeTiling("ReshapeAndCacheCompressRope", *GetBinHandle(), launchParam,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>, kernelInfo_);
+            default:
+                return Status::OkStatus();
+        }
     }
 };
 

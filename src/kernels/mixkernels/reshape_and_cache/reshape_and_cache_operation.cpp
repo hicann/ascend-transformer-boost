@@ -13,6 +13,7 @@
 #include <mki_loader/op_register.h>
 #include <mki/utils/checktensor/check_tensor.h>
 #include "atbops/params/params.h"
+#include "sink_common.h"
 
 namespace AtbOps {
 using namespace Mki;
@@ -356,35 +357,34 @@ public:
             MKI_CHECK(CheckReshapeAndCacheNDSISO(launchParam),
                 "Failed to check launch param",
                 return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Failed to check launch param"));
-            auto &tensorKeyCacheIn = launchParam.GetInTensor(DIM_1);
-            outTensors[DIM_0] = tensorKeyCacheIn;
-            return Status::OkStatus();
+            return opInferShape::CallGeInferShape("ReshapeAndCacheNdSiso", launchParam, outTensors,
+                                                  AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>);
         }
 
         // 1. 检查多种reshape算子 公共部分
         MKI_CHECK(CheckCommonReshapeAndCache(launchParam), "Failed to check common launch param",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
-        auto &tensorKeyCacheIn = launchParam.GetInTensor(DIM_2);
-        auto &tensorValueCacheIn = launchParam.GetInTensor(DIM_3);
-        outTensors[DIM_0] = tensorKeyCacheIn;
-        outTensors[DIM_1] = tensorValueCacheIn;
 
         // 2. 检查各自reshape算子 私有部分
         switch (param.type) {
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_ND:
+                return opInferShape::CallGeInferShape("ReshapeAndCache", launchParam, outTensors,
+                                                      AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>);
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_NZ:
-                return CheckReshapeAndCacheNdNz(launchParam);
+                return opInferShape::CallGeInferShape("ReshapeAndCacheNz", launchParam, outTensors,
+                                                      AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>);
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS:
-                return CheckReshapeAndCacheCompress4Alibi(launchParam);
+                return opInferShape::CallGeInferShape("ReshapeAndCacheCompress", launchParam, outTensors,
+                                                      AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>);
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_WINS_ROPE:
-                return CheckReshapeAndCacheCompress4RoPE(launchParam);
+                return opInferShape::CallGeInferShape("ReshapeAndCacheCompressRope", launchParam, outTensors,
+                                                      AsdOps::GetMkiSpecificAttr<OpParam::ReshapeAndCache>);
             case OpParam::ReshapeAndCache::RESHAPE_AND_CACHE_OMNI_COMPRESS:
                 return CheckReshapeAndCacheOmniCompress4RoPE(launchParam);
             default:
                 return Status::FailStatus(ERROR_ATTR_INVALID_TYPE,
                     "Failed to check reshape param, type of specificParam is invalid");
         }
-
         return Status::OkStatus();
     }
 };

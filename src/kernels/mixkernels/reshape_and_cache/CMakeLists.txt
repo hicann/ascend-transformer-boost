@@ -12,39 +12,3 @@ set(reshape_and_cache_srcs
 )
 
 add_operation(ReshapeAndCacheOperation "${reshape_and_cache_srcs}")
-
-add_kernel(reshape_and_cache ascend910b vector
-    op_kernel/reshape_and_cache_nd.cpp
-    ReshapeAndCacheNdKernel)
-
-add_kernel(reshape_and_cache_wins ascend910b vector
-    op_kernel/reshape_and_cache_compress.cpp
-    ReshapeAndCacheCompressKernel)
-
-add_kernel(reshape_and_cache_wins_rope ascend910b vector
-    op_kernel/reshape_and_cache_compress_rope.cpp
-    ReshapeAndCacheCompressRopeKernel)
-
-add_kernel(reshape_and_cache_nz ascend910b vector
-    op_kernel/reshape_and_cache_nz.cpp
-    ReshapeAndCacheNzKernel)
-
-add_kernel(reshape_and_cache_nz ascend310p vector
-    op_kernel/reshape_and_cache_nz.cpp
-    ReshapeAndCacheNzKernel)
-
-add_kernel(reshape_and_cache_nz ascend910 vector
-    op_kernel/reshape_and_cache_nz.cpp
-    ReshapeAndCacheNzKernel)
-
-add_kernel(reshape_and_cache_siso ascend910b vector
-    op_kernel/reshape_and_cache_nd_siso.cpp
-    ReshapeAndCacheNdSisoKernel)
-
-add_kernel(reshape_and_cache_nz ascend310b vector
-    op_kernel/reshape_and_cache_nz.cpp
-    ReshapeAndCacheNzKernel)
-
-add_kernel(reshape_and_cache_omni_compress ascend910b vector
-    op_kernel/reshape_and_cache_omni_compress.cpp
-    ReshapeAndCacheOmniCompressKernel)

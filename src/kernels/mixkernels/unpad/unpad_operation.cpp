@@ -12,6 +12,7 @@
 #include <mki/utils/const/op_const.h>
 #include <mki_loader/op_register.h>
 #include "atbops/params/params.h"
+#include "sink_common.h"
 
 
 namespace AtbOps {
@@ -51,17 +52,13 @@ public:
     {
         MKI_CHECK(CheckUnpad(launchParam), "Failed to check launch param",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Failed to check launch param"));
-        outTensors[0].desc = launchParam.GetInTensor(1).desc; // x_remove_padding
-        outTensors[1].desc = launchParam.GetInTensor(1).desc; // cum_offsets_out
-        outTensors[DIM_2].desc = launchParam.GetInTensor(1).desc; // padding_offset
-        auto unpadNumel = launchParam.GetInTensor(0).desc.Numel();
-        outTensors[0].desc.dtype = TENSOR_DTYPE_INT64;
-        outTensors[0].desc.dims[0] = 1;
-        outTensors[DIM_2].desc.dims[0] = 1;
-        outTensors[0].desc.dims[1] = unpadNumel;
-        outTensors[DIM_2].desc.dims[1] = unpadNumel;
-
-        return Status::OkStatus();
+        for (auto &t: outTensors) {
+            Mki::TensorDesc desc;
+            desc.format = Mki::TENSOR_FORMAT_ND;
+            t.desc = desc;
+        }
+        return opInferShape::CallGeInferShape("GetPaddingOffset", launchParam, outTensors,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::Unpad>);
     }
 };
 
