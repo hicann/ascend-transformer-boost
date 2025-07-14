@@ -617,7 +617,7 @@ Status OpsRunner::RunAllKernel(RunnerVariantPack &runnerVariantPack)
         KernelGraphNode &node = kernelGraph_.nodes.at(nodeId);
         if (runnerVariantPack.mstxMemRegister != nullptr) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
-            if (runnerVariantPack.workspaceBufferSize) {
+            if (runnerVariantPack.workspaceBufferSize != 0) {
                 runnerVariantPack.workspaceBufferSize =
                     static_cast<uint64_t>(TensorUtil::AlignInt(runnerVariantPack.workspaceBufferSize, ALIGN_INT));
                 runnerVariantPack.mstxMemRegister->AddTensorMemRegions(runnerVariantPack.workspaceBuffer,

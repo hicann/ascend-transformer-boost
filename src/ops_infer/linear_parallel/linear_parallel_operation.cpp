@@ -108,7 +108,7 @@ template <> Status CreateOperation(const infer::LinearParallelParam &opParam, Op
         ATB_LOG(ERROR) << "LinearParallelOperation DistributedInitCheck failed.";
         return ERROR_INVALID_PARAM;
     }
-    int rankSize = opParam.rankSize;
+    uint32_t rankSize = static_cast<uint32_t>(opParam.rankSize);
     if (opParam.rankSize <= 0 || (rankSize & (rankSize - 1)) != 0) {
         ATB_LOG(ERROR) << "LinearParallel rankSize support power of 2 but got [" << opParam.rankSize << "]";
         return ERROR_INVALID_PARAM;
@@ -335,7 +335,7 @@ Status LinearParallelOperation::InferShapeCheckLinearAllReduce(const SVector<Ten
 
     bool isQuant = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                 param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
-    if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) {
+    if (isQuant && inTensorDescs.at(3).dtype == ACL_FLOAT && param_.outDataType == ACL_FLOAT16) { // 3: deqScale
         ATB_LOG(ERROR) << GetLogPrefix() << "when perChannelScale's type is float, "
                                          << "outputDataType do not support float16_t";
         return ERROR_INVALID_TENSOR_INI_MATCH;
