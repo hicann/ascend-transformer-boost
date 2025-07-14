@@ -148,7 +148,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
         sim_sub = np.exp(sim_sub)
         row_sum = np.sum(sim_sub, axis=-1, keepdims=True)
         soft_res = sim_sub / row_sum
-        return soft_res, row_max + np.log(row_sum)
+        return soft_res, row_sum + np.log(row_max)
 
     def softmax_quant_numpy(self, sim, is_first):
         lm = np.max(sim, axis=-1, keepdims=True)
@@ -282,6 +282,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
             p_high = torch.from_numpy(p_high)
             lse = torch.permute(torch.from_numpy(lse).to(mask_data_type), (1, 0, 2))
             # P * V
+            lse_high = lse
             value = torch.permute(value, (1, 0, 2))
             out = self.group_mm_torch(query.shape[0], key.shape[0], p, value, 0)
             out_high = self.group_mm_torch(query.shape[0], key.shape[0], p_high, value, 0)
@@ -435,7 +436,6 @@ class TestPagedAttentionMLA(op_test.OpTest):
         self.is_quant_flag = is_quant_flag
         self.q_seqlen = q_seqlen
         self.fa_block_size = fa_block_size
-        self.data_type = dtype
         logging.debug(f'input info: {num_tokens}, {num_heads}, {kv_heads}, {head_size_qk}, {head_size_vo}, {block_size}, {num_blocks}, {k_seqlen}, {dtype}')
         q_min_range = -1.0
         q_max_range = 1.0
@@ -454,7 +454,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
             dtype = torch.int8
             kv_type = torch.int8
             query = torch.from_numpy(np.random.uniform(q_min_range, q_max_range, size=(num_tokens*q_seqlen, num_heads, head_size_vo))).to(dtype)
-            query_rope = torch.from_numpy(np.random.uniform(-kv_range, kv_range, size=(num_tokens*q_seqlen, num_heads, 64))).to(self.data_type)
+            query_rope = torch.from_numpy(np.random.uniform(-kv_range, kv_range, size=(num_tokens*q_seqlen, num_heads, 64))).to(torch.float16)
         else:
             query = torch.from_numpy(np.random.uniform(q_min_range, q_max_range, size=(num_tokens*q_seqlen, num_heads, head_size_qk))).to(dtype)
         if is_int8_flag:
@@ -464,7 +464,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
         if not compressHead:
             if self.is_quant_flag:
                 key_cache = torch.from_numpy(np.random.uniform(kv_min_range, kv_max_range, size=(num_blocks, block_size, kv_heads, head_size_vo))).to(kv_type)
-                key_cache_rope = torch.from_numpy(np.random.uniform(-kv_range, kv_range, size=(num_blocks, block_size, kv_heads, 64))).to(self.data_type)
+                key_cache_rope = torch.from_numpy(np.random.uniform(-kv_range, kv_range, size=(num_blocks, block_size, kv_heads, 64))).to(torch.float16)
             else:
                 key_cache = torch.from_numpy(np.random.uniform(-kv_range, kv_range, size=(num_blocks, block_size, kv_heads, head_size_qk))).to(kv_type)
             # (num_blocks, block_size, num_heads, head_size)
@@ -479,6 +479,7 @@ class TestPagedAttentionMLA(op_test.OpTest):
                 value_cache = torch.from_numpy(np.random.uniform(-kv_range, kv_range, size=(num_blocks * kv_heads, block_size, 1, head_size_vo))).to(kv_type)
             else:
                 value_cache = key_cache[:, :, :, :head_size_vo]
+        self.data_type = dtype
         if dynamic_batch:
             context_lens = dynamic_seqlen
         else:
@@ -547,9 +548,9 @@ class TestPagedAttentionMLA(op_test.OpTest):
             self.block_size = block_size
 
         shape_out = (num_tokens * q_seqlen, num_heads, head_size_vo)
-        ref_output = torch.zeros(shape_out, dtype=mask_data_type)
-        true_out = torch.zeros(shape_out, dtype=torch.float32)
-        lse = torch.zeros((num_tokens * q_seqlen, num_heads, 1), dtype=mask_data_type)
+        ref_output = torch.zeros(shape_out, dtype = mask_data_type)
+        true_out = torch.zeros(shape_out, dtype = torch.float32)
+        lse = torch.zeros((num_tokens * q_seqlen, num_heads, 1), dtype = mask_data_type)
         self.ref_single_query_cached_kv_attention(
             ref_output,
             true_out,
