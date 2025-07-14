@@ -38,9 +38,9 @@ public:
         InitTBuf<int32_t>(seqLenBuf_, numBatchs_);
         seqLenLocal_ = seqLenBuf_.Get<int32_t>();
 
-        DataCopy(winsLocal_, winsInputGt_, RoundUp(numHeads_ * numBatchs_ * sizeof(int32_t), BLOCK_SIZE));
+        DataCopy(winsLocal_, winsInputGt_, RoundUp(numHeads_ * numBatchs_, BLOCK_SIZE / sizeof(int32_t)));
         AscendC::PipeBarrier<PIPE_MTE2>();
-        DataCopy(seqLenLocal_, seqLenInputGt_, RoundUp(numBatchs_ * sizeof(int32_t), BLOCK_SIZE));
+        DataCopy(seqLenLocal_, seqLenInputGt_, RoundUp(numBatchs_, BLOCK_SIZE / sizeof(int32_t)));
         AscendC::PipeBarrier<PIPE_ALL>();
         for (int i = 1; i < numBatchs_; i++) { // 获取累加的seqlen
             seqLenLocal_.SetValue(i, seqLenLocal_.GetValue(i) + seqLenLocal_.GetValue(i-1));
