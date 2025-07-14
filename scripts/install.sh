@@ -584,8 +584,8 @@ function install_torch_atb() {
     py_major_version=${py_version%%.*}
     py_minor_version=${py_version##*.}
 
-    if [ "$py_major_version" != "3" ] || { [ "$py_minor_version" != "9" ] && [ "$py_minor_version" != "10" ] && [ "$py_minor_version" != "11" ]; }; then
-        echo "ERROR: Unsupported Python version. Only Python 3.9, 3.10, and 3.11 are supported."
+    if [ "$py_major_version" != "3" ] || { [ "$py_minor_version" != "10" ] && [ "$py_minor_version" != "11" ]; }; then
+        echo "ERROR: Unsupported Python version. Only Python 3.10, and 3.11 are supported."
         exit 1
     fi
 
