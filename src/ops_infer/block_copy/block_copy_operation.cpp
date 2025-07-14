@@ -161,8 +161,8 @@ Status BlockCopyOperation::SetupDimCheck310P(const SVector<atb::Tensor> &inTenso
         inTensors.at(INPUT_V_CACHE).desc.format == aclFormat::ACL_FORMAT_FRACTAL_NZ) {
         if ((inTensors.at(INPUT_K_CACHE).desc.shape.dims[INPUT_DST_BLOCK] != NZBLOCKSIZE) ||
             (inTensors.at(INPUT_V_CACHE).desc.shape.dims[INPUT_DST_BLOCK] != NZBLOCKSIZE) ||
-            (inTensors.at(INPUT_K_CACHE).desc.shape.dims[2] % NZBLOCKSIZE != 0) ||
-            (inTensors.at(INPUT_V_CACHE).desc.shape.dims[2] % NZBLOCKSIZE != 0)) { // 2: dim
+            (inTensors.at(INPUT_K_CACHE).desc.shape.dims[2] % NZBLOCKSIZE != 0) || // 2: blockSize dim
+            (inTensors.at(INPUT_V_CACHE).desc.shape.dims[2] % NZBLOCKSIZE != 0)) { // 2: blockSize dim
             ATB_LOG(ERROR) << GetLogPrefix() << "NZ format tensor dim should be aligned to 16";
             return ERROR_INVALID_TENSOR_DIM;
         }

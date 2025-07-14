@@ -68,7 +68,8 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     }
     // 创建tokenOffset，host侧tensor
     atb::Tensor tensorTokenOffset;
-    atb::Tensor tensorSeqLen atb::Tensor tensorLayerId;
+    atb::Tensor tensorSeqLen;
+    atb::Tensor tensorLayerId;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorTokenOffset));
     tensorTokenOffset.hostData = tokenOffsetHost.data(); // host侧tensor，拷贝值
     // 创建seqLen，host侧tensor

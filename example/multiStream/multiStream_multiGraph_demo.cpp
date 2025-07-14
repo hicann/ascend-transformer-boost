@@ -85,7 +85,7 @@ static void CreateMiniGraphOperation(atb::GraphParam &opGraph, atb::Operation **
     opGraph.outTensorNum = GRAPH_OUT_TENSOR_NUM;
     opGraph.internalTensorNum = GRAPH_INTERNAL_TENSOR_NUM;
     const int GRAPH_NODE_NUM = 3;
-    opGraph.nodes.resize(3);
+    opGraph.nodes.resize(GRAPH_NODE_NUM);
 
     size_t nodeId = 0;
     atb::Node &addNode = opGraph.nodes.at(nodeId++);
@@ -257,8 +257,7 @@ int main()
     packRW.outTensors.resize(outTensorNum);
     operationWR->InferShape(intensorDescs, outtensorDescs);
 
-    aclError ret;
-    ret = CreateInTensors(packWR.inTensors, intensorDescs);
+    aclError ret = CreateInTensors(packWR.inTensors, intensorDescs);
     if (ret != 0) {
         exit(ret);
     }

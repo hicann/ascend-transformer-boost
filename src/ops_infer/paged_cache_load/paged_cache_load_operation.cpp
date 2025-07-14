@@ -129,12 +129,12 @@ Status PagedCacheLoadOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
         inTensorDescs.push_back(inTensors.at(i).desc);
     }
     if (param_.kvCacheCfg == infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ) { // NZ
-        int64_t AlignCacheK = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM1] *
+        int64_t alignCacheK = inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM1] *
                               inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM3];
-        int64_t AlignCacheV = inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM1] *
+        int64_t alignCacheV = inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM1] *
                               inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM3];
-        if (outTensors.at(IN_TENSOR_0_KEYCACHE).desc.shape.dims[DIM1] != AlignCacheK ||
-            outTensors.at(IN_TENSOR_1_VALUECACHE).desc.shape.dims[DIM1] != AlignCacheV) {
+        if (outTensors.at(IN_TENSOR_0_KEYCACHE).desc.shape.dims[DIM1] != alignCacheK ||
+            outTensors.at(IN_TENSOR_1_VALUECACHE).desc.shape.dims[DIM1] != alignCacheV) {
             ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of outTensors needs to remain aligned";
             return ERROR_INVALID_TENSOR_DIM;
         }
@@ -235,22 +235,22 @@ Status PagedCacheLoadOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc> 
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).dtype == ACL_INT8) {
-        if (THIRTYTWO != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
-            THIRTYTWO != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
+        if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] != THIRTYTWO ||
+            inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM] != THIRTYTWO) { // 1: valueCache
             ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 32";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        if (MAX_K < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM1] * THIRTYTWO ||
-            MAX_V < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM1] * THIRTYTWO) {
+        if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM1] * THIRTYTWO > MAX_K ||
+            inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM1] * THIRTYTWO > MAX_V) {
             ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
             return ERROR_INVALID_TENSOR_DIM;
         }
-    } else if (SIXTEEN != inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] ||
-               SIXTEEN != inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM]) { // 1: valueCache
+    } else if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[OUT_DIM] != SIXTEEN ||
+               inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[OUT_DIM] != SIXTEEN) { // 1: valueCache
         ATB_LOG(ERROR) << GetLogPrefix() << "The last dimension of keycache and valuecache must be 16";
         return ERROR_INVALID_TENSOR_DIM;
-    } else if (MAX_K < inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM1] * SIXTEEN ||
-               MAX_V < inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM1] * SIXTEEN) {
+    } else if (inTensorDescs.at(IN_TENSOR_0_KEYCACHE).shape.dims[DIM1] * SIXTEEN > MAX_K ||
+               inTensorDescs.at(IN_TENSOR_1_VALUECACHE).shape.dims[DIM1] * SIXTEEN > MAX_V) {
         ATB_LOG(ERROR) << GetLogPrefix() << "The scend dimension of blocktables must be less than 147456";
         return ERROR_INVALID_TENSOR_DIM;
     }

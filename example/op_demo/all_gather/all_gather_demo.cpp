@@ -14,6 +14,7 @@
 
 namespace {
 const int64_t INTPUT_DIM_NUM = 2;
+const int64_t OUTPUT_DIM_NUM = 3;
 const int64_t DIM2 = 2;
 const int64_t DIM3 = 3;
 const int64_t DIM5 = 5;
@@ -59,7 +60,7 @@ atb::Status AllGatherSample(int rank, int rankSize)
     atb::Tensor output;
     output.desc.dtype = ACL_FLOAT16;
     output.desc.format = ACL_FORMAT_ND;
-    output.desc.shape.dimNum = 3;
+    output.desc.shape.dimNum = OUTPUT_DIM_NUM;
     output.desc.shape.dims[IDX0] = DIM2;
     output.desc.shape.dims[IDX1] = DIM3;
     output.desc.shape.dims[IDX2] = DIM5;

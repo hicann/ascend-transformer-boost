@@ -34,7 +34,7 @@ const int32_t MATMUL_DIM2112 = 2112;
 const int32_t MATMUL_DIM32 = 32;
 const int32_t MATMUL_DIM192 = 192;
 const int32_t MATMUL_DIM48 = 48;
-}
+} // namespace
 
 /**
  * @brief 准备atb::VariantPack中的输入tensor
@@ -48,8 +48,9 @@ atb::Status PrepareInTensor1(atb::Context *contextPtr, aclrtStream stream, aclDa
 {
     // 创建shape为[tokenNum, 7168]的输入input tensor
     atb::Tensor input;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * RMSNORM_QUANT_DIM7168, 0), dtype,
-                                        aclFormat::ACL_FORMAT_ND, {tokenNum, RMSNORM_QUANT_DIM7168}, input, dtype));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * RMSNORM_QUANT_DIM7168, 0),
+                                        dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, RMSNORM_QUANT_DIM7168}, input,
+                                        dtype));
     // 创建shape为[7168]的输入gamma0 tensor
     atb::Tensor gamma0;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(RMSNORM_QUANT_DIM7168, 0), dtype,
@@ -68,16 +69,18 @@ atb::Status PrepareInTensor1(atb::Context *contextPtr, aclrtStream stream, aclDa
                                         aclFormat::ACL_FORMAT_ND, {1}, quantOffset0));
     // 创建shape为[1,224,2112,32]的输入wdqkv tensor
     atb::Tensor wdqkv;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(MATMUL_DIM224 * MATMUL_DIM2112 * MATMUL_DIM32, 1), ACL_INT8,
-                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {1, MATMUL_DIM224, MATMUL_DIM2112, MATMUL_DIM32}, wdqkv));
+    CHECK_STATUS(CreateTensorFromVector(
+        contextPtr, stream, std::vector<int8_t>(MATMUL_DIM224 * MATMUL_DIM2112 * MATMUL_DIM32, 1), ACL_INT8,
+        aclFormat::ACL_FORMAT_FRACTAL_NZ, {1, MATMUL_DIM224, MATMUL_DIM2112, MATMUL_DIM32}, wdqkv));
     // 创建shape为[2112]的输入deScale0 tensor
     atb::Tensor deScale0;
     if (dtype == ACL_BF16) {
         CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(MATMUL_DIM2112, 1), ACL_FLOAT,
                                             aclFormat::ACL_FORMAT_ND, {MATMUL_DIM2112}, deScale0));
     } else {
-        CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int64_t>(MATMUL_DIM2112, 10), ACL_INT64,
-                                            aclFormat::ACL_FORMAT_ND, {MATMUL_DIM2112}, deScale0));
+        int64_t deScale0Value = 10;
+        CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int64_t>(MATMUL_DIM2112, deScale0Value),
+                                            ACL_INT64, aclFormat::ACL_FORMAT_ND, {MATMUL_DIM2112}, deScale0));
     }
     // 创建shape为[2112]的输入bias0 tensor
     atb::Tensor bias0;
@@ -116,16 +119,17 @@ atb::Status PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDa
 {
     // 创建shape为[1,48,headNum*192,32]的输入wuq tensor
     atb::Tensor wuq;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(MATMUL_DIM48 * headNum * MATMUL_DIM192 * MATMUL_DIM32, 1), ACL_INT8,
-                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {1, MATMUL_DIM48, headNum * MATMUL_DIM192, MATMUL_DIM32}, wuq));
+    CHECK_STATUS(CreateTensorFromVector(
+        contextPtr, stream, std::vector<int8_t>(MATMUL_DIM48 * headNum * MATMUL_DIM192 * MATMUL_DIM32, 1), ACL_INT8,
+        aclFormat::ACL_FORMAT_FRACTAL_NZ, {1, MATMUL_DIM48, headNum * MATMUL_DIM192, MATMUL_DIM32}, wuq));
     // 创建shape为[headNum*192]的输入deScale1 tensor
     atb::Tensor deScale1;
     if (dtype == ACL_BF16) {
-        CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(headNum * MATMUL_DIM192, 1), ACL_FLOAT,
-                                            aclFormat::ACL_FORMAT_ND, {headNum * MATMUL_DIM192}, deScale1));
+        CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(headNum * MATMUL_DIM192, 1),
+                                            ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {headNum * MATMUL_DIM192}, deScale1));
     } else {
-        CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int64_t>(headNum * MATMUL_DIM192, 1), ACL_INT64,
-                                            aclFormat::ACL_FORMAT_ND, {headNum * MATMUL_DIM192}, deScale1));
+        CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int64_t>(headNum * MATMUL_DIM192, 1),
+                                            ACL_INT64, aclFormat::ACL_FORMAT_ND, {headNum * MATMUL_DIM192}, deScale1));
     }
     // 创建shape为[headNum*192]的输入bias1 tensor
     atb::Tensor bias1;
@@ -141,22 +145,26 @@ atb::Status PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDa
                                         aclFormat::ACL_FORMAT_ND, {tokenNum, ROPE_DIM64}, cos, dtype));
     // 创建shape为[tokenNum,64]的输入sin tensor
     atb::Tensor sin;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * ROPE_DIM64, 0.5), dtype,
+    __fp16 sinValue = 0.5;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * ROPE_DIM64, sinValue), dtype,
                                         aclFormat::ACL_FORMAT_ND, {tokenNum, ROPE_DIM64}, sin, dtype));
     // 创建shape为[headNum,32,128,16]的输入wuk tensor
     atb::Tensor wuk;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(headNum * MATMUL_DIM32 * BLOCK_SIZE * NZ_DIM16, 0), dtype,
-                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {headNum, MATMUL_DIM32, BLOCK_SIZE, NZ_DIM16}, wuk, dtype));
+    CHECK_STATUS(CreateTensorFromVector(
+        contextPtr, stream, std::vector<__fp16>(headNum * MATMUL_DIM32 * BLOCK_SIZE * NZ_DIM16, 0), dtype,
+        aclFormat::ACL_FORMAT_FRACTAL_NZ, {headNum, MATMUL_DIM32, BLOCK_SIZE, NZ_DIM16}, wuk, dtype));
     // 创建shape为[BLOCK_NUM, headNum*512/32,block_size, 32]的输入kvCache tensor
     atb::Tensor kvCache;
     CHECK_STATUS(CreateTensorFromVector(
         contextPtr, stream, std::vector<int8_t>(BLOCK_NUM * headNum * NOPE_DIM512 * BLOCK_SIZE, 1), ACL_INT8,
-        aclFormat::ACL_FORMAT_FRACTAL_NZ, {BLOCK_NUM, headNum * NOPE_DIM512 / MATMUL_DIM32, BLOCK_SIZE, MATMUL_DIM32}, kvCache));
+        aclFormat::ACL_FORMAT_FRACTAL_NZ, {BLOCK_NUM, headNum * NOPE_DIM512 / MATMUL_DIM32, BLOCK_SIZE, MATMUL_DIM32},
+        kvCache));
     // 创建shape为[BLOCK_NUM, headNum*64/16 ,block_size, 16]的输入kvCacheRope tensor
     atb::Tensor kvCacheRope;
     CHECK_STATUS(CreateTensorFromVector(
-        contextPtr, stream, std::vector<__fp16>(BLOCK_NUM * headNum * ROPE_DIM64 / NZ_DIM16 * BLOCK_SIZE * NZ_DIM16, 0), dtype,
-        aclFormat::ACL_FORMAT_FRACTAL_NZ, {BLOCK_NUM, headNum * ROPE_DIM64 / NZ_DIM16, BLOCK_SIZE, NZ_DIM16}, kvCacheRope, dtype));
+        contextPtr, stream, std::vector<__fp16>(BLOCK_NUM * headNum * ROPE_DIM64 / NZ_DIM16 * BLOCK_SIZE * NZ_DIM16, 0),
+        dtype, aclFormat::ACL_FORMAT_FRACTAL_NZ, {BLOCK_NUM, headNum * ROPE_DIM64 / NZ_DIM16, BLOCK_SIZE, NZ_DIM16},
+        kvCacheRope, dtype));
     auto slotmappingHost = std::vector<int32_t>(1, tokenNum);
     for (size_t i = 0; i < slotmappingHost.size(); i++)
         slotmappingHost[i] = static_cast<int32_t>(i);
