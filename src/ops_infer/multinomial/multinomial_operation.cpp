@@ -95,8 +95,9 @@ Status MultinomialOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTe
 
 Status MultinomialOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
-    if (DimNumCheck(inTensors.at(0).desc) != NO_ERROR) {
-        return DimNumCheck(inTensors.at(0).desc);
+    Status ret = DimNumCheck(inTensors.at(0).desc);
+    if (ret != NO_ERROR) {
+        return ret;
     }
     uint64_t dimNum = inTensors.at(0).desc.shape.dimNum;
     int64_t lastDim = inTensors.at(0).desc.shape.dims[dimNum - 1];
