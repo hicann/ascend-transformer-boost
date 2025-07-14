@@ -30,7 +30,7 @@ protected:
     nlohmann::json GetParamJson() const override;
 
 private:
-    Status DimCheck(const TensorDesc &inTensorDesc) const;
+    Status DimNumCheck(const TensorDesc &inTensorDesc) const;
     infer::MultinomialParam param_;
 };
 } // namespace atb
