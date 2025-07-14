@@ -385,7 +385,7 @@ Status ElewiseOperation::InferShapeImplQuantPerTensor(const SVector<TensorDesc> 
                                                       SVector<TensorDesc> &outTensorDescs) const
 {
     aclDataType dtype0 = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
-    if ((dtype0 == ACL_FLOAT16) && (dtype0 == ACL_FLOAT16)) {
+    if ((dtype0 == ACL_FLOAT16) || (dtype0 == ACL_BF16)) {
         outTensorDescs.at(TENSOR_IDX_ZERO).dtype = param_.outTensorType;
         return NO_ERROR;
     } else {
