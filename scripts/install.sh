@@ -637,10 +637,6 @@ function main() {
         install_process
         chmod_authority
         print "INFO" "Ascend-cann-atb install success!"
-        if [ "${torch_atb_flag}" == "y" ]; then
-            install_torch_atb
-            print "INFO" "Torch ATB installation completed!"
-        fi
     fi
     chmod 440 ${log_file}
 }
