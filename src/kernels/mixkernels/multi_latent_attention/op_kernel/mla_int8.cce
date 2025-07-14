@@ -993,7 +993,7 @@ private:
                             embed_split_idx == 0,     // cmatrixInitVal
                             unit_flag
                         );
-
+                        PIPE_BARRIER(M);
                         SET_FLAG(M, MTE1, l0ab_pingpong_flag);
                         SET_FLAG(M, MTE1, l0ab_pingpong_flag + 2);
                         // copy S to gm
@@ -1081,9 +1081,8 @@ private:
                         1,     // cmatrixInitVal
                         0b11
                     );
-
+                    PIPE_BARRIER(M);
                     SET_FLAG(M, MTE1, l0ab_pingpong_flag + 2);
-
                     l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
                         s_rope_gm_tensor[(uint64_t)block_idx * TMP_SIZE_DECODER_INT8 + gm_pingpong_flag*SP_BLOCK_SIZE*K_BLOCK_NUM +sub_idx*pp_n_scalar],
                         mm1_l0c_buf_tensor.template ReinterpretCast<float>()[l0c_pingpong_flag * l0c_data_size],
@@ -1249,7 +1248,8 @@ private:
                                 p_cols_l1_2_l0,  // k  
                                 init_c,      // cmatrixInitVal  
                                 unit_flag
-                            ); 
+                            );
+                            PIPE_BARRIER(M);
                             SET_FLAG(M, MTE1, l0_left_p_pingpong_flag); 
                             SET_FLAG(M, MTE1, l0_right_v_pingpong_flag + 2);  
                             if(v_row_loop_idx == v_row_loop_num - 1){
