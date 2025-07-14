@@ -194,7 +194,7 @@ class QuantInfo:
 
 class MoeTestDate:
     def __init__(self, rank, comm_type, rank_size, batch_size, m, k, n, trans_b, expert_per_rank,
-                 coc_dtype_desc, quant_info, EP, TP):
+                 coc_dtype_desc, quant_info, EP, TP, maxOutputSize):
         activation_dtype, weight_dtype, l0c_dtype, output_dtype, l0c_dtype_low = supported_coc_data_type_dict[
             coc_dtype_desc]
         self.matrix_a = generate_random_tensor(size=(batch_size, m, k), dtype=activation_dtype)
@@ -209,6 +209,7 @@ class MoeTestDate:
         self.matrix_dequant_offset = []
         self.matrix_dequant_scale = []
         self.matrix_quant_scale = []
+        self.maxOutputSize = maxOutputSize
         self.m = m 
         self.k = k 
         self.n = n 
@@ -216,15 +217,13 @@ class MoeTestDate:
             expert_per_rank, EP)
         if comm_type is CommType.ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN or comm_type is CommType.MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN:
             self.matrix_a_i_list = self.alltoall_nopermute(self.matrix_a, k, activation_dtype, EP)
+            if maxOutputSize > 0:
+                for i in range(EP):
+                    self.matrix_a_i_list[i] = self.matrix_a_i_list[i][:, :maxOutputSize, :]
         else:
             self.matrix_a_i_list = self.alltoall(self.matrix_a, k, activation_dtype, EP)
             self.matrix_a_i_list = self.allgather(self.matrix_a_i_list, k, activation_dtype, EP, TP)
 
-        # if comm_type in [CommType.ALLTOALLV_ALLGATHER_MATMUL, CommType.ALLTOALLVC_ALLGATHER_MATMUL]:
-        #     self.generate_matrix_c_for_moe_305_307(rank, coc_dtype_desc, TP, EP, l0c_dtype, output_dtype, quant_info)
-        # if comm_type in [CommType.MATMUL_REDUCESCATTER_ALLTOALLV, CommType.MATMUL_REDUCESCATTER_ALLTOALLVC]:
-        #     self.generate_matrix_c_for_moe_306_308(comm_type, rank, coc_dtype_desc, TP, EP, l0c_dtype, l0c_dtype_low,
-        #                                            quant_info)
         if comm_type in [CommType.ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN]:
             self.generate_matrix_c_for_moe_309(coc_dtype_desc, rank, TP, EP, l0c_dtype, output_dtype, quant_info)
         if comm_type in [ CommType.MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN]:
@@ -232,7 +231,6 @@ class MoeTestDate:
         if trans_b:
             self.matrix_b = self.matrix_b.transpose(1, 2).contiguous()
         self.matrix_b = self.matrix_b.repeat(1, expert_per_rank, 1)  # b输入
-        # print("Generate data success.")
 
     def get_num_local_tokens_per_expert(self):
         numpy.random.seed(0)
@@ -456,19 +454,46 @@ class MoeTestDate:
             self.matrix_c = matrix_c
             self.matrix_c_low = matrix_c_low.to(output_dtype)
 
-    def generate_matrix_c_for_moe_310(self, coc_dtype_desc, rank, TP, EP, l0c_dtype, l0c_dtype_low,
-                                      quant_info):
+    def cal_trunc(self, EP):
+        self.global_tokens_per_expert_matrix_temp = self.global_tokens_per_expert_matrix.clone()
+        self.global_tokens_per_expert_matrix_temp = self.global_tokens_per_expert_matrix_temp.reshape(-1)
+        for i in range(EP):
+            sum_tokens = 0
+            for local_expert_id in range(self.expert_per_rank):
+                expert_id = i * self.expert_per_rank + local_expert_id
+                for j in range(EP):
+                    if (sum_tokens + self.global_tokens_per_expert_matrix_temp[j * self.expert_num + expert_id]) >= self.maxOutputSize:
+                        self.global_tokens_per_expert_matrix_temp[j * self.expert_num + expert_id] = self.maxOutputSize - sum_tokens
+                        sum_tokens = self.maxOutputSize
+                    else:
+                        sum_tokens += self.global_tokens_per_expert_matrix_temp[j * self.expert_num + expert_id]
+        # print("self.global_tokens_per_expert_matrix_temp", self.global_tokens_per_expert_matrix_temp)
 
-        # ep_idx = rank // TP
-        # self.write_to_bin(self.matrix_a_i_list[ep_idx], f"matrix_a_{i}")
+    def generate_matrix_c_for_moe_310(self, coc_dtype_desc, rank, TP, EP, l0c_dtype, l0c_dtype_low,
+                                      quant_info):        
+        if self.maxOutputSize > 0:
+            self.cal_trunc(EP)
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
-            tmp_matrix_c = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
-            matrix_c_out = tmp_matrix_c.clone()
-            self.matrix_c = matrix_c_out
+            matrix_c_out = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
             if coc_dtype_desc == CoCDataTypeDesc.BF16BF16_FP32_BF16:
-                self.matrix_c_low = torch.matmul(self.matrix_a, self.matrix_b)
+                matrix_c_out_low = torch.matmul(self.matrix_a, self.matrix_b)
             else:
-                self.matrix_c_low = matrix_c_out.to(l0c_dtype_low)
+                matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
+            tmp_offset = 0
+            for ep_idx in range(EP):
+                # tmp_offset = 0
+                for local_expert_id in range(self.expert_per_rank):
+                    expert_id = local_expert_id + ep_idx * self.expert_per_rank
+                    if self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id] < self.num_local_tokens_per_expert[rank][expert_id]:
+                        l = tmp_offset + self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id]
+                        r = tmp_offset + self.num_local_tokens_per_expert[rank][expert_id]
+                        matrix_c_out[:,l:r,:] = 0
+                        matrix_c_out_low[:,l:r,:] = 0
+                    tmp_offset += self.num_local_tokens_per_expert[rank][expert_id]
+            self.matrix_c = matrix_c_out
+            self.matrix_c_low = matrix_c_out_low
+            # print("self.matrix_c:", self.matrix_c)
+            
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
             assert quant_info.dequant_granularity in [QuantGranularity.PER_CHANNEL, QuantGranularity.PER_TENSOR,
                                                       QuantGranularity.PER_TOKEN, QuantGranularity.FLOAT32_SCALE_PER_CHANNEL]
@@ -484,7 +509,7 @@ class MoeTestDate:
                 quant_scale = quant_scale.squeeze(0)
 
                 ep_idx = rank // TP
-                quant_scale_alltoall[ep_idx] = quant_scale_alltoall[ep_idx].squeeze(0)
+                quant_scale_alltoall[ep_idx] = quant_scale_alltoall[ep_idx].squeeze(0)                
                 self.matrix_quant_scale = quant_scale_alltoall[ep_idx]
                 broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale, [self.input_info[0], self.input_info[2]])
             tmp_matrix_c = torch.matmul(self.matrix_a.to(torch.float32), self.matrix_b.to(torch.float32)).to(l0c_dtype)
@@ -492,7 +517,19 @@ class MoeTestDate:
 
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
                 matrix_c_out = (matrix_c_out * broadcast_quant_scale).to(torch.float32)
+            matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
 
+            tmp_offset = 0
+            for ep_idx in range(EP):
+                # tmp_offset = 0
+                for local_expert_id in range(self.expert_per_rank):
+                    expert_id = local_expert_id + ep_idx * self.expert_per_rank
+                    if self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id] < self.num_local_tokens_per_expert[rank][expert_id]:
+                        l = tmp_offset + self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id]
+                        r = tmp_offset + self.num_local_tokens_per_expert[rank][expert_id]
+                        matrix_c_out[:,l:r,:] = 0
+                        matrix_c_out_low[:,l:r,:] = 0
+                    tmp_offset += self.num_local_tokens_per_expert[rank][expert_id]
             self.matrix_c = matrix_c_out
-            self.matrix_c_low = matrix_c_out.to(l0c_dtype_low)
+            self.matrix_c_low = matrix_c_out_low
 
