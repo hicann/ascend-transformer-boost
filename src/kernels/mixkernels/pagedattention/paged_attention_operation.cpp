@@ -138,7 +138,7 @@ private:
         if (tensorQ.desc.dims.size() == DIM_2) {
             outTensors[DIM_0].desc.dims[DIM_1] = tensorQ.desc.dims[DIM_1] / embedDimK * embedDimV;
         } else {
-            outTensors[DIM_0].desc.dims[DIM_2] = embedDimV;
+            outTensors[DIM_0].desc.dims.at(outTensors[DIM_0].desc.dims.size() - 1) = embedDimV;
         }
         return Status::OkStatus();
     }
