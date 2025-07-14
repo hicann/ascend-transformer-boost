@@ -30,7 +30,6 @@ protected:
     nlohmann::json GetParamJson() const override;
 
 private:
-    Status ParamCheck(const TensorDesc &inTensorDesc) const;
     Status DimCheck(const TensorDesc &inTensorDesc) const;
     infer::MultinomialParam param_;
 };
