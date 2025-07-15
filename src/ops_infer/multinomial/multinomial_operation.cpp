@@ -28,7 +28,8 @@ static const uint64_t MAX_NUMSAMPLES = 64;
 bool ParamCheck(const infer::MultinomialParam &opParam)
 {
     if (opParam.numSamples > MAX_NUMSAMPLES) {
-        ATB_LOG(ERROR) << "numSamples shoud not be bigger than 64, numSamples: " << opParam.numSamples;
+        ATB_LOG(ERROR) << "multinomial expects numSamples not bigger than " << MAX_NUMSAMPLES 
+                       << ", but got numSamples: " << opParam.numSamples;
         return false;
     }
 
@@ -52,7 +53,7 @@ template <> Status CreateOperation(const infer::MultinomialParam &opParam, Opera
     }
     *operation = new MultinomialOperation(opParam);
     if (*operation == nullptr) {
-        ATB_LOG(ERROR) << "failed to new operation";
+        ATB_LOG(ERROR) << "failed to new multinomial operation";
         return ERROR_OUT_OF_HOST_MEMORY;
     }
     return NO_ERROR;
@@ -82,7 +83,7 @@ Status MultinomialOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorD
     outTensorDescs.at(0) = inTensorDescs.at(0);
     outTensorDescs.at(0).shape.dims[0] = inTensorDescs.at(0).shape.dims[0];
     outTensorDescs.at(0).shape.dims[1] = param_.numSamples;
-    outTensorDescs.at(0).shape.dimNum = OUT_TENSOR_DIM_NUM; // dim: 2
+    outTensorDescs.at(0).shape.dimNum = OUT_TENSOR_DIM_NUM;
     outTensorDescs.at(0).format = inTensorDescs.at(0).format;
     outTensorDescs.at(0).dtype = ACL_INT32;
     return NO_ERROR;
