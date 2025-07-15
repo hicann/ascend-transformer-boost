@@ -8,6 +8,7 @@
 * See LICENSE in the root of the software repository for the full text of the License.
 */
 #include <algorithm>
+#include <iostream>
 #include <mki/base/operation_base.h>
 #include <mki_loader/op_register.h>
 #include <mki/utils/assert/assert.h>
@@ -36,7 +37,8 @@ public:
         if (deqOnTheFly) {
             return GetKernelByName("MLAPreprocessKernel");
         }
-        return GetKernelByName("MLAPreprocessBF16Kernel");
+        //return GetKernelByName("MLAPreprocessBF16Kernel");
+        return GetKernelByName("MLAPreprocessKernel");
     }
  
     int64_t GetInputNum(const Any &specificParam) const override
