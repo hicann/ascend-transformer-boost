@@ -392,13 +392,32 @@ class MoeTestDate:
             for i in range(TP - 1):
                 matrix_c_out += tmp_matrix_c
             self.matrix_c = matrix_c_out
+    
+    def get_pvalue(self, data_type_len):
+        maxPvalue = (self.k + 255) / 256
+        pValue = 7
+        if pValue > maxPvalue:
+            pValue = maxPvalue
+        if self.m < 128:
+            pValue = (self.k + 256 - 1)/ 256
+        maxPeerMemPerRank = 200 * 1024 * 1024 / data_type_len / 2
+        if pValue *256 *self.m > maxPeerMemPerRank:
+            pValue = maxPeerMemPerRank / self.m / 256
+        ubMoveNum = 28672
+        maxUbPingPongSize = ubMoveNum / 2
+        if pValue *256 > maxUbPingPongSize:
+            pValue = maxUbPingPongSize / 256
+        return pValue
 
     def generate_matrix_c_for_moe_309(self, coc_dtype_desc, rank, TP, EP, l0c_dtype, output_dtype, quant_info):
-        # self.write_to_bin(self.matrix_a, "matrix_a")
-        pValue = 1
+        if l0c_dtype == torch.int32:
+            data_type_len = 1
+        else:
+            data_type_len = 2
+        pValue = int(self.get_pvalue(data_type_len))
+        print("pvalue!!!!!!!!!!!!!!", pValue)
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
             ep_idx = rank // TP
-            # matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
             matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
             loop = math.ceil(self.k / (pValue * 256))
             for j in range(loop):
@@ -406,7 +425,6 @@ class MoeTestDate:
                 ed = min(self.k, (j + 1) * pValue * 256)
                 matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
                 matrix_c_j_low = matrix_c_j.to(output_dtype)
-                # matrix_c = matrix_c + matrix_c_j
                 matrix_c_low = matrix_c_low + matrix_c_j_low
             self.matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(l0c_dtype), self.matrix_b.to(l0c_dtype))
             self.matrix_c_low = matrix_c_low
@@ -434,19 +452,21 @@ class MoeTestDate:
             ep_idx = rank // TP
             # matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
             matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
+            broadcast_offset, broadcast_scale = quant_info.get_moe_dequant_tensor(self.output_splits[ep_idx], self.input_info[2], TP, l0c_dtype)
             loop = math.ceil(self.k / (pValue * 256))
             for j in range(loop):
                 st = j * pValue * 256
                 ed = min(self.k, (j + 1) * pValue * 256)
                 matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
+                matrix_c_j = (matrix_c_j * broadcast_scale)
                 matrix_c_j_low = matrix_c_j.to(output_dtype)
                 # matrix_c = matrix_c + matrix_c_j
                 matrix_c_low = matrix_c_low + matrix_c_j_low
-            matrix_c_low = matrix_c_low.to(l0c_dtype)
+            matrix_c_low = matrix_c_low.to(torch.float32)
             matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(torch.float32), self.matrix_b.to(torch.float32)).to(l0c_dtype)
-            broadcast_offset, broadcast_scale = quant_info.get_moe_dequant_tensor(self.output_splits[ep_idx], self.input_info[2], TP, l0c_dtype)
+            
             matrix_c = ((matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale)
-            matrix_c_low = ((matrix_c_low + broadcast_offset).to(torch.float32) * broadcast_scale)
+            # matrix_c_low = ((matrix_c_low + broadcast_offset).to(torch.float32) * broadcast_scale)
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
                 broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale_alltoall[ep_idx], [sum(self.output_splits[ep_idx]) * TP, self.input_info[2]])
                 matrix_c = (matrix_c * broadcast_quant_scale)
