@@ -106,7 +106,7 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     acl_alltoall_matmul_operation.set_param(acl_param)
     torch.manual_seed(0)
     moedata = MoeTestDate(rank, CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
-                          CoCDataTypeDesc(data_type), quant_info, EP, TP)
+                          CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2)
 
     in_tensors = []
     input_tensor = moedata.matrix_a
@@ -144,9 +144,6 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     golden_out_tensor = moedata.matrix_c
     golden_out_tensor_low = moedata.matrix_c_low
     out_tensor_compare = out_tensor[0].to(torch.device('cpu'))[:golden_out_tensor.shape[1], :]
-    # print("golden_out_tensor:", rank, golden_out_tensor,golden_out_tensor.shape)
-    # print("golden_out_tensor_low:",rank, golden_out_tensor_low,golden_out_tensor_low.shape)
-    # print("out_tensor_compare:", rank, out_tensor_compare, out_tensor_compare.shape)
 
     assert check_precision_new(out_tensor_compare, golden_out_tensor, golden_out_tensor_low)
 
