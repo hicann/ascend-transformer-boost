@@ -3775,6 +3775,48 @@ class ElewiseOperation(DataGen):
     ELEWISE_DYNAMIC_QUANT = 19
 
     @staticmethod
+    def zero(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
+        json_data = json.loads(op_params)
+        elewiseType = json_data["elewiseType"]
+        if elewiseType != 21 or len(shape) == 1:
+            data = torch.zeros(shape, dtype=dtype_dict[datatype]).npu()
+            return torch_npu.npu_format_cast(data, format_dict[format])
+        data = np.zeros(shape)
+        dtype = json_data["outTensorType"]
+        if dtype == 34:
+            data = torch.from_numpy(data)
+            data = data.view(torch.bits8)
+            data = data.npu()
+            return torch_npu.npu_format_cast(data, format_dict[format])
+        elif dtype == 35:
+            data = torch.from_numpy(data).to(torch.float8_e5m2).npu()
+            return torch_npu.npu_format_cast(data, format_dict[format])
+        elif dtype == 36:
+            data = torch.from_numpy(data).to(torch.float8_e4m3fn).npu()
+            return torch_npu.npu_format_cast(data, format_dict[format])
+
+    @staticmethod
+    def one(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
+        json_data = json.loads(op_params)
+        elewiseType = json_data["elewiseType"]
+        if elewiseType != 21 or len(shape) == 1:
+            data = torch.ones(shape, dtype=dtype_dict[datatype]).npu()
+            return torch_npu.npu_format_cast(data, format_dict[format])
+        data = np.ones(shape)
+        dtype = json_data["outTensorType"]
+        if dtype == 34:
+            data = torch.from_numpy(data)
+            data = data.view(torch.bits8)
+            data = data.npu()
+            return torch_npu.npu_format_cast(data, format_dict[format])
+        elif dtype == 35:
+            data = torch.from_numpy(data).to(torch.float8_e5m2).npu()
+            return torch_npu.npu_format_cast(data, format_dict[format])
+        elif dtype == 36:
+            data = torch.from_numpy(data).to(torch.float8_e4m3fn).npu()
+            return torch_npu.npu_format_cast(data, format_dict[format])
+
+    @staticmethod
     def random(shape, datatype, format, data_gen_ranges, op_params) -> torch.Tensor:
         json_data = json.loads(op_params)
         elewiseType = json_data["elewiseType"]
