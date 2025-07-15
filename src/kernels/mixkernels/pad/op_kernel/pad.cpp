@@ -61,7 +61,7 @@ private:
     __aicore__ inline void CopyOnce()
     {
         LocalTensor<int32_t> seqLenLocal = seqLenQueue_.AllocTensor<int32_t>();
-        DataCopy(seqLenLocal, seqLenGm, MAX_BATCH_NUM);
+        DataCopy(seqLenLocal, seqLenGm, batchAlign_);
         seqLenQueue_.EnQue(seqLenLocal);
     }
     __aicore__ inline void CopyIn(uint64_t progress)
