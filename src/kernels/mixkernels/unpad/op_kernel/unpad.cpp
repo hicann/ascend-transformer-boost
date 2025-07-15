@@ -70,9 +70,9 @@ private:
         LocalTensor<int32_t> seqLenLocal = seqLenQueue_.AllocTensor<int32_t>();
         AscendC::LocalTensor<int32_t> cumOffsetsBuffer = cumOffsetsBuf_.Get<int32_t>();
         AscendC::LocalTensor<int32_t> seqLenBufBuffer = seqLenBuf_.Get<int32_t>();
-        DataCopy(seqLenLocal, seqLenGm, MAX_BATCH_NUM);
-        DataCopy(cumOffsetsBuffer, cumOffsetsNowGm, MAX_BATCH_NUM);
-        DataCopy(seqLenBufBuffer, seqLenGm, MAX_BATCH_NUM);
+        DataCopy(seqLenLocal, seqLenGm, batchAlign_);
+        DataCopy(cumOffsetsBuffer, cumOffsetsNowGm, batchAlign_);
+        DataCopy(seqLenBufBuffer, seqLenGm, batchAlign_);
         seqLenQueue_.EnQue(seqLenLocal);
     }
 
