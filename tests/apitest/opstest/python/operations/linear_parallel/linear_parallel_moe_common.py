@@ -194,7 +194,7 @@ class QuantInfo:
 
 class MoeTestDate:
     def __init__(self, rank, comm_type, rank_size, batch_size, m, k, n, trans_b, expert_per_rank,
-                 coc_dtype_desc, quant_info, EP, TP, maxOutputSize):
+                 coc_dtype_desc, quant_info, EP, TP, maxOutputSize=-1):
         activation_dtype, weight_dtype, l0c_dtype, output_dtype, l0c_dtype_low = supported_coc_data_type_dict[
             coc_dtype_desc]
         self.matrix_a = generate_random_tensor(size=(batch_size, m, k), dtype=activation_dtype)
