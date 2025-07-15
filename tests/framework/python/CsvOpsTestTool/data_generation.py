@@ -6135,8 +6135,13 @@ class SortOperation(DataGen):
     def golden(in_tensors, op_params):
         json_data = json.loads(op_params)
         num = json_data['num']
-        values, indices = torch.topk(in_tensors[0].npu(), k=num[0], largest=True)
-        return [values.cpu(),indices.int().cpu()]
+        device_name = torch.npu.get_device_name()
+        if re.search("Ascend910_9599", device_name, re.I):
+            values, indices = torch.topk(in_tensors[0], k=num[0], largest=True)
+            return [values,indices.int()]
+        else:
+            values, indices = torch.topk(in_tensors[0].npu(), k=num[0], largest=True)
+            return [values.cpu(),indices.int().cpu()]
 
     @staticmethod
     def get_op_type(op_params):
