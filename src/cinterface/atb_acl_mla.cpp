@@ -114,10 +114,10 @@ atb::Status AtbMLAGetWorkspaceSize(const aclTensor *qNope, const aclTensor *qRop
     return atb::NO_ERROR;
 }
 
-atb::Status AtbMLA(void *workSpcace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
+atb::Status AtbMLA(void *workspcace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
     atb::VariantPack pack;
-    atb::Status st = op->Execute(pack, (uint8_t *)(workSpcace), workspaceSize, context);
+    atb::Status st = op->Execute(pack, (uint8_t *)(workspcace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLA Execute failed!", return st);
     return st;
 }

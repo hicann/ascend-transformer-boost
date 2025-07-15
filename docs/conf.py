@@ -18,7 +18,8 @@
 
 import subprocess
 
-branch = subprocess.check_output(["/bin/bash", "-c", "git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || git rev-parse HEAD"]).strip().decode()
+branch = subprocess.check_output(["/bin/bash", "-c", "git symbolic-ref -q --short HEAD || git describe --tags \
+    --exact-match 2> /dev/null || git rev-parse HEAD"]).strip().decode()
 project = 'Ascend Transformer Boost Guidebook'
 author = 'Ascend'
 copyright = '2024, Ascend. This work is licensed under a Creative Commons Attribution 4.0 International License'

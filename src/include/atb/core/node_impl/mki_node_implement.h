@@ -76,7 +76,7 @@ private:
     void *argsHostBuffer_ = nullptr;
 };
 
-static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
+static inline const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
 {
     return {{Mki::ErrorType::NO_ERROR, atb::ErrorType::NO_ERROR},
             {Mki::ErrorType::ERROR_INVALID_VALUE, atb::ErrorType::ERROR_INVALID_PARAM},
