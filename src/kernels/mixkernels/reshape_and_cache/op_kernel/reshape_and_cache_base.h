@@ -262,7 +262,7 @@ public:
     {
         DataCopy(winsLocal_, winsInputGt_, RoundUp(numHeads_ * numBatchs_, BLOCK_SIZE / sizeof(int32_t)));
         AscendC::PipeBarrier<PIPE_MTE2>();
-        DataCopy(seqLenLocal_, seqLenInputGt_, RoundUp(numBatchs_, BLOCK_SIZE));
+        DataCopy(seqLenLocal_, seqLenInputGt_, RoundUp(numBatchs_, BLOCK_SIZE / sizeof(int32_t)));
         AscendC::PipeBarrier<PIPE_MTE2>();
         DataCopy(offsetLocal_, offsetInputGt_, RoundUp(numHeads_ * numBatchs_, BLOCK_SIZE / sizeof(int32_t)));
         AscendC::SetFlag<AscendC::HardEvent::MTE2_S>(EVENT_ID1);
