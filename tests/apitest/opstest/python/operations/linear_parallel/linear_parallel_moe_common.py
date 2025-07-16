@@ -182,8 +182,8 @@ class QuantInfo:
 
         return broadcast_offset, broadcast_scale, dequant_dtype
 
-    def get_moe_dequant_tensor(self, output_split, n, TP, l0c_dtype):
-        shape_info = [sum(output_split) * TP, n]
+    def get_moe_dequant_tensor(self, m_matrix_a, n, TP, l0c_dtype):
+        shape_info = [m_matrix_a, n]
         broadcast_scale = self.broadcast_quant_args(self.dequant_scale_origin, shape_info)
         if self.has_dequant_offset == 1:
             broadcast_offset = self.broadcast_quant_args(self.dequant_offset, shape_info)
@@ -452,7 +452,7 @@ class MoeTestDate:
             ep_idx = rank // TP
             # matrix_c = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n))
             matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
-            broadcast_offset, broadcast_scale = quant_info.get_moe_dequant_tensor(self.output_splits[ep_idx], self.input_info[2], TP, l0c_dtype)
+            broadcast_offset, broadcast_scale = quant_info.get_moe_dequant_tensor(self.matrix_a_i_list[ep_idx].size(1), self.input_info[2], TP, l0c_dtype)
             loop = math.ceil(self.k / (pValue * 256))
             for j in range(loop):
                 st = j * pValue * 256
