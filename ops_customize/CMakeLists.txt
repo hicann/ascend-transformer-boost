@@ -49,7 +49,6 @@ add_library(atb_customize_static STATIC ${CUSTOMIZE_SRCS})
 set(CUSTOMIZE_DEPS
     mki
     asdops
-    atb_mixops
     customize_ops
     ascendcl
     profapi
