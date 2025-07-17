@@ -123,12 +123,4 @@ Status MstxMemRegister::CheckTensorRange()
     }
 }
 
-bool MstxMemRegister::IsValid()
-{
-    if (memPool_ != nullptr) {
-        return true;
-    } else {
-        return false;
-    }
-}
 }  // namespace atb
