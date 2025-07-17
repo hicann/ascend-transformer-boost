@@ -90,7 +90,8 @@ def one_golden_compare(tensor_a, tensor_b):
         return 1
 
 def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
-                data_type, quant_info, EP, TP, quant_type, out_data_ype):
+                data_type, quant_info, EP, TP, quant_type, out_data_ype, matrix_a_list, matrix_b_list, dequant_scale_list,
+                quant_scale_list, global_tokens_per_expert_matrix, matrix_c_list, matrix_c_low_list):
     torch_npu.npu.set_device(rank)
     print(f'Process {rank} started, using device npu:{rank}.')
 
@@ -105,14 +106,12 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
                                 local_expert_nums, "tpSize": 1}})
 
     acl_matmul_alltoall_operation.set_param(acl_param)
-    moedata = MoeTestDate(rank, CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
-                          CoCDataTypeDesc(data_type), quant_info, EP, TP, outputSize)
+
     in_tensors = []
     ep_idx = rank // TP
-    matrix_a_i_list = moedata.matrix_a_i_list[ep_idx]
+    matrix_a_i_list = matrix_a_list[rank]
     new_M = matrix_a_i_list.shape[1]
-    print("new_M, ", new_M)
-    input_tensor = matrix_a_i_list    
+    input_tensor = matrix_a_i_list
     input_tensor = input_tensor.reshape(new_M, K)
     
     if input_tensor.shape[0] == 0:
@@ -121,29 +120,29 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
         input_tensor = torch.nn.functional.pad(input_tensor, (0, 0, 0, outputSize - new_M ), mode='constant', value=0)
     in_tensors.append(input_tensor.to(torch.device('npu')))
 
-    weight_tensor = moedata.matrix_b
+    weight_tensor = matrix_b_list[rank]
     if trans_b:
         weight_tensor = weight_tensor.reshape(local_expert_nums, N, K)
     else:
         weight_tensor = weight_tensor.reshape(local_expert_nums, K, N)
     in_tensors.append(weight_tensor.to(torch.device('npu')))
     if quant_type == 3:
-        dequantScale = moedata.matrix_dequant_scale
+        dequantScale = dequant_scale_list[rank]
         dequantScale = dequantScale.reshape(N * local_expert_nums)
         in_tensors.append(dequantScale.to(torch.device('npu')))
 
-        quantScale = moedata.matrix_quant_scale
+        quantScale = quant_scale_list[rank]
         quantScale = quantScale.reshape(quantScale.shape[0])
         empty_tensor = torch.zeros(outputSize-new_M)
         quantScale = torch.cat([quantScale, empty_tensor], dim=0)
         in_tensors.append(quantScale.to(torch.device('npu')))
     elif quant_type == 1:
-        dequantScale = moedata.matrix_dequant_scale
+        dequantScale = dequant_scale_list[rank]
         dequantScale = dequantScale.reshape(N * local_expert_nums)
         in_tensors.append(dequantScale.to(torch.device('npu')))
     
 
-    global_tokens_per_expert_matrix = moedata.global_tokens_per_expert_matrix
+    global_tokens_per_expert_matrix = global_tokens_per_expert_matrix.reshape(EP, EP * local_expert_nums).to(dtype=torch.int32)
     
     in_tensors.append(global_tokens_per_expert_matrix.to(torch.device('npu')))
 
@@ -154,8 +153,8 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
 
     torch.npu.synchronize()
 
-    golden_out_tensor = moedata.matrix_c
-    golden_out_tensor_low = moedata.matrix_c_low
+    golden_out_tensor = matrix_c_list[rank]
+    golden_out_tensor_low = matrix_c_low_list[rank]
     out_tensor_compare = out_tensor[0].to(torch.device('cpu'))[:golden_out_tensor.shape[1], :]
     assert check_precision_new(out_tensor_compare, golden_out_tensor, golden_out_tensor_low)
 
@@ -223,26 +222,131 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         world_size = 8
         comm_type = 310
         batch = 1
-        M = 2
-        K = 2048
-        N = 10
-        trans_b = 1
+        M = 272
+        K = 173
+        N = 594
+        trans_b = 0
         quant_granularity = -1
         quant_group_size = -1
         has_quant_offset = -1
         dequant_group_size = -1
-        local_expert_nums = 1
+        local_expert_nums = 4
         EP = 8
         TP = 1
-        out_data_type = 1
-        dequant_granularity = 3
+        out_data_type = 27
+        dequant_granularity = -1
         has_dequant_offset = -1
-        data_type = 2
+        data_type = 1
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
+
+        moedata = MoeTestDate(CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
+                              CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2)
+        matrix_a_list = moedata.matrix_a_i_list
+        matrix_b_list = moedata.matrix_b_list
+        dequant_scale_list = moedata.dequant_scale_list
+        quant_scale_list = [moedata.quant_scale_list[i].clone() for i in range(len(moedata.quant_scale_list))]
+        global_tokens_per_expert_matrix = moedata.global_tokens_per_expert_matrix
+        matrix_c_list = moedata.matrix_c_list
+        matrix_c_low_list = moedata.matrix_c_low_list
+
+        
         mp.spawn(main_worker, nprocs=world_size,
                  args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
-                       CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type))
+                       CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type, 
+                       matrix_a_list, matrix_b_list, dequant_scale_list, quant_scale_list, 
+                       global_tokens_per_expert_matrix, matrix_c_list, matrix_c_low_list))
+
+    def test_linear_paraller_fp16(self):
+        i = 0
+        for _ in range(10000):
+            if not operation_test.get_soc_version() == 'Ascend910B':
+                return
+            print(f"———————— LinearParallelCoverOp test start ————————")
+            print("------------MATMUL REDUCESCATTER ALLTOALLVC Non quantitative scenarios-----------")
+            import random
+            world_size = random.choice([4, 8])
+            comm_type = 310
+
+            def generate_batch(num):
+                low_range = list(range(1, 10000))
+                middle_range = list(range(10000, 30000))
+                high_range = list(range(30000, num * 1024))
+                candidates = low_range + high_range + middle_range
+                weights = [85 / 10000] * len(low_range) + [10 / 20000] * len(middle_range) + [5 / 72400] * len(
+                    high_range)
+                batch = random.choices(candidates, weights=weights, k=1)[0]
+                return batch
+
+            batch = 1
+            M = random.randint(1, 5000)
+            # M = generate_batch(100)
+            K = generate_batch(32)
+            N = generate_batch(32)
+            while M > 200 * 1024:
+                M = generate_batch(100)
+            trans_b = random.randint(0, 1)
+            # trans_b = 1
+            quant_granularity = -1
+            quant_group_size = -1
+            has_quant_offset = -1
+            dequant_group_size = -1
+            # local_expert_nums = 4 # 1- 16
+            local_expert_nums = random.randint(1, 16)  # 1- 16
+            # EP = 8 # EP * TP = WORLDSIZE
+            EP = world_size
+            while EP > world_size:
+                EP = random.choice([1, 2, 4, 8, 16])
+            TP = world_size // EP
+            # TP = 1 # 客户场景 TP=1
+            # out_data_type = 1 # 1对应data_type=0 27对应data_type=1
+
+            # dequant_granularity = -1  # 量化类型 -1 非量化
+            dequant_granularity = random.choice([-1, 1, 3])  # 量化类型 -1 非量化
+            # dequant_granularity = 3  # 量化类型 -1 非量化
+            if dequant_granularity == -1:
+                out_data_type = random.choice([1, 27])
+                data_type = 0 if out_data_type == 1 else 1
+            else:
+                out_data_type = 1
+                data_type = 2
+
+            has_dequant_offset = -1
+            if data_type == 2:
+                kalign = find_nearest_multiple(K, 512)
+            else:
+                kalign = find_nearest_multiple(K, 256)
+            max_int32 = 2147483647
+            if M * kalign * 2 >= max_int32:
+                continue
+
+            i += 1
+            print(
+                f"--M:{M}--N:{N}--K:{K}--world_size:{world_size}--local_expert_nums:{local_expert_nums}--EP:{EP}--TP:{TP}--dequant_granularity:{dequant_granularity}--out_data_type:{out_data_type}--data_type:{data_type}--i:{i}")
+
+            quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
+                                   QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
+
+            moedata = MoeTestDate(CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
+                              CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2)
+            matrix_a_list = moedata.matrix_a_i_list
+            matrix_b_list = moedata.matrix_b_list
+            dequant_scale_list = moedata.dequant_scale_list
+            quant_scale_list = [moedata.quant_scale_list[i].clone() for i in range(len(moedata.quant_scale_list))]
+            global_tokens_per_expert_matrix = moedata.global_tokens_per_expert_matrix
+            matrix_c_list = moedata.matrix_c_list
+            matrix_c_low_list = moedata.matrix_c_low_list
+
+            
+            mp.spawn(main_worker, nprocs=world_size,
+                    args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
+                        CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type, 
+                        matrix_a_list, matrix_b_list, dequant_scale_list, quant_scale_list, 
+                        global_tokens_per_expert_matrix, matrix_c_list, matrix_c_low_list))
+
+            if i >= 700:
+                break
+
 
 
 if __name__ == '__main__':
