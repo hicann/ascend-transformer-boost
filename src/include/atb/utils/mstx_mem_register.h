@@ -22,20 +22,19 @@ public:
     MstxMemRegister();
     ~MstxMemRegister();
     static mstxDomainHandle_t &GetRegisterDomain();
-    static void CheckMstxEnable();
+    static bool IsMstxEnable();
     Status CheckTensorRange();
-    void MstxHeapRegister(void *workspace, uint64_t workspaceSize);
+    Status MstxHeapRegister(void *workspace, uint64_t workspaceSize);
     void MstxMemRegionsRegister();
     void MstxMemRegionsUnregister();
     void ClearMstxMemRegions() noexcept;
     void AddTensorMemRegions(void *ptr, uint64_t size);
     int32_t GetMstxDevice();
-    bool IsValid();
-    static bool isMstxEnable;
 
 private:
-    static mstxMemHeapHandle_t memPool_;
+    thread_local static bool isMstxEnable_;
     static mstxDomainHandle_t domain_;
+    mstxMemHeapHandle_t memPool_;
     std::vector<mstxMemVirtualRangeDesc_t> rangesDesc_ = {};
     std::vector<mstxMemRegionHandle_t> regionHandles_ = {};
 };
