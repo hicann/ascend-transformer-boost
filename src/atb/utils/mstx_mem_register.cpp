@@ -47,6 +47,38 @@ void MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
     memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
 }
 
+void MstxMemRegister::CheckMstxEnable()
+{
+    void *ptr = nullptr;
+    aclError ret = aclrtMalloc(&ptr, 32, ACL_MEM_MALLOC_HUGE_FIRST);
+    if (ret != ACL_SUCCESS) {
+        mstxMemVirtualRangeDesc_t rangeDesc = {};
+        rangeDesc.deviceId = 0;
+        rangeDesc.ptr = ptr;
+        rangeDesc.size = 32;
+
+        mstxMemHeapDesc_t heapDesc = {};
+        heapDesc.usage = MSTX_MEM_HEAP_USAGE_TYPE_SUB_ALLOCATOR;
+        heapDesc.type = MSTX_MEM_TYPE_VIRTUAL_ADDRESS;
+        heapDesc.typeSpecificDesc = &rangeDesc;
+        memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
+
+        if (memPool_ != nullptr) {
+            isMstxEnable = true;
+        } else {
+            isMstxEnable = false;
+        }
+            mstxMemHeapUnregister(GetRegisterDomain(), memPool_);
+    }
+    if (ptr != nullptr) {
+        aclError freeRet = aclrtFree(ptr);
+        if (freeRet != ACL_SUCCESS) {
+            ATB_LOG(ERROR) << "msxt check aclrtFree failed!";
+        }
+        ptr = nullptr;
+    }
+}
+
 void MstxMemRegister::MstxMemRegionsRegister()
 {
     regionHandles_.resize(rangesDesc_.size());
@@ -111,8 +143,12 @@ Status MstxMemRegister::CheckTensorRange()
     }
 }
 
-bool MstxMemRegister::IsValid() const noexcept
+bool MstxMemRegister::IsValid()
 {
-    return memPool_ != nullptr;
+    if (memPool_ != nullptr) {
+        return true;
+    } else {
+        return false;
+    }
 }
 }  // namespace atb

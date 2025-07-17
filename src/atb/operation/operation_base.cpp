@@ -1073,11 +1073,12 @@ Status OperationBase::Execute(const VariantPack &variantPack, uint8_t *workspace
     ProfilingFuncName profType = executeType == EXECUTE_NORMAL ?
                                      OPERATION_EXECUTE :
                                      (executeType == EXECUTE_PRELAUNCH ? OPERATION_PRELAUNCH : OPERATION_LAUNCH);
-    std::shared_ptr<MstxMemRegister> mstxMemRegister;
-    mstxMemRegister = std::make_shared<MstxMemRegister>();
-    if (workspaceSize) {
+    MstxMemRegister::CheckMstxEnable();
+    if (workspaceSize && MstxMemRegister::isMstxEnable) {
+        std::shared_ptr<MstxMemRegister> mstxMemRegister;
+        mstxMemRegister = std::make_shared<MstxMemRegister>();
         mstxMemRegister->MstxHeapRegister(workspace, workspaceSize);
-        if (mstxMemRegister && mstxMemRegister->IsValid()) {
+        if (mstxMemRegister) {
             runnerVariantPack_.mstxMemRegister = mstxMemRegister.get();
             ATB_LOG(INFO) << GetLogPrefix() << "mstxMemHeapRegister success ";
         }
