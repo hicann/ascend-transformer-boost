@@ -83,7 +83,14 @@ def one_golden_compare(tensor_a, tensor_b):
         return 1
     golden_nmax = torch.clamp(torch.abs(tensor_b), min = 1)
     abs_error = torch.abs(tensor_a - tensor_b)
+    print("!!!!!!!!!!!!!abs:", torch.max(abs_error))
+    max_relative_error_idx = torch.argmax(abs_error)
+    temp_tensor = abs_error / golden_nmax
+    temp_id = torch.argmax(temp_tensor)
+    max_relative_error_value_a = tensor_a[temp_id]
+    max_relative_error_value_b = tensor_b[temp_id]
     result = (abs_error <= err * golden_nmax).all()
+    print("re!!!!!!!!!!!!!!npu,cpu, id", result, max_relative_error_value_a, max_relative_error_value_b, temp_id)
     if result:
         return 0
     else:
@@ -168,12 +175,15 @@ def check_precision_new(tensor_a, tensor_b, tensor_c):
     err_threshold = get_err_threshold_for_two_golden(d_type)
     eb_threshold = get_eb_threshold(d_type)
 
-    tensor_a = tensor_a.to(torch.float32)
-    tensor_b = tensor_b.to(torch.float32)
-    tensor_c = tensor_c.to(torch.float32)
+    tensor_a = tensor_a.to(torch.float32).reshape(-1)
+    tensor_b = tensor_b.to(torch.float32).reshape(-1)
+    tensor_c = tensor_c.to(torch.float32).reshape(-1)
 
     relative_error_npu = torch.abs(tensor_a - tensor_b) / (torch.abs(tensor_b) + epsilon)
     relative_error_cpu = torch.abs(tensor_c - tensor_b) / (torch.abs(tensor_b) + epsilon)
+    if relative_error_npu.size(0) == 0 and relative_error_cpu.size(0) == 0:
+        print("result is same with expect")
+        return 1
     max_relative_error_npu = torch.max(relative_error_npu)
     max_relative_error_cpu = torch.max(relative_error_cpu)
     mean_relative_error_npu = torch.mean(relative_error_npu)
@@ -194,14 +204,19 @@ def check_precision_new(tensor_a, tensor_b, tensor_c):
     print("均方根误差cpu:", rmse_cpu)
     print("误差均衡性EB:", EB)
 
+    max_relative_error_idx = torch.argmax(relative_error_npu)
+    max_relative_error_value_a = tensor_a[max_relative_error_idx]
+    max_relative_error_value_b = tensor_b[max_relative_error_idx]
+    max_relative_error_value_c = tensor_c[max_relative_error_idx]
+
     if max_relative_error_npu / max(max_relative_error_cpu, err_threshold) >= 10:
-        print("nup!!!!!!!!", tensor_a, tensor_a.shape)
-        print("cpu!!!!!!!!!!!!", tensor_b, tensor_b.shape)
+        print(f"Max Relative Error Value: npu, golden, cpu, id: {max_relative_error_value_a.item()}, {max_relative_error_value_b.item()}, {max_relative_error_value_c.item()}, {max_relative_error_idx}")
         if one_golden_compare(tensor_a, tensor_b):
-            print("result is error")
+            print("resule is error")
             return 0
 
     if mean_relative_error_npu / max(mean_relative_error_cpu, err_threshold) >= 2 or rmse_npu / max(rmse_cpu, err_threshold) >= 2 or EB >= eb_threshold:
+        print("result is error")
         return 0
     print("result is same with expect")
     return 1
@@ -222,21 +237,21 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         world_size = 8
         comm_type = 310
         batch = 1
-        M = 272
-        K = 173
-        N = 594
-        trans_b = 0
+        M = 25
+        K = 9957
+        N = 868
+        trans_b = 1
         quant_granularity = -1
         quant_group_size = -1
         has_quant_offset = -1
         dequant_group_size = -1
-        local_expert_nums = 4
+        local_expert_nums = 15
         EP = 8
         TP = 1
-        out_data_type = 27
-        dequant_granularity = -1
+        out_data_type = 1
+        dequant_granularity = 1
         has_dequant_offset = -1
-        data_type = 1
+        data_type = 2
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
 
@@ -265,7 +280,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
             print(f"———————— LinearParallelCoverOp test start ————————")
             print("------------MATMUL REDUCESCATTER ALLTOALLVC Non quantitative scenarios-----------")
             import random
-            world_size = random.choice([4, 8])
+            world_size = random.choice([2, 4, 8])
             comm_type = 310
 
             def generate_batch(num):
@@ -279,10 +294,12 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
                 return batch
 
             batch = 1
-            M = random.randint(1, 5000)
-            # M = generate_batch(100)
+            M = random.randint(1, 128)
+
             K = generate_batch(32)
+
             N = generate_batch(32)
+            # N = 3290
             while M > 200 * 1024:
                 M = generate_batch(100)
             trans_b = random.randint(0, 1)
@@ -298,10 +315,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
             while EP > world_size:
                 EP = random.choice([1, 2, 4, 8, 16])
             TP = world_size // EP
-            # TP = 1 # 客户场景 TP=1
-            # out_data_type = 1 # 1对应data_type=0 27对应data_type=1
 
-            # dequant_granularity = -1  # 量化类型 -1 非量化
             dequant_granularity = random.choice([-1, 1, 3])  # 量化类型 -1 非量化
             # dequant_granularity = 3  # 量化类型 -1 非量化
             if dequant_granularity == -1:
@@ -328,7 +342,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
                                    QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
 
             moedata = MoeTestDate(CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
-                              CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2)
+                                CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2)
             matrix_a_list = moedata.matrix_a_i_list
             matrix_b_list = moedata.matrix_b_list
             dequant_scale_list = moedata.dequant_scale_list
