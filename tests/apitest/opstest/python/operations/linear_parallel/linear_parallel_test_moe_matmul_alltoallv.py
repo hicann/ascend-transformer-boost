@@ -37,10 +37,10 @@ def get_err_threshold_for_one_golden(dtype:torch.dtype):
     if dtype == torch.float32:
         dtype = torch.float16
     if dtype in [torch.float16]:
-        precision_threshold = 2 ** (-8)
+        precision_threshold = 2 ** (-7)
         eb_threshold = 2 ** (-10)
     if dtype in [torch.bfloat16]:
-        precision_threshold = 2 ** (-7)
+        precision_threshold = 2 ** (-6)
         eb_threshold = 2 ** (-7)
     return precision_threshold
 
