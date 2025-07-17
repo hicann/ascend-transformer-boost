@@ -461,6 +461,8 @@ class MoeTestDate:
                 for rank in range(rank_size):
                     ep_idx = rank // TP
                     quant_scale_alltoall[ep_idx] = quant_scale_alltoall[ep_idx].squeeze(0)
+                    if self.maxOutputSize > 0:
+                        quant_scale_alltoall[ep_idx] = quant_scale_alltoall[ep_idx][:self.maxOutputSize, :]
                     self.quant_scale_list.append(quant_scale)
 
 
@@ -482,7 +484,8 @@ class MoeTestDate:
                 matrix_c = ((matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale)
                 # matrix_c_low = ((matrix_c_low + broadcast_offset).to(torch.float32) * broadcast_scale)
                 if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
-                    broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale_alltoall[ep_idx], [sum(self.output_splits[ep_idx]) * TP, self.input_info[2]])
+                    # print("!"*30, quant_scale_alltoall[ep_idx].shape)
+                    broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale_alltoall[ep_idx], [self.matrix_a_i_list[ep_idx].size(1), self.input_info[2]])
                     matrix_c = (matrix_c * broadcast_quant_scale)
                     matrix_c_low = (matrix_c_low * broadcast_quant_scale)
                 # self.matrix_c = matrix_c
