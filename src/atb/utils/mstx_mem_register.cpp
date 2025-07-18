@@ -15,6 +15,7 @@
 static constexpr int32_t DEVICE_UNDEFINED_STATUS = -1;
 
 namespace atb {
+thread_local bool MstxMemRegister::isMstxEnable_ = true;
 MstxMemRegister::MstxMemRegister() {}
 
 MstxMemRegister::~MstxMemRegister()
@@ -37,6 +38,16 @@ void MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.typeSpecificDesc = &rangeDesc;
     
     memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
+    if (memPool_ == nullptr) {
+        isMstxEnable_ = false;
+        return ERROR_INTERNAL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+bool MstxMemRegister::IsMstxEnable()
+{
+    return isMstxEnable_;
 }
 
 mstxDomainHandle_t &MstxMemRegister::GetRegisterDomain()
@@ -105,8 +116,4 @@ bool MstxMemRegister::CheckTensorRange()
     return !rangesDesc_.empty();
 }
 
-bool MstxMemRegister::IsValid() const noexcept
-{
-    return memPool_ != nullptr;
-}
 }  // namespace atb
