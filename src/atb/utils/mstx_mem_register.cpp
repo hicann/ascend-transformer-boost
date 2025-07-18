@@ -47,7 +47,7 @@ Status MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize
     heapDesc.typeSpecificDesc = &rangeDesc;
     
     memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
-    if (memPool_ ==nullptr) {
+    if (memPool_ == nullptr) {
         isMstxEnable_ = false;
         return ERROR_INTERNAL_ERROR;
     }
