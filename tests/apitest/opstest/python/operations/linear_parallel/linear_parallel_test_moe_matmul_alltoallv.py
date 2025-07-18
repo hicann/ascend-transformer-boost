@@ -98,14 +98,14 @@ def one_golden_compare(tensor_a, tensor_b):
 
 def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                 data_type, quant_info, EP, TP, quant_type, out_data_ype, matrix_a_list, matrix_b_list, dequant_scale_list,
-                quant_scale_list, global_tokens_per_expert_matrix, matrix_c_list, matrix_c_low_list):
+                quant_scale_list, global_tokens_per_expert_matrix, matrix_c_list, matrix_c_low_list, outpusize):
     torch_npu.npu.set_device(rank)
     print(f'Process {rank} started, using device npu:{rank}.')
 
     acl_matmul_alltoall_operation = torch.classes.OperationTorch.OperationTorch(
         "LinearParallelOperation")
 
-    outputSize = M * 2
+    outputSize = outpusize
     acl_param = json.dumps({"type": 6, "rank": rank, "rankSize": world_size,
                             "rankRoot": 0, "transWeight": bool(trans_b), "backend": "lcoc",
                             "quantType": quant_type, "outDataType": out_data_ype,
@@ -255,8 +255,13 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
         quant_info = QuantInfo(QuantGranularity(quant_granularity), quant_group_size, has_quant_offset,
                                QuantGranularity(dequant_granularity), dequant_group_size, has_dequant_offset)
 
+        if M <= 128:
+            outpusize = M * 8
+        else:
+            outpusize = M * 2
+
         moedata = MoeTestDate(CommType(comm_type), world_size, batch, M, K, N, trans_b, local_expert_nums,
-                              CoCDataTypeDesc(data_type), quant_info, EP, TP, M*2)
+                              CoCDataTypeDesc(data_type), quant_info, EP, TP, outpusize)
         matrix_a_list = moedata.matrix_a_i_list
         matrix_b_list = moedata.matrix_b_list
         dequant_scale_list = moedata.dequant_scale_list
@@ -270,7 +275,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
                  args=(comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                        CoCDataTypeDesc(data_type), quant_info, EP, TP, dequant_granularity, out_data_type, 
                        matrix_a_list, matrix_b_list, dequant_scale_list, quant_scale_list, 
-                       global_tokens_per_expert_matrix, matrix_c_list, matrix_c_low_list))
+                       global_tokens_per_expert_matrix, matrix_c_list, matrix_c_low_list, outpusize))
 
     def test_linear_paraller_fp16(self):
         i = 0
