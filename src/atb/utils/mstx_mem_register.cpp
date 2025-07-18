@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 static constexpr int32_t DEVICE_UNDEFINED_STATUS = -1;
 
 namespace atb {
+thread_local bool MstxMemRegister::isMstxEnable_ = true;
 MstxMemRegister::MstxMemRegister() {}
 
 MstxMemRegister::~MstxMemRegister()
@@ -24,7 +25,7 @@ MstxMemRegister::~MstxMemRegister()
     }
 }
 
-void MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
+Status MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
 {
     mstxMemVirtualRangeDesc_t rangeDesc = {};
     rangeDesc.deviceId = GetMstxDevice();
@@ -37,6 +38,16 @@ void MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
     heapDesc.typeSpecificDesc = &rangeDesc;
     
     memPool_ = mstxMemHeapRegister(GetRegisterDomain(), &heapDesc);
+    if (memPool_ == nullptr) {
+        isMstxEnable_ = false;
+        return ERROR_INTERNAL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+bool MstxMemRegister::IsMstxEnable()
+{
+    return isMstxEnable_;
 }
 
 mstxDomainHandle_t &MstxMemRegister::GetRegisterDomain()
@@ -105,8 +116,4 @@ bool MstxMemRegister::CheckTensorRange()
     return !rangesDesc_.empty();
 }
 
-bool MstxMemRegister::IsValid() const noexcept
-{
-    return memPool_ != nullptr;
-}
 }  // namespace atb

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -20,8 +20,9 @@ public:
     MstxMemRegister();
     ~MstxMemRegister();
     static mstxDomainHandle_t &GetRegisterDomain();
+    static bool IsMstxEnable();
     bool CheckTensorRange();
-    void MstxHeapRegister(void *workspace, uint64_t workspaceSize);
+    Status MstxHeapRegister(void *workspace, uint64_t workspaceSize);
     void MstxMemRegionsRegister();
     void MstxMemRegionsUnregister();
     void ClearMstxMemRegions() noexcept;
@@ -30,8 +31,9 @@ public:
     bool IsValid() const noexcept;
 
 private:
-    mstxMemHeapHandle_t memPool_ = nullptr;
+    thread_local static bool isMstxEnable_;
     static mstxDomainHandle_t domain_;
+    mstxMemHeapHandle_t memPool_ = nullptr;
     std::vector<mstxMemVirtualRangeDesc_t> rangesDesc_ = {};
     std::vector<mstxMemRegionHandle_t> regionHandles_ = {};
 };
