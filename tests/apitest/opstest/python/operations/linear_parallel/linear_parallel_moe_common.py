@@ -420,7 +420,7 @@ class MoeTestDate:
 
     def generate_matrix_c_for_moe_309(self, coc_dtype_desc, rank_size, TP, EP, l0c_dtype, output_dtype, quant_info):
         if l0c_dtype == torch.int32:
-            data_type_len = 1
+            data_type_len = 2
         else:
             data_type_len = 2
         pValue = int(self.get_pvalue(data_type_len))
