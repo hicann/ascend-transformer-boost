@@ -25,7 +25,7 @@ MstxMemRegister::~MstxMemRegister()
     }
 }
 
-void MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
+Status MstxMemRegister::MstxHeapRegister(void *workspace, uint64_t workspaceSize)
 {
     mstxMemVirtualRangeDesc_t rangeDesc = {};
     rangeDesc.deviceId = GetMstxDevice();
