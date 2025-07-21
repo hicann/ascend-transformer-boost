@@ -514,10 +514,10 @@ class MoeTestDate:
             self.cal_trunc(EP)
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
             matrix_c_out = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
-            if coc_dtype_desc == CoCDataTypeDesc.BF16BF16_FP32_BF16:
-                matrix_c_out_low = torch.matmul(self.matrix_a, self.matrix_b)
-            else:
-                matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
+            # if coc_dtype_desc == CoCDataTypeDesc.BF16BF16_FP32_BF16:
+            #     matrix_c_out_low = torch.matmul(self.matrix_a, self.matrix_b)
+            # else:
+            #     matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
             tmp_offset = 0
             for rank in range(rank_size):
                 for ep_idx in range(EP):
@@ -528,10 +528,10 @@ class MoeTestDate:
                             l = tmp_offset + self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id]
                             r = tmp_offset + self.num_local_tokens_per_expert[rank][expert_id]
                             matrix_c_out[:,l:r,:] = 0
-                            matrix_c_out_low[:,l:r,:] = 0
+                            # matrix_c_out_low[:,l:r,:] = 0
                         tmp_offset += self.num_local_tokens_per_expert[rank][expert_id]
                 self.matrix_c_list.append(matrix_c_out)
-                self.matrix_c_low_list.append(matrix_c_out_low)
+                # self.matrix_c_low_list.append(matrix_c_out_low)
             # print("self.matrix_c:", self.matrix_c)
             
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
@@ -561,7 +561,7 @@ class MoeTestDate:
 
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
                 matrix_c_out = (matrix_c_out * broadcast_quant_scale).to(torch.float32)
-            matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
+            # matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
 
             tmp_offset = 0
             for rank in range(rank_size):
@@ -573,8 +573,8 @@ class MoeTestDate:
                             l = tmp_offset + self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id]
                             r = tmp_offset + self.num_local_tokens_per_expert[rank][expert_id]
                             matrix_c_out[:,l:r,:] = 0
-                            matrix_c_out_low[:,l:r,:] = 0
+                            # matrix_c_out_low[:,l:r,:] = 0
                         tmp_offset += self.num_local_tokens_per_expert[rank][expert_id]
                 self.matrix_c_list.append(matrix_c_out)
-                self.matrix_c_low_list.append(matrix_c_out_low)
+                # self.matrix_c_low_list.append(matrix_c_out_low)
 
