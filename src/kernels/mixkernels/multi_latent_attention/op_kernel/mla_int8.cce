@@ -9,8 +9,8 @@
 */
 
 constexpr int32_t CHUNK_BUFFER_SIZE = 2;
-constexpr int32_t TMP_SIZE_DECODER_INT8 = SP_BLOCK_SIZE*K_BLOCK_NUM*CHUNK_BUFFER_SIZE;
-constexpr int64_t P_TMP_SIZE_INT8 = 128*512*CHUNK_BUFFER_SIZE;
+constexpr int32_t TMP_SIZE_DECODER_INT8 = SP_BLOCK_SIZE * K_BLOCK_NUM * CHUNK_BUFFER_SIZE;
+constexpr int64_t P_TMP_SIZE_INT8 = 128 * 512 * CHUNK_BUFFER_SIZE;
 constexpr int32_t UB_FLOAT_LINE_SIZE_TP1 = 128;
 
 #ifdef __DAV_C220_CUBE__
@@ -22,11 +22,11 @@ constexpr uint32_t TP1_INT8_L1_K_ROPE_SIZE = 128 * 64 * 4;
 constexpr uint32_t TP1_INT8_L1_P_SIZE = 128 * 512 * 2;
 constexpr uint32_t TP1_INT8_L1_V_SIZE = 128 * 512 * 2;
 constexpr uint32_t TP1_INT8_Q_OFFSET = 0;
-constexpr uint32_t TP1_INT8_Q_ROPE_OFFSET = TP1_INT8_Q_OFFSET+TP1_INT8_L1_Q_SIZE;
-constexpr uint32_t TP1_INT8_K_OFFSET = TP1_INT8_Q_ROPE_OFFSET+TP1_INT8_L1_Q_ROPE_SIZE;
-constexpr uint32_t TP1_INT8_K_ROPE_OFFSET = TP1_INT8_K_OFFSET+TP1_INT8_L1_K_SIZE;
-constexpr uint32_t TP1_INT8_P_OFFSET = TP1_INT8_K_ROPE_OFFSET+TP1_INT8_L1_K_ROPE_SIZE;
-constexpr uint32_t TP1_INT8_V_OFFSET = TP1_INT8_P_OFFSET+TP1_INT8_L1_P_SIZE;
+constexpr uint32_t TP1_INT8_Q_ROPE_OFFSET = TP1_INT8_Q_OFFSET + TP1_INT8_L1_Q_SIZE;
+constexpr uint32_t TP1_INT8_K_OFFSET = TP1_INT8_Q_ROPE_OFFSET + TP1_INT8_L1_Q_ROPE_SIZE;
+constexpr uint32_t TP1_INT8_K_ROPE_OFFSET = TP1_INT8_K_OFFSET + TP1_INT8_L1_K_SIZE;
+constexpr uint32_t TP1_INT8_P_OFFSET = TP1_INT8_K_ROPE_OFFSET + TP1_INT8_L1_K_ROPE_SIZE;
+constexpr uint32_t TP1_INT8_V_OFFSET = TP1_INT8_P_OFFSET + TP1_INT8_L1_P_SIZE;
 constexpr int32_t FLOAT_VECTOR_SIZE = 64;
 
 template <TilingKeyType tilingKeyType, typename IN_ROPE_DTYPE,  typename OUT_DTYPE, typename IN_KVDTYPE,
@@ -853,15 +853,15 @@ private:
 
         uint32_t cur_head_num_round = RoundUp<16>(cur_head_num);
         
-        uint32_t v_rows_mad = 256; 
-        uint32_t v_rows_mad_round = RoundUp<BLOCK_SIZE>(v_rows_mad); 
-        uint32_t v_row_loop_num = (512 + v_rows_mad - 1) / v_rows_mad;  
+        uint32_t v_rows_mad = 256;
+        uint32_t v_rows_mad_round = RoundUp<BLOCK_SIZE>(v_rows_mad);
+        uint32_t v_row_loop_num = (512 + v_rows_mad - 1) / v_rows_mad;
         uint32_t l0_p_pingpong_offset = block_size * v_rows_mad;
         uint32_t l1_p_pingpong_offset = block_size * v_rows_mad;
         uint32_t p_cols_l1_2_l0 = v_rows_mad;
         uint32_t p_cols_l1_2_l0_round = RoundUp<BLOCK_SIZE>(p_cols_l1_2_l0);
         uint32_t ndNum_k_gm_2_l1 = 2;
-        uint32_t v_rows_one_loop = block_size * K_BLOCK_NUM; 
+        uint32_t v_rows_one_loop = block_size * K_BLOCK_NUM;
         uint32_t pv_n_2 = pp_n_scalar * K_BLOCK_NUM;
         uint32_t pv_round_n_2 = RoundUp<BLOCK_SIZE>(pv_n_2);
         uint32_t pv_round_n_2_l1 = RoundUp<T_BLOCK_SIZE>(pv_n_2);
@@ -901,383 +901,367 @@ private:
         uint32_t embed_split_size = 256;
         uint32_t rope_embed_split_size = 64;
         uint32_t round_embed_split_size = RoundUp<T_BLOCK_SIZE>(embed_split_size);
-        uint32_t embed_split_loop_v = (embed_size + round_embed_split_size-1)/round_embed_split_size;
-        uint32_t q_load_coeff = cur_head_num_round;
-        uint32_t l0a_data_size = round_embed_split_size*q_load_coeff*sizeof(int8_t);
-        uint32_t l0b_data_size = round_embed_split_size*pp_n_scalar*sizeof(int8_t);
-        uint32_t l0c_data_size = q_load_coeff*pp_n_scalar;
+        uint32_t embed_split_loop_v = (embed_size + round_embed_split_size - 1) / round_embed_split_size;
+        uint32_t q_load_coeff = cur_head_num;
+        uint32_t q_load_coeff_round = cur_head_num_round;
+        uint32_t l0a_data_size = round_embed_split_size * 128 * sizeof(int8_t);
+        uint32_t l0b_data_size = round_embed_split_size * pp_n_scalar * sizeof(int8_t);
+        uint32_t l0c_data_size = 128 * pp_n_scalar;
 
-        for (uint32_t n_idx = 0; n_idx < n_loop + 1; n_idx+=1){
+        for (uint32_t n_idx = 0; n_idx < n_loop + 1; n_idx += 1) {
             if (n_idx != n_loop) {
-                    uint32_t cur_k_block_num = (n_idx == (n_loop - 1)) ? n_block_num - n_idx*K_BLOCK_NUM: K_BLOCK_NUM;
-                    uint32_t gm_pingpong_flag = n_idx%CHUNK_BUFFER_SIZE;
+                uint32_t cur_k_block_num = (n_idx == (n_loop - 1)) ? n_block_num - n_idx*K_BLOCK_NUM: K_BLOCK_NUM;
+                uint32_t gm_pingpong_flag = n_idx % CHUNK_BUFFER_SIZE;
+                uint32_t l0c_pingpong_flag = 0;
+                uint32_t l0ab_pingpong_flag = 0;
+                for (uint32_t sub_idx = 0; sub_idx < cur_k_block_num; sub_idx += 1) {                     
+                    uint32_t l1_kv_rope_pingpong_flag = sub_idx % 2;
+                    qk_n = left_kv_seqlen > pp_n_scalar ? pp_n_scalar : left_kv_seqlen;
+                    qk_round_n = RoundUp<BLOCK_SIZE>(qk_n);
 
-                    uint32_t l0c_pingpong_flag = 0;
-                    uint32_t l0ab_pingpong_flag = 0;
-                    for (uint32_t sub_idx = 0; sub_idx < cur_k_block_num; sub_idx+=1) {                     
-                        uint32_t l1_kv_rope_pingpong_flag = sub_idx % 2;
-                        qk_n = left_kv_seqlen > pp_n_scalar ? pp_n_scalar : left_kv_seqlen;
-                        qk_round_n = RoundUp<BLOCK_SIZE>(qk_n);
+                    uint64_t hiddenSize_offset = start_head * embedding_size;
 
-                        uint64_t hiddenSize_offset = start_head * embedding_size;
+                    /* ************ CUBE1 stage1  ************* */
 
-                        /* ************ CUBE1 stage1  ************* */
+                    uint32_t block_table_id = (uint32_t)(*(block_tables_gm +
+                                    cur_batch * max_num_blocks_per_query + start_kv / block_size + real_block_idx));
+                    int64_t kv_offset = (int64_t)block_table_id * block_size * stride_kv;
+                    int64_t kv_offset_rope = (int64_t)block_table_id * block_size * stride_kv_rope;
 
-                        uint32_t block_table_id = (uint32_t)(*(block_tables_gm +
-                                        cur_batch * max_num_blocks_per_query + start_kv / block_size + real_block_idx));
-                        int64_t kv_offset = (int64_t)block_table_id * block_size * stride_kv;
-                        int64_t kv_offset_rope = (int64_t)block_table_id * block_size * stride_kv_rope;
-
-                        uint32_t embed_split_idx = 0;
-                        for (embed_split_idx = 0; embed_split_idx < embed_split_loop_v; ++embed_split_idx) { 
-                            uint32_t l1_kv_pingpong_flag = embed_split_idx % 2;
-                            l0ab_pingpong_flag = embed_split_idx % 2;
-
-                            WAIT_FLAG(MTE1, MTE2, l1_kv_pingpong_flag); 
-
-                            gm_to_l1<ArchType::ASCEND_V220, IN_KVDTYPE, DataFormat::NZ, DataFormat::NZ>(                           
-                                l1kv_buf_addr_tensor[l1_kv_pingpong_flag * 128 * 256],
-                                k_gm_tensor[kv_offset + embed_split_idx * block_size * embed_split_size],
-                                qk_round_n,         // nValue
-				qk_round_n,         // nValue
-                                pp_n_scalar,         // dstNzC0Stride                        
-                                embed_split_size,       // dValue  // 256
-                                embed_split_size,       // dValue  // 256    
-                                0            // srcDValue
-                            ); 
-                            SET_FLAG(MTE2, MTE1, l1_kv_pingpong_flag);
-                            WAIT_FLAG(MTE2, MTE1, l1_kv_pingpong_flag);
-
-                            WAIT_FLAG(M, MTE1, l0ab_pingpong_flag);
-                            for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff / BLOCK_SIZE; ++loa_load_idx) {
-                                l1_to_l0_a<ArchType::ASCEND_V220, int8_t, false, DataFormat::VECTOR, DataFormat::VECTOR>(
-                                    l0a_buf_tensor[l0ab_pingpong_flag * l0a_data_size + loa_load_idx * round_embed_split_size * BLOCK_SIZE],
-                                    l1q_buf_addr_tensor[embed_split_idx * cur_head_num_round * round_embed_split_size + loa_load_idx * T_CUBE_MATRIX_SIZE],
-                                    0,
-                                    round_embed_split_size / T_BLOCK_SIZE,                                 // repeat
-                                    0,
-                                    q_load_coeff / BLOCK_SIZE,                            // srcStride
-                                    0,
-                                    0                                                     // dstStride
-                                );
-                            }
-
-                            SET_FLAG(MTE1, M, l0ab_pingpong_flag);
-                            WAIT_FLAG(MTE1, M, l0ab_pingpong_flag);                    
-
-                            WAIT_FLAG(M, MTE1, l0ab_pingpong_flag + 2);
-                            l1_to_l0_b<ArchType::ASCEND_V220, int8_t, false, DataFormat::VECTOR, DataFormat::VECTOR>(
-                                l0b_buf_tensor[l0ab_pingpong_flag * l0b_data_size],                            
-                                l1kv_buf_addr_tensor[l1_kv_pingpong_flag * 128 * 256],
-                                0,
-                                round_embed_split_size * qk_round_n / T_CUBE_MATRIX_SIZE,  // repeat
-                                0,
-                                1,                                        // srcStride
-                                0,
-                                0                                        // dstStride
-                            );
-                            
-                            SET_FLAG(MTE1, MTE2, l1_kv_pingpong_flag);
-
-                            SET_FLAG(MTE1, M, l0ab_pingpong_flag + 2);                        
-                            WAIT_FLAG(MTE1, M, l0ab_pingpong_flag + 2);
-                            
-                            auto unit_flag = embed_split_idx == embed_split_loop_v-1 ? 0b11 : 0b10;
-                            mmad<ArchType::ASCEND_V220, int8_t, int8_t, mm1OutputType, false>(
-                                mm1_l0c_buf_tensor[l0c_pingpong_flag * l0c_data_size],
-                                l0a_buf_tensor[l0ab_pingpong_flag * l0a_data_size],
-                                l0b_buf_tensor[l0ab_pingpong_flag * l0b_data_size],
-                                m,     // m
-                                qk_n,  // n
-                                embed_split_size,   // k
-                                embed_split_idx == 0,     // cmatrixInitVal
-                                unit_flag
-                            );
-
-                            SET_FLAG(M, MTE1, l0ab_pingpong_flag);
-                            SET_FLAG(M, MTE1, l0ab_pingpong_flag + 2);
-                            // copy S to gm
-
-                            if (embed_split_idx == embed_split_loop_v-1) {
-                                l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, mm1CopyType, mm1OutputType>(
-                                    s_gm_tensor[(uint64_t)block_idx * TMP_SIZE_DECODER_INT8 + gm_pingpong_flag*SP_BLOCK_SIZE*K_BLOCK_NUM +sub_idx*pp_n_scalar],
-                                    mm1_l0c_buf_tensor[l0c_pingpong_flag * l0c_data_size],
-                                    m,           // MSize
-                                    qk_round_n,  // NSize
-                                    RoundUp<16>(m), // srcStride
-                                    pp_n_scalar*K_BLOCK_NUM,  // dstStride_dst_D 
-                                    0b11
-                                );
-                                l0c_pingpong_flag = (l0c_pingpong_flag+1)%2;
-                            }
-                        }
-                        l0c_pingpong_flag = (l0c_pingpong_flag+1)%2;
-                        left_kv_seqlen -= pp_n_scalar;
-                        real_block_idx += 1;
-                    }   
-
-                
-                    WAIT_FLAG(M, MTE1, EVENT_ID0); 
-                    for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff / BLOCK_SIZE; ++loa_load_idx) {
-                        l1_to_l0_a<ArchType::ASCEND_V220, IN_ROPE_DTYPE, false, DataFormat::VECTOR, DataFormat::VECTOR>(
-                            l0a_buf_tensor.template ReinterpretCast<IN_ROPE_DTYPE>()[loa_load_idx * rope_embed_split_size * BLOCK_SIZE],
-                            l1q_rope_buf_addr_tensor[loa_load_idx * CUBE_MATRIX_SIZE],
-                            0,
-                            rope_embed_split_size / BLOCK_SIZE,                                 // repeat
-                            0,
-                            q_load_coeff / BLOCK_SIZE,                            // srcStride
-                            0,
-                            0                                                     // dstStride
-                        );
-                    }
-                    SET_FLAG(MTE1, M, EVENT_ID0);
-                    WAIT_FLAG(MTE1, M, EVENT_ID0); //L0A
-
-                    for(uint32_t sub_idx = 0; sub_idx < cur_k_block_num; sub_idx+=1){
-                        l0ab_pingpong_flag = sub_idx % 2;
-                        uint32_t l1_kv_rope_pingpong_flag = sub_idx % 2;
-
-                        qk_n_rope = left_kv_seqlen_rope > pp_n_scalar ? pp_n_scalar : left_kv_seqlen_rope;
-                        qk_round_n_rope = RoundUp<BLOCK_SIZE>(qk_n_rope);
-
-
-                        uint32_t block_table_id = (uint32_t)(*(block_tables_gm +
-                                        cur_batch * max_num_blocks_per_query + start_kv / block_size + real_block_idx_rope));
-                        int64_t kv_offset_rope = (int64_t)block_table_id * block_size * stride_kv_rope;
-
-                        WAIT_FLAG(MTE1, MTE2, l1_kv_rope_pingpong_flag + 2);  
-                        gm_to_l1<ArchType::ASCEND_V220, IN_ROPE_DTYPE, DataFormat::NZ, DataFormat::NZ>(
-                            l1kv_rope_buf_addr_tensor[l1_kv_rope_pingpong_flag * 128 * 64],
-                            k_rope_gm_tensor[kv_offset_rope],
-                            qk_round_n_rope,         // nValue
-			    qk_round_n_rope,         // nValue
-                            pp_n_scalar,             // dstNzC0Stride
-                            rope_size,            // dValue
-                            rope_size,            // dValue
+                    uint32_t embed_split_idx = 0;
+                    for (embed_split_idx = 0; embed_split_idx < embed_split_loop_v; ++embed_split_idx) { 
+                        uint32_t l1_kv_pingpong_flag = embed_split_idx % 2;
+                        l0ab_pingpong_flag = embed_split_idx % 2;
+                        WAIT_FLAG(MTE1, MTE2, l1_kv_pingpong_flag); 
+                        gm_to_l1<ArchType::ASCEND_V220, IN_KVDTYPE, DataFormat::NZ, DataFormat::NZ>(                           
+                            l1kv_buf_addr_tensor[l1_kv_pingpong_flag * 128 * 256],
+                            k_gm_tensor[kv_offset + embed_split_idx * block_size * embed_split_size],
+                            qk_round_n,         // nValue
+                            qk_round_n,         // nValue
+                            pp_n_scalar,         // dstNzC0Stride                        
+                            embed_split_size,       // dValue  // 256
+                            embed_split_size,       // dValue  // 256    
                             0            // srcDValue
-                        );
+                        ); 
+                        SET_FLAG(MTE2, MTE1, l1_kv_pingpong_flag);
+                        WAIT_FLAG(MTE2, MTE1, l1_kv_pingpong_flag);
 
-                        SET_FLAG(MTE2, MTE1, l1_kv_rope_pingpong_flag + 2);
-                        WAIT_FLAG(MTE2, MTE1, l1_kv_rope_pingpong_flag + 2);
-                        
+                        WAIT_FLAG(M, MTE1, l0ab_pingpong_flag);
+                        for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff_round / BLOCK_SIZE; ++loa_load_idx) {
+                            l1_to_l0_a<ArchType::ASCEND_V220, int8_t, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                                l0a_buf_tensor[l0ab_pingpong_flag * l0a_data_size + loa_load_idx * round_embed_split_size * BLOCK_SIZE],
+                                l1q_buf_addr_tensor[embed_split_idx * cur_head_num_round * round_embed_split_size + loa_load_idx * T_CUBE_MATRIX_SIZE],
+                                0,
+                                round_embed_split_size / T_BLOCK_SIZE,                                 // repeat
+                                0,
+                                q_load_coeff_round / BLOCK_SIZE,                            // srcStride
+                                0,
+                                0                                                     // dstStride
+                            );
+                        }
+                        SET_FLAG(MTE1, M, l0ab_pingpong_flag);
+                        WAIT_FLAG(MTE1, M, l0ab_pingpong_flag);
                         WAIT_FLAG(M, MTE1, l0ab_pingpong_flag + 2);
-                        l1_to_l0_b<ArchType::ASCEND_V220, IN_ROPE_DTYPE, false, DataFormat::VECTOR, DataFormat::VECTOR>(
-                            l0b_buf_tensor.template ReinterpretCast<IN_ROPE_DTYPE>()[l0ab_pingpong_flag * (l0b_data_size / sizeof(IN_ROPE_DTYPE))],
-                            l1kv_rope_buf_addr_tensor[l1_kv_rope_pingpong_flag * 128 * 64],
+                        l1_to_l0_b<ArchType::ASCEND_V220, int8_t, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                            l0b_buf_tensor[l0ab_pingpong_flag * l0b_data_size],                            
+                            l1kv_buf_addr_tensor[l1_kv_pingpong_flag * 128 * 256],
                             0,
-                            rope_embed_split_size * qk_round_n_rope / CUBE_MATRIX_SIZE,  // repeat
+                            round_embed_split_size * qk_round_n / T_CUBE_MATRIX_SIZE,  // repeat
                             0,
                             1,                                        // srcStride
                             0,
                             0                                        // dstStride
                         );
-                        SET_FLAG(MTE1, MTE2, l1_kv_rope_pingpong_flag + 2);
+                        
+                        SET_FLAG(MTE1, MTE2, l1_kv_pingpong_flag);
+
                         SET_FLAG(MTE1, M, l0ab_pingpong_flag + 2);
-                        WAIT_FLAG(MTE1, M, l0ab_pingpong_flag + 2);//L0B
-
-                        mmad<ArchType::ASCEND_V220, IN_ROPE_DTYPE, IN_ROPE_DTYPE, float, false>(
-                            mm1_l0c_buf_tensor.template ReinterpretCast<float>()[l0c_pingpong_flag * l0c_data_size],
-                            l0a_buf_tensor.template ReinterpretCast<IN_ROPE_DTYPE>()[0],
-                            l0b_buf_tensor.template ReinterpretCast<IN_ROPE_DTYPE>()[l0ab_pingpong_flag * (l0b_data_size / sizeof(IN_ROPE_DTYPE))],
-                            m,     // m
-                            qk_n_rope,  // n
-                            rope_embed_split_size,   // k
-                            1,     // cmatrixInitVal
-                            0b11
+                        WAIT_FLAG(MTE1, M, l0ab_pingpong_flag + 2);
+                        
+                        auto unit_flag = embed_split_idx == embed_split_loop_v - 1 ? 0b11 : 0b10;
+                        mmad<ArchType::ASCEND_V220, int8_t, int8_t, mm1OutputType, false>(
+                            mm1_l0c_buf_tensor[l0c_pingpong_flag * l0c_data_size],
+                            l0a_buf_tensor[l0ab_pingpong_flag * l0a_data_size],
+                            l0b_buf_tensor[l0ab_pingpong_flag * l0b_data_size],
+                            q_load_coeff,     // m
+                            qk_n,  // n
+                            embed_split_size,   // k
+                            embed_split_idx == 0,     // cmatrixInitVal
+                            unit_flag
                         );
-
+                        PIPE_BARRIER(M);
+                        SET_FLAG(M, MTE1, l0ab_pingpong_flag);
                         SET_FLAG(M, MTE1, l0ab_pingpong_flag + 2);
-
-                        l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
-                            s_rope_gm_tensor[(uint64_t)block_idx * TMP_SIZE_DECODER_INT8 + gm_pingpong_flag*SP_BLOCK_SIZE*K_BLOCK_NUM +sub_idx*pp_n_scalar],
-                            mm1_l0c_buf_tensor.template ReinterpretCast<float>()[l0c_pingpong_flag * l0c_data_size],
-                            m,           // MSize
-                            qk_round_n_rope,  // NSize
-                            RoundUp<16>(m), // srcStride
-                            pp_n_scalar*K_BLOCK_NUM,  // dstStride_dst_D
-                            0b11
-                        );
-
-                        real_block_idx_rope += 1;
-                        left_kv_seqlen_rope -= pp_n_scalar;
+                        // copy S to gm
+                        if (embed_split_idx == embed_split_loop_v - 1) {
+                            l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, mm1CopyType, mm1OutputType>(
+                                s_gm_tensor[(uint64_t)block_idx * TMP_SIZE_DECODER_INT8 + gm_pingpong_flag*SP_BLOCK_SIZE*K_BLOCK_NUM +sub_idx*pp_n_scalar],
+                                mm1_l0c_buf_tensor[l0c_pingpong_flag * l0c_data_size],
+                                q_load_coeff,           // MSize
+                                qk_round_n,  // NSize
+                                RoundUp<16>(q_load_coeff), // srcStride
+                                pp_n_scalar*K_BLOCK_NUM,  // dstStride_dst_D 
+                                0b11
+                            );
+                            l0c_pingpong_flag = (l0c_pingpong_flag+1)%2;
+                        }
                     }
-                    SET_FLAG(M, MTE1, EVENT_ID0);
-
-                    FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY_DECODER);
+                    l0c_pingpong_flag = (l0c_pingpong_flag+1) % 2;
+                    left_kv_seqlen -= pp_n_scalar;
+                    real_block_idx += 1;
                 }
-                /* ************ CUBE2 stage1  ************* */
-            if (n_idx != 0) {
-                    if (n_idx == n_loop) { 
-                        pv_n_2 = (cur_kv_seqlen - (n_idx - 1) * v_rows_one_loop); 
-                        pv_round_n_2 = RoundUp<BLOCK_SIZE>(pv_n_2); 
-                        pv_round_n_2_l1 = RoundUp<T_BLOCK_SIZE>(pv_n_2);
-                        v_row_loop_num = (pv_n_2 + v_rows_mad - 1) / v_rows_mad;                     
-                    }
-                    l1p_pingpong_flag = (n_idx-1)%2;
-                    
-                    WaitFlagDev(SOFTMAX_READY_DECODER); 
-                    WAIT_FLAG(MTE1, MTE2, l1p_pingpong_flag+4);
-                    gm_to_l1<ArchType::ASCEND_V220, int8_t, DataFormat::ND, DataFormat::NZ>(
-                        l1p_buf_addr_tensor[l1p_pingpong_flag * P_TMP_SIZE_INT8 / CHUNK_BUFFER_SIZE], 
-                        p_gm_tensor[(uint64_t)block_idx * P_TMP_SIZE_INT8 + ((n_idx - 1) % CHUNK_BUFFER_SIZE)* P_TMP_SIZE_INT8 / CHUNK_BUFFER_SIZE], 
-                        cur_head_num,         // nValue  
-                        RoundUp<BLOCK_SIZE>(cur_head_num),// dstNzC0Stride 
-                        0,                     // dstNzMatrixStride, unused
-                        pv_round_n_2, 
-                        0,                     // dstNzMatrixStride, unused
-                        pp_n_scalar*K_BLOCK_NUM    // srcDValue  
-                    ); 
-                    SET_FLAG(MTE2, MTE1, l1p_pingpong_flag+4);
+                WAIT_FLAG(M, MTE1, EVENT_ID0); 
+                for (uint64_t loa_load_idx = 0; loa_load_idx < q_load_coeff_round / BLOCK_SIZE; ++loa_load_idx) {
+                    l1_to_l0_a<ArchType::ASCEND_V220, IN_ROPE_DTYPE, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                        l0a_buf_tensor.template ReinterpretCast<IN_ROPE_DTYPE>()[loa_load_idx * rope_embed_split_size * BLOCK_SIZE],
+                        l1q_rope_buf_addr_tensor[loa_load_idx * CUBE_MATRIX_SIZE],
+                        0,
+                        rope_embed_split_size / BLOCK_SIZE,                                 // repeat
+                        0,
+                        q_load_coeff_round / BLOCK_SIZE,                            // srcStride
+                        0,
+                        0                                                     // dstStride
+                    );
+                }
+                SET_FLAG(MTE1, M, EVENT_ID0);
+                WAIT_FLAG(MTE1, M, EVENT_ID0); //L0A
 
+                for(uint32_t sub_idx = 0; sub_idx < cur_k_block_num; sub_idx+=1){
+                    l0ab_pingpong_flag = sub_idx % 2;
+                    uint32_t l1_kv_rope_pingpong_flag = sub_idx % 2;
+                    qk_n_rope = left_kv_seqlen_rope > pp_n_scalar ? pp_n_scalar : left_kv_seqlen_rope;
+                    qk_round_n_rope = RoundUp<BLOCK_SIZE>(qk_n_rope);
                     uint32_t block_table_id = (uint32_t)(*(block_tables_gm +
-                                    cur_batch * max_num_blocks_per_query + start_kv / block_size + (n_idx-1) * K_BLOCK_NUM)); 
+                                    cur_batch * max_num_blocks_per_query + start_kv / block_size + real_block_idx_rope));
+                    int64_t kv_offset_rope = (int64_t)block_table_id * block_size * stride_kv_rope;
 
-                    uint32_t embed_split_size = 128;
-                    uint32_t embed_split_loop_v = 4; 
-                    uint32_t round_embed_split_size = RoundUp<T_BLOCK_SIZE>(embed_split_size); 
-                    for (uint32_t embed_split_idx = 0; embed_split_idx < embed_split_loop_v; ++embed_split_idx) { 
-                        uint32_t l0c_o_pingpong_flag = embed_split_idx % 2;
-                        for(uint32_t v_row_loop_idx = 0; v_row_loop_idx < v_row_loop_num; v_row_loop_idx++){ 
-                            if (n_idx == n_loop) {
-                                p_cols_l1_2_l0 = v_row_loop_idx == v_row_loop_num - 1 ? pv_n_2 - v_row_loop_idx * v_rows_mad : v_rows_mad;
-                                p_cols_l1_2_l0_round = RoundUp<T_BLOCK_SIZE>(p_cols_l1_2_l0);
+                    WAIT_FLAG(MTE1, MTE2, l1_kv_rope_pingpong_flag + 2);  
+                    gm_to_l1<ArchType::ASCEND_V220, IN_ROPE_DTYPE, DataFormat::NZ, DataFormat::NZ>(
+                        l1kv_rope_buf_addr_tensor[l1_kv_rope_pingpong_flag * 128 * 64],
+                        k_rope_gm_tensor[kv_offset_rope],
+                        qk_round_n_rope,         // nValue
+                        qk_round_n_rope,         // nValue
+                        pp_n_scalar,             // dstNzC0Stride
+                        rope_size,            // dValue
+                        rope_size,            // dValue
+                        0            // srcDValue
+                    );
+
+                    SET_FLAG(MTE2, MTE1, l1_kv_rope_pingpong_flag + 2);
+                    WAIT_FLAG(MTE2, MTE1, l1_kv_rope_pingpong_flag + 2);
+                    
+                    WAIT_FLAG(M, MTE1, l0ab_pingpong_flag + 2);
+                    l1_to_l0_b<ArchType::ASCEND_V220, IN_ROPE_DTYPE, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                        l0b_buf_tensor.template ReinterpretCast<IN_ROPE_DTYPE>()[l0ab_pingpong_flag * (l0b_data_size / sizeof(IN_ROPE_DTYPE))],
+                        l1kv_rope_buf_addr_tensor[l1_kv_rope_pingpong_flag * 128 * 64],
+                        0,
+                        rope_embed_split_size * qk_round_n_rope / CUBE_MATRIX_SIZE,  // repeat
+                        0,
+                        1,                                        // srcStride
+                        0,
+                        0                                        // dstStride
+                    );
+                    SET_FLAG(MTE1, MTE2, l1_kv_rope_pingpong_flag + 2);
+                    SET_FLAG(MTE1, M, l0ab_pingpong_flag + 2);
+                    WAIT_FLAG(MTE1, M, l0ab_pingpong_flag + 2);
+                    mmad<ArchType::ASCEND_V220, IN_ROPE_DTYPE, IN_ROPE_DTYPE, float, false>(
+                        mm1_l0c_buf_tensor.template ReinterpretCast<float>()[l0c_pingpong_flag * l0c_data_size],
+                        l0a_buf_tensor.template ReinterpretCast<IN_ROPE_DTYPE>()[0],
+                        l0b_buf_tensor.template ReinterpretCast<IN_ROPE_DTYPE>()[l0ab_pingpong_flag * (l0b_data_size / sizeof(IN_ROPE_DTYPE))],
+                        q_load_coeff,     // m
+                        qk_n_rope,  // n
+                        rope_embed_split_size,   // k
+                        1,     // cmatrixInitVal
+                        0b11
+                    );
+                    PIPE_BARRIER(M);
+                    SET_FLAG(M, MTE1, l0ab_pingpong_flag + 2);
+                    l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, float, float>(
+                        s_rope_gm_tensor[(uint64_t)block_idx * TMP_SIZE_DECODER_INT8 + gm_pingpong_flag*SP_BLOCK_SIZE*K_BLOCK_NUM +sub_idx*pp_n_scalar],
+                        mm1_l0c_buf_tensor.template ReinterpretCast<float>()[l0c_pingpong_flag * l0c_data_size],
+                        q_load_coeff,           // MSize
+                        qk_round_n_rope,  // NSize
+                        RoundUp<16>(q_load_coeff), // srcStride
+                        pp_n_scalar*K_BLOCK_NUM,  // dstStride_dst_D
+                        0b11
+                    );
+                    real_block_idx_rope += 1;
+                    left_kv_seqlen_rope -= pp_n_scalar;
+                }
+                SET_FLAG(M, MTE1, EVENT_ID0);
+
+                FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY_DECODER);
+            }
+            /* ************ CUBE2 stage1  ************* */
+            if (n_idx != 0) {
+                if (n_idx == n_loop) { 
+                    pv_n_2 = (cur_kv_seqlen - (n_idx - 1) * v_rows_one_loop); 
+                    pv_round_n_2 = RoundUp<BLOCK_SIZE>(pv_n_2); 
+                    pv_round_n_2_l1 = RoundUp<T_BLOCK_SIZE>(pv_n_2);
+                    v_row_loop_num = (pv_n_2 + v_rows_mad - 1) / v_rows_mad;                     
+                }
+                l1p_pingpong_flag = (n_idx-1)%2;
+                
+                WaitFlagDev(SOFTMAX_READY_DECODER); 
+                WAIT_FLAG(MTE1, MTE2, l1p_pingpong_flag + 4);
+                gm_to_l1<ArchType::ASCEND_V220, int8_t, DataFormat::ND, DataFormat::NZ>(
+                    l1p_buf_addr_tensor[l1p_pingpong_flag * P_TMP_SIZE_INT8 / CHUNK_BUFFER_SIZE], 
+                    p_gm_tensor[(uint64_t)block_idx * P_TMP_SIZE_INT8 + ((n_idx - 1) % CHUNK_BUFFER_SIZE) * P_TMP_SIZE_INT8 / CHUNK_BUFFER_SIZE], 
+                    cur_head_num,         // nValue  
+                    RoundUp<BLOCK_SIZE>(cur_head_num),// dstNzC0Stride 
+                    0,                     // dstNzMatrixStride, unused
+                    pv_round_n_2, 
+                    0,                     // dstNzMatrixStride, unused
+                    pp_n_scalar * K_BLOCK_NUM    // srcDValue  
+                ); 
+                SET_FLAG(MTE2, MTE1, l1p_pingpong_flag + 4);
+                uint32_t block_table_id = (uint32_t)(*(block_tables_gm +
+                                cur_batch * max_num_blocks_per_query + start_kv / block_size + (n_idx - 1) * K_BLOCK_NUM)); 
+                uint32_t embed_split_size = 128;
+                uint32_t embed_split_loop_v = 4; 
+                uint32_t round_embed_split_size = RoundUp<T_BLOCK_SIZE>(embed_split_size); 
+                for (uint32_t embed_split_idx = 0; embed_split_idx < embed_split_loop_v; ++embed_split_idx) { 
+                    uint32_t l0c_o_pingpong_flag = embed_split_idx % 2;
+                    for(uint32_t v_row_loop_idx = 0; v_row_loop_idx < v_row_loop_num; v_row_loop_idx++){ 
+                        if (n_idx == n_loop) {
+                            p_cols_l1_2_l0 = v_row_loop_idx == v_row_loop_num - 1 ? pv_n_2 - v_row_loop_idx * v_rows_mad : v_rows_mad;
+                            p_cols_l1_2_l0_round = RoundUp<T_BLOCK_SIZE>(p_cols_l1_2_l0);
+                        }
+
+                        uint32_t combine_loop_idx = embed_split_idx * v_row_loop_num + v_row_loop_idx; 
+                        uint32_t l1_right_v_pingpong_flag = combine_loop_idx % 2; 
+                        uint32_t l0_right_v_pingpong_flag = combine_loop_idx % 2;
+                        uint32_t l0_left_p_pingpong_flag = v_row_loop_idx % 2; 
+                        uint32_t l1_left_p_pingpong_flag = v_row_loop_idx % 2;
+                        
+                        // move p from l1 to l0a 
+                        WAIT_FLAG(M, MTE1, l0_left_p_pingpong_flag);                         
+
+                        if(embed_split_idx == 0 || v_row_loop_idx >= 2){ 
+                            if(v_row_loop_idx == 0) {
+                                WAIT_FLAG(MTE2, MTE1, l1p_pingpong_flag+4);
                             }
-
-                            uint32_t combine_loop_idx = embed_split_idx * v_row_loop_num + v_row_loop_idx; 
-                            uint32_t l1_right_v_pingpong_flag = combine_loop_idx % 2; 
-                            uint32_t l0_right_v_pingpong_flag = combine_loop_idx % 2;
-                            uint32_t l0_left_p_pingpong_flag = v_row_loop_idx % 2; 
-                            uint32_t l1_left_p_pingpong_flag = v_row_loop_idx % 2;
-                            
-                            // move p from l1 to l0a 
-                            WAIT_FLAG(M, MTE1, l0_left_p_pingpong_flag);                         
-
-                            if(embed_split_idx == 0 || v_row_loop_idx >= 2){ 
-                                if(v_row_loop_idx == 0) {
-                                    WAIT_FLAG(MTE2, MTE1, l1p_pingpong_flag+4);
-                                }
-                                l1_to_l0_a<ArchType::ASCEND_V220, int8_t, false, DataFormat::NZ, DataFormat::ZZ>(
-                                    l0a_buf_tensor[l0_left_p_pingpong_flag * l0_p_pingpong_offset],  
-                                    l1p_buf_addr_tensor[l1p_pingpong_flag * P_TMP_SIZE_INT8 / CHUNK_BUFFER_SIZE + l1_left_p_pingpong_flag * l1_p_pingpong_offset], 
-                                    RoundUp<BLOCK_SIZE>(cur_head_num), 
-                                    p_cols_l1_2_l0_round, // repeat  ori:128 -> new: 128*2 
-                                    0,
-                                    0, // srcStride
-                                    0,
-                                    0 // dstStride
-                                    );
-                                SET_FLAG(MTE1, M, l1p_pingpong_flag + 4); 
-                                WAIT_FLAG(MTE1, M, l1p_pingpong_flag + 4); 
-                                if(v_row_loop_idx == v_row_loop_num - 1) {
-                                    SET_FLAG(MTE1, MTE2, l1p_pingpong_flag + 4);
-                                }
-                                SET_FLAG(MTE1, MTE2, l0_left_p_pingpong_flag + 6);
-                                WAIT_FLAG(MTE1, MTE2, l0_left_p_pingpong_flag + 6);
+                            l1_to_l0_a<ArchType::ASCEND_V220, int8_t, false, DataFormat::NZ, DataFormat::ZZ>(
+                                l0a_buf_tensor[l0_left_p_pingpong_flag * l0_p_pingpong_offset],  
+                                l1p_buf_addr_tensor[l1p_pingpong_flag * P_TMP_SIZE_INT8 / CHUNK_BUFFER_SIZE + l1_left_p_pingpong_flag * q_load_coeff_round * 256], 
+                                RoundUp<BLOCK_SIZE>(cur_head_num), 
+                                p_cols_l1_2_l0_round, // repeat  ori:128 -> new: 128*2 
+                                0,
+                                0, // srcStride
+                                0,
+                                0 // dstStride
+                            );
+                            SET_FLAG(MTE1, M, l1p_pingpong_flag + 4); 
+                            WAIT_FLAG(MTE1, M, l1p_pingpong_flag + 4); 
+                            if(v_row_loop_idx == v_row_loop_num - 1) {
+                                SET_FLAG(MTE1, MTE2, l1p_pingpong_flag + 4);
                             }
-                            
-                            WAIT_FLAG(MTE1, MTE2, l1_right_v_pingpong_flag); 
-                            
+                            SET_FLAG(MTE1, MTE2, l0_left_p_pingpong_flag + 6);
+                            WAIT_FLAG(MTE1, MTE2, l0_left_p_pingpong_flag + 6);
+                        }
+                        
+                        WAIT_FLAG(MTE1, MTE2, l1_right_v_pingpong_flag); 
+                        
+                        block_table_id = (uint32_t)(*(block_tables_gm +
+                            cur_batch * max_num_blocks_per_query + start_kv / block_size + (n_idx-1) * K_BLOCK_NUM + v_row_loop_idx * 2));
+                        int64_t kv_offset = (int64_t)block_table_id * block_size * stride_kv;
+
+                        uint32_t rows_v_gm_to_l1_one_loop = p_cols_l1_2_l0 > 128 ? 128 : p_cols_l1_2_l0;
+                        uint32_t rows_v_gm_to_l1_one_loop_round = RoundUp<T_BLOCK_SIZE>(rows_v_gm_to_l1_one_loop);
+                        uint32_t rows_v_gm_to_l1_one_loop2 = p_cols_l1_2_l0 - 128;
+                        uint32_t rows_v_gm_to_l1_one_loop_round2 = RoundUp<T_BLOCK_SIZE>(rows_v_gm_to_l1_one_loop2);
+                        gm_to_l1<ArchType::ASCEND_V220, IN_KVDTYPE, DataFormat::NZ, DataFormat::NZ>(
+                            l1v_buf_addr_tensor[l1_right_v_pingpong_flag * block_size * v_rows_mad], 
+                            k_gm_tensor[kv_offset + embed_split_idx * block_size * block_size],
+                            rows_v_gm_to_l1_one_loop_round,         // nValue   
+                            rows_v_gm_to_l1_one_loop_round,         // nValue     
+                            embed_split_size,      // dstNzC0Stride
+                            embed_split_size,            // dValue
+                            embed_split_size,            // dValue
+                            0            // srcDValue
+                        );
+                        if (p_cols_l1_2_l0 > 128) {
                             block_table_id = (uint32_t)(*(block_tables_gm +
-                                cur_batch * max_num_blocks_per_query + start_kv / block_size + (n_idx-1) * K_BLOCK_NUM + v_row_loop_idx * 2));
-                            int64_t kv_offset = (int64_t)block_table_id * block_size * stride_kv;
-
-                            uint32_t rows_v_gm_to_l1_one_loop = p_cols_l1_2_l0 > 128 ? 128 : p_cols_l1_2_l0;
-                            uint32_t rows_v_gm_to_l1_one_loop_round = RoundUp<T_BLOCK_SIZE>(rows_v_gm_to_l1_one_loop);
-                            uint32_t rows_v_gm_to_l1_one_loop2 = p_cols_l1_2_l0 - 128;
-                            uint32_t rows_v_gm_to_l1_one_loop_round2 = RoundUp<T_BLOCK_SIZE>(rows_v_gm_to_l1_one_loop2);
+                                cur_batch * max_num_blocks_per_query + start_kv / block_size + (n_idx - 1) * K_BLOCK_NUM + v_row_loop_idx * 2 + 1));
+                            int64_t kv_offset2 = (int64_t)block_table_id * block_size * stride_kv;
                             gm_to_l1<ArchType::ASCEND_V220, IN_KVDTYPE, DataFormat::NZ, DataFormat::NZ>(
-                                l1v_buf_addr_tensor[l1_right_v_pingpong_flag * block_size * v_rows_mad], 
-                                k_gm_tensor[kv_offset + embed_split_idx * block_size * block_size],
-                                rows_v_gm_to_l1_one_loop_round,         // nValue   
-				rows_v_gm_to_l1_one_loop_round,         // nValue     
-                                embed_split_size,      // dstNzC0Stride
-                                embed_split_size,            // dValue
-                                embed_split_size,            // dValue
-                                0            // srcDValue
-                                );  
-                            if (p_cols_l1_2_l0 > 128) {
-                                block_table_id = (uint32_t)(*(block_tables_gm +
-                                    cur_batch * max_num_blocks_per_query + start_kv / block_size + (n_idx-1) * K_BLOCK_NUM + v_row_loop_idx * 2 + 1));
-                                int64_t kv_offset2 = (int64_t)block_table_id * block_size * stride_kv;
-                                gm_to_l1<ArchType::ASCEND_V220, IN_KVDTYPE, DataFormat::NZ, DataFormat::NZ>(
                                 l1v_buf_addr_tensor[l1_right_v_pingpong_flag * block_size * v_rows_mad + rows_v_gm_to_l1_one_loop_round * block_size],
                                 k_gm_tensor[kv_offset2 + embed_split_idx * block_size * block_size], 
                                 rows_v_gm_to_l1_one_loop_round2,         // nValue
-				rows_v_gm_to_l1_one_loop_round2,         // nValue
+                                rows_v_gm_to_l1_one_loop_round2,         // nValue
                                 embed_split_size,      // dstNzC0Stride
                                 embed_split_size,            // dValue
                                 embed_split_size,            // dValue
                                 0            // srcDValue
-                                ); 
-                            }
-                            
-                            SET_FLAG(MTE2, MTE1, l1_right_v_pingpong_flag + 6); 
-                            WAIT_FLAG(MTE2, MTE1, l1_right_v_pingpong_flag + 6);
-
-                            AscendC::LoadData2dTransposeParams loadDataParams;
-                            loadDataParams.dstGap = 0;
-                            loadDataParams.startIndex = 0;
-                            loadDataParams.dstFracGap = 0;
-                            if (block_size <= round_embed_split_size) { 
-                                loadDataParams.repeatTimes = round_embed_split_size / T_BLOCK_SIZE; 
-                                loadDataParams.srcStride = rows_v_gm_to_l1_one_loop_round / T_BLOCK_SIZE;
-                                uint16_t dstGap = sizeof(int8_t) == 1 ? 1 : 0;
-                                loadDataParams.dstGap = dstGap;
-                                uint32_t copy_loops1 = (rows_v_gm_to_l1_one_loop + T_BLOCK_SIZE - 1) / T_BLOCK_SIZE; 
-                                WAIT_FLAG(M, MTE1, l0_right_v_pingpong_flag + 2); 
-                                for (uint32_t l0b_load_idx = 0; l0b_load_idx < copy_loops1; ++l0b_load_idx) {
+                            );
+                        }
+                        SET_FLAG(MTE2, MTE1, l1_right_v_pingpong_flag + 6); 
+                        WAIT_FLAG(MTE2, MTE1, l1_right_v_pingpong_flag + 6);
+                        AscendC::LoadData2dTransposeParams loadDataParams;
+                        loadDataParams.dstGap = 0;
+                        loadDataParams.startIndex = 0;
+                        loadDataParams.dstFracGap = 0;
+                        if (block_size <= round_embed_split_size) { 
+                            loadDataParams.repeatTimes = round_embed_split_size / T_BLOCK_SIZE; 
+                            loadDataParams.srcStride = rows_v_gm_to_l1_one_loop_round / T_BLOCK_SIZE;
+                            uint16_t dstGap = sizeof(int8_t) == 1 ? 1 : 0;
+                            loadDataParams.dstGap = dstGap;
+                            uint32_t copy_loops1 = (rows_v_gm_to_l1_one_loop + T_BLOCK_SIZE - 1) / T_BLOCK_SIZE; 
+                            WAIT_FLAG(M, MTE1, l0_right_v_pingpong_flag + 2); 
+                            for (uint32_t l0b_load_idx = 0; l0b_load_idx < copy_loops1; ++l0b_load_idx) {
+                                AscendC::LoadDataWithTranspose(
+                                        l0b_buf_tensor[l0_right_v_pingpong_flag * 16384 * 2 + l0b_load_idx * RoundUp<16>(embed_split_size) * T_BLOCK_SIZE],
+                                        l1v_buf_addr_tensor[l1_right_v_pingpong_flag * 128 * 256 +  l0b_load_idx * T_BLOCK_SIZE * T_BLOCK_SIZE],
+                                        loadDataParams); 
+                            } 
+                            uint32_t copy_loops2 = (rows_v_gm_to_l1_one_loop2 + T_BLOCK_SIZE - 1) / T_BLOCK_SIZE;
+                            loadDataParams.srcStride = rows_v_gm_to_l1_one_loop_round2 / T_BLOCK_SIZE; 
+                            if (p_cols_l1_2_l0 > 128) {
+                                for (uint32_t l0b_load_idx = 0; l0b_load_idx < copy_loops2; ++l0b_load_idx) { 
                                     AscendC::LoadDataWithTranspose(
-                                            l0b_buf_tensor[l0_right_v_pingpong_flag * 16384 * 2 + l0b_load_idx * RoundUp<16>(embed_split_size) * T_BLOCK_SIZE],
-                                            l1v_buf_addr_tensor[l1_right_v_pingpong_flag * 128 * 256 +  l0b_load_idx * T_BLOCK_SIZE * T_BLOCK_SIZE],
+                                            l0b_buf_tensor[l0_right_v_pingpong_flag * 16384 * 2 + l0b_load_idx * RoundUp<16>(embed_split_size) * T_BLOCK_SIZE + block_size * block_size],
+                                            l1v_buf_addr_tensor[l1_right_v_pingpong_flag * 128 * 256 +  l0b_load_idx * T_BLOCK_SIZE * T_BLOCK_SIZE + block_size * block_size],
                                             loadDataParams); 
-                                } 
-                                uint32_t copy_loops2 = (rows_v_gm_to_l1_one_loop2 + T_BLOCK_SIZE - 1) / T_BLOCK_SIZE;
-                                loadDataParams.srcStride = rows_v_gm_to_l1_one_loop_round2 / T_BLOCK_SIZE; 
-                                if (p_cols_l1_2_l0 > 128) {
-                                    for (uint32_t l0b_load_idx = 0; l0b_load_idx < copy_loops2; ++l0b_load_idx) { 
-                                        AscendC::LoadDataWithTranspose(
-                                                l0b_buf_tensor[l0_right_v_pingpong_flag * 16384 * 2 + l0b_load_idx * RoundUp<16>(embed_split_size) * T_BLOCK_SIZE + block_size * block_size],
-                                                l1v_buf_addr_tensor[l1_right_v_pingpong_flag * 128 * 256 +  l0b_load_idx * T_BLOCK_SIZE * T_BLOCK_SIZE + block_size * block_size],
-                                                loadDataParams); 
-                                        } 
-                                }
-                            
-                                SET_FLAG(MTE1, MTE2, l1_right_v_pingpong_flag);
-                                SET_FLAG(MTE1, M, l1_right_v_pingpong_flag);
-                                WAIT_FLAG(MTE1, M, l1_right_v_pingpong_flag);
+                                    } 
+                            }
+                        
+                            SET_FLAG(MTE1, MTE2, l1_right_v_pingpong_flag);
+                            SET_FLAG(MTE1, M, l1_right_v_pingpong_flag);
+                            WAIT_FLAG(MTE1, M, l1_right_v_pingpong_flag);
 
-                                bool init_c = v_row_loop_idx == 0 ? true : false; 
-                                auto unit_flag = v_row_loop_idx == v_row_loop_num - 1 ? 0b11 : 0b10;
-                                mmad<ArchType::ASCEND_V220, int8_t, int8_t, mm2OutputType, false>(
+                            bool init_c = v_row_loop_idx == 0 ? true : false; 
+                            auto unit_flag = v_row_loop_idx == v_row_loop_num - 1 ? 0b11 : 0b10;
+                            mmad<ArchType::ASCEND_V220, int8_t, int8_t, mm2OutputType, false>(
+                                mm2_l0c_buf_tensor[l0c_o_pingpong_flag * 16384],
+                                l0a_buf_tensor[l0_left_p_pingpong_flag * 16384 * 2],
+                                l0b_buf_tensor[l0_right_v_pingpong_flag * 16384 * 2],
+                                q_load_coeff,     // m 
+                                embed_split_size,   // n 
+                                p_cols_l1_2_l0,  // k  
+                                init_c,      // cmatrixInitVal  
+                                unit_flag
+                            );
+                            PIPE_BARRIER(M);
+                            SET_FLAG(M, MTE1, l0_left_p_pingpong_flag); 
+                            SET_FLAG(M, MTE1, l0_right_v_pingpong_flag + 2);  
+
+                            if(v_row_loop_idx == v_row_loop_num - 1){
+                                // copy O to gm
+                                l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, mm2CopyType, mm2OutputType>(
+                                    o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE * CHUNK_BUFFER_SIZE + embed_split_idx * round_embed_split_size + ((n_idx - 1)%CHUNK_BUFFER_SIZE) * TMP_SIZE],
                                     mm2_l0c_buf_tensor[l0c_o_pingpong_flag * 16384],
-                                    l0a_buf_tensor[l0_left_p_pingpong_flag * 16384 * 2],
-                                    l0b_buf_tensor[l0_right_v_pingpong_flag * 16384 * 2],
-                                    m,     // m 
-                                    embed_split_size,   // n 
-                                    p_cols_l1_2_l0,  // k  
-                                    init_c,      // cmatrixInitVal  
-                                    unit_flag
-                                ); 
-                                SET_FLAG(M, MTE1, l0_left_p_pingpong_flag); 
-                                SET_FLAG(M, MTE1, l0_right_v_pingpong_flag + 2);  
-
-                                if(v_row_loop_idx == v_row_loop_num - 1){
-                                    // copy O to gm
-                                    l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, mm2CopyType, mm2OutputType>(
-                                        o_tmp_gm_tensor[(uint64_t)block_idx * TMP_SIZE * CHUNK_BUFFER_SIZE + embed_split_idx * round_embed_split_size + ((n_idx - 1)%CHUNK_BUFFER_SIZE) * TMP_SIZE],
-                                        mm2_l0c_buf_tensor[l0c_o_pingpong_flag * 16384],
-                                        m,        // MSize
-                                        RoundUp<16>(embed_split_size),  // NSize 
-                                        RoundUp<16>(m),       // srcStride
-                                        round_v,  // dstStride_dst_D 
-                                        0b11
-                                    );
-                                }
+                                    q_load_coeff,        // MSize
+                                    RoundUp<16>(embed_split_size),  // NSize 
+                                    RoundUp<16>(q_load_coeff),       // srcStride
+                                    round_v,  // dstStride_dst_D 
+                                    0b11
+                                );
                             }
                         }
                     }
-                    FftsCrossCoreSync<PIPE_FIX, 2>(UPDATE_READY_DECODER); 
                 }
+                FftsCrossCoreSync<PIPE_FIX, 2>(UPDATE_READY_DECODER); 
+            }
         }
     }
 
@@ -1309,9 +1293,9 @@ private:
     AscendC::GlobalTensor<int32_t> block_tables_gm_tensor;
 
     const uint32_t l1q_buf_addr_offset = 0;
-    const uint32_t l1q_rope_buf_addr_offset = 128*512*2;
-    const uint32_t l1kv_buf_addr_offset = 128*576*2;
-    const uint32_t l1kv_rope_buf_addr_offset= 128 * 576 * 2 + 128 * 512 * 2;
+    const uint32_t l1q_rope_buf_addr_offset = 128 * 512 * 2;
+    const uint32_t l1kv_buf_addr_offset = 128 * 576 * 2;
+    const uint32_t l1kv_rope_buf_addr_offset = 128 * 576 * 2 + 128 * 512 * 2;
     const uint32_t l1p_buf_addr_offset = 128 * 576 * 6;
 
     AsdopsBuffer<ArchType::ASCEND_V220> buf;
@@ -2856,26 +2840,25 @@ __aicore__ __attribute__((always_inline)) inline void OnlineSoftmaxStage1Step1Qu
         8                                                           // srcRepeatStride
     );
     PIPE_BARRIER(V);
-    if(n_real%64) 
-    {
+    if (n_real % 64) {
         uint64_t n_stride_2 = n_real;  
-        if(n_real%8) 
-            n_stride_2= n_real- n_real % 8;
+        if(n_real % 8) 
+            n_stride_2 = n_real- n_real % 8;
         uint64_t need_dup = n_stride - n_real;    // n_stride = qk_round_n = RoundUp<64>(qk_n);
         float scalar = -1e30;
 
         uint64_t mask64 = 0;
         uint64_t range_mask = (1ULL << (need_dup )) - 1; 
-        mask64 = range_mask << (RoundUp<8>(need_dup)-need_dup);
+        mask64 = range_mask << (RoundUp<8>(need_dup) - need_dup);
 
         uint64_t mask[2] = { mask64, 0 }; 
-        AscendC::Duplicate<float, true>(s_ub[n_stride_2], scalar, mask,  \
+        AscendC::Duplicate<float, true>(s_ub[n_stride_2], scalar, mask,
                  round_m,   //repeat
                  1,   //dstBlockStride
-                 n_stride/8 );  //dstRepeatStride; 
+                 n_stride / 8);  //dstRepeatStride; 
         PIPE_BARRIER(V);
         SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
-    }    
+    }   
 
     RowmaxQuant<float, RowCalcTile::TAIL_TILE>(
         s_ub,
@@ -3095,7 +3078,7 @@ template<typename MASK_DTYPE>
             s_exp_ub,
             local_rowsum_ub,
             tmp_ub,
-            first_n_iter,tor,m,n_real,n_stride
+            first_n_iter, tor, m, n_real, n_stride
         );
 
         //quant
@@ -3189,7 +3172,7 @@ template<typename MASK_DTYPE>
         uint32_t head_res_row_num,
         uint32_t head_start_sblock_idx,
         uint32_t tail_res_row_num
-        )
+    )
     {
         uint32_t sub_m_d64 = (sub_m + 63) / 64;     // up aligned to 64
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
@@ -3551,7 +3534,7 @@ template<typename MASK_DTYPE>
         uint32_t cur_nIndx,
         uint32_t prev_split_num,
         uint32_t split_num
-        )
+    )
     {
         uint32_t sub_m_d64 = (sub_m + 63) / 64;     // up aligned to 64
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
@@ -3580,7 +3563,6 @@ template<typename MASK_DTYPE>
         SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
         WAIT_FLAG(MTE3, MTE2, pingpong_flag);
         if (n_idx != 0) {
-
             SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
             brcb_v<ArchType::ASCEND_V220, uint32_t>(tv32_ubuf_tensor.ReinterpretCast<uint32_t>(),
                 dm32_ubuf_tensor.ReinterpretCast<uint32_t>(),
@@ -3589,19 +3571,17 @@ template<typename MASK_DTYPE>
                 round_sub_m / FLOAT_BLOCK_SIZE  // repeat
             );
             PIPE_BARRIER(V);
-            if (head_loop > 1) {
-                gm_to_ub<ArchType::ASCEND_V220, float>(
-                    go32_ubuf_tensor_cur,
-                    go_gm_tensor,
-                    0,
-                    1,
-                    sub_m * round_v / FLOAT_BLOCK_SIZE,
-                    0,
-                    0
-                );
-                SET_FLAG(MTE2, V, pingpong_flag);
-                WAIT_FLAG(MTE2, V, pingpong_flag);
-            }
+            gm_to_ub<ArchType::ASCEND_V220, float>(
+                go32_ubuf_tensor_cur,
+                go_gm_tensor,
+                0,
+                1,
+                sub_m * round_v / FLOAT_BLOCK_SIZE,
+                0,
+                0
+            );
+            SET_FLAG(MTE2, V, pingpong_flag);
+            WAIT_FLAG(MTE2, V, pingpong_flag);
 
             // *** go = go * dm_block
             SetVectorMask<int8_t>((uint64_t)-1, (uint64_t)-1);
@@ -3768,7 +3748,7 @@ template<typename MASK_DTYPE>
             } 
         }
         // ********************* move O to GM ************************      
-        else if (head_loop > 1) {
+        else {
             SET_FLAG(V, MTE3, pingpong_flag);
             WAIT_FLAG(V, MTE3, pingpong_flag);
             ub_to_gm<ArchType::ASCEND_V220, float>(
@@ -3936,39 +3916,25 @@ template<typename MASK_DTYPE>
         uint32_t offset_tiling, uint32_t embed_split_size_v, uint32_t embed_split_loop_v, uint32_t prev_split_num = 0, uint32_t split_num = 1, uint32_t kvEndFlag = 1)
     {
         uint32_t cur_kv_seqlen = cur_kvs_seqlen + (- cur_q_seqlen + 1) * kvEndFlag;
-        
         uint64_t addr_o_scalar = 0;
-        
         uint32_t pp_n_scalar = block_size;
         uint32_t sub_n_loop = pp_n_scalar / block_size;
         uint32_t n_block_num = (cur_kv_seqlen + (cur_q_seqlen - 1) * kvEndFlag + pp_n_scalar - 1) / pp_n_scalar;
         uint32_t n_loop = (n_block_num + K_BLOCK_NUM - 1) / K_BLOCK_NUM;
-
-        uint32_t qk_gm_stride = pp_n_scalar*K_BLOCK_NUM;
-
+        uint32_t qk_gm_stride = pp_n_scalar * K_BLOCK_NUM;
         uint32_t qk_n = qk_gm_stride;
-
         uint32_t qk_round_n = RoundUp<64>(qk_n);
-
         uint32_t qk_n_2 = pp_n_scalar;
         uint32_t qk_round_n_2 = RoundUp<BLOCK_SIZE>(qk_n_2);
-
         uint32_t sub_m = (sub_block_idx == 1) ? (cur_head_num - cur_head_num / 2) : cur_head_num / 2; 
         uint32_t head_idx = (sub_block_idx == 0) ? 0 : 0 + cur_head_num / 2 * cur_q_seqlen; 
-        o_offset = addr_o_scalar + start_head * embedding_size + sub_block_idx * cur_head_num / 2 * embedding_size; // for NSD -> SND
-        #ifdef VEC_NO_PP
-        uint32_t m_slice = FLOAT_VECTOR_SIZE / K_BLOCK_NUM;
-        #else
+        o_offset = addr_o_scalar + start_head * embedding_size + sub_block_idx * (cur_head_num / 2) * embedding_size; // for NSD -> SND
         uint32_t m_slice = 16;
-        #endif
         uint32_t m_end = (sub_m + m_slice - 1) / m_slice;
-
         uint32_t sub_m_d128 = (sub_m + 127) / 128;  // up aligned to 128
         uint32_t sub_m_d64 = (sub_m + 63) / 64;     // up aligned to 128
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
-
         uint32_t start_kv = 0;
-        //wait last batch finish
         WAIT_FLAG(V, MTE2, EVENT_ID7);
         gm_to_ub<ArchType::ASCEND_V220, mmScaleType>(
             descale_q1_ubuf_tensor,
@@ -3993,93 +3959,91 @@ template<typename MASK_DTYPE>
         uint32_t pingpong_flag = 0;
         for (uint32_t n_idx = 0; n_idx < n_loop + 1; n_idx++) {
             if (n_idx != n_loop) {
-                    if (n_idx == (n_loop - 1)) {
-                        qk_n = (cur_kv_seqlen - n_idx * pp_n_scalar * K_BLOCK_NUM);
-                        qk_round_n = RoundUp<64>(qk_n);
-                    }
-                    WaitFlagDev(QK_READY_DECODER);
-                    /* ************ softmax1 stage1  ************* */
-                    for (uint32_t m_ind = 0; m_ind < m_end; m_ind++) {
-                        uint32_t row_offset = m_ind * m_slice;
-                        uint32_t curr_m = m_ind == m_end - 1 ? sub_m - row_offset : m_slice; // m_slice=8
-                        if constexpr (flashDecodingVec) {
-                            if (n_idx == 0) {
-                                if (gl_flag_scalar == 1) {
-                                    WAIT_FLAG(MTE3, V, EVENT_ID2);
-                                    gl_flag_scalar = 0;
-                                }
+                if (n_idx == (n_loop - 1)) {
+                    qk_n = (cur_kv_seqlen - n_idx * pp_n_scalar * K_BLOCK_NUM);
+                    qk_round_n = RoundUp<64>(qk_n);
+                }
+                WaitFlagDev(QK_READY_DECODER);
+                /* ************ softmax1 stage1  ************* */
+                for (uint32_t m_ind = 0; m_ind < m_end; m_ind++) {
+                    uint32_t row_offset = m_ind * m_slice;
+                    uint32_t curr_m = m_ind == m_end - 1 ? sub_m - row_offset : m_slice; // m_slice=8
+                    if constexpr (flashDecodingVec) {
+                        if (n_idx == 0) {
+                            if (gl_flag_scalar == 1) {
+                                WAIT_FLAG(MTE3, V, EVENT_ID2);
+                                gl_flag_scalar = 0;
                             }
                         }
-                        if (sub_m > 0) {
-                            uint32_t s_ub_offset = pingpong_flag *  m_slice*512;
-                            uint32_t s_rope_offset = m_slice*512*2;
-                            uint32_t p_gm_offset = (uint64_t)block_idx * P_TMP_SIZE_INT8 +
-                                                (uint64_t)sub_block_idx * cur_head_num / 2 * qk_gm_stride +
+                    }
+                    if (sub_m > 0) {
+                        uint32_t s_ub_offset = pingpong_flag *  m_slice*512;
+                        uint32_t s_rope_offset = m_slice*512*2;
+                        uint32_t p_gm_offset = (uint64_t)block_idx * P_TMP_SIZE_INT8 +
+                                            (uint64_t)sub_block_idx * cur_head_num / 2 * qk_gm_stride +
+                                            row_offset * qk_gm_stride +
+                                            (uint64_t)((n_idx)%CHUNK_BUFFER_SIZE) * P_TMP_SIZE_INT8 / CHUNK_BUFFER_SIZE;
+
+                        uint32_t s_gm_offset = (int64_t)block_idx * TMP_SIZE_DECODER_INT8 +
+                                                (int64_t)sub_block_idx * cur_head_num / 2 * qk_gm_stride +
                                                 row_offset * qk_gm_stride +
-                                                (uint64_t)((n_idx)%CHUNK_BUFFER_SIZE) * P_TMP_SIZE_INT8 / CHUNK_BUFFER_SIZE;
+                                                (uint64_t)((n_idx)%CHUNK_BUFFER_SIZE) * TMP_SIZE_DECODER_INT8 / CHUNK_BUFFER_SIZE;
 
-                            uint32_t s_gm_offset = (int64_t)block_idx * TMP_SIZE_DECODER_INT8 +
-                                                    (int64_t)sub_block_idx * cur_head_num / 2 * qk_gm_stride +
-                                                    row_offset * qk_gm_stride +
-                                                    (uint64_t)((n_idx)%CHUNK_BUFFER_SIZE) * TMP_SIZE_DECODER_INT8 / CHUNK_BUFFER_SIZE;
-
-                            OnlineSoftmaxStage1Quant(
-                                ls32_ubuf_tensor[s_ub_offset].template ReinterpretCast<int32_t>(), // s
-                                ls32_ubuf_tensor[s_ub_offset + s_rope_offset], //s rope
-                                mask_ubuf_tensor,
-                                mask_ubuf_tensor.template ReinterpretCast<float>(),
-                                lm32_ubuf_tensor[row_offset],
-                                hm32_ubuf_tensor[row_offset],
-                                gm32_ubuf_tensor[row_offset],
-                                dm32_ubuf_tensor[(n_idx%CHUNK_BUFFER_SIZE) * UB_FLOAT_LINE_SIZE_TP1 + row_offset], 
-                                ls32_ubuf_tensor[s_ub_offset],
-                                ll_ubuf_tensor[row_offset],
-                                gl32_ubuf_tensor[row_offset],
-                                descale_q1_ubuf_tensor[row_offset],
-                                pm32_ubuf_tensor[(n_idx%CHUNK_BUFFER_SIZE) * UB_FLOAT_LINE_SIZE_TP1 + row_offset], 
-                                lp_ubuf_tensor[s_ub_offset * 4 / sizeof(int8_t)], 
-                                tv32_ubuf_tensor,
-                                s_gm_tensor[s_gm_offset],
-                                s_rope_gm_tensor[s_gm_offset],
-                                p_gm_tensor[p_gm_offset],
-                                n_idx == 0, this->tor,
-                                curr_m, qk_n, qk_round_n, qk_gm_stride, pingpong_flag
-                            );
-                            pingpong_flag = 1 - pingpong_flag;
-                        }
+                        OnlineSoftmaxStage1Quant(
+                            ls32_ubuf_tensor[s_ub_offset].template ReinterpretCast<int32_t>(), // s
+                            ls32_ubuf_tensor[s_ub_offset + s_rope_offset], //s rope
+                            mask_ubuf_tensor,
+                            mask_ubuf_tensor.template ReinterpretCast<float>(),
+                            lm32_ubuf_tensor[row_offset],
+                            hm32_ubuf_tensor[row_offset],
+                            gm32_ubuf_tensor[row_offset],
+                            dm32_ubuf_tensor[(n_idx%CHUNK_BUFFER_SIZE) * UB_FLOAT_LINE_SIZE_TP1 + row_offset], 
+                            ls32_ubuf_tensor[s_ub_offset],
+                            ll_ubuf_tensor[row_offset],
+                            gl32_ubuf_tensor[row_offset],
+                            descale_q1_ubuf_tensor[row_offset],
+                            pm32_ubuf_tensor[(n_idx%CHUNK_BUFFER_SIZE) * UB_FLOAT_LINE_SIZE_TP1 + row_offset], 
+                            lp_ubuf_tensor[s_ub_offset * 4 / sizeof(int8_t)], 
+                            tv32_ubuf_tensor,
+                            s_gm_tensor[s_gm_offset],
+                            s_rope_gm_tensor[s_gm_offset],
+                            p_gm_tensor[p_gm_offset],
+                            n_idx == 0, this->tor,
+                            curr_m, qk_n, qk_round_n, qk_gm_stride, pingpong_flag
+                        );
+                        pingpong_flag = 1 - pingpong_flag;
                     }
-                    FftsCrossCoreSync<PIPE_MTE3, 2>(SOFTMAX_READY_DECODER);
-
                 }
+                FftsCrossCoreSync<PIPE_MTE3, 2>(SOFTMAX_READY_DECODER);
+            }
             pingpong_flag = 0;
-                /* ************ softmax2 stage1  ************* */
+            /* ************ softmax2 stage1  ************* */
             if (n_idx != 0) {
-                    if (n_idx == n_loop) {
-                        qk_n_2 = (cur_kv_seqlen - (n_idx - 1) * pp_n_scalar);
-                        qk_round_n_2 = RoundUp<BLOCK_SIZE>(qk_n_2);
-                    }
-                    WaitFlagDev(UPDATE_READY_DECODER);
-                    if (sub_m > 0) { 
-                        uint32_t head_loop = (sub_m + 15) / 16; 
-                        for (uint32_t head_loop_idx = 0; head_loop_idx < head_loop; ++head_loop_idx) {            
-                            uint32_t head_offset = head_loop_idx * 16 * round_v;
-                            uint32_t cur_sub_m = head_loop_idx == (head_loop - 1) ? sub_m - head_loop_idx * 16 : 16; // 16
-                            
-                            SoftmaxStage2MLAHeadLoopTP1<flashDecodingVec>(
-                                o_tmp_gm_tensor[(uint64_t)(block_idx * TMP_SIZE * CHUNK_BUFFER_SIZE + sub_block_idx * cur_head_num / 2 * round_v + head_offset + ((n_idx - 1)%CHUNK_BUFFER_SIZE) * TMP_SIZE)],
-                                go_gm_tensor[(uint64_t)(block_idx * TMP_SIZE + sub_block_idx * cur_head_num / 2 * round_v + head_offset)],
-                                o_gm_tensor[(uint64_t)(o_offset + head_offset)],
-                                dm32_ubuf_tensor[(uint64_t)(((n_idx - 1)%CHUNK_BUFFER_SIZE) * 128 + head_loop_idx * 16)], ll_ubuf_tensor[(uint64_t)(((n_idx - 1)%CHUNK_BUFFER_SIZE) * 256 + head_loop_idx * 16)],
-                                pm32_ubuf_tensor[(uint64_t)(((n_idx - 1)%CHUNK_BUFFER_SIZE) * 128 + head_loop_idx * 16)],
-                                descale_k1_ubuf_tensor[head_loop_idx * 16],
-                                n_idx - 1, n_loop, qk_n_2, RoundUp<T_BLOCK_SIZE>(qk_round_n_2), cur_sub_m, o_offset, head_idx + head_loop_idx * 16,
-                                (n_idx + 1) % 2, head_loop, head_loop_idx, cur_q_seqlen, head_loop_idx * 16, pingpong_flag, cur_nIndx, prev_split_num, split_num);
-                            pingpong_flag = 1 - pingpong_flag;
-                        }
-                    }                
+                if (n_idx == n_loop) {
+                    qk_n_2 = (cur_kv_seqlen - (n_idx - 1) * pp_n_scalar);
+                    qk_round_n_2 = RoundUp<BLOCK_SIZE>(qk_n_2);
                 }
+                WaitFlagDev(UPDATE_READY_DECODER);
+                if (sub_m > 0) { 
+                    uint32_t head_loop = (sub_m + 15) / 16; 
+                    for (uint32_t head_loop_idx = 0; head_loop_idx < head_loop; ++head_loop_idx) {            
+                        uint32_t head_offset = head_loop_idx * 16 * round_v;
+                        uint32_t cur_sub_m = head_loop_idx == (head_loop - 1) ? sub_m - head_loop_idx * 16 : 16; // 16
+                        
+                        SoftmaxStage2MLAHeadLoopTP1<flashDecodingVec>(
+                            o_tmp_gm_tensor[(uint64_t)(block_idx * TMP_SIZE * CHUNK_BUFFER_SIZE + sub_block_idx * cur_head_num / 2 * round_v + head_offset + ((n_idx - 1) % CHUNK_BUFFER_SIZE) * TMP_SIZE)],
+                            go_gm_tensor[(uint64_t)(block_idx * TMP_SIZE + sub_block_idx * cur_head_num / 2 * round_v + head_offset)],
+                            o_gm_tensor[(uint64_t)(o_offset + head_offset)],
+                            dm32_ubuf_tensor[(uint64_t)(((n_idx - 1) % CHUNK_BUFFER_SIZE) * 128 + head_loop_idx * 16)], ll_ubuf_tensor[(uint64_t)(((n_idx - 1) % CHUNK_BUFFER_SIZE) * 256 + head_loop_idx * 16)],
+                            pm32_ubuf_tensor[(uint64_t)(((n_idx - 1) % CHUNK_BUFFER_SIZE) * 128 + head_loop_idx * 16)],
+                            descale_k1_ubuf_tensor[head_loop_idx * 16],
+                            n_idx - 1, n_loop, qk_n_2, RoundUp<T_BLOCK_SIZE>(qk_round_n_2), cur_sub_m, o_offset, head_idx + head_loop_idx * 16,
+                            (n_idx + 1) % 2, head_loop, head_loop_idx, cur_q_seqlen, head_loop_idx * 16, pingpong_flag, cur_nIndx, prev_split_num, split_num);
+                        pingpong_flag = 1 - pingpong_flag;
+                    }
+                }
+            }
         }
-        //current batch done
         SET_FLAG(V, MTE2, EVENT_ID7);
     }
 
