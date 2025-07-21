@@ -28,6 +28,7 @@ constexpr int64_t LCAL_INVALID_VALUE = -1;
 // shared buffer size，这里要和collectives.cce文件中的常量联动修改！！！
 constexpr int LCAL_BUFF_BYTES = 204 * 1024 * 1024;
 constexpr int LCAL_COMM_BUFFER_SIZE = 200; // 单位MB
+
 enum class ChipName {
     CHIP_310P3 = 0,
     CHIP_910B1,
@@ -82,7 +83,7 @@ enum class LcalType {
     MATMUL_ALL2ALL = 107,
     ALL_GATHER_MATMUL_REDUCE_SCATTER = 111,
     BANDWIDTH = 201,
-
+     ALLTOALLV_ALLGATHER_MATMUL = 305,
     ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN = 309,
     MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN = 310,
     LCAL_TYPE_MAX = 311,
@@ -106,6 +107,7 @@ const std::map<LcalType, std::string> LCAL_TYPE2NAME = {
     { LcalType::BANDWIDTH, "LcalBandwidthTest" },
     { LcalType::ALL_REDUCE_910B2C, "LcalAllReduce910B2C" },
     { LcalType::ALL_GATHER_910B2C, "LcalAllGather910B2C" },
+    { LcalType::ALLTOALLV_ALLGATHER_MATMUL, "LcalAllToAllVAllGatherMatmul" },
     { LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN, "LcalAllToAllVAllGatherMatmulHidden" },
     { LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN, "LcalMatmulReduceScatterAllToAllVHidden" }
 };
