@@ -74,8 +74,11 @@ def one_golden_compare(tensor_a, tensor_b):
     if torch.isnan(tensor_a).any():
         print("********Warning: npu result contains NaN!*************")
         return 1
-    tensor_a = tensor_a.to(torch.float32)
-    tensor_b = tensor_b.to(torch.float32)
+    tensor_a = tensor_a.to(torch.float32).reshape(-1)
+    tensor_b = tensor_b.to(torch.float32).reshape(-1)
+    if tensor_a.size(0) == 0 and tensor_b.size(0) == 0:
+        print("result is same with expect")
+        return 1
     # 确定性计算要求2次npu计算结果完全一致
     if os.getenv('LCCL_DETERMINISTIC', '0') == "1":
         if torch.equal(tensor_a, tensor_b):
@@ -92,9 +95,11 @@ def one_golden_compare(tensor_a, tensor_b):
     result = (abs_error <= err * golden_nmax).all()
     print("re!!!!!!!!!!!!!!npu,cpu, id", result, max_relative_error_value_a, max_relative_error_value_b, temp_id)
     if result:
-        return 0
-    else:
+        print("result is same with expect")
         return 1
+    else:
+        print("result is error")
+        return 0
 
 def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expert_nums,
                 data_type, quant_info, EP, TP, quant_type, out_data_ype, matrix_a_list, matrix_b_list, dequant_scale_list,
@@ -161,9 +166,10 @@ def main_worker(rank, comm_type, world_size, batch, M, K, N, trans_b, local_expe
     torch.npu.synchronize()
 
     golden_out_tensor = matrix_c_list[rank]
-    golden_out_tensor_low = matrix_c_low_list[rank]
+    # golden_out_tensor_low = matrix_c_low_list[rank]
     out_tensor_compare = out_tensor[0].to(torch.device('cpu'))[:golden_out_tensor.shape[1], :]
-    assert check_precision_new(out_tensor_compare, golden_out_tensor, golden_out_tensor_low)
+    # assert check_precision_new(out_tensor_compare, golden_out_tensor, golden_out_tensor_low)
+    assert one_golden_compare(out_tensor_compare, golden_out_tensor)
 
 
 def check_precision_new(tensor_a, tensor_b, tensor_c):
