@@ -3936,23 +3936,27 @@ template<typename MASK_DTYPE>
         uint32_t round_sub_m = (sub_m + 15) / 16 * 16;
         uint32_t start_kv = 0;
         WAIT_FLAG(V, MTE2, EVENT_ID7);
-        gm_to_ub<ArchType::ASCEND_V220, mmScaleType>(
+        gm_to_ub_align<ArchType::ASCEND_V220, mmScaleType>(
             descale_q1_ubuf_tensor,
             deq_scale_gm_tensor_q1[head_idx],
             0,                    // sid
             1,                    // nBurst
-            cur_head_num / FLOAT_BLOCK_SIZE,  // lenBurst
-            0,                    // srcGap
-            0                     // dstGap
+            sub_m * sizeof(mmScaleType),  // lenBurst
+            0,
+            0,
+            0,
+            0
         );
-        gm_to_ub<ArchType::ASCEND_V220, mmScaleType>(
+        gm_to_ub_align<ArchType::ASCEND_V220, mmScaleType>(
             descale_k1_ubuf_tensor,
             deq_scale_gm_tensor_k1[head_idx],
             0,                    // sid
             1,                    // nBurst
-            cur_head_num / FLOAT_BLOCK_SIZE,  // lenBurst
-            0,                    // srcGap
-            0                     // dstGap
+            sub_m * sizeof(mmScaleType),  // lenBurst
+            0,
+            0,
+            0,
+            0
         );
         SET_FLAG(MTE2, V, EVENT_ID0);
         WAIT_FLAG(MTE2, V, EVENT_ID0);
