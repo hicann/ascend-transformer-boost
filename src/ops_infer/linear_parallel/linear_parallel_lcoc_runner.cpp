@@ -49,7 +49,7 @@ LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelPa
                        param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
         case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
-            lcalType_ = Lcal::LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN;
+            lcalType_ = Lcal::LcalType::ALLTOALLV_ALLGATHER_MATMUL;
             isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
                        param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
@@ -203,7 +203,7 @@ Status LinearParallelLcocRunner::LaunchKernel(Lcal::CoCInputPkg inputPkg, Lcal::
                                     GetExecuteStream(runnerVariantPack.context));
             break;
         case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
-            ret = lcoc_->AllToAllVAllGatherMatmulHidden(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+            ret = lcoc_->AllToAllVAllGatherMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
                                                         runnerVariantPack.context->GetExecuteStream());
             break;
         case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
