@@ -204,7 +204,7 @@ Status LinearParallelLcocRunner::LaunchKernel(Lcal::CoCInputPkg inputPkg, Lcal::
             break;
         case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
             ret = lcoc_->AllToAllVAllGatherMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
-                                                        runnerVariantPack.context->GetExecuteStream());
+                                                  runnerVariantPack.context->GetExecuteStream());
             break;
         case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
             ret = lcoc_->MatmulReduceScatterAllToAllVHidden(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
