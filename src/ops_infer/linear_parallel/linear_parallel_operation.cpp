@@ -35,6 +35,7 @@ static const uint32_t IN_TENSOR_DIM_NUM = 2;
 static const uint32_t RESIDUAL_TENSOR_INDEX_3 = 3;
 static const uint32_t RESIDUAL_TENSOR_INDEX_4 = 4;
 static const uint32_t MAX_OUTPUT_SIZE = 204800;
+static const uint32_t MAX_K = 24000;
 
 static bool AllToAllvcAllGatherGmmOutTensorCheck(const SVector<TensorDesc> &inTensorDescs,
                                                  const TensorDesc &outTensorDesc, const std::string &logPrefix)
@@ -277,6 +278,11 @@ Status LinearParallelOperation::InferShapeAllToAllvcAllGatherGmm(const SVector<T
     uint32_t maxOutputSize = inTensorDescs.at(inTensorDescs.size() - 1).shape.dims[0];
     if (maxOutputSize > MAX_OUTPUT_SIZE) {
         ATB_LOG(ERROR) << GetLogPrefix() << "maxOutputSize is too large." << maxOutputSize;
+        return ERROR_INVALID_TENSOR_SIZE;
+    }
+    uint32_t k = inTensorDescs.at(0).shape.dims[1];
+    if (maxOutputSize > MAX_K) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "K is too large. should be 1 to 24000" << k;
         return ERROR_INVALID_TENSOR_SIZE;
     }
     outTensorDescs.at(0).shape.dims[0] = inTensorDescs.at(inTensorDescs.size() - 1).shape.dims[0];
