@@ -133,7 +133,9 @@ Status GetMLANdInfo(const LaunchParam &launchParam, MLAInfo &mmInfo,
     mmInfo.numHeads = static_cast<int32_t>(param.headSize);
     mmInfo.maskType = static_cast<int32_t>(param.maskType);
     mmInfo.quantFlag = (static_cast<int32_t>(mmInfo.type) < NUM2) ? 0 : 1;
-    mmInfo.mtpTp1Flag = (mmInfo.numHeads == M_LIMIT);
+    auto maxQSeqlen = mmInfo.qSeqLen != nullptr ? *std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;
+    mmInfo.mtpTp1Flag = ((param.headSize == M_LIMIT) ||
+                           (launchParam.GetInTensor(DIM_0).desc.dtype == TENSOR_DTYPE_INT8 && maxQSeqlen > 1));
     if (mmInfo.mtpTp1Flag || static_cast<int32_t>(mmInfo.type) >= NUM2) {
         mmInfo.maskType = 0;
     }
