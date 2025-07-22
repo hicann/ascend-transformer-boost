@@ -2959,7 +2959,7 @@ struct MultiLatentAttentionParam {
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[43] = {0};
+    uint8_t rsv[39] = {0};
 };
 
 //!
