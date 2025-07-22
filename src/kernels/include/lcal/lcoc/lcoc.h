@@ -31,6 +31,8 @@ public:
     int PureMatmul(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream = nullptr);
     int AllGatherMatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg,
                                      void *workspace, aclrtStream stream = nullptr);
+    int AllToAllVAllGatherMatmul(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+        aclrtStream stream = nullptr);
     int AllToAllVAllGatherMatmulHidden(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
         aclrtStream stream = nullptr);
     int MatmulReduceScatterAllToAllVHidden(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
