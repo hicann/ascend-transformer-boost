@@ -4402,15 +4402,37 @@ extern "C" __global__ __aicore__ void mla(
         pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm);
         pa_aiv.RunTP1();
 #endif
+    } else if (TILING_KEY_IS(54)) { // INT8 fp16 FOUR_FLOW RING
+#ifdef __DAV_C220_CUBE__
+        MLAttentionDecoderAic<TilingKeyType::TILING_INT8_DATA, int8_t, half, half, int8_t, InputFormat::NZ_FORMAT, false> pa_aic {};
+        pa_aic.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
+        pa_aic.RunTP1();
+#elif __DAV_C220_VEC__
+        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, half, true, BlockStack::FIVE_FLOW> pa_aiv {};
+        pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm);
+        pa_aiv.SetArgs2(lse_gm);
+        pa_aiv.RunTP1();
+#endif
+    } else if (TILING_KEY_IS(55)) { // INT8 bf16 FOUR_FLOW RING
+#ifdef __DAV_C220_CUBE__
+        MLAttentionDecoderAic<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, __bf16, int8_t, InputFormat::NZ_FORMAT, false> pa_aic {};
+        pa_aic.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
+        pa_aic.RunTP1();
+#elif __DAV_C220_VEC__
+        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, true, BlockStack::FIVE_FLOW> pa_aiv {};
+        pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm);
+        pa_aiv.SetArgs2(lse_gm);
+        pa_aiv.RunTP1();
+#endif
     } else if (TILING_KEY_IS(68)) { // fp16 + nd + FOUR_FLOW + flashdecoding 0b1000100
 #ifdef __DAV_C220_CUBE__
         MLAttentionDecoderAic<TilingKeyType::TILING_HALF_DATA, half, half, half, half, InputFormat::ND_FORMAT, true> pa_aic_fp16 {};
         pa_aic_fp16.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
         pa_aic_fp16.RunTP1();
 #elif __DAV_C220_VEC__
-    MLADecoderAiv<TilingKeyType::TILING_HALF_DATA, half, half, false, BlockStack::FOUR_FLOW, true> pa_aiv {};
-    pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm, o_core_tmp_gm, l_gm);
-    pa_aiv.RunTP1();
+        MLADecoderAiv<TilingKeyType::TILING_HALF_DATA, half, half, false, BlockStack::FOUR_FLOW, true> pa_aiv {};
+        pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm, o_core_tmp_gm, l_gm);
+        pa_aiv.RunTP1();
 #endif
     } else if (TILING_KEY_IS(69)) { // bf16 + nd + FOUR_FLOW + flashdecoding 0b1000101
 #ifdef __DAV_C220_CUBE__
@@ -4461,6 +4483,28 @@ extern "C" __global__ __aicore__ void mla(
         MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, false, BlockStack::FIVE_FLOW, true> pa_aiv {};
         pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm, o_core_tmp_gm, l_gm);
         pa_aiv.RunTP1();
+#endif
+    } else if (TILING_KEY_IS(50)) { // int8_t(IN) fp16(OUT) RING
+#ifdef __DAV_C220_CUBE__
+        MLAttentionDecoderAic<TilingKeyType::TILING_INT8_DATA, int8_t, half, half, int8_t, InputFormat::NZ_FORMAT, false> pa_aic_fp16 {};
+        pa_aic_fp16.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
+        pa_aic_fp16.Run();
+#elif __DAV_C220_VEC__
+        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, half, true> pa_aiv {};
+        pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm);
+        pa_aiv.SetArgs2(lse_gm);
+        pa_aiv.Run();
+#endif
+    } else if (TILING_KEY_IS(51)) { // int8_t(IN) bf16(OUT) RING
+#ifdef __DAV_C220_CUBE__
+        MLAttentionDecoderAic<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, __bf16, int8_t, InputFormat::NZ_FORMAT, false> pa_aic_bf16 {};
+        pa_aic_bf16.SetArgs(sync, q_gm, q_rope_gm, ctkv_gm, ctkv_rope_gm, block_tables_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, tiling_para_gm);
+        pa_aic_bf16.Run();
+#elif __DAV_C220_VEC__
+        MLADecoderAiv<TilingKeyType::TILING_INT8_DATA, int8_t, __bf16, true> pa_aiv {};
+        pa_aiv.SetArgs(sync, block_tables_gm, deq_qk_gm, deq_pv_gm, o_gm, s_gm, s_rope_out_gm, p_gm, o_tmp_gm, go_gm, tiling_para_gm, mask_gm);
+        pa_aiv.SetArgs2(lse_gm);
+        pa_aiv.Run();
 #endif
     }
 }
