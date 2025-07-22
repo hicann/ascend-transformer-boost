@@ -362,10 +362,7 @@ Status GetMLATilingParam(const LaunchParam &launchParam, MLAInfo &mmInfo,
     auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
     float tor = mmInfo.tor;
     uint32_t *torPtr = reinterpret_cast<uint32_t *>(&tor);
-    uint64_t curTilingParamSize = mmInfo.mtpTp1Flag ?
-                                  (TILING_HEAD_SIZE + TILING_PARA_SIZE_TP1 * mmInfo.totalTaskNum) * sizeof(uint32_t) :
-                                  (TILING_HEAD_SIZE + TILING_PARA_SIZE * mmInfo.batch) * sizeof(uint32_t);
-    MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0, curTilingParamSize) == EOK, "init tiling failed",
+    MKI_CHECK(memset_s(tilingParam, tilingParamSize, 0, tilingParamSize) == EOK, "init tiling failed",
               return Status::FailStatus(ERROR_INVALID_VALUE));
     if (mmInfo.mtpTp1Flag) {
         if (mmInfo.flashDecoding) {

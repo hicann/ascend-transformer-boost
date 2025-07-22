@@ -1066,6 +1066,59 @@ class TestPagedAttentionMLA(op_test.OpTest):
                 attention_out, torch.tensor([])
             ]
         )
+    
+    @op_test.only_910b
+    def test_paged_mla_combine_cache_deepseek_test2(self):
+        self.set_support_910b_only()
+        num_tokens = 32
+        num_heads = 32
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = 801
+        k_seqlen = 3073
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_dim = 0
+        dtype = torch.float16
+        is_kv_combined = True
+        is_nz_in = False
+        self.is_ring = 0
+
+        self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, torch.float16,
+                        is_kv_combined = is_kv_combined, is_nz_in = is_nz_in)
+
+        OP_NAME = "MLAOperation"
+        OP_PARAM = {"type": 0, "kvHead":kv_heads, "headSize":num_heads, "tor": tor, "kvSeqLen": self.contex_lens.tolist()}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd, self.format_nd])
+        self.set_output_formats([self.format_nd] * 2)
+        logging.debug(f"blcok_tables shape: {self.block_tables}")
+        logging.debug(f"contex_lens shape: {self.contex_lens}")
+        logging.debug(f"numTokens: {num_tokens}, numHeads: {num_heads}, kvHead: {kv_heads}"
+              f", blockSize: {block_size}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}, numBlocks: {num_blocks}")
+        logging.info(f"Q1 shape: {self.q_split1.shape}")
+        logging.info(f"Q2 shape: {self.q_split2.shape}")
+        logging.info(f"K1 shape: {self.key_cache_split1.shape}")
+        logging.info(f"K2 shape: {self.key_cache_split2.shape}")
+        shape_out = ((num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=torch.float16)
+        for i in range (1):
+            self.execute(
+            [
+                self.q_split1,
+                self.q_split2,
+                torch.tensor(self.key_cache_split1),
+                torch.tensor(self.key_cache_split2),
+                torch.tensor(self.block_tables).int(),
+                torch.tensor([], dtype=torch.float16),
+                torch.tensor([1], dtype=torch.float),
+                torch.tensor([1], dtype=torch.float)
+            ],
+            [
+                attention_out, torch.tensor([])
+            ]
+        )
 
 if __name__ == '__main__':
     unittest.main()
