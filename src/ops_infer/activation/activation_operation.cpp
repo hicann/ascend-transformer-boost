@@ -62,8 +62,9 @@ static Mki::OperationIr *GetOperationIrForActivation(const infer::ActivationType
         case atb::infer::ActivationType::ACTIVATION_LOG:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationLOG");
         case atb::infer::ActivationType::ACTIVATION_GELU:
+            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationGELUA");
         case atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD:
-            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationGELUAndFORWARD");
+            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWIGLUFORWARD");
         case atb::infer::ActivationType::ACTIVATION_FAST_GELU:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationFASTGELU");
         case atb::infer::ActivationType::ACTIVATION_SIGMOID:
