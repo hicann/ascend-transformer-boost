@@ -2953,9 +2953,8 @@ struct MultiLatentAttentionParam {
     //!
     CacheMode cacheMode = KVCACHE;
     //!
-    //! \brief cacheMode uint8_t补齐参数
-    //!
-    uint8_t rsv0[3] = {0};
+    //! \note cacheMode uint8_t，占1字节后编译器会4字节补齐，此处有3字节浪费
+
     //!
     //! \brief 滑动窗口大小
     //!
