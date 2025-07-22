@@ -2953,13 +2953,17 @@ struct MultiLatentAttentionParam {
     //!
     CacheMode cacheMode = KVCACHE;
     //!
+    //! \brief cacheMode uint8_t补齐参数
+    //!
+    uint8_t rsv0[3] = {0};
+    //!
     //! \brief 滑动窗口大小
     //!
     uint32_t windowSize = 0;
     //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[39] = {0};
+    uint8_t rsv[36] = {0};
 };
 
 //!
