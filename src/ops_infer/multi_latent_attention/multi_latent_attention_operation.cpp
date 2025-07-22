@@ -100,11 +100,6 @@ static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
         ATB_LOG(ERROR) << "dont support cacheMode KVCACHE yet";
         return false;
     }
-    if (opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE &&
-        opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC && opParam.headNum != 128) {
-        ATB_LOG(ERROR) << "mtp quant only support headNum 128";
-        return false;
-    }
     if ((opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC &&
          opParam.calcType != infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
         opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED) {
