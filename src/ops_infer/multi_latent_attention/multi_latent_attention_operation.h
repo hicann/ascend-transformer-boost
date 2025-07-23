@@ -33,6 +33,9 @@ private:
     Status QKVDimCheck(const SVector<TensorDesc> &inTensorDesc) const;
     Status QKVDimCheckNz(const SVector<TensorDesc> &inTensorDesc) const;
     Status QKVDimCheckInt8Nz(const SVector<TensorDesc> &inTensorDesc) const;
+    Status DimCheckSpec(const SVector<TensorDesc> &inTensorDesc, size_t idx) const;
+    Status DimCheckInt8Nz(const SVector<TensorDesc> &inTensorDesc, size_t idx) const;
+    Status DimCheckInt8NzLse(const SVector<TensorDesc> &inTensorDesc, const SVector<TensorDesc> &outTensorDesc) const;
     Status QKVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;
     Status QDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;
     Status KVDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const;

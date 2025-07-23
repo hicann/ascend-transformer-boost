@@ -108,8 +108,16 @@ static bool ParamCheck(const infer::MultiLatentAttentionParam &opParam)
     }
     if ((opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
          opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
-        opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV) {
-        ATB_LOG(ERROR) << "CalcType is ring only support krppe ctkv";
+        (opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::KROPE_CTKV &&
+         opParam.cacheMode != infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE)) {
+        ATB_LOG(ERROR) << "CalcType is ring only support krppe ctkv and int8 nzcache";
+        return false;
+    }
+    if ((opParam.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) &&
+        (opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
+         opParam.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
+        (opParam.maskType != infer::MultiLatentAttentionParam::MaskType::UNDEFINED)) {
+        ATB_LOG(ERROR) << "int8nz lse not support mask";
         return false;
     }
     return true;
@@ -236,6 +244,9 @@ Status MultiLatentAttentionOperation::InferShapeImpl(const SVector<TensorDesc> &
     if ((param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING || param_.
                       calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING)) {
         outTensorDescs.at(1) = outTensorDescs.at(0);
+        if (param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
+            outTensorDescs.at(1).dtype = ACL_FLOAT;
+        }
         outTensorDescs.at(1).shape.dims[2] = 1; // 2: dim2
     }
     return NO_ERROR;
@@ -260,6 +271,7 @@ Status MultiLatentAttentionOperation::SetupCheckImpl(const SVector<Tensor> &inTe
     SVector<TensorDesc> inTensorDescs = {};
     SVector<TensorDesc> outTensorsDescs = {};
     OperationUtil::InTensorsToInTensorDescs(inTensors, inTensorDescs);
+    OperationUtil::InTensorsToInTensorDescs(outTensors, outTensorsDescs);
     if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_PREFILL) {
         Status st = InTensorDimCheckPrefill(inTensorDescs);
         if (st != NO_ERROR) {
@@ -274,6 +286,15 @@ Status MultiLatentAttentionOperation::SetupCheckImpl(const SVector<Tensor> &inTe
         return st;
     }
     Status st = DimCheck(inTensorDescs);
+    if (st != NO_ERROR) {
+        return st;
+    }
+    if ((param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
+         param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
+        param_.maskType == infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+        param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
+        st = DimCheckInt8NzLse(inTensorDescs, outTensorsDescs);
+    }
     if (st != NO_ERROR) {
         return st;
     }
@@ -414,6 +435,65 @@ Status MultiLatentAttentionOperation::QKVDimCheckInt8Nz(const SVector<TensorDesc
     return NO_ERROR;
 }
 
+Status MultiLatentAttentionOperation::DimCheckSpec(const SVector<TensorDesc> &inTensorDesc, size_t idx) const
+{
+    if (inTensorDesc.at(idx).shape.dimNum != 1) { // 1: 1 dim
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (inTensorDesc.at(idx).shape.dims[0] != inTensorDesc.at(CONTEXTLENS_INDEX).shape.dims[0]) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of qSeqlen(intensor" << idx
+                       << ") should be equal to dim0 of contextLens(intensor5)";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
+Status MultiLatentAttentionOperation::DimCheckInt8Nz(const SVector<TensorDesc> &inTensorDesc, size_t idx) const
+{
+    if (inTensorDesc.at(idx).shape.dimNum != 1 || inTensorDesc.at(idx + 1).shape.dimNum != 1) { // 1: 1 dim
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid intensor dimNum";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if (inTensorDesc.at(idx).shape.dims[0] != param_.headNum) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of of qkDescale(intensor" << idx
+                       << ") should be equal to dim0 of headNum";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (inTensorDesc.at(idx + 1).shape.dims[0] != param_.headNum) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "dim 0 of of pvDescale(intensor" << idx + 1
+                       << ") should be equal to dim0 of headNum";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
+Status MultiLatentAttentionOperation::DimCheckInt8NzLse(const SVector<TensorDesc> &inTensorDesc,
+                                                        const SVector<TensorDesc> &outTensorDesc) const
+{
+    if (outTensorDesc.at(0).shape.dimNum != inTensorDesc.at(0).shape.dimNum) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid outtensor dimNum";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if ((outTensorDesc.at(0).shape.dims[0] != inTensorDesc.at(0).shape.dims[0]) ||
+        (outTensorDesc.at(0).shape.dims[1] != inTensorDesc.at(0).shape.dims[1]) ||
+        (outTensorDesc.at(0).shape.dims[DIM_2] != inTensorDesc.at(0).shape.dims[DIM_2])) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid outtensor dims";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (outTensorDesc.at(1).shape.dimNum != inTensorDesc.at(0).shape.dimNum) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid outtensor dimNum";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
+    }
+    if ((outTensorDesc.at(1).shape.dims[0] != inTensorDesc.at(0).shape.dims[0]) ||
+        (outTensorDesc.at(1).shape.dims[1] != inTensorDesc.at(0).shape.dims[1]) ||
+        (outTensorDesc.at(1).shape.dims[DIM_2] != 1)) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "invalid outtensor dims";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
+}
+
 Status MultiLatentAttentionOperation::DimCheck(const SVector<TensorDesc> &inTensorDesc) const
 {
     if (inTensorDesc.at(0).shape.dimNum != 3 ||                  // 0: query 3: 3 dims
@@ -453,8 +533,26 @@ Status MultiLatentAttentionOperation::DimCheck(const SVector<TensorDesc> &inTens
     if (st != NO_ERROR) {
         return st;
     }
+    if ((param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_RING ||
+         param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) &&
+        param_.maskType == infer::MultiLatentAttentionParam::MaskType::UNDEFINED &&
+        param_.cacheMode == infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE) {
+        size_t idx = IN_TENSOR_6;
+        if (param_.calcType == infer::MultiLatentAttentionParam::CalcType::CALC_TYPE_SPEC_AND_RING) {
+            st = DimCheckSpec(inTensorDesc, idx);
+            if (st != NO_ERROR) {
+                return st;
+            }
+            ++idx;
+        }
+        st = DimCheckInt8Nz(inTensorDesc, idx);
+        if (st != NO_ERROR) {
+            return st;
+        }
+    }
     return NO_ERROR;
 }
+
 Status MultiLatentAttentionOperation::InTensorDimCheckPrefill(const SVector<TensorDesc> &inTensorDesc) const
 {
     if ((inTensorDesc.at(IN_TENSOR_0).shape.dimNum != 2 &&  // 0: query 2:   2 dims
