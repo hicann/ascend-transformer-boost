@@ -24,7 +24,7 @@ from precision_calcu import *
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import operation_test  # NOQA: E402
  
-torch.manual_seed(1)
+torch.manual_seed(2)
 MAX_SEQ_LEN = 1024
  
 def shape_nd_to_nz(shape, dtype='float16'):
