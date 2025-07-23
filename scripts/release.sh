@@ -196,14 +196,14 @@ function fn_build()
 function config_atb_version()
 {
     if [ -z "$VERSION" ]; then
-        echo "Version is not set, use default setting!"
+        echo "PackageName is not set, use default setting!"
         VERSION='1.0.RC1'
-        echo "VERSION: $VERSION"
+        echo "PackageName: $VERSION"
     fi
     if [ -z "$VERSION_B" ]; then
-        echo "Version_B is not set, use default setting!"
+        echo "CANNVersion is not set, use default setting!"
         VERSION_B='1.0.RC1'
-        echo "VERSION_B: $VERSION_B"
+        echo "CANNVersion: $VERSION_B"
     fi
     if [[ "${VERSION}" =~ ^[1-9]\.[0-9]\. ]]; then
         sed -i "s/ATBVERSION/${VERSION_B}/" $ATB_DIR/src/atb/utils/utils.cpp
@@ -274,13 +274,13 @@ function fn_main()
     until [[ -z "$1" ]]
     do {
         case "$1" in
-        "--version="*)
+        "--PackageName="*)
             VERSION="${1#*=}"
-            echo "Version set to: $VERSION"
+            echo "PackageName set to: $VERSION"
             ;;
-        "--version_b="*)
+        "--CANNVersion="*)
             VERSION_B="${1#*=}"
-            echo "Version_B set to: $VERSION_B"
+            echo "CANNVersion set to: $VERSION_B"
             ;;
         "--use_cxx11_abi=1")
             USE_CXX11_ABI=ON
