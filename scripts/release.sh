@@ -288,6 +288,9 @@ function fn_main()
         "--use_cxx11_abi=0")
             USE_CXX11_ABI=OFF
             ;;
+        "--build_customize_ops")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
+            ;;
         esac
         shift
     }
@@ -306,8 +309,8 @@ function fn_main()
             fn_build_asdops
             fn_build_catlass
             fn_build_cann_dependency
-            [[ "$USE_CXX11_ABI" == "ON" ]] && COMPILE_OPTIONS="-DUSE_CXX11_ABI=ON"
-            [[ "$USE_CXX11_ABI" == "OFF" ]] && COMPILE_OPTIONS="-DUSE_CXX11_ABI=OFF"
+            [[ "$USE_CXX11_ABI" == "ON" ]] && COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=ON"
+            [[ "$USE_CXX11_ABI" == "OFF" ]] && COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=OFF"
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Release"
             config_atb_version
             fn_build_nlohmann_json

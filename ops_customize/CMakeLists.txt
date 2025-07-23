@@ -48,8 +48,6 @@ add_library(atb_customize_static STATIC ${CUSTOMIZE_SRCS})
 
 set(CUSTOMIZE_DEPS
     mki
-    asdops
-    atb_mixops
     customize_ops
     ascendcl
     profapi
@@ -64,9 +62,11 @@ install(TARGETS atb_customize atb_customize_static DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/customize)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_customize/customize_ops_configs DESTINATION ./configs)
 
-set(GTEST_PATH "${CMAKE_SOURCE_DIR}/3rdparty/googletest")
-find_package(GTest 1.13.0 REQUIRED
-             PATHS "${GTEST_PATH}"
-             NO_DEFAULT_PATH)
-enable_testing()
-add_subdirectory(ops/customize_blockcopy/tests)
+if (BUILD_CUSTOMIZE_OPS_TEST)
+    set(GTEST_PATH "${CMAKE_SOURCE_DIR}/3rdparty/googletest")
+    find_package(GTest 1.13.0 REQUIRED
+                PATHS "${GTEST_PATH}"
+                NO_DEFAULT_PATH)
+    enable_testing()
+    add_subdirectory(ops/customize_blockcopy/tests)
+endif()

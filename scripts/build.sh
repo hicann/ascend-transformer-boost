@@ -750,6 +750,9 @@ function fn_main()
         "--src-only")
             SRC_ONLY=ON
             ;;
+        "--customizeops_tests")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -BUILD_CUSTOMIZE_OPS_TEST=ON"
+            ;;
         esac
         shift
     }
