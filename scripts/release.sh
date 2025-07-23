@@ -195,16 +195,14 @@ function fn_build()
 
 function config_atb_version()
 {
-    if [ ! -f "$ATB_DIR"/../CI/config/version.ini ]; then
-        echo "version.ini is not existed!"
+    if [ -z "$VERSION" ]; then
+        echo "Version is not set, use default setting!"
         VERSION='1.0.RC1'
         echo "VERSION: $VERSION"
+    fi
+    if [ -z "$VERSION_B" ]; then
+        echo "Version_B is not set, use default setting!"
         VERSION_B='1.0.RC1'
-        echo "VERSION_B: $VERSION_B"
-    else
-        VERSION=$(cat $VERSION_INFO_FILE | grep "PackageName" | cut -d "=" -f 2)
-        echo "VERSION: $VERSION"
-        VERSION_B=$(cat $VERSION_INFO_FILE | grep "CANNVersion" | cut -d " " -f 2)
         echo "VERSION_B: $VERSION_B"
     fi
     if [[ "${VERSION}" =~ ^[1-9]\.[0-9]\. ]]; then
@@ -276,11 +274,13 @@ function fn_main()
     until [[ -z "$1" ]]
     do {
         case "$1" in
-        "--ini=version")
-            VERSION_INFO_FILE=$ATB_DIR/../CI/config/version.ini
+        "--version="*)
+            VERSION="${1#*=}"
+            echo "Version set to: $VERSION"
             ;;
-        "--ini=version_item")
-            VERSION_INFO_FILE=$ATB_DIR/../CI/config/version_item.ini
+        "--version_b="*)
+            VERSION_B="${1#*=}"
+            echo "Version_B set to: $VERSION_B"
             ;;
         "--use_cxx11_abi=1")
             USE_CXX11_ABI=ON
