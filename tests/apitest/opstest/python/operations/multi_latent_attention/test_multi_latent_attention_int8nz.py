@@ -148,7 +148,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         # print(sim_sub)
         row_sum = np.sum(sim_sub, axis=-1, keepdims=True)
         soft_res = sim_sub / row_sum
-        return soft_res
+        return soft_res, row_sum + np.log(row_max)
 
     def softmax_quant_numpy(self, sim, is_first):
         lm = np.max(sim, axis=-1, keepdims=True)
@@ -168,7 +168,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         soft_res = sim_int8.astype("float16")
         soft_res = np.rint(soft_res).astype("int8")
         de_scalev = self.de_scale2_fp32 * row_maxp[:,0,0] / 127
-        return soft_res, row_sum, de_scalev, hm, self.dm
+        return soft_res, row_sum, de_scalev, hm, self.dm, row_sum + np.log(row_maxp)
 
     def softmax_quant_numpy_online(self, sim, heads, kv_head, value):
         group_head = heads // kv_head
@@ -199,7 +199,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                     qk_n = cur_kv_seqlen - n_idx * block_size_calc
                 end_kv = end_kv + qk_n
                 sim_block = sim[:, :, start_kv : end_kv]
-                p_block, ll, de_scalev, hm, dm = self.softmax_quant_numpy(sim_block, is_first)
+                p_block, ll, de_scalev, hm, dm, _ = self.softmax_quant_numpy(sim_block, is_first)
                 self.de_scalev = de_scalev
                 value_block = value[:, start_kv : end_kv, :]
                 lo = self.group_mm_torch(heads, kv_head, torch.from_numpy(p_block), value_block, 0)
@@ -230,7 +230,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             o = o * scale.transpose(1, 0)[:,:,np.newaxis,np.newaxis]
             self.go = np.sum(o, axis=0, keepdims=True)
             self.go = np.squeeze(self.go, axis=0)
-        return torch.from_numpy(self.go)
+        return torch.from_numpy(self.go), ls
 
     def ref_masked_attention(self,
             query,  # (1, num_heads, head_size)
@@ -245,6 +245,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         # Q * K.T
         query = query
         query = torch.permute(query, (1, 0, 2))
+        lse = None
         if self.is_quant_flag:
             query_rope = torch.permute(query_rope, (1, 0, 2))
             key_rope = torch.permute(key_rope, (1, 2, 0))
@@ -264,33 +265,37 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             sim_high = sim_high + alibi_bias.to(torch.float32)
         if self.is_quant_flag:
             self.gm = np.full([query.shape[0] , 1, 1],  np.finfo(np.float32).min)
-            p_high, row_sum, de_scalev, _, _ = self.softmax_quant_numpy(sim_high.numpy(), 1)
+            p_high, row_sum, de_scalev, _, _, lse = self.softmax_quant_numpy(sim_high.numpy(), 1)
+            lse = torch.permute(torch.from_numpy(lse).to(mask_data_type), (1, 0, 2))
             self.de_scalev = de_scalev
             value = torch.permute(value, (1, 0, 2))
             out_high = self.group_mm_torch(query.shape[0], key.shape[0], torch.from_numpy(p_high), value, 0)
             out_high = out_high / row_sum
             out_high = torch.permute(out_high, (1, 0, 2))
             s_qk = sim_high.numpy()
-            out = self.softmax_quant_numpy_online(s_qk, query.shape[0], key.shape[0], value)
+            out, lse_high = self.softmax_quant_numpy_online(s_qk, query.shape[0], key.shape[0], value)
+            lse_high = torch.permute(torch.from_numpy(lse_high).to(torch.float32), (1, 0, 2))
         else:
             # softmax
-            p_high = self.softmax_numpy(sim_high)
+            p_high, lse = self.softmax_numpy(sim_high)
             p = torch.from_numpy(p_high).to(mask_data_type)
             p_high = torch.from_numpy(p_high)
-
+            lse = torch.permute(torch.from_numpy(lse).to(mask_data_type), (1, 0, 2))
             # P * V
+            lse_high = lse
             value = torch.permute(value, (1, 0, 2))
             out = self.group_mm_torch(query.shape[0], key.shape[0], p, value, 0)
             out_high = self.group_mm_torch(query.shape[0], key.shape[0], p_high, value, 0)
             out = torch.permute(out, (1, 0, 2))
             out_high = torch.permute(out_high, (1, 0, 2))
         sim_out = torch.permute(sim_out, (1, 0, 2))
-        return out, out_high, sim_out
+        return out, out_high, sim_out, lse, lse_high
 
     def ref_single_query_cached_kv_attention(self,
             sim,
             output,
             true_out,
+            lse,
             query,
             key_cache,  # (num_blocks, block_size, num_heads, head_size)
             value_cache,  # (num_blocks, block_size, num_heads, head_size)
@@ -356,14 +361,16 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
                 values = torch.stack(values, axis=0)
                 scale = np.float32(1.0 / (head_size_qk ** 0.5))
                 if mask_dim == 4:
-                    out,out_high,sim_out = self.ref_masked_attention(q, keys, values, scale, mask[i, :, :, :context_len], mask_data_type, q_rope, keys_rope)
+                    out, out_high, sim_out, lse_i, lse_high = self.ref_masked_attention(q, keys, values, scale, mask[i, :, :, :context_len], mask_data_type, q_rope, keys_rope)
                     out = out.reshape(num_heads, head_size_vo)
                 elif mask_dim == 3:
-                    out,out_high,sim_out = self.ref_masked_attention(q, keys, values, scale, mask[i // mask_index_coff, :, :context_len], mask_data_type, q_rope, keys_rope)
+                    out, out_high, sim_out, lse_i, lse_high = self.ref_masked_attention(q, keys, values, scale, mask[i // mask_index_coff, :, :context_len], mask_data_type, q_rope, keys_rope)
                     out = out.reshape(num_heads, head_size_vo)
                 else:
-                    out,out_high,sim_out = self.ref_masked_attention(q, keys, values, scale, mask, mask_data_type, q_rope, keys_rope)
+                    out, out_high, sim_out, lse_i, lse_high = self.ref_masked_attention(q, keys, values, scale, mask, mask_data_type, q_rope, keys_rope)
                     out = out.reshape(num_heads, head_size_vo)
+                lse_high = lse_high.reshape(num_heads, 1)
+                lse[index] = lse_high.to(torch.float32)
                 out_high = out_high.reshape(num_heads, head_size_vo)
                 sim_out = sim_out.reshape(1, num_heads * context_len)
                 output[index] = out.to(mask_data_type)
@@ -550,14 +557,16 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
             self.block_size_calc = self.get_blockszie_calc(max_context_len, block_size, head_size_qk, head_size_vo)
             self.block_size = block_size
 
-        shape_out = (num_tokens*q_seqlen, num_heads, head_size_vo)
-        ref_output = torch.zeros(shape_out, dtype=mask_data_type)
-        true_out = torch.zeros(shape_out, dtype=torch.float32)
+        shape_out = (num_tokens * q_seqlen, num_heads, head_size_vo)
+        ref_output = torch.zeros(shape_out, dtype = mask_data_type)
+        true_out = torch.zeros(shape_out, dtype = torch.float32)
+        lse = torch.zeros((num_tokens * q_seqlen, num_heads, 1), dtype = torch.float32)
         sim = torch.zeros((num_tokens, num_heads * k_seqlen), dtype=torch.float32)
         self.ref_single_query_cached_kv_attention(
             sim,
             ref_output,
             true_out,
+            lse,
             query,
             key_cache,
             value_cache,
@@ -597,14 +606,22 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         self.alib_mask = mask
         self.golden_out = ref_output
         self.true_out = true_out
+        self.lse = lse
 
     def golden_calc(self, in_tensors):
         golden_out = torch.tensor(self.golden_out)
+        if self.is_ring:
+            return [golden_out, self.lse]
         return [golden_out]
 
     def golden_compare(self, out_tensors, golden_tensors):
-        result_old = self.compare_output_data(out_tensors.npu(), golden_tensors.npu(), [0.001, 0.001, 0.005, 0.005])
-        return  result_old
+        result_old = self.compare_output_data(out_tensors[0].npu(), golden_tensors[0].npu(), [0.001, 0.001, 0.005, 0.005])
+        lse_double = True
+        lse_old = True
+        if self.is_ring:
+            lse_double = compare_cv(golden_tensors[1].npu(), golden_tensors[1].npu(), out_tensors[1].npu())
+            lse_old = self.compare_output_data(out_tensors[1].npu(), golden_tensors[1].npu(), [0.001, 0.001, 0.005, 0.005])
+        return (result_old) and (lse_double or lse_old)
 
     def test_mla_split_quant_nz(self):
         if not operation_test.get_soc_version() == 'Ascend910B':
@@ -624,6 +641,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, dtype,
                         is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag)
 
@@ -658,6 +676,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, dtype,
                         is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag)
 
@@ -692,6 +711,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, dtype,
                         is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag)
 
@@ -726,6 +746,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = False
+        self.is_ring = 0
         self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, dtype,
                         is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag)
 
@@ -758,6 +779,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = False
+        self.is_ring = 0
         self.calc_data(num_tokens, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, dtype,
                         is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag)
 
@@ -792,6 +814,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         fa_block_size = 128
         if num_heads == 128:
             fa_block_size = 512
@@ -832,6 +855,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         fa_block_size = 128
         if num_heads == 128:
             fa_block_size = 512
@@ -872,6 +896,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         fa_block_size = 128
         if num_heads == 128:
             fa_block_size = 512
@@ -912,6 +937,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         fa_block_size = 128
         if num_heads == 128:
             fa_block_size = 512
@@ -952,6 +978,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         fa_block_size = 128
         if num_heads == 128:
             fa_block_size = 512
@@ -992,6 +1019,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         fa_block_size = 128
         if num_heads == 128:
             fa_block_size = 512
@@ -1032,6 +1060,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         fa_block_size = 128
         if num_heads == 128:
             fa_block_size = 512
@@ -1072,6 +1101,7 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
         is_kv_combined = True
         is_nz_in = True
         is_quant_flag = True
+        self.is_ring = 0
         fa_block_size = 128
         if num_heads == 128:
             fa_block_size = 512
@@ -1080,6 +1110,168 @@ class TestPagedAttentionMLA(operation_test.OperationTest):
 
         OP_NAME = "MultiLatentAttentionOperation"
         PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "maskType": 0, "cacheMode": 2, "calcType": 1})
+        RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist(),"qSeqlen": self.q_seqlen_list.tolist(), "maskType": 0})
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
+                                [self.q_split1.npu(),
+                                 self.q_split2.npu(),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split1).contiguous().npu(), 29),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split2).contiguous().npu(), 29),
+                                 torch.tensor(self.block_tables).int().npu(),
+                                 torch.tensor(self.contex_lens).int().npu(),
+                                 torch.tensor(self.q_seqlen_list).int().npu(),
+                                 torch.tensor(self.de_scale1_fp32).npu(),
+                                 torch.tensor(self.de_scale2_fp32).npu()])
+        
+    def test_mla_mtp_split_quant_nz_bf16_8_4_512_lse_case1(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 8
+        q_seqlen = 2
+        k_seqlen = 1025
+
+        num_heads = 32
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = (k_seqlen + block_size - 1) // block_size * batch
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_dim = 0
+        dtype = torch.bfloat16
+        is_kv_combined = True
+        is_nz_in = True
+        is_quant_flag = True
+        self.is_ring = 1
+        fa_block_size = 128
+        if num_heads == 128:
+            fa_block_size = 512
+        self.calc_data(batch, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, torch.float16,
+                        is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag, fa_block_size = fa_block_size)
+
+        OP_NAME = "MultiLatentAttentionOperation"
+        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "maskType": 0, "cacheMode": 2, "calcType": 2})
+        RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist()})
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
+                                [self.q_split1.npu(),
+                                 self.q_split2.npu(),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split1).contiguous().npu(), 29),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split2).contiguous().npu(), 29),
+                                 torch.tensor(self.block_tables).int().npu(),
+                                 torch.tensor(self.contex_lens).int().npu(),
+                                 torch.tensor(self.de_scale1_fp32).npu(),
+                                 torch.tensor(self.de_scale2_fp32).npu()])
+        
+    def test_mla_mtp_split_quant_nz_bf16_8_4_512_lse_case2(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 8
+        q_seqlen = 4
+        k_seqlen = 512
+
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = (k_seqlen + block_size - 1) // block_size * batch
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_dim = 0
+        dtype = torch.bfloat16
+        is_kv_combined = True
+        is_nz_in = True
+        is_quant_flag = True
+        self.is_ring = 1
+        fa_block_size = 128
+        if num_heads == 128:
+            fa_block_size = 512
+        self.calc_data(batch, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, torch.float16,
+                        is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag, fa_block_size = fa_block_size)
+
+        OP_NAME = "MultiLatentAttentionOperation"
+        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "maskType": 0, "cacheMode": 2, "calcType": 2})
+        RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist(),"qSeqlen": [], "maskType": 0})
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
+                                [self.q_split1.npu(),
+                                 self.q_split2.npu(),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split1).contiguous().npu(), 29),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split2).contiguous().npu(), 29),
+                                 torch.tensor(self.block_tables).int().npu(),
+                                 torch.tensor(self.contex_lens).int().npu(),
+                                 torch.tensor(self.de_scale1_fp32).npu(),
+                                 torch.tensor(self.de_scale2_fp32).npu()])
+
+    def test_mla_mtp_split_quant_nz_bf16_8_4_512_lse_case3(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 8
+        q_seqlen = 4
+        k_seqlen = 512
+
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = (k_seqlen + block_size - 1) // block_size * batch
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_dim = 0
+        dtype = torch.bfloat16
+        is_kv_combined = True
+        is_nz_in = True
+        is_quant_flag = True
+        self.is_ring = 1
+        fa_block_size = 128
+        if num_heads == 128:
+            fa_block_size = 512
+        self.calc_data(batch, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, torch.float16,
+                        is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag, q_seqlen = q_seqlen, fa_block_size = fa_block_size)
+
+        OP_NAME = "MultiLatentAttentionOperation"
+        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "maskType": 0, "cacheMode": 2, "calcType": 3})
+        RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist(),"qSeqlen": self.q_seqlen_list.tolist(), "maskType": 0})
+        self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
+                                [self.q_split1.npu(),
+                                 self.q_split2.npu(),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split1).contiguous().npu(), 29),
+                                 torch_npu.npu_format_cast(torch.tensor(self.key_cache_split2).contiguous().npu(), 29),
+                                 torch.tensor(self.block_tables).int().npu(),
+                                 torch.tensor(self.contex_lens).int().npu(),
+                                 torch.tensor(self.q_seqlen_list).int().npu(),
+                                 torch.tensor(self.de_scale1_fp32).npu(),
+                                 torch.tensor(self.de_scale2_fp32).npu()])
+
+    def test_mla_mtp_split_quant_nz_bf16_8_4_512_lse_case4(self):
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
+            return
+        batch = 32
+        q_seqlen = 1
+        k_seqlen = 1700
+
+        num_heads = 8
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576
+        head_size_vo = 512
+        num_blocks = (k_seqlen + block_size - 1) // block_size * batch
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_dim = 0
+        dtype = torch.bfloat16
+        is_kv_combined = True
+        is_nz_in = True
+        is_quant_flag = True
+        self.is_ring = 1
+        fa_block_size = 128
+        if num_heads == 128:
+            fa_block_size = 512
+        self.calc_data(batch, num_heads, kv_heads, head_size_qk, head_size_vo, block_size, num_blocks, k_seqlen, dtype, mask_dim, torch.float16,
+                        is_kv_combined = is_kv_combined, is_nz_in = is_nz_in, is_quant_flag = is_quant_flag, q_seqlen = q_seqlen, fa_block_size = fa_block_size)
+
+        OP_NAME = "MultiLatentAttentionOperation"
+        PARAM = json.dumps({"headNum": num_heads, "qkScale":tor, "kvHeadNum":kv_heads, "maskType": 0, "cacheMode": 2, "calcType": 3})
         RUN_PARAM = json.dumps({"contextLens": self.contex_lens.tolist(),"qSeqlen": self.q_seqlen_list.tolist(), "maskType": 0})
         self.execute_with_param(OP_NAME, PARAM, RUN_PARAM,
                                 [self.q_split1.npu(),
