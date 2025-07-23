@@ -24,7 +24,7 @@
 
 static constexpr uint32_t SLICE_SIZE = 12288; // 用于切分过长的行
 static constexpr uint32_t SLICE_SIZE_WITH_BIAS = 8192; // 用于切分过长的行
-const constexpr uint32_t FP16_PER_REPEAT = 128;
+const constexpr uint32_t FP16_PER_REPEAT = 16;
 static constexpr uint32_t SLICE_SIZE_DOUBLE_BUFFER = 7168; // 输入数据末维小于等于7k，开启double buffer(仅A2/A3)
 static constexpr uint32_t TILING_KEY_DOUBLE_BUFFER_OFFSET = 1000; // double buffer场景需要在tilingKey上加该值
 
