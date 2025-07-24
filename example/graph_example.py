@@ -13,8 +13,8 @@ import acl
 import torch
 import torch_atb
 
-S = 128 # Sequence Length
-H = 16 # Number of Heads
+SEQLEN = 128 # Sequence Length
+HEAD = 16 # Number of Heads
 D_K = 64 # Head Dimension
 D_V = 64 # Value Dimension (vHiddenSize)
 OUTPUT_DIM = 64
@@ -24,13 +24,13 @@ OUTPUT_DIM_1 = 128
 def get_inputs():
     torch.manual_seed(233)
     # 单batch场景，batch不为1时s应为seq len * batch
-    query = (torch.randn((S, 16, D_K), dtype=torch.float16)).npu()
-    key = (torch.randn((S, 16, D_K), dtype=torch.float16)).npu()
-    value = (torch.randn((S, 16, D_V), dtype=torch.float16)).npu()
-    seqlen = (torch.tensor([S], dtype=torch.int32))
-    input_0 = (torch.randn((16, D_K), dtype=torch.float16)).npu()
-    gamma = (torch.randn((S, 16, D_K), dtype=torch.float16)).npu()
-    beta = (torch.zeros((S, 16, D_K), dtype=torch.float16)).npu()
+    query = (torch.randn((SEQLEN, HEAD, D_K), dtype=torch.float16)).npu()
+    key = (torch.randn((SEQLEN, HEAD, D_K), dtype=torch.float16)).npu()
+    value = (torch.randn((SEQLEN, HEAD, D_V), dtype=torch.float16)).npu()
+    seqlen = (torch.tensor([SEQLEN], dtype=torch.int32))
+    input_0 = (torch.randn((HEAD, D_K), dtype=torch.float16)).npu()
+    gamma = (torch.randn((SEQLEN, HEAD, D_K), dtype=torch.float16)).npu()
+    beta = (torch.zeros((SEQLEN, HEAD, D_K), dtype=torch.float16)).npu()
     weight_0 = (torch.randn((OUTPUT_DIM_1, OUTPUT_DIM), dtype=torch.float16)).npu()
     bias_0 = (torch.randn((OUTPUT_DIM_1,), dtype=torch.float16)).npu()
     weight_1 = (torch.randn((OUTPUT_DIM_1, OUTPUT_DIM_1), dtype=torch.float16)).npu()
@@ -46,8 +46,8 @@ def graph_build():
     value = graph.add_input("value")
     seqlen = graph.add_input("seqLen")
     self_attention_param = torch_atb.SelfAttentionParam()
-    self_attention_param.head_num = 16
-    self_attention_param.kv_head_num = 16
+    self_attention_param.head_num = HEAD
+    self_attention_param.kv_head_num = HEAD
     self_attention_param.calc_type = torch_atb.SelfAttentionParam.CalcType.PA_ENCODER
     self_attention = graph.add_node([query, key, value, seqlen], self_attention_param)
     self_attention_out = self_attention.get_output(0)
