@@ -21,7 +21,7 @@ public:
     ~MstxMemRegister();
     static mstxDomainHandle_t &GetRegisterDomain();
     static bool IsMstxEnable();
-    Status CheckTensorRange();
+    bool CheckTensorRange();
     Status MstxHeapRegister(void *workspace, uint64_t workspaceSize);
     void MstxMemRegionsRegister();
     void MstxMemRegionsUnregister();
