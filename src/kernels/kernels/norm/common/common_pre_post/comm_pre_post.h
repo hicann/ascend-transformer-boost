@@ -18,7 +18,7 @@ const constexpr uint32_t NUM_THREE = 3;
 const constexpr uint32_t NUM_FOUR = 4;
 const constexpr uint32_t BLOCK_BYTE = 32;
 const constexpr uint32_t FP32_PER_REPEAT = 64;
-const constexpr uint32_t FP16_PER_REPEAT = 128;
+const constexpr uint32_t FP16_PER_REPEAT = 16;
 
 template<typename T>
 __aicore__ inline  void BiasIn(AscendC::LocalTensor<T>& fp16_x,
