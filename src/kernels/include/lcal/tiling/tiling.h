@@ -86,7 +86,14 @@ public:
     bool CheckTiling(const TaskParam &taskParam) override;
     void GetDefaultTiling(const TaskParam &taskParam) override;
 };
-
+class CoCAllToAllAllGatherMatmulTilingFunc : public CoCAllGatherMatmulTilingFunc {
+public:
+    CoCAllToAllAllGatherMatmulTilingFunc(const CoCAllToAllAllGatherMatmulTilingFunc &) = delete;
+    CoCAllToAllAllGatherMatmulTilingFunc &operator = (const CoCAllToAllAllGatherMatmulTilingFunc &) = delete;
+    CoCAllToAllAllGatherMatmulTilingFunc() {}
+    bool CheckTiling(const TaskParam &tilingInfo) override;
+    void GetDefaultTiling(const TaskParam &tilingInfo) override;
+};
 class CoCAllToAllAllGatherMatmulHiddenTilingFunc : public CoCAllGatherMatmulTilingFunc {
 public:
     CoCAllToAllAllGatherMatmulHiddenTilingFunc(const CoCAllToAllAllGatherMatmulHiddenTilingFunc &) = delete;

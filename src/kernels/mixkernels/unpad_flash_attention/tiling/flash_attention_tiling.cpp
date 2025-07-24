@@ -89,8 +89,7 @@ void GetSwaTilingKey(UnpadFlashAttentionInfo &mmInfo)
 
 void GetKernelTilingId(const UnpadFlashAttentionInfo &mmInfo, KernelInfo &kernelInfo, uint32_t *tilingParam)
 {
-    if (!mmInfo.isMLA &&
-        mmInfo.type != OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_DECODER_ND
+    if (mmInfo.type != OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_DECODER_ND
         && mmInfo.type != OpParam::UnpadFlashAttention::UNPAD_DYNAMIC_BATCH_FLASH_ATTENTION_DECODER
         && mmInfo.type != OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND) {
         kernelInfo.SetTilingId(tilingParam[TILING_KEY_INDEX]);
@@ -320,8 +319,6 @@ inline Status FlashAttentionPostCheck(UnpadFlashAttentionInfo &mmInfo, OpParam::
 
 inline Status FlashAttentionSwaCheck(const UnpadFlashAttentionInfo mmInfo)
 {
-    MKI_CHECK(mmInfo.isMLA == 0, "swa not support MLA",
-                return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.dataShapeType == 0, "swa not support BNSD input",
                 return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(mmInfo.quantType == 0, "swa not support quant",

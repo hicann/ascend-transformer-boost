@@ -216,7 +216,6 @@ Status PpMatmulTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         uint64_t workSpaceSize = static_cast<uint64_t>(RoundUp(tilingData->opShape.m0, CONST_32)) *
                                  RoundUp(tilingData->opShape.n0, CONST_32) * sizeof(uint32_t) * blockDim;
         kernelInfo.GetScratchSizes() = {workSpaceSize};
-        kernelInfo.SetTilingId(tilingData->tilingKey);
     }
     PrintPpMatmulTiling(kernelInfo);
     return Status::OkStatus();

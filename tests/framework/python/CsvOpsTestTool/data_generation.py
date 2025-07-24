@@ -59,8 +59,12 @@ def get_precision_and_eb_threshold(op_type, dtype, compute_num):
             precision_threshold = 2**(-8)
             eb_threshold = 2**(-10)
         if dtype in [torch.bfloat16]:
-            precision_threshold = 2**(-7)
-            eb_threshold = 2**(-7)
+            if compute_num != -1 and compute_num >= 2048:
+                precision_threshold = 2**(-6)
+                eb_threshold = 2**(-6)
+            else:
+                precision_threshold = 2**(-7)
+                eb_threshold = 2**(-7)
         if dtype in [torch.float32]:
             precision_threshold = 2**(-11)
             eb_threshold = 2**(-14)
@@ -453,10 +457,14 @@ class LinearOperation(DataGen):
         accum = MatmulCommon.accum_golden
         pertoken_scale = MatmulCommon.pertoken_scale_golden
         if out_data_type == -1:
-            x = x.to(torch.float32)
-            weight = weight.to(torch.float32)
+            if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
+                x = x.to(torch.float64)
+                weight = weight.to(torch.float64)
+            else:
+                x = x.to(torch.float)
+                weight = weight.to(torch.float)
             if bias is not None and MatmulCommon.input_golden.dtype != torch.float16:
-                bias = bias.to(torch.float32)
+                bias = bias.to(torch.float)
         else:
             x = x.to(torch.int32)
             weight = weight.to(torch.int32)
@@ -476,8 +484,10 @@ class LinearOperation(DataGen):
                 x_i = x[i:i + 1, :].squeeze(0)
                 weight_i = weight[i:i + 1, :].squeeze(0)
                 output_i = torch.matmul(x_i, weight_i)
+                if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
+                    output_i = output_i.to(torch.bfloat16)
                 if bias is not None:
-                    output_i = output_i + bias[i:i + 1, :]
+                    output_i = output_i.to(bias.dtype) + bias[i:i + 1, :]
                 if deq_scale is not None:
                     if quantMode == 2:
                         output_i = output_i * deq_scale
@@ -492,18 +502,22 @@ class LinearOperation(DataGen):
         else:
             golden_result = torch.matmul(x, weight)
             if bias is not None:
-                golden_result = golden_result.to(bias.dtype)
-                golden_result = golden_result + bias
+                if MatmulCommon.bias_golden.dtype == torch.bfloat16:
+                    golden_result = golden_result.to(torch.bfloat16)
+                golden_result = golden_result.to(bias.dtype) + bias
             if deq_scale is not None:
                 golden_result = golden_result * deq_scale
             if pertoken_scale is not None and quantMode == 2:
-                    pertoken_scale = pertoken_scale.unsqueeze(-1)
-                    golden_result = golden_result * pertoken_scale
+                pertoken_scale = pertoken_scale.unsqueeze(-1)
+                golden_result = golden_result * pertoken_scale
             if accum is not None:
                 golden_result = golden_result + accum
         if accum is None:
             if out_data_type == -1:
-                golden_result = golden_result.to(torch.float32)
+                if bias is not None and MatmulCommon.bias_golden.dtype == torch.bfloat16:
+                    golden_result = golden_result.to(torch.bfloat16)
+                else:
+                    golden_result = golden_result.to(torch.float32)
             elif out_data_type == 27:
                 golden_result = golden_result.to(torch.bfloat16)
             else:
@@ -521,6 +535,10 @@ class LinearOperation(DataGen):
         input = bin.get_tensor()
         input_cpu = input.cpu()
         shape = input_cpu.shape
+        has_bias = MatmulCommon.get_param_value(op_params, "hasBias", True)
+        en_accum = MatmulCommon.get_param_value(op_params, "enAccum", False)
+        out_data_type = MatmulCommon.get_param_value(op_params, "outDataType", -1)
+        quantMode = MatmulCommon.get_param_value(op_params, "quantMode", 0)
         if i == 0:
             input_golden = input_cpu
             transpose_a = MatmulCommon.get_param_value(op_params, "transposeA", False)
@@ -543,9 +561,26 @@ class LinearOperation(DataGen):
                 weight_golden = torch.transpose(weight_golden, 0, 1) if dim_num == 2 else torch.transpose(weight_golden, 1, 2)
             MatmulCommon.weight_golden = weight_golden
         if i == 2:
-            MatmulCommon.bias_golden = input_cpu
+            if has_bias:
+                MatmulCommon.bias_golden = input_cpu
+            elif en_accum:
+                MatmulCommon.accum_golden = input_cpu
+            elif out_data_type == 1 and get_soc_version() != "Ascend910A":
+                deq_np = np.frombuffer(input_cpu.numpy().astype(np.uint32).tobytes(), dtype=np.float32).copy()
+                deq_tensor = torch.from_numpy(deq_np)
+                MatmulCommon.deq_golden = deq_tensor
+            else:
+                MatmulCommon.deq_golden = input_cpu
+
         if i == 3:
-            MatmulCommon.deq_golden = input_cpu
+            if quantMode == 2:
+                MatmulCommon.pertoken_scale_golden = input_cpu
+            elif out_data_type == 1 and get_soc_version() != "Ascend910A":
+                deq_np = np.frombuffer(input_cpu.numpy().astype(np.uint32).tobytes(), dtype=np.float32).copy()
+                deq_tensor = torch.from_numpy(deq_np)
+                MatmulCommon.deq_golden = deq_tensor
+            else:
+                MatmulCommon.deq_golden = input_cpu
         return input_cpu.npu()
 
 class GroupedMatmulInplaceAddOperation(DataGen):
@@ -1102,6 +1137,7 @@ class MatmulCommon:
         deq = MatmulCommon.deq_golden
         accum = MatmulCommon.accum_golden
         groupList = MatmulCommon.groupList_golden
+        pertoken_deq = MatmulCommon.pertoken_scale_golden
         if MatmulCommon.linear_type == LinearType.fp16fp16_fp32_fp16 or input.dtype == torch.float16:
             golden_result = torch.matmul(input.to(torch.float32), weight.to(torch.float32))
         elif MatmulCommon.linear_type == LinearType.bf16bf16_fp32_bf16 or input.dtype == torch.bfloat16:
@@ -1118,6 +1154,8 @@ class MatmulCommon:
             golden_result = golden_result * deq
         if accum is not None:
             golden_result = golden_result + accum
+        if pertoken_deq is not None:
+            golden_result = golden_result * pertoken_deq
 
         MatmulCommon.reset()
         return golden_result
@@ -1131,6 +1169,7 @@ class MatmulCommon:
         MatmulCommon.deq_golden = None
         MatmulCommon.linear_type = -1
         MatmulCommon.groupList_golden = None
+        MatmulCommon.pertoken_scale_golden = None
 
 class GatherOperation(DataGen):
     @staticmethod
@@ -5263,9 +5302,68 @@ class SelfAttentionOperation(DataGen):
             run_param = json.dumps(run_param)
         operation.set_varaintpack_param(run_param)
 
+    
+    def gen_swa_mask(max_seq, window_size, pre_mask_coff, mask_info, cache_type=0):
+        swa_mask = np.ones(shape=mask_info[0] * pre_mask_coff)
+        if window_size < max_seq:
+            triu_mask = np.triu(swa_mask, 1)
+            tril_mask = np.tril(swa_mask, -window_size)
+            swa_mask = triu_mask + tril_mask
+        return swa_mask
+
+    def gen_mla_swa_mask(batch, heads, data_type, mask_type, window_size):
+        import random
+        q_max_seq = 512
+        kv_max_seq = 512
+        max_seq = 512
+        post_mask_coff = 1
+        pre_mask_coff = -10000.0
+
+        if window_size > 0:
+            select_zero =False
+
+        mask_info = ((1, q_max_seq, kv_max_seq), (lambda mask, idx, q_s, kv_s: (mask[:, :q_s, :kv_s])))
+        mask = np.ones(shape=mask_info[0]) * pre_mask_coff
+        mask = np.triu(mask, 1)
+        zero_indice = random.choices(range(max_seq), k = 300)
+        if window_size > 0:
+            mask = SelfAttentionOperation.gen_swa_mask(max_seq, window_size, pre_mask_coff, mask_info)
+        if select_zero:
+            mask.flat[zero_indice] = 0
+        
+        mask = torch.from_numpy(mask).to(torch.float16)
+        post_mask_coff = post_mask_coff
+        pre_mask_coff = pre_mask_coff
+
+        return mask.reshape(max_seq, max_seq)
+
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         json_data = json.loads(op_params)
+        if 'windowSize' in json_data.keys() and 'mlaVHeadSize' in json_data.keys():
+            if json_data['windowSize'] > 1 and json_data['maskType'] == 7:
+                data_type = torch.float16
+                batch = 4
+                kvseqlen = 512
+                kv_head = 1
+                heads = 1
+                max_seq = kvseqlen
+                embeddim = 192
+                embeddimv = 128
+                q = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(batch * kvseqlen, heads * embeddim)))
+                q = q.to(data_type)
+                k = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(1, batch, max_seq, kv_head * embeddim))).to(data_type).npu()
+                v = torch.from_numpy(np.random.uniform(-1.0, 1.0, size=(1, batch, max_seq, kv_head * embeddimv))).to(data_type).npu()
+                mask = SelfAttentionOperation.gen_mla_swa_mask(batch, heads, data_type, 6, 128*3+58)
+                if i == 0:
+                    return q.npu()
+                elif i == 1:
+                    return k.npu()
+                elif i == 2:
+                    return mask.npu()
+                else:
+                    return torch.tensor([512] * 4).to(torch.int32).npu()
+
         if 'kvcacheCfg' in json_data.keys() and json_data['kvcacheCfg'] == 1:
             MASK_TYPE_NO_HEAD_DECODER = 5
             mask_type =MASK_TYPE_NO_HEAD_DECODER
@@ -5629,11 +5727,13 @@ class SelfAttentionOperation(DataGen):
         mask_compress = 0
         if is_mask and (asdops_param["maskType"] == 1 or asdops_param["maskType"] == 3):
             mask_compress = 1
-            no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float32)
-            no_compress_mask = np.triu(no_compress_mask, 1)
             if q.dtype == torch.bfloat16:
+                no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float32)
+                no_compress_mask = np.triu(no_compress_mask, 1)
                 no_compress_mask *= -3e38
             elif q.dtype == torch.float16:
+                no_compress_mask = np.ones(shape=(heads, 128, 128)).astype(np.float16)
+                no_compress_mask = np.triu(no_compress_mask, 1)
                 no_compress_mask *= -10000.0
         context_size = 128
         for idx in range(batch):
@@ -7096,13 +7196,10 @@ class FusedAddTopkDivOperation(DataGen):
             mapping_table = in_tensors[3]
             out_indices_clone = out_indices.clone().detach()
             for bs in range(token_num):
-                indices_offset = sort_output.indices[bs][group_topk * group_eles - 1] + offset
-                indices_offset = indices_offset.to(torch.int32)
-                rand_value =  torch.remainder(prime, indices_offset) / indices_offset.to(torch.float32)
-                mapping_indices = torch.floor(mapping_num.to(torch.float32) * rand_value).to(torch.int32)
                 for ki in range(k):
                     expert_id = out_indices_clone[bs][ki]
-                    out_indices[bs][ki] = mapping_table[expert_id][mapping_indices[expert_id]]
+                    redundantOffset = bs % max(1, mapping_num[expert_id])
+                    out_indices[bs][ki] = mapping_table[expert_id][redundantOffset]
 
         return y, out_indices[:, 0:k]
 

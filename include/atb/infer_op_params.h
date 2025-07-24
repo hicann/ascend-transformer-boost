@@ -2915,6 +2915,7 @@ struct MultiLatentAttentionParam {
         MASK_TYPE_SPEC,      //!< qseqlen > 1时的mask
         MASK_TYPE_MASK_FREE, //!< mask free
         MASK_TYPE_CAUSAL_MASK, //!< 内部生成mask
+        MASK_TYPE_SWA_NORM
     };
     //!
     //! \brief mask类型
@@ -2952,9 +2953,16 @@ struct MultiLatentAttentionParam {
     //!
     CacheMode cacheMode = KVCACHE;
     //!
+    //! \note cacheMode uint8_t，占1字节后编译器会4字节补齐，此处有3字节浪费
+
+    //!
+    //! \brief 滑动窗口大小
+    //!
+    uint32_t windowSize = 0;
+    //!
     //! \brief 预留参数
     //!
-    uint8_t rsv[43] = {0};
+    uint8_t rsv[36] = {0};
 };
 
 //!

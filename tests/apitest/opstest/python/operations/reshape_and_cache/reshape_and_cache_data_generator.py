@@ -56,7 +56,7 @@ class ReshapeAndCacheDataGenerator():
     def generate_test_data(self):
         key_expect = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
         value_expect = np.zeros((self.num_blocks, self.block_size, 1, self.head_size)).astype(self.dtype)
-        self.new_seq = self.seqLen
+        self.new_seq = self.seqLen.copy()
         self.new_seq[0] = self.seqLen[0]
 
         for n in range(1, len(self.seqLen)):

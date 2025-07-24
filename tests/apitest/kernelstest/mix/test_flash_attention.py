@@ -262,6 +262,7 @@ class TestFlashAttention(op_test.OpTest):
     def gen_swa_cmp(self, max_seq, window_size):
         swa_mask = np.ones(shape=(1, 512, 512)) * self.pre_mask_coff
         pp_n = 128 if self.embeddim <= 128 else 64
+        pp_n = 128 if self.embeddim != self.embeddimv else pp_n
         if window_size <= pp_n * 3:
             true_size = window_size
         else:
@@ -5867,6 +5868,202 @@ class TestFlashAttention(op_test.OpTest):
         return self.execute([self.q, self.k_cache, self.v_cache, self.block_tables,
                              torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
                             [torch.tensor(attention_out, dtype=torch.bfloat16)])
+    
+    @op_test.only_910b
+    def test_flash_attention_mla_swa_bf16(self):
+        # unpad encoder
+        batch = 16
+        kv_head = 8        # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 8          # llama7b  hidden_size 4096
+        embeddim = 576
+        embeddimV = 512
+        max_seq = 2048
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [500, 1024, 1500, 2048] * 4
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        window_size = 128 * 7 + 58
+        OP_NAME = "UnpadFlashAttentionOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor,
+                    "maskType": 4, "windowSize": window_size}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 12)
+        self.set_output_formats([self.format_nd])
+        data_type = torch.bfloat16
+
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, window_size = window_size,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor)
+        self.gen_out_tensor()
+        self.mask = np.reshape(self.mask, (max_seq, max_seq))
+
+        logging.debug("**********input shape***********")
+        logging.debug(f"q shape: {self.q.shape}")
+        logging.debug(f"k shape: {self.k.shape}")
+        logging.debug(f"v shape: {self.v.shape}")
+        logging.debug(f"layer_id shape: {self.layer_id.shape}")
+        logging.debug(f"mask shape: {self.mask.shape}")
+
+        attention_out = np.zeros_like(self.golden_out.to(torch.float16))
+        return self.execute([self.q, self.k, self.v, self.layer_id, self.mask.to(data_type), torch.tensor([], dtype=torch.float),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
+                            [torch.tensor(attention_out, dtype=data_type)])
+
+    @op_test.only_910b
+    def test_flash_attention_mla_swa_fp16(self):
+        # unpad encoder
+        batch = 16
+        kv_head = 8        # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 8          # llama7b  hidden_size 4096
+        embeddim = 576
+        embeddimV = 512
+        max_seq = 2048
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [500, 1024, 1500, 2048] * 4
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        window_size = 128 * 7 + 58
+        OP_NAME = "UnpadFlashAttentionOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor,
+                    "maskType": 4, "windowSize": window_size}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 12)
+        self.set_output_formats([self.format_nd])
+        data_type = torch.float16
+
+        self.set_data_params(dynamic_batch = dynamic_batch,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, window_size = window_size,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor)
+        self.gen_out_tensor()
+        self.mask = np.reshape(self.mask, (max_seq, max_seq))
+
+        logging.debug("**********input shape***********")
+        logging.debug(f"q shape: {self.q.shape}")
+        logging.debug(f"k shape: {self.k.shape}")
+        logging.debug(f"v shape: {self.v.shape}")
+        logging.debug(f"layer_id shape: {self.layer_id.shape}")
+        logging.debug(f"mask shape: {self.mask.shape}")
+
+        attention_out = np.zeros_like(self.golden_out)
+        return self.execute([self.q, self.k, self.v, self.layer_id, self.mask.to(data_type), torch.tensor([], dtype=torch.float),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
+                            [torch.tensor(attention_out).half()])
+    
+    @op_test.only_910b
+    def test_flash_attention_mla_swa_cmp_bf16(self):
+        # unpad encoder
+        batch = 16
+        kv_head = 8        # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 8          # llama7b  hidden_size 4096
+        embeddim = 576
+        embeddimV = 512
+        max_seq = 2048
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [500, 1024, 1500, 2048] * 4
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        window_size = 128 * 7 + 58
+        OP_NAME = "UnpadFlashAttentionOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor,
+                    "maskType": 5, "windowSize": window_size}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 12)
+        self.set_output_formats([self.format_nd])
+        data_type = torch.bfloat16
+
+        self.set_data_params(dynamic_batch = dynamic_batch, is_compress = True,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, window_size = window_size,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor)
+        self.gen_out_tensor()
+        if self.is_compress:
+            self.mask = self.gen_swa_cmp(max_seq, window_size)
+            self.mask = np.reshape(self.mask, (512, 512))
+
+        logging.debug("**********input shape***********")
+        logging.debug(f"q shape: {self.q.shape}")
+        logging.debug(f"k shape: {self.k.shape}")
+        logging.debug(f"v shape: {self.v.shape}")
+        logging.debug(f"layer_id shape: {self.layer_id.shape}")
+        logging.debug(f"mask shape: {self.mask.shape}")
+
+        attention_out = np.zeros_like(self.golden_out.to(torch.float16))
+        return self.execute([self.q, self.k, self.v, self.layer_id, self.mask.to(data_type), torch.tensor([], dtype=torch.float),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
+                            [torch.tensor(attention_out, dtype=data_type)])
+
+    @op_test.only_910b
+    def test_flash_attention_mla_swa_cmp_fp16(self):
+        # unpad encoder
+        batch = 16
+        kv_head = 8        # kv_head num
+        isdecoder = 0       # prefill or decoder
+        heads = 8          # llama7b  hidden_size 4096
+        embeddim = 576
+        embeddimV = 512
+        max_seq = 2048
+        tor = 1.0 / math.sqrt(1.0 * embeddim)
+        dynamic_batch = False
+        kv_seqLen = [500, 1024, 1500, 2048] * 4
+        is_clamp = 0
+        clamp_min = 0
+        clamp_max = 0
+        window_size = 128 * 7 + 58
+        OP_NAME = "UnpadFlashAttentionOperation"
+        OP_PARAM = {"type": 1, "qSeqLen":kv_seqLen, "kvSeqLen": kv_seqLen, "headDimV": embeddimV,"headSize": heads, "tor": tor,
+                    "maskType": 5, "windowSize": window_size}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 12)
+        self.set_output_formats([self.format_nd])
+        data_type = torch.float16
+
+        self.set_data_params(dynamic_batch = dynamic_batch, is_compress = True,
+                             is_decoder = isdecoder, batch = batch, kv_head = kv_head, heads = heads,
+                             embeddim = embeddim,embeddimv = embeddimV, max_seq = max_seq, kv_seqLen = kv_seqLen,
+                             is_clamp = is_clamp, clamp_max = clamp_max, clamp_min = clamp_min,
+                             data_type = data_type, is_alibi = False, window_size = window_size,
+                             op_type = OP_PARAM["type"], mask_type = MASK_TYPE_NO_BATCH, tor = tor)
+        self.gen_out_tensor()
+        if self.is_compress:
+            self.mask = self.gen_swa_cmp(max_seq, window_size)
+            self.mask = np.reshape(self.mask, (512, 512))
+
+        logging.debug("**********input shape***********")
+        logging.debug(f"q shape: {self.q.shape}")
+        logging.debug(f"k shape: {self.k.shape}")
+        logging.debug(f"v shape: {self.v.shape}")
+        logging.debug(f"layer_id shape: {self.layer_id.shape}")
+        logging.debug(f"mask shape: {self.mask.shape}")
+
+        attention_out = np.zeros_like(self.golden_out)
+        return self.execute([self.q, self.k, self.v, self.layer_id, self.mask.to(data_type), torch.tensor([], dtype=torch.float),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.int32),
+                             torch.tensor([], dtype=torch.float), torch.tensor([], dtype=torch.float)],
+                            [torch.tensor(attention_out).half()])
 
 if __name__ == '__main__':
     unittest.main()
