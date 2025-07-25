@@ -751,7 +751,7 @@ function fn_main()
             SRC_ONLY=ON
             ;;
         "--customizeops_tests")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -BUILD_CUSTOMIZE_OPS_TEST=ON"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
             ;;
         esac
         shift
