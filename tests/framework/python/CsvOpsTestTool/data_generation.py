@@ -783,7 +783,12 @@ class LinearParallelOperation(DataGen):
         sum_tensor = matmul_result.clone()
         for i in range(rank_size - 1):
             sum_tensor += matmul_result
-        chunks = torch.split(sum_tensor, int(in_tensors[0].shape[0]/rank_size))
+        if len(in_tensors[0].shape) == 3 and in_tensors[0].shape[0] == 1:
+            chunks_size = int(in_tensors[0].shape[1] / rank_size)
+            chunks = torch.split(sum_tensor, chunks_size, dim = 1)
+        else:
+            chunks_size = int(in_tensors[0].shape[0] / rank_size)
+            chunks = torch.split(sum_tensor, chunks_size)
         golden_result = chunks[rank]
         if LinearParallelOperation.residual_golden is not None:
             golden_result = golden_result + LinearParallelOperation.residual_golden
