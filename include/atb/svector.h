@@ -55,9 +55,10 @@ public:
     //!
     //! \return 指向报错信息的指针
     //!
-    const char *what() const noexcept   {
+    const char *what() const noexcept
+    {
         std::string msg;
-        msg = "Exceeded the capacity, " + std::to_string(capacity_) + " of SVector, and got size: " + 
+        msg = "Exceeded the capacity, " + std::to_string(capacity_) + " of SVector, and got size: " +
               std::to_string(size_);
         return msg.c_str();
     }
@@ -98,11 +99,13 @@ public:
         if (listSize > MAX_SVECTOR_SIZE) {
             throw MaxSizeExceeded(listSize);
         }
+        size_t i;
         if (listSize > DEFAULT_SVECTOR_SIZE) {
             heap_ = reinterpret_cast<T *>(malloc(MAX_SVECTOR_SIZE * sizeof(T)));
             if (!heap_) {
                 throw std::bad_alloc();
             }
+            i = 0;
             for (auto it = list.begin(); it != list.end() && i < size_; ++it) {
                 heap_[i++] = *it;
             }
@@ -111,7 +114,7 @@ public:
         }
 
         size_ = list.size();
-        size_t i = 0;
+        i = 0;
         for (auto it = list.begin(); it != list.end() && i < size_; ++it) {
             storage_[i++] = *it;
         }
@@ -319,7 +322,7 @@ public:
     void insert(const size_t pos, const T &value)
     {
         if (pos > size_) {
-            throw std::out_of_range("SVector insert index out of stack range");;
+            throw std::out_of_range("SVector insert index out of stack range");
         }
         if (size_ == DEFAULT_SVECTOR_SIZE) {
             MoveToHeap();
@@ -334,7 +337,7 @@ public:
             heap_[pos] = value;
             size_ += 1;
             return;
-        } 
+        }
         for (auto it = size_; it != pos; it--) {
             storage_[it] = storage_[it - 1];
         }
@@ -602,7 +605,8 @@ private:
     T storage_[DEFAULT_SVECTOR_SIZE + 1];
     T *heap_ = nullptr;
 
-    inline void MoveToHeap() {
+    inline void MoveToHeap()
+    {
         if (heap_) {
             free(heap_);
         }
@@ -611,7 +615,7 @@ private:
         if (!heap_) {
             throw std::bad_alloc();
         }
-        for (size_t i = 0; i < size_; ++i) {
+        for (size_t i = 0; i < DEFAULT_SVECTOR_SIZE; ++i) {
             heap_[i] = storage_[i];
         }
     }

@@ -181,3 +181,116 @@ TEST(TestSVector, HeapCopyConstructor)
     EXPECT_EQ(inTensorDest.size(), 0);
     EXPECT_EQ(inTensorDest.empty(), true);
 }
+
+TEST(TestSVector, EqualityOperator)
+{
+    atb::SVector<int> vec1 = {1, 2, 3};
+    atb::SVector<int> vec2 = {1, 2, 3};
+    atb::SVector<int> vec3 = {1, 2, 4};
+
+    EXPECT_EQ(vec1, vec2);
+    EXPECT_NE(vec1, vec3);
+}
+
+TEST(TestSVector, LessThanOperator)
+{
+    atb::SVector<int> vec1 = {1, 2, 3};
+    atb::SVector<int> vec2 = {1, 2, 4};
+    atb::SVector<int> vec3 = {1, 2};
+
+    EXPECT_LT(vec1, vec2);
+    EXPECT_NE(vec3, vec1);
+    EXPECT_FALSE(vec2 < vec1);
+}
+
+TEST(TestSVector, ReserveExceedsMaxSize)
+{
+    atb::SVector<int> vec;
+    EXPECT_THROW(vec.reserve(atb::MAX_SVECTOR_SIZE + 1), atb::MaxSizeExceeded);
+}
+
+TEST(TestSVector, InsertExceedsDefaultSize)
+{
+    atb::SVector<int> vec;
+    for (int i = 0; i < atb::DEFAULT_SVECTOR_SIZE; ++i) {
+        vec.insert(i, i);  // 先填满 stack 存储
+    }
+    for (int i = atb::DEFAULT_SVECTOR_SIZE; i < atb::DEFAULT_SVECTOR_SIZE + 5; ++i) {
+        EXPECT_NO_THROW(vec.insert(i, i));  // 自动转换heap
+    }
+    EXPECT_EQ(vec.at(atb::DEFAULT_SVECTOR_SIZE), 64);
+    EXPECT_EQ(vec.size(), atb::DEFAULT_SVECTOR_SIZE + 1);
+    for (int i = 0; i <= atb::DEFAULT_SVECTOR_SIZE; i += 7) {
+        EXPECT_EQ(vec.at(i), i); // 原先stack值不改变
+    }
+}
+
+TEST(TestSVector, PushBackExceedsDefaultSize)
+{
+    atb::SVector<int> vec;
+    for (int i = 0; i < atb::DEFAULT_SVECTOR_SIZE; ++i) {
+        vec.insert(i, i);  // 先填满 stack 存储
+    }
+    for (int i = atb::DEFAULT_SVECTOR_SIZE; i < atb::DEFAULT_SVECTOR_SIZE + 5; ++i) {
+        EXPECT_NO_THROW(vec.push_back(i));  // 自动转换heap
+    }
+    EXPECT_EQ(vec.at(atb::DEFAULT_SVECTOR_SIZE), atb::DEFAULT_SVECTOR_SIZE);
+    EXPECT_EQ(vec.size(), atb::DEFAULT_SVECTOR_SIZE + 5);
+    for (int i = 0; i <= atb::DEFAULT_SVECTOR_SIZE; i += 7) {
+        EXPECT_EQ(vec.at(i), i); // 原先stack值在heap中顺序不改变
+    }
+}
+
+TEST(TestSVector, ClearAndReuse)
+{
+    atb::SVector<int> vec;
+    vec.push_back(1);
+    vec.push_back(2);
+    EXPECT_EQ(vec.size(), 2);
+
+    vec.clear();
+    EXPECT_EQ(vec.size(), 0);
+    EXPECT_TRUE(vec.empty());
+
+    vec.push_back(3);
+    EXPECT_EQ(vec.at(0), 3);
+}
+
+TEST(TestSVector, ResizeAndAccess)
+{
+    atb::SVector<int> vec = {1, 2, 3, 4, 5};
+    vec.resize(3);  // 缩小到 3 个元素
+    EXPECT_EQ(vec.size(), 3);
+    EXPECT_EQ(vec.at(2), 3);  // 最后一个有效元素
+
+    EXPECT_THROW(vec.at(3), std::out_of_range);  // 越界访问
+}
+
+TEST(TestSVector, IteratorTraversal)
+{
+    atb::SVector<int> vec = {10, 20, 30};
+    int sum = 0;
+    for (const auto &val : vec) {
+        sum += val;
+    }
+    EXPECT_EQ(sum, 60);
+}
+
+TEST(TestSVector, OutOfRangeAccess)
+{
+    atb::SVector<int> vec = {1, 2, 3};
+    EXPECT_THROW(vec.at(3), std::out_of_range);  // 越界
+    EXPECT_THROW(vec.at(100), std::out_of_range);
+
+    EXPECT_THROW(vec[3], std::out_of_range);  // 如果 operator[] 也检查边界
+}
+
+TEST(TestSVector, PushBackExceedsMaxSvectorSize)
+{
+    atb::SVector<int> vec;
+    for (int i = 0; i < atb::MAX_SVECTOR_SIZE; ++i) {
+        EXPECT_NO_THROW(vec.push_back(i));  // 自动转换heap
+    }
+    EXPECT_EQ(vec.at(atb::DEFAULT_SVECTOR_SIZE), atb::DEFAULT_SVECTOR_SIZE);
+    EXPECT_THROW(vec.push_back(atb::DEFAULT_SVECTOR_SIZE), atb::MaxSizeExceeded);
+}
