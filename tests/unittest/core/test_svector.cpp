@@ -218,8 +218,8 @@ TEST(TestSVector, InsertExceedsDefaultSize)
     for (int i = atb::DEFAULT_SVECTOR_SIZE; i < atb::DEFAULT_SVECTOR_SIZE + 5; ++i) {
         EXPECT_NO_THROW(vec.insert(i, i));  // 自动转换heap
     }
-    EXPECT_EQ(vec.at(atb::DEFAULT_SVECTOR_SIZE), 64);
-    EXPECT_EQ(vec.size(), atb::DEFAULT_SVECTOR_SIZE + 1);
+    EXPECT_EQ(vec.at(atb::DEFAULT_SVECTOR_SIZE), atb::DEFAULT_SVECTOR_SIZE);
+    EXPECT_EQ(vec.size(), atb::DEFAULT_SVECTOR_SIZE + 5);
     for (int i = 0; i <= atb::DEFAULT_SVECTOR_SIZE; i += 7) {
         EXPECT_EQ(vec.at(i), i); // 原先stack值不改变
     }

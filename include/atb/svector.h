@@ -126,7 +126,7 @@ public:
     //!
     //! \note size大小需小于MAX_SVECTOR_SIZE，否则会抛出异常
     //!
-    explicit SVector(size_t size, const T &value = 0) : size_(0)
+    explicit SVector(size_t size, const T &value = 0) : size_(size)
     {
         if (size > MAX_SVECTOR_SIZE) {
             throw MaxSizeExceeded(size);
@@ -142,7 +142,6 @@ public:
             capacity_ = MAX_SVECTOR_SIZE;
             return;
         }
-        size_ = size;
         for (size_t i = 0; i < size_; ++i) {
             storage_[i] = value;
         }
@@ -185,18 +184,21 @@ public:
     //!
     void push_back(const T &val)
     {
-        if (heap_) {
-            if (CHECK_BOUND && size_ == capacity_) {
-                throw MaxSizeExceeded(size_, capacity_);
-            }
-            heap_[size_++] = val;
-            return;
-        } else if (size_ == DEFAULT_SVECTOR_SIZE) {
+        if (size_ == DEFAULT_SVECTOR_SIZE) {
             MoveToHeap();
             heap_[size_++] = val;
             return;
         }
-        storage_[size_++] = val;
+        if (!heap_) {
+            storage_[size_++] = val;
+            return;
+        }
+        // heap
+        if (CHECK_BOUND && size_ == capacity_) {
+            throw MaxSizeExceeded(size_, capacity_);
+        }
+        heap_[size_++] = val;
+        return;
     }
 
     //! \brief 获取容器起始元素地址
@@ -531,6 +533,9 @@ public:
     SVector &operator=(std::initializer_list<T> list)
     {
         size_t listSize = list.size();
+        if (CHECK_BOUND && listSize > MAX_SVECTOR_SIZE) {
+            throw MaxSizeExceeded(listSize, MAX_SVECTOR_SIZE);
+        }
         if (listSize > DEFAULT_SVECTOR_SIZE) {
             if (!heap_) {
                 heap_ = reinterpret_cast<T *>(malloc(listSize * sizeof(T)));
@@ -540,21 +545,14 @@ public:
             }
             capacity_ = MAX_SVECTOR_SIZE;
         }
+        size_ = listSize;
         if (heap_) {
-            if (CHECK_BOUND && listSize > MAX_SVECTOR_SIZE) {
-                throw MaxSizeExceeded(listSize, MAX_SVECTOR_SIZE);
-            }
-            size_ = listSize;
             size_t i = 0;
             for (auto it = list.begin(); it != list.end() && i < size_; ++it) {
                 heap_[i++] = *it;
             }
             return *this;
         } else {
-            if (CHECK_BOUND && listSize > DEFAULT_SVECTOR_SIZE) {
-                throw MaxSizeExceeded(listSize, DEFAULT_SVECTOR_SIZE);
-            }
-            size_ = listSize;
             size_t i = 0;
             for (auto it = list.begin(); it != list.end() && i < size_; ++it) {
                 storage_[i++] = *it;
