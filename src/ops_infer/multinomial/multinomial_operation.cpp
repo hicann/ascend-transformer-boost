@@ -28,7 +28,7 @@ static const uint64_t MAX_NUMSAMPLES = 64;
 bool ParamCheck(const infer::MultinomialParam &opParam)
 {
     if (opParam.numSamples > MAX_NUMSAMPLES) {
-        ATB_LOG(ERROR) << "multinomial expects numSamples not bigger than " << MAX_NUMSAMPLES 
+        ATB_LOG(ERROR) << "multinomial expects numSamples not bigger than " << MAX_NUMSAMPLES
                        << ", but got numSamples: " << opParam.numSamples;
         return false;
     }
@@ -42,7 +42,7 @@ template <> Status CreateOperation(const infer::MultinomialParam &opParam, Opera
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
-    ATB_LOG(INFO) << "CreateOperation MultinomialParam numSamples: " << opParam.numSamples 
+    ATB_LOG(INFO) << "CreateOperation MultinomialParam numSamples: " << opParam.numSamples
                   << ", randSeed: " << opParam.randSeed;
     if (!(GetSingleton<Config>().Is910B())) {
         ATB_LOG(ERROR) << "multinomial only supports Atlas 800I A2/A3 inference product!";
