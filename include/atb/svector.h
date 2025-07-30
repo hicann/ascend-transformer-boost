@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ public:
         if (listSize > MAX_SVECTOR_SIZE) {
             throw MaxSizeExceeded();
         }
-        std::size_t i;
+        std::size_t i = 0;
         if (listSize > DEFAULT_SVECTOR_SIZE) {
             heap_ = reinterpret_cast<T *>(malloc(MAX_SVECTOR_SIZE * sizeof(T)));
             if (!heap_) {
