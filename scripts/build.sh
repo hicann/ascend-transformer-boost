@@ -751,6 +751,7 @@ function fn_main()
             SRC_ONLY=ON
             ;;
         "--customizeops_tests")
+            fn_build_googletest
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
             ;;
         esac
@@ -859,9 +860,9 @@ function fn_main()
             ;;
         "customizeops")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
-            fn_build_googletest
             fn_build
             generate_atb_version_info
+            fn_make_run_package
             ;;
         *)
             echo "Usage: "
