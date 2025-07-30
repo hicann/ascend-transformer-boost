@@ -1,12 +1,12 @@
 /*
-* Copyright (c) 2024 Huawei Technologies Co., Ltd.
-* This file is a part of the CANN Open Software.
-* Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
-* Please refer to the License for details. You may not use this file except in compliance with the License.
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
-* See LICENSE in the root of the software repository for the full text of the License.
-*/
+ * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 #include <vector>
 #include <string>
 #include <cstring>
@@ -18,7 +18,7 @@
 #include <atb/core/runner_variant_pack.h>
 #include "atb/utils/tensor_util.h"
 #include "atb/utils/config.h"
- 
+
 using namespace atb;
 using namespace Mki;
 
@@ -47,7 +47,7 @@ TEST(TestSVector, SVectorHeap)
 
     inTensors.insert(0, firstTensor);
     EXPECT_EQ(inTensors.at(0).desc.shape.dims[0], 1);
-    
+
     for (int i = 1; i < 50; i++) {
         inTensors.insert(i, tensorItem);
     }
@@ -67,11 +67,10 @@ TEST(TestSVector, HeapInitializerlist)
 {
     atb::SVector<uint64_t> inTensors;
     inTensors.reserve(120);
-    inTensors = {11, 1234, 12345, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100};
+    inTensors = {11, 1234, 12345, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1,  1,    1,     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1,  1,    1,     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1,  1,    1,     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100};
     EXPECT_EQ(inTensors.at(0), 11);
 
     inTensors.push_back(101);
@@ -81,7 +80,7 @@ TEST(TestSVector, HeapInitializerlist)
     inTensors.clear();
     EXPECT_EQ(inTensors.size(), 0);
     EXPECT_EQ(inTensors.empty(), true);
-    
+
     atb::SVector<bool> inTensorPerms;
     inTensorPerms.reserve(133);
     inTensorPerms.resize(133);
@@ -142,7 +141,7 @@ TEST(TestSVector, SVectorStack)
 
     inTensors.insert(0, firstTensor);
     EXPECT_EQ(inTensors.at(0).desc.shape.dims[0], 1);
-    
+
     for (int i = 1; i < 63; i++) {
         inTensors.insert(i, tensorItem);
     }
@@ -162,11 +161,10 @@ TEST(TestSVector, HeapCopyConstructor)
 {
     atb::SVector<uint64_t> inTensorSrc;
     inTensorSrc.reserve(100);
-    inTensorSrc = {11, 1234, 12345, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100};
+    inTensorSrc = {11, 1234, 12345, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                   1,  1,    1,     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                   1,  1,    1,     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                   1,  1,    1,     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 100};
     atb::SVector<uint64_t> inTensorDest;
     inTensorDest.reserve(100);
     inTensorDest.resize(100);
@@ -174,7 +172,7 @@ TEST(TestSVector, HeapCopyConstructor)
     EXPECT_EQ(inTensorDest.at(0), 11);
     EXPECT_EQ(inTensorDest.at(1), 1234);
     EXPECT_EQ(inTensorDest.at(2), 12345);
-    
+
     // test SVector.insert and SVector.size()
     EXPECT_EQ(inTensorDest.size(), 100);
     inTensorDest.clear();
@@ -213,10 +211,10 @@ TEST(TestSVector, InsertExceedsDefaultSize)
 {
     atb::SVector<int> vec;
     for (int i = 0; i < atb::DEFAULT_SVECTOR_SIZE; ++i) {
-        vec.insert(i, i);  // 先填满 stack 存储
+        vec.insert(i, i); // 先填满 stack 存储
     }
     for (int i = atb::DEFAULT_SVECTOR_SIZE; i < atb::DEFAULT_SVECTOR_SIZE + 5; ++i) {
-        EXPECT_NO_THROW(vec.insert(i, i));  // 自动转换heap
+        EXPECT_NO_THROW(vec.insert(i, i)); // 自动转换heap
     }
     EXPECT_EQ(vec.at(atb::DEFAULT_SVECTOR_SIZE), atb::DEFAULT_SVECTOR_SIZE);
     EXPECT_EQ(vec.size(), atb::DEFAULT_SVECTOR_SIZE + 5);
@@ -229,14 +227,14 @@ TEST(TestSVector, PushBackExceedsDefaultSize)
 {
     atb::SVector<int> vec;
     for (int i = 0; i < atb::DEFAULT_SVECTOR_SIZE; ++i) {
-        vec.insert(i, i);  // 先填满 stack 存储
+        vec.insert(i, i); // 先填满 stack 存储
     }
     for (int i = atb::DEFAULT_SVECTOR_SIZE; i < atb::DEFAULT_SVECTOR_SIZE + 5; ++i) {
-        EXPECT_NO_THROW(vec.push_back(i));  // 自动转换heap
+        EXPECT_NO_THROW(vec.push_back(i)); // 自动转换heap
     }
     EXPECT_EQ(vec.at(atb::DEFAULT_SVECTOR_SIZE), atb::DEFAULT_SVECTOR_SIZE);
     EXPECT_EQ(vec.size(), atb::DEFAULT_SVECTOR_SIZE + 5);
-    for (int i = 0; i <= atb::DEFAULT_SVECTOR_SIZE; i += 7) {
+    for (int i = 0; i < atb::DEFAULT_SVECTOR_SIZE + 5; ++i) {
         EXPECT_EQ(vec.at(i), i); // 原先stack值在heap中顺序不改变
     }
 }
@@ -259,11 +257,11 @@ TEST(TestSVector, ClearAndReuse)
 TEST(TestSVector, ResizeAndAccess)
 {
     atb::SVector<int> vec = {1, 2, 3, 4, 5};
-    vec.resize(3);  // 缩小到 3 个元素
+    vec.resize(3); // 缩小到 3 个元素
     EXPECT_EQ(vec.size(), 3);
-    EXPECT_EQ(vec.at(2), 3);  // 最后一个有效元素
+    EXPECT_EQ(vec.at(2), 3); // 最后一个有效元素
 
-    EXPECT_THROW(vec.at(3), std::out_of_range);  // 越界访问
+    EXPECT_THROW(vec.at(3), std::out_of_range); // 越界访问
 }
 
 TEST(TestSVector, IteratorTraversal)
@@ -279,18 +277,94 @@ TEST(TestSVector, IteratorTraversal)
 TEST(TestSVector, OutOfRangeAccess)
 {
     atb::SVector<int> vec = {1, 2, 3};
-    EXPECT_THROW(vec.at(3), std::out_of_range);  // 越界
+    EXPECT_THROW(vec.at(3), std::out_of_range); // 越界
     EXPECT_THROW(vec.at(100), std::out_of_range);
 
-    EXPECT_THROW(vec[3], std::out_of_range);  // 如果 operator[] 也检查边界
+    EXPECT_THROW(vec[3], std::out_of_range); // 如果 operator[] 也检查边界
 }
 
 TEST(TestSVector, PushBackExceedsMaxSvectorSize)
 {
     atb::SVector<int> vec;
     for (int i = 0; i < atb::MAX_SVECTOR_SIZE; ++i) {
-        EXPECT_NO_THROW(vec.push_back(i));  // 自动转换heap
+        EXPECT_NO_THROW(vec.push_back(i)); // 自动转换heap
     }
     EXPECT_EQ(vec.at(atb::DEFAULT_SVECTOR_SIZE), atb::DEFAULT_SVECTOR_SIZE);
     EXPECT_THROW(vec.push_back(atb::DEFAULT_SVECTOR_SIZE), atb::MaxSizeExceeded);
+}
+
+TEST(TestSVector, InsertMiddle)
+{
+    // stack
+    atb::SVector<int> vec;
+    for (int i = 0; i < 10; ++i) {
+        vec.insert(i, i);
+    }
+    for (int j = 0; j <= 15; j += 3) {
+        EXPECT_NO_THROW(vec.insert(j, j * j));
+    }
+    EXPECT_EQ(vec.size(), 16);
+    for (int i = -1, j = -1, idx = 0; idx <= 15; ++idx) {
+        ++j;
+        if (j % 3 == 0) {
+            EXPECT_EQ(j * j, vec.at(j));
+            continue;
+        }
+        ++i;
+        EXPECT_EQ(i, vec[idx]);
+    }
+
+    // heap
+    atb::SVector<int> vecHeap;
+    vecHeap.reserve(100);
+    for (int i = 0; i < 10; ++i) {
+        vecHeap.insert(i, i);
+    }
+    for (int j = 0; j <= 15; j += 3) {
+        EXPECT_NO_THROW(vecHeap.insert(j, j * j));
+    }
+    EXPECT_EQ(vecHeap.size(), 16);
+    for (int i = -1, j = -1, idx = 0; idx <= 15; ++idx) {
+        ++j;
+        if (j % 3 == 0) {
+            EXPECT_EQ(j * j, vecHeap.at(j));
+            continue;
+        }
+        ++i;
+        EXPECT_EQ(i, vecHeap[idx]);
+    }
+}
+
+TEST(TestSVector, ResizeSmall)
+{
+    // stack
+    atb::SVector<int> vec;
+    for (int i = 0; i < 40; ++i) {
+        vec.push_back(i);
+    }
+    vec.resize(15);
+    for (int i = 0; i < 10; ++i) {
+        vec.push_back(i + i);
+    }
+    for (int i = 0; i < 15; ++i) {
+        EXPECT_EQ(i, vec.at(i));
+    }
+    for (int i = 0; i < 10; ++i) {
+        EXPECT_EQ(i + i, vec[15 + i]);
+    }
+    vec.clear();
+    vec.reserve(128);
+    for (int i = 0; i < 40; ++i) {
+        vec.push_back(i);
+    }
+    vec.resize(22);
+    for (int i = 22; i < 56; ++i) {
+        vec.insert(i, i * i);
+    }
+    for (int i = 0; i < 22; ++i) {
+        EXPECT_EQ(i, vec.at(i));
+    }
+    for (int i = 22; i < 56; ++i) {
+        EXPECT_EQ(i * i, vec[i]);
+    }
 }
