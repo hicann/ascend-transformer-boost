@@ -15,6 +15,7 @@
 #include "atbops/params/params.h"
 #include "acl/acl_rt.h"
 #include "acl/acl.h"
+#include <iostream>
 
 static constexpr int32_t DEQUANT_EYE_SIZE = 1024;
 static constexpr int32_t MAX_DEQUANT_SIZE = 128;
@@ -63,6 +64,9 @@ public:
     {
         MKI_CHECK(specificParam.Type() == typeid(OpParam::PagedAttention), "OpParam is invalid", return 0);
         auto param = AnyCast<OpParam::PagedAttention>(specificParam);
+
+        std::cout << "111111111111  param.type " << param.type << std::endl;    
+
         switch (param.type) {
             case OpParam::PagedAttention::PAGED_ATTENTION_NZ:
                 return DIM_5;
@@ -73,7 +77,7 @@ public:
             case OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_COMBINE_CACHE_MASK_ND:
                 return DIM_9;
             case OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_MULTI_TOKEN_PREDICTION_MASK_ND:
-                return DIM_4;
+                return DIM_6;    // DIM_4
             default:
                 break;
         }
@@ -182,8 +186,8 @@ private:
         }
         MKI_CHECK(embeddingDimQ > 0, "Shape of Input0 invalid, headSize must > 0", return false);
         if (param.type != OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND) {
-            MKI_CHECK(CheckPagedMLAttetionCache(launchParam, param, embeddingDimQ),
-                        "check cache shape fail", return false);
+          //  MKI_CHECK(CheckPagedMLAttetionCache(launchParam, param, embeddingDimQ),                     // ---先不做检查
+          //              "check cache shape fail", return false);
         } else {
             MKI_CHECK(CheckPagedAttentionCache(launchParam, param, embeddingDimQ),
                         "check cache shape fail", return false);

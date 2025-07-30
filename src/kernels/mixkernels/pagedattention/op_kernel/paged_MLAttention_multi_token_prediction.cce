@@ -7,7 +7,7 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-
+//#include <iostream>
 #include "kernels/utils/kernel/common.h"
 #include "kernels/utils/kernel/common_func.h"
 #include "kernels/utils/kernel/simd.h"
@@ -21,7 +21,7 @@
 #else
 #define __aicore__ [aicore]
 #endif
-
+//wxh
 // FFTS Flag
 constexpr int32_t QK_READY = 1;
 constexpr int32_t SOFTMAX_READY = 2;
@@ -29,10 +29,10 @@ constexpr int32_t UPDATE_READY = 3;
 constexpr int32_t BIT_SHIFT = 8;
 constexpr int32_t SOFTMAX_MAX_LENGTH = 256;
 constexpr int32_t LOCAL_SIZE = 6;
-
+//  ---设置的tiling
 const int32_t TILING_BATCH = 0;
 const int32_t TILING_NUMHEADS = 1;
-const int32_t TILING_HEADDIM = 2;
+const int32_t TILING_HEADDIM = 2;        // ---q的head
 const int32_t TILING_NUMBLOKS = 3;
 const int32_t TILING_BLOCKSIZE = 4;
 const int32_t TILING_MAXBLOCKS = 5;
@@ -88,11 +88,11 @@ constexpr int32_t CUBE_MATRIX_SIZE = 256;         // 16 * 16
 constexpr int32_t L0AB_UINT8_BLOCK_SIZE = 32768;  // 128 * 128 * 2B
 constexpr int32_t TMP_SIZE = 32768 * 4;
 constexpr int32_t TMP_SIZEW = 32768;
-constexpr int32_t BLOCK_EMBED = 256;
+constexpr int32_t BLOCK_EMBED = 256;               // ----q k的 h_dim 的切割
 constexpr int32_t BLOCK_QK = 128;
 
 template<typename mm1InputType, typename mm2InputType, typename mmOutputType, CalcMode CUBE_MODE, typename HighPrecisionMode, FuncType WorkMode>
-class PagedMLAMultiTokenPredictionAic {
+class PagedMLAMultiTokenPredictionAic {                        // 主类
 public:
     template<typename T>
     __aicore__ __attribute__((always_inline)) inline uint32_t BlockSize()
@@ -138,17 +138,17 @@ public:
 
     __aicore__ __attribute__((always_inline)) inline PagedMLAMultiTokenPredictionAic(
         __gm__ uint8_t *__restrict__ sync, __gm__ uint8_t *__restrict__ q_gm, __gm__ uint8_t *__restrict__ kv_gm,
-        __gm__ uint8_t *__restrict__ mask_gm, __gm__ uint8_t *__restrict__ block_tables_gm, 
+        __gm__ uint8_t *__restrict__ mask_gm, __gm__ uint8_t *__restrict__ block_tables_gm,  __gm__ uint8_t *__restrict__ q_rope_gm, __gm__ uint8_t *__restrict__ kv_rope_gm, 
         __gm__ uint8_t *__restrict__ o_gm, __gm__ uint8_t *__restrict__ s_gm,
         __gm__ uint8_t *__restrict__ p_gm, __gm__ uint8_t *__restrict__ o_tmp_gm,
         __gm__ uint8_t *__restrict__ upo_tmp_gm, __gm__ uint8_t *__restrict__ tiling_para_gm) :
-        q_gm(q_gm), kv_gm(kv_gm), block_tables_gm(block_tables_gm),
+        q_gm(q_gm), kv_gm(kv_gm), block_tables_gm(block_tables_gm), q_rope_gm(q_rope_gm), kv_rope_gm(kv_rope_gm),
         s_gm(s_gm), p_gm(p_gm), o_tmp_gm(o_tmp_gm), upo_tmp_gm(upo_tmp_gm), 
         tiling_para_gm(tiling_para_gm)
     {
         this->batch_size = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm));
         this->q_heads = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + TILING_NUMHEADS));
-        this->embd = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + TILING_HEADDIM));
+        this->embd = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + TILING_HEADDIM));      // 
         this->embdv = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + TILING_HEADDIM_V));
         this->kv_heads = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + TILING_KVHEADS));
         this->max_num_blocks_per_query = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + TILING_MAXBLOCKS));
@@ -172,7 +172,7 @@ public:
             const uint32_t l1q_buf_addr_offset = 128 * 256 * 2 * 2 * 2 + L0AB_HALF_BUF_SIZE * 2 * 2;
             l1q_buf_addr_tensor = buf.GetBuffer<BufferType::ASCEND_CB, mm1InputType>(l1q_buf_addr_offset);
             l1k_buf_addr_tensor = buf.GetBuffer<BufferType::ASCEND_CB, mm1InputType>(l1k_buf_addr_offset);
-            l1p_buf_addr_tensor = buf.GetBuffer<BufferType::ASCEND_CB, mm2InputType>(l1p_buf_addr_offset);
+            l1p_buf_addr_tensor = buf.GetBuffer<BufferType::ASCEND_CB, mm2InputType>(l1p_buf_addr_offset);   // p的大小
         } else {
             const uint32_t l1p_buf_addr_offset = 0;
 	        const uint32_t l1q_buf_addr_offset = 128 * embed_round * 2 * 2 + L0AB_HALF_BUF_SIZE * 2;
@@ -182,11 +182,13 @@ public:
             l1p_buf_addr_tensor = buf.GetBuffer<BufferType::ASCEND_CB, mm2InputType>(l1p_buf_addr_offset);
         }
 
-        q_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->q_gm));
+        q_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->q_gm));   
+        q_rope_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->q_rope_gm));             
         kv_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->kv_gm));
-        s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ HighPrecisionMode *>(this->s_gm));
-        p_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm2InputType *>(this->p_gm));
-        o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mmOutputType *>(this->o_tmp_gm));
+        kv_rope_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->kv_rope_gm));
+        s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ HighPrecisionMode *>(this->s_gm));          // 存储s的接口 p * v
+        p_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm2InputType *>(this->p_gm));             // 存储p的接口
+        o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mmOutputType *>(this->o_tmp_gm));       // 存储最终的结果
         upo_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mmOutputType *>(this->upo_tmp_gm));
 
         SET_FLAG(MTE1, MTE2, EVENT_ID0);
@@ -205,111 +207,123 @@ public:
         SET_FLAG(FIX, M, EVENT_ID1);
     }
 
-    __aicore__ __attribute__((always_inline)) inline void Run()
+    __aicore__ __attribute__((always_inline)) inline void Run()              // 主入口run
     {
         uint64_t cur_batch = 0;
         uint32_t pre_total_q_blk_num = 0;
         uint32_t offset_tiling = tiling_head_size + tiling_para_size * cur_batch;
         uint32_t cur_total_q_blk_num = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 9 + offset_tiling));
-        uint32_t process_num = total_q_blk_num;
+        uint32_t process_num = total_q_blk_num;       //  
         uint32_t next_process = 0;
         uint32_t process_idx = 0;
-        for (uint32_t process = block_idx; process < process_num; process = next_process) {
+        for (uint32_t process = block_idx; process < process_num; process = next_process) {    //  // process_num=128, process_idx=0~127  ---task， q 方向和b n ， 任务切块，q方向的， batch*v， 1个batch  bnsd和bsnd， 额外的维度      
             if constexpr (WorkMode == FuncType::UNEQUAL_QK_LEN_PREFILL) {
-                while (process >= cur_total_q_blk_num) {
+              // trap();
+             //  std::cout << "11111111111 " << std::endl;
+                while (process >= cur_total_q_blk_num) {    // cur_total_q_blk_num=128, x't into branch
                     cur_batch++;
                     pre_total_q_blk_num = cur_total_q_blk_num;
                     offset_tiling += tiling_para_size;
                     cur_total_q_blk_num = (uint32_t)(*((__gm__ uint32_t *)tiling_para_gm + 9 + offset_tiling));
                 }
-                process_idx = process - pre_total_q_blk_num;
+                process_idx = process - pre_total_q_blk_num;         // process_idx=0
             } else {
-                cur_batch = process / cur_qN_blk_num;
+            //   std::cout << "22222 " << std::endl;
+                cur_batch = process / cur_qN_blk_num;         
                 offset_tiling = tiling_head_size + tiling_para_size * cur_batch;
                 process_idx = process % cur_qN_blk_num;
             }
-            next_process = process + block_num;
+            next_process = process + block_num;       // block_num=20  每个core执行head  0 20  40 60 
             // get tiling args
-            uint32_t q_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + offset_tiling));
-            uint32_t kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 1 + offset_tiling));
+            uint32_t q_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + offset_tiling));           // 128   
+            uint32_t kv_seqlen = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 1 + offset_tiling));       // 128     
             if (q_seqlen == 0 || kv_seqlen == 0) {
                 continue;
             }
-            uint32_t pp_m_scalar = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 2 + offset_tiling));
-            uint32_t pp_n_scalar = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 3 + offset_tiling)); // = blocksize
+            uint32_t pp_m_scalar = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 2 + offset_tiling));             // 128，   当前batch Q 方向切块大小
+            uint32_t pp_n_scalar = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 3 + offset_tiling)); // = blocksize   // 128   当前batch kv 方向切块大小
             uint32_t addr_q_high32 = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 4 + offset_tiling));
             uint32_t addr_q_loww32 = (uint32_t)(*((__gm__ int32_t *)tiling_para_gm + 5 + offset_tiling));
             uint64_t addr_q_scalar = (uint64_t)(((uint64_t)addr_q_high32) << 32 | addr_q_loww32);
 
-            uint32_t qS_blk_idx = process_idx / cur_qN_blk_num;
-            uint32_t qN_blk_idx = process_idx % cur_qN_blk_num;
+            uint32_t qS_blk_idx = process_idx / cur_qN_blk_num;         // cur_qN_blk_num=128, qS_blk_idx==0
+            uint32_t qN_blk_idx = process_idx % cur_qN_blk_num;        // qN_blk_idx=0~127
             
-            uint32_t head_start_idx = qN_blk_idx * cur_qN_blk_size;
+            uint32_t head_start_idx = qN_blk_idx * cur_qN_blk_size;          // cur_qN_blk_size=1, head_start_idx=0~127
 
-            uint32_t m_loop = (q_seqlen + pp_m_scalar - 1) / pp_m_scalar;
-            uint32_t n_loop = (kv_seqlen + pp_n_scalar - 1) / pp_n_scalar;
+            uint32_t m_loop = (q_seqlen + pp_m_scalar - 1) / pp_m_scalar;      // 1            128+128 - 1/128 = 1。 
+            uint32_t n_loop = (kv_seqlen + pp_n_scalar - 1) / pp_n_scalar;      // 1            128+128 - 1/128 = 1。 
 
-            uint32_t qS_blk_size_actual = (qS_blk_idx == (m_loop - 1)) ? (q_seqlen - qS_blk_idx * pp_m_scalar) : pp_m_scalar;
+            uint32_t qS_blk_size_actual = (qS_blk_idx == (m_loop - 1)) ? (q_seqlen - qS_blk_idx * pp_m_scalar) : pp_m_scalar;      // 128
             uint32_t qN_blk_size_actual = (qN_blk_idx == (cur_qN_blk_num - 1)) ? (q_heads - qN_blk_idx * cur_qN_blk_size) : cur_qN_blk_size;
 
-            uint32_t qk_m = qS_blk_size_actual * qN_blk_size_actual;
-            uint32_t qk_round_m = (qk_m + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-            uint32_t qk_round_split = qk_round_m / BLOCK_SIZE;
+            uint32_t qk_m = qS_blk_size_actual * qN_blk_size_actual;            // qk_m  = 1 这个是啥   qk_m=128       // 128*1=128   也就是选几个q
+            uint32_t qk_round_m = (qk_m + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;        // BLOCK_SIZE=16 qk_round_m=128
+            uint32_t qk_round_split = qk_round_m / BLOCK_SIZE;              // qk_round_split=8,   128/16,  也就是q被切成16块 
 
             /**************** pre_load *****************/
-            uint32_t qk_n = n_loop == 1 ? kv_seqlen : pp_n_scalar;
-            uint32_t qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
+            uint32_t qk_n = n_loop == 1 ? kv_seqlen : pp_n_scalar;           // qk_n=kv_seqlen=128
+            uint32_t qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;      // qk_round_n=128
 
             uint32_t pingpong_flag = 0;
             uint32_t offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
 
-            uint64_t q_offset = addr_q_scalar + head_start_idx * embd + qS_blk_idx * pp_m_scalar * stride_qo;
+             // get q addr at the start of current head
+            //                  base_addr       0~127 head       576    0            128           head*576
+           // uint64_t q_offset = addr_q_scalar + head_start_idx * embd + qS_blk_idx * pp_m_scalar * stride_qo;     // ---- 这个值初始为多少， 表示第几个
+
+            uint64_t q_offset = addr_q_scalar + head_start_idx * 512 + qS_blk_idx * pp_m_scalar * 128*512;     // ---- 这个值初始为多少， 表示第几个
+
+            uint64_t q_rope_offset = addr_q_scalar + head_start_idx * 64 + qS_blk_idx * pp_m_scalar * 128*64;     // ---- 这个值初始为多少， 表示第几个
+
 
             uint64_t k_offset = 0;
-            uint64_t n_align = RoundUp<uint64_t>(pp_n_scalar, 32 / sizeof(mm1InputType));
+            uint64_t k_rope_offset = 0;
+            uint64_t n_align = RoundUp<uint64_t>(pp_n_scalar, 32 / sizeof(mm1InputType));   // 128
 
-            uint32_t sv_n = n_loop == 1 ? kv_seqlen : pp_n_scalar;
+            uint32_t sv_n = n_loop == 1 ? kv_seqlen : pp_n_scalar;                         // 128
             uint32_t sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
             uint32_t n_end = n_loop;
-            if (mask_type == 3) {
+            if (mask_type == 3) {                        //  ---只考虑mask_type = 3 的情况
                 uint32_t no_mask_kv_seq = kv_seqlen - q_seqlen;
-                uint32_t no_skip_kv_seq = (qS_blk_idx + 1) * pp_m_scalar + no_mask_kv_seq;
-                no_skip_kv_seq = (no_skip_kv_seq > kv_seqlen) ? kv_seqlen : no_skip_kv_seq;
-                n_end = (no_skip_kv_seq + pp_n_scalar - 1) / pp_n_scalar;
+                uint32_t no_skip_kv_seq = (qS_blk_idx + 1) * pp_m_scalar + no_mask_kv_seq;          // 128
+                no_skip_kv_seq = (no_skip_kv_seq > kv_seqlen) ? kv_seqlen : no_skip_kv_seq;         // 128     
+                n_end = (no_skip_kv_seq + pp_n_scalar - 1) / pp_n_scalar;            // ---完成跳过计算的过程   1
             }
             uint32_t sv_n_triu = n_end * pp_n_scalar;
             uint32_t s_block_stack = 1;
             uint32_t after = 1;
-            uint32_t qk_split_k = BLOCK_EMBED;
+            uint32_t qk_split_k = BLOCK_EMBED;                  //  --按照256切
             qk_split_k *= (2 / sizeof(mm1InputType));
+            uint32_t a = sizeof(mm1InputType);
             uint32_t pv_split_k = BLOCK_EMBED;
-            if constexpr (CUBE_MODE == CalcMode::CALC_MODE_256) {
+            if constexpr (CUBE_MODE == CalcMode::CALC_MODE_256) { // 一次算256
                 s_block_stack = 2;
                 after = 2;
-                qk_split_k = BLOCK_QK;
+                qk_split_k = BLOCK_QK;         // 256 按照128   
                 pv_split_k = BLOCK_EMBED;
             }
             uint32_t n_pingpong_flag = 0;
-            uint32_t loopQK = (embd + qk_split_k - 1) / qk_split_k;
-            uint32_t loopK = (embd + pv_split_k - 1) / pv_split_k;
-            uint32_t loopV = (embdv + pv_split_k - 1) / pv_split_k;
-            if constexpr (CUBE_MODE == CalcMode::CALC_MODE_256) {
-                uint64_t l1_stride = qk_round_m * qk_split_k;
-                for (uint32_t n_idx = 0; n_idx < n_end + after; n_idx += s_block_stack) {
+            uint32_t loopQK = (embd + qk_split_k - 1) / qk_split_k;    //  矩阵切割的次数    3     576/256
+            uint32_t loopK = (embd + pv_split_k - 1) / pv_split_k;             //      3     576/256          这个值else没用
+            uint32_t loopV = (embdv + pv_split_k - 1) / pv_split_k;            // 2         512/256            pv_split_k = 256   512
+            if constexpr (CUBE_MODE == CalcMode::CALC_MODE_256) {        // 第一层循环
+                uint64_t l1_stride = qk_round_m * qk_split_k;          // qk_round_m =128     qk_split_k = 256，    
+                for (uint32_t n_idx = 0; n_idx < n_end + after; n_idx += s_block_stack) {  // kv  
                     if (n_idx < n_end) {
                         n_pingpong_flag = (n_idx / 2) % 2;
                         uint64_t l1qoffset = 0;
-                        for (uint32_t k_idx = 0; k_idx < loopQK; k_idx++) {
-                            uint32_t initc = (k_idx == 0) ? 1 : 0;
+                        for (uint32_t k_idx = 0; k_idx < loopQK; k_idx++) {          //  k轴循环切
+                            uint32_t initc = (k_idx == 0) ? 1 : 0; 
                             uint32_t qk_k = (k_idx == (loopQK - 1)) ? embd - k_idx * qk_split_k : qk_split_k;
                             uint32_t qk_round_k = (qk_k + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                             for (uint32_t split_idx = 0; split_idx < s_block_stack && n_idx + split_idx < n_end; split_idx++) {
                                 pingpong_flag = (n_idx + split_idx) % 2;
                                 offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
                                 uint32_t block_table_id = (uint32_t)(*((__gm__ int32_t *)block_tables_gm +
-                                    cur_batch * max_num_blocks_per_query + n_idx + split_idx));
-                                k_offset = block_table_id * block_size * stride_k + (head_start_idx / group_num) * embd;
-                                uint64_t k_offsetk = k_offset + qk_split_k * k_idx;
+                                    cur_batch * max_num_blocks_per_query + n_idx + split_idx));        // ---为啥是20   max_num_blocks_per_query
+                                k_offset = block_table_id * block_size * stride_k + (head_start_idx / group_num) * embd;    // block_size = 128  stride_k 就是一次切了多少256 256 64,  
+                                uint64_t k_offsetk = k_offset + qk_split_k * k_idx;            // 这个offset 怎么算的， qk_split_k = 256, 
                                 if (n_idx + split_idx == (n_loop - 1)) {
                                     qk_n = (kv_seqlen - (n_idx + split_idx) * pp_n_scalar);
                                 } else {
@@ -321,7 +335,7 @@ public:
                                 if (k_idx % 2 == 0 && split_idx == 0) {
                                     WAIT_FLAG(MTE1, MTE2, n_pingpong_flag * 3 + k_idx / 2);
                                 }
-                                gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::NZ>(
+                                gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::NZ>(        // wxh 搬运k 从gm到l1
                                     l1k_buf_addr_tensor[l1koffset],
                                     kv_gm_tensor[k_offsetk],
                                     qk_n,        // nValue
@@ -334,7 +348,7 @@ public:
                                 SET_FLAG(MTE2, MTE1, pingpong_flag);
                                 WAIT_FLAG(MTE2, MTE1, pingpong_flag);
                                 WAIT_FLAG(M, MTE1, pingpong_flag + 2);
-                                l1_to_l0_b<ArchType::ASCEND_V220, mm1InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                                l1_to_l0_b<ArchType::ASCEND_V220, mm1InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(   // wxh 搬运k 从l1 搬运到l0
                                     l0b_buf_tensor[offset],
                                     l1k_buf_addr_tensor[l1koffset],
                                     0,
@@ -347,10 +361,10 @@ public:
                                     0                                        // dstStride
                                 );
                                 SET_FLAG(MTE1, M, pingpong_flag + 2);
-                                if (n_idx == 0 && split_idx == 0 && k_idx == 0) {
+                                if (n_idx == 0 && split_idx == 0 && k_idx == 0) {                                    
                                     WAIT_FLAG(MTE1, MTE2, EVENT_ID7);
                                     if (qk_m == 1) {
-                                        gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::ND>(
+                                        gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::ND>(        // wxh 搬运q从gm 搬运到l1
                                             l1q_buf_addr_tensor,
                                             q_gm_tensor[q_offset],
                                             1,
@@ -373,6 +387,7 @@ public:
                                                                                    qS_blk_size_actual,
                                                                                    16));
                                         }
+
                                     }
                                     SET_FLAG(MTE2, MTE1, EVENT_ID4);
                                     WAIT_FLAG(MTE2, MTE1, EVENT_ID4);
@@ -380,7 +395,7 @@ public:
                                 WAIT_FLAG(M, MTE1, pingpong_flag);
                                 uint32_t round_row_1 = RoundUp<uint32_t>(qk_round_k, 32 / sizeof(mm1InputType));
                                 if (qk_m == 1) {
-                                    l1_to_l0_a<ArchType::ASCEND_V220, mm1InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                                    l1_to_l0_a<ArchType::ASCEND_V220, mm1InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(    //wxh--- 数据从l1到l0的拷贝
                                         l0a_buf_tensor[offset],
                                         l1q_buf_addr_tensor[k_idx * qk_split_k],
                                         0,
@@ -405,11 +420,11 @@ public:
                                     WAIT_FLAG(FIX, M, EVENT_ID0);
                                     WAIT_FLAG(FIX, M, EVENT_ID1);
                                 }
-                                mmad<ArchType::ASCEND_V220, mm1InputType, mm1InputType, mmOutputType, false>(
+                                mmad<ArchType::ASCEND_V220, mm1InputType, mm1InputType, mmOutputType, false>(     // wxh 完成q k的矩阵乘,上面完成了2次搬运过程
                                     l0c_buf_tensor[split_idx * qk_round_m * pp_n_scalar],
                                     l0a_buf_tensor[offset],
                                     l0b_buf_tensor[offset],
-                                    qk_m,  // m
+                                    qk_m,  // m         也就是选几个q
                                     qk_n,  // n
                                     qk_k,   // k
                                     initc   // cmatrixInitVal
@@ -428,7 +443,7 @@ public:
                             sv_n = pp_n_scalar * s_block_stack;
                         }
                         sv_round_n = (sv_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-	                    l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, HighPrecisionMode, mmOutputType>(
+	                    l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, HighPrecisionMode, mmOutputType>(    // 将qk 的结果拷贝到s_gm_tensor
 	                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx / 2) % 2 * TMP_SIZEW],
 	                        l0c_buf_tensor,
 	                        qk_m,       // MSize
@@ -440,10 +455,10 @@ public:
                         SET_FLAG(FIX, M, EVENT_ID1); 
                         FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY);
                     }
-                    if (n_idx >= after) {
+                    if (n_idx >= after) {                                    // wxh  这个else是求啥, after是啥
                         uint32_t now_id = n_idx - after;
                         n_pingpong_flag = (now_id / 2) % 2;
-                        uint64_t gm_p_offset = ((uint64_t)block_idx * TMP_SIZE + n_pingpong_flag * TMP_SIZEW) * 2 / sizeof(mm2InputType);
+                        uint64_t gm_p_offset = ((uint64_t)block_idx * TMP_SIZE + n_pingpong_flag * TMP_SIZEW) * 2 / sizeof(mm2InputType);    // 算出p的偏移
                         uint64_t gm_upo_offset = (uint64_t)block_idx * TMP_SIZE * LOCAL_SIZE + n_pingpong_flag * TMP_SIZEW * loopV;
                         uint32_t sv_n_triu = n_end * pp_n_scalar;
                         if (now_id + s_block_stack > n_end - 1) {
@@ -466,12 +481,12 @@ public:
                                 }
                                 qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                                 uint64_t l1voffset = RoundUp<uint64_t>(qk_round_n, 32 / sizeof(mm1InputType)) * pv_split_k * k_idx +
-                                                     n_align * embed_round * ((now_id + split_idx) % 4);
+                                                     n_align * embed_round * ((now_id + split_idx) % 4);                          // ---wxh 这个应该是算v的
                                 WAIT_FLAG(M, MTE1, EVENT_ID2);
                                 WAIT_FLAG(M, MTE1, EVENT_ID3);
-                                for (uint32_t l0b_load_idx = 0; l0b_load_idx < qk_round_n / BLOCK_SIZE; ++l0b_load_idx) {
-                                    l1_to_l0_b<ArchType::ASCEND_V220, mm2InputType, true, DataFormat::VECTOR, DataFormat::VECTOR>(
-                                        l0b_buf_tensor[l0b_load_idx * qk_round_k * BLOCK_SIZE],
+                                for (uint32_t l0b_load_idx = 0; l0b_load_idx < qk_round_n / BLOCK_SIZE; ++l0b_load_idx) {         // --wxh v的搬运从l1搬运到l0
+                                    l1_to_l0_b<ArchType::ASCEND_V220, mm2InputType, true, DataFormat::VECTOR, DataFormat::VECTOR>(       
+                                        l0b_buf_tensor[l0b_load_idx * qk_round_k * BLOCK_SIZE],                              //  --这个是v ?
                                         l1k_buf_addr_tensor[l1voffset + l0b_load_idx * CUBE_MATRIX_SIZE],
                                         0,
                                         qk_round_k / BLOCK_SIZE,     // repeat
@@ -490,9 +505,9 @@ public:
                                         WaitFlagDev(SOFTMAX_READY);
                                         WAIT_FLAG(MTE1, MTE2, EVENT_ID6);
                                         if (qk_m == 1) {
-                                            gm_to_l1<ArchType::ASCEND_V220, mm2InputType, DataFormat::ND, DataFormat::ND>(
+                                            gm_to_l1<ArchType::ASCEND_V220, mm2InputType, DataFormat::ND, DataFormat::ND>(    // 将p 通过gm将结果拷贝到l1
                                                 l1p_buf_addr_tensor,
-                                                p_gm_tensor[gm_p_offset],
+                                                p_gm_tensor[gm_p_offset], 
                                                 1,
                                                 0,
                                                 0,
@@ -501,7 +516,7 @@ public:
                                                 0
                                             );
                                         } else {
-                                            gm_to_l1<ArchType::ASCEND_V220, mm2InputType, DataFormat::ND, DataFormat::NZ>(
+                                            gm_to_l1<ArchType::ASCEND_V220, mm2InputType, DataFormat::ND, DataFormat::NZ>(     // 将p 通过gm将结果拷贝到l1
                                                 l1p_buf_addr_tensor,
                                                 p_gm_tensor[gm_p_offset],
                                                 qk_m,        // nValue
@@ -518,7 +533,7 @@ public:
                                     WAIT_FLAG(M, MTE1, pingpong_flag);
 				                    uint32_t round_row = RoundUp<uint32_t>(RoundUp<uint64_t>(qk_round_n, BlockSize<mm2InputType>()), 32 / sizeof(mm2InputType));
                                     if (qk_m == 1) {
-                                        l1_to_l0_a<ArchType::ASCEND_V220, mm2InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                                        l1_to_l0_a<ArchType::ASCEND_V220, mm2InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(         // 将p 拷贝到l0
                                             l0a_buf_tensor[l0_offset],
                                             l1p_buf_addr_tensor[pp_n_scalar * split_idx],
                                             0,
@@ -530,7 +545,7 @@ public:
                                         );
                                     } else {
 					                    l1_to_l0_a<ArchType::ASCEND_V220, mm2InputType, false, DataFormat::NZ, DataFormat::ZZ>(
-                                            l0a_buf_tensor[l0_offset], l1p_buf_addr_tensor[pp_n_scalar * qk_round_m * split_idx], qk_round_m,
+                                            l0a_buf_tensor[l0_offset], l1p_buf_addr_tensor[pp_n_scalar * qk_round_m * split_idx], qk_round_m,        // 将p 拷贝到l0
                                             round_row, // repeat
                                             0,
                                             0, // srcStride
@@ -549,10 +564,10 @@ public:
                                     WAIT_FLAG(FIX, M, EVENT_ID1);
                                 }
                                 WAIT_FLAG(MTE1, M, EVENT_ID4);
-                                mmad<ArchType::ASCEND_V220, mm2InputType, mm2InputType, mmOutputType, false>(
+                                mmad<ArchType::ASCEND_V220, mm2InputType, mm2InputType, mmOutputType, false>(       // ---wxh 做矩阵乘计算出o的结果
                                     l0c_buf_tensor,
-                                    l0a_buf_tensor[l0_offset],
-                                    l0b_buf_tensor,
+                                    l0a_buf_tensor[l0_offset],                // ---wxh 这个应该是p
+                                    l0b_buf_tensor,                             // ---wxh 这个应该是v
                                     qk_m,  // m
                                     qk_k,   // n
                                     qk_n,  // k
@@ -567,8 +582,8 @@ public:
                             }
                             SET_FLAG(M, FIX, EVENT_ID0);
                             WAIT_FLAG(M, FIX, EVENT_ID0);
-                            l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, mmOutputType, mmOutputType>(
-                                o_tmp_gm_tensor[gm_upo_offset + k_idx * TMP_SIZEW],
+                            l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, mmOutputType, mmOutputType>(  // ---wxh， 将计算的结果拷贝到o里面
+                                o_tmp_gm_tensor[gm_upo_offset + k_idx * TMP_SIZEW],      // ---计算出o的结果
                                 l0c_buf_tensor,
                                 qk_m,        // MSize
                                 qk_round_k,     // NSize
@@ -584,38 +599,60 @@ public:
                         }
                     }
                 }
-            } else {
-                for (uint32_t n_idx = 0; n_idx < n_end + after; n_idx += s_block_stack) {
-                    if (n_idx < n_end) {
+            } else {             // ---wxh 这个else 是啥， 是不是在这个最外层去改， 应该改这个else?
+                for (uint32_t n_idx = 0; n_idx < n_end + after; n_idx += s_block_stack) {     // 循环读取k1 v1
+                    if (n_idx < n_end) {         //  --n_end = 8 , 1024/128 ?
                         n_pingpong_flag = n_idx % 2;
                         uint32_t block_table_id = (uint32_t)(*((__gm__ int32_t *)block_tables_gm +
-                            cur_batch * max_num_blocks_per_query + n_idx));
-                        k_offset = block_table_id * block_size * stride_k + (head_start_idx / group_num) * embd;
-                        uint64_t l1koffset = n_align * embed_round * n_pingpong_flag;
-                        uint64_t l1qoffset = 0;
+                            cur_batch * max_num_blocks_per_query + n_idx));          // --wxh page attention 逻辑算出在哪一个block   ， 根据gm的顺序下来的
+
+            //(blocks, blocksize, head, headdim)     128            576                   128              576                         
+                    //    k_offset = block_table_id * block_size * stride_k + (head_start_idx / group_num) * embd;    // --wxh 计算k的偏移，  head_start_idx 表示head的头
+                        k_offset = block_table_id * block_size * 512 + (head_start_idx / group_num) * 512;    // --wxh 计算k的偏移，  head_start_idx 表示head的头
+                        k_rope_offset = block_table_id * block_size * 64 + (head_start_idx / group_num) * 64;    // --wxh 计算k的偏移，  head_start_idx 表示head的头
+                        
+                        
+                        uint64_t l1koffset = n_align * embed_round * n_pingpong_flag;   // 刚开始为0
+                        uint64_t l1qoffset = 0;                   
                         uint64_t k_offsetk = k_offset;
+                        uint64_t k_rope_offsetk = k_offset;
                         if (n_idx == (n_loop - 1)) {
                             qk_n = (kv_seqlen - (n_idx) * pp_n_scalar);
                         } else {
-                            qk_n = pp_n_scalar;
+                            qk_n = pp_n_scalar;        // 第一次走的这个循环，  qk_n 128
                         }
-                        qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-                        for (uint32_t k_idx = 0; k_idx < loopQK; k_idx++) {
+                        qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;         // qk_round_n = 128   BLOCK_SIZE = 16
+                        for (uint32_t k_idx = 0; k_idx < loopQK; k_idx++) {       //  ----k轴的切割， loopQk 为3           
                             uint32_t initc = (k_idx == 0) ? 1 : 0;
-                            uint32_t qk_k = (k_idx == (loopQK - 1)) ? embd - k_idx * qk_split_k : qk_split_k;
-                            uint32_t qk_round_k = (qk_k + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
+                            uint32_t qk_k = (k_idx == (loopQK - 1)) ? embd - k_idx * qk_split_k : qk_split_k;     // qk_k = 256， 256 256 64
+                            uint32_t qk_round_k = (qk_k + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;       // qk_round_k = 256 
                             
                             WAIT_FLAG(MTE1, MTE2, n_pingpong_flag * 3 + k_idx);
-                            gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::NZ>(
-                                l1k_buf_addr_tensor[l1koffset],
-                                kv_gm_tensor[k_offsetk],
-                                qk_n,        // nValue
-                                RoundUp<uint64_t>(qk_round_n, 32 / sizeof(mm1InputType)),  // dstNzC0Stride
-                                0,            // dstNzMatrixStride, unused
-                                qk_k,         // dValue
-                                0,            // dstNzMatrixStride, unused
-                                stride_k   // srcDValue
-                            );
+
+                            if (k_idx < 2) {
+                                gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::NZ>(     // 搬运k到l1, 搬了3次 1次搬256  
+                                    l1k_buf_addr_tensor[l1koffset],
+                                    kv_gm_tensor[k_offsetk],
+                                    qk_n,        // nValue                 表示一次搬运128个seq 与q对应
+                                    RoundUp<uint64_t>(qk_round_n, 32 / sizeof(mm1InputType)),  // dstNzC0Stride    四舍五入运算
+                                    0,            // dstNzMatrixStride, unused
+                                    256,         // dValue   256， 搬运的列？
+                                    0,            // dstNzMatrixStride, unused
+                                    512   // srcDValue     576
+                                );
+                            } else {
+                                gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::NZ>(     // 搬运k到l1, 搬了3次 1次搬256  
+                                    l1k_buf_addr_tensor[l1koffset],
+                                    kv_rope_gm_tensor[k_rope_offset],
+                                    qk_n,        // nValue                 表示一次搬运128个seq 与q对应
+                                    RoundUp<uint64_t>(qk_round_n, 32 / sizeof(mm1InputType)),  // dstNzC0Stride    四舍五入运算
+                                    0,            // dstNzMatrixStride, unused
+                                    64,         // 这个应该是64
+                                    0,            // dstNzMatrixStride, unused
+                                    64   // srcDValue     搬运64
+                                );
+                            }
+
                             SET_FLAG(MTE2, MTE1, EVENT_ID0);
                             WAIT_FLAG(MTE2, MTE1, EVENT_ID0);
                             WAIT_FLAG(M, MTE1, EVENT_ID2);
@@ -634,9 +671,9 @@ public:
                             if (n_idx == 0 && k_idx == 0) {
                                 WAIT_FLAG(MTE1, MTE2, EVENT_ID7);
                                 if (qk_m == 1) {
-                                    gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::ND>(
+                                    gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::ND>(      // ---wxh搬运q到l1
                                         l1q_buf_addr_tensor,
-                                        q_gm_tensor[q_offset],
+                                        q_gm_tensor[q_offset],            
                                         1,
                                         0,
                                         0,
@@ -644,18 +681,32 @@ public:
                                         0,
                                         0
                                     );
-                                } else {
-                                    for (uint32_t qS_idx = 0; qS_idx < qS_blk_size_actual; qS_idx++) {
-                                        AscendC::DataCopy(l1q_buf_addr_tensor[qS_idx * 16],
-                                                          q_gm_tensor[q_offset + qS_idx * stride_qo],
+                                } else {             //  ---走这个else
+                                    for (uint32_t qS_idx = 0; qS_idx < qS_blk_size_actual; qS_idx++) {          //  qS_blk_size_actual = 128， 取128个seq
+                                        AscendC::DataCopy(l1q_buf_addr_tensor[qS_idx * 16],                              // ----搬运q
+                                                          q_gm_tensor[q_offset + qS_idx * 128*512],        // stride_qo = 73728 = 576*128,  表示一下取576*128    q_offset = 10368 
                                                           AscendC::Nd2NzParams(1,
-                                                                               qN_blk_size_actual,
-                                                                               embd,
-                                                                               0,
-                                                                               embd,
-                                                                               qk_round_m,
-                                                                               qS_blk_size_actual,
-                                                                               16));
+                                                                                   qN_blk_size_actual,      //  qN_blk_size_actual = 128
+                                                                                   512,                   // embd = 576
+                                                                                   0,
+                                                                                   512,                   // embd = 576
+                                                                                   qk_round_m,            // qk_round_m = 128
+                                                                                   qS_blk_size_actual,
+                                                                                   16));
+                                    }
+
+
+                                    for (uint32_t qS_idx = 0; qS_idx < qS_blk_size_actual; qS_idx++) {          //  qS_blk_size_actual = 128， 取128个seq
+                                        AscendC::DataCopy(l1q_buf_addr_tensor[128 *512 + qS_idx * 16],
+                                                              q_rope_gm_tensor[q_rope_offset + qS_idx * 128*64],
+                                                              AscendC::Nd2NzParams(1,
+                                                                                   qN_blk_size_actual,
+                                                                                   64,
+                                                                                   0,
+                                                                                   64,
+                                                                                   qk_round_m,
+                                                                                   qS_blk_size_actual,
+                                                                                   16));
                                     }
                                     
                                 }
@@ -663,9 +714,9 @@ public:
                                 WAIT_FLAG(MTE2, MTE1, EVENT_ID4);
                             }
                             WAIT_FLAG(M, MTE1, EVENT_ID0);
-			                uint32_t round_row_1 = RoundUp<uint32_t>(qk_round_k, 32 / sizeof(mm1InputType));
+			                uint32_t round_row_1 = RoundUp<uint32_t>(qk_round_k, 32 / sizeof(mm1InputType));         //  round_row_1 为64
                             if (qk_m == 1) {
-                                l1_to_l0_a<ArchType::ASCEND_V220, mm1InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(
+                                l1_to_l0_a<ArchType::ASCEND_V220, mm1InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(  // ----搬运q到l0a
                                     l0a_buf_tensor,
                                     l1q_buf_addr_tensor[k_idx * qk_split_k],
                                     0,
@@ -675,7 +726,7 @@ public:
                                     0,
                                     0                                                    // dstStride
                                 );
-                            } else {
+                            } else {                       // 走的这个else 循环 ，  qk_round_m - 128.   round_row_1 = 256， l1qoffset = 0
                                 l1_to_l0_a<ArchType::ASCEND_V220, mm1InputType, false, DataFormat::NZ, DataFormat::ZZ>(
                                     l0a_buf_tensor, l1q_buf_addr_tensor[l1qoffset], qk_round_m, round_row_1, 0, 0,
                                     0, 0);
@@ -689,24 +740,25 @@ public:
                             if (initc) {
                                 WAIT_FLAG(FIX, M, n_pingpong_flag);
                             }
-                            mmad<ArchType::ASCEND_V220, mm1InputType, mm1InputType, mmOutputType, false>(
+                            mmad<ArchType::ASCEND_V220, mm1InputType, mm1InputType, mmOutputType, false>(   // ---计算qk
                                 l0c_buf_tensor[n_pingpong_flag * L0AB_HALF_BUF_SIZE],
-                                l0a_buf_tensor,
+                                l0a_buf_tensor,            // a 是q的buffer, q的
                                 l0b_buf_tensor,
-                                qk_m,  // m
-                                qk_n,  // n
-                                qk_k,   // k
+                                qk_m,  // m               128  
+                                qk_n,  // n               128
+                                qk_k,   // k              256
                                 initc      // cmatrixInitVal
                             );
                             SET_FLAG(M, MTE1, EVENT_ID0);
                             SET_FLAG(M, MTE1, EVENT_ID2);
-                            k_offsetk += qk_split_k;
+                            k_offsetk += qk_split_k;                                //  ----
                             l1koffset += n_align * qk_split_k;
                             l1qoffset += qk_round_m * qk_split_k;
                         }
+                        //   ------wxh上面的if 和else 是进行的q *K,  下面是将l0c 拷贝到gm上
                         SET_FLAG(M, FIX, n_pingpong_flag);
                         WAIT_FLAG(M, FIX, n_pingpong_flag);
-	                    l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, HighPrecisionMode, mmOutputType>(
+	                    l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, HighPrecisionMode, mmOutputType>(    // ----wxh 将计算的s_gm_tensor 拷贝出去
 	                        s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx) % 2 * TMP_SIZEW],
 	                        l0c_buf_tensor[n_pingpong_flag * L0AB_HALF_BUF_SIZE],
 	                        qk_m,        // MSize
@@ -717,7 +769,7 @@ public:
                         SET_FLAG(FIX, M, n_pingpong_flag);  
                         FftsCrossCoreSync<PIPE_FIX, 2>(QK_READY);
                     }
-                    if (n_idx >= after) {
+                    if ( n_idx >= after) {
                         uint32_t now_id = n_idx - after;
                         n_pingpong_flag = now_id % 2;
                         uint64_t gm_p_offset = ((uint64_t)block_idx * TMP_SIZE + n_pingpong_flag * TMP_SIZEW) * 2 / sizeof(mm2InputType);
@@ -728,11 +780,11 @@ public:
                             qk_n = pp_n_scalar;
                         }
                         qk_round_n = (qk_n + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
-                        for (uint32_t k_idx = 0; k_idx < loopV; k_idx++) {
-                            uint32_t qk_k = (k_idx == (loopV - 1)) ? embdv - k_idx * pv_split_k : pv_split_k;
+                        for (uint32_t k_idx = 0; k_idx < loopV; k_idx++) {        //  v在外面， 计算p v              v的搬运切割  当前是2
+                            uint32_t qk_k = (k_idx == (loopV - 1)) ? embdv - k_idx * pv_split_k : pv_split_k; 
                             uint32_t qk_round_k = (qk_k + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                             uint64_t l1voffset = n_align * embed_round * n_pingpong_flag;
-                            l1voffset += n_align * pv_split_k * k_idx;
+                            l1voffset += n_align * pv_split_k * k_idx;          // ---这个应该是v
                             WAIT_FLAG(M, MTE1, EVENT_ID2);
                             for (uint32_t l0b_load_idx = 0; l0b_load_idx < qk_round_n / BLOCK_SIZE; ++l0b_load_idx) {
                                 l1_to_l0_b<ArchType::ASCEND_V220, mm2InputType, true, DataFormat::VECTOR, DataFormat::VECTOR>(
@@ -752,9 +804,9 @@ public:
                                 WaitFlagDev(SOFTMAX_READY);
                                 WAIT_FLAG(MTE1, MTE2, EVENT_ID6);
                                 if (qk_m == 1) {
-                                    gm_to_l1<ArchType::ASCEND_V220, mm2InputType, DataFormat::ND, DataFormat::ND>(
+                                    gm_to_l1<ArchType::ASCEND_V220, mm2InputType, DataFormat::ND, DataFormat::ND>(  // 将p 通过gm将结果拷贝到l1
                                         l1p_buf_addr_tensor,
-                                        p_gm_tensor[gm_p_offset],
+                                        p_gm_tensor[gm_p_offset],            // 拷贝p
                                         1,
                                         0,
                                         0,
@@ -763,7 +815,7 @@ public:
                                         0
                                     );
                                 } else {
-                                    gm_to_l1<ArchType::ASCEND_V220, mm2InputType, DataFormat::ND, DataFormat::NZ>(
+                                    gm_to_l1<ArchType::ASCEND_V220, mm2InputType, DataFormat::ND, DataFormat::NZ>(      // 将p 通过gm将结果拷贝到l1
                                         l1p_buf_addr_tensor,
                                         p_gm_tensor[gm_p_offset],
                                         qk_m,        // nValue
@@ -780,7 +832,7 @@ public:
 				                uint32_t round_row = RoundUp<uint32_t>(RoundUp<uint64_t>(qk_round_n, BlockSize<mm2InputType>()), 32 / sizeof(mm2InputType));
                                 if (qk_m == 1) {
                                     l1_to_l0_a<ArchType::ASCEND_V220, mm2InputType, false, DataFormat::VECTOR, DataFormat::VECTOR>(
-                                        l0a_buf_tensor,
+                                        l0a_buf_tensor,                       // --- wxh 拷贝p
                                         l1p_buf_addr_tensor,
                                         0,
                                         NumMatrixsRoundUp<mm2InputType>(round_row),  // repeat
@@ -808,8 +860,8 @@ public:
                             WAIT_FLAG(FIX, M, EVENT_ID1);
                             mmad<ArchType::ASCEND_V220, mm2InputType, mm2InputType, mmOutputType, false>(
                                 l0c_buf_tensor,
-                                l0a_buf_tensor,
-                                l0b_buf_tensor,
+                                l0a_buf_tensor,                  // --- wxh 拷贝p
+                                l0b_buf_tensor,                  // --- wxh 拷贝o          
                                 qk_m,  // m
                                 qk_k,   // n
                                 qk_n,  // k
@@ -822,7 +874,7 @@ public:
                             SET_FLAG(M, FIX, EVENT_ID0);
                             WAIT_FLAG(M, FIX, EVENT_ID0);
                             l0c_to_gm<ArchType::ASCEND_V220, DataFormat::ND, mmOutputType, mmOutputType>(
-                                o_tmp_gm_tensor[gm_upo_offset + k_idx * TMP_SIZEW],
+                                o_tmp_gm_tensor[gm_upo_offset + k_idx * TMP_SIZEW],   // ---计算o的结果
                                 l0c_buf_tensor,
                                 qk_m,        // MSize
                                 qk_round_k,     // NSize
@@ -841,7 +893,7 @@ public:
             }
         }
     }
-    __aicore__ __attribute__((always_inline)) inline ~PagedMLAMultiTokenPredictionAic()
+    __aicore__ __attribute__((always_inline)) inline ~PagedMLAMultiTokenPredictionAic()        // ----wxh析构函数
     {
         WAIT_FLAG(MTE1, MTE2, EVENT_ID0);
         WAIT_FLAG(MTE1, MTE2, EVENT_ID1);
@@ -861,7 +913,9 @@ public:
     }
 private:
     __gm__ uint8_t *__restrict__ q_gm{nullptr};
+    __gm__ uint8_t *__restrict__ q_rope_gm{nullptr};
     __gm__ uint8_t *__restrict__ kv_gm{nullptr}; 
+    __gm__ uint8_t *__restrict__ kv_rope_gm{nullptr}; 
     __gm__ uint8_t *__restrict__ block_tables_gm{nullptr};
     __gm__ uint8_t *__restrict__ s_gm{nullptr};
     __gm__ uint8_t *__restrict__ p_gm{nullptr};
@@ -873,10 +927,12 @@ private:
 
     AscendC::LocalTensor<mm1InputType> l1q_buf_addr_tensor;
     AscendC::LocalTensor<mm1InputType> l1k_buf_addr_tensor;
-    AscendC::LocalTensor<mm2InputType> l1p_buf_addr_tensor;
+    AscendC::LocalTensor<mm2InputType> l1p_buf_addr_tensor;        // ---wxh 计算p的结果
 
     AscendC::GlobalTensor<mm1InputType> q_gm_tensor;
-    AscendC::GlobalTensor<mm1InputType> kv_gm_tensor;
+    AscendC::GlobalTensor<mm1InputType> q_rope_gm_tensor;
+    AscendC::GlobalTensor<mm1InputType> kv_gm_tensor;            // ---wxh 存kv的
+    AscendC::GlobalTensor<mm1InputType> kv_rope_gm_tensor;       // ---wxh 添加kv rope的
     AscendC::GlobalTensor<HighPrecisionMode> s_gm_tensor;
     AscendC::GlobalTensor<mm2InputType> p_gm_tensor;
     AscendC::GlobalTensor<mmOutputType> o_tmp_gm_tensor;
@@ -924,7 +980,7 @@ constexpr int32_t BLOCK_QK_V = 128;
 constexpr int32_t ROWMAX_TEMP_BUF_OFFSET = 1024;
 
 template<typename IN_DATA_TYPE, CalcMode CUBE_MODE, typename QKV_DT = IN_DATA_TYPE, typename O_DT = IN_DATA_TYPE, FuncType WorkMode = FuncType::MULTI_TOKEN_PREDICTION>
-class PagedMLAMultiTokenPredictionHpAiv {
+class PagedMLAMultiTokenPredictionHpAiv {                       //  -----这个是hp的，貌似不需要修改   
 public:
     __aicore__ __attribute__((always_inline)) inline PagedMLAMultiTokenPredictionHpAiv(
         __gm__ uint8_t *__restrict__ sync, __gm__ uint8_t *__restrict__ mask_gm,
@@ -1188,7 +1244,7 @@ public:
                         if (sub_m > 0 && mask_type != 0) {
                             WAIT_FLAG(V, MTE2, EVENT_ID1);
                             if (qN_blk_size_actual == 1) {
-                                gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(
+                                gm_to_ub_align<ArchType::ASCEND_V220, IN_DATA_TYPE>(           // ----搬运掩码
                                     mask16_ubuf_tensor,
                                     mask_gm_tensor[mask_offset + (uint64_t)sub_block_idx * qk_m / 2 * max_seqlen],
                                     0,                       // sid
@@ -1241,10 +1297,12 @@ public:
                             }
                         }
                         WaitFlagDev(QK_READY);
+
+                        // ---这一坨感觉是在基于flash attention 算 softmax
                         if (sub_m > 0) {
                             WAIT_FLAG(MTE3, MTE2, EVENT_ID0);
                             // input QK
-                            gm_to_ub<ArchType::ASCEND_V220, float>(
+                            gm_to_ub<ArchType::ASCEND_V220, float>(                    // 将s_gm_tensor 拷贝到ub上
                                 ls_ubuf_tensor,
                                 s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx / s_block_stack) % 2 * TMP_SIZE / 4 +
                                     (uint64_t)sub_block_idx * row_offset * qk_round_n],
@@ -1256,7 +1314,7 @@ public:
                             );
                             SET_FLAG(MTE2, V, EVENT_ID0);
                             WAIT_FLAG(MTE2, V, EVENT_ID0);
-                            // *** ls = tor * ls
+                            // *** ls = tor * ls           //wxh ---为啥要成tor   / 除以根号d
                             muls_v<ArchType::ASCEND_V220, float>(ls_ubuf_tensor, ls_ubuf_tensor, tor,
                                 (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
                                 1,                                                                // dstBlockStride
@@ -1287,7 +1345,7 @@ public:
                             // *** lm = rowmax(ls)
                             if (qk_n <= FLOAT_VECTOR_SIZE) {
                                 __set_mask(qk_n % FLOAT_VECTOR_SIZE);
-                                cgmax_v<ArchType::ASCEND_V220, float>(
+                                cgmax_v<ArchType::ASCEND_V220, float>(             // --wxh 取这一行的最大值
                                     tv_ubuf_tensor,
                                     ls_ubuf_tensor,
                                     sub_m,
@@ -1503,7 +1561,7 @@ public:
                             PIPE_BARRIER(V);
                             // *** lp = castfp32to16(ls)
                             if (IS_BF16) {
-                                convr_v<ArchType::ASCEND_V220, float, IN_DATA_TYPE>(
+                                convr_v<ArchType::ASCEND_V220, float, IN_DATA_TYPE>(            // ---强制转化
                                     lp_ubuf_tensor.ReinterpretCast<IN_DATA_TYPE>(),
                                     ls32_ubuf_tensor,
                                     (sub_m * qk_round_n + FLOAT_VECTOR_SIZE - 1) / FLOAT_VECTOR_SIZE, // repeat
@@ -1528,7 +1586,7 @@ public:
                             
                             SET_FLAG(V, MTE3, EVENT_ID0);
                             WAIT_FLAG(V, MTE3, EVENT_ID0);
-                            ub_to_gm<ArchType::ASCEND_V220, QKV_DT>(
+                            ub_to_gm<ArchType::ASCEND_V220, QKV_DT>(                     // ----wxh 算完的p结果拷贝出去
                                 p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx / s_block_stack) % 2 * TMP_SIZE / 4 +
                                             (uint64_t)sub_block_idx * row_offset * qk_round_n],
                                 lp_ubuf_tensor.ReinterpretCast<QKV_DT>(),
@@ -1724,7 +1782,7 @@ public:
                                     SET_FLAG(MTE2, V, EVENT_ID0);
                                     WAIT_FLAG(MTE2, V, EVENT_ID0);
                                     // *** ls = tor * ls
-                                    muls_v<ArchType::ASCEND_V220, float>(
+                                    muls_v<ArchType::ASCEND_V220, float>(                           //  ---wxh 将s的结果乘以根号d
                                         ls_ubuf_tensor,
                                         ls_ubuf_tensor,
                                         tor,
@@ -2008,7 +2066,7 @@ public:
                                     
                                     SET_FLAG(V, MTE3, EVENT_ID0);
                                     WAIT_FLAG(V, MTE3, EVENT_ID0);
-                                    ub_to_gm<ArchType::ASCEND_V220, QKV_DT>(
+                                    ub_to_gm<ArchType::ASCEND_V220, QKV_DT>(       // 将计算的结果拷贝到p
                                         p_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx / s_block_stack) % 2 * TMP_SIZE / 4 +
                                                 ((uint64_t)sub_block_idx * row_offset + split_idx * m_slice) * qk_round_n],
                                         lp_ubuf_tensor.ReinterpretCast<QKV_DT>(),
@@ -2133,7 +2191,7 @@ public:
                         if (sub_m > 0) {
                             if (n_idx == after) {
                                 WAIT_FLAG(MTE3, MTE2, EVENT_ID2);
-                                gm_to_ub<ArchType::ASCEND_V220, float>(
+                                gm_to_ub<ArchType::ASCEND_V220, float>(             // 将o 拷贝到ub上
                                     go_ubuf_tensor,
                                     o_tmp_gm_tensor[ori_offset],
                                     0,                                   // sid
@@ -2438,7 +2496,7 @@ private:
 };
 
 template <typename mm1InputType, typename mm2InputType, typename mmOutputType, CalcMode CUBE_MODE, FuncType WorkMode>
-class PagedMLAMultiTokenPredictionAiv {
+class PagedMLAMultiTokenPredictionAiv {                   // ----wxh  向量计算
 public:
     __aicore__ __attribute__((always_inline)) inline PagedMLAMultiTokenPredictionAiv(
             __gm__ uint8_t *__restrict__ sync, __gm__ uint8_t *__restrict__ mask_gm,
@@ -2453,7 +2511,7 @@ public:
         o_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(o_gm));
         s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ half *>(s_gm));
         p_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm2InputType *>(p_gm));
-        o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mmOutputType *>(o_tmp_gm));
+        o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mmOutputType *>(o_tmp_gm));      // ---最终o的结果
         upo_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mmOutputType *>(upo_tmp_gm));
 
 	    this->sub_block_idx = GetSubBlockidx();
@@ -2632,7 +2690,7 @@ public:
     }
 
     template <typename T>
-    __aicore__ inline void MulRepeatM(
+    __aicore__ inline void MulRepeatM(                   // 定义了各种乘的策略
         const AscendC::LocalTensor<T> &dst,
         const AscendC::LocalTensor<T> &src0,
         const AscendC::LocalTensor<T> &src1,
@@ -2911,7 +2969,7 @@ public:
                                 WAIT_FLAG(MTE3, MTE2, 1 - pingpong_flag);
                             }
                             // input QK
-                            gm_to_ub<ArchType::ASCEND_V220, half>(
+                            gm_to_ub<ArchType::ASCEND_V220, half>(               //  ---wxh 将s的结果从gm 搬运到ub 
                                 ls_ubuf_tensor[offset],
                                 s_gm_tensor[(uint64_t)block_idx * TMP_SIZE + (n_idx / s_block_stack) % 2 * TMP_SIZE / 4 +
                                             (uint64_t)sub_block_idx * row_offset * qk_round_n],
@@ -2924,7 +2982,7 @@ public:
                             SET_FLAG(MTE2, V, EVENT_ID0);
                             WAIT_FLAG(MTE2, V, EVENT_ID0);
                             // *** ls = tor * ls
-                            muls_v<ArchType::ASCEND_V220, half>(
+                            muls_v<ArchType::ASCEND_V220, half>(                                    //  ---wxh 将s的结果乘以根号d
                                 ls_ubuf_tensor[offset], ls_ubuf_tensor[offset], tor,
                                 (sub_m * qk_round_n + VECTOR_SIZE - 1) / VECTOR_SIZE, // repeat
                                 1,                                                    // dstBlockStride
@@ -3240,7 +3298,7 @@ public:
                             }
                             SET_FLAG(MTE2, V, EVENT_ID0);
                             WAIT_FLAG(MTE2, V, EVENT_ID0);
-                            // *** ls = tor * ls
+                            // *** ls = tor * ls                               // ----wxh 处于根号d
                             muls_v<ArchType::ASCEND_V220, half>(
                                 ls_ubuf_tensor, ls_ubuf_tensor, tor,
                                 (sub_m * qk_round_n + VECTOR_SIZE - 1) / VECTOR_SIZE, // repeat
@@ -3325,7 +3383,7 @@ public:
                                 );
                                 PIPE_BARRIER(V);
                             } else {
-                                // *** hm = vmax(lm, gm)
+                                // *** hm = vmax(lm, gm)                     // ---wxh 为啥会有个max
                                 max_v<ArchType::ASCEND_V220, half>(hm_ubuf_tensor, lm_ubuf_tensor, gm_ubuf_tensor,
                                                                 1, // repeat
                                                                 1, // dstBlockStride
@@ -3576,7 +3634,7 @@ public:
                             }
                             if (n_idx == after) {
                                 WAIT_FLAG(MTE3, MTE2, EVENT_ID2);
-                                gm_to_ub<ArchType::ASCEND_V220, mmOutputType>(
+                                gm_to_ub<ArchType::ASCEND_V220, mmOutputType>(             //  --- 将o的结果拷贝到ub上
                                     go_ubuf_tensor.template ReinterpretCast<mmOutputType>(),
                                     o_tmp_gm_tensor[ori_offset],
                                     0,                                              // sid
@@ -3589,7 +3647,7 @@ public:
                                 WAIT_FLAG(MTE2, V, EVENT_ID3);
                             } else {
                                 WAIT_FLAG(V, MTE2, EVENT_ID4);
-                                gm_to_ub<ArchType::ASCEND_V220, mmOutputType>(
+                                gm_to_ub<ArchType::ASCEND_V220, mmOutputType>(                 //  --- 将o的结果拷贝到ub上
                                     lo_ubuf_tensor.template ReinterpretCast<mmOutputType>(),
                                     o_tmp_gm_tensor[ori_offset],
                                     0,                                              // sid
@@ -3915,10 +3973,12 @@ private:
 
 extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_prediction_mix(
     __gm__ uint8_t *__restrict__ sync,
-    __gm__ uint8_t *__restrict__ q_gm,
+    __gm__ uint8_t *__restrict__ q_gm,    //  576   = 512+64  输入拆开
     __gm__ uint8_t *__restrict__ ctkv_gm,
     __gm__ uint8_t *__restrict__ block_tables_gm,
     __gm__ uint8_t *__restrict__ mask_gm,
+    __gm__ uint8_t *__restrict__ q_rope_gm,
+     __gm__ uint8_t *__restrict__ ctkv_rope_gm,
     __gm__ uint8_t *__restrict__ o_gm,
     __gm__ uint8_t *__restrict__ s_gm,
     __gm__ uint8_t *__restrict__ p_gm,
@@ -3937,7 +3997,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     if (TILING_KEY_IS(0)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_576, half, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_576, half, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3947,7 +4007,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(1)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_256, half, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_256, half, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3957,7 +4017,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(12)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_576, float, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_576, float, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3967,7 +4027,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(13)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_256, float, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_256, float, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3977,7 +4037,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(16)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_576, half, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_576, half, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3987,7 +4047,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(17)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_256, half, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_256, half, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3995,9 +4055,9 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aiv.Run();
 #endif
-    } else if (TILING_KEY_IS(28)) {
+    } else if (TILING_KEY_IS(28)) {          // ----使用这个例子
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_576, float, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_576, float, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -4007,7 +4067,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(29)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_256, float, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_256, float, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
