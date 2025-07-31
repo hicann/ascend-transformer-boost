@@ -214,16 +214,6 @@ public:
         kernelKey = (kernelKey << INPUT_BIT_COUNT) + (inTensorCount - DIM_2);
         MKI_LOG(INFO) << "kernelKey: " << kernelKey;
         MKI_LOG(INFO) << ">>> PpMatmulType:" << static_cast<uint32_t>(opParam.matmulType);
-        if (opParam.matmulType == MmType::MATMUL_ACCUM_ATOMIC) {
-            return GetKernelByName("PpMatmulAccumAtomicKernel");
-        }
-        if (opParam.matmulType == MmType::MATMUL_WITH_BIAS) {
-            return GetKernelByName("PpMatmulWithBiasKernel");
-        }
-        if (opParam.matmulType == MmType::MATMUL_EIN_SUM) {
-            MKI_CHECK(!opParam.transposeA, "Unsupported transposed A_matrix", return nullptr);
-            return GetKernelByName("PpMatmulEinSumKernel");
-        }
         // 先判断w8a8compress
         if (isSparseDequant) {
             switch (kernelKey) {
@@ -250,12 +240,7 @@ public:
                 return GetKernelByName("PpMatMulI8Bf16Kernel");
             case PP_MATMUL_I8_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
             case PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8WeightNzKernel");
-            case PP_MATMUL_F16_KERNEL_KEY: return GetKernelByName("PpMatMulF16Kernel");
             case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
-            case PP_MATMUL_BF16_KERNEL_KEY: return GetKernelByName("PpMatMulBf16Kernel");
-            case PP_MATMUL_F16_OPT_KERNEL_KEY: return GetKernelByName("PpMatMulF16OptKernel");
-            case PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY: return GetKernelByName("PpMatMulBf16NdNzNdKernel");
-            case PP_MATMUL_NZ_F16_KERNEL_KEY: return GetKernelByName("PpMatMulNzF16Kernel");
             case PP_MATMUL_I8_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzKernel");
             case PP_MATMUL_FP_ND_ND_KERNEL_KEY: return GetKernelByName("PpMatmulF16NdM300Kernel");
             case PP_MATMUL_I8_ND_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
