@@ -96,11 +96,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 
@@ -117,11 +117,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 
@@ -138,11 +138,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 
@@ -159,11 +159,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 
@@ -180,11 +180,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.float16)
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 
@@ -201,11 +201,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.float16)
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 
@@ -222,11 +222,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.float16)
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 
@@ -243,11 +243,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.float16)
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 
@@ -264,11 +264,11 @@ class TestPpMatmulAccum(op_test.OpTest):
                 "matmulType": MATMUL_ACCUM_ATOMIC,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), ta, tb, torch.float16)
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_C.float(), torch.Tensor()],
             [2],
         )
 

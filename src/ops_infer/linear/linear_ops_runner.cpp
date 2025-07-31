@@ -149,7 +149,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmul910B()
     KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&xTensor, &weightTensor};
+    matmulNode.inTensors = {&xTensor, &weightTensor, &nullTensor_, &nullTensor_ };
     matmulNode.outTensors = {&outTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (xNeedMergeAxis_) {
@@ -203,7 +203,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWeightNdNot910B()
     }
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor};
+    matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor, &nullTensor_, &nullTensor_ };
     matmulNode.outTensors = {&matmulOutTensor};
 
     transdataOutNode.opDesc = {0, "TransdataOperation", transdataNzToNdParam_};
@@ -241,7 +241,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWeightNzNot910B()
     }
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&transdataAOutTensor, &weightTensor};
+    matmulNode.inTensors = {&transdataAOutTensor, &weightTensor, &nullTensor_, &nullTensor_ };
     matmulNode.outTensors = {&matmulOutTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (isWeightNz_) {
@@ -274,7 +274,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulElewiseAdd910B()
     KernelGraphNode &addNode = kernelGraph_.nodes.at(1);
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&xTensor, &weightTensor};
+    matmulNode.inTensors = {&xTensor, &weightTensor, &nullTensor_, &nullTensor_};
     matmulNode.outTensors = {&matmulOutTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (xNeedMergeAxis_) {
@@ -338,7 +338,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulElewiseAddWeightNdNot910B()
     }
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor};
+    matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor, &nullTensor_, &nullTensor_};
     matmulNode.outTensors = {&matmulOutTensor};
 
     transdataOutNode.opDesc = {0, "TransdataOperation", transdataNzToNdParam_};
@@ -387,7 +387,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulElewiseAddWeightNzNot910B()
     }
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&transdataAOutTensor, &weightTensor};
+    matmulNode.inTensors = {&transdataAOutTensor, &weightTensor, &nullTensor_, &nullTensor_ };
     matmulNode.outTensors = {&matmulOutTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (isWeightNz_) {
@@ -425,7 +425,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWithBias()
     matmulParam_.withBias = true;
     matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_WITH_BIAS;
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&xTensor, &weightTensor, &biasTensor};
+    matmulNode.inTensors = {&xTensor, &weightTensor, &biasTensor, &nullTensor_};
     matmulNode.outTensors = {&outTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (xNeedMergeAxis_) {
@@ -474,7 +474,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
 
         matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_ACCUM_ATOMIC;
         matmulNode.opDesc = {1, "MatMulOperation", matmulParam_};
-        matmulNode.inTensors = {&transposedXtensor, &weightTensor, &accumTensor};
+        matmulNode.inTensors = {&transposedXtensor, &weightTensor, &accumTensor, &nullTensor_};
         matmulNode.outTensors = {&outTensor};
         matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
         if (xNeedMergeAxis_) {
@@ -489,7 +489,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulAccum()
 
         matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_ACCUM_ATOMIC;
         matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-        matmulNode.inTensors = {&xTensor, &weightTensor, &accumTensor};
+        matmulNode.inTensors = {&xTensor, &weightTensor, &accumTensor, &nullTensor_};
         matmulNode.outTensors = {&outTensor};
         matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
         if (xNeedMergeAxis_) {
@@ -515,7 +515,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulEin()
  
     matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_EIN_SUM;
     matmulNode.opDesc = { 0, "MatMulOperation", matmulParam_ };
-    matmulNode.inTensors = { &xTensor, &weightTensor };
+    matmulNode.inTensors = { &xTensor, &weightTensor, &nullTensor_, &nullTensor_ };
     matmulNode.outTensors = { &outTensor };
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (isWeightNz_) {
@@ -545,7 +545,7 @@ Status LinearOpsRunner::SetupKernelGraphMatmulEinElewiseAdd()
  
     matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_EIN_SUM;
     matmulNode.opDesc = { 0, "MatMulOperation", matmulParam_ };
-    matmulNode.inTensors = { &xTensor, &weightTensor };
+    matmulNode.inTensors = { &xTensor, &weightTensor, &nullTensor_, &nullTensor_ };
     matmulNode.outTensors = { &matmuloutTensor };
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (isWeightNz_) {
