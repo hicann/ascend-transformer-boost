@@ -1575,8 +1575,14 @@ static atb::Status AsStridedOperationCreate(const nlohmann::json &paramJson, atb
 static atb::Status MultinomialOperationCreate(const nlohmann::json &paramJson, atb::Operation **op)
 {
     atb::infer::MultinomialParam param;
-    param.numSamples = paramJson["numSamples"].get<uint32_t>();
-    param.randSeed = paramJson["randSeed"].get<uint32_t>();
+    if (paramJson.contains("numSamples")) {
+        param.numSamples = paramJson["numSamples"].get<uint32_t>();
+        ATB_LOG(INFO) << "param.numSamples:" << param.numSamples;
+    }
+    if (paramJson.contains("randSeed")) {
+        param.randSeed = paramJson["randSeed"].get<uint32_t>();
+        ATB_LOG(INFO) << "param.randSeed:" << param.randSeed;
+    }
     if (paramJson.contains("rsv")) {
         for (size_t i = 0; i < paramJson["rsv"].size(); i++) {
             param.rsv[i] = paramJson["rsv"].at(i).get<int8_t>();
