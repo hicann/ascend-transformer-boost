@@ -106,7 +106,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
-                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                torch.Tensor()
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
         )
@@ -129,7 +129,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
-                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                torch.Tensor()
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
         )
@@ -152,7 +152,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
-                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                torch.Tensor()
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
         )
@@ -175,7 +175,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
-                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                torch.Tensor()
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
         )
@@ -198,9 +198,9 @@ class TestPpMatmulI8(op_test.OpTest):
                 [
                     torch.tensor(self.bat_A, dtype=torch.int8),
                     torch.tensor(self.bat_B, dtype=torch.int8),
-                    torch.tensor(self.bat_bias, dtype=torch.int32),
+                    torch.Tensor(),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
-                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                    torch.Tensor()
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             )
@@ -223,9 +223,9 @@ class TestPpMatmulI8(op_test.OpTest):
                 [
                     torch.tensor(self.bat_A, dtype=torch.int8),
                     torch.tensor(self.bat_B, dtype=torch.int8),
-                    torch.tensor(self.bat_bias, dtype=torch.int32),
+                    torch.Tensor(),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
-                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                    torch.Tensor()
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             )
@@ -250,7 +250,7 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_B, dtype=torch.int8),
                     torch.tensor(self.bat_bias, dtype=torch.int32),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
-                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                    torch.Tensor()
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             )
@@ -274,7 +274,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
-                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                torch.Tensor()
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
         )
@@ -298,7 +298,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
-                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                torch.Tensor()
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
         )
@@ -328,7 +328,7 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_B, dtype=torch.int8),
                     torch.tensor(self.bat_bias, dtype=torch.int32),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
-                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                    torch.Tensor()
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             )
@@ -358,7 +358,7 @@ class TestPpMatmulI8(op_test.OpTest):
                     torch.tensor(self.bat_B, dtype=torch.int8),
                     torch.tensor(self.bat_bias, dtype=torch.int32),
                     torch.tensor(self.bat_scale, dtype=torch.int64),
-                    torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                    torch.Tensor()
                 ],
                 [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
             )
@@ -387,7 +387,7 @@ class TestPpMatmulI8(op_test.OpTest):
                 torch.tensor(self.bat_B, dtype=torch.int8),
                 torch.tensor(self.bat_bias, dtype=torch.int32),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
-                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                torch.Tensor()
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
         )
@@ -416,9 +416,9 @@ class TestPpMatmulI8(op_test.OpTest):
             [
                 torch.tensor(self.bat_A, dtype=torch.int8),
                 torch.tensor(self.bat_B, dtype=torch.int8),
-                torch.tensor(self.bat_bias, dtype=torch.int32),
+                torch.Tensor(),
                 torch.tensor(self.bat_scale, dtype=torch.int64),
-                torch.tensor(self.bat_pertoken_descale, dtype=torch.float)
+                torch.Tensor()
             ],
             [torch.zeros(self.bat_C.shape, dtype=torch.float16)],
         )
