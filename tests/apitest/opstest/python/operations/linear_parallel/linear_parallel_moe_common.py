@@ -14,6 +14,7 @@ import torch
 from collections import namedtuple
 import collections
 import numpy
+import numpy as np
 
 
 class CommType(Enum):
@@ -194,7 +195,7 @@ class QuantInfo:
 
 class MoeTestDate:
     def __init__(self, comm_type, rank_size, batch_size, m, k, n, trans_b, expert_per_rank,
-                 coc_dtype_desc, quant_info, EP, TP, maxOutputSize=-1):
+                 coc_dtype_desc, quant_info, EP, TP, maxOutputSize=-1, mode=0):
         activation_dtype, weight_dtype, l0c_dtype, output_dtype, l0c_dtype_low = supported_coc_data_type_dict[coc_dtype_desc]
         self.matrix_a_list = []
         self.matrix_b_list = []
@@ -219,6 +220,7 @@ class MoeTestDate:
         self.m = m
         self.k = k
         self.n = n
+        self.mode = mode
 
         self.input_splits, self.output_splits, self.num_local_tokens_per_expert = self.get_moe_input_output_splits(
             expert_per_rank, EP)
@@ -242,10 +244,18 @@ class MoeTestDate:
             self.matrix_b_list.append(self.matrix_b)
 
     def get_num_local_tokens_per_expert(self):
-        numpy.random.seed(0)
-        indices = numpy.random.randint(self.expert_num, size=self.sequence_length)
-        item_dict = collections.Counter(indices)
-        num_local_tokens_per_expert = [item_dict.get(i, 0) for i in range(self.expert_num)]
+        if self.mode == 1:
+            numpy.random.seed(0)
+            indices = numpy.random.randint(self.expert_num, size=self.sequence_length)
+            item_dict = collections.Counter(indices)
+            num_local_tokens_per_expert = [item_dict.get(i, 0) for i in range(self.expert_num)]
+        else:
+            p = np.zeros(self.expert_num)
+            p[0] = 0.9
+            p[1:] = 0.1 / (self.expert_num - 1)
+            indices = numpy.random.choice(self.expert_num, size = self.sequence_length, p = p)
+            item_dict = collections.Counter(indices)
+            num_local_tokens_per_expert = [item_dict.get(i, 0) for i in range(self.expert_num)]
         return num_local_tokens_per_expert, indices
 
     def get_moe_input_output_splits(self, expert_per_rank, EP):
@@ -419,26 +429,11 @@ class MoeTestDate:
         return pValue
 
     def generate_matrix_c_for_moe_309(self, coc_dtype_desc, rank_size, TP, EP, l0c_dtype, output_dtype, quant_info):
-        if l0c_dtype == torch.int32:
-            data_type_len = 2
-        else:
-            data_type_len = 2
-        pValue = int(self.get_pvalue(data_type_len))
-        print("pvalue!!!!!!!!!!!!!!", pValue)
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
             for i in range(rank_size):
                 ep_idx = i // TP
-                matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
-                loop = math.ceil(self.k / (pValue * 256))
-                for j in range(loop):
-                    st = j * pValue * 256
-                    ed = min(self.k, (j + 1) * pValue * 256)
-                    matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
-                    matrix_c_j_low = matrix_c_j.to(output_dtype)
-                    matrix_c_low = matrix_c_low + matrix_c_j_low
                 matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(l0c_dtype), self.matrix_b.to(l0c_dtype))
                 self.matrix_c_list.append(matrix_c)
-                self.matrix_c_low_list.append(matrix_c_low)
 
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
             assert quant_info.dequant_granularity in [QuantGranularity.PER_CHANNEL, QuantGranularity.PER_TENSOR,
@@ -465,33 +460,16 @@ class MoeTestDate:
                         quant_scale_alltoall[ep_idx] = quant_scale_alltoall[ep_idx][:self.maxOutputSize, :]
                     self.quant_scale_list.append(quant_scale)
 
-
             for i in range(rank_size):
                 ep_idx = i // TP
-                matrix_c_low = torch.zeros((1,self.matrix_a_i_list[ep_idx].size(1),self.n)).to(output_dtype)
                 broadcast_offset, broadcast_scale = quant_info.get_moe_dequant_tensor(self.matrix_a_i_list[ep_idx].size(1), self.input_info[2], TP, l0c_dtype)
-                loop = math.ceil(self.k / (pValue * 256))
-                for j in range(loop):
-                    st = j * pValue * 256
-                    ed = min(self.k, (j + 1) * pValue * 256)
-                    matrix_c_j = torch.matmul(self.matrix_a_i_list[ep_idx][:,:,st:ed].to(torch.float32), self.matrix_b[:,st:ed,:].to(torch.float32))
-                    matrix_c_j = (matrix_c_j * broadcast_scale)
-                    matrix_c_j_low = matrix_c_j.to(output_dtype)
-                    matrix_c_low = matrix_c_low + matrix_c_j_low
-                matrix_c_low = matrix_c_low.to(torch.float32)
                 matrix_c = torch.matmul(self.matrix_a_i_list[ep_idx].to(torch.float32), self.matrix_b.to(torch.float32)).to(l0c_dtype)
                 
                 matrix_c = ((matrix_c + broadcast_offset).to(torch.float32) * broadcast_scale)
-                # matrix_c_low = ((matrix_c_low + broadcast_offset).to(torch.float32) * broadcast_scale)
                 if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
-                    # print("!"*30, quant_scale_alltoall[ep_idx].shape)
                     broadcast_quant_scale = quant_info.broadcast_quant_args(quant_scale_alltoall[ep_idx], [self.matrix_a_i_list[ep_idx].size(1), self.input_info[2]])
                     matrix_c = (matrix_c * broadcast_quant_scale)
-                    matrix_c_low = (matrix_c_low * broadcast_quant_scale)
-                # self.matrix_c = matrix_c
                 self.matrix_c_list.append(matrix_c)
-                self.matrix_c_low_list.append(matrix_c_low.to(output_dtype))
-                # self.matrix_c_low = matrix_c_low.to(output_dtype)
 
     def cal_trunc(self, EP):
         self.global_tokens_per_expert_matrix_temp = self.global_tokens_per_expert_matrix.clone()
@@ -506,7 +484,6 @@ class MoeTestDate:
                         sum_tokens = self.maxOutputSize
                     else:
                         sum_tokens += self.global_tokens_per_expert_matrix_temp[j * self.expert_num + expert_id]
-        # print("self.global_tokens_per_expert_matrix_temp", self.global_tokens_per_expert_matrix_temp)
 
     def generate_matrix_c_for_moe_310(self, coc_dtype_desc, rank_size, TP, EP, l0c_dtype, l0c_dtype_low,
                                       quant_info):        
@@ -514,25 +491,18 @@ class MoeTestDate:
             self.cal_trunc(EP)
         if coc_dtype_desc in [CoCDataTypeDesc.FP16FP16_FP32_FP16, CoCDataTypeDesc.BF16BF16_FP32_BF16]:
             matrix_c_out = torch.matmul(self.matrix_a.to(l0c_dtype), self.matrix_b.to(l0c_dtype))
-            # if coc_dtype_desc == CoCDataTypeDesc.BF16BF16_FP32_BF16:
-            #     matrix_c_out_low = torch.matmul(self.matrix_a, self.matrix_b)
-            # else:
-            #     matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
-            tmp_offset = 0
             for rank in range(rank_size):
+                matrix_c = matrix_c_out.clone()
+                tmp_offset = 0
                 for ep_idx in range(EP):
-                    # tmp_offset = 0
                     for local_expert_id in range(self.expert_per_rank):
                         expert_id = local_expert_id + ep_idx * self.expert_per_rank
                         if self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id] < self.num_local_tokens_per_expert[rank][expert_id]:
                             l = tmp_offset + self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id]
                             r = tmp_offset + self.num_local_tokens_per_expert[rank][expert_id]
-                            matrix_c_out[:,l:r,:] = 0
-                            # matrix_c_out_low[:,l:r,:] = 0
+                            matrix_c[:,l:r,:] = 0
                         tmp_offset += self.num_local_tokens_per_expert[rank][expert_id]
-                self.matrix_c_list.append(matrix_c_out)
-                # self.matrix_c_low_list.append(matrix_c_out_low)
-            # print("self.matrix_c:", self.matrix_c)
+                self.matrix_c_list.append(matrix_c)
             
         elif coc_dtype_desc in [CoCDataTypeDesc.INT8INT8_INT32_FP16, CoCDataTypeDesc.INT8INT8_INT32_BF16]:
             assert quant_info.dequant_granularity in [QuantGranularity.PER_CHANNEL, QuantGranularity.PER_TENSOR,
@@ -561,20 +531,17 @@ class MoeTestDate:
 
             if quant_info.dequant_granularity is QuantGranularity.PER_TOKEN:
                 matrix_c_out = (matrix_c_out * broadcast_quant_scale).to(torch.float32)
-            # matrix_c_out_low = matrix_c_out.to(l0c_dtype_low)
 
-            tmp_offset = 0
             for rank in range(rank_size):
+                matrix_c = matrix_c_out.clone()
+                tmp_offset = 0
                 for ep_idx in range(EP):
-                    # tmp_offset = 0
                     for local_expert_id in range(self.expert_per_rank):
                         expert_id = local_expert_id + ep_idx * self.expert_per_rank
                         if self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id] < self.num_local_tokens_per_expert[rank][expert_id]:
                             l = tmp_offset + self.global_tokens_per_expert_matrix_temp[rank * self.expert_num + expert_id]
                             r = tmp_offset + self.num_local_tokens_per_expert[rank][expert_id]
-                            matrix_c_out[:,l:r,:] = 0
-                            # matrix_c_out_low[:,l:r,:] = 0
+                            matrix_c[:,l:r,:] = 0
                         tmp_offset += self.num_local_tokens_per_expert[rank][expert_id]
-                self.matrix_c_list.append(matrix_c_out)
-                # self.matrix_c_low_list.append(matrix_c_out_low)
+                self.matrix_c_list.append(matrix_c)
 
