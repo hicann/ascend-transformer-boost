@@ -108,7 +108,6 @@ public:
         kernelKey = (kernelKey << INPUT_BIT_COUNT) + (inTensorCount - DIM_2);
         MKI_LOG(INFO) << "kernelKey: " << kernelKey;
         MKI_LOG(INFO) << ">>> PpMatmulType:" << static_cast<uint32_t>(opParam.matmulType);
-
         // 先判断w8a8compress
         if (isSparseDequant) {
             switch (kernelKey) {
