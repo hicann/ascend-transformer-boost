@@ -132,7 +132,7 @@ public:
                 default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
             }
         }
-
+        MKI_LOG(INFO) << "kernelKey: " << kernelKey;
         // 判断w8a8
         switch (kernelKey) {
             case PP_MATMUL_I8_BF16_KERNEL_KEY: return GetKernelByName("PpMatmulW8A8Bf16NDNDKernel");
