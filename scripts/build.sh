@@ -859,6 +859,7 @@ function fn_main()
             fn_gen_doc
             ;;
         "customizeops")
+            MKI_BUILD_MODE=Dev
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
             fn_build
             generate_atb_version_info
