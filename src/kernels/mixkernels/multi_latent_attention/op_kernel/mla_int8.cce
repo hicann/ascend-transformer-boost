@@ -2065,6 +2065,7 @@ __aicore__ __attribute__((always_inline)) inline void DeQuantPerHeadProc(
             AscendC::Cast<int8_t, half, false>(dst.template ReinterpretCast<int8_t>()[row_idx * HALF_VECTOR_SIZE],
                                                dst.template ReinterpretCast<half>()[row_idx * HALF_VECTOR_SIZE], AscendC::RoundMode::CAST_RINT,
                                                (uint64_t)0, sub_m, {1, 1, (uint8_t)((qk_round_n) / BLOCK_SIZE), (uint8_t)(qk_round_n / BLOCK_SIZE)});
+            PIPE_BARRIER(V);
         }
         if (qk_n % HALF_VECTOR_SIZE > 0) {
             __set_mask(qk_n % HALF_VECTOR_SIZE);
