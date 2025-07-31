@@ -87,11 +87,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).half()],
         )
 
@@ -108,11 +108,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).half()],
         )
 
@@ -129,11 +129,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).half()],
         )
 
@@ -150,11 +150,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize))
         self.execute(
-            [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float()],
+            [self.bat_A.half(), self.bat_B.half(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).half()],
         )
 
@@ -171,11 +171,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype=torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -192,11 +192,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype=torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -213,11 +213,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype=torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -234,11 +234,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype=torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -255,11 +255,11 @@ class TestPpMatmulF16(op_test.OpTest):
                 "matmulType": MATMUL_WITH_BIAS,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype=torch.bfloat16)
         self.execute(
-            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float()],
+            [self.bat_A.bfloat16(), self.bat_B.bfloat16(), self.bat_bias.float(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
