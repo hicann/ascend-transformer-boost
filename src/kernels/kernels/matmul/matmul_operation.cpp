@@ -30,21 +30,23 @@ constexpr uint32_t PP_MATMUL_I8_BF16_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'10'0'1'0'1
 constexpr uint32_t PP_MATMUL_I8_FP16_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'01'0'1'0'11;
 constexpr uint32_t PP_MATMUL_I8_KERNEL_KEY = 0b1'00'00'01'0'0'0'11;
 constexpr uint32_t PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'01'0'1'0'11;
-constexpr uint32_t PP_MATMUL_F16_KERNEL_KEY = 0b1'01'01'01'0'0'0'00;
 constexpr uint32_t PP_MATMUL_F16_MIX_KERNEL_KEY = 0b1'01'01'01'0'0'0'01;
-constexpr uint32_t PP_MATMUL_BF16_KERNEL_KEY = 0b1'10'10'10'0'0'0'00;
-constexpr uint32_t PP_MATMUL_F16_OPT_KERNEL_KEY = 0b1'01'01'01'0'1'0'00;
-constexpr uint32_t PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY = 0b1'10'10'10'0'1'0'00;
-constexpr uint32_t PP_MATMUL_NZ_F16_KERNEL_KEY = 0b0'01'01'01'1'1'1'00;
 constexpr uint32_t PP_MATMUL_I8_NZ_KERNEL_KEY = 0b0'00'00'01'1'1'1'11;
 constexpr uint32_t PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY = 0b0'00'00'01'1'1'1'11;
-constexpr uint32_t PP_MATMUL_ACCUM_KERNEL_KEY = 0b1'10'10'11'0'0'0'00;
 constexpr uint32_t PP_MATMUL_FP_ND_ND_KERNEL_KEY = 0b0'01'01'01'0'0'0'00;
 constexpr uint32_t PP_MATMUL_I8_NZ_M300_KERNEL_KEY = 0b0'00'00'01'0'1'0'11;
 constexpr uint32_t PP_MATMUL_I8_ND_M300_KERNEL_KEY = 0b0'00'00'01'0'0'0'11;
 constexpr uint32_t PP_MATMUL_F16_NZ_M300_KERNEL_KEY = 0b0'01'01'01'0'1'0'00;
+constexpr uint32_t PP_MatMul_F16ND_F16ND_F16ND_KERNEL_KEY = 0b1'01'01'01'0'0'0'10;
+constexpr uint32_t PP_MatMul_BF16ND_BF16ND_BF16ND_KERNEL_KEY = 0b1'10'10'10'0'0'0'10;
+constexpr uint32_t PP_MatMul_F16ND_F16ND_F32ND_KERNEL_KEY = 0b1'01'01'11'0'0'0'10;
+constexpr uint32_t PP_MatMul_BF16ND_BF16ND_F32ND_KERNEL_KEY = 0b1'10'10'11'0'0'0'10;
+constexpr uint32_t PP_MatMul_F16ND_F16NZ_F16ND_KERNEL_KEY = 0b1'01'01'01'0'1'0'10;
+constexpr uint32_t PP_MatMul_BF16ND_BF16NZ_BF16ND_KERNEL_KEY = 0b1'10'10'10'0'1'0'10;
+constexpr uint32_t PP_MatMul_F16NZ_F16NZ_F16NZ_KERNEL_KEY = 0b0'01'01'01'1'1'1'10;
 
 } // namespace
+
 
 namespace AsdOps {
 using namespace Mki;
@@ -214,16 +216,6 @@ public:
         kernelKey = (kernelKey << INPUT_BIT_COUNT) + (inTensorCount - DIM_2);
         MKI_LOG(INFO) << "kernelKey: " << kernelKey;
         MKI_LOG(INFO) << ">>> PpMatmulType:" << static_cast<uint32_t>(opParam.matmulType);
-        if (opParam.matmulType == MmType::MATMUL_ACCUM_ATOMIC) {
-            return GetKernelByName("PpMatmulAccumAtomicKernel");
-        }
-        if (opParam.matmulType == MmType::MATMUL_WITH_BIAS) {
-            return GetKernelByName("PpMatmulWithBiasKernel");
-        }
-        if (opParam.matmulType == MmType::MATMUL_EIN_SUM) {
-            MKI_CHECK(!opParam.transposeA, "Unsupported transposed A_matrix", return nullptr);
-            return GetKernelByName("PpMatmulEinSumKernel");
-        }
         // 先判断w8a8compress
         if (isSparseDequant) {
             switch (kernelKey) {
@@ -242,7 +234,7 @@ public:
                 default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
             }
         }
-
+        
         // 判断w8a8
         switch (kernelKey) {
             case PP_MATMUL_I8_BF16_KERNEL_KEY:
@@ -250,19 +242,29 @@ public:
                 return GetKernelByName("PpMatMulI8Bf16Kernel");
             case PP_MATMUL_I8_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
             case PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8WeightNzKernel");
-            case PP_MATMUL_F16_KERNEL_KEY: return GetKernelByName("PpMatMulF16Kernel");
             case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
-            case PP_MATMUL_BF16_KERNEL_KEY: return GetKernelByName("PpMatMulBf16Kernel");
-            case PP_MATMUL_F16_OPT_KERNEL_KEY: return GetKernelByName("PpMatMulF16OptKernel");
-            case PP_MATMUL_BF16_ND_NZ_ND_KERNEL_KEY: return GetKernelByName("PpMatMulBf16NdNzNdKernel");
-            case PP_MATMUL_NZ_F16_KERNEL_KEY: return GetKernelByName("PpMatMulNzF16Kernel");
             case PP_MATMUL_I8_NZ_KERNEL_KEY: return GetKernelByName("PpMatMulI8NzKernel");
             case PP_MATMUL_FP_ND_ND_KERNEL_KEY: return GetKernelByName("PpMatmulF16NdM300Kernel");
             case PP_MATMUL_I8_ND_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8Kernel");
             case PP_MATMUL_I8_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatMulI8NdNzKernel");
             case PP_MATMUL_F16_NZ_M300_KERNEL_KEY: return GetKernelByName("PpMatmulF16NzM300Kernel");
+            case PP_MatMul_F16ND_F16ND_F16ND_KERNEL_KEY: return GetKernelByName("PpMatMulF16NDF16NDF16NDKernel");
+            case PP_MatMul_BF16ND_BF16ND_BF16ND_KERNEL_KEY: return GetKernelByName("PpMatMulBF16NDBF16NDBF16NDKernel");
+            case PP_MatMul_F16ND_F16ND_F32ND_KERNEL_KEY: return GetKernelByName("PpMatMulF16NDF16NDF32NDKernel");
+            case PP_MatMul_BF16ND_BF16ND_F32ND_KERNEL_KEY: return GetKernelByName("PpMatMulBF16NDBF16NDF32NDKernel");
+            case PP_MatMul_F16ND_F16NZ_F16ND_KERNEL_KEY: return GetKernelByName("PpMatMulF16NDF16NZF16NDKernel");
+            case PP_MatMul_BF16ND_BF16NZ_BF16ND_KERNEL_KEY: return GetKernelByName("PpMatMulBF16NDBF16NZBF16NDKernel");
+            case PP_MatMul_F16NZ_F16NZ_F16NZ_KERNEL_KEY: 
+                {
+                    if (platform == PlatformType::ASCEND_910A) {
+                        return GetKernelByName("PpMatMulNzF16Kernel");
+                    } else {
+                        return GetKernelByName("PpMatMulF16NZF16NZF16NZKernel");
+                    }
+                }
             default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
         }
+
         return nullptr;
     }
 
@@ -276,12 +278,7 @@ public:
         if (param.enDequant) {
             return 5; // There're 5 inputs if enable post dequant.
         }
-        bool fuseAdd = (param.withBias || param.matmulType == MmType::MATMUL_ACCUM_ATOMIC ||
-                        param.matmulType == MmType::MATMUL_WITH_BIAS);
-        if (fuseAdd) {
-            return 3; // 3 withBias matmul
-        }
-        return 2; // matmul has 2 inputs
+        return 4; // matmul has 2 inputs
     }
 
 protected:

@@ -104,11 +104,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "matmulType": 4,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -126,11 +126,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "matmulType": 4,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -148,11 +148,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "matmulType": 4,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -170,11 +170,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "matmulType": 4,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -192,11 +192,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "matmulType": 4,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -214,11 +214,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "matmulType": 4,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nd])
+        self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -237,11 +237,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "enShuffleK": True,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -260,11 +260,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "enShuffleK": True,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -283,11 +283,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "enShuffleK": True,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
@@ -306,11 +306,11 @@ class TestPpMatmulEinSumFp16(op_test.OpTest):
                 "enShuffleK": True,
             },
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), dtype)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).to(dtype)],
         )
 
