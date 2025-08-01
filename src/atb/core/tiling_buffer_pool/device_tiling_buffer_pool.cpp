@@ -11,7 +11,9 @@
 #include "atb/utils/log.h"
 
 namespace atb {
-DeviceTilingBufferPool::DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize, const std::function<void*(size_t size)>& alloc, const std::function<void(void*)>& dealloc)
+DeviceTilingBufferPool::DeviceTilingBufferPool(uint64_t blockNum, uint64_t blockSize,
+                                               const std::function<void *(size_t size)> &alloc,
+                                               const std::function<void(void *)> &dealloc)
     : TilingBufferPool(blockNum, blockSize), allocateFunc_(alloc), deallocateFunc_(dealloc)
 {
 }

@@ -10,10 +10,12 @@
 
 #include "../demo_util.h"
 
+namespace {
 const int32_t DEVICE_ID = 0;
 const uint32_t DIM_0 = 32;
 const uint32_t DIM_1 = 64;
 const uint32_t DIM_2 = 128;
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
@@ -24,18 +26,19 @@ const uint32_t DIM_2 = 128;
  */
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
+    const float tensorValue = 2.0;
     // 创建shape为[32, 64, 128]的tensor
     atb::Tensor dy;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1 * DIM_2, 2.0), ACL_FLOAT,
-                                        aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, dy));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1 * DIM_2, tensorValue),
+                                        ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, dy));
     atb::Tensor x;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1 * DIM_2, 2.0), ACL_FLOAT,
-                                        aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, x));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1 * DIM_2, tensorValue),
+                                        ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, DIM_2}, x));
     atb::Tensor rstd;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1, 2.0), ACL_FLOAT,
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1, tensorValue), ACL_FLOAT,
                                         aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1, 1}, rstd));
     atb::Tensor gamma;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_2, 2.0), ACL_FLOAT,
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_2, tensorValue), ACL_FLOAT,
                                         aclFormat::ACL_FORMAT_ND, {DIM_2}, gamma));
     inTensors = {dy, x, rstd, gamma};
     return atb::ErrorType::NO_ERROR;

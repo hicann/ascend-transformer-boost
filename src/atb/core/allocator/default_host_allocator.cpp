@@ -24,11 +24,11 @@ DefaultHostAllocator::~DefaultHostAllocator()
         currentAllocateSize_ -= it->second;
 #ifdef _DEBUG
         ATB_LOG(INFO) << "DefaultHostAllocator::~DefaultHostAllocator aclrtFreeHost free host buffer: " << it->first
-                      << ", which the host bufferSize is " << it->second << ", currentAllocateSize_: "
-                      << currentAllocateSize_;
+                      << ", which the host bufferSize is " << it->second
+                      << ", currentAllocateSize_: " << currentAllocateSize_;
 #else
-        ATB_LOG(INFO) << "DefaultHostAllocator::~DefaultHostAllocator aclrtFreeHost free host bufferSize: " << it->second
-                      << ", and currentAllocateSize_: " << currentAllocateSize_;
+        ATB_LOG(INFO) << "DefaultHostAllocator::~DefaultHostAllocator aclrtFreeHost free host bufferSize: "
+                      << it->second << ", and currentAllocateSize_: " << currentAllocateSize_;
 #endif
     }
 }
@@ -52,10 +52,11 @@ void *DefaultHostAllocator::Allocate(size_t bufferSize)
     memMap.insert(std::make_pair(addr, bufferSize));
 #ifdef _DEBUG
     ATB_LOG(INFO) << "DefaultHostAllocator::Allocate host buffer success, host buffer is " << addr
-                  << ", which bufferSize is " << bufferSize << " and the currentAllocateSize_: " << currentAllocateSize_;
+                  << ", which bufferSize is " << bufferSize
+                  << " and the currentAllocateSize_: " << currentAllocateSize_;
 #else
-    ATB_LOG(INFO) << "DefaultHostAllocator::Allocate host buffer success, bufferSize is " << bufferSize << " currentAllocateSize_: "
-                  << currentAllocateSize_;
+    ATB_LOG(INFO) << "DefaultHostAllocator::Allocate host buffer success, bufferSize is " << bufferSize
+                  << " currentAllocateSize_: " << currentAllocateSize_;
 #endif
     return addr;
 }
@@ -80,10 +81,10 @@ Status DefaultHostAllocator::Deallocate(void *addr)
     currentAllocateSize_ -= it->second;
 #ifdef _DEBUG
     ATB_LOG(INFO) << "DefaultHostAllocator::Deallocate host buffer success, free host buffer: " << addr
-                  << ", which bufferSize is "<< it->second << ", currentAllocateSize_: " << currentAllocateSize_;
+                  << ", which bufferSize is " << it->second << ", currentAllocateSize_: " << currentAllocateSize_;
 #else
-    ATB_LOG(INFO) << "DefaultHostAllocator::Deallocate host buffer success, free bufferSize: "<< it->second
-                    << ", currentAllocateSize_: " << currentAllocateSize_;
+    ATB_LOG(INFO) << "DefaultHostAllocator::Deallocate host buffer success, free bufferSize: " << it->second
+                  << ", currentAllocateSize_: " << currentAllocateSize_;
 #endif
     memMap.erase(addr);
     return NO_ERROR;

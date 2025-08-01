@@ -32,12 +32,12 @@ public:
     size_t GetTilingSize() const override;
     bool UpdateBestKernel() override;
     int64_t GetWorkspaceSize() const override;
-    Status InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool launchWithTiling) override;
+    Status InitKernelInfo(uint8_t *hostTilingBuffer, uint64_t tilingSize, bool isLaunchWithTiling) override;
     void SetWorkspaceDeviceAddr(uint8_t *deviceWorkspaceBuffer) override;
     void SetTilingDeviceAddr(uint8_t *deviceTilingBuffer) override;
     Status Run(aclrtStream stream) override;
     bool GetCachedTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *kernelHostTilingBuffer,
-                         uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool launchWithTiling) override;
+                         uint64_t maxTilingSize, uint64_t &tilingSizeFetched, bool isLaunchWithTiling) override;
     void AddTiling(KernelCache &kernelCache, size_t kernelIndex, uint8_t *hostTilingBuffer,
                    size_t tilingSize) const override;
     void SetArgsDeviceBuffer(void *deviceBuffer) override;
@@ -76,7 +76,7 @@ private:
     void *argsHostBuffer_ = nullptr;
 };
 
-static const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
+static inline const std::unordered_map<const Mki::ErrorType, atb::ErrorType> InitAtbMkiErrorHash() noexcept
 {
     return {{Mki::ErrorType::NO_ERROR, atb::ErrorType::NO_ERROR},
             {Mki::ErrorType::ERROR_INVALID_VALUE, atb::ErrorType::ERROR_INVALID_PARAM},

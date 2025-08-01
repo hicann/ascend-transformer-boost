@@ -27,20 +27,22 @@ private:
 };
 
 namespace infer {
+inline bool IsFloatSVectorEqual(const SVector<float> &v1, const SVector<float> &v2)
+{
+    if (v1.size() != v2.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < v1.size(); ++i) {
+        if (!UtilsInternal::IsFloatEqual(v1[i], v2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 inline bool operator==(const FillParam &left, const FillParam &right)
 {
-    return left.withMask == right.withMask &&
-           [](const SVector<float> &v1, const SVector<float> &v2) {
-               if (v1.size() != v2.size()) {
-                   return false;
-               }
-               for (size_t i = 0; i < v1.size(); ++i) {
-                   if (!UtilsInternal::IsFloatEqual(v1[i], v2[i])) {
-                       return false;
-                   }
-               }
-               return true;
-           }(left.value, right.value) &&
+    return left.withMask == right.withMask && IsFloatSVectorEqual(left.value, right.value) &&
            left.outDim == right.outDim;
 }
 } // namespace infer

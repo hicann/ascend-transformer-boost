@@ -10,10 +10,12 @@
 
 #include "../demo_util.h"
 
+namespace {
 const int32_t DEVICE_ID = 0;
 const uint32_t DIM_0 = 128;
 const uint32_t DIM_1 = 256;
 const int32_t BEGIN_NORM_AXIS = 1;
+}
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
@@ -24,14 +26,15 @@ const int32_t BEGIN_NORM_AXIS = 1;
  */
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
+    const float value = 2.0;
     atb::Tensor x;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1, 2.0), ACL_FLOAT16,
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_0 * DIM_1, value), ACL_FLOAT16,
                                         aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1}, x));
     atb::Tensor gamma;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_1, 2.0), ACL_FLOAT16,
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_1, value), ACL_FLOAT16,
                                         aclFormat::ACL_FORMAT_ND, {DIM_1}, gamma));
     atb::Tensor beta;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_1, 1.0), ACL_FLOAT16,
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(DIM_1, value), ACL_FLOAT16,
                                         aclFormat::ACL_FORMAT_ND, {DIM_1}, beta));
     inTensors = {x, gamma, beta};
     return atb::ErrorType::NO_ERROR;
@@ -67,7 +70,7 @@ int main(int argc, char **argv)
     CHECK_STATUS(CreateLayerNormOperation(&layerNormOp));
     // 准备输入tensor
     atb::VariantPack variantPack;
-    CHECK_STATUS(PrepareInTensor(context, stream,  variantPack.inTensors)); // 放入输入tensor
+    CHECK_STATUS(PrepareInTensor(context, stream, variantPack.inTensors)); // 放入输入tensor
     atb::Tensor tensorOut;
     CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {DIM_0, DIM_1}, tensorOut));
     variantPack.outTensors = {tensorOut}; // 放入输出tensor

@@ -390,8 +390,7 @@ bool RingMLAOperation::InputLseDimCheck(const SVector<TensorDesc> &inTensorDescs
 
 Status RingMLAOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
-    Status st;
-    st = DimCheck(inTensorDescs);
+    Status st = DimCheck(inTensorDescs);
     if (st != NO_ERROR) {
         return st;
     }

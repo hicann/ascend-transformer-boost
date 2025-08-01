@@ -10,11 +10,13 @@
 
 #include "../demo_util.h"
 
+namespace {
 const uint32_t BATCH_SIZE = 1;   // 批处理大小
 const uint32_t NTOKENS = 4;      // TOKEN大小
 const uint32_t HIDDENSIZEQ = 16; // Q 隐藏层大小
 const uint32_t HIDDENSIZEK = 16; // K 隐藏层大小
 const uint32_t HEAD_SIZE = 8;    // 头大小
+}
 
 /**
  * @brief 创建一个rope operation
@@ -52,7 +54,8 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::S
     atb::Tensor tensorSin;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, sin, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
                                         {NTOKENS, HEAD_SIZE}, tensorSin));
-    std::vector<int32_t> seqLenHost(BATCH_SIZE, 4);
+    const int32_t seqlenValue = 4;
+    std::vector<int32_t> seqLenHost(BATCH_SIZE, seqlenValue);
     atb::Tensor tensorSeqLen;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorSeqLen));
     tensorSeqLen.hostData = seqLenHost.data();

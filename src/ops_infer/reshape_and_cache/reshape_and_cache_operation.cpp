@@ -318,7 +318,7 @@ Status ReshapeAndCacheOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc>
     }
     int64_t kNumHead = inTensorDescs.at(IN_TENSOR_0_KEY).shape.dims[1];   // 1: value
     int64_t kHeadSize = inTensorDescs.at(IN_TENSOR_0_KEY).shape.dims[2];   // 2: kheadSize dim
-    int64_t VHeadSize = inTensorDescs.at(IN_TENSOR_1_VALUE).shape.dims[2]; // 2: vheadSize dim
+    int64_t vHeadSize = inTensorDescs.at(IN_TENSOR_1_VALUE).shape.dims[2]; // 2: vheadSize dim
     int64_t vNumHead = inTensorDescs.at(IN_TENSOR_1_VALUE).shape.dims[1]; // 1: value
     int64_t blockSize = inTensorDescs.at(IN_TENSOR_2_KEYCACHE).shape.dims[2]; // 2: keyCache; 2: blocksize
     if (blockSize != inTensorDescs.at(IN_TENSOR_3_VALUECACHE).shape.dims[2]) { // 3: valueCache
@@ -345,7 +345,7 @@ Status ReshapeAndCacheOperation::KVCacheDimCheck910BNZ(const SVector<TensorDesc>
                 return ERROR_INVALID_TENSOR_DIM;
             }
         } // value valueCache
-        if (vNumHead * VHeadSize != inTensorDescs.at(IN_TENSOR_3_VALUECACHE).shape.dims[1] * BLOCK_SIZE_16_NZ ||
+        if (vNumHead * vHeadSize != inTensorDescs.at(IN_TENSOR_3_VALUECACHE).shape.dims[1] * BLOCK_SIZE_16_NZ ||
             inTensorDescs.at(IN_TENSOR_3_VALUECACHE).shape.dims[3] != BLOCK_SIZE_16_NZ) { // 3: last dim
             ATB_LOG(ERROR) << GetLogPrefix() << "NZ format tensor dim should be aligned to 16!";
             return ERROR_INVALID_TENSOR_DIM;

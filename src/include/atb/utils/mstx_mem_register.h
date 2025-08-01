@@ -9,8 +9,6 @@
  */
 #ifndef ATB_UTILS_MSTX_REGISTER_H
 #define ATB_UTILS_MSTX_REGISTER_H
-#include <unistd.h>
-#include <syscall.h>
 #include <vector>
 #include <mstx/ms_tools_ext.h>
 #include <mstx/ms_tools_ext_mem.h>
@@ -23,7 +21,7 @@ public:
     ~MstxMemRegister();
     static mstxDomainHandle_t &GetRegisterDomain();
     static bool IsMstxEnable();
-    Status CheckTensorRange();
+    bool CheckTensorRange();
     Status MstxHeapRegister(void *workspace, uint64_t workspaceSize);
     void MstxMemRegionsRegister();
     void MstxMemRegionsUnregister();

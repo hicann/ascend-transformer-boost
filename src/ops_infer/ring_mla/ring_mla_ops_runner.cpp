@@ -15,7 +15,7 @@
 #include "param.h"
 
 namespace {
-// query_split1, query_split2, key_split1, key_split2, value, mask, seqLen, prevOut (optional), prevLse(optional)
+// querySplit1, querySplit2, keySplit1, keySplit2, value, mask, seqLen, prevOut (optional), prevLse(optional)
 static constexpr uint32_t VALUE_TENSOR_POS = 2;
 static constexpr uint32_t SEQLEN_TENSOR_POS = 6;
 static constexpr uint32_t IN_TENSOR_NUM = 15;
@@ -36,10 +36,10 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
     kernelGraph_.outTensors.resize(OUT_TENSOR_NUM);
 
     int inTensorStart = 0;
-    Mki::Tensor *query_split1 = &kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *query_split2 = &kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *key_split1 = &kernelGraph_.inTensors.at(inTensorStart++);
-    Mki::Tensor *key_split2 = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *querySplit1 = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *querySplit2 = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *keySplit1 = &kernelGraph_.inTensors.at(inTensorStart++);
+    Mki::Tensor *keySplit2 = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *value = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *mask = &kernelGraph_.inTensors.at(inTensorStart++);
     Mki::Tensor *seqLen = &kernelGraph_.inTensors.at(inTensorStart++);
@@ -63,9 +63,7 @@ RingMLAOpsRunner::RingMLAOpsRunner(const infer::RingMLAParam &param)
 
     ringMLANode.opDesc = {0, "RINGMLAOperation", ringMLAParam};
 
-    // flashAttentionEncoderNode.inTensors = {&query_split1, query_split2, &key_split1, key_split2, value,
-    // mask, slopes, qkDescale, qkOffset, vpvDescale, vpvOffset, pScale, logN, prevOut, prevLse};
-    ringMLANode.inTensors = {query_split1, query_split2, key_split1,   key_split2,   value,
+    ringMLANode.inTensors = {querySplit1,  querySplit2,  keySplit1,    keySplit2,    value,
                              mask,         &nullTensor_, &nullTensor_, &nullTensor_, &nullTensor_,
                              &nullTensor_, &nullTensor_, &nullTensor_, prevOut,      prevLse};
 

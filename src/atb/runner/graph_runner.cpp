@@ -68,8 +68,9 @@ void GraphRunner::Graph::SetNonReuseTensors()
     for (size_t nodeId = 0; nodeId < nodes.size(); ++nodeId) {
         auto &node = nodes.at(nodeId);
         uint32_t streamId = GetExecuteStreamId(node.op.get());
-        if (streamId == 0)
+        if (streamId == 0) {
             continue;
+        }
         for (auto inTensorIt : node.inTensors) {
             auto it = isInTensorCanFree.find(inTensorIt);
             if (it != isInTensorCanFree.end()) {
@@ -353,14 +354,13 @@ uint64_t GraphRunner::GetTilingBufferSizeImpl()
     return totalTilingBufferSize_;
 }
 
-Status GraphRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize,
-                                             ContextBase *context)
+Status GraphRunner::FillHostTilingBufferImpl(uint8_t *hostTilingBuffer, uint64_t tilingBufferSize, ContextBase *context)
 {
     uint64_t tilingOffset = 0;
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
-        Status ret = node.runner->FillHostTilingBuffer(hostTilingBuffer + tilingOffset,
-                                                       tilingBufferSizes_.at(nodeId), context);
+        Status ret =
+            node.runner->FillHostTilingBuffer(hostTilingBuffer + tilingOffset, tilingBufferSizes_.at(nodeId), context);
         if (ret != NO_ERROR) {
             ATB_LOG(ERROR) << GetLogPrefix() << "GraphRunner::FillHostTilingBufferImpl failed! error code:" << ret;
             return ret;
@@ -872,7 +872,7 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
             node.runnerVariantPack.argsDeviceBuffer = runnerVariantPack.argsDeviceBuffer + offset;
             offset += node.runner->GetArgsSize();
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsDeviceAddr is "
-                << reinterpret_cast<void *>(node.runnerVariantPack.argsDeviceBuffer);
+                           << static_cast<void *>(node.runnerVariantPack.argsDeviceBuffer);
         }
     }
 
@@ -883,7 +883,7 @@ void GraphRunner::UpdateVariantPackBuffer(RunnerVariantPack &runnerVariantPack)
             node.runnerVariantPack.argsHostBuffer = runnerVariantPack.argsHostBuffer + offset;
             offset += node.runner->GetArgsSize();
             ATB_LOG(DEBUG) << GetLogPrefix() << "Graph node " << nodeId << " argsHostAddr is "
-                << reinterpret_cast<void *>(node.runnerVariantPack.argsHostBuffer);
+                           << static_cast<void *>(node.runnerVariantPack.argsHostBuffer);
         }
     }
     ATB_LOG(INFO) << GetLogPrefix() << " update runner variant pack's buffer end";
@@ -943,19 +943,23 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
 {
     for (size_t nodeId = 0; nodeId < runnerGraph_.nodes.size(); ++nodeId) {
         auto &node = runnerGraph_.nodes.at(nodeId);
-        ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]" << "graphrunner start";
-        if (runnerVariantPack.mstxMemRegister != nullptr && !(dynamic_cast<GraphRunner*>(node.runner.get()))) {
+        ATB_LOG(INFO) << GetLogPrefix() << " mstx registe tensor.data node[" << nodeId << "]"
+                      << "graphrunner start";
+        if (runnerVariantPack.mstxMemRegister != nullptr &&
+            !(dynamic_cast<OpsRunner *>(node.runner.get()) || dynamic_cast<GraphRunner *>(node.runner.get()))) {
             runnerVariantPack.mstxMemRegister->ClearMstxMemRegions();
             for (size_t i = 0; i < node.runnerVariantPack.inTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.inTensors.at(i);
                 if (node.inTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
-                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(
+                        tensor.deviceData, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
             for (size_t i = 0; i < node.runnerVariantPack.outTensors.size(); ++i) {
                 auto &tensor = node.runnerVariantPack.outTensors.at(i);
                 if (node.outTensorTypes.at(i) == GraphRunner::INTERMEDIATE_TENSOR) {
-                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(tensor.deviceData, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
+                    runnerVariantPack.mstxMemRegister->AddTensorMemRegions(
+                        tensor.deviceData, static_cast<uint64_t>(TensorUtil::AlignInt(tensor.dataSize, ALIGN_INT)));
                 }
             }
             if (runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
@@ -963,14 +967,14 @@ Status GraphRunner::ExecuteAllRunner(RunnerVariantPack &runnerVariantPack)
             }
         }
         ATB_LOG(INFO) << GetLogPrefix() << " node[" << nodeId << "] execute start, runner:" << node.runner->GetName()
-                                        << ", variantPack:\n"
-                                        << node.runnerVariantPack.ToString();
+                      << ", variantPack:\n"
+                      << node.runnerVariantPack.ToString();
         node.runnerVariantPack.context = runnerVariantPack.context;
         node.runnerVariantPack.mstxMemRegister = runnerVariantPack.mstxMemRegister;
         Status st = node.runner->Execute(node.runnerVariantPack);
         if (st != 0) {
             ATB_LOG(ERROR) << GetLogPrefix() << " node[" << nodeId
-            << "] execute fail, runner name:" << node.runner->GetName();
+                           << "] execute fail, runner name:" << node.runner->GetName();
             return st;
         }
         if (runnerVariantPack.mstxMemRegister != nullptr && runnerVariantPack.mstxMemRegister->CheckTensorRange()) {
