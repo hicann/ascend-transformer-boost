@@ -37,7 +37,7 @@ LOG_NAME="cann_atb_install.log"
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
     "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
-    "--src-only")
+    "--src-only" "--customizeops_tests")
 
 function fn_build_googletest()
 {
@@ -750,6 +750,10 @@ function fn_main()
         "--src-only")
             SRC_ONLY=ON
             ;;
+        "--customizeops_tests")
+            fn_build_googletest
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
+            ;;
         esac
         shift
     }
@@ -855,14 +859,15 @@ function fn_main()
             fn_gen_doc
             ;;
         "customizeops")
+            MKI_BUILD_MODE=Dev
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
-            fn_build_googletest
             fn_build
             generate_atb_version_info
+            fn_make_run_package
             ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind|--customizeops_tests"
             ;;
     esac
 }
