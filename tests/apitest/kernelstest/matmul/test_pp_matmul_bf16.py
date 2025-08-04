@@ -106,11 +106,11 @@ class TestPpMatmulBf16(op_test.OpTest):
                     "MatMulOperation",
                     {"transposeA": trans_A, "transposeB": trans_B, "oriShape": [msize, ksize, nsize]},
                 )
-                self.set_input_formats([self.format_nd, self.format_nd])
+                self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [self.bat_A, self.bat_B],
+                    [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                 )
 
@@ -123,11 +123,11 @@ class TestPpMatmulBf16(op_test.OpTest):
                     "MatMulOperation",
                     {"transposeA": trans_A, "transposeB": trans_B, "oriShape": [msize, ksize, nsize]},
                 )
-                self.set_input_formats([self.format_nd, self.format_nd])
+                self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [self.bat_A, self.bat_B],
+                    [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                 )
 
@@ -140,11 +140,11 @@ class TestPpMatmulBf16(op_test.OpTest):
                     "MatMulOperation",
                     {"transposeA": trans_A, "transposeB": trans_B, "oriShape": [msize, ksize, nsize]},
                 )
-                self.set_input_formats([self.format_nd, self.format_nd])
+                self.set_input_formats([self.format_nd, self.format_nd, self.format_nd, self.format_nd])
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [self.bat_A, self.bat_B],
+                    [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                 )
 
@@ -156,11 +156,11 @@ class TestPpMatmulBf16(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "oriShape": [msize, ksize, nsize]},
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -172,11 +172,11 @@ class TestPpMatmulBf16(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "oriShape": [msize, ksize, nsize]},
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -188,11 +188,11 @@ class TestPpMatmulBf16(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "oriShape": [msize, ksize, nsize]},
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -204,11 +204,11 @@ class TestPpMatmulBf16(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "oriShape": [msize, ksize, nsize]},
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -220,11 +220,11 @@ class TestPpMatmulBf16(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "oriShape": [msize, ksize, nsize]},
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -236,11 +236,11 @@ class TestPpMatmulBf16(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "oriShape": [msize, ksize, nsize]},
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -252,11 +252,11 @@ class TestPpMatmulBf16(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "oriShape": [msize, ksize, nsize]},
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -268,11 +268,11 @@ class TestPpMatmulBf16(op_test.OpTest):
             "MatMulOperation",
             {"transposeA": self.trans_A, "transposeB": self.trans_B, "oriShape": [msize, ksize, nsize]},
         )
-        self.set_input_formats([self.format_nd, self.format_nz])
+        self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
         self.set_output_formats([self.format_nd])
         self.__gen_test_data((bsize, msize, ksize, nsize), self.trans_A, self.trans_B)
         self.execute(
-            [self.bat_A, self.bat_B],
+            [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
             [torch.zeros(self.bat_C.shape).bfloat16()],
         )
 
@@ -285,11 +285,11 @@ class TestPpMatmulBf16(op_test.OpTest):
                     "MatMulOperation",
                     {"transposeA": trans_A, "transposeB": trans_B, "oriShape": [msize, ksize, nsize]},
                 )
-                self.set_input_formats([self.format_nd, self.format_nz])
+                self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [self.bat_A, self.bat_B],
+                    [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                 )
 
@@ -302,11 +302,11 @@ class TestPpMatmulBf16(op_test.OpTest):
                     "MatMulOperation",
                     {"transposeA": trans_A, "transposeB": trans_B, "oriShape": [msize, ksize, nsize]},
                 )
-                self.set_input_formats([self.format_nd, self.format_nz])
+                self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [self.bat_A, self.bat_B],
+                    [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                 )
 
@@ -319,11 +319,11 @@ class TestPpMatmulBf16(op_test.OpTest):
                     "MatMulOperation",
                     {"transposeA": trans_A, "transposeB": trans_B, "oriShape": [msize, ksize, nsize]},
                 )
-                self.set_input_formats([self.format_nd, self.format_nz])
+                self.set_input_formats([self.format_nd, self.format_nz, self.format_nd, self.format_nd])
                 self.set_output_formats([self.format_nd])
                 self.__gen_test_data((bsize, msize, ksize, nsize), trans_A, trans_B)
                 self.execute(
-                    [self.bat_A, self.bat_B],
+                    [self.bat_A, self.bat_B, torch.Tensor(), torch.Tensor()],
                     [torch.zeros(self.bat_C.shape).bfloat16()],
                 )
 
