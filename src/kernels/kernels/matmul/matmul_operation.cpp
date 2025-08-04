@@ -261,6 +261,7 @@ public:
         if (param.enDequant) {
             return 5; // There're 5 inputs if enable post dequant.
         }
+        PlatformType platform = PlatformInfo::Instance().GetPlatformType();
         if (platform == PlatformType::ASCEND_910A) {
             return 2; // matmul has 2 inputs
         } 
