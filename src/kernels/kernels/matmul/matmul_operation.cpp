@@ -133,6 +133,7 @@ public:
             case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
             case PP_MATMUL_I8_NZ_KERNEL_KEY:
                 if (platform == PlatformType::ASCEND_910A) {
+                    MKI_LOG(INFO) << "wangbairu1: " << static_cast<uint32_t>(inTensorCount);
                     return GetKernelByName("PpMatMulI8NzKernel");
                 } else {
                     return GetKernelByName("PpMatmulW8A8NzKernel");

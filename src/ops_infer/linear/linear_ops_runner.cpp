@@ -96,8 +96,9 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     SetupNeedMergeAxis(xTensor, weightTensor);
     SetupMatmulOriShape(xTensor, weightTensor);
     transdataNzToNdParam_.outCrops = {matmulParam_.oriShape.at(0), matmulParam_.oriShape.at(2)};
-
+    MKI_LOG(INFO) << "wangbairu2: ";
     if (matmulParam_.enDequant) {
+        MKI_LOG(INFO) << "wangbairu3: ";
         if (GetSingleton<Config>().Is910B() && param_.quantMode == infer::LinearParam::PER_TOKEN) {
                 return SetupKernelGraphMatmulDequantPerToken910B();
         } else if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is310B()) {
@@ -107,12 +108,15 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
                              SetupKernelGraphMatmulDequantWeightNdNot910B();
     }
     if (param_.enAccum) {
+        MKI_LOG(INFO) << "wangbairu4: ";
         return SetupKernelGraphMatmulAccum();
     }
     if (param_.matmulType == infer::LinearParam::MATMUL_EIN_SUM) {
+        MKI_LOG(INFO) << "wangbairu5: ";
         return param_.hasBias ? SetupKernelGraphMatmulEinElewiseAdd() : SetupKernelGraphMatmulEin();
     }
     if (param_.hasBias) {
+        MKI_LOG(INFO) << "wangbairu6: ";
         Mki::Tensor &biasTensor = kernelGraph_.inTensors.at(inTensorId++);
         if (biasTensor.desc.dtype == Mki::TENSOR_DTYPE_FLOAT) {
             return SetupKernelGraphMatmulWithBias();
@@ -123,6 +127,7 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
         return isWeightNz_ ? SetupKernelGraphMatmulElewiseAddWeightNzNot910B() :
                              SetupKernelGraphMatmulElewiseAddWeightNdNot910B();
     } else {
+        MKI_LOG(INFO) << "wangbairu7: ";
         if (xTensor.desc.dtype == Mki::TENSOR_DTYPE_FLOAT && weightTensor.desc.dtype == Mki::TENSOR_DTYPE_FLOAT) {
             moeGateCorrParam_.transposeA = param_.transposeA;
             moeGateCorrParam_.transposeB = param_.transposeB;
@@ -131,6 +136,7 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
         if (GetSingleton<Config>().Is910B() || GetSingleton<Config>().Is310B()) {
             return SetupKernelGraphMatmul910B();
         }
+        MKI_LOG(INFO) << "wangbairu8: ";
         return isWeightNz_ ? SetupKernelGraphMatmulWeightNzNot910B() : SetupKernelGraphMatmulWeightNdNot910B();
     }
 }
@@ -203,9 +209,12 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWeightNdNot910B()
     }
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
+    MKI_LOG(INFO) << "wangbairu_value: " << GetSingleton<Config>().Is910A();
     if (GetSingleton<Config>().Is910A()) {
+        MKI_LOG(INFO) << "wangbairu_success: ";
         matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor};
     } else {
+        MKI_LOG(INFO) << "wangbairu_error: ";
         matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor, &nullTensor_, &nullTensor_ };
     }
     matmulNode.outTensors = {&matmulOutTensor};
