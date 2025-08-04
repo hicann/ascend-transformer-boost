@@ -259,7 +259,7 @@ public:
         PlatformType platform = PlatformInfo::Instance().GetPlatformType();
         if (platform == PlatformType::ASCEND_910A) {
             return 2; // matmul has 2 inputs
-        } 
+        }
         return 4; // matmul has 4 inputs
     }
 
