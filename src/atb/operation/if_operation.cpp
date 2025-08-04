@@ -18,7 +18,7 @@ namespace atb {
 const size_t MAX_NODE_NUM = 1024;
 const size_t MAX_GRAPH_NAME_LEN = 128;
 
-Status IfOperation::GetOperationFromCondition(const void *condition, Operation **op)
+Status IfOperation::GetOperationFromCondition(Operation **op) const
 {
     bool cond;
     try {
@@ -55,12 +55,7 @@ template <> Status CreateOperation(const IfCondParam &opParam, Operation **opera
     return NO_ERROR;
 }
 
-IfOperation::IfOperation(const IfCondParam &param) : OperationBase("ConditionalOperation"), param_(param)
-{
-    if (!param_.opA && !param_.opB) {
-        return 
-    }
-}
+IfOperation::IfOperation(const IfCondParam &param) : OperationBase("ConditionalOperation"), param_(param) {}
 
 IfOperation::~IfOperation()
 {
@@ -71,7 +66,7 @@ Status IfOperation::Setup(const VariantPack &variantPack, uint64_t &workspaceSiz
 {
     Status st;
     Operation *op;
-    st = GetOperationFromCondition(param_.condition, &op);
+    st = GetOperationFromCondition(&op);
     if (st != NO_ERROR) {
         return st;
     }
@@ -84,7 +79,7 @@ Status IfOperation::Execute(const VariantPack &variantPack, uint8_t *workspace, 
 {
     Status st;
     Operation *op;
-    st = GetOperationFromCondition(param_.condition, &op);
+    st = GetOperationFromCondition(&op);
     if (st != NO_ERROR) {
         return st;
     }
@@ -95,7 +90,7 @@ Status IfOperation::Execute(const VariantPack &variantPack, uint8_t *workspace, 
 uint32_t IfOperation::GetInputNum() const
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
+    GetOperationFromCondition(&op);
     ATB_LOG(INFO) << "Getting input num...";
     return op->GetInputNum();
 }
@@ -103,17 +98,17 @@ uint32_t IfOperation::GetInputNum() const
 uint32_t IfOperation::GetOutputNum() const
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
+    GetOperationFromCondition(&op);
     ATB_LOG(INFO) << "Getting output num...";
     return op->GetOutputNum();
 }
 
-void SetExecuteStreamId(uint32_t streamId)
+void IfOperation::SetExecuteStreamId(uint32_t streamId)
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
+    GetOperationFromCondition(&op);
     ATB_LOG(INFO) << "Setting streamId...";
-    op->SetExecuteStreamId(streamId);
+    SetExecuteStreamId(op, streamId);
 }
 
 Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
@@ -121,26 +116,30 @@ Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
 {
     Status st;
     Operation *op;
-    st = GetOperationFromCondition(param_.condition, &op);
+    st = GetOperationFromCondition(&op);
     if (st != NO_ERROR) {
         return st;
     }
     ATB_LOG(INFO) << "Calling InferShapeImpl...";
-    return op->InferShapeImpl(inTensorDescs, outTensorDescs);
+    return op->InferShape(inTensorDescs, outTensorDescs);
 }
 
 std::shared_ptr<Runner> IfOperation::CreateRunner(Context &context) const
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
-    ATB_LOG(INFO) << "Calling CreateRunner...";
-    return op->CreateRunner(context);
+    GetOperationFromCondition(&op);
+    OperationBase *opBase = dynamic_cast<OperationBase*>(op);
+    if (opBase) {
+        ATB_LOG(INFO) << "Calling CreateRunner...";
+        return op->CreateRunner(context);
+    }
+    return nullptr;
 }
 
 void IfOperation::InitEmptyInTensorPerms()
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
+    GetOperationFromCondition(&op);
     ATB_LOG(INFO) << "Calling InitEmptyInTensorPerms...";
     op->InitEmptyInTensorPerms();
 }
@@ -148,7 +147,7 @@ void IfOperation::InitEmptyInTensorPerms()
 SVector<bool> IfOperation::GetEmptyInTensorPermissions() const
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
+    GetOperationFromCondition(&op);
     ATB_LOG(INFO) << "Calling GetEmptyInTensorPermissions...";
     return op->GetEmptyInTensorPermissions();
 }
@@ -156,7 +155,7 @@ SVector<bool> IfOperation::GetEmptyInTensorPermissions() const
 void IfOperation::InitEmptyOutTensorPerms()
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
+    GetOperationFromCondition(&op);
     ATB_LOG(INFO) << "Calling InitEmptyOutTensorPerms...";
     op->InitEmptyOutTensorPerms();
 }
@@ -164,7 +163,7 @@ void IfOperation::InitEmptyOutTensorPerms()
 SVector<bool> IfOperation::GetEmptyOutTensorPermissions() const
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
+    GetOperationFromCondition(&op);
     ATB_LOG(INFO) << "Calling GetEmptyOutTensorPermissions...";
     return op->GetEmptyOutTensorPermissions();
 }
@@ -172,7 +171,7 @@ SVector<bool> IfOperation::GetEmptyOutTensorPermissions() const
 void IfOperation::GetGraphInfoImpl(nlohmann::json &graphJson) const
 {
     Operation *op;
-    GetOperationFromCondition(param_.condition, &op);
+    GetOperationFromCondition(&op);
     ATB_LOG(INFO) << "Calling GetGraphInfoImpl...";
     nlohmann::json opGraphJson;
     op->GetGraphInfoImpl(opGraphJson);

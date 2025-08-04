@@ -21,22 +21,22 @@ public:
     explicit IfOperation(const IfCondParam &param);
     ~IfOperation() override;
     Status Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context) override;
-    Status IfOperation::Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
+    Status Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
                                 Context *context) override;
     uint32_t GetInputNum() const override;
     uint32_t GetOutputNum() const override;
     void SetExecuteStreamId(uint32_t streamId) override;
 
 private:
-    Status IfOperation::GetOperationFromCondition(const void *condition, void **op);
+    Status GetOperationFromCondition(Operation **op) const;
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;
-    void InitEmptyInTensorPerms() override;
+    void InitEmptyInTensorPerms() const override;
     SVector<bool> GetEmptyInTensorPermissions() const override;
-    void InitEmptyOutTensorPerms() override;
+    void InitEmptyOutTensorPerms() const override;
     SVector<bool> GetEmptyOutTensorPermissions() const override;
     void GetGraphInfoImpl(nlohmann::json &graphJson) const override;
     IfCondParam param_;
 };
 } // namespace atb
-#endif
+#endif // ATB_IF_OPERATION_H

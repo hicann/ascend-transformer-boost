@@ -201,6 +201,6 @@ struct WhileCondParam {
     void *condition;
     bool (*handle)(void *condition);
     atb::Operation *op;
-}
+};
 } // namespace atb
 #endif
