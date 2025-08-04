@@ -53,8 +53,8 @@ protected:
                                   SVector<TensorDesc> &outTensorDescs) const = 0;
     virtual Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const;
     virtual Status SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const;
-    void InitEmptyInTensorPerms() const;
-    void InitEmptyOutTensorPerms() const;
+    virtual void InitEmptyInTensorPerms() const;
+    virtual void InitEmptyOutTensorPerms() const;
     virtual SVector<bool> GetEmptyInTensorPermissions() const;
     virtual SVector<bool> GetEmptyOutTensorPermissions() const;
     std::string GetLogPrefix() const;

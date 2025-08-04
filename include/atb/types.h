@@ -189,5 +189,18 @@ struct GraphParam {
     //! \brief inferShape函数指针。
     InferShapeFunc inferShapeFunc = nullptr;
 };
+
+struct IfCondParam {
+    void *condition;
+    bool (*handle)(void *condition);
+    atb::Operation *opA; // 条件为True时执行opA
+    atb::Operation *opB;
+};
+
+struct WhileCondParam {
+    void *condition;
+    bool (*handle)(void *condition);
+    atb::Operation *op;
+}
 } // namespace atb
 #endif
