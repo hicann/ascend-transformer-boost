@@ -31,6 +31,7 @@ constexpr uint32_t PP_MATMUL_I8_FP16_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'01'0'1'0'1
 constexpr uint32_t PP_MATMUL_I8_KERNEL_KEY = 0b1'00'00'01'0'0'0'11;
 constexpr uint32_t PP_MATMUL_I8_WEIGHT_NZ_KERNEL_KEY = 0b1'00'00'01'0'1'0'11;
 constexpr uint32_t PP_MATMUL_F16_MIX_KERNEL_KEY = 0b1'01'01'01'0'0'0'01;
+constexpr uint32_t PP_MATMUL_NZ_F16_KERNEL_KEY = 0b0'01'01'01'1'1'1'00;
 constexpr uint32_t PP_MATMUL_I8_NZ_KERNEL_KEY = 0b0'00'00'01'1'1'1'11;
 constexpr uint32_t PP_MATMUL_I8_NZ_COMPRESS_KERNEL_KEY = 0b0'00'00'01'1'1'1'11;
 constexpr uint32_t PP_MATMUL_FP_ND_ND_KERNEL_KEY = 0b0'01'01'01'0'0'0'00;
@@ -133,7 +134,6 @@ public:
             case PP_MATMUL_F16_MIX_KERNEL_KEY: return GetKernelByName("PpMatMulF16MixKernel");
             case PP_MATMUL_I8_NZ_KERNEL_KEY:
                 if (platform == PlatformType::ASCEND_910A) {
-                    MKI_LOG(INFO) << "wangbairu1: " << static_cast<uint32_t>(inTensorCount);
                     return GetKernelByName("PpMatMulI8NzKernel");
                 } else {
                     return GetKernelByName("PpMatmulW8A8NzKernel");
@@ -148,14 +148,8 @@ public:
             case PP_MatMul_BF16ND_BF16ND_F32ND_KERNEL_KEY: return GetKernelByName("PpMatMulBF16NDBF16NDF32NDKernel");
             case PP_MatMul_F16ND_F16NZ_F16ND_KERNEL_KEY: return GetKernelByName("PpMatMulF16NDF16NZF16NDKernel");
             case PP_MatMul_BF16ND_BF16NZ_BF16ND_KERNEL_KEY: return GetKernelByName("PpMatMulBF16NDBF16NZBF16NDKernel");
-            case PP_MatMul_F16NZ_F16NZ_F16NZ_KERNEL_KEY: 
-                {
-                    if (platform == PlatformType::ASCEND_910A) {
-                        return GetKernelByName("PpMatMulNzF16Kernel");
-                    } else {
-                        return GetKernelByName("PpMatMulF16NZF16NZF16NZKernel");
-                    }
-                }
+            case PP_MATMUL_NZ_F16_KERNEL_KEY: return GetKernelByName("PpMatMulNzF16Kernel");
+            case PP_MatMul_F16NZ_F16NZ_F16NZ_KERNEL_KEY: return GetKernelByName("PpMatMulF16NZF16NZF16NZKernel");
             default: MKI_LOG(ERROR) << "No matched kernel for matmul operation."; return nullptr;
         }
         return nullptr;
