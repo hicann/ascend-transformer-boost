@@ -261,7 +261,10 @@ public:
         if (param.enDequant) {
             return 5; // There're 5 inputs if enable post dequant.
         }
-        return 4; // matmul has 2 inputs
+        if (platform == PlatformType::ASCEND_910A) {
+            return 2; // matmul has 2 inputs
+        } 
+        return 4; // matmul has 4 inputs
     }
 
 protected:

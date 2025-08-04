@@ -203,7 +203,11 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWeightNdNot910B()
     }
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor, &nullTensor_, &nullTensor_ };
+    if (GetSingleton<Config>().Is910A()) {
+        matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor};
+    } else {
+        matmulNode.inTensors = {&transdataAOutTensor, &transdataBOutTensor, &nullTensor_, &nullTensor_ };
+    }
     matmulNode.outTensors = {&matmulOutTensor};
 
     transdataOutNode.opDesc = {0, "TransdataOperation", transdataNzToNdParam_};
@@ -241,7 +245,11 @@ Status LinearOpsRunner::SetupKernelGraphMatmulWeightNzNot910B()
     }
 
     matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
-    matmulNode.inTensors = {&transdataAOutTensor, &weightTensor, &nullTensor_, &nullTensor_ };
+    if (GetSingleton<Config>().Is910A()) {
+        matmulNode.inTensors = {&transdataAOutTensor, &weightTensor};
+    } else {
+        matmulNode.inTensors = {&transdataAOutTensor, &weightTensor, &nullTensor_, &nullTensor_ };
+    }
     matmulNode.outTensors = {&matmulOutTensor};
     matmulNode.inTensorViewFuncs.resize(matmulNode.inTensors.size());
     if (isWeightNz_) {
