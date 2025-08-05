@@ -31,11 +31,6 @@ private:
     Status GetOperationFromCondition(Operation **op) const;
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;
-    void InitEmptyInTensorPerms() const override;
-    SVector<bool> GetEmptyInTensorPermissions() const override;
-    void InitEmptyOutTensorPerms() const override;
-    SVector<bool> GetEmptyOutTensorPermissions() const override;
-    void GetGraphInfoImpl(nlohmann::json &graphJson) const override;
     IfCondParam param_;
 };
 } // namespace atb

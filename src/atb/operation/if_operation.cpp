@@ -91,7 +91,7 @@ uint32_t IfOperation::GetInputNum() const
 {
     Operation *op;
     GetOperationFromCondition(&op);
-    ATB_LOG(INFO) << "Getting input num...";
+    ATB_LOG(INFO) << "Calling GetInputNum...";
     return op->GetInputNum();
 }
 
@@ -99,16 +99,24 @@ uint32_t IfOperation::GetOutputNum() const
 {
     Operation *op;
     GetOperationFromCondition(&op);
-    ATB_LOG(INFO) << "Getting output num...";
+    ATB_LOG(INFO) << "Calling GetOutputNum...";
     return op->GetOutputNum();
 }
 
 void IfOperation::SetExecuteStreamId(uint32_t streamId)
 {
+    Status st;
     Operation *op;
-    GetOperationFromCondition(&op);
-    ATB_LOG(INFO) << "Setting streamId...";
-    SetExecuteStreamId(op, streamId);
+    st = GetOperationFromCondition(&op);
+    if (st != NO_ERROR) {
+        return;
+    }
+    ATB_LOG(INFO) << "Calling SetExecuteStreamId...";
+    st = atb::SetExecuteStreamId(op, streamId);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << "Calling SetExecuteStreamId failed!";
+        return;
+    }
 }
 
 Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
@@ -120,7 +128,7 @@ Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
     if (st != NO_ERROR) {
         return st;
     }
-    ATB_LOG(INFO) << "Calling InferShapeImpl...";
+    ATB_LOG(INFO) << "Calling InferShape...";
     return op->InferShape(inTensorDescs, outTensorDescs);
 }
 
@@ -129,52 +137,11 @@ std::shared_ptr<Runner> IfOperation::CreateRunner(Context &context) const
     Operation *op;
     GetOperationFromCondition(&op);
     OperationBase *opBase = dynamic_cast<OperationBase*>(op);
-    if (opBase) {
-        ATB_LOG(INFO) << "Calling CreateRunner...";
-        return op->CreateRunner(context);
+    if (!opBase) {
+        ATB_LOG(ERROR) << "Failed to convert Operation to OperationBase";
+        return nullptr;
     }
-    return nullptr;
+    ATB_LOG(INFO) << "Calling CreateRunner...";
+    return opBase->CreateRunner(context);
 }
-
-void IfOperation::InitEmptyInTensorPerms()
-{
-    Operation *op;
-    GetOperationFromCondition(&op);
-    ATB_LOG(INFO) << "Calling InitEmptyInTensorPerms...";
-    op->InitEmptyInTensorPerms();
-}
-
-SVector<bool> IfOperation::GetEmptyInTensorPermissions() const
-{
-    Operation *op;
-    GetOperationFromCondition(&op);
-    ATB_LOG(INFO) << "Calling GetEmptyInTensorPermissions...";
-    return op->GetEmptyInTensorPermissions();
-}
-
-void IfOperation::InitEmptyOutTensorPerms()
-{
-    Operation *op;
-    GetOperationFromCondition(&op);
-    ATB_LOG(INFO) << "Calling InitEmptyOutTensorPerms...";
-    op->InitEmptyOutTensorPerms();
-}
-
-SVector<bool> IfOperation::GetEmptyOutTensorPermissions() const
-{
-    Operation *op;
-    GetOperationFromCondition(&op);
-    ATB_LOG(INFO) << "Calling GetEmptyOutTensorPermissions...";
-    return op->GetEmptyOutTensorPermissions();
-}
-
-void IfOperation::GetGraphInfoImpl(nlohmann::json &graphJson) const
-{
-    Operation *op;
-    GetOperationFromCondition(&op);
-    ATB_LOG(INFO) << "Calling GetGraphInfoImpl...";
-    nlohmann::json opGraphJson;
-    op->GetGraphInfoImpl(opGraphJson);
-}
-
 } // namespace atb
