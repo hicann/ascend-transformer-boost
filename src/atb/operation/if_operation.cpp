@@ -62,7 +62,7 @@ IfOperation::~IfOperation()
     // TODO: any cleanup if necessary
 }
 
-std::string GetName() const
+std::string IfOperation::GetName() const
 {
     return "IfOperation";
 }
@@ -96,9 +96,10 @@ uint32_t IfOperation::GetInputNum() const
 {
     Status st;
     Operation *op;
-    GetOperationFromCondition(&op);
+    st = GetOperationFromCondition(&op);
     if (st != NO_ERROR) {
-        ATB_LOG(ERROR) << "Get operation from condition failed!" return 0;
+        ATB_LOG(ERROR) << "Get operation from condition failed!";
+        return 0;
     }
     ATB_LOG(INFO) << "Calling GetInputNum...";
     return op->GetInputNum();
@@ -108,9 +109,10 @@ uint32_t IfOperation::GetOutputNum() const
 {
     Status st;
     Operation *op;
-    GetOperationFromCondition(&op);
+    st = GetOperationFromCondition(&op);
     if (st != NO_ERROR) {
-        ATB_LOG(ERROR) << "Get operation from condition failed!" return 0;
+        ATB_LOG(ERROR) << "Get operation from condition failed!";
+        return 0;
     }
     ATB_LOG(INFO) << "Calling GetOutputNum...";
     return op->GetOutputNum();
@@ -146,8 +148,13 @@ Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVe
 
 std::shared_ptr<Runner> IfOperation::CreateRunner(Context &context) const
 {
+    Status st;
     Operation *op;
-    GetOperationFromCondition(&op);
+    st = GetOperationFromCondition(&op);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << "Failed to get operation from condition";
+        return nullptr;
+    }
     OperationBase *opBase = dynamic_cast<OperationBase *>(op);
     if (!opBase) {
         ATB_LOG(ERROR) << "Failed to convert Operation to OperationBase";
