@@ -62,6 +62,11 @@ IfOperation::~IfOperation()
     // TODO: any cleanup if necessary
 }
 
+std::string GetName() const
+{
+    return "IfOperation";
+}
+
 Status IfOperation::Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
 {
     Status st;
@@ -89,16 +94,24 @@ Status IfOperation::Execute(const VariantPack &variantPack, uint8_t *workspace, 
 
 uint32_t IfOperation::GetInputNum() const
 {
+    Status st;
     Operation *op;
     GetOperationFromCondition(&op);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << "Get operation from condition failed!" return 0;
+    }
     ATB_LOG(INFO) << "Calling GetInputNum...";
     return op->GetInputNum();
 }
 
 uint32_t IfOperation::GetOutputNum() const
 {
+    Status st;
     Operation *op;
     GetOperationFromCondition(&op);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << "Get operation from condition failed!" return 0;
+    }
     ATB_LOG(INFO) << "Calling GetOutputNum...";
     return op->GetOutputNum();
 }
@@ -119,8 +132,7 @@ void IfOperation::SetExecuteStreamId(uint32_t streamId)
     }
 }
 
-Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs,
-                                            SVector<TensorDesc> &outTensorDescs) const
+Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const
 {
     Status st;
     Operation *op;
@@ -136,7 +148,7 @@ std::shared_ptr<Runner> IfOperation::CreateRunner(Context &context) const
 {
     Operation *op;
     GetOperationFromCondition(&op);
-    OperationBase *opBase = dynamic_cast<OperationBase*>(op);
+    OperationBase *opBase = dynamic_cast<OperationBase *>(op);
     if (!opBase) {
         ATB_LOG(ERROR) << "Failed to convert Operation to OperationBase";
         return nullptr;
