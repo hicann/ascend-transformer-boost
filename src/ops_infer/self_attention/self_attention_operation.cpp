@@ -1073,39 +1073,53 @@ Status SelfAttentionOperation::HeadSizeDimCheck910B(const SVector<TensorDesc> &i
 {
     int64_t headSizeK = 0;
     int64_t headSizeV = 0;
+    uint32_t lastDimPosK = inTensorDescs.at(1).shape.dimNum - 1; // 1: key
+    uint32_t lastDimPosV = inTensorDescs.at(2).shape.dimNum - 1; // 2: value
+
     if (param_.kvcacheCfg == atb::infer::SelfAttentionParam::K_BYPASS_V_BYPASS ||
         inTensorDescs.at(1).shape.dimNum == 2 || // 2: [nTokens, qHiddenSize]
         (param_.calcType == atb::infer::SelfAttentionParam::PREFIX_ENCODER &&
          inTensorDescs.at(1).shape.dimNum == 3)) { // PREFIX_ENCODER 3: [numBlocks, blockSize, kvHiddenSize]
-        uint32_t lastDimPos = inTensorDescs.at(1).shape.dimNum - 1;
-        if (inTensorDescs.at(1).shape.dims[lastDimPos] % kvHeadNum_ != 0 ||
-            inTensorDescs.at(2).shape.dims[lastDimPos] % kvHeadNum_ != 0) { // 2: value
-            ATB_LOG(ERROR) << "hiddenSize of key and value should be multiples of kvHeadNum";
+        int64_t hiddenSizeK = inTensorDescs.at(1).shape.dims[lastDimPosK]; // 1: key
+        if (hiddenSizeK % kvHeadNum_ != 0) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSizeK(" << hiddenSizeK << ") should be multiples of kvHeadNum("
+                           << kvHeadNum_ << ")";
             return ERROR_INVALID_TENSOR_DIM;
         }
-        headSizeK = inTensorDescs.at(1).shape.dims[lastDimPos] / kvHeadNum_;
-        lastDimPos = inTensorDescs.at(2).shape.dimNum - 1;                   // 2: cacheV
-        headSizeV = inTensorDescs.at(2).shape.dims[lastDimPos] / kvHeadNum_; // 2: cacheV
+        int64_t hiddenSizeV = inTensorDescs.at(2).shape.dims[lastDimPosV]; // 2: value
+        if (!isMla_ && (hiddenSizeV % kvHeadNum_ != 0)) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "hiddenSizeV(" << hiddenSizeV << ") should be multiples of kvHeadNum("
+                           << kvHeadNum_ << ")";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+        headSizeK = hiddenSizeK / kvHeadNum_;
+        if (!isMla_) {
+            headSizeV = hiddenSizeV / kvHeadNum_; // 2: cacheV
+        }
     } else {
-        uint32_t lastDimPos = inTensorDescs.at(1).shape.dimNum - 1;
-        headSizeK = inTensorDescs.at(1).shape.dims[lastDimPos];
-        lastDimPos = inTensorDescs.at(2).shape.dimNum - 1;      // 2: cacheV
-        headSizeV = inTensorDescs.at(2).shape.dims[lastDimPos]; // 2: cacheV
+        headSizeK = inTensorDescs.at(1).shape.dims[lastDimPosK];
+        headSizeV = inTensorDescs.at(2).shape.dims[lastDimPosV]; // 2: cacheV
     }
     if (isMla_) {
         headSizeV = param_.mlaVHeadSize;
         if (param_.mlaVHeadSize > headSizeK) {
-            ATB_LOG(ERROR) << "mlaVHeadSize should be no greater than headSizeK";
+            ATB_LOG(ERROR) << GetLogPrefix() << "param mlaVHeadSize(" << headSizeV
+                           << ") should be no greater than headSizeK(" << headSizeK << ")";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
+    return MaxHeadSizeCheck910B(headSizeK, headSizeV);
+}
+
+Status SelfAttentionOperation::MaxHeadSizeCheck910B(const int64_t headSizeK, const int64_t headSizeV) const
+{
     int64_t maxHeadSize = MAX_HEAD_SIZE_MLA;
     if ((param_.windowSize > 0 && !isMla_) || param_.scaleType != infer::SelfAttentionParam::SCALE_TYPE_TOR ||
         param_.inputLayout == atb::infer::InputLayout::TYPE_BNSD ||
         (!isMla_ && param_.quantType != infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT)) {
-        maxHeadSize = 256; // 256: 不支持mla的场景headsize小于等于256
+        maxHeadSize = 256; // 256: 不支持mla的场景headsize小于等于256，且headSizeK，headSizeV需要相等
         if (headSizeK != headSizeV) {
-            ATB_LOG(ERROR) << "headSize of key and value should be same";
+            ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and value should be same";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
@@ -1115,7 +1129,7 @@ Status SelfAttentionOperation::HeadSizeDimCheck910B(const SVector<TensorDesc> &i
         maxHeadSize = 128; // 128: 压缩alibi情况headsize小于等于128
     }
     if (headSizeK > maxHeadSize || headSizeV > maxHeadSize) {
-        ATB_LOG(ERROR) << "headSize of key and value should be no greater than " << maxHeadSize;
+        ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and value should be no greater than " << maxHeadSize;
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
