@@ -9,6 +9,9 @@
 #
 
 add_subdirectory(framework)
+if(USE_PROF_TEST)
+    add_subdirectory(proftest)
+endif()
 if(USE_UNIT_TEST OR USE_ALL_TEST)
     add_subdirectory(unittest)
     add_subdirectory(cinterface)

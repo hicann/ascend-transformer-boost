@@ -34,7 +34,7 @@ VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
 
-BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
+BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest proftest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
     "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
     "--src-only")
@@ -265,6 +265,25 @@ function fn_build_pybind11()
     git clone --branch v2.10.3 --depth 1 https://github.com/pybind/pybind11.git
 }
 
+function fn_build_benchmark()
+{   
+    if [ -d "$THIRD_PARTY_DIR/benchmark" ]; then
+        return 0
+    fi
+    cd $THIRD_PARTY_DIR
+    git clone https://github.com/google/benchmark.git
+    cd benchmark
+    if [ "$USE_CXX11_ABI" == "ON" ]
+    then
+        sed -i '334 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=1)' CMakeLists.txt
+    else
+        sed -i '334 a add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)' CMakeLists.txt
+    fi
+    cmake -E make_directory "build"
+    cmake -E chdir "build" cmake -DBENCHMARK_DOWNLOAD_DEPENDENCIES=on -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON ../
+    cmake --build "build" --config Release
+}
+
 function fn_build_secodefuzz()
 {
     FUZZ_DEST_PATH=$THIRD_PARTY_DIR/secodefuzz
@@ -302,6 +321,7 @@ function fn_build_3rdparty_for_test()
     fi
     fn_build_googletest
     fn_build_stub
+    fn_build_benchmark
 }
 
 function fn_build_3rdparty_for_compile()
@@ -529,6 +549,14 @@ function fn_run_kernel_cinterfacetest()
     $ATB_HOME_PATH/bin/atb_cinterface
 }
 
+function fn_run_proftest()
+{
+    export_atb_env
+    export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/lib:$PYTORCH_NPU_INSTALL_PATH/lib:$CODE_ROOT/3rdparty/benchmark/build/src:$LD_LIBRARY_PATH
+    echo "run $ATB_HOME_PATH/bin/atb_proftest"
+    $ATB_HOME_PATH/bin/atb_proftest atb_proftest_baseline
+    $ATB_HOME_PATH/bin/atb_proftest
+}
 
 function fn_run_fuzztest()
 {
@@ -812,6 +840,12 @@ function fn_main()
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_INFRA_TEST=ON"
             fn_build
             fn_run_infratest
+            ;;
+        "proftest")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_PROF_TEST=ON"
+            fn_build_3rdparty_for_test
+            fn_build
+            fn_run_proftest
             ;;
         "hitest")
             export_atb_hitest_env
