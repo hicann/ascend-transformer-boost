@@ -59,7 +59,16 @@ IfOperation::IfOperation(const IfCondParam &param) : OperationBase("ConditionalO
 
 IfOperation::~IfOperation()
 {
-    // TODO: any cleanup if necessary
+    if (param_.condition) {
+        delete param_.condition;
+    }
+
+    if (param_.opA) {
+        DestroyOperation(param_.opA);
+    }
+    if (param_.opB) {
+        DestroyOperation(param_.opB);
+    }
 }
 
 std::string IfOperation::GetName() const
