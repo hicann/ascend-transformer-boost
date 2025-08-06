@@ -1119,7 +1119,8 @@ Status SelfAttentionOperation::MaxHeadSizeCheck910B(const int64_t headSizeK, con
         (!isMla_ && param_.quantType != infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT)) {
         maxHeadSize = 256; // 256: 不支持mla的场景headsize小于等于256，且headSizeK，headSizeV需要相等
         if (headSizeK != headSizeV) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and value should be same";
+            ATB_LOG(ERROR) << GetLogPrefix() << "headSizeK(" << headSizeK << ") and headSizeV(" << headsizeV
+                           << ") should be same";
             return ERROR_INVALID_TENSOR_DIM;
         }
     }
@@ -1128,8 +1129,12 @@ Status SelfAttentionOperation::MaxHeadSizeCheck910B(const int64_t headSizeK, con
         param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT) {
         maxHeadSize = 128; // 128: 压缩alibi情况headsize小于等于128
     }
-    if (headSizeK > maxHeadSize || headSizeV > maxHeadSize) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "headSize of key and value should be no greater than " << maxHeadSize;
+    if (headSizeK > maxHeadSize) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "headSizeK(" << headSizeK << ") should be no greater than " << maxHeadSize;
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    if (headSizeV > maxHeadSize) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "headSizeV(" << headSizeV << ") should be no greater than " << maxHeadSize;
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
