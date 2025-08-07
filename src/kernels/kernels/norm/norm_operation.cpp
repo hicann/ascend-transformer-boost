@@ -14,6 +14,7 @@
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/const/op_const.h>
 #include "asdops/params/params.h"
+#include "sink_common.h"
 
 namespace {
 constexpr size_t LAYERNORM_TENSOR_COUNT = 3;
@@ -475,31 +476,13 @@ private:
 
     Status PostLayernormF16InferShape(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const
     {
-        outTensors[0].desc = launchParam.GetInTensor(0).desc;
-        const SVector<int64_t> &inDimsInpX = launchParam.GetInTensor(0).desc.dims;
-        const SVector<int64_t> &inDimsResIn = launchParam.GetInTensor(TENSOR_THE_SECOND).desc.dims;
-        const SVector<int64_t> &inDimsGamma = launchParam.GetInTensor(TENSOR_THE_THIRD).desc.dims;
-        const SVector<int64_t> &inDimsBeta = launchParam.GetInTensor(TENSOR_THE_FOURTH).desc.dims;
-        if (inDimsInpX.size() != inDimsResIn.size()) {
-            return Status::FailStatus(ERROR_INVALID_VALUE, "inDimsInpX are not equal inDimsResIn");
+        for (auto &outTensor: outTensors) {
+            Mki::TensorDesc desc;
+            desc.format = Mki::TENSOR_FORMAT_ND;
+            outTensor.desc = desc;
         }
-        for (size_t i = 0; i < inDimsInpX.size(); i++) {
-            if (inDimsInpX[i] != inDimsResIn[i]) {
-                return Status::FailStatus(ERROR_INVALID_VALUE, "inDimsInpX are not equal inDimsResIn");
-            }
-        }
-        if (inDimsGamma.size() != inDimsBeta.size()) {
-            return Status::FailStatus(ERROR_INVALID_VALUE, "inDimsGamma are not equal inDimsBeta");
-        }
-        for (size_t i = 0; i < inDimsGamma.size(); i++) {
-            if (inDimsGamma[i] != inDimsBeta[i]) {
-                return Status::FailStatus(ERROR_INVALID_VALUE, "inDimsGamma are not equal inDimsBeta");
-            }
-        }
-        outTensors[0].desc.format = launchParam.GetInTensor(0).desc.format;
-        outTensors[0].desc.dtype = launchParam.GetInTensor(0).desc.dtype;
-        outTensors[0].desc.dims = launchParam.GetInTensor(0).desc.dims;
-        return Status::OkStatus();
+        return opInferShape::CallGeInferShape("PostLayerNorm", launchParam, outTensors,
+                                              AsdOps::GetMkiSpecificAttr<OpParam::Norm>);
     }
 
     Status PostLayernormF16QuantInferShape(const LaunchParam &launchParam, SVector<Tensor> &outTensors) const

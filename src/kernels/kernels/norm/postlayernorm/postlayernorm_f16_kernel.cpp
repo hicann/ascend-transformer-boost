@@ -14,6 +14,8 @@
 #include "asdops/params/params.h"
 #include "tiling/post_layer_norm_tiling.h"
 #include "tiling/tiling_data.h"
+#include "kernels/norm/common/mki_specific_attr/norm_attr.h"
+#include "sink_common.h"
 
 namespace {
 static const float THRESHOLD = 2e-38;
@@ -66,11 +68,8 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        KernelBufferInfo kernelBufferInfo;
-        kernelBufferInfo.fp32BufNum = 2; // 2: temp fp32 Buffer x, y
-        kernelBufferInfo.fp16BufNum = 2; // 2: beta & gamma
-        kernelBufferInfo.fp16BufNumForMulRow = 3; // 3: in, resIn, output
-        return PostLayerNormTiling(launchParam, kernelInfo_, kernelBufferInfo);
+        return optiling::CallGeTiling("PostLayerNorm", *GetBinHandle(), launchParam,
+                                      AsdOps::GetMkiSpecificAttrPostLayerNorm, kernelInfo_);
     }
 };
 REG_KERNEL_BASE(PostLayerNormF16Kernel);
