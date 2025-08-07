@@ -333,7 +333,7 @@ class DynamicNTKOperation(DataGen):
         else:
             seqlens = np.array([ntokens])
         max_seq_len = max(seqlens)
-        positionIds = np.random.randint(0, max_seq_len-1, size=ntokens)
+        positionIds = np.random.randint(0, max_seq_len, size=ntokens)
         inv_freq = np.random.rand(batch, head_size_half)
         positionIds = torch.from_numpy(positionIds).npu().to(torch.int32)
         seqlens = torch.from_numpy(seqlens).npu().to(torch.int32)
