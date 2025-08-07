@@ -1350,20 +1350,20 @@ aclrtStream OperationBase::GetExecuteStream(Context *context) const
 Status OperationBase::CopyArgsToDevice(Context *context)
 {
     Status st = NO_ERROR;
+    if (hostArgsBuffer_ == nullptr) {
+        ATB_LOG(INFO) << "hostArgsBuffer is nullptr, no need to copy args";
+        return st;
+    }
 #ifdef _DEBUG
     ATB_LOG(DEBUG) << GetLogPrefix() << "args in graphMode is:";
-    if (hostArgsBuffer_ != nullptr) {
-        const size_t counter =  argsBufferSize_ / sizeof(void *);
-        for (size_t i = 0; i < counter; i++) {
-            ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
-        }
-    } else {
-        ATB_LOG(DEBUG) << GetLogPrefix() << "hostArgsBuffer is null!";
+    const size_t counter =  argsBufferSize_ / sizeof(void *);
+    for (size_t i = 0; i < counter; i++) {
+        ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
     }
 #endif
     if (deviceArgsBuffer_ == nullptr || hostArgsBuffer_ == nullptr) {
-        ATB_LOG(INFO) << "deviceArgsBuffer of hostArgsBuffer is nullptr, no need to copy args";
-        return NO_ERROR;
+        ATB_LOG(INFO) << "deviceArgsBuffer is nullptr, no need to copy args";
+        return st;
     }
     if (!isCaptured_) {
         st = aclrtMemcpy(deviceArgsBuffer_, argsBufferSize_, hostArgsBuffer_, argsBufferSize_,
