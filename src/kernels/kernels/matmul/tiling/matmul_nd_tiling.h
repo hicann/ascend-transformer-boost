@@ -21,6 +21,8 @@ Status MatMulNdTiling(const std::string &kernelName, const LaunchParam &launchPa
                       const BinHandle &binHandle);
 Status BatchMatMulNdTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
                            const BinHandle &binHandle);
+Status QuantBatchMatmulNdTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                           const BinHandle &binHandle);                       
 Status MatMulNdGemvTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo);
 } // namespace AsdOps
 

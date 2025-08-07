@@ -23,7 +23,8 @@ struct MatMul {
         MATMUL_DEQUANT,      //
         MATMUL_ACCUM_ATOMIC, // C += op(A) * op(B)
         MATMUL_WITH_BIAS,    // C = op(A) * op(B) + Bias, where Bias is a vector.
-        MATMUL_EIN_SUM
+        MATMUL_EIN_SUM,
+        MATMUL_DEQUANT_FALLBACK
     };
     enum class QuantMode : uint32_t {
         PER_CHANNEL_SYMM = 0,

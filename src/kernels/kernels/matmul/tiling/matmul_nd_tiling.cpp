@@ -12,6 +12,7 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/math/math.h>
 #include <mki/utils/platform/platform_info.h>
+#include <type_traits>
 #include "asdops/params/params.h"
 #include "tbe_tiling_runner.h"
 #include "kernels/matmul/tiling/tiling_data.h"
@@ -62,6 +63,39 @@ Status BatchMatMulNdTiling(const std::string &kernelName, const LaunchParam &lau
         .AddAttrInt64(0); // 0x40 is high precision
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
+
+Status QuantBatchMatmulNdTiling(const std::string &kernelName, const LaunchParam &launchParam, KernelInfo &kernelInfo,
+                           const BinHandle &binHandle)
+{
+
+    auto opParam = AnyCast<OpParam::MatMul>(launchParam.GetParam());
+    const TensorDesc &tensorDescA = launchParam.GetInTensor(0).desc;
+    const TensorDesc &tensorDescB = launchParam.GetInTensor(1).desc;
+    const TensorDesc &tensorDescScale = launchParam.GetInTensor(2).desc;
+    const TensorDesc &tensorDescOffset = launchParam.GetInTensor(3).desc;
+    const TensorDesc &tensorDescBias = launchParam.GetInTensor(4).desc;
+    const TensorDesc &tensorDescPertoken = launchParam.GetInTensor(5).desc;
+    const TensorDesc &tensorDescOut = launchParam.GetOutTensor(0).desc;
+
+    auto runner = AsdOpsGeRt::TbeTilingRunner()
+        .SetName("QuantBatchMatmulV3")
+        .SetKernelName(kernelName)
+        .AddInput(tensorDescA.dtype, tensorDescA.format, tensorDescA.dims)
+        .AddInput(tensorDescB.dtype, tensorDescB.format, tensorDescB.dims)
+        .AddInput(tensorDescScale.dtype, tensorDescScale.format, tensorDescScale.dims)
+        .AddInput(tensorDescOffset.dtype, tensorDescOffset.format, tensorDescOffset.dims)
+        .AddInput(tensorDescBias.dtype, tensorDescBias.format, tensorDescBias.dims)
+        .AddInput(tensorDescPertoken.dtype, tensorDescPertoken.format, tensorDescPertoken.dims)
+        .AddInput(tensorDescOut.dtype, tensorDescOut.format, tensorDescOut.dims)
+        .AddAttrInt(static_cast<std::underlying_type_t<Mki::TensorDType>>(opParam.outDtype))
+        .AddAttrBool(opParam.transposeA)
+        .AddAttrBool(opParam.transposeB)
+        .AddAttrBool(0);
+
+    return GetTilingFromRunner(kernelInfo, runner, binHandle);
+
+}
+
 
 Status MatMulNdGemvTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 {

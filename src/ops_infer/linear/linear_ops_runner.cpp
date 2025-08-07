@@ -18,9 +18,11 @@ static constexpr size_t SIZE_2 = 2;
 static constexpr size_t SIZE_3 = 3;
 static constexpr size_t SIZE_4 = 4;
 static constexpr size_t SIZE_5 = 5;
+static constexpr size_t SIZE_6 = 6;
 static constexpr size_t DIM_2 = 2;
 static constexpr size_t DIM_3 = 3;
 static constexpr int64_t DEFAULT_ALIGN = 16;
+static constexpr int64_t ALIGNMENT_4 = 4;
 static constexpr int64_t INT8_ALIGN = 32;
 static constexpr int64_t MATMUL_TRANSPOSE_THRESHOLD = 65535;
 
@@ -92,10 +94,15 @@ Status LinearOpsRunner::SetupKernelGraph(const OpsTensorPack &opsTensorPack)
     size_t inTensorId = 0;
     Mki::Tensor &xTensor = kernelGraph_.inTensors.at(inTensorId++);
     Mki::Tensor &weightTensor = kernelGraph_.inTensors.at(inTensorId++);
+    Mki::TensorDesc weightTensorDesc = weightTensor.desc;
     isWeightNz_ = weightTensor.desc.format == Mki::TENSOR_FORMAT_FRACTAL_NZ;
     SetupNeedMergeAxis(xTensor, weightTensor);
     SetupMatmulOriShape(xTensor, weightTensor);
     transdataNzToNdParam_.outCrops = {matmulParam_.oriShape.at(0), matmulParam_.oriShape.at(2)};
+    const int64_t nModResult = weightTensorDesc.dims[DIM_2] % DEFAULT_ALIGN;
+    if (0 < nModResult && nModResult < ALIGNMENT_4) {
+        return SetupKernelGraphQuantBatchMatmul910B;
+    }
     if (matmulParam_.enDequant) {
         if (GetSingleton<Config>().Is910B() && param_.quantMode == infer::LinearParam::PER_TOKEN) {
                 return SetupKernelGraphMatmulDequantPerToken910B();
@@ -159,6 +166,32 @@ Status LinearOpsRunner::SetupKernelGraphMatmul910B()
     } else if (weightNeedMergeAxis_) {
         matmulNode.inTensorViewFuncs.at(1) = matmulMergeAxis_;
     }
+
+    return NO_ERROR;
+}
+
+Status LinearOpsRunner::SetupKernelGraphQuantBatchMatmul910B()
+{
+    ATB_LOG(INFO) << GetLogPrefix() << "LinearOpsRunner::SetupKernelGraphQuantBatchMatmul910B";
+
+    InitKernelGraph(SIZE_6, 1, 0, 1);
+
+    size_t inTensorId = 0;
+    Mki::Tensor &x1Tensor = kernelGraph_.inTensors.at(inTensorId);
+    Mki::Tensor &x2Tensor = kernelGraph_.inTensors.at(inTensorId);
+    Mki::Tensor &scaleTensor = kernelGraph_.inTensors.at(inTensorId);
+    Mki::Tensor &offsetTensor = nullTensor_;
+    Mki::Tensor &biasTensor = kernelGraph_.inTensors.at(inTensorId);
+    Mki::Tensor &pertokenTensor = nullTensor_;
+
+    Mki::Tensor &outTensor = kernelGraph_.outTensors.at(0);
+
+    KernelGraphNode &matmulNode = kernelGraph_.nodes.at(0);
+
+    matmulParam_.matmulType = AsdOps::OpParam::MatMul::MatMulType::MATMUL_DEQUANT_FALLBACK;
+    matmulNode.opDesc = {0, "MatMulOperation", matmulParam_};
+    matmulNode.inTensors = {&x1Tensor, &x2Tensor, &scaleTensor, &offsetTensor, &biasTensor, &pertokenTensor};
+    matmulNode.outTensors = {&outTensor};
 
     return NO_ERROR;
 }
