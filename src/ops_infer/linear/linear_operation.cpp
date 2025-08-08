@@ -762,15 +762,15 @@ bool LinearOperation::FloatXWeightDimCheck(const TensorDesc &xTensorDesc, const 
     int64_t xK = OperationUtil::GetXTensorK(xTensorDesc, param_.transposeA);
     int64_t weightN = OperationUtil::GetYTensorN(weightTensorDesc, param_.transposeB);
     if (xTensorDesc.dtype == aclDataType::ACL_FLOAT && weightTensorDesc.dtype == aclDataType::ACL_FLOAT &&
-        xM >= SUPPORTED_M_LOW && xM <= SUPPORTED_M_HIGH && xK == SUPPORTED_K && weightN == SUPPORTED_N) {
-        return true;
+        (xM < SUPPORTED_M_LOW || xM > SUPPORTED_M_HIGH || xK != SUPPORTED_K || weightN != SUPPORTED_N)) {
+        ExternalError error;
+        error.errorType = ERROR_INVALID_TENSOR_DIM;
+        error.errorDesc = "m should between 1 and 256, k should be 7168, n should be 256 in float dtype,";
+        error.errorData = OperationUtil::ConcatInfo("m = ", xM, ", k = ", xK, ", n = ", weightN);
+        error.solutionDesc = "Please check the shape of inTensors.";
+        ATB_LOG(ERROR) << GetLogPrefix() << error;
+        return false;
     }
-    ExternalError error;
-    error.errorType = ERROR_INVALID_TENSOR_DIM;
-    error.errorDesc = "m should between 1 and 256, k should be 7168, n should be 256 in float dtype,";
-    error.errorData = OperationUtil::ConcatInfo("m = ", xM, ", k = ", xK, ", n = ", weightN);
-    error.solutionDesc = "Please check the shape of inTensors.";
-    ATB_LOG(ERROR) << GetLogPrefix() << error;
-    return false;
+    return true;
 }
 } // namespace atb
