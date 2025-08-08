@@ -22,7 +22,6 @@ static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t SWIGLU_BACKWARD_IN_TENSOR_NUM = 2;
 static const uint32_t OUT_TENSOR_NUM = 1;
 static const uint32_t SPLIT_NUM = 2;
-static const uint32_t FLOAT_NZ_FORMAT_ALIGN = 16;
 static const int32_t HIDDEN_SIZE_DIM_BASE = 32;
 } // namespace
 
@@ -166,9 +165,6 @@ Status ActivationOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTen
     if (param_.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD) {
         return CheckSwigluForwardInTensor(inTensorDescs);
     }
-    if (param_.activationType == atb::infer::ActivationType::ACTIVATION_FASTER_GELU_FORWARD) {
-        return CheckFasterGeluForwardInTensor(inTensorDescs);
-    }
     return NO_ERROR;
 }
 
@@ -212,10 +208,6 @@ Status ActivationOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
     // Swiglu
     if (param_.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_BACKWARD) {
         return CheckSwigluBackwardInTensor(inTensorDescs);
-    }
-    // faster gelu forward
-    if (param_.activationType == atb::infer::ActivationType::ACTIVATION_FASTER_GELU_FORWARD) {
-        return CheckFasterGeluForwardInTensor(inTensorDescs);
     }
     Status st;
     if ((st = CheckSwigluForwardInTensor(inTensorDescs)) != NO_ERROR) {
