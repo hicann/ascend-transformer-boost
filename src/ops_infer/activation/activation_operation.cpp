@@ -22,6 +22,7 @@ static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t SWIGLU_BACKWARD_IN_TENSOR_NUM = 2;
 static const uint32_t OUT_TENSOR_NUM = 1;
 static const uint32_t SPLIT_NUM = 2;
+static const uint32_t FLOAT_NZ_FORMAT_ALIGN = 16;
 static const int32_t HIDDEN_SIZE_DIM_BASE = 32;
 } // namespace
 
@@ -62,7 +63,7 @@ static Mki::OperationIr *GetOperationIrForActivation(const infer::ActivationType
         case atb::infer::ActivationType::ACTIVATION_LOG:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationLOG");
         case atb::infer::ActivationType::ACTIVATION_GELU:
-            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationGELUA");
+            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationGELU");
         case atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWIGLUFORWARD");
         case atb::infer::ActivationType::ACTIVATION_FAST_GELU:
@@ -104,6 +105,16 @@ uint32_t ActivationOperation::GetInputNum() const
 uint32_t ActivationOperation::GetOutputNum() const
 {
     return OUT_TENSOR_NUM;
+}
+
+Status ActivationOperation::CheckFasterGeluForwardInTensor(const SVector<TensorDesc> &inTensorDescs) const
+{
+    int64_t lastDim = inTensorDescs.at(0).shape.dims[-1];
+    if (lastDim % FLOAT_NZ_FORMAT_ALIGN != 0) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "The last dim of inTensor should be divisible by 16, but got [" << lastDim << "].";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    return NO_ERROR;
 }
 
 Status ActivationOperation::CheckSwigluBackwardInTensor(const SVector<TensorDesc> &inTensorDescs) const
@@ -165,6 +176,9 @@ Status ActivationOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTen
     if (param_.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD) {
         return CheckSwigluForwardInTensor(inTensorDescs);
     }
+    if (param_.activationType == atb::infer::ActivationType::ACTIVATION_FASTER_GELU_FORWARD) {
+        return CheckFasterGeluForwardInTensor(inTensorDescs);
+    }
     return NO_ERROR;
 }
 
@@ -208,6 +222,10 @@ Status ActivationOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, con
     // Swiglu
     if (param_.activationType == atb::infer::ActivationType::ACTIVATION_SWIGLU_BACKWARD) {
         return CheckSwigluBackwardInTensor(inTensorDescs);
+    }
+    // faster gelu forward
+    if (param_.activationType == atb::infer::ActivationType::ACTIVATION_FASTER_GELU_FORWARD) {
+        return CheckFasterGeluForwardInTensor(inTensorDescs);
     }
     Status st;
     if ((st = CheckSwigluForwardInTensor(inTensorDescs)) != NO_ERROR) {
