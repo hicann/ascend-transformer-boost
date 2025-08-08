@@ -109,7 +109,7 @@ uint32_t ActivationOperation::GetOutputNum() const
 
 Status ActivationOperation::CheckFasterGeluForwardInTensor(const SVector<TensorDesc> &inTensorDescs) const
 {
-    int64_t lastDim = inTensorDescs.at(0).shape.dims[-1];
+    int64_t lastDim = inTensorDescs.at(0).shape.dims[inTensorDescs.at(0).shape.dimNum - 1];
     if (lastDim % FLOAT_NZ_FORMAT_ALIGN != 0) {
         ATB_LOG(ERROR) << GetLogPrefix() << "The last dim of inTensor should be divisible by 16, but got [" << lastDim << "].";
         return ERROR_INVALID_TENSOR_DIM;
