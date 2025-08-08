@@ -24,7 +24,6 @@ public:
 protected:
     Status CheckSwigluForwardInTensor(const SVector<TensorDesc> &inTensorDescs) const;
     Status CheckSwigluBackwardInTensor(const SVector<TensorDesc> &inTensorDescs) const;
-    Status CheckFasterGeluForwardInTensor(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const override;
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;

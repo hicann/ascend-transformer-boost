@@ -107,16 +107,6 @@ uint32_t ActivationOperation::GetOutputNum() const
     return OUT_TENSOR_NUM;
 }
 
-Status ActivationOperation::CheckFasterGeluForwardInTensor(const SVector<TensorDesc> &inTensorDescs) const
-{
-    int64_t lastDim = inTensorDescs.at(0).shape.dims[inTensorDescs.at(0).shape.dimNum - 1];
-    if (lastDim % FLOAT_NZ_FORMAT_ALIGN != 0) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "The last dim of inTensor should be divisible by 16, but got [" << lastDim << "].";
-        return ERROR_INVALID_TENSOR_DIM;
-    }
-    return NO_ERROR;
-}
-
 Status ActivationOperation::CheckSwigluBackwardInTensor(const SVector<TensorDesc> &inTensorDescs) const
 {
     int32_t dimNums = static_cast<int32_t>(inTensorDescs.at(0).shape.dimNum);
@@ -133,7 +123,7 @@ Status ActivationOperation::CheckSwigluBackwardInTensor(const SVector<TensorDesc
     for (uint64_t i = 0; i < inTensorDescs.at(0).shape.dimNum; i++) {
         if (static_cast<uint64_t>(splitDim) == i) {
             if (inTensorDescs.at(1).shape.dims[i] != SPLIT_NUM * inTensorDescs.at(0).shape.dims[i]) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "Dims[" << i << "] of inTensor0 should be half of inTnesor1.";
+                ATB_LOG(ERROR) << GetLogPrefix() << "Dims[" << i << "] of inTensor0 should be half of inTensor1.";
                 return ERROR_INVALID_TENSOR_DIM;
             }
         } else {
