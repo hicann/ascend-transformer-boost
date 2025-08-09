@@ -291,7 +291,8 @@ Status GetUnpadFlashAttentionTilingParam(const UnpadFlashAttentionNzInfo mmInfo,
         MKI_LOG(ERROR) << "pointer tilingParam or seq is nullptr.";
         return Status::FailStatus(ERROR_INVALID_VALUE, "pointer tilingParam or seq is nullptr");
     }
-    const uint32_t nzRealCoreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+    uint32_t nzRealCoreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+    nzRealCoreNum = nzRealCoreNum <= USE_MAX_CORE_NUM ? nzRealCoreNum : USE_MAX_CORE_NUM;
     uint32_t initSize = static_cast<uint32_t>(mmInfo.batchSize * NZ_REAL_CORE_TILING_SIZE * sizeof(uint32_t) +
                                               GetNzRealCoreTilingOffset());
     auto ret = memset_s(tilingParam, tilingParamSize, 0, initSize);
