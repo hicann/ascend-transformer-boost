@@ -155,7 +155,7 @@ inline bool CalDataPerLoop(uint32_t ubSize, uint64_t dataNumPerCore, int32_t dat
     uint32_t typeLength = GetTypeLength(dataType);
     dataNumSingleUb = AlignDown(dataNumSingleUb, (typeLength == 0) ? 0 : (BLOCK_SIZE / typeLength));
     // 算出的ub空间数据量可能大于1行，可能小于1行
-    uint32_t dataLineSingleUb = dataNumSingleUb / AlignUp(tilingData->colLen, BLOCK_SIZE / typeLength);
+    uint32_t dataLineSingleUb = dataNumSingleUb / AlignUp(tilingData->colLen, (typeLength == 0) ? 0 : (BLOCK_SIZE / typeLength));
     if (dataLineSingleUb == 0) { // ub空间容纳数据量少于1行
         dataLineSingleUb = 1;
         tilingData->basicRowLen = 1;
