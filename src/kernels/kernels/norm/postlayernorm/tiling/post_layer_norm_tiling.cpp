@@ -60,10 +60,8 @@ Status PostLayerNormTiling(const LaunchParam &launchParam, KernelInfo &kernelInf
                                     kernelBufferInfo.fp16BufNum * sizeof(uint16_t);
     uint32_t multiRowSizePerElem = kernelBufferInfo.fp16BufNumForMulRow * sizeof(uint16_t) +
                                    kernelBufferInfo.i8BufNumForMulRow * sizeof(uint8_t);
-    MKI_CHECK(numCol <= (UINT_MAX / (singleRowSizePerElem + multiRowSizePerElem)), "RowBufferSize invalid!",
-              return Status::FailStatus(ERROR_INVALID_VALUE, "RowBufferSize invalid!"));
-    uint32_t singleRowBufferSize = singleRowSizePerElem * numCol;
-    uint32_t multiRowBufferSize = multiRowSizePerElem * numCol;
+    uint64_t singleRowBufferSize = singleRowSizePerElem * numCol;
+    uint64_t multiRowBufferSize = multiRowSizePerElem * numCol;
     uint64_t bf16TilingKey = launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16 ? 2 : 0;    // 二进制：10 or 00
     if (maxUbSize < (singleRowBufferSize + multiRowBufferSize)) {
         uint32_t oneRepeatElemCount = 256U / sizeof(uint16_t);
