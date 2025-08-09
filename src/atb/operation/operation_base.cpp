@@ -1361,7 +1361,7 @@ Status OperationBase::CopyArgsToDevice(Context *context)
         ATB_LOG(DEBUG) << ((void **)(hostArgsBuffer_))[i];
     }
 #endif
-    if (deviceArgsBuffer_ == nullptr || hostArgsBuffer_ == nullptr) {
+    if (deviceArgsBuffer_ == nullptr) {
         ATB_LOG(INFO) << "deviceArgsBuffer is nullptr, no need to copy args";
         return st;
     }
