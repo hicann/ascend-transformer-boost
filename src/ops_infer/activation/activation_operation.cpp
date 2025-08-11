@@ -62,7 +62,7 @@ static Mki::OperationIr *GetOperationIrForActivation(const infer::ActivationType
         case atb::infer::ActivationType::ACTIVATION_LOG:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationLOG");
         case atb::infer::ActivationType::ACTIVATION_GELU:
-            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationGELUA");
+            return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationGELU");
         case atb::infer::ActivationType::ACTIVATION_SWIGLU_FORWARD:
             return GetSingleton<AtbOperationIrCfg>().GetOperationIr("ActivationOperationSWIGLUFORWARD");
         case atb::infer::ActivationType::ACTIVATION_FAST_GELU:
@@ -122,7 +122,7 @@ Status ActivationOperation::CheckSwigluBackwardInTensor(const SVector<TensorDesc
     for (uint64_t i = 0; i < inTensorDescs.at(0).shape.dimNum; i++) {
         if (static_cast<uint64_t>(splitDim) == i) {
             if (inTensorDescs.at(1).shape.dims[i] != SPLIT_NUM * inTensorDescs.at(0).shape.dims[i]) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "Dims[" << i << "] of inTensor0 should be half of inTnesor1.";
+                ATB_LOG(ERROR) << GetLogPrefix() << "Dims[" << i << "] of inTensor0 should be half of inTensor1.";
                 return ERROR_INVALID_TENSOR_DIM;
             }
         } else {
