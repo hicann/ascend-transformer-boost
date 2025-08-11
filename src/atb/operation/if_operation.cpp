@@ -59,9 +59,7 @@ IfOperation::IfOperation(const IfCondParam &param) : OperationBase("ConditionalO
 
 IfOperation::~IfOperation()
 {
-    if (param_.condition) {
-        delete param_.condition;
-    }
+    // condition为非只能指针类型时需用户手动清理
 
     if (param_.opA) {
         DestroyOperation(param_.opA);
