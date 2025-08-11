@@ -139,10 +139,12 @@ public:
     __aicore__ __attribute__((always_inline)) inline PagedMLAMultiTokenPredictionAic(
         __gm__ uint8_t *__restrict__ sync, __gm__ uint8_t *__restrict__ q_gm, __gm__ uint8_t *__restrict__ kv_gm,
         __gm__ uint8_t *__restrict__ mask_gm, __gm__ uint8_t *__restrict__ block_tables_gm, 
+        __gm__ uint8_t *__restrict__ q_rope_gm, __gm__ uint8_t *__restrict__ kv_rope_gm,
         __gm__ uint8_t *__restrict__ o_gm, __gm__ uint8_t *__restrict__ s_gm,
         __gm__ uint8_t *__restrict__ p_gm, __gm__ uint8_t *__restrict__ o_tmp_gm,
         __gm__ uint8_t *__restrict__ upo_tmp_gm, __gm__ uint8_t *__restrict__ tiling_para_gm) :
         q_gm(q_gm), kv_gm(kv_gm), block_tables_gm(block_tables_gm),
+        q_rope_gm(q_rope_gm), kv_rope_gm(kv_rope_gm),
         s_gm(s_gm), p_gm(p_gm), o_tmp_gm(o_tmp_gm), upo_tmp_gm(upo_tmp_gm), 
         tiling_para_gm(tiling_para_gm)
     {
@@ -183,7 +185,9 @@ public:
         }
 
         q_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->q_gm));
+        q_rope_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->q_rope_gm));
         kv_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->kv_gm));
+        kv_rope_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm1InputType *>(this->kv_rope_gm));
         s_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ HighPrecisionMode *>(this->s_gm));
         p_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mm2InputType *>(this->p_gm));
         o_tmp_gm_tensor.SetGlobalBuffer(reinterpret_cast<__gm__ mmOutputType *>(this->o_tmp_gm));
@@ -263,9 +267,11 @@ public:
             uint32_t pingpong_flag = 0;
             uint32_t offset = pingpong_flag * L0AB_HALF_BUF_SIZE;
 
-            uint64_t q_offset = addr_q_scalar + head_start_idx * embd + qS_blk_idx * pp_m_scalar * stride_qo;
+            uint64_t q_offset = addr_q_scalar + head_start_idx * 512 + qS_blk_idx * pp_m_scalar * 128 * 512;
+            uint64_t q_rope_offset = addr_q_scalar + head_start_idx * 64 + qS_blk_idx * pp_m_scalar * 128 * 64;
 
             uint64_t k_offset = 0;
+            uint64_t k_rope_offset = 0;
             uint64_t n_align = RoundUp<uint64_t>(pp_n_scalar, 32 / sizeof(mm1InputType));
 
             uint32_t sv_n = n_loop == 1 ? kv_seqlen : pp_n_scalar;
@@ -590,7 +596,8 @@ public:
                         n_pingpong_flag = n_idx % 2;
                         uint32_t block_table_id = (uint32_t)(*((__gm__ int32_t *)block_tables_gm +
                             cur_batch * max_num_blocks_per_query + n_idx));
-                        k_offset = block_table_id * block_size * stride_k + (head_start_idx / group_num) * embd;
+                        k_offset = block_table_id * block_size * 512 + (head_start_idx / group_num) * 512;
+                        k_rope_offset = block_table_id * block_size * 64 + (head_start_idx / group_num) * 64;
                         uint64_t l1koffset = n_align * embed_round * n_pingpong_flag;
                         uint64_t l1qoffset = 0;
                         uint64_t k_offsetk = k_offset;
@@ -606,16 +613,16 @@ public:
                             uint32_t qk_round_k = (qk_k + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
                             
                             WAIT_FLAG(MTE1, MTE2, n_pingpong_flag * 3 + k_idx);
-                            gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::NZ>(
-                                l1k_buf_addr_tensor[l1koffset],
-                                kv_gm_tensor[k_offsetk],
-                                qk_n,        // nValue
-                                RoundUp<uint64_t>(qk_round_n, 32 / sizeof(mm1InputType)),  // dstNzC0Stride
-                                0,            // dstNzMatrixStride, unused
-                                qk_k,         // dValue
-                                0,            // dstNzMatrixStride, unused
-                                stride_k   // srcDValue
-                            );
+
+                            if (k_idx < 2) {
+                                AscendC::DataCopy(l1k_buf_addr_tensor[l1koffset],
+                                                  kv_gm_tensor[k_offsetk],
+                                                  128 * qk_k);
+                            } else {
+                                AscendC::DataCopy(l1k_buf_addr_tensor[l1koffset],
+                                                  kv_rope_gm_tensor[k_rope_offset],
+                                                  128 * qk_k);
+                            }
                             SET_FLAG(MTE2, MTE1, EVENT_ID0);
                             WAIT_FLAG(MTE2, MTE1, EVENT_ID0);
                             WAIT_FLAG(M, MTE1, EVENT_ID2);
@@ -645,19 +652,26 @@ public:
                                         0
                                     );
                                 } else {
-                                    for (uint32_t qS_idx = 0; qS_idx < qS_blk_size_actual; qS_idx++) {
-                                        AscendC::DataCopy(l1q_buf_addr_tensor[qS_idx * 16],
-                                                          q_gm_tensor[q_offset + qS_idx * stride_qo],
-                                                          AscendC::Nd2NzParams(1,
-                                                                               qN_blk_size_actual,
-                                                                               embd,
-                                                                               0,
-                                                                               embd,
-                                                                               qk_round_m,
-                                                                               qS_blk_size_actual,
-                                                                               16));
-                                    }
-                                    
+                                    gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::NZ>(
+                                        l1q_buf_addr_tensor,
+                                        q_gm_tensor[q_offset],
+                                        128,
+                                        qk_round_m,
+                                        0,
+                                        512,
+                                        0,
+                                        128 * 512
+                                    );
+                                    gm_to_l1<ArchType::ASCEND_V220, mm1InputType, DataFormat::ND, DataFormat::NZ>(
+                                        l1q_buf_addr_tensor[128 * 512],
+                                        q_rope_gm_tensor[q_rope_offset],
+                                        128,
+                                        qk_round_m,
+                                        0,
+                                        64,
+                                        0,
+                                        128 * 64
+                                    );
                                 }
                                 SET_FLAG(MTE2, MTE1, EVENT_ID4);
                                 WAIT_FLAG(MTE2, MTE1, EVENT_ID4);
@@ -700,7 +714,7 @@ public:
                             );
                             SET_FLAG(M, MTE1, EVENT_ID0);
                             SET_FLAG(M, MTE1, EVENT_ID2);
-                            k_offsetk += qk_split_k;
+                            k_offsetk += n_align * qk_split_k;
                             l1koffset += n_align * qk_split_k;
                             l1qoffset += qk_round_m * qk_split_k;
                         }
@@ -861,7 +875,9 @@ public:
     }
 private:
     __gm__ uint8_t *__restrict__ q_gm{nullptr};
+    __gm__ uint8_t *__restrict__ q_rope_gm{nullptr};
     __gm__ uint8_t *__restrict__ kv_gm{nullptr}; 
+    __gm__ uint8_t *__restrict__ kv_rope_gm{nullptr};
     __gm__ uint8_t *__restrict__ block_tables_gm{nullptr};
     __gm__ uint8_t *__restrict__ s_gm{nullptr};
     __gm__ uint8_t *__restrict__ p_gm{nullptr};
@@ -876,7 +892,9 @@ private:
     AscendC::LocalTensor<mm2InputType> l1p_buf_addr_tensor;
 
     AscendC::GlobalTensor<mm1InputType> q_gm_tensor;
+    AscendC::GlobalTensor<mm1InputType> q_rope_gm_tensor;
     AscendC::GlobalTensor<mm1InputType> kv_gm_tensor;
+    AscendC::GlobalTensor<mm1InputType> kv_rope_gm_tensor;
     AscendC::GlobalTensor<HighPrecisionMode> s_gm_tensor;
     AscendC::GlobalTensor<mm2InputType> p_gm_tensor;
     AscendC::GlobalTensor<mmOutputType> o_tmp_gm_tensor;
@@ -3919,6 +3937,8 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
     __gm__ uint8_t *__restrict__ ctkv_gm,
     __gm__ uint8_t *__restrict__ block_tables_gm,
     __gm__ uint8_t *__restrict__ mask_gm,
+    __gm__ uint8_t *__restrict__ q_rope_gm,
+    __gm__ uint8_t *__restrict__ ctkv_rope_gm,
     __gm__ uint8_t *__restrict__ o_gm,
     __gm__ uint8_t *__restrict__ s_gm,
     __gm__ uint8_t *__restrict__ p_gm,
@@ -3937,7 +3957,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     if (TILING_KEY_IS(0)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_576, half, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_576, half, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3947,7 +3967,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(1)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_256, half, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_256, half, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3957,7 +3977,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(12)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_576, float, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_576, float, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3967,7 +3987,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(13)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_256, float, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_256, float, FuncType::MULTI_TOKEN_PREDICTION> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3977,7 +3997,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(16)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_576, half, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_576, half, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3987,7 +4007,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(17)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_256, half, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<half, half, float, CalcMode::CALC_MODE_256, half, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -3997,7 +4017,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(28)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_576, float, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_576, float, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
@@ -4007,7 +4027,7 @@ extern "C" __global__ __aicore__ void paged_multi_latent_attention_multi_token_p
 #endif
     } else if (TILING_KEY_IS(29)) {
 #ifdef __DAV_C220_CUBE__
-        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_256, float, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm,
+        PagedMLAMultiTokenPredictionAic<__bf16, __bf16, float, CalcMode::CALC_MODE_256, float, FuncType::UNEQUAL_QK_LEN_PREFILL> mla_mtp_aic(sync, q_gm, ctkv_gm, mask_gm, block_tables_gm, q_rope_gm, ctkv_rope_gm,
                 o_gm, s_gm, p_gm, o_tmp_gm, upo_tmp_gm, tiling_para_gm);
         mla_mtp_aic.Run();
 #elif __DAV_C220_VEC__
