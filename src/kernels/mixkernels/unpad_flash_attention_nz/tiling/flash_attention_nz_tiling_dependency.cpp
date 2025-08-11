@@ -22,6 +22,7 @@
 namespace AtbOps {
 using namespace Mki;
 const int32_t PP_MM_NUM = 8;
+const uint32_t CORE_NUM_LIMIT = 10;
 const int32_t BIT_SHIFT = 32;
 const int32_t NZ_INDEX_0 = 0;
 const int32_t NZ_INDEX_1 = 1;
@@ -292,7 +293,9 @@ Status GetUnpadFlashAttentionTilingParam(const UnpadFlashAttentionNzInfo mmInfo,
         return Status::FailStatus(ERROR_INVALID_VALUE, "pointer tilingParam or seq is nullptr");
     }
     uint32_t nzRealCoreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
-    nzRealCoreNum = nzRealCoreNum <= USE_MAX_CORE_NUM ? nzRealCoreNum : USE_MAX_CORE_NUM;
+    if (nzRealCoreNum <= CORE_NUM_LIMIT) {
+        nzRealCoreNum = nzRealCoreNum <= USE_MAX_CORE_NUM ? nzRealCoreNum : USE_MAX_CORE_NUM;
+    }
     uint32_t initSize = static_cast<uint32_t>(mmInfo.batchSize * NZ_REAL_CORE_TILING_SIZE * sizeof(uint32_t) +
                                               GetNzRealCoreTilingOffset());
     auto ret = memset_s(tilingParam, tilingParamSize, 0, initSize);
