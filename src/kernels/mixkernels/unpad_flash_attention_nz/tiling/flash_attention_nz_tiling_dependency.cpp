@@ -22,7 +22,7 @@
 namespace AtbOps {
 using namespace Mki;
 const int32_t PP_MM_NUM = 8;
-const int32_t CORE_NUM_LIMIT = 10;
+const uint32_t CORE_NUM_LIMIT = 10;
 const int32_t BIT_SHIFT = 32;
 const int32_t NZ_INDEX_0 = 0;
 const int32_t NZ_INDEX_1 = 1;
