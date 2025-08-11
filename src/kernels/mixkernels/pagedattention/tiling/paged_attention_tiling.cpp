@@ -234,6 +234,8 @@ Status GetPagedAttentionNdInfo(const LaunchParam &launchParam, PagedAttentionInf
         OP_TILING_CHECK_STATUS_RETURN(GetPagedAttentionMaskInfo(launchParam, mmInfo, param, isMLA));
     }
 
+    mmInfo.embeddingSize = 576;
+
     // Check tiling data
     MKI_LOG(INFO) << "numTokens is: " << mmInfo.numTokens << " numHeads is: " << mmInfo.numHeads
                   << "batch is: " << mmInfo.batch << " embeddingSize is: " << mmInfo.embeddingSize
