@@ -16,7 +16,7 @@
 
 namespace atb {
 
-Status IfOperation::GetOperationFromCondition(Operation **op) const
+Status IfOperation::GetOperationFromCondition(Operation **op)
 {
     bool cond;
     try {
@@ -53,16 +53,22 @@ template <> Status CreateOperation(const IfCondParam &opParam, Operation **opera
     return NO_ERROR;
 }
 
-IfOperation::IfOperation(const IfCondParam &param) : OperationBase("ConditionalOperation"), param_(param) {}
+IfOperation::IfOperation(const IfCondParam &param) : OperationBase("IfOperation"), param_(param)
+{
+    if (!opSelected_) {
+        ATB_LOG(INFO) << "Operation not selected yet, setting opSelected_...";
+        Status st;
+        st = GetOperationFromCondition(&opSelected_);
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << "Failed to select operation based on condition!";
+        }
+    }
+}
 
 IfOperation::~IfOperation()
 {
-    if (param_.opA) {
-        DestroyOperation(param_.opA);
-    }
-    if (param_.opB) {
-        DestroyOperation(param_.opB);
-    }
+    if (param_.opA) DestroyOperation(param_.opA);
+    if (param_.opB) DestroyOperation(param_.opB);
 }
 
 std::string IfOperation::GetName() const
@@ -72,65 +78,41 @@ std::string IfOperation::GetName() const
 
 Status IfOperation::Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
 {
-    Status st;
-    Operation *op;
-    st = GetOperationFromCondition(&op);
-    if (st != NO_ERROR) {
-        return st;
-    }
     ATB_LOG(INFO) << "Calling Setup...";
-    return op->Setup(variantPack, workspaceSize, context);
+    return opSelected_->Setup(variantPack, workspaceSize, context);
 }
 
 Status IfOperation::Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
                             Context *context)
 {
-    Status st;
-    Operation *op;
-    st = GetOperationFromCondition(&op);
-    if (st != NO_ERROR) {
-        return st;
-    }
     ATB_LOG(INFO) << "Calling Execute...";
-    return op->Execute(variantPack, workspace, workspaceSize, context);
+    return opSelected_->Execute(variantPack, workspace, workspaceSize, context);
 }
 
 uint32_t IfOperation::GetInputNum() const
 {
-    Status st;
-    Operation *op;
-    st = GetOperationFromCondition(&op);
-    if (st != NO_ERROR) {
-        ATB_LOG(ERROR) << "Get operation from condition failed!";
-        return 0;
-    }
     ATB_LOG(INFO) << "Calling GetInputNum...";
-    return op->GetInputNum();
+    return opSelected_->GetInputNum();
 }
 
 uint32_t IfOperation::GetOutputNum() const
 {
-    Status st;
-    Operation *op;
-    st = GetOperationFromCondition(&op);
-    if (st != NO_ERROR) {
-        ATB_LOG(ERROR) << "Get operation from condition failed!";
-        return 0;
-    }
     ATB_LOG(INFO) << "Calling GetOutputNum...";
-    return op->GetOutputNum();
+    return opSelected_->GetOutputNum();
 }
 
 void IfOperation::SetExecuteStreamId(uint32_t streamId)
 {
     Status st;
-    Operation *op;
-    st = GetOperationFromCondition(&op);
-    if (st != NO_ERROR) {
-        return;
+    if (!opSelected_) {
+        ATB_LOG(INFO) << "Operation not selected yet, setting opSelected_...";
+        st = GetOperationFromCondition(&opSelected_);
+        if (st != NO_ERROR) {
+            return;
+        }
     }
     ATB_LOG(INFO) << "Calling SetExecuteStreamId...";
-    st = atb::SetExecuteStreamId(op, streamId);
+    st = atb::SetExecuteStreamId(opSelected_, streamId);
     if (st != NO_ERROR) {
         ATB_LOG(ERROR) << "Calling SetExecuteStreamId failed!";
         return;
@@ -139,26 +121,13 @@ void IfOperation::SetExecuteStreamId(uint32_t streamId)
 
 Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const
 {
-    Status st;
-    Operation *op;
-    st = GetOperationFromCondition(&op);
-    if (st != NO_ERROR) {
-        return st;
-    }
     ATB_LOG(INFO) << "Calling InferShape...";
-    return op->InferShape(inTensorDescs, outTensorDescs);
+    return opSelected_->InferShape(inTensorDescs, outTensorDescs);
 }
 
 std::shared_ptr<Runner> IfOperation::CreateRunner(Context &context) const
 {
-    Status st;
-    Operation *op;
-    st = GetOperationFromCondition(&op);
-    if (st != NO_ERROR) {
-        ATB_LOG(ERROR) << "Failed to get operation from condition";
-        return nullptr;
-    }
-    OperationBase *opBase = dynamic_cast<OperationBase *>(op);
+    OperationBase *opBase = dynamic_cast<OperationBase *>(opSelected_);
     if (!opBase) {
         ATB_LOG(ERROR) << "Failed to convert Operation to OperationBase";
         return nullptr;

@@ -190,11 +190,20 @@ struct GraphParam {
     InferShapeFunc inferShapeFunc = nullptr;
 };
 
+//!
+//! \struct IfCondParam
+//!
+//! \brief If Operation参数，setup阶段根据条件决定执行的路径。
+//!
 struct IfCondParam {
+    //！ \brief 条件上下文的指针
     void *condition;
+    //！ \brief 条件判断回调，返回 true 选择 opA，返回 false 选择 opB
     bool (*handle)(void *condition);
-    atb::Operation *opA; // 条件为True时执行opA
-    atb::Operation *opB;
+    //！ \brief 条件为 true 时执行的分支 Operation
+    Operation *opA = nullptr;
+    //！ \brief 条件为 false 时执行的分支 Operation
+    Operation *opB = nullptr;
 };
 } // namespace atb
 #endif

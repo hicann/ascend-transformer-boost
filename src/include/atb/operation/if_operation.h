@@ -28,11 +28,16 @@ public:
     uint32_t GetOutputNum() const override;
     void SetExecuteStreamId(uint32_t streamId) override;
 
-private:
-    Status GetOperationFromCondition(Operation **op) const;
+protected:
     Status InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const override;
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;
+
+private:
+    Status GetOperationFromCondition(Operation **op);
+
+private:
     IfCondParam param_;
+    Operation *opSelected_ = nullptr;
 };
 } // namespace atb
 #endif // ATB_IF_OPERATION_H
