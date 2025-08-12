@@ -8,123 +8,23 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "acl/acl.h"
-#include "atb/atb_infer.h"
-#include "atb/runner/graph_runner.h"
-#include "test_utils/operation_test.h"
-#include <iostream>
-#include <numeric>
-#include <vector>
-#include <string>
-#include <string.h>
-#include <cstdlib>
 #include <gtest/gtest.h>
-#include "atb/utils/tensor_util.h"
+#include <torch/torch.h>
 #include <atb/utils/log.h>
-#include "atb/utils/probe.h"
-#include <nlohmann/json.hpp>
-#include <fstream>
-#include <cpp-stub/src/stub.h>
-#include "atb/utils/singleton.h"
+#include <atb/utils.h>
+#include "test_utils/test_common.h"
+#include "atb/operation.h"
+#include "atb/utils/tensor_util.h"
+#include "test_utils/operation_test.h"
+#include "atb/utils/operation_util.h"
+#include "atb/operation_infra.h"
+#include "atb/operation/operation_base.h"
+#include "plugin_ops/plugin_aclnn_operations/aclnn_gelu_operation.h"
 #include "atb/utils/config.h"
+#include "atb/utils/singleton.h"
 
 using namespace atb;
 using namespace Mki;
-
-atb::Status CreateTensor(const aclDataType dataType, const aclFormat format, std::vector<int64_t> shape,
-                         atb::Tensor &tensor)
-{
-    tensor.desc.dtype = dataType;
-    tensor.desc.format = format;
-    tensor.desc.shape.dimNum = shape.size();
-    // tensor的dim依次设置为shape中元素
-    for (size_t i = 0; i < shape.size(); i++) {
-        tensor.desc.shape.dims[i] = shape.at(i);
-    }
-    tensor.dataSize = atb::Utils::GetTensorSize(tensor); // 计算Tensor的数据大小
-    CHECK_STATUS(aclrtMalloc(&tensor.deviceData, tensor.dataSize, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
-    return atb::ErrorType::NO_ERROR;
-}
-
-atb::Status CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tensor inTensor,
-                   const aclDataType outTensorType, atb::Tensor &outTensor)
-{
-    uint64_t workspaceSize = 0;
-    void *workspace = nullptr;
-    // 创建Elewise的ELEWISE_CAST
-    atb::infer::ElewiseParam castParam;
-    castParam.elewiseType = atb::infer::ElewiseParam::ELEWISE_CAST;
-    castParam.outTensorType = outTensorType;
-    atb::Operation *castOp = nullptr;
-    CHECK_STATUS(CreateOperation(castParam, &castOp));
-    // atb::Tensor outTensor;
-    // CreateTensor(outTensorType, aclFormat::ACL_FORMAT_ND, shape, outTensor); // cast输出tensor
-    atb::VariantPack castVariantPack; // 参数包
-    castVariantPack.inTensors = {inTensor};
-    castVariantPack.outTensors = {outTensor};
-    // 在Setup接口调用时对输入tensor和输出tensor进行校验。
-    CHECK_STATUS(castOp->Setup(castVariantPack, workspaceSize, contextPtr));
-    if (workspaceSize > 0) {
-        CHECK_STATUS(aclrtMalloc(&workspace, workspaceSize, aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST));
-    }
-    // ELEWISE_CAST执行
-    CHECK_STATUS(castOp->Execute(castVariantPack, (uint8_t *)workspace, workspaceSize, contextPtr));
-    CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
-    if (workspaceSize > 0) {
-        CHECK_STATUS(aclrtFree(workspace)); // 清理工作空间
-    }
-    return atb::ErrorType::NO_ERROR;
-}
-
-template <typename T>
-atb::Status CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream, std::vector<T> data,
-                                   const aclDataType outTensorType, const aclFormat format, std::vector<int64_t> shape,
-                                   atb::Tensor &outTensor, const aclDataType inTensorType = ACL_DT_UNDEFINED)
-{
-    atb::Tensor tensor;
-    aclDataType intermediateType;
-    switch (outTensorType) {
-        case aclDataType::ACL_FLOAT16:
-        case aclDataType::ACL_BF16:
-        case aclDataType::ACL_DOUBLE:
-            intermediateType = aclDataType::ACL_FLOAT;
-            break;
-        default:
-            intermediateType = outTensorType;
-    }
-    if (inTensorType == outTensorType && inTensorType != ACL_DT_UNDEFINED) {
-        intermediateType = outTensorType;
-    }
-    CHECK_STATUS(CreateTensor(intermediateType, format, shape, tensor));
-    CHECK_STATUS(aclrtMemcpy(tensor.deviceData, tensor.dataSize, data.data(), sizeof(T) * data.size(),
-                             ACL_MEMCPY_HOST_TO_DEVICE));
-    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, shape, outTensor));
-    if (intermediateType == outTensorType) {
-        // 原始创建的tensor类型，不需要转换
-        outTensor = tensor;
-        return atb::ErrorType::NO_ERROR;
-    }
-    return CastOp(contextPtr, stream, tensor, outTensorType, outTensor);
-}
-
-atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
-{
-    uint32_t dim0 = 2;
-    uint32_t dim1 = 2;
-    // 创建tensor0
-    std::vector<float> tensor0(VECTOR_SIZE, INIT_VALUE);
-    atb::Tensor atbTensor0;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, tensor0, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {dim0, dim1}, atbTensor0));
-    // 创建tensor1
-    std::vector<float> tensor1(VECTOR_SIZE, INIT_VALUE);
-    atb::Tensor atbTensor1;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, tensor1, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {dim0, dim1}, atbTensor1));
-    // 根据顺序将所有输入tensor放入SVector
-    inTensors = {atbTensor0, atbTensor1};
-    return atb::ErrorType::NO_ERROR;
-}
 
 bool CondFunction(void *condition)
 {
@@ -135,20 +35,11 @@ bool CondFunction(void *condition)
     return false;
 }
 
-TEST(TestIfhOperation, IfOpTest)
+TEST(TestIfOperation, IfOpTest)
 {
     if (!atb::GetSingleton<atb::Config>().Is910B()) {
         GTEST_SKIP() << "This test case only support 910B";
     }
-    aclInit(nullptr);
-    uint32_t deviceId = 0;
-    aclrtSetDevice(deviceId);
-    aclrtStream stream;
-    aclrtCreateStream(&stream);
-    atb::Context *context = nullptr;
-    atb::CreateContext(&context);
-    std::vector<aclrtStream> streams = {stream};
-    context->SetExecuteStreams(streams);
 
     atb::Operation *operationA;
     atb::infer::ElewiseParam mulParam;
@@ -172,41 +63,20 @@ TEST(TestIfhOperation, IfOpTest)
     atb::Status status3 = CreateOperation(opCond, &ifOperation);
     EXPECT_EQ(status3, 0);
 
-    atb::VariantPack variantPack;
-    PrepareInTensor(context, stream, variantPack.inTensors); // 放入输入tensor
-    atb::Tensor tensorOut;
-    CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 2}, tensorOut); // 创建输出tensor
-    variantPack.outTensors.push_back(tensorOut);                            // 放入输出tensor
+    Mki::SVector<Mki::TensorDesc> opsInTensorDescs = {{Mki::TENSOR_DTYPE_FLOAT16, Mki::TENSOR_FORMAT_ND, {2, 2}},
+                                                      {Mki::TENSOR_DTYPE_FLOAT16, Mki::TENSOR_FORMAT_ND, {2, 2}}};
+    atb::SVector<atb::TensorDesc> inTensorDescs;
+    atb::SVector<atb::TensorDesc> outTensorDescs;
+    TensorUtil::OpsTensorDescs2AtbTensorDescs(opsInTensorDescs, inTensorDescs);
 
-    uint64_t workspaceSize = 0;
-    atb::Status status4 = ifOperation->Setup(variantPack, workspaceSize, context);
+    OperationTest opTest;
+    atb::Status status4 = opTest.Run(ifOperation, inTensorDescs);
     EXPECT_EQ(status4, 0);
-    uint8_t *workspacePtr = nullptr;
-    if (workspaceSize > 0) {
-        atb::Status status5 = aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-        EXPECT_EQ(status5, 0);
-    }
 
-    ifOperation->Execute(variantPack, workspacePtr, workspaceSize, context);
-    atb::Status status6 = aclrtSynchronizeStream(stream); // 流同步，等待device侧任务计算完成
-    EXPECT_EQ(status6, 0);
-
-    for (atb::Tensor &inTensor : variantPack.inTensors) {
-        atb::Status status7 = aclrtFree(inTensor.deviceData);
-        EXPECT_EQ(status7, 0);
-    }
-    if (workspaceSize > 0) {
-        atb::Status status8 = aclrtFree(workspacePtr);
-        EXPECT_EQ(status8, 0);
-    }
     atb::DestroyOperation(ifOperation);
-    atb::DestroyContext(context);
-    aclrtDestroyStream(stream);
-    aclrtResetDevice(deviceId);
-    aclFinalize();
 }
 
-TEST(TestIfhOperation, IfGraphOpTest)
+TEST(TestIfOperation, IfGraphOpTest)
 {
     if (!atb::GetSingleton<atb::Config>().Is910B()) {
         GTEST_SKIP() << "This test case only support 910B";
@@ -218,16 +88,6 @@ TEST(TestIfhOperation, IfGraphOpTest)
     LAYER_OUT,
     ADD_OUT
     };
-
-    aclInit(nullptr);
-    uint32_t deviceId = 0;
-    aclrtSetDevice(deviceId);
-    aclrtStream stream;
-    aclrtCreateStream(&stream);
-    atb::Context *context = nullptr;
-    atb::CreateContext(&context);
-    std::vector<aclrtStream> streams = {stream};
-    context->SetExecuteStreams(streams);
 
     // graph with add+sin
     atb::Operation *operationA;
@@ -273,36 +133,15 @@ TEST(TestIfhOperation, IfGraphOpTest)
     atb::Status status5 = CreateOperation(opCond, &ifOperation);
     EXPECT_EQ(status5, 0);
 
-    atb::VariantPack variantPack;
-    PrepareInTensor(context, stream, variantPack.inTensors); // 放入输入tensor
-    atb::Tensor tensorOut;
-    CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {2, 2}, tensorOut); // 创建输出tensor
-    variantPack.outTensors.push_back(tensorOut);                            // 放入输出tensor
+    Mki::SVector<Mki::TensorDesc> opsInTensorDescs = {{Mki::TENSOR_DTYPE_FLOAT16, Mki::TENSOR_FORMAT_ND, {2, 2}},
+                                                      {Mki::TENSOR_DTYPE_FLOAT16, Mki::TENSOR_FORMAT_ND, {2, 2}}};
+    atb::SVector<atb::TensorDesc> inTensorDescs;
+    atb::SVector<atb::TensorDesc> outTensorDescs;
+    TensorUtil::OpsTensorDescs2AtbTensorDescs(opsInTensorDescs, inTensorDescs);
 
-    uint64_t workspaceSize = 0;
-    atb::Status status6 = ifOperation->Setup(variantPack, workspaceSize, context);
+    OperationTest opTest;
+    atb::Status status6 = opTest.Run(ifOperation, inTensorDescs);
     EXPECT_EQ(status6, 0);
-    uint8_t *workspacePtr = nullptr;
-    if (workspaceSize > 0) {
-        atb::Status status7 = aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-        EXPECT_EQ(status7, 0);
-    }
 
-    ifOperation->Execute(variantPack, workspacePtr, workspaceSize, context);
-    atb::Status status8 = aclrtSynchronizeStream(stream); // 流同步，等待device侧任务计算完成
-    EXPECT_EQ(status8, 0);
-
-    for (atb::Tensor &inTensor : variantPack.inTensors) {
-        atb::Status status9 = aclrtFree(inTensor.deviceData);
-        EXPECT_EQ(status9, 0);
-    }
-    if (workspaceSize > 0) {
-        atb::Status status10 = aclrtFree(workspacePtr);
-        EXPECT_EQ(status10, 0);
-    }
     atb::DestroyOperation(ifOperation);
-    atb::DestroyContext(context);
-    aclrtDestroyStream(stream);
-    aclrtResetDevice(deviceId);
-    aclFinalize();
 }
