@@ -403,8 +403,15 @@ private:
         }
 
         outTensors[0].desc = launchParam.GetInTensor(0).desc;
-        outTensors[TENSOR_THE_SECOND].desc = launchParam.GetInTensor(TENSOR_THE_SECOND).desc;
-        outTensors[TENSOR_THE_THIRD].desc = launchParam.GetInTensor(TENSOR_THE_THIRD).desc;
+        outTensors[TENSOR_THE_SECOND].desc = launchParam.GetInTensor(0).desc;
+        outTensors[TENSOR_THE_THIRD].desc = launchParam.GetInTensor(0).desc;
+        for (size_t i = 0; i < outTensors[0].desc.dims.size(); i++)
+        {
+            if (i >= (size_t)beginNormAxis) {
+                outTensors[TENSOR_THE_SECOND].desc.dims[i] = 1;
+                outTensors[TENSOR_THE_THIRD].desc.dims[i] = 1;
+            }
+        }
 
         return Status::OkStatus();
     }
