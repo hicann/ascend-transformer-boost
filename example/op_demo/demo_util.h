@@ -121,7 +121,7 @@ atb::Status getShape(const aclDataType tensorType, std::vector<int64_t> inShape,
         ndShape.assign(inShape.begin(), inShape.end());
         if (inShape.size() == 3) {  // 该shape包含batch参数
             nzShape = {inShape[0], inShape[2] / n0, inShape[1], n0};
-        } else if(inShape.size() == 2){
+        } else if (inShape.size() == 2){
             nzShape = {1, inShape[1] / n0, inShape[0], n0};
         }
     }
@@ -215,8 +215,7 @@ atb::Status CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
         return atb::ErrorType::NO_ERROR;
     }
     CHECK_STATUS(CastOp(contextPtr, stream, tensor, outTensorType, outTensor));
-    if(outTensor.desc.format != format)
-    {
+    if (outTensor.desc.format != format) {
         //直接赋值将tensor转成需要的数据格式，或者使用提供的TransdataOp函数进行数据格式转换
         outTensor.desc.format = format;
     }
