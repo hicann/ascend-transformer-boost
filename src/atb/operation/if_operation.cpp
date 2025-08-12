@@ -15,8 +15,6 @@
 #include "atb/utils/common_utils.h"
 
 namespace atb {
-const size_t MAX_NODE_NUM = 1024;
-const size_t MAX_GRAPH_NAME_LEN = 128;
 
 Status IfOperation::GetOperationFromCondition(Operation **op) const
 {
@@ -59,8 +57,6 @@ IfOperation::IfOperation(const IfCondParam &param) : OperationBase("ConditionalO
 
 IfOperation::~IfOperation()
 {
-    // condition为非只能指针类型时需用户手动清理
-
     if (param_.opA) {
         DestroyOperation(param_.opA);
     }

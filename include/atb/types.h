@@ -196,11 +196,5 @@ struct IfCondParam {
     atb::Operation *opA; // 条件为True时执行opA
     atb::Operation *opB;
 };
-
-struct WhileCondParam {
-    void *condition;
-    bool (*handle)(void *condition);
-    atb::Operation *op;
-};
 } // namespace atb
 #endif

@@ -83,10 +83,10 @@ TEST(TestIfOperation, IfGraphOpTest)
     }
 
     enum InTensorId {
-    IN_TENSOR_A = 0,
-    IN_TENSOR_B,
-    LAYER_OUT,
-    ADD_OUT
+        IN_TENSOR_A = 0,
+        IN_TENSOR_B,
+        LAYER_OUT,
+        ADD_OUT
     };
 
     // graph with add+sin
