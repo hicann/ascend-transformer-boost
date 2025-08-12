@@ -67,8 +67,12 @@ IfOperation::IfOperation(const IfCondParam &param) : OperationBase("IfOperation"
 
 IfOperation::~IfOperation()
 {
-    if (param_.opA) DestroyOperation(param_.opA);
-    if (param_.opB) DestroyOperation(param_.opB);
+    if (param_.opA) {
+        DestroyOperation(param_.opA);
+    }
+    if (param_.opB) {
+        DestroyOperation(param_.opB);
+    }
 }
 
 std::string IfOperation::GetName() const
