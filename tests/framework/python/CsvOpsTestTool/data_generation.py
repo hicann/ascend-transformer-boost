@@ -2510,8 +2510,8 @@ class LayerNormOperation(DataGen):
                                 torch.from_numpy(dynamic_quant_scale.squeeze(axis=-1)).to(torch.float32),
                                 torch.from_numpy(dynamic_quant_offset.squeeze(axis=-1)).to(torch.float32)]
                 weight = weight.reshape(in_tensors[0].shape[-1])
-                ias = bias.reshape(in_tensors[0].shape[-1])
-                ormalized_shape = (in_tensors[0].shape[-1],)
+                bias = bias.reshape(in_tensors[0].shape[-1])
+                normalized_shape = (in_tensors[0].shape[-1],)
                 layer_norm_res = torch.nn.functional.layer_norm(input, normalized_shape, weight, bias, eps).to(torch.float16)
                 golden_result = layer_norm_res.to(torch.float16)
                 golden_result_quant = layer_norm_quant(layer_norm_res)
