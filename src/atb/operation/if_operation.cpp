@@ -57,8 +57,7 @@ IfOperation::IfOperation(const IfCondParam &param) : OperationBase("IfOperation"
 {
     if (!opSelected_) {
         ATB_LOG(INFO) << "Operation not selected yet, setting opSelected_...";
-        Status st;
-        st = GetOperationFromCondition(&opSelected_);
+        Status st = GetOperationFromCondition(&opSelected_);
         if (st != NO_ERROR) {
             ATB_LOG(ERROR) << "Failed to select operation based on condition!";
         }

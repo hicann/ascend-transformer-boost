@@ -16,7 +16,7 @@
 #include "operation_base.h"
 
 namespace atb {
-class IfOperation : public OperationBase {
+class IfOperation : public Operation {
 public:
     explicit IfOperation(const IfCondParam &param);
     ~IfOperation() override;
