@@ -12,8 +12,8 @@
 set -e
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 cd $SCRIPT_DIR/..
-CODE_ROOT=$(pwd)
-CACHE_DIR=$CODE_ROOT/build
+export CODE_ROOT=$(pwd)
+export CACHE_DIR=$CODE_ROOT/build
 OUTPUT_DIR=$CODE_ROOT/output
 THIRD_PARTY_DIR=$CODE_ROOT/3rdparty
 
@@ -26,6 +26,10 @@ USE_ASAN=OFF
 USE_MSSANITIZER=OFF
 USE_MSDEBUG=OFF
 SKIP_BUILD=OFF
+BUILD_TBE_ADAPTER=OFF
+DEPENDENCY_DIR=2025-06-18
+ASDOPS_SOURCE_DIR=/tmp/asdops_dependency/$DEPENDENCY_DIR
+CMC_URL=https://cmc-szver-artifactory.cmc.tools.huawei.com/artifactory/cmc-software-release/Baize%20C/AscendTransformerBoost/1.0.0/asdops_dependency/$DEPENDENCY_DIR
 CSVOPSTEST_OPTIONS=""
 BUILD_PYBIND=ON
 SRC_ONLY=OFF
@@ -37,7 +41,7 @@ LOG_NAME="cann_atb_install.log"
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
     "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
-    "--src-only" "--customizeops_tests")
+    "--src-only" "--customizeops_tests" "--build-tbe-adapter")
 
 function fn_build_googletest()
 {
@@ -304,6 +308,118 @@ function fn_build_3rdparty_for_test()
     fn_build_stub
 }
 
+function fn_get_cxx_abi_string()
+{
+    if [ "${USE_CXX11_ABI}" == "ON" ]; then
+        echo "cxx_abi_1"
+    else
+        echo "cxx_abi_0"
+    fi
+}
+
+function fn_copy_tbe_adapter()
+{
+    if [ ! -f $ATB_HOME_PATH/lib/libtbe_adapter.so ]; then
+        echo "error:$ATB_HOME_PATH/lib/libtbe_adapter.so is not exist, please source set_env.sh from nnal or build it\
+        by --build-tbe-adapterer."
+        return 0
+    fi
+
+    LOCAL_ABI=$(fn_get_cxx_abi_string)
+
+    LOCAL_TBE_ADAPTER_PATH=$CODE_ROOT/output/atb/$LOCAL_ABI
+    TARGET_ABI=$(basename "$ATB_HOME_PATH")
+    if [ "${TARGET_ABI}" != "${LOCAL_ABI}" ];then
+        echo "$ATB_HOME_PATH use $TARGET_ABI, but $LOCAL_TBE_ADAPTER_PATH use $LOCAL_ABI, abi error."
+        return 0
+    fi
+
+    if [ "${ATB_HOME_PATH}" != "${LOCAL_TBE_ADAPTER_PATH}" ]; then
+        if [ -d $LOCAL_TBE_ADAPTER_PATH ]; then
+            cp ${ATB_HOME_PATH}/lib/libtbe_adapter.so $LOCAL_TBE_ADAPTER_PATH/lib
+        fi
+    fi
+}
+
+function fn_check_dependency_cache()
+{
+    [[ ! -d "$ASDOPS_SOURCE_DIR" ]] && mkdir -p $ASDOPS_SOURCE_DIR
+    cd $ASDOPS_SOURCE_DIR
+    if [ ! -d "$ASDOPS_SOURCE_DIR/opp_kernel" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/asdops_opp_kernel.tar.gz" ]] && wget --no-check-certificate $CMC_URL/asdops_opp_kernel.tar.gz
+        tar xf asdops_opp_kernel.tar.gz
+        rm asdops_opp_kernel.tar.gz
+    fi
+    echo "$ASDOPS_SOURCE_DIR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    if [ ! -d "$ASDOPS_SOURCE_DIR/canndev" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/canndev.tar.gz" ]] && wget --no-check-certificate $CMC_URL/canndev.tar.gz
+        tar xf canndev.tar.gz
+        rm canndev.tar.gz
+    fi
+    if [ ! -d "$ASDOPS_SOURCE_DIR/metadef" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/metadef.tar.gz" ]] && wget --no-check-certificate $CMC_URL/metadef.tar.gz
+        tar xf metadef.tar.gz
+        rm metadef.tar.gz
+    fi
+    if [ ! -d "$ASDOPS_SOURCE_DIR/cann-ops-adv" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/cann-ops-adv.tar.gz" ]] && wget --no-check-certificate $CMC_URL/cann-ops-adv.tar.gz
+        tar xf cann-ops-adv.tar.gz
+        rm cann-ops-adv.tar.gz
+    fi
+    if [ ! -d "$ASDOPS_SOURCE_DIR/api" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/api.tar.gz" ]] && wget --no-check-certificate $CMC_URL/api.tar.gz
+        tar xf api.tar.gz
+        rm api.tar.gz
+    fi
+    echo "dependency_cache is ready"
+}
+
+function fn_build_tbe_adapter_dependency()
+{
+    CCEC_COMPILER_DIR=$THIRD_PARTY_DIR/compiler/ccec_compiler
+    TIKCPP_DIR=$THIRD_PARTY_DIR/compiler/tikcpp
+
+    CANNDEV_DIR=$THIRD_PARTY_DIR/canndev
+    METADEF_DIR=$THIRD_PARTY_DIR/metadef
+    API_DIR=$THIRD_PARTY_DIR/api
+    CANN_OPS_DIR=$THIRD_PARTY_DIR/cann-ops-adv
+    TBE_ADAPTER_DIR=$CODE_ROOT/src/kernels/tbe_adapter
+
+    # dev
+    fn_check_dependency_cache
+    export ASCEND_KERNEL_PATH=$ASDOPS_SOURCE_DIR/opp_kernel
+
+    #tbe_adapter dependency
+    SRC_FILE_LINE_NUM=$(wc -l < "$TBE_ADAPTER_DIR/stubs/include/canndev/ops/built-in/op_tiling/op_tiling.h")
+    DST_FILE_LINE_NUM=$(wc -l < "$THIRD_PARTY_DIR/canndev/ops/built-in/op_tiling/op_tiling.h")
+    [[ ! -d "$CANNDEV_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/canndev $CANNDEV_DIR
+    [[ ! -d "$API_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/api $API_DIR
+    [[ ! -d "$CANN_OPS_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/cann-ops-adv $CANN_OPS_DIR
+    #determine whether these two files are identical
+    [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/canndev $THIRD_PARTY_DIR
+    [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/api $THIRD_PARTY_DIR
+    if [ ! -d "$METADEF_DIR" ];then
+        cp -r $ASDOPS_SOURCE_DIR/metadef $METADEF_DIR
+    fi
+}
+
+function fn_build_tbe_dependency()
+{
+    LOCAL_ABI=$(fn_get_cxx_abi_string)
+    if [ -f $OUTPUT_DIR/atb/$LOCAL_ABI/lib/libtbe_adapter.so ];then
+        echo "libtbe_adapter.so is already exist, skip build process."
+        return 0
+    fi
+
+    if [ ${BUILD_TBE_ADAPTER} == "ON" ];then
+    #build by source code
+        fn_build_tbe_adapter_dependency
+    else
+    #copy from nnal
+        fn_copy_tbe_adapter
+    fi
+}
+
 function fn_build_3rdparty_for_compile()
 {
     fn_build_nlohmann_json
@@ -311,6 +427,7 @@ function fn_build_3rdparty_for_compile()
     fn_build_catlass
     fn_build_asdops
     fn_build_cann_dependency
+    fn_build_tbe_dependency
     if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
         fn_build_pybind11
     fi
@@ -754,6 +871,10 @@ function fn_main()
             fn_build_googletest
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
             ;;
+        "--build-tbe-adapter")
+            BUILD_TBE_ADAPTER=ON
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=ON"
+            ;;
         esac
         shift
     }
@@ -867,7 +988,7 @@ function fn_main()
             ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind|--customizeops_tests"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind|--customizeops_tests|--build-tbe-adapter"
             ;;
     esac
 }
