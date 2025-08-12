@@ -108,11 +108,14 @@ Status GroupTopkOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
     TensorDesc varTensorDesc = inTensors.at(0).desc;
     TensorDesc outTensorDesc = outTensors.at(0).desc;
     status = TensorCheck::TensorDescsEqual(varTensorDesc, outTensorDesc);
-    if (status == ERROR_INVALID_TENSOR_SIZE) {
+    if (status == ERROR_INVALID_TENSOR_DIM_NUM) {
         ATB_LOG(ERROR) << GetLogPrefix() << "outTensor0 dimNum [" << outTensorDesc.shape.dimNum
                        << "] and inTensor0 dimNum [" << varTensorDesc.shape.dimNum << "] should be equal";
-    } else if (status == ERROR_INVALID_TENSOR_DIM) {
+        return status;
+    } 
+    if (status == ERROR_INVALID_TENSOR_DIM) {
         ATB_LOG(ERROR) << GetLogPrefix() << "outTensor0 dims and inTensor0 dims should be the same";
+        return status;
     }
     return OutTensorsCheck(outTensors);
 }
@@ -137,12 +140,12 @@ Status GroupTopkOperation::InTensorDescsCheck(const SVector<TensorDesc> &inTenso
     if (!TensorCheck::IsTensorDescDimNumValid(tokenTensorDesc, DIM_NUM_2)) {
         ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 dimNum should be " << DIM_NUM_2 << " but get "
                        << tokenTensorDesc.shape.dimNum;
-        return ERROR_INVALID_TENSOR_SIZE;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
     }
 
     if (!TensorCheck::IsTensorDescDimNumValid(idxArrTensorDesc, 1)) {
         ATB_LOG(ERROR) << GetLogPrefix() << "inTensor1 dimNum should be 1 but get " << idxArrTensorDesc.shape.dimNum;
-        return ERROR_INVALID_TENSOR_SIZE;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
     }
 
     int64_t expertNum = tokenTensorDesc.shape.dims[1];
@@ -178,14 +181,14 @@ Status GroupTopkOperation::InTensorDescsCheck(const SVector<TensorDesc> &inTenso
     if (idxArrTensorDesc.shape.dims[0] != IN_TENSOR_SHAPE_0) {
         ATB_LOG(ERROR) << GetLogPrefix() << "inTensor1 dim[0] should be " << IN_TENSOR_SHAPE_0 << ", but get "
                        << idxArrTensorDesc.shape.dims[0];
-        return ERROR_INVALID_TENSOR_SIZE;
+        return ERROR_INVALID_TENSOR_DIM;
     }
 
     // inTensor0.shape.dims[1]取值范围为 [1,1024]
     if (tokenTensorDesc.shape.dims[1] < 1 || tokenTensorDesc.shape.dims[1] > MAX_EXPERT) {
         ATB_LOG(ERROR) << GetLogPrefix() << "inTensor0 dim[1] should in scope [1, " << MAX_EXPERT << "], but get "
                        << tokenTensorDesc.shape.dims[1];
-        return ERROR_INVALID_TENSOR_SIZE;
+        return ERROR_INVALID_TENSOR_DIM;
     }
 
     return NO_ERROR;
@@ -198,7 +201,7 @@ Status GroupTopkOperation::OutTensorsCheck(const SVector<Tensor> &outTensors) co
     if (!TensorCheck::IsTensorDescDimNumValid(out0TensorDesc, DIM_NUM_2)) {
         ATB_LOG(ERROR) << GetLogPrefix() << "outTensor0 dimNum should be " << DIM_NUM_2 << " but get "
                        << out0TensorDesc.shape.dimNum;
-        return ERROR_INVALID_TENSOR_DIM;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
     }
 
     return NO_ERROR;

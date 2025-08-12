@@ -23,6 +23,7 @@ import shutil
 import logging
 import re
 from enum import Enum
+from functools import reduce
 
 from self_attention_golden import SelfAttentionGolden, SelfAttentionGenOutTensor
 
@@ -6771,14 +6772,14 @@ class GroupTopkOperation(DataGen):
         group_num = json_data['groupNum'] if "groupNum" in json_data else 1
         k = json_data['k'] if "k" in json_data else 0
         if i == 0:
-            token_num = shapes[0][0]
-            expert_num = shapes[0][1]
-            input0_np = np.random.random((token_num, expert_num)).astype(np.float32)
+            input0_np = np.random.random(shapes[0]).astype(np.float32)
             input0 = torch.from_numpy(input0_np).type(torch.float16).to(dtype_dict[datatype])
             input0_return = torch_npu.npu_format_cast(input0.npu(), format_dict[format])
             return input0_return
         if i == 1:
-            input1 = torch.arange(shapes[1][0], dtype=torch.int32)
+            total_size = reduce(lambda x, y: x * y, shapes[1])
+            input1 = torch.arange(total_size, dtype=torch.int32)
+            input1 = torch.reshape(input1, shapes[1])
             input1_return = torch_npu.npu_format_cast(input1.npu(), format_dict[format])
             return input1_return
 
