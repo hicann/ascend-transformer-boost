@@ -42,3 +42,15 @@ add_kernel(quant_per_channel ascend910 vector
 add_kernel(quant_per_channel ascend310b vector
     simple_broadcast/kernel/quant_per_channel.cpp
     QuantPerChannelKernel)
+
+add_kernel(quant ascend910b vector
+        quant/op_kernel/quant.cpp
+        QuantF16Kernel)
+
+add_kernel(quant ascend310p vector
+        quant/op_kernel/quant.cpp
+        QuantF16Kernel)
+
+add_kernel(quant ascend910 vector
+        quant/op_kernel/quant.cpp
+        QuantF16Kernel)

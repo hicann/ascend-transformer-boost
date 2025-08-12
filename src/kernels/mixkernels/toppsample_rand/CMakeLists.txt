@@ -12,3 +12,11 @@ ${CMAKE_CURRENT_LIST_DIR}/toppsample_rand_operation.cpp
 )
 
 add_operation(ToppsampleRandOperation "${toppsample_rand_srcs}")
+
+add_kernel(toppsample_rand ascend910b vector
+        op_kernel/toppsample_rand.cpp
+        ToppsampleRandKernel)
+
+add_kernel(toppsample_rand ascend310p vector
+        op_kernel/toppsample_rand.cpp
+        ToppsampleRandKernel)

@@ -12,3 +12,6 @@ set(moe_gmm_src
 )
 
 add_operation(MoeGmmOperation "${moe_gmm_src}")
+
+add_kernel(moe_gmm ascend910b mix op_kernel/moe_gmm.cce MoeGmmKernel)
+add_kernel(moe_gmm_w8a8 ascend910b mix op_kernel/moe_gmm_w8a8.cce MoeGmmW8a8Kernel)

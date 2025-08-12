@@ -14,3 +14,7 @@ set(laser_attention_grad_srcs
 )
 
 add_operation(LaserAttentionGradOperation "${laser_attention_grad_srcs}")
+
+add_kernel(laser_attention_grad ascend910b mix
+        op_kernel/laser_attention_grad.cpp
+        LaserAttentionGradKernel)

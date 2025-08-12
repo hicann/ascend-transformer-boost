@@ -12,3 +12,8 @@ set(pad_with_hidden_state_srcs
 )
 
 add_operation(PadWithHiddenStateOperation "${pad_with_hidden_state_srcs}")
+
+
+add_kernel(pad_with_hidden_state ascend910b vector
+        op_kernel/pad_with_hidden_state.cpp
+        PadWithHiddenStateKernel)

@@ -12,3 +12,7 @@ set(unpad_with_hidden_state_srcs
 )
 
 add_operation(UnpadWithHiddenStateOperation "${unpad_with_hidden_state_srcs}")
+
+add_kernel(unpad_with_hidden_state ascend910b vector
+        op_kernel/unpad_with_hidden_state.cpp
+        UnpadWithHiddenStateKernel)

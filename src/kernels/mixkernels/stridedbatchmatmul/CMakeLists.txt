@@ -12,3 +12,7 @@ set(stridedbatchmatmul_srcs
 )
 
 add_operation(StridedBatchMatmulOperation "${stridedbatchmatmul_srcs}")
+
+add_kernel(stridedbatchmatmul ascend910b cube
+        op_kernel/stridedbatchmatmul.cpp
+        StridedBatchMatmulKernel)

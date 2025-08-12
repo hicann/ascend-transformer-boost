@@ -12,3 +12,7 @@ set(genattentionmask_srcs
 )
 
 add_operation(GenAttentionMaskOperation "${genattentionmask_srcs}")
+
+add_kernel(genattentionmask ascend910b vector
+        op_kernel/genattentionmask.cpp
+        GenAttentionMaskKernel)

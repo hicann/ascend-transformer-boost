@@ -12,3 +12,7 @@ set(rope_grad_srcs
 )
 
 add_operation(RopeGradOperation "${rope_grad_srcs}")
+
+add_kernel(rope_grad ascend910b vector
+        op_kernel/rope_grad.cpp
+        RopeGradKernel)
