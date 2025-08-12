@@ -112,7 +112,7 @@ Status GroupTopkOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         ATB_LOG(ERROR) << GetLogPrefix() << "outTensor0 dimNum [" << outTensorDesc.shape.dimNum
                        << "] and inTensor0 dimNum [" << varTensorDesc.shape.dimNum << "] should be equal";
         return status;
-    } 
+    }
     if (status == ERROR_INVALID_TENSOR_DIM) {
         ATB_LOG(ERROR) << GetLogPrefix() << "outTensor0 dims and inTensor0 dims should be the same";
         return status;
