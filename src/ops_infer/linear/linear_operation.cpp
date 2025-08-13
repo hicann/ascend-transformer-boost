@@ -27,10 +27,6 @@ static constexpr size_t DIM_3 = 3;
 static constexpr uint64_t DIM_NUM_2 = 2;
 static constexpr uint64_t DIM_NUM_3 = 3;
 static constexpr uint64_t DIM_NUM_4 = 4;
-static constexpr uint32_t SUPPORTED_M_LOW = 1;
-static constexpr uint32_t SUPPORTED_M_HIGH = 256;
-static constexpr uint32_t SUPPORTED_K = 7168;
-static constexpr uint32_t SUPPORTED_N = 256;
 
 namespace atb {
 bool MatmulParamCheck(const infer::LinearParam &opParam, ExternalError &error)
@@ -406,9 +402,6 @@ Status LinearOperation::XWeightCheck(const TensorDesc &xTensorDesc, const Tensor
     if (!WeightAlignCheck(weightTensorDesc, align)) {
         return ERROR_INVALID_TENSOR_DIM;
     }
-    if (!FloatXWeightDimCheck(xTensorDesc, weightTensorDesc)) {
-        return ERROR_INVALID_TENSOR_DIM;
-    }
     return NO_ERROR;
 }
 
@@ -750,24 +743,6 @@ bool LinearOperation::WeightAlignCheck(const TensorDesc &weightTensorDesc, int64
         error.errorDesc = OperationUtil::ConcatInfo("inTensor1 dim3 should be ", align, ",");
         error.errorData = OperationUtil::ConcatInfo("inTensor1 dim3 = ", dim3);
         error.solutionDesc = "Please check the value of params and shape of inTensors.";
-        ATB_LOG(ERROR) << GetLogPrefix() << error;
-        return false;
-    }
-    return true;
-}
-
-bool LinearOperation::FloatXWeightDimCheck(const TensorDesc &xTensorDesc, const TensorDesc &weightTensorDesc) const
-{
-    int64_t xM = OperationUtil::GetXTensorM(xTensorDesc, param_.transposeA, param_.matmulType);
-    int64_t xK = OperationUtil::GetXTensorK(xTensorDesc, param_.transposeA);
-    int64_t weightN = OperationUtil::GetYTensorN(weightTensorDesc, param_.transposeB);
-    if (xTensorDesc.dtype == aclDataType::ACL_FLOAT && weightTensorDesc.dtype == aclDataType::ACL_FLOAT &&
-        (xM < SUPPORTED_M_LOW || xM > SUPPORTED_M_HIGH || xK != SUPPORTED_K || weightN != SUPPORTED_N)) {
-        ExternalError error;
-        error.errorType = ERROR_INVALID_TENSOR_DIM;
-        error.errorDesc = "m should between 1 and 256, k should be 7168, n should be 256 in float dtype,";
-        error.errorData = OperationUtil::ConcatInfo("m = ", xM, ", k = ", xK, ", n = ", weightN);
-        error.solutionDesc = "Please check the shape of inTensors.";
         ATB_LOG(ERROR) << GetLogPrefix() << error;
         return false;
     }
