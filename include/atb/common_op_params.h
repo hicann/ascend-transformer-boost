@@ -11,6 +11,7 @@
 #define ATB_COMMONOPPARAM_H
 #include <cstdint>
 #include <acl/acl.h>
+#include "atb/types.h"
 
 //!
 //! \file common_op_params.h

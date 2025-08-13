@@ -18,6 +18,7 @@
 #include "test_utils/operation_test.h"
 #include "atb/utils/operation_util.h"
 #include "atb/operation_infra.h"
+#include "atb/operation/if_operation.h"
 #include "atb/operation/operation_base.h"
 #include "plugin_ops/plugin_aclnn_operations/aclnn_gelu_operation.h"
 #include "atb/utils/config.h"
@@ -54,7 +55,7 @@ TEST(TestIfOperation, IfOpTest)
     EXPECT_EQ(status2, 0);
 
     atb::Operation *ifOperation;
-    atb::IfCondParam opCond;
+    atb::common::IfCondParam opCond;
     std::unique_ptr<int> data = std::make_unique<int>(15);
     opCond.handle = CondFunction;
     opCond.condition = data.get();
@@ -124,7 +125,7 @@ TEST(TestIfOperation, IfGraphOpTest)
     EXPECT_EQ(status4, 0);
 
     atb::Operation *ifOperation;
-    atb::IfCondParam opCond;
+    atb::common::IfCondParam opCond;
     std::unique_ptr<int> data = std::make_unique<int>(15);
     opCond.handle = CondFunction;
     opCond.condition = data.get();

@@ -12,6 +12,7 @@
 #include <string>
 #include <functional>
 #include <memory>
+#include "atb/common_op_params.h"
 #include "atb/svector.h"
 #include "operation_base.h"
 
