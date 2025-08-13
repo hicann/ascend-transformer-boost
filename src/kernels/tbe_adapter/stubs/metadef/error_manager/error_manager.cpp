@@ -74,3 +74,32 @@ int32_t ErrorManager::OutputMessage(int32_t handle)
     UNUSED_VALUE(handle);
     return 0;
 }
+
+namespace ge {
+int32_t ReportInnerErrMsg(const char *file_name, const char *func, uint32_t line, const char *error_code,
+                          const char *format, ...)
+{
+    UNUSED_VALUE(file_name);
+    UNUSED_VALUE(func);
+    UNUSED_VALUE(line);
+    UNUSED_VALUE(error_code);
+    UNUSED_VALUE(format);
+    return 0;
+}
+
+int32_t ReportUserDefinedErrMsg(const char *error_code, const char *format, ...)
+{
+    UNUSED_VALUE(error_code);
+    UNUSED_VALUE(format);
+    return 0;
+}
+
+int32_t ReportPredefinedErrMsg(const char *error_code, const std::vector<const char *> &key,
+                               const std::vector<const char *> &value)
+{
+    UNUSED_VALUE(error_code);
+    UNUSED_VALUE(key);
+    UNUSED_VALUE(value);
+    return 0;
+}
+}

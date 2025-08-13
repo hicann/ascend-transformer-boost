@@ -20,6 +20,7 @@
 #include "graph/operator.h"
 #include "graph/node.h"
 #include "toolchain/slog.h"
+#include "base/err_msg.h"
 
 
 #define OPPROTO_SUBMOD_NAME "OP_PROTO"
