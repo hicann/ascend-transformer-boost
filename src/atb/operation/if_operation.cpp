@@ -39,7 +39,7 @@ Status IfOperation::GetOperationFromCondition(Operation **op)
     return NO_ERROR;
 }
 
-template <> Status CreateOperation(const IfCondParam &opParam, Operation **operation)
+template <> Status CreateOperation(const common::IfCondParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
         ATB_LOG(ERROR) << "Invalid param, operation is nullptr";
@@ -53,7 +53,7 @@ template <> Status CreateOperation(const IfCondParam &opParam, Operation **opera
     return NO_ERROR;
 }
 
-IfOperation::IfOperation(const IfCondParam &param) : OperationBase("IfOperation"), param_(param)
+IfOperation::IfOperation(const common::IfCondParam &param) : OperationBase("IfOperation"), param_(param)
 {
     if (!opSelected_) {
         ATB_LOG(INFO) << "Operation not selected yet, setting opSelected_...";

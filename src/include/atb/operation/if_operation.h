@@ -16,9 +16,9 @@
 #include "operation_base.h"
 
 namespace atb {
-class IfOperation : public Operation {
+class IfOperation : public OperationBase {
 public:
-    explicit IfOperation(const IfCondParam &param);
+    explicit IfOperation(const common::IfCondParam &param);
     ~IfOperation() override;
     std::string GetName() const override;
     Status Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context) override;
@@ -36,7 +36,7 @@ private:
     Status GetOperationFromCondition(Operation **op);
 
 private:
-    IfCondParam param_;
+    common::IfCondParam param_;
     Operation *opSelected_ = nullptr;
 };
 } // namespace atb
