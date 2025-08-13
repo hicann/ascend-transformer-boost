@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Technologies Co., Ltd.
  * This file is a part of the CANN Open Software.
  * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@
 
 namespace atb {
 //! \brief 最大容器大小
-constexpr size_t MAX_SVECTOR_SIZE = 256;
+constexpr std::size_t MAX_SVECTOR_SIZE = 256;
 //! \brief 默认容器大小
-constexpr size_t DEFAULT_SVECTOR_SIZE = 64;
+constexpr std::size_t DEFAULT_SVECTOR_SIZE = 64;
 //! \brief 边界检查标志
 constexpr bool CHECK_BOUND = true;
 
@@ -55,15 +55,30 @@ public:
     //!
     //! \param list
     //!
-    //! \note list长度需小于DEFAULT_SVECTOR_SIZE，否则会抛出异常
+    //! \note list长度需小于MAX_SVECTOR_SIZE，否则会抛出异常
     //!
     SVector(std::initializer_list<T> list)
     {
-        if (CHECK_BOUND && list.size() > DEFAULT_SVECTOR_SIZE) {
+        std::size_t listSize = list.size();
+        if (listSize > MAX_SVECTOR_SIZE) {
             throw MaxSizeExceeded();
         }
+        std::size_t i = 0;
+        if (listSize > DEFAULT_SVECTOR_SIZE) {
+            heap_ = reinterpret_cast<T *>(malloc(MAX_SVECTOR_SIZE * sizeof(T)));
+            if (!heap_) {
+                throw std::bad_alloc();
+            }
+            i = 0;
+            for (auto it = list.begin(); it != list.end() && i < size_; ++it) {
+                heap_[i++] = *it;
+            }
+            capacity_ = MAX_SVECTOR_SIZE;
+            return;
+        }
+
         size_ = list.size();
-        size_t i = 0;
+        i = 0;
         for (auto it = list.begin(); it != list.end() && i < size_; ++it) {
             storage_[i++] = *it;
         }
@@ -73,14 +88,24 @@ public:
     //! \param size
     //! \param value
     //!
-    //! \note size大小需小于DEFAULT_SVECTOR_SIZE，否则会抛出异常
+    //! \note size大小需小于MAX_SVECTOR_SIZE，否则会抛出异常
     //!
-    explicit SVector(std::size_t size, const T &value = 0) : size_(0)
+    explicit SVector(std::size_t size, const T &value = 0) : size_(size)
     {
-        if (CHECK_BOUND && size > DEFAULT_SVECTOR_SIZE) {
+        if (size > MAX_SVECTOR_SIZE) {
             throw MaxSizeExceeded();
         }
-        size_ = size;
+        if (size > DEFAULT_SVECTOR_SIZE) {
+            heap_ = reinterpret_cast<T *>(malloc(MAX_SVECTOR_SIZE * sizeof(T)));
+            if (!heap_) {
+                throw std::bad_alloc();
+            }
+            for (std::size_t i = 0; i < size; ++i) {
+                heap_[i] = value;
+            }
+            capacity_ = MAX_SVECTOR_SIZE;
+            return;
+        }
         for (std::size_t i = 0; i < size_; ++i) {
             storage_[i] = value;
         }
@@ -131,7 +156,11 @@ public:
             return;
         }
         if (CHECK_BOUND && size_ == DEFAULT_SVECTOR_SIZE) {
-            throw MaxSizeExceeded();
+            if (!heap_) {
+                MoveToHeap();
+            }
+            heap_[size_++] = val;
+            return;
         }
         storage_[size_++] = val;
     }
@@ -192,16 +221,10 @@ public:
     //!
     T &operator[](std::size_t i)
     {
-        if (heap_) {
-            if (size_ == 0 || i >= size_) {
-                throw std::out_of_range("out of range");
-            }
-            return heap_[i];
+        if (i >= size_) {
+            throw std::out_of_range("SVector operator[] index out of range");
         }
-        if (size_ == 0 || i >= size_) {
-            throw std::out_of_range("out of range");
-        }
-        return storage_[i];
+        return heap_ ? heap_[i] : storage_[i];
     }
 
     //! \brief 访问指定位置的元素
@@ -212,16 +235,10 @@ public:
     //!
     const T &operator[](std::size_t i) const
     {
-        if (heap_) {
-            if (size_ == 0 || i >= size_) {
-                throw std::out_of_range("out of range");
-            }
-            return heap_[i];
+        if (i >= size_) {
+            throw std::out_of_range("SVector operator[] index out of range");
         }
-        if (size_ == 0 || i >= size_) {
-            throw std::out_of_range("out of range");
-        }
-        return storage_[i];
+        return heap_ ? heap_[i] : storage_[i];
     }
 
     //! \brief 访问指定位置的元素
@@ -232,17 +249,10 @@ public:
     //!
     T &at(std::size_t i)
     {
-        if (heap_) {
-            if (size_ == 0 || i >= size_) {
-                throw std::out_of_range("out of range");
-            }
-            return heap_[i];
-        } else {
-            if (size_ == 0 || i >= size_ || i > DEFAULT_SVECTOR_SIZE) {
-                throw std::out_of_range("out of range");
-            }
-            return storage_[i];
+        if (i >= size_) {
+            throw std::out_of_range("SVector at index out of range");
         }
+        return heap_ ? heap_[i] : storage_[i];
     }
 
     //! \brief 访问指定位置的元素
@@ -253,16 +263,10 @@ public:
     //!
     const T &at(std::size_t i) const
     {
-        if (heap_) {
-            if (size_ == 0 || i >= size_) {
-                throw std::out_of_range("heap out of range");
-            }
-            return heap_[i];
+        if (i >= size_) {
+            throw std::out_of_range("SVector at index out of range");
         }
-        if (size_ == 0 || i >= size_ || i > DEFAULT_SVECTOR_SIZE) {
-            throw std::out_of_range("stack out of range");
-        }
-        return storage_[i];
+        return heap_ ? heap_[i] : storage_[i];
     }
 
     //! \brief 获取容器的大小
@@ -281,9 +285,14 @@ public:
     //!
     //! \note pos必须小于SVector容量，否则会抛出异常
     //!
-    void insert(const std::size_t pos,
-                const T &value) noexcept((!CHECK_BOUND) && std::is_nothrow_assignable<T, const T &>::value)
+    void insert(const std::size_t pos, const T &value)
     {
+        if (pos > size_) {
+            throw std::out_of_range("SVector insert index out of stack range");
+        }
+        if (!heap_ && size_ == DEFAULT_SVECTOR_SIZE) {
+            MoveToHeap();
+        }
         if (heap_) {
             if (pos > size_ || pos == capacity_) {
                 throw MaxSizeExceeded();
@@ -295,13 +304,6 @@ public:
             size_ += 1;
             return;
         }
-        if (CHECK_BOUND && size_ == DEFAULT_SVECTOR_SIZE) {
-            throw MaxSizeExceeded();
-        }
-        if (pos > size_) {
-            throw MaxSizeExceeded();
-        }
-
         for (auto it = size_; it != pos; it--) {
             storage_[it] = storage_[it - 1];
         }
@@ -357,8 +359,11 @@ public:
     //!
     void resize(std::size_t size)
     {
-        if (heap_ && size > capacity_) {
+        if ((size > MAX_SVECTOR_SIZE) || (heap_ && size > capacity_)) {
             throw MaxSizeExceeded();
+        }
+        if (!heap_ && size > DEFAULT_SVECTOR_SIZE) {
+            MoveToHeap();
         }
         size_ = size;
     }
@@ -367,7 +372,7 @@ public:
     //!
     //! \param size
     //!
-    //! \note 用于预分配内存空间，SVector默认容量为DEFAULT_SVECTOR_SIZE，传入的size需大于DEFAULT_SVECTOR_SIZ且小于MAX_SVECTOR_SIZE，反之，则会抛出异常。
+    //! \note 用于预分配内存空间，SVector默认容量为DEFAULT_SVECTOR_SIZE，传入的size需小于MAX_SVECTOR_SIZE，反之，则会抛出异常。
     //!
     void reserve(std::size_t size)
     {
@@ -402,7 +407,7 @@ public:
             if (size_ != other.size_ || !other.heap_) {
                 return false;
             }
-            for (size_t i = 0; i < size_; ++i) {
+            for (std::size_t i = 0; i < size_; ++i) {
                 if (heap_[i] != other.heap_[i]) {
                     return false;
                 }
@@ -411,7 +416,7 @@ public:
             if (size_ != other.size_) {
                 return false;
             }
-            for (size_t i = 0; i < size_; ++i) {
+            for (std::size_t i = 0; i < size_; ++i) {
                 if (storage_[i] != other.storage_[i]) {
                     return false;
                 }
@@ -432,7 +437,7 @@ public:
             if (size_ != other.size_ || !other.heap_) {
                 return true;
             }
-            for (size_t i = 0; i < size_; ++i) {
+            for (std::size_t i = 0; i < size_; ++i) {
                 if (heap_[i] != other.heap_[i]) {
                     return true;
                 }
@@ -441,7 +446,7 @@ public:
             if (size_ != other.size_) {
                 return true;
             }
-            for (size_t i = 0; i < size_; ++i) {
+            for (std::size_t i = 0; i < size_; ++i) {
                 if (storage_[i] != other.storage_[i]) {
                     return true;
                 }
@@ -462,7 +467,7 @@ public:
             if (size_ != other.size_ || !other.heap_) {
                 return size_ < other.size_;
             }
-            for (size_t i = 0; i < size_; ++i) {
+            for (std::size_t i = 0; i < size_; ++i) {
                 if (heap_[i] != other.heap_[i]) {
                     return heap_[i] < other.heap_[i];
                 }
@@ -471,7 +476,7 @@ public:
             if (size_ != other.size_) {
                 return size_ < other.size_;
             }
-            for (size_t i = 0; i < size_; ++i) {
+            for (std::size_t i = 0; i < size_; ++i) {
                 if (storage_[i] != other.storage_[i]) {
                     return storage_[i] < other.storage_[i];
                 }
@@ -488,22 +493,28 @@ public:
     //!
     SVector &operator=(std::initializer_list<T> list)
     {
-        if (heap_) {
-            if (CHECK_BOUND && list.size() > MAX_SVECTOR_SIZE) {
-                throw MaxSizeExceeded();
+        std::size_t listSize = list.size();
+        if (CHECK_BOUND && listSize > MAX_SVECTOR_SIZE) {
+            throw MaxSizeExceeded();
+        }
+        if (listSize > DEFAULT_SVECTOR_SIZE) {
+            if (!heap_) {
+                heap_ = reinterpret_cast<T *>(malloc(listSize * sizeof(T)));
             }
-            size_ = list.size();
-            size_t i = 0;
+            if (!heap_) {
+                throw std::bad_alloc();
+            }
+            capacity_ = MAX_SVECTOR_SIZE;
+        }
+        size_ = listSize;
+        if (heap_) {
+            std::size_t i = 0;
             for (auto it = list.begin(); it != list.end() && i < size_; ++it) {
                 heap_[i++] = *it;
             }
             return *this;
         } else {
-            if (CHECK_BOUND && list.size() > DEFAULT_SVECTOR_SIZE) {
-                throw MaxSizeExceeded();
-            }
-            size_ = list.size();
-            size_t i = 0;
+            std::size_t i = 0;
             for (auto it = list.begin(); it != list.end() && i < size_; ++it) {
                 storage_[i++] = *it;
             }
@@ -519,19 +530,32 @@ public:
     //!
     SVector &operator=(const SVector &other)
     {
+        if (this == &other) {
+            return *this;
+        }
+
         if (heap_) {
-            size_ = other.size_;
+            free(heap_);
+            heap_ = nullptr;
+        }
+
+        capacity_ = other.capacity_;
+        size_ = other.size_;
+        if (other.heap_) {
+            heap_ = reinterpret_cast<T *>(malloc(size_ * sizeof(T)));
+            if (!heap_) {
+                throw std::bad_alloc();
+            }
+
             for (std::size_t i = 0; i < other.size_; ++i) {
                 heap_[i] = other.heap_[i];
             }
-            return *this;
         } else {
-            size_ = other.size_;
             for (std::size_t i = 0; i < other.size_; ++i) {
                 storage_[i] = other.storage_[i];
             }
-            return *this;
         }
+        return *this;
     }
 
 private:
@@ -539,6 +563,18 @@ private:
     std::size_t size_ = 0;
     T storage_[DEFAULT_SVECTOR_SIZE + 1];
     T *heap_ = nullptr;
+
+    void MoveToHeap()
+    {
+        capacity_ = MAX_SVECTOR_SIZE;
+        heap_ = reinterpret_cast<T *>(malloc(MAX_SVECTOR_SIZE * sizeof(T)));
+        if (!heap_) {
+            throw std::bad_alloc();
+        }
+        for (std::size_t i = 0; i < DEFAULT_SVECTOR_SIZE; ++i) {
+            heap_[i] = storage_[i];
+        }
+    }
 };
 
 //! \brief 输出容器中的元素
@@ -555,7 +591,7 @@ template <class T> std::ostream &operator<<(std::ostream &os, const SVector<T> &
     }
 
     std::string str = ",";
-    for (size_t i = 0; i < svector.size(); ++i) {
+    for (std::size_t i = 0; i < svector.size(); ++i) {
         os << svector.at(i);
         if (i != svector.size() - 1) {
             os << str;
