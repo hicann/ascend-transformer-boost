@@ -109,7 +109,14 @@ def get_inputs():
     print("------------ generate inputs success ------------")
     return inputs
 
+def is910B():
+    device_name = torch.npu.get_device_name()
+    return (re.search("Ascend910B", device_name, re.I) and len(device_name) > 10)
+
 def run():
+    if not is910B():
+        print("This test case only supports 910B")
+        return True
     Graph = single_graph_build()
     inputs = get_inputs()
     print("----------- single graph forward begin -----------")
