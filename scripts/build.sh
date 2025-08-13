@@ -41,7 +41,7 @@ LOG_NAME="cann_atb_install.log"
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
     "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
-    "--src-only" "--customizeops_tests" "--build-tbe-adapter")
+    "--src-only" "--customizeops_tests")
 
 function fn_build_googletest()
 {
@@ -165,6 +165,7 @@ function fn_build_asdops()
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_mixops.so 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_mixops_static.a 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libmki.so 2> /dev/null
+        rm -f $THIRD_PARTY_DIR/asdops/lib/libtbe_adapter.so 2> /dev/null
         return 0
     fi
     cd $THIRD_PARTY_DIR
@@ -319,24 +320,23 @@ function fn_get_cxx_abi_string()
 
 function fn_copy_tbe_adapter()
 {
-    if [ ! -f $ATB_HOME_PATH/lib/libtbe_adapter.so ]; then
-        echo "error:$ATB_HOME_PATH/lib/libtbe_adapter.so is not exist, please source set_env.sh from nnal or build it\
-        by --build-tbe-adapterer."
+    if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
+        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so is not exist, please source set_env.sh."
         return 0
     fi
 
     LOCAL_ABI=$(fn_get_cxx_abi_string)
 
     LOCAL_TBE_ADAPTER_PATH=$CODE_ROOT/output/atb/$LOCAL_ABI
-    TARGET_ABI=$(basename "$ATB_HOME_PATH")
+    TARGET_ABI=$(basename "$ATB_BUILD_DEPENDENCY_PATH")
     if [ "${TARGET_ABI}" != "${LOCAL_ABI}" ];then
-        echo "$ATB_HOME_PATH use $TARGET_ABI, but $LOCAL_TBE_ADAPTER_PATH use $LOCAL_ABI, abi error."
+        echo "$ATB_BUILD_DEPENDENCY_PATH use $TARGET_ABI, but $LOCAL_TBE_ADAPTER_PATH use $LOCAL_ABI, abi error."
         return 0
     fi
 
-    if [ "${ATB_HOME_PATH}" != "${LOCAL_TBE_ADAPTER_PATH}" ]; then
+    if [ "${ATB_BUILD_DEPENDENCY_PATH}" != "${LOCAL_TBE_ADAPTER_PATH}" ]; then
         if [ -d $LOCAL_TBE_ADAPTER_PATH ]; then
-            cp ${ATB_HOME_PATH}/lib/libtbe_adapter.so $LOCAL_TBE_ADAPTER_PATH/lib
+            cp ${ATB_BUILD_DEPENDENCY_PATH}/lib/libtbe_adapter.so $LOCAL_TBE_ADAPTER_PATH/lib
         fi
     fi
 }
@@ -411,12 +411,13 @@ function fn_build_tbe_dependency()
         return 0
     fi
 
-    if [ ${BUILD_TBE_ADAPTER} == "ON" ];then
-    #build by source code
-        fn_build_tbe_adapter_dependency
-    else
+    if [ -n "$ATB_BUILD_DEPENDENCY_PATH" ];then
     #copy from nnal
         fn_copy_tbe_adapter
+    else
+    #build by source code
+        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=ON"
+        fn_build_tbe_adapter_dependency
     fi
 }
 
@@ -871,10 +872,6 @@ function fn_main()
             fn_build_googletest
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
             ;;
-        "--build-tbe-adapter")
-            BUILD_TBE_ADAPTER=ON
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=ON"
-            ;;
         esac
         shift
     }
@@ -886,7 +883,8 @@ function fn_main()
     fn_init_env
 
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_MSSANITIZER=$USE_MSSANITIZER"
+    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_MSSANITIZER=$USE_MSSANITIZER \
+    -DPACKAGE_COMPILE=OFF"
     case "${arg1}" in
         "default")
             MKI_BUILD_MODE=Dev
@@ -988,7 +986,7 @@ function fn_main()
             ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind|--customizeops_tests|--build-tbe-adapter"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind|--customizeops_tests"
             ;;
     esac
 }
