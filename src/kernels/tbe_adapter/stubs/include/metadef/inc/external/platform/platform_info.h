@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef ASCEND_OPS_STUB_PLATFORM_INFO_H
-#define ASCEND_OPS_STUB_PLATFORM_INFO_H
+#ifndef PLATFORM_INFO_H
+#define PLATFORM_INFO_H
 
 using namespace std;
 #define UNUSED_VALUE(x) (void)(x)

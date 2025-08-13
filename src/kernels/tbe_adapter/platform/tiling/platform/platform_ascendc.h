@@ -68,6 +68,7 @@ enum class SocVersion {
     HI3796CV300ES,
     MC61AM21A,
     SD3403,
+    KIRIN9010,
     RESERVED_VERSION = 99999
 };
 
