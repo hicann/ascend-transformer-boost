@@ -333,7 +333,7 @@ class DynamicNTKOperation(DataGen):
         else:
             seqlens = np.array([ntokens])
         max_seq_len = max(seqlens)
-        positionIds = np.random.randint(0, max_seq_len-1, size=ntokens)
+        positionIds = np.random.randint(0, max_seq_len, size=ntokens)
         inv_freq = np.random.rand(batch, head_size_half)
         positionIds = torch.from_numpy(positionIds).npu().to(torch.int32)
         seqlens = torch.from_numpy(seqlens).npu().to(torch.int32)
@@ -2509,7 +2509,9 @@ class LayerNormOperation(DataGen):
                         return [torch.from_numpy(dynamic_quant_y).to(torch.int8),
                                 torch.from_numpy(dynamic_quant_scale.squeeze(axis=-1)).to(torch.float32),
                                 torch.from_numpy(dynamic_quant_offset.squeeze(axis=-1)).to(torch.float32)]
-                normalized_shape = (1, in_tensors[0].shape[-1])
+                weight = weight.reshape(in_tensors[0].shape[-1])
+                bias = bias.reshape(in_tensors[0].shape[-1])
+                normalized_shape = (in_tensors[0].shape[-1],)
                 layer_norm_res = torch.nn.functional.layer_norm(input, normalized_shape, weight, bias, eps).to(torch.float16)
                 golden_result = layer_norm_res.to(torch.float16)
                 golden_result_quant = layer_norm_quant(layer_norm_res)
