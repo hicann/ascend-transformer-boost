@@ -33,6 +33,8 @@ Status QuantF16Tiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     Status ret = PostLayerNormPtrFunc(tilingDataPtr, quantPtrCon, launchParam, kernelInfo);
     OP_TILING_CHECK_STATUS_RETURN(ret);
     int32_t scalarUsed = 256;
+    MKI_CHECK(quantPtrCon.numCol % 32 == 0, "last dim is not 32 bytes align",
+              return Status::FailStatus(ERROR_INVALID_VALUE, "last dim is not 32 bytes align")); // 32: 算子约束最后一维32字节对齐要求
     MKI_CHECK(quantPtrCon.nlFirstdimPerCoreNum <
                   (static_cast<uint32_t>(std::numeric_limits<int32_t>::max()) / 2) / quantPtrCon.numCol,
               "numCol or nlFirstdimPerCoreNum is not invalid",
