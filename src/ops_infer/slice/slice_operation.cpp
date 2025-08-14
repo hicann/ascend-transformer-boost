@@ -112,13 +112,13 @@ Status SliceOperation::ParamCheck(TensorDesc inTensorDesc) const
     size_t sliceSize = param_.size.size();
     auto xTensorDims = inTensorDesc.shape.dimNum;
     if (sliceSize != param_.offsets.size()) {
-        ATB_LOG(ERROR) << "SliceOperation InferShapeImpl faild: offsets length must be equal to size length, "
+        ATB_LOG(ERROR) << "SliceOperation InferShapeImpl failed: offsets length must be equal to size length, "
                        << "the offsets length is " << param_.offsets.size() << ". the size length is "
                        << param_.size.size();
         return ERROR_INVALID_PARAM;
     }
     if (sliceSize != xTensorDims) {
-        ATB_LOG(ERROR) << "SliceOperation InferShapeImpl faild: size length must be equal to the input tensor dimNum, "
+        ATB_LOG(ERROR) << "SliceOperation InferShapeImpl failed: size length must be equal to the input tensor dimNum, "
                        << "the size length is " << param_.size.size() << ". the input tensor dimNum is "
                        << inTensorDesc.shape.dimNum;
         return ERROR_INVALID_PARAM;

@@ -26,6 +26,7 @@ const uint32_t TENSOR_IDX_TWO = 2;
 const uint32_t MAX_VALUE1 = 26624;
 const uint32_t MAX_VALUE2 = 7552;
 const uint32_t MAX_VALUE3 = 4096;
+const uint32_t THIRTY_TWO = 32;
 
 template <> Status CreateOperation(const infer::ElewiseParam &opParam, Operation **operation)
 {
@@ -211,6 +212,12 @@ Status ElewiseOperation::InferShapeImplCast(const SVector<TensorDesc> &inTensorD
 Status ElewiseOperation::InferShapeImplQuant(const SVector<TensorDesc> &inTensorDescs,
                                              SVector<TensorDesc> &outTensorDescs) const
 {
+    uint64_t intensorZeroDimNum = intensorDescs.at(TENSOR_IDX_ZERO).shape.dimNum;
+    int64_t intensorZeroLastDim = inTensorDescs.at(TENSOR_IDX_ZERO).shape.dims[intensorZeroDimNum - 1];
+    if (intensorZeroLastDim % THIRTY_TWO != 0) {
+        ATB_LOG(ERROR) << "ElewiseOperation InferShapeImpl quant: last dim is not 32 bytes align.";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
     aclDataType dtype = inTensorDescs.at(TENSOR_IDX_ZERO).dtype;
     if (dtype == ACL_FLOAT16) {
         outTensorDescs.at(TENSOR_IDX_ZERO).dtype = ACL_INT8;
