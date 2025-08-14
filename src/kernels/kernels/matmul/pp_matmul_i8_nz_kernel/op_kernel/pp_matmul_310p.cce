@@ -14,12 +14,12 @@
 #define __aicore__ [aicore]
 #endif
 #include "kernel_operator.h"
-#include "ops/utils/kernel/common.h"
-#include "ops/utils/kernel/mem.h"
-#include "ops/utils/kernel/iterator.h"
-#include "ops/utils/kernel/mma.h"
-#include "ops/utils/kernel/utils.h"
-#include "ops/utils/kernel/simd.h"
+#include "kernels/utils/kernel/common.h"
+#include "kernels/utils/kernel/mem.h"
+#include "kernels/utils/kernel/iterator.h"
+#include "kernels/utils/kernel/mma.h"
+#include "kernels/utils/kernel/utils.h"
+#include "kernels/utils/kernel/simd.h"
 
 #define __force_inline__ inline __attribute__((always_inline))
 

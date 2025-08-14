@@ -14,12 +14,12 @@
 #else
 #define __aicore__ [aicore]
 #endif
-#include "ops/matmul/tiling/tiling_data.h"
-#include "ops/utils/kernel/common.h"
-#include "ops/utils/kernel/hardware.h"
-#include "ops/utils/kernel/iterator.h"
-#include "ops/utils/kernel/mma.h"
-#include "ops/utils/kernel/utils.h"
+#include "kernels/matmul/tiling/tiling_data.h"
+#include "kernels/utils/kernel/common.h"
+#include "kernels/utils/kernel/hardware.h"
+#include "kernels/utils/kernel/iterator.h"
+#include "kernels/utils/kernel/mma.h"
+#include "kernels/utils/kernel/utils.h"
 
 constexpr uint32_t L0_PINGPONG_BUFFER_LEN = 16384;
 constexpr uint32_t L1_PINGPONG_BUFFER_LEN = 131072;

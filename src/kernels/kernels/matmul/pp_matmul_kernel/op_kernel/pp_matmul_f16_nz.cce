@@ -14,11 +14,11 @@
 #define __aicore__ [aicore]
 #endif
 
-#include "ops/utils/kernel/common.h"
-#include "ops/utils/kernel/mem.h"
-#include "ops/utils/kernel/iterator.h"
-#include "ops/utils/kernel/mma.h"
-#include "ops/utils/kernel/utils.h"
+#include "kernels/utils/kernel/common.h"
+#include "kernels/utils/kernel/mem.h"
+#include "kernels/utils/kernel/iterator.h"
+#include "kernels/utils/kernel/mma.h"
+#include "kernels/utils/kernel/utils.h"
 
 struct OpShapeNz {
     uint32_t batchSize{0};

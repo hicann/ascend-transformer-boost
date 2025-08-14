@@ -6,13 +6,13 @@ using __bf16 = bfloat16_t;
 #define __aicore__ [aicore]
 #endif
 
-#include "ops/matmul/tiling/tiling_data.h"
-#include "ops/utils/kernel/common.h"
-#include "ops/utils/kernel/iterator.h"
-#include "ops/utils/kernel/mem.h"
-#include "ops/utils/kernel/mma.h"
-#include "ops/utils/kernel/simd.h"
-#include "ops/utils/kernel/utils.h"
+#include "kernels/matmul/tiling/tiling_data.h"
+#include "kernels/utils/kernel/common.h"
+#include "kernels/utils/kernel/iterator.h"
+#include "kernels/utils/kernel/mem.h"
+#include "kernels/utils/kernel/mma.h"
+#include "kernels/utils/kernel/simd.h"
+#include "kernels/utils/kernel/utils.h"
 
 namespace {
 constexpr uint8_t INTRA_BLOCK_SYNC = 2;
