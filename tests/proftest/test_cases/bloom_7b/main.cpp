@@ -24,15 +24,12 @@
 #include "context_utils.h"
 #include "tensor_utils.h"
 
-
-enum class TensorId : int32_t {
-    ElewiseAddNode0In,
-};
 #include "models/base/param/param.h"
 #include "models/base/param/layer_param.h"
 #include "models/bloom/layer/bloom_decoder_layer.h"
 static void Layer_Bloom_7B(benchmark::State &state)
 {
+    int round = 0;
     for (auto _ : state) {
         state.PauseTiming();
         aclInit(nullptr);
@@ -177,7 +174,12 @@ static void Layer_Bloom_7B(benchmark::State &state)
             {.dtype = ACL_INT32, .format = ACL_FORMAT_ND, .shape = atb::Dims{.dims = {1, 1}, .dimNum = 2}},
             {.dtype = ACL_INT32, .format = ACL_FORMAT_ND, .shape = atb::Dims{.dims = {1}, .dimNum = 1}},
         };
-        std::vector<atb::Tensor> inTensor = FillTensorDataByOne(inTensorDesc);
+        std::vector<std::string> filePath;
+        for (int i = 0; i < 61; ++i) {
+            filePath.push_back("/home/zouyanlong/msit_dump/tensors/0_15072/0/2_Prefill_layer/before/intensor" +
+                               std::to_string(i) + ".bin");
+        }
+        std::vector<atb::Tensor> inTensor = FillTensorDataByFile(inTensorDesc, filePath);
         std::vector<atb::TensorDesc> outTensorDesc{
             {.dtype = ACL_FLOAT16, .format = ACL_FORMAT_ND, .shape = atb::Dims{.dims = {1, 4096}, .dimNum = 2}},
         };
@@ -193,7 +195,10 @@ static void Layer_Bloom_7B(benchmark::State &state)
         graphOperation->Setup(variantPack, workwpaceSize, context);
         void *workSpace = nullptr;
         aclrtMalloc(&workSpace, workwpaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-        state.ResumeTiming();
+        if (round < 20)
+            round++;
+        else
+            state.ResumeTiming();
         graphOperation->Execute(variantPack, (uint8_t *)workSpace, workwpaceSize, context);
         aclrtSynchronizeStream(stream);
         state.PauseTiming();
@@ -213,7 +218,8 @@ static void Layer_Bloom_7B(benchmark::State &state)
         aclrtDestroyStream(stream);
         aclrtResetDevice(deviceId);
         aclFinalize();
+        state.ResumeTiming();
     }
 }
 
-BENCHMARK(Layer_Bloom_7B)->Iterations(1);
+BENCHMARK(Layer_Bloom_7B)->Iterations(100);

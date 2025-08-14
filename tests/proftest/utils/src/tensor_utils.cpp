@@ -397,10 +397,11 @@ std::vector<atb::Tensor> FillTensorDataByOne(const std::vector<atb::TensorDesc> 
 
 atb::Tensor FillTensorDataByFile(const atb::TensorDesc &desc, const std::string &filePath)
 {
-    atb::Tensor tensor{desc, nullptr, nullptr, 0};
-    tensor.dataSize = atb::Utils::GetTensorSize(desc);
-    aclrtMallocHost((void **)&tensor.hostData, tensor.dataSize);
     std::fstream file(filePath, std::ios::in | std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        std::cerr << "Can't open: " << filePath << std::endl;
+        exit(1);
+    }
     size_t fileSize = file.tellg();
     file.seekg(0, std::ios::beg);
     std::vector<char> fileData(fileSize);
@@ -421,10 +422,17 @@ atb::Tensor FillTensorDataByFile(const atb::TensorDesc &desc, const std::string 
     }
 
     size_t binary_size = fileSize - data_start;
-    if (binary_size == tensor.dataSize) {
-        aclrtMemcpy(tensor.hostData, tensor.dataSize, fileData.data() + data_start, tensor.dataSize,
-                    ACL_MEMCPY_HOST_TO_HOST);
+    atb::Tensor tensor{desc, nullptr, nullptr, 0};
+    tensor.dataSize = atb::Utils::GetTensorSize(desc);
+    if (binary_size < tensor.dataSize) {
+        std::cerr << "binary_size < tensor.dataSize" << "\n"
+                  << "filePath:" << filePath << "\n"
+                  << "binary_size: " << binary_size << " tensor.dataSize: " << tensor.dataSize << std::endl;
+        exit(1);
     }
+    aclrtMallocHost((void **)&tensor.hostData, tensor.dataSize);
+    aclrtMemcpy(tensor.hostData, tensor.dataSize, fileData.data() + data_start, tensor.dataSize,
+                ACL_MEMCPY_HOST_TO_HOST);
     aclrtMalloc((void **)&tensor.deviceData, tensor.dataSize, ACL_MEM_MALLOC_HUGE_FIRST);
     aclrtMemcpy(tensor.deviceData, tensor.dataSize, tensor.hostData, tensor.dataSize, ACL_MEMCPY_HOST_TO_DEVICE);
 
@@ -600,6 +608,7 @@ std::string FormatPrintTensorDesc(const atb::Tensor &tensor)
     oss << "]";
     return oss.str();
 }
+
 void PrintDeviceTensor(const atb::Tensor &tensor)
 {
     if (tensor.deviceData == nullptr) {

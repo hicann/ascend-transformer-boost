@@ -49,11 +49,14 @@ public:
                 if (!baselineFile.is_open()) {
                     std::cerr << "Failed to open baseline file: " << baselinePath << std::endl;
                     exit(1);
+                } else {
+                    std::cout << caseName << " baseline file path:" << baselinePath << std::endl;
                 }
                 baselineFile << "Benchmark_Name,Real Time (s),CPU Time (s)\n";
-                baselineFile << caseName << "," << report.real_accumulated_time << "," << report.cpu_accumulated_time << "\n";
+                baselineFile << caseName << "," << report.real_accumulated_time << "," << report.cpu_accumulated_time
+                             << "\n";
                 baselineFile.close();
-                return;
+                continue;
             }
 
             std::filesystem::create_directories(resultPath.parent_path());
@@ -70,7 +73,7 @@ public:
                 std::ifstream baselineFile(baselinePath, std::ios::in);
                 if (!baselineFile.is_open()) {
                     std::cerr << "Failed to open baseline file: " << baselinePath << " , skip compare.\n";
-                    return;
+                    exit(1);
                 }
                 double baselineCpuTime = 0;
                 std::string line;
@@ -94,7 +97,7 @@ public:
                 }
             }
         }
-
+        benchmark::ConsoleReporter::ReportRuns(reports);
         return;
     }
 
