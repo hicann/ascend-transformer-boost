@@ -74,20 +74,10 @@ list(APPEND BINARY_SRC_LIST ${CMAKE_CURRENT_LIST_DIR}/param_to_json.cpp
 add_library(atb_mixops SHARED ${BINARY_SRC_LIST})
 add_dependencies(atb_mixops MIX_BINARY_SRC_TARGET)
 target_link_libraries(atb_mixops PRIVATE ${ops_objects} mki tbe_adapter tiling_api register cann_ops_adapter)
-#target_link_libraries(atb_mixops PRIVATE
-#    -Wl,--whole-archive
-#    exp_mixops_static
-#    -Wl,--no-whole-archive
-#)
 
 add_library(atb_mixops_static STATIC $<TARGET_OBJECTS:atb_mixops>)
 add_dependencies(atb_mixops_static MIX_BINARY_SRC_TARGET)
 target_link_libraries(atb_mixops_static PRIVATE ${ops_objects} mki tbe_adapter tiling_api register cann_ops_adapter)
-#target_link_libraries(atb_mixops_static PRIVATE
-#    -Wl,--whole-archive
-#    exp_mixops_static
-#    -Wl,--no-whole-archive
-#)
 
 add_executable(atbops_sym_check sym_check.cpp)
 target_link_libraries(atbops_sym_check PRIVATE atb_mixops mki)
