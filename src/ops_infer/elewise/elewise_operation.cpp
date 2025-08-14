@@ -212,7 +212,7 @@ Status ElewiseOperation::InferShapeImplCast(const SVector<TensorDesc> &inTensorD
 Status ElewiseOperation::InferShapeImplQuant(const SVector<TensorDesc> &inTensorDescs,
                                              SVector<TensorDesc> &outTensorDescs) const
 {
-    uint64_t intensorZeroDimNum = intensorDescs.at(TENSOR_IDX_ZERO).shape.dimNum;
+    uint64_t intensorZeroDimNum = inTensorDescs.at(TENSOR_IDX_ZERO).shape.dimNum;
     int64_t intensorZeroLastDim = inTensorDescs.at(TENSOR_IDX_ZERO).shape.dims[intensorZeroDimNum - 1];
     if (intensorZeroLastDim % THIRTY_TWO != 0) {
         ATB_LOG(ERROR) << "ElewiseOperation InferShapeImpl quant: last dim is not 32 bytes align.";
