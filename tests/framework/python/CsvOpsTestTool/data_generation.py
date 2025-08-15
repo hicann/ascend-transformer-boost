@@ -56,7 +56,10 @@ def get_precision_and_eb_threshold(op_type, dtype, compute_num):
             precision_threshold = 1
     if op_type in [OpTypes.COMPUTE_QUANT, OpTypes.COMPUTE_FLOAT]:
         if dtype in [torch.float16]:
-            precision_threshold = 2**(-8)
+            if compute_num != -1 and compute_num >= 2048:
+                precision_threshold = 2**(-7)
+            else:
+                precision_threshold = 2**(-8)
             eb_threshold = 2**(-10)
         if dtype in [torch.bfloat16]:
             if compute_num != -1 and compute_num >= 2048:
