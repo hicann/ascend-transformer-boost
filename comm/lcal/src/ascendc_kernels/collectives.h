@@ -158,17 +158,18 @@ public:
         return (a + b - 1) / b;
     }
 
+    template <typename T>
     FORCE_INLINE_AICORE void VecAddCce(int64_t curDealSize, __ubuf__ T *ubuf0, __ubuf__ T *ubuf1)
     {
         if (curDealSize > MAX_VADD_SIZE) {
-            vadd(ubuf0, ubuf1, ubuf0, VADD_MAX_REPEAT, 1, 1, 1
+            vadd(ubuf0, ubuf1, ubuf0, VADD_MAX_REPEAT, 1, 1, 1,
                 VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO);
             vadd((__ubuf__ T*)((__ubuf__ int8_t*)ubuf0 + VADD_MAX_REPEAT * VADD_UNIT_BYTE),
                 (__ubuf__ T*)((__ubuf__ int8_t*)ubuf0 + VADD_MAX_REPEAT * VADD_UNIT_BYTE),
-                (__ubuf__ T*)((__ubuf__ int8_t*)ubuf1 + VADD_MAX_REPEAT * VADD_UNIT_BYTE),
+                CeilDiv((curDealSize - MAX_VADD_SIZE), VADD_UNIT_BYTE), 1, 1, 1,
                 VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO);
         } else {
-            Avadd(ubuf0, ubuf1, ubuf0, VADD_MAX_REPEAT, 1, 1, 1,
+            vadd(ubuf0, ubuf1, ubuf0, CeilDiv(curDealSize, VADD_UNIT_BYTE), 1, 1, 1,
                 VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO); 
         }
     }
@@ -176,7 +177,7 @@ public:
     template <typename T>
     FORCE_INLINE_AICORE void LoopVaddCceProcess(__ubuf__ T* localUB[2], const int64_t remainSize,
         int64_t (&targetRankArr)[8], const int64_t targetRankArrValidSize, const int64_t srcIpcOffsetNum,
-        __gm__ T *srcGmMem, __gm__ T *dstGmMem, int64_t alreadyDealNum)
+        __gm__ T *srcGmMem, __gm__ T *dstIpcMem, int64_t alreadyDealNum)
     {
         for 
     }
