@@ -212,11 +212,11 @@ private:
         int64_t atomOp)
     {
         if (!isEnableScale) {
-                Collectives::CpGM2GMPingpong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp);
+                Collectives::CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp);
         } else if (!isVectorScale) {
             CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, firstScale, offset);
         } else {
-            CpGM2GMPingpong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, scaleGt, scaleNum, 
+            CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, scaleGt, scaleNum, 
                 offset);
         }
     } 
