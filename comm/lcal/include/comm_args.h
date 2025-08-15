@@ -12,7 +12,7 @@
 #define LCCL_COMM_ARGS_H
 #include <cstdint>
 
-#if !defined(__DAV_C220_VEC__) && !defined(__DAV_C310__) && !defined(__DAV_220_CUBE__)
+#if !defined(__DAV_C220_VEC__) && !defined(__DAV_C310__) && !defined(__DAV_C220_CUBE__)
 using GM_ADDR = uint8_t*;
 #else
 #define FORCE_INLINE_AICORE __attribute__((always_inline)) inline __aicore__
