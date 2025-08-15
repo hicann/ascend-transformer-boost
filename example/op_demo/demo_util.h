@@ -99,17 +99,18 @@ atb::Status CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tens
 }
 
 /**
- * @brief 根据输入inShape，判断是NZ格式的Shape还是ND格式的Shape，并得到两种格式下的shape
+ * @brief 根据输入inShape，判断是NZ格式的shape还是ND格式的shape，并得到两种格式下的shape
  * @param tensorType tensor的数据类型
  * @param inShape tensor的shape
  * @param ndShape ND格式tensor的shape
  * @param nzShape NZ格式tensor的shape
  * @return atb::Status atb错误码
  */
-atb::Status getShape(const aclDataType tensorType, std::vector<int64_t> inShape, std::vector<int64_t> &ndShape,
+atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &inShape, std::vector<int64_t> &ndShape,
                      std::vector<int64_t> &nzShape)
 {
-    int64_t n0 = 16;
+    int64_t n0 = 16; // 维度转换参数
+    //输入tensor数据类型为ACL_INT8时，维度转换参数取32
     if (tensorType == ACL_INT8) {
         n0 = 32;
     }
@@ -122,6 +123,9 @@ atb::Status getShape(const aclDataType tensorType, std::vector<int64_t> inShape,
             nzShape = {inShape[0], inShape[2] / n0, inShape[1], n0};
         } else if (inShape.size() == 2) {
             nzShape = {1, inShape[1] / n0, inShape[0], n0};
+        } else {
+            std::cout << "shape fimensions invalid!" << std::endl;
+            return atb::ErrorType::ERROR_INVALID_TENSOR_DIM_NUM;
         }
     }
     return atb::ErrorType::NO_ERROR;
@@ -213,10 +217,8 @@ atb::Status CreateTensorFromVector(atb::Context *contextPtr, aclrtStream stream,
         return atb::ErrorType::NO_ERROR;
     }
     CHECK_STATUS(CastOp(contextPtr, stream, tensor, outTensorType, outTensor));
-    if (outTensor.desc.format != format) {
-        // 直接赋值将tensor转成需要的数据格式，或者使用提供的TransdataOp函数进行数据格式转换
-        outTensor.desc.format = format;
-    }
+    // 直接赋值将tensor转成需要的数据格式，或者使用提供的TransdataOp函数进行数据格式转换，详细用法见同级目录README.md
+    outTensor.desc.format = format;
     return atb::ErrorType::NO_ERROR;
 }
 
