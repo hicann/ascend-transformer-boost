@@ -20,13 +20,13 @@ using namespace AscendC;
 using namespace Lcal;
 
 #define KERNELS_ARGS_FUN() \
-GM_ADDR input, GM_ADDR output, GM_ADDR commArgs, GM_ADDR scale, int64_t len, int64_t magic, int op, int root, int cycleCount, \
+GM_ADDR input, GM_ADDR output, GM_ADDR commArgs, int64_t len, int64_t magic, int op, int root, int cycleCount, \
 GM_ADDR scale, int64_t scaleCount, GM_ADDR offset
 
-#define KERNELS_ARGS_FUN() \
-input, output, commArgs, scale, len, magic, op, root, cycleCount, scale, scaleCount, offset
+#define KERNELS_ARGS_CALL() \
+input, output, commArgs, len, magic, op, root, cycleCount, scale, scaleCount, offset
 
-#define KERNELS_GATHER_TABLE_ARGS_CALL() \
+#define KERNELS_GATHER_TABLE_ARGS_FUN() \
 GM_ADDR embTable, GM_ADDR lookup, GM_ADDR revData, int64_t lookupLen, int64_t embTableLen, int64_t embTableDim
 
 #define KERNELS_GATHER_TABLE_ARGS_CALL() \
@@ -74,7 +74,7 @@ public:
         this->yRankIdx = rank / localRankSize;
 
         blockIdx = GetBlockIdx();
-        blockNum = GetBlockNum() * LCAL_BLOCK_BUN_MULTI;
+        blockNum = GetBlockNum() * LCAL_BLOCK_NUM_MULTI;
         
         sync.Init(rank, rankSize, shareAddrs);
         dfx.SetValue(MAGIC, magic);
@@ -84,18 +84,18 @@ public:
     }
 
     template <typename T>
-    FORCE_INLINE_AICORE void DataCopyPingPong(const GlobalTensor<T>& inputGT, const GlobalTensor<T>& outputGT, 
+    FORCE_INLINE_AICORE void DataCopyWrapPingPong(const GlobalTensor<T>& inputGT, const GlobalTensor<T>& outputGT, 
         int64_t dataSizeRemain, int op, TBuf<QuePosition::VECCALC> tbuf)
     {
         if (dataSizeRemain <= 0) {
             return;
         }
         LocalTensor<T> localUB[2];
-        localUB[0] = tbuf.GetWithOffset<T>(UB_SINGLE_PING_PONG_ADD_SIZE_MAX * 0);
-        localUB[1] = tbuf.GetWithOffset<T>(UBSINGLE_PING_PONG_ADD_SIZE_MAX, UBSINGLE_PING_PONG_ADD_SIZE_MAX);
+        localUB[0] = tbuf.GetWithOffset<T>(UB_SINGLE_PING_PONG_ADD_SIZE_MAX, 0);
+        localUB[1] = tbuf.GetWithOffset<T>(UB_SINGLE_PING_PONG_ADD_SIZE_MAX, UB_SINGLE_PING_PONG_ADD_SIZE_MAX);
 
-        int inputOffset = 0;
-        int outputOffset = 0;
+        int inputOffsetNum = 0;
+        int outputOffsetNum = 0;
 
         PipeBarrier<PIPE_ALL>();
         if (op != COPYONLY) {
@@ -110,13 +110,13 @@ public:
                 UB_SINGLE_PING_PONG_ADD_SIZE_MAX : dataSizeRemain;
             TEventID eventId = (i & 1) ? EVENT_ID0 : EVENT_ID1;
             AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
-            DataCopyWrap(localUB[i & 1], inputGT[inputOffset], size);
+            DataCopyWrap(localUB[(i & 1) ? 0 : 1], inputGT[inputOffsetNum], size);
             AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
             AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
             DataCopyWrap(outputGT[outputOffsetNum], localUB[(i & 1) ? 0 : 1], size);
             AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
             dataSizeRemain -= size;
-            inputOffset += (size / sizeof(T));
+            inputOffsetNum += (size / sizeof(T));
             outputOffsetNum += (size / sizeof(T));
         }
         AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
@@ -131,17 +131,18 @@ public:
     }
 
     template <typename T, typename U = T>
+    
     FORCE_INLINE_AICORE void CpGM2GMDelay(GlobalTensor<V>& outputGT, GlobalTensor<U> (&inputGT)[8],
-        GlobalTensor<U> (&inputScaleGT)[8], const uint32_t calCount, int rankCount, GlobalTensor<U>& outScaleGt, 
+        GlobalTensor<U> (&inputScaleGT)[8], const uint32_t calCount, int rankCount, GlobalTensor<U>& outScaleGT, 
         TBuf<QuePosition::VECCALC> tbuf)
     {
-        DataCopyGm2GmDelay<V, T, U> cpKernel;
+        DataCopyGM2GMDelay<V, T, U> cpKernel;
         cpKernel.Init(outputGT, inputGT, inputScaleGT, calCount, rankCount, outScaleGT, tbuf);
         cpKernel.Process();
     }
 
     template <typename T1, typename T2>
-    FORCE_INLINE_AICORE T1 CeilDiv(T1 a, T2 b) const
+    FORCE_INLINE_AICORE T1 CeilDiv(T1 a, T2 b)
     {
       if (b == 0) {
             return 0;
