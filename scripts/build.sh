@@ -12,8 +12,8 @@
 set -e
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 cd $SCRIPT_DIR/..
-CODE_ROOT=$(pwd)
-CACHE_DIR=$CODE_ROOT/build
+export CODE_ROOT=$(pwd)
+export CACHE_DIR=$CODE_ROOT/build
 OUTPUT_DIR=$CODE_ROOT/output
 THIRD_PARTY_DIR=$CODE_ROOT/3rdparty
 
@@ -26,6 +26,10 @@ USE_ASAN=OFF
 USE_MSSANITIZER=OFF
 USE_MSDEBUG=OFF
 SKIP_BUILD=OFF
+BUILD_TBE_ADAPTER=OFF
+DEPENDENCY_DIR=2025-06-18
+ASDOPS_SOURCE_DIR=/tmp/asdops_dependency/$DEPENDENCY_DIR
+CMC_URL=https://cmc-szver-artifactory.cmc.tools.huawei.com/artifactory/cmc-software-release/Baize%20C/AscendTransformerBoost/1.0.0/asdops_dependency/$DEPENDENCY_DIR
 CSVOPSTEST_OPTIONS=""
 BUILD_PYBIND=ON
 SRC_ONLY=OFF
@@ -161,6 +165,7 @@ function fn_build_asdops()
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_mixops.so 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_mixops_static.a 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libmki.so 2> /dev/null
+        rm -f $THIRD_PARTY_DIR/asdops/lib/libtbe_adapter.so 2> /dev/null
         return 0
     fi
     cd $THIRD_PARTY_DIR
@@ -304,6 +309,118 @@ function fn_build_3rdparty_for_test()
     fn_build_stub
 }
 
+function fn_get_cxx_abi_string()
+{
+    if [ "${USE_CXX11_ABI}" == "ON" ]; then
+        echo "cxx_abi_1"
+    else
+        echo "cxx_abi_0"
+    fi
+}
+
+function fn_copy_tbe_adapter()
+{
+    if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
+        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so is not exist, please source set_env.sh."
+        return 0
+    fi
+
+    LOCAL_ABI=$(fn_get_cxx_abi_string)
+
+    LOCAL_TBE_ADAPTER_PATH=$CODE_ROOT/output/atb/$LOCAL_ABI
+    TARGET_ABI=$(basename "$ATB_BUILD_DEPENDENCY_PATH")
+    if [ "${TARGET_ABI}" != "${LOCAL_ABI}" ];then
+        echo "$ATB_BUILD_DEPENDENCY_PATH use $TARGET_ABI, but $LOCAL_TBE_ADAPTER_PATH use $LOCAL_ABI, abi error."
+        return 0
+    fi
+
+    if [ "${ATB_BUILD_DEPENDENCY_PATH}" != "${LOCAL_TBE_ADAPTER_PATH}" ]; then
+        if [ -d $LOCAL_TBE_ADAPTER_PATH ]; then
+            cp ${ATB_BUILD_DEPENDENCY_PATH}/lib/libtbe_adapter.so $LOCAL_TBE_ADAPTER_PATH/lib
+        fi
+    fi
+}
+
+function fn_check_dependency_cache()
+{
+    [[ ! -d "$ASDOPS_SOURCE_DIR" ]] && mkdir -p $ASDOPS_SOURCE_DIR
+    cd $ASDOPS_SOURCE_DIR
+    if [ ! -d "$ASDOPS_SOURCE_DIR/opp_kernel" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/asdops_opp_kernel.tar.gz" ]] && wget --no-check-certificate $CMC_URL/asdops_opp_kernel.tar.gz
+        tar xf asdops_opp_kernel.tar.gz
+        rm asdops_opp_kernel.tar.gz
+    fi
+    echo "$ASDOPS_SOURCE_DIR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    if [ ! -d "$ASDOPS_SOURCE_DIR/canndev" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/canndev.tar.gz" ]] && wget --no-check-certificate $CMC_URL/canndev.tar.gz
+        tar xf canndev.tar.gz
+        rm canndev.tar.gz
+    fi
+    if [ ! -d "$ASDOPS_SOURCE_DIR/metadef" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/metadef.tar.gz" ]] && wget --no-check-certificate $CMC_URL/metadef.tar.gz
+        tar xf metadef.tar.gz
+        rm metadef.tar.gz
+    fi
+    if [ ! -d "$ASDOPS_SOURCE_DIR/cann-ops-adv" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/cann-ops-adv.tar.gz" ]] && wget --no-check-certificate $CMC_URL/cann-ops-adv.tar.gz
+        tar xf cann-ops-adv.tar.gz
+        rm cann-ops-adv.tar.gz
+    fi
+    if [ ! -d "$ASDOPS_SOURCE_DIR/api" ]; then
+        [[ ! -f "$ASDOPS_SOURCE_DIR/api.tar.gz" ]] && wget --no-check-certificate $CMC_URL/api.tar.gz
+        tar xf api.tar.gz
+        rm api.tar.gz
+    fi
+    echo "dependency_cache is ready"
+}
+
+function fn_build_tbe_adapter_dependency()
+{
+    CCEC_COMPILER_DIR=$THIRD_PARTY_DIR/compiler/ccec_compiler
+    TIKCPP_DIR=$THIRD_PARTY_DIR/compiler/tikcpp
+
+    CANNDEV_DIR=$THIRD_PARTY_DIR/canndev
+    METADEF_DIR=$THIRD_PARTY_DIR/metadef
+    API_DIR=$THIRD_PARTY_DIR/api
+    CANN_OPS_DIR=$THIRD_PARTY_DIR/cann-ops-adv
+    TBE_ADAPTER_DIR=$CODE_ROOT/src/kernels/tbe_adapter
+
+    # dev
+    fn_check_dependency_cache
+    export ASCEND_KERNEL_PATH=$ASDOPS_SOURCE_DIR/opp_kernel
+
+    #tbe_adapter dependency
+    SRC_FILE_LINE_NUM=$(wc -l < "$TBE_ADAPTER_DIR/stubs/include/canndev/ops/built-in/op_tiling/op_tiling.h")
+    DST_FILE_LINE_NUM=$(wc -l < "$THIRD_PARTY_DIR/canndev/ops/built-in/op_tiling/op_tiling.h")
+    [[ ! -d "$CANNDEV_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/canndev $CANNDEV_DIR
+    [[ ! -d "$API_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/api $API_DIR
+    [[ ! -d "$CANN_OPS_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/cann-ops-adv $CANN_OPS_DIR
+    #determine whether these two files are identical
+    [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/canndev $THIRD_PARTY_DIR
+    [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/api $THIRD_PARTY_DIR
+    if [ ! -d "$METADEF_DIR" ];then
+        cp -r $ASDOPS_SOURCE_DIR/metadef $METADEF_DIR
+    fi
+}
+
+function fn_build_tbe_dependency()
+{
+    LOCAL_ABI=$(fn_get_cxx_abi_string)
+    if [ -f $OUTPUT_DIR/atb/$LOCAL_ABI/lib/libtbe_adapter.so ];then
+        echo "libtbe_adapter.so is already exist, skip build process."
+        return 0
+    fi
+
+    if [ -n "$ATB_BUILD_DEPENDENCY_PATH" ];then
+    #copy from nnal
+        fn_copy_tbe_adapter
+    else
+    #build by source code
+        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=ON"
+        fn_build_tbe_adapter_dependency
+    fi
+}
+
 function fn_build_3rdparty_for_compile()
 {
     fn_build_nlohmann_json
@@ -311,6 +428,7 @@ function fn_build_3rdparty_for_compile()
     fn_build_catlass
     fn_build_asdops
     fn_build_cann_dependency
+    fn_build_tbe_dependency
     if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
         fn_build_pybind11
     fi
@@ -765,7 +883,8 @@ function fn_main()
     fn_init_env
 
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_MSSANITIZER=$USE_MSSANITIZER"
+    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_MSSANITIZER=$USE_MSSANITIZER \
+    -DPACKAGE_COMPILE=OFF"
     case "${arg1}" in
         "default")
             MKI_BUILD_MODE=Dev
