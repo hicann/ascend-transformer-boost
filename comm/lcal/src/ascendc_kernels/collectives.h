@@ -131,7 +131,15 @@ public:
     }
 
     template <typename T, typename U = T>
-    
+    FORCE_INLINE_AICORE void CpGM2GM(const GlobalTensor<T>& outputGT, const GlobalTensor<U>& inputGT,
+        const uint32_t calCount, int op)
+    {
+        DataCopyGM2GM<T, U> cpKernel;
+        cpKernel.Init(outputGT, inputGT, calCount, op);
+        cpKernel.Process();
+    }
+
+    template <typename V, typename T, typename U = T>
     FORCE_INLINE_AICORE void CpGM2GMDelay(GlobalTensor<V>& outputGT, GlobalTensor<U> (&inputGT)[8],
         GlobalTensor<U> (&inputScaleGT)[8], const uint32_t calCount, int rankCount, GlobalTensor<U>& outScaleGT, 
         TBuf<QuePosition::VECCALC> tbuf)
