@@ -17,7 +17,7 @@
  using namespace AscendC;
 
  template <typename T, typename U = T>
- class AllReduceBigData : protected AllReduceQuant<T, U> {
+ class AllReduceBigData : protected AllReduceQuant {
     constexpr static int QUEUE_DEPTH = 4;
     constexpr static T oneCast = (T) 1;
 
@@ -43,7 +43,8 @@ public:
         int globalRankSize = localArgs->rankSize <= 0 ? rankSize : localArgs->rankSize;
         int localRankSize = localArgs->localRankSize <= 0 ? rankSize : localArgs->localRankSize;
         int serverNum = globalRankSize / localRankSize;
-        int64_t ipcBuffMaxSizeAligned = IPC_BUFF_MAX_SIZE / (globalRankSize + serverNum - 1) / QUEUE_DEPTH / sizeof(T) /scaleNum * scaleNum * QUEUE_DEPTH * sizeof(T) * globalRankSize;
+        int64_t ipcBuffMaxSizeAligned = IPC_BUFF_MAX_SIZE / (globalRankSize + serverNum - 1) / 
+            QUEUE_DEPTH / sizeof(T) /scaleNum * scaleNum * QUEUE_DEPTH * sizeof(T) * globalRankSize;
         curBlockSize = ipcBuffMaxSizeAligned / localRankSize / QUEUE_DEPTH;
         curBlockNum = curBlockSize / sizeof(T);
         atomOp = op;
@@ -139,7 +140,8 @@ private:
                 if (blockIdx != rank) {
                     GlobalTensor<U> outputGmTmp;
                     outputGmTmp.SetGlobalBuffer((__gm__ U*)outputGm.GetPhyAddr());
-                    Collectives::CpGM2GMPingPong(copyNum * sizeof(U), inputGt[count * curBlockNum], outputGmTmp, COPYONLY);
+                    Collectives::CpGM2GMPingPong(copyNum * sizeof(U), inputGt[count * curBlockNum], outputGmTmp, 
+                        COPYONLY);
                 } else {
                     CpGM2GMWithScale(copyNum, inputGt[count * curBlockNum], outputGm, COPYONLY);
                 }
@@ -208,7 +210,7 @@ private:
         }
     }
 
-   FORCE_INLINE_AICORE void CpGM2GMWithScale(int64_t atomCopyNum, GlobalTensor<T> inputGm, GlobalTensor<T> outputGm, int64_t atomOp)
+   FORCE_INLINE_AICORE void CpGM2GMWithScale(int64_t atomCopyNum, GlobalTensor<U> inputGm, GlobalTensor<T> outputGm, int64_t atomOp)
     {
         if (isEnableScale) {
                 Collectives::CpGM2GMWithVectorScale(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp);
