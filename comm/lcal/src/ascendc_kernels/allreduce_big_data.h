@@ -11,15 +11,15 @@
  #ifndef LCCL_ALLREDUCE_BIG_DATA_H
  #define LCCL_ALLREDUCE_BIG_DATA_H
 
- #include "all_reduce_quant.h"
+ #include "allreduce_quant.h"
  #include "sync_collectives.h"
  #include "ipc_queue.h"
  using namespace AscendC;
 
  template <typename T, typename U = T>
- class AllReduceBigData : public AllReduceQuant<T, U> {
+ class AllReduceBigData : protected AllReduceQuant<T, U> {
     constexpr static int QUEUE_DEPTH = 4;
-    constexpr static int T oneCast = (T) 1;
+    constexpr static T oneCast = (T) 1;
 
 public:
     FORCE_INLINE_AICORE AllReduceBigData(int rank, int rankSize, uint32_t extraFlag)
@@ -32,7 +32,7 @@ public:
             BuildScaleOffset(scale, scaleCount, offset);    
         }
 
-        if (blockIdx >- PING_PONG_SIZE * rankSize) {
+        if (blockIdx >= PING_PONG_SIZE * rankSize) {
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
         return;
         }
@@ -43,8 +43,7 @@ public:
         int globalRankSize = localArgs->rankSize <= 0 ? rankSize : localArgs->rankSize;
         int localRankSize = localArgs->localRankSize <= 0 ? rankSize : localArgs->localRankSize;
         int serverNum = globalRankSize / localRankSize;
-        int64_t ipcBuffMaxSizeAligned = IPC_BUFF_MAX_SIZE / (globalRankSize + serverNum - 1) 
-            / QUEUE_DEPTH / sizeof(T) /scaleNum * scaleNum * QUEUE_DEPTH * sizeof(T) * globalRankSize;
+        int64_t ipcBuffMaxSizeAligned = IPC_BUFF_MAX_SIZE / (globalRankSize + serverNum - 1) / QUEUE_DEPTH / sizeof(T) /scaleNum * scaleNum * QUEUE_DEPTH * sizeof(T) * globalRankSize;
         curBlockSize = ipcBuffMaxSizeAligned / localRankSize / QUEUE_DEPTH;
         curBlockNum = curBlockSize / sizeof(T);
         atomOp = op;
@@ -55,48 +54,46 @@ public:
             rankList[i] = i;
             coreIdxList[i] = rankSize + blockIdx % perStepBlockNum;
         }
-        peerRank = blockIdx % perStepBlockNum;
-        perRankDataNum = GetDataCount(len, rankSize) / scaleNum * scaleNum;
 
         peerRank = blockIdx % perStepBlockNum;
         perRankDataNum = GetDataCount(len, rankSize) / scaleNum * scaleNum;
 
-        curRankDatNum = perRankDataNum;
+        curRankDataNum = perRankDataNum;
         if (blockIdx % perStepBlockNum == rankSize - 1) {
-            curRankDatNum = len - (rankSize - 1) * perRankDataNum;
+            curRankDataNum = len - (rankSize - 1) * perRankDataNum;
         }
 
         pullRankDataNum = (rank == rankSize - 1) ? (len - rank * perRankDataNum) : perRankDataNum;
         
         inputBuffOffsetNum = blockIdx % rankSize * perRankDataNum;
 
-        inputGt.SetGlobalBuffer((__gm__ U*)input + inputBuffOffsetNum, curRankDatNum);
+        inputGt.SetGlobalBuffer((__gm__ U*)input + inputBuffOffsetNum, curRankDataNum);
 
         outputBuffOffsetNum = peerRank * perRankDataNum;
 
-        outputGt.SetGlobalBuffer((__gm__ U*)output + outputBuffOffsetNum, curRankDatNum);
+        outputGt.SetGlobalBuffer((__gm__ T*)output + outputBuffOffsetNum, curRankDataNum);
 
         inputIpcGtOffsetNum = perQueSize * (blockIdx % perStepBlockNum);
 
         if (blockIdx / perStepBlockNum == 0) {
             inputQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum,
-                            perQueNum, curBlocknum);
+                            perQueNum, curBlockNum);
         } else {
             srcQue.Init(&sync, magic, shareAddrs[peerRank] + IPC_DATA_OFFSET + rank * perQueSize,
-                            perQueNum, curBlocknum);
+                            perQueNum, curBlockNum);
             dstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + rank * perQueSize,
-                            perQueNum, curBlocknum);
+                            perQueNum, curBlockNum);
             pullQue.Init(&sync, magic, shareAddrs[peerRank] + IPC_DATA_OFFSET + peerRank * perQueSize,
-                            perQueNum, curBlocknum);
+                            perQueNum, curBlockNum);
         }
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
     }
 
     FORCE_INLINE_AICORE void Process()
     {
-        DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(op));
+        DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
         if (blockIdx >= PING_PONG_SIZE * rankSize) {
-            DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(op));
+            DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
             return;
         }
 
@@ -114,7 +111,7 @@ public:
                 }
             }
             if (rankSize == 1) {
-                DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(op));
+                DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
                 return;
             }
         }
@@ -124,30 +121,27 @@ public:
         } else {
             Consumer();
         }
-        DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(op));
+        DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
     }
 private:
     FORCE_INLINE_AICORE void Producer()
     {
-        int64_t remain = curRankDataNum;
         int64_t loopCount = CeilDiv(curRankDataNum, curBlockNum);
+        int64_t remain = curRankDataNum;
         int count = 0;
         while (count < loopCount) {
             inputQue.DeQue(rankList, coreIdxList, rankSize);
             GlobalTensor<T> outputGm = inputQue.EnQue();
             int64_t copyNum = (remain < curBlockNum) ? remain : curBlockNum;
             if constexpr (std::is_same_v<T, U>) {
-                Collectives::CpGM2GMPingPong(copyNum * sizeof(T), inputGt[count * curBlockNum],
-                                            outputGm, COPYONLY);
+                Collectives::CpGM2GMPingPong(copyNum * sizeof(T), inputGt[count * curBlockNum], outputGm, COPYONLY);
             } else {
                 if (blockIdx != rank) {
                     GlobalTensor<U> outputGmTmp;
                     outputGmTmp.SetGlobalBuffer((__gm__ U*)outputGm.GetPhyAddr());
-                    Collectives::CpGM2GMPingPong(copyNum * sizeof(U), inputGt[count * curBlockNum],
-                                                outputGmTmp, COPYONLY);
+                    Collectives::CpGM2GMPingPong(copyNum * sizeof(U), inputGt[count * curBlockNum], outputGmTmp, COPYONLY);
                 } else {
-                    CpGM2GMWithScale(copyNum, inputGt[count * curBlockNum],
-                                                outputGm, COPYONLY);
+                    CpGM2GMWithScale(copyNum, inputGt[count * curBlockNum], outputGm, COPYONLY);
                 }
             }
             sync.SetInnerFlag(magic, count);
@@ -161,8 +155,8 @@ private:
     {
         int64_t atomLoopCount = CeilDiv(pullRankDataNum, curBlockNum);
         int64_t atomRemain = pullRankDataNum;
+        int64_t loopCount = CeilDiv(curRankDataNum, curBlockNum); 
         int64_t remain = curRankDataNum;
-        int64_t loopCount = CeilDiv(curRankDataNum, curBlockNum);
         int count = 0;
         while (count < loopCount || count < atomLoopCount) {
             if (peerRank != rank && count != atomLoopCount) {
@@ -174,15 +168,13 @@ private:
 
                 int64_t atomCopyNum = (atomRemain < curBlockNum) ? atomRemain : curBlockNum;
                 if constexpr (std::is_same_v<T, U>) {
-                    Collectives::CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm,
-                                            outputGm, atomOp);
+                    Collectives::CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp);
                 } else {
                     GlobalTensor<U> inputGmTmp;
                     inputGmTmp.SetGlobalBuffer((__gm__ U*)inputGm.GetPhyAddr());
-                    CpGM2GMWithScale(atomCopyNum, inputGmTmp,
-                                                outputGm, atomOp);
+                    CpGM2GMWithScale(atomCopyNum, inputGmTmp, outputGm, atomOp);
                     }
-                    atomRemain = atomremain - curBlockNum;
+                    atomRemain = atomRemain - curBlockNum;
                 }
                 sync.SetOuterFlag(magic, count);
                 if (count == loopCount) {
@@ -202,9 +194,33 @@ private:
             }
         }
     }
+
+    FORCE_INLINE_AICORE void BuildScaleOffset(GM_ADDR scale, int64_t scaleCount, GM_ADDR offset)
+    {
+        if (scale != nullptr && offset != nullptr) {
+            scaleGt.SetGlobalBuffer((__gm__ T*)scale);
+            this->firstScale = scaleGt.GetValue(0);
+            this->offset =* reinterpret_cast<__gm__ T*>(offset);
+            this->scaleNum = scaleCount < 1 ? 1 : scaleCount;
+            isVectorScale = scaleCount > 1;
+            isEnableScale = scaleCount > 0 && !(*(uint16_t *)(&(this->offset)) == 0 &&
+                scaleCount == 1 && *(uint16_t *)(&firstScale) == *(uint16_t *)(&oneCast));
+        }
+    }
+
+   FORCE_INLINE_AICORE void CpGM2GMWithScale(int64_t atomCopyNum, GlobalTensor<T> inputGm, GlobalTensor<T> outputGm, int64_t atomOp)
+    {
+        if (isEnableScale) {
+                Collectives::CpGM2GMWithVectorScale(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp);
+        } else if (!isVectorScale) {
+            CpGM2GMWithScalarScale(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, firstScale, offset);
+        } else {
+            CpGM2GMWithScalarScale(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, scaleGt, scalseNum, offset);
+        }
+    } 
 private:
     GlobalTensor<U> inputGt;
-    GlobalTensor<U> outputGt;
+    GlobalTensor<T> outputGt;
 
     int atomOp;
 
