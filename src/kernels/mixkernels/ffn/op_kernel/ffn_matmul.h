@@ -10,12 +10,6 @@
 #ifndef ASCEND_OPS_FFN_MATMUL_H
 #define ASCEND_OPS_FFN_MATMUL_H
 
-#ifdef __CCE_KT_TEST__
-#define __aicore__
-#else
-#define __aicore__ [aicore]
-#endif
-
 #include "kernel_operator.h"
 #include "ffn_common.h"
 #include "kernels/utils/kernel/common.h"
