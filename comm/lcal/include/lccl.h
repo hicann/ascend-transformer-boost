@@ -42,7 +42,7 @@ public:
 private:
     bool CheckDataType(const HcclDataType &dataType) const;
     bool CheckBuff(const void *sendBuff, const void *recvBuff) const;
-    int LoopBack(const void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType) const;
+    int LoopBack(const void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType, aclrtStream stream) const;
 
 private:
     LcalComm *comm_ = nullptr;
