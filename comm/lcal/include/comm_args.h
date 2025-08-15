@@ -12,7 +12,7 @@
 #define LCCL_COMM_ARGS_H
 #include <cstdint>
 
-#if !defined(__DAV_C220_VEC__) && !defined(__DAV_C310__) && !defined(__DAV_C910__) && !defined(__DAV_220_CUBE__)
+#if !defined(__DAV_C220_VEC__) && !defined(__DAV_C310__) && !defined(__DAV_220_CUBE__)
 using GM_ADDR = uint8_t*;
 #else
 #define FORCE_INLINE_AICORE __attribute__((always_inline)) inline __aicore__
@@ -56,7 +56,7 @@ constexpr int64_t VADD_UNIT_TO_BLOCK_UNIT_RATIO = VADD_UNIT_BYTE / BLOCK_UNIT_BY
 
 constexpr bool ATOMIC_ENABLE = false;
 
-constexpr int32_t LCCL_DUMP_UNIT_SIZE = 1 * 1024 * 1024;
+constexpr int32_t LCCL_DUMP_UINT_SIZE = 1 * 1024 * 1024;
 enum Op : int {
     COPYONLY = -1,
     ADD = 0,
@@ -76,7 +76,7 @@ struct ExtraFlag {
     static constexpr uint32_t QUANT_DELAY = 1 << 7;
     static constexpr uint32_t QUANT_CURRENT = 1 << 8;
     static constexpr uint32_t TOPO_PCIE = 1 << 9;
-    static constexpr uint32_t IS_GATHER_THAN_40_AIV = 1 << 16;
+    static constexpr uint32_t IS_GREATER_THAN_40_AIV = 1 << 16;
 };
 
 struct CommArgs {
@@ -107,7 +107,7 @@ struct LcclDumpBlockInfo {
     uint64_t dumpAddr = 0;
 };
 
-struct LcclDumpInfo {
+struct LcclDumpLogInfo {
     uint32_t logId = 0;
     uint32_t blockId = 0;
     uint64_t syscyc = 0;
@@ -118,7 +118,7 @@ struct LcclDumpInfo {
 
 union LcclDumpUnion {
     LcclDumpBlockInfo blockInfo;
-    LcclDumpInfo logInfo;
+    LcclDumpLogInfo logInfo;
 };
 
 enum LogId : int {
