@@ -191,9 +191,7 @@ private:
 
                 sync.SetInnerFlag(magic, count);
                 remain = remain - curBlockNum;
-                count = count + 1;
-
-            }
+                count = count + 1;   
         }
     }
 
@@ -210,14 +208,16 @@ private:
         }
     }
 
-   FORCE_INLINE_AICORE void CpGM2GMWithScale(int64_t atomCopyNum, GlobalTensor<U> inputGm, GlobalTensor<T> outputGm, int64_t atomOp)
+   FORCE_INLINE_AICORE void CpGM2GMWithScale(int64_t atomCopyNum, GlobalTensor<U> inputGm, GlobalTensor<T> outputGm, 
+        int64_t atomOp)
     {
-        if (isEnableScale) {
-                Collectives::CpGM2GMWithVectorScale(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp);
+        if (!isEnableScale) {
+                Collectives::CpGM2GMPingpong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp);
         } else if (!isVectorScale) {
-            CpGM2GMWithScalarScale(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, firstScale, offset);
+            CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, firstScale, offset);
         } else {
-            CpGM2GMWithScalarScale(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, scaleGt, scalseNum, offset);
+            CpGM2GMPingpong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, scaleGt, scaleNum, 
+                offset);
         }
     } 
 private:
