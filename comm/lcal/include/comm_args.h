@@ -12,7 +12,7 @@
 #define LCCL_COMM_ARGS_H
 #include <cstdint>
 
-#if !defined(__DAV_C220_VEC__) && !defined(__DAV_C310__)
+#if !defined(__DAV_C220_VEC__) && !defined(__DAV_C310__) && !defined(__DAV_C910__) && !defined(__DAV_220_CUBE__)
 using GM_ADDR = uint8_t*;
 #else
 #define FORCE_INLINE_AICORE __attribute__((always_inline)) inline __aicore__
@@ -56,6 +56,7 @@ constexpr int64_t VADD_UNIT_TO_BLOCK_UNIT_RATIO = VADD_UNIT_BYTE / BLOCK_UNIT_BY
 
 constexpr bool ATOMIC_ENABLE = false;
 
+constexpr int32_t LCCL_DUMP_UNIT_SIZE = 1 * 1024 * 1024;
 enum Op : int {
     COPYONLY = -1,
     ADD = 0,
@@ -75,6 +76,7 @@ struct ExtraFlag {
     static constexpr uint32_t QUANT_DELAY = 1 << 7;
     static constexpr uint32_t QUANT_CURRENT = 1 << 8;
     static constexpr uint32_t TOPO_PCIE = 1 << 9;
+    static constexpr uint32_t IS_GATHER_THAN_40_AIV = 1 << 16;
 };
 
 struct CommArgs {
@@ -90,6 +92,40 @@ struct CommArgs {
      */
     int64_t sendCountMatrix[LCAL_MAX_RANK_SIZE * LCAL_MAX_RANK_SIZE] = {}; // for all2allv
     int64_t dfx[DFX_COUNT] = {};
+    GM_ADDR dumpAddr = nullptr;
+    int32_t magics[LCAL_MAX_RANK_SIZE] = {0};
+    uint64_t fftsVal = 0;
 };
-}
+
+struct LcclDumpBlockInfo {
+    uint32_t len = 0;
+    uint32_t core = 0;
+    uint32_t blockNum = 0;
+    uint32_t dumpOffset = 0;
+    uint32_t magic = 0;
+    uint32_t rsv = 0;
+    uint64_t dumpAddr = 0;
+};
+
+struct LcclDumpInfo {
+    uint32_t logId = 0;
+    uint32_t blockId = 0;
+    uint64_t syscyc = 0;
+    uint64_t curPc = 0;
+    uint32_t operationType = 0;
+    uint32_t rsv = 0;
+};
+
+union LcclDumpUnion {
+    LcclDumpBlockInfo blockInfo;
+    LcclDumpInfo logInfo;
+};
+
+enum LogId : int {
+    OVERALL = 0,
+    INIT,
+    PROCESS
+};
+
+} // namespace Lcal
 #endif // LCCL_COMM_ARGS_H
