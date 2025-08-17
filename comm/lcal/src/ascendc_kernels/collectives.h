@@ -222,7 +222,7 @@ public:
 
             AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
             AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
-            CpUB2GM((__gm__ T*)dstIpcMem + alreadyDealNum), localUB[0], curDealSize);
+            CpUB2GM((__gm__ T*)dstIpcMem + alreadyDealNum, localUB[0], curDealSize);
             if (alreadyDealSize + UB_SINGLE_PING_PONG_ADD_SIZE_MAX < remainSize) {
                 AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
             }
@@ -487,11 +487,11 @@ protected:
         logUb->curPc = static_cast<uint64_t>(get_pc());
         logUb->operationType = operationType;
         logUb->rsv = 0;
-        CpUB2GM((GM_ADDR)blockUb->dumpAddr, (__ubuf__ uint8_t*)logUb, sizeof(LcclDumpLogInfo));
+        CpUB2GM((GM_ADDR)blockUb->dumpAddr, (__ubuf__ uint8_t*)logUb, sizeof(LcclDumpBlockInfo));
 
         blockUb->dumpAddr += sizeof(LcclDumpBlockInfo);
         blockUb->dumpOffset -= sizeof(LcclDumpLogInfo);
-        CpUB2GM(blockGm, (__ubuf__ uint8_t*)blockUb, sizeof(LcclDumpBlockInfo));
+        CpUB2GM(blockGm, (__ubuf__ uint8_t*)blockUb, sizeof(LcclDumpLogInfo));
         AscendC::PipeBarrier<PIPE_ALL>();
 #endif
     }
