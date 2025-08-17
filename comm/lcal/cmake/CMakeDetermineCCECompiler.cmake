@@ -11,21 +11,21 @@ set(PRIVATE_CCEC_PATH ${CMAKE_SOURCE_DIR}/3rdparty/compiler)
 find_program(CMAKE_CCE_COMPILER
         NAMES "ccec"
         HINTS "${PRIVATE_CCEC_PATH}/ccec_compiler/bin"
-        HINTS "${ASCEND_HOME_PATH}/${ARCH}--linux/ccec_compiler/bin"
+        HINTS "${ASCEND_HOME_PATH}/${ARCH}-linux/ccec_compiler/bin"
         DOC "CCE Compiler"
 )
 find_program(CMAKE_CCE_LINKER
         NAMES "ld.lld"
         HINTS "${PRIVATE_CCEC_PATH}/ccec_compiler/bin"
-        HINTS "${ASCEND_HOME_PATH}/${ARCH}--linux/ccec_compiler/bin"
+        HINTS "${ASCEND_HOME_PATH}/${ARCH}-linux/ccec_compiler/bin"
         DOC "CCE Linker"
 )
-message(STATUS "CMAKE_CCE_COMPILER: ${CMAKE_CCE_COMPILER}")
+message(STATUS "CMAKE_CCE_COMPILER: " ${CMAKE_CCE_COMPILER})
 message(STATUS "CMAKE_PLATFORM_INFO_DIR: "${CMAKE_PLATFORM_INFO_DIR})
-configure_file(${CMAKE_CURRENT_LIST_DIR}/CMakeCCEInformation.cmake.in
-        ${CMAKE_PLATFORM_INFO_DIR}/CMakeCCEInformation.cmake 
+configure_file(${CMAKE_CURRENT_LIST_DIR}/CMakeCCECompiler.cmake.in
+        ${CMAKE_PLATFORM_INFO_DIR}/CMakeCCECompiler.cmake 
         @ONLY
 )
-set(CMAKE_CCE_SOURCE_FILE_EXTENSION cce;cpp)
+set(CMAKE_CCE_SOURCE_FILE_EXTENSIONS cce;cpp)
 set(CMAKE_CCE_COMPILER_ENV_VAR "CCEC")
 
