@@ -180,13 +180,13 @@ public:
         int64_t (&targetRankArr)[8], const int64_t targetRankArrValidSize, const int64_t srcIpcOffsetNum,
         __gm__ T *srcGmMem, __gm__ T *dstIpcMem, int64_t alreadyDealNum)
     {
-        for (int64_t alreadyDealNum = 0; alreadyDealNum < remainSize;
-             alreadyDealNum += UB_SINGLE_PING_PONG_ADD_SIZE_MAX) {
+        for (int64_t alreadyDealSize = 0; alreadyDealSize < remainSize;
+             alreadyDealSize += UB_SINGLE_PING_PONG_ADD_SIZE_MAX) {
             int64_t curDealSize = UB_SINGLE_PING_PONG_ADD_SIZE_MAX;
-            if (remainSize - alreadyDealNum < UB_SINGLE_PING_PONG_ADD_SIZE_MAX) {
-                curDealSize = remainSize - alreadyDealNum;
+            if (remainSize - alreadyDealSize < UB_SINGLE_PING_PONG_ADD_SIZE_MAX) {
+                curDealSize = remainSize - alreadyDealSize;
             }
-            if (alreadyDealNum != 0) {
+            if (alreadyDealSize != 0) {
                 AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
 
             }
@@ -212,7 +212,7 @@ public:
                 if (((i + 1) == targetRankArrValidSize)) {
                     continue;
                 }
-                if (((i + 1) == targetRankArrValidSize - 1) && (targetRankArr[i + 1] == rank)) {
+                if ((i + 1 == targetRankArrValidSize - 1) && (targetRankArr[i + 1] == rank)) {
                     continue;
                 }
                 AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);  
@@ -223,7 +223,7 @@ public:
             AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
             AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
             CpUB2GM((__gm__ T*)dstIpcMem + alreadyDealNum), localUB[0], curDealSize);
-            if (alreadyDealNum + UB_SINGLE_PING_PONG_ADD_SIZE_MAX < remainSize) {
+            if (alreadyDealSize + UB_SINGLE_PING_PONG_ADD_SIZE_MAX < remainSize) {
                 AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
             }
             alreadyDealNum += curDealSize / sizeof(T);
@@ -246,8 +246,8 @@ public:
     {
         constexpr int32_t ubBlockSize = UB_SINGLE_PING_PONG_ADD_SIZE_MAX;
         constexpr int32_t ubAlignNum = ubBlockSize / (sizeof(T) + sizeof(U)) / ALIGN_SIZE * ALIGN_SIZE;
-        constexpr int32_t inputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize ： ubAlignNum * sizeof(U);
-        constexpr int32_t outputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize ： ubAlignNum * sizeof(T);
+        constexpr int32_t inputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize : ubAlignNum * sizeof(U);
+        constexpr int32_t outputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize : ubAlignNum * sizeof(T);
 
         __gm__ U *input = const_cast<__gm__ U *>(inputGT.GetPhyAddr());
         __gm__ T *output = const_cast<__gm__ T *>(outputGT.GetPhyAddr());
@@ -314,7 +314,7 @@ public:
 
     template <typename T>
     FORCE_INLINE_AICORE void LoopVadd(TBuf<QuePosition::VECCALC> tbuf, int64_t &remainNum, int64_t (&targetRankArr)[8],
-            int64_t targetRankArrValidSize, int64_t srcIpcOffsetNum, const GlobalTensor<T> &srcGT,
+            int64_t targetRankArrValidSize, int64_t srcIpcOffsetNum, const GlobalTensor<T> &srcGt,
             const GlobalTensor<T> &dstGt)
     {
         if (remainNum <= 0) {
@@ -330,21 +330,21 @@ public:
         AscendC::PipeBarrier<PIPE_ALL>();
     }
     template <typename T>
-    FORCE_INLINE_AICORE void LoopVaddProcess(LocalTensor<T> localUB[2], const int64_t remainSize,
+    FORCE_INLINE_AICORE void LoopVaddProcess(LocalTensor<T> (&localUB)[2], const int64_t remainSize,
         int64_t (&targetRankArr)[8], const int64_t targetRankArrValidSize, const int64_t srcIpcOffsetNum,
-        const GlobalTensor<T> &srcGT, const GlobalTensor<T> &dstGT, int64_t alreadyDealNum)
+        const GlobalTensor<T> &srcGt, const GlobalTensor<T> &dstGt, int64_t alreadyDealNum)
     {
-        for (int64_t alreadyDealNum = 0; alreadyDealNum < remainSize;
-                alreadyDealNum += UB_SINGLE_PING_PONG_ADD_SIZE_MAX) {
+        for (int64_t alreadyDealSize = 0; alreadyDealSize < remainSize;
+                alreadyDealSize += UB_SINGLE_PING_PONG_ADD_SIZE_MAX) {
             int64_t curDealSize = UB_SINGLE_PING_PONG_ADD_SIZE_MAX;
-            if (remainSize - alreadyDealNum < UB_SINGLE_PING_PONG_ADD_SIZE_MAX) {
-                curDealSize = remainSize - alreadyDealNum;
+            if (remainSize - alreadyDealSize < UB_SINGLE_PING_PONG_ADD_SIZE_MAX) {
+                curDealSize = remainSize - alreadyDealSize;
             }
-            if (alreadyDealNum != 0) {
+            if (alreadyDealSize != 0) {
                 AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
 
             }
-            DataCopywrap(localUB[0], srcGT[alreadyDealNum], curDealSize);
+            DataCopyWrap(localUB[0], srcGt[alreadyDealNum], curDealSize);
 
             for (int64_t i = 0; i < targetRankArrValidSize; i++) {
                 int64_t targetRank = targetRankArr[i];
@@ -357,7 +357,7 @@ public:
                 GlobalTensor<T> srcGtTmp;
                 srcGtTmp.SetGlobalBuffer(
                     (__gm__ T*)(shareAddrs[targetRank] + IPC_DATA_OFFSET) + srcIpcOffsetNum + alreadyDealNum);
-                DataCopywrap(localUB[1], srcGtTmp, curDealSize);
+                DataCopyWrap(localUB[1], srcGtTmp, curDealSize);
                 AscendC::SetFlag<AscendC::HardEvent::MTE2_V>(EVENT_ID0);
                 AscendC::WaitFlag<AscendC::HardEvent::MTE2_V>(EVENT_ID0);
 
@@ -365,9 +365,9 @@ public:
                 AscendC::WaitFlag<AscendC::HardEvent::V_S>(EVENT_ID2);
                 VecAdd(curDealSize, localUB[0], localUB[1]);
                 if (((i + 1) == targetRankArrValidSize)) {
-                    continue
+                    continue;
                 }
-                if (((i + 1) == targetRankArrValidSize - 1) && (targetRankArr[i + 1] == rank)) {
+                if ((i + 1 == targetRankArrValidSize - 1) && (targetRankArr[i + 1] == rank)) {
                     continue;
                 }
                 AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);  
@@ -377,8 +377,8 @@ public:
 
             AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
             AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
-            DataCopywrap(dstGT[alreadyDealNum], localUB[0], curDealSize);
-            if (alreadyDealNum + UB_SINGLE_PING_PONG_ADD_SIZE_MAX < remainSize) {
+            DataCopyWrap(dstGt[alreadyDealNum], localUB[0], curDealSize);
+            if (alreadyDealSize + UB_SINGLE_PING_PONG_ADD_SIZE_MAX < remainSize) {
                 AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
             }
             alreadyDealNum += curDealSize / sizeof(T);
@@ -415,12 +415,11 @@ protected:
     GlobalTensor<int64_t> dfx;
     SyncCollectives sync;
     GM_ADDR dumpAddr_ = nullptr;
-    GM_ADDR shareAddrs[LCAL_MAX_RANK_SIZE];
     
     template <typename T>
     FORCE_INLINE_AICORE void SetAscendCAtomic(int op)
     {
-        SetAtomicType<T>(op);
+        SetAtomicType<T>();
         switch (op) {
             case ADD:
                 SetAtomicAdd<T>();
@@ -444,7 +443,7 @@ protected:
         PipeBarrier<PIPE_ALL>();
         if (op != -1) {
 #ifdef __DAV_C220_VEC__
-            SetAscendCAtomic<T>(op);
+            SetAtomicOpType<T>(op);
 #endif
         }
         PipeBarrier<PIPE_ALL>(); 
@@ -465,17 +464,17 @@ protected:
         AscendC::WaitFlag<eventType>(eventId);
     }
 
-    FORCE_INLINE_AICORE int64_t DumpLcclLogInfo(LogId logId, Op operationType)
+    FORCE_INLINE_AICORE void DumpLcclLogInfo(LogId logId, Op operationType)
     {
 #ifdef ENABLE_LCCL_DUMP
         constexpr int32_t UB_HEAD_OFFSET = 96;
 
         AscendC::PipeBarrier<PIPE_ALL>();
-        GM_ADDR blockGm = (GM_ADDR)(dumpAddr_ + LCCL_DUMP_UNIT_SIZE * GetBlockIdx()));
+        GM_ADDR blockGm = (GM_ADDR)(dumpAddr_ + LCCL_DUMP_UINT_SIZE * GetBlockIdx());
         __ubuf__ LcclDumpBlockInfo *blockUb = (__ubuf__ LcclDumpBlockInfo*)(UB_HEAD_OFFSET);
-        __ubuf__ LcclDumpLogInfo *LogUb = (__ubuf__ LcclDumpBlockInfo*)(UB_HEAD_OFFSET + sizeof(LcclDumpBlockInfo));
+        __ubuf__ LcclDumpLogInfo *logUb = (__ubuf__ LcclDumpLogInfo*)(UB_HEAD_OFFSET + sizeof(LcclDumpBlockInfo));
 
-        CpGM2UB((__ubuf__ uint8_t*)blockUb, blockGm, sizeof(LcclDumpBlockInfo));
+        CpGM2UB((__ubuf__ uint8_t*)blockUb, blockGm, sizeof(LcclDumpLogInfo));
         AscendC::PipeBarrier<PIPE_ALL>();
 
         if (blockUb->dumpOffset < sizeof(LcclDumpBlockInfo)) {
@@ -485,14 +484,14 @@ protected:
         logUb->logId = logId;
         logUb->blockId = GetBlockIdx();
         logUb->syscyc = static_cast<uint64_t>(GetSystemCycle());
-        logUb->curpc = static_cast<uint64_t>(get_pc());
+        logUb->curPc = static_cast<uint64_t>(get_pc());
         logUb->operationType = operationType;
         logUb->rsv = 0;
         CpUB2GM((GM_ADDR)blockUb->dumpAddr, (__ubuf__ uint8_t*)logUb, sizeof(LcclDumpLogInfo));
 
-        blockUb->dumpAddr += sizeof(LcclDumpLogInfo);
+        blockUb->dumpAddr += sizeof(LcclDumpBlockInfo);
         blockUb->dumpOffset -= sizeof(LcclDumpLogInfo);
-        CpUB2GM(blockGm, (__ubuf__ uint8_t*)blockUb, sizeof(LcclDumpLogInfo));
+        CpUB2GM(blockGm, (__ubuf__ uint8_t*)blockUb, sizeof(LcclDumpBlockInfo));
         AscendC::PipeBarrier<PIPE_ALL>();
 #endif
     }
