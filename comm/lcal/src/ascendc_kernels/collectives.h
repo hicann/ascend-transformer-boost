@@ -474,7 +474,7 @@ protected:
         __ubuf__ LcclDumpBlockInfo *blockUb = (__ubuf__ LcclDumpBlockInfo*)(UB_HEAD_OFFSET);
         __ubuf__ LcclDumpLogInfo *logUb = (__ubuf__ LcclDumpLogInfo*)(UB_HEAD_OFFSET + sizeof(LcclDumpBlockInfo));
 
-        CpGM2UB((__ubuf__ uint8_t*)blockUb, blockGm, sizeof(LcclDumpBLockInfo));
+        CpGM2UB((__ubuf__ uint8_t*)blockUb, blockGm, sizeof(LcclDumpBlockInfo));
         AscendC::PipeBarrier<PIPE_ALL>();
 
         if (blockUb->dumpOffset < sizeof(LcclDumpLogInfo)) {
