@@ -12,7 +12,7 @@ project(Lcal LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-option(UCS_CXX11_ABI "USE_CXX11_ABI" 0)
+option(USE_CXX11_ABI "USE_CXX11_ABI" 0)
 
 IF (CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64")
     set(ARCH aarch64)
@@ -26,16 +26,17 @@ else()
 endif()
 
 message("== CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}")
-message("== CMAKE_BUILD_TYPE ${CMAKE_BUILD_DIR}")
+message("== CMAKE_SOURCE_DIR ${CMAKE_BUILD_DIR}")
 
+# 获取环境变量
 if (DEFINED ENV{ASCEND_HOME_PATH})
     set(ASCEND_HOME_PATH $ENV{ASCEND_HOME_PATH})
 else()
     message("ASCEND_HOME_PATH not set! using default path!")
-    set(ASCEND_HOME_PATH "/usr/local/Ascend/ascend-toolkit/latest")
+    set(ASCEND_HOME_PATH /usr/local/Ascend/ascend-toolkit/latest)
 endif()
 
-message("== ASCEND_HOME_PATH ${ASCEND_HOME_PATH}")
+message("== ASCEND_HOME_PATH: ${ASCEND_HOME_PATH}")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 add_link_options(-Wl,-z,relro,-z,now)
@@ -43,17 +44,17 @@ add_link_options(-s)
 
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}/include
-    ${CMAKE_CURRENT_LIST_DIR}/inlude/lcoc/
+    ${CMAKE_CURRENT_LIST_DIR}/include/lcoc/
     ${CMAKE_CURRENT_LIST_DIR}/include/lcoc/tiling/
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/hccl/
-    ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/
+    ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/runtime/
     ${ASCEND_HOME_PATH}/${ARCH}-linux/include/experiment/msprof/
     )
 link_directories(${ASCEND_HOME_PATH}/${ARCH}-linux/lib64/)
 
 set(AIV_ARCH dav-c220-vec)
-set(AIV_ARCH dav-c220-cube)
+set(AIC_ARCH dav-c220-cube)
 
 add_subdirectory(src)
