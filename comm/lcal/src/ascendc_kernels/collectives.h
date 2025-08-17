@@ -474,10 +474,10 @@ protected:
         __ubuf__ LcclDumpBlockInfo *blockUb = (__ubuf__ LcclDumpBlockInfo*)(UB_HEAD_OFFSET);
         __ubuf__ LcclDumpLogInfo *logUb = (__ubuf__ LcclDumpLogInfo*)(UB_HEAD_OFFSET + sizeof(LcclDumpBlockInfo));
 
-        CpGM2UB((__ubuf__ uint8_t*)blockUb, blockGm, sizeof(LcclDumpLogInfo));
+        CpGM2UB((__ubuf__ uint8_t*)blockUb, blockGm, sizeof(LcclDumpBLockInfo));
         AscendC::PipeBarrier<PIPE_ALL>();
 
-        if (blockUb->dumpOffset < sizeof(LcclDumpBlockInfo)) {
+        if (blockUb->dumpOffset < sizeof(LcclDumpLogInfo)) {
             return;
         }
 
@@ -487,11 +487,11 @@ protected:
         logUb->curPc = static_cast<uint64_t>(get_pc());
         logUb->operationType = operationType;
         logUb->rsv = 0;
-        CpUB2GM((GM_ADDR)blockUb->dumpAddr, (__ubuf__ uint8_t*)logUb, sizeof(LcclDumpBlockInfo));
+        CpUB2GM((GM_ADDR)blockUb->dumpAddr, (__ubuf__ uint8_t*)logUb, sizeof(LcclDumpLogInfo));
 
         blockUb->dumpAddr += sizeof(LcclDumpBlockInfo);
         blockUb->dumpOffset -= sizeof(LcclDumpLogInfo);
-        CpUB2GM(blockGm, (__ubuf__ uint8_t*)blockUb, sizeof(LcclDumpLogInfo));
+        CpUB2GM(blockGm, (__ubuf__ uint8_t*)blockUb, sizeof(LcclDumpBlockInfo));
         AscendC::PipeBarrier<PIPE_ALL>();
 #endif
     }
