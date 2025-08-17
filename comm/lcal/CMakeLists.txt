@@ -26,7 +26,7 @@ else()
 endif()
 
 message("== CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}")
-message("== CMAKE_SOURCE_DIR ${CMAKE_BUILD_DIR}")
+message("== CMAKE_SOURCE_DIR ${CMAKE_SOURCE_DIR}")
 
 # 获取环境变量
 if (DEFINED ENV{ASCEND_HOME_PATH})
