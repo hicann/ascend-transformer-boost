@@ -32,13 +32,13 @@ constexpr int COC_RT_DEV_BINARY_MAGIC_ELF = 0x43554245;
 
 namespace Lcal {
 const std::map<HcclDataType, std::string> DATATYPE2NAME = {
-    {HCCL_DATA_TYPE_INT32, "int"},
-    {HCCL_DATA_TYPE_INT16, "int16_t"},
-    {HCCL_DATA_TYPE_INT8, "int8_t"},
-    {HCCL_DATA_TYPE_INT64, "int64_t"},
-    {HCCL_DATA_TYPE_FP32, "float"},
-    {HCCL_DATA_TYPE_FP16, "float16_t"},
-    {HCCL_DATA_TYPE_BFP16, "bfloat16_t"}
+    { HCCL_DATA_TYPE_INT32, "int" },
+    { HCCL_DATA_TYPE_INT16, "int16_t" },
+    { HCCL_DATA_TYPE_INT8, "int8_t" },
+    { HCCL_DATA_TYPE_INT64, "int64_t" },
+    { HCCL_DATA_TYPE_FP32, "float" },
+    { HCCL_DATA_TYPE_FP16, "float16_t" },
+    { HCCL_DATA_TYPE_BFP16, "bfloat16_t "}
 };
 
 
