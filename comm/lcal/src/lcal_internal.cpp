@@ -38,7 +38,7 @@ const std::map<HcclDataType, std::string> DATATYPE2NAME = {
     { HCCL_DATA_TYPE_INT64, "int64_t" },
     { HCCL_DATA_TYPE_FP32, "float" },
     { HCCL_DATA_TYPE_FP16, "float16_t" },
-    { HCCL_DATA_TYPE_BFP16, "bfloat16_t "}
+    { HCCL_DATA_TYPE_BFP16, "bfloat16_t" }
 };
 
 template<class T>
