@@ -33,8 +33,8 @@ public:
         }
 
         if (blockIdx >= PING_PONG_SIZE * rankSize) {
-        DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
-        return;
+            DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
+            return;
         }
 
         perStepBlockNum = rankSize;
