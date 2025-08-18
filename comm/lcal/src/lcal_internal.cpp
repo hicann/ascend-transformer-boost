@@ -128,5 +128,100 @@ int RegistCCLOp1Kernel(const int* cclBinPtr, const int* nextPtr)
     return res;
 }
 
+int RegistCCLKernel(const int32_t opGroup)
+{
+    const int* cclBinStr = LCAL_CCE_BIN_STR;
+    auto cclBinEndPtr = cclBinStr + LCAL_1OP_BIN_SIZE / sizeof(int);
+    const int* cclBinPtr = cclBinStr + 1;
+    constexpr int opStartMaigc = 0x44444444;
+    const int* nextPtr = FindNextOpStart(opStartMaigc, cclBinEndPtr, cclBinPtr);
+    if (nextPtr == nullptr) {
+        return LCAL_ERROR_INTERNAL;
+    }
+
+    constexpr int32_t smallGroupNum = 2;
+
+    for (int32_t opGroupIdx = 0; opGroupIdx < opGroup; ++opGroupIdx) {
+        for (int32_t opIdx = 0; opIdx < smallGroupNum; ++opIdx) {
+            cclBinPtr = nextPtr;
+            nextPtr = FindNextOpStart(opStartMaigc, cclBinEndPtr, nextPtr);
+            if (cclBinPtr == nullptr || cclBinPtr == cclBinEndPtr || nextPtr == nullptr) {
+                return LCAL_ERROR_INTERNAL;
+            }
+        }
+    }
+
+    int ret = 0;
+    ret = RegistCCLOp1Kernel(cclBinPtr, nextPtr);
+    if (ret != LCAL_SUCCESS) {
+        return LCAL_ERROR_INTERNAL;
+    }
+
+    cclBinPtr = nextPtr;
+    nextPtr = FindNextOpStart(opStartMaigc, cclBinEndPtr, nextPtr);
+    if (cclBinPtr == nullptr || cclBinPtr == cclBinEndPtr || nextPtr == nullptr) {
+        return LCAL_ERROR_INTERNAL;
+    }
+
+    ret = RegistCCLOp2Kernel(cclBinPtr, nextPtr);
+    if (ret != LCAL_SUCCESS) {
+        return LCAL_ERROR_INTERNAL;
+    }
+    return LCAL_SUCCESS;
+}
+
+void RegistCoCKernel()
+{
+    vector<HcclDataType> registerTypes = { HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16 };
+    vector<LcalType> registerCOCTypes = {
+        { LcalType::MATMUL_ALL_REDUCE },
+        { LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER},
+    };
+
+    auto cocCceBinStr = LCAL_CCE_BIN_STR + LCAL_CCE_BIN_STR / sizeof(int);
+    for (auto lcalTypeGroup : registerCOCTypes) {
+        for (auto lcalType : lcalTypeGroup) {
+            for (auto t : registerTypes) {
+                RegisterBinaryKernel(LCAL_TYPE2NAME.at(lcalType) + "_" + DATATYPE2NAME.at(t), GetFunSig(lcalType, t),
+                    cocCceBinStr, COC_RT_DEV_BINARY_MAGIC_ELF);
+            }
+        }
+        cocCceBinStr += LCAL_CCE_BIN_STR / sizeof(int);
+    }
+}
+
+int RegistKernel(const int32_t opGroup)
+{
+    static bool init = false;
+    static mutex mut;
+    lock_guard<mutex> guard(mut);
+    if (init) {
+        return 0;
+    }
+    RegistCoCKernel();
+    RegistCCLKernel(opGroup);
+    init = true;
+    return LCAL_SUCCESS;
+}
+
+int64_t Count2Size(int64_t count, const HcclDataType &dataType)
+{
+    int64_t dataSize = LCAL_INVALID_VALUE;
+    if (dataType == HCCL_DATA_TYPE_INT8 || dataType == HCCL_DATA_TYPE_UINT8) {
+        dataSize = count;
+    } else if (dataType == HCCL_DATA_TYPE_INT16 || dataType == HCCL_DATA_TYPE_FP16 ||
+               dataType == HCCL_DATA_TYPE_BFP16 || dataType == HCCL_DATA_TYPE_UINT16) {
+        dataSize = count * sizeof(int16_t);
+    } else if (dataType == HCCL_DATA_TYPE_FP32 || dataType == HCCL_DATA_TYPE_INT32 ||
+               dataType == HCCL_DATA_TYPE_UINT32) {
+        dataSize = count * sizeof(int32_t);
+    } else if (dataType == HCCL_DATA_TYPE_INT64 || dataType == HCCL_DATA_TYPE_UINT64) {
+        dataSize = count * sizeof(int64_t);
+    } else {
+        MKI_LOG(ERROR) << "unknown datatype";
+    }
+    return dataSize;
+}
+
 
 }
