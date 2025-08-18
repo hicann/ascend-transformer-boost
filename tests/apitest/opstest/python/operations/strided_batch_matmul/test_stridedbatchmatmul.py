@@ -67,6 +67,10 @@ class TestStridedBatchMatmulOperation(operation_test.OperationTest):
             print("this testcase don't supports Ascend310B")
             return True
 
+        if  operation_test.get_soc_version() == 'Ascend310P':
+            print("this testcase don't supports Ascend310P")
+            return True
+
         batch = random.randint(1, 8)
         seqlen = [random.randint(1, 512) for i in range(batch)]
         head_num = random.randint(4, 16)
@@ -101,6 +105,10 @@ class TestStridedBatchMatmulOperation(operation_test.OperationTest):
     def test_add_bmm1_grad1(self): #bmm2
         if  operation_test.get_soc_version() == 'Ascend310B':
             print("this testcase don't supports Ascend310B")
+            return True
+
+        if  operation_test.get_soc_version() == 'Ascend310P':
+            print("this testcase don't supports Ascend310P")
             return True
 
         batch = random.randint(1, 8)
@@ -140,6 +148,10 @@ class TestStridedBatchMatmulOperation(operation_test.OperationTest):
             print("this testcase don't supports Ascend310B")
             return True
 
+        if  operation_test.get_soc_version() == 'Ascend310P':
+            print("this testcase don't supports Ascend310P")
+            return True
+
         batch = random.randint(1, 8)
         seqlen = [random.randint(1, 512) for i in range(batch)]
         head_num = random.randint(4, 16)
@@ -175,6 +187,10 @@ class TestStridedBatchMatmulOperation(operation_test.OperationTest):
     def test_add_bmm1_grad2(self):
         if  operation_test.get_soc_version() == 'Ascend310B':
             print("this testcase don't supports Ascend310B")
+            return True
+
+        if  operation_test.get_soc_version() == 'Ascend310P':
+            print("this testcase don't supports Ascend310P")
             return True
 
         batch = random.randint(1, 8)
