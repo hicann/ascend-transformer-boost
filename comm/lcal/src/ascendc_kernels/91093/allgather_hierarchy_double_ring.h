@@ -9,7 +9,7 @@
  */
 
  #ifndef LCCL_ALLGATHER_HIERARCHY_DOUBLE_RING_H
- #define LLCCL_ALLGATHER_HIERARCHY_DOUBLE_RING_H
+ #define LCCL_ALLGATHER_HIERARCHY_DOUBLE_RING_H
 
 #include "collectives.h"
 #include "ipc_queue.h"
@@ -23,16 +23,16 @@ constexpr int STAGE_EVENT = 0;
 constexpr int RING_EVENT = 1;
 
 enum STAGE {
-    HCCS_RING = 0;
+    HCCS_RING = 0,
     HCCS_TO_OUT,
     HCCS_TO_SIO,
     SIO_TO_OUT
 };
 
 template <typename T>
-class AllgatherHierarchyDoubleRing : protected Collectives {
+class AllGatherHierarchyDoubleRing : public Collectives {
 public:
-    FORCE_INLINE_AICORE AllgatherHierarchyDoubleRing(int rank, int rankSize, uint32_t extraFlag)
+    FORCE_INLINE_AICORE AllGatherHierarchyDoubleRing(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
 
     FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN())
@@ -52,17 +52,17 @@ public:
         inputGm.SetGlobalBuffer(input + inputOffset, dataSizePerCore);
         if (stage == STAGE::HCCS_TO_OUT) {
             for (int i = rank % RING_NUM; i < rankSize; i += RING_NUM) {
-                outputGm[i / RING_NUM].SetGlobalBuffer(output + dataSizePerCore * i + inputOffset, dataSizePerCore);
+                outputGm[i / RING_NUM].SetGlobalBuffer(output + dataTotalSize * i + inputOffset, dataSizePerCore);
             }
-        } elseif (stage == STAGE::SIO_TO_OUT) {
+        } else if (stage == STAGE::SIO_TO_OUT) {
             for (int i = (rank + 1) % RING_NUM; i < rankSize; i += RING_NUM) {
-                outputGm[i / RING_NUM].SetGlobalBuffer(output + dataSizePerCore * i + inputOffset, dataSizePerCore);
+                outputGm[i / RING_NUM].SetGlobalBuffer(output + dataTotalSize * i + inputOffset, dataSizePerCore);
             }
         }
 
         int64_t queTotalSize = IPC_BUFF_MAX_SIZE / coreNumPerStep;
         int64_t queSize = queTotalSize / QUE_NUM_LOCAL;
-        int64_t queHccsOffset = queSize /QUE_DEPTH;
+        int64_t queHccsOffset = stageCoreIdx * queTotalSize;
         blockSize = queSize / QUE_DEPTH;
 
         queHccsLocal.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + queHccsOffset, queSize, blockSize);
@@ -76,15 +76,15 @@ public:
             shareAddrs[rankSioAdjoint] + IPC_DATA_OFFSET + queHccsOffset + queSize, queSize, blockSize);
         
         for (int i = 0; i < STAGE_NUM; ++i) {
-            stageEvents[i] = sync.CalEventIdByMulBlockNum(STAGE_EVENT, stageCoreIdx * coreNumPerStep);
+            stageEvents[i] = sync.CalEventIdByMulBlockNum(STAGE_EVENT, stageCoreIdx + coreNumPerStep * i);
         }
         
-        DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
+        DumpLcclLogInfo(LogId::INIT, Op::COPYONLY);
     }
 
     FORCE_INLINE_AICORE void Process()
     {
-        DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
+        DumpLcclLogInfo(LogId::PROCESS, Op::COPYONLY); 
         int count = rankSize / RING_NUM * CeilDiv<int64_t, int64_t>(dataSizePerCore, blockSize);        
         if (stage == STAGE::HCCS_RING) {
             ProcessHccsRing(count);
@@ -95,7 +95,7 @@ public:
         } else if (stage == STAGE::SIO_TO_OUT) {
             ProcessSioToOut(count);
         }
-        DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
+        DumpLcclLogInfo(LogId::PROCESS, Op::COPYONLY);
     }
 private:
     FORCE_INLINE_AICORE void ProcessHccsRing(const int count)
@@ -103,7 +103,7 @@ private:
         constexpr int dependencyNum = 3;
         int deQueWaitRanks[dependencyNum] = {(rank + rankSize - RING_NUM) % rankSize, rank, rank};
         int deQueWaitEvents[dependencyNum] = {
-            sync.CalEventIdByMulBlockNum(RING_EVENT, blockIdx);
+            sync.CalEventIdByMulBlockNum(RING_EVENT, blockIdx),
             stageEvents[static_cast<int>(STAGE::HCCS_TO_OUT)], 
             stageEvents[static_cast<int>(STAGE::HCCS_TO_SIO)]};
         int64_t remainSize = dataSizePerCore;
@@ -120,18 +120,18 @@ private:
                 remainSize -= blockSize;
             } else {
                 if (i == 1) {
-                    sync.WaitSyncFlag(magic, 0 , stageEvents[static_cast<int>(STAGE::HCCS_RING)], rnakRingForward);
+                    sync.WaitSyncFlag(magic, 0 , stageEvents[static_cast<int>(STAGE::HCCS_RING)], rankRingForward);
                     waitFlag = sync.GetInnerFlag(rankRingForward,
                         stageEvents[static_cast<int>(STAGE::HCCS_RING)]) & EVENT_ID_MASK;
                 }
                 if (waitFlag < i - 1) {
                     waitFlag = sync.GetInnerFlag(rankRingForward,
-                        stageEvenets[static_cast<int>(STAGE::HCCS_RING)]) & EVENT_ID_MASK;
+                        stageEvents[static_cast<int>(STAGE::HCCS_RING)]) & EVENT_ID_MASK;
                     continue;
                 }
                 input = queHccsForward.ReadFront();   
             }
-            queHccsLocal.Deque(deQueWaitRanks, deQueWaitEvents, dependencyNum);
+            queHccsLocal.DeQue(deQueWaitRanks, deQueWaitEvents, dependencyNum);
             output = queHccsLocal.EnQue();
             CpGM2GMPingPong(dataSize, input, output, -1);
 
@@ -163,7 +163,7 @@ private:
                 waitFlag = sync.GetInnerFlag(rank, stageEvents[static_cast<int>(STAGE::HCCS_RING)]) & EVENT_ID_MASK;
                 continue;
             }
-            int countRankId = (rank + i + RING_NUM) % rankSize;
+            int countRankId = (rank + i * RING_NUM) % rankSize;
             if (countRankId == rank) {
                 dataSize = (remainSize >= blockSize) ? blockSize : remainSize;
             }
@@ -194,7 +194,7 @@ private:
                 waitFlag = sync.GetInnerFlag(rank, stageEvents[static_cast<int>(STAGE::HCCS_RING)]) & EVENT_ID_MASK;
                 continue;
             }
-            int countRankId = (rank + i + RING_NUM) % rankSize;
+            int countRankId = (rank + i * RING_NUM) % rankSize;
             if (countRankId == rank) {
                 dataSize = (remainSize >= blockSize) ? blockSize : remainSize;
                 remainSize -= blockSize;
@@ -223,11 +223,11 @@ private:
                     stageEvents[static_cast<int>(STAGE::HCCS_TO_SIO)]) & EVENT_ID_MASK;
                 continue;
             }
-            int countRankId = (rankSioAdjoint + i + RING_NUM) % rankSize;
+            int countRankId = (rankSioAdjoint + i * RING_NUM) % rankSize;
             if (countRankId == rankSioAdjoint) {
                 dataSize = (remainSize >= blockSize) ? blockSize : remainSize;
             }
-            input = queSioAdjoint.ReadFront();
+            input = queSioLocal.ReadFront();
             output = outputGm[countRankId / RING_NUM][dataSizePerCore - remainSize]; 
             CpGM2GMPingPong(dataSize, input, output, -1);
             constexpr int32_t halfQueDepth = 2;
@@ -241,7 +241,7 @@ private:
         }
     }
 private:
-    int stageEvents[STAGE_NUM]
+    int stageEvents[STAGE_NUM];
     GlobalTensor<uint8_t> inputGm;
     GlobalTensor<uint8_t> outputGm[LCAL_MAX_RANK_SIZE / RING_NUM];
     IpcQueue<uint8_t> queHccsLocal;
