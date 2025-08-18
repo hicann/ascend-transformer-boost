@@ -13,6 +13,7 @@
 
 namespace AtbOps {
 using namespace Mki;
+const uint64_t SYSTEM_WORKSPACE_SIZE = 16;
 void FillTilingParam(const LaunchParam &launchParam, UnpadTilingData *tilingDataPtr)
 {
     tilingDataPtr->padLength = launchParam.GetInTensor(0).desc.dims[1];
@@ -25,7 +26,7 @@ Status UnpadTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     FillTilingParam(launchParam, tilingDataPtr);
     kernelInfo.SetBlockDim(1);
 
-    uint64_t sysWorkspaceSize = 16;
+    uint64_t sysWorkspaceSize = SYSTEM_WORKSPACE_SIZE;
     kernelInfo.GetScratchSizes() = {sysWorkspaceSize};
     return Status::OkStatus();
 }
