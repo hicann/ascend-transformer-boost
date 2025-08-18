@@ -74,16 +74,16 @@ int8_t *GetFunSig(LcalType type, HcclDataType dataType, uint64_t devType = 0)
 }
 
 
-const int* FindNextOpStart(const int opStartMagic, const int* cclBinEndPtr, const int* cclBinPtr)
+const int* FindNextOpStart(const int opStartMaigc, const int* cclBinEndPtr, const int* cclBinPtr)
 {
     if (cclBinPtr == nullptr) {
         MKI_LOG(ERROR) << "FindNextOpStart failed! cclBinPtr is nullptr";
         return nullptr;
     }
-    while (*cclBinPtr != opStartMagic and cclBinPtr < cclBinEndPtr) {
+    while (*cclBinPtr != opStartMaigc and cclBinPtr < cclBinEndPtr) {
         cclBinPtr++;
     }
-    if (*cclBinPtr == opStartMagic) {
+    if (*cclBinPtr == opStartMaigc) {
         cclBinPtr++;
     }
     return cclBinPtr;
