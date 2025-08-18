@@ -439,6 +439,38 @@ int LcalComm::EnablePeerAccess()
     return LCAL_SUCCESS;
 }
 
+int LcalComm::GetDev()
+{
+    int nodeNum = socketExchange_->GetNodeNum();
+    if (nodeNum <= 0 || nodeNum > rankSize_) {
+        MKI_LOG(ERROR) << "error! node num : " << nodeNum << " rank size: " << rankSize_;
+        return LCAL_ERROR_INTERNAL;
+    }
+    localRankSize_ = rankSize_ / nodeNum;
+    localRank_ = rank_ % localRankSize_;
+    MKI_LOG(DEBUG) << "GetDev : localRankSize_ : " << localRankSize_ << " localRank_: " << localRank_
+                    << "  rank :" << rank_ << "   rankSize :" << rankSize_;
+    devList_.resize(rankSize_);
+    aclError aclRet = aclrtGetDevice(&devId_);
+    if (aclRet != ACL_SUCCESS) {
+        MKI_LOG(ERROR) << "aclrtGetDevice error! ret: " << aclRet;
+        return LCAL_ERROR_INTERNAL;
+    }
+    int ret = socketExchange_->AllGather(&devId_, 1, devList_.data());
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "LcalSockExchange AllGather error! ret: " << ret;
+        return LCAL_ERROR_INTERNAL;
+    }
+    std::string devIdStr = "";
+    for (int i = 0; i < rankSize_; ++i) {
+        devIdStr += (i == 0 ? "" : ", ");
+        devIdStr += to_string(devList_[i]);
+    }
+    MKI_LOG(DEBUG) << "rank " << rank_ << " devId: " << devId_ << ", otherDevList : " << devIdStr;
+    MKI_LOG(INFO) << "AllGather: Get other rank dev id success";
+    return LCAL_SUCCESS;
+}
+
 int LcalComm::GetDevThread(const std::string &uid)
 {
     devList_.resize(rankSize_);
