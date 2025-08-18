@@ -182,7 +182,7 @@ private:
         }
         MKI_CHECK(embeddingDimQ > 0, "Shape of Input0 invalid, headSize must > 0", return false);
         if (param.type != OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND) {
-            MKI_CHECK(CheckPagedMLAttetionCache(launchParam, param, embeddingDimQ),
+            MKI_CHECK(CheckPagedMLAttentionCache(launchParam, param, embeddingDimQ),
                         "check cache shape fail", return false);
         } else {
             MKI_CHECK(CheckPagedAttentionCache(launchParam, param, embeddingDimQ),
@@ -235,14 +235,14 @@ private:
         return true;
     }
 
-    bool CheckPagedMLAttetionCache(const LaunchParam &launchParam, const OpParam::PagedAttention &param,
+    bool CheckPagedMLAttentionCache(const LaunchParam &launchParam, const OpParam::PagedAttention &param,
                                   int64_t embeddingDimQ) const
     {
         auto &tensorKcache = launchParam.GetInTensor(DIM_1); // K.shape = [num_blocks, block_size, num_heads, head_size]
         MKI_CHECK(tensorKcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorKcache.desc.dtype == TENSOR_DTYPE_BF16 ||
                          tensorKcache.desc.dtype == TENSOR_DTYPE_INT8,
                      "Input1 dtype " << GetStrWithDType(tensorKcache.desc.dtype)
-                                     << " invalid, should be float16 or BF16",
+                                     << " invalid, should be float16 or bfloat16 or int8",
                      return false);
         static const size_t KV_CACHE_DIM_NUM = 4;
         MKI_CHECK(tensorKcache.desc.dims.size() == KV_CACHE_DIM_NUM,
@@ -255,7 +255,7 @@ private:
         MKI_CHECK(embeddingDimV <= embeddingDimK,
                     "embeddingDimV should not exceed embeddingDimK for combined cache paged-MLA", return false);
         MKI_CHECK(numBlocks > 0 && blockSize > 0 && kvHead > 0 && embeddingDimK == embeddingDimQ,
-                     "Shape of key_cache is vaild, must be [numBlocks, blockSize, numHeads, headSize]", return false);
+                     "Shape of key_cache is valid, must be [numBlocks, blockSize, numHeads, headSize]", return false);
         if (tensorKcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorKcache.desc.dtype == TENSOR_DTYPE_BF16) {
             MKI_CHECK(kvHead == 1, "MLA operation ONLY supports MQA with 16bit input ", return false);
         }
@@ -287,13 +287,13 @@ private:
         MKI_CHECK(tensorKcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorKcache.desc.dtype == TENSOR_DTYPE_BF16 ||
                          tensorKcache.desc.dtype == TENSOR_DTYPE_INT8,
                      "Input1 dtype " << GetStrWithDType(tensorKcache.desc.dtype)
-                                     << " invalid, should be float16 or BF16",
+                                     << " invalid, should be float16 or bfloat16 or int8",
                      return false);
         auto &tensorVcache = launchParam.GetInTensor(DIM_2); // V.shape = [num_blocks, block_size, num_heads, head_size]
         MKI_CHECK(tensorVcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorVcache.desc.dtype == TENSOR_DTYPE_BF16 ||
                          tensorVcache.desc.dtype == TENSOR_DTYPE_INT8,
                      "Input2 dtype " << GetStrWithDType(tensorVcache.desc.dtype)
-                                     << " invalid, should be float16 or BF16",
+                                     << " invalid, should be float16 or bfloat16 or int8",
                      return false);
         static const size_t KV_CACHE_DIM_NUM = 4;
         MKI_CHECK(tensorKcache.desc.dims.size() == KV_CACHE_DIM_NUM,
@@ -310,7 +310,7 @@ private:
 
         auto embeddingDimK = tensorKcache.desc.dims[DIM_3];
         MKI_CHECK(numBlocks > 0 && blockSize > 0 && kvHead > 0 && embeddingDimK == embeddingDimQ,
-                     "Shape of key_cache is vaild, must be [numBlocks, blockSize, numHeads, headSize]", return false);
+                     "Shape of key_cache is valid, must be [numBlocks, blockSize, numHeads, headSize]", return false);
 
         if (!param.compressHead) {
             MKI_CHECK(kvHead == static_cast<int64_t>(param.kvHead > 0 ? param.kvHead : param.headSize),
@@ -658,10 +658,10 @@ private:
         MKI_CHECK(tensorVcache.desc.dims[DIM_3] == 16, "V_cache Shape should be in nz format", return false);
         auto &blockTables = launchParam.GetInTensor(DIM_3); // K.shape = [num_blocks, hidden_size/16, block_size, 16]
         MKI_CHECK(blockTables.desc.dtype == TENSOR_DTYPE_INT32,
-            "Input3 dtype " << GetStrWithDType(blockTables.desc.dtype) << " invalid, should be float16", return false);
+            "Input3 dtype " << GetStrWithDType(blockTables.desc.dtype) << " invalid, should be int32", return false);
         auto &blockContexLen = launchParam.GetInTensor(DIM_4); // V.shape = [num_blocks, hidden_size/16, block_size, 16]
         MKI_CHECK(blockContexLen.desc.dtype == TENSOR_DTYPE_INT32, "Input4 dtype " <<
-            GetStrWithDType(blockContexLen.desc.dtype) << " invalid, should be float16", return false);
+            GetStrWithDType(blockContexLen.desc.dtype) << " invalid, should be int32", return false);
         static const size_t BLOCK_TABLE_DIM_NUM = 2;
         MKI_CHECK(blockTables.desc.dims.size() == BLOCK_TABLE_DIM_NUM, "Input3 dim num " <<
             blockTables.desc.dims.size() << " invalid, should be " << BLOCK_TABLE_DIM_NUM, return false);
@@ -719,7 +719,7 @@ private:
             {{batch, maxQ, maxKv}, norm},
             {{headSize, maxQ, maxKv}, alibi},
             {{static_cast<int32_t>(batch) / kvHead, maxQ, maxKv}, norm && param.compressHead},
-            {{headSize, maxQ, maxKv}, alibi && alibi && param.compressHead},
+            {{headSize, maxQ, maxKv}, alibi && param.compressHead},
             {{headSize, maxQ, LONG_SEQ_LEN}, isAlibiCompress},
             {{batch, headSize, maxQ, maxKv}, true},
             {{static_cast<int32_t>(batch) / kvHead, headSize, maxQ, maxKv}, alibi && param.compressHead},
