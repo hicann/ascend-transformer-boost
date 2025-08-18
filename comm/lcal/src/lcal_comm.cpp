@@ -14,7 +14,7 @@
 #include <hccl/hccl.h>
 #include "mki/utils/log/log.h"
 #include "mki/utils/env/env.h"
-#include "tools/socket/lcal_sock_excahnge.h"
+#include "tools/socket/lcal_sock_exchange.h"
 
 #include "runtime/kernel.h"
 #include "runtime/mem.h"
@@ -67,26 +67,26 @@ static const std::unordered_map<std::string, ChipName> CHIP_MAP = {
 
 ChipName GetChipName()
 {
-    static curChipName = ChipName::RESERVED;
+    static ChipName curChipName = ChipName::RESERVED;
     if (curChipName != ChipName::RESERVED) {
         return curChipName;
     }
     constexpr int socVerLength = 100;
     char ver[socVerLength];
-    auto ret - rtGetSocVersion(ver, socVerLength);
+    auto ret = rtGetSocVersion(ver, socVerLength);
     if (ret != RT_ERROR_NONE) {
         MKI_LOG(ERROR) << "rtGetSocVersion failed, not sure whether the function is normal, please use it with caution";
         return ChipName::RESERVED;
     }
     string chipName(ver);
-    MKI_LOG(DEBUG) << "rtGetSocVersion: -- The result after converting ver to string is :" << chipName;
+    MKI_LOG(DEBUG) << "rtGetSocVersion: -- The result after converting ver to string is : " << chipName;
 
     auto it = CHIP_MAP.find(chipName);
     if (it != CHIP_MAP.end()) {
         curChipName = it->second;
     } else {
         MKI_LOG(WARN) << "There is no commitment to the supported chip types yet," <<
-            " and it is not certain whether the functions will work properly."
+            " and it is not certain whether the functions will work properly.";
     }
     return curChipName;    
 }
@@ -122,7 +122,7 @@ bool SkipUnusedChannel910B2C(int curRank, int peerRank, ChipName chipName)
 {
     if (chipName == ChipName::CHIP_910B2C) {
         constexpr int rankSizePerNode = 8;
-        if ((curRank / rankSizePerNode) != (peerRank / rankSizePerNode))
+        if ((curRank / rankSizePerNode != peerRank / rankSizePerNode)
             && (std::abs(curRank - peerRank) != rankSizePerNode)) {
             return true;
         }
@@ -139,7 +139,7 @@ int LcalComm::InitDumpAddr()
     int ret = 0;
     ret = aclrtMalloc(reinterpret_cast<void **>(&dumpAddr), dumpWorkspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
     if (ret != ACL_SUCCESS) {
-        MKI_LOG(ERROR) << "aclrtMalloc err " << __LINE__;
+        MKI_LOG(ERROR) << "aclrtMalloc err " << __LINE__ << " " << ret;
         return LCAL_ERROR_INTERNAL;
     }
     aclrtMemset(dumpAddr, dumpWorkspaceSize, 0, dumpWorkspaceSize);
@@ -149,11 +149,11 @@ int LcalComm::InitDumpAddr()
         MKI_LOG(ERROR) << "std::malloc err " << __LINE__;
         return LCAL_ERROR_INTERNAL;
     }
-    errno_t result = memcpy_s(memory, dumpWorkspaceSize, 0, dumpWorkspaceSize);
+    errno_t result = memset_s(memory, dumpWorkspaceSize, 0, dumpWorkspaceSize);
     if (result != 0) {
-        MKI_LOG(ERROR) << "memcpy_s err " << __LINE__;
+        MKI_LOG(ERROR) << "memset_s err " << result;
     }
-    for (uint32_t i = 0; i < dumpCoreCnt; i++) {
+    for (uint32_t i = 0; i < dumpCoreCnt; ++i) {
         GM_ADDR block_start = memory + i * dumpSizePerCore;
         GM_ADDR deviceBlockStart = dumpAddr + i * dumpSizePerCore;
 
@@ -183,8 +183,8 @@ int LcalComm::SyncCommArgs()
     commArgs_.localRank = localRank_;
     commArgs_.rankSize = rankSize_;
     commArgs_.localRankSize = localRankSize_;
-    for (int i = 0; i < rankSize_; i++) {
-        commArgs_.peerMems[i] = peerMems_[i];
+    for (int i = 0; i < rankSize_; ++i) {
+        commArgs_.peerMems[i] = peerMem_[i];
     }
 
     if (isEnableMsprofOp_ && InitDumpAddr() != LCAL_SUCCESS) {
@@ -225,19 +225,19 @@ int LcalComm::InitCommon()
     const char *lcclDeterministic = Mki::GetEnv("LCCL_DETERMINISTIC");
     if (lcclDeterministic && (string(lcclDeterministic) == "1" || string(lcclDeterministic) == "true")) {
         deterministic_ = true;
-        commArgs.extraFlag |= ExtraFlag::DETERMINiSTIC;
+        commArgs_.extraFlag |= ExtraFlag::DETERMINISTIC;
     }
     if (GetChipName() == ChipName::CHIP_910B2C) {
-        commArgs.extraFlag |= ExtraFlag::TOPO_910B2C;
+        commArgs_.extraFlag |= ExtraFlag::TOPO_910B2C;
     }
     if (GetChipName() >= ChipName::CHIP_910_9391) {
-        commArgs.extraFlag |= ExtraFlag::TOPO_910_93;
+        commArgs_.extraFlag |= ExtraFlag::TOPO_910_93;
     }
-    if (GetChipName() >= ChipName::CHIP_910_9362) {
-        commArgs.extraFlag |= ExtraFlag::TOPO_910A5;
+    if (GetChipName() > ChipName::CHIP_910_9362) {
+        commArgs_.extraFlag |= ExtraFlag::TOPO_910A5;
     }
     if (GetCoreNum(GetChipName()) > AI_CORE_NUM_20) {
-        commArgs.extraFlag |= ExtraFlag::IS_GREATER_THAN_40_AIV;
+        commArgs_.extraFlag |= ExtraFlag::IS_GREATER_THAN_40_AIV;
     }
 
     ReportTiming report("LcclReporting", rank_, false, nullptr, nullptr);
@@ -265,14 +265,14 @@ int LcalComm::InitCommon()
 
 void LcalComm::CloseIpcMem()
 {
-    for (int i = 0; i < rankSize_; i++) {
+    for (int i = 0; i < rankSize_; ++i) {
         if (i == rank_ || peerMem_[i] == nullptr) {
             continue;
         }
 
         int ret = rtIpcCloseMemory(static_cast<void *>(peerMem_[i]));
         if (ret != RT_ERROR_NONE) {
-            MKI_LOG(ERROR) << "Close ipc[" << i << "] memory failed! ret = " << ret;
+            MKI_LOG(WARN) << "Close ipc[" << i << "] memory failed! ret: " << ret;
         }
         peerMem_[i] = nullptr;
 
@@ -284,7 +284,7 @@ void LcalComm::FreePeerMem(GM_ADDR &mem) const
     if (mem != nullptr) {
         aclError aclRet = aclrtFree(mem);
         if (aclRet != ACL_SUCCESS) {
-            MKI_LOG(ERROR) << "Free share memory failed! ret " << aclRet;
+            MKI_LOG(ERROR) << "Free share memory failed! ret: " << aclRet;
         }
     }
     mem = nullptr;
@@ -295,8 +295,8 @@ int LcalComm::Init()
     if (inited_) {
         return LCAL_SUCCESS;
     }
-    if (rank_ < 0 || rank >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
-        MKI_LOG(ERROR) << "The rank is invalid! rank: " << rank_ << ", rankSize: " << rankSize_;
+    if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
+        MKI_LOG(ERROR) << "The rank is invalid! rank: " << rank_ << " rankSize: " << rankSize_;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
     if (LcalSockExchange::CheckValid(commId_)) {
@@ -317,7 +317,7 @@ int LcalComm::Init()
     MKI_LOG(INFO) << "rank " << rank_ << "/" << rankSize_ << " running devId:" << devId_;
 
     if (InitCommon() != LCAL_SUCCESS) {
-        MKI_LOG(ERROR) << "Init common failed!";
+        MKI_LOG(ERROR) << "init common failed!";
         return LCAL_ERROR_INTERNAL;
     }
 
@@ -328,9 +328,9 @@ int LcalComm::Init()
     }
     MKI_LOG(DEBUG) << "InitCommMem " << rank_ << "/" << rankSize_ << ", localRank_ : " << localRank_ <<
         ", localRankSize_ : " << localRankSize_ << " success";
-    
+
     SyncCommArgs();
-    MKI_LOG(INFO) << "LcalCommInit " << rank_ << "/" << rankSize_ << " success and extraFlag: " << commArgs.extraFlag <<
+    MKI_LOG(INFO) << "LcalCommInit " << rank_ << "/" << rankSize_ << " success and extraFlag: " << commArgs_.extraFlag <<
         " commArgs_.localRank : " << commArgs_.localRank << " commArgs_.localRankSize : " << commArgs_.localRankSize;
     inited_ = true;
     delete socketExchange_;
@@ -343,8 +343,8 @@ int LcalComm::InitThread(const std::string &uid)
     if (inited_) {
         return LCAL_SUCCESS;
     }
-    if (rank_ < 0 || rank >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
-        MKI_LOG(ERROR) << "The rank is invalid! rank: " << rank_ << ", rankSize: " << rankSize_;
+    if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
+        MKI_LOG(ERROR) << "The rank is invalid! rank:" << rank_ << " rankSize: " << rankSize_;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
     if (GetDevThread(uid) != LCAL_SUCCESS) {
@@ -354,13 +354,13 @@ int LcalComm::InitThread(const std::string &uid)
     MKI_LOG(INFO) << "rank " << rank_ << "/" << rankSize_ << " running devId:" << devId_ << "uid: " << uid;
 
     if (InitCommon() != LCAL_SUCCESS) {
-        MKI_LOG(ERROR) << "Init common failed!";
+        MKI_LOG(ERROR) << "init common failed!";
         return LCAL_ERROR_INTERNAL;
     }
     {
         lock_guard<mutex> lock(g_mtx);
         if (g_localPeerMemMap.find(uid) == g_localPeerMemMap.end()) {
-            for (int i = 0; i < rankSize_; i++) {
+            for (int i = 0; i < rankSize_; ++i) {
                 g_localPeerMemMap[uid][i] = nullptr;
             }
         }
@@ -377,7 +377,7 @@ int LcalComm::InitThread(const std::string &uid)
             if (elapsed.count() > LCAL_INIT_TIMEOUT) {
                 MKI_LOG(ERROR) << "Lccl Init timeout!";
                 FreePeerMem(g_localPeerMemMap[uid][rank_]);
-                return LCAL_ERROR_INTERNAL;
+                return LCAL_ERROR_TIMEOUT;
             }
         }
         peerMem_[i] = g_localPeerMemMap[uid][i];
@@ -411,10 +411,10 @@ int LcalComm::EnablePeerAccess()
         if (value == TOPOLOGY_HCCS || value == TOPOLOGY_SIO || value == TOPOLOGY_HCCS_SW ||
             GetChipName() == ChipName::CHIP_910B2C) {
             physicalInfo_.physicalLink = PhysicalLink::HCCS;
-            commArgs.extraFlag &= ~(ExtraFlag::TOPO_PCIE);
-        } else if (physicalInfo_.physicalLink = PhysicalLink::RESERVED) {
+            commArgs_.extraFlag &= ~(ExtraFlag::TOPO_PCIE);
+        } else if (physicalInfo_.physicalLink == PhysicalLink::RESERVED) {
             physicalInfo_.physicalLink = PhysicalLink::PCIE;
-            commArgs.extraFlag |= ExtraFlag::TOPO_PCIE;
+            commArgs_.extraFlag |= ExtraFlag::TOPO_PCIE;
             if (rankSize_ > PING_PONG_SIZE) {
                 MKI_LOG(ERROR) << "do not support pcie > 2 rank! rankSize_ = " << rankSize_;
                 return LCAL_ERROR_INTERNAL;
@@ -430,7 +430,7 @@ int LcalComm::EnablePeerAccess()
 
         aclError ret = aclrtDeviceEnablePeerAccess(dev, 0);
         if (ret != ACL_SUCCESS) {
-            MKI_LOG(ERROR) << "err aclrtDeviceEnablePeerAccess failed peerDeviceId = " << dev << ",rank = " << rank_
+            MKI_LOG(ERROR) << "err aclrtDeviceEnablePeerAccess failed peerDeviceId = " << dev << " ,rank = " << rank_
                            << ", value = " << value << ", flags = " << 0 << "," << __LINE__ << ": " << ret;
             return LCAL_ERROR_INTERNAL;
         }
@@ -450,12 +450,12 @@ int LcalComm::GetDevThread(const std::string &uid)
     {
         std::lock_guard<std::mutex> lock(g_mtx);
         if (g_devList.find(uid) == g_devList.end()) {
-            for (int i = 0; i < rankSize_; i++) {
+            for (int i = 0; i < rankSize_; ++i) {
                 g_devList[uid][i] = 0;
             }
         }
     }
-    g_devList[uid][rank_] = devid_ + 1;
+    g_devList[uid][rank_] = devId_ + 1;
     auto start = high_resolution_clock::now();
     for (int i = 0; i < rankSize_; ++i) {
         while (g_devList[uid][i] == 0) {
@@ -473,8 +473,8 @@ int LcalComm::GetDevThread(const std::string &uid)
 
 int LcalComm::InitMem()
 {
-    constexpr int32_t bufferSizeUnit = 1024 * 1024;
-    int lcalBuffSize = bufferSize_ * bufferSizeUnit + LCAL_FLAG_BUFF_BYTES;
+    constexpr int32_t bufferSizeUint = 1024 * 1024;
+    int lcalBuffSize = bufferSize_ * bufferSizeUint + LCAL_FLAG_BUFF_BYTES;
 
     MKI_LOG(DEBUG) << "lcal buffer size " << lcalBuffSize;
     aclError ret = aclrtMalloc(
@@ -491,8 +491,8 @@ int LcalComm::InitMem()
 
 int LcalComm::GetPid(uint32_t *pids)
 {
-    if (rtDeviceGetBaraTgid(&pids[rank_]) != RT_ERROR_NONE) {
-        MKI_LOG(ERROR) << "DeviceGetBaraTgid err " << __LINE__;
+    if (rtDeviceGetBareTgid(&pids[rank_]) != RT_ERROR_NONE) {
+        MKI_LOG(ERROR) << "DeviceGetBareTgid err " << __LINE__;
         return LCAL_ERROR_INTERNAL;
     }
     int ret = socketExchange_->AllGather(&pids[rank_], 1, pids);
@@ -501,7 +501,7 @@ int LcalComm::GetPid(uint32_t *pids)
         return ret;
     }
     for (int i = 0; i < rankSize_; ++i) {
-        MKI_LOG(DEBUG) << "rank: " << rank_ << ", otherRank : " << i << " pid[" << i << "]: " << pids[i];
+        MKI_LOG(DEBUG) << "rank : " << rank_ << ", otherRank : " << i << " pid[" << i << "]: " << pids[i];
     }
     MKI_LOG(DEBUG) << "AllGather: Get other rank pid";
     return LCAL_SUCCESS;
@@ -509,7 +509,7 @@ int LcalComm::GetPid(uint32_t *pids)
 
 int LcalComm::GetSidId(int64_t sdids[LCAL_MAX_RANK_SIZE], int rankSize)
 {
-    if (rank_ > rankSize) {
+    if (rank_ >= rankSize) {
         MKI_LOG(ERROR) << "LcalComm::GetSidId err rank_ >= rankSize " << rank_ << ">=" << rankSize;
         return LCAL_ERROR_INTERNAL;
     }
@@ -520,7 +520,7 @@ int LcalComm::GetSidId(int64_t sdids[LCAL_MAX_RANK_SIZE], int rankSize)
             MKI_LOG(ERROR) << "DeviceGetDeviceInfo err " << __LINE__;
             return LCAL_ERROR_INTERNAL;
         }
-        MKI_LOG(DEBUG) << "rank" << rank_ << " dev id: " << devList_[rank_]
+        MKI_LOG(DEBUG) << "rank " << rank_ << " dev id: " << devList_[rank_]
                        << " rtGetDeviceInfo sdid: " << sdids[rank_];
 
         int ret = socketExchange_->AllGather(&sdids[rank_], 1, sdids);
@@ -529,7 +529,7 @@ int LcalComm::GetSidId(int64_t sdids[LCAL_MAX_RANK_SIZE], int rankSize)
             return ret;
         }
         for (int i = 0; i < rankSize_; ++i) {
-            MKI_LOG(DEBUG) << "rank: " << i << " sdid: " << sdids[i];
+            MKI_LOG(DEBUG) << "rank " << i << " sdid: " << sdids[i];
         }
         MKI_LOG(DEBUG) << "AllGather: Get other rank sdid";
     }
@@ -541,11 +541,11 @@ int LcalComm::GetName(string &name, char names[LCAL_MAX_RANK_SIZE][IPC_NAME_SIZE
     int ret = socketExchange_->AllGather<char>(name.c_str(), IPC_NAME_SIZE, names[0]);
     if (ret != LCAL_SUCCESS) {
         MKI_LOG(ERROR) << "LcalSockExchange AllGather error! ret: " << ret;
-        return ret;
+        return LCAL_ERROR_INTERNAL
     }
     for (int i = 0; i < rankSize_; ++i) {
         names[i][IPC_NAME_SIZE - 1] = '\0';
-        MKI_LOG(DEBUG) << "rank: " << i << " mem name: " << names[i];
+        MKI_LOG(DEBUG) << "rank " << i << " mem name: " << names[i];
     }
     MKI_LOG(DEBUG) << "AllGather: Get other rank mem name";
     return LCAL_SUCCESS;
@@ -575,12 +575,12 @@ int LcalComm::InitCommMem()
 
     string name;
     if (SetMemoryName(name) != LCAL_SUCCESS) {
-        MKI_LOG(ERROR) << "SetMemoryName error!";
+        MKI_LOG(ERROR) << "SetMemoryName err ";
         return LCAL_ERROR_INTERNAL;
     }
 
     if (SetIpcPidSdid(name, pids, sdids) != LCAL_SUCCESS) {
-        MKI_LOG(ERROR) << "SetIpcPidSdid error!";
+        MKI_LOG(ERROR) << "SetIpcPidSdid failed!";
         return LCAL_ERROR_INTERNAL;
     }
 
@@ -626,9 +626,9 @@ int LcalComm::SetMemoryName(string &name)
 {
     char nameModified[IPC_NAME_SIZE] = {};
     int memRank = rank_;
-    constexpr int32_t bufferSizeUnit = 1024 * 1024;
-    int lcalBuffSize = bufferSize_ * bufferSizeUnit + LCAL_FLAG_BUFF_BYTES;
-    if (rtIpcSetMemoryName(peerMem_[memRank, lcalBuffSize, nameModified, IPC_NAME_SIZE]) != RT_ERROR_NONE) {
+    constexpr int32_t bufferSizeUint = 1024 * 1024;
+    int lcalBuffSize = bufferSize_ * bufferSizeUint + LCAL_FLAG_BUFF_BYTES;
+    if (rtIpcSetMemoryName(peerMem_[memRank], lcalBuffSize, nameModified, IPC_NAME_SIZE) != RT_ERROR_NONE) {
         return LCAL_ERROR_INTERNAL;
     }
     name = nameModified;
@@ -637,12 +637,12 @@ int LcalComm::SetMemoryName(string &name)
 
 int LcalComm::SetIpcPidSdid(string &name, const uint32_t *pids, const int64_t *sdids) const
 {
-    for (int i =0; i < rankSize_; ++i) {
+    for (int i = 0; i < rankSize_; ++i) {
         if (i == rank_) {
             continue;
         }
 
-        if (physicalInfo_.chipName < ChipName::RESERVED) {
+        if (physicalInfo_.chipName < ChipName::CHIP_910_9391) {
             int32_t pidInt32 = pids[i];
             int rtRet = rtSetIpcMemPid(name.c_str(), &pidInt32, HCCL_IPC_PID_ARRAY_SIZE);
             if (rtRet != RT_ERROR_NONE) {
@@ -693,8 +693,8 @@ LcalComm::LcalComm(int rank, int rankSize, int bufferSize) : rank_(rank), rankSi
 {
 }
 
-LcalComm::LcalComm(int rank, int rankSize, int bufferSize, int isEnableMagic)
-    : rank_(rank), rankSize_(rankSize), bufferSize_(bufferSize), isEnableMagic_(isEnableMagic)
+LcalComm::LcalComm(int rank, int rankSize, int commDomain, int bufferSize, int isEnableMagic)
+    : rank_(rank), rankSize_(rankSize), commDomain_(commDomain), bufferSize_(bufferSize), isEnableMix_(isEnableMagic)
 {
 }
 
@@ -713,7 +713,7 @@ int LcalComm::GetRankSize() const
     return rankSize_;
 }
 
-int LcalComm::GetCommSize() const
+int LcalComm::GetCommSize()
 {
     return commSize_;
 }
@@ -744,21 +744,21 @@ std::string LcalComm::PrintDFX()
     if (commArgsPtr_ == nullptr) {
         return "no comm args";
     }
-    int ret = aclrtMemcpy(&commArgs, sizeof(commArgs_), commArgsPtr_, sizeof(commArgs_),
+    int ret = aclrtMemcpy(&commArgs_, sizeof(commArgs_), commArgsPtr_, sizeof(commArgs_),
                           ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != ACL_SUCCESS) {
-        MKI_LOG(ERROR) << "aclrtMemCpy err " << __LINE__ << " " << ret;
-        return "aclrtMemcpy failed";
+        MKI_LOG(ERROR) << "aclrtMemcpy err " << __LINE__ << " " << ret;
+        return "acl mem copy error";
     }
     stringstream ss;
     ss << "CommArgs {"
-       << "\n rank: " << commArgs_.rank
-       << "\n localRank: " << commArgs_.localRank
-       << "\n rankSize: " << commArgs_.rankSize
-       << "\n localRankSize: " << commArgs_.localRankSize
-       << "\n extraFlag: 0x" << std::hex << std::setfill('0') << commArgs_.extraFlag << std::dec;
+       << "\n  rank: " << commArgs_.rank
+       << "\n  localRank: " << commArgs_.localRank
+       << "\n  rankSize: " << commArgs_.rankSize
+       << "\n  localRankSize: " << commArgs_.localRankSize
+       << "\n  extraFlag: 0x" << std::hex << std::setfill('0') << commArgs_.extraFlag << std::dec;
 
-    ss << "\n peerMems: [";
+    ss << "\n  peerMems: [";
     for (int i = 0; i < LCAL_MAX_RANK_SIZE; ++i) {
         if (commArgs_.peerMems[i] == nullptr) {
             continue;
@@ -770,23 +770,23 @@ std::string LcalComm::PrintDFX()
     }
     ss << "]";
 
-    ss << "\n magics: [";
+    ss << "\n  magics: [";
     for (int i = 0; i < rankSize_; ++i) {
         ss << std::dec << commArgs_.magics[i] << ",";
     }
     ss << "] \n";
 
-    ss << "\n dfx: [";
+    ss << "\n  dfx: [";
     const int dfxGroupCount = 5;
     for (int i = 0; i < DFX_COUNT; ++i) {
         if (i % dfxGroupCount == 0) {
             ss << "\n    " << std::dec << setw(dfxGroupCount) << i << ": ";
         }
-        ss << "0x"<<  std::hex << commArgs_.dfx[i] << std::dec << ", ";
+        ss << "0x"<< std::hex << commArgs_.dfx[i] << std::dec << ", ";
     }
-    ss << "\n     ]";
+    ss << "\n    ]";
 
-    ss << "\n }";
+    ss << "\n}";
     return ss.str();
 }
 
