@@ -368,3 +368,11 @@ TEST(TestSVector, ResizeSmall)
         EXPECT_EQ(i * i, vec[i]);
     }
 }
+
+TEST(TestSVector, ThrowOperationAtAndBracket)
+{
+    atb::SVector<int> vec;
+    vec.resize(80);
+    EXPECT_THROW(vec.at(100), std::out_of_range);
+    EXPECT_THROW(vec[100], std::out_of_range);
+}
