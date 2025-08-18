@@ -41,7 +41,6 @@ const std::map<HcclDataType, std::string> DATATYPE2NAME = {
     { HCCL_DATA_TYPE_BFP16, "bfloat16_t "}
 };
 
-
 template<class T>
 int RegisterBinaryKernel(const string &funcName, int8_t *funSig, const T *binStrPtr, int magic, int len = 0)
 {
@@ -72,7 +71,6 @@ int8_t *GetFunSig(LcalType type, HcclDataType dataType, uint64_t devType = 0)
     return reinterpret_cast<int8_t *>((static_cast<uint64_t>(type) << sigOffset << sigOffset) +
         (static_cast<uint64_t>(dataType)<< sigOffset) + devType + sigSkew);
 }
-
 
 const int* FindNextOpStart(const int opStartMaigc, const int* cclBinEndPtr, const int* cclBinPtr)
 {
