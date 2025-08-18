@@ -18,13 +18,13 @@
 
 namespace Lcal {
 
-int RegisterKernel(const int32_t opGroup = 0);
+int RegistKernel(const int32_t opGroup = 0);
 
 int64_t Count2Size(int64_t count, const HcclDataType &dataType);
 
 int LoadMTE(LcalType cclType, AscendCCLKernelArgs &args, uint32_t blockDim, HcclDataType dataType, aclrtStream stream);
 
-int LoadMTE(LocalType cclType, CCLGatherArgs &args, uint32_t blockDim, HcclDataType dataType, aclrtStream stream);
+int LoadMTE(LcalType cclType, CCLGatherArgs &args, uint32_t blockDim, HcclDataType dataType, aclrtStream stream);
 
 int ComputeOverComm(LcalType cocType, CoCKernelArgs kernelArgs, HcclDataType dataType, aclrtStream stream);
 }
