@@ -3217,7 +3217,10 @@ class RopeOperation(DataGen):
             ntoken = shapes[i][0]
             head_size = shapes[i][1]
             # op需要cos/sin重复一次
-            return torch.rand(ntoken, head_size // 2, 1).repeat(1, 1, 2).view(ntoken, head_size).half().npu()
+            if datatype == "bf16":
+                return torch.rand(ntoken, head_size // 2, 1).repeat(1, 1, 2).view(ntoken, head_size).to(torch.bfloat16).npu()
+            else:
+                return torch.rand(ntoken, head_size // 2, 1).repeat(1, 1, 2).view(ntoken, head_size).half().npu()
         if i != 0:
             return RopeOperation.unpadRetdata[i]
 
