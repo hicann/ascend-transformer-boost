@@ -7,7 +7,7 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 #
-set_source_files_properties(lcal_internal.cpp PROPERTIES COMILE_FLAGS "-03")
+set_source_files_properties(lcal_internal.cpp PROPERTIES COMPILE_FLAGS "-O3")
 
 set(LCAL_SOURCE_FILE lcal_comm.cpp lccl.cpp
         lcal_internal.cpp lcal_internal.h lcal_wrap.cpp
@@ -28,13 +28,13 @@ target_link_libraries(lcal_static ascendcl runtime profapi c_sec mki)
 message(STATUS "LCAL USE_MSSANITIZER = ${USE_MSSANITIZER}")
 set(LCAL_CCE_PATH "/tmp/lcal_cce.o")
 if(USE_MSSANITIZER)
-math(EXPR LCAL_10P BIN_SIZE "128 * 1024 * 1024")
+math(EXPR LCAL_1OP BIN_SIZE "128 * 1024 * 1024")
 add_definitions(-DUSE_MSSANITIZER)
 else()
-math(EXPR LCAL_10P BIN_SIZE "5 * 1024 * 1024")
+math(EXPR LCAL_1OP BIN_SIZE "5 * 1024 * 1024")
 endif()
 
-add_definitions(-DLCAL_10P_BIN_SIZE=${LCAL_10P_BIN_SIZE})
+add_definitions(-DLCAL_1OP_BIN_SIZE=${LCAL_1OP_BIN_SIZE})
 
 add_subdirectory(kernels)
 add_subdirectory(ascendc_kernels)
