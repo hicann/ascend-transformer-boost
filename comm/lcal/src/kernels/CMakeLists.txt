@@ -42,7 +42,7 @@ foreach(OP_NAME IN LISTS OP_NAMES)
 endforeach()
 
 add_custom_target(lcoc_op
-    COMMAND cat ${OUTPUT_FILES} > lcoc_op.option
+    COMMAND cat ${OUTPUT_FILES} > lcoc_op.o
 )
 foreach(OP_NAME IN LISTS OP_NAMES)
     add_dependencies(${OP_NAME}_o lcoc_${OP_NAME}_aic_obj lcoc_${OP_NAME}_aiv_obj)
