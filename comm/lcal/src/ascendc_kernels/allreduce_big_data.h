@@ -8,16 +8,16 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
- #ifndef LCCL_ALLREDUCE_BIG_DATA_H
- #define LCCL_ALLREDUCE_BIG_DATA_H
+#ifndef LCCL_ALLREDUCE_BIG_DATA_H
+#define LCCL_ALLREDUCE_BIG_DATA_H
 
- #include "allreduce_quant.h"
- #include "sync_collectives.h"
- #include "ipc_queue.h"
- using namespace AscendC;
+#include "allreduce_quant.h"
+#include "sync_collectives.h"
+#include "ipc_queue.h"
+using namespace AscendC;
 
- template <typename T, typename U = T>
- class AllReduceBigData : protected AllReduceQuant {
+template <typename T, typename U = T>
+class AllReduceBigData : protected AllReduceQuant {
     constexpr static int QUEUE_DEPTH = 4;
     constexpr static T oneCast = (T) 1;
 
@@ -254,8 +254,3 @@ private:
 };
 
 #endif // LCCL_ALLREDUCE_BIG_DATA_H
-
-
-
- 
-
