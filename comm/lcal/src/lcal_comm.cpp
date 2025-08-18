@@ -63,7 +63,7 @@ static const std::unordered_map<std::string, ChipName> CHIP_MAP = {
     {"Ascend910_9372", ChipName::CHIP_910_9372},
     {"Ascend910_9361", ChipName::CHIP_910_9361},
     {"Ascend910_9362", ChipName::CHIP_910_9362}
-}
+};
 
 ChipName GetChipName()
 {
@@ -79,7 +79,7 @@ ChipName GetChipName()
         return ChipName::RESERVED;
     }
     string chipName(ver);
-    MKI_LOG(DEBUG) << "rtGetSocVersion: -- The result after converting ver to string is : " << chipName;
+    MKI_LOG(DEBUG) << "rtGetSocVersion -- The result after converting ver to string is:" << chipName;
 
     auto it = CHIP_MAP.find(chipName);
     if (it != CHIP_MAP.end()) {
@@ -259,7 +259,7 @@ int LcalComm::InitCommon()
     MKI_LOG(INFO) << "LcalComm::InitCommon RegistKernel opGroup " << opGroup;
     RegistKernel(opGroup);
 
-    lcalRank_ = rank % localRankSize_;
+    localRank_ = rank_ % localRankSize_;
     return LCAL_SUCCESS;
 }
 
@@ -296,7 +296,7 @@ int LcalComm::Init()
         return LCAL_SUCCESS;
     }
     if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
-        MKI_LOG(ERROR) << "The rank is invalid! rank: " << rank_ << " rankSize: " << rankSize_;
+        MKI_LOG(ERROR) << "The rank is invalid! rank:" << rank_ << " rankSize:" << rankSize_;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
     if (LcalSockExchange::CheckValid(commId_)) {
@@ -327,10 +327,10 @@ int LcalComm::Init()
         return LCAL_ERROR_INTERNAL;
     }
     MKI_LOG(DEBUG) << "InitCommMem " << rank_ << "/" << rankSize_ << ", localRank_ : " << localRank_ <<
-        ", localRankSize_ : " << localRankSize_ << " success";
+            ", localRankSize_ : " << localRankSize_ << " success";
 
     SyncCommArgs();
-    MKI_LOG(INFO) << "LcalCommInit " << rank_ << "/" << rankSize_ << " success and extraFlag: " << commArgs_.extraFlag <<
+    MKI_LOG(INFO) << "LcalCommInit " << rank_ << "/" << rankSize_ << " success and extraFlag:" << commArgs_.extraFlag <<
         " commArgs_.localRank : " << commArgs_.localRank << " commArgs_.localRankSize : " << commArgs_.localRankSize;
     inited_ = true;
     delete socketExchange_;
@@ -344,7 +344,7 @@ int LcalComm::InitThread(const std::string &uid)
         return LCAL_SUCCESS;
     }
     if (rank_ < 0 || rank_ >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
-        MKI_LOG(ERROR) << "The rank is invalid! rank:" << rank_ << " rankSize: " << rankSize_;
+        MKI_LOG(ERROR) << "The rank is invalid! rank:" << rank_ << "rankSize:" << rankSize_;
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
     if (GetDevThread(uid) != LCAL_SUCCESS) {
@@ -541,7 +541,7 @@ int LcalComm::GetName(string &name, char names[LCAL_MAX_RANK_SIZE][IPC_NAME_SIZE
     int ret = socketExchange_->AllGather<char>(name.c_str(), IPC_NAME_SIZE, names[0]);
     if (ret != LCAL_SUCCESS) {
         MKI_LOG(ERROR) << "LcalSockExchange AllGather error! ret: " << ret;
-        return LCAL_ERROR_INTERNAL
+        return LCAL_ERROR_INTERNAL;
     }
     for (int i = 0; i < rankSize_; ++i) {
         names[i][IPC_NAME_SIZE - 1] = '\0';
@@ -713,7 +713,7 @@ int LcalComm::GetRankSize() const
     return rankSize_;
 }
 
-int LcalComm::GetCommSize()
+int LcalComm::GetCommSize() const
 {
     return commSize_;
 }
@@ -733,7 +733,7 @@ GM_ADDR LcalComm::GetCommArgsPtr() const
     return commArgsPtr_;
 }
 
-CommArgs* LcalComm::GetCommArgs() const
+CommArgs* LcalComm::GetCommArgs()
 {
     return &commArgs_;
 }
@@ -756,7 +756,7 @@ std::string LcalComm::PrintDFX()
        << "\n  localRank: " << commArgs_.localRank
        << "\n  rankSize: " << commArgs_.rankSize
        << "\n  localRankSize: " << commArgs_.localRankSize
-       << "\n  extraFlag: 0x" << std::hex << std::setfill('0') << commArgs_.extraFlag << std::dec;
+       << "\n  extraFlag:  0x" << std::hex << std::setfill('0') << commArgs_.extraFlag << std::dec;
 
     ss << "\n  peerMems: [";
     for (int i = 0; i < LCAL_MAX_RANK_SIZE; ++i) {
