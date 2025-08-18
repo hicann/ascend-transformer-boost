@@ -90,7 +90,7 @@ const int* FindNextOpStart(const int opStartMaigc, const int* cclBinEndPtr, cons
 int RegistCCLOp2Kernel(const int* cclBinPtr, const int* nextPtr)
 {
     vector<HcclDataType> registerTypes = { HCCL_DATA_TYPE_INT32, HCCL_DATA_TYPE_INT16, HCCL_DATA_TYPE_INT8,
-                                           HCCL_DATA_TYPE_FP32,  HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16,
+                                           HCCL_DATA_TYPE_FP32, HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16,
                                            HCCL_DATA_TYPE_INT64 };
     std::vector<LcalType> registerCCLTypesOp2 = {
         LcalType::ALL_GATHER, LcalType::REDUCE_SCATTER, LcalType::ALL2ALL,
@@ -113,7 +113,7 @@ int RegistCCLOp2Kernel(const int* cclBinPtr, const int* nextPtr)
 int RegistCCLOp1Kernel(const int* cclBinPtr, const int* nextPtr)
 {
     vector<HcclDataType> registerTypes = { HCCL_DATA_TYPE_INT32, HCCL_DATA_TYPE_INT16, HCCL_DATA_TYPE_INT8,
-                                           HCCL_DATA_TYPE_FP32,  HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16,
+                                           HCCL_DATA_TYPE_FP32, HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16,
                                            HCCL_DATA_TYPE_INT64 };
     std::vector<LcalType> registerCCLTypesOp1 = {
         LcalType::ALL_REDUCE,
