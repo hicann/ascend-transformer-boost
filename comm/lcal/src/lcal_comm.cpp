@@ -49,7 +49,7 @@ static map<string, int[LCAL_MAX_RANK_SIZE]> g_devList;
 static std::mutex g_mtx;
 
 static const std::unordered_map<std::string, ChipName> CHIP_MAP = {
-    {"Ascend310P", ChipName::CHIP_3010P3},
+    {"Ascend310P", ChipName::CHIP_310P3},
     {"Ascend910B1", ChipName::CHIP_910B1},
     {"Ascend910B2", ChipName::CHIP_910B2},
     {"Ascend910B2C", ChipName::CHIP_910B2C},
@@ -110,7 +110,7 @@ uint32_t GetCoreNum(ChipName chipName)
         case ChipName::CHIP_910_9362:
         case ChipName::CHIP_910A5:
             return AI_CORE_NUM_20;
-        case ChipName::CHIP_3010P3:
+        case ChipName::CHIP_310P3:
             return AI_CORE_NUM_2;
         default:
             MKI_LOG(ERROR) << "Unknown chip name";
@@ -208,7 +208,432 @@ int LcalComm::SyncCommArgs()
         MKI_LOG(ERROR) << "aclrtMalloc err " << __LINE__ << " " << ret;
         return LCAL_ERROR_INTERNAL;
     }
-    
+    ret = aclrtMemcpy(commArgsPtr_, sizeof(commArgs_), &commArgs_, sizeof(commArgs_), ACL_MEMCPY_HOST_TO_DEVICE);
+    if (ret != ACL_SUCCESS) {
+        MKI_LOG(ERROR) << "aclrtMemcpy err " << __LINE__ << " " << ret;
+        return LCAL_ERROR_INTERNAL;
+    }
+    return LCAL_SUCCESS;
 }
+
+int LcalComm::InitCommon()
+{
+    if (EnablePeerAccess() != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "EnablePeerAccess failed!";
+        return LCAL_ERROR_INTERNAL;
+    }
+    const char *lcclDeterministic = Mki::GetEnv("LCCL_DETERMINISTIC");
+    if (lcclDeterministic && (string(lcclDeterministic) == "1" || string(lcclDeterministic) == "true")) {
+        deterministic_ = true;
+        commArgs.extraFlag |= ExtraFlag::DETERMINiSTIC;
+    }
+    if (GetChipName() == ChipName::CHIP_910B2C) {
+        commArgs.extraFlag |= ExtraFlag::TOPO_910B2C;
+    }
+    if (GetChipName() >= ChipName::CHIP_910_9391) {
+        commArgs.extraFlag |= ExtraFlag::TOPO_910_93;
+    }
+    if (GetChipName() >= ChipName::CHIP_910_9362) {
+        commArgs.extraFlag |= ExtraFlag::TOPO_910A5;
+    }
+    if (GetCoreNum(GetChipName()) > AI_CORE_NUM_20) {
+        commArgs.extraFlag |= ExtraFlag::IS_GREATER_THAN_40_AIV;
+    }
+
+    ReportTiming report("LcclReporting", rank_, false, nullptr, nullptr);
+    MKI_LOG(INFO) << "LcalComm::InitCommon ReportTiming " << std::hex << ReportTiming::ProfilingStatus() << std::dec;
+    if (ReportTiming::ProfilingStatus() == ReportTiming::PROF_TASK_TIME_DUMP) {
+        isEnableMsprofOp_ = true;
+        isEnableMix_ = true;
+    }
+
+    int32_t opGroup = 0;
+    if (isEnableMsprofOp_) {
+        opGroup = 0;
+    } else if (isEnableMix_) {
+        opGroup = 1;
+    } else {
+        constexpr int32_t normalOpGroup = 2;
+        opGroup = normalOpGroup;
+    }
+    MKI_LOG(INFO) << "LcalComm::InitCommon RegistKernel opGroup " << opGroup;
+    RegistKernel(opGroup);
+
+    lcalRank_ = rank % localRankSize_;
+    return LCAL_SUCCESS;
+}
+
+void LcalComm::CloseIpcMem()
+{
+    for (int i = 0; i < rankSize_; i++) {
+        if (i == rank_ || peerMem_[i] == nullptr) {
+            continue;
+        }
+
+        int ret = rtIpcCloseMemory(static_cast<void *>(peerMem_[i]));
+        if (ret != RT_ERROR_NONE) {
+            MKI_LOG(ERROR) << "Close ipc[" << i << "] memory failed! ret = " << ret;
+        }
+        peerMem_[i] = nullptr;
+
+    }
+}
+
+void LcalComm::FreePeerMem(GM_ADDR &mem) const
+{
+    if (mem != nullptr) {
+        aclError aclRet = aclrtFree(mem);
+        if (aclRet != ACL_SUCCESS) {
+            MKI_LOG(ERROR) << "Free share memory failed! ret " << aclRet;
+        }
+    }
+    mem = nullptr;
+}
+
+int LcalComm::Init()
+{
+    if (inited_) {
+        return LCAL_SUCCESS;
+    }
+    if (rank_ < 0 || rank >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
+        MKI_LOG(ERROR) << "The rank is invalid! rank: " << rank_ << ", rankSize: " << rankSize_;
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    if (LcalSockExchange::CheckValid(commId_)) {
+        socketExchange_ = new (nothrow) LcalSockExchange(rank_, rankSize_, commId_);
+    } else {
+        socketExchange_ = new (nothrow) LcalSockExchange(rank_, rankSize_, rankList_, commDomain_);
+    }
+    if (socketExchange_ == nullptr) {
+        MKI_LOG(ERROR) << "LcalSockExchange create failed. rank : " << rank_ << " rankSize:" << rankSize_;
+        return LCAL_ERROR_INTERNAL;
+    }
+    int ret = GetDev();
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "init context failed! ret: " << ret;
+        return ret;
+    }
+
+    MKI_LOG(INFO) << "rank " << rank_ << "/" << rankSize_ << " running devId:" << devId_;
+
+    if (InitCommon() != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "Init common failed!";
+        return LCAL_ERROR_INTERNAL;
+    }
+
+    MKI_LOG(DEBUG) << "Prepare to InitCommMem localRankSize_ -> " << localRankSize_ << ", localRank_ -> " << localRank_;
+    if (InitCommMem() != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "InitCommMem failed!";
+        return LCAL_ERROR_INTERNAL;
+    }
+    MKI_LOG(DEBUG) << "InitCommMem " << rank_ << "/" << rankSize_ << ", localRank_ : " << localRank_ <<
+        ", localRankSize_ : " << localRankSize_ << " success";
+    
+    SyncCommArgs();
+    MKI_LOG(INFO) << "LcalCommInit " << rank_ << "/" << rankSize_ << " success and extraFlag: " << commArgs.extraFlag <<
+        " commArgs_.localRank : " << commArgs_.localRank << " commArgs_.localRankSize : " << commArgs_.localRankSize;
+    inited_ = true;
+    delete socketExchange_;
+    socketExchange_ = nullptr;
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::InitThread(const std::string &uid)
+{
+    if (inited_) {
+        return LCAL_SUCCESS;
+    }
+    if (rank_ < 0 || rank >= rankSize_ || rankSize_ <= 0 || rankSize_ > LCAL_MAX_RANK_SIZE) {
+        MKI_LOG(ERROR) << "The rank is invalid! rank: " << rank_ << ", rankSize: " << rankSize_;
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    if (GetDevThread(uid) != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "get devs failed.";
+        return LCAL_ERROR_INTERNAL;
+    }
+    MKI_LOG(INFO) << "rank " << rank_ << "/" << rankSize_ << " running devId:" << devId_ << "uid: " << uid;
+
+    if (InitCommon() != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "Init common failed!";
+        return LCAL_ERROR_INTERNAL;
+    }
+    {
+        lock_guard<mutex> lock(g_mtx);
+        if (g_localPeerMemMap.find(uid) == g_localPeerMemMap.end()) {
+            for (int i = 0; i < rankSize_; i++) {
+                g_localPeerMemMap[uid][i] = nullptr;
+            }
+        }
+        uid_ = uid;
+    }
+    InitMem();
+    g_localPeerMemMap[uid][rank_] = peerMem_[rank_];
+
+    auto start = high_resolution_clock::now();
+    for (int i = 0; i < rankSize_; ++i) {
+        while (g_localPeerMemMap[uid][i] == nullptr) {
+            this_thread::sleep_for(1ms);
+            auto elapsed = duration_cast<seconds>(high_resolution_clock::now() - start);
+            if (elapsed.count() > LCAL_INIT_TIMEOUT) {
+                MKI_LOG(ERROR) << "Lccl Init timeout!";
+                FreePeerMem(g_localPeerMemMap[uid][rank_]);
+                return LCAL_ERROR_INTERNAL;
+            }
+        }
+        peerMem_[i] = g_localPeerMemMap[uid][i];
+    }
+    localRank_ = rank_;
+    localRankSize_ = rankSize_;
+    SyncCommArgs();
+    MKI_LOG(INFO) << "Lccl init multi thread " << rank_ << "/" << rankSize_ << " success, uid:" << uid;
+    inited_ = true;
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::EnablePeerAccess()
+{
+    physicalInfo_.chipName = GetChipName();
+    for (auto &dev : devList_) {
+        if (devId_ == dev) {
+            continue;
+        }
+        if (SkipUnusedChannel910B2C(dev, devId_, GetChipName())) {
+            continue;
+        }
+
+        int64_t value = 0;
+        if (rtGetPairDevicesInfo(devId_, dev, 0, &value) != RT_ERROR_NONE) {
+            MKI_LOG(WARN) << devId_ << " & " << dev << " pair devices info failed to get";
+        } else {
+            MKI_LOG(DEBUG) << devId_ << " <-----> " << dev << ", halGetPairDevicesInfo: *value = " << value;
+        }
+
+        if (value == TOPOLOGY_HCCS || value == TOPOLOGY_SIO || value == TOPOLOGY_HCCS_SW ||
+            GetChipName() == ChipName::CHIP_910B2C) {
+            physicalInfo_.physicalLink = PhysicalLink::HCCS;
+            commArgs.extraFlag &= ~(ExtraFlag::TOPO_PCIE);
+        } else if (physicalInfo_.physicalLink = PhysicalLink::RESERVED) {
+            physicalInfo_.physicalLink = PhysicalLink::PCIE;
+            commArgs.extraFlag |= ExtraFlag::TOPO_PCIE;
+            if (rankSize_ > PING_PONG_SIZE) {
+                MKI_LOG(ERROR) << "do not support pcie > 2 rank! rankSize_ = " << rankSize_;
+                return LCAL_ERROR_INTERNAL;
+            }
+        }
+
+        physicalInfo_.coreNum = GetCoreNum(physicalInfo_.chipName);
+
+        if (physicalInfo_.chipName == ChipName::CHIP_310P3 && value == 0) {
+            MKI_LOG(WARN) << "warn aclrtDeviceEnablePeerAccess is skipped! peerDeviceId = " << dev;
+            continue;
+        }
+
+        aclError ret = aclrtDeviceEnablePeerAccess(dev, 0);
+        if (ret != ACL_SUCCESS) {
+            MKI_LOG(ERROR) << "err aclrtDeviceEnablePeerAccess failed peerDeviceId = " << dev << ",rank = " << rank_
+                           << ", value = " << value << ", flags = " << 0 << "," << __LINE__ << ": " << ret;
+            return LCAL_ERROR_INTERNAL;
+        }
+    }
+    MKI_LOG(DEBUG) << "EnablePeerAccess succeed" << rank_;
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::GetDevThread(const std::string &uid)
+{
+    devList_.resize(rankSize_);
+    aclError aclRet = aclrtGetDevice(&devId_);
+    if (aclRet != ACL_SUCCESS) {
+        MKI_LOG(ERROR) << "aclrtGetDevice error! ret: " << aclRet;
+        return LCAL_ERROR_INTERNAL;
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_mtx);
+        if (g_devList.find(uid) == g_devList.end()) {
+            for (int i = 0; i < rankSize_; i++) {
+                g_devList[uid][i] = 0;
+            }
+        }
+    }
+    g_devList[uid][rank_] = devid_ + 1;
+    auto start = high_resolution_clock::now();
+    for (int i = 0; i < rankSize_; ++i) {
+        while (g_devList[uid][i] == 0) {
+            this_thread::sleep_for(1ms);
+            auto elapsed = duration_cast<seconds>(high_resolution_clock::now() - start);
+            if (elapsed.count() > LCAL_INIT_TIMEOUT) {
+                MKI_LOG(ERROR) << "Lccl Init timeout!";
+                return LCAL_ERROR_TIMEOUT;
+            }
+        }
+        devList_.at(i) = g_devList[uid][i] - 1;
+    }
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::InitMem()
+{
+    constexpr int32_t bufferSizeUnit = 1024 * 1024;
+    int lcalBuffSize = bufferSize_ * bufferSizeUnit + LCAL_FLAG_BUFF_BYTES;
+
+    MKI_LOG(DEBUG) << "lcal buffer size " << lcalBuffSize;
+    aclError ret = aclrtMalloc(
+        reinterpret_cast<void **>(&peerMem_[rank_]), lcalBuffSize,
+        (GetChipName() == ChipName::CHIP_310P3) ? ACL_MEM_MALLOC_HUGE_FIRST_P2P : ACL_MEM_MALLOC_HUGE_FIRST);
+    if (ret != ACL_SUCCESS) {
+        MKI_LOG(ERROR) << "allocate device mem error " << __FILE__ << ":" << __LINE__ << " " << ret;
+        return LCAL_ERROR_INTERNAL;
+    }
+    MKI_LOG(DEBUG) << "peerMem[rank" << rank_ << "], allocate finished.";
+    aclrtMemset(peerMem_[rank_], lcalBuffSize, 0, lcalBuffSize);
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::GetPid(uint32_t *pids)
+{
+    if (rtDeviceGetBaraTgid(&pids[rank_]) != RT_ERROR_NONE) {
+        MKI_LOG(ERROR) << "DeviceGetBaraTgid err " << __LINE__;
+        return LCAL_ERROR_INTERNAL;
+    }
+    int ret = socketExchange_->AllGather(&pids[rank_], 1, pids);
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "LcalSockExchange AllGather error! ret: " << ret;
+        return ret;
+    }
+    for (int i = 0; i < rankSize_; ++i) {
+        MKI_LOG(DEBUG) << "rank: " << rank_ << ", otherRank : " << i << " pid[" << i << "]: " << pids[i];
+    }
+    MKI_LOG(DEBUG) << "AllGather: Get other rank pid";
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::GetSidId(int64_t sdids[LCAL_MAX_RANK_SIZE], int rankSize)
+{
+    if (rank_ > rankSize) {
+        MKI_LOG(ERROR) << "LcalComm::GetSidId err rank_ >= rankSize " << rank_ << ">=" << rankSize;
+        return LCAL_ERROR_INTERNAL;
+    }
+    if ((physicalInfo_.chipName >= ChipName::CHIP_910_9391) && (physicalInfo_.chipName < ChipName::RESERVED)) {
+        const int rtModuleTypeSystem = 0;
+        const int infoTypeSdid = 26;
+        if (rtGetDeviceInfo(devList_[rank_], rtModuleTypeSystem, infoTypeSdid, &sdids[rank_]) != RT_ERROR_NONE) {
+            MKI_LOG(ERROR) << "DeviceGetDeviceInfo err " << __LINE__;
+            return LCAL_ERROR_INTERNAL;
+        }
+        MKI_LOG(DEBUG) << "rank" << rank_ << " dev id: " << devList_[rank_]
+                       << " rtGetDeviceInfo sdid: " << sdids[rank_];
+
+        int ret = socketExchange_->AllGather(&sdids[rank_], 1, sdids);
+        if (ret != LCAL_SUCCESS) {
+            MKI_LOG(ERROR) << "LcalSockExchange AllGather error! ret: " << ret;
+            return ret;
+        }
+        for (int i = 0; i < rankSize_; ++i) {
+            MKI_LOG(DEBUG) << "rank: " << i << " sdid: " << sdids[i];
+        }
+        MKI_LOG(DEBUG) << "AllGather: Get other rank sdid";
+    }
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::GetName(string &name, char names[LCAL_MAX_RANK_SIZE][IPC_NAME_SIZE]) const
+{
+    int ret = socketExchange_->AllGather<char>(name.c_str(), IPC_NAME_SIZE, names[0]);
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "LcalSockExchange AllGather error! ret: " << ret;
+        return ret;
+    }
+    for (int i = 0; i < rankSize_; ++i) {
+        names[i][IPC_NAME_SIZE - 1] = '\0';
+        MKI_LOG(DEBUG) << "rank: " << i << " mem name: " << names[i];
+    }
+    MKI_LOG(DEBUG) << "AllGather: Get other rank mem name";
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::InitCommMem()
+{
+    int ret = InitMem();
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "InitMem error! ret: " << ret;
+        return ret;
+    }
+
+    uint32_t pids[LCAL_MAX_RANK_SIZE] = {0};
+    ret = GetPid(pids);
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "GetPid error! ret: " << ret;
+        return ret;
+    }
+
+    int64_t sdids[LCAL_MAX_RANK_SIZE] = {0};
+    ret = GetSidId(sdids, rankSize_);
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "GetSidId error! ret: " << ret;
+        return ret;
+    }
+
+    string name;
+    if (SetMemoryName(name) != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "SetMemoryName error!";
+        return LCAL_ERROR_INTERNAL;
+    }
+
+    if (SetIpcPidSdid(name, pids, sdids) != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "SetIpcPidSdid error!";
+        return LCAL_ERROR_INTERNAL;
+    }
+
+    MKI_LOG(DEBUG) << "rank " << rank_ << " mem name: " << name;
+    char names[LCAL_MAX_RANK_SIZE][IPC_NAME_SIZE];
+    ret = GetName(name, names);
+    if (ret != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "GetName error! ret: " << ret;
+        return ret;
+    }
+
+    if (OpenIpcMem(names) != LCAL_SUCCESS) {
+        MKI_LOG(ERROR) << "rank: " << rank_ << " OpenIpcMem failed!";
+        return LCAL_ERROR_INTERNAL;
+    }
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::OpenIpcMem(const char names[LCAL_MAX_RANK_SIZE][IPC_NAME_SIZE])
+{
+    static mutex mut;
+    lock_guard<mutex> lock(mut);
+    for (int i = 0; i < rankSize_; ++i) {
+        if (i == rank_) {
+            continue;
+        }
+        if (SkipUnusedChannel910B2C(rank_, i, GetChipName())) {
+            continue;
+        }
+        int ret = rtIpcOpenMemory(reinterpret_cast<void **>(&peerMem_[i]), names[i]);
+        if (ret != RT_ERROR_NONE) {
+            CloseIpcMem();
+            MKI_LOG(ERROR) << "rank : " << rank_ << " localRank : " << localRank_ << " peerMem: " << i <<
+                " IpcOpenMemory err " << ret;
+            return LCAL_ERROR_INTERNAL;
+        }
+    }
+    ipcMemInited_ = true;
+    return LCAL_SUCCESS;
+}
+
+int LcalComm::SetMemoryName(string &name)
+{
+    char nameModified[IPC_NAME_SIZE] = {};
+    int memRank = rank_;
+    constexpr int32_t bufferSizeUnit = 1024 * 1024;
+    int lcalBuffSize = bufferSize_ * bufferSizeUnit + LCAL_FLAG_BUFF_BYTES;
+    if (rtIpcSetMemoryName(peerMem_[memRank, lcalBuffSize, nameModified, IPC_NAME_SIZE]) != RT_ERROR_NONE) {
+        return LCAL_ERROR_INTERNAL;
+    }
+    name = nameModified;
+    return LCAL_SUCCESS;
+}
+
 }
 
