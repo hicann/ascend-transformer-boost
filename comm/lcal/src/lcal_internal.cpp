@@ -173,12 +173,12 @@ int RegistCCLKernel(const int32_t opGroup)
 void RegistCoCKernel()
 {
     vector<HcclDataType> registerTypes = { HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16 };
-    vector<LcalType> registerCOCTypes = {
+    vector<vector<LcalType>> registerCOCTypes = {
         { LcalType::MATMUL_ALL_REDUCE },
         { LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER},
     };
 
-    auto cocCceBinStr = LCAL_CCE_BIN_STR + LCAL_CCE_BIN_STR / sizeof(int);
+    auto cocCceBinStr = LCAL_CCE_BIN_STR + LCAL_1OP_BIN_SIZE / sizeof(int);
     for (auto lcalTypeGroup : registerCOCTypes) {
         for (auto lcalType : lcalTypeGroup) {
             for (auto t : registerTypes) {
@@ -186,7 +186,7 @@ void RegistCoCKernel()
                     cocCceBinStr, COC_RT_DEV_BINARY_MAGIC_ELF);
             }
         }
-        cocCceBinStr += LCAL_CCE_BIN_STR / sizeof(int);
+        cocCceBinStr += LCAL_1OP_BIN_SIZE / sizeof(int);
     }
 }
 
