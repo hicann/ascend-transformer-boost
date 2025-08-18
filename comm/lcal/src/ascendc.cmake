@@ -25,13 +25,11 @@ endif()
 set(CCE_COMPILE_OPTION
     -O2 -std=gnu++17
     --cce-aicore-only
-    --cce-aicore-only
     -Wno-deprecated-declarations
     ${SANITIZER_FLAGS}
     "SHELL:-mllvm -cce-aicore-long-call"
     "SHELL:-mllvm -cce-aicore-function-stack-size=16000"
     "SHELL:-mllvm -cce-aicore-record-overflow=false"
-    "SHELL:-mllvm -cce-aicore-addr-transform"
     "SHELL:-mllvm -cce-aicore-addr-transform"
     "SHELL:-mllvm --cce-aicore-jump-expand=true"
 )
