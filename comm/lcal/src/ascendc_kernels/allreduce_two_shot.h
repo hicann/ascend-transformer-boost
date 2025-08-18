@@ -54,7 +54,7 @@ public:
         curRankDataNum = (rank == rankSize - 1) ? (len - rank * perRankDataNum) : perRankDataNum;
         pullRankDataNum = perRankDataNum;
         if (peerRank == rankSize - 1) {
-            pullRankDataNum = len - rank * perRankDataNum;
+            pullRankDataNum = len - peerRank * perRankDataNum;
         }
         pullBlockDataNum = GetDataCount(pullRankDataNum, corePerRank);
         dataNumPreBlock = pullBlockDataNum;
