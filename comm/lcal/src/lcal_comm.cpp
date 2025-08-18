@@ -635,5 +635,159 @@ int LcalComm::SetMemoryName(string &name)
     return LCAL_SUCCESS;
 }
 
+int LcalComm::SetIpcPidSdid(string &name, const uint32_t *pids, const int64_t *sdids) const
+{
+    for (int i =0; i < rankSize_; ++i) {
+        if (i == rank_) {
+            continue;
+        }
+
+        if (physicalInfo_.chipName < ChipName::RESERVED) {
+            int32_t pidInt32 = pids[i];
+            int rtRet = rtSetIpcMemPid(name.c_str(), &pidInt32, HCCL_IPC_PID_ARRAY_SIZE);
+            if (rtRet != RT_ERROR_NONE) {
+                MKI_LOG(ERROR) << "err " << rtRet;
+                return LCAL_ERROR_INTERNAL;
+            }
+        } else {
+            int32_t pidInt32 = pids[i];
+            int rtRet = rtSetIpcMemorySuperPodPid(name.c_str(), sdids[i], &pidInt32, HCCL_IPC_PID_ARRAY_SIZE);
+            if (rtRet != RT_ERROR_NONE) {
+                MKI_LOG(ERROR) << "err " << rtRet;
+                return LCAL_ERROR_INTERNAL;
+            }
+        }
+    }
+    return LCAL_SUCCESS;
 }
 
+LcalComm::~LcalComm()
+{
+    {
+        lock_guard<mutex> lock(g_mtx);
+        if (g_localPeerMemMap.find(uid_) != g_localPeerMemMap.end()) {
+            g_localPeerMemMap.erase(uid_);
+        }
+    }
+
+    if (ipcMemInited_) {
+#ifndef USE_MSSANITIZER
+        CloseIpcMem();
+#endif
+        ipcMemInited_ = false;
+    }
+    if (socketExchange_) {
+        delete socketExchange_;
+        socketExchange_ = nullptr;
+    }
+    FreePeerMem(commArgs_.dumpAddr);
+    FreePeerMem(peerMem_[rank_]);
+    FreePeerMem(commArgsPtr_);
+}
+
+LcalComm::LcalComm(int rank, int rankSize) : rank_(rank), rankSize_(rankSize)
+{
+}
+
+LcalComm::LcalComm(int rank, int rankSize, int bufferSize) : rank_(rank), rankSize_(rankSize), bufferSize_(bufferSize)
+{
+}
+
+LcalComm::LcalComm(int rank, int rankSize, int bufferSize, int isEnableMagic)
+    : rank_(rank), rankSize_(rankSize), bufferSize_(bufferSize), isEnableMagic_(isEnableMagic)
+{
+}
+
+LcalComm::LcalComm(int rank, int rankSize, LcalUniqueId commId)
+    : rank_(rank), rankSize_(rankSize), commId_(commId)
+{
+}
+
+int LcalComm::GetRank() const
+{
+    return rank_;
+}
+
+int LcalComm::GetRankSize() const
+{
+    return rankSize_;
+}
+
+int LcalComm::GetCommSize() const
+{
+    return commSize_;
+}
+
+int LcalComm::GetBufferSize() const
+{
+    return bufferSize_;
+}
+
+const PhysicalInfo &LcalComm::GetPhysicalInfo() const
+{
+    return physicalInfo_;
+}
+
+GM_ADDR LcalComm::GetCommArgsPtr() const
+{
+    return commArgsPtr_;
+}
+
+CommArgs* LcalComm::GetCommArgs() const
+{
+    return &commArgs_;
+}
+
+
+std::string LcalComm::PrintDFX()
+{
+    if (commArgsPtr_ == nullptr) {
+        return "no comm args";
+    }
+    int ret = aclrtMemcpy(&commArgs, sizeof(commArgs_), commArgsPtr_, sizeof(commArgs_),
+                          ACL_MEMCPY_DEVICE_TO_HOST);
+    if (ret != ACL_SUCCESS) {
+        MKI_LOG(ERROR) << "aclrtMemCpy err " << __LINE__ << " " << ret;
+        return "aclrtMemcpy failed";
+    }
+    stringstream ss;
+    ss << "CommArgs {"
+       << "\n rank: " << commArgs_.rank
+       << "\n localRank: " << commArgs_.localRank
+       << "\n rankSize: " << commArgs_.rankSize
+       << "\n localRankSize: " << commArgs_.localRankSize
+       << "\n extraFlag: 0x" << std::hex << std::setfill('0') << commArgs_.extraFlag << std::dec;
+
+    ss << "\n peerMems: [";
+    for (int i = 0; i < LCAL_MAX_RANK_SIZE; ++i) {
+        if (commArgs_.peerMems[i] == nullptr) {
+            continue;
+        }
+        if (i > 0) {
+            ss << ", ";
+        }
+        ss << "{id: " << static_cast<void *>(commArgs_.peerMems[i]) << "}";
+    }
+    ss << "]";
+
+    ss << "\n magics: [";
+    for (int i = 0; i < rankSize_; ++i) {
+        ss << std::dec << commArgs_.magics[i] << ",";
+    }
+    ss << "] \n";
+
+    ss << "\n dfx: [";
+    const int dfxGroupCount = 5;
+    for (int i = 0; i < DFX_COUNT; ++i) {
+        if (i % dfxGroupCount == 0) {
+            ss << "\n    " << std::dec << setw(dfxGroupCount) << i << ": ";
+        }
+        ss << "0x"<<  std::hex << commArgs_.dfx[i] << std::dec << ", ";
+    }
+    ss << "\n     ]";
+
+    ss << "\n }";
+    return ss.str();
+}
+
+}
