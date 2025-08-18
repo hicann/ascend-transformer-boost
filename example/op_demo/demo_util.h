@@ -110,7 +110,7 @@ atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &i
                      std::vector<int64_t> &nzShape)
 {
     int64_t n0 = 16; // 维度转换参数
-    //输入tensor数据类型为ACL_INT8时，维度转换参数取32
+    // 输入tensor数据类型为ACL_INT8时，维度转换参数取32
     if (tensorType == ACL_INT8) {
         n0 = 32;
     }
