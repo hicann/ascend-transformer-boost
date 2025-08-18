@@ -231,7 +231,6 @@ Status FillFlashAttentionNzInfo(UnpadFlashAttentionNzInfo &mmInfo, const LaunchP
     mmInfo.dataDimOrder = param.dataDimOrder;
     mmInfo.precType = param.precType;
     mmInfo.scaleType = param.scaleType;
-    mmInfo.precType = param.precType;
     OP_TILING_CHECK_STATUS_RETURN(FlashAttentionNzPrecInfoCheck(mmInfo));
     mmInfo.alibiLeftAlign = param.alibiLeftAlign;
     MKI_CHECK(param.windowSize >= 0, "invalid param.windowSize < 0, which is: " << param.windowSize,

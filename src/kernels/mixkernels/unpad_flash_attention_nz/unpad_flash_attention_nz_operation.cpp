@@ -162,7 +162,7 @@ private:
     {
         MKI_CHECK(q.desc.dtype == tensorMask.desc.dtype, "mask data type not consitent with q", return false);
         MKI_CHECK(tensorMask.desc.dtype == TENSOR_DTYPE_FLOAT16,
-                     "Input4 dtype should be float16 or bfloat16", return false);
+                     "Input4 dtype should be float16", return false);
         return true;
     }
 
@@ -193,7 +193,7 @@ private:
             {{batch, maxQ, maxKv}, norm},
             {{headSize, maxQ, maxKv}, alibi},
             {{static_cast<int32_t>(batch) / kvHead, maxQ, maxKv}, norm && param.compressHead},
-            {{headSize, maxQ, maxKv}, alibi && alibi && param.compressHead},
+            {{headSize, maxQ, maxKv}, alibi && param.compressHead},
             {{headSize, maxQ, LONG_SEQ_LEN}, isAlibiCompress},
             {{batch, headSize, maxQ, maxKv}, true},
             {{static_cast<int32_t>(batch) / kvHead, headSize, maxQ, maxKv}, alibi && param.compressHead},

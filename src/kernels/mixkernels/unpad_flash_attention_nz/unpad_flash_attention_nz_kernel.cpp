@@ -129,11 +129,11 @@ public:
     {
         auto param = AnyCast<OpParam::UnpadFlashAttentionNz>(launchParam.GetParam());
         auto scaleType = param.scaleType;
-        auto bacthSize = param.qSeqLen.size();
+        auto batchSize = param.qSeqLen.size();
         if (scaleType == OpParam::UnpadFlashAttentionNz::ScaleType::SCALE_LOGN) {
             auto &tensorLog = launchParam.GetInTensor(DIM_6);
             MKI_CHECK(tensorLog.desc.dims.at(0) > 0 &&
-                    static_cast<unsigned long>(tensorLog.desc.dims.at(0)) >= bacthSize,
+                    static_cast<unsigned long>(tensorLog.desc.dims.at(0)) >= batchSize,
                     "input 7 dim num invalid", return false);
         }
         MKI_CHECK(UnpadFlashAttentionNzKernel::CanSupport(launchParam), "failed to check support", return false);
