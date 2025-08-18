@@ -224,7 +224,13 @@ public:
         if (i >= size_) {
             throw std::out_of_range("SVector operator[] index out of range");
         }
-        return heap_ ? heap_[i] : storage_[i];
+        if (heap_) {
+            return heap_[i];
+        }
+        if (i >= DEFAULT_SVECTOR_SIZE) {
+            throw std::out_of_range("SVector operator[] index out of range of stack, and consider reserve first");
+        }
+        return storage_[i];
     }
 
     //! \brief 访问指定位置的元素
@@ -238,7 +244,13 @@ public:
         if (i >= size_) {
             throw std::out_of_range("SVector operator[] index out of range");
         }
-        return heap_ ? heap_[i] : storage_[i];
+        if (heap_) {
+            return heap_[i];
+        }
+        if (i >= DEFAULT_SVECTOR_SIZE) {
+            throw std::out_of_range("SVector operator[] index out of range of stack, and consider reserve first");
+        }
+        return storage_[i];
     }
 
     //! \brief 访问指定位置的元素
@@ -252,7 +264,13 @@ public:
         if (i >= size_) {
             throw std::out_of_range("SVector at index out of range");
         }
-        return heap_ ? heap_[i] : storage_[i];
+        if (heap_) {
+            return heap_[i];
+        }
+        if (i >= DEFAULT_SVECTOR_SIZE) {
+            throw std::out_of_range("SVector at() index out of range of stack, and consider reserve first");
+        }
+        return storage_[i];
     }
 
     //! \brief 访问指定位置的元素
@@ -266,7 +284,13 @@ public:
         if (i >= size_) {
             throw std::out_of_range("SVector at index out of range");
         }
-        return heap_ ? heap_[i] : storage_[i];
+        if (heap_) {
+            return heap_[i];
+        }
+        if (i >= DEFAULT_SVECTOR_SIZE) {
+            throw std::out_of_range("SVector at() index out of range of stack, and consider reserve first");
+        }
+        return storage_[i];
     }
 
     //! \brief 获取容器的大小
