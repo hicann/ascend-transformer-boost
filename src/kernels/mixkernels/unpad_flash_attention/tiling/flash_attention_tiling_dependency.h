@@ -41,6 +41,7 @@ constexpr int32_t TILING_KEY_INDEX = 16;
 constexpr int32_t RELAY_BLOCK_TILING = 8;
 constexpr uint32_t SPEC_TILING_KEY = 1 << 20;
 constexpr int32_t SPLIT_M_THRESHOLD = 4096;
+constexpr int32_t MAX_BATCH = 60;
 
 enum class TilingKeyType {
     TILING_HALF_DATA = 0,

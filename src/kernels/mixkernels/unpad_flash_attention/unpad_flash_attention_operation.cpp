@@ -122,14 +122,14 @@ Kernel *GetFlashAttentionEncoderNdKernel(TensorDType inDtype, const OpParam::Unp
         auto scaleType = param.scaleType;
         MKI_CHECK(scaleType == OpParam::UnpadFlashAttention::ScaleType::SCALE_LOGN_FP32 ||
                     scaleType == OpParam::UnpadFlashAttention::ScaleType::SCALE_TOR,
-                      "scaletype invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
+                      "scaleType invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
         if (scaleType == OpParam::UnpadFlashAttention::ScaleType::SCALE_LOGN_FP32) {
             MKI_CHECK(param.type == OpParam::UnpadFlashAttention::Type::UNPAD_FLASH_ATTENTION_DECODER_ND ||
                 param.type == OpParam::UnpadFlashAttention::Type::UNPAD_FLASH_ATTENTION_FP32_ND,
-                  "logN is can not support this kernel", return Status::FailStatus(ERROR_INVALID_VALUE));
+                  "logN is cannot support this kernel", return Status::FailStatus(ERROR_INVALID_VALUE));
             if (!CheckEmptyTensor(launchParam.GetInTensor(DIM_3))) {
                 MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dims.at(0) != 0,
-                      "logN is can not support prefix Cache", return Status::FailStatus(ERROR_INVALID_VALUE));
+                      "logN is cannot support prefix Cache", return Status::FailStatus(ERROR_INVALID_VALUE));
             }
             auto &tensorLog = launchParam.GetInTensor(DIM_11);
             MKI_CHECK(!CheckEmptyTensor(tensorLog), "Input12 should not be null tensor",
@@ -139,7 +139,7 @@ Kernel *GetFlashAttentionEncoderNdKernel(TensorDType inDtype, const OpParam::Unp
                         return Status::FailStatus(ERROR_INVALID_VALUE, "LogNscale should be float"));
             MKI_CHECK(param.dataShapeType == OpParam::UnpadFlashAttention::DataShapeType::TYPE_BSND &&
                       !param.compressHead && param.windowSize == 0,
-                        "LogN can not support BNSD,SWA,compressHead", return Status::FailStatus(ERROR_INVALID_VALUE));
+                        "LogN cannot support BNSD,SWA,compressHead", return Status::FailStatus(ERROR_INVALID_VALUE));
         }
         MKI_CHECK(InferKVHead(launchParam), "kvHead is missing in OpParam for GQA",
                   return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "kvHead is missing in OpParam for GQA"));
@@ -190,7 +190,7 @@ private:
         auto param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
         auto &tensorQ = launchParam.GetInTensor(DIM_0);
         MKI_CHECK(param.headSize > 0, "headSize is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
-        if (param.dataShapeType == 1) {
+        if (param.dataShapeType == OpParam::UnpadFlashAttention::DataShapeType::TYPE_BNSD) {
             outTensors[DIM_0].desc = tensorQ.desc;
             if (tensorQ.desc.dims.size() == DIM_4) {
                 // q 的shape b,s,n,d encoder
@@ -477,9 +477,9 @@ private:
             auto &tensorLog = launchParam.GetInTensor(DIM_11);
             int64_t dimLog = tensorLog.desc.dims.at(0);
             int64_t dimQ = tensorQ.desc.dims.at(0);
-            auto bacthSize = param.qSeqLen.size();
+            auto batchSize = param.qSeqLen.size();
             MKI_CHECK(dimQ > 0 && dimLog > 0, "input 12 num invalid", return false);
-            MKI_CHECK(bacthSize * static_cast<unsigned long>(dimLog) >=
+            MKI_CHECK(batchSize * static_cast<unsigned long>(dimLog) >=
                 static_cast<unsigned long>(dimQ),
                     "input 12 num invalid", return false);
         }
@@ -691,12 +691,12 @@ private:
         auto scaleType = param.scaleType;
         if (scaleType == OpParam::UnpadFlashAttention::ScaleType::SCALE_LOGN_FP32) {
             MKI_CHECK(param.type == OpParam::UnpadFlashAttention::Type::UNPAD_FLASH_ATTENTION_DECODER_ND,
-                  "logN is can not support this kernel", return false);
-            auto bacthSize = param.qSeqLen.size();
+                  "logN is cannot support this kernel", return false);
+            auto batchSize = param.qSeqLen.size();
             auto &tensorLog = launchParam.GetInTensor(DIM_11);
             int64_t dimLog = tensorLog.desc.dims.at(0);
             MKI_CHECK(dimLog > 0, "input 12 num invalid", return false);
-            MKI_CHECK(static_cast<unsigned long>(dimLog) >= bacthSize,
+            MKI_CHECK(static_cast<unsigned long>(dimLog) >= batchSize,
                       "input 12 num invalid", return false);
         }
         return true;
@@ -940,7 +940,7 @@ private:
             }
             uint32_t count = 0;
             for (int32_t i = curShape.size() - 1; i >= 0; i--, count++) {
-                // batch, head应该完全一致，maxQ和maxKv保证能够覆盖
+                // batch, head应该完全一致，maxQ和maxKv保证能够覆盖 DIM_3/DIM_2为对应mask的后3维/后2维
                 if (count < (nz ? DIM_3 : DIM_2)) {
                     if (iter.first[i] > curShape[i]) {
                         return false;
@@ -991,7 +991,7 @@ private:
             {{batch, maxQ, maxKv}, norm},
             {{headSize, maxQ, maxKv}, alibi},
             {{static_cast<int32_t>(batch) / kvHead, maxQ, maxKv}, norm && param.compressHead},
-            {{headSize, maxQ, maxKv}, alibi && alibi && param.compressHead},
+            {{headSize, maxQ, maxKv}, alibi && param.compressHead},
             {{headSize, maxQ, LONG_SEQ_LEN}, isAlibiCompress},
             {{batch, headSize, maxQ, maxKv}, true},
             {{static_cast<int32_t>(batch) / kvHead, headSize, maxQ, maxKv}, alibi && param.compressHead},
