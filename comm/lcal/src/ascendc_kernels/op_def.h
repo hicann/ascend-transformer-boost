@@ -46,7 +46,7 @@ do { \
     SyncAll<true>(); \
     DataCopyExtParams dataCopyParams(1, sizeof(int32_t), 0, 0, 0); \
     DataCopyPadExtParams<int32_t> padParams; \
-    DataCopyPad(localSet, magicGt[rankSize - 1], dataCopyparams, padParams); \
+    DataCopyPad(localSet, magicGt[rankSize - 1], dataCopyParams, padParams); \
     AscendC::SetFlag<HardEvent::MTE2_S>(EVENT_ID0); \ 
     AscendC::WaitFlag<HardEvent::MTE2_S>(EVENT_ID0); \ 
     magic = static_cast<int64_t>(localSet.GetValue(0)); \
@@ -88,23 +88,23 @@ do { \
 
 #define LCCL_TYPE_FUNC(fun) \
     fun(int,);fun(int8_t,);fun(int16_t,);fun(int64_t,); \
-    fun(float,);fun(float16_t,);fun(bfloat16,)
+    fun(float,);fun(float16_t,);fun(bfloat16_t,)
 
 #ifdef ENABLE_LCCL_MIX
 #define LCCL_TYPE_AIC_FUNC(fun) \
     fun(int, _mix_aic); fun(int8_t, _mix_aic); fun(int16_t, _mix_aic); fun(int64_t, _mix_aic); \
-    fun(float, _mix_aic); fun(float16_t, _mix_aic); fun(bfloat16_t, _mix_aic);
+    fun(float, _mix_aic); fun(float16_t, _mix_aic); fun(bfloat16_t, _mix_aic)
 
 #define LCCL_TYPE_AIV_FUNC(fun) \
     fun(int, _mix_aiv); fun(int8_t, _mix_aiv); fun(int16_t, _mix_aiv); fun(int64_t, _mix_aiv); \
-    fun(float, _mix_aiv); fun(float16_t, _mix_aiv); fun(bfloat16_t, _mix_aiv);
+    fun(float, _mix_aiv); fun(float16_t, _mix_aiv); fun(bfloat16_t, _mix_aiv)
 #else
 #define LCCL_TYPE_AIC_FUNC(fun) \
     (void)0
 
 #define LCCL_TYPE_AIV_FUNC(fun) \
     fun(int,); fun(int8_t,); fun(int16_t,); fun(int64_t,); \
-    fun(float,); fun(float16_t,); fun(bfloat16_t,);
+    fun(float,); fun(float16_t,); fun(bfloat16_t,)
 #endif
 
 #define LCCL_VADD_910B_TYPE_FUNC(fun) \
