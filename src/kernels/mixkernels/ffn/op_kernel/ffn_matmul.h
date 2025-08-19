@@ -257,8 +257,7 @@ struct DefaultMatmul<ArchType::ASCEND_V200,
             1,                                              // nBurst
             mmInfo.nRound / 4,                              // lenBurst
             0,                                              // srcStride
-            0                                               // dstStride
-        );
+            0);                                             // dstStride
         SET_FLAG(MTE2, V, EVENT_ID2);
         WAIT_FLAG(MTE2, V, EVENT_ID2);
         SET_FLAG(M, V, l0cEvent);
