@@ -143,7 +143,6 @@ private:
             }
             mIdx = tileBlockIdx * swizzlCnt + inTileBlockIdx % nRow;
             nIdx = inTileBlockIdx / nRow;
-            
         } else if (swizzlDirect == 1) { // Nz
             uint32_t tileBlockLoop = (mmInfo.nLoops + swizzlCnt - 1) / swizzlCnt;
             uint32_t tileBlockIdx = inBatchIdx / (swizzlCnt * mmInfo.mLoops);

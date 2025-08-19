@@ -46,7 +46,8 @@ struct matmulInfo {
     uint32_t nActual{0};
     uint32_t mRound{0};
     uint32_t nRound{0};
-    __aicore__ inline void updateIdx(uint32_t newMIdx, uint32_t newNIdx) {
+    __aicore__ inline void updateIdx(uint32_t newMIdx, uint32_t newNIdx)
+    {
         mIdx = newMIdx;
         nIdx = newNIdx;
         mActual = (mIdx == (mLoops - 1)) ? (m - mIdx * baseM) : baseM;
@@ -208,8 +209,7 @@ struct DefaultMatmul<ArchType::ASCEND_V200,
                     1,
                     mmInfo.mRound / 16,
                     k0Round / 32,
-                    1
-                );
+                    1);
                 if (kPartIdx == kPartLoops - 1) {
                     SET_FLAG(MTE1, MTE2, l1aEvent);
                 }
@@ -226,8 +226,7 @@ struct DefaultMatmul<ArchType::ASCEND_V200,
                     0,
                     1,                                              // srcStride
                     0,
-                    0                                               // dstStride
-                );
+                    0);                                             // dstStride
                 if (kPartIdx == kPartLoops - 1) {
                     SET_FLAG(MTE1, MTE2, l1bEvent);
                 }
@@ -245,8 +244,7 @@ struct DefaultMatmul<ArchType::ASCEND_V200,
                     mMmadActual,        // mmInfo.m
                     mmInfo.nActual,     // mmInfo.n
                     k0Actual,           // mmInfo.k
-                    0                   // cmatrixInitVal
-                );
+                    0);                 // cmatrixInitVal
                 SET_FLAG(M, MTE1, l0Event);
             }
             l1PingPong = 1 - l1PingPong;
@@ -272,8 +270,7 @@ struct DefaultMatmul<ArchType::ASCEND_V200,
             (uint16_t)(mmInfo.nRound / BLOCK_SIZE_16),      // nBurst
             (uint16_t)(mmInfo.mRound / BLOCK_SIZE_16),      // lenBurst
             (uint16_t)0,                                    // srcStride
-            (uint16_t)0                                     // dstStride
-        );
+            (uint16_t)0);                                   // dstStride
         SET_FLAG(V, MTE2, l0cEvent);
         SET_FLAG(V, MTE2, EVENT_ID2);
         if (mmInfo.mActual == 1) {
@@ -309,8 +306,7 @@ struct DefaultMatmul<ArchType::ASCEND_V200,
             1,                                          // nBurst
             mmInfo.nRound / CONST_8,                    // lenBurst
             0,                                          // srcStride
-            0                                           // dstStride
-        );
+            0);                                         // dstStride
         SET_FLAG(MTE2, V, l0cEvent);
     }
 
