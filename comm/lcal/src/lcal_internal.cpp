@@ -298,7 +298,37 @@ int ComputeOverComm(LcalType cocType, CoCKernelArgs kernelArgs, HcclDataType dat
 {
     int error = LCAL_SUCCESS;
 
-    // size_t tilingAddrOffset = OffsetOf(&CoCKernelArgs::pCoc)
-}
+    size_t tilingAddrOffset = OffsetOf(&CoCKernelArgs::pCocTiling, kernelArgs);
+    size_t tilingDataOffset = OffsetOf(&CoCKernelArgs::cocKernelParam, kernelArgs +
+            OffsetOf(&CoCKernelArgs::cocTilingData, kernelArgs.cocKernelParam));
 
+    auto &cocTilingData = kernelArgs.cocKernelParam.cocTilingData;
+    if (cocTilingData.withSerialMode != 0) {
+        static std::vector<int64_t> serialTags(LCAL_MAX_RANK_SIZE, 1);
+        cocTilingData.tag = serialTags[cocTilingData.rank];
+        serialTags[cocTilingData.rank] = serialTags[cocTilingData.rank] % TAG_MOD + 1;
+    }
+
+    rtTaskCfgInfo_t cfgInfo{};
+    cfgInfo.schemMode = 1;
+
+    rtArgsEx_t argsInfo{};
+    argsInfo.args = static_cast<void *>(&kernelArgs);
+    argsInfo.hostInputInfoPtr = nullptr;
+    argsInfo.argsSize = sizeof(kernelArgs);
+    argsInfo.tilingAddrOffset = tilingAddrOffset;
+    argsInfo.tilingDataOffset = tilingDataOffset;
+    argsInfo.hostInputInfoNum = 0;
+    argsInfo.hasTiling = 1;
+    argsInfo.isNoNeedH2DCopy = 0;
+
+    error = rtKernelLaunchWithFlagV2(GetFunSig(cocType, dataType),
+                                     kernelArgs.cocKernelParam.cocTilingData.blockDim,
+                                     &argsInfo, nullptr, stream, 0, &cfgInfo);
+    if (error != RT_ERROR_NONE) {
+        MKI_LOG(ERROR) << "rtKernelLaunch -:" << to_string(error);
+        return LCAL_ERROR_INTERNAL;
+    }
+    return error;
+}
 }
