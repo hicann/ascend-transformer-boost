@@ -125,7 +125,7 @@ namespace AtbOps {
             return;
         }
         batchPerCore = coreNum == 0 ? firstDimSize : firstDimSize / coreNum;
-        tailBatch = firstDimSize % coreNum;
+        tailBatch = coreNum == 0 ? 0 : firstDimSize % coreNum;
         usedCoreNum = coreNum;
         return;
     }
@@ -291,7 +291,10 @@ namespace AtbOps {
         auto inputDatatype = launchParam.GetInTensor(X_INPUT_INDEX).desc.dtype;
         tilingDataPtr->dtype = g_dtypeMap[inputDatatype];
  
-        GetInputInfo(launchParam, tilingDataPtr);
+        auto checkInputInfo = GetInputInfo(launchParam, tilingDataPtr);
+        if (!checkInputInfo.Ok()) {
+            return Status::FailStatus(ERROR_INVALID_VALUE);
+        }
         GetFusedAddTopkDivTiling<FusedAddTopkDivTilingData>(tilingDataPtr, coreNum, availableUb);
         uint32_t sysWorkspaceSize = SYS_WORKSPACESIZE;
         uint32_t tilingKey = tilingDataPtr->tilingKey;
