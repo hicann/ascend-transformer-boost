@@ -369,25 +369,5 @@ private:
     aclrtStream stream_ = nullptr;
     int32_t moduleId_ = INVLID_MOUDLE_ID;
 };
-
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #endif
