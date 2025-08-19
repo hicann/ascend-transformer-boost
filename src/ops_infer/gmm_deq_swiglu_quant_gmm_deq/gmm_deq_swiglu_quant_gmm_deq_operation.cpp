@@ -86,12 +86,14 @@ bool ParamCheck(const atb::infer::GmmDeqSwigluQuantGmmDeqParam &opParam)
     }
 
     if (opParam.outputType != atb::infer::GmmDeqSwigluQuantGmmDeqParam::OUTPUT_FLOAT16) {
-        ATB_LOG(ERROR) << "Param outputType only support OUTPUT_FLOAT16 (0).";
+        ATB_LOG(ERROR) << "Param outputType only support OUTPUT_FLOAT16 (" <<
+            static_cast<int>(atb::infer::GmmDeqSwigluQuantGmmDeqParam::OUTPUT_FLOAT16) << ").";
         return false;
     }
 
     if (opParam.groupListType != atb::infer::GmmDeqSwigluQuantGmmDeqParam::GROUP_LIST_CUMSUM) {
-        ATB_LOG(ERROR) << "Param groupListType only support GROUP_LIST_CUM_SUM (0).";
+        ATB_LOG(ERROR) << "Param groupListType only support GROUP_LIST_CUM_SUM (" <<
+            static_cast<int>(atb::infer::GmmDeqSwigluQuantGmmDeqParam::GROUP_LIST_CUMSUM) << ").";
         return false;
     }
 
@@ -338,7 +340,7 @@ std::shared_ptr<Runner> GmmDeqSwigluQuantGmmDeqOperation::CreateRunner(Context &
     RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_GMM_DEQ_SWIGLU_QUANT_GMM_DEQ);
     Runner *runner = pool.MallocRunner<GmmDeqSwigluQuantGmmDeqOpsRunner, infer::GmmDeqSwigluQuantGmmDeqParam>(param_);
     if (!runner) {
-        ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
+        ATB_LOG(WARN) << "MallocRunner from pool failed!";
         return std::make_shared<GmmDeqSwigluQuantGmmDeqOpsRunner>(param_);
     }
 
