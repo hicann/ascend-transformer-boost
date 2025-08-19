@@ -144,9 +144,7 @@ void FillTilingHead(const UnpadFlashAttentionInfo &mmInfo, const uint32_t &torUp
                     uint32_t *tilingParam, int32_t kvRealHeads)
 {
     float clampMin = mmInfo.clampMin;
-    uint32_t clampMinUint;
-    memcpy(&clampMinUint, &clampMin, sizeof(float));
-    uint32_t *clampMinUptr = &clampMinUint;
+    uint32_t *clampMinUptr = static_cast<uint32_t *>(static_cast<void *>(&clampMin));
     float clampMax = mmInfo.clampMax;
     uint32_t *clampMaxUptr = static_cast<uint32_t *>(static_cast<void *>(&clampMax));
     tilingParam[0] = static_cast<uint32_t>(mmInfo.batchSize);
