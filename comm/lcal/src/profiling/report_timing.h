@@ -352,7 +352,7 @@ private:
     static constexpr int32_t DUMP_MODULE_ID = 61;
     static constexpr int32_t RESET_STATUS = -2;
     uint64_t beginTime_ = 0;
-    uint64_tendTime_ = 0;
+    uint64_t endTime_ = 0;
     const char *opName_ = nullptr;
     uint32_t blockDim_ = 0;
     uint64_t nameHash_ = 0;
