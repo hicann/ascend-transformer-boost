@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef LCCL_ALL2ALL_HIERARCHY_H
-#define LCCL_ALL2ALL_HIERARCHY_H
+#ifndef LCCL_ALL2ALL_HIERARCHY_SMALL_H
+#define LCCL_ALL2ALL_HIERARCHY_SMALL_H
 
 #include "collectives.h"
 #include "sync_collectives.h"
@@ -26,7 +26,7 @@ class All2AllHierarchySmall : protected Collectives {
     constexpr static int64_t CORE_NUM_PER_STAGE = 16;
     constexpr static int64_t PRODUCER_CORE = 1;
     constexpr static int64_t CONSUMER_CORE = 2;
-    static const int64_t SIO = 2;
+    constexpr static int64_t SIO = 2;
 
 public:
     FORCE_INLINE_AICORE All2AllHierarchySmall(int rank, int rankSize, uint32_t extraFlag) 
@@ -83,11 +83,11 @@ private:
         int64_t ifOffSet = queBlockSize * (rank % SIO);
         if (coreGroup == PRODUCER_CORE) {
             for (auto i = 0; i < loopCount; ++i) {
-                if (groupCoreIdx < singelStage) {
+                if (groupCoreIdx < singeStage) {
                     srcLocalQue1.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + ifOffSet +
-                                     group CoreIdx * queSize, queLen, perQueElemLen);
+                                     groupCoreIdx * queSize, queLen, perQueElemLen);
                 } else {
-                    srcLocalQue1.Init(&sync, magic, shareAddrs[sioRank] + IPC_DATA_OFFSET + ifOffSet +
+                    srcSioQue1.Init(&sync, magic, shareAddrs[sioRank] + IPC_DATA_OFFSET + ifOffSet +
                                      (groupCoreIdx - singleStage) * queSize, queLen, perQueElemLen);
                 }
                 sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);  
@@ -99,7 +99,7 @@ private:
     FORCE_INLINE_AICORE void Producer()
     {
         for (auto i = 0; i < loopCount; ++i) {
-            srcRank = (rank + i % SIO) % rankSize;
+            srcRank = (rank + i * SIO) % rankSize;
             sioSrcRank = (srcRank % SIO == 0) ? srcRank + 1 : srcRank - 1;
             srcLocalQue = srcLocalQue1;
             srcSioQue = srcSioQue1;
@@ -137,16 +137,14 @@ private:
             if (idx > 0) {
                 int64_t waitRank = (sioSrcRank - SIO) >= 0 ? (sioSrcRank - SIO) : sioSrcRank + ((loopCount - 1) * SIO);
                 sync.WaitSyncFlag(magic, sliceIdx + sliceNum * (idx - 1), flagIdx + (waitRank / SIO) * coreNumPerStage
-                                + flagNumPerStage + (rank - sioRank), sioRank);
+                                + flagNumPerStage, sioRank);
             }
             inputGt.SetGlobalBuffer((__gm__ T*)input + sioSrcRank * curRankDataNum + 
                                 (groupCoreIdx - singleStage) * ipcDataNumPreBlock, ipcDataNumPreBlock);
-            srcSioQue[idx].DeQue(sioRank, flagIdx + (sioSrcRank / SIO) * coreNumPerStage + 
-            flagNumPerStage);
+            srcSioQue.DeQue(sioRank, flagIdx + (sioSrcRank / SIO) * coreNumPerStage + flagNumPerStage);
             writeGt = srcSioQue.EnQue();
             if(copyLen > 0) {
-                CpGM2GMPingPong<T>(copyLen * sizeof(T), inputGt[sliceIdx * 
-                perQueElemLen], writeGt, Op::COPYONLY);
+                CpGM2GMPingPong<T>(copyLen * sizeof(T), inputGt[sliceIdx * perQueElemLen], writeGt, Op::COPYONLY);
                 sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, flagIdx, sioRank);
             }
         }
@@ -154,10 +152,12 @@ private:
     FORCE_INLINE_AICORE void Consumer()
     {
         for (auto i = 0; i < loopCount; ++i) {
-            destRank = (rank - i * SIO) >= 0 ? (rank - i * SIO) : rank + ((loopCount - 
-            i) * SIO);
+            destRank = (rank - i * SIO) >= 0 ? (rank - i * SIO) : rank + ((loopCount - i) * SIO);
                 if (groupCoreIdx < singleStage) {
-                    detHccsQue.Init(&sync, magic, shareAddrs[destRank] + IPC_DATA_OFFSET + queBlockSize +
+                    detHccsQue.Init(&sync, magic, shareAddrs[destRank] + IPC_DATA_OFFSET + 
+                        groupCoreIdx * queSize, queLen, perQueElemLen);
+                } else {
+                    detHccsSioQue.Init(&sync, magic, shareAddrs[sioRank] + IPC_DATA_OFFSET + queBlockSize +
                         (groupCoreIdx - singleStage) * queSize, queLen, perQueElemLen);
                 }
             for (auto sliceIdx = 0; sliceIdx < sliceNum; ++sliceIdx) {
@@ -182,12 +182,12 @@ private:
         } else {
             readGt = detHccsSioQue.ReadFront();
         }
-        DpGM2GMPingPong<T>(copyLen * sizeof(T), readGt, outputGt[sliceIdx * perQueElemLen], Op::COPYONLY);
+        CpGM2GMPingPong<T>(copyLen * sizeof(T), readGt, outputGt[sliceIdx * perQueElemLen], Op::COPYONLY);
         sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, groupCoreIdx + flagNumPerStage +
             (rank / SIO) * coreNumPerStage, destRank);
     }
     GlobalTensor<T> inputGt;
-    GlobalTensor<T> outputGt;
+    GlobalTensor<T> readGt;
     GlobalTensor<T> writeGt;
     GlobalTensor<T> outputGt;
     __gm__ T *input;
@@ -195,7 +195,7 @@ private:
 
     int atomOp;
     IpcQueue<T> srcLocalQue;
-    IpcQueue<T> SrcSioQue;
+    IpcQueue<T> srcSioQue;
     IpcQueue<T> detHccsQue;
     IpcQueue<T> detHccsSioQue;
     IpcQueue<T> srcLocalQue1;
