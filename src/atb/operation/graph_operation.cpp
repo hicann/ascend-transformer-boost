@@ -82,8 +82,9 @@ static bool CheckNode(const Node &node, const size_t &nodeId, const uint64_t &to
                 ATB_LOG(WARN) << " node[" << nodeId << "].outTensorIds[" << i << "]: " << tensorId
                                << " has already been assigned value, please check your graph.";
             }
+        } else {
+            tensorIsValued.at(tensorId) = true;
         }
-        tensorIsValued.at(tensorId) = true;
     }
     return true;
 }
