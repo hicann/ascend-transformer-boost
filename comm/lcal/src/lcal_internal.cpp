@@ -223,5 +223,82 @@ int64_t Count2Size(int64_t count, const HcclDataType &dataType)
     return dataSize;
 }
 
+int LoadMTE(LcalType cclType, AscendCCLKernelArgs &args, uint32_t blockDim, HcclDataType dataType, aclrtStream stream)
+{
+    int error = 0;
+    MKI_LOG(DEBUG) << "LoadMTE" << LCAL_TYPE2NAME.at(cclType) << " count:" << args.count << " dataType:" << dataType
+                   << " op:" << args.op << " blockDim:" << blockDim << " rootRank:" << args.root
+                   << " magic: " << args.magic;
+    int64_t dataSize = Count2Size(args.count, dataType);
+    if (dataSize == LCAL_INVALID_VALUE || blockDim == 0) {
+        MKI_LOG(ERROR) << ("LoadMTE args are invalid");
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+
+    static const char *ENV = Mki::GetEnv("LCCL_PARALLEL");
+    if (ENV && (string(ENV) == "1" || string(ENV) == "true") && dataSize >= IPC_BUFF_MAX_SIZE) {
+        MKI_LOG(ERROR) << ("LoadMTE args are invalid. because LCCL_PARALLEL is open, and dataSize is too big.");
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+
+    rtTaskCfgInfo_t cfgInfo{};
+    cfgInfo.schemMode = 1;
+
+    rtArgsEx_t argsInfo{};
+    argsInfo.args = &args;
+    argsInfo.argsSize = sizeof(args);
+
+    if (cclType == LcalType::BROADCAST || cclType == LcalType::BANDWIDTH) {
+        args.count = dataSize;
+        error = rtKernelLaunchWithFlagV2(GetFunSig(cclType, HCCL_DATA_TYPE_RESERVED),
+                                         blockDim, &argsInfo, nullptr, stream, 0, &cfgInfo);
+    } else {
+        error = rtKernelLaunchWithFlagV2(GetFunSig(cclType, dataType),
+                                         blockDim, &argsInfo, nullptr, stream, 0, &cfgInfo);
+    }
+    if (error != RT_ERROR_NONE) {
+        MKI_LOG(ERROR) << "rtKernelLaunch -:" << LCAL_TYPE2NAME.at(cclType) << to_string(error);
+        return LCAL_ERROR_INTERNAL;
+    }
+    return error;
+}
+
+int LoadMTE(LcalType cclType, CCLGatherArgs &args, uint32_t blockDim, HcclDataType dataType, aclrtStream stream)
+{
+    int error = 0;
+    MKI_LOG(DEBUG) << "LoadMTE" << LCAL_TYPE2NAME.at(cclType) << " embTableLen:" << args.embTableLen
+                   << " embTableDim:" << args.embTableDim
+                   << " loopupLen:" << args.lookupLen;
+
+    rtTaskCfgInfo_t cfgInfo{};
+    cfgInfo.schemMode = 1;
+
+    rtArgsEx_t argsInfo{};
+    argsInfo.args = &args;
+    argsInfo.argsSize = sizeof(args);
+
+    if (cclType == LcalType::GATHER) {
+        error = rtKernelLaunchWithFlagV2(GetFunSig(cclType, dataType),
+                                         blockDim, &argsInfo, nullptr, stream, 0, &cfgInfo);
+    }
+    if (error != RT_ERROR_NONE) {
+        MKI_LOG(ERROR) << "rtKernelLaunch -:" << to_string(error);
+        return LCAL_ERROR_INTERNAL;
+    }
+    return error;
+}
+
+template<typename T, typename M>
+size_t OffsetOf(M T::*member, T obj)
+{
+    return reinterpret_cast<size_t>(&(obj.*member)) - reinterpret_cast<size_t>(&obj);
+}
+
+int ComputeOverComm(LcalType cocType, CoCKernelArgs kernelArgs, HcclDataType dataType, aclrtStream stream)
+{
+    int error = LCAL_SUCCESS;
+
+    // size_t tilingAddrOffset = OffsetOf(&CoCKernelArgs::pCoc)
+}
 
 }
