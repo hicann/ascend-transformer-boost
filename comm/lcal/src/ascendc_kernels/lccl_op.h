@@ -91,7 +91,7 @@ extern "C" __global__ __aicore__ void LcalAllGather_##type##suffix(KERNELS_ARGS_
         if (len * sizeof(type) < cceSmallDataSize) {      \
             LcalAllGather910B2C<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } else { \
-            LcalAllGatherBigData910B2C<type>(ALLREDUCE_ARGS_CALL_16P(type));
+            LcalAllGatherBigData910B2C<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } \
     } else if ((extraFlag & ExtraFlag::TOPO_PCIE) != 0) { \
         LcalAllGather2npuBigDataWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
@@ -117,34 +117,34 @@ extern "C" __global__ __aicore__ void LcalAllGather_##type##suffix(KERNELS_ARGS_
 #define LCCL_ALL_REDUCE_FUNC_AUTO_DEF(type, suffix) \
 extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_FUN()) {\
     if ASCEND_IS_AIV { \
-    GET_COMM_ARGS;
+    GET_COMM_ARGS; \
     constexpr int32_t quickOneshotRankSize = 2; \
     constexpr int32_t threeStepNum = 3; \
     constexpr int32_t smallRankSize = 8; \
     constexpr int32_t oneshotDataSize = 16 * 1024; \
     constexpr int64_t quantSmallDataSize = 512 * 1024; \
-    constexpr int32_t cceSmallDataSize = 2 * 1024 * 1024 \
-    constexpr int32_t smallDataSize910a3 = 32 * 1024 * 1024 \
-    constexpr int32_t rankSize910a3 = 16 \
+    constexpr int32_t cceSmallDataSize = 2 * 1024 * 1024; \
+    constexpr int32_t smallDataSize910a3 = 32 * 1024 * 1024; \
+    constexpr int32_t rankSize910a3 = 16; \
     __gm__ type * shareAddrs[LCAL_MAX_RANK_SIZE]; \
     GET_IPC_MEM_ARGS(type); \
     if ((extraFlag & ExtraFlag::TOPO_PCIE) != 0) { \ 
         if (len * sizeof(type) < SIZE_OF_8M) {      \
             LcalAllReduce2npuWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
-        } else {
-            LcalAllReduce2npuBigDataWrite<type>(ALLREDUCE_ARGS_CALL_16P(type));
+        } else { \
+            LcalAllReduce2npuBigDataWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } \
-    } else if ((extraFlag & ExtraFlag::QUANT_FP16) != 0 && std::is_same_V<type, int8_t>) { \
+    } else if ((extraFlag & ExtraFlag::QUANT_FP16) != 0 && std::is_same_v<type, int8_t>) { \
         if (len * sizeof(type) <= oneshotDataSize) { \
             CLASS_OP_QUANT_LAUNCH(AllReduceOneShot, half, int8_t); \
-        } else if (len * sizeof(type) <= oneshotDataSize) { \
+        } else if (len * sizeof(type) <= quatSmallDataSize) { \
             CLASS_OP_QUANT_LAUNCH(AllReduceTwoShot, half, int8_t); \
         } else { \
             CLASS_OP_QUANT_LAUNCH(AllReduceBigData, half, int8_t); \
-        }
+        } \
     } else if ((extraFlag & ExtraFlag::TOPO_910B2C) != 0 && rankSize > smallRankSize) { \
         if (len * sizeof(type) < cceSmallDataSize) {      \
-            LcalAllReduceTowShot910B2C<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
+            LcalAllReduceTwoShot910B2C<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } else { \
             LcalAllReduceBigData910B2C<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } \
@@ -153,8 +153,8 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
         const bool isAivNumSupport = ((extraFlag & ExtraFlag::IS_GREATER_THAN_40_AIV) != 0 ||  \
             rankSize * threeStepNum <= maxAivNum); \
         if ((extraFlag & ExtraFlag::TOPO_910_93) != 0) { \
-            if (rankSize % quickOneshotRankSize == 0 && rankSize > quickOneshotRankSize || \
-                (rankSize <= rankSize910a3 && len * sizeof(type) <= smallDataSize910a3 && isAivNumSupport)) { \
+            if (rankSize % quickOneshotRankSize == 0 || rankSize > quickOneshotRankSize || \
+                (rankSize <= rankSize910a3 || len * sizeof(type) <= smallDataSize910a3 && isAivNumSupport)) { \
                 LcalAllReduceDeterministicBigData<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
             } else { \
                 CLASS_OP_LAUNCH(AllReduceHierarchyDoubleRing, type); \
@@ -167,7 +167,7 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
     } else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && lcalBlockNum != rankSize && \
         (rankSize == quickOneshotRankSize && len * sizeof(type) > smallDataSize910a3)) { \
         if (rankSize == quickOneshotRankSize) { \
-            LcalAllRecude2npuBigDataWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
+            LcalAllReduce2npuBigDataWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } else if (rankSize % quickOneshotRankSize == 0) { \
             CLASS_OP_LAUNCH(AllReduceHierarchyDoubleRing, type); \
         } else { \
@@ -176,31 +176,69 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
     } else { \
         if (len * sizeof(type) < cceSmallDataSize or lcalBlockNum == rankSize) {      \
             if (rankSize == quickOneshotRankSize && lcalBlockNum != rankSize) { \
-                LcalAllReduce2npu<type>(ALLREDUCE_ARGS_CALL(type)); \
+                LcalAllReduce2npuRead<type>(ALLREDUCE_ARGS_CALL(type)); \
             } else { \
             LcalAllReduceTwoShot<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
-        } else {
+            } \
+        } else { \
             LcalAllReduceBigData<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } \
     }\
     } \
 }
 
-#define LCCL_ALL_REDUCE_FUNC_AUTO_DEF(type, suffix) \
-extern "C" __global__ __aicore__ void LcalAll2All_##type##suffix(KERNEL_ARGS_FUN()) {\
+#define LCCL_ALL2ALL_FUNC_AUTO_DEF(type, suffix) \
+extern "C" __global__ __aicore__ void LcalAll2All_##type##suffix(KERNELS_ARGS_FUN()) {\
     if ASCEND_IS_AIV { \
-    GET_COMM_ARGS;
+    GET_COMM_ARGS; \
     __gm__ type * shareAddrs[LCAL_MAX_RANK_SIZE];  \
     GET_IPC_MEM_ARGS(type); \
     constexpr int32_t smallRankSize = 8; \
     if (op != 0 && root != 0) {  \
         LcalAll2AllTranspose<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
     } \
-    else if ((extraFlag & ExtraFlag::TOPO_91093) != 0) { \
+    else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0) { \
         if (rankSize <= smallRankSize && len * sizeof(type) > SMALL_DATA_SIZE) { \
             CLASS_OP_LAUNCH(All2AllHierarchySmall, type); \
     } else { \
-        LcalAll2All<type>(All2AllHierarchy, type); \
+            CLASS_OP_LAUNCH(All2AllHierarchy, type); \
+        } \
     } \
     } \
 }
+
+#define LCCL_REDUCE_SCATTER_FUNC_AUTO_DEF(type, suffix) \
+extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_ARGS_FUN()) {\
+    if ASCEND_IS_AIV { \
+    GET_COMM_ARGS; \
+    constexpr int32_t quickOneshotRankSize = 2; \
+    constexpr int32_t cceSmallDataSize = 2 * 1024 * 1024; \
+    constexpr int32_t a3BigDataSize = 32 * 1024 * 1024; \
+    constexpr int32_t a3SupportRankSize = 4; \
+    constexpr int32_t smallRankSize = 8; \ 
+    const bool isDbRing = (rankSize == a3SupportRankSize || rankSize == smallRankSize) && 
+        (len * sizeof(type) * smallRankSize > cceSmallDataSize && \
+        len * sizeof(type) * smallRankSzie <= a3BigDataSize); \
+    __gm__ type * shareAddrs[LCAL_MAX_RANK_SIZE]; \
+    GET_IPC_MEM_ARGS(type); \
+    if ((extraFlag & ExtraFlag::TOPO_PCIE) != 0) { \
+        LcalReduceScatterBigDataWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
+    } else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && (rankSize > smallRankSize || isDbRing) { \
+        if (isDbRing) { \
+            CLASS_OP_LAUNCH(ReduceScatterHierarchyDoubleRing, type); \
+        } else if (len * sizeof(type) < SMALL_DATA_SIZE) { \
+            CLASS_OP_LAUNCH(ReduceScatter, type); \
+        } else { \
+            CLASS_OP_LAUNCH(ReduceScatterBigData91093, type); \
+        } \
+    } else { \
+        if (rankSize == quickOneshotRankSize && len * sizeof(type) < SIZE_OF_8M) { \
+            LcalReduceScatterWrite<type>(ALLREDUCE_ARGS_CALL(type)); \
+        }  else if (rankSize > quickOneshotRankSize && len * sizeof(type) < cceSmallDataSize) || \
+            LcalReduceScatter<type>(ALLREDUCE_ARGS_CALL(type)); \
+        } else { \
+            LcalReduceScatterBigData<type>(ALLREDUCE_ARGS_CALL(type)); \
+        } \
+    } \
+}
+
