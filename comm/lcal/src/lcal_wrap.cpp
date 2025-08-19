@@ -13,7 +13,7 @@
 #include <atomic>
 #include "mki/utils/log/log.h"
 #include "lcal.h"
-#include "tools/socket/lcal_socket_exchange.h"
+#include "tools/socket/lcal_sock_exchange.h"
 
 using namespace std;
 using namespace Lcal;
@@ -25,7 +25,7 @@ int LcalCommInitRankLocal(int rankSize, int rank, LcalCommPtr *comm)
         MKI_LOG(ERROR) << "lcal comm ptr is nullptr!";
         return LCAL_ERROR_INTERNAL;
     }
-    auto *c = new (std::nothrow) LcalCommLocal(rank, rankSize);
+    auto *c = new (std::nothrow) LcalComm(rank, rankSize);
     if (c == nullptr) {
         MKI_LOG(ERROR) << "LcalComm create failed. rank : " << rank << ", rankSize : " << rankSize;
         return LCAL_ERROR_INTERNAL;
@@ -33,7 +33,7 @@ int LcalCommInitRankLocal(int rankSize, int rank, LcalCommPtr *comm)
     *comm = c;
     int ret = c->Init();
     if (ret != LCAL_SUCCESS) {
-        MKI_LOG(ERROR) << "lccl init failed!"
+        MKI_LOG(ERROR) << "lccl init failed!";
         return LCAL_ERROR_INTERNAL;
     }
     return LCAL_SUCCESS;
@@ -68,7 +68,7 @@ int LcalCommInitRank(LcalUniqueId commId, int rankSize, int rank, LcalCommPtr *c
     *comm = c;
     int ret = c->Init();
     if (ret != LCAL_SUCCESS) {
-        MKI_LOG(ERROR) << "lccl init failed!"
+        MKI_LOG(ERROR) << "lccl init failed!";
         return LCAL_ERROR_INTERNAL;
     }
     return LCAL_SUCCESS;
@@ -77,8 +77,8 @@ int LcalCommInitRank(LcalUniqueId commId, int rankSize, int rank, LcalCommPtr *c
 int LcalCommInitRankWithCustDomainSize(int commDomain, int bufferSize, int rankSize, int rank, LcalCommPtr *comm,
     const bool isEnableAutoMagicNum)
 {
-    MKI_LOG(INFO) << "using lcal c++ api! rank" << rank << ", rankSize : " << rankSize << ", commDomain : " <<
-        commDomain << ", bufferSize : " << bufferSize << ", isEnableAutoMagicNum : " << isEnableAutoMagicNum;
+    MKI_LOG(INFO) << "using lcal c++ api! rank : " << rank << ", rankSize : " << rankSize << ", commDomain:" <<
+        commDomain << ", bufferSize:" << bufferSize << ", isEnableAutoMagicNum:" << isEnableAutoMagicNum;
     if (comm == nullptr) {
         MKI_LOG(ERROR) << "lcal comm ptr is nullptr!";
         return LCAL_ERROR_INTERNAL;
@@ -87,20 +87,20 @@ int LcalCommInitRankWithCustDomainSize(int commDomain, int bufferSize, int rankS
     constexpr int minBufferSize = LCAL_COMM_BUFFER_SIZE;
     if (bufferSize < minBufferSize) {
         MKI_LOG(ERROR) << "lcal comm buffer size " << bufferSize << " MBytes should not be less than " <<
-            minBufferSize << " MBytes.";
+            minBufferSize << " MBytes!";
         return LCAL_ERROR_INTERNAL;
     }
 
     auto *c = new (std::nothrow) LcalComm(rank, rankSize, commDomain, bufferSize, isEnableAutoMagicNum);
     if (c == nullptr) {
-        MKI_LOG(ERROR) << "LcalComm create failed. rank : " << rank << ", rankSize : " << rankSize << ", commDomain : " <<
-            commDomain << ", bufferSize : " << bufferSize << ", isEnableAutoMagicNum : " << isEnableAutoMagicNum;
+        MKI_LOG(ERROR) << "LcalComm create failed. rank : " << rank << ", rankSize : " << rankSize << ", commDomain:" <<
+            commDomain << ", bufferSize:" << bufferSize << ", isEnableAutoMagicNum:" << isEnableAutoMagicNum;
         return LCAL_ERROR_INTERNAL;
     }
     *comm = c;
     int ret = c->Init();
     if (ret != LCAL_SUCCESS) {
-        MKI_LOG(ERROR) << "lccl init failed!"
+        MKI_LOG(ERROR) << "lccl init failed!";
         return LCAL_ERROR_INTERNAL;
     }
     return LCAL_SUCCESS;
@@ -123,7 +123,7 @@ int LcalGetCommArgsDev(LcalCommPtr comm, GM_ADDR &commArgsPtr)
     return LCAL_SUCCESS;
 }
 
-int LcalGetCommArgsDev(LcalCommPtr comm, GM_ADDR &commArgsPtr)
+int LcalGetCommArgsHost(LcalCommPtr comm, Lcal::CommArgs *&commArgsPtr)
 {
     if (comm == nullptr) {
         MKI_LOG(ERROR) << "lcal comm is nullptr!";
@@ -147,7 +147,7 @@ void LcalPrintDFX2Log(LcalCommPtr comm)
 int LcalCommInit(int rank, int rankSize, LcalCommPtr *comms)
 {
     if (comms == nullptr) {
-        MKI_LOG(ERROR) << "lcal comms ptr is nullptr!";
+        MKI_LOG(ERROR) << "lcal comms is nullptr!";
         return LCAL_ERROR_INTERNAL;
     }
     *comms = new (std::nothrow) LcalComm(rank, rankSize);
@@ -158,7 +158,7 @@ int LcalCommInit(int rank, int rankSize, LcalCommPtr *comms)
     return LCAL_SUCCESS;
 }
 
-int LcalCommInitAll(uint32_t ndev, int32_t* devices, LcalCommPtr *comms)
+int LcalCommInitAll(uint32_t ndev, int32_t *devices, LcalCommPtr *comms)
 {
     if (comms == nullptr) {
         MKI_LOG(ERROR) << "lcal comms is nullptr!";
@@ -173,7 +173,7 @@ int LcalCommInitAll(uint32_t ndev, int32_t* devices, LcalCommPtr *comms)
     for (uint32_t i = 0; i < ndev; ++i) {
         comms[i] = new (std::nothrow) LcalComm(i, ndev, commDomain, LCAL_COMM_BUFFER_SIZE, false);
         if (comms[i] == nullptr) {
-            MKI_LOG(ERROR) << "LcalComm create failed. dev : " << i << ", rankSize : " << ndev;
+            MKI_LOG(ERROR) << "LcalComm create failed. dev : " << i << ", ndev : " << ndev;
             return LCAL_ERROR_INTERNAL;
         }
     }
@@ -210,12 +210,12 @@ int LcalCommInitThread(int rank, int rankSize, const char *uid, LcalCommPtr *com
         MKI_LOG(ERROR) << "lcal comms is nullptr!";
         return LCAL_ERROR_INTERNAL;
     }
-    if (rank > rankSize) {
+    if (rank >= rankSize) {
         MKI_LOG(ERROR) << "lcal rank : " << rank << " rankSize : " << rankSize;
         return LCAL_ERROR_INTERNAL;
     }
     *comms = new (std::nothrow) LcalComm(rank, rankSize);
-    if (*comms  == nullptr) {
+    if (*comms == nullptr) {
         MKI_LOG(ERROR) << "LcalComm create failed. rank : " << rank << ", rankSize : " << rankSize;
         return LCAL_ERROR_INTERNAL;
     }
