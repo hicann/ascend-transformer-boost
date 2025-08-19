@@ -214,6 +214,11 @@ private:
         auto maskLen = currentShape[DIM_2];
         auto alibi = param.maskType == OpParam::UnpadFlashAttentionNz::MASK_TYPE_ALIBI;
         auto isLongSeq = (param.isTriuMask == 1) && (maskLen == LONG_SEQ_LEN);
+        constexpr int32_t MAX_SAFE_VALUE = FP16_ALIGN_NUM - 1;
+        MKI_CHECK(shapePara.maxQ <= INT32_MAX - MAX_SAFE_VALUE,
+                "shapePara.maxQ is too large, please check", return false);
+        MKI_CHECK(shapePara.maxKv <= INT32_MAX - MAX_SAFE_VALUE,
+                "shapePara.maxKv is too large, please check", return false);
         auto maxNzQ = (shapePara.maxQ + FP16_ALIGN_NUM - 1) / FP16_ALIGN_NUM * FP16_ALIGN_NUM;
         auto maxKv = (shapePara.maxKv + FP16_ALIGN_NUM - 1) / FP16_ALIGN_NUM * FP16_ALIGN_NUM;
         auto batch = shapePara.batch;
