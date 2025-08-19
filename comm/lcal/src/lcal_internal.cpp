@@ -327,7 +327,7 @@ int ComputeOverComm(LcalType cocType, CoCKernelArgs kernelArgs, HcclDataType dat
                                      &argsInfo, nullptr, stream, 0, &cfgInfo);
     if (error != RT_ERROR_NONE) {
         MKI_LOG(ERROR) << "AsdRtFunctionLaunch -:" << to_string(error);
-        return LCAL_ERROR_INTERNAL;
+        return LCAL_ERROR_MKIRT;
     }
     return error;
 }
