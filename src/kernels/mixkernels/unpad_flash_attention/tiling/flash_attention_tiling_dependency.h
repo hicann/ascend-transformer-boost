@@ -166,8 +166,8 @@ Status GetFillTilingParam(const UnpadFlashAttentionInfo &mmInfo,
                           uint32_t *tilingParam, AddrOffsets &addrOffsets);
 Status DecoderFillTilingParamRelay(const UnpadFlashAttentionInfo &mmInfo, const uint32_t &torUptr,
                                    AddrOffsets &addrOffsets, int32_t kvRealHeads, uint32_t *tilingParam);
-void SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t shareBlockTiling);
-void SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, int32_t groupNum,
+Status SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t shareBlockTiling);
+Status SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, int32_t groupNum,
                     uint32_t blockIdx, uint32_t shareBlockTiling);
 } // namespace AtbOps
 #endif
