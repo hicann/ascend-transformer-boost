@@ -71,7 +71,7 @@ struct FFNHardwareInfo {
 inline Status FFNCheck(const LaunchParam &launchParam, const OpParam::FFN &param)
 {
     MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::FFN), "OpParam is not FFN",
-                 return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
+                 return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(param.activationType >= OpParam::FFN::ActivationType::GELU &&
         param.activationType < OpParam::FFN::ActivationType::INVALID_ACTIVATION_TYPE,
         "activationType only support 0,1,2", return Status::FailStatus(ERROR_INVALID_VALUE));
@@ -110,7 +110,7 @@ inline void SetBaseOp(FFNMatmulTilingData &tilingTmp)
     tilingTmp.nLoops = Utils::CeilDiv(tilingTmp.n, tilingTmp.baseN);
     tilingTmp.coreLoops = tilingTmp.mLoops * tilingTmp.nLoops;
 
-    uint32_t l1AbPpBuffLen = 131072;
+    uint32_t l1AbPpBuffLen = UB_HALF_BUFFER_LEN;
     uint32_t shapeCount = tilingTmp.baseM + tilingTmp.baseN;
     uint32_t k0Max = (shapeCount == 0) ? l1AbPpBuffLen : (l1AbPpBuffLen / shapeCount);
     uint32_t k0Init = CONST_256;

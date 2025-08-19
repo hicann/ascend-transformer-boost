@@ -90,7 +90,7 @@ constexpr std::array<int32_t, NUM6> QN_TILE_LIST = { 128, 64, 32, 16, 8, 1 };
 using IndexArr = std::array<int32_t, NUM4>;
 
 inline uint32_t GetHigh32Bit(uint64_t v) { return static_cast<uint32_t>(v >> HIGH_32BIT); }
-inline uint32_t GetLoww32Bit(uint64_t v) { return static_cast<uint32_t>(v); }
+inline uint32_t GetLow32Bit(uint64_t v) { return static_cast<uint32_t>(v); }
 
 inline int32_t ConvertValueToIndexMM(int32_t val, int32_t idxBound) // 16, 7
 {
@@ -110,13 +110,13 @@ const int32_t NUM_TWO = 2;
 void GetAddrOffsetMLA(uint32_t *tilingParam, const AddrOffsets addrOffsets, const int32_t tilingOffset)
 {
     tilingParam[tilingOffset + NUM2] = GetHigh32Bit(addrOffsets.addrQSeqOffset);
-    tilingParam[tilingOffset + NUM3] = GetLoww32Bit(addrOffsets.addrQSeqOffset);
+    tilingParam[tilingOffset + NUM3] = GetLow32Bit(addrOffsets.addrQSeqOffset);
     tilingParam[tilingOffset + NUM4] = GetHigh32Bit(addrOffsets.addrOSeqOffset);
-    tilingParam[tilingOffset + NUM5] = GetLoww32Bit(addrOffsets.addrOSeqOffset);
+    tilingParam[tilingOffset + NUM5] = GetLow32Bit(addrOffsets.addrOSeqOffset);
 
     // mask offset
     tilingParam[tilingOffset + NUM6] = GetHigh32Bit(addrOffsets.addrMaskOffset);
-    tilingParam[tilingOffset + NUM7] = GetLoww32Bit(addrOffsets.addrMaskOffset);
+    tilingParam[tilingOffset + NUM7] = GetLow32Bit(addrOffsets.addrMaskOffset);
 }
 
 int32_t GetQNBlockTile(const MLAInfo &mmInfo, int32_t qSeqLen)
@@ -408,19 +408,19 @@ void FillPrefillTilingOffsetParam(int32_t seqIdx, AddrOffsets &addrOffsets, uint
     tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM4] =
                                         GetHigh32Bit(addrOffsets.addrQSeqOffset);
     tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM5] =
-                                        GetLoww32Bit(addrOffsets.addrQSeqOffset);
+                                        GetLow32Bit(addrOffsets.addrQSeqOffset);
     tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM6] =
                                         GetHigh32Bit(addrOffsets.addrKSeqOffset);
     tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM7] =
-                                        GetLoww32Bit(addrOffsets.addrKSeqOffset);
+                                        GetLow32Bit(addrOffsets.addrKSeqOffset);
     tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM8] =
                                         GetHigh32Bit(addrOffsets.addrVSeqOffset);
     tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM9] =
-                                        GetLoww32Bit(addrOffsets.addrVSeqOffset);
+                                        GetLow32Bit(addrOffsets.addrVSeqOffset);
     tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM10] =
                                         GetHigh32Bit(addrOffsets.addrOSeqOffset);
     tilingParam[TILING_HEAD_SIZE_PREFILL + seqIdx * TILING_PARA_SIZE_PREFILL + NUM11] =
-                                        GetLoww32Bit(addrOffsets.addrOSeqOffset);
+                                        GetLow32Bit(addrOffsets.addrOSeqOffset);
 }
 
 uint32_t GetPrefillTilingKey(const MLAInfo &mmInfo)
@@ -537,7 +537,7 @@ Status GetMLAPrefillTilingParam(const MLAInfo &mmInfo, uint32_t &blockDim,
         }
         MKI_LOG(INFO) << i << " index: " << tilingParam[i] << ",";
     }
-    MKI_CHECK(addrOffsets.block > 0 && static_cast<uint32_t>(addrOffsets.block) <= UINT32_MAX, "blockDim overflow",
+    MKI_CHECK(addrOffsets.block > 0 && static_cast<uint64_t>(addrOffsets.block) <= UINT32_MAX, "blockDim overflow",
               return Status::FailStatus(ERROR_INVALID_VALUE));
     uint32_t logicalblock = static_cast<uint32_t>(addrOffsets.block);
     MKI_LOG(INFO) << "totalQBlkNum is " << addrOffsets.totalQBlkNum;

@@ -41,6 +41,7 @@ constexpr int32_t TILING_KEY_INDEX = 16;
 constexpr int32_t RELAY_BLOCK_TILING = 8;
 constexpr uint32_t SPEC_TILING_KEY = 1 << 20;
 constexpr int32_t SPLIT_M_THRESHOLD = 4096;
+constexpr int32_t MAX_BATCH = 60;
 
 enum class TilingKeyType {
     TILING_HALF_DATA = 0,
@@ -165,8 +166,8 @@ Status GetFillTilingParam(const UnpadFlashAttentionInfo &mmInfo,
                           uint32_t *tilingParam, AddrOffsets &addrOffsets);
 Status DecoderFillTilingParamRelay(const UnpadFlashAttentionInfo &mmInfo, const uint32_t &torUptr,
                                    AddrOffsets &addrOffsets, int32_t kvRealHeads, uint32_t *tilingParam);
-void SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t shareBlockTiling);
-void SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, int32_t groupNum,
+Status SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t shareBlockTiling);
+Status SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, int32_t groupNum,
                     uint32_t blockIdx, uint32_t shareBlockTiling);
 } // namespace AtbOps
 #endif

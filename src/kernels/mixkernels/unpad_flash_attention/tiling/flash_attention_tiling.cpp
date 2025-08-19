@@ -130,8 +130,8 @@ Status FlashAttentionTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     }
 
     if (param.type == OpParam::UnpadFlashAttention::RELAY_ATTENTION_DECODER_ND) {
-        MKI_CHECK(mmInfo.batchSize <= 60, "batch should not exceed 60", return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(mmInfo.kvHead <= 8, "kvhead should not exceed 8", return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(mmInfo.batchSize <= MAX_BATCH, "batch should not exceed 60", return Status::FailStatus(ERROR_INVALID_VALUE));
+        MKI_CHECK(mmInfo.kvHead <= RELAY_BLOCK_TILING, "kvhead should not exceed 8", return Status::FailStatus(ERROR_INVALID_VALUE));
         uint64_t glWorkSize = static_cast<uint64_t>(mmInfo.batchSize) *
                               static_cast<uint64_t>(mmInfo.innerBatchSize) * 4 * 2;
         uint64_t goWorkSize = static_cast<uint64_t>(mmInfo.batchSize) * static_cast<uint64_t>(mmInfo.innerBatchSize) *
@@ -160,7 +160,7 @@ Status GetAlibiMaskInfo(UnpadFlashAttentionInfo &mmInfo, OpParam::UnpadFlashAtte
         mmInfo.maskStride = 0;
         mmInfo.headStride = static_cast<uint32_t>(maxSeq);
     } else if (maskDim == DIM_4) { // [bs,1,ms,ms]  [bs,headnum,ms,ms]
-        MKI_CHECK(maskShape.at(DIM_2) * maskShape.at(1) <= UINT32_MAX, "maxSeq * headnum can not large than UINT32_MAX",
+        MKI_CHECK(static_cast<uint64_t>(maskShape.at(DIM_2)) * maskShape.at(1) <= UINT32_MAX, "maxSeq * headnum can not large than UINT32_MAX",
                   return Status::FailStatus(ERROR_INVALID_VALUE));
         mmInfo.maskStride = maskShape.at(1) * maskShape.at(DIM_2);
         mmInfo.headStride = static_cast<uint32_t>(maxSeq);
@@ -311,7 +311,7 @@ inline Status FlashAttentionPostCheck(UnpadFlashAttentionInfo &mmInfo, OpParam::
     MKI_CHECK((mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_SWA_NORM ||
             mmInfo.maskType == OpParam::UnpadFlashAttention::MASK_TYPE_SWA_COMPRESS) == (mmInfo.windowSize > 0),
             "swa window size should be greater than 0", return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK((mmInfo.batchContinuous ^ mmInfo.kTensorList.size()) != 0,
+    MKI_CHECK(mmInfo.batchContinuous != (mmInfo.kTensorList.size() != 0),
               "invalid kv-batchwise setting, is kv batchContinuous or not?",
               return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
@@ -333,7 +333,7 @@ inline Status FlashAttentionSwaCheck(const UnpadFlashAttentionInfo mmInfo)
     MKI_CHECK(mmInfo.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_ND ||
                 mmInfo.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_DECODER_ND ||
                 mmInfo.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ND,
-                "swa only support encoder nd and deocder nd type",
+                "swa only support encoder nd and decoder nd type",
                 return Status::FailStatus(ERROR_INVALID_VALUE));
     return Status::OkStatus();
 }
@@ -409,7 +409,7 @@ void FlashAttentionEncoderBNSD(UnpadFlashAttentionInfo &mmInfo, OpParam::UnpadFl
                      mmInfo.scaleType == OpParam::UnpadFlashAttention::SCALE_TOR && param.dataShapeType == 1;
     if (param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_ND && optEnable) {
         mmInfo.splitm = true;
-        for (int32_t seqIdx = 0; seqIdx < static_cast<int32_t>(param.qSeqLen.size()); seqIdx++) {
+        for (size_t seqIdx = 0; seqIdx < param.qSeqLen.size(); seqIdx++) {
             int32_t qSeqlen = *(param.qSeqLen.data() + seqIdx);
             if (qSeqlen <= SPLIT_M_THRESHOLD) {
                 mmInfo.splitm = false;
@@ -626,7 +626,7 @@ Status InitMaxKVSeqlen(size_t &batch, Mki::SVector<int64_t> &kcacheShape, UnpadF
         mmInfo.isNoCache = true;
     } else if (param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND) {
         mmInfo.isNoCache = true;
-        mmInfo.maxKvSeqLen = kcacheShape.at(0) * kcacheShape.at(0) / batch;
+        mmInfo.maxKvSeqLen = static_cast<std::int64_t>(kcacheShape.at(0)) * static_cast<std::int64_t>(kcacheShape.at(0)) / static_cast<std::int64_t>(batch);
         OP_TILING_CHECK_STATUS_RETURN(GetFlashAttentionNoCacheMaskInfo(mmInfo, param, mmInfo.tensors.mask));
     } else {
         if (param.dataShapeType == 1) {

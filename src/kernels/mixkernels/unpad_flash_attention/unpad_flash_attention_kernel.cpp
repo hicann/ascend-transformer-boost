@@ -35,8 +35,7 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
-                  "unpad_flash_attention: param type invalid", return false);
+        if (!CheckParamType(launchParam)) { return false; }
         MKI_CHECK(launchParam.GetInTensorCount() == 12, "input num invalid", return false);
         auto &param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
         auto dataShapeType = param.dataShapeType;
@@ -60,8 +59,7 @@ public:
 
     uint64_t GetTilingSize(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
-                  "unpad_flash_attention: param type invalid", return false);
+        if (!CheckParamType(launchParam)) { return false; }
         auto &param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
         auto batch = param.qSeqLen.size();
         MKI_CHECK(batch > 0 && batch <= ND_BATCH_LIMIT, "batch is invalid", return 0);
@@ -76,6 +74,13 @@ public:
         MKI_CHECK_NO_LOG(ret.Ok(), return ret);
         kernelInfo_.SetHwsyncIdx(0);
         return Status::OkStatus();
+    }
+protected:
+    bool CheckParamType(const LaunchParam& launchParam) const
+    {
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
+                  "unpad_flash_attention: param type invalid", return false);
+        return true;
     }
 };
 
@@ -95,8 +100,7 @@ public:
     }
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
-                  "unpad_flash_attention: param type invalid", return false);
+        if (!CheckParamType(launchParam)) { return false; }
         MKI_CHECK(launchParam.GetInTensorCount() == 3, "input num invalid", return false);
         auto &param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
         auto dataShapeType = param.dataShapeType;
@@ -144,8 +148,7 @@ public:
     
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
-                  "unpad_flash_attention: param type invalid", return false);
+        if (!CheckParamType(launchParam)) { return false; }
         MKI_CHECK(launchParam.GetInTensorCount() == 6, "input num invalid", return false);
         MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 3 ||
                         launchParam.GetInTensor(0).desc.dims.size() == 2,
@@ -224,8 +227,7 @@ public:
     bool CanSupport(const LaunchParam &launchParam) const override
     {
         auto param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
-            "unpad_flash_attention: param type invalid", return false);
+        if (!CheckParamType(launchParam)) { return false; }
         MKI_CHECK(launchParam.GetInTensorCount() == 9, "input num invalid", return false);
         MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 3 ||
                     launchParam.GetInTensor(0).desc.dims.size() == 2, "input 0 dim num invalid", return false);
@@ -262,8 +264,7 @@ public:
     
     uint64_t GetTilingSize(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
-                  "unpad_flash_attention: param type invalid", return false);
+        if (!CheckParamType(launchParam)) { return false; }
         auto &param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
         auto batch = param.qSeqLen.size();
         auto kvHead = param.kvHead == 0 ? param.headSize : param.kvHead;
@@ -281,8 +282,7 @@ public:
     bool CanSupport(const LaunchParam &launchParam) const override
     {
         auto param = AnyCast<OpParam::UnpadFlashAttention>(launchParam.GetParam());
-        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::UnpadFlashAttention),
-            "unpad_flash_attention: param type invalid", return false);
+        if (!CheckParamType(launchParam)) { return false; }
         MKI_CHECK(launchParam.GetInTensorCount() == 2, "input num invalid", return false);
         MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 3 ||
                     launchParam.GetInTensor(0).desc.dims.size() == 2, "input 0 dim num invalid", return false);
