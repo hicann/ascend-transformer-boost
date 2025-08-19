@@ -13,7 +13,7 @@
 #include <string>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <security.h>
+#include <securec.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -26,9 +26,9 @@
 namespace Lcal {
 class ReportTiming {
 public:
-    static constexpr uint64_t PROF_TASK_TIME_DUMP = 0x000100000000ULL;
+    static constexpr uint64_t PROF_TASK_TIME_DUMP = 0x0000100000000ULL;
     ReportTiming() = delete;
-    explicit ReportTiming(const char *opName, int commDomain, int64_t count =0,
+    explicit ReportTiming(const char *opName, int commDomain, int64_t count = 0,
                           HcclDataType dataType = HCCL_DATA_TYPE_RESERVED)
         : opName_(opName), typeMix_(false), count_(count), dataType_(dataType)
     {
@@ -72,12 +72,12 @@ public:
             }
         }
 
-        MKI_LOG(DEBUG) << "InitProfiling " << __LINE__ << "ProfilingStatus()" << ProfilingStatus() <<
+        MKI_LOG(DEBUG) << "InitProfiling " << __LINE__ << " ProfilingStatus():" << ProfilingStatus() <<
             " isReporting_:" << isReporting_;
         if (ProfilingStatus() > 0) {
             ParamsInit(commDomain);
         }
-        MKI_LOG(DEBUG) << "InitProfiling " << __LINE__ << "ProfilingStatus()" << ProfilingStatus() <<
+        MKI_LOG(DEBUG) << "InitProfiling " << __LINE__ << " ProfilingStatus():" << ProfilingStatus() <<
             " isReporting_:" << isReporting_ << " profEnable_:" << profEnable_;
     }
 
@@ -96,12 +96,12 @@ public:
     {
         profEnable_ = true;
         std::string groupName = std::to_string(commDomain);
-        groupHash_ = MsprofGethashId(groupName.c_str(), strlen(groupName.c_str()));
+        groupHash_ = MsprofGetHashId(groupName.c_str(), strlen(groupName.c_str()));
 
         std::string naStr = "NA";
-        naHash_ = MsprofGethashId(naStr.c_str(), strlen(naStr.c_str()));
+        naHash_ = MsprofGetHashId(naStr.c_str(), strlen(naStr.c_str()));
 
-        nameHash_ = MsprofGethashId(opName_, strlen(opName_));
+        nameHash_ = MsprofGetHashId(opName_, strlen(opName_));
         beginTime_ = MsprofSysCycleTime();
     }
 
@@ -171,10 +171,10 @@ public:
                     MKI_LOG(ERROR) << "LcclReporting report memcpy_s err " << ret;
                 }
                 if ((logInfoIdx < logLimit) || (logInfoIdx < logFirstLimit && rankId_ == 0 && coreId == 0)) {
-                    MKI_LOG(DEBUG) << "LcclReporting report: rankId=" << rankId_ << ", coreId=" << coreId <<
+                    MKI_LOG(DEBUG) << "LcclReporting report: rankId=" << rankId_ << ", coreId=" << coreId  <<
                         ", curLog=" << logInfoIdx << "/" << logLen <<
                         "; LcclDumpLogInfo: logId=" << logInfo->logId << ", blockId=" << logInfo->blockId <<
-                        ", syscyc=" << logInfo->syscyc << ", curPc=" << logInfo->curPc <<
+                        ", syscyc=" << logInfo->syscyc << ", curPc=" << logInfo->curPc  <<
                         ", operationType=" << logInfo->operationType;
                 }
                 MsprofReportAdditionalInfo(0, &t, sizeof(MsprofAdditionalInfo));
@@ -190,7 +190,7 @@ public:
         reporterData.threadId = static_cast<uint32_t>(tid_);
         reporterData.beginTime = beginTime_;
         reporterData.endTime = endTime_;
-        reporterData.itemId = namehash_;
+        reporterData.itemId = nameHash_;
 
         auto ret = MsprofReportApi(true, &reporterData);
         if (ret != 0) {
@@ -209,7 +209,7 @@ public:
         reporterData.threadId = static_cast<uint32_t>(tid_);
         reporterData.beginTime = beginTime_;
         reporterData.endTime = endTime_;
-        reporterData.itemId = namehash_;
+        reporterData.itemId = nameHash_;
 
         auto ret = MsprofReportApi(true, &reporterData);
         if (ret != 0) {
@@ -222,7 +222,7 @@ public:
         if (typeMix_) {
             return;
         }
-        MsprofCompactInfo reporterData{};
+        MsprofCompactInfo reporterData = {};
         reporterData.level = MSPROF_REPORT_NODE_LEVEL;
         reporterData.type = MSPROF_REPORT_NODE_HCCL_OP_INFO_TYPE;
         reporterData.threadId = static_cast<uint32_t>(tid_);
@@ -265,7 +265,7 @@ public:
                                            static_cast<uint32_t>(sizeof(MsprofCompactInfo)));
         if (ret != 0) {
             MKI_LOG(ERROR) << "CallMsprofReportHostNodeBasicInfo error! code: " << ret << " name: " << opName_;
-        }    
+        }
     }
 
     void CallMsprofReportContextIdInfo() const
@@ -287,7 +287,7 @@ public:
         info.ctxIdNum = 1;
         info.ctxIds[0] = 0;
 
-        int ret = memcpy_s(additionalInfo.data, MSPROF_ADDITIONAL_INFO_DATA_LENGTH, &info, sizeof(MsprofContextIdInfo));
+        int ret = memcpy_s(additionalInfo.data, MSPROF_ADDTIONAL_INFO_DATA_LENGTH, &info, sizeof(MsprofContextIdInfo));
         MKI_LOG_IF(ret != EOK, ERROR) << "memcpy_s Error! Error Code: " << ret;
 
         auto retReport = MsprofReportAdditionalInfo(static_cast<uint32_t>(true),
@@ -302,7 +302,7 @@ public:
     {
         int32_t tid = static_cast<int32_t>(syscall(SYS_gettid));
         if (tid == -1) {
-            MKI_LOG(ERROR) << "get tid failed, errorno: " << errno;
+            MKI_LOG(ERROR) << "get tid failed, errno: " << errno;
         }
         return tid;
     }
@@ -321,10 +321,10 @@ public:
             MKI_LOG(ERROR) << "ProfHandle failed! dataSize is not correct!";
             return -1;
         }
-        MsprofCommandHandle *profilerConfig = static_cast<MsprofCommandHandle *>(data);
+        MsprofCommandHandle *profilerConfig = static_cast<MsprofCommandHandle*>(data);
         const uint32_t profType = profilerConfig->type;
         const uint64_t profSwitch = profilerConfig->profSwitch;
-        if (profSwitch == PROF_COMMANDHANDLE_TYPE_START) {
+        if (profType == PROF_COMMANDHANDLE_TYPE_START) {
             MKI_LOG(INFO) << "Open Profiling Switch " << std::hex << profSwitch << std::dec;
             if ((profSwitch & PROF_TASK_TIME_L0) != PROF_CTRL_INVALID) {
                 ProfilingStatus(PROF_TASK_TIME_L0);
@@ -352,7 +352,7 @@ private:
     static constexpr int32_t DUMP_MODULE_ID = 61;
     static constexpr int32_t RESET_STATUS = -2;
     uint64_t beginTime_ = 0;
-    uint16_t endTime_ = 0;
+    uint64_tendTime_ = 0;
     const char *opName_ = nullptr;
     uint32_t blockDim_ = 0;
     uint64_t nameHash_ = 0;
@@ -362,12 +362,12 @@ private:
     long tid_ = 0;
     bool profEnable_ = false;
     int64_t count_ = 0;
-    uint8_t dataType = HCCL_DATA_TYPE_RESERVED;
+    uint8_t dataType_ = HCCL_DATA_TYPE_RESERVED;
     int32_t rankId_ = 0;
     bool isReporting_ = true;
     uint8_t *dumpAddr_ = nullptr;
     aclrtStream stream_ = nullptr;
-    int32_t moduleId_ = INVALID_MODULE_ID;
+    int32_t moduleId_ = INVLID_MOUDLE_ID;
 };
 
 
