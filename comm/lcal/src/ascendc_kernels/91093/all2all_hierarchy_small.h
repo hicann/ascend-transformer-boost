@@ -83,7 +83,7 @@ private:
         int64_t ifOffSet = queBlockSize * (rank % SIO);
         if (coreGroup == PRODUCER_CORE) {
             for (auto i = 0; i < loopCount; ++i) {
-                if (groupCoreIdx < singeStage) {
+                if (groupCoreIdx < singleStage) {
                     srcLocalQue1.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + ifOffSet +
                                      groupCoreIdx * queSize, queLen, perQueElemLen);
                 } else {
@@ -157,7 +157,7 @@ private:
                     detHccsQue.Init(&sync, magic, shareAddrs[destRank] + IPC_DATA_OFFSET + 
                         groupCoreIdx * queSize, queLen, perQueElemLen);
                 } else {
-                    detHccsSioQue.Init(&sync, magic, shareAddrs[sioRank] + IPC_DATA_OFFSET + queBlockSize +
+                    detHccsSioQue.Init(&sync, magic, shareAddrs[destRank] + IPC_DATA_OFFSET + queBlockSize +
                         (groupCoreIdx - singleStage) * queSize, queLen, perQueElemLen);
                 }
             for (auto sliceIdx = 0; sliceIdx < sliceNum; ++sliceIdx) {
