@@ -345,7 +345,7 @@ inline __aicore__ void InitTilingData(const __gm__ uint8_t *pTilingdata,
     tilingdata->maxRow = (*(const __gm__ uint32_t *)(pTilingdata + 60));
 #else
     AscendC::TPipe pipe;
-    __ubuf__ uint8_t *tilingdataInUb = nullptr;RmsNormAndRopeAndReshapeAndCacheTilingData
+    __ubuf__ uint8_t *tilingdataInUb = nullptr;
     CopyGmTilingToUb(tilingdataInUb, pTilingdata, sizeof(AsdOps::RmsNormAndRopeAndReshapeAndCacheTilingData), &pipe);
     AscendC::PipeBarrier<PIPE_ALL>();
     tilingdata->numRow = (*(__ubuf__ uint32_t *)(tilingdataInUb + 0));
