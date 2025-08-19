@@ -63,12 +63,8 @@ class TestStridedBatchMatmulOperation(operation_test.OperationTest):
         return torch.allclose(out_tensor, golden_out_tensor, rtol=0.001, atol=0.001)
 
     def test_add_bmm1(self): #bmm2_grad1
-        if  operation_test.get_soc_version() == 'Ascend310B':
-            print("this testcase don't supports Ascend310B")
-            return True
-
-        if  operation_test.get_soc_version() == 'Ascend310P':
-            print("this testcase don't supports Ascend310P")
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
             return True
 
         batch = random.randint(1, 8)
@@ -103,12 +99,8 @@ class TestStridedBatchMatmulOperation(operation_test.OperationTest):
         self.execute(OP_NAME, OP_PARAM, input_tensor)
 
     def test_add_bmm1_grad1(self): #bmm2
-        if  operation_test.get_soc_version() == 'Ascend310B':
-            print("this testcase don't supports Ascend310B")
-            return True
-
-        if  operation_test.get_soc_version() == 'Ascend310P':
-            print("this testcase don't supports Ascend310P")
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
             return True
 
         batch = random.randint(1, 8)
@@ -144,12 +136,8 @@ class TestStridedBatchMatmulOperation(operation_test.OperationTest):
         self.execute(OP_NAME, OP_PARAM, input_tensor)
 
     def test_add_bmm2_grad2(self):
-        if  operation_test.get_soc_version() == 'Ascend310B':
-            print("this testcase don't supports Ascend310B")
-            return True
-
-        if  operation_test.get_soc_version() == 'Ascend310P':
-            print("this testcase don't supports Ascend310P")
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
             return True
 
         batch = random.randint(1, 8)
@@ -185,12 +173,8 @@ class TestStridedBatchMatmulOperation(operation_test.OperationTest):
         self.execute(OP_NAME, OP_PARAM, input_tensor)
 
     def test_add_bmm1_grad2(self):
-        if  operation_test.get_soc_version() == 'Ascend310B':
-            print("this testcase don't supports Ascend310B")
-            return True
-
-        if  operation_test.get_soc_version() == 'Ascend310P':
-            print("this testcase don't supports Ascend310P")
+        if not operation_test.get_soc_version() == 'Ascend910B':
+            print("this testcase only supports Ascend910B")
             return True
 
         batch = random.randint(1, 8)
