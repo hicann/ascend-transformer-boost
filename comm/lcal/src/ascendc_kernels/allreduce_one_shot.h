@@ -31,13 +31,13 @@ public:
         }
         atomOp = op;
         blockNum = blockNum / rankSize * rankSize;
-        if (blockIdx >= rankSize) {
+        if (blockIdx >= blockNum) {
             DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
             return;
         }
 
         corePerRank = blockNum / rankSize;
-        rankiDOfBlock = blockIdx / corePerRank;
+        rankIDOfBlock = blockIdx / corePerRank;
 
         dataDMAPerCore = len / rankSize / corePerRank / scaleNum * scaleNum;
         dataReducePerCore = len / corePerRank / scaleNum * scaleNum;
@@ -49,17 +49,17 @@ public:
 
         blockReduceNum = dataReducePerCore;
         if (blockIdx % corePerRank == corePerRank - 1) {
-            blockReduceNum = len - blockIdx * corePerRank * dataReducePerCore;
+            blockReduceNum = len - blockIdx % corePerRank * dataReducePerCore;
         }
 
         __gm__ U* curRankGm = (__gm__ U*)shareAddrs[rank] + IPC_DATA_OFFSET / sizeof(U);
         __gm__ U* peerRankGm = (__gm__ U*)shareAddrs[rankIDOfBlock] + IPC_DATA_OFFSET / sizeof(U);
-        __gm__ U* inputGm = (__gm__ U*)input;
-        __gm__ U* outputGm = (__gm__ U*)output;
+        __gm__ U* intputGm = (__gm__ U*)input;
+        __gm__ T* outputGm = (__gm__ U*)output;
 
-        srcInputGt.SetGlobalBuffer(inputGm + blockIdx * dataDMAPerCore);
+        srcInputGlobal.SetGlobalBuffer(inputGm + blockIdx * dataDMAPerCore);
         dstIPCGlobal.SetGlobalBuffer(curRankGm + blockIdx * dataDMAPerCore);
-        copyOutGlobal.SetGlobalBuffer(outputGm + blockIdx * dataDMAPerCore);
+        copyOutputGlobal.SetGlobalBuffer(outputGm + blockIdx * dataDMAPerCore);
         srcIPCGlobal.SetGlobalBuffer(peerRankGm + blockIdx % corePerRank * dataReducePerCore);
         dstOutputGlobal.SetGlobalBuffer(outputGm + blockIdx % corePerRank * dataReducePerCore);
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
@@ -68,7 +68,7 @@ public:
     FORCE_INLINE_AICORE void Process()
     {
         DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
-        if (blockIdx >= rankSize) {
+        if (blockIdx >= blockNum) {
             DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
             return;
         }
@@ -78,22 +78,16 @@ public:
         sync.WaitRankInnerFlag(magic, 1, rank);
         sync.WaitRankInnerFlag(magic, 1, rankIDOfBlock);
         if (rankIDOfBlock != rank) {
-            if constexpr (std::is_same_v<T, U>) {
+            if constexpr (!std::is_same_v<T, U>) {
                 if (!isEnableScale) {
-                    Collectives::CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomop);
+                    Collectives::CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomOp);
                 } else if (!isVectorScale){
-                    CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomop, firstScale, offset);
+                    CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomOp, firstScale, offset);
                 } else {
-                    CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomop, scaleGt, scaleNum, offset);
+                    CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomOp, scaleGt, scaleNum, offset);
                 }
             } else {
-                Collectives::CpGM2GM<T, U>(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomop);
-            }
-        
-            } else {
-                GlobalTensor<U> inputIpcGtTmp;
-                inputIpcGtTmp.SetGlobalBuffer((__gm__ U*)inputIpcGt.GetPhyAddr());
-                Collectives::CpGM2GM(inputIpcGtTmp, inputGt, dataNumPreBlock, COPYONLY);
+                Collectives::CpGM2GM<T, U>(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomOp);
             }
         }
         DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
@@ -101,17 +95,17 @@ public:
 
     FORCE_INLINE_AICORE void CpInputToBuffAndOutput()
     {
-        Collectives::CpGM2GM<U>(dstOutputGlobal, srcInputGlobal, blockDataNum, COPYONLY);
-        if constexpr (std::is_same_v<T, U>) {
+        Collectives::CpGM2GM<U>(dstIPCGlobal, srcInputGlobal, blockDataNum, COPYONLY);
+        if constexpr (!std::is_same_v<T, U>) {
             if (!isEnableScale) {
-                Collectives::CpGM2GM(copyOutputGt, srcInputGlobal, blockDataNum, COPYONLY);
+                Collectives::CpGM2GM(copyOutputGlobal, srcInputGlobal, blockDataNum, COPYONLY);
             } else if (!isVectorScale){
-                CpGM2GM(copyOutputGt, srcInputGlobal, blockDataNum, COPYONLY, firstScale, offset);
+                CpGM2GM(copyOutputGlobal, srcInputGlobal, blockDataNum, COPYONLY, firstScale, offset);
             } else {
-                CpGM2GM(copyOutputGt, srcInputGlobal, blockDataNum, COPYONLY, scaleGt, scaleNum, offset);
+                CpGM2GM(copyOutputGlobal, srcInputGlobal, blockDataNum, COPYONLY, scaleGt, scaleNum, offset);
             }
         } else {
-            Collectives::CpGM2GM<T, U>(copyOutputGt, srcInputGlobal, blockDataNum, -1);
+            Collectives::CpGM2GM<T, U>(copyOutputGlobal, srcInputGlobal, blockDataNum, -1);
         }
     }
 
@@ -140,10 +134,10 @@ private:
     FORCE_INLINE_AICORE void BuildScaleOffset(GM_ADDR scale, int64_t scaleCount, GM_ADDR offset) 
     {
         if (scale != nullptr && offset != nullptr) {
+            this->offset =* reinterpret_cast<__gm__ T*>(offset);
             scaleGt.SetGlobalBuffer((__gm__ T*)scale);
             this->firstScale = scaleGt.GetValue(0);
             this->scaleNum = scaleCount < 1 ? 1 : scaleCount;
-            this->offset =* reinterpret_cast<__gm__ T*>(offset);
             isVectorScale = scaleCount > 1;
             isEnableScale = scaleCount > 0 && !(*(uint16_t *)(&(this->offset)) == 0 &&
                 scaleCount == 1 && *(uint16_t *)(&firstScale) == *(uint16_t *)(&oneCast));
