@@ -46,7 +46,7 @@ public:
             "OpParam is invalid", return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
             
         auto opParam = AnyCast<OpParam::GenAttentionMask>(launchParam.GetParam());
-        MKI_LOG(INFO) << "infer shape param: " << param.headNum;
+        MKI_LOG(INFO) << "infer shape param: " << opParam.headNum;
         MKI_CHECK(CheckGenAttentionMask(launchParam), "Failed to check launch param",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Failed to check launch param"));
         int64_t outdims = 0;
