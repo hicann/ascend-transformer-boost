@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef ALL2ALL_HIERARCHY_H
-#define ALL2ALL_HIERARCHY_H
+#ifndef LCCL_ALL2ALL_HIERARCHY_H
+#define LCCL_ALL2ALL_HIERARCHY_H
 
 #include "collectives.h"
 #include "sync_collectives.h"
@@ -27,13 +27,14 @@ class All2AllHierarchy : protected Collectives {
     constexpr static int64_t CORE_NUM_PER_STAGE = 16;
     constexpr static int64_t MULTI_RANK_SIZE = CORE_NUM_PER_STAGE;
     constexpr static int64_t PRODUCER_CORE = 1;
-    constexpr static int64_t COMSUMER_CORE = 2;
+    constexpr static int64_t CONSUMER_CORE = 2;
     static const int64_t DIE_CHANGE = 1;
 
 public:
     FORCE_INLINE_AICORE All2AllHierarchy(int rank, int rankSize, uint32_t extraFlag) 
         : Collectives(rank, rankSize, extraFlag) {}
-    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN()) {
+    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN()) 
+    {
         Collectives::Init(KERNELS_ARGS_CALL());
         this->input = (__gm__ T *) input;
         this->output = (__gm__ T *) output;
@@ -60,7 +61,7 @@ private:
             queNum = rankSize;
         }
         if (len < perQueElemLen) {
-            coreNumPerStage = 1;
+            coreNumPerRank = 1;
         }
         perQueElemLen = IPC_BUFF_MAX_SIZE / queNum / QUEUE_DEPTH / sizeof(T);   
         queLen = perQueElemLen * QUEUE_DEPTH;
@@ -78,16 +79,16 @@ private:
         rankNumPerCore = CeilDiv(rankSize, coreNumPerStage);
         flagNumPerStage = rankSize;
         groupCore = (rank / coreNumPerStage) * coreNumPerStage;
-        if (blockIdx < coreNumPerStage) [
+        if (blockIdx < coreNumPerStage) {
             coreGroup = PRODUCER_CORE;
-            for (auto i = 0; i < rankNumPerStage; ++i) {
-                groupCoreIdx[i] = (groupCore + i * coreNumPerRank) % rankSize + blockIdx;
+            for (auto i = 0; i < rankNumPerCore; ++i) {
+                groupCoreIdx[i] = (groupCore + i * coreNumPerStage) % rankSize + blockIdx;
             }
-        ] else if (blockIdx < coreNumPerStage + coreNumPerStage) {
-            coreGroup = COMSUMER_CORE;
-            for (auto i = 0; i < rankNumPerStage; ++i) {
+        } else if (blockIdx < coreNumPerStage + coreNumPerStage) {
+            coreGroup = CONSUMER_CORE;
+            for (auto i = 0; i < rankNumPerCore; ++i) {
                 int64_t prefix = (groupCore - i * coreNumPerStage) >= 0 ?
-                    (groupCore - i * coreNumPerStage) : groupCore + ((rankNumPerCore - 1) * coreNumPerStage);
+                    (groupCore - i * coreNumPerStage) : groupCore + ((rankNumPerCore - i) * coreNumPerStage);
                 groupCoreIdx[i] = prefix + blockIdx - coreNumPerStage;
             }
         }
@@ -98,7 +99,7 @@ private:
         ipcDataNumPreBlock = curRankDataNum;
         if (coreGroup == PRODUCER_CORE) {
             for (auto i = 0; i < rankNumPerCore; ++i) {
-                if (groupCoreIdx[i] % SIO = rank % SIO) {
+                if (groupCoreIdx[i] % SIO == rank % SIO) {
                     srcInnerQue[i].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                                 (groupCoreIdx[i] % coreNumPerStage) * queSize, queLen, perQueElemLen);
                 } else {
@@ -107,7 +108,7 @@ private:
                 }
                 sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);
             }
-        } else if (coreGroup = CONSUMER_CORE) {
+        } else if (coreGroup == CONSUMER_CORE) {
             for (auto i = 0; i < rankNumPerCore; ++i) {
                 computePullRank(groupCoreIdx[i], rank);
                 if (rank % SIO == 0) {
@@ -149,6 +150,17 @@ private:
             writeGt = srcInnerQue[idx].EnQue();
             if(copyLen > 0) {
                 CpGM2GMPingPong<T>(copyLen * sizeof(T), inputGt[sliceIdx * perQueElemLen], writeGt, Op::COPYONLY);
+                sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, groupCoreIdx[idx] + (rank - sioRank), rank);
+            }
+        } else {
+            if (idx > 0) {
+                sync.WaitSyncFlag(magic, sliceIdx + sliceNum * (idx - 1), 
+                    groupCoreIdx[idx - 1] + flagNumPerStage, rank);
+            }
+            SrcSioQue[idx].DeQue(rank, groupCoreIdx[idx] + flagNumPerStage);
+            writeGt = SrcSioQue[idx].EnQue();
+            if(copyLen > 0) {
+                CpGM2GMPingPong<T>(copyLen * sizeof(T), inputGt[sliceIdx * perQueElemLen], writeGt, Op::COPYONLY);
                 sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, groupCoreIdx[idx] + (rank - sioRank), sioRank);
             }
         }
@@ -163,7 +175,7 @@ private:
         }
     }
 
-    FORCE_INLINE_AICORE void computePullRank(int64_t target, int64_t rank)
+    FORCE_INLINE_AICORE void computePullRank(int64_t& target, int64_t rank)
     {
         if (rank % SIO == 0) {
             pullRank = (target / SIO) * SIO;
@@ -187,7 +199,7 @@ private:
         readGt = pullQue[idx].ReadFront();
         sync.WaitSyncFlag(magic, sliceIdx + sliceNum * idx, cpOffset, pullRank);
         if (copyLen > 0) {
-            CpGMPingPong2GM<T>(copyLen * sizeof(T), readGt, outputGt[sliceIdx * perQueElemLen], Op::COPYONLY);
+            CpGM2GMPingPong<T>(copyLen * sizeof(T), readGt, outputGt[sliceIdx * perQueElemLen], Op::COPYONLY);
         }
         sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, cpOffset + flagNumPerStage, pullRank);
     }
@@ -207,7 +219,7 @@ private:
     int64_t ipcDataNumPreBlock;
     int64_t pullRank;
     int64_t pullOffset;
-    int64_t sioRank = (rank % 2 == 0 ? rank + 1:rank - 1);
+    int64_t sioRank = (rank % 2 == 0) ? rank + 1:rank - 1;
     int64_t cpOffset;
     int64_t perQueElemLen;
     int64_t queLen;
