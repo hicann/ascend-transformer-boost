@@ -124,7 +124,7 @@ atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &i
         } else if (inShape.size() == 2) {
             nzShape = {1, inShape[1] / n0, inShape[0], n0};
         } else {
-            std::cout << "shape fimensions invalid!" << std::endl;
+            std::cout << "shape dimensions invalid!" << std::endl;
             return atb::ErrorType::ERROR_INVALID_TENSOR_DIM_NUM;
         }
     }
