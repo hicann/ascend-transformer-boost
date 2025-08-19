@@ -55,9 +55,9 @@ public:
         __gm__ U* curRankGm = (__gm__ U*)shareAddrs[rank] + IPC_DATA_OFFSET / sizeof(U);
         __gm__ U* peerRankGm = (__gm__ U*)shareAddrs[rankIDOfBlock] + IPC_DATA_OFFSET / sizeof(U);
         __gm__ U* intputGm = (__gm__ U*)input;
-        __gm__ T* outputGm = (__gm__ U*)output;
+        __gm__ T* outputGm = (__gm__ T*)output;
 
-        srcInputGlobal.SetGlobalBuffer(inputGm + blockIdx * dataDMAPerCore);
+        srcInputGlobal.SetGlobalBuffer(intputGm + blockIdx * dataDMAPerCore);
         dstIPCGlobal.SetGlobalBuffer(curRankGm + blockIdx * dataDMAPerCore);
         copyOutputGlobal.SetGlobalBuffer(outputGm + blockIdx * dataDMAPerCore);
         srcIPCGlobal.SetGlobalBuffer(peerRankGm + blockIdx % corePerRank * dataReducePerCore);
