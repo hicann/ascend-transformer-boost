@@ -150,14 +150,14 @@ private:
             writeGt = srcInnerQue[idx].EnQue();
             if(copyLen > 0) {
                 CpGM2GMPingPong<T>(copyLen * sizeof(T), inputGt[sliceIdx * perQueElemLen], writeGt, Op::COPYONLY);
-                sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, groupCoreIdx[idx] + (rank - sioRank), rank);
+                sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, groupCoreIdx[idx], rank);
             }
         } else {
             if (idx > 0) {
                 sync.WaitSyncFlag(magic, sliceIdx + sliceNum * (idx - 1), 
-                    groupCoreIdx[idx - 1] + flagNumPerStage, rank);
+                    groupCoreIdx[idx - 1] + flagNumPerStage + (rank - sioRank), sioRank);
             }
-            SrcSioQue[idx].DeQue(rank, groupCoreIdx[idx] + flagNumPerStage);
+            SrcSioQue[idx].DeQue(sioRank, groupCoreIdx[idx] + (rank - sioRank) + flagNumPerStage);
             writeGt = SrcSioQue[idx].EnQue();
             if(copyLen > 0) {
                 CpGM2GMPingPong<T>(copyLen * sizeof(T), inputGt[sliceIdx * perQueElemLen], writeGt, Op::COPYONLY);
