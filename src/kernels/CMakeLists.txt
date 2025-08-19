@@ -24,3 +24,6 @@ include_directories(
 
 add_subdirectory(mixkernels)
 add_subdirectory(kernels)
+if (BUILD_TBE_ADAPTER)
+    add_subdirectory(tbe_adapter)
+endif()
