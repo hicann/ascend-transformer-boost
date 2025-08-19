@@ -109,7 +109,7 @@ extern "C" __global__ __aicore__ void LcalAllGather_##type##suffix(KERNELS_ARGS_
             LcalAllGather<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } else { \
             LcalAllGatherBigData<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
-        }
+        } \
     }\
     } \
 }
@@ -137,7 +137,7 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
     } else if ((extraFlag & ExtraFlag::QUANT_FP16) != 0 && std::is_same_v<type, int8_t>) { \
         if (len * sizeof(type) <= oneshotDataSize) { \
             CLASS_OP_QUANT_LAUNCH(AllReduceOneShot, half, int8_t); \
-        } else if (len * sizeof(type) <= quatSmallDataSize) { \
+        } else if (len * sizeof(type) <= quantSmallDataSize) { \
             CLASS_OP_QUANT_LAUNCH(AllReduceTwoShot, half, int8_t); \
         } else { \
             CLASS_OP_QUANT_LAUNCH(AllReduceBigData, half, int8_t); \
@@ -153,8 +153,8 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
         const bool isAivNumSupport = ((extraFlag & ExtraFlag::IS_GREATER_THAN_40_AIV) != 0 ||  \
             rankSize * threeStepNum <= maxAivNum); \
         if ((extraFlag & ExtraFlag::TOPO_910_93) != 0) { \
-            if (rankSize % quickOneshotRankSize == 0 || rankSize > quickOneshotRankSize || \
-                (rankSize <= rankSize910a3 || len * sizeof(type) <= smallDataSize910a3 && isAivNumSupport)) { \
+            if (rankSize % quickOneshotRankSize == 1 || rankSize == quickOneshotRankSize || \
+                (rankSize <= rankSize910a3 && len * sizeof(type) <= smallDataSize910a3 && isAivNumSupport)) { \
                 LcalAllReduceDeterministicBigData<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
             } else { \
                 CLASS_OP_LAUNCH(AllReduceHierarchyDoubleRing, type); \
@@ -165,7 +165,7 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
             LcalAllReduceDeterministicBigData<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } \
     } else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && lcalBlockNum != rankSize && \
-        (rankSize == quickOneshotRankSize && len * sizeof(type) > smallDataSize910a3)) { \
+        (rankSize == quickOneshotRankSize || len * sizeof(type) > smallDataSize910a3)) { \
         if (rankSize == quickOneshotRankSize) { \
             LcalAllReduce2npuBigDataWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } else if (rankSize % quickOneshotRankSize == 0) { \
@@ -216,17 +216,17 @@ extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_A
     constexpr int32_t a3BigDataSize = 32 * 1024 * 1024; \
     constexpr int32_t a3SupportRankSize = 4; \
     constexpr int32_t smallRankSize = 8; \ 
-    const bool isDbRing = (rankSize == a3SupportRankSize || rankSize == smallRankSize) && 
+    const bool isDbRing = (rankSize == a3SupportRankSize || rankSize == smallRankSize) &&  \
         (len * sizeof(type) * smallRankSize > cceSmallDataSize && \
-        len * sizeof(type) * smallRankSzie <= a3BigDataSize); \
+        len * sizeof(type) * smallRankSize <= a3BigDataSize); \
     __gm__ type * shareAddrs[LCAL_MAX_RANK_SIZE]; \
     GET_IPC_MEM_ARGS(type); \
     if ((extraFlag & ExtraFlag::TOPO_PCIE) != 0) { \
-        LcalReduceScatterBigDataWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
-    } else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && (rankSize > smallRankSize || isDbRing) { \
+        LcalReduceScatterBigDataWrite<type>(ALLREDUCE_ARGS_CALL(type)); \
+    } else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && (rankSize > smallRankSize || isDbRing)) { \
         if (isDbRing) { \
             CLASS_OP_LAUNCH(ReduceScatterHierarchyDoubleRing, type); \
-        } else if (len * sizeof(type) < SMALL_DATA_SIZE) { \
+        } else if (len * sizeof(type) <= SMALL_DATA_SIZE) { \
             CLASS_OP_LAUNCH(ReduceScatter, type); \
         } else { \
             CLASS_OP_LAUNCH(ReduceScatterBigData91093, type); \
@@ -234,11 +234,12 @@ extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_A
     } else { \
         if (rankSize == quickOneshotRankSize && len * sizeof(type) < SIZE_OF_8M) { \
             LcalReduceScatterWrite<type>(ALLREDUCE_ARGS_CALL(type)); \
-        }  else if (rankSize > quickOneshotRankSize && len * sizeof(type) < cceSmallDataSize) || \
+        }  else if (rankSize > quickOneshotRankSize && len * sizeof(type) < cceSmallDataSize){\
             LcalReduceScatter<type>(ALLREDUCE_ARGS_CALL(type)); \
         } else { \
             LcalReduceScatterBigData<type>(ALLREDUCE_ARGS_CALL(type)); \
         } \
     } \
+    }\
 }
-
+#endif
