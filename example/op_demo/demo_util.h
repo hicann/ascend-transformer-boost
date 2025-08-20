@@ -109,10 +109,12 @@ atb::Status CastOp(atb::Context *contextPtr, aclrtStream stream, const atb::Tens
 atb::Status GetShape(const aclDataType tensorType, const std::vector<int64_t> &inShape, std::vector<int64_t> &ndShape,
                      std::vector<int64_t> &nzShape)
 {
-    int64_t n0 = 16; // 维度转换参数
+    constexpr uint64_t DIM_TRAN_PARAM_INT8 = 32;
+    constexpr uint64_t DIM_TRAN_PARAM_BF16_FP16 = 16;
+    int64_t n0 = DIM_TRAN_PARAM_BF16_FP16; // 维度转换参数
     // 输入tensor数据类型为ACL_INT8时，维度转换参数取32
     if (tensorType == ACL_INT8) {
-        n0 = 32;
+        n0 = DIM_TRAN_PARAM_INT8;
     }
     if (inShape.size() == 4) { // inShape是NZ格式tensor的shape
         nzShape.assign(inShape.begin(), inShape.end());
