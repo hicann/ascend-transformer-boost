@@ -39,20 +39,20 @@ target_compile_options(normal_lccl_op2_tmp PRIVATE
 
 add_custom_target(normal_lccl_op1
         COMMAND ${CMAKE_CCE_LINKER} -m aicorelinux -Ttext=0
-        "CMakeFiles/normal_lccl_op1.dir/lccl_op1.cpp.o"
+        "CMakeFiles/normal_lccl_op1_tmp.dir/lccl_op1.cpp.o"
         ${SANITIZER_DEPEND_LIBS}
-        --static -o "CMakeFiles/normal_lccl_op1_tmp.dir/lccl_op1.cpp.o"   --allow-multiple-definition
+        --static -o "CMakeFiles/normal_lccl_op1.dir/lccl_op1.cpp.o"   --allow-multiple-definition
 )
 add_dependencies(normal_lccl_op1 normal_lccl_op1_tmp)
 add_custom_target(normal_lccl_op2
         COMMAND ${CMAKE_CCE_LINKER} -m aicorelinux -Ttext=0
-        "CMakeFiles/normal_lccl_op2.dir/lccl_op2.cpp.o"
+        "CMakeFiles/normal_lccl_op2_tmp.dir/lccl_op2.cpp.o"
         ${SANITIZER_DEPEND_LIBS}
-        --static -o "CMakeFiles/normal_lccl_op2_tmp.dir/lccl_op2.cpp.o"   --allow-multiple-definition
+        --static -o "CMakeFiles/normal_lccl_op2.dir/lccl_op2.cpp.o"   --allow-multiple-definition
 )
 add_dependencies(normal_lccl_op2 normal_lccl_op2_tmp)
 
-# 带dum的mix算子
+# 带dump的mix算子
 add_library(dump_lccl_op1_tmp_aic OBJECT
             lccl_op1.cpp
             sync_collectives.h
@@ -65,14 +65,14 @@ add_library(dump_lccl_op1_tmp_aiv OBJECT
 )
 target_compile_options(dump_lccl_op1_tmp_aic PRIVATE
         ${CCE_COMPILE_OPTION}
-        --cce-aicore-arch=${AIV_ARCH}
-        --cce-long-call=true
+        --cce-aicore-arch=${AIC_ARCH}
         -DENABLE_LCCL_DUMP
         -DENABLE_LCCL_MIX
 )
 target_compile_options(dump_lccl_op1_tmp_aiv PRIVATE
         ${CCE_COMPILE_OPTION}
-        --cce-aicore-arch=${AIC_ARCH}
+        --cce-aicore-arch=${AIV_ARCH}
+        --cce-long-call=true
         -DENABLE_LCCL_DUMP
         -DENABLE_LCCL_MIX
 )
@@ -186,7 +186,7 @@ add_dependencies(mix_lccl_op2 mix_lccl_op2_tmp_aic mix_lccl_op2_tmp_aiv)
 add_custom_target(lccl_op
         COMMAND echo "generating lccl op ... ENABLE_LCCL_910A5_OP=${ENABLE_LCCL_910A5_OP}"
         COMMAND rm -f lccl_op.o
-        COMMAND find CMakeFiles -name "*.0" ! -path "*tmp*" | sort | xargs -I {} sed '1s/^/DDDD/' {} >> lccl_op.o
+        COMMAND find CMakeFiles -name "*.o" ! -path "*tmp*" | sort | xargs -I {} sed '1s/^/DDDD/' {} >> lccl_op.o
         COMMAND truncate -c -s ${LCAL_1OP_BIN_SIZE} lccl_op.o
         COMMAND rm -f ${LCAL_CCE_PATH}
 )
