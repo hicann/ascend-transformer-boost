@@ -54,16 +54,60 @@ public:
     }
     FORCE_INLINE_AICORE void Process()
     {
-
+        if (extraFlag & ExtraFlag::RDMA) {
+            shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[rank % localRankSize] + baseOffsetSize) + 
+                len * globalRank + offsetToShare, countToShare);
+            if (countToShare > 0) {
+                CpGM2GMPingPong<T>(countToShare * sizeof(T), inputGm, shareGm, COPYONLY);
+            }
+            sync.SetInnerFlag(magic, STEP1);
+            sync.WaitRankInnerFlag(magic, STEP1, blockRank);
+            if (blockIdx >= useCoreNumToOutput) {
+                return;
+            }
+            outputGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[globalRank % localRankSize] + baseOffsetSize) +
+                len * (globalRank / localRankSize) * localRankSize + offsetToOutput, countToOutput);
+            shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[blockRank] + baseOffsetSize) +
+                len * (globalRank / localRankSize) * localRankSize + offsetToOutput, countToOutput);
+            if (countToOutput > 0 && blockRank != rank) {
+                CpGMPingPong2GM<T>(countToOutput * sizeof(T), shareGm, outputGm, COPYONLY);
+            }
+        } else {
+            shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[rank] + baseOffsetSize) + offsetToShare, countToShare);
+            if (countToShare > 0) {
+                CpGM2GM<T>(shareGm, inputGm, countToShare, COPYONLY);
+            }
+            sync.SetInnerFlag(magic, STEP1);
+            sync.WaitRankInnerFlag(magic, STEP1, blockRank);
+            if (blockIdx >= useCoreNumToOutput) {
+                return;
+            }
+            shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[blockRank] + baseOffsetSize) + offsetToOutput, countToOutput);
+            if (countToOutput > 0) {
+                CpGM2GM<T>(countToOutput * sizeof(T), shareGm, outputGm, COPYONLY);
+            }
+        }
     }     
 
 private:
 
-    FORCE_INLINE_AICORE void GetBlockDataCount()
+    FORCE_INLINE_AICORE void GetBlockDataCount(
+        const int64_t dataLen, const int64_t useBlockNum, int64_t& blockDataOffset, int64_t& blockDataCount)
     {
-
+        blockDataCount = CeilDiv(dataLen, useBlockNum);
+        blockDataCount = blockDataCount > MEM_DMA_UNIT_SIZE / sizeof(T) ?
+                         blockDataCount : MEM_DMA_UNIT_SIZE / sizeof(T);
+        blockDataOffset = blockIdx % useBlockNum * blockDataCount;
+        if (blockDataOffset >= dataLen) {
+            blockDataOffset = dataLen;
+            blockDataCount = 0;
+            return;
+        }
+        if (blockDataOffset + blockDataCount > dataLen) {
+            blockDataCount = dataLen - blockDataOffset;
+        }
     } 
-
+private:
     GlobalTensor<T> inputGm;
     GlobalTensor<T> outputGm;
     GlobalTensor<T> shareGm;
