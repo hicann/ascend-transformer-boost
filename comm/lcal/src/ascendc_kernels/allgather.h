@@ -39,13 +39,16 @@ public:
         inputGm.SetGlobalBuffer((__gm__ T*)input + offsetFromInput, countToShare);
         if (extraFlag & ExtraFlag::RDMA) {
             blockNumPerRank = blockNum / localRankSize;
-            useCoreNumOutput = blockNumPerRank * rankSize;
+            useCoreNumToOutput = blockNumPerRank * localRankSize;
+        } else {
+            blockNumPerRank = blockNum / rankSize;
+            useCoreNumToOutput = blockNumPerRank * localRankSize;
         }
         if (blockIdx >= useCoreNumToOutput) {
             return;
         }
         GetBlockDataCount(len, blockNumPerRank, offsetFromShare, countToOutput);
-        blockrank = blockIdx / blockNumPerRank;
+        blockRank = blockIdx / blockNumPerRank;
         offsetToOutput = blockRank * len + offsetFromShare;
 
         if ((extraFlag & ExtraFlag::RDMA) == 0) {
@@ -70,7 +73,7 @@ public:
             shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[blockRank] + baseOffsetSize) +
                 len * (globalRank / localRankSize) * localRankSize + offsetToOutput, countToOutput);
             if (countToOutput > 0 && blockRank != rank) {
-                CpGMPingPong2GM<T>(countToOutput * sizeof(T), shareGm, outputGm, COPYONLY);
+                CpGM2GMPingPong<T>(countToOutput * sizeof(T), shareGm, outputGm, COPYONLY);
             }
         } else {
             shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[rank] + baseOffsetSize) + offsetToShare, countToShare);
@@ -82,9 +85,10 @@ public:
             if (blockIdx >= useCoreNumToOutput) {
                 return;
             }
-            shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[blockRank] + baseOffsetSize) + offsetToOutput, countToOutput);
+            shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[blockRank] + baseOffsetSize) + offsetFromShare,
+                countToOutput);
             if (countToOutput > 0) {
-                CpGM2GM<T>(countToOutput * sizeof(T), shareGm, outputGm, COPYONLY);
+                CpGM2GM<T>(outputGm, shareGm, countToOutput, COPYONLY);
             }
         }
     }     
@@ -119,9 +123,9 @@ private:
     int64_t useCoreNumToOutput;
     int64_t blockNumPerRank;
     int64_t blockRank;
-    int64_t offsetFromShare;
+    int64_t offsetFromShare;;
     int64_t offsetToOutput;
-    int64_t countToOutPut; 
+    int64_t countToOutput; 
     int globalRank; 
     int globalRankSize;
     int localRankSize;
