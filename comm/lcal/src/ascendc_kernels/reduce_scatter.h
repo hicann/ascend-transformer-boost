@@ -15,7 +15,7 @@
 #include "collectives.h"
 using namespace AscendC;
 
-template<typenam T>
+template<typenae T>
 class ReduceScatter : protected Collectives {
 public:
     FORCE_INLINE_AICORE ReduceScatter(int rank, int rankSize, uint32_t extraFlag)
@@ -56,7 +56,7 @@ public:
         CpInputToBuffAndOutput();
         sync.SetInnerFlag(magic, 1);
         sync.WaitRankInnerFlag(magic, 1, rank);
-        sync.WaitRankInnerFlag(magic, 1, rankIDOfBlock, rank * corePerRank + blockIdx % corePerRank);
+        sync.WaitInnerFlag(magic, 1, rankIDOfBlock, rank * corePerRank + blockIdx % corePerRank);
         if (rankIDOfBlock != rank) {
             CpGM2GM<T>(dstOutputGlobal, srcIPCGlobal, blockDataNum, atomOp);
         }
@@ -65,10 +65,10 @@ public:
 
     FORCE_INLINE_AICORE void CpInputToBuffAndOutput()
     {
-        Collectives::CpGM2GM(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
-        if ((extraFlag & ExtraFlag::RDMA) == ExtraFlag::RDMA) {
-            if ((blockIdx >- rank * corePerRank) && (blockIdx < (rank * corePerRank + corePerRank))) {
-                CpGM2GM<T>(dstIPCGlobal, srcInputGlobal, blockDataNum, -1);
+        CpGM2GM(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
+        if ((extraFlag & ExtraFlag::RDMA) != ExtraFlag::RDMA) {
+            if ((blockIdx >= rank * corePerRank) && (blockIdx < (rank * corePerRank + corePerRank))) {
+                CpGM2GM<T>(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
             }
         }   
     }
