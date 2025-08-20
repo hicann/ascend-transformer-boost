@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifdef LCCL_IPC_QUEUE_H
+#ifndef LCCL_IPC_QUEUE_H
 #define LCCL_IPC_QUEUE_H
 #include "sync_collectives.h"
 using namespace AscendC;
@@ -54,7 +54,7 @@ public:
         if (checkBlock == -1) {
             checkBlock = blockIdx;
         }
-        sync->WaitInnerFlag(magic, front, checkRank, checkBlock);
+        sync->WaitInnerFlag(magic, count, checkRank, checkBlock);
         PipeBarrier<PIPE_ALL>();
         int64_t val = sync->GetInnerFlag(checkRank, checkBlock) & EVENT_ID_MASK;
         count = val + 1;
@@ -82,7 +82,7 @@ public:
         count = minIndex + 1;
         front = (minIndex + 1) % depth;
     }
-    FORCE_INLINE_AICORE void DeQue(int *rankList, int *blockIdxList, int checkBlock)
+    FORCE_INLINE_AICORE void DeQue(int *rankList, int *blockIdxList, int checkCount)
     {
         if (!Full()) {
             return;
@@ -111,13 +111,13 @@ public:
 
 private:
     int64_t magic;
-    int64_t depth;
-    int64_t front;
-    int64_t rear;
-    int64_t count;
-    int64_t blockNum;
+    uint64_t depth;
+    uint64_t front;
+    uint64_t rear;
+    uint64_t count;
+    uint64_t blockNum;
     GlobalTensor<T> buff;
     SyncCollectives *sync;
-    int64_t blockIdx;
+    int blockIdx;
 };
     
