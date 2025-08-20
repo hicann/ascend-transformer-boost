@@ -95,7 +95,7 @@ atb::Status AtbSelfAttentionPrefixEncoderGetWorkspaceSize(const aclTensor *query
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
     status = (*op)->Setup(pack, *workspaceSize, context);
-    ATB_CHECK(status == atb::NO_ERROR, "AtbSelfAttentionPrefixEncoder Setup failed!", return st);
+    ATB_CHECK(status == atb::NO_ERROR, "AtbSelfAttentionPrefixEncoder Setup failed!", return status);
     return atb::NO_ERROR;
 }
 
@@ -103,7 +103,7 @@ atb::Status AtbSelfAttentionPrefixEncoder(void *workspace, uint64_t workspaceSiz
                                           atb::Context *context)
 {
     ATB_CHECK(op != nullptr, "AtbSelfAttentionPrefixEncoder expect op pointer not to be null!",
-              return ERROR_INVALID_OPERATION_ADDR);
+              return atb::ERROR_INVALID_OPERATION_ADDR);
     atb::VariantPack pack;
     atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbSelfAttentionPrefixEncoder Execute failed!", return st);
