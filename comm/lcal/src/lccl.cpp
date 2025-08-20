@@ -59,7 +59,7 @@ uint32_t GetAllReduceDetermBlockNum(uint32_t rankSize, int64_t dataSize, uint32_
         const bool isAivNumSupport = ((extraFlag & ExtraFlag::IS_GREATER_THAN_40_AIV) != 0 ||
             rankSize * threeStepNum <= maxAivNum);
         if (rankSize % quickOneshotRankSize == 1 || rankSize == quickOneshotRankSize ||
-            (rankSize << rankSize910a3 && dataSize <= smallDataSize910a3 && isAivNumSupport)) {
+            (rankSize <= rankSize910a3 && dataSize <= smallDataSize910a3 && isAivNumSupport)) {
             return rankSize * threeStepNum;
         } else {
             return dbRingBlockNum;
@@ -97,7 +97,7 @@ uint32_t GetAllReduceBlockNum(uint32_t rankSize, int64_t dataSize, uint32_t extr
         return rankSize;
     }
 
-    if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 &&
+    if ((extraFlag & ExtraFlag::TOPO_910_93) != 0 && dataSize > smallDataSize910a3 &&
         (rankSize != quickOneshotRankSize)) {
         return rankSize % quickOneshotRankSize == 0 ? dbRingBlockNum : rankSize * threeStepNum;
     }
@@ -123,7 +123,7 @@ uint32_t GetReduceScatterBlockNum(uint32_t rankSize, int64_t dataSize, uint32_t 
         if (isDbRing) {
             return dbRingBlockNum;
         } else {
-            return dataSize < smallDataSize ? rankSize : fourStepBlockNum;
+            return dataSize <= smallDataSize ? rankSize : fourStepBlockNum;
         }
     } else {
         return (rankSize == quickOneshotRankSize || dataSize >= cceSmallDataSize) ? rankSize * twoBlockNum : rankSize;
@@ -156,7 +156,7 @@ uint32_t GetAllGatherBlockNum(uint32_t rankSize, int64_t dataSize, uint32_t extr
     constexpr uint32_t quickOneshotRankSize = 2;
     constexpr uint32_t allGatherHDBRingBlockNum = 32;
     constexpr uint32_t cceSmallDataSize = 2 * 1024 * 1024;
-    constexpr int32_t smallDataSize910a3 = 32 * 1024 * 1024;
+    constexpr int64_t smallDataSize910a3 = 32 * 1024 * 1024;
     constexpr uint32_t smallRankSize = 8;
 
     if ((extraFlag & ExtraFlag::TOPO_910B2C) != 0 && (rankSize == axRankSize)) {
@@ -215,11 +215,11 @@ uint32_t GetKernelBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
     if (cclType == LcalType::GATHER) {
         return gatherDefaultBlockNum;
     }
-    bool sendOrRecv = cclType == LcalType == LcalType::RECV || cclType == LcalType::SEND;
+    bool sendOrRecv = cclType == LcalType::RECV || cclType == LcalType::SEND;
     if (sendOrRecv) {
         return dataSize <= smallDataSize ? rankSizeLocal : rankSizeLocal * twoBlockNum;
     }
-    return twoBlockNum;
+    return twoStepBlockNum;
 }
 
 uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize,
@@ -251,8 +251,8 @@ int Lccl::LoopBack(const void *sendBuff, void *recvBuff, int64_t count, HcclData
     return LCAL_SUCCESS;
 }
 
-int AllReduce(void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType, HcclReduceOp op,
-    aclrtStream stream, HcclDataType outputDataType, const void *scale, int64_t scaleCount, const void *offset = nullptr) const
+int Lccl::AllReduce(void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType, HcclReduceOp op,
+    aclrtStream stream, HcclDataType outputDataType, const void *scale, int64_t scaleCount, const void *offset) const
 {
     if (!CheckBuff(sendBuff, recvBuff)) {
         return LCAL_ERROR_PARA_CHECK_FAIL;
@@ -270,14 +270,14 @@ int AllReduce(void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataTy
         report = std::make_unique<ReportTiming>("LcclAllReduce", comm_->commDomain_, count, dataType);
     }
     if ((dataType == HCCL_DATA_TYPE_INT8 && outputDataType == HCCL_DATA_TYPE_FP16) !=
-        static_cast<bool>(comm->commArgs_.extraFlag & ExtraFlag::QUANT_FP16)) {
+        static_cast<bool>(comm_->commArgs_.extraFlag & ExtraFlag::QUANT_FP16)) {
         if (dataType == HCCL_DATA_TYPE_INT8 && outputDataType == HCCL_DATA_TYPE_FP16) {
-            comm_->commArgs_.extraFlag != ExtraFlag::QUANT_FP16;
+            comm_->commArgs_.extraFlag |= ExtraFlag::QUANT_FP16;
         } else {
             comm_->commArgs_.extraFlag &= ~ExtraFlag::QUANT_FP16;
         }
 
-        auto ret = aclrtMemcpyAsync(comm->commArgsPtr_, sizeof(CommArgs), &(comm_->commArgs_), sizeof(CommArgs),
+        auto ret = aclrtMemcpyAsync(comm_->commArgsPtr_, sizeof(CommArgs), &(comm_->commArgs_), sizeof(CommArgs),
             ACL_MEMCPY_HOST_TO_DEVICE, stream);
         if (ret != ACL_SUCCESS) {
             MKI_LOG(ERROR) << "aclrtMemcpy err " << __LINE__ << " " << ret;
@@ -302,17 +302,17 @@ int AllReduce(void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataTy
     if ((comm_->commArgs_.extraFlag & (ExtraFlag::QUANT_DELAY | ExtraFlag::QUANT_CURRENT)) != 0) {
         uint32_t blockDim = GetBlockNum(LcalType::ALL_REDUCE, rankSize_, Count2Size(count, dataType),
                                         comm_->localRankSize_, comm_->commArgs_.extraFlag);
-        AscendCCLKernelArgs ascendArgs = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, op, 0, 0, scale,
-                                          scaleCount};
+        AscendCCLKernelArgs args = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, op, 0, 0, scale,
+                                    scaleCount};
         comm_->magic_++;
-        return LoadMTE(LcalType::ALL_REDUCE, ascendArgs, blockDim, dataType, stream);
+        return LoadMTE(LcalType::ALL_REDUCE, args, blockDim, dataType, stream);
     }
 
     uint32_t blockDim = GetBlockNum(LcalType::ALL_REDUCE, rankSize_, Count2Size(count, dataType),
                                     comm_->localRankSize_, comm_->commArgs_.extraFlag);
-    AscendCCLKernelArgs ascendArgs = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, op, 0};
+    AscendCCLKernelArgs args = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, op, 0};
     comm_->magic_++;
-    return LoadMTE(LcalType::ALL_REDUCE, ascendArgs, blockDim, dataType, stream);
+    return LoadMTE(LcalType::ALL_REDUCE, args, blockDim, dataType, stream);
 }
 
 bool Lccl::CheckDataType(const HcclDataType &dataType) const
@@ -354,9 +354,9 @@ int Lccl::ReduceScatter(void *sendBuff, void *recvBuff, int64_t count, HcclDataT
     if (CheckDataType(dataType) and op != HCCL_REDUCE_PROD) {
         uint32_t blockDim = GetBlockNum(LcalType::REDUCE_SCATTER, rankSize_, Count2Size(count, dataType),
                                         comm_->localRankSize_, comm_->commArgs_.extraFlag);
-        AscendCCLKernelArgs ascendArgs = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, op};
+        AscendCCLKernelArgs args = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, op};
         comm_->magic_++;
-        return LoadMTE(LcalType::REDUCE_SCATTER, ascendArgs, blockDim, dataType, stream);    
+        return LoadMTE(LcalType::REDUCE_SCATTER, args, blockDim, dataType, stream);    
     }
     MKI_LOG(ERROR) << "Lccl not support.";
     return LCAL_ERROR_NOT_INITIALIZED;
@@ -372,16 +372,16 @@ int Lccl::AllGather(void *sendBuff, void *recvBuff, int64_t count, HcclDataType 
     }
     std::unique_ptr<ReportTiming> report;
     if (comm_->isEnableMsprofOp_) {
-        report = std::make_unique<ReportTiming>("LcclAllGahter", comm_->rank_, true,
+        report = std::make_unique<ReportTiming>("LcclAllGather", comm_->rank_, true,
             comm_->commArgs_.dumpAddr, stream);
     } else {
-        report = std::make_unique<ReportTiming>("LcclAllGahter", comm_->commDomain_, count, dataType);
+        report = std::make_unique<ReportTiming>("LcclAllGather", comm_->commDomain_, count, dataType);
     }
-    AscendCCLKernelArgs ascendArgs = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, 0, 0};
+    AscendCCLKernelArgs args = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, 0, 0};
     comm_->magic_++;
     uint32_t blockDim = GetBlockNum(LcalType::ALL_GATHER, rankSize_, Count2Size(count, dataType),
                                     comm_->localRankSize_, comm_->commArgs_.extraFlag);
-    return LoadMTE(LcalType::ALL_GATHER, ascendArgs, blockDim, dataType, stream);
+    return LoadMTE(LcalType::ALL_GATHER, args, blockDim, dataType, stream);
 }
 
 int Lccl::All2All(void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType, aclrtStream stream) const
@@ -394,15 +394,15 @@ int Lccl::All2All(void *sendBuff, void *recvBuff, int64_t count, HcclDataType da
         return LoopBack(sendBuff, recvBuff, count, dataType, stream);
     }
     ReportTiming report("LcclAll2All", comm_->commDomain_, count, dataType);
-    AscendCCLKernelArgs ascendArgs = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, 0, 0, 0};
+    AscendCCLKernelArgs args = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, 0, 0, 0};
     comm_->magic_++;
     uint32_t blockDim = GetBlockNum(LcalType::ALL2ALL, rankSize_, Count2Size(count, dataType),
                                     comm_->localRankSize_, comm_->commArgs_.extraFlag);
-    return LoadMTE(LcalType::ALL2ALL, ascendArgs, blockDim, dataType, stream);    
+    return LoadMTE(LcalType::ALL2ALL, args, blockDim, dataType, stream);    
 }
 
-int Lccl::All2All(void *sendBuff, void *recvBuff, int64_t count, int burstLen,
-    int stride, HcclDataType dataType, aclrtStream stream) const
+int Lccl::All2All(void *sendBuff, void *recvBuff, int64_t count, int32_t burstLen,
+    int32_t stride, HcclDataType dataType, aclrtStream stream) const
 {
     if (!CheckBuff(sendBuff, recvBuff)) {
         return LCAL_ERROR_PARA_CHECK_FAIL;
@@ -412,11 +412,11 @@ int Lccl::All2All(void *sendBuff, void *recvBuff, int64_t count, int burstLen,
     }
     ReportTiming report("LcclAll2AllTranspose", comm_->commDomain_, count, dataType);
 
-    AscendCCLKernelArgs args = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, burstLen, stride};
+    AscendCCLKernelArgs args = { sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, burstLen, stride};
     comm_->magic_++;
     uint32_t blockDim = GetBlockNum(LcalType::ALL2ALL, rankSize_, Count2Size(count, dataType),
                                     comm_->localRankSize_, comm_->commArgs_.extraFlag);
-    return LoadMTE(LcalType::ALL2ALL, ascendArgs, blockDim, dataType, stream);
+    return LoadMTE(LcalType::ALL2ALL, args, blockDim, dataType, stream);
 }
 
 int64_t GetSizeByHcclDataType(const HcclDataType &dataType)
@@ -458,15 +458,15 @@ int Lccl::Broadcast(void *buff, int64_t count, HcclDataType dataType, int32_t ro
         MKI_LOG(ERROR) << "Broadcast does not support ranksize over 8";
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
-    if (!CheckBuff(sendBuff, recvBuff)) {
+    if (!CheckBuff(buff, buff)) {
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
     ReportTiming report("LcclBroadcast", comm_->commDomain_, count, dataType);
-    AscendCCLKernelArgs args = {sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_};
+    AscendCCLKernelArgs args = {buff, buff, comm_->commArgsPtr_, count, comm_->magic_, 0, root};
     comm_->magic_++;
     uint32_t blockDim = GetBlockNum(LcalType::BROADCAST, rankSize_, Count2Size(count, dataType),
                                     comm_->localRankSize_, comm_->commArgs_.extraFlag);
-    return LoadMTE(LcalType::BROADCAST, args, blockDim, dataType, stream);    
+    return LoadMTE(LcalType::BROADCAST, args, blockDim, dataType, stream);
 }
 
 Lccl::~Lccl()
@@ -482,7 +482,7 @@ Lccl::Lccl(LcalComm *comm) : comm_(comm)
         rank_ = comm->rank_;
         rankSize_ = comm->rankSize_;
     } else {
-        MKI_LOG(ERROR) << "com is nullptr.";
+        MKI_LOG(ERROR) << "comm is nullptr.";
         comm_ = new (std::nothrow) LcalComm(0, 0);
         if (comm_ == nullptr) {
             MKI_LOG(ERROR) << "LcalComm create failed " << __LINE__;
