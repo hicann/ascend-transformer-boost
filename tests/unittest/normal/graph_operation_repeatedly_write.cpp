@@ -21,7 +21,7 @@ TEST(TestRepeatWrite, graphTest)
 
     atb::Operation *operation;
     atb::GraphParam opGraph;
-    opGraph.inTensorNum = =4;
+    opGraph.inTensorNum = 4;
     opGraph.outTensorNum = 2;
     opGraph.internalTensorNum = 1;
     opGraph.nodes.resize(3);
