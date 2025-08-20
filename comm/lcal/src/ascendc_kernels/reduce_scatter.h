@@ -15,7 +15,7 @@
 #include "collectives.h"
 using namespace AscendC;
 
-template<typenae T>
+template<typename T>
 class ReduceScatter : protected Collectives {
 public:
     FORCE_INLINE_AICORE ReduceScatter(int rank, int rankSize, uint32_t extraFlag)
@@ -65,10 +65,10 @@ public:
 
     FORCE_INLINE_AICORE void CpInputToBuffAndOutput()
     {
-        CpGM2GM(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
+        CpGM2GM<T>(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
         if ((extraFlag & ExtraFlag::RDMA) != ExtraFlag::RDMA) {
             if ((blockIdx >= rank * corePerRank) && (blockIdx < (rank * corePerRank + corePerRank))) {
-                CpGM2GM<T>(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
+                CpGM2GM<T>(dstIPCGlobal, srcInputGlobal, blockDataNum, -1);
             }
         }   
     }
