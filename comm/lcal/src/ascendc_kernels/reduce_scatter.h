@@ -65,10 +65,10 @@ public:
 
     FORCE_INLINE_AICORE void CpInputToBuffAndOutput()
     {
-        CpGM2GM<T>(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
+        CpGM2GM<T>(dstIPCGlobal, srcInputGlobal, blockDataNum, -1);
         if ((extraFlag & ExtraFlag::RDMA) != ExtraFlag::RDMA) {
             if ((blockIdx >= rank * corePerRank) && (blockIdx < (rank * corePerRank + corePerRank))) {
-                CpGM2GM<T>(dstIPCGlobal, srcInputGlobal, blockDataNum, -1);
+                CpGM2GM<T>(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
             }
         }   
     }
