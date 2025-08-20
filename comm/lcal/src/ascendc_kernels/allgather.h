@@ -39,10 +39,10 @@ public:
         inputGm.SetGlobalBuffer((__gm__ T*)input + offsetFromInput, countToShare);
         if (extraFlag & ExtraFlag::RDMA) {
             blockNumPerRank = blockNum / localRankSize;
-            useCoreNumToOutput = blockNumPerRank * rankSize;
+            useCoreNumToOutput = blockNumPerRank * localRankSize;
         } else {
             blockNumPerRank = blockNum / rankSize;
-            useCoreNumToOutput = blockNumPerRank * localRankSize;
+            useCoreNumToOutput = blockNumPerRank * rankSize;
         }
         if (blockIdx >= useCoreNumToOutput) {
             return;
