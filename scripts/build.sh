@@ -25,8 +25,10 @@ USE_CXX11_ABI=""
 USE_ASAN=OFF
 USE_MSSANITIZER=OFF
 USE_MSDEBUG=OFF
+USE_ASCENDC_DUMP=OFF
 SKIP_BUILD=OFF
 CSVOPSTEST_OPTIONS=""
+KERNEL_NAME=""
 BUILD_PYBIND=ON
 SRC_ONLY=OFF
 MKI_BUILD_MODE=Test
@@ -34,10 +36,10 @@ VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
 
-BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
+BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops ascendc_dump"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
     "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
-    "--src-only" "--customizeops_tests")
+    "--src-only")
 
 function fn_build_googletest()
 {
@@ -230,6 +232,9 @@ function fn_build_mki()
     fi
     if [ "$USE_MSDEBUG" == "ON" ]; then
         build_options="$build_options --msdebug"
+    fi
+    if [ "$USE_ASCENDC_DUMP" == "ON" ]; then
+        build_options="$build_options --ascendc_dump"
     fi
     build_options="$build_options --output=$THIRD_PARTY_DIR $COMPILE_VERBOSE"
     bash scripts/build.sh $build_type $build_options
@@ -472,6 +477,9 @@ function fn_build()
     cd $CACHE_DIR
     if [ "$CMAKE_CXX_COMPILER_LAUNCHER" == "" -a command -v ccache &> /dev/null ]; then
         COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+    fi
+    if [ "${USE_ASCENDC_DUMP}" == "ON"]; then
+        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_ASCENDC_DUMP=ON"
     fi
     echo "COMPILE_OPTIONS:$COMPILE_OPTIONS"
     cmake $CODE_ROOT $COMPILE_OPTIONS
@@ -750,10 +758,6 @@ function fn_main()
         "--src-only")
             SRC_ONLY=ON
             ;;
-        "--customizeops_tests")
-            fn_build_googletest
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
-            ;;
         esac
         shift
     }
@@ -865,12 +869,16 @@ function fn_main()
             generate_atb_version_info
             fn_make_run_package
             ;;
+        "ascendc_dump")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TEST_FRAMEWORK=ON"
+            USE_ASCENDC_DUMP=ON
+            fn_build
+            ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind|--customizeops_tests"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops|ascendc_dump --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
             ;;
     esac
 }
 
 fn_main "$@"
-
