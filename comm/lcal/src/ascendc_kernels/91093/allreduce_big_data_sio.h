@@ -22,7 +22,7 @@ class AllReduceBigDataSio : protected Collectives {
 
 public:
     FORCE_INLINE_AICORE AllReduceBigDataSio(int rank, int rankSize, uint32_t extraFlag)
-        : AllReduceQuant(rank, rankSize, extraFlag) {}
+        : Collectives(rank, rankSize, extraFlag) {}
     FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN())
     {
         Collectives::Init(KERNELS_ARGS_CALL());
@@ -42,7 +42,7 @@ public:
         }
 
         peerRank = blockIdx % perStepBlockNum;
-        perRankDataNum = len, rankSize;
+        perRankDataNum = len / rankSize;
 
         if (rank % RANK_SIZE_TWO == 0) {
             adjRank = rank + 1;
@@ -54,14 +54,18 @@ public:
         if (blockIdx % perStepBlockNum == rankSize - 1) {
             curRankDataNum = len - (rankSize - 1) * perRankDataNum;
         }
+        pullRankDataNum = perRankDataNum;
+        if (rank == rankSize - 1) {
+            pullRankDataNum = len - rank * perRankDataNum;
+        }
         inputBuffOffsetNum = blockIdx % rankSize * perRankDataNum;
 
-        inputGt.SetGlobalBuffer((__gm__ U*)input + inputBuffOffsetNum, curRankDataNum);
+        inputGt.SetGlobalBuffer((__gm__ T*)input + inputBuffOffsetNum, curRankDataNum);
 
         outputBuffOffsetNum = peerRank * perRankDataNum;
 
         outputGt.SetGlobalBuffer((__gm__ T*)output + outputBuffOffsetNum, curRankDataNum);
-        inputIpcGtOffsetNum = perQueSize % (blockIdx % perStepBlockNum);
+        inputIpcGtOffsetNum = perQueSize * (blockIdx % perStepBlockNum);
 
         if (blockIdx / perStepBlockNum == 0) {
             ProducerInit();
@@ -101,7 +105,7 @@ private:
             if (blockIdx % RANK_SIZE_TWO == rank % RANK_SIZE_TWO) {
                 sync.WaitOuterFlag(magic, count, rank, blockIdx);
                 sync.WaitOuterFlag(magic, count, adjRank, blockIdx);
-                GLobalTensor <T> inputGm = sioAtomSrcQue.ReadFront();
+                GlobalTensor <T> inputGm = sioAtomSrcQue.ReadFront();
                 GlobalTensor<T> outputGm = sioAtomDstQue.EnQue();
                 CpGM2GMPingPong(copyNum * sizeof(T), inputGm, outputGm, atomOp);
             }
@@ -136,7 +140,7 @@ private:
                     break;
                 }
                 if (rank % RANK_SIZE_TWO == peerRank % RANK_SIZE_TWO) {
-                    sync.WaitOneRankPartOuterFlag(magic, count, peerRank, rankSize, rankSize);
+                    sync.WaitOneRankPartOuterFlag(magic, count, peerRank, perStepBlockNum, perStepBlockNum);
                     if (peerRank != rank) {
                         GlobalTensor <T> inputGm = pullSrcQue.ReadFront();
                         GlobalTensor <T> outputGm = pullDstQue.EnQue();
@@ -151,16 +155,16 @@ private:
     }
     FORCE_INLINE_AICORE void Puller()
     {
-        int64_t loopCount = CeilDiv(pullRankDataNum, curBlockNum);
+        int64_t loopCount = CeilDiv(curRankDataNum, curBlockNum);
         int64_t remain = curRankDataNum;
         int count = 0;
         while (count < loopCount) {
             if (rank % RANK_SIZE_TWO == peerRank % RANK_SIZE_TWO) {
                 sync.WaitInnerFlag(magic, count, rank, blockIdx - perStepBlockNum);
             } else {
-                sync.WaitOuterFlag(magic, count, adjRank, blockIdx - perStepBlockNum);
+                sync.WaitInnerFlag(magic, count, adjRank, blockIdx - perStepBlockNum);
             }
-            GlobalTensor<T> inputGm = pullSrcQue.ReadFront();
+            GlobalTensor<T> inputGm = pullQue.ReadFront();
             int64_t copyNum = (remain < curBlockNum) ? remain : curBlockNum;
             CpGM2GMPingPong(copyNum * sizeof(T), inputGm, outputGt[count * curBlockNum], COPYONLY);
             sync.SetInnerFlag(magic, count);
@@ -197,7 +201,7 @@ private:
 
     FORCE_INLINE_AICORE void PullerInit()
     {
-        if (rank % RANKSIZE_TWO == peerRank % RANK_SIZE_TWO) {
+        if (rank % RANK_SIZE_TWO == peerRank % RANK_SIZE_TWO) {
             pullQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum, 
                         perQueNum, curBlockNum);
         } else {
@@ -206,7 +210,7 @@ private:
         }
     }
 private:
-    GlobalTensor<U> inputGt;
+    GlobalTensor<T> inputGt;
     GlobalTensor<T> outputGt;
 
     int atomOp;
