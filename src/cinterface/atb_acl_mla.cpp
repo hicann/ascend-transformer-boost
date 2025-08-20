@@ -187,8 +187,9 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
 
 atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
+    ATB_CHECK(op != nullptr, "AtbMLAPreFill expect op pointer not to be null!", return ERROR_INVALID_OPERATION_ADDR);
     atb::VariantPack pack;
-    atb::Status st = op->Execute(pack, (uint8_t*)(workspace), workspaceSize, context);
+    atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreFill Execute failed!", return st);
     return st;
 }

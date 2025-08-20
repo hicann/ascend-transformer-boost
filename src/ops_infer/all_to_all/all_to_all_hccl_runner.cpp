@@ -42,6 +42,7 @@ Status AllToAllHcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
         ATB_LOG(ERROR) << " device tensor is null";
         return ERROR_INVALID_PARAM;
     }
+    if(param_.transpose) {}
     HcclResult ret = HcclAlltoAll(runnerVariantPack.inTensors[0].deviceData,
                                   Utils::GetTensorNumel(runnerVariantPack.inTensors[0]) / param_.rankSize,
                                   GetHcclDtype(runnerVariantPack.inTensors[0].desc.dtype),

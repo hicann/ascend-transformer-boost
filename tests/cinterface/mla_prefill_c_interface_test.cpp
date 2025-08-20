@@ -6,14 +6,16 @@ using namespace atb::cinterfaceTest;
 
 TEST(TestATBACL, TestMLAPreFillM0C2C1)
 {
-    if (!GetSingleton<Config>().Is910B()) {
-        exit(0);
-    }
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;
     int64_t batch = 4;
     Init(&context, &stream, &deviceId);
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "MLA prefill only supports A2/A3";
+        Destroy(&context, &stream);
+        GTEST_SKIP();
+    }
     uint8_t *inoutHost[MLAPPREFILLINOUT];
     uint8_t *inoutDevice[MLAPPREFILLINOUT];
     aclTensor *tensorList[MLAPPREFILLINOUT];
@@ -60,16 +62,16 @@ TEST(TestATBACL, TestMLAPreFillM0C2C1)
     void *workspaceAddr = nullptr;
     if (workspaceSize > 0) {
         ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-        EXPECT_EQ(ret, ACL_ERROR_NONE);
+        EXPECT_EQ(ret, ACL_SUCCESS);
     }
     ret = AtbMLAPreFill(workspaceAddr, workspaceSize, op, context);
     EXPECT_EQ(ret, atb::NO_ERROR);
 
     ret = aclrtSynchronizeStream(stream);
-    EXPECT_EQ(ret, ACL_ERROR_NONE);
+    EXPECT_EQ(ret, ACL_SUCCESS);
 
     if (workspaceSize > 0) {
-        EXPECT_EQ(aclrtFree(workspaceAddr), ACL_ERROR_NONE);
+        EXPECT_EQ(aclrtFree(workspaceAddr), ACL_SUCCESS);
     }
     EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
     Destroy(&context, &stream);
