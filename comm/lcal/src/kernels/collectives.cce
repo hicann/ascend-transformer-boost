@@ -77,7 +77,7 @@ int localRankSize, __gm__ int64_t *sendCountMatrix, GM_ADDR dumpAddr, __gm__ T* 
 #define ALLREDUCE_ARGS_CALL_16P_Origin() \
 input, output, rank, rankSize, len, magic, op, root, localRankSize, sendCountMatrix, dumpAddr, buff
 
-#define MODIFIABLE_MAGIC_PROCESSED_NUM_ALLREDUCE_ARGS_CALL_16P_Origin(processdNum, remainNum, magic) \
+#define MODIFIABLE_MAGIC_PROCESSED_NUM_ALLREDUCE_ARGS_CALL_16P_Origin(processedNum, remainNum, magic) \
 (input + (processedNum)), (output + (processedNum)), rank, rankSize, (remainNum), (magic), op, root, \
 localRankSize, sendCountMatrix, dumpAddr, buff
 
@@ -213,7 +213,7 @@ __attribute__((always_inline)) inline __aicore__ int64_t GetLcalBlockNum() {
     #endif
 }
 
-__attribute__((always_inline)) inline __aicore__ void SyncWithNPU(__ubuf__ int64_t* ctrlFlagsUB, __gm__ int64_t *buffRank, __gm__ int64_t magic) {
+__attribute__((always_inline)) inline __aicore__ void SyncWithINNPU(__ubuf__ int64_t* ctrlFlagsUB, __gm__ int64_t* buffRank, int64_t magic) {
     SetFlag(ctrlFlagsUB, (__gm__ int64_t*)buffRank + (GetBlockIdx() * MEM_DMA_UNIT_INT_NUM), magic);
     for (int64_t i = 0; i < GetLcalBlockNum(); i++) {
         if (i == GetBlockIdx()) {
