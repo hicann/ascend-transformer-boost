@@ -39,7 +39,7 @@ LOG_NAME="cann_atb_install.log"
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops ascendc_dump"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
     "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
-    "--src-only")
+    "--src-only" "--customizeops_tests")
 
 function fn_build_googletest()
 {
@@ -757,6 +757,10 @@ function fn_main()
             ;;
         "--src-only")
             SRC_ONLY=ON
+            ;;
+        "--customizeops_tests")
+            fn_build_googletest
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
             ;;
         esac
         shift
