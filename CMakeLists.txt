@@ -128,6 +128,4 @@ install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/liblcal_static.a DESTINA
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops_aicpu_kernels.so DESTINATION lib OPTIONAL)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libtbe_adapter.so DESTINATION lib OPTIONAL)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libcann_ops_adapter.so DESTINATION lib OPTIONAL)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libexp_ops_static.a DESTINATION lib OPTIONAL)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libexp_mixops_static.a DESTINATION lib OPTIONAL)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/atb DESTINATION include)

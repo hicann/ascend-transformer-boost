@@ -12,3 +12,7 @@ set(ffn_srcs
 )
 
 add_operation(FFNOperation "${ffn_srcs}")
+
+add_kernel(ffn ascend310p cube
+        op_kernel/ffn.cpp
+        FFNKernel)
