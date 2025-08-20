@@ -196,6 +196,11 @@ static HcclCommConfig *GetHcclCommConfig(const uint32_t hcclBufferSize)
 std::shared_ptr<void> CreateHcclCommByClusterInfo(uint32_t subCommRankId, const char *rankTableFile,
                                                   std::vector<uint32_t> &rankIds)
 {
+    if (rankTableFile == nullptr) {
+        ATB_LOG(ERROR) << "rankTableFile ptr can not be null ptr.";
+        return std::shared_ptr<HcclComm>();
+    }
+
     std::string rankTableFileStr(rankTableFile);
     ATB_LOG(INFO) << "create hccl comm by clusterInfo, rankTableFile:" << rankTableFileStr;
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
