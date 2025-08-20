@@ -213,13 +213,23 @@ __attribute__((always_inline)) inline __aicore__ int64_t GetLcalBlockNum() {
     #endif
 }
 
-__attribute__((always_inline)) inline __aicore__ void SyncWithINNPU(__ubuf__ int64_t* ctrlFlagsUB, __gm__ int64_t* buffRank, int64_t magic) {
+__attribute__((always_inline)) inline __aicore__ void SyncWithinNPU(__ubuf__ int64_t* ctrlFlagsUB, __gm__ int64_t* buffRank, int64_t magic) {
     SetFlag(ctrlFlagsUB, (__gm__ int64_t*)buffRank + (GetBlockIdx() * MEM_DMA_UNIT_INT_NUM), magic);
     for (int64_t i = 0; i < GetLcalBlockNum(); i++) {
         if (i == GetBlockIdx()) {
             continue;
         }
         CheckFlag((__ubuf__ int64_t*)ctrlFlagsUB, (__gm__ int64_t*)buffRank + i * MEM_DMA_UNIT_INT_NUM, magic);
+    }
+}
+
+__attribute__((always_inline)) inline __aicore__ void SyncWithinNPUNew(__ubuf__ int64_t* ctrlFlagsUB, __gm__ int64_t* buffRank, int64_t magic) {
+    SetFlag(ctrlFlagsUB, (__gm__ int64_t*)buffRank + (GetBlockIdx() * MEM_DMA_UNIT_INT_NUM), magic);
+    for (int64_t i = 0; i < GetLcalBlockNum(); i++) {
+        if (i == GetBlockIdx()) {
+            continue;
+        }
+        CheckFlagNew((__ubuf__ int64_t*)ctrlFlagsUB, (__gm__ int64_t*)buffRank + i * MEM_DMA_UNIT_INT_NUM, magic);
     }
 }
 
