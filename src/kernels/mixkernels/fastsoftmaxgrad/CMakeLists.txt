@@ -12,3 +12,7 @@ set(fastsoftmax_grad_srcs
 )
 
 add_operation(FastSoftMaxGradOperation "${fastsoftmax_grad_srcs}")
+
+add_kernel(fastsoftmaxgrad ascend910b vector
+        op_kernel/fast_softmax_grad.cpp
+        FastSoftMaxGradKernel)

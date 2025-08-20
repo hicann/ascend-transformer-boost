@@ -13,3 +13,12 @@ set(logprobssample_srcs
 )
 
 add_operation(LogprobsSampleOperation "${logprobssample_srcs}")
+
+add_kernel(logprobs_sample ascend910b vector
+        op_kernel/logprobs_sample.cpp
+        LogprobsSampleKernel)
+
+add_kernel(logprobs_sample ascend310p vector
+        op_kernel/logprobs_sample.cpp
+        LogprobsSampleKernel)
+

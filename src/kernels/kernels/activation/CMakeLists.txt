@@ -46,3 +46,15 @@ add_kernel(faster_gelu_forward ascend910 vector
 add_kernel(faster_gelu_forward ascend910b vector
     faster_gelu_forward/kernel/faster_gelu_forward.cpp
     FasterGeluForwardKernel)
+
+add_kernel(gelu_forward ascend310p vector
+        gelu_forward/kernel/gelu_forward.cpp
+        GeluForwardKernel)
+
+add_kernel(gelu_forward ascend910b vector
+        gelu_forward/kernel/gelu_forward.cpp
+        GeluForwardKernel)
+
+add_kernel(gelu_forward ascend910 vector
+        gelu_forward/kernel/gelu_forward.cpp
+        GeluForwardKernel)
