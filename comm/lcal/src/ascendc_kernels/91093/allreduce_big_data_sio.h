@@ -219,7 +219,6 @@ private:
     int64_t perRankDataNum;
     int64_t curRankDataNum;
     int64_t peerRank;
-    int64_t peerRank;
     int64_t adjRank;
     int64_t pullRankDataNum;
     int64_t inputBuffOffsetNum;
