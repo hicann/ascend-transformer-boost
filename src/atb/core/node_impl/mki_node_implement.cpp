@@ -221,7 +221,7 @@ Status MkiNodeImplement::Run(aclrtStream stream)
                   << runInfo_.ToString();
     bool isDeviceAddr = true;
     if (argsDeviceBuffer_ != nullptr) {
-        st = kernel_->RunWithArgs(argsDeviceBuffer_, stream, isDeviceAddr);
+        st = kernel_->RunWithArgs(argsDeviceBuffer_, stream, isDeviceAddr, runInfo_);
     } else {
         st = kernel_->Run(launchParam_, runInfo_);
     }
