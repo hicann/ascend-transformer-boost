@@ -63,6 +63,11 @@ void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;
     cinterfaceTest::Init(&context, &stream, &deviceId);
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "Paged Cache Load only supports A2/A3";
+        cinterfaceTest::Destroy(&context, &stream);
+        GTEST_SKIP();
+    }
     uint8_t *inoutHost[PCLINOUTPCL];
     uint8_t *inoutDevice[PCLINOUTPCL];
     aclTensor *tensorList[PCLINOUTPCL];
@@ -141,20 +146,20 @@ void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int
     Status ret = AtbPagedCacheLoadGetWorkspaceSize(
         tensorList[0], tensorList[1], tensorList[2], tensorList[3], tensorList[4], tensorList[5], tensorList[6],
         atb::infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_NZ, false, false, &workspaceSize, &op, context);
-    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(ret, atb::NO_ERROR);
     void *workspaceAddr = nullptr;
     if (workspaceSize > 0) {
         ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-        EXPECT_EQ(ret, NO_ERROR);
+        EXPECT_EQ(ret, ACL_SUCCESS);
     }
     ret = AtbPagedCacheLoad(workspaceAddr, workspaceSize, op, context);
-    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(ret, atb::NO_ERROR);
     ret = aclrtSynchronizeStream(stream);
 
     if (workspaceSize > 0) {
-        EXPECT_EQ(aclrtFree(workspaceAddr), NO_ERROR);
+        EXPECT_EQ(aclrtFree(workspaceAddr), ACL_SUCCESS);
     }
-    EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
+    EXPECT_EQ(atb::DestroyOperation(op), atb::NO_ERROR);
     cinterfaceTest::Destroy(&context, &stream);
     for (i = 0; i < PCLINOUTPCL; i++) {
         aclrtFreeHost(inoutHost[i]);
@@ -170,6 +175,11 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;
     cinterfaceTest::Init(&context, &stream, &deviceId);
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "Paged Cache Load only supports A2/A3";
+        cinterfaceTest::Destroy(&context, &stream);
+        GTEST_SKIP();
+    }
     uint8_t *inoutHost[PCLINOUTPCL];
     uint8_t *inoutDevice[PCLINOUTPCL];
     aclTensor *tensorList[PCLINOUTPCL];
@@ -258,23 +268,24 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
     uint64_t workspaceSize = 0;
     atb::Operation *op = nullptr;
 
-    Status ret = AtbPagedCacheLoadGetWorkspaceSize(
-        tensorList[0], tensorList[1], tensorList[2], tensorList[3], tensorList[4], tensorList[5], tensorList[6],
-        atb::infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_ND, isSeqLensCumsumType, hasSeqStarts, &workspaceSize, &op, context);
-    EXPECT_EQ(ret, NO_ERROR);
+    Status ret = AtbPagedCacheLoadGetWorkspaceSize(tensorList[0], tensorList[1], tensorList[2], tensorList[3],
+                                                   tensorList[4], tensorList[5], tensorList[6],
+                                                   atb::infer::PagedCacheLoadParam::KvCacheCfg::K_CACHE_V_CACHE_ND,
+                                                   isSeqLensCumsumType, hasSeqStarts, &workspaceSize, &op, context);
+    EXPECT_EQ(ret, atb::NO_ERROR);
     void *workspaceAddr = nullptr;
     if (workspaceSize > 0) {
         ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-        EXPECT_EQ(ret, NO_ERROR);
+        EXPECT_EQ(ret, ACL_SUCCESS);
     }
     ret = AtbPagedCacheLoad(workspaceAddr, workspaceSize, op, context);
-    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(ret, atb::NO_ERROR);
     ret = aclrtSynchronizeStream(stream);
 
     if (workspaceSize > 0) {
-        EXPECT_EQ(aclrtFree(workspaceAddr), NO_ERROR);
+        EXPECT_EQ(aclrtFree(workspaceAddr), ACL_SUCCESS);
     }
-    EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
+    EXPECT_EQ(atb::DestroyOperation(op), atb::NO_ERROR);
     cinterfaceTest::Destroy(&context, &stream);
     for (i = 0; i < PCLINOUTPCL; i++) {
         aclrtFreeHost(inoutHost[i]);
