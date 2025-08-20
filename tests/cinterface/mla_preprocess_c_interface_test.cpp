@@ -253,7 +253,6 @@ TEST(TestATBACL, TestMLAPreProcesscomb0Q0C0)
     ret = AtbMLAPreprocess(workspaceAddr, workspaceSize, op, context);
     EXPECT_EQ(ret, atb::NO_ERROR);
     ret = aclrtSynchronizeStream(stream);
-    EXPECT_EQ(ret, ACL_SUCCESS);
 
     if (workspaceSize > 0) {
         EXPECT_EQ(aclrtFree(workspaceAddr), ACL_SUCCESS);

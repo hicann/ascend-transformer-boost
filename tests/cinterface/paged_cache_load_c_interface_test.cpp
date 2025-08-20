@@ -69,7 +69,7 @@ void TestPagedCacheLoadNZ(const int64_t batch, const int64_t numHeads, const int
     cinterfaceTest::Init(&context, &stream, &deviceId);
     if (!atb::GetSingleton<atb::Config>().Is910B()) {
         ATB_LOG(ERROR) << "Paged Cache Load only supports A2/A3";
-        Destroy(&context, &stream);
+        cinterfaceTest::Destroy(&context, &stream);
         GTEST_SKIP();
     }
     uint8_t *inoutHost[PCLINOUTPCL];
@@ -181,7 +181,7 @@ void TestPagedCacheLoadND(const int64_t batch, const int64_t numHeads, const int
     cinterfaceTest::Init(&context, &stream, &deviceId);
     if (!atb::GetSingleton<atb::Config>().Is910B()) {
         ATB_LOG(ERROR) << "Paged Cache Load only supports A2/A3";
-        Destroy(&context, &stream);
+        cinterfaceTest::Destroy(&context, &stream);
         GTEST_SKIP();
     }
     uint8_t *inoutHost[PCLINOUTPCL];

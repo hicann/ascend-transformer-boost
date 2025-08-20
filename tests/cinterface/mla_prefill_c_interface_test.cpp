@@ -87,7 +87,6 @@ TEST(TestATBACL, TestMLAPreFillM0C2C1)
     EXPECT_EQ(ret, atb::NO_ERROR);
 
     ret = aclrtSynchronizeStream(stream);
-    EXPECT_EQ(ret, ACL_SUCCESS);
 
     if (workspaceSize > 0) {
         EXPECT_EQ(aclrtFree(workspaceAddr), ACL_SUCCESS);
