@@ -80,13 +80,14 @@ atb::Status AtbRingMLAGetWorkspaceSize(const aclTensor *querySplit1, const aclTe
         ATB_LOG(ERROR) << "AtbRingMLAGetWorkspaceSize opeartion pointer is nullptr!";
         return atb::ERROR_INVALID_OPERATION_ADDR;
     }
-    atb::Status st = (*op)->Setup(pack, *workspaceSize, context);
-    ATB_CHECK(st == atb::NO_ERROR, "AtbRingMLA Setup failed!", return st);
+    status = (*op)->Setup(pack, *workspaceSize, context);
+    ATB_CHECK(status == atb::NO_ERROR, "AtbRingMLA Setup failed!", return status);
     return atb::NO_ERROR;
 }
 
 atb::Status AtbRingMLA(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
+    ATB_CHECK(op != nullptr, "AtbRingMLA expect op pointer not to be null!", return atb::ERROR_INVALID_OPERATION_ADDR);
     atb::VariantPack pack;
     atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbRingMLA Execute failed!", return st);

@@ -124,10 +124,11 @@ atb::Status AtbMLA(void *workSpcace, uint64_t workspaceSize, atb::Operation *op,
 
 
 atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *qRope, const aclTensor *k,
-    const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen, const aclTensor *kvSeqLen,
-    const aclTensor *mask, int32_t headNum, float qkScale, int32_t kvHeadNum,
-    int maskType, uint8_t cacheMode, aclTensor *attenOut,
-    uint64_t *workspaceSize, atb::Operation **op, atb::Context *context)
+                                          const aclTensor *kRope, const aclTensor *v, const aclTensor *qSeqLen,
+                                          const aclTensor *kvSeqLen, const aclTensor *mask, int32_t headNum,
+                                          float qkScale, int32_t kvHeadNum, int maskType, uint8_t cacheMode,
+                                          aclTensor *attenOut, uint64_t *workspaceSize, atb::Operation **op,
+                                          atb::Context *context)
 {
     atb::infer::MultiLatentAttentionParam param;
     param.headNum = headNum;
@@ -185,10 +186,12 @@ atb::Status AtbMLAPreFillGetWorkspaceSize(const aclTensor *q, const aclTensor *q
     return atb::NO_ERROR;
 }
 
-atb::Status AtbMLAPreFill(void* workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
+atb::Status AtbMLAPreFill(void *workspace, uint64_t workspaceSize, atb::Operation *op, atb::Context *context)
 {
+    ATB_CHECK(op != nullptr, "AtbMLAPreFill expect op pointer not to be null!",
+              return atb::ERROR_INVALID_OPERATION_ADDR);
     atb::VariantPack pack;
-    atb::Status st = op->Execute(pack, (uint8_t*)(workspace), workspaceSize, context);
+    atb::Status st = op->Execute(pack, (uint8_t *)(workspace), workspaceSize, context);
     ATB_CHECK(st == atb::NO_ERROR, "AtbMLAPreFill Execute failed!", return st);
     return st;
 }
