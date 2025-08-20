@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 // 256GB
-const uint64_t MAX_TENSOR_SIZE = 256uLL * 1024uLL * 1024uLL * 1024uLL;
+const int64_t MAX_TENSOR_SIZE = 256uLL * 1024uLL * 1024uLL * 1024uLL;
 
 int64_t GetTensorSize(const aclTensor *input)
 {
