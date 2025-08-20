@@ -279,23 +279,17 @@ void FillAddrOffsets(const AtbOps::UnpadFlashAttentionInfo &mmInfo, AtbOps::Addr
                       << mmInfo.innerBatchSize << "mmInfo.embeddingSize" << mmInfo.embeddingSize;
         MKI_LOG(INFO) << "addrOffsets mmInfo.maxKvSeqLen" << mmInfo.maxKvSeqLen << "kvRealHeads"
                       << mmInfo.innerBatchSize << "mmInfo.embeddingSize" << mmInfo.embeddingSize;
-        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(mmInfo.maxQSeqLen) * static_cast<uint64_t>(mmInfo.innerBatchSize) *
-                                                   static_cast<uint64_t>(mmInfo.embeddingSize);
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * static_cast<uint64_t>(kvRealHeads) *
-                                                   static_cast<uint64_t>(mmInfo.embeddingSize);
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * static_cast<uint64_t>(kvRealHeads) *
-                                                   static_cast<uint64_t>(mmInfo.embeddingSizeV);
-        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(mmInfo.maxQSeqLen) * static_cast<uint64_t>(mmInfo.innerBatchSize) *
-                                                   static_cast<uint64_t>(mmInfo.embeddingSizeV);
+        addrOffsets.addrQSeqOffset +=
+            static_cast<uint64_t>(mmInfo.maxQSeqLen) * mmInfo.innerBatchSize * mmInfo.embeddingSize;
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * kvRealHeads * mmInfo.embeddingSize;
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(mmInfo.maxKvSeqLen) * kvRealHeads * mmInfo.embeddingSizeV;
+        addrOffsets.addrOSeqOffset +=
+            static_cast<uint64_t>(mmInfo.maxQSeqLen) * mmInfo.innerBatchSize * mmInfo.embeddingSizeV;
     } else {
-        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * static_cast<uint64_t>(mmInfo.innerBatchSize) *
-                                                   static_cast<uint64_t>(mmInfo.embeddingSize);
-        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * static_cast<uint64_t>(kvRealHeads) *
-                                                   static_cast<uint64_t>(mmInfo.embeddingSize);
-        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * static_cast<uint64_t>(kvRealHeads) *
-                                                   static_cast<uint64_t>(mmInfo.embeddingSizeV);
-        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen) * static_cast<uint64_t>(mmInfo.innerBatchSize) *
-                                                   static_cast<uint64_t>(mmInfo.embeddingSizeV);
+        addrOffsets.addrQSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.innerBatchSize * mmInfo.embeddingSize;
+        addrOffsets.addrKSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSize;
+        addrOffsets.addrVSeqOffset += static_cast<uint64_t>(kvFactor) * kvRealHeads * mmInfo.embeddingSizeV;
+        addrOffsets.addrOSeqOffset += static_cast<uint64_t>(qSeqlen) * mmInfo.innerBatchSize * mmInfo.embeddingSizeV;
     }
 }
 
@@ -402,7 +396,7 @@ Status SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingPar
         if (taskStart >= taskEnd) {
             continue;
         }
-        SplitTaskRelay(mmInfo, tilingParam, groupNum, blockIdx, shareBlockTiling);
+        OP_TILING_CHECK_STATUS_RETURN(SplitTaskRelay(mmInfo, tilingParam, groupNum, blockIdx, shareBlockTiling));
     }
     return Status::OkStatus();
 }
@@ -518,13 +512,13 @@ Status DecoderFillTilingParamRelay(const UnpadFlashAttentionInfo &mmInfo, const 
                                     BLOCK_SIZE, kvSeqlenAligned);
             int32_t nIbd = ConvertValueToIndexNN(nUbd, PP_NN_NUM - 1);
             OP_TILING_CHECK_STATUS_RETURN(CheckSeqlen(mmInfo, addrOffsets, qSeqlen, kvSeqlen, seqIdx));
-            addrOffsets.addrQSeqOffset = static_cast<uint64_t>(seqIdx) * static_cast<uint64_t>(qSeqlen) *
-                                            static_cast<uint64_t>(mmInfo.innerBatchSize) * static_cast<uint64_t>(mmInfo.embeddingSize);
-            addrOffsets.addrOSeqOffset = static_cast<uint64_t>(seqIdx) * static_cast<uint64_t>(qSeqlen) *
-                                            static_cast<uint64_t>(mmInfo.innerBatchSize) * static_cast<uint64_t>(mmInfo.embeddingSize);
+            addrOffsets.addrQSeqOffset = static_cast<uint64_t>(seqIdx * qSeqlen *
+                                         mmInfo.innerBatchSize * mmInfo.embeddingSize);
+            addrOffsets.addrOSeqOffset = static_cast<uint64_t>(seqIdx * qSeqlen *
+                                         mmInfo.innerBatchSize * mmInfo.embeddingSize);
             addrOffsets.addrLSeqOffset = seqIdx * mmInfo.innerBatchSize * INDEX2;
-            addrOffsets.addrOFdSeqOffset = seqIdx * static_cast<uint64_t>(mmInfo.innerBatchSize) * static_cast<uint64_t>(mmInfo.embeddingSize) *
-                                            static_cast<uint64_t>(qSeqlen) * INDEX2;
+            addrOffsets.addrOFdSeqOffset = seqIdx * static_cast<uint64_t>(mmInfo.innerBatchSize *
+                                            mmInfo.embeddingSize * qSeqlen) * INDEX2;
             uint32_t nowBatchTiling = TILING_RELAY_HEAD_SIZE + shareBlockTiling * mmInfo.blockDim +
                                       nowBatch * TILING_PARA_SIZE;
             tilingParam[nowBatchTiling] = static_cast<uint32_t>(qSeqlen);
@@ -545,7 +539,7 @@ Status DecoderFillTilingParamRelay(const UnpadFlashAttentionInfo &mmInfo, const 
             nowBatch++;
         }
     }
-    SplitCoreRelay(mmInfo, tilingParam, shareBlockTiling);
+    OP_TILING_CHECK_STATUS_RETURN(SplitCoreRelay(mmInfo, tilingParam, shareBlockTiling));
     return Status::OkStatus();
 }
 

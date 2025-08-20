@@ -400,7 +400,7 @@ Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     ret = GenMlaPrefillTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint64_t dataLenFloat = sizeof(float);
-    uint64_t sSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(32768) * NUM16 * dataLenFloat;
+    uint64_t sSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(BLOCK_WORKSPACE_SIZE) * NUM16 * dataLenFloat;
     kernelInfo.GetScratchSizes() = {sSize, sSize, sSize, sSize * 2}; // oTmp/S/P
     kernelInfo.SetBlockDim(blockDim);
     return Status::OkStatus();
