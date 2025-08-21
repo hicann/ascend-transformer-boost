@@ -261,6 +261,37 @@ EOF
     echo "Ascend-cann-atb_${VERSION}_linux-${ARCH}.run is successfully generated in $OUTPUT_DIR"
 }
 
+function fn_build_tbe_dependency()
+{
+    CANNDEV_DIR=$THIRD_PARTY_DIR/canndev
+    METADEF_DIR=$THIRD_PARTY_DIR/metadef
+    API_DIR=$THIRD_PARTY_DIR/api
+    CANN_OPS_DIR=$THIRD_PARTY_DIR/cann-ops-adv
+    export ASCEND_KERNEL_PATH=$ASCEND_HOME_PATH/opp/built-in/op_impl/ai_core/tbe/kernel
+    COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=ON"
+
+    # release
+    if [ ! -d "$CANNDEV_DIR" ];then
+        echo "Failed to find canndev"
+        exit 1
+    fi
+    if [ ! -d "$API_DIR" ];then
+        echo "Failed to find api"
+        exit 1
+    fi
+    if [ ! -d "$CANN_OPS_DIR" ];then
+        echo "Failed to find cann-ops-adv"
+        exit 1
+    fi
+    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/canndev $THIRD_PARTY_DIR
+    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/api $THIRD_PARTY_DIR
+    if [ ! -d "$METADEF_DIR" ];then
+        echo "Failed to find metadef"
+        exit 1
+    fi
+    return
+}
+
 function fn_main()
 {
     if [[ "$1" == "pack" ]]; then
@@ -291,6 +322,8 @@ function fn_main()
         "--build_customize_ops")
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
             ;;
+        "--local_release_compile")
+            LOCAL_RELEASE_COMPILE=ON
         esac
         shift
     }
@@ -309,9 +342,11 @@ function fn_main()
             fn_build_asdops
             fn_build_catlass
             fn_build_cann_dependency
+            fn_build_tbe_dependency
             [[ "$USE_CXX11_ABI" == "ON" ]] && COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=ON"
             [[ "$USE_CXX11_ABI" == "OFF" ]] && COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=OFF"
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Release"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Release \
+            -DLOCAL_RELEASE_COMPILE=$LOCAL_RELEASE_COMPILE -DPACKAGE_COMPILE=ON"
             config_atb_version
             fn_build_nlohmann_json
             fn_build_pybind11
@@ -325,7 +360,7 @@ fn_init_env
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 cd $SCRIPT_DIR
 cd ..
-CODE_ROOT=$(pwd)
+export CODE_ROOT=$(pwd)
 export CACHE_DIR=$CODE_ROOT/build
 OUTPUT_DIR=$CODE_ROOT/output
 THIRD_PARTY_DIR=$CODE_ROOT/3rdparty
@@ -333,6 +368,7 @@ LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
 ATB_DIR=$CODE_ROOT
 RELEASE_DIR=$CODE_ROOT/ci/release
+LOCAL_RELEASE_COMPILE=OFF
 
 cann_default_install_path="/usr/local/Ascend/ascend-toolkit"
 
