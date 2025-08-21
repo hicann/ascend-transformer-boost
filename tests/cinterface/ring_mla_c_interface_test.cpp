@@ -29,15 +29,16 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
                  const float qkscale, const int kernelType, const int maskType, const int calcType,
                  const aclDataType dtype, std::vector<int32_t> seqLen)
 {
-    if (!atb::GetSingleton<atb::Config>().Is910B()) {
-        ATB_LOG(ERROR) << "RingMLA only supports A2/A3";
-        GTEST_SKIP();
-    }
     int inputNum = INOUT_TENSOR_NUM;
     atb::Context *context = nullptr;
     aclrtStream stream = nullptr;
     int64_t deviceId = 0;
     Init(&context, &stream, &deviceId);
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        ATB_LOG(ERROR) << "RingMLA only supports A2/A3";
+        Destroy(&context, &stream);
+        GTEST_SKIP();
+    }
     uint8_t *inoutHost[inputNum];
     uint8_t *inoutDevice[inputNum];
     aclTensor *tensorList[inputNum];
@@ -113,22 +114,22 @@ void TestRingMLA(const int64_t headNum, const int64_t kvHeadNum, const int64_t h
                                             tensorList[5], tensorList[6], tensorList[7], tensorList[8], headNum,
                                             kvHeadNum, qkscale, kernelType, maskType, 0, calcType, tensorList[9],
                                             tensorList[10], &workspaceSize, &op, context);
-    EXPECT_EQ(ret, ACL_ERROR_NONE);
+    EXPECT_EQ(ret, atb::NO_ERROR);
     void *workspaceAddr = nullptr;
     if (workspaceSize > 0) {
         ret = aclrtMalloc(&workspaceAddr, workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST);
-        EXPECT_EQ(ret, ACL_ERROR_NONE);
+        EXPECT_EQ(ret, ACL_SUCCESS);
     }
     ret = AtbRingMLA(workspaceAddr, workspaceSize, op, context);
-    EXPECT_EQ(ret, ACL_ERROR_NONE);
+    EXPECT_EQ(ret, atb::NO_ERROR);
 
     ret = aclrtSynchronizeStream(stream);
-    EXPECT_EQ(ret, ACL_ERROR_NONE);
+    EXPECT_EQ(ret, ACL_SUCCESS);
 
     if (workspaceSize > 0) {
-        EXPECT_EQ(aclrtFree(workspaceAddr), ACL_ERROR_NONE);
+        EXPECT_EQ(aclrtFree(workspaceAddr), ACL_SUCCESS);
     }
-    EXPECT_EQ(atb::DestroyOperation(op), NO_ERROR);
+    EXPECT_EQ(atb::DestroyOperation(op), atb::NO_ERROR);
     Destroy(&context, &stream);
     for (i = 0; i < INOUT_TENSOR_NUM; i++) {
         aclrtFreeHost(inoutHost[i]);
