@@ -28,7 +28,6 @@ USE_MSDEBUG=OFF
 USE_ASCENDC_DUMP=OFF
 SKIP_BUILD=OFF
 CSVOPSTEST_OPTIONS=""
-KERNEL_NAME=""
 BUILD_PYBIND=ON
 SRC_ONLY=OFF
 MKI_BUILD_MODE=Test
@@ -38,7 +37,7 @@ LOG_NAME="cann_atb_install.log"
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops ascendc_dump"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
-    "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
+    "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--ascendc_dump" "--mssanitizer" "--no-pybind"
     "--src-only" "--customizeops_tests")
 
 function fn_build_googletest()
@@ -473,12 +472,18 @@ function fn_build()
         echo "info: skip atb build because SKIP_BUILD is on."
         return 0
     fi
+    if [ "${USE_ASCENDC_DUMP}" == "OFF" ] && [[ -f "$THIRD_PARTY_DIR/mki/lib/libmki.so" ]]; then
+        if readelf -d $THIRD_PARTY_DIR/mki/lib/libmki.so | grep -q "libascend_dump.so"; then
+            rm -rf $THIRD_PARTY_DIR/mki
+            [[ -d "$CACHE_DIR" ]] && rm -rf $CACHE_DIR && mkdir $CACHE_DIR
+        fi
+    fi
     fn_build_3rdparty_for_compile
     cd $CACHE_DIR
     if [ "$CMAKE_CXX_COMPILER_LAUNCHER" == "" -a command -v ccache &> /dev/null ]; then
         COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     fi
-    if [ "${USE_ASCENDC_DUMP}" == "ON"]; then
+    if [ "${USE_ASCENDC_DUMP}" == "ON" ]; then
         COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_ASCENDC_DUMP=ON"
     fi
     echo "COMPILE_OPTIONS:$COMPILE_OPTIONS"
@@ -744,6 +749,14 @@ function fn_main()
             CHIP_TYPE=$(npu-smi info -m | grep -oE 'Ascend\s*\S+' | head -n 1 | tr -d ' ' | tr '[:upper:]' '[:lower:]')
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_MSDEBUG=ON -DCHIP_TYPE=${CHIP_TYPE}"
             ;;
+        "--ascendc_dump")
+            if [[ -f "$THIRD_PARTY_DIR/mki/lib/libmki.so" ]]; then
+                if ! readelf -d $THIRD_PARTY_DIR/mki/lib/libmki.so | grep -q "libascend_dump.so"; then
+                    rm -rf $THIRD_PARTY_DIR/mki
+                fi
+            fi
+            USE_ASCENDC_DUMP=ON
+            ;;
         "--mssanitizer")
             USE_MSSANITIZER=ON
             ;;
@@ -873,14 +886,9 @@ function fn_main()
             generate_atb_version_info
             fn_make_run_package
             ;;
-        "ascendc_dump")
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TEST_FRAMEWORK=ON"
-            USE_ASCENDC_DUMP=ON
-            fn_build
-            ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops|ascendc_dump --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops| --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--ascendc_dump|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
             ;;
     esac
 }
