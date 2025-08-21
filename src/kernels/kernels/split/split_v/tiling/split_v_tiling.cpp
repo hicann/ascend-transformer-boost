@@ -33,7 +33,7 @@ Status SplitV2OutputsTiling(const std::string &kernelName, const LaunchParam &la
         .AddConstInput(TENSOR_DTYPE_INT32, TENSOR_FORMAT_ND, {static_cast<int64_t>(param.splitVDim.size())},
                        param.splitVDim.data(), param.splitVDim.size() * sizeof(int32_t))
         .AddOutput(tensorDescOut1.dtype, tensorDescOut1.format, tensorDescOut1.dims)
-        .AddOutput(tensorDescOut2.dtype, tensorDescOut2.format, tensorDescOut1.dims)
+        .AddOutput(tensorDescOut2.dtype, tensorDescOut2.format, tensorDescOut2.dims)
         .AddAttrInt(param.splitNum);
     return GetTilingFromRunner(kernelInfo, runner, binHandle);
 }
