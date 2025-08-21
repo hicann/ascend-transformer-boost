@@ -22,7 +22,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGather2npuBigDataWr
     const int64_t singleCoreDataNum = singleCoreDataBlockNum * MEM_DMA_UNIT_BYTE / sizeof(T);
     const int64_t buffDataDMAOffsetNum = coreSegmentedIdx * singleCoreDataNum;
 
-    __gm__ T *receiveBuff = (__gm__ T *)((__gm__ int64_t *)buff[x] + dataOffsetNum);
+    __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t *)buff[x] + dataOffsetNum);
     __gm__ T *sendBuff = input;
     int64_t dataSizeRemain = singleCoreDataBlockNum * MEM_DMA_UNIT_BYTE;
     if (coreSegmentedIdx == blockNumPerGroup - 1) {
@@ -94,7 +94,7 @@ inline __aicore__ void LcalAllGather2npuBigDataWrite(ALLREDUCE_ARGS_FUN_16P(T))
     __ubuf__ int64_t* ctrlFlagsUB1 = (__ubuf__ int64_t*)(32);
     __ubuf__ int64_t* ctrlFlagsUB2 = (__ubuf__ int64_t*)(64);
     __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(96), (__ubuf__ T*)(97440)};
-    
+
     int64_t blockNumPerGroup = GetLcalBlockNum() >> 1;
     int64_t corePerRank = blockNumPerGroup;
     int64_t coreSegmentedIdx = GetBlockIdx() % corePerRank;
