@@ -273,6 +273,81 @@ __attribute__((always_inline)) inline __aicore__ void GM2GMPingPong(
     if (dataSizeRemain <= 0) {
         return;
     }
+    AscendC::PipeBarrier<PIPE_ALL>();
+    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
+    for (int64_t i = 0; dataSizeRemain > 0; i++) {
+        uint32_t size = dataSizeRemain > UB_SINGLE_PING_PONG_ADD_SIZE_MAX ? UB_SINGLE_PING_PONG_ADD_SIZE_MAX : dataSizeRemain;
+        event_t eventId = (i & 1) ? EVENT_ID0 ? EVENT_ID1;
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
+        CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], (__gm__ T*)sendBuff + sendBuffOffsetNum, size);
+        AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
+        CpUB2GM((__gm__ T*)receiveBuff + revBuffOffsetNum, (i & 1) ? inputUB[1] : inputUB[0], size);
+        AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
+        dataSizeRemain -= size;
+        sendBuffOffsetNum += (size / sizeof(T));
+        revBuffOffsetNum += (size / sizeof(T));
+    }
+    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
+    if (dataSizeRemain <= 0) {
+        return;
+    }
 }
+
+template<typename T>
+__attribute__((always_inline)) inline __aicore__ void GM2GMPingPongNonPipeBarrier(
+    int64_t dataSizeRemain, __ubuf__ T *inputUB[2], __gm__ T *receiveBuff,
+    int64_t revBuffOffsetNum, __gm__ T *sendBuff, int64_t sendBuffOffsetNum)
+{
+    if (dataSizeRemain <= 0) {
+        return;
+    }
+    const int64_t offsetNumPerLoop = UB_SINGLE_PING_PONG_ADD_SIZE_MAX / sizeof(T);
+    uint32_t size = 0;
+    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
+    for (int64_t i = 0; dataSizeRemain > 0; i++) {
+        size = dataSizeRemain > UB_SINGLE_PING_PONG_ADD_SIZE_MAX ? UB_SINGLE_PING_PONG_ADD_SIZE_MAX : dataSizeRemain;
+        event_t eventId = (i & 1) ? EVENT_ID0 ? EVENT_ID1;
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
+        CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], (__gm__ T*)sendBuff + sendBuffOffsetNum, size);
+        AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
+        CpUB2GM((__gm__ T*)receiveBuff + revBuffOffsetNum, (i & 1) ? inputUB[1] : inputUB[0], size);
+        AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
+        dataSizeRemain -= size;
+        sendBuffOffsetNum += offsetNumPerLoop;
+        revBuffOffsetNum += offsetNumPerLoop;
+    }
+    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
+    if (dataSizeRemain <= 0) {
+        return;
+    }
+}
+
+template<typename T>
+__attribute__((always_inline)) inline __aicore__ void input2BuffRankMagic(
+    int64_t dataSizeRemain, __ubuf__ T *inputUB, __gm__ T *ipcReceiveBuff, int64_t revBuffOffsetNum,
+    __gm__ T *sendBuff, int64_t sendBuffOffsetNum, __ubuf__ int64_t* ctrlFlagsUB, __gm__ int64_t* ctrlFlagGM,
+    int64_t magic)
+{
+    int64_t times = 0;
+    int64_t flag = 0;
+
+    while (dataSizeRemain >= UB_SINGLE_DMA_SIZE_MAX) {
+        CpGM2UB(inputUB, (__gm__ T*)sendBuff + sendBuffOffsetNum + UB_SINGLE_DMA_SIZE_MAX / sizeof(T) * times,
+            UB_SINGLE_DMA_SIZE_MAX);
+        AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
+        CpUB2GM(
+            (__gm__ T*)ipcReceiveBuff + revBuffOffsetNum + UB_SINGLE_DMA_SIZE_MAX / sizeof(T) * times,
+            inputUB, UB_SINGLE_DMA_SIZE_MAX);
+        times += 1;
+        flag = times;
+)
+
 
 #endif
