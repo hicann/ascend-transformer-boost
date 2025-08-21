@@ -71,7 +71,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGather910B2C(ALLRED
 
     int64_t x = rank < singleNodeRankSize ? GetBlockIdx() : GetBlockIdx() + singleNodeRankSize;
     __gm__ T *receiveBuff = output;
-    __gm__ T *sendBuff = (__gm__ T*)((__gm__ int64_t *)buff[x] + dataOffsetNum);
+    __gm__ T *sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
 
     CheckFlag(ctrlFlagsUB, (__gm__ int64_t*)buff[x] + singleNodeRankSize * MEM_DMA_UNIT_INT_NUM, magic);
     int64_t revBuffOffsetNum = GetBlockIdx() * len;
