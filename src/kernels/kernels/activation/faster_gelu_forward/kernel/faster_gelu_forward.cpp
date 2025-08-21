@@ -49,7 +49,7 @@ extern "C" __global__ __aicore__ void faster_gelu_forward(GM_ADDR inputAddr, GM_
 {
     GET_TILING_DATA(tilingData, tiling);
     if (TILING_KEY_IS(1)) {
-        FasterGeluForward<half, half> op;
+        FasterGeluForward<half, half, false> op;
         op.Init(inputAddr, outputAddr, tilingData);
         op.Process<>();
     }
@@ -61,7 +61,7 @@ extern "C" __global__ __aicore__ void faster_gelu_forward(GM_ADDR inputAddr, GM_
     }
 #if defined(__CCE_KT_TEST__) || (__CCE_AICORE__ == 220)
     if (TILING_KEY_IS(27)) {
-        FasterGeluForward<bfloat16_t, bfloat16_t> op;
+        FasterGeluForward<bfloat16_t, bfloat16_t, false> op;
         op.Init(inputAddr, outputAddr, tilingData);
         op.Process<>();
     }
