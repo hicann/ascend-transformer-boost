@@ -53,7 +53,7 @@ public:
             rowWork_ = numRow - (numCore_ - 1) * rowWork;
         }
 
-        if (xDimNum_ > 0) {
+        if (xDimNum_ > 1) {
             isNCT_ = true;
         }
 

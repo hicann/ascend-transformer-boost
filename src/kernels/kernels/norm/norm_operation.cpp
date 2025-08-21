@@ -66,7 +66,7 @@ bool checkNCT(const LaunchParam &launchParam)
     }
     const SVector<int64_t>& xShapes = launchParam.GetInTensor(0).desc.dims;
     uint32_t dimNum = xStrides.size();
-    MKI_CHECK(dimNum >= rowStrideNum, "nonconstance dimNum must lager then two", return false);
+    MKI_CHECK(dimNum >= rowStrideNum, "nonconsistance dimNum must lager then two", return false);
     return (xStrides[dimNum - rowStrideNum] == xShapes[dimNum - 1]) ? false : true;
 }
 
