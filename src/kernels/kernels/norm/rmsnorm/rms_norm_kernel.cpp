@@ -68,23 +68,26 @@ public:
         const auto& xStrides = launchParam.GetInTensor(0).desc.strides;
         const auto& shape = launchParam.GetInTensor(0).desc.dims;
         
-        uint32_t lastDim = shape[inTensor0Row - 1];
-        if (!xStrides.empty()) {
-            MKI_CHECK(xStrides.size() == shape.size(), "mismatch in length of strides and shape", return false);
-            lastDim = xStrides[inTensor0Row - NUM_TWO];
-        }
+        uint32_t lastDim = shape[inTensor0Row - 1];    
         MKI_CHECK(lastDim % 16 == 0, "input0 is not a multiple of 16", return false);
-        if (!xStrides.empty() && xStrides[inTensor0Row - NUM_TWO] != shape[inTensor0Row - 1]) {
-            MKI_CHECK(xStrides[inTensor0Row - 1] == 1,
-                    "the last dimension of not contiguous tenosr input0 should be 1", return false);
-            MKI_CHECK(xStrides[inTensor0Row - NUM_TWO] >= shape[inTensor0Row - 1],
-                "The penultimate element of the input0 strides \
-                array must be greater than the last element of the shape array.", return false);
-            uint64_t elemNum = xStrides[inTensor0Row - NUM_TWO];
-            for (size_t i = inTensor0Row - 2; i > 0; -- i) {
-                elemNum *= shape[i];
-                MKI_CHECK(static_cast<uint64_t>(xStrides[i + 1]) != elemNum,
-                    "Only the last dimension of input0 is supported to be non-contiguous!", return false);
+        if(inTensor0Row >= NUM_TWO)
+        {
+            if (!xStrides.empty()) {
+                MKI_CHECK(xStrides.size() == shape.size(), "mismatch in length of strides and shape", return false);
+                lastDim = xStrides[inTensor0Row - NUM_TWO];
+            }
+            if (!xStrides.empty() && xStrides[inTensor0Row - NUM_TWO] != shape[inTensor0Row - 1]) {
+                MKI_CHECK(xStrides[inTensor0Row - 1] == 1,
+                        "the last dimension of not contiguous tenosr input0 should be 1", return false);
+                MKI_CHECK(xStrides[inTensor0Row - NUM_TWO] >= shape[inTensor0Row - 1],
+                    "The penultimate element of the input0 strides \
+                    array must be greater than the last element of the shape array.", return false);
+                uint64_t elemNum = xStrides[inTensor0Row - NUM_TWO];
+                for (size_t i = inTensor0Row - 2; i > 0; -- i) {
+                    elemNum *= shape[i];
+                    MKI_CHECK(static_cast<uint64_t>(xStrides[i + 1]) != elemNum,
+                        "Only the last dimension of input0 is supported to be non-contiguous!", return false);
+                }
             }
         }
         return true;
