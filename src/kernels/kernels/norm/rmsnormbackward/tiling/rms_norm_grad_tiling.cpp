@@ -17,8 +17,8 @@
 #include "rms_norm_grad_tiling.h"
 
 namespace AsdOps {
-static const uint32_t ALIGN_32 = 8;
-static const uint32_t ALIGN_16 = 16;
+static const uint32_t FP32_ALIGN_32 = 8;
+static const uint32_t FP16_BF16_ALIGN_32 = 16;
 static const uint64_t DTYPE_FP32 = 1;
 static const uint64_t DTYPE_FP16 = 2;
 static const uint64_t DTYPE_BF16 = 3;
@@ -156,7 +156,7 @@ bool GetRstdShape(const LaunchParam &launchParam, const Mki::SVector<int64_t>& r
     return true;
 }
 
-uint64_t GetDypeKey(const TensorDType dataType, uint32_t &bufferSize)
+uint64_t GetDTypeKey(const TensorDType dataType, uint32_t &bufferSize)
 {
     uint64_t dtypeKey = DTYPE_FP32;
     if (dataType == TENSOR_DTYPE_FLOAT16) {
@@ -204,8 +204,8 @@ Status RmsNormGradTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint32_t coreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR);
     TensorDType dataType = launchParam.GetInTensor(DY_INPUT).desc.dtype;
     uint32_t bufferSize = 6400;
-    uint64_t dtypeKey = GetDypeKey(dataType, bufferSize);
-    uint32_t alignFactor = dtypeKey == 1 ? ALIGN_32 : ALIGN_16;
+    uint64_t dtypeKey = GetDTypeKey(dataType, bufferSize);
+    uint32_t alignFactor = dtypeKey == 1 ? FP32_ALIGN_32 : FP16_BF16_ALIGN_32;
     MKI_CHECK(colVal <= UINT_MAX - alignFactor + 1, "colVal + alignFactor is invalid!",
               return Status::FailStatus(ERROR_INVALID_VALUE, "colVal + alignFactor is invalid!"));
     uint32_t colValAlign = (static_cast<uint32_t>(colVal) + alignFactor - 1) / alignFactor * alignFactor;
