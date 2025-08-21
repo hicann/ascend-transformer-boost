@@ -13,6 +13,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// 256GB
+const int64_t MAX_TENSOR_SIZE = 256uLL * 1024uLL * 1024uLL * 1024uLL;
+
 int64_t GetTensorSize(const aclTensor *input)
 {
     const op::Shape shape = input->GetViewShape();
@@ -31,16 +35,18 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
         atbTensorDst->deviceData = nullptr;
         return atb::NO_ERROR;
     }
+    ATB_CHECK(atbTensorDst != nullptr, "expect dst tensor address not to be null!",
+              return atb::ERROR_INVALID_TENSOR_DIM);
     int64_t *dims = nullptr;
     uint64_t dimCount;
     aclDataType dataType;
     aclFormat format;
     auto status = aclGetViewShape(aclTensorSrc, &dims, &dimCount);
-    ATB_CHECK(status == atb::NO_ERROR, "aclGetViewShape failed!", return status);
+    ATB_CHECK(status == ACL_SUCCESS, "aclGetViewShape failed!", return atb::ERROR_INVALID_TENSOR_DIM);
     status = aclGetDataType(aclTensorSrc, &dataType);
-    ATB_CHECK(status == atb::NO_ERROR, "aclGetDataType failed!", return status);
+    ATB_CHECK(status == ACL_SUCCESS, "aclGetDataType failed!", return atb::ERROR_INVALID_TENSOR_DTYPE);
     status = aclGetFormat(aclTensorSrc, &format);
-    ATB_CHECK(status == atb::NO_ERROR, "aclGetFormat failed!", return status);
+    ATB_CHECK(status == ACL_SUCCESS, "aclGetFormat failed!", return atb::ERROR_INVALID_TENSOR_FORMAT);
     atb::TensorDesc desc;
     desc.shape.dimNum = dimCount;
     for (size_t i = 0; i < dimCount; i++) {
@@ -51,7 +57,14 @@ atb::Status aclTensorToAtbTensor(const aclTensor *aclTensorSrc, atb::Tensor *atb
     atbTensorDst->desc = desc;
     atbTensorDst->deviceData = aclTensorSrc->GetData();
     atbTensorDst->hostData = nullptr;
-    atbTensorDst->dataSize = GetTensorSize(aclTensorSrc) * aclDataTypeSize(dataType);
+    int64_t tensorSize = GetTensorSize(aclTensorSrc);
+    int64_t dataTypeSize = static_cast<int64_t>(aclDataTypeSize(dataType));
+    if (tensorSize > MAX_TENSOR_SIZE / dataTypeSize) {
+        ATB_LOG(ERROR) << "The size of a tensor * dataTypeSize should be no more than 256GB, but got tensor size: "
+                       << tensorSize;
+    }
+    atbTensorDst->dataSize = tensorSize * dataTypeSize;
+    delete[] dims;
     return atb::NO_ERROR;
 }
 
@@ -62,16 +75,18 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
         atbTensorDst->deviceData = nullptr;
         return atb::NO_ERROR;
     }
+    ATB_CHECK(atbTensorDst != nullptr, "expect dst tensor address not to be null!",
+              return atb::ERROR_INVALID_TENSOR_DIM);
     int64_t *dims = nullptr;
     uint64_t dimCount;
     aclDataType dataType;
     aclFormat format;
     auto status = aclGetViewShape(aclTensorSrc, &dims, &dimCount);
-    ATB_CHECK(status == atb::NO_ERROR, "aclGetViewShape failed!", return status);
+    ATB_CHECK(status == ACL_SUCCESS, "aclGetViewShape failed!", return atb::ERROR_INVALID_TENSOR_DIM);
     status = aclGetDataType(aclTensorSrc, &dataType);
-    ATB_CHECK(status == atb::NO_ERROR, "aclGetDataType failed!", return status);
+    ATB_CHECK(status == ACL_SUCCESS, "aclGetDataType failed!", return atb::ERROR_INVALID_TENSOR_DTYPE);
     status = aclGetFormat(aclTensorSrc, &format);
-    ATB_CHECK(status == atb::NO_ERROR, "aclGetFormat failed!", return status);
+    ATB_CHECK(status == ACL_SUCCESS, "aclGetFormat failed!", return atb::ERROR_INVALID_TENSOR_FORMAT);
     atb::TensorDesc desc;
     desc.shape.dimNum = dimCount;
     for (size_t i = 0; i < dimCount; i++) {
@@ -82,8 +97,14 @@ atb::Status aclTensorToAtbTensorHost(const aclTensor *aclTensorSrc, atb::Tensor 
     atbTensorDst->desc = desc;
     atbTensorDst->deviceData = nullptr;
     atbTensorDst->hostData = aclTensorSrc->GetData();
-    atbTensorDst->dataSize =
-        static_cast<uint64_t>(GetTensorSize(aclTensorSrc) * static_cast<int64_t>(aclDataTypeSize(dataType)));
+    int64_t tensorSize = GetTensorSize(aclTensorSrc);
+    int64_t dataTypeSize = static_cast<int64_t>(aclDataTypeSize(dataType));
+    if (tensorSize > MAX_TENSOR_SIZE / dataTypeSize) {
+        ATB_LOG(ERROR) << "The size of a tensor * dataTypeSize should be no more than 256GB, but got tensor size: "
+                       << tensorSize;
+    }
+    atbTensorDst->dataSize = tensorSize * dataTypeSize;
+    delete[] dims;
     return atb::NO_ERROR;
 }
 
