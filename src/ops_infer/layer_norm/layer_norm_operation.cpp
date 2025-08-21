@@ -398,7 +398,7 @@ Status LayerNormOperation::InTensorsDimCheck(const SVector<TensorDesc> inTensorD
     Status result = NO_ERROR;
     if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM &&
         param_.normParam.quantType == infer::QUANT_INT8 &&
-        param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_ASYMMETRIC &&
+        param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_SYMMETRIC &&
         inTensorDescs.at(0).shape.dimNum < 2) {
             ATB_LOG(ERROR) << GetLogPrefix() << "dim numbers of inTensor[0] should be greater than one";
             return ERROR_INVALID_TENSOR_DIM;
