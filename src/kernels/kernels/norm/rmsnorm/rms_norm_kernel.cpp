@@ -68,7 +68,7 @@ public:
         const auto& xStrides = launchParam.GetInTensor(0).desc.strides;
         const auto& shape = launchParam.GetInTensor(0).desc.dims;
         
-        uint32_t lastDim = shape[inTensor0Row - 1];  
+        uint32_t lastDim = shape[inTensor0Row - 1];
         MKI_CHECK(lastDim % 16 == 0, "input0 is not a multiple of 16", return false);
         if (inTensor0Row >= NUM_TWO) {
             if (!xStrides.empty()) {
