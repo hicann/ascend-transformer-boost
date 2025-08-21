@@ -291,6 +291,7 @@ __attribute__((always_inline)) inline __aicore__ void GM2GMPingPong(
     }
     AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
     AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
+    AscendC::PipeBarrier<PIPE_ALL>();
     if (dataSizeRemain <= 0) {
         return;
     }
@@ -346,9 +347,90 @@ __attribute__((always_inline)) inline __aicore__ void input2BuffRankMagic(
             (__gm__ T*)ipcReceiveBuff + revBuffOffsetNum + UB_SINGLE_DMA_SIZE_MAX / sizeof(T) * times,
             inputUB, UB_SINGLE_DMA_SIZE_MAX);
         times += 1;
-        flag = times;
+        flag = times * UB_SINGLE_DMA_SIZE_MAX / DMA_SIZE_PER_FLAG + magic;
+        if (flag != *ctrlFlagsUB && flag > 0) {
+            AscendC::SetFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID0);
+            AscendC::WaitFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID0);
+            *ctrlFlagsUB = flag;
+            AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
+            AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
+            CpUB2GM(ctrlFlagGM, ctrlFlagsUB, sizeof(int64_t));
+        }
+        AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+        dataSizeRemain -= UB_SINGLE_DMA_SIZE_MAX;
     }
-)
+    if (dataSizeRemain <= 0) {
+        return;
+    }
+    CpGM2UB(inputUB, (__gm__ T*)sendBuff + sendBuffOffsetNum + times * UB_SINGLE_DMA_SIZE_MAX / sizeof(T),
+                dataSizeRemain);
+    AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
+    AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
+    CpUB2GM(
+        (__gm__ T*)ipcReceiveBuff + revBuffOffsetNum + times * UB_SINGLE_DMA_SIZE_MAX / sizeof(T),
+        inputUB, dataSizeRemain);
+    flag = CeilDiv(times * UB_SINGLE_DMA_SIZE_MAX + dataSizeRemain, DMA_SIZE_PER_FLAG) + magic;
+    AscendC::PipeBarrier<PIPE_ALL>();
+    *ctrlFlagsUB = flag;
+    AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
+    AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
+    CpUB2GM(ctrlFlagGM, ctrlFlagsUB, sizeof(int64_t));
+    AscendC::PipeBarrier<PIPE_ALL>();
+}
+
+template<typename T>
+__attribute__((always_inline)) inline __aicore__ void input2BuffRank(
+    int64_t dataSizeRemain, __ubuf__ T *inputUB, __gm__ T *ipcReceiveBuff, int64_t revBuffOffsetNum,
+    __gm__ T *sendBuff, int64_t sendBuffOffsetNum, __ubuf__ int64_t* ctrlFlagsUB, __gm__ int64_t* ctrlFlagGM)
+{
+    int64_t times = 0;
+    int64_t flag = 0;
+
+    while (dataSizeRemain >= UB_SINGLE_DMA_SIZE_MAX) {
+        CpGM2UB(inputUB, (__gm__ T*)sendBuff + sendBuffOffsetNum + UB_SINGLE_DMA_SIZE_MAX / sizeof(T) * times,
+            UB_SINGLE_DMA_SIZE_MAX);
+        AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
+        CpUB2GM(
+            (__gm__ T*)ipcReceiveBuff + revBuffOffsetNum + UB_SINGLE_DMA_SIZE_MAX / sizeof(T) * times,
+            inputUB, UB_SINGLE_DMA_SIZE_MAX);
+        times += 1;
+        flag = times * UB_SINGLE_DMA_SIZE_MAX / DMA_SIZE_PER_FLAG;
+        if (flag != *ctrlFlagsUB && flag > 0) {
+            AscendC::SetFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID0);
+            AscendC::WaitFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID0);
+            *ctrlFlagsUB = flag;
+            AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
+            AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
+            CpUB2GM(ctrlFlagGM, ctrlFlagsUB, sizeof(int64_t));
+        }
+        AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+        dataSizeRemain -= UB_SINGLE_DMA_SIZE_MAX;
+    }
+    if (dataSizeRemain <= 0) {
+        return;
+    }
+    CpGM2UB(inputUB, (__gm__ T*)sendBuff + sendBuffOffsetNum + times * UB_SINGLE_DMA_SIZE_MAX / sizeof(T),
+                dataSizeRemain);
+    CpGM2UB(inputUB, (__gm__ T*)sendBuff + sendBuffOffsetNum + times * UB_SINGLE_DMA_SIZE_MAX / sizeof(T),
+                dataSizeRemain);
+    AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
+    AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
+    CpUB2GM(
+        (__gm__ T*)ipcReceiveBuff + revBuffOffsetNum + times * UB_SINGLE_DMA_SIZE_MAX / sizeof(T),
+        inputUB, dataSizeRemain);
+    flag = CeilDiv(times * UB_SINGLE_DMA_SIZE_MAX + dataSizeRemain, DMA_SIZE_PER_FLAG);
+    AscendC::PipeBarrier<PIPE_ALL>();
+    *ctrlFlagsUB = flag;
+    AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
+    AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
+    CpUB2GM(ctrlFlagGM, ctrlFlagsUB, sizeof(int64_t));
+    AscendC::PipeBarrier<PIPE_ALL>();    
+}
+
+
 
 
 #endif
