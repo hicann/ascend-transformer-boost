@@ -278,12 +278,12 @@ __attribute__((always_inline)) inline __aicore__ void GM2GMPingPong(
     AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
     for (int64_t i = 0; dataSizeRemain > 0; i++) {
         uint32_t size = dataSizeRemain > UB_SINGLE_PING_PONG_ADD_SIZE_MAX ? UB_SINGLE_PING_PONG_ADD_SIZE_MAX : dataSizeRemain;
-        event_t eventId = (i & 1) ? EVENT_ID0 ? EVENT_ID1;
+        event_t eventId = (i & 1) ? EVENT_ID0 : EVENT_ID1;
         AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
         CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], (__gm__ T*)sendBuff + sendBuffOffsetNum, size);
         AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
         AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
-        CpUB2GM((__gm__ T*)receiveBuff + revBuffOffsetNum, (i & 1) ? inputUB[1] : inputUB[0], size);
+        CpUB2GM((__gm__ T*)receiveBuff + revBuffOffsetNum, (i & 1) ? inputUB[0] : inputUB[1], size);
         AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
         dataSizeRemain -= size;
         sendBuffOffsetNum += (size / sizeof(T));
@@ -310,12 +310,12 @@ __attribute__((always_inline)) inline __aicore__ void GM2GMPingPongNonPipeBarrie
     AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
     for (int64_t i = 0; dataSizeRemain > 0; i++) {
         size = dataSizeRemain > UB_SINGLE_PING_PONG_ADD_SIZE_MAX ? UB_SINGLE_PING_PONG_ADD_SIZE_MAX : dataSizeRemain;
-        event_t eventId = (i & 1) ? EVENT_ID0 ? EVENT_ID1;
+        event_t eventId = (i & 1) ? EVENT_ID0 : EVENT_ID1;
         AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
         CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], (__gm__ T*)sendBuff + sendBuffOffsetNum, size);
         AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
         AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
-        CpUB2GM((__gm__ T*)receiveBuff + revBuffOffsetNum, (i & 1) ? inputUB[1] : inputUB[0], size);
+        CpUB2GM((__gm__ T*)receiveBuff + revBuffOffsetNum, (i & 1) ? inputUB[0] : inputUB[1], size);
         AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
         dataSizeRemain -= size;
         sendBuffOffsetNum += offsetNumPerLoop;
@@ -347,6 +347,7 @@ __attribute__((always_inline)) inline __aicore__ void input2BuffRankMagic(
             inputUB, UB_SINGLE_DMA_SIZE_MAX);
         times += 1;
         flag = times;
+    }
 )
 
 
