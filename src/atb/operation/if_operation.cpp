@@ -18,22 +18,31 @@ namespace atb {
 
 Status IfOperation::GetOperationFromCondition(Operation **op)
 {
-    bool cond;
+    bool cond = true;
+    if (!param_.userData) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "userData is null, please check the param";
+        return ERROR_INVALID_PARAM;
+    }
+    if (!param_.handle) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Handle is null, please check the param";
+        return ERROR_INVALID_PARAM;
+    }
     try {
-        cond = param_.handle(param_.condition);
+        cond = param_.handle(param_.userData);
     } catch (const std::exception &e) {
-        ATB_LOG(ERROR) << "Get condition failed, please check handle function";
+        ATB_LOG(ERROR) << GetLogPrefix() << "Get condition failed, please check handle function";
         return ERROR_INVALID_PARAM;
     }
 
     if (cond && param_.opA) {
-        ATB_LOG(INFO) << "Condition met (true), selecting opA...";
+        ATB_LOG(INFO) << GetLogPrefix() << "Condition met (true), selecting opA...";
         *op = param_.opA;
     } else if (!cond && param_.opB) {
-        ATB_LOG(INFO) << "Condition not met (false), selecting opB...";
+        ATB_LOG(INFO) << GetLogPrefix() << "Condition not met (false), selecting opB...";
         *op = param_.opB;
     } else {
-        ATB_LOG(ERROR) << "Please check the intended operation is valid, opA: " << param_.opA << " opB: " << param_.opB;
+        ATB_LOG(ERROR) << GetLogPrefix() << "Please check the intended operation is valid, opA: " << param_.opA
+                       << " opB: " << param_.opB;
         return ERROR_INVALID_PARAM;
     }
     return NO_ERROR;
@@ -42,37 +51,20 @@ Status IfOperation::GetOperationFromCondition(Operation **op)
 template <> Status CreateOperation(const common::IfCondParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
-        ATB_LOG(ERROR) << "Invalid param, operation is nullptr";
+        ATB_LOG(ERROR) << GetLogPrefix() << "Invalid param, operation is nullptr";
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) IfOperation(opParam);
     if (*operation == nullptr) {
-        ATB_LOG(ERROR) << "Failed to new conditional operation";
+        ATB_LOG(ERROR) << GetLogPrefix() << "Failed to new conditional operation";
         return ERROR_OUT_OF_HOST_MEMORY;
     }
     return NO_ERROR;
 }
 
-IfOperation::IfOperation(const common::IfCondParam &param) : OperationBase("IfOperation"), param_(param)
-{
-    if (!opSelected_) {
-        ATB_LOG(INFO) << "Operation not selected yet, setting opSelected_...";
-        Status st = GetOperationFromCondition(&opSelected_);
-        if (st != NO_ERROR) {
-            ATB_LOG(ERROR) << "Failed to select operation based on condition!";
-        }
-    }
-}
+IfOperation::IfOperation(const common::IfCondParam &param) : OperationBase("IfOperation"), param_(param) {}
 
-IfOperation::~IfOperation()
-{
-    if (param_.opA) {
-        DestroyOperation(param_.opA);
-    }
-    if (param_.opB) {
-        DestroyOperation(param_.opB);
-    }
-}
+IfOperation::~IfOperation() {}
 
 std::string IfOperation::GetName() const
 {
@@ -81,34 +73,43 @@ std::string IfOperation::GetName() const
 
 Status IfOperation::Setup(const VariantPack &variantPack, uint64_t &workspaceSize, Context *context)
 {
-    ATB_LOG(INFO) << "Calling Setup...";
+    if (!opSelected_) {
+        ATB_LOG(INFO) << GetLogPrefix() << "Operation not selected yet, setting opSelected_...";
+    } else {
+        ATB_LOG(WARN) << GetLogPrefix() << "Operation already selected, resetting opSelected_...";
+    }
+    Status st = GetOperationFromCondition(&opSelected_);
+    if (st != NO_ERROR) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Failed to select operation based on condition!";
+    }
+    ATB_LOG(INFO) << GetLogPrefix() << "Calling Setup...";
     return opSelected_->Setup(variantPack, workspaceSize, context);
 }
 
 Status IfOperation::Execute(const VariantPack &variantPack, uint8_t *workspace, uint64_t workspaceSize,
                             Context *context)
 {
-    ATB_LOG(INFO) << "Calling Execute...";
+    ATB_LOG(INFO) << GetLogPrefix() << "Calling Execute...";
     return opSelected_->Execute(variantPack, workspace, workspaceSize, context);
 }
 
 uint32_t IfOperation::GetInputNum() const
 {
-    ATB_LOG(INFO) << "Calling GetInputNum...";
-    return opSelected_->GetInputNum();
+    ATB_LOG(INFO) << GetLogPrefix() << "Calling GetInputNum...";
+    return param_.opA->GetInputNum();
 }
 
 uint32_t IfOperation::GetOutputNum() const
 {
-    ATB_LOG(INFO) << "Calling GetOutputNum...";
-    return opSelected_->GetOutputNum();
+    ATB_LOG(INFO) << GetLogPrefix() << "Calling GetOutputNum...";
+    return param_.opA->GetOutputNum();
 }
 
 void IfOperation::SetExecuteStreamId(uint32_t streamId)
 {
     Status st;
     if (!opSelected_) {
-        ATB_LOG(INFO) << "Operation not selected yet, setting opSelected_...";
+        ATB_LOG(INFO) << GetLogPrefix() << "Operation not selected yet, setting opSelected_...";
         st = GetOperationFromCondition(&opSelected_);
         if (st != NO_ERROR) {
             return;
@@ -117,14 +118,14 @@ void IfOperation::SetExecuteStreamId(uint32_t streamId)
     ATB_LOG(INFO) << "Calling SetExecuteStreamId...";
     st = atb::SetExecuteStreamId(opSelected_, streamId);
     if (st != NO_ERROR) {
-        ATB_LOG(ERROR) << "Calling SetExecuteStreamId failed!";
+        ATB_LOG(ERROR) << GetLogPrefix() << "Calling SetExecuteStreamId failed!";
         return;
     }
 }
 
 Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const
 {
-    ATB_LOG(INFO) << "Calling InferShape...";
+    ATB_LOG(INFO) << GetLogPrefix() << "Calling InferShape...";
     return opSelected_->InferShape(inTensorDescs, outTensorDescs);
 }
 
@@ -132,10 +133,10 @@ std::shared_ptr<Runner> IfOperation::CreateRunner(Context &context) const
 {
     OperationBase *opBase = dynamic_cast<OperationBase *>(opSelected_);
     if (!opBase) {
-        ATB_LOG(ERROR) << "Failed to convert Operation to OperationBase";
+        ATB_LOG(ERROR) << GetLogPrefix() << "Failed to convert Operation to OperationBase";
         return nullptr;
     }
-    ATB_LOG(INFO) << "Calling CreateRunner...";
+    ATB_LOG(INFO) << GetLogPrefix() << "Calling CreateRunner...";
     return opBase->CreateRunner(context);
 }
 } // namespace atb
