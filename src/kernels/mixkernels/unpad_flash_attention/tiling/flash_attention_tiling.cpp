@@ -626,7 +626,7 @@ Status InitMaxKVSeqlen(size_t &batch, Mki::SVector<int64_t> &kcacheShape, UnpadF
         mmInfo.isNoCache = true;
     } else if (param.type == OpParam::UnpadFlashAttention::UNPAD_FLASH_ATTENTION_ENCODER_PREFIX_CACHE_ND) {
         mmInfo.isNoCache = true;
-        mmInfo.maxKvSeqLen = static_cast<std::int64_t>(kcacheShape.at(0)) * static_cast<std::int64_t>(kcacheShape.at(0)) / static_cast<std::int64_t>(batch);
+        mmInfo.maxKvSeqLen = static_cast<std::int64_t>(kcacheShape.at(0)) * kcacheShape.at(0) / batch;
         OP_TILING_CHECK_STATUS_RETURN(GetFlashAttentionNoCacheMaskInfo(mmInfo, param, mmInfo.tensors.mask));
     } else {
         if (param.dataShapeType == 1) {
