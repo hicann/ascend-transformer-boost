@@ -17,18 +17,18 @@ inline __aicore__ void LcalAllGather2npu(ALLREDUCE_ARGS_FUN_16P(T))
     const int64_t corePerRank = GetLcalBlockNum() / rankSize;
     const int64_t coreSegmentedIdx = GetBlockIdx() % corePerRank;
     const int64_t x = GetBlockIdx() / corePerRank;
-    
+
     const int64_t dataOffsetNum = GetLcalBlockNum() * 2 * MEM_DMA_UNIT_INT_NUM;
-    int64_t flagOffset1st = (rank * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_BYTE;
-    int64_t flagOffset2nd = (x * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_BYTE;
+    const int64_t flagOffset1st = (rank * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
+    const int64_t flagOffset2nd = (x * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
     __gm__ T* buff[8] = {
         buff0, buff1, buff2, buff3,
         buff4, buff5, buff6, buff7
     };
     __ubuf__ int64_t* ctrlFlagsUB = (__ubuf__ int64_t*)(0);
     __ubuf__ int64_t* ctrlFlagsUB2 = (__ubuf__ int64_t*)(32);
-    *ctrlFlagsUB22 = 0;
-    __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(64), (__ubuf__ T*)(97312)};
+    *ctrlFlagsUB2 = 0;
+    __ubuf__ T* inputUB[2] = { (__ubuf__ T*)(64), (__ubuf__ T*)(97312) };
 
     __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
     __gm__ T *sendBuff = input;
@@ -47,7 +47,7 @@ inline __aicore__ void LcalAllGather2npu(ALLREDUCE_ARGS_FUN_16P(T))
     SetFlag(ctrlFlagsUB, ctrlFlagsGM, magic);
     AscendC::PipeBarrier<PIPE_ALL>();
 
-    __gm__ int64_t* ctrlFlagsGMTemp = (__gm__ int64_t*) buff[rank] + flagOffset2nd;
+    __gm__ int64_t* ctrlFlagsGMTemp = (__gm__ int64_t*)buff[rank] + flagOffset2nd;
     CheckFlag((__ubuf__ int64_t*)ctrlFlagsUB, ctrlFlagsGMTemp, (int64_t)magic);
 
     buffOffsetNum = sendBuffOffsetNum + x * len;
