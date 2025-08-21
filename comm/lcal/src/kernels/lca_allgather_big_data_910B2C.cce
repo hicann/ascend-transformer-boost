@@ -95,5 +95,4 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigData910B2C
         }
     }
 
-    DumpLcclLogInfo(dumpAddr, LogId::PROCESS, Op::COPYONLY);
 }
