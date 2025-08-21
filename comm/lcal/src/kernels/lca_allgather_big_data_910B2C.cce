@@ -18,27 +18,27 @@ __attribute__((always_inline)) inline __aicore__ void CheckThenDMAGM2GM(__ubuf__
 {
     PipeBarrier<PIPE_ALL>();
     CpGM2UB(ctrlFlagsUB1, ctrlFlagsGMStep1ToCheck, sizeof(int64_t));
-    SetFlag<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
-    WaitFlag<AscendC::HardEvent::MTE2_S>(EVENT_ID0);
+    SetFlag<HardEvent::MTE2_S>(EVENT_ID0);
+    WaitFlag<HardEvent::MTE2_S>(EVENT_ID0);
 
     if (*ctrlFlagsUB1 == 0 || ((*ctrlFlagsUB1 >> 10) != (newMagic >> 10))) {
         return;
     }
 
-    int64_t prepareDataGroupCount = (*ctrlFlagsUB1 & 0x3FF);
-    if (processedDataGroupCount >= prepareDataGroupCount) {
+    int64_t preparedDataGroupCount = (*ctrlFlagsUB1 & 0x3FF);
+    if (processedDataGroupCount >= preparedDataGroupCount) {
         return;
     }
 
-    int64_t curDataSizeRemain = (prepareDataGroupCount - processedDataGroupCount) * DMA_SIZE_PER_FLAG;
-    if (prepareDataGroupCount >= multipleTimes) {
+    int64_t curDataSizeRemain = (preparedDataGroupCount - processedDataGroupCount) * DMA_SIZE_PER_FLAG;
+    if (preparedDataGroupCount >= multipleTimes) {
         curDataSizeRemain = allDataSizeNeedDMA - processedDataGroupCount * DMA_SIZE_PER_FLAG;
     }
     PipeBarrier<PIPE_ALL>();
     GM2GMPingPongNonPipeBarrier<T>(curDataSizeRemain, inputUB, revBuff,
                                    revBuffOffsetNumOrigin + processedDataGroupCount * DMA_SIZE_PER_FLAG / sizeof(T),
                                    sendBuff, sendBuffOffsetNumOrigin + processedDataGroupCount * DMA_SIZE_PER_FLAG / sizeof(T));
-    processedDataGroupCount = prepareDataGroupCount;
+    processedDataGroupCount = preparedDataGroupCount;
     PipeBarrier<PIPE_ALL>();
 }
 
@@ -182,6 +182,15 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigData910B2C
                 CheckThenDMAGM2GM<T>(ctrlFlagsUB2, ctrlFlagsUB3, ctrlFlagsGMStep1ToCheck2nd, newMagic, dataSizeRemain,
                         revBuffOffsetNumOrigin2nd, processedDataNum, sendBuff, output, allGatherBuffNumPerParagraph910B2C, inputUB,
                         processedDataGroupCount2nd, multipleTimes);
+            } else if (step1NeedSetSecond) {
+                if (i < totalLoopTimes - 1) {
+                    SetFlag(ctrlFlagsUB3, ctrlFlagsGMStep1ToSet2nd, newMagic);
+                }
+                step1NeedSetSecond = false;
+            }
+
+            if (!step1NeedSetFirst && !step1NeedSetSecond) {
+                break;
             }
             
         }
