@@ -77,7 +77,8 @@ bool ParamCheck(const atb::infer::MmDeqSwigluQuantMmDeqParam &opParam)
     }
 
     if (opParam.outputType != atb::infer::MmDeqSwigluQuantMmDeqParam::OUTPUT_FLOAT16) {
-        ATB_LOG(ERROR) << "Param outputType only support OUTPUT_FLOAT16 (0).";
+        ATB_LOG(ERROR) << "Param outputType only support OUTPUT_FLOAT16 (" <<
+            static_cast<int>(atb::infer::MmDeqSwigluQuantMmDeqParam::OUTPUT_FLOAT16) << ").";
         return false;
     }
 
@@ -301,7 +302,7 @@ std::shared_ptr<Runner> MmDeqSwigluQuantMmDeqOperation::CreateRunner(Context &co
     RunnerPool &pool = contextBase->GetRunnerPool(RUNNER_TYPE_MM_DEQ_SWIGLU_QUANT_MM_DEQ);
     Runner *runner = pool.MallocRunner<MmDeqSwigluQuantMmDeqOpsRunner, infer::MmDeqSwigluQuantMmDeqParam>(param_);
     if (!runner) {
-        ATB_LOG(DEBUG) << "MallocRunner from pool failed!";
+        ATB_LOG(WARN) << "MallocRunner from pool failed!";
         return std::make_shared<MmDeqSwigluQuantMmDeqOpsRunner>(param_);
     }
 
