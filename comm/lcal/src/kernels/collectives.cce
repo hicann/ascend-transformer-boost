@@ -688,32 +688,29 @@ __attribute__((always_inline)) inline __aicore__ void CheckFlagGE(__ubuf__ int64
 __attribute__((always_inline)) inline __aicore__ void NewCheckFlagGE(__ubuf__ int64_t *ctrlFlagsUB,
                                                                   __gm__ int64_t *ctrlFlagGM, int64_t checkValue, event_t eventId)
 {
-    AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId);
+    AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId); 
     while (true) {
-        AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId);
+        AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId); 
         CpGM2UBAlignB16(ctrlFlagsUB, ctrlFlagGM, sizeof(int64_t));
         AscendC::SetFlag<AscendC::HardEvent::MTE2_S>(eventId);
         AscendC::WaitFlag<AscendC::HardEvent::MTE2_S>(eventId);
-        if ((*ctrlFlagsUB >> 20) == (checkValue >> 20) && (*checkFlagsUB & 0xFFFFF) >= (checkValue & 0xFFFFF)) {
+        if ((*ctrlFlagsUB >> 20) == (checkValue >> 20) && (*ctrlFlagsUB & 0xFFFFF) >= (checkValue & 0xFFFFF)) {
             break;
         }
-        AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId);
+        AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId); 
     }
 }
 
-template<typename T>
-__attribute__((always_inline)) inline __aicore__ int64_t GetDeterministicRankOffset(int64_t x)
-{
+__attribute__((always_inline)) inline __aicore__ int64_t GetDeterministicRankOffset(int64_t x) {
     int64_t count = 1;
     while (!(x & 1)) {
-        x >> 1;
+        x >>= 1;
         count <<= 1;
     }
     return count;
 }
 
-template<typename T>
-__attribute__((always_inline)) inline __aicore__ void CopyInput2BuffBroadCast(__ubuf__ char* inputUB, __gm__ char* buff
+__attribute__((always_inline)) inline __aicore__ void CopyInput2BuffBroadCast(__ubuf__ char* inputUB, __gm__ char* buff,
                                                                               __gm__ char* input, int64_t singleCoreDataNum,
                                                                               int64_t blockDataOffset)
 {
