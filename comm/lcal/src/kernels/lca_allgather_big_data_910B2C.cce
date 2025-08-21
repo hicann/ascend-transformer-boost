@@ -92,7 +92,98 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigData910B2C
         int64_t dataNumRemain = dataSizeRemain / sizeof(T);
         if (GetBlockIdx() >= singleNodeRankSize) {
             __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
-            __gm__ int64_t *ctrlFlagsGMStep0ToSet =(__gm__ int64_t*)buff[rank] + flagOffset1st;
+            __gm__ int64_t *ctrlFlagsGMStep0ToSet = (__gm__ int64_t*)buff[rank] + flagOffset1st;
+            if ((nodeId == 0) && GetBlockIdx() == singleNodeRankSize + 1) {
+                *ctrlFlagsGMStep0ToSet = (__gm__ int64_t*)buff[peerRankId] + singleNodeRankSize * MEM_DMA_UNIT_INT_NUM;
+            }
+            if ((nodeId == 1) && GetBlockIdx() == singleNodeRankSize) {
+                *ctrlFlagsGMStep0ToSet = (__gm__ int64_t*)buff[peerRankId] + (singleNodeRankSize + 1) * MEM_DMA_UNIT_INT_NUM;
+            }
+            if ((nodeId == 0 && GetBlockIdx() == singleNodeRankSize + 1) ||
+                (nodeId == 1 && GetBlockIdx() == singleNodeRankSize)) {
+                receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[peerRankId] + dataOffsetNum);
+            }
+
+            input2BuffRankMagic(dataNumRemain, inputUB[0], receiveBuff, revBuffOffsetNumOrigin, input,
+                processedDataNum, ctrlFlagsUB, ctrlFlagsGMStep0ToSet, newMagic);
+            if (i < totalLoopTimes - 1) {
+                if ((nodeId == 0 && GetBlockIdx() == singleNodeRankSize)) {
+                    int64_t checkFlagOffset = nodeId * GetLcalBlockNum() * MEM_DMA_UNIT_INT_NUM;
+                    for (int checkLogicRank = 0; checkLogicRank < singleNodeRankSize; checkLogicRank++) {
+                        CheckFlag(ctrlFlagsUB,
+                        (__gm__ int64_t*)buff[rank] + checkFlagOffset + checkLogicRank * MEM_DMA_UNIT_INT_NUM,
+                        newMagic);
+                    }
+                }
+                if ((nodeId == 1 && GetBlockIdx() == singleNodeRankSize + 1)) {
+                    int64_t checkFlagOffset = nodeId * GetLcalBlockNum() * MEM_DMA_UNIT_INT_NUM;
+                    for (int checkLogicRank = 0; checkLogicRank < singleNodeRankSize; checkLogicRank++) {
+                        CheckFlag(ctrlFlagsUB,
+                        (__gm__ int64_t*)buff[rank] + checkFlagOffset + checkLogicRank * MEM_DMA_UNIT_INT_NUM,
+                        newMagic);
+                    }
+                }
+                if ((nodeId == 0 && GetBlockIdx() == singleNodeRankSize + 1)) {
+                    for (int checkLogicRank = 0; checkLogicRank < singleNodeRankSize; checkLogicRank++) {
+                        CheckFlag(ctrlFlagsUB,
+                                  (__gm__ int64_t*)buff[checkLogicRank] + (GetLcalBlockNum() + localNodeRankId) * MEM_DMA_UNIT_INT_NUM,
+                        newMagic);
+                    }
+                }
+                if ((nodeId == 1 && GetBlockIdx() == singleNodeRankSize)) {
+                    for (int checkLogicRank = 0; checkLogicRank < singleNodeRankSize; checkLogicRank++) {
+                        CheckFlag(ctrlFlagsUB,
+                                  (__gm__ int64_t*)buff[checkLogicRank + singleNodeRankSize] + localNodeRankId * MEM_DMA_UNIT_INT_NUM,
+                        newMagic);
+                    }
+                }
+            }
+        } else {
+            *ctrlFlagsUB = 0;
+            *ctrlFlagsUB1 = 0;
+            *ctrlFlagsUB2 = 0;
+            *ctrlFlagsUB3 = 0;
+            __gm__ int64_t *ctrlFlagsGMStep1ToCheck1st = (__gm__ int64_t*)buff[GetBlockIdx()] + singleNodeRankSize * MEM_DMA_UNIT_INT_NUM;
+            __gm__ int64_t *ctrlFlagsGMStep1ToSet1st = (__gm__ int64_t*)buff[GetBlockIdx()] + localNodeRankId * MEM_DMA_UNIT_INT_NUM;
+            __gm__ int64_t *ctrlFlagsGMStep1ToCheck2nd = (__gm__ int64_t*)buff[GetBlockIdx()] + (singleNodeRankSize + 1) * MEM_DMA_UNIT_INT_NUM;
+            __gm__ int64_t *ctrlFlagsGMStep1ToSet2nd = (__gm__ int64_t*)buff[peerRankId] + GetBlockIdx() * MEM_DMA_UNIT_INT_NUM;
+            __gm__ T *sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[GetBlockIdx()] + dataOffsetNum);
+            if (nodeId == 1) {
+                ctrlFlagsGMStep1ToCheck1st = (__gm__ int64_t*)buff[GetBlockIdx() + singleNodeRankSize] + singleNodeRankSize * MEM_DMA_UNIT_INT_NUM;
+                ctrlFlagsGMStep1ToSet1st = (__gm__ int64_t*)buff[peerRankId] + (GetBlockIdx() + GetLcalBlockNum()) * MEM_DMA_UNIT_INT_NUM;
+                ctrlFlagsGMStep1ToCheck2nd = (__gm__ int64_t*)buff[GetBlockIdx() + singleNodeRankSize] + (singleNodeRankSize + 1) * MEM_DMA_UNIT_INT_NUM;
+                ctrlFlagsGMStep1ToSet2nd = (__gm__ int64_t*)buff[GetBlockIdx() + singleNodeRankSize] + (localNodeRankId + GetLcalBlockNum()) * MEM_DMA_UNIT_INT_NUM;
+                __gm__ T *sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[GetBlockIdx() + singleNodeRankSize] + dataOffsetNum);
+            }
+            int64_t revBuffOffsetNumOrigin1st = GetBlockIdx() * len + processedDataNum;
+            int64_t revBuffOffsetNumOrigin2nd = (GetBlockIdx() + singleNodeRankSize) * len + processedDataNum;
+            int64_t allDataSizeNeedDMA = dataSizeRemain;
+            int64_t multipleTimes = CeilDiv(allDataSizeNeedDMA, DMA_SIZE_PER_FLAG);
+            bool step1NeedSetFirst = true;
+            bool step1NeedSetSecond = true;
+
+            int64_t processedDataGroupCount1st = 0;
+            int64_t processedDataGroupCount2nd = 0;
+            PipeBarrier<PIPE_ALL>();
+            while (true) {
+                if (processedDataGroupCount1st < multipleTimes) {
+                    CheckThenDMAGM2GM<T>(ctrlFlagsUB, ctrlFlagsUB1, ctrlFlagsGMStep1ToCheck1st, newMagic, dataSizeRemain,
+                        revBuffOffsetNumOrigin1st, processedDataNum, sendBuff, output, 0, inputUB,
+                        processedDataGroupCount1st, multipleTimes);
+                } else if (step1NeedSetFirst) {
+                    if (i < totalLoopTimes - 1) {
+                        SetFlag(ctrlFlagsUB1, ctrlFlagsGMStep1ToSet1st, newMagic);
+                    }
+                    step1NeedSetFirst = false;
+                }
+            }
+
+            if (processedDataGroupCount2nd < multipleTimes) {
+                CheckThenDMAGM2GM<T>(ctrlFlagsUB2, ctrlFlagsUB3, ctrlFlagsGMStep1ToCheck2nd, newMagic, dataSizeRemain,
+                        revBuffOffsetNumOrigin2nd, processedDataNum, sendBuff, output, allGatherBuffNumPerParagraph910B2C, inputUB,
+                        processedDataGroupCount2nd, multipleTimes);
+            }
+            
         }
     }
 
