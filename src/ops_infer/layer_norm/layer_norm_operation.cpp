@@ -13,6 +13,7 @@
 #include <sstream>
 #include "layer_norm_ops_runner.h"
 #include "atb/utils/tensor_check.h"
+#include "atb/utils/tensor_util.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
@@ -233,10 +234,6 @@ Status LayerNormOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDes
             outTensorDescs.at(1).dtype = ACL_INT8;
         }
     }
-    Status outTensorCheckStatus = OutTensorsDimCheck(inTensorDescs, outTensorDescs);
-    if (outTensorCheckStatus != NO_ERROR) {
-        return outTensorCheckStatus;
-    }
     return NO_ERROR;
 }
 
@@ -283,17 +280,23 @@ Status LayerNormOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
     }
     SVector<TensorDesc> inTensorDescs;
     OperationUtil::InTensorsToInTensorDescs(inTensors, inTensorDescs);
+    SVector<TensorDesc> outTensorDescs;
+    OperationUtil::InTensorsToInTensorDescs(outTensors, outTensorDescs);
     Status lastDimCheckStatus = LastDimCheck(inTensorDescs);
     if (lastDimCheckStatus != NO_ERROR) {
         return lastDimCheckStatus;
     }
-    SVector outTensorDescs;
-    OperationUtil::InTensorsToInTensorDescs(outTensors, outTensorDescs);
-    Status outTensorCheckStatus = OutTensorsDimCheck(inTensorDescs, outTensorDescs);
-    if (outTensorCheckStatus != NO_ERROR) {
-        return outTensorCheckStatus;
+    uint32_t out_num = GetOutputNum();
+    SVector<TensorDesc> targetOutTensorDescs = {};
+    targetOutTensorDescs.reserve(out_num);
+    targetOutTensorDescs.resize(out_num);
+    InferShapeImpl(inTensorDescs, targetOutTensorDescs);
+    for (size_t i = 0; i < out_num; ++i) {
+        if (!TensorUtil::TensorDescEqual(outTensorDescs.at(i), targetOutTensorDescs.at(i))) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not match";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
     }
-    (void)outTensors;
     return NO_ERROR;
 }
 
@@ -393,12 +396,12 @@ Status LayerNormOperation::LastDimCheck(const SVector<TensorDesc> &inTensorDescs
 Status LayerNormOperation::InTensorsDimCheck(const SVector<TensorDesc> inTensorDescs) const
 {
     Status result = NO_ERROR;
-    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM
-        && param_.normParam.quantType == infer::QUANT_INT8
-        && param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_ASYMMETRIC) {
-        if (inTensorDescs.at(0).shape.dimNum < 2) {
+    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM &&
+        param_.normParam.quantType == infer::QUANT_INT8 &&
+        param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_ASYMMETRIC &&
+        inTensorDescs.at(0).shape.dimNum < 2) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim numbers of inTensor[0] should be greater than one";
             return ERROR_INVALID_TENSOR_DIM;
-        }
     }
     if (param_.layerType == infer::LayerNormParam::LAYER_NORM_PRENORM ||
         param_.layerType == infer::LayerNormParam::LAYER_NORM_POSTNORM) {
@@ -410,62 +413,4 @@ Status LayerNormOperation::InTensorsDimCheck(const SVector<TensorDesc> inTensorD
     }
     return result;
 }
-
-Status LayerNormOperation::OutTensorsDimCheck(const SVector inTensorDescs,const SVector outTensorDescs) const
-{
-    uint64_t yDimNum = outTensorDescs.at(0).shape.dimNum;
-    for (uint64_t i = 0; i < yDimNum; i++) {
-        if (outTensorDescs.at(0).shape.dims[i] != inTensorDescs.at(0).shape.dims[i]) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not same as x tensor.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-    }
-    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM
-        && param_.normParam.quantType == infer::QUANT_INT8
-        &&param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_SYMMETRIC) {
-        if (outTensorDescs.size() != OUT_TENSOR_COUNT_TWO) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "outTensors count dose not match.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        uint64_t scaleDimNum = outTensorDescs.at(1).shape.dimNum;
-        if (scaleDimNum != yDimNum - 1) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not match xtensor[:-1].";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        for (uint64_t i = 0; i < yDimNum - 1; i++) {
-            if (outTensorDescs.at(1).shape.dims[i] != outTensorDescs.at(0).shape.dims[i]) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not match xtensor[:-1].";
-                return ERROR_INVALID_TENSOR_DIM;
-            }
-        }
-    }
-    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_PRENORM) {
-        uint64_t residualDimNum = outTensorDescs.at(1).shape.dimNum;
-        if (residualDimNum != yDimNum) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not same as x tensor.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        for (uint64_t i = 0; i < yDimNum; i++) {
-            if (outTensorDescs.at(1).shape.dims[i] != outTensorDescs.at(0).shape.dims[i]) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not same as x tensor.";
-                return ERROR_INVALID_TENSOR_DIM;
-            }
-        }
-    }
-    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_POSTNORM && param_.normParam.quantType == infer::QUANT_INT8) {
-        uint64_t quantDimNum = outTensorDescs.at(1).shape.dimNum;
-        if (quantDimNum != yDimNum) {
-            ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not same as x tensor.";
-            return ERROR_INVALID_TENSOR_DIM;
-        }
-        for (uint64_t i = 0; i < yDimNum; i++) {
-            if (outTensorDescs.at(1).shape.dims[i] != outTensorDescs.at(0).shape.dims[i]) {
-                ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not same as x tensor.";
-                return ERROR_INVALID_TENSOR_DIM;
-            }
-        }
-    }
-    return NO_ERROR;
-}
-
 } // namespace atb

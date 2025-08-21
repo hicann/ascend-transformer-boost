@@ -33,7 +33,6 @@ private:
     infer::LayerNormParam param_;
     bool QuantTensorCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InTensorsDimCheck(const SVector<TensorDesc> inTensorDescs) const;
-    Status OutTensorsDimCheck(const SVector inTensorDescs,const SVector outTensorDescs) const;
 };
 } // namespace atb
 #endif
