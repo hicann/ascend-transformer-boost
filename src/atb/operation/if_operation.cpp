@@ -51,12 +51,12 @@ Status IfOperation::GetOperationFromCondition(Operation **op)
 template <> Status CreateOperation(const common::IfCondParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Invalid param, operation is nullptr";
+        ATB_LOG(ERROR) << "Invalid param, operation is nullptr";
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) IfOperation(opParam);
     if (*operation == nullptr) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Failed to new conditional operation";
+        ATB_LOG(ERROR) << "Failed to new conditional operation";
         return ERROR_OUT_OF_HOST_MEMORY;
     }
     return NO_ERROR;

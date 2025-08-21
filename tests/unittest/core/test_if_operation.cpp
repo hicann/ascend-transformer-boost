@@ -27,10 +27,10 @@
 using namespace atb;
 using namespace Mki;
 
-bool CondFunction(void *condition)
+bool CondFunction(void *userData)
 {
-    if (condition != nullptr) {
-        int *data = static_cast<int *>(condition);
+    if (userData != nullptr) {
+        int *data = static_cast<int *>(userData);
         return (*data > 10);
     }
     return false;
@@ -58,7 +58,7 @@ TEST(TestIfOperation, IfOpTest)
     atb::common::IfCondParam opCond;
     std::unique_ptr<int> data = std::make_unique<int>(15);
     opCond.handle = CondFunction;
-    opCond.condition = data.get();
+    opCond.userData = data.get();
     opCond.opA = operationA;
     opCond.opB = operationB;
     atb::Status status3 = CreateOperation(opCond, &ifOperation);
@@ -128,7 +128,7 @@ TEST(TestIfOperation, IfGraphOpTest)
     atb::common::IfCondParam opCond;
     std::unique_ptr<int> data = std::make_unique<int>(15);
     opCond.handle = CondFunction;
-    opCond.condition = data.get();
+    opCond.userData = data.get();
     opCond.opA = operationA;
     opCond.opB = operationB;
     atb::Status status5 = CreateOperation(opCond, &ifOperation);
