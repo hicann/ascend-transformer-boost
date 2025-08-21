@@ -13,6 +13,7 @@
 #include <sstream>
 #include "layer_norm_ops_runner.h"
 #include "atb/utils/tensor_check.h"
+#include "atb/utils/tensor_util.h"
 #include "atb/utils/param_to_json.h"
 #include "atb/core/atb_operation_ir_cfg.h"
 #include "atb/utils/config.h"
@@ -279,11 +280,23 @@ Status LayerNormOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
     }
     SVector<TensorDesc> inTensorDescs;
     OperationUtil::InTensorsToInTensorDescs(inTensors, inTensorDescs);
+    SVector<TensorDesc> outTensorDescs;
+    OperationUtil::InTensorsToInTensorDescs(outTensors, outTensorDescs);
     Status lastDimCheckStatus = LastDimCheck(inTensorDescs);
     if (lastDimCheckStatus != NO_ERROR) {
         return lastDimCheckStatus;
     }
-    (void)outTensors;
+    uint32_t out_num = GetOutputNum();
+    SVector<TensorDesc> targetOutTensorDescs = {};
+    targetOutTensorDescs.reserve(out_num);
+    targetOutTensorDescs.resize(out_num);
+    InferShapeImpl(inTensorDescs, targetOutTensorDescs);
+    for (size_t i = 0; i < out_num; ++i) {
+        if (!TensorUtil::TensorDescEqual(outTensorDescs.at(i), targetOutTensorDescs.at(i))) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dims of outTensors does not match";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
+    }
     return NO_ERROR;
 }
 
@@ -383,6 +396,13 @@ Status LayerNormOperation::LastDimCheck(const SVector<TensorDesc> &inTensorDescs
 Status LayerNormOperation::InTensorsDimCheck(const SVector<TensorDesc> inTensorDescs) const
 {
     Status result = NO_ERROR;
+    if (param_.layerType == infer::LayerNormParam::LAYER_NORM_NORM &&
+        param_.normParam.quantType == infer::QUANT_INT8 &&
+        param_.normParam.dynamicQuantType == infer::DYNAMIC_QUANT_SYMMETRIC &&
+        inTensorDescs.at(0).shape.dimNum < 2) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "dim numbers of inTensor[0] should be greater than one";
+            return ERROR_INVALID_TENSOR_DIM;
+    }
     if (param_.layerType == infer::LayerNormParam::LAYER_NORM_PRENORM ||
         param_.layerType == infer::LayerNormParam::LAYER_NORM_POSTNORM) {
         result = TensorCheck::TensorDescsEqual(inTensorDescs.at(X_TENSOR), inTensorDescs.at(RESIDUAL_IN_TENSOR));
