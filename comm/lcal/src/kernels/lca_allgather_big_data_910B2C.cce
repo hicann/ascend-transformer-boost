@@ -91,7 +91,8 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigData910B2C
             (totalDataSizeRemain - processedDataNum * sizeof(T)) : allGatherBuffSizePerParagraph910B2C;
         int64_t dataNumRemain = dataSizeRemain / sizeof(T);
         if (GetBlockIdx() >= singleNodeRankSize) {
-
+            __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
+            __gm__ int64_t *ctrlFlagsGMStep0ToSet =(__gm__ int64_t*)buff[rank] + flagOffset1st;
         }
     }
 
