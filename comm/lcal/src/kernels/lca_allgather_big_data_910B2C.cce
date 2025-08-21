@@ -111,16 +111,16 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigData910B2C
                     int64_t checkFlagOffset = nodeId * GetLcalBlockNum() * MEM_DMA_UNIT_INT_NUM;
                     for (int checkLogicRank = 0; checkLogicRank < singleNodeRankSize; checkLogicRank++) {
                         CheckFlag(ctrlFlagsUB,
-                                (__gm__ int64_t*)buff[rank] + checkFlagOffset + checkLogicRank * MEM_DMA_UNIT_INT_NUM,
-                                newMagic);
+                                  (__gm__ int64_t*)buff[rank] + checkFlagOffset + checkLogicRank * MEM_DMA_UNIT_INT_NUM,
+                                  newMagic);
                     }
                 }
                 if ((nodeId == 1 && GetBlockIdx() == singleNodeRankSize + 1)) {
                     int64_t checkFlagOffset = nodeId * GetLcalBlockNum() * MEM_DMA_UNIT_INT_NUM;
                     for (int checkLogicRank = 0; checkLogicRank < singleNodeRankSize; checkLogicRank++) {
                         CheckFlag(ctrlFlagsUB,
-                                (__gm__ int64_t*)buff[rank] + checkFlagOffset + checkLogicRank * MEM_DMA_UNIT_INT_NUM,
-                                newMagic);
+                                  (__gm__ int64_t*)buff[rank] + checkFlagOffset + checkLogicRank * MEM_DMA_UNIT_INT_NUM,
+                                  newMagic);
                     }
                 }
                 if (nodeId == 0 && GetBlockIdx() == singleNodeRankSize + 1) {
