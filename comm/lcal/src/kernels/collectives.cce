@@ -581,14 +581,14 @@ __attribute__((always_inline)) inline __aicore__ void ProcessData(int64_t dataSi
     CpGM2UB(inputUB, (__gm__ T *)((__gm__ int64_t *)buff + dataOffsetNum) + buffOffsetNum, dataSizeRemain);
     AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
     AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
-    CpUB2GM((__gm__ T*)output + outputOffsetNum, inputUB, dataSizeRemain);
-    AscendC::SetFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID0);
-    AscendC::WaitFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID0);
+    CpUB2GM((__gm__ T *)output + outputOffsetNum, (__ubuf__ T *)inputUB, dataSizeRemain);
+    AscendC::SetFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID3);
+    AscendC::WaitFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID3);
     AscendC::SetAtomicNone();
     AscendC::PipeBarrier<PIPE_ALL>();
 }
 
-template<typename T>
+template <typename T>
 __attribute__((always_inline)) inline __aicore__ void ProcessDataNew(int64_t dataSizeRemain, __ubuf__ T *inputUB[2],
     __gm__ T *buff, int64_t dataOffsetNum, int64_t buffOffsetNum, __gm__ T *output, int64_t outputOffsetNum, int op)
 {
@@ -597,9 +597,9 @@ __attribute__((always_inline)) inline __aicore__ void ProcessDataNew(int64_t dat
     }
 
     AscendC::PipeBarrier<PIPE_ALL>();
-    #ifdef __DAV_C220_VEC__
+#ifdef __DAV_C220_VEC__
     SetAtomicOpType<T>(op);
-    #endif
+#endif
     AscendC::PipeBarrier<PIPE_ALL>();
 
     AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
@@ -608,15 +608,15 @@ __attribute__((always_inline)) inline __aicore__ void ProcessDataNew(int64_t dat
         uint32_t size = dataSizeRemain > UB_SINGLE_PING_PONG_ADD_SIZE_MAX ? UB_SINGLE_PING_PONG_ADD_SIZE_MAX : dataSizeRemain;
         event_t eventId = (i & 1) ? EVENT_ID0 : EVENT_ID1;
         AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
-        CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], (__gm__ T*)((__gm__ int64_t *)buff + dataOffsetNum) + buffOffsetNum, size);
+        CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], (__gm__ T*)((__gm__ int64_t*)buff + dataOffsetNum) + buffOffsetNum, size);
         AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
         AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(eventId);
         CpUB2GM((__gm__ T*)output + outputOffsetNum, (i & 1) ? inputUB[0] : inputUB[1], size);
         AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
 
         dataSizeRemain -= size;
-        buffOffsetNum += (size / size(T));
-        outputOffsetNum += (size / size(T));
+        buffOffsetNum += (size / sizeof(T));
+        outputOffsetNum += (size / sizeof(T));
     }
     AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
     AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
@@ -625,6 +625,7 @@ __attribute__((always_inline)) inline __aicore__ void ProcessDataNew(int64_t dat
     AscendC::WaitFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID3);
     AscendC::SetAtomicNone();
     AscendC::PipeBarrier<PIPE_ALL>();
+    return;
 }
 
 
@@ -638,9 +639,9 @@ __attribute__((always_inline)) inline __aicore__ void ProcessDataNewNonBarrier(i
 
     AscendC::SetFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID0);
     AscendC::WaitFlag<AscendC::HardEvent::MTE3_S>(EVENT_ID0);
-    #ifdef __DAV_C220_VEC__
+#ifdef __DAV_C220_VEC__
     SetAtomicOpType<T>(op);
-    #endif
+#endif
     AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
     AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(EVENT_ID0);
 
