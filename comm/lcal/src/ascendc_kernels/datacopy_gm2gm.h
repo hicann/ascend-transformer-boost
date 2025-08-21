@@ -294,7 +294,7 @@ private:
         int32_t processedNum = 0;
         while (dataSizeRemain > 0) {
             if (i % scaleBatchNum == scaleBatchNum - 1) {
-                curDataNum = scaleCount - i % scaleBatchNum * dataNumPerBatch
+                curDataNum = scaleCount - i % scaleBatchNum * dataNumPerBatch;
             } else {
                 curDataNum = dataNumPerBatch;
             }
