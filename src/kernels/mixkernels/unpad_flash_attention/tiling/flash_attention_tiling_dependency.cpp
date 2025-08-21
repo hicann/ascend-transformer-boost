@@ -15,7 +15,6 @@
 #include <array>
 #include <algorithm>
 #include <securec.h>
-#include <cstring>
 #include <string>
 
 #include <mki/utils/assert/assert.h>
@@ -321,8 +320,8 @@ void FillSplitBatchPtr(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingPa
     tilingParam[nowBatchTiling + INDEX17] = GetLoww32Bit(vShareCachePtr);
 }
 
-Status SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, int32_t groupNum,
-    uint32_t blockIdx, uint32_t shareBlockTiling)
+void SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, int32_t groupNum,
+                    uint32_t blockIdx, uint32_t shareBlockTiling)
 {
     int32_t taskHeadStart = tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling];
     int32_t taskHeadEnd = tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling + 1];
@@ -333,18 +332,15 @@ Status SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingPar
     int totalShareNum = 0;
     for (int32_t headId = curHeadId; headId < mmInfo.innerBatchSize; headId += groupNum) {
         int32_t nowBatch = headId == curHeadId ? curBatch : 0;
-        int64_t result = static_cast<int64_t>(mmInfo.batchSize) * groupNum * (headId / groupNum) +
-                 static_cast<int64_t>(nowBatch) * groupNum;
-        MKI_CHECK(result <= INT32_MAX && result >= INT32_MIN, "result overflow",
-              return Status::FailStatus(ERROR_INVALID_VALUE));
-        if (static_cast<int32_t>(result) >= taskHeadEnd) {
+        if (mmInfo.batchSize * groupNum * (headId / groupNum) + nowBatch * groupNum >= taskHeadEnd) {
             break;
         }
         uint64_t offsetTiling = TILING_RELAY_HEAD_SIZE +
                                 shareBlockTiling * mmInfo.blockDim + TILING_PARA_SIZE * nowBatch;
         uint32_t nowShare = tilingParam[INDEX18 + offsetTiling];
         uint32_t qLen = 0;
-        while (static_cast<int32_t>(result) < taskHeadEnd && nowBatch < mmInfo.batchSize) {
+        while (mmInfo.batchSize * groupNum * (headId / groupNum) +
+               nowBatch * groupNum < taskHeadEnd && nowBatch < mmInfo.batchSize) {
             uint32_t shareIdx = tilingParam[INDEX18 + offsetTiling];
             tilingParam[unshareIndex] = nowBatch;
             tilingParam[unshareIndex + 1] = headId;
@@ -375,12 +371,10 @@ Status SplitTaskRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingPar
         }
     }
     tilingParam[TILING_RELAY_HEAD_SIZE + blockIdx * shareBlockTiling + INDEX2] = totalShareNum;
-    return Status::OkStatus();
 }
 
-Status SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t shareBlockTiling)
+void SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingParam, uint32_t shareBlockTiling)
 {
-    MKI_CHECK(mmInfo.kvHead != 0, "kvHead can not be zero", return Status::FailStatus(ERROR_INVALID_VALUE));
     uint32_t taskNum = mmInfo.batchSize * mmInfo.kvHead;
     uint32_t taskNumPerCore = taskNum / mmInfo.blockDim;
     uint32_t tailTaskNum = taskNum % mmInfo.blockDim;
@@ -396,9 +390,8 @@ Status SplitCoreRelay(const UnpadFlashAttentionInfo &mmInfo, uint32_t *tilingPar
         if (taskStart >= taskEnd) {
             continue;
         }
-        OP_TILING_CHECK_STATUS_RETURN(SplitTaskRelay(mmInfo, tilingParam, groupNum, blockIdx, shareBlockTiling));
+        SplitTaskRelay(mmInfo, tilingParam, groupNum, blockIdx, shareBlockTiling);
     }
-    return Status::OkStatus();
 }
 
 void DecoderSplitHeadNum(const UnpadFlashAttentionInfo &mmInfo, int32_t kvRealHeads, uint32_t *tilingParam)
@@ -539,7 +532,7 @@ Status DecoderFillTilingParamRelay(const UnpadFlashAttentionInfo &mmInfo, const 
             nowBatch++;
         }
     }
-    OP_TILING_CHECK_STATUS_RETURN(SplitCoreRelay(mmInfo, tilingParam, shareBlockTiling));
+    SplitCoreRelay(mmInfo, tilingParam, shareBlockTiling);
     return Status::OkStatus();
 }
 
