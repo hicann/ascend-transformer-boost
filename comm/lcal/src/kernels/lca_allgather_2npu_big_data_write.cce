@@ -40,14 +40,14 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGather2npuBigDataWr
             ctrlFlagsUB, ctrlFlagsGMX, magic);
         return;
     }
-    CM2GMPingPong<T>(dataSizeRemain, inputUB, output + allLen * rank + processedNum, buffDataDMAOffsetNum, input, buffDataDMAOffsetNum);
+    GM2GMPingPong<T>(dataSizeRemain, inputUB, output + allLen * rank + processedNum, buffDataDMAOffsetNum, input, buffDataDMAOffsetNum);
 
     *ctrlFlagsUB = 0;
     *ctrlFlagsUB1 = 0;
-    int64_t alldataSizeNeed2Add = dataSizeRemain;
+    int64_t allDataSizeNeed2Add = dataSizeRemain;
     AscendC::PipeBarrier<PIPE_ALL>();
     while (true) {
-        if (*ctrlFlagsUB >= CeilDiv(alldataSizeNeed2Add, DMA_SIZE_PER_FLAG)) {
+        if (*ctrlFlagsUB >= CeilDiv(allDataSizeNeed2Add, DMA_SIZE_PER_FLAG)) {
             break;
         }
 
@@ -63,13 +63,13 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGather2npuBigDataWr
         }
 
         dataSizeRemain = (preparedDataGroupCount - *ctrlFlagsUB) * DMA_SIZE_PER_FLAG;
-        if (preparedDataGroupCount * DMA_SIZE_PER_FLAG > alldataSizeNeed2Add) {
-            dataSizeRemain = alldataSizeNeed2Add - *ctrlFlagsUB * DMA_SIZE_PER_FLAG;
+        if (preparedDataGroupCount * DMA_SIZE_PER_FLAG > allDataSizeNeed2Add) {
+            dataSizeRemain = allDataSizeNeed2Add - *ctrlFlagsUB * DMA_SIZE_PER_FLAG;
         }
 
         GM2GMPingPong<T>(dataSizeRemain, inputUB, output + allLen * x + processedNum,
                          buffDataDMAOffsetNum + (*ctrlFlagsUB) * DMA_SIZE_PER_FLAG / sizeof(T),
-                         (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum),
+                         (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum),
                          buffDataDMAOffsetNum + (*ctrlFlagsUB) * DMA_SIZE_PER_FLAG / sizeof(T));
         AscendC::PipeBarrier<PIPE_ALL>();
 
@@ -112,11 +112,11 @@ inline __aicore__ void LcalAllGather2npuBigDataWrite(ALLREDUCE_ARGS_FUN_16P(T))
         AscendC::PipeBarrier<PIPE_ALL>();
 
         int64_t processedNum = i * ipcBuffMaxNum;
-        int64_t remainLen = (len - processedNum < ipcBuffMaxNum) ? len - processedNum : ipcBuffMaxNum;
+        int64_t remainNum = (len - processedNum < ipcBuffMaxNum) ? len - processedNum : ipcBuffMaxNum;
 
         PostSyncBigData<T>(ctrlFlagsUB, buff, rank, rankSize, dataOffsetNum, ipcBuffMaxNum, magic, i);
         LcalAllGather2npuBigDataWriteOrigin<T>(
-            buff, input + processedNum, output, processedNum, blockNumPerGroup, rank, rankSize, len, remainLen, (magic + i) * 1024, ctrlFlagsUB, ctrlFlagsUB1,
+            buff, input + processedNum, output, processedNum, blockNumPerGroup, rank, rankSize, len, remainNum, (magic + i) * 1024, ctrlFlagsUB, ctrlFlagsUB1,
             ctrlFlagsUB2, inputUB, dataOffsetNum, flagOffset1st, flagOffset2nd, x, corePerRank, coreSegmentedIdx);
     }
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, Op::COPYONLY);
