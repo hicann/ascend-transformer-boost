@@ -78,7 +78,7 @@ FORCE_INLINE_AICORE void CopyUB2UB(__ubuf__ T *dst, __ubuf__ T *src, const uint3
     dstAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
     srcTensor.SetAddr(srcAddr);
     dstTensor.SetAddr(dstAddr);
-    DataCopyPad(dstTensor, srcTensor, calCount);
+    DataCopy(dstTensor, srcTensor, calCount);
 }
 template<typename T>
 __aicore__ inline void DataCopyWrap(const GlobalTensor<T> &dstGlobal, const LocalTensor<T> &srcLocal,
@@ -93,7 +93,7 @@ __aicore__ inline void DataCopyWrap(const GlobalTensor<T> &dstGlobal, const Loca
 }
 
 template<typename T>
-__aicore__ inline void DataCopyWrap(const LocalTensor<T> &dstLobal, const GlobalTensor<T> &srcGlobal,
+__aicore__ inline void DataCopyWrap(const LocalTensor<T> &dstLocal, const GlobalTensor<T> &srcGlobal,
                                     const uint32_t size)
 {
     if(size % UB_ALIGN_SIZE == 0) {
@@ -110,7 +110,7 @@ class DataCopyGM2GM {
     constexpr static int32_t UB_HEAD_OFFSET = 64;
     constexpr static int32_t BLOCK_SIZE_PIECE = BLOCK_SIZE / (sizeof(T) + sizeof(U)) / ALIGN_SIZE * ALIGN_SIZE;
     constexpr static int32_t INPUT_BLOCK_SIZE = std::is_same_v<T, U> ? BLOCK_SIZE : BLOCK_SIZE_PIECE * sizeof(U);
-    constexpr static int32_t OUTPUT_BLOCK_SIZE = std::is_same_v<T, U> ? BLOCK_SIZE : BLOCK_SIZE_PIECE * sizeof(U);
+    constexpr static int32_t OUTPUT_BLOCK_SIZE = std::is_same_v<T, U> ? BLOCK_SIZE : BLOCK_SIZE_PIECE * sizeof(T);
 public:
     FORCE_INLINE_AICORE DataCopyGM2GM() {}
     FORCE_INLINE_AICORE void Init(const GlobalTensor<T>& outputGt, const GlobalTensor<U>& inputGt,
@@ -158,7 +158,7 @@ public:
             if constexpr (!std::is_same_v<T, U>) {
                 AscendC::SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 AscendC::WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
-                CastImpl(outputUB, inputUB, RoundMode::CAST_NONE, dataSizeRemain / sizeof(U));
+                CastImpl(outputUB, inputUB, RoundMode::CAST_NONE, dataSizeRemain / sizeof(T));
                 AscendC::SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
                 AscendC::WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
             }
@@ -185,9 +185,9 @@ public:
                 AscendC::WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 CastImpl(outputUB, inputUB, RoundMode::CAST_NONE, curProcessNum);
                 PipeBarrier<PIPE_V>();
-                AddsImpl(outputUB, outputUB, offset, curPorcessNum);
+                AddsImpl(outputUB, outputUB, offset, curProcessNum);
                 PipeBarrier<PIPE_V>();
-                MulsImpl(outputUB, outputUB, scale, curPorcessNum);
+                MulsImpl(outputUB, outputUB, scale, curProcessNum);
                 AscendC::SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
                 AscendC::WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
             }
@@ -277,7 +277,7 @@ private:
     FORCE_INLINE_AICORE void ProcessForBigScale(const GlobalTensor<T>& scaleGT, int64_t scaleCount, T offset)
     {
         SetAtomic(op);
-        const int32_t blockPieceNum = UB_SINGLE_DMA_SIZE_MAX / (sizeof(T) + sizeof(T) + sizeof(U)) / ALIGN_SIZE *
+        const int32_t blockPieceNum = UB_SINGLE_DMA_SIZE_MAX / (sizeof(T) + sizeof(U) + sizeof(T)) / ALIGN_SIZE *
             ALIGN_SIZE;
         const int32_t inputBlockSize = blockPieceNum * sizeof(U);
         const int32_t outputBlockSize = blockPieceNum * sizeof(T);
@@ -301,16 +301,16 @@ private:
             CpGM2UB(inputUB, (__gm__ U*)inputGm + processedNum, curDataNum * sizeof(U));
             AscendC::SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
             AscendC::WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
-            CpGM2UB(scaleUB, scale + i % scaleBatchNum * dataNumPerBatch, curDataNum * sizeof(U));
+            CpGM2UB(scaleUB, scale + i % scaleBatchNum * dataNumPerBatch, curDataNum * sizeof(T));
             CastImpl(outputUB, inputUB, RoundMode::CAST_NONE, curDataNum);
             AscendC::SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
             AscendC::WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
-            AddsImpl(outputUB, outputUB, offset, curProcessNum);
+            AddsImpl(outputUB, outputUB, offset, curDataNum);
             PipeBarrier<PIPE_V>();
-            MulImpl(outputUB, outputUB, scaleUB, curProcessNum);
+            MulImpl(outputUB, outputUB, scaleUB, curDataNum);
             AscendC::SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
             AscendC::WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
-            CpUB2GM((__gm__ T*)outputGm + processedNum, (__ubuf__ T*)outputUB, curProcessNum * sizeof(T));
+            CpUB2GM((__gm__ T*)outputGm + processedNum, (__ubuf__ T*)outputUB, curDataNum * sizeof(T));
             AscendC::SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             i += 1;
