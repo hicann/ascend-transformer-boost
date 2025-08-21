@@ -11,7 +11,7 @@
 #include "collectives.cce"
 
 template<typename T>
-inline __aicore__ void LcalAllGather910B2C(ALLREDUCE_ARGS_FUN_16P(T))
+__attribute__((always_inline)) inline __aicore__ void LcalAllGather910B2C(ALLREDUCE_ARGS_FUN_16P(T))
 {
     DumpLcclLogInfo(dumpAddr, LogId::INIT, Op::COPYONLY);
 
@@ -20,11 +20,11 @@ inline __aicore__ void LcalAllGather910B2C(ALLREDUCE_ARGS_FUN_16P(T))
         DumpLcclLogInfo(dumpAddr, LogId::INIT, Op::COPYONLY);
         return;
     }
-    const int64_t localNodeRankId = rank > singleNodeRankSize ? rank - singleNodeRankSize : rank;
+    const int64_t localNodeRankId = rank >= singleNodeRankSize ? rank - singleNodeRankSize : rank;
     const int64_t nodeId = rank < singleNodeRankSize ? 0 : 1;
 
-    const int64_t peerRankId = rank < singleNodeRankSize ? rank + singleNodeRankSize : rank - singleNodeRankSize;
-    
+    const int64_t peerRankId = rank < singleNodeRankSize ?  rank + singleNodeRankSize : rank - singleNodeRankSize;
+
     const int64_t dataOffsetNum = GetLcalBlockNum() * 2 * MEM_DMA_UNIT_INT_NUM;
     const int64_t flagOffset1st = MEM_DMA_UNIT_INT_NUM * GetBlockIdx();
     const int64_t flagOffset2nd = MEM_DMA_UNIT_INT_NUM * GetLcalBlockNum() + flagOffset1st;
@@ -54,11 +54,11 @@ inline __aicore__ void LcalAllGather910B2C(ALLREDUCE_ARGS_FUN_16P(T))
         __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
         __gm__ int64_t* ctrlFlagsGM = (__gm__ int64_t*)buff[rank] + (nodeId + singleNodeRankSize) * MEM_DMA_UNIT_INT_NUM;
         if ((rank < singleNodeRankSize && coreStep0Idx == 1) ||
-            (rank > singleNodeRankSize && coreStep0Idx == 0)) {
+            (rank >= singleNodeRankSize && coreStep0Idx == 0)) {
             receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[peerRankId] + dataOffsetNum);
             ctrlFlagsGM = (__gm__ int64_t*)buff[peerRankId] + (nodeId + singleNodeRankSize) * MEM_DMA_UNIT_INT_NUM;
         }
-        if (rank > singleNodeRankSize) {
+        if (rank >= singleNodeRankSize) {
             revBuffOffsetNum = len;
         }
 
@@ -71,14 +71,14 @@ inline __aicore__ void LcalAllGather910B2C(ALLREDUCE_ARGS_FUN_16P(T))
 
     int64_t x = rank < singleNodeRankSize ? GetBlockIdx() : GetBlockIdx() + singleNodeRankSize;
     __gm__ T *receiveBuff = output;
-    __gm__ T *sendBuff = (__gm__ T *)((__gm__ int64_t *)buff[x] + dataOffsetNum);
+    __gm__ T *sendBuff = (__gm__ T*)((__gm__ int64_t *)buff[x] + dataOffsetNum);
 
-    CheckFlag(ctrlFlagsUB, (__gm__ int64_t *)buff[x] + singleNodeRankSize * MEM_DMA_UNIT_INT_NUM, magic);
+    CheckFlag(ctrlFlagsUB, (__gm__ int64_t*)buff[x] + singleNodeRankSize * MEM_DMA_UNIT_INT_NUM, magic);
     int64_t revBuffOffsetNum = GetBlockIdx() * len;
     int64_t sendBuffOffsetNum = 0;
     GM2GM(dataSizeRemain, inputUB[0], receiveBuff, revBuffOffsetNum, sendBuff, sendBuffOffsetNum);
 
-    CheckFlag(ctrlFlagsUB, (__gm__ int64_t *)buff[x] + (singleNodeRankSize + 1) * MEM_DMA_UNIT_INT_NUM, magic);
+    CheckFlag(ctrlFlagsUB, (__gm__ int64_t*)buff[x] + (singleNodeRankSize + 1) * MEM_DMA_UNIT_INT_NUM, magic);
     revBuffOffsetNum = (singleNodeRankSize + GetBlockIdx()) * len;
     sendBuffOffsetNum = len;
     GM2GM(dataSizeRemain, inputUB[0], receiveBuff, revBuffOffsetNum, sendBuff, sendBuffOffsetNum);
