@@ -46,9 +46,12 @@ public:
         singleScaleUBTensor[0] = tbuf.GetWithOffset<T>(SCALE_NUM, IN_BLOCKSIZE);
         singleScaleUBTensor[1] = tbuf.GetWithOffset<T>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * HALF_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM); 
-        singleScaleUUBTensor[0] = tbuf.GetWithOffset<T>(SCALE_NUM, IN_BLOCKSIZE);
-        singleScaleUUBTensor[1] = tbuf.GetWithOffset<T>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * HALF_NUM +
+        singleScaleUUBTensor[0] = tbuf.GetWithOffset<U>(SCALE_NUM, IN_BLOCKSIZE);
+        singleScaleUUBTensor[1] = tbuf.GetWithOffset<U>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * HALF_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM); 
+        scaleUBTensor[0] = tbuf.GetWithOffset<T>(SCALE_NUM, IN_BLOCKSIZE + SCALE_SIZE);
+        scaleUBTensor[1] = tbuf.GetWithOffset<T>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * THREE_NUM +
+                                                        IN_BLOCKSIZE * FOUR_NUM);
         scaleUUBTensor[0] = tbuf.GetWithOffset<U>(SCALE_NUM, IN_BLOCKSIZE + SCALE_SIZE);
         scaleUUBTensor[1] = tbuf.GetWithOffset<U>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * THREE_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM);
@@ -144,6 +147,7 @@ public:
                 PipeBarrier<PIPE_V>();
                 Cast((idx & 1) ? inTensor[0] : inTensor[1], (idx & 1) ?
                     outputUBTensor[0] : outputUBTensor[1], RoundMode::CAST_NONE, calCount);
+                PipeBarrier<PIPE_V>();
                 AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(eventId);
                 AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(eventId);
                 AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(eventId);
