@@ -41,11 +41,11 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGather(ALLREDUCE_AR
     int64_t sendBuffOffsetNum = buffOffsetNum - rank * len;
     GM2GM(dataNumRemain * sizeof(T), inputUB[0], receiveBuff, buffOffsetNum, sendBuff, sendBuffOffsetNum);
 
-    __gm__ int64_t* ctrlFlagsGM = (__gm__ int64_t*)buff[rank] + flagOffset1st;
+    __gm__ int64_t* ctrlFlagsGM = (__gm__ int64_t*) buff[rank] + flagOffset1st;
     SetFlag(ctrlFlagsUB, ctrlFlagsGM, magic);
 
     for (int64_t i = 0; i < GetLcalBlockNum(); i++) {
-        __gm__ int64_t* ctrlFlagsGMTemp = (__gm__ int64_t*)buff[rank] + i * MEM_DMA_UNIT_INT_NUM;
+        __gm__ int64_t* ctrlFlagsGMTemp = (__gm__ int64_t*)buff[x] + i * MEM_DMA_UNIT_INT_NUM;
         CheckFlag((__ubuf__ int64_t*)ctrlFlagsUB, ctrlFlagsGMTemp, (int64_t)magic);
     }
     dataNumRemain = len / corePerRank;
@@ -54,7 +54,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGather(ALLREDUCE_AR
         dataNumRemain = len - dataNumRemain * coreSegmentedIdx;
     }
 
-    sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
+    sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
     AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(EVENT_ID0);
     AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(EVENT_ID0);
     GM2GM(dataNumRemain * sizeof(T), inputUB[0], (__gm__ T*)output, buffOffsetNum, sendBuff, buffOffsetNum);
