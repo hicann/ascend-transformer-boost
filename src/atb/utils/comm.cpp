@@ -145,7 +145,7 @@ HcclComm Comm::CreateHcclComm(int32_t rank, int32_t rankRoot, int32_t rankSize, 
     HcclComm newHcclComm = nullptr;
     HcclRootInfo hcclRootInfo = {};
     if (!CreateHcclRootInfo(hcclRootInfo, rank, rankRoot, rankSize)) {
-        return newHcclComm;
+        return nullptr;
     }
     auto ret = HcclCommInitRootInfo(rankSize, &hcclRootInfo, rank, &newHcclComm);
     if (ret != HCCL_SUCCESS || newHcclComm == nullptr) {
@@ -165,7 +165,7 @@ HcclComm Comm::CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, con
     HcclComm newHcclComm = nullptr;
     if (rankTableFile == nullptr) {
         ATB_LOG(ERROR) << "rankTableFile is NULL";
-        return std::shared_ptr<HcclComm>();
+        return newHcclComm;
     }
     std::string rankTableFileStr(rankTableFile);
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
@@ -240,7 +240,7 @@ HcclComm Comm::CreateHcclCrossMulitComm(const char *rankTableFile, uint32_t subC
 {
     if (rankTableFile == nullptr) {
         ATB_LOG(ERROR) << "rankTableFile is NULL";
-        return std::shared_ptr<HcclComm>();
+        return nullptr;
     }
     std::string rankTableFileStr(rankTableFile);
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
