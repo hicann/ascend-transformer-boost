@@ -124,7 +124,22 @@ int LcalSockExchange::GetNodeNum()
 
 void LcalSockExchange::GetIpAndPort()
 {
+    const char* env = Mki::GetEnv("LCAL_COMM_ID");
 
+    if (env == nullptr or ParseIpAndPort(env, ip_, port_) != LCAL_SUCCESS) {
+        ip_ = LCAL_LOCAL_SOCK_IP;
+        port_ = LCAL_DEFAULT_SOCK_PORT;
+    }
+    port_ += commDomain_;
+    lcalCommId_.handle.addr.sin.sin_family = AF_INET;
+    lcalCommId_.handle.addr.sin.sin_addr.s_addr = inet_addr(LCAL_LOCAL_SOCK_IP.c_str());
+    lcalCommId_.handle.addr.sin.sin_port = htons(port_);
+    MKI_LOG(DEBUG) << "curRank: " << rank_ << " commDomain: " << commDomain_ << " ip: " << ip_ << " port: " << prot_;
 }
 
+int LcalSockExchange::Prepare()
+{
+    if (lcalCommId_.handle.magic != LCAL_MAGIC) {
+        GetIpAndPort();
+    }
 }
