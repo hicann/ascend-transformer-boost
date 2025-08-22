@@ -238,6 +238,10 @@ HcclComm Comm::CreateHcclCrossMulitComm(const char *rankTableFile, uint32_t subC
                                         std::vector<uint32_t> &rankIds, uint64_t subCommId, uint32_t hcclBufferSize,
                                         char *commName)
 {
+    if (rankTableFile == nullptr) {
+        ATB_LOG(ERROR) << "rankTableFile is NULL";
+        return std::shared_ptr<HcclComm>();
+    }
     std::string rankTableFileStr(rankTableFile);
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
     if (resolvePath.empty()) {
