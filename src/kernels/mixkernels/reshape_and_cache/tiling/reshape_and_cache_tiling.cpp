@@ -40,6 +40,8 @@ bool CommonReshapeAndCacheTiling(const LaunchParam &launchParam, KernelInfo &ker
     TensorDType inDtype = launchParam.GetInTensor(0).desc.dtype;
     uint32_t typeByte = static_cast<uint32_t>(GetTensorElementSize(inDtype));
     tilingDataPtr->typeByte = typeByte;
+    MKI_CHECK(typeByte > 0 && typeByte <= INT_MAX, "typeByte is invalid", return false);
+    MKI_CHECK(headSizeK <= UINT32_MAX / numHeads / typeByte, "headSizeK * numHeads is too large", return false);
 
     return true;
 }
@@ -57,6 +59,8 @@ Status ReshapeAndCacheTilingNd(const LaunchParam &launchParam, KernelInfo &kerne
     if (!key.desc.IsContiguous()) {
         ReshapeAndCacheNctTilingData *tilingDataPtr =
             reinterpret_cast<AtbOps::ReshapeAndCacheNctTilingData *>(kernelInfo.GetTilingHostAddr());
+        MKI_CHECK(headSizeV <= UINT32_MAX / tilingDataPtr->numHeads / tilingDataPtr->typeByte,
+            "headSizeV * numHeads is too large", return Status::FailStatus(ERROR_INVALID_VALUE));
         auto &offsetK = key.desc.offset;
         auto &offsetV = value.desc.offset;
 
@@ -92,6 +96,8 @@ Status ReshapeAndCacheTilingNd(const LaunchParam &launchParam, KernelInfo &kerne
     } else {
         ReshapeAndCacheTilingData *tilingDataPtr =
             reinterpret_cast<AtbOps::ReshapeAndCacheTilingData *>(kernelInfo.GetTilingHostAddr());
+        MKI_CHECK(headSizeV <= UINT32_MAX / tilingDataPtr->numHeads / tilingDataPtr->typeByte,
+            "headSizeV * numHeads is too large", return Status::FailStatus(ERROR_INVALID_VALUE));
         tilingDataPtr->headSizeV = static_cast<uint32_t>(headSizeV);
         blockDim = tilingDataPtr->numTokens < blockDim ? tilingDataPtr->numTokens : blockDim;
         bool isAlign = ((tilingDataPtr->numHeads * tilingDataPtr->headSizeK * tilingDataPtr->typeByte) % ALIGN == 0
