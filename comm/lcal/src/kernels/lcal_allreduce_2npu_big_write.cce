@@ -17,23 +17,23 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduce2npuBigDataWr
      int64_t flagOffset2nd, int64_t x, int64_t corePerRank, int64_t coreSegmentedIdx, int op)
 {
     const int64_t dataBlockAllNum = CeilDiv(len * sizeof(T), MEM_DMA_UNIT_BYTE);
-    const int64_t singleCoreDataBlockNum = dataBlockAllNum / corePerRank;
+    const int64_t singleCoreDataBlockNum = dataBlockAllNum / blockNumPerGroup;
     const int64_t singleCoreDataNum = singleCoreDataBlockNum * MEM_DMA_UNIT_BYTE / sizeof(T);
     const int64_t buffDataDMAOffsetNum = coreSegmentedIdx * singleCoreDataNum;
 
-    int64_t dataSizeRemain = singleCoreDataNum * sizeof(T);
-    if (coreSegmentedIdx == corePerRank - 1) {
+    int64_t dataSizeRemain = singleCoreDataBlockNum * MEM_DMA_UNIT_BYTE;
+    if (coreSegmentedIdx == blockNumPerGroup - 1) {
         dataSizeRemain = (len - singleCoreDataNum * coreSegmentedIdx) * sizeof(T);
     }
 
-    __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
+    __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
     __gm__ int64_t* ctrlFlagsGM = (__gm__ int64_t*)buff[rank] + flagOffset1st;
     __gm__ int64_t* ctrlFlagsGMX = (__gm__ int64_t*)buff[x] + flagOffset1st;
     if (GetBlockIdx() < blockNumPerGroup) {
         input2BuffRankMagic(
             dataSizeRemain, inputUB[0], receiveBuff, buffDataDMAOffsetNum, input, buffDataDMAOffsetNum,
-            ctrlFlagsUB, ctrlFlagsGM, magic);
-            return;
+            ctrlFlagsUB, ctrlFlagsGMX, magic);
+        return;
     }
     GM2GMPingPong<T>(dataSizeRemain, inputUB, output, buffDataDMAOffsetNum, input, buffDataDMAOffsetNum);
 
