@@ -10,7 +10,7 @@
 #include "collectives.cce"
 
 template<typename T>
-__attribute__((always_inline)) inline __aicore__ void LcalAllReduce2npuWrite(ALLREDUCE_ARGS_FUN(T))
+__attribute__((always_inline)) inline __aicore__ void LcalAllReduce2npuWrite(ALLREDUCE_ARGS_FUN_16P(T))
 {
     DumpLcclLogInfo(dumpAddr, LogId::OVERALL, static_cast<Op>(op));
     DumpLcclLogInfo(dumpAddr, LogId::INIT, static_cast<Op>(op));
@@ -41,7 +41,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduce2npuWrite(ALL
 
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
     if (x != rank) {
-        __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
+        __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
         GM2GM(dataSizeRemain, inputUB[0], receiveBuff, buffOffsetNum, input, buffOffsetNum);
         SetFlag(ctrlFlagsUB, (__gm__ int64_t*)buff[x] + flagOffset1st, magic);
         SetFlag(ctrlFlagsUB, (__gm__ int64_t*)buff[rank] + flagOffset2nd, magic);
