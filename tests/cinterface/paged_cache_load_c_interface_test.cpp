@@ -12,6 +12,9 @@
 #include <numeric>
 #include <random>
 #include "c_interface_utils.h"
+#include "atb/utils/config.h"
+#include "atb/utils/singleton.h"
+
 using namespace atb;
 
 const int64_t PCLINOUTPCL = 7;
