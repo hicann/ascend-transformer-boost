@@ -165,7 +165,7 @@ HcclComm Comm::CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, con
     HcclComm newHcclComm = nullptr;
     if (rankTableFile == nullptr) {
         ATB_LOG(ERROR) << "rankTableFile is NULL";
-        return newHcclComm;
+        return nullptr;
     }
     std::string rankTableFileStr(rankTableFile);
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
