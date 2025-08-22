@@ -92,9 +92,121 @@ public:
     {
         PipeBarrier<PIPE_V>();
         T scalarValue = scaleUBTensor[1].GetValue(index);
-        PipeBarrier__ubuf__ U* inputUB = nullptr;
-    __ubuf__ T* outputUB = nullptr;
+        PipeBarrier<PIPE_V>();
+        int32_t perRankNum;
+        PipeBarrier<PIPE_V>();
+        for (int j = 0; perRankNumRemain > 0; j++) {
+            PipeBarrier<PIPE_V>();
+            perRankNum - perRankNumRemain >= WORK_BLOCK_NUM ? WORK_BLOCKNUM : perRankNumRemain;
+            PipeBarrier<PIPE_V>();
+            int32_t perRankNum = CeilDiv(perRankNumRemain, rankCount);
+            perRankNumRemain -= perRankNum;
+            PipeBarrier<PIPE_V>();
+            AscendC::SetFlag<HardEvent::S_V>(eventId);
+            AscendC::WaitFlag<HardEvent::S_V>(eventId);
+            PipeBarrier<PIPE_V>();
+            Cast((idx & 1) ? workUBTensor[0] : workUBTensor[1], (idx & 1) ? inTensor[0][j *
+                WORK_BLOCK_NUM] : inTensor[1][j * WORK_BLOCK_NUM], RoundMode::CAST_NONE, perRankNum);
+            PipeBarrier<PIPE_V>();
+            if (index == 0) {
+                Muls<T>((idx & 1) ? outputUBTensor[0][j * WORK_BLOCK_NUM] : outputUBTensor[1][j * 
+                    WORK_BLOCK_NUM], (idx & 1) ? workUBTensor[0] : workUBTensor[1], scalarValue, perRankNum);
+            } else {
+                Axpy<T, T>((idx & 1) ? outputUBTensor[0][j * WORK_BLOCK_NUM] : outputUBTensor[1][j *
+                    WORK_BLOCK_NUM], (idx & 1) ? workUBTensor[0] : workUBTensor[1], scalarValue, perRankNum);
+            }
+            PipeBarrier<PIPE_V>();
+        }
+    }
     
+    FORCE_INLINE_AICORE void Mte3Process(int idx, int index, int calCount, event_t eventId) 
+    {
+        if (index == (rankCount - 1)) {
+            if constexpr (std::is_same_v<V, T>) {
+                AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(eventId);
+                AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(eventId);
+                AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(eventId);
+                AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(eventId);
+                DataCopyWrap(outputGt[idx * BLOCK_NUM], (idx & 1) ? 
+                    outputUBTensor[0] : outputUBTensor[1], calCount * sizeof(V));
+            }
+            if constexpr (std::is_same_v<V, U>) {
+                PipeBarrier<PIPE_V>();
+                T scaleValue = singleScaleUBTensor[0].GetValue(0);
+                PipeBarrier<PIPE_V>();
+                AscendC::SetFlag<AscendC::HardEvent::S_V>(eventId);
+                AscendC::WaitFlag<AscendC::HardEvent::S_V>(eventId);
+                PipeBarrier<PIPE_V>();
+                Muls<T>((idx & 1) ? outputUBTensor[0] : outputUBTensor[1], (idx & 1) ? 
+                    outputUBTensor[0] : outputUBTensor[1], scaleValue, calCount);
+                PipeBarrier<PIPE_V>();
+                AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(eventId);
+                AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(eventId);
+                AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(eventId);
+                AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(eventId);
+                DataCopyWrap(outputGt[idx * BLOCK_NUM], (idx & 1) ? 
+                    outputUBTensor[0] : outputUBTensor[1], calCount * sizeof(V));       
+            }
+        }    
+    }
+
+    FORCE_INLINE_AICORE int GetSize(int idx, int numOfPiece)
+    {
+        int size;
+        if (idx < (numOfPiece - 1)) {
+            size = IN_BLOCKSIZE;
+        } else if (idx == (numOfPiece - 1)) {
+            size = totalDataSize - (numOfPiece - 1) * IN_BLOCKSIZE;
+        } else {
+            size = 0;
+        }
+        return size;
+    }
+
+    FORCE_INLINE_AICORE void Process()
+    {
+        PreProcess();
+        int numofPiece = CeilDiv<int32_t, int32_t>(calNum, BLOCK_NUM);
+        AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID0);
+        AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);
+        AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+        AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
+        AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(EVENT_ID0);
+        AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(EVENT_ID1);
+        for (int64_t i = 0; i < numOfPiece; i += HALF_NUM) {
+            for (int index = 0; index < rankCount; index++) {
+                for (int k = 0; k < HALF_NUM; k++) {
+                    int idx = i + k;
+                    int size = GetSize(idx, numOfPiece);
+                    int32_t calCount = size / sizeof(U);
+                    perRankNumRemain = calCount;
+                    event_t eventId = (idx & 1) ? EVENT_ID0 : EVENT_ID1;
+                    AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId);
+                    AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId);
+                    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+                    AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(eventId1);
+                    AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId0);
+                    DataCopyWrap((idx & 1) ? inTensor[0] : inTensor[1], inputGt[index][BLOCK_NUM * idx], size);
+                    AscendC::SetFlag<AscendC::HardEvent::MTE2_S>(eventId1);
+                    AscendC::WaitFlag<AscendC::HardEvent::MTE2_S>(eventId1);
+                    AscendC::SetFlag<AscendC::HardEvent::MTE2_V>(eventId1);
+                    AscendC::WaitFlag<AscendC::HardEvent::MTE2_V>(eventId1);
+                    LoopUncastAndMul(idx, index, eventId);
+                    Mte3Process(idx, index, eventId);
+                    AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(eventId1);
+                    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId1);
+                    AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId1);
+                }
+            }
+        }
+
+
+        AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(eventId0);
+        AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(eventId1);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId0);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId1);
+        AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId0);
+        AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId1);
     }
 private:
     template <typename T1, typename T2>
