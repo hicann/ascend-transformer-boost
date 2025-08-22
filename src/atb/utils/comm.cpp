@@ -163,6 +163,10 @@ HcclComm Comm::CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, con
 {
     ATB_LOG(INFO) << "HCCL Runner multi server init ";
     HcclComm newHcclComm = nullptr;
+    if (rankTableFile == nullptr) {
+        ATB_LOG(ERROR) << "rankTableFile is NULL";
+        return std::shared_ptr<HcclComm>();
+    }
     std::string rankTableFileStr(rankTableFile);
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
     if (resolvePath == "") {
