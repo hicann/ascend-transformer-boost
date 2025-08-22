@@ -89,7 +89,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigDataOrigin
         }
 
         bool finished = true;
-        for (int64_t blockGroup0Idx = 0; blockGroup0Idx < blockNumPerGroup; blockGroup0Idx) {
+        for (int64_t blockGroup0Idx = 0; blockGroup0Idx < blockNumPerGroup; blockGroup0Idx++) {
             if (*ctrlFlagsUB1[blockGroup0Idx] != INT64_MAX) {
                 finished = false;
                 break;
@@ -105,8 +105,8 @@ template<typename T>
 __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigData(ALLREDUCE_ARGS_FUN_16P(T))
 {
     DumpLcclLogInfo(dumpAddr, LogId::INIT, Op::COPYONLY);
-    *magic *= 1024;
-    const int64_t dataOffsetNum = GetLcalBlockNum() * 2 * MEM_DMA_UNIT_BYTE;
+    magic *= 1024;
+    const int64_t dataOffsetNum = GetLcalBlockNum() * 2 * MEM_DMA_UNIT_INT_NUM;
     int64_t flagOffset1st = MEM_DMA_UNIT_INT_NUM * GetBlockIdx();
     __gm__ T* buff[8] = {
         buff0, buff1, buff2, buff3,
@@ -115,7 +115,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigData(ALLRE
     __ubuf__ int64_t* ctrlFlagsUB = (__ubuf__ int64_t*)(0);
     __ubuf__ int64_t* ctrlFlagsUB1[16];
     __ubuf__ int64_t* ctrlFlagsUB2[16];
-    for (int64_t i = 0; i < 16; i++) {
+    for (int64_t i = 0; i * 8 < 128; i++) {
         ctrlFlagsUB1[i] = (__ubuf__ int64_t*)(32) + i * 8;
         ctrlFlagsUB2[i] = (__ubuf__ int64_t*)(544) + i * 8;
     }
