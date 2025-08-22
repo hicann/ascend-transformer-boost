@@ -46,8 +46,8 @@ public:
         singleScaleUBTensor[0] = tbuf.GetWithOffset<T>(SCALE_NUM, IN_BLOCKSIZE);
         singleScaleUBTensor[1] = tbuf.GetWithOffset<T>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * HALF_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM); 
-        singleScaleUUBTensor[0] = tbuf.GetWithOffset<U>(SCALE_NUM, IN_BLOCKSIZE + SCALE_SIZE);
-        singleScaleUUBTensor[1] = tbuf.GetWithOffset<U>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * THREE_NUM +
+        scaleUUBTensor[0] = tbuf.GetWithOffset<U>(SCALE_NUM, IN_BLOCKSIZE + SCALE_SIZE);
+        scaleUUBTensor[1] = tbuf.GetWithOffset<U>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * THREE_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM);
         workUBTensor[0] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, IN_BLOCKSIZE + SCALE_SIZE * HALF_NUM);        
         workUBTensor[1] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, WORK_OFFSET + SCALE_SIZE * FOUR_NUM +
@@ -79,7 +79,7 @@ public:
         }
         Div(scaleUBTensor[1], outputUBTensor[0], scaleUBTensor[1], rankCount);
         AscendC::PipeBarrier<PIPE_ALL>();
-        ReduceMin<T>(singleScaleUBTensor[0], singleScaleUUBTensor[0], 
+        ReduceMin<T>(singleScaleUBTensor[0], scaleUBTensor[0], 
             workUBTensor[1][WORK_BLOCK_NUM / HALF_NUM], rankCount, false);
         pipe_barrier(PIPE_ALL);
         DataCopyWrap(outScaleGt, singleScaleUUBTensor[0], sizeof(T));
@@ -96,7 +96,7 @@ public:
         PipeBarrier<PIPE_V>();
         for (int j = 0; perRankNumRemain > 0; j++) {
             PipeBarrier<PIPE_V>();
-            perRankNum - perRankNumRemain >= WORK_BLOCK_NUM ? WORK_BLOCKNUM : perRankNumRemain;
+            perRankNum = perRankNumRemain >= WORK_BLOCK_NUM ? WORK_BLOCKNUM : perRankNumRemain;
             PipeBarrier<PIPE_V>();
             int32_t perRankNum = CeilDiv(perRankNumRemain, rankCount);
             perRankNumRemain -= perRankNum;
