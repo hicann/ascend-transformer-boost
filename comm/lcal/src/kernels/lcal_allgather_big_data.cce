@@ -97,3 +97,54 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigDataOrigin
         }
     }
 }
+
+template<typename T>
+__attribute__((always_inline)) inline __aicore__ void LcalAllGatherBigData(ALLREDUCE_ARGS_FUN_16P(T))
+{
+    DumpLcclLogInfo(dumpAddr, LogId::INIT, Op::COPYONLY);
+    *magic *= 1024;
+    const int64_t dataOffsetNum = GetLcalBlockNum() * 2 * MEM_DMA_UNIT_BYTE;
+    int64_t flagOffset1st = MEM_DMA_UNIT_INT_NUM * GetBlockIdx();
+    __gm__ T* buff[8] = {
+        buff0, buff1, buff2, buff3,
+        buff4, buff5, buff6, buff7
+    };
+    __ubuf__ int64_t* ctrlFlagsUB = (__ubuf__ int64_t*)(0);
+    __ubuf__ int64_t* ctrlFlagsUB1[16];
+    __ubuf__ int64_t* ctrlFlagsUB2[16];
+    for (int64_t i = 0; i < 16; i++) {
+        ctrlFlagsUB1[i] = (__ubuf__ int64_t*)(32) + i * 8;
+        ctrlFlagsUB2[i] = (__ubuf__ int64_t*)(544) + i * 8;
+    }
+    __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(1056), (__ubuf__ T*)(98336)};
+
+    int64_t blockNumPerGroup = GetLcalBlockNum() >> 1;
+    int64_t corePerRank = blockNumPerGroup / rankSize;
+    int64_t coreSegmentedIdx = GetBlockIdx() % corePerRank;
+    int64_t x = GetBlockIdx() / corePerRank;
+    if (GetBlockIdx() >= blockNumPerGroup) {
+        x = (GetBlockIdx() - blockNumPerGroup) / corePerRank;
+        flagOffset1st = (GetBlockIdx() - blockNumPerGroup) * MEM_DMA_UNIT_INT_NUM;
+    }
+    int64_t flagOffset2nd = GetLcalBlockNum() * MEM_DMA_UNIT_INT_NUM + flagOffset1st;
+
+    DumpLcclLogInfo(dumpAddr, LogId::INIT, Op::COPYONLY);
+    DumpLcclLogInfo(dumpAddr, LogId::PROCESS, Op::COPYONLY);
+
+    int64_t ipcBuffMaxNum = IPC_BUFF_MAX_SIZE / sizeof(T);
+    int64_t dataLen = len;
+    for (int64_t i = 0; i < CeilDiv(dataLen, ipcBuffMaxNum); i++) {
+        *ctrlFlagsUB = 0;
+        AscendC::PipeBarrier<PIPE_ALL>();
+
+        int64_t processedNum = i * ipcBuffMaxNum;
+        int64_t remainNum = (dataLen - processedNum < ipcBuffMaxNum) ? dataLen - processedNum : ipcBuffMaxNum;
+
+        PostSyncBigData<T>(ctrlFlagsUB, buff, rank, rankSize, dataOffsetNum, ipcBuffMaxNum, magic, i);
+        LcalAllGatherBigDataOrigin<T>(
+            buff, input + processedNum, output, processedNum, blockNumPerGroup, rank, rankSize, len, remainNum, (magic + i) * 1024, ctrlFlagsUB, ctrlFlagsUB1,
+            ctrlFlagsUB2, inputUB, dataOffsetNum, flagOffset1st, flagOffset2nd, x, corePerRank, coreSegmentedIdx);
+        AscendC::PipeBarrier<PIPE_ALL>();
+    }
+    DumpLcclLogInfo(dumpAddr, LogId::PROCESS, Op::COPYONLY);
+}
