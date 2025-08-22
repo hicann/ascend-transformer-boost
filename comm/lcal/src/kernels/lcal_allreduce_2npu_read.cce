@@ -20,7 +20,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduce2npuRead(ALLR
         buff4, buff5, buff6, buff7
     };
     __ubuf__ int64_t* ctrlFlagsUB = (__ubuf__ int64_t*)(0);
-    __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(64), (__ubuf__ T*)(97312)};
+    __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(32), (__ubuf__ T*)(97312)};
 
     const int64_t corePerRank = GetLcalBlockNum() / rankSize;
     const int64_t coreSegmentedIdx = GetBlockIdx() % corePerRank;
@@ -34,7 +34,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduce2npuRead(ALLR
 
     int64_t dataSizeRemain = singleCoreDataNum * sizeof(T);
     if (coreSegmentedIdx == corePerRank - 1) {
-        dataSizeRemain = (len - coreSegmentedIdx * coreSegmentedIdx) * sizeof(T);
+        dataSizeRemain = (len - singleCoreDataNum * coreSegmentedIdx) * sizeof(T);
     }
     DumpLcclLogInfo(dumpAddr, LogId::INIT, static_cast<Op>(op));
 
@@ -53,7 +53,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduce2npuRead(ALLR
     CheckFlag(ctrlFlagsUB, (((__gm__ int64_t*)buff[x]) + flagOffset1st), magic);
     CheckFlag(ctrlFlagsUB, (((__gm__ int64_t*)buff[rank]) + flagOffset1st), magic);
 
-    ProcessData(dataSizeRemain, inputUB[0], buff[x], dataOffsetNum, buffOffsetNum, output, buffOffsetNum, op);
+    ProcessData<T>(dataSizeRemain, inputUB[0], buff[x], dataOffsetNum, buffOffsetNum, output, buffOffsetNum, op);
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
     DumpLcclLogInfo(dumpAddr, LogId::OVERALL, static_cast<Op>(op));
 }
