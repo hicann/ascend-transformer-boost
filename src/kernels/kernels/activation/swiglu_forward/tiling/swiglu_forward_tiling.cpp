@@ -25,7 +25,7 @@ Status SwiGluForwardTiling(const LaunchParam &launchParam, KernelInfo &kernelInf
     uint32_t totalCore = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR);
     uint32_t ubSize = PlatformInfo::Instance().GetUbSize();
     MKI_LOG(INFO) << "----- ubSize -----" << ubSize;
-    if (totalCore >= MAX_CORE_NUMBER || ubSize <= UB_RESERVED_BUFF) {
+    if (totalCore > MAX_CORE_NUMBER || ubSize <= UB_RESERVED_BUFF) {
         return Status::FailStatus(ERROR_INVALID_VALUE, "Compile Info is invalid, coreNum: " +
             std::to_string(totalCore) + ", ubSize: " + std::to_string(ubSize));
     }
