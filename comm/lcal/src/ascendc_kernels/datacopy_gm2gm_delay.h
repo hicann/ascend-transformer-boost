@@ -102,8 +102,8 @@ public:
             int32_t perRankNum = CeilDiv(perRankNumRemain, rankCount);
             perRankNumRemain -= perRankNum;
             PipeBarrier<PIPE_V>();
-            AscendC::SetFlag<HardEvent::S_V>(eventId);
-            AscendC::WaitFlag<HardEvent::S_V>(eventId);
+            AscendC::SetFlag<AscendC::HardEvent::S_V>(eventId);
+            AscendC::WaitFlag<AscendC::HardEvent::S_V>(eventId);
             PipeBarrier<PIPE_V>();
             Cast((idx & 1) ? workUBTensor[0] : workUBTensor[1], (idx & 1) ? inTensor[0][j *
                 WORK_BLOCK_NUM] : inTensor[1][j * WORK_BLOCK_NUM], RoundMode::CAST_NONE, perRankNum);
@@ -145,7 +145,7 @@ public:
                 AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(eventId);
                 AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(eventId);
                 DataCopyWrap(outputGt[idx * BLOCK_NUM], (idx & 1) ? 
-                    outputUBTensor[0] : outputUBTensor[1], calCount * sizeof(V));       
+                    inTensor[0] : inTensor[1], calCount * sizeof(V));       
             }
         }    
     }
@@ -166,7 +166,7 @@ public:
     FORCE_INLINE_AICORE void Process()
     {
         PreProcess();
-        int numofPiece = CeilDiv<int32_t, int32_t>(calNum, BLOCK_NUM);
+        int numOfPiece = CeilDiv<int32_t, int32_t>(calNum, BLOCK_NUM);
         AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID0);
         AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);
         AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
@@ -192,7 +192,7 @@ public:
                     AscendC::SetFlag<AscendC::HardEvent::MTE2_V>(eventId);
                     AscendC::WaitFlag<AscendC::HardEvent::MTE2_V>(eventId);
                     LoopUncastAndMul(idx, index, eventId);
-                    Mte3Process(idx, index, eventId);
+                    Mte3Process(idx, index, calCount, eventId);
                     AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(eventId);
                     AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
                     AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId);
@@ -228,16 +228,16 @@ private:
 
     LocalTensor<U> inTensor[2];
     LocalTensor<U> singleScaleUUBTensor[2];
-    LocalTensor<U> singleScaleUBTensor[2];
+    LocalTensor<T> singleScaleUBTensor[2];
     LocalTensor<U> scaleUUBTensor[2];
-    LocalTensor<U> scaleUBTensor[2];
-    LocalTensor<U> workUBTensor[2];
-    LocalTensor<U> outputUBTensor[2];
+    LocalTensor<T> scaleUBTensor[2];
+    LocalTensor<T> workUBTensor[2];
+    LocalTensor<T> outputUBTensor[2];
 
     GlobalTensor<V> outputGt;
-    GLobalTensor<U> inputGt[8];
-    GLobalTensor<U> inputScaleGt[8];
-    GLobalTensor<U> outScaleGt;
+    GlobalTensor<U> inputGt[8];
+    GlobalTensor<U> inputScaleGt[8];
+    GlobalTensor<U> outScaleGt;
 };
 
 #endif // LCCL_DATACOPY_GM2GM_DELAYH
