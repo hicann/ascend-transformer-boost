@@ -107,26 +107,30 @@ uint32_t IfOperation::GetOutputNum() const
 
 void IfOperation::SetExecuteStreamId(uint32_t streamId)
 {
+    ATB_LOG(INFO) << GetLogPrefix() << "Calling SetExecuteStreamId...";
     Status st;
-    if (!opSelected_) {
-        ATB_LOG(INFO) << GetLogPrefix() << "Operation not selected yet, setting opSelected_...";
-        st = GetOperationFromCondition(&opSelected_);
+    if (param_.opA) {
+        st = atb::SetExecuteStreamId(param_.opA, streamId);
         if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Calling SetExecuteStreamId for opA failed!";
             return;
         }
+        ATB_LOG(INFO) << GetLogPrefix() << "Setting execute streamId for opA success.";
     }
-    ATB_LOG(INFO) << "Calling SetExecuteStreamId...";
-    st = atb::SetExecuteStreamId(opSelected_, streamId);
-    if (st != NO_ERROR) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Calling SetExecuteStreamId failed!";
-        return;
+    if (param_.opB) {
+        st = atb::SetExecuteStreamId(param_.opB, streamId);
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Calling SetExecuteStreamId for opB failed!";
+            return;
+        }
+        ATB_LOG(INFO) << GetLogPrefix() << "Setting execute streamId for opB success.";
     }
 }
 
 Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVector<TensorDesc> &outTensorDescs) const
 {
     ATB_LOG(INFO) << GetLogPrefix() << "Calling InferShape...";
-    return opSelected_->InferShape(inTensorDescs, outTensorDescs);
+    return param_.opA->InferShape(inTensorDescs, outTensorDescs);
 }
 
 std::shared_ptr<Runner> IfOperation::CreateRunner(Context &context) const

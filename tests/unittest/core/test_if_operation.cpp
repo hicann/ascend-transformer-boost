@@ -75,6 +75,8 @@ TEST(TestIfOperation, IfOpTest)
     EXPECT_EQ(status4, 0);
 
     atb::DestroyOperation(ifOperation);
+    atb::DestroyOperation(operationA);
+    atb::DestroyOperation(operationB);
 }
 
 TEST(TestIfOperation, IfGraphOpTest)
@@ -145,4 +147,71 @@ TEST(TestIfOperation, IfGraphOpTest)
     EXPECT_EQ(status6, 0);
 
     atb::DestroyOperation(ifOperation);
+    atb::DestroyOperation(operationA);
+    atb::DestroyOperation(operationB);
+}
+
+TEST(TestIfOperation, MultiStreamTest)
+{
+    if (!atb::GetSingleton<atb::Config>().Is910B()) {
+        GTEST_SKIP() << "This test case only support 910B";
+    }
+
+    atb::Operation *graphOp;
+    atb::GraphParam graphParam;
+    graphParam.inTensorNum = 4;
+    graphParam.outTensorNum = 2;
+    graphParam.internalTensorNum = 0;
+    graphParam.nodes.resize(2);
+
+    size_t nodeId = 0;
+    atb::Node &ifNode = opGraph.nodes.at(nodeId++);
+    atb::Node &addNode = opGraph.nodes.at(nodeId++);
+
+    atb::Operation *operationA;
+    atb::infer::ElewiseParam mulParam;
+    mulParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_MUL;
+    atb::Status status1 = atb::CreateOperation(mulParam, &operationA);
+    EXPECT_EQ(status1, 0);
+
+    atb::Operation *operationB;
+    atb::infer::ElewiseParam addParam;
+    addParam.elewiseType = atb::infer::ElewiseParam::ElewiseType::ELEWISE_ADD;
+    atb::Status status2 = CreateOperation(addParam, &operationB);
+    EXPECT_EQ(status2, 0);
+
+    atb::common::IfCondParam opCond;
+    std::unique_ptr<int> data = std::make_unique<int>(15);
+    opCond.handle = CondFunction;
+    opCond.userData = data.get();
+    opCond.opA = operationA;
+    opCond.opB = operationB;
+    atb::Status status3 = CreateOperation(opCond, &ifNode.operation);
+    EXPECT_EQ(status3, 0);
+    ifNode.inTensorIds = {0, 1} ifNode.outTensorIds = {4}
+    SetExecuteStreamId(ifNode.operation, 1)
+
+    // reuse add param
+    atb::Status status4 = CreateOperation(addParam, &addNode.operation);
+    EXPECT_EQ(status4, 0);
+    ifNode.inTensorIds = {2, 3} ifNode.outTensorIds = {5}
+
+    atb::Status status5 = CreateOperation(graphParam, &graphOp);
+    EXPECT_EQ(status5, 0);
+
+    Mki::SVector<Mki::TensorDesc> opsInTensorDescs = {{Mki::TENSOR_DTYPE_FLOAT16, Mki::TENSOR_FORMAT_ND, {2, 2}},
+                                                      {Mki::TENSOR_DTYPE_FLOAT16, Mki::TENSOR_FORMAT_ND, {2, 2}},
+                                                      {Mki::TENSOR_DTYPE_FLOAT16, Mki::TENSOR_FORMAT_ND, {2, 2}},
+                                                      {Mki::TENSOR_DTYPE_FLOAT16, Mki::TENSOR_FORMAT_ND, {2, 2}}};
+    atb::SVector<atb::TensorDesc> inTensorDescs;
+    atb::SVector<atb::TensorDesc> outTensorDescs;
+    TensorUtil::OpsTensorDescs2AtbTensorDescs(opsInTensorDescs, inTensorDescs);
+
+    OperationTest opTest;
+    atb::Status status4 = opTest.Run(graphOp, inTensorDescs);
+    EXPECT_EQ(status4, 0);
+
+    atb::DestroyOperation(graphOp);
+    atb::DestroyOperation(operationA);
+    atb::DestroyOperation(operationB);
 }
