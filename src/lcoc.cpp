@@ -10,6 +10,7 @@
 #include <tiling_func.h>
 #include "lcal_internal.h"
 #include "mki/utils/log/log.h"
+#include "mki/utils/env/env.h"
 #include "profiling/report_timing.h"
 #include "runtime/rt_ffts.h"
 
@@ -77,7 +78,7 @@ bool CheckCoCParamDesc(LcalType lcalType, const CoCParamDesc &paramDesc)
         paramCheckList.emplace_back("rsDim", rsDim, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE);
     }
 
-    return CheckParamScope(paramCheckList);
+    return CheckParamScopeList(paramCheckList);
 }
 
 bool Lcoc::CheckInputParam(LcalType lcalType, const CoCTiling &tiling, const CoCParamDesc &paramDesc) const
@@ -185,12 +186,12 @@ int Lcoc::LaunchOperator(CoCInputPkg &inputPkg, CoCOutputPkg &outputPkg, void *w
     args.SetWorkspacePtrArg(workspace);
     args.SetParamDescArgs(paramDesc);
     args.SetCommArgs(*comm_);
-    args.SetCoTilingDataArgs(tiling_);
+    args.SetCoCTilingDataArgs(tiling_);
     MKI_LOG(DEBUG) << "[" << LCAL_TYPE2NAME.at(taskParam_.lcalType) << "]:" << args.ParamToString();
     return ComputeOverComm(taskParam_.lcalType, args, COC_TYPE2HCCL_TYPE.at(paramDesc.dataTypeDesc), stream);
 }
 
-bool Lcoc::CheckBasic(const CoCInputPkg &inputPkg, cosnt CoCOutputPkg &outputPkg, LcalType lcalType) const
+bool Lcoc::CheckBasic(const CoCInputPkg &inputPkg, const CoCOutputPkg &outputPkg, LcalType lcalType) const
 {
     if (!tilingSuccess_) {
         std::string str = "Tiling error. Please check whether the 'Lcoc::SetParam' method has been called, "
@@ -216,13 +217,23 @@ bool Lcoc::CheckBasic(const CoCInputPkg &inputPkg, cosnt CoCOutputPkg &outputPkg
     return true;
 }
 
-int Lcoc:MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
+int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
 {
     LcalType lcalType = LcalType::MATMUL_ALL_REDUCE;
     if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
     ReportTiming report("LcocMatmulAllReduce", true);
+    return LaunchOperator(inputPkg, outputPkg, workspace, stream);
+}
+
+int Lcoc::AllGatherMatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
+{
+    LcalType lcalType = LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER;
+    if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    ReportTiming report("LcocAllGatherMatmulReduceScatter", true);
     return LaunchOperator(inputPkg, outputPkg, workspace, stream);
 }
 
@@ -290,9 +301,10 @@ int64_t Lcoc::GetWorkspaceSize()
         << ", mAlign=" << mAlign << ", kAlign=" << kAlign << ", nAlign=" << nAlign << ", transA=" << mmInfo.transA
         << ", transB=" << mmInfo.transB << ", eleSize=" << eleSize << ", hasAAlign=" << hasAAlign
         << ", hasBAlign=" << hasBAlign << ", accumRankSize=" << accumRankSize << ", hasAccum=" << hasAccum
-        << ", dequantWorkSapceSize=" << dequantWorkSpaceSize << ", hasDequantParam=" << hasDequantParam
+        << ", dequantWorkSpaceSize=" << dequantWorkSpaceSize << ", hasDequantParam=" << hasDequantParam
         << ", hasFormatDequantScale=" << hasFormatDequantScale << ", isDeterministic=" << isDeterministic
         << ", isMoe=" << isMoe << ", isAlltoallVc=" << isAlltoallVc << ", moeInfo.EP=" << static_cast<int>(moeInfo.EP)
+        << ", moeInfo.local_expert_nums=" << moeInfo.local_expert_nums
         << ", maxOutputSize=" << maxOutputSize << ", workspaceSize=" << lcalWorkspaceInfo.workspaceSize;
     return lcalWorkSpaceInfo.workspaceSize;
 }
