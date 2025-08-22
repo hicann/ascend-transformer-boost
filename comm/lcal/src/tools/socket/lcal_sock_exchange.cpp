@@ -33,7 +33,7 @@ using namespace std;
 namespace Lcal {
 const string LCAL_LOCAL_SOCK_IP = "127.0.0.1";
 constexpr uint16_t LCAL_DEFAULT_SOCK_PORT = 10067;
-constexpr uint32_t LCAL_MAX_BACK_LOG = 65536;
+constexpr uint32_t LCAL_MAX_BACK_LOG = 65535;
 
 int ParseIpAndPort(const char* input, string &ip, uint16_t &port)
 {
@@ -41,8 +41,8 @@ int ParseIpAndPort(const char* input, string &ip, uint16_t &port)
         return LCAL_INVALID_VALUE;
     }
     string inputStr(input);
-    size_t colonPos = inputStr.find(":");
-    if (colonPos == strings::npos) {
+    size_t colonPos = inputStr.find(':');
+    if (colonPos == string::npos) {
         MKI_LOG(ERROR) << "Input string does not contain a colon separating IP and port.";
         return LCAL_ERROR_INTERNAL;
     }
@@ -81,7 +81,7 @@ int LcalSockExchange::GetNodeNum()
         return LCAL_ERROR_INTERNAL;
     }
     isInit_ = true;
-    const string filePath = "/proc/sys/kernel/rankdom/boot_id";
+    const string filePath = "/proc/sys/kernel/random/boot_id";
     ifstream fileStream(filePath);
     stringstream buffer;
     if (fileStream) {
@@ -114,8 +114,8 @@ int LcalSockExchange::GetNodeNum()
             MKI_LOG(ERROR) << "Client side " << rank_ << " send buffer failed";
             return LCAL_ERROR_INTERNAL;
         }
-        if (Send(fd_, &nodeNum, sizeof(int), 0) <= 0) {
-            MKI_LOG(ERROR) << "Client side " << rank_ << " recv buffer failed";
+        if (Recv(fd_, &nodeNum, sizeof(int), 0) <= 0) {
+            MKI_LOG(ERROR) << "Client side " << rank_ << " recv buffer failed ";
             return LCAL_ERROR_INTERNAL;
         }
     }
@@ -124,7 +124,7 @@ int LcalSockExchange::GetNodeNum()
 
 void LcalSockExchange::GetIpAndPort()
 {
-    
+
 }
 
 }
