@@ -155,14 +155,14 @@ __aicore__ inline void FusedAddTopkDiv<inputT, calT, enableExpertMapping>::InitT
         batchOffset_ = blockIdx * batchPerCore + tailBatch;
     }
     outBatchStride_ = k_ * batchOffset_;
-    mGmX_.SetGlobalBuffer(reinterpret_cast<__gm__ inputT *>(x));
-    mGmAddNum_.SetGlobalBuffer(reinterpret_cast<__gm__ inputT *>(addNum));
-    mGmY_.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(y));
-    mGmIndices_.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(indices));
-    mGmWorkspace_.SetGlobalBuffer(reinterpret_cast<__gm__ float *>(workspace));
+    mGmX_.SetGlobalBuffer((__gm__ inputT *)x);
+    mGmAddNum_.SetGlobalBuffer((__gm__ inputT *)addNum);
+    mGmY_.SetGlobalBuffer((__gm__ float *)y);
+    mGmIndices_.SetGlobalBuffer((__gm__ int32_t *)indices);
+    mGmWorkspace_.SetGlobalBuffer((__gm__ float *)workspace);
     mGmAssist_.SetGlobalBuffer((__gm__ uint32_t *)assistGm);
-    mappingNumGm_.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(mappingNum));
-    mappingTableGm_.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(mappingTable));
+    mappingNumGm_.SetGlobalBuffer((__gm__ int32_t *)mappingNum);
+    mappingTableGm_.SetGlobalBuffer((__gm__ int32_t *)mappingTable);
 
     groupElesAlignBlockCountFp32_ = CeilAlign(groupEles_, perBlockCountFp32);
     groupElesAlignSortCount_ = CeilAlign(groupEles_, SORT_UNIT);
@@ -426,16 +426,17 @@ __aicore__ inline void FusedAddTopkDiv<inputT, calT, enableExpertMapping>::NormI
 {
     LocalTensor<float> yLocal = yOutQueue_.DeQue<float>();
     LocalTensor<float> tempTensor = tempBuf_.Get<float>();
+    LocalTensor<float> reduceSumValueTensor = sigmoidBuf_.Get<float>();
 
     ReduceSum<calT>(tempTensor, yLocal, tempTensor, k_);
     event_t eventIdVToS = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_S));
     SetFlag<HardEvent::V_S>(eventIdVToS);
     WaitFlag<HardEvent::V_S>(eventIdVToS);
-    float reduceSumValue = 1 / tempTensor.GetValue(0);
-    event_t eventIdSToV = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_V));
-    SetFlag<HardEvent::S_V>(eventIdSToV);
-    WaitFlag<HardEvent::S_V>(eventIdSToV);
-    Muls(yLocal, yLocal, reduceSumValue, k_);
+    float reduceSumValue = tempTensor.GetValue(0);
+    AscendC::PipeBarrier<PIPE_V>();
+    Duplicate<float>(reduceSumValueTensor, reduceSumValue, k_);
+    AscendC::PipeBarrier<PIPE_V>();
+    Div(yLocal, yLocal, reduceSumValueTensor, k_);
     AscendC::PipeBarrier<PIPE_V>();
     Muls(yLocal, yLocal, scale_, k_);
 

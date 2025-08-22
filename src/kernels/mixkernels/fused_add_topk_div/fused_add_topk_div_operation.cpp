@@ -29,7 +29,7 @@ public:
     int64_t GetInputNum(const Any &specificParam) const override
     {
         MKI_CHECK(specificParam.Type() == typeid(OpParam::FusedAddTopkDiv), "OpParam is invalid", return 0);
-        return TENSOR_INPUT_NUM; // FusedAddTopkDiv Op has 2 inputs
+        return TENSOR_INPUT_NUM; // FusedAddTopkDiv Op has 4 inputs
     }
  
     int64_t GetOutputNum(const Any &specificParam) const override
@@ -68,6 +68,8 @@ public:
         MKI_CHECK(CheckFusedAddTopkDivShape(launchParam), "Failed to check run info",
                   return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
         auto param = AnyCast<OpParam::FusedAddTopkDiv>(launchParam.GetParam());
+        MKI_CHECK(param.k <= launchParam.GetInTensor(DIM_0).desc.dims[DIM_1],
+                  "k should be less or equal to the shape of x[1]", return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
         outTensors[DIM_0].desc = launchParam.GetInTensor(DIM_0).desc;
         outTensors[DIM_1].desc = launchParam.GetInTensor(DIM_0).desc;
         outTensors[DIM_0].desc.dims[DIM_1] = param.k;
