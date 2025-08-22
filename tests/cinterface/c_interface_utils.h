@@ -11,6 +11,8 @@
 #define C_INTERFACE_UTILS_H
 #include <gtest/gtest.h>
 #include "atb/atb_acl.h"
+#include "atb/utils/log.h"
+
 namespace atb {
 namespace cinterfaceTest {
 const int64_t MLAINOUTMLA = 12;
