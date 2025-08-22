@@ -65,7 +65,7 @@ void SetNonContiguousTenor(RmsNormCommonTilingData *tilingDataPtr, const LaunchP
     const auto& xStrides = launchParam.GetInTensor(0).desc.strides;
     const auto& shape = launchParam.GetInTensor(0).desc.dims;
     uint32_t dimNum = xStrides.size();
-    if (xStrides.empty() || xStrides[dimNum - NUM_TWO] == shape[dimNum - 1]) {
+    if (xStrides.empty() || dimNum == 1 || xStrides[dimNum - NUM_TWO] == shape[dimNum - 1]) {
         tilingDataPtr->xDimNum = 0;
     } else {
         for (size_t i = 0; i < xStrides.size(); ++ i) {
