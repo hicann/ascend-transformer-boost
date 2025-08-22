@@ -59,8 +59,10 @@ bool CommonPagedCacheLoadTiling(const LaunchParam &launchParam, KernelInfo &kern
     MKI_CHECK(tokenSizeK > 0 && tokenSizeK <= INT_MAX, "tokenSizeK is invalid", return false);
     MKI_CHECK(tokenSizeV > 0 && tokenSizeV <= INT_MAX, "tokenSizeV is invalid", return false);
     MKI_CHECK(typeByte > 0 && typeByte <= INT_MAX, "typeByte is invalid", return false);
-    MKI_CHECK(tokenSizeK <= INT_MAX / blockSize / typeByte, "tokenSizeK * blockSize is too large", return false);
-    MKI_CHECK(tokenSizeV <= INT_MAX / blockSize / typeByte, "tokenSizeV * blockSize is too large", return false);
+    MKI_CHECK(tokenSizeK <= INT_MAX / blockSize / static_cast<int32_t>(typeByte),
+        "tokenSizeK * blockSize is too large", return false);
+    MKI_CHECK(tokenSizeV <= INT_MAX / blockSize / static_cast<int32_t>(typeByte),
+        "tokenSizeV * blockSize is too large", return false);
 
     PagedCacheLoadTilingData *tilingDataPtr =
             reinterpret_cast<PagedCacheLoadTilingData *>(kernelInfo.GetTilingHostAddr());
