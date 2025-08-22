@@ -30,7 +30,7 @@ namespace Lcal {
 union LcalSocketAddress {
     struct sockaddr sa;
     struct sockaddr_in sin;
-    struct sockaddr_in6 sin;
+    struct sockaddr_in6 sin6;
 };
 
 constexpr uint64_t LCAL_MAGIC = 0xdddd0000dddd0000;
@@ -50,7 +50,7 @@ int BootstrapGetUniqueId(LcalBootstrapHandle &handle, int commDomain);
 class LcalSockExchange {
 public:
     LcalSockExchange(int rank, int rankSize, std::vector<int> &rankList, int commDomain);
-    LcalSockExchange(int rank, int rankSize, LcalUniqueId);
+    LcalSockExchange(int rank, int rankSize, LcalUniqueId lcalCommId);
     ~LcalSockExchange();
 
     template <typename T> int AllGather(const T *sendBuf, size_t sendCount, T *recvBuf)
@@ -107,10 +107,10 @@ private:
         } while (true);
     }
 
-    template <typename T> int Recv(int fd, T *sendBuf, size_t sendSize, int flag) const
+    template <typename T> int Recv(int fd, T *recvBuf, size_t recvSize, int flag) const
     {
         do {
-            auto ret = recv(fd, sendBuf, sendSize, flag);
+            auto ret = recv(fd, recvBuf, recvSize, flag);
             if (ret < 0) {
                 if (CheckErrno(errno)) {
                     MKI_LOG(ERROR) << "recv failed: " << strerror(errno);
@@ -129,8 +129,8 @@ private:
             return LCAL_ERROR_INTERNAL;
         }
 
-        if (Recv(fd_, sendBuf, sendSize * rankSize_ * sizeof(T), MSG_WAITALL) <= 0) {
-            MKI_LOG(ERROR) << "Client side " << rank_ << " recv buffer failed";
+        if (Recv(fd_, recvBuf, sendSize * rankSize_ * sizeof(T), MSG_WAITALL) <= 0) {
+            MKI_LOG(ERROR) << "Client side " << rank_ << " recv buffer failed ";
             return LCAL_ERROR_INTERNAL;
         }
 
@@ -153,7 +153,7 @@ private:
         }
 
         for (int i = 1; i < rankSize_; ++i) {
-            if (Send(clientFds_[i], recvBuf, sendSize * rankSize_* sizeof(T), 0) <= 0) {
+            if (Send(clientFds_[i], recvBuf, sendSize * rankSize_ * sizeof(T), 0) <= 0) {
                 MKI_LOG(ERROR) << "Server side send rank " << i << " buffer failed";
                 return LCAL_ERROR_INTERNAL;
             }
