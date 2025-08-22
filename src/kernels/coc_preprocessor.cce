@@ -1,0 +1,249 @@
+#ifndef __COC_PREPROCESSOR__
+#define __COC_PREPROCESSOR__
+
+#ifdef __DAV_C220_VEC__
+
+#include <type_traits>
+#include "coc_internal.cce"
+#include "kernel_operator.h"
+using namespace AscendC;
+
+template <typename LhsDtype, typename RhsDtype, typename MmadDtype>
+class BasePadder {
+public:
+    class LoopIter {
+    public:
+        inline __aicore__ LoopIter(int32_t batch_size, int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned) :
+                batch_size(batch_size), n_rows(n_rows), n_cols(n_cols), n_cols_aligned(n_cols_aligned)
+        {
+            int32_t align_core_num = get_block_num() * get_subblockdim();
+            int32_t align_core_idx = get_block_idx() * get_subblockdim() + get_subblockid();
+            int32_t n_rows_per_core_base = n_rows / align_core_num;
+            int32_t n_rows_remainder = n_rows % align_core_num;
+            int32_t row_offset_base = align_core_idx * n_rows_per_core_base;
+            if (align_core_idx < n_rows_remainder) {
+                n_rows_this_core = n_rows_per_core_base + 1;
+                row_offset_this_core = row_offset_base + align_core_idx;
+            } else {
+                n_rows_this_core = n_rows_per_core_base;
+                row_offset_this_core = row_offset_base + n_rows_remainder;
+            }
+            n_cols_this_core = n_cols;
+            col_offset_this_core = 0;
+
+            src_core_offset = 1LL * row_offset_this_core * n_cols;
+            dst_core_offset = 1LL * row_offset_this_core * n_cols_aligned;
+        }
+
+        inline __aicore__ void InitBatchLoop()
+        {
+            batch idx = 0;
+
+            src_batch_offset = 0;
+            dst_batch_offset = 0;
+        }
+
+        inline __aicore__ bool EndBatchLoop() const
+        {
+            return batch_idx = batch_size;
+        }
+
+        inline __aicore__ void NextBatchLoop()
+        {
+            ++batch_idx;
+            if (EndBatchLoop()) {
+                return;
+            }
+
+            src_batch_offset = batch_idx * n_rows * n_cols;
+            dst_batch_offset = batch_idx * n_rows * n_cols_aligned;
+        }
+
+        inline __aicore__ void InitRowLoop(int32_t max_rows_per_loop)
+        {
+            this->max_rows_per_loop = max_rows_per_loop;
+            n_rows_complete = 0;
+            src_row_loop_offset = 0;
+            dst_row_loop_offset = 0;
+
+            n_rows_this_loop = (n_rows_this_core < max_rows_per_loop) ? n_rows_this_core : max_rows_per_loop;
+        }
+
+        inline __aicore__ bool EndRowLoop() const
+        {
+            return n_rows_complete == n_rows_this_core;
+        }
+
+        inline __aicore__ void NextRowLoop()
+        {
+            n_rows_complete += n_rows_this_loop;
+            if (EndRowLoop()) {
+                return;
+            }
+
+            if (n_rows_complete + n_rows_this_loop > n_rows_this_core) {
+                n_rows_this_loop = n_rows_this_core - n_rows_complete;
+            }
+            src_row_loop_offset = n_rows_complete * n_cols;
+            dst_row_loop_offset = n_rows_complete * n_cols_aligned;
+        }
+
+        inline __aicore__ void InitColLoop(int32_t max_cols_per_loop) {
+            this->max_cols_per_loop = max_cols_per_loop;
+            n_cols_complete = 0;
+            col_loop_offset = 0;
+
+            n_cols_this_loop = (n_cols < max_cols_per_loop) ? n_cols : max_cols_per_loop;
+        }
+
+        inline __aicore__ bool EndColLoop() const
+        {
+            return n_cols_complete == n_cols_this_core;
+        }
+
+        inline __aicore__ void NextColLoop()
+        {
+            n_cols_complete += n_cols_this_loop;
+            if (EndColLoop()) {
+                return;
+            }
+
+            if (n_cols_complete + n_cols_this_loop > n_cols_this_core) {
+                n_cols_this_loop = n_cols_this_core - n_cols_complete;
+            }
+            col_loop_offset = n_cols_complete;
+        }
+
+        inline __aicore__ int64_t src_offset() const
+        {
+            return src_core_offset + src_batch_offset + src_row_loop_offset + col_loop_offset;
+        }
+
+        inline __aicore__ int64_t dst_offset() const
+        {
+            return dst_core_offset + dst_batch_offset + dst_row_loop_offset + col_loop_offset;
+        }
+
+        int32_t batch_size;
+        int32_t n_rows;
+        int32_t n_cols;
+        int32_t n_cols_aligned;
+
+        int32_t n_rows_this_core;
+        int32_t n_cols_this_core;
+        int32_t row_offset_this_core;
+        int32_t col_offset_this_core;
+
+        int32_t max_rows_per_loop;
+        int32_t max_cols_per_loop;
+
+        int32_t batch_idx;
+        int32_t n_rows_complete;
+        int32_t n_cols_complete;
+
+        int32_t n_rows_this_loop;
+        int32_t n_cols_this_loop;
+
+        int64_t src_core_offset;
+        int64_t src_core_offset;
+        int64_t src_batch_offset;
+        int64_t dst_batch_offset;
+        int64_t src_row_loop_offset;
+        int64_t dst_row_loop_offset;
+        int64_t col_loop_offset;
+    };
+
+    __aicore__ explicit BasePadder() = default;
+
+    inline __aicore__ void SetArgs(__gm__ uint8_t *gm_a, uint8_t *gm_b, const LcalWorkspaceInfo &workspace_info,
+            int32_t batch_size, int32_t m, int32_t k, int32_t n, int32_t m_align, int32_t k_align, int32_t n_align, bool aligned_a, bool aligned_b, bool trans_a, bool trans_b)
+    {
+        this->gm_a = reinterpret_cast<__gm__ LhsDtype *>(gm_a);
+        this->gm_b = reinterpret_cast<__gm__ RhsDtype *>(gm_b);
+
+        this->batch_size = batch_size;
+        this->m = m;
+        this->k = k;
+        this->n = n;
+        this->trans_a = trans_a;
+        this->trans_b = trans_b;
+
+        this->m_align = m_align;
+        this->k_align = k_align;
+        this->n_align = n_align;
+        
+        this->aligned_a = aligned_a;
+        this->aligned_b = aligned_b;
+
+        gm_a_align = reinterpret_cast<__gm__ MmadDtype *>(workspace_info.gm_a_align ? workspace_info.gm_a_align : gm_a);
+        gm_b_align = reinterpret_cast<__gm__ MmadDtype *>(workspace_info.gm_b_align ? workspace_info.gm_b_align : gm_b);
+    }
+
+protected:
+    inline __aicore__ void PadMatrix(__gm__ MmadDtype *gm_dst, __gm__ MmadDtype *gm_src,
+            int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned)
+    {
+        LoopIter it(batch_size, n_rows, n_cols, n_cols_aligned);
+
+        const int32_t MAX_LEN = Block32B<MmadDtype>::AlignDown(MAX_UB_BUFF / sizeof(MmadDtype));
+        int32_t n_cols_round = Block32B<MmadDtype>::AlignUp(n_cols);
+        int32_t max_rows_per_loop = (n_cols_round <= MAX_LEN) ? (MAX_LEN / n_cols_round) : 1;
+        int32_t max_cols_per_loop = (n_cols_round <= MAX_LEN) ? n_cols : MAX_LEN;
+
+        auto ub_base = reinterpret_cast<__ubuf__ MmadDtype *>((uintptr_t)0);
+
+        for (it.InitBatchLoop(); !it.EndBatchLoop(); it.NextBatchLoop()) {
+            for (it.InitColLoop(max_cols_per_loop); !it.EndColLoop(); it.NextColLoop()) {
+                int32_t src_gap = n_cols - it.n_cols_this_loop;
+                int32_t dst_gap = n_cols_aligned - it.n_cols_this_loop;
+                for (it.InitRowLoop(max_rows_per_loop); !it.EndRowLoop(); it.NextRowLoop()) {
+                    auto src = gm_src + it.src_offset();
+                    auto dst = gm_dst + it.dst_offset();
+
+                    CopyGmToUbufAlign(ub_base, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap);
+
+                    SetFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);
+                    WaitFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);
+
+                    CopyUbufToGmAlign(dst, ub_base, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap);
+
+                    SetFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);
+                    WaitFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);
+                }
+            }
+        }
+    }
+
+    inline __aicore__ void Barrier()
+    {
+        FFTSCrossCoreSync<PIPE_MTE3>(0, AIV_FINISH_ALIGN_FLAG_ID);
+        WaitEvent(AIV_FINISH_ALIGN_FLAG_ID);
+
+        FFTSCrossCoreSync<PIPE_MTE3>(2, AIC_WAIT_AIV_FINISH_FLAG_ID);
+        PipeBarrier<PIPE_ALL>();
+    }
+
+    __gm__ LhsDtype *__restrict__ gm_a{ nullptr };
+    __gm__ RhsDtype *__restrict__ gm_b{ nullptr };
+    __gm__ MmadDtype *__restrict__ gm_a_align{ nullptr };
+    __gm__ MmadDtype *__restrict__ gm_b_align{ nullptr };
+
+    int32_t batch_size;
+
+    int32_t m_align;
+    int32_t n_align;
+    int32_t k_align;
+
+    int32_t m;
+    int32_t n;
+    int32_t k;
+
+    bool trans_a;
+    bool trans_b;
+
+    int32_t aligned_a;
+    int32_t aligned_b;
+
+    LcalWorkspaceInfo workspace_info;
+};
+
