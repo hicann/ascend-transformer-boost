@@ -42,6 +42,8 @@ Status KVCacheTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         const auto &inTensor3Dims = launchParam.GetInTensor(DIM_3).desc.dims;
         batch = static_cast<uint32_t>(inTensor3Dims[0]);
     }
+    MKI_CHECK(batch > 0, "batch should be larger than 0 ",
+        return Status::FailStatus(ERROR_INVALID_VALUE));
 
     const auto &inTensor0Dims = launchParam.GetInTensor(0).desc.dims;
     auto hiddenSize = static_cast<uint32_t>(inTensor0Dims[1]);
@@ -112,6 +114,8 @@ Status KVCacheNzTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         const auto &inTensor3Dims = launchParam.GetInTensor(3).desc.dims;
         batch = static_cast<uint32_t>(inTensor3Dims[0]);
     }
+    MKI_CHECK(batch > 0, "batch should be larger than 0 ",
+        return Status::FailStatus(ERROR_INVALID_VALUE));
 
     const auto &inTensor0Dims = launchParam.GetInTensor(0).desc.dims;
     int64_t hiddenSize = inTensor0Dims[1] * 16; // 16是因为数据是Nz排布
