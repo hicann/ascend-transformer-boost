@@ -16,7 +16,7 @@
 
 namespace atb {
 
-Status IfOperation::GetOperationFromCondition(Operation **op)
+Status IfOperation::GetOperationFromCondition(Operation **op) const
 {
     bool cond = true;
     if (!param_.userData) {
@@ -135,6 +135,14 @@ Status IfOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDescs, SVe
 
 std::shared_ptr<Runner> IfOperation::CreateRunner(Context &context) const
 {
+    if (!opSelected_) {
+        ATB_LOG(INFO) << GetLogPrefix()
+                      << "Operation not selected yet, executing create runner as part of graph, setting opSelected_...";
+        Status st = GetOperationFromCondition(&opSelected_);
+        if (st != NO_ERROR) {
+            ATB_LOG(ERROR) << GetLogPrefix() << "Failed to select operation based on condition!";
+        }
+    }
     OperationBase *opBase = dynamic_cast<OperationBase *>(opSelected_);
     if (!opBase) {
         ATB_LOG(ERROR) << GetLogPrefix() << "Failed to convert Operation to OperationBase";

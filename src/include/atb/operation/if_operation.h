@@ -34,11 +34,11 @@ protected:
     std::shared_ptr<Runner> CreateRunner(Context &context) const override;
 
 private:
-    Status GetOperationFromCondition(Operation **op);
+    Status GetOperationFromCondition(Operation **op) const;
 
 private:
     common::IfCondParam param_;
-    Operation *opSelected_ = nullptr;
+    mutable Operation *opSelected_ = nullptr;
 };
 } // namespace atb
 #endif // ATB_IF_OPERATION_H

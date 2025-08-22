@@ -165,8 +165,8 @@ TEST(TestIfOperation, MultiStreamTest)
     graphParam.nodes.resize(2);
 
     size_t nodeId = 0;
-    atb::Node &ifNode = opGraph.nodes.at(nodeId++);
-    atb::Node &addNode = opGraph.nodes.at(nodeId++);
+    atb::Node &ifNode = graphParam.nodes.at(nodeId++);
+    atb::Node &addNode = graphParam.nodes.at(nodeId++);
 
     atb::Operation *operationA;
     atb::infer::ElewiseParam mulParam;
@@ -188,13 +188,15 @@ TEST(TestIfOperation, MultiStreamTest)
     opCond.opB = operationB;
     atb::Status status3 = CreateOperation(opCond, &ifNode.operation);
     EXPECT_EQ(status3, 0);
-    ifNode.inTensorIds = {0, 1} ifNode.outTensorIds = {4}
-    SetExecuteStreamId(ifNode.operation, 1)
+    ifNode.inTensorIds = {0, 1};
+    ifNode.outTensorIds = {4};
+    SetExecuteStreamId(ifNode.operation, 1);
 
     // reuse add param
     atb::Status status4 = CreateOperation(addParam, &addNode.operation);
     EXPECT_EQ(status4, 0);
-    ifNode.inTensorIds = {2, 3} ifNode.outTensorIds = {5}
+    addNode.inTensorIds = {2, 3};
+    addNode.outTensorIds = {5};
 
     atb::Status status5 = CreateOperation(graphParam, &graphOp);
     EXPECT_EQ(status5, 0);
@@ -208,8 +210,8 @@ TEST(TestIfOperation, MultiStreamTest)
     TensorUtil::OpsTensorDescs2AtbTensorDescs(opsInTensorDescs, inTensorDescs);
 
     OperationTest opTest;
-    atb::Status status4 = opTest.Run(graphOp, inTensorDescs);
-    EXPECT_EQ(status4, 0);
+    atb::Status status6 = opTest.Run(graphOp, inTensorDescs);
+    EXPECT_EQ(status6, 0);
 
     atb::DestroyOperation(graphOp);
     atb::DestroyOperation(operationA);
