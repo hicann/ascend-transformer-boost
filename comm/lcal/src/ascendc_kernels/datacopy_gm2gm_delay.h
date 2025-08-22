@@ -18,19 +18,18 @@ template <typename V, typename T, typename U = T>
 class DataCopyGM2GMDelay {
     constexpr static int64_t THREE_NUM = 3;
     constexpr static int64_t FOUR_NUM = 4;
-    constexpr static int64_t WORK_OFFSET = 8192;
-    constexpr static int64_t WORK_BLOCK_NUM = WORK_OFFSET / sizeof(T);
-    constexpr static int64_t UB_HEAD_OFFSET = WORK_OFFSET * 2;
-    constexpr static int64_t SCALE_SIZE = 32;
-    constexpr static int64_t SCALE_NUM = SCALE_SIZE / sizeof(T);
-    constexpr static int64_t SINGLE_SCALE_SIZE = 2;
-    constexpr static int64_t BLOCK_NUM = (UB_SINGLE_DMA_SIZE_MAX - WORK_OFFSET * 2 - SCALE_SIZE * 4) / 2 /
+    constexpr static int32_t WORK_OFFSET = 8192;
+    constexpr static int32_t WORK_BLOCK_NUM = WORK_OFFSET / sizeof(T);
+    constexpr static int32_t UB_HEAD_OFFSET = WORK_OFFSET * 2;
+    constexpr static int32_t SCALE_SIZE = 32;
+    constexpr static int32_t SCALE_NUM = SCALE_SIZE / sizeof(T);
+    constexpr static int32_t SINGLE_SCALE_SIZE = 2;
+    constexpr static int32_t BLOCK_NUM = (UB_SINGLE_DMA_SIZE_MAX - WORK_OFFSET * 2 - SCALE_SIZE * 4) / 2 /
                                          (sizeof(U) + sizeof(T)) / ALIGN_SIZE * ALIGN_SIZE;
-    constexpr static int64_t IN_BLOCKSIZE = BLOCK_NUM * sizeof(U);
-}
+    constexpr static int32_t IN_BLOCKSIZE = BLOCK_NUM * sizeof(U);
 
 public:
-    FOECE_INLINE_AICORE DataCopyGM2GMDelay() {}
+    FORCE_INLINE_AICORE DataCopyGM2GMDelay() {}
 
     FORCE_INLINE_AICORE void Init(GlobalTensor<V>& outputGt, GlobalTensor<U> (&inputGt)[8],
         GlobalTensor<U> (&inputScaleGt)[8], const uint32_t calNum, int rankCount, GlobalTensor<U>& outScaleGt,
@@ -50,11 +49,11 @@ public:
         singleScaleUUBTensor[0] = tbuf.GetWithOffset<U>(SCALE_NUM, IN_BLOCKSIZE + SCALE_SIZE);
         singleScaleUUBTensor[1] = tbuf.GetWithOffset<U>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * THREE_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM);
-        workUBTENSOR[0] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, IN_BLOCKSIZE + SCALE_SIZE * HALF_NUM);        
-        workUBTENSOR[1] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, WORK_OFFSET + SCALE_SIZE * FOUR_NUM +
+        workUBTensor[0] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, IN_BLOCKSIZE + SCALE_SIZE * HALF_NUM);        
+        workUBTensor[1] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, WORK_OFFSET + SCALE_SIZE * FOUR_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM);
-        outputUBTENSOR[0] = tbuf.GetWithOffset<T>(BLOCK_NUM, IN_BLOCKSIZE + SCALE_SIZE * HALF_NUM + WORK_OFFSET);
-        outputUBTENSOR[1] = tbuf.GetWithOffset<T>(BLOCK_NUM, WORK_OFFSET * HALF_NUM + SCALE_SIZE * FOUR_NUM +
+        outputUBTensor[0] = tbuf.GetWithOffset<T>(BLOCK_NUM, IN_BLOCKSIZE + SCALE_SIZE * HALF_NUM + WORK_OFFSET);
+        outputUBTensor[1] = tbuf.GetWithOffset<T>(BLOCK_NUM, WORK_OFFSET * HALF_NUM + SCALE_SIZE * FOUR_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM);
         this->rankCount = rankCount;
         totalDataSize = calNum * sizeof(U);
@@ -65,9 +64,9 @@ public:
     FORCE_INLINE_AICORE void PreProcess() 
     {
         for (int index = 0; index < rankCount; index++) {
-            DataCopyWrap(scaleUUBTENSOR[0][indedx * SCALE_SIZE / sizeof(U)], inputScaleGt[index], SCALE_SIZE);
+            DataCopyWrap(scaleUUBTensor[0][index * SCALE_SIZE / sizeof(U)], inputScaleGt[index], SCALE_SIZE);
             pipe_barrier(PIPE_ALL);
-            DataCopyWrap(scaleUUBTensor[1][index * SCALE / sizeof(U)], inputScaleGt[index], SCALE_SIZE);
+            DataCopyWrap(scaleUUBTensor[1][index * SCALE_SIZE / sizeof(U)], inputScaleGt[index], SCALE_SIZE);
             pipe_barrier(PIPE_ALL);
         }
         for (int index = 0; index < rankCount; index++) {
