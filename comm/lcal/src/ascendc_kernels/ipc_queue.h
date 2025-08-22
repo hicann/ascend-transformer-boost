@@ -120,4 +120,4 @@ private:
     SyncCollectives *sync;
     int blockIdx;
 };
-    
+#endif // LCCL_IPC_QUEUE_H  
