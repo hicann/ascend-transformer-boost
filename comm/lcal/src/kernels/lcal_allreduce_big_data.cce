@@ -100,7 +100,6 @@ label0:
     }
     AscendC::PipeBarrier<PIPE_ALL>();
 
-    
     for (int64_t i = 0; i < blockNumPerGroup; i++) {
         if (i / corePerRank == x) {
             continue;
@@ -117,7 +116,6 @@ label0:
 
     __gm__ T *sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
     GM2GMPingPong<T>(dataSizeRemain, inputUB, output, buffOffsetNum, sendBuff, buffOffsetNum);
-
 }
 
 template<typename T>
@@ -151,7 +149,6 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceBigData(ALLRE
     DumpLcclLogInfo(dumpAddr, LogId::INIT, static_cast<Op>(op));
 
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
-
     int64_t ipcBuffMaxNum = IPC_BUFF_MAX_SIZE / sizeof(T);
     for (int64_t i = 0; i < CeilDiv(len, ipcBuffMaxNum); i++) {
         *ctrlFlagsUB = 0;
