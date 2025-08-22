@@ -50,29 +50,29 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceTwoShot(ALLRE
         dataSizeRemain = (xNPUProcessDataNum - coreSegmentedIdx * xNPUCoreGroupAvgDMADataNum) * sizeof(T);
     }
 
-    int64_t buffOffsetNum = rank * singleNPUProcessDataNum + coreSegmentedIdx * xNPUCoreGroupAvgDMADataNum;
+    int64_t buffOffsetNum = x * singleNPUProcessDataNum + coreSegmentedIdx * xNPUCoreGroupAvgDMADataNum;
     DumpLcclLogInfo(dumpAddr, LogId::INIT, static_cast<Op>(op));
 
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
-    __gm__ int64_t* ctrlFlagsGM = (__gm__ int64_t*) buff[rank] + flagOffset1st;
+    __gm__ int64_t* ctrlFlagsGM = (__gm__ int64_t*)buff[rank] + flagOffset1st;
     if (input != (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum)) {
         __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
         GM2GM(dataSizeRemain, inputUB[0], receiveBuff, buffOffsetNum, input, buffOffsetNum);
         AscendC::PipeBarrier<PIPE_ALL>();
 
-        SyncWithinNPU(ctrlFlagsUB, (__gm__ int64_t*)((__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum) + len) + MEM_DMA_UNIT_INT_NUM, magic);
+        SyncWithinNPU(ctrlFlagsUB, (__gm__ int64_t *)((__gm__ T *)((__gm__ int64_t *)buff[rank] + dataOffsetNum) + len) + MEM_DMA_UNIT_INT_NUM, magic);
         AscendC::PipeBarrier<PIPE_ALL>();
 
         SetFlag(ctrlFlagsUB, ctrlFlagsGM, magic);
     }
 
-    __gm__ T *processOutput = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
+    __gm__ T *processOutput = (__gm__ T*)(((__gm__ int64_t*)buff[rank]) + dataOffsetNum);
 
     if (x == rank) {
         goto label0;
     }
     buffOffsetNum = rank * singleNPUProcessDataNum + coreSegmentedIdx * thisNPUCoreGroupAvgDMADataNum;
-    dataSizeRemain = thisNPUProcessDataNum * sizeof(T);
+    dataSizeRemain = thisNPUCoreGroupAvgDMADataNum * sizeof(T);
     if (coreSegmentedIdx == corePerRank - 1) {
         dataSizeRemain = (thisNPUProcessDataNum - coreSegmentedIdx * thisNPUCoreGroupAvgDMADataNum) * sizeof(T);
     }
@@ -85,7 +85,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceTwoShot(ALLRE
     }
     ProcessData(dataSizeRemain, inputUB[0], buff[x], dataOffsetNum, buffOffsetNum, processOutput, buffOffsetNum, op);
 
-lable0:
+label0:
     ctrlFlagsGM = (__gm__ int64_t*)buff[rank] + flagOffset2nd;
     SetFlag((__ubuf__ int64_t*)ctrlFlagsUB, ctrlFlagsGM, (int64_t)magic);
 
@@ -104,7 +104,7 @@ lable0:
     }
 
     __gm__ T *sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
-    GM2GM(dataSizeRemain, inputUB[0], output, buffOffsetNum, sendBuff, buffOffsetNum);
+    GM2GM<T>(dataSizeRemain, inputUB[0], output, buffOffsetNum, sendBuff, buffOffsetNum);
 
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
     DumpLcclLogInfo(dumpAddr, LogId::OVERALL, static_cast<Op>(op));
