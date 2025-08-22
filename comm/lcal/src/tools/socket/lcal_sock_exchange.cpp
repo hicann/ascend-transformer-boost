@@ -134,7 +134,7 @@ void LcalSockExchange::GetIpAndPort()
     lcalCommId_.handle.addr.sin.sin_family = AF_INET;
     lcalCommId_.handle.addr.sin.sin_addr.s_addr = inet_addr(LCAL_LOCAL_SOCK_IP.c_str());
     lcalCommId_.handle.addr.sin.sin_port = htons(port_);
-    MKI_LOG(DEBUG) << "curRank: " << rank_ << " commDomain: " << commDomain_ << " ip: " << ip_ << " port: " << prot_;
+    MKI_LOG(DEBUG) << "curRank: " << rank_ << " commDomain: " << commDomain_ << " ip: " << ip_ << " port: " << port_;
 }
 
 int LcalSockExchange::Prepare()
