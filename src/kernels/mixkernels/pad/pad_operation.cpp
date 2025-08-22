@@ -14,6 +14,7 @@
 #include "atbops/params/params.h"
 
 namespace AtbOps {
+constexpr int32_t MAX_BATCH_NUM = 64;
 using namespace Mki;
 class PadOperation : public OperationBase {
 public:
@@ -44,6 +45,8 @@ public:
             "input1 dim[0] and input2 dim[1] should be equal", return false);
         MKI_CHECK(launchParam.GetInTensor(DIM_2).desc.dims[0] == launchParam.GetInTensor(DIM_3).desc.dims[0],
             "input_ids or seqlen is wrong", return false);
+        MKI_CHECK(launchParam.GetInTensor(DIM_3).desc.dims[DIM_0] <= MAX_BATCH_NUM,
+            "batch should be less than 64", return false);
         return true;
     }
 
