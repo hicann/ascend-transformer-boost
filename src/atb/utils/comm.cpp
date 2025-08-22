@@ -145,7 +145,7 @@ HcclComm Comm::CreateHcclComm(int32_t rank, int32_t rankRoot, int32_t rankSize, 
     HcclComm newHcclComm = nullptr;
     HcclRootInfo hcclRootInfo = {};
     if (!CreateHcclRootInfo(hcclRootInfo, rank, rankRoot, rankSize)) {
-        return nullptr;
+        return newHcclComm;
     }
     auto ret = HcclCommInitRootInfo(rankSize, &hcclRootInfo, rank, &newHcclComm);
     if (ret != HCCL_SUCCESS || newHcclComm == nullptr) {
