@@ -183,30 +183,30 @@ public:
                     event_t eventId = (idx & 1) ? EVENT_ID0 : EVENT_ID1;
                     AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId);
                     AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId);
-                    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
-                    AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(eventId1);
-                    AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId0);
+                    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
+                    AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(eventId);
+                    AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId);
                     DataCopyWrap((idx & 1) ? inTensor[0] : inTensor[1], inputGt[index][BLOCK_NUM * idx], size);
-                    AscendC::SetFlag<AscendC::HardEvent::MTE2_S>(eventId1);
-                    AscendC::WaitFlag<AscendC::HardEvent::MTE2_S>(eventId1);
-                    AscendC::SetFlag<AscendC::HardEvent::MTE2_V>(eventId1);
-                    AscendC::WaitFlag<AscendC::HardEvent::MTE2_V>(eventId1);
+                    AscendC::SetFlag<AscendC::HardEvent::MTE2_S>(eventId);
+                    AscendC::WaitFlag<AscendC::HardEvent::MTE2_S>(eventId);
+                    AscendC::SetFlag<AscendC::HardEvent::MTE2_V>(eventId);
+                    AscendC::WaitFlag<AscendC::HardEvent::MTE2_V>(eventId);
                     LoopUncastAndMul(idx, index, eventId);
                     Mte3Process(idx, index, eventId);
-                    AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(eventId1);
-                    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId1);
-                    AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId1);
+                    AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(eventId);
+                    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
+                    AscendC::SetFlag<AscendC::HardEvent::S_MTE2>(eventId);
                 }
             }
         }
 
 
-        AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(eventId0);
-        AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(eventId1);
-        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId0);
-        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(eventId1);
-        AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId0);
-        AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(eventId1);
+        AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
+        AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::S_MTE2>(EVENT_ID1);
     }
 private:
     template <typename T1, typename T2>
