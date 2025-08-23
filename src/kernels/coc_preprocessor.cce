@@ -487,7 +487,7 @@ private:
                                 repeat = repeat_times - n_repeat_complete;
                             }
                             Vadds(ub_muls + n_repeat_complete * Block256B<half>::size,
-                                    ub_muls + n_repeat_complete * Block256B<half>::size, repeat, 1, 1, 8, 8);
+                                    ub_muls + n_repeat_complete * Block256B<half>::size, offset, repeat, 1, 1, 8, 8);
                         }
                     }
 
