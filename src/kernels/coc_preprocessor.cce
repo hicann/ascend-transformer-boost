@@ -286,7 +286,7 @@ public:
         static const auto ub_offset = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)0);
 
         int32_t repeat_num = Block256B<int32_t>::Count(len);
-        int32_t loop_num = DivCeil(repeat_num, repeat_num);
+        int32_t loop_num = DivCeil(repeat_num, repeat);
         uint8_t repeat_this_loop = static_cast<uint8_t>(repeat);
         for (int32_t loop_idx = 0; loop_idx < loop_num; ++loop_idx) {
             if (loop_idx == loop_num - 1) {
@@ -471,7 +471,7 @@ private:
                             repeat = repeat_times - n_repeat_complete;
                         }
                         Vconv(ub_muls + n_repeat_complete * Block256B<half>::size,
-                                ub_vconv + n_repeat_complete * Block256B<half>::size, offset, 1, 1, 8, 4);
+                                ub_vconv + n_repeat_complete * Block256B<half>::size, repeat, 1, 1, 8, 4);
                     }
 
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
@@ -487,7 +487,7 @@ private:
                                 repeat = repeat_times - n_repeat_complete;
                             }
                             Vadds(ub_muls + n_repeat_complete * Block256B<half>::size,
-                                    ub_muls + n_repeat_complete * Block256B<half>::size, offset, 1, 1, 8, 8);
+                                    ub_muls + n_repeat_complete * Block256B<half>::size, repeat, 1, 1, 8, 8);
                         }
                     }
 
