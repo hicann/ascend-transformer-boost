@@ -8,6 +8,7 @@
 #include "kernel_operator.h"
 using namespace AscendC;
 
+
 template <typename LhsDtype, typename RhsDtype, typename MmadDtype>
 class BasePadder {
 public:
@@ -88,7 +89,7 @@ public:
             dst_row_loop_offset = n_rows_complete * n_cols_aligned;
         }
 
-        inline __aicore__ void InitColLoop(int32_t max_cols_per_loop) 
+        inline __aicore__ void InitColLoop(int32_t max_cols_per_loop)
         {
             this->max_cols_per_loop = max_cols_per_loop;
             n_cols_complete = 0;
@@ -172,7 +173,7 @@ public:
         this->m_align = m_align;
         this->k_align = k_align;
         this->n_align = n_align;
-        
+
         this->aligned_a = aligned_a;
         this->aligned_b = aligned_b;
 
@@ -264,7 +265,7 @@ public:
         }
 
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-        WaitFLag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
 
         if (this->aligned_b) {
             int n_rows = this->trans_b ? this->n : this->k;
@@ -505,12 +506,12 @@ private:
                     int32_t ubuf_gap = n_blocks_per_row - Block32B<half>::Count(it.n_cols_this_loop);
 
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID0);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
 
                     CopyUbufToGmAlign(dst, ub_muls, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
 
                     SetFlag<HardEvent::MTE3_V>(EVENT_ID0);
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID0);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID0);
                 }
             }
         }
@@ -551,7 +552,7 @@ public:
             Vconv(ub_args_f32, ub_args, 1, 1, 1, 8, 4);
 
             SetFlag<HardEvent::V_S>(EVENT_ID0);
-            WaitFLag<HardEvent::V_S>(EVENT_ID0);
+            WaitFlag<HardEvent::V_S>(EVENT_ID0);
 
             scale = ub_args_f32[0];
             offset = ub_args_f32[args_gap];
@@ -571,7 +572,7 @@ public:
             Vconv(ub_args_f32, ub_args, 1, 1, 1, 8, 4);
 
             SetFlag<HardEvent::V_S>(EVENT_ID0);
-            WaitFLag<HardEvent::V_S>(EVENT_ID0);
+            WaitFlag<HardEvent::V_S>(EVENT_ID0);
 
             scale = ub_args_f32[0];
             offset = 0;
@@ -642,11 +643,11 @@ private:
                     uint8_t repeat_b32 = static_cast<uint8_t>(
                             DivCeil(n_blocks_b32, VEC_BLOCK_PER_REPEAT));
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                     Vconv(ub_vconv_f16, ub_input, repeat_b16, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
 
@@ -660,16 +661,16 @@ private:
                     Vmuls(ub_muls, ub_adds, scale, repeat_b32, 1, 1, 8, 8);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID1);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID1);
                     Vconv(ub_output, ub_muls, repeat_b32, 1, 1, 4, 8, RoundMode::CAST_RINT);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID1);
 
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID1);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID1);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
                     SetFlag<HardEvent::MTE3_V>(EVENT_ID1);
                 }
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-                WaitFLag<HardEvent::MTE3_V>(EVENT_ID1);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE3_V>(EVENT_ID1);
             }
         }
     }
@@ -710,7 +711,7 @@ public:
         }
 
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-        WaitFLag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
 
         if (!this->trans_b && !has_offset) {
             DequantAndPadMatrixNoOffset(this->gm_b_align, this->gm_b, this->k, this->n, this->n_align);
@@ -756,11 +757,11 @@ private:
                 int32_t dst_gap = n_cols_aligned - it.n_cols_this_loop;
                 int32_t ubuf_gap = n_blocks_per_row - Block32B<half>::Count(it.n_cols_this_loop);
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                 CopyGmToUbufAlign(ub_quant_scale, scale, 1, it.n_cols_this_loop, 0);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 for (int32_t row = 1; row < max_rows_per_loop; ++row) {
                     CopyUB2UB(ub_quant_scale + row * n_blocks_per_row * Block32B<half>::size, ub_quant_scale,
                             0, 1, n_blocks_per_row, 0, 0);
@@ -772,28 +773,28 @@ private:
                     int32_t n_blocks = it.n_rows_this_loop * n_blocks_per_row;
                     uint8_t repeat = static_cast<uint8_t>(DivCeil(n_blocks, VEC_BLOCK_PER_REPEAT));
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID1);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
                     Vconv(ub_vconv, ub_input, repeat, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
                     Vmul(ub_output, ub_vconv, ub_quant_scale, repeat, 1, 1, 1, 8, 8, 8);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID2);
                     
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID2);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID2);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
                     SetFlag<HardEvent::MTE3_V>(EVENT_ID2);
                 }
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
             }
         }
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
     }
 
@@ -830,15 +831,15 @@ private:
                 int32_t dst_gap = n_cols_aligned - it.n_cols_this_loop;
                 int32_t ubuf_gap = n_blocks_per_row - Block32B<half>::Count(it.n_cols_this_loop);
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                 CopyGmToUbufAlign(ub_quant_scale, scale, 1, it.n_cols_this_loop, 0);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
                 CopyGmToUbufAlign(ub_quant_offset, offset, 1, it.n_cols_this_loop, 0);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 for (int32_t row = 1; row < max_rows_per_loop; ++row) {
                     CopyUB2UB(ub_quant_scale + row * n_blocks_per_row * Block32B<half>::size, ub_quant_scale,
                             0, 1, n_blocks_per_row, 0, 0);
@@ -857,11 +858,11 @@ private:
                     int32_t n_blocks = it.n_rows_this_loop * n_blocks_per_row;
                     uint8_t repeat = static_cast<uint8_t>(DivCeil(n_blocks, VEC_BLOCK_PER_REPEAT));
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID2);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID2);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID2);
                     Vconv(ub_vconv, ub_input, repeat, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID2);
 
@@ -869,11 +870,11 @@ private:
                     Vadd(ub_add, ub_vconv, ub_quant_offset, repeat, 1, 1, 1, 8, 8, 8);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID3);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID3);
                     Vmul(ub_output, ub_add, ub_quant_scale, repeat, 1, 1, 1, 8, 8, 8);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID3);
 
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID3);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID3);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
                     SetFLag<HardEvent::MTE3_V>(EVENT_ID3);
                 }
@@ -881,9 +882,9 @@ private:
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
             }
         }
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID2);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID3);
     }
 
@@ -915,11 +916,11 @@ private:
                 int32_t n_blocks = it.n_rows_this_loop * n_blocks_per_row_b16;
                 uint8_t repeat = static_cast<uint8_t>(DivCeil(n_blocks, VEC_BLOCK_PER_REPEAT));
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                 CopyGmToUbufAlign(ub_quant_scale, scale, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 for (int32_t block_col = 1; block_col < n_blocks_per_row_b16; ++block_col) {
                     CopyUB2UB(ub_quant_scale + block_col * Block32B<half>::size, ub_quant_scale,
                             0, it.n_rows_this_loop, 1, n_blocks_per_row_b16 - 1, n_blocks_per_row_b16 - 1);
@@ -935,28 +936,28 @@ private:
                     auto src = gm_src + it.src_offset();
                     auto dst = gm_dst + it.dst_offset();
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap, ubuf_gap_b8);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID1);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
                     Vconv(ub_vconv, ub_input, repeat, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
                     Vmul(ub_output, ub_vconv, ub_quant_scale, repeat, 1, 1, 1, 8, 8, 8);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID2);
                     
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID2);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID2);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap_b16);
                     SetFlag<HardEvent::MTE3_V>(EVENT_ID2);
                 }
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
             }
         }
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
     }
 
@@ -993,21 +994,21 @@ private:
                 int32_t n_blocks = it.n_rows_this_loop * n_blocks_per_row_b16;
                 uint8_t repeat = static_cast<uint8_t>(DivCeil(n_blocks, VEC_BLOCK_PER_REPEAT));
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                 CopyGmToUbufAlign(ub_quant_scale, scale, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
                 CopyGmToUbufAlign(ub_quant_offset, offset, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 for (int32_t block_col = 1; block_col < n_blocks_per_row_b16; ++block_col) {
                     CopyUB2UB(ub_quant_scale + block_col * Block32B<half>::size, ub_quant_scale,
                             0, it.n_rows_this_loop, 1, n_blocks_per_row_b16 - 1, n_blocks_per_row_b16 - 1);
                 }
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID1);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
                 for (int32_t block_col = 1; block_col < n_blocks_per_row_b16; ++block_col) {
                     CopyUB2UB(ub_quant_offset + block_col * Block32B<half>::size, ub_quant_offset,
                             0, it.n_rows_this_loop, 1, n_blocks_per_row_b16 - 1, n_blocks_per_row_b16 - 1);
@@ -1023,11 +1024,11 @@ private:
                     auto src = gm_src + it.src_offset();
                     auto dst = gm_dst + it.dst_offset();
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID2);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap, ubuf_gap_b8);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID2);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID2);
                     Vconv(ub_vconv, ub_input, repeat, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID2);
 
@@ -1035,11 +1036,11 @@ private:
                     Vadd(ub_add, ub_vconv, ub_quant_offset, repeat, 1, 1, 1, 8, 8, 8);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID3);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID3);
                     Vmul(ub_output, ub_add, ub_quant_scale, repeat, 1, 1, 1, 8, 8, 8);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID3);
                     
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID3);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID3);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap_b16);
                     SetFlag<HardEvent::MTE3_V>(EVENT_ID3);
                 }
@@ -1047,9 +1048,9 @@ private:
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
             }
         }
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID2);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID3);
     }
 
@@ -1068,11 +1069,11 @@ public:
             int32_t batch_size, int32_t m, int32_t k, int32_t n, int32_t m_align, int32_t k_align, int32_t n_align, bool aligned_a, bool aligned_b, bool trans_a, bool trans_b,
             __gm__ uint8_t *gm_dequant_scale, __gm__ uint8_t *gm_dequant_offset)
     {
-        this->BasePadder<half, int8_t, half>::SetArgs(gm_a, gm_b, workspace_info, batch_size, m, k, n,
+        this->BasePadder<bfloat16_t, int8_t, bfloat16_t>::SetArgs(gm_a, gm_b, workspace_info, batch_size, m, k, n,
                 m_align, k_align, n_align, aligned_a, aligned_b, trans_a, trans_b);
-        gm_scale = *reinterpret_cast<__gm__ half *>(gm_dequant_scale);
+        gm_scale = *reinterpret_cast<__gm__ bfloat16_t *>(gm_dequant_scale);
         if (gm_dequant_offset) {
-            gm_offset = *reinterpret_cast<__gm__ half *>(gm_dequant_offset);
+            gm_offset = *reinterpret_cast<__gm__ bfloat16_t *>(gm_dequant_offset);
             has_offset = true;
         }
     }
@@ -1104,7 +1105,7 @@ public:
     }
 
 private:
-    inline __aicore__ void DequantAndPadMatrixNoOffset(__gm__ half *gm_dst, __gm__ int8_t *gm_src,
+    inline __aicore__ void DequantAndPadMatrixNoOffset(__gm__ bfloat16_t *gm_dst, __gm__ int8_t *gm_src,
             int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned)
     {
         LoopIter it(this->batch_size, n_rows, n_cols, n_cols_aligned);
@@ -1133,21 +1134,24 @@ private:
                         Block32B<int8_t>::Count(it.n_cols_this_loop) * (sizeof(bfloat16_t) / sizeof(int8_t));
                 int32_t n_blocks_per_row_b32 = 
                         Block32B<int8_t>::Count(it.n_cols_this_loop) * (sizeof(float32_t) / sizeof(int8_t));
-                int32_t quant_repeat_b32 = static_cast<uint8_t>(
+                uint8_t quant_repeat_b32 = static_cast<uint8_t>(
                     DivCeil(n_blocks_per_row_b32, VEC_BLOCK_PER_REPEAT));
 
                 int32_t src_gap = n_cols - it.n_cols_this_loop;
                 int32_t dst_gap = n_cols_aligned - it.n_cols_this_loop;
                 int32_t ubuf_gap = n_blocks_per_row_b16 - Block32B<bfloat16_t>::Count(it.n_cols_this_loop);
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-                CopyGmToUbufAlign(ub_quant_scale, scale, 1, it.n_cols_this_loop, 0);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+                CopyGmToUbufAlign(ub_quant_scale_origin, scale, 1, it.n_cols_this_loop, 0);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
+                Vconv(ub_quant_scale, ub_quant_scale_origin, quant_repeat_b32, 1, 1, 8, 4);
+
+                PipeBarrier<PIPE_V>();
                 for (int32_t row = 1; row < max_rows_per_loop; ++row) {
-                    CopyUB2UB(ub_quant_scale + row * n_blocks_per_row * Block32B<half>::size,
-                            ub_quant_scale, 0, 1, n_blocks_per_row, 0, 0);
+                    CopyUB2UB(ub_quant_scale + row * n_blocks_per_row_b32 * Block32B<float32_t>::size,
+                            ub_quant_scale, /* sid */ 0, 1, n_blocks_per_row_b32, 0, 0);
                 }
                 for (it.InitRowLoop(max_rows_per_loop); !it.EndRowLoop(); it.NextRowLoop()) {
                     auto src = gm_src + it.src_offset();
@@ -1160,11 +1164,11 @@ private:
                     uint8_t repeat_b32 = static_cast<uint8_t>(
                             DivCeil(n_blocks_b32, VEC_BLOCK_PER_REPEAT));
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID1);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
                     Vconv(ub_vconv_f16, ub_input, repeat_b16, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
 
@@ -1172,26 +1176,26 @@ private:
                     Vconv(ub_vconv_f32, ub_vconv_f16, repeat_b32, 1, 1, 8, 4);
 
                     PipeBarrier<PIPE_V>();
-                    Vconv(ub_mul, ub_vconv_f32, ub_quant_scale, repeat_b32, 1, 1, 1, 8, 8, 8);
+                    Vmul(ub_mul, ub_vconv_f32, ub_quant_scale, repeat_b32, 1, 1, 1, 8, 8, 8);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
                     Vconv(ub_output, ub_mul, repeat_b32, 1, 1, 4, 8, RoundMode::CAST_RINT);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID2);
                     
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID2);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID2);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
                     SetFlag<HardEvent::MTE3_V>(EVENT_ID2);
                 }
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
             }
         }
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
     }
 
-    inline __aicore__ void DequantAndPadMatrixHasOffset(__gm__ half *gm_dst, __gm__ int8_t *gm_src,
+    inline __aicore__ void DequantAndPadMatrixHasOffset(__gm__ bfloat16_t *gm_dst, __gm__ int8_t *gm_src,
             int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned)
     {
         LoopIter it(this->batch_size, n_rows, n_cols, n_cols_aligned);
@@ -1232,30 +1236,24 @@ private:
                 int32_t dst_gap = n_cols_aligned - it.n_cols_this_loop;
                 int32_t ubuf_gap = n_blocks_per_row_b16 - Block32B<bfloat16_t>::Count(it.n_cols_this_loop);
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-                CopyGmToUbufAlign(ub_quant_offset_origin, scale, 1, it.n_cols_this_loop, 0);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+                CopyGmToUbufAlign(ub_quant_scale_origin, scale, 1, it.n_cols_this_loop, 0);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                WaitFLag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+                WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
                 CopyGmToUbufAlign(ub_quant_offset_origin, offset, 1, it.n_cols_this_loop, 0);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
-                for (int32_t row = 1; row < max_rows_per_loop; ++row) {
-                    CopyUB2UB(ub_quant_scale + row * n_blocks_per_row * Block32B<float32_t>::size, 
-                            ub_quant_scale, /* sid */ 0, 1, n_blocks_per_row_b32, 0, 0);
-                }
-
-                WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 Vconv(ub_quant_scale, ub_quant_scale_origin, quant_repeat_b32, 1, 1, 8, 4);
 
                 PipeBarrier<PIPE_V>();
                 for (int32_t row = 1; row < max_rows_per_loop; ++row) {
                     CopyUB2UB(ub_quant_scale + row * n_blocks_per_row_b32 * Block32B<float32_t>::size, 
-                            ub_quant_offset, /* sid */ 0, 1, n_blocks_per_row, 0, 0);
+                            ub_quant_scale, /* sid */ 0, 1, n_blocks_per_row_b32, 0, 0);
                 }
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID1);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
                 Vconv(ub_quant_offset, ub_quant_offset_origin, quant_repeat_b32, 1, 1, 8, 4);
 
                 PipeBarrier<PIPE_V>();
@@ -1275,29 +1273,29 @@ private:
                     uint8_t repeat_b32 = static_cast<uint8_t>(
                             DivCeil(n_blocks_b32, VEC_BLOCK_PER_REPEAT));
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID2);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID2);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID2);
                     Vconv(ub_vconv_f16, ub_input, repeat_b16, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID2);
 
                     PipeBarrier<PIPE_V>();
-                    Vadd(ub_vconv_f16, ub_input, repeat_b16, 1, 1, 8, 4);
+                    Vconv(ub_vconv_f32, ub_vconv_f16, repeat_b32, 1, 1, 8, 4);
 
                     PipeBarrier<PIPE_V>();
                     Vadd(ub_add, ub_vconv_f32, ub_quant_offset, repeat_b32, 1, 1, 1, 8, 8, 8);
 
                     PipeBarrier<PIPE_V>();
-                    Vadd(ub_mul, ub_add, ub_quant_scale, repeat_b32, 1, 1, 1, 8, 8, 8);
+                    Vmul(ub_mul, ub_add, ub_quant_scale, repeat_b32, 1, 1, 1, 8, 8, 8);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID3);
-                    Vmul(ub_output, ub_mul, repeat_b32, 1, 1, 4, 8, RoundMode::CAST_RINT);
-                    SetFlag<HardEvent::V_MTE>(EVENT_ID3);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID3);
+                    Vconv(ub_output, ub_mul, repeat_b32, 1, 1, 4, 8, RoundMode::CAST_RINT);
+                    SetFlag<HardEvent::V_MTE3>(EVENT_ID3);
 
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID3);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID3);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
                     SetFLag<HardEvent::MTE3_V>(EVENT_ID3);
                 }
@@ -1305,13 +1303,13 @@ private:
                 SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             }
         }
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-        WaitFLag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID2);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID3);
     }
 
-    inline __aicore__ void DequantAndPadMatrixTransposeNoOffset(__gm__ half *gm_dst, __gm__ int8_t *gm_src,
+    inline __aicore__ void DequantAndPadMatrixTransposeNoOffset(__gm__ bfloat16_t *gm_dst, __gm__ int8_t *gm_src,
             int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned)
     {
         LoopIter it(this->batch_size, n_rows, n_cols, n_cols_aligned);
@@ -1347,14 +1345,14 @@ private:
                 uint8_t repeat_b32 = static_cast<uint8_t>(
                         DivCeil(n_blocks_b32, VEC_BLOCK_PER_REPEAT));
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-                CopyGmToUbufAlign(ub_quant_scale, scale, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+                CopyGmToUbufAlign(ub_quant_scale_origin, scale, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 for (int32_t block_col = 1; block_col < n_blocks_per_row_b16; ++block_col) {
-                    CopyUB2UB(ub_quant_scale + block_col * Block32B<half>::size,
-                            ub_quant_scale, /* sid */ 0, it.n_rows_this_loop, 1,
+                    CopyUB2UB(ub_quant_scale_origin + block_col * Block32B<bfloat16_t>::size,
+                            ub_quant_scale_origin, /* sid */ 0, it.n_rows_this_loop, 1,
                             n_blocks_per_row_b16 - 1, n_blocks_per_row_b16 - 1);
                 }
 
@@ -1371,38 +1369,38 @@ private:
                     int32_t ubuf_gap_b8 = n_blocks_per_row_b8 - Block32B<int8_t>::Count(it.n_cols_this_loop);
                     int32_t ubuf_gap_b16 = n_blocks_per_row_b16 - Block32B<bfloat16_t>::Count(it.n_cols_this_loop);
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap, ubuf_gap_b8);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID1);
-                    Vconv(ub_vconv, ub_input, repeat_b16, 1, 1, 8, 4);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
+                    Vconv(ub_vconv_f16, ub_input, repeat_b16, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
 
                     PipeBarrier<PIPE_V>();
                     Vconv(ub_vconv_f32, ub_vconv_f16, repeat_b32, 1, 1, 8, 4);
 
                     PipeBarrier<PIPE_V>();
-                    Vmul(ub_mul, ub_vconv, ub_quant_scale, repeat_b32, 1, 1, 1, 8, 8, 8);
+                    Vmul(ub_mul, ub_vconv_f32, ub_quant_scale, repeat_b32, 1, 1, 1, 8, 8, 8);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
                     Vconv(ub_output, ub_mul, repeat_b32, 1, 1, 4, 8, RoundMode::CAST_RINT);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID2);
                     
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID2);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID2);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap_b16);
                     SetFlag<HardEvent::MTE3_V>(EVENT_ID2);
                 }
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
             }
         }
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
     }
 
-    inline __aicore__ void DequantAndPadMatrixTransposeHasOffset(__gm__ half *gm_dst, __gm__ int8_t *gm_src,
+    inline __aicore__ void DequantAndPadMatrixTransposeHasOffset(__gm__ bfloat16_t *gm_dst, __gm__ int8_t *gm_src,
             int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned)
     {
         LoopIter it(this->batch_size, n_rows, n_cols, n_cols_aligned);
@@ -1443,28 +1441,28 @@ private:
                 uint8_t repeat_b32 = static_cast<uint8_t>(
                         DivCeil(n_blocks_b32, VEC_BLOCK_PER_REPEAT));
 
-                WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-                CopyGmToUbufAlign(ub_quant_scale, scale, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
+                WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+                CopyGmToUbufAlign(ub_quant_scale_origin, scale, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
-                WaitFLag<HardEvent::MTE3_MTE2>(EVENT_ID0);
-                CopyGmToUbufAlign(ub_quant_offset, offset, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
-                SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+                CopyGmToUbufAlign(ub_quant_offset_origin, offset, it.n_rows_this_loop, 1, 0, n_blocks_per_row_b16 - 1);
+                SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID0);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                 for (int32_t block_col = 1; block_col < n_blocks_per_row_b16; ++block_col) {
                     CopyUB2UB(ub_quant_scale_origin + block_col * Block32B<bfloat16_t>::size,
-                            ub_quant_scale, /* sid */ 0, it.n_rows_this_loop, 1,
+                            ub_quant_scale_origin, /* sid */ 0, it.n_rows_this_loop, 1,
                             n_blocks_per_row_b16 - 1, n_blocks_per_row_b16 - 1);
                 }
 
                 PipeBarrier<PIPE_V>();
                 Vconv(ub_quant_scale, ub_quant_scale_origin, repeat_b32, 1, 1, 8, 4);
 
-                WaitFLag<HardEvent::MTE2_V>(EVENT_ID1);
+                WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
                 for (int32_t block_col = 1; block_col < n_blocks_per_row_b16; ++block_col) {
                     CopyUB2UB(ub_quant_offset_origin + block_col * Block32B<bfloat16_t>::size, 
-                            ub_quant_offset, /* sid */ 0, it.n_rows_this_loop, 1,
+                            ub_quant_offset_origin, /* sid */ 0, it.n_rows_this_loop, 1,
                             n_blocks_per_row_b16 - 1, n_blocks_per_row_b16 - 1);
                 }
 
@@ -1481,11 +1479,11 @@ private:
                     int32_t ubuf_gap_b8 = n_blocks_per_row_b8 - Block32B<int8_t>::Count(it.n_cols_this_loop);
                     int32_t ubuf_gap_b16 = n_blocks_per_row_b16 - Block32B<bfloat16_t>::Count(it.n_cols_this_loop);
 
-                    WaitFLag<HardEvent::V_MTE2>(EVENT_ID2);
+                    WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
                     CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap, ubuf_gap_b8);
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID2);
 
-                    WaitFLag<HardEvent::MTE2_V>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID2);
                     Vconv(ub_vconv_f16, ub_input, repeat_b16, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID2);
 
@@ -1499,11 +1497,11 @@ private:
                     Vmul(ub_mul, ub_add, ub_quant_scale, repeat_b32, 1, 1, 1, 8, 8, 8);
 
                     PipeBarrier<PIPE_V>();
-                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID3);
-                    Vmul(ub_output, ub_mul, repeat_b32, 1, 1, 4, 8,RoundMode::CAST_RINT);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID3);
+                    Vconv(ub_output, ub_mul, repeat_b32, 1, 1, 4, 8,RoundMode::CAST_RINT);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID3);
                     
-                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID3);
+                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID3);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap_b16);
                     SetFlag<HardEvent::MTE3_V>(EVENT_ID3);
                 }
@@ -1511,9 +1509,9 @@ private:
                 SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             }
         }
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID0);
-        WaitFLag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-        WaitFLag<HardEvent::V_MTE2>(EVENT_ID2);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID3);
     }
 
