@@ -37,7 +37,7 @@ public:
 
         inline __aicore__ void InitBatchLoop()
         {
-            batch idx = 0;
+            batch_idx = 0;
 
             src_batch_offset = 0;
             dst_batch_offset = 0;
@@ -45,7 +45,7 @@ public:
 
         inline __aicore__ bool EndBatchLoop() const
         {
-            return batch_idx = batch_size;
+            return batch_idx == batch_size;
         }
 
         inline __aicore__ void NextBatchLoop()
@@ -88,7 +88,8 @@ public:
             dst_row_loop_offset = n_rows_complete * n_cols_aligned;
         }
 
-        inline __aicore__ void InitColLoop(int32_t max_cols_per_loop) {
+        inline __aicore__ void InitColLoop(int32_t max_cols_per_loop) 
+        {
             this->max_cols_per_loop = max_cols_per_loop;
             n_cols_complete = 0;
             col_loop_offset = 0;
@@ -145,7 +146,7 @@ public:
         int32_t n_cols_this_loop;
 
         int64_t src_core_offset;
-        int64_t src_core_offset;
+        int64_t dst_core_offset;
         int64_t src_batch_offset;
         int64_t dst_batch_offset;
         int64_t src_row_loop_offset;
@@ -155,7 +156,7 @@ public:
 
     __aicore__ explicit BasePadder() = default;
 
-    inline __aicore__ void SetArgs(__gm__ uint8_t *gm_a, uint8_t *gm_b, const LcalWorkspaceInfo &workspace_info,
+    inline __aicore__ void SetArgs(__gm__ uint8_t *gm_a, __gm__ uint8_t *gm_b, const LcalWorkspaceInfo &workspace_info,
             int32_t batch_size, int32_t m, int32_t k, int32_t n, int32_t m_align, int32_t k_align, int32_t n_align, bool aligned_a, bool aligned_b, bool trans_a, bool trans_b)
     {
         this->gm_a = reinterpret_cast<__gm__ LhsDtype *>(gm_a);
@@ -207,8 +208,8 @@ protected:
 
                     CopyUbufToGmAlign(dst, ub_base, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap);
 
-                    SetFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);
-                    WaitFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);
+                    SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
+                    WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
                 }
             }
         }
@@ -219,7 +220,7 @@ protected:
         FFTSCrossCoreSync<PIPE_MTE3>(0, AIV_FINISH_ALIGN_FLAG_ID);
         WaitEvent(AIV_FINISH_ALIGN_FLAG_ID);
 
-        FFTSCrossCoreSync<PIPE_MTE3>(2, AIC_WAIT_AIV_FINISH_FLAG_ID);
+        FFTSCrossCoreSync<PIPE_MTE3>(2, AIC_WAIT_AIV_FINISH_ALIGN_FLAG_ID);
         PipeBarrier<PIPE_ALL>();
     }
 
@@ -256,14 +257,14 @@ public:
     {
         if (this->aligned_a) {
             int n_rows = this->trans_a ? this->k : this->m;
-            int n_cols = this->trans_b ? this->m : this->k;
+            int n_cols = this->trans_a ? this->m : this->k;
             int n_cols_aligned = this->trans_a ? this->m_align : this->k_align;
 
             this->PadMatrix(this->gm_a_align, this->gm_a, n_rows, n_cols, n_cols_aligned);
         }
 
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-        WaitEvent<HardEvent::MTE3_MTE2>(EVENT_ID1);
+        WaitFLag<HardEvent::MTE3_MTE2>(EVENT_ID1);
 
         if (this->aligned_b) {
             int n_rows = this->trans_b ? this->n : this->k;
@@ -282,10 +283,10 @@ public:
     static constexpr int32_t max_len = 49152;
     static inline __aicore__ void Loop(__gm__ int32_t *dst, int32_t offset, int32_t len)
     {
-        static const ub_offset = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)0);
+        static const auto ub_offset = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)0);
 
         int32_t repeat_num = Block256B<int32_t>::Count(len);
-        int32_t loop_num = DicCeil(repeat_num, repeat_num);
+        int32_t loop_num = DivCeil(repeat_num, repeat_num);
         uint8_t repeat_this_loop = static_cast<uint8_t>(repeat);
         for (int32_t loop_idx = 0; loop_idx < loop_num; ++loop_idx) {
             if (loop_idx == loop_num - 1) {
@@ -321,7 +322,7 @@ public:
         
         if (gm_dequant_offset != nullptr && dequant_granularity == QuantGranularity::PER_TENSOR) {
             offset = *reinterpret_cast<__gm__ int32_t *>(gm_dequant_offset);
-            gm_format_dequant_offset = reinterpret_cast<__gm__ int32_t *>(workspace_info.gm_dequant_offset);
+            gm_format_dequant_offset = reinterpret_cast<__gm__ int32_t *>(workspace_info.gm_dequant_param);
             need_format_dequant_offset = true;
         }
     }
@@ -336,8 +337,8 @@ public:
             this->PadMatrix(this->gm_a_align, this->gm_a, n_rows, n_cols, n_cols_aligned);
         }
 
-        SetFlag<HardEvent::V_MTE3>(EVENT_ID1);
-        WaitFlag<HardEvent::V_MTE3>(EVENT_ID1);
+        SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
 
         if (this->aligned_b) {
             int n_rows = this->trans_b ? this->n : this->k;
@@ -349,7 +350,7 @@ public:
 
         if (need_format_dequant_offset) {
             SetFlag<HardEvent::MTE3_V>(EVENT_ID1);
-            SetFlag<HardEvent::MTE3_V>(EVENT_ID1);
+            WaitFlag<HardEvent::MTE3_V>(EVENT_ID1);
             FormatOffset();
         }
 
@@ -385,7 +386,7 @@ public:
     __aicore__ explicit DequantPadder() = default;
     inline __aicore__ void SetArgs(__gm__ uint8_t *gm_a, __gm__ uint8_t *gm_b, const LcalWorkspaceInfo &workspace_info,
             int32_t batch_size, int32_t m, int32_t k, int32_t n, int32_t m_align, int32_t k_align, int32_t n_align, bool aligned_a, bool aligned_b, bool trans_a, bool trans_b,
-            __gm__ uint8_t *gm_dequant_offset, __gm__ uint8_t *gm_dequant_offset)
+            __gm__ uint8_t *gm_dequant_scale, __gm__ uint8_t *gm_dequant_offset)
     {}
     inline __aicore__ void Run() {}
 };
@@ -439,7 +440,7 @@ private:
         LoopIter it(this->batch_size, n_rows, n_cols, n_cols_aligned);
 
         const int32_t MAX_LEN = Block256B<half>::AlignDown(MAX_UB_BUFF / (sizeof(int8_t) + sizeof(half)));
-        int32_t n_cols_aligned = Block32B<int8_t>::AlignUp(n_cols);
+        int32_t n_cols_round = Block32B<int8_t>::AlignUp(n_cols);
         int32_t max_rows_per_loop = (n_cols_round <= MAX_LEN) ? (MAX_LEN / n_cols_round) : 1;
         int32_t max_cols_per_loop = (n_cols_round <= MAX_LEN) ? n_cols : MAX_LEN;
 
@@ -447,10 +448,10 @@ private:
         auto ub_muls = reinterpret_cast<__ubuf__ half *>((uintptr_t)(MAX_LEN * sizeof(int8_t)));
 
         for (it.InitBatchLoop(); !it.EndBatchLoop(); it.NextBatchLoop()) {
-            for (it.InitBatchLoop(max_cols_per_loop); !it.EndBatchLoop(); it.NextBatchLoop()) {
+            for (it.InitColLoop(max_cols_per_loop); !it.EndColLoop(); it.NextColLoop()) {
                 int32_t src_gap = n_cols - it.n_cols_this_loop;
                 int32_t dst_gap = n_cols_aligned - it.n_cols_this_loop;
-                for (it.InitRowLoop(max_rows_per_loop); !it.EndRowLoop(); it.NextColLoop()) {
+                for (it.InitRowLoop(max_rows_per_loop); !it.EndRowLoop(); it.NextRowLoop()) {
                     auto src = gm_src + it.src_offset();
                     auto dst = gm_dst + it.dst_offset();
 
@@ -470,7 +471,7 @@ private:
                             repeat = repeat_times - n_repeat_complete;
                         }
                         Vconv(ub_muls + n_repeat_complete * Block256B<half>::size,
-                                ub_vconv + n_repeat_complete * Block256B<half>::size, repeat, 1, 1, 8, 4);
+                                ub_vconv + n_repeat_complete * Block256B<half>::size, offset, 1, 1, 8, 4);
                     }
 
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
@@ -493,23 +494,23 @@ private:
                     PipeBarrier<PIPE_V>();
 
                     repeat = REPEAT_PER_LOOP;
-                    for (int32_t n_repeat_complete = 0; n_repeat_complete < repeat_times; n_repeat_complete + repeat) {
+                    for (int32_t n_repeat_complete = 0; n_repeat_complete < repeat_times; n_repeat_complete += repeat) {
                         if (n_repeat_complete + repeat > repeat_times) {
                             repeat = repeat_times - n_repeat_complete;
                         }
                         Vmuls(ub_muls + n_repeat_complete * Block256B<half>::size,
-                                ub_muls + n_repeat_complete * Block256B<half>::size, scale, 1, 1, 8, 8);
+                                ub_muls + n_repeat_complete * Block256B<half>::size, scale, repeat, 1, 1, 8, 8);
                     }
 
                     int32_t ubuf_gap = n_blocks_per_row - Block32B<half>::Count(it.n_cols_this_loop);
 
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
-                    WaitEvent<HardEvent::V_MTE3>(EVENT_ID0);
+                    WaitFLag<HardEvent::V_MTE3>(EVENT_ID0);
 
-                    CopyUbufToGmAlign(dst, ub_muls, it.n_rows_this_loop, dst_gap, ubuf_gap);
+                    CopyUbufToGmAlign(dst, ub_muls, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
 
-                    SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
-                    WaitEvent<HardEvent::V_MTE3>(EVENT_ID0);
+                    SetFlag<HardEvent::MTE3_V>(EVENT_ID0);
+                    WaitFLag<HardEvent::MTE3_V>(EVENT_ID0);
                 }
             }
         }
