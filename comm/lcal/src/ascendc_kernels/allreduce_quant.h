@@ -12,15 +12,15 @@
 #include "collectives.h"
 using namespace AscendC;
 
-class AllReduceQuant : public Collectives {
+class AllReduceQuant : protected Collectives {
     constexpr static int32_t UB_HEAD_OFFSET = 96;
     constexpr static int32_t UB_MID_OFFSET = UB_HEAD_OFFSET + UB_SINGLE_PING_PONG_ADD_SIZE_MAX + ALIGN_SIZE;
 public:
-    FORCE_INLINE_AICORE AllReuceQuant(int rank, int rankSize, uint32_t extraFlag)
+    FORCE_INLINE_AICORE AllReudeQuant(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
 
     template <typename T, typename U>
-    FORCE_INLINE_AICORE void CpGM2GM(const GlobalTensor<T>& outputGT, const GLobalTensor<U>& inputGT,
+    FORCE_INLINE_AICORE void CpGM2GM(const GlobalTensor<T>& outputGT, const GlobalTensor<U>& inputGT,
         const uint32_t calCount, int op, T scale, T offset)
     {
         DataCopyGM2GM<T,U> cpKernel;
@@ -29,7 +29,7 @@ public:
     }
 
     template <typename T, typename U>
-    FORCE_INLINE_AICORE void CpGM2GM(const GlobalTensor<T>& outputGT, const GLobalTensor<U>& inputGT,
+    FORCE_INLINE_AICORE void CpGM2GM(const GlobalTensor<T>& outputGT, const GlobalTensor<U>& inputGT,
         const uint32_t calCount, int op, const GlobalTensor<T>& scaleGT, int64_t scaleCount, T offset)
     {
         DataCopyGM2GM<T,U> cpKernel;
@@ -46,11 +46,11 @@ public:
         constexpr int32_t inputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize : ubAlignNum * sizeof(U);
         constexpr int32_t outputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize : ubAlignNum * sizeof(T); 
         __gm__ U *input = const_cast<__gm__ U *>(inputGT.GetPhyAddr());
-        __gm__ T *output = const_cast<__gm__ U *>(outputGT.GetPhyAddr());
+        __gm__ T *output = const_cast<__gm__ T *>(outputGT.GetPhyAddr());
         __ubuf__ U* inputUB[2] = {(__ubuf__ U*)(UB_HEAD_OFFSET), (__ubuf__ U*)(UB_MID_OFFSET)};
-        __ubuf__ U* outputUB[2] = {(__ubuf__ U*)(inputUB[0] + inputUbBlockSize / sizeof(U), 
+        __ubuf__ U* outputUB[2] = {(__ubuf__ T*)(inputUB[0] + inputUbBlockSize / sizeof(U)), 
             (__ubuf__ T*)(inputUB[1] + inputUbBlockSize / sizeof(U))};
-        __ub__ T* targetOutputUB = nullptr;
+        __ubuf__ T* targetOutputUB = nullptr;
         int inputOffsetNum = 0;
         int outputOffsetNum = 0;
 
@@ -61,8 +61,8 @@ public:
         for (int64_t i = 0; dataSizeRemain > 0; i++) {
             uint32_t size = dataSizeRemain > outputUbBlockSize ? outputUbBlockSize : dataSizeRemain;
             event_t eventId = (i & 1) ? EVENT_ID0 : EVENT_ID1;
-            targetOutpuUB = (i & 1) ? outputUB[0] : outputUB[1];
-            AscendC::WaitFlag<HardEvent::MTE3__MTE2>(eventId);
+            targetOutputUB = (i & 1) ? outputUB[0] : outputUB[1];
+            AscendC::WaitFlag<HardEvent::MTE3_MTE2>(eventId);
             CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], input + inputOffsetNum, size / sizeof(T) * sizeof(U));
             SetWaitEvent<HardEvent::MTE2_V>(eventId);
             CastImpl(targetOutputUB, (i & 1) ? inputUB[0] : inputUB[1], RoundMode::CAST_NONE, size / sizeof(T));
@@ -70,8 +70,8 @@ public:
             AddsImpl(targetOutputUB, targetOutputUB, offset, size / sizeof(T));
             PipeBarrier<PIPE_V>();
             MulsImpl(targetOutputUB, targetOutputUB, scale, size / sizeof(T));
-            SetWaitEvenet<HardEvent::V_MTE3>(eventId);
-            SetWaitEvenet<HardEvent::MTE2_MTE3>(eventId);
+            SetWaitEvent<HardEvent::V_MTE3>(eventId);
+            SetWaitEvent<HardEvent::MTE2_MTE3>(eventId);
             CpUB2GM(output + outputOffsetNum, targetOutputUB, size);
             AscendC::SetFlag<HardEvent::MTE3_MTE2>(eventId);
 
@@ -128,9 +128,9 @@ public:
             AddsImpl(targetOutputUB, targetOutputUB, offset, curDataNum);
             PipeBarrier<PIPE_V>();
             MulImpl(targetOutputUB, targetOutputUB, (i & 1) ? scaleUB[0] : scaleUB[1], curDataNum);
-            SetWaitEvenet<HardEvent::V_MTE3>(eventId);
+            SetWaitEvent<HardEvent::V_MTE3>(eventId);
             CpUB2GM(output + processedNum, targetOutputUB, curDataNum * sizeof(T));
-            AscendC::SetFlag<HardEvenet::MTE3_MTE2>(eventId);
+            AscendC::SetFlag<HardEvent::MTE3_MTE2>(eventId);
 
             dataSizeRemain -= curDataNum * sizeof(T);
             processedNum += curDataNum;
