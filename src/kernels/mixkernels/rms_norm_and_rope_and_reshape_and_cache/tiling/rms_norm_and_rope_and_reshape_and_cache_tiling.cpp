@@ -96,15 +96,21 @@ Status RmsNormAndRopeAndReshapeAndCacheTiling(const LaunchParam &launchParam, Ke
         tilingDataPtr->numRow *= xShape[i];
     }
     tilingDataPtr->numCol = static_cast<uint32_t>(xShape[xShape.size() - 1]);
+    MKI_CHECK(tilingDataPtr->numCol > 0, "numCol should > 0",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
     tilingDataPtr->avgFactor = static_cast<float>(1.0 / tilingDataPtr->numCol);
  
     const auto coreNum = static_cast<uint32_t>(PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_VECTOR));
     tilingDataPtr->numCore = CeilDiv(tilingDataPtr->numRow, CeilDiv(tilingDataPtr->numRow, coreNum));
+    MKI_CHECK(tilingDataPtr->numCore > 0, "numCore <= 0, which is invalid",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
  
     const auto param = AnyCast<OpParam::RmsNormAndRopeAndReshapeAndCache>(launchParam.GetParam());
     tilingDataPtr->epsilon = static_cast<float>(param.epsilon);
     tilingDataPtr->precisionMode = static_cast<uint32_t>(param.precisionMode);
     tilingDataPtr->rotaryCoeff = static_cast<uint32_t>(param.rotaryCoeff);
+    MKI_CHECK(tilingDataPtr->rotaryCoeff > 0, "rotaryCoeff <= 0, which is invalid",
+              return Status::FailStatus(ERROR_INVALID_VALUE));
     
     const Mki::SVector<int64_t> &keyRopeShape = launchParam.GetInTensor(INPUT_KEYROPE_IDX).desc.dims;
     const Mki::SVector<int64_t> &cosShape = launchParam.GetInTensor(INPUT_COS_IDX).desc.dims;
