@@ -8,7 +8,7 @@
 
 set(NAMESPACE "AsdOps")
 set(OP_LIST_YAML_DIR "${OPS_PROJECT_ROOT_DIR}/configs/kernels")
-set(OPS_CONFIG_CMAKE_DIR "$ENV{CACHE_DIR}/cmake/kernels")
+set(OPS_CONFIG_CMAKE_DIR "${CMAKE_BINARY_DIR}/cmake/kernels")
 
 include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
 include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
