@@ -142,7 +142,7 @@ public:
     {
         Status status = PpMatmulTiling(launchParam, kernelInfo_);
         kernelInfo_.SetHwsyncIdx(0);
-        return Status::OkStatus();
+        return status;
     }
 };
 REG_KERNEL_BASE(PpMatMulI8Bf16Kernel);
