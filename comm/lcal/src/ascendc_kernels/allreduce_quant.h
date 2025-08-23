@@ -99,7 +99,7 @@ public:
         if (scaleCount > ubAlignNum) {
             CpGM2GMPingPongForBigScale(dataSizeRemain, input, output, op, scale, scaleCount, offset);
         } else {
-            CpGM2GMPingPongForSmallScale(dataSizeRemain, input, outputG, op, scaleG, scaleCount, offset);
+            CpGM2GMPingPongForSmallScale(dataSizeRemain, input, output, op, scale, scaleCount, offset);
         }
         return;
     }
