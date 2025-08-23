@@ -86,7 +86,7 @@ public:
         WaitOneRankPartFlag((__gm__ int64_t*)(shareAddrs[waitRank]) + waitBlock * FLAG_UNIT_INT_NUM, 1, value);
     }
 
-    __aicore__ inline void WaitRankFlag(int32_t magic, int32_t eventID, int64_t waitRank)
+    __aicore__ inline void WaitRankInnerFlag(int32_t magic, int32_t eventID, int64_t waitRank)
     {
         int64_t value = MergeMagicWithValue(magic, eventID);
         WaitOneRankAllFlag((__gm__ int64_t*)(shareAddrs[waitRank]), value);
@@ -104,7 +104,7 @@ public:
         SetFlag(blockOuterSyncAddr, value);
     }
 
-    __aicore__ inline void SetOuterFlag(int32_t magic, int32_t eventID)
+    __aicore__ inline void SetOuterFlag(int32_t magic, int32_t eventID, int64_t setRank, int64_t setBlock)
     {
         __gm__ int64_t *flagAddr = GetOuterFlagAddr(setRank, setBlock);
         int64_t value = MergeMagicWithValue(magic, eventID);
@@ -125,13 +125,14 @@ public:
         flagAddr = GetOuterFlagAddr(rank, 0);
         WaitOneRankPartFlag(flagAddr, blockNum, value);
     } 
-    __aicore__ inline void WaitAllRankOuterFlag(int32_t magic, int32_t eventID, int64_t rank)
+    __aicore__ inline void WaitAllRankOuterFlag(int32_t magic, int32_t eventID, int64_t startBlock, int64_t flagNum)
     {
         int64_t value = MergeMagicWithValue(magic, eventID);
         __gm__ int64_t *flagAddr;
+        int wairtRank;
         for (auto r = 0; r < rankSize; ++r) {
             waitRank = (rank + r) % rankSize;
-            flagAddr = GetOuterFlagAddr(waitRank, blockNum);
+            flagAddr = GetOuterFlagAddr(waitRank, startBlock);
             WaitOneRankPartFlag(flagAddr, flagNum, value);
         }
     }
@@ -141,6 +142,7 @@ public:
     {
         int64_t value = MergeMagicWithValue(magic, eventID);
         __gm__ int64_t *flagAddr;
+        int waitRank;
         for (auto r = 0; r < rankSize; ++r) {
             waitRank = (rank + r) % rankSize;
             flagAddr = GetOuterFlagAddr(waitRank, startBlock);
@@ -156,7 +158,7 @@ public:
         WaitAllRankPartOuterFlag(magic, eventID, 0, blockNum);
     }
 
-    __aicore__ inline void CheckAllRankOuterFlag(int32_t magic, int32_t eventID)
+    __aicore__ inline bool CheckAllRankOuterFlag(int32_t magic, int32_t eventID)
     {
         return CheckAllRankPartOuterFlag(magic, eventID, 0, blockNum);
     }
@@ -221,7 +223,7 @@ public:
 private:
     __aicore__ inline int64_t MergeMagicWithValue(int32_t magic, int32_t value)
     {
-        return (static_cast<int64_t>(magic) << 32) | MAGIC_OFFSET | static_casat<int64_t>(value);
+        return (static_cast<int64_t>(magic) | MAGIC_OFFSET) | static_cast<int64_t>(value);
     }
 
     __aicore__ inline __gm__ int64_t* GetInnerFlagAddr(int64_t flagRank, int64_t flagBlock)
@@ -231,7 +233,7 @@ private:
 
     __aicore__ inline __gm__ int64_t* GetOuterFlagAddr(int64_t flagRank, int64_t flagBlock)
     {
-        return (__gm__ int64_t*)(shareAddrs[flagRank]) + segment + flagBlock * FLAG_UNIT_INT_NUM; 
+        return (__gm__ int64_t*)(shareAddrs[flagRank]) + segmentCount + flagBlock * FLAG_UNIT_INT_NUM; 
     }
 
     __aicore__ inline void WaitOneRankPartFlag(__gm__ int64_t* waitAddr, int64_t flagNum, int64_t checkValue,
