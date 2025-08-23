@@ -16,7 +16,7 @@ class AllReduceQuant : protected Collectives {
     constexpr static int32_t UB_HEAD_OFFSET = 96;
     constexpr static int32_t UB_MID_OFFSET = UB_HEAD_OFFSET + UB_SINGLE_PING_PONG_ADD_SIZE_MAX + ALIGN_SIZE;
 public:
-    FORCE_INLINE_AICORE AllReudeQuant(int rank, int rankSize, uint32_t extraFlag)
+    FORCE_INLINE_AICORE AllReducQuant(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
 
     template <typename T, typename U>
@@ -48,7 +48,7 @@ public:
         __gm__ U *input = const_cast<__gm__ U *>(inputGT.GetPhyAddr());
         __gm__ T *output = const_cast<__gm__ T *>(outputGT.GetPhyAddr());
         __ubuf__ U* inputUB[2] = {(__ubuf__ U*)(UB_HEAD_OFFSET), (__ubuf__ U*)(UB_MID_OFFSET)};
-        __ubuf__ U* outputUB[2] = {(__ubuf__ T*)(inputUB[0] + inputUbBlockSize / sizeof(U)), 
+        __ubuf__ T* outputUB[2] = {(__ubuf__ T*)(inputUB[0] + inputUbBlockSize / sizeof(U)), 
             (__ubuf__ T*)(inputUB[1] + inputUbBlockSize / sizeof(U))};
         __ubuf__ T* targetOutputUB = nullptr;
         int inputOffsetNum = 0;
@@ -76,8 +76,8 @@ public:
             AscendC::SetFlag<HardEvent::MTE3_MTE2>(eventId);
 
             dataSizeRemain -= size;
-            inputOffsetNum += size / sizeof(T);
-            outputOffsetNum += size / sizeof(T);
+            inputOffsetNum += (size / sizeof(T));
+            outputOffsetNum += (size / sizeof(T));
         }
         AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
         AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
@@ -91,10 +91,27 @@ public:
     FORCE_INLINE_AICORE void CpGM2GMPingPong(int64_t dataSizeRemain, const GlobalTensor<U>& inputGT,
         const GlobalTensor<T>& outputGT, int op, const GlobalTensor<T>& scaleGT, int64_t scaleCount, T offset)
     {
-        constexpr int32_t mulVal = 2;
-        cosntexpr int64_t ubSplitSize = (sizeof(T) + sizeof(U) + sizeof(T)) * mulVal;
+        constexpr int32_t ubSplitSize = sizeof(T) + sizeof(U) + sizeof(T) + sizeof(U) + sizeof(T);
+        constexpr int64_t ubAlignNum = UB_SINGLE_PING_PONG_ADD_SIZE_MAX / ubSplitSize / ALIGN_SIZE * ALIGN_SIZE;
+        __gm__ T *scale = const_cast<__gm__ T *>(scaleGT.GetPhyAddr());
+        __gm__ U *input = const_cast<__gm__ U *>(inputGT.GetPhyAddr());
+        __gm__ T *output = const_cast<__gm__ T *>(outputGT.GetPhyAddr());
+        if (scaleCount > ubAlignNum) {
+            CpGM2GMPingPongForBigScale(dataSizeRemain, inputGT, outputGT, op, scaleGT, scaleCount, offset);
+        } else {
+            CpGM2GMPingPongForSmallScale(dataSizeRemain, inputGT, outputGT, op, scaleGT, scaleCount, offset);
+        }
+        return;
+    }
+
+    template <typename T, typename U>
+    FORCE_INLINE_AICORE void CpGM2GMPingPongForBigScale(int64_t dataSizeRemain, const GlobalTensor<U>& inputGT,
+        const GlobalTensor<T>& outputGT, int op, const GlobalTensor<T>& scaleGT, int64_t scaleCount, T offset)
+    {
+        constexpr int64_t mulVal = 2;
+        constexpr int64_t ubSplitSize = (sizeof(T) + sizeof(U) + sizeof(T)) * mulVal;
         constexpr int64_t ubAlignNum = UB_SINGLE_DMA_SIZE_MAX / ubSplitSize / ALIGN_SIZE * ALIGN_SIZE;
-        const int64_t batchDataNum = (scaleCount + ubAlignNUm - 1) / ubAlignNum;
+        const int64_t batchDataNum = (scaleCount + ubAlignNum - 1) / ubAlignNum;
 
         __ubuf__ T* scaleUB[2] = {(__ubuf__ T*)(UB_HEAD_OFFSET), (__ubuf__ T*)(UB_MID_OFFSET)};
         __ubuf__ U* inputUB[2] = {(__ubuf__ U*)(UB_HEAD_OFFSET + ubAlignNum * sizeof(T)), 
@@ -120,9 +137,9 @@ public:
             targetOutputUB = (i & 1) ? outputUB[0] : outputUB[1];
 
             AscendC::WaitFlag<HardEvent::MTE3_MTE2>(eventId);
-            CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], input + procxessedNum, curDataNum * sizeof(U));
+            CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], input + processedNum, curDataNum * sizeof(U));
             SetWaitEvent<HardEvent::MTE2_V>(eventId);
-            CpGM2UB((i & 1) ? scaleUB[0] : scaleUB[1], scale + i % batchDataNUm * ubAlignNum, curDataNum * sizeof(T));
+            CpGM2UB((i & 1) ? scaleUB[0] : scaleUB[1], scale + i % batchDataNum * ubAlignNum, curDataNum * sizeof(T));
             CastImpl(targetOutputUB, (i & 1) ? inputUB[0] : inputUB[1], RoundMode::CAST_NONE, curDataNum);
             SetWaitEvent<HardEvent::MTE2_V>(eventId);
             AddsImpl(targetOutputUB, targetOutputUB, offset, curDataNum);
@@ -140,7 +157,7 @@ public:
         AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
         AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         SetWaitEvent<HardEvent::MTE3_S>(EVENT_ID3);
-        UnsetAtomic<T>(op);
+        UnsetAtomic(op);
         return;
     }
 
@@ -169,20 +186,20 @@ public:
         }
         AscendC::SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
         AscendC::SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-        for (int64_t i = 0; dataSizeRemian > 0; i++) {
+        for (int64_t i = 0; dataSizeRemain > 0; i++) {
             uint32_t size = dataSizeRemain > batchDataNum * sizeof(T) ? batchDataNum * sizeof(T) : dataSizeRemain;
             event_t eventId = (i & 1) ? EVENT_ID0 : EVENT_ID1;
             targetOutputUB = (i & 1) ? outputUB[0] : outputUB[1];
             AscendC::WaitFlag<HardEvent::MTE3_MTE2>(eventId);
-            CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], input + i * batchDataNum, size / sizeof(T) * sizeof(U));
+            CpGM2UB((i & 1) ? inputUB[0] : inputUB[1], input + processedNum, size / sizeof(T) * sizeof(U));
             SetWaitEvent<HardEvent::MTE2_V>(eventId);
             CastImpl(targetOutputUB, (i & 1) ? inputUB[0] : inputUB[1], RoundMode::CAST_NONE, size / sizeof(T));
-            SetWaitEvent<HardEvent::MTE2_V>(eventId);
+            PipeBarrier<PIPE_V>();
             AddsImpl(targetOutputUB, targetOutputUB, offset, size / sizeof(T));
             PipeBarrier<PIPE_V>();
-            MulImpl(targetOutputUB, targetOutputUB, (i & 1) ? scaleUB[0] : scaleUB[1], size / sizeof(T));
+            MulImpl(targetOutputUB, targetOutputUB, scaleUB, size / sizeof(T));
             SetWaitEvent<HardEvent::V_MTE3>(eventId);
-            CpUB2GM(output + i * batchDataNum, targetOutputUB, size);
+            CpUB2GM(output + processedNum, targetOutputUB, size);
             AscendC::SetFlag<HardEvent::MTE3_MTE2>(eventId);
             dataSizeRemain -= size;
             processedNum += (size / sizeof(T));
@@ -190,7 +207,7 @@ public:
         AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
         AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         SetWaitEvent<HardEvent::MTE3_S>(EVENT_ID3);
-        UnsetAtomic<T>(op);
+        UnsetAtomic(op);
         return;
     }
 };
