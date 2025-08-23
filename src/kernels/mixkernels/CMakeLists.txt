@@ -8,7 +8,7 @@
 
 set(NAMESPACE "AtbOps")
 set(OP_LIST_YAML_DIR "${OPS_PROJECT_ROOT_DIR}/configs/mixkernels")
-set(OPS_CONFIG_CMAKE_DIR "$ENV{CACHE_DIR}/cmake/mixkernels")
+set(OPS_CONFIG_CMAKE_DIR "${CMAKE_BINARY_DIR}/cmake/mixkernels")
 
 include(${MKI_PACKAGE_DIR}/cmake/host_config.cmake)
 include(${MKI_PACKAGE_DIR}/cmake/kernel_config.cmake)
