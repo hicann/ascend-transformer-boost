@@ -16,7 +16,7 @@ class AllReduceQuant : protected Collectives {
     constexpr static int32_t UB_HEAD_OFFSET = 96;
     constexpr static int32_t UB_MID_OFFSET = UB_HEAD_OFFSET + UB_SINGLE_PING_PONG_ADD_SIZE_MAX + ALIGN_SIZE;
 public:
-    FORCE_INLINE_AICORE AllReducQuant(int rank, int rankSize, uint32_t extraFlag)
+    FORCE_INLINE_AICORE AllReduceQuant(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
 
     template <typename T, typename U>
@@ -92,21 +92,22 @@ public:
         const GlobalTensor<T>& outputGT, int op, const GlobalTensor<T>& scaleGT, int64_t scaleCount, T offset)
     {
         constexpr int32_t ubSplitSize = sizeof(T) + sizeof(U) + sizeof(T) + sizeof(U) + sizeof(T);
-        constexpr int64_t ubAlignNum = UB_SINGLE_PING_PONG_ADD_SIZE_MAX / ubSplitSize / ALIGN_SIZE * ALIGN_SIZE;
+        constexpr int64_t ubAlignNum = UB_SINGLE_DMA_SIZE_MAX / ubSplitSize / ALIGN_SIZE * ALIGN_SIZE;
         __gm__ T *scale = const_cast<__gm__ T *>(scaleGT.GetPhyAddr());
         __gm__ U *input = const_cast<__gm__ U *>(inputGT.GetPhyAddr());
         __gm__ T *output = const_cast<__gm__ T *>(outputGT.GetPhyAddr());
         if (scaleCount > ubAlignNum) {
-            CpGM2GMPingPongForBigScale(dataSizeRemain, inputGT, outputGT, op, scaleGT, scaleCount, offset);
+            CpGM2GMPingPongForBigScale(dataSizeRemain, input, output, op, scale, scaleCount, offset);
         } else {
-            CpGM2GMPingPongForSmallScale(dataSizeRemain, inputGT, outputGT, op, scaleGT, scaleCount, offset);
+            CpGM2GMPingPongForSmallScale(dataSizeRemain, input, outputG, op, scaleG, scaleCount, offset);
         }
         return;
     }
 
+protected:
     template <typename T, typename U>
-    FORCE_INLINE_AICORE void CpGM2GMPingPongForBigScale(int64_t dataSizeRemain, const GlobalTensor<U>& inputGT,
-        const GlobalTensor<T>& outputGT, int op, const GlobalTensor<T>& scaleGT, int64_t scaleCount, T offset)
+    FORCE_INLINE_AICORE void CpGM2GMPingPongForBigScale(int64_t dataSizeRemain, __gm__ U *input,
+        __gm__ T *output, int op, __gm__ T *scale, int64_t scaleCount, T offset)
     {
         constexpr int64_t mulVal = 2;
         constexpr int64_t ubSplitSize = (sizeof(T) + sizeof(U) + sizeof(T)) * mulVal;
@@ -175,6 +176,7 @@ public:
         __ubuf__ T* outputUB[2] = {(__ubuf__ T*)(UB_HEAD_OFFSET + ubAlignNum * (sizeof(T) + sizeof(U))), 
             (__ubuf__ T*)(ubMidOffset + ubAlignNum * sizeof(U))};
         __ubuf__ T* targetOutputUB = nullptr;
+        int64_t processedNum = 0;
         SetAtomic<T>(op);
         CpGM2UB(scaleUB, scale, scaleCount * sizeof(T));
         SetWaitEvent<HardEvent::MTE2_V>(EVENT_ID1);
