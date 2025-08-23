@@ -651,7 +651,7 @@ private:
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
 
                     PipeBarrier<PIPE_V>();
-                    Vconv(ub_vconv_f32, ub_vconv_f16, 1, 1, 8, 4);
+                    Vconv(ub_vconv_f32, ub_vconv_f16, repeat_b32, 1, 1, 8, 4);
 
                     PipeBarrier<PIPE_V>();
                     Vadds(ub_adds, ub_vconv_f32, offset, repeat_b32, 1, 1, 8, 8);
