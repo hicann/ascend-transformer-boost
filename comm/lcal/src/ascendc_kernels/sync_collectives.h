@@ -57,7 +57,7 @@ public:
         SetFlag((__gm__ int64_t*)(shareAddrs[rank]) + eventID * FLAG_UNIT_INT_NUM, v);
     }
     
-    __aicore__ inline void CalEventIdByMulBlockNum(int32_t blockMultiplier, int32_t targetcoreID)
+    __aicore__ inline int32_t CalEventIdByMulBlockNum(int32_t blockMultiplier, int32_t targetCoreId)
     {
         return (blockMultiplier * blockNum) + targetCoreId;
     }
@@ -77,25 +77,25 @@ public:
     __aicore__ inline void SetInnerFlag(int32_t magic, int32_t eventID, int64_t setRank, int64_t setBlock)
     {
         int64_t value = MergeMagicWithValue(magic, eventID);
-        SetFlag((__gm__ int64_t*)(shareAddrs[rank]) + eventID * FLAG_UNIT_INT_NUM, value);
+        SetFlag((__gm__ int64_t*)(shareAddrs[setRank]) + setBlock * FLAG_UNIT_INT_NUM, value);
     }
 
     __aicore__ inline void WaitInnerFlag(int32_t magic, int32_t eventID, int64_t waitRank, int64_t waitBlock)
     {
         int64_t value = MergeMagicWithValue(magic, eventID);
-        WaitOneRankPartFlag((__gm__ int64_t*)(shareAddrs[waitRank]) + eventID * FLAG_UNIT_INT_NUM, 1, value);
+        WaitOneRankPartFlag((__gm__ int64_t*)(shareAddrs[waitRank]) + waitBlock * FLAG_UNIT_INT_NUM, 1, value);
     }
 
-    __aicore__ inline void WaitInnerFlag(int32_t magic, int32_t eventID, int64_t waitRank)
+    __aicore__ inline void WaitRankFlag(int32_t magic, int32_t eventID, int64_t waitRank)
     {
         int64_t value = MergeMagicWithValue(magic, eventID);
-        WaitOneRankPartFlag((__gm__ int64_t*)(shareAddrs[waitRank]), value);
+        WaitOneRankAllFlag((__gm__ int64_t*)(shareAddrs[waitRank]), value);
     }
 
-    __aicore__ inline void CheckRankInnerFlag(int32_t magic, int32_t eventID, int64_t waitRank)
+    __aicore__ inline bool CheckRankInnerFlag(int32_t magic, int32_t eventID, int64_t waitRank)
     {
         int64_t value = MergeMagicWithValue(magic, eventID);
-        WaitOneRankPartFlag((__gm__ int64_t*)(shareAddrs[waitRank]), value);
+        return CheckOneRankAllFlag((__gm__ int64_t*)(shareAddrs[waitRank]), value);
     }
 
     __aicore__ inline void SetOuterFlag(int32_t magic, int32_t eventID)
