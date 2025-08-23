@@ -27,7 +27,7 @@ public:
     int64_t GetInputNum(const Any &specificParam) const override
     {
         MKI_CHECK(specificParam.Type() == typeid(OpParam::StridedBatchMatmul), "OpParam is invalid", return 0);
-        return 2; // StridedBatchMatmul Op has 2 outputs: MatA, MatB
+        return 2; // StridedBatchMatmul Op has 2 inputs: MatA, MatB
     }
 
     int64_t GetOutputNum(const Any &specificParam) const override
