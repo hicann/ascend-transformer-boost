@@ -693,9 +693,9 @@ public:
         this->BasePadder<half, int8_t, half>::SetArgs(gm_a, gm_b, workspace_info, batch_size, m, k, n,
                 m_align, k_align, n_align, aligned_a, aligned_b, trans_a, trans_b);
         
-        gm_scale = reinterpret_cast<__gm__ half *>(gm_dequant_scale);
+        gm_scale = *reinterpret_cast<__gm__ half *>(gm_dequant_scale);
         if (gm_dequant_offset) {
-            gm_offset = reinterpret_cast<__gm__ half *>(gm_dequant_offset);
+            gm_offset = *reinterpret_cast<__gm__ half *>(gm_dequant_offset);
             has_offset = true;
         }
     }
@@ -751,7 +751,7 @@ private:
                 auto scale = gm_scale + it.n_cols_complete;
 
                 int32_t n_blocks_per_row = Block32B<int8_t>::Count(it.n_cols_this_loop) *
-                            (sizeof(half) / sizeof(int8_t));
+                        (sizeof(half) / sizeof(int8_t));
 
                 int32_t src_gap = n_cols - it.n_cols_this_loop;
                 int32_t dst_gap = n_cols_aligned - it.n_cols_this_loop;
@@ -825,7 +825,7 @@ private:
                 auto offset = gm_offset + it.n_cols_complete;
 
                 int32_t n_blocks_per_row = Block32B<int8_t>::Count(it.n_cols_this_loop) *
-                            (sizeof(half) / sizeof(int8_t));
+                        (sizeof(half) / sizeof(int8_t));
 
                 int32_t src_gap = n_cols - it.n_cols_this_loop;
                 int32_t dst_gap = n_cols_aligned - it.n_cols_this_loop;
@@ -876,7 +876,7 @@ private:
 
                     WaitFlag<HardEvent::V_MTE3>(EVENT_ID3);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
-                    SetFLag<HardEvent::MTE3_V>(EVENT_ID3);
+                    SetFlag<HardEvent::MTE3_V>(EVENT_ID3);
                 }
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
@@ -1297,7 +1297,7 @@ private:
 
                     WaitFlag<HardEvent::V_MTE3>(EVENT_ID3);
                     CopyUbufToGmAlign(dst, ub_output, it.n_rows_this_loop, it.n_cols_this_loop, dst_gap, ubuf_gap);
-                    SetFLag<HardEvent::MTE3_V>(EVENT_ID3);
+                    SetFlag<HardEvent::MTE3_V>(EVENT_ID3);
                 }
                 SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
                 SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
