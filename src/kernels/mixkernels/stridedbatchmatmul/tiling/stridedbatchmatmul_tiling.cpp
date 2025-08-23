@@ -27,7 +27,7 @@ Status StridedBatchMatmulOpParamCheck(const OpParam::StridedBatchMatmul &opParam
         return Status::FailStatus(ERROR_INVALID_VALUE));
     MKI_CHECK(opParam.headNum > 0, "headNum is invalid",
         return Status::FailStatus(ERROR_INVALID_VALUE));
-    MKI_CHECK(opParam.batch * opParam.headNum < INT32_MAX, "batch * headNum is invalid",
+    MKI_CHECK(static_cast<int64_t>(opParam.batch) * static_cast<int64_t>(opParam.headNum) < INT32_MAX, "batch * headNum is invalid",
         return Status::FailStatus(ERROR_INVALID_VALUE));
     size_t b = static_cast<size_t>(opParam.batch);
     MKI_CHECK(opParam.m.size() == b, "size of m is invalid", return Status::FailStatus(ERROR_INVALID_VALUE));
