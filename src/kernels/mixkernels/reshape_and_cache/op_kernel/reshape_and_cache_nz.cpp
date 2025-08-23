@@ -95,7 +95,7 @@ public:
             start += (ubSize / sizeof(T));
             cacheStart += static_cast<uint64_t>((ubSize / sizeof(T)) * blockSize);
         }
-        if (tailK > 0) {
+        if (tail > 0) {
             copyParamsIn.blockLen = tail / BLOCK_SIZE;
             copyParamsOut.blockCount = tail / BLOCK_SIZE;
             auto local = queBind.AllocTensor<T>();

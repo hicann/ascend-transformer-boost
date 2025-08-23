@@ -99,7 +99,7 @@ private:
             gmOffset_ = perCoreCopyCount_ * blockIdx_ + tailCoreCopyCount_;
         }
         blockCount_ = tiling_data->blockCount;
-        blockSizeofElement_ = tiling_data->blockSize * tiling_data->numHead * tiling_data->headSizeK;
+        blockSizeofElement_ = static_cast<uint64_t>(tiling_data->blockSize) * tiling_data->numHead * tiling_data->headSizeK;
         sourceCount_ = tiling_data->sourceCount;
         destinationCount_ = tiling_data->destinationCount;
         typeByte_ = tiling_data->typeByte;
