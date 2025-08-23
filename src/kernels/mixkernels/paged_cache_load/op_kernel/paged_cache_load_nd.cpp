@@ -12,7 +12,7 @@
 namespace PagedCacheLoad {
 
 constexpr int32_t BLOCK_SIZE = 32;
-constexpr int32_t TYPEBYPE_ID = 5;
+constexpr int32_t TYPEBYTE_ID = 5;
 constexpr int32_t UB_BUF_SIZE = 192 * 1024;
 constexpr int32_t VEC_SUBDIM = 2;
 
@@ -237,7 +237,7 @@ extern "C" __global__ __aicore__ void paged_cache_load_nd(
     __gm__ uint8_t * __restrict__ valueOutGm,
     __gm__ uint8_t * __restrict__ tilingParaGm)
 {
-    int32_t typeByte = ((__gm__ uint32_t *)tilingParaGm)[PagedCacheLoad::TYPEBYPE_ID];
+    int32_t typeByte = ((__gm__ uint32_t *)tilingParaGm)[PagedCacheLoad::TYPEBYTE_ID];
     if (typeByte == 1) {
         PagedCacheLoad::PagedCacheLoadNd<int8_t> op;
         op.Init(keyCacheInGm, valueCacheInGm, blockTablesInGm,
