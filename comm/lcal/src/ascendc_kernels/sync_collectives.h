@@ -39,8 +39,8 @@ public:
         this->blockNum = GetBlockNum() * LCAL_BLOCK_NUM_MULTI;
         segmentCount = GetBlockNum() * LCAL_BLOCK_NUM_MULTI * FLAG_UNIT_INT_NUM;
         localSyncAddr = (__gm__ int64_t*)(shareAddrs[rank]);
-        basicSyncAddr = (__gm__ int64_t*)(shareAddrs[rank] + GetBlockIdx() * FLAG_UNIT_INT_NUM);
-        blockOuterSyncAddr = (__gm__ int64_t*)(shareAddrs[rank] + segmentCount + GetBlockIdx() * FLAG_UNIT_INT_NUM);
+        basicSyncAddr = (__gm__ int64_t*)(shareAddrs[rank]) + GetBlockIdx() * FLAG_UNIT_INT_NUM;
+        blockOuterSyncAddr = (__gm__ int64_t*)(shareAddrs[rank]) + segmentCount + GetBlockIdx() * FLAG_UNIT_INT_NUM;
         TPipe pipe;
         pipe.InitBuffer(tBuf, GetBlockNum() * SYNC_UNIT_SIZE);
     }
@@ -49,6 +49,17 @@ public:
     {
         int64_t v = MergeMagicWithValue(magic, value);
         SetFlag(localSyncAddr + eventID * FLAG_UNIT_INT_NUM, v);
+    }
+
+    __aicore__ inline void SetSyncFlag(int32_t magic, int32_t value, int32_t eventID, int32_t rank)
+    {
+        int64_t v = MergeMagicWithValue(magic, value);
+        SetFlag((__gm__ int64_t*)(shareAddrs[rank]) + eventID * FLAG_UNIT_INT_NUM, v);
+    }
+    
+    __aicore__ inline void CalEventIdByMulBlockNum(int32_t blockMultiplier, int32_t targetcoreID)
+    {
+        return (blockMultiplier * blockNum) + targetCoreId;
     }
 
     __aicore__ inline void WaitSyncFlag(int32_t magic, int32_t value, int32_t eventID, int32_t rank,
@@ -60,12 +71,12 @@ public:
 
     __aicore__ inline void SetInnerFlag(int32_t magic, int32_t eventID)
     {
-        int64_t v = MergeMagicWithValue(magic, eventID);
+        int64_t value = MergeMagicWithValue(magic, eventID);
         SetFlag(basicSyncAddr, value);
     }
     __aicore__ inline void SetInnerFlag(int32_t magic, int32_t eventID, int64_t setRank, int64_t setBlock)
     {
-        int64_t v = MergeMagicWithValue(magic, eventID);
+        int64_t value = MergeMagicWithValue(magic, eventID);
         SetFlag((__gm__ int64_t*)(shareAddrs[rank]) + eventID * FLAG_UNIT_INT_NUM, value);
     }
 
@@ -228,7 +239,7 @@ private:
     {
         GlobalTensor<int64_t> globalWait;
         globalWait.SetGlobalBuffer(waitAddr, flagNum * FLAG_UNIT_INT_NUM);
-        LocalTensor<int64_t> localWait = tBuf.GetWithOffset<int64_t>(flagNum * FLAGUNIT_INT_NUM, 0);
+        LocalTensor<int64_t> localWait = tBuf.GetWithOffset<int64_t>(flagNum * FLAG_UNIT_INT_NUM, 0);
         bool isSync = true;
         do {
             if (breakCycle > 0) {
@@ -262,7 +273,7 @@ private:
     {
         GlobalTensor<int64_t> globalWait;
         globalWait.SetGlobalBuffer(waitAddr, flagNum * FLAG_UNIT_INT_NUM);
-        LocalTensor<int64_t> localWait = tBuf.GetWithOffset<int64_t>(flagNum * FLAGUNIT_INT_NUM, 0);
+        LocalTensor<int64_t> localWait = tBuf.GetWithOffset<int64_t>(flagNum * FLAG_UNIT_INT_NUM, 0);
         DataCopy(localWait, globalWait, flagNum * FLAG_UNIT_INT_NUM);
         AscendC::SetFlag<HardEvent::MTE2_S>(EVENT_ID0);
         AscendC::WaitFlag<HardEvent::MTE2_S>(EVENT_ID0);
@@ -295,14 +306,4 @@ private:
     TBuf<QuePosition::VECCALC> tBuf;
 };
 
-#endif // LCCL_SYNC_H
-
-    
-
-
-
-}
-
-
-
-
+#endif // LCCL_SYNC _H
