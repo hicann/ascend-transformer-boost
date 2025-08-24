@@ -1543,11 +1543,11 @@ public:
             int32_t batch_size, int32_t m, int32_t k, int32_t n, int32_t m_align, int32_t k_align, int32_t n_align, bool aligned_a, bool aligned_b, bool trans_a, bool trans_b,
             __gm__ uint8_t *gm_dequant_scale, __gm__ uint8_t *gm_dequant_offset, int32_t dequant_group_size)
     {
-        this->BasePadder<bfloat16_t, int8_t, bfloat16_t>::SetArgs(gm_a, gm_b, workspace_info, batch_size, m, k, n,
+        this->BasePadder<half, int8_t, half>::SetArgs(gm_a, gm_b, workspace_info, batch_size, m, k, n,
                 m_align, k_align, n_align, aligned_a, aligned_b, trans_a, trans_b);
-        gm_scale = *reinterpret_cast<__gm__ bfloat16_t *>(gm_dequant_scale);
+        gm_scale = reinterpret_cast<__gm__ half *>(gm_dequant_scale);
         if (gm_dequant_offset) {
-            gm_offset = *reinterpret_cast<__gm__ half *>(gm_dequant_offset);
+            gm_offset = reinterpret_cast<__gm__ half *>(gm_dequant_offset);
             has_offset = true;
         }
         group_size = dequant_group_size;
@@ -1567,11 +1567,11 @@ public:
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
 
-        if (!this->trans_b && !has_offset) {
+        if (!trans_b && !has_offset) {
             DequantAndPadMatrixNoOffset(this->gm_b_align, this->gm_b, this->k, this->n, this->n_align);
-        } else if (!this->trans_b && has_offset) {
+        } else if (!trans_b && has_offset) {
             DequantAndPadMatrixHasOffset(this->gm_b_align, this->gm_b, this->k, this->n, this->n_align);
-        } else if (this->trans_b && !has_offset) {
+        } else if (trans_b && !has_offset) {
             DequantAndPadMatrixTransposeNoOffset(this->gm_b_align, this->gm_b, this->n, this->k, this->k_align);
         } else {
             DequantAndPadMatrixTransposeHasOffset(this->gm_b_align, this->gm_b, this->n, this->k, this->k_align);
@@ -1581,7 +1581,7 @@ public:
     }
 
 private:
-    inline __aicore__ void DequantAndPadMatrixNoOffset(__gm__ bfloat16_t *gm_dst, __gm__ int8_t *gm_src,
+    inline __aicore__ void DequantAndPadMatrixNoOffset(__gm__ half *gm_dst, __gm__ int8_t *gm_src,
             int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned)
     {
         LoopIter it(this->batch_size, n_rows, n_cols, n_cols_aligned);
@@ -1602,7 +1602,8 @@ private:
         for (it.InitBatchLoop(); !it.EndBatchLoop(); it.NextBatchLoop()) {
             for (it.InitColLoop(max_cols_per_loop); !it.EndColLoop(); it.NextColLoop()) {
                 auto scale = gm_scale + it.n_cols_complete;
-                int32_t n_blocks_per_row_b16 = Block32B<int8_t>::Count(it.n_cols_this_loop) *
+
+                int32_t n_blocks_per_row = Block32B<int8_t>::Count(it.n_cols_this_loop) *
                         (sizeof(half) / sizeof(int8_t));
 
                 int32_t src_gap = n_cols - it.n_cols_this_loop;
@@ -1627,12 +1628,11 @@ private:
 
                     bool is_after_mte2 = false;
                     WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
-
                     for (int32_t row = 0; row < max_rows_per_loop; ++row) {
                         int32_t row_idx = it.row_offset_this_core + it.n_rows_complete + row;
                         int32_t in_group_idx = row_idx % group_size;
                         if (in_group_idx == 0 || it.n_rows_complete + row == 0) {
-                            int32_t ub_quant_args_offset = row * n_blocks * Block32B<half>::size;
+                            int32_t ub_quant_args_offset = row * n_blocks_per_row * Block32B<half>::size;
                             int32_t group_idx = row_idx / group_size;
 
                             if (ub_quant_args_offset == ub_quant_args_root_offset && !is_after_mte2) {
@@ -1720,16 +1720,20 @@ private:
                     uint8_t repeat = static_cast<uint8_t>(DivCeil(n_blocks, VEC_BLOCK_PER_REPEAT));
 
                     WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
+                    CopyGmToUbufAlign(ub_input, src, it.n_rows_this_loop, it.n_cols_this_loop, src_gap);
+                    SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
+
+                    WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
                     Vconv(ub_vconv, ub_input, repeat, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
 
                     bool is_after_mte2 = false;
                     WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                     for (int32_t row = 0; row < max_rows_per_loop; ++row) {
-                        int32_t row_idx = row * n_blocks_per_row * Block32B<half>::size;
-                        int32_t group_idx = row_idx % group_size;
+                        int32_t row_idx = it.row_offset_this_core + it.n_rows_complete + row;
+                        int32_t in_group_idx = row_idx % group_size;
                         if (in_group_idx == 0 || it.n_rows_complete + row == 0) {
-                            int32_t ub_quant_args_offset = row * n_blocks * Block32B<half>::size;
+                            int32_t ub_quant_args_offset = row * n_blocks_per_row * Block32B<half>::size;
                             int32_t group_idx = row_idx / group_size;
 
                             if (ub_quant_args_offset == ub_quant_args_root_offset && !is_after_mte2) {
@@ -1785,7 +1789,7 @@ private:
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
     }
 
-    inline __aicore__ void DequantAndPadMatrixTransposeNoOffset(__gm__ bfloat16_t *gm_dst, __gm__ int8_t *gm_src,
+    inline __aicore__ void DequantAndPadMatrixTransposeNoOffset(__gm__ half *gm_dst, __gm__ int8_t *gm_src,
             int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned)
     {
         LoopIter it(this->batch_size, n_rows, n_cols, n_cols_aligned);
@@ -1831,27 +1835,27 @@ private:
                     SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
                     WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
-                    Vconv(ub_vconv_f16, ub_input, repeat_b16, 1, 1, 8, 4);
+                    Vconv(ub_vconv, ub_input, repeat, 1, 1, 8, 4);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
 
                     bool is_after_mte2 = false;
                     WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                     for (int32_t block_col = 0; block_col < n_blocks_per_row_b16; ++block_col) {
                         int32_t block_col_idx = Block32B<half>::Count(it.n_cols_complete) + block_col;
-                        int32_t in_group_idx = block_col_idx % group_size;
+                        int32_t in_group_idx = block_col_idx % group_block;
                         if (in_group_idx == 0 || block_col_idx == 0) {
                             int32_t ub_quant_args_offset = block_col * Block32B<half>::size;
-                            int32_t group_idx = block_col_idx / group_size;
+                            int32_t group_idx = block_col_idx / group_block;
 
                             if (ub_quant_args_offset == ub_quant_args_root_offset && !is_after_mte2) {
                                 SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
                                 WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                             }
                             CopyGmToUbufAlign(ub_quant_scale + ub_quant_args_offset, scale + group_idx,
-                                    it.n_cols_this_loop, 1, group_num - 1, n_blocks_per_row_b16 - 1);
+                                    it.n_rows_this_loop, 1, group_num - 1, n_blocks_per_row_b16 - 1);
                             is_after_mte2 = true;
                             ub_quant_args_root_offset = ub_quant_args_offset;
-                        } else if (in_group_idx < max_rows_per_loop || it.n_rows_complete == 0) {
+                        } else if (in_group_idx < n_blocks_per_row_b16 || it.n_cols_complete == 0) {
                             int32_t ub_quant_args_offset = block_col * Block32B<half>::size;
 
                             if (is_after_mte2) {
@@ -1888,7 +1892,7 @@ private:
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
     }
 
-    inline __aicore__ void DequantAndPadMatrixTransposeHasOffset(__gm__ bfloat16_t *gm_dst, __gm__ int8_t *gm_src,
+    inline __aicore__ void DequantAndPadMatrixTransposeHasOffset(__gm__ half *gm_dst, __gm__ int8_t *gm_src,
             int32_t n_rows, int32_t n_cols, int32_t n_cols_aligned)
     {
         LoopIter it(this->batch_size, n_rows, n_cols, n_cols_aligned);
@@ -1945,22 +1949,22 @@ private:
                     WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                     for (int32_t block_col = 0; block_col < n_blocks_per_row_b16; ++block_col) {
                         int32_t block_col_idx = Block32B<half>::Count(it.n_cols_complete) + block_col;
-                        int32_t in_group_idx = block_col_idx % group_size;
+                        int32_t in_group_idx = block_col_idx % group_block;
                         if (in_group_idx == 0 || block_col_idx == 0) {
                             int32_t ub_quant_args_offset = block_col * Block32B<half>::size;
-                            int32_t group_idx = block_col_idx / group_size;
+                            int32_t group_idx = block_col_idx / group_block;
 
                             if (ub_quant_args_offset == ub_quant_args_root_offset && !is_after_mte2) {
                                 SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
                                 WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                             }
                             CopyGmToUbufAlign(ub_quant_scale + ub_quant_args_offset, scale + group_idx,
-                                    it.n_cols_this_loop, 1, group_num - 1, n_blocks_per_row_b16 - 1);
+                                    it.n_rows_this_loop, 1, group_num - 1, n_blocks_per_row_b16 - 1);
                             CopyGmToUbufAlign(ub_quant_offset + ub_quant_args_offset, offset + group_idx,
-                                    it.n_cols_this_loop, 1, group_num - 1, n_blocks_per_row_b16 - 1);
+                                    it.n_rows_this_loop, 1, group_num - 1, n_blocks_per_row_b16 - 1);
                             is_after_mte2 = true;
                             ub_quant_args_root_offset = ub_quant_args_offset;
-                        } else if (in_group_idx < max_rows_per_loop || it.n_rows_complete == 0) {
+                        } else if (in_group_idx < n_blocks_per_row_b16 || it.n_cols_complete == 0) {
                             int32_t ub_quant_args_offset = block_col * Block32B<half>::size;
 
                             if (is_after_mte2) {
@@ -1987,7 +1991,7 @@ private:
                     is_after_mte2 = false;
     
                     PipeBarrier<PIPE_V>();
-                    WaitFlag<HardEvent::V_MTE3>(EVENT_ID2);
+                    WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
                     Vmul(ub_output, ub_add, ub_quant_scale, repeat, 1, 1, 1, 8, 8, 8);
                     SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
                     SetFlag<HardEvent::V_MTE3>(EVENT_ID2);
