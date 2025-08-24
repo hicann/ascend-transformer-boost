@@ -2234,19 +2234,19 @@ private:
                         if (in_group_idx == 0 || it.n_rows_complete + row == 0) {
                             int32_t ub_quant_args_offset = row * n_blocks_per_row_b16 * Block32B<bfloat16_t>::size;
                             int32_t group_idx = row_idx / group_size;
-                            WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
+                            WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
                             CopyGmToUbufAlign(ub_quant_scale_origin + ub_quant_args_offset, scale + group_idx * n_cols,
                                     1, it.n_cols_this_loop, 0);
-                            SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
+                            SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
 
                             WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
                             Vconv(ub_quant_scale + ub_quant_args_offset,
                                     ub_quant_scale_origin + ub_quant_args_offset, quant_repeat_b32, 1, 1, 8, 4);
-                            SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
+                            SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
 
                             WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
                             CopyGmToUbufAlign(ub_quant_offset_origin + ub_quant_args_offset,
-                                    offset + group_idx * n_cols, it.n_cols_this_loop, 0);
+                                    offset + group_idx * n_cols, 1, it.n_cols_this_loop, 0);
                             SetFlag<HardEvent::MTE2_V>(EVENT_ID1);
 
                             WaitFlag<HardEvent::MTE2_V>(EVENT_ID1);
