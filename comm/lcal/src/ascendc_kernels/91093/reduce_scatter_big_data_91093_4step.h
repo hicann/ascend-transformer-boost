@@ -242,7 +242,7 @@ public:
                 sync.WaitInnerFlag(magic, count, rank, waitReadBlock[i]);
                 writeIpcQue[i].DeQue(waitWriteRank[i], waitWriteBlock[i]);
                 dstIpcGlobal = writeIpcQue[i].EnQue();
-                SioAtomicAddToIpc(count, processBlockNum, waitWriteRank[i], i);
+                SioAtomicAddToIpc(count, processBlockNum, waitWriteArr[i], i);
             }
             sync.SetInnerFlag(magic, count);
         }
