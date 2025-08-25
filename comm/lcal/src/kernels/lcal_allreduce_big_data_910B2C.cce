@@ -220,8 +220,8 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceBigData910B2C
             }
             AscendC::PipeBarrier<PIPE_ALL>();
             GM2GMPingPongNonPipeBarrier<T>(dataSizeRemain, inputUB, receiveBuff,
-                      buffOffsetNum + processedDataGroupCount * DMA_SIZE_PER_FLAG / sizeof(T),
-                      sendBuff, len + processedDataGroupCount * DMA_SIZE_PER_FLAG / sizeof(T));
+                     buffOffsetNum + processedDataGroupCount * DMA_SIZE_PER_FLAG / sizeof(T),
+                     sendBuff, len + processedDataGroupCount * DMA_SIZE_PER_FLAG / sizeof(T));
             processedDataGroupCount = preparedDataGroupCount;
         }
     }
@@ -270,7 +270,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceBigData910B2C
         case 1:
             sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
             receiveBuff = (__gm__ T*)((__gm__ int64_t*)buff[rank] + dataOffsetNum);
-            ctrlFlagGMSet = ((__gm__ int64_t*)buff[rank] + (GetBlockIdx()) * MEM_DMA_UNIT_INT_NUM);
+            ctrlFlagGMSet = ((__gm__ int64_t*)buff[rank] + GetBlockIdx() * MEM_DMA_UNIT_INT_NUM);
             break;
         case 2:
             sendBuff = (__gm__ T*)((__gm__ int64_t*)buff[x] + dataOffsetNum);
