@@ -101,6 +101,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
         x = (GetBlockIdx() - blockNumPerGroup) / corePerRank;
         flagOffset1st = (GetBlockIdx() - blockNumPerGroup) * MEM_DMA_UNIT_INT_NUM;
     }
+    int64_t flagOffset2nd = GetLcalBlockNum() * MEM_DMA_UNIT_INT_NUM + flagOffset1st;
 
     const int64_t singleNPUProcessDataNum = len / rankSize;
     int64_t thisNPUProcessDataNum = singleNPUProcessDataNum;
@@ -142,7 +143,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
         __gm__ int64_t* ctrlFlagsGMX = (__gm__ int64_t*)buff[x] + (coreSegmentedIdx + rank * corePerRank) * MEM_DMA_UNIT_INT_NUM;
 
         __gm__ T *receiveBuff = (__gm__ T*)((__gm__ int64_t *)buff[rank] + dataOffsetNum);
-        __gm__ T *sendBuff = (__gm__ T*)((__gm__ int64_t *)buff[x] + dataOffsetNum);
+        __gm__ T *sendBuff = (__gm__ T *)((__gm__ int64_t *)buff[x] + dataOffsetNum);
         int64_t revBuffOffsetNum = deterministicOffNum + x * thisNPUProcessDataNum + coreSegmentedIdx * thisNPUCoreGroupAvgDMADataNum;
         CheckFlag((__ubuf__ int64_t*)ctrlFlagsUB, ctrlFlagsGMX, magic);
         GM2GM(dataSizeRemain, inputUB[0], receiveBuff, revBuffOffsetNum, sendBuff, buffOffsetNum);
@@ -156,7 +157,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
         } else {
             SetFlag(ctrlFlagsUB, ctrlFlagsGM, ((x == 0) ? (magic + 1) : magic));
             if (x != 0) {
-                __gm__ int64_t* ctrlFlagsGMTemp = (__gm__ int64_t*)buff[rank] + (blockNumPerGroup + (x - 1) * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
+                __gm__ int64_t *ctrlFlagsGMTemp = (__gm__ int64_t*)buff[rank] + (blockNumPerGroup + (x - 1) * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
                 CheckFlag(ctrlFlagsUB, ctrlFlagsGMTemp, magic + 1);
                 buffOffsetNum = deterministicOffNum + x * thisNPUProcessDataNum + coreSegmentedIdx * thisNPUCoreGroupAvgDMADataNum;
                 __gm__ T *processOutput = (__gm__ T*)((__gm__ int64_t *)buff[rank] + dataOffsetNum);
