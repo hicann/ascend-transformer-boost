@@ -74,7 +74,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceBigData910B2C
                 dataSizeRemain = allDataSizeNeed2Add - *ctrlFlagsUB * DMA_SIZE_PER_FLAG;
             }
             ProcessDataNewNonBarrier(dataSizeRemain, inputUB, sendBuff, 0, buffOffsetNum + (*ctrlFlagsUB) * DMA_SIZE_PER_FLAG / sizeof(T),
-                             receiveBuff, buffOffsetNum + (*ctrlFlagsUB) * DMA_SIZE_PER_FLAG / sizeof(T), op);
+                           receiveBuff, buffOffsetNum + (*ctrlFlagsUB) * DMA_SIZE_PER_FLAG / sizeof(T), op);
             SetFlag(ctrlFlagsUB3, ctrlFlagGMSet, ((*ctrlFlagsUB1 & 0xfffffffffffffc00) | preparedDataGroupCount));
 
             *ctrlFlagsUB = preparedDataGroupCount;
