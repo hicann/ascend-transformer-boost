@@ -3233,9 +3233,10 @@ struct RingMLAParam {
     //! \brief 计算类型
     //!
     enum CalcType : int {
-        CALC_TYPE_DEFAULT = 0, // 默认，非首末卡场景，有prev_lse, prev_o传入，生成softmaxLse输出
-        CALC_TYPE_FISRT_RING,  // 首卡场景，无prev_lse, prev_o传入，生成softmaxLse输出
-        CALC_TYPE_MAX
+        CALC_TYPE_DEFAULT = 0,    // 默认，非首末卡场景，有prev_lse, prev_o传入，生成softmaxLse输出
+        CALC_TYPE_FIRST_RING = 1, // 首卡场景，无prev_lse, prev_o传入，生成softmaxLse输出
+        CALC_TYPE_FISRT_RING = 1, // 兼容
+        CALC_TYPE_MAX = 2
     };
     //!
     //! \enum KernelType
