@@ -85,6 +85,7 @@ extern "C" __global__ __aicore__ void LcalBroadcastWrite(ALLREDUCE_ARGS_FUN(char
         CheckFlag(ctrlFlagsUB, ((__gm__ int64_t*)buff[rank] + GetBlockIdx() * MEM_DMA_UNIT_INT_NUM), magic);
         __gm__ char *sendBuff = (__gm__ char*)((__gm__ int64_t*)buff[x] + GetLcalBlockNum() * MEM_DMA_UNIT_INT_NUM);
         __gm__ char *receiveBuff = (__gm__ char*)output;
+        GM2GMB8<char>(dataNumRemain, inputUB, receiveBuff, buffOffsetNum, sendBuff, buffOffsetNum);
         SetFlag(ctrlFlagsUB, (__gm__ int64_t *)buff[root] + (GetBlockIdx() + GetLcalBlockNum()) * MEM_DMA_UNIT_INT_NUM, magic);
     }
 }
