@@ -141,6 +141,8 @@ public:
         } else if (stepIndex == 1) {
             StepTwoProcess();
         } else if ((stepIndex == NUM_OF_TWO || stepIndex == NUM_OF_THREE) && ((blockIdx % NUM_OF_TWO) == 0)) {
+            StepThreeProcess();
+        } else if (blockIdx == (NUM_OF_FOUR * PER_STEP_BLOCKNUM)) {
             StepFourProcess();
         }
         DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
@@ -150,8 +152,10 @@ public:
     {
         for (int i = 0; i < stepOneRankPerCore; i++) {
             if ((blockIdx * stepOneOriginRankPerCore + i) % NUM_OF_TWO == rank % NUM_OF_TWO) {
-                waitWriteRankArr[i] = rank;
+                if ((blockIdx * stepOneOriginRankPerCore + i) == rank) {
+                    waitWriteRankArr[i] = rank;
                 waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * 4;
+                }
             } else {
                 waitWriteRankArr[i] = blockIdx * stepOneOriginRankPerCore + i;
                 waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) / 
