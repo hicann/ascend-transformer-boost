@@ -49,7 +49,7 @@ __attribute__((always_inline)) inline __aicore__ void SumByPairsBigData(
                     (blockNumPerGroup * 2 + (x + multipleTemp / 2) * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
             } else {
                 ctrlFlagsGMTemp1 = (__gm__ int64_t*)buff[rank] +
-                    (blockNumPerGroup * 2 + x * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
+                    (blockNumPerGroup + x * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
             }
 
         }
@@ -69,7 +69,7 @@ __attribute__((always_inline)) inline __aicore__ void SumByPairsBigData(
         CpGM2UB(ctrlFlagsUB1, ctrlFlagsGMTemp, sizeof(int64_t));
         CpGM2UB(ctrlFlagsUB2, ctrlFlagsGMTemp1, sizeof(int64_t));
         AscendC::PipeBarrier<PIPE_ALL>();
-        if ((*ctrlFlagsUB1 >> 10) != (magic >> 10)) || ((*ctrlFlagsUB2 >> 10) != (magic >> 10)) {
+        if ((*ctrlFlagsUB1 >> 10) != (magic >> 10) || (*ctrlFlagsUB2 >> 10) != (magic >> 10)) {
             continue;
         }
 
@@ -89,7 +89,7 @@ __attribute__((always_inline)) inline __aicore__ void SumByPairsBigData(
                           processOutput, outputOffsetNum + (*ctrlFlagsUB) * DMA_SIZE_PER_FLAG / sizeof(T), op);
         AscendC::PipeBarrier<PIPE_ALL>();
         *ctrlFlagsUB = preparedDataGroupCount;
-        CpUB2GM((__gm__ int64_t*) buff[rank] + GetBlockIdx() * MEM_DMA_UNIT_INT_NUM, ctrlFlagsUB1, sizeof(int64_t));
+        CpUB2GM((__gm__ int64_t *) buff[rank] + GetBlockIdx() * MEM_DMA_UNIT_INT_NUM, ctrlFlagsUB1, sizeof(int64_t));
         AscendC::PipeBarrier<PIPE_ALL>();
     }
 }
@@ -151,17 +151,17 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
                 break;
             }
 
-            CpGM2UB(ctrlFlagsUB1, ctrlFlagsGM, sizeof(int64_t));
+            CpGM2UB(ctrlFlagsUB1, ctrlFlagsGMX, sizeof(int64_t));
             AscendC::PipeBarrier<PIPE_ALL>();
             if ((*ctrlFlagsUB1 >> 10) != (magic >> 10)) {
                 continue;
             }
 
-            int64_t preparedDataGroupCount = (*ctrlFlagsUB1 & 0x3FF);
+            int64_t preparedDataGroupCount = *ctrlFlagsUB1 & 0x3FF;
             if (*ctrlFlagsUB >= preparedDataGroupCount) {
                 continue;
             }
-            
+
             buffOffsetNum = rank * singleNPUProcessDataNum + coreSegmentedIdx * thisNPUCoreGroupAvgDMADataNum;
             dataSizeRemain = (preparedDataGroupCount - *ctrlFlagsUB) * DMA_SIZE_PER_FLAG;
             if (preparedDataGroupCount * DMA_SIZE_PER_FLAG > allDataSizeNeed2Add) {
@@ -174,7 +174,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
             AscendC::PipeBarrier<PIPE_ALL>();
             *ctrlFlagsUB = preparedDataGroupCount;
             if (x == 0) {
-                CpUB2GM((__gm__ int64_t*) buff[rank] + (GetBlockIdx() + blockNumPerGroup) * MEM_DMA_UNIT_INT_NUM, ctrlFlagsUB1, sizeof(int64_t));
+                CpUB2GM((__gm__ int64_t *) buff[rank] + (GetBlockIdx() + blockNumPerGroup) * MEM_DMA_UNIT_INT_NUM, ctrlFlagsUB1, sizeof(int64_t));
             }
             CpUB2GM(ctrlFlagsGM, ctrlFlagsUB1, sizeof(int64_t));
             AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
@@ -189,10 +189,10 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
 
         if (rankSize >= 4) {
             AscendC::PipeBarrier<PIPE_ALL>();
-            SumByPairsBigData(ctrlFlagsUB, buff, x, blockNumPerGroup, corePerRank, coreSegmentedIdx, magic, deterministicOffNum, thisNPUProcessDataNum,
+            SumByPairsBigData(ctrlFlagsUB, ctrlFlagsUB1, ctrlFlagsUB2, buff, x, blockNumPerGroup, corePerRank, coreSegmentedIdx, magic, deterministicOffNum, thisNPUProcessDataNum,
                        thisNPUCoreGroupAvgDMADataNum, dataOffsetNum, dataSizeRemain, inputUB, op, rank, rankSize, allTimes, allDataSizeNeed2Add);
         } else {
-            __gm__ int64_t* ctrlFlagsGMPre = (__gm__ int64_t*)buff[rank] + (blockNumPerGroup * 2  + (x - 1) * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
+            __gm__ int64_t* ctrlFlagsGMPre = (__gm__ int64_t*)buff[rank] + (blockNumPerGroup * 2 + (x - 1) * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
             __gm__ int64_t* ctrlFlagsGM = (__gm__ int64_t*)buff[rank] + (blockNumPerGroup + x * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
             buffOffsetNum = deterministicOffNum + x * thisNPUProcessDataNum + coreSegmentedIdx * thisNPUCoreGroupAvgDMADataNum;
             __gm__ T *processOutput = (__gm__ T*)((__gm__ int64_t *)buff[rank] + dataOffsetNum);
@@ -206,7 +206,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
                 CpGM2UB(ctrlFlagsUB1, ctrlFlagsGMPre, sizeof(int64_t));
                 CpGM2UB(ctrlFlagsUB2, ctrlFlagsGM, sizeof(int64_t));
                 AscendC::PipeBarrier<PIPE_ALL>();
-                if ((*ctrlFlagsUB1 >> 10) != (magic >> 10) || if ((*ctrlFlagsUB2 >> 10) != (magic >> 10))) {
+                if ((*ctrlFlagsUB1 >> 10) != (magic >> 10) || (*ctrlFlagsUB2 >> 10) != (magic >> 10)) {
                     continue;
                 }
 
@@ -225,19 +225,19 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
                                   processOutput, outputOffsetNum + (*ctrlFlagsUB) * DMA_SIZE_PER_FLAG / sizeof(T), op);
                 AscendC::PipeBarrier<PIPE_ALL>();
                 *ctrlFlagsUB = preparedDataGroupCount;
-                CpUB2GM((__gm__ int64_t*) buff[rank] + GetBlockIdx() * MEM_DMA_UNIT_INT_NUM, ctrlFlagsUB1, sizeof(int64_t));
+                CpUB2GM((__gm__ int64_t *) buff[rank] + GetBlockIdx() * MEM_DMA_UNIT_INT_NUM, ctrlFlagsUB1, sizeof(int64_t));
                 AscendC::PipeBarrier<PIPE_ALL>();
             }
         }
-        SetFlag(ctrlFlagsUB, (__gm__ int64_t*)buff[rank] + (GetLcalBlockNum() + GetBlockIdx()) * MEM_DMA_UNIT_INT_NUM, magic);
+        SetFlag(ctrlFlagsUB, (__gm__ int64_t *)buff[rank] + (GetLcalBlockNum() + GetBlockIdx()) * MEM_DMA_UNIT_INT_NUM, magic);
         return;
     }
 
-    __gm__ int64_t* ctrlFlagsGM;
+    __gm__ int64_t* ctrlFlagsGMX;
     if (rankSize >= 4) {
         ctrlFlagsGMX = (__gm__ int64_t*)buff[x] +
             (GetLcalBlockNum() + 2 * blockNumPerGroup +
-                (rankSize > 4 ? 4 : 2) * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
+                (rankSize > 4 ? 4 : 2) * corePerRank + coreSegmentedIdx) *  MEM_DMA_UNIT_INT_NUM;
     } else {
         ctrlFlagsGMX = (__gm__ int64_t*)buff[x] +
             (GetLcalBlockNum() + 2 * blockNumPerGroup +
@@ -250,7 +250,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
         ctrlFlagsGMX = (__gm__ int64_t*)buff[x] + MEM_DMA_UNIT_INT_NUM *
             (GetLcalBlockNum() + sumPairGroup * blockNumPerGroup + lastFlagPos * corePerRank + coreSegmentedIdx);
     }
-    
+
     dataSizeRemain = xNPUCoreGroupAvgDMADataNum * sizeof(T);
     if (coreSegmentedIdx == corePerRank - 1) {
         dataSizeRemain = (xNPUProcessDataNum - coreSegmentedIdx * xNPUCoreGroupAvgDMADataNum) * sizeof(T);
@@ -263,7 +263,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
     int64_t revBuffOffsetNum = x * singleNPUProcessDataNum + buffOffsetNum;
     int64_t sendBuffOffsetNum = deterministicOffNum + buffOffsetNum;
 
-    GM2GMPingPong<T>(dataSizeRemain, inputUB[0], output, revBuffOffsetNum, sendBuff, sendBuffOffsetNum);
+    GM2GMPingPong<T>(dataSizeRemain, inputUB, output, revBuffOffsetNum, sendBuff, sendBuffOffsetNum);
     return;
 }
 
@@ -287,7 +287,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
     __ubuf__ int64_t* ctrlFlagsUB2 = (__ubuf__ int64_t*)(64);
     __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(96), (__ubuf__ T*)(97440)};
 
-    int64_t blockNumPerGroup = GetLcalBlockNum() >> 1;
+    int64_t blockNumPerGroup = GetLcalBlockNum() / 3;
     int64_t corePerRank = blockNumPerGroup / rankSize;
     int64_t coreSegmentedIdx = GetBlockIdx() % corePerRank;
 
@@ -305,20 +305,20 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
     DumpLcclLogInfo(dumpAddr, LogId::INIT, static_cast<Op>(op));
 
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
-    int64_t ipcDeterministicBuffMaxNum = ipcBuffMaxNum / corePerRank;
-    int64_t loopTimes = CeilDiv(len, ipcDeterministicBuffMaxNum);
+    int64_t ipcBuffDeterministicMaxNum = ipcBuffMaxNum / corePerRank;
+    int64_t loopTimes = CeilDiv(len, ipcBuffDeterministicMaxNum);
     for (int64_t i = 0; i < loopTimes; i++) {
         *ctrlFlagsUB = 0;
         *ctrlFlagsUB1 = 0;
         *ctrlFlagsUB2 = 0;
         AscendC::PipeBarrier<PIPE_ALL>();
 
-        int64_t processedNum = i * ipcDeterministicBuffMaxNum;
-        int64_t remainNum = (len - processedNum < ipcDeterministicBuffMaxNum) ? len - processedNum : ipcDeterministicBuffMaxNum;
+        int64_t processedNum = i * ipcBuffDeterministicMaxNum;
+        int64_t remainNum = (len - processedNum < ipcBuffDeterministicMaxNum) ? len - processedNum : ipcBuffDeterministicMaxNum;
 
-        PostSyncBigData<T>(ctrlFlagsUB, buff, x, rank, rankSize, dataOffsetNum, ipcBuffMaxNum, magic, i);
+        PostSyncBigData<T>(ctrlFlagsUB, buff, rank, rankSize, dataOffsetNum, ipcBuffMaxNum, magic, i);
         LcalAllReduceDeterministicBigDataOrigin<T>(
-            buff, input + processedNum, output + processedNum, blockNumPerGroup, rank, rankSize, remainNum, (maigc + i) << 10, ctrlFlagsUB, ctrlFlagsUB1,
+            buff, input + processedNum, output + processedNum, blockNumPerGroup, rank, rankSize, remainNum, (magic + i) << 10, ctrlFlagsUB, ctrlFlagsUB1,
             ctrlFlagsUB2, inputUB, dataOffsetNum, flagOffset1st, flagOffset2nd, x, corePerRank, coreSegmentedIdx, op);
     }
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
