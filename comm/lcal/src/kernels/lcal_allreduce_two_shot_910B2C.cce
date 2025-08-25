@@ -18,6 +18,8 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceTwoShot910B2C
     const int64_t singleNodeRankSize = rankSize >> 1;
     const int64_t localNodeRankId = rank >= singleNodeRankSize ? rank - singleNodeRankSize : rank;
 
+    const int64_t peerRankId = rank < singleNodeRankSize ? rank + singleNodeRankSize : rank - singleNodeRankSize;
+
     const int64_t dataOffsetNum = GetLcalBlockNum() * 2 * MEM_DMA_UNIT_INT_NUM;
     const int64_t flagOffset1st = MEM_DMA_UNIT_INT_NUM * GetBlockIdx();
     const int64_t flagOffset2nd = MEM_DMA_UNIT_INT_NUM * GetLcalBlockNum() + flagOffset1st;
