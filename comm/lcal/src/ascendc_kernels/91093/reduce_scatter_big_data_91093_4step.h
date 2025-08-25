@@ -154,21 +154,20 @@ public:
             if ((blockIdx * stepOneOriginRankPerCore + i) % NUM_OF_TWO == rank % NUM_OF_TWO) {
                 if ((blockIdx * stepOneOriginRankPerCore + i) == rank) {
                     waitWriteRankArr[i] = rank;
-                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * 4;
+                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * 4;   
+                } else {
+                    waitWriteRankArr[i] = blockIdx * stepOneOriginRankPerCore + i;
+                    waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) / 
+                            stepThreeeOriginRankPerCore) * NUM_OF_TWO;
                 }
             } else {
-                waitWriteRankArr[i] = blockIdx * stepOneOriginRankPerCore + i;
-                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) / 
-                        stepThreeeOriginRankPerCore) * NUM_OF_TWO;
+                waitWriteRankArr[i] = adjPeerRank;
+                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM + ((blockIdx * stepOneOriginRankPerCore + i) / 
+                        NUM_OF_TWO) / stepTwoOriginRankPerCore;
             }
-        } else {
-            waitWriteRankArr[i] = adjPeerRank;
-            waitWriteBlockArr[i] = PER_STEP_BLOCKNUM + ((blockIdx * stepOneOriginRankPerCore + i) / 
-                    NUM_OF_TWO) / stepTwoOriginRankPerCore;
         }
         InputToIpcProcess(waitWriteRankArr, waitWriteBlockArr, stepOneRankPerCore);
     }
-
     __aicore__ inline void StepTwoProcess()
     {
         int waitReadRank;
@@ -184,7 +183,7 @@ public:
             } else {
                 waitWriteRankArr[i] = processRank;
                 waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) /
-                    stepThreeeOriginRankPerCore) * NUM_OF_TWO;
+                    stepThreeOriginRankPerCore) * NUM_OF_TWO;
             }
         }
         SioAtomicToIpcProcess(waitReadRankArr, waitReadBlockArr, waitWriteRankArr,
@@ -229,7 +228,7 @@ public:
         }
     }
 
-    __aicore__ inline void SioAtomicToIpcProcess(int *waitReadRank, int *waitReadRank,int *waitWriteBlock, 
+    __aicore__ inline void SioAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,int *waitWriteRank, 
                                                 int *waitWriteBlock, int waitCount)
     {
         int processBlockNum = ipcBlockNum;
@@ -249,7 +248,7 @@ public:
         }
     }
 
-    __aicore__ inline void HccsAtomicToIpcProcess(int *waitReadRank, int *waitReadRank,int *waitWriteBlock, 
+    __aicore__ inline void HccsAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,int *waitWriteRank, 
                                                 int *waitWriteBlock, int waitCount)
     {
         int processBlockNum = ipcBlockNum;
@@ -269,7 +268,7 @@ public:
         }
     }
 
-    __aicore__ inline void IpcToOutputProcess(int *waitReadRank, int *waitReadRank, int waitCount)
+    __aicore__ inline void IpcToOutputProcess(int *waitReadRank, int *waitReadBlock, int waitCount)
     {
         int processBlockNum = ipcBlockNum;
         for (int count = 0; count < waitCount; count++) {
