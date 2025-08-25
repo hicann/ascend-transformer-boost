@@ -33,7 +33,7 @@ public:
         this->rowFactor = rowFactor_;
         this->ubFactor = ubFactor_;
         this->epsilon = epsilon_;
-        this->avgFactor = (float)1.0 / numCol;
+        this->avgFactor = (numCol == 0) ? 0.0f : 1.0f / numCol;
 
         if (GetBlockIdx() < GetBlockNum() - 1) {
             this->row_work = blockFactor;
