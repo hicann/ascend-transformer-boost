@@ -65,7 +65,6 @@ __attribute__((always_inline)) inline __aicore__ void SumByPairsBigData(
             break;
         }
 
-        
         CpGM2UB(ctrlFlagsUB1, ctrlFlagsGMTemp, sizeof(int64_t));
         CpGM2UB(ctrlFlagsUB2, ctrlFlagsGMTemp1, sizeof(int64_t));
         AscendC::PipeBarrier<PIPE_ALL>();
