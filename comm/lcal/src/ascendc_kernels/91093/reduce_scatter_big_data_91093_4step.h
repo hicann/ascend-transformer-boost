@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef LCCL_REDUCE_SCATTER_BIG_DATA_91093_4STEP_H
-#define LCCL_REDUCE_SCATTER_BIG_DATA_91093_4STEP_H
+#ifndef LCCL_REDUCE_SCATTER_BIG_DATA_91093_H
+#define LCCL_REDUCE_SCATTER_BIG_DATA_91093_H
 
 #include "sync_collectives.h"
 #include "collectives.h"
@@ -22,14 +22,14 @@ constexpr int NUM_OF_THREE = 3;
 constexpr int NUM_OF_FOUR = 4;
 
 template<typename T>
-class ReduceScatterBigData91093_4step : protected Collectives {
+class ReduceScatterBigData91093 : protected Collectives {
 public:
     __aicore__ inline ReduceScatterBigData91093(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
     __aicore__ inline void Init(KERNELS_ARGS_FUN())
     {
         Collectives::Init(KERNELS_ARGS_CALL());
-        DumpLcclInfo(LogId::INIT, static_cast<Op>(op));
+        DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
         constexpr int IPC_QUEUE_DEPTH_91093 = NUM_OF_FOUR;
         atomOp = op;
         relaBlockIdx = blockIdx % PER_STEP_BLOCKNUM;
@@ -124,7 +124,7 @@ public:
         DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
         int stepIndex = blockIdx / PER_STEP_BLOCKNUM;
         if (stepIndex == 0 && ((relaBlockIdx * stepOneOriginRankPerCore) >= rankSize)) {
-            DumpLcclLogInfo(Log::PROCESS, static_cast<Op>(atomOp));
+            DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
             return;
         }
         if (stepIndex == 1 && ((relaBlockIdx * stepTwoOriginRankPerCore) >= (rankSize / NUM_OF_TWO))) {
@@ -316,23 +316,23 @@ private:
     __aicore__ inline void HccsAtomicAddToIpc(int num, int processBlockNum, int waitRank, int i)
     {
         if (waitRank != rank) {
-            CpGM2GMPingPong(processBlockNum * sizeof(T), srcIpcGlobal, dstIpcGlobal, atomOp);
+            CpGM2GMPingPong<T>(processBlockNum * sizeof(T), srcIpcGlobal, dstIpcGlobal, atomOp);
         }
     }
 
-    __aicore__ inline void CpInputToIpc(int num, int processBlockNum, GLobalTensor<T> inputTensor)
+    __aicore__ inline void CpInputToIpc(int num, int processBlockNum, GlobalTensor<T> inputTensor)
     {
         CpGM2GMPingPong<T>(processBlockNum * sizeof(T), inputTensor[num * ipcBlockNum], dstIpcGlobal, -1);
     }
 
     __aicore__ inline void SioAtomicAddToIpc(int num, int processBlockNum, int procedssRank, int i)
     {
-        CpGM2GMPingPong(processBlockNum * sizeof(T), srcIpcGlobal, dstIpcGlobal, atomOp);
+        CpGM2GMPingPong<T>(processBlockNum * sizeof(T), srcIpcGlobal, dstIpcGlobal, atomOp);
     }
 
-    __aicore__ inline void CpInputToIpc(int num, int processBlockNum)
+    __aicore__ inline void CpIpcToOutput(int num, int processBlockNum)
     {
-        CpGM2GMPingPong(processBlockNum * sizeof(T), srcIpcGlobal, dstOutputGlobal[num * ipcBlockNum], -1);
+        CpGM2GMPingPong<T>(processBlockNum * sizeof(T), srcIpcGlobal, dstOutputGlobal[num * ipcBlockNum], -1);
     }
 };
 #endif // LCCL_REDUCE_SCATTER_BIG_DATA_91093_H
