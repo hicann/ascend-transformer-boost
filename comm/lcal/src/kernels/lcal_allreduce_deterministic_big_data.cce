@@ -305,7 +305,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceDeterministic
     DumpLcclLogInfo(dumpAddr, LogId::INIT, static_cast<Op>(op));
 
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
-    int64_t ipcBuffDeterministicMaxNum = ipcBuffMaxNum / corePerRank;
+    int64_t ipcBuffDeterministicMaxNum = DETERMINISTIC_BUFF_SIZE / sizeof(T);
     int64_t loopTimes = CeilDiv(len, ipcBuffDeterministicMaxNum);
     for (int64_t i = 0; i < loopTimes; i++) {
         *ctrlFlagsUB = 0;
