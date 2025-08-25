@@ -85,7 +85,7 @@ public:
         for (curLoopCnt = 0; curLoopCnt < loopCount; ++curLoopCnt) {
             for (sioLayerLoop = 0; sioLayerLoop < ringRankSize; ++sioLayerLoop) {
                 if (blockIdx < INPUT_CORE_NUM) {
-                    Input2Ipc()
+                    Input2Ipc();
                 } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM) {
                     SioReduce();
                 } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM + RING_CORE_NUM) {
@@ -95,18 +95,19 @@ public:
                 }
                 ++ipcQueIdx;
             }
-        }
-        for (sioLayerLoop = 0; sioLayerLoop < ringRankSize; ++sioLayerLoop) {
-            if (blockIdx < INPUT_CORE_NUM) {
-                ;
-            } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM) {
-                SioGather();
-            } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM + RING_CORE_NUM) {
-                RingGather();
-            } else {
-                Ipc2Output();
+        
+            for (sioLayerLoop = 0; sioLayerLoop < ringRankSize; ++sioLayerLoop) {
+                if (blockIdx < INPUT_CORE_NUM) {
+                    ;
+                } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM) {
+                    SioGather();
+                } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM + RING_CORE_NUM) {
+                    RingGather();
+                } else {
+                    Ipc2Output();
+                }
+                ++gatherQueIdx;
             }
-            ++gatherQueIdx;
         }
         DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
     }
