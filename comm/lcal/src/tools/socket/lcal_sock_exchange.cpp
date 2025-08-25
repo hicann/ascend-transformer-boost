@@ -188,7 +188,7 @@ int LcalSockExchange::Listen()
         MKI_LOG(ERROR) << "Server side listen " << ntohs(lcalCommId_.handle.addr.sin.sin_port) << " failed";
         return LCAL_ERROR_INTERNAL;
     }
-    MKI_LOG(INFO) << "The server is listening! ip: " << inet_ntoa(lcalCommId_.handle.addr.sin.sin_addr)
+    MKI_LOG(INFO) << "The server is listening! ip: "<< inet_ntoa(lcalCommId_.handle.addr.sin.sin_addr)
         << " port: " <<  ntohs(lcalCommId_.handle.addr.sin.sin_port);
 
     return LCAL_SUCCESS;
