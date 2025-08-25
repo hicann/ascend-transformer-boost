@@ -18,12 +18,13 @@ using namespace AscendC;
 template<typename T>
 class AllReduceHierarchyDoubleRing : protected Collectives {
     constexpr static int32_t RING_LAYER_NUM = 2;
+    constexpr static int32_t INPUT_CORE_NUM = 4;
     constexpr static int32_t SIO_CORE_NUM = 12;
     constexpr static int32_t RING_CORE_NUM = 12;
     constexpr static int32_t OUTPUT_CORE_NUM = 6;
     constexpr static int32_t IPC_QUE_DEPTH = 32;
-    constexpr static int32_t RING_GATHER_QUE_DEPTH = 2;
-    constexpr static int32_t SIO_GATHER_QUE_GATHER = 2;
+    constexpr static int32_t RING_GATHER_QUE_DEPTH = 3;
+    constexpr static int32_t SIO_GATHER_QUE_DEPTH = 2;
     constexpr static int32_t INPUT_FLAG = 0 * RING_CORE_NUM;
     constexpr static int32_t SIO_REDUCE_FLAG = 1 * RING_CORE_NUM;
     constexpr static int32_t RING_REDUCE_FLAG = 2 * RING_CORE_NUM;
@@ -39,10 +40,10 @@ class AllReduceHierarchyDoubleRing : protected Collectives {
     constexpr static int32_t INPUT_CORE_SCALE = RING_CORE_NUM / INPUT_CORE_NUM;
     constexpr static int32_t SIO_CORE_SCALE = RING_CORE_NUM / SIO_CORE_NUM;
     constexpr static int32_t OUTPUT_CORE_SCALE = RING_CORE_NUM / OUTPUT_CORE_NUM;
-    constexpr static int32_t BLOCK_NUM_ALIGN = BLOCK_SIZE / sizeof(T);
+    constexpr static int64_t BLOCK_NUM_ALIGN = BLOCK_SIZE / sizeof(T);
 
 public:
-    FORCE_INLINE_AICORE AllReduceHierarchyDoubleRIng(int rank, int rankSize, uint32_t extraFlag)
+    FORCE_INLINE_AICORE AllReduceHierarchyDoubleRing(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
     FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN())
     {
@@ -62,7 +63,7 @@ public:
         sioPeerRankId = sioLayerId * RING_LAYER_NUM + (ringLayerId + 1) % RING_LAYER_NUM;
         ipcBlockNum = IPC_BUFF_MAX_SIZE / (IPC_QUE_DEPTH + RING_GATHER_QUE_DEPTH + SIO_GATHER_QUE_DEPTH) / sizeof(T);
         dmaPerLoop = ipcBlockNum - rankSize;
-        loopCount = CeilDiv(len, rankSize * damPerLoop);
+        loopCount = CeilDiv(len, rankSize * dmaPerLoop);
         const int64_t sumDataLastLoop = len - (loopCount - 1) * rankSize * dmaPerLoop;
         dmaLastLoop = sumDataLastLoop / rankSize;
         dmaLastRankLoop = sumDataLastLoop - (rankSize - 1) * dmaLastLoop;
@@ -80,6 +81,7 @@ public:
         if (blockIdx >= blockNum) {
             DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
             return;
+        }
         for (curLoopCnt = 0; curLoopCnt < loopCount; ++curLoopCnt) {
             for (sioLayerLoop = 0; sioLayerLoop < ringRankSize; ++sioLayerLoop) {
                 if (blockIdx < INPUT_CORE_NUM) {
@@ -116,11 +118,13 @@ private:
     IpcQueue<T> sioGatherDstQueList[SIO_CORE_SCALE];
     IpcQueue<T> ringSrcQue;
     IpcQueue<T> ringDstQue;
+    IpcQueue<T> ringGatherSrcQue;
+    IpcQueue<T> ringGatherDstQue;
     IpcQueue<T> outputSrc1QueList[OUTPUT_CORE_SCALE];
     IpcQueue<T> outputSrc2QueList[OUTPUT_CORE_SCALE];
     IpcQueue<T> outputSrc3QueList[OUTPUT_CORE_SCALE];
 
-    IpcQueue<T> *intputQue = nullptr;
+    IpcQueue<T> *inputQue = nullptr;
     IpcQueue<T> *sioQue = nullptr;
     IpcQueue<T> *sioGatherSrc1Que = nullptr;
     IpcQueue<T> *sioGatherSrc2Que = nullptr;
@@ -144,12 +148,12 @@ private:
     int64_t totalBlockDataNum = 0;
     int64_t dmaPerLoop = 0;
     int64_t dmaLastLoop = 0;
-
+    int64_t dmaLastRankLoop = 0;
     int32_t ipcQueIdx = 0;
     int32_t gatherQueIdx = 0; 
-    int64_t loopCount = 0;
-    int64_t curLoopCnt = 0;
-    int64_t sioLayerLoop = 0;
+    int32_t loopCount = 0;
+    int32_t curLoopCnt = 0;
+    int32_t sioLayerLoop = 0;
     int64_t coreDataNum = 0;
     int64_t lastCoreDataNum = 0;
     int64_t curCoreDataNum = 0;
@@ -171,12 +175,12 @@ private:
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
                 sioGatherSrc1QueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
-                sioGatherSrc2QueList[blockLoop].Init(&sync, magic, shareAddrs[rankId] + IPC_DATA_OFFSET +
+                sioGatherSrc2QueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx,
                     ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
                 sioGatherDstQueList[blockLoop].Init(&sync, magic, shareAddrs[sioPeerRankId] + IPC_DATA_OFFSET +
                     (IPC_QUE_DEPTH + RING_GATHER_QUE_DEPTH) * ipcBlockSize + dmaSizePerCore * localBlockIdx, 
-                    ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
+                    ipcBlockNum * SIO_GATHER_QUE_DEPTH, ipcBlockNum);
             }
         } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM + RING_CORE_NUM) {
             localBlockIdx = (blockIdx - (INPUT_CORE_NUM + SIO_CORE_NUM));
@@ -184,9 +188,6 @@ private:
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
             ringDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
-            ringGatherSrcQue.Init(&sync, magic, shareAddrs[rankPrevRankId] + IPC_DATA_OFFSET +
-                    IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx,
-                    ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
             ringGatherDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx, 
                     ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
