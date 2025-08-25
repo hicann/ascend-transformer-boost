@@ -251,7 +251,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAllReduceBigData910B2C
     const int64_t coreGroupIdx = GetBlockIdx() / singleNodeRankSize;
 
     const int64_t peerRankId = rank < singleNodeRankSize ?  rank + singleNodeRankSize : rank - singleNodeRankSize;
-    
+
     const int64_t dataOffsetNum = GetLcalBlockNum() * 2 * MEM_DMA_UNIT_INT_NUM;
 
     const int64_t x =  (rank < singleNodeRankSize) ? (GetBlockIdx() % singleNodeRankSize) :
