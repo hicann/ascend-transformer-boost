@@ -61,7 +61,7 @@ __attribute__((always_inline)) inline __aicore__ void SumByPairs(
             ctrlFlagsGMTemp1 = (__gm__ int64_t*)buff[rank] + (GetLcalBlockNum() + blockNumPerGroup + (x + multipleTemp / 2) * corePerRank + coreSegmentedIdx) * MEM_DMA_UNIT_INT_NUM;
             CheckFlag(ctrlFlagsUB, ctrlFlagsGMTemp1, magic + multipleTemp / 2);
         }
-        
+
         buffOffsetNum = deterministicOffNum + x * thisNPUProcessDataNum + coreSegmentedIdx * thisNPUCoreGroupAvgDMADataNum;
         __gm__ T *processOutput = (__gm__ T*)((__gm__ int64_t *)buff[rank] + dataOffsetNum);
         int64_t outputOffsetNum = deterministicOffNum + target * thisNPUProcessDataNum + coreSegmentedIdx * thisNPUCoreGroupAvgDMADataNum;
