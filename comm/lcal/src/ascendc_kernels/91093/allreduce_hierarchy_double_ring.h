@@ -227,7 +227,7 @@ private:
 
         (*inputQue).DeQue(rank, RING_REDUCE_PEER_FLAG + localBlockIdx);
         const int32_t consumedQueIdx = ipcQueIdx - (IPC_QUE_DEPTH + ringRankSize - 1);
-        if (consumedQueIdx >- 0 && consumedQueIdx % ringRankSize == 0) {
+        if (consumedQueIdx >= 0 && consumedQueIdx % ringRankSize == 0) {
             sync.WaitSyncFlag(magic, consumedQueIdx, OUTPUT_FLAG + localBlockIdx, rank);
             sync.WaitSyncFlag(magic, consumedQueIdx, RING_GATHER_PEER_FLAG + localBlockIdx, rank);
         }
@@ -304,14 +304,14 @@ private:
         
         sync.WaitSyncFlag(magic, gatherQueIdx, RING_GATHER_FLAG + localBlockIdx, rank);
         if (gatherQueIdx >= SIO_GATHER_QUE_DEPTH) {
-            sync.WaitSyncFlag(magic, gatherQueIdx - SIO_GATHER_OUTPUT_QUE_DEPTH, SIO_GATHER_FLAG + localBlockIdx, rank);
+            sync.WaitSyncFlag(magic, gatherQueIdx - SIO_GATHER_QUE_DEPTH, SIO_GATHER_OUTPUT_FLAG + localBlockIdx, rank);
         }
         BuildCoreDataNum(curLoopCnt, targetRankOffset);
-        srcIpcTensor = (*sioGatherSrc1Que).DeQue();
+        srcIpcTensor = (sioLayerLoop == 0 ? (*sioGatherSrc1Que).ReadFront() : (*sioGatherSrc2Que).ReadFront());
         dstIpcTensor = (*sioGatherDstQue).ReadFront();
-        CpGMPingPong2GM(curCoreDataNum * sizeof(T), srcIpcTensor, dstIpcTensor, COPYONLY);
-        sync.SetSyncFlag(magic, gatherQueIdx, SIO_GATHER_QUE_DEPTH + localBlockIdx, sioPeerRankId);
-        sync.SetSyncFlag(magic, gatherQueIdx, SIO_GATHER_FLAG + localBlockIdx, sioPeerRankId);
+        CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcIpcTensor, dstIpcTensor, COPYONLY);
+        sync.SetSyncFlag(magic, gatherQueIdx, SIO_GATHER_PEER_FLAG + localBlockIdx, sioPeerRankId);
+        sync.SetSyncFlag(magic, gatherQueIdx, SIO_GATHER_FLAG + localBlockIdx, rank);
     }
 
     FORCE_INLINE_AICORE void RingReduce()
@@ -321,8 +321,8 @@ private:
             return;
         }
 
-        const int32_t consumeQueIdx = ipcQueIdx - 1;
-        sync.WaitSyncFlag(magic, consumeQueIdx + 1, SIO_REDUCE_FLAG + localBlockIdx, rank);
+        const int32_t consumedQueIdx = ipcQueIdx - 1;
+        sync.WaitSyncFlag(magic, consumedQueIdx + 1, SIO_REDUCE_FLAG + localBlockIdx, rank);
         if (sioLayerLoop == 1) {
             sync.WaitSyncFlag(magic, consumedQueIdx, SIO_REDUCE_FLAG + localBlockIdx, ringPrevRankId);
         } else {
@@ -343,13 +343,13 @@ private:
     {
         if (sioLayerLoop == 0) {
             sync.SetSyncFlag(magic, gatherQueIdx, RING_GATHER_FLAG + localBlockIdx, rank);
-            sync.SetSyncFlag(magic, gatherQueIdx, RING_GATHER_PEER_FLAG + localBlockIdx, rank);
+            sync.SetSyncFlag(magic, gatherQueIdx, RING_GATHER_PEER_FLAG + localBlockIdx, ringPrevRankId);
             return;
         }
 
-        const int32_t targetSioLayerId = (sioLayerId + (ringRankSize - sioLayerloop)) % ringRankSize;
+        const int32_t targetSioLayerId = (sioLayerId + (ringRankSize - sioLayerLoop)) % ringRankSize;
         const int32_t targetRankOffset = targetSioLayerId * RING_LAYER_NUM + ringLayerId;
-        sync.WaitSyncFlag(magic, gatherQueIdx - 1, SIO_GATHER_FLAG + localBlockIdx, ringPrevRankId);
+        sync.WaitSyncFlag(magic, gatherQueIdx - 1, RING_GATHER_FLAG + localBlockIdx, ringPrevRankId);
         if (gatherQueIdx > RING_GATHER_QUE_DEPTH) {
             sync.WaitSyncFlag(magic, gatherQueIdx - RING_GATHER_QUE_DEPTH, OUTPUT_FLAG + localBlockIdx, rank);
             if (targetRankOffset != ringPrevRankId) {
@@ -364,18 +364,18 @@ private:
         } else {
             srcIpcTensor = ringGatherSrcQue.ReadFront();
         }
-        dstipcTensor = ringGatherDstQue.ReadFront();
+        dstIpcTensor = ringGatherDstQue.ReadFront();
         CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcIpcTensor, dstIpcTensor, COPYONLY);
-        sync.SetSyncFlag(magic, gatehrQueIdx, RING_GATHER_FLAG + localBlockIdx, rank);
+        sync.SetSyncFlag(magic, gatherQueIdx, RING_GATHER_FLAG + localBlockIdx, rank);
         if (gatherQueIdx > 0) {
-            sync.SetSyncFlag(magic, gatherQueIdx - 1, RING_GATHER_PEER_FLAG + localBlockIdx, rank);
+            sync.SetSyncFlag(magic, gatherQueIdx - 1, RING_GATHER_PEER_FLAG + localBlockIdx, ringPrevRankId);
         }
         if (sioLayerLoop == ringRankSize - 1) {
             ringGatherSrcQue.ReadFront();
         }
     }
 
-    FORCE_INLINE_AICORE coid PrepareOutput()
+    FORCE_INLINE_AICORE void PrepareOutput()
     {
         for (int32_t blockLoop = 0; blockLoop < OUTPUT_CORE_SCALE; ++blockLoop) {
             localBlockIdx = (blockIdx - (INPUT_CORE_NUM + SIO_CORE_NUM + RING_CORE_NUM)) * OUTPUT_CORE_SCALE +
@@ -392,8 +392,8 @@ private:
             localBlockIdx = (blockIdx - (INPUT_CORE_NUM + SIO_CORE_NUM + RING_CORE_NUM)) * OUTPUT_CORE_SCALE +
                     blockLoop;
             outputSrc1Que = &(outputSrc1QueList[blockLoop]);
-            outputSrc2Que = &(outputSrc1QueList[blockLoop]);
-            outputSrc3Que = &(outputSrc1QueList[blockLoop]);
+            outputSrc2Que = &(outputSrc2QueList[blockLoop]);
+            outputSrc3Que = &(outputSrc3QueList[blockLoop]);
             Ipc2OutputByCore();
         }
     }
