@@ -26,12 +26,11 @@ const int32_t NUM6 = 6;
 const int32_t NUM8 = 8;
 const int32_t NUM16 = 16;
 const int32_t NUM32 = 32;
-const int32_t ROPE_DIM = 64;
+const int32_t NUM64 = 64;
 const int32_t NUM256 = 256;
 const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
 const float SPLITKV_SEQLEN = 2048;
-const uint32_t BLOCK_WORKSPACE_SIZE = 32768;
 
 int32_t CalcSplitNum(MLAInfo &mmInfo, int32_t blockDim, int32_t minKVSeqlen, int32_t blockSize)
 {
@@ -194,7 +193,6 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     Status ret1 = GetMLAInfo(launchParam, mmInfo, param, blockDim);
-    OP_TILING_CHECK_STATUS_RETURN(ret1);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     Status ret = GetMLATilingParam(launchParam, mmInfo, blockDim, tilingParam, tilingSize);
@@ -321,7 +319,7 @@ void MLAPrefillFillInfo(MLAInfo &mmInfo, OpParam::MLA &param, int32_t batch, int
     mmInfo.batch = batch;
     mmInfo.numHeads = param.headSize;
     mmInfo.embeddingSize = embed;
-    mmInfo.embeddingSizeV = embed - ROPE_DIM;
+    mmInfo.embeddingSizeV = embed - NUM64;
     mmInfo.qSeqLen = param.qSeqLen.data();
     mmInfo.kvSeqLen = param.kvSeqLen.data();
     mmInfo.tor = param.tor;
@@ -400,7 +398,7 @@ Status MLAPrefillTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     ret = GenMlaPrefillTilingKey(mmInfo, kernelInfo, param);
     OP_TILING_CHECK_STATUS_RETURN(ret);
     uint64_t dataLenFloat = sizeof(float);
-    uint64_t sSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(BLOCK_WORKSPACE_SIZE) * NUM16 * dataLenFloat;
+    uint64_t sSize = static_cast<uint64_t>(blockDim) * static_cast<uint64_t>(32768) * 16 * dataLenFloat;
     kernelInfo.GetScratchSizes() = {sSize, sSize, sSize, sSize * 2}; // oTmp/S/P
     kernelInfo.SetBlockDim(blockDim);
     return Status::OkStatus();
