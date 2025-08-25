@@ -110,7 +110,11 @@ Status LayerNormStrideTiling(const LaunchParam &launchParam, KernelInfo &kernelI
                                 layerNormPtrCon.numCol;
         MKI_CHECK(layerNormPtrCon.numCol <= (UINT_MAX / FP16_OTHER_USED),
                   "sumData is invalid!", return Status::FailStatus(ERROR_INVALID_VALUE, "sumData is invalid!"));
-        int32_t sumData = layerNormPtrCon.maxEleFp16 - NUM_TEMP_BUF -
+        MKI_CHECK(layerNormPtrCon.maxEleFp16 > NUM_TEMP_BUF +
+                  static_cast<uint32_t>(FP16_OTHER_USED) * layerNormPtrCon.numCol +
+                  SCALAR_USED, "sumData is invalid!",
+                  return Status::FailStatus(ERROR_INVALID_VALUE, "sumData is invalid!"));
+        uint32_t sumData = layerNormPtrCon.maxEleFp16 - NUM_TEMP_BUF -
                            static_cast<uint32_t>(FP16_OTHER_USED) * layerNormPtrCon.numCol - SCALAR_USED;
         ret = CheckSplit(tilingDataPtr, totalMemNeed, sumData, layerNormPtrCon);
         OP_TILING_CHECK_STATUS_RETURN(ret);
