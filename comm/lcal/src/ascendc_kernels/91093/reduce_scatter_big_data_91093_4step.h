@@ -158,7 +158,7 @@ public:
                 } else {
                     waitWriteRankArr[i] = blockIdx * stepOneOriginRankPerCore + i;
                     waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) / 
-                            stepThreeeOriginRankPerCore) * NUM_OF_TWO;
+                            stepThreeOriginRankPerCore) * NUM_OF_TWO;
                 }
             } else {
                 waitWriteRankArr[i] = adjPeerRank;
@@ -179,7 +179,7 @@ public:
             waitReadBlockArr[i] = processRank / stepOneOriginRankPerCore;
             if (processRank == rank) {
                 waitWriteRankArr[i] = rank;
-                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO;
+                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_FOUR;
             } else {
                 waitWriteRankArr[i] = processRank;
                 waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) /
@@ -196,7 +196,7 @@ public:
             waitReadRankArr[i] = (((blockIdx - PER_STEP_BLOCKNUM * NUM_OF_TWO) / NUM_OF_TWO) *
                     stepThreeOriginRankPerCore + i) * NUM_OF_TWO + (rank % NUM_OF_TWO);
             waitReadBlockArr[i] = PER_STEP_BLOCKNUM + (rank / NUM_OF_TWO) / stepTwoOriginRankPerCore;
-            waitWriteBlockArr[i] = rank;
+            waitWriteRankArr[i] = rank;
             waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_FOUR;
         }
         HccsAtomicToIpcProcess(waitReadRankArr, waitReadBlockArr, waitWriteRankArr,
@@ -242,7 +242,7 @@ public:
                 sync.WaitInnerFlag(magic, count, rank, waitReadBlock[i]);
                 writeIpcQue[i].DeQue(waitWriteRank[i], waitWriteBlock[i]);
                 dstIpcGlobal = writeIpcQue[i].EnQue();
-                SioAtomicAddToIpc(count, processBlockNum, waitReadRank[i], i);
+                SioAtomicAddToIpc(count, processBlockNum, waitWriteRank[i], i);
             }
             sync.SetInnerFlag(magic, count);
         }
@@ -271,7 +271,7 @@ public:
     __aicore__ inline void IpcToOutputProcess(int *waitReadRank, int *waitReadBlock, int waitCount)
     {
         int processBlockNum = ipcBlockNum;
-        for (int count = 0; count < waitCount; count++) {
+        for (int count = 0; count < loopCount; count++) {
             if (count == (loopCount - 1)) {
                 processBlockNum = totalBlockDataNum - ipcBlockNum * count;
             }
@@ -287,7 +287,7 @@ public:
 protected:
     GlobalTensor<T> srcInputGlobal[ARRAY_MAX_SIZE];
     GlobalTensor<T> srcIpcGlobal;
-    GlobalTensor<T> dstIPCGlobal;
+    GlobalTensor<T> dstIpcGlobal;
     GlobalTensor<T> dstOutputGlobal;
 
     int totalBlockDataNum;
@@ -296,7 +296,7 @@ protected:
     int ipcBlockNum;
     int loopCount;
     int ipcNumOfBlock;
-    int ipcSizeofBlock;
+    int ipcSizeOfBlock;
     IpcQueue<T> writeIpcQue[ARRAY_MAX_SIZE];
     IpcQueue<T> readIpcQue[ARRAY_MAX_SIZE];
     int adjPeerRank;
@@ -328,7 +328,7 @@ private:
         CpGM2GMPingPong<T>(processBlockNum * sizeof(T), inputTensor[num * ipcBlockNum], dstIpcGlobal, -1);
     }
 
-    __aicore__ inline void SioAtomicAddToIpc(int num, int processBlockNum, int procedssRank, int i)
+    __aicore__ inline void SioAtomicAddToIpc(int num, int processBlockNum, int processRank, int i)
     {
         CpGM2GMPingPong<T>(processBlockNum * sizeof(T), srcIpcGlobal, dstIpcGlobal, atomOp);
     }
