@@ -6432,6 +6432,7 @@ public:
     __aicore__ __attribute__((always_inline)) inline void Run()
     {
         SET_FLAG(MTE3, V, EVENT_ID0);
+        SET_FLAG(MTE3, V, EVENT_ID1);
         SET_FLAG(MTE3, MTE2, EVENT_ID0);
         SET_FLAG(MTE3, MTE2, EVENT_ID2);
         SET_FLAG(MTE3, MTE2, EVENT_ID3);
@@ -6509,6 +6510,7 @@ public:
             }
         }
         WAIT_FLAG(MTE3, V, EVENT_ID0);
+        WAIT_FLAG(MTE3, V, EVENT_ID1);
         WAIT_FLAG(MTE3, MTE2, EVENT_ID0);
         WAIT_FLAG(MTE3, MTE2, EVENT_ID2);
         WAIT_FLAG(MTE3, MTE2, EVENT_ID3);
@@ -7554,6 +7556,7 @@ private:
         }
 
         // *** lm = rowmax(ls)
+        WAIT_FLAG(MTE3, V, EVENT_ID1);
         ReduceMaxRepeatM(lm32_ubuf_tensor, ls32_ubuf_tensor, lp32_ubuf_tensor, sub_m, qk_n, qk_round_n);
         if (n_idx != 0) {
             // *** hm = vmax(lm, gm)
@@ -7712,6 +7715,7 @@ private:
             0,                        // srcGap
             0                         // dstGap
         );
+        SET_FLAG(MTE3, V, EVENT_ID1);
         if (mask_gm != nullptr){
             SET_FLAG(MTE3, MTE2, EVENT_ID0);
         }
