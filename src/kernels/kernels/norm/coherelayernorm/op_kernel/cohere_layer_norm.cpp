@@ -107,7 +107,7 @@ private:
 
     __aicore__ inline void ProcessSingleRows()
     {
-        for (uint32_t rowRepeatIndex = 0; rowRepeatIndex < rowRepeats_; rowRepeatIndex++) {
+        for (uint64_t rowRepeatIndex = 0; rowRepeatIndex < rowRepeats_; rowRepeatIndex++) {
             uint64_t rowOffset = rowRepeatIndex * numColumns_;
             float mean = ComputeMean(rowOffset);
             float variance = ComputeSquareSum(rowOffset, mean);
