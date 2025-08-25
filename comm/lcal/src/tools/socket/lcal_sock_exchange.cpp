@@ -180,18 +180,18 @@ int LcalSockExchange::Listen()
 
     struct sockaddr *addrPtr = &lcalCommId_.handle.addr.sa;
     if (bind(fd_, addrPtr, sizeof(struct sockaddr)) < 0) {
-        MKI_LOG(ERROR) << "Server side bind" << ntohs(lcalCommId_.handle.addr.sin.sin_port) << " failed";
+        MKI_LOG(ERROR) << "Server side bind " << ntohs(lcalCommId_.handle.addr.sin.sin_port) << " failed";
         return LCAL_ERROR_INTERNAL;
     }
 
     if (listen(fd_, LCAL_MAX_BACK_LOG) < 0) {
-        MKI_LOG(ERROR) << "Server side listen" << ntohs(lcalCommId_.handle.addr.sin.sin_port) << " failed";
+        MKI_LOG(ERROR) << "Server side listen " << ntohs(lcalCommId_.handle.addr.sin.sin_port) << " failed";
         return LCAL_ERROR_INTERNAL;
     }
-    MKI_LOG(ERROR) << "The server is listening! ip: " << inet_ntoa(lcalCommId_.handle.addr.sin.sin_addr)
-        << " port: " << ntohs(lcalCommId_.handle.addr.sin.sin_port);
+    MKI_LOG(INFO) << "The server is listening! ip: " << inet_ntoa(lcalCommId_.handle.addr.sin.sin_addr)
+        << " port: " <<  ntohs(lcalCommId_.handle.addr.sin.sin_port);
 
-    return LCAL_ERROR_INTERNAL;
+    return LCAL_SUCCESS;
 }
 
 int LcalSockExchange::AcceptConnection(int fd, sockaddr_in& clientAddr, socklen_t *sinSize) const
@@ -204,10 +204,10 @@ int LcalSockExchange::AcceptConnection(int fd, sockaddr_in& clientAddr, socklen_
         clientFd = accept(fd, &clientAddrPtr.sa, sinSize);
         if (clientFd < 0) {
             if (!CheckErrno(errno)) {
-                MKI_LOG(ERROR) << "Server side accept failed " << strerror(errno);
+                MKI_LOG(ERROR) << "Server side accept failed" << strerror(errno);
                 return -1;
             }
-            MKI_LOG(DEBUG) << "accept failed " << strerror(errno);
+            MKI_LOG(DEBUG) << "accept failed: " << strerror(errno);
             continue;
         }
         break;
@@ -222,7 +222,7 @@ int LcalSockExchange::Accept()
     socklen_t sinSize = sizeof(struct sockaddr_in);
 
     for (int i = 1; i < rankSize_; ++i) {
-        int fd = AcceptConnection(fd, clientAddr, &sinSize);
+        int fd = AcceptConnection(fd_, clientAddr, &sinSize);
         if (fd < 0) {
             MKI_LOG(ERROR) << "AcceptConnection failed";
             return LCAL_ERROR_INTERNAL;
@@ -234,7 +234,7 @@ int LcalSockExchange::Accept()
             return LCAL_ERROR_INTERNAL;
         }
 
-        if (rank > rankSize_ || rank <= 0 || clientFds_[rank] >= 0) {
+        if (rank >= rankSize_ || rank <= 0 || clientFds_[rank] >= 0) {
             MKI_LOG(ERROR) << "Server side recv invalid rank id " << rank;
             return LCAL_ERROR_INTERNAL;
         }
@@ -246,7 +246,7 @@ int LcalSockExchange::Accept()
     return LCAL_SUCCESS;
 }
 
-int LcalSockExchange::Close(int &fd) const
+void LcalSockExchange::Close(int &fd) const
 {
     if (fd == -1) {
         return;
@@ -277,7 +277,7 @@ int LcalSockExchange::Connect()
     struct sockaddr *addrPtr = &lcalCommId_.handle.addr.sa;
     while (retryCount < maxRetryCount) {
         if (connect(fd_, addrPtr, sizeof(struct sockaddr)) < 0) {
-            if (error == ECONNREFUSED) {
+            if (errno == ECONNREFUSED) {
                 MKI_LOG(DEBUG) << "Client side " << rank_ << " try connect " << (retryCount + 1) << " times refused";
                 retryCount++;
                 sleep(sleepTimeS);
@@ -307,15 +307,15 @@ int LcalSockExchange::Connect()
     return LCAL_SUCCESS;
 }
 
-int LcalSockExchange::IsServer() const
+bool LcalSockExchange::IsServer() const
 {
     return rank_ == 0;
 }
 
-int LcalSockExchange::Cleanup()
+void LcalSockExchange::Cleanup()
 {
     if (fd_ >= 0) {
-        close(fd_);
+        Close(fd_);
     }
 
     if (clientFds_.empty()) {
@@ -342,7 +342,7 @@ int GetAddrFromString(LcalSocketAddress* ua, const char* ipPortPair)
     int ret = ParseIpAndPort(ipPortPair, ip, port);
     if (ret != LCAL_SUCCESS) {
         MKI_LOG(ERROR) << "lcal ParseIpAndPort failed!";
-        return LCAL_ERROR_INTERNAL
+        return LCAL_ERROR_INTERNAL;
     }
     ua->sin.sin_family = AF_INET;
     ua->sin.sin_addr.s_addr = inet_addr(ip.c_str());
@@ -361,7 +361,7 @@ int BootstrapGetServerIp(LcalSocketAddress& handle)
 
     struct hostent *hostEntry = gethostbyname(hostname);
     if (hostEntry == nullptr) {
-        MKI_LOG(ERROR) << "ERROR: Failed to get host entry.";
+        MKI_LOG(ERROR) << "ERROR: Failed to get host entry." ;
         return LCAL_ERROR_INTERNAL;
     }
 
@@ -373,7 +373,7 @@ int BootstrapGetServerIp(LcalSocketAddress& handle)
 
     auto ret = memset_s(&handle, sizeof(handle), 0, sizeof(handle));
     if (ret != EOK) {
-        MKI_LOG(ERROR) << "Failed to memset_s handle in BootstrapGetServerIp";
+        MKI_LOG(ERROR) << "Failed to memset_s handle in BootstrapGetServerIp.";
         return LCAL_ERROR_INTERNAL;
     }
     handle.sin.sin_family = AF_INET;
@@ -396,12 +396,12 @@ int BootstrapGetUniqueId(struct LcalBootstrapHandle& handle, int commDomain)
         MKI_LOG(INFO) << "LCAL_COMM_ID set by environment to " << env;
         if (GetAddrFromString(&handle.addr, env) != LCAL_SUCCESS) {
             MKI_LOG(WARN) << ("Invalid LCAL_COMM_ID, please use format: <ipv4>:<port>");
-            return LCAL_ERROR_INTERNAL;
+            return LCAL_INVALID_VALUE;
         }
     } else {
         int bootRet = BootstrapGetServerIp(handle.addr);
         if (bootRet != LCAL_SUCCESS) {
-            MKI_LOG(ERROR) << "lcal BootstrapGetServerIp failed!";
+            MKI_LOG(ERROR) << "lcal BootstrapGetIpPort failed!";
             return LCAL_ERROR_INTERNAL;
         }
     }
