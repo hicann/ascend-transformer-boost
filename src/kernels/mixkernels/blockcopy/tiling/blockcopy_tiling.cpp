@@ -73,15 +73,16 @@ bool BlockCopyTilingCheck310P(const LaunchParam &launchParam, KernelInfo &kernel
 {
     TensorDType inDtype = launchParam.GetInTensor(0).desc.dtype;
     uint32_t typeByte = static_cast<uint32_t>(GetTensorElementSize(inDtype));
+    MKI_CHECK(typeByte > 0, "typeByte is invalid", return false);
     BlockCopyTilingData *tilingDataPtr = reinterpret_cast<AtbOps::BlockCopyTilingData*>(kernelInfo.GetTilingHostAddr());
     MKI_CHECK(tilingDataPtr != nullptr, "tilingHost should not be empty",
               return false);
     auto headDim = tilingDataPtr->blockSize * tilingDataPtr->numHead;
     auto totalKCacheItems = tilingDataPtr->headSizeK * headDim;
     auto totalVCacheItems = tilingDataPtr->headSizeV * headDim;
-    MKI_CHECK(totalKCacheItems % typeByte == 0, "310P Platform KCache should be aligned with 32 bytes!",
+    MKI_CHECK(totalKCacheItems % (BYTES_32 / typeByte) == 0, "310P Platform KCache should be aligned with 32 bytes!",
               return false);
-    MKI_CHECK(totalVCacheItems % typeByte == 0, "310P Platform VCache should be aligned with 32 bytes!",
+    MKI_CHECK(totalVCacheItems % (BYTES_32 / typeByte) == 0, "310P Platform VCache should be aligned with 32 bytes!",
               return false);
     return true;
 }
