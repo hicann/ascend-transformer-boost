@@ -79,7 +79,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalBroadcastOrigin(ALLRED
         CheckFlag(ctrlFlagsUB, ((__gm__ int64_t * )buff[rank] + (GetLcalBlockNum() + GetBlockIdx()) * MEM_DMA_UNIT_INT_NUM),
         magic);
     } else if (GetBlockIdx() == root) {
-        for (int64_t i = 0; i < rankSize; i++) {
+        for (int64_t i = 0; i < rankSize; ++i) {
             if (i == rank || i == root) {
                 continue;
             }
