@@ -235,7 +235,7 @@ private:
         return true;
     }
 
-     bool CheckPagedMLAttentionCache(const LaunchParam &launchParam, const OpParam::PagedAttention &param,
+    bool CheckPagedMLAttentionCache(const LaunchParam &launchParam, const OpParam::PagedAttention &param,
                                   int64_t embeddingDimQ) const
     {
         auto &tensorKcache = launchParam.GetInTensor(DIM_1); // K.shape = [num_blocks, block_size, num_heads, head_size]
