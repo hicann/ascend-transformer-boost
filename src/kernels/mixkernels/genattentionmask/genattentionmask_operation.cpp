@@ -45,11 +45,10 @@ public:
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::GenAttentionMask),
             "OpParam is invalid", return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
             
-        auto param = AnyCast<OpParam::GenAttentionMask>(launchParam.GetParam());
+        auto opParam = AnyCast<OpParam::GenAttentionMask>(launchParam.GetParam());
         MKI_LOG(INFO) << "infer shape param: " << param.headNum;
         MKI_CHECK(CheckGenAttentionMask(launchParam), "Failed to check launch param",
             return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "Failed to check launch param"));
-        auto opParam = AnyCast<OpParam::GenAttentionMask>(launchParam.GetParam());
         int64_t outdims = 0;
         for (int i = 0; i < launchParam.GetInTensor(0).desc.dims[0]; i++) {
             outdims += static_cast<int64_t>(opParam.headNum) * opParam.qSeqLen[i] * opParam.qSeqLen[i];

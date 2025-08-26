@@ -60,8 +60,6 @@ public:
         MKI_CHECK(specificParam.Type() == typeid(OpParam::RINGMLA), "OpParam is invalid", return 0);
         auto param = AnyCast<OpParam::RINGMLA>(specificParam);
         switch (param.type) {
-            case OpParam::RINGMLA::SPLIT_CACHE:
-                return DIM_2;
             case OpParam::RINGMLA::PREFILL_SPLIT_CACHE:
                 return DIM_2;
             default:
