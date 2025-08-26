@@ -446,7 +446,7 @@ class TestMLAPrepross(op_test.OpTest):
             },
         )
 
-        in_tensors = [Split2_out_tensors_npu[0], self.wuk]
+        in_tensors = [Split2_out_tensors_npu[0], self.wuk, torch.Tensor(), torch.Tensor()]
         Einsumout_tensors = [torch.zeros((N, headNum, 512), dtype=data_type)]
         in_tensors_npu = [tensor.npu() for tensor in in_tensors]
         Einsumout_tensors_npu = [tensor.npu() for tensor in Einsumout_tensors]
