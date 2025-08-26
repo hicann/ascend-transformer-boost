@@ -186,4 +186,291 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
     GM_ADDR gm_a, GM_ADDR gm_b, GM_ADDR gm_workspace, GM_ADDR gm_dequant_scale, \
         GM_ADDR gm_dequant_offset, GM_ADDR gm_quant_scale, GM_ADDR gm_quant_offset, \
         int32_t batch_size, int32_t m, int32_t k, int32_t n, bool trans_a, bool trans_b, bool is_int8, \
-        
+        QuantGranularity dequant_granularity, int32_t dequant_group_size, QuantGranularity quant_granularity, \
+        int32_t quant_group_size, int32_t weight_nz, int32_t is_moe, int32_t is_moe_averaged, int32_t is_alltoallvc, \
+        int32_t EP, int32_t TP, int32_t local_expert_nums, bool is_deterministic
+
+#define PP_MATMUL_AIV_PADDING_ARGS_FUN() \
+    reinterpret_cast<GM_ADDR>(gm_a), reinterpret_cast<GM_ADDR>(gm_b), \
+        reinterpret_cast<GM_ADDR>(gm_workspace), reinterpret_cast<GM_ADDR>(gm_dequant_scale), \
+        reinterpret_cast<GM_ADDR>(gm_dequant_offset), reinterpret_cast<GM_ADDR>(gm_quant_scale), \
+        reinterpret_cast<GM_ADDR>(gm_quant_offset), batch_size, m, k, n, trans_a, trans_b, is_int8, \
+        dequant_granularity, dequant_group_size, quant_granularity, quant_group_size, weight_nz, is_moe, \
+        is_moe_averaged, is_alltoallvc, EP, TP, local_expert_nums, is_deterministic
+
+#define PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN() \
+    GM_ADDR gm_bias, GM_ADDR gm_out, int32_t batch_size, int32_t m, int32_t n, int32_t rank_size
+
+#define PP_MATMUL_AIV_ADD_BIAS_ARGS_CALL() \
+    reinterpret_cast<GM_ADDR>(gm_bias), reinterpret_cast<GM_ADDR>(gm_out), batch_size, m, n, rank_size
+
+#define PP_MATMUL_AIV_POST_ARGS_CALL()
+    reinterpret_cast<GM_ADDR>(gm_out), reinterpret_cast<GM_ADDR>(gm_bias), \
+        reinterpret_cast<GM_ADDR>(gm_gamma), reinterpret_cast<GM_ADDR>(para_gm)
+
+#define PP_MATMUL_AIV_POST_ARGS_FUN() \
+    GM_ADDR gm_out, GM_ADDR gm_bias, GM_ADDR gm_gamma, GM_ADDR para_gm
+
+#define TEMPLATE_ARGS_FUN() bool ALIGN = true, bool IS_INT8 = false, bool HAVE_BIAS = false, typename T = half
+
+#define TEMPLATE_ARGS_FUN() ALIGN, IS_INT8, HAVE_BIAS, T
+
+inlie __aicore__ void AlignJudge(bool trans_a, bool trans_b, int32_t m, int32_t k, int32_t n, int32_t m_align,
+                                    int32_t k_align, int32_t n_align, int32_t &aligned_a, int32_t &aligned_b)
+{
+    if (!trans_a) {
+        aligned_a = k != k_align;
+    } else {
+        aligned_a = (m != m_align && m != 1);
+    }
+    if (!trans_b) {
+        aligned_b = (n != n_align);
+    } else {
+        aligned_b = (k != k_align);
+    }
+}
+
+inline __aicore__ void GetBlockIdx(int32_t loop_idx, int32_t m_loop, int32_t n_loop, int32_t swizzl_direction,
+                                    int32_t swizzl_count, int32_t &m_idx, int32_t &n_idx)
+{
+    uint32_t in_batch_idx = loop_idx % (m_loop * n_loop);
+    if (swizzl_direction == 0) {
+        uint32_t tile_block_loop = (m_loop + swizzl_count - 1) / swizzl_count;
+        uint32_t tile_block_idx = in_batch_idx / (swizzl_count * n_loop);
+        uint32_t in_tile_block_idx = in_batch_idx % (swizzl_count * n_loop);
+        uint32_t n_row = swizzl_count;
+        if (tile_block_idx == tile_block_loop - 1) {
+            n_row = m_loop - swizzl_count * tile_block_idx;
+        }
+        m_idx = tile_block_idx * swizzl_count + in_tile_block_idx % n_row;
+        n_idx = in_tile_block_idx / n_row;
+        if (tile_block_idx % 2 != 0) [
+            n_idx = n_loop - n_idx - 1;
+        ]
+    } else if (swizzl_direction == 1) {
+        uint32_t tile_block_loop = (n_loop + swizzl_count - 1) / swizzl_count;
+        uint32_t tile_block_idx = in_batch_idx / (swizzl_count * m_loop);
+        uint32_t in_tile_block_idx = in_batch_idx % (swizzl_count * m_loop);
+        uint32_t n_col = swizzl_count;
+        if (tile_block_idx == tile_block_loop - 1) {
+            n_col = n_loop - swizzl_count * tile_block_idx;
+        }
+        m_idx = in_tile_block_idx / n_col;
+        n_idx = tile_block_idx * swizzl_count + in_tile_block_idx % n_col;
+        if (tile_block_idx % 2 != 0) {
+            m_idx = m_loop - m_idx - 1;
+        }
+    }
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void CopyGmToUbufAlign(__ubuf__ T *dst, __gm__ T *src, uint16_t nBurst, uint32_t lenBurst,
+                                            uint32_t gmGap, uint32_t ubufGap = 0)
+{
+    if constexpr (sizeof(T) == 8) {
+        CopyGmToUbufAlign(reinterpret_cast<__ubuf__ int32_t *>(dst), reinterpret_cast<__gm__ int32_t *>(src),
+                          nBurst * 2, lenBurst * 2, gmGap, ubufGap);
+        return;
+    }
+    DataCopyParams dataCopyParams(nBurst,
+                                    (Block32B<T>::Count(lenBurst)),
+                                    (Block32B<T>::Count(gmGap)),
+                                    (ubufGap)
+    );
+    DataCopyExtParams dataCopyAlignParams(nBurst, lenBurst * sizeof(T), gmGap * sizeof(T), ubufGap, 0);
+    LocalTensor<T> ubTensor;
+    TBuffAddr ubAddr;
+    ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
+    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
+    ubTensor.SetAddr(ubAddr);
+    GlobalTensor<T> gmTensor;
+    gmTensor.SetGlobalBuffer(src);
+    if (Block32B<T>::IsAligned(lenBurst) && Block32B<T>::IsAligned(gmGap)) {
+        DataCopy(ubTensor, gmTensor, dataCopyAlignParams);
+    } else {
+        DataCopyPadExtParams<T> padParams;
+        DataCopyPad(ubTensor, gmTensor, dataCopyAlignParams, padParams);
+    }
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void CopyGmToUbufAlign(__ubuf__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
+                                            uint32_t gmGap, uint32_t ubufGap = 0)
+{
+    DataCopyParams dataCopyParams(nBurst,
+                                    static_cast<uint16_t>(Block32B<T>::Count(lenBurst)),
+                                    static_cast<uint16_t>(ubufGap),
+                                    static_cast<uint16_t>(Block32B<T>::Count(gmGap))
+    );
+    DataCopyExtParams dataCopyAlignParams(nBurst, lenBurst * sizeof(T), gmGap * sizeof(T), ubufGap, 0);
+    LocalTensor<T> ubTensor;
+    TBuffAddr ubAddr;
+    ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
+    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
+    ubTensor.SetAddr(ubAddr);
+    GlobalTensor<T> gmTensor;
+    gmTensor.SetGlobalBuffer(dst);
+    if (Block32B<T>::IsAligned(lenBurst) && Block32B<T>::IsAligned(gmGap)) {
+        DataCopy(ubTensor, gmTensor, dataCopyAlignParams);
+    } else {
+        DataCopyPadExtParams padParams;
+        DataCopyPad(gmTensor, ubTensor, dataCopyAlignParams);
+    }
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void CopyGmToUbufAlignB16(__ubuf__ T *dst, __gm__ T *src, uint16_t nBurst, uint32_t lenBurst,
+                                                uint16_t srcStride, uint16_t dstStride)
+{
+    DataCopyExtParams dataCopyParams(nBurst,
+                                    lenBurst,
+                                    srcStride,
+                                    dstStride,
+                                    0);
+    LocalTensor<uint8_t> ubTensor;
+    TBuffAddr ubAddr;
+    ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
+    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
+    ubTensor.SetAddr(ubAddr);
+    GlobalTensor<uint8_t> gmTensor;
+    gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ uint8_t *>(dst));
+    DataCopyPad(gmTensor, ubTensor, dataCopyParams);
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void CopyGmToUbuf(__ubuf__ T *dst, __gm__ T *src, uint16_t nBurst, uint32_t lenBurst,
+                                                uint16_t srcStride, uint16_t dstStride)
+{
+    DataCopyExtParams dataCopyParams(nBurst,
+                                    lenBurst,
+                                    srcStride,
+                                    dstStride,
+    );
+    LocalTensor<uint8_t> ubTensor;
+    TBuffAddr ubAddr;
+    ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
+    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
+    ubTensor.SetAddr(ubAddr);
+    GlobalTensor<T> gmTensor;
+    gmTensor.SetGlobalBuffer(src);
+    DataCopyPad(ubTensor, gmTensor, dataCopyParams);
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void CopyGmToUbuf(__ubuf__ T *dst, __gm__ T *src, uint16_t nBurst, uint32_t lenBurst,
+                                                uint16_t srcStride, uint16_t dstStride)
+{
+    DataCopyExtParams dataCopyParams(nBurst,
+                                    lenBurst,
+                                    srcStride,
+                                    dstStride,
+    );
+    LocalTensor<uint8_t> ubTensor;
+    TBuffAddr ubAddr;
+    ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
+    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(src);
+    ubTensor.SetAddr(ubAddr);
+    GlobalTensor<T> gmTensor;
+    gmTensor.SetGlobalBuffer(dst);
+    DataCopyPad(gmTensor, ubTensor, dataCopyParams);
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void CopyUbufToGm(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
+                                                uint16_t srcStride, uint16_t dstStride)
+{
+    DataCopyExtParams dataCopyParams(nBurst,
+                                    lenBurst,
+                                    srcStride,
+                                    dstStride,
+    );
+    LocalTensor<uint8_t> ubTensor;
+    TBuffAddr ubAddr;
+    ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
+    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(src);
+    ubTensor.SetAddr(ubAddr);
+    GlobalTensor<T> gmTensor;
+    gmTensor.SetGlobalBuffer(dst);
+    DataCopyPad(gmTensor, ubTensor, dataCopyParams);
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void CopyUbufToGmUnknow(bool ALIGN, __gm__ T *dst, __ubuf__ T*src, uint16_t nBurst,
+                                            uint32_t lenBurst, uint16_t srcStride, uint16_t dstStride)
+{
+    if (ALIGN) {
+        CopyUbufToGm(dst, src, nBurst, lenBurst / 32, srcStride, dstStride / 32);
+    } else {
+        CopyUbufToGmAlignB16(dst, src, nBurst, lenBurst, srcStride, dstStride);
+    }
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void VectorDup(__ubuf__ T *dst, const T &src, uint8_t repeat, uint16_t dstBlockStride,
+                                    uint8_t dstRepeatStride)
+{
+    LocalTensor<T> ubTensor = CreateLocalTensor<T>(dst);
+    Duplicate<T, false>(ubTensor, src, -1, repeat, dstBlockStride, dstRepeatStride);
+}
+
+template <typename T>
+struce CoCBuffAddrAndArgs {
+public:
+    __aicore__ inline CoCBuffAddrAndArgs(COC_ARGS_FUN(T))
+    {
+        GlobalTensor<int> commArgsGm;
+        commArgsGm.SetGlobalBuffer(reinterpret_cast<__gm__ int *>(coc_comm_args), 2);
+        rank = commArgsGm.GetValue(0);
+        localRank = commArgsGm.GetValue(1);
+        rankSize = commArgsGm.GetValue(2);
+        localRankSize = commArgsGm.GetValue(3);
+        extraFlag = commArgsGm.GetValue(4);
+        RDMA = (extraFlag & ExtraFlag::RDMA) != 0;
+        TOPO_910B2C = (extraFlag & ExtraFlag::TOPO_910B2C) != 0;
+        TOOP_910_93 = (extraFlag & ExtraFlag::TOPO_910_93) != 0;
+        DETERMINISTIC = (extraFlag & ExtraFlag::DETERMINISTIC) != 0;
+        QUANT_FP16 = (extraFlag & ExtraFlag::QUANT_FP16) != 0;
+        QUANT_FP32 = (extraFlag & ExtraFlag::QUANT_FP32) != 0;
+        GlobalTensor<__gm__ T *> peerMemsAddrGm;
+        peerMemsAddrGm.SetGlobalBuffer(&(reinterpret_cast<__gm__ CoCCommArgs *>(coc_comm_args))->peerMems[0],
+                                       LCAL_MAX_RANK_SIZE);
+        for (int i = 0; i < rankSize; ++i) {
+            buff[i] = peerMemsAddrGm.GetValue(i);
+        }
+    }
+
+    int rank;
+    int localRank;
+    int rankSize;
+    int localRankSize;
+    int extraFlag;
+    bool RDMA;
+    bool TOPO_910B2C;
+    bool TOOP_910_93;
+    bool DETERMINISTIC;
+    bool QUANT_FP16;
+    bool QUANT_FP32;
+    __gm__ T *buff[LCAL_MAX_RANK_SIZE];
+};
+
+FORCE_INLINE_AICORE void CommMatrixTrunc(__gm__ int32_t* global_tokens_per_expert_matrix, __gm__ int32_t* workspace, int32_t EP, int32_t local_expert_nums, int32_t maxOutputSize)
+{
+    int32_t expert_nums = local_expert_nums * EP;
+    for (int32_t i = 0; i < EP; i++) {
+        int32_t sum_tokens = 0;
+        for (int32_t local_expert_id = 0; local_expert_id < local_expert_nums; local_expert_id++) {
+            int32_t expert_id = i * local_expert_nums + local_expert_id;
+            for (int32_t j = 0; j < EP; j++) {
+                if (sum_tokens + global_tokens_per_expert_matrix[j * expert_nums + expert_id]
+                    >= maxOutputSize) {
+                    workspace[j * expert_nums + expert_id] = maxOutputSize - sum_tokens;
+                    sum_tokens = maxOutputSize;
+            } else {
+                workspace[j * expert_nums + expert_id] = global_tokens_per_expert_matrix[j * expert_nums + expert_id];
+                sum_tokens += global_tokens_per_expert_matrix[j * expert_nums + expert_id];
+            }
+        }
+    }
+}
+
+#endif // LCAL_COC_INTERNAL_H
