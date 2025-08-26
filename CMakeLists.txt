@@ -111,21 +111,18 @@ if(BUILD_TEST_FRAMEWORK OR USE_UNIT_TEST OR USE_PYTHON_TEST OR USE_FUZZ_TEST OR 
     set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
     add_subdirectory(tests)
 endif()
-add_subdirectory(comm/lcal)
 add_subdirectory(src)
 if (BUILD_CUSTOMIZE_OPS)
     add_subdirectory(ops_customize)
 endif()
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/atb/cxx_abi_${cxx_abi}")
-
+add_subdirectory(comm/lcal)
 message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./..)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_configs DESTINATION ./configs)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/mki/lib/libmki.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/build/comm/lcal/src/liblcal.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/build/comm/lcal/src/liblcal_static.a DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops_aicpu_kernels.so DESTINATION lib OPTIONAL)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libtbe_adapter.so DESTINATION lib OPTIONAL)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libcann_ops_adapter.so DESTINATION lib OPTIONAL)

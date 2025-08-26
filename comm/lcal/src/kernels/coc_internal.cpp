@@ -147,14 +147,43 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
 
 #define COC_ARGS_FUN(T) COC_ARGS_FUN_IO(T, T)
 
-#define COC_ARGS_CALL()
+#define COC_ARGS_CALL() \
+    gm_a, gm_b, gm_bias, gm_gamma, gm_out, gm_allgather_out, gm_workspace, gm_dequant_scale, gm_dequant_offset, \
+    gm_quant_scale, gm_quant_offset, coc_comm_args, ffts_addr, \
+    num_local_tokens_per_expert, num_global_tokens_per_local_expert, \
+    global_token_per_expert_matrix, para_gm
 
 #define COC_ARGS_CALL_INT8() \
+    reinterpret_cast<GM_ADDR>(gm_a), reinterpret_cast<GM_ADDR>(gm_b), reinterpret_cast<GM_ADDR>(gm_bias), \
+    reinterpret_cast<GM_ADDR>(gm_gamma), reinterpret_cast<GM_ADDR>(gm_out), \
+    reinterpret_cast<GM_ADDR>(gm_allgather_out), gm_workspace, gm_dequant_scale, gm_dequant_offset, \
+    gm_quant_scale, gm_quant_offset, coc_comm_args, ffts_addr, \
+    num_local_tokens_per_expert, num_global_tokens_per_local_expert, \
+    global_token_per_expert_matrix, para_gm
 
 #define PP_MATMUL_AIC_ARGS_FUN(T_INPUT, T_OUTPUT) \
+    GM_ADDR gm_a, GM_ADDR gm_b, __gm__ T_OUTPUT *gm_bias, __gm__ T_OUTPUT *gm_c, \
+        __gm__ T_OUTPUT *gm_peer_mem, GM_ADDR gm_workspace, GM_ADDR gm_dequant_scale, \
+        GM_ADDR gm_dequant_offset, int32_t batch_size, int32_t m, int32_t k, int32_t n, int32_t m0, \
+        int32_t k0, int32_t n0, int32_t m_loop, int32_t k_loop, int32_t n_loop, int32_t core_loop, \
+        int32_t swizzl_count, int32_t swizzl_direct, int32_t rank, int32_t rank_size, int32_t p_value, \
+        int32_t withSerialMode, QuantGranularity quant_granularity, QuantGranularity dequant_granularity, \
+        int32_t ag_dim, int32_t rs_dim, bool inner_dim_is_Ag, bool weight_nz, bool is_91093, \
+        __gm__ int32_t *num_local_tokens_per_expert, __gm__ int32_t * num_global_tokens_per_local_expert, \
+        __gm__ int32_t *global_tokens_per_expert_matrix, int32_t local_expert_nums, int32_t EP, int32_t TP, \
+        int32_t maxOutputSize, int32_t is_moe, bool is_deterministic, int32_t buffer_size \
 
 #define PP_MATMUL_AIC_ARGS_FUN() \
-
+    reinterpret_cast<GM_ADDR>(gm_a), reinterpret_cast<GM_ADDR>(gm_b), gm_bias, gm_c, gm_peer_mem, \
+        reinterpret_cast<GM_ADDR>(gm_workspace), reinterpret_cast<GM_ADDR>(gm_dequant_scale), \
+        reinterpret_cast<GM_ADDR>(gm_dequant_offset), batch_size, m, k, n, m0, k0, n0, m_loop, k_loop, \
+        n_loop, core_loop, swizzl_count, swizzl_direct, rank, rank_size, p_value, withSerialMode, quant_granularity, \
+        dequant_granularity, ag_dim, rs_dim, inner_dim_is_Ag, weight_nz, is_91093, \
+        num_local_tokens_per_expert, num_global_tokens_per_local_expert, \
+        global_tokens_per_expert_matrix, local_expert_nums, EP, TP, maxOutputSize, is_moe, is_deterministic, buffer_size
 
 #define PP_MATMUL_AIV_PADDING_ARGS_FUN()
-
+    GM_ADDR gm_a, GM_ADDR gm_b, GM_ADDR gm_workspace, GM_ADDR gm_dequant_scale, \
+        GM_ADDR gm_dequant_offset, GM_ADDR gm_quant_scale, GM_ADDR gm_quant_offset, \
+        int32_t batch_size, int32_t m, int32_t k, int32_t n, bool trans_a, bool trans_b, bool is_int8, \
+        
