@@ -167,6 +167,10 @@ HcclComm Comm::CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, con
     }
     ATB_LOG(INFO) << "HCCL Runner multi server init ";
     HcclComm newHcclComm = nullptr;
+    if (rankTableFile == nullptr) {
+        ATB_LOG(ERROR) << "rankTableFile is NULL";
+        return nullptr;
+    }
     std::string rankTableFileStr(rankTableFile);
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
     if (resolvePath == "") {
@@ -200,6 +204,10 @@ static HcclCommConfig *GetHcclCommConfig(const uint32_t hcclBufferSize)
 std::shared_ptr<void> CreateHcclCommByClusterInfo(uint32_t subCommRankId, const char *rankTableFile,
                                                   std::vector<uint32_t> &rankIds)
 {
+    if (rankTableFile == nullptr) {
+        ATB_LOG(ERROR) << "rankTableFile is NULL";
+        return std::shared_ptr<HcclComm>();
+    }
     std::string rankTableFileStr(rankTableFile);
     ATB_LOG(INFO) << "create hccl comm by clusterInfo, rankTableFile:" << rankTableFileStr;
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
@@ -234,6 +242,10 @@ HcclComm Comm::CreateHcclCrossMulitComm(const char *rankTableFile, uint32_t subC
                                         std::vector<uint32_t> &rankIds, uint64_t subCommId, uint32_t hcclBufferSize,
                                         char *commName)
 {
+    if (rankTableFile == nullptr) {
+        ATB_LOG(ERROR) << "rankTableFile is NULL";
+        return nullptr;
+    }
     std::string rankTableFileStr(rankTableFile);
     std::string resolvePath = Mki::FileSystem::PathCheckAndRegular(rankTableFileStr);
     if (resolvePath.empty()) {
