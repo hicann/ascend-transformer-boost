@@ -684,14 +684,15 @@ class TestMLAPrefill(operation_test.OperationTest):
                 continue
 
             lse_i = lse[q_start_idx:(q_start_idx+q_len)].permute(1, 0).unsqueeze(0)  # (1, heads, bs)
-
             lse_old_exp = temp_input_lse[q_start_idx:(q_start_idx+q_len)].permute(2, 1, 0)
-            lse_old_exp = torch.exp(lse_old_exp)
+            max_lse = torch.max(lse_i, lse_old_exp)
+
+            lse_old_exp = torch.exp(lse_old_exp-max_lse)
 
             out_i = out[q_start_idx:(q_start_idx+q_len)]
             last_o_i = temp_o[q_start_idx:(q_start_idx+q_len)]
 
-            lse_new_exp = torch.exp(lse_i)  # [1, head, q_len]
+            lse_new_exp = torch.exp(lse_i-max_lse)  # [1, head, q_len]
             lse_old_exp = lse_old_exp.permute(2, 1, 0).repeat(1, 1, self.embeddimv)  # (q_len, head, embeddimv)
             lse_new_exp = lse_new_exp.permute(2, 1, 0).repeat(1, 1, self.embeddimv)
             fenmu = lse_old_exp + lse_new_exp
@@ -727,7 +728,11 @@ class TestMLAPrefill(operation_test.OperationTest):
             lse_i = lse[q_start_idx:(q_start_idx+q_len)].permute(1, 0).unsqueeze(0)  # (1, heads, bs)
             lse_old = temp_input_lse[q_start_idx:(q_start_idx+q_len)].permute(2, 1, 0)  # (1, heads, bs)
 
-            new_lse_aaa = torch.log(torch.exp(lse_old) + torch.exp(lse_i))  # (1, heads, bs)
+            max_lse = torch.max(lse_i, lse_old)
+            lse_1 = torch.exp(lse_old - max_lse)
+            lse_2 = torch.exp(lse_i - max_lse)
+
+            new_lse_aaa = max_lse + torch.log(lse_1 + lse_2)  # (1, heads, bs)
             new_lse_aaa = new_lse_aaa.permute(2, 1, 0)
             if result_lse_new is None:
                 result_lse_new = new_lse_aaa
