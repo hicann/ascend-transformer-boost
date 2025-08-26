@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-#ifdef __CCE_KT_TEST_
+#ifdef __CCE_KT_TEST__
 #define __aicore__
 #else
 #define __aicore__ [aicore]
@@ -28,7 +28,7 @@ extern "C" __global__ __aicore__ void LcalMatmulReduceScatter_##type##_mix_aic(C
 // ReduceScatter in LcalMatmulReduceScatter
 #define COC_MATMUL_REDUCE_SCATTER_FUNC_AUTO_DEF(type) \
 extern "C" __global__ __aicore__ void LcalMatmulReduceScatter_##type##_mix_aiv(COC_ARGS_FUN(type)) { \
-    CocMatmulReduceScatterAiv<type>(COC_ARGS_CALL());
+    CocMatmulReduceScatterAiv<type>(COC_ARGS_CALL()); \
 }
 #endif
 
