@@ -30,7 +30,7 @@ public:
         MKI_CHECK(launchParam.GetOutTensorCount() == TENSOR_OUTPUT_NUM, "outTensor count invalid", return false);
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::RopeGrad), "opParam type invalid",
             return false);
-        for (size_t i = 1; i < TENSOR_INPUT_NUM; i++) {
+        for (size_t i = 0; i < TENSOR_INPUT_NUM; i++) {
             auto inTensor = launchParam.GetInTensor(i);
             MKI_CHECK(inTensor.desc.dtype == TENSOR_DTYPE_FLOAT16, "inTensor dtype invalid", return false);
             MKI_CHECK(inTensor.desc.format == TENSOR_FORMAT_ND, "inTensor format invalid", return false);
