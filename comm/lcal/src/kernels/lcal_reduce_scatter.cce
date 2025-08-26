@@ -101,6 +101,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalReduceScatter(ALLREDUC
     CheckFlag((__ubuf__ int64_t*)ctrlFlagsUB,
               (__gm__ int64_t*)buff[x] + (rank * corePerRank + (GetBlockIdx() % corePerRank)) * MEM_DMA_UNIT_INT_NUM,
               (int64_t)magic);
+
     ProcessData<T>(dataSizeRemain, inputUB[0], buff[x], dataOffsetNum, buffOffsetNum, output, outputOffsetNum, op);
     DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
 }
