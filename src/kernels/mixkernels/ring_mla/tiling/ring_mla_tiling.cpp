@@ -28,6 +28,7 @@ const int32_t NUM256 = 256;
 const int32_t NUM512 = 512;
 const int32_t NUM576 = 576;
 const float SPLITKV_RATION = 0.8;
+const int32_t DEFAULT_HEADDIM = 192;
 
 Status GetMLANdInfo(const LaunchParam &launchParam, RINGMLAInfo &mmInfo,
                     OpParam::RINGMLA &param)
@@ -275,7 +276,7 @@ Status InitInfo(RINGMLAInfo &mmInfo, OpParam::RINGMLA &param)
     SVector<int64_t> kcacheShape;
     SVector<int64_t> vcacheShape;
     kcacheShape = mmInfo.tensors.kCache.desc.dims;
-    int32_t embed = 192;
+    int32_t embed = DEFAULT_HEADDIM;
 
     int32_t maxKvSeqLen = 0;
     if (kcacheShape.size() == DIM_3) {
