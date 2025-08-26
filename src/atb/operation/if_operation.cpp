@@ -47,11 +47,11 @@ template <> Status CreateOperation(const common::IfCondParam &opParam, Operation
         return ERROR_INVALID_PARAM;
     }
     if (!opParam.userData) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "userData is null, please check the param";
+        ATB_LOG(ERROR) << "userData is null, please check the param";
         return ERROR_INVALID_PARAM;
     }
     if (!opParam.handle) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Handle is null, please check the param";
+        ATB_LOG(ERROR) << "Handle is null, please check the param";
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) IfOperation(opParam);
