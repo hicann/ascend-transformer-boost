@@ -40,19 +40,36 @@ Status IfOperation::GetOperationFromCondition(Operation **op) const
     return NO_ERROR;
 }
 
+Status IfOperation::ParamCheck(common::IfCondParam &param) const
+{
+    if (!param.userData) {
+        ATB_LOG(ERROR) << "userData is null, please check the param";
+        return ERROR_INVALID_PARAM;
+    }
+    if (!param.handle) {
+        ATB_LOG(ERROR) << "Handle is null, please check the param";
+        return ERROR_INVALID_PARAM;
+    }
+    if (param.opA->GetInputNum() != param.opB->GetInputNum()) {
+        ATB_LOG(ERROR) << "Input num of opA and opB are not equal, please check the param";
+        return ERROR_INVALID_PARAM;
+    }
+    if (param.opA->GetOutputNum() != param.opB->GetOutputNum()) {
+        ATB_LOG(ERROR) << "Input num of opA and opB are not equal, please check the param";
+        return ERROR_INVALID_PARAM;
+    }
+    return NO_ERROR;
+}
+
 template <> Status CreateOperation(const common::IfCondParam &opParam, Operation **operation)
 {
     if (operation == nullptr) {
         ATB_LOG(ERROR) << "Invalid param, operation is nullptr";
         return ERROR_INVALID_PARAM;
     }
-    if (!opParam.userData) {
-        ATB_LOG(ERROR) << "userData is null, please check the param";
-        return ERROR_INVALID_PARAM;
-    }
-    if (!opParam.handle) {
-        ATB_LOG(ERROR) << "Handle is null, please check the param";
-        return ERROR_INVALID_PARAM;
+    Status st = ParamCheck(opParam);
+    if (st != NO_ERROR){
+        return st;
     }
     *operation = new (std::nothrow) IfOperation(opParam);
     if (*operation == nullptr) {

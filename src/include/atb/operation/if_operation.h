@@ -35,6 +35,7 @@ protected:
 
 private:
     Status GetOperationFromCondition(Operation **op) const;
+    Status ParamCheck(common::IfCondParam &param) const;
 
 private:
     common::IfCondParam param_;
