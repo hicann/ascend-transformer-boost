@@ -26,7 +26,7 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(CheckAsdOpsND(launchParam, 5), "CheckAsdOpsND failed", return false); // 输入参数数量为4
+        MKI_CHECK(CheckAsdOpsND(launchParam, 5), "CheckAsdOpsND failed", return false); // 输入参数数量为5
         const auto &inTensor2 = launchParam.GetInTensor(2);
         const auto &attrs = AnyCast<OpParam::MatMul>(launchParam.GetParam());
         if (attrs.withBias) {
@@ -141,7 +141,7 @@ public:
     {
         Status status = PpMatmulTiling(launchParam, kernelInfo_);
         kernelInfo_.SetHwsyncIdx(0);
-        return Status::OkStatus();
+        return status;
     }
 };
 REG_KERNEL_BASE(PpMatMulI8Bf16Kernel);
