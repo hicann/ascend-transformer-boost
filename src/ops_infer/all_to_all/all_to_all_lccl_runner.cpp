@@ -43,10 +43,10 @@ Status AllToAllLcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
     } else {
         int64_t width = runnerVariantPack.inTensors[0].desc.shape.dims[1];
         int64_t burstlen = width / param_.rankSize;
-        lccl_->All2All(runnerVariantPack.inTensors[0].deviceData, runnerVariantPack.outTensors.at(0).deviceData,
-                       Utils::GetTensorNumel(runnerVariantPack.inTensors.at(0)), static_cast<int>(burstlen),
-                       static_cast<int>(width), GetHcclDtype(runnerVariantPack.inTensors.at(0).desc.dtype),
-                       GetExecuteStream(runnerVariantPack.context));
+        ret = lccl_->All2All(runnerVariantPack.inTensors[0].deviceData, runnerVariantPack.outTensors.at(0).deviceData,
+                             Utils::GetTensorNumel(runnerVariantPack.inTensors.at(0)), static_cast<int>(burstlen),
+                             static_cast<int>(width), GetHcclDtype(runnerVariantPack.inTensors.at(0).desc.dtype),
+                             GetExecuteStream(runnerVariantPack.context));
     }
     if (ret == Lcal::LCAL_ERROR_PARA_CHECK_FAIL) {
         ATB_LOG(ERROR) << "ret: " << ret << " LCCL_PARALLEL should be 0 or fasle";
