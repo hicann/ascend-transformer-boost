@@ -35,9 +35,9 @@ template <> Status CreateOperation(const infer::AllGatherParam &opParam, Operati
         ATB_LOG(ERROR) << "backend is " << opParam.backend << "backend must either be hccl or lccl";
         return ERROR_INVALID_PARAM;
     }
-    if (opParam.backend == "lccl" && GetSingleton<Config>().Is310P()) {
-        ATB_LOG(ERROR) << "AllGather lccl is not support in Atlas inference products";
-        return ERROR_INVALID_PARAM;
+    if (opParam.backend == "lccl") {
+        ATB_LOG(WARN)
+            << "DEPRECATED: backend as lccl is no longer suppported and will be removed soon. Please use hccl instead";
     }
     if (OperationUtil::DistributedInitCheck<infer::AllGatherParam>(opParam) != NO_ERROR) {
         ATB_LOG(ERROR) << "AllGatherOperation DistributedInitCheck failed";
@@ -84,8 +84,8 @@ Status AllGatherOperation::InferShapeImpl(const SVector<TensorDesc> &inTensorDes
 Status AllGatherOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (inTensorDescs.at(0).shape.dimNum >= MAX_DIM) {
-        ATB_LOG(ERROR) << "inTensor(0) dimNum should <  MAX_DIM(8)";
-        return ERROR_INVALID_TENSOR_DIM;
+        ATB_LOG(ERROR) << "inTensor(0) dimNum should < MAX_DIM(8), but got " << inTensorDescs.at(0).shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     return NO_ERROR;
 }
@@ -93,15 +93,17 @@ Status AllGatherOperation::InferShapeCheckImpl(const SVector<TensorDesc> &inTens
 Status AllGatherOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const SVector<Tensor> &outTensors) const
 {
     if (inTensors.at(0).desc.shape.dimNum >= MAX_DIM) {
-        ATB_LOG(ERROR) << "inTensor(0) dimNum should <  MAX_DIM(8)";
-        return ERROR_INVALID_TENSOR_DIM;
+        ATB_LOG(ERROR) << "inTensor(0) dimNum should < MAX_DIM(8), but got " << inTensorDescs.at(0).shape.dimNum;
+        return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     if (outTensors.at(0).desc.shape.dimNum != (inTensors.at(0).desc.shape.dimNum + 1)) {
-        ATB_LOG(ERROR) << "outTensor dim should be one larger than inTensor dim";
-        return ERROR_INVALID_TENSOR_DIM;
+        ATB_LOG(ERROR) << "outTensor dimNum[" << outTensors.at(0).desc.shape.dimNum
+                       << "] should be one larger than inTensor dimNum[" << inTensors.at(0).desc.shape.dimNum << "]";
+        return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     if (outTensors.at(0).desc.shape.dims[0] != param_.rankSize) {
-        ATB_LOG(ERROR) << "outTensor first dimension does not match rankSize";
+        ATB_LOG(ERROR) << "outTensor first dimension[" << outTensors.at(0).desc.shape.dims[0]
+                       << "] does not match rankSize[" << param_.rankSize << "]";
         return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
@@ -109,18 +111,13 @@ Status AllGatherOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
 
 std::shared_ptr<Runner> AllGatherOperation::CreateRunner(Context &context) const
 {
-    (void)context;
-    if (param_.backend == "hccl") {
-        if (param_.hcclComm == nullptr) {
-            return std::make_shared<AllGatherHcclRunner>(param_, !param_.rankTableFile.empty());
-        } else {
-            return std::make_shared<AllGatherHcclRunner>(param_, param_.hcclComm);
-        }
-    } else if (param_.backend == "lccl") {
-        return std::make_shared<AllGatherLcclRunner>(param_, context);
+    if (param_.commMode == infer::CommMode::COMM_MULTI_THREAD) {
+        return std::make_shared<AllToAllLcclRunner>(param_, context);
     }
-    ATB_LOG(FATAL) << "AllGatherOperation::AllGatherOperation backend " << param_.backend << "is not exist.";
-    return std::shared_ptr<Runner>();
+    if (param_.hcclComm == nullptr) {
+        return std::make_shared<AllToAllHcclRunner>(param_, !param_.rankTableFile.empty());
+    }
+    return std::make_shared<AllToAllHcclRunner>(param_, param_.hcclComm);
 }
 
 nlohmann::json AllGatherOperation::GetParamJson() const

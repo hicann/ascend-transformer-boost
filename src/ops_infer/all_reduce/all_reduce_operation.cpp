@@ -233,15 +233,10 @@ Status AllReduceOperation::QuantShapeCheck(const TensorDesc &scale, const Tensor
 
 std::shared_ptr<Runner> AllReduceOperation::CreateRunner(Context &context) const
 {
-    (void)context;
-    if (param_.backend == "hccl") {
-        if (param_.hcclComm == nullptr) {
-            return std::make_shared<AllReduceHcclRunner>(param_, !param_.rankTableFile.empty());
-        } else {
-            return std::make_shared<AllReduceHcclRunner>(param_, param_.hcclComm);
-        }
-    } else if (param_.backend == "lccl") {
-        return std::make_shared<AllReduceLcclRunner>(param_, context);
+    if (param_.hcclComm == nullptr) {
+        return std::make_shared<AllReduceHcclRunner>(param_, !param_.rankTableFile.empty());
+    } else {
+        return std::make_shared<AllReduceHcclRunner>(param_, param_.hcclComm);
     }
     return std::shared_ptr<Runner>();
 }

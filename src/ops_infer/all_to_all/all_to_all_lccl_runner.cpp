@@ -49,7 +49,7 @@ Status AllToAllLcclRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPack)
                        GetExecuteStream(runnerVariantPack.context));
     }
     if (ret == Lcal::LCAL_ERROR_PARA_CHECK_FAIL) {
-        ATB_LOG(ERROR) << "ret: " << ret << " LCCL_PARALLEL should be 0 or fasle";
+        ATB_LOG(ERROR) << "ret: " << ret << " LCCL_PARALLEL should be 0 or false";
         return ERROR_INVALID_SINGLE_OPERATION_PARAM;
     }
     if (ret != 0) {

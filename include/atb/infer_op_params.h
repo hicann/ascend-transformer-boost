@@ -2409,7 +2409,7 @@ struct AllToAllParam {
     //! 多通信域并行功能使用结束后，"LCCL_PARALLEL"需要设置为0或者false，否则会导致基础场景性能下降。
     std::string commDomain;
     //! \brief 通信结果对输入进行转置。
-    //! 仅当backend为"lccl"时生效
+    //! 为true时使用lccl
     bool transpose = false;
     //!
     //! \brief 预留参数
