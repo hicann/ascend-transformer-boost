@@ -40,7 +40,7 @@ Status IfOperation::GetOperationFromCondition(Operation **op) const
     return NO_ERROR;
 }
 
-Status IfOperation::ParamCheck(const common::IfCondParam &param)
+static Status ParamCheck(const common::IfCondParam &param)
 {
     if (!param.userData) {
         ATB_LOG(ERROR) << "userData is null, please check the param";
@@ -67,7 +67,7 @@ template <> Status CreateOperation(const common::IfCondParam &opParam, Operation
         ATB_LOG(ERROR) << "Invalid param, operation is nullptr";
         return ERROR_INVALID_PARAM;
     }
-    Status st = IfOperation::ParamCheck(opParam);
+    Status st = ParamCheck(opParam);
     if (st != NO_ERROR) {
         return st;
     }
