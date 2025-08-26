@@ -88,7 +88,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalReduceScatter(ALLREDUC
                               inputOffset, outputOffsetNum, rank, corePerRank, UB_SINGLE_DMA_NUM_MAX);
     SyncWithinNPU(ctrlFlagsUB, (__gm__ int64_t *)((__gm__ T *)((__gm__ int64_t *)buff[rank] + dataOffsetNum) + inputNum) + MEM_DMA_UNIT_INT_NUM, magic);
 
-    SetFlag(ctrlFlagsUB, (__gm__ int64_t *)buff[rank] + flagOffset1st, (int64_t)magic);
+    SetFlag(ctrlFlagsUB, (__gm__ int64_t*)buff[rank] + flagOffset1st, (int64_t)magic);
     const int64_t x = GetBlockIdx() / corePerRank;
     AscendC::PipeBarrier<PIPE_ALL>();
     if (x == rank) {
