@@ -83,9 +83,9 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src/include
     ${PROJECT_SOURCE_DIR}/src/kernels/include
-    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal
-    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal/lcoc
-    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal/tiling
+    ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcal
+    ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcoc
+    ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcoc/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
     $ENV{ASCEND_HOME_PATH}/include
@@ -111,6 +111,7 @@ if(BUILD_TEST_FRAMEWORK OR USE_UNIT_TEST OR USE_PYTHON_TEST OR USE_FUZZ_TEST OR 
     set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
     add_subdirectory(tests)
 endif()
+add_subdirectory(comm/lcal)
 add_subdirectory(src)
 if (BUILD_CUSTOMIZE_OPS)
     add_subdirectory(ops_customize)
@@ -123,8 +124,8 @@ message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./..)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_configs DESTINATION ./configs)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/mki/lib/libmki.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/liblcal.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/liblcal_static.a DESTINATION lib)
+install(FILES ${PROJECT_SOURCE_DIR}/build/comm/lcal/src/liblcal.so DESTINATION lib)
+install(FILES ${PROJECT_SOURCE_DIR}/build/comm/lcal/src/liblcal_static.a DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops_aicpu_kernels.so DESTINATION lib OPTIONAL)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libtbe_adapter.so DESTINATION lib OPTIONAL)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libcann_ops_adapter.so DESTINATION lib OPTIONAL)
