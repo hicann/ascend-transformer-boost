@@ -128,7 +128,7 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
     constexpr int32_t rankSize910a3 = 16; \
     __gm__ type * shareAddrs[LCAL_MAX_RANK_SIZE]; \
     GET_IPC_MEM_ARGS(type); \
-    if ((extraFlag & ExtraFlag::TOPO_PCIE) != 0) { \ 
+    if ((extraFlag & ExtraFlag::TOPO_PCIE) != 0) { \
         if (len * sizeof(type) < SIZE_OF_8M) {      \
             LcalAllReduce2npuWrite<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } else { \
@@ -215,7 +215,7 @@ extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_A
     constexpr int32_t cceSmallDataSize = 2 * 1024 * 1024; \
     constexpr int32_t a3BigDataSize = 32 * 1024 * 1024; \
     constexpr int32_t a3SupportRankSize = 4; \
-    constexpr int32_t smallRankSize = 8; \ 
+    constexpr int32_t smallRankSize = 8; \
     const bool isDbRing = (rankSize == a3SupportRankSize || rankSize == smallRankSize) &&  \
         (len * sizeof(type) * smallRankSize > cceSmallDataSize && \
         len * sizeof(type) * smallRankSize <= a3BigDataSize); \
