@@ -67,7 +67,7 @@ template <> Status CreateOperation(const common::IfCondParam &opParam, Operation
         ATB_LOG(ERROR) << "Invalid param, operation is nullptr";
         return ERROR_INVALID_PARAM;
     }
-    Status st = ParamCheck(opParam);
+    Status st = IfOperation::ParamCheck(opParam);
     if (st != NO_ERROR) {
         return st;
     }
