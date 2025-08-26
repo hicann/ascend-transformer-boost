@@ -30,7 +30,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalAll2AllTranspose(ALLRE
     const int64_t corePerRank = coreNum / rankSize;
     const int64_t coreIdxInRank = GetBlockIdx() % corePerRank;
     const int64_t coreIdxRankId = GetBlockIdx() / corePerRank;
-    const int64_t rowNumPerCore = CeilDiv(numRows, coreNum);
+    const int64_t rowNumPerCore = CeilDiv(numRows, corePerRank);
     int64_t rowNumThisCore = rowNumPerCore;
     if (coreIdxInRank == corePerRank - 1) {
         rowNumThisCore = numRows - rowNumPerCore * (corePerRank - 1);
@@ -39,12 +39,12 @@ __attribute__((always_inline)) inline __aicore__ void LcalAll2AllTranspose(ALLRE
     const int64_t lenPerRank = len / rankSize;
     AscendC::PipeBarrier<PIPE_ALL>();
 
-    AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
-    AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID1);
-    for (int32_t loopId = 0; loopId < rowNumPerCore; ++loopId) {
+    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+    AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
+    for(int32_t loopId = 0; loopId < rowNumPerCore; ++loopId) {
         event_t eventId = (loopId & 1)? EVENT_ID1 : EVENT_ID0;
         int32_t rowId = loopId + coreIdxInRank * rowNumPerCore;
-        if (rowId > numRows) {
+        if (rowId >= numRows) {
             break;
         }
         __gm__ T* srcPtr = (__gm__ T*)input + rowId * width + coreIdxRankId * burstLen;
@@ -60,8 +60,8 @@ __attribute__((always_inline)) inline __aicore__ void LcalAll2AllTranspose(ALLRE
         CpUB2GM(dstPtr, iub, burstLen * sizeof(T));
         AscendC::SetFlag<AscendC::HardEvent::MTE3_MTE2>(eventId);
     }
-    AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
-    AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID1);
+    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
+    AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID1);
     AscendC::PipeBarrier<PIPE_ALL>();
 
     __gm__ int64_t* ctrlFlagsGM = (__gm__ int64_t*) buff[rank] + flagOffset1st;
@@ -76,6 +76,6 @@ __attribute__((always_inline)) inline __aicore__ void LcalAll2AllTranspose(ALLRE
     __gm__ T* gm_dst = (__gm__ T*)output + coreIdxRankId * lenPerRank +
         coreIdxInRank * rowNumPerCore * burstLen;
     if (coreIdxRankId != rank) {
-        GM2GM(rowNumThisCore * burstLen * sizof(T), inputUB[0], gm_dst, 0, gm_src, 0);
+        GM2GM(rowNumThisCore * burstLen * sizeof(T), inputUB[0], gm_dst, 0, gm_src, 0);
     }
 }
