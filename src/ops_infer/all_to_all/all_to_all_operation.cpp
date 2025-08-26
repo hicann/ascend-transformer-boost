@@ -35,6 +35,10 @@ template <> Status CreateOperation(const infer::AllToAllParam &opParam, Operatio
         return ERROR_INVALID_PARAM;
     }
     OP_PARAM_RSV_CHECK(opParam);
+    if (opParam.rankSize <= 0) {
+        ATB_LOG(ERROR) << "AllToAll expect a positive rankSize, but got: " << opParam.rankSize;
+        return ERROR_INVALID_PARAM;
+    }
     if (opParam.backend != "hccl" && opParam.backend != "lccl") {
         ATB_LOG(ERROR) << "backend is " << opParam.backend << "backend must be hccl or lccl";
         return ERROR_INVALID_PARAM;
