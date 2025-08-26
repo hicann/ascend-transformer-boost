@@ -25,7 +25,7 @@ extern "C" __global__ __aicore__ void LcalMatmulAllReduce_##type##_mix_aic(COC_A
 }
 
 #elif __DAV_C220_VEC__
-// ReduceScatter in LcalMatmulReduceScatter
+// AllReduce in LcalMatmulAllReduce
 #define COC_MATMUL_ALLREDUCE_FUNC_AUTO_DEF(type) \
 extern "C" __global__ __aicore__ void LcalMatmulAllReduce_##type##_mix_aiv(COC_ARGS_FUN(type)) { \
     CocMatmulAllReduceAiv<type>(COC_ARGS_CALL()); \
