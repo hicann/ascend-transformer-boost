@@ -40,7 +40,7 @@ Status IfOperation::GetOperationFromCondition(Operation **op) const
     return NO_ERROR;
 }
 
-Status IfOperation::ParamCheck(common::IfCondParam &param) const
+Status IfOperation::ParamCheck(const common::IfCondParam &param)
 {
     if (!param.userData) {
         ATB_LOG(ERROR) << "userData is null, please check the param";
@@ -55,7 +55,7 @@ Status IfOperation::ParamCheck(common::IfCondParam &param) const
         return ERROR_INVALID_PARAM;
     }
     if (param.opA->GetOutputNum() != param.opB->GetOutputNum()) {
-        ATB_LOG(ERROR) << "Input num of opA and opB are not equal, please check the param";
+        ATB_LOG(ERROR) << "Output num of opA and opB are not equal, please check the param";
         return ERROR_INVALID_PARAM;
     }
     return NO_ERROR;
@@ -68,7 +68,7 @@ template <> Status CreateOperation(const common::IfCondParam &opParam, Operation
         return ERROR_INVALID_PARAM;
     }
     Status st = ParamCheck(opParam);
-    if (st != NO_ERROR){
+    if (st != NO_ERROR) {
         return st;
     }
     *operation = new (std::nothrow) IfOperation(opParam);
