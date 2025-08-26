@@ -45,7 +45,7 @@ bool BlockCopyTilingNd(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t maxVal = td::numeric_limits<int64_t>::max();
     MKI_CHECK(numHead <= maxVal / blockSize,
           "blockSize * numHead exceeds uint64_t limit", return false);
-    uint64_t tmp = (uint64_t)blockSize * numHead;
+    uint64_t tmp = static_cast<uint64_t>(blockSize) * static_cast<uint64_t>(numHead);
     MKI_CHECK(headSizeK <= maxVal / tmp,
           "blockSize * numHead * headSizeK exceeds uint64_t limit", return false);
     return true;
@@ -75,7 +75,7 @@ bool BlockCopyTilingNz(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     uint64_t maxVal = td::numeric_limits<int64_t>::max();
     MKI_CHECK(numHead <= maxVal / blockSize,
           "blockSize * numHead exceeds uint64_t limit", return false);
-    uint64_t tmp = (uint64_t)blockSize * numHead;
+    uint64_t tmp = static_cast<uint64_t>(blockSize) * static_cast<uint64_t>(numHead);
     MKI_CHECK(headSizeK <= maxVal / tmp,
           "blockSize * numHead * headSizeK exceeds uint64_t limit", return false);
     return true;
