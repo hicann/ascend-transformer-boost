@@ -18,7 +18,7 @@ using namespace AscendC
 
 template <typename T>
 
-FORCE_INLINE_AICORE LocalTensor<T> CreateLocalTensor(__ubuf__ T *addr) 
+FORCE_INLINE_AICORE LocalTensor<T> CreateLocalTensor(__ubuf__ T *addr)
 {
     LocalTensor<T> tensor;
     TBuffAddr taddr;
@@ -27,7 +27,7 @@ FORCE_INLINE_AICORE LocalTensor<T> CreateLocalTensor(__ubuf__ T *addr)
     return tensor;
 }
 
-FORCE_INLINE_AICORE LocalTensor<T> CreateLocalTensor(uint32_t buffer_offset) 
+FORCE_INLINE_AICORE LocalTensor<T> CreateLocalTensor(uint32_t buffer_offset)
 {
     LocalTensor<T> tensor;
     tensor.address_.bufferAddr = buffer_offset;
@@ -93,7 +93,7 @@ inline __aicore__ void Vadd(__ubuf__ T *dst, __ubuf__ T *src0, __ubuf__ T *src1,
 }
 
 template <typename T>
-inline __aicore__ void Vadds(__ubuf__ T *dst, __ubuf__ T *src, const T &scalarValue, uint8_t repeat, 
+inline __aicore__ void Vadds(__ubuf__ T *dst, __ubuf__ T *src, const T &scalarValue, uint8_t repeat,
                             uint16_t dstBlockStride, uint8_t srcBlockStride, uint8_t dstRepeatStride,
                             uint8_t srcRepeatStride)
 {
@@ -118,7 +118,7 @@ inline __aicore__ void Vmul(__ubuf__ T *dst, __ubuf__ T *src0, __ubuf__ T *src1,
 }
 
 template <typename T>
-inline __aicore__ void Vmuls(__ubuf__ T *dst, __ubuf__ T *src, const T &scalarValue, uint8_t repeat, 
+inline __aicore__ void Vmuls(__ubuf__ T *dst, __ubuf__ T *src, const T &scalarValue, uint8_t repeat,
                             uint16_t dstBlockStride, uint16_t srcBlockStride, uint8_t dstRepeatStride,
                             uint8_t srcRepeatStride)
 {
@@ -155,7 +155,6 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
 
 #define PP_MATMUL_AIC_ARGS_FUN() \
 
-#define PP_MATMUL_AIC_ARGS_CALL()
 
 #define PP_MATMUL_AIV_PADDING_ARGS_FUN()
 
