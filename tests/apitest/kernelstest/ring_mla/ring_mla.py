@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Huawei Technologies Co., Ltd.
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
 # This file is a part of the CANN Open Software.
 # Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -684,14 +684,15 @@ class TestMLAPrefill(op_test.OpTest):
                 continue
 
             lse_i = lse[q_start_idx:(q_start_idx+q_len)].permute(1, 0).unsqueeze(0)  # (1, heads, bs)
-
             lse_old_exp = temp_input_lse[q_start_idx:(q_start_idx+q_len)].permute(2, 1, 0)
-            lse_old_exp = torch.exp(lse_old_exp)
+            max_lse = torch.max(lse_i, lse_old_exp)
+
+            lse_old_exp = torch.exp(lse_old_exp-max_lse)
 
             out_i = out[q_start_idx:(q_start_idx+q_len)]
             last_o_i = temp_o[q_start_idx:(q_start_idx+q_len)]
 
-            lse_new_exp = torch.exp(lse_i)  # [1, head, q_len]
+            lse_new_exp = torch.exp(lse_i-max_lse)  # [1, head, q_len]
             lse_old_exp = lse_old_exp.permute(2, 1, 0).repeat(1, 1, self.embeddimv)  # (q_len, head, embeddimv)
             lse_new_exp = lse_new_exp.permute(2, 1, 0).repeat(1, 1, self.embeddimv)
             fenmu = lse_old_exp + lse_new_exp
@@ -727,7 +728,11 @@ class TestMLAPrefill(op_test.OpTest):
             lse_i = lse[q_start_idx:(q_start_idx+q_len)].permute(1, 0).unsqueeze(0)  # (1, heads, bs)
             lse_old = temp_input_lse[q_start_idx:(q_start_idx+q_len)].permute(2, 1, 0)  # (1, heads, bs)
 
-            new_lse_aaa = torch.log(torch.exp(lse_old) + torch.exp(lse_i))  # (1, heads, bs)
+            max_lse = torch.max(lse_i, lse_old)
+            lse_1 = torch.exp(lse_old - max_lse)
+            lse_2 = torch.exp(lse_i - max_lse)
+
+            new_lse_aaa = max_lse + torch.log(lse_1 + lse_2)  # (1, heads, bs)
             new_lse_aaa = new_lse_aaa.permute(2, 1, 0)
             if result_lse_new is None:
                 result_lse_new = new_lse_aaa
@@ -965,7 +970,7 @@ class TestMLAPrefill(op_test.OpTest):
             res = (diff <= error_threshold).all().item()
             logging.debug("accuracy is correct in new standard: %r", res)
             return res
-
+        
     def group_mm_torch(self, heads, group_num, A, B, dtype=torch.float32):
         group_head = heads // group_num
         score = None
@@ -994,7 +999,7 @@ class TestMLAPrefill(op_test.OpTest):
         else:
             result_double = compare_cv(self.golden_out_true, golden_tensors[0], out_tensors[0])
             return (result_double or result_single)
-        return True
+        
     def transpose_kv_shape(self, kv_seqLen, kv_head):
         kv_ntokens = sum(kv_seqLen)
         new_k = None
