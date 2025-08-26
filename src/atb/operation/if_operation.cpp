@@ -19,14 +19,6 @@ namespace atb {
 Status IfOperation::GetOperationFromCondition(Operation **op) const
 {
     bool cond = true;
-    if (!param_.userData) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "userData is null, please check the param";
-        return ERROR_INVALID_PARAM;
-    }
-    if (!param_.handle) {
-        ATB_LOG(ERROR) << GetLogPrefix() << "Handle is null, please check the param";
-        return ERROR_INVALID_PARAM;
-    }
     try {
         cond = param_.handle(param_.userData);
     } catch (const std::exception &e) {
@@ -52,6 +44,14 @@ template <> Status CreateOperation(const common::IfCondParam &opParam, Operation
 {
     if (operation == nullptr) {
         ATB_LOG(ERROR) << "Invalid param, operation is nullptr";
+        return ERROR_INVALID_PARAM;
+    }
+    if (!opParam.userData) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "userData is null, please check the param";
+        return ERROR_INVALID_PARAM;
+    }
+    if (!opParam.handle) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "Handle is null, please check the param";
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) IfOperation(opParam);
