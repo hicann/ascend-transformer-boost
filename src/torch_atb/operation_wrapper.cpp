@@ -317,4 +317,9 @@ void OperationWrapper::BuildInTensorVariantPack(std::vector<torch::Tensor> &inTe
         variantPack_.inTensors.at(i) = Utils::ConvertToAtbTensor(inTensors.at(i));
     }
 }
+
+void OperationWrapper::SetBufferSize(uint64_t size)
+{
+    MemoryManager::SetBufferSize(size);
+}
 } // namespace TorchAtb

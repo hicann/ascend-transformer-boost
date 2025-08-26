@@ -69,6 +69,7 @@ public:
     uint32_t GetInputNum() const;
     uint32_t GetOutputNum() const;
     std::vector<torch::Tensor> Forward(std::vector<torch::Tensor> &inTensors);
+    void OperationWrapper::SetBufferSize(uint64_t size);
 
 private:
     template <typename OpParam> void CreateOpUniquePtr(const OpParam &param);
