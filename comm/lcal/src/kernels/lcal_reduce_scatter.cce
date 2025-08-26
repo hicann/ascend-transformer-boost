@@ -18,16 +18,19 @@ __attribute__((always_inline)) inline __aicore__ void CpInputToBuffAndOutput(__u
     int64_t dataProcessingBatchTime = 0;
     while (dataNumDMARemain >= UB_SINGLE_DMA_NUM_MAX) {
         CpGM2UB(inputUB[0], input + inputOffset + UB_SINGLE_DMA_NUM_MAX * dataProcessingBatchTime,
-                      UB_SINGLE_DMA_NUM_MAX);
+                      UB_SINGLE_DMA_SIZE_MAX);
         AscendC::PipeBarrier<PIPE_ALL>();
         if (GetBlockIdx() >= rank * corePerRank && (GetBlockIdx() < (rank * corePerRank + corePerRank))) {
             CpUB2GM((__gm__ T *)output + outputOffsetNum + UB_SINGLE_DMA_NUM_MAX * dataProcessingBatchTime,
-                          inputUB[0], UB_SINGLE_DMA_NUM_MAX);
+                          inputUB[0], UB_SINGLE_DMA_SIZE_MAX);
         } else {
             CpUB2GM(
                 (__gm__ T *)((__gm__ int64_t *)buff + dataOffsetNum) + inputOffset + UB_SINGLE_DMA_NUM_MAX * dataProcessingBatchTime,
-                inputUB[0], UB_SINGLE_DMA_NUM_MAX);
+                inputUB[0], UB_SINGLE_DMA_SIZE_MAX);
         }
+        AscendC::PipeBarrier<PIPE_ALL>();
+        dataNumDMARemain -= UB_SINGLE_DMA_NUM_MAX;
+        dataProcessingBatchTime += 1;
         AscendC::PipeBarrier<PIPE_ALL>();
     }
     if (dataNumDMARemain <= 0) {
@@ -57,7 +60,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalReduceScatter(ALLREDUC
         buff0, buff1, buff2, buff3,
         buff4, buff5, buff6, buff7
     };
-    __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(64), (__ubuf__ T*)(97312)};
+    __ubuf__ T* inputUB[2] = {(__ubuf__ T*)(64), (__ubuf__ T*)(98304)};
     __ubuf__ int64_t* ctrlFlagsUB = (__ubuf__ int64_t*)(0);
     const int64_t flagOffset2nd = MEM_DMA_UNIT_INT_NUM * GetLcalBlockNum() + flagOffset1st;
     const int64_t UB_SINGLE_DMA_NUM_MAX = UB_SINGLE_DMA_SIZE_MAX / sizeof(T);
@@ -83,7 +86,7 @@ __attribute__((always_inline)) inline __aicore__ void LcalReduceScatter(ALLREDUC
     AscendC::PipeBarrier<PIPE_ALL>();
     CpInputToBuffAndOutput<T>(inputUB, buff[rank], input, output, dataOffsetNum, dataNumDMARemain,
                               inputOffset, outputOffsetNum, rank, corePerRank, UB_SINGLE_DMA_NUM_MAX);
-    SyncWithinNPU(ctrlFlagsUB, (__gm__ int64_t *)((__gm__ T *)((__gm__ int64_t *)buff[rank] + dataOffsetNum) + inputNum) + MEM_DMA_UNIT_INT_NUM, magic);
+    SyncWithinNPU(ctrlFlagsUB, (__gm__ int64_t*)((__gm__ T *)((__gm__ int64_t *)buff[rank] + dataOffsetNum) + inputNum) + MEM_DMA_UNIT_INT_NUM, magic);
 
     SetFlag(ctrlFlagsUB, (__gm__ int64_t *)buff[rank] + flagOffset1st, (int64_t)magic);
     const int64_t x = GetBlockIdx() / corePerRank;
@@ -92,9 +95,9 @@ __attribute__((always_inline)) inline __aicore__ void LcalReduceScatter(ALLREDUC
         SetFlag((__ubuf__ int64_t*)ctrlFlagsUB, (__gm__ int64_t*)buff[rank] + flagOffset2nd, (int64_t)magic);
         DumpLcclLogInfo(dumpAddr, LogId::PROCESS, static_cast<Op>(op));
         return;
-    }    
+    }
     const int64_t buffOffsetNum = rank * oneNPUProcessNum + outputOffsetNum;
-    
+
     CheckFlag((__ubuf__ int64_t*)ctrlFlagsUB,
               (__gm__ int64_t*)buff[x] + (rank * corePerRank + (GetBlockIdx() % corePerRank)) * MEM_DMA_UNIT_INT_NUM,
               (int64_t)magic);
