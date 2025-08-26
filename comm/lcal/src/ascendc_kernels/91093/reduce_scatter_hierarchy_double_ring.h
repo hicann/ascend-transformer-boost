@@ -158,13 +158,13 @@ private:
             localBlockIdx * coreDataNum];
         dstTensor = (*inputQue).EnQue();
         CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcTensor, dstTensor, COPYONLY);
-        sync.SetSyncFlag(magic, ipcQueIdx, INPUT_FLAG + localBlockIdx, sioPeerRankId);
+        sync.SetSyncFlag(magic, ipcQueIdx, INPUT_FLAG + localBlockIdx, rank);
     }
 
     FORCE_INLINE_AICORE void SioReduce()
     {
         for (int32_t blockLoop = 0; blockLoop < SIO_CORE_SCALE; ++blockLoop) {
-            localBlockIdx = blockIdx * SIO_CORE_SCALE + blockLoop;
+            localBlockIdx = (blockIdx - INPUT_CORE_NUM) * SIO_CORE_SCALE + blockLoop;
             sioQue = &(sioQueList[blockLoop]);
             SioReduceByCore();
         }
@@ -178,13 +178,13 @@ private:
         curCoreDataNum = (localBlockIdx == RING_CORE_NUM - 1) ? lastCoreDataNum : coreDataNum;
         srcTensor = inputTensor[targetRankOffset * totalBlockDataNum + curLoopCnt * ipcBlockNum +
             localBlockIdx * coreDataNum];
-        dstTensor = (*inputQue).EnQue();
+        dstTensor = (*sioQue).EnQue();
         if (ipcQueIdx == 0) {
             sync.WaitSyncFlag(magic, ipcQueIdx, INPUT_FLAG + localBlockIdx, sioPeerRankId, BREAK_CYCLE);
         } else {
             sync.WaitSyncFlag(magic, ipcQueIdx, INPUT_FLAG + localBlockIdx, sioPeerRankId);
         }
-        CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcTensor, dstTensor, COPYONLY);
+        CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcTensor, dstTensor, atomOp);
         sync.SetSyncFlag(magic, ipcQueIdx, SIO_REDUCE_FLAG + localBlockIdx, sioPeerRankId);
     }
 
@@ -199,11 +199,11 @@ private:
         dstTensor = ringDstQue.ReadFront();
         GlobalTensor<T> srcOutTensor;
         GlobalTensor<T> dstOutTensor;
-        if (sioLayerLoop == ringRankSize - 1) [
+        if (sioLayerLoop == ringRankSize - 1) {
             ringSrcQue.ReadFront();
             srcOutTensor = dstTensor;
             dstOutTensor = outputTensor[curLoopCnt * ipcBlockNum + localBlockIdx * coreDataNum];
-        ]
+        }
         const int32_t consumedQueIdx = ipcQueIdx - 1;
         if (consumedQueIdx == 0) {
             sync.WaitSyncFlag(magic, consumedQueIdx, SIO_REDUCE_FLAG + localBlockIdx, ringPrevRankId, BREAK_CYCLE);
@@ -216,7 +216,7 @@ private:
         sync.WaitSyncFlag(magic, ipcQueIdx, INPUT_FLAG + localBlockIdx, rank);
         CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcTensor, dstTensor, atomOp);
         if (sioLayerLoop != ringRankSize - 1) {
-            sync.SetSyncFlag(magic, consumeQueIdx, RING_REDUCE_FLAG + localBlockIdx, rank);
+            sync.SetSyncFlag(magic, consumedQueIdx, RING_REDUCE_FLAG + localBlockIdx, rank);
         } else {
             sync.WaitSyncFlag(magic, ipcQueIdx, SIO_REDUCE_FLAG + localBlockIdx, rank);
             CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcOutTensor, dstOutTensor, COPYONLY);
