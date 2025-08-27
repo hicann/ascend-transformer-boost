@@ -150,7 +150,7 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
     gm_a, gm_b, gm_bias, gm_gamma, gm_out, gm_allgather_out, gm_workspace, gm_dequant_scale, gm_dequant_offset, \
     gm_quant_scale, gm_quant_offset, coc_comm_args, ffts_addr, \
     num_local_tokens_per_expert, num_global_tokens_per_local_expert, \
-    global_token_per_expert_matrix, para_gm
+    global_tokens_per_expert_matrix, para_gm
 
 #define COC_ARGS_CALL_INT8() \
     reinterpret_cast<GM_ADDR>(gm_a), reinterpret_cast<GM_ADDR>(gm_b), reinterpret_cast<GM_ADDR>(gm_bias), \
@@ -285,7 +285,7 @@ FORCE_INLINE_AICORE void CopyGmToUbufAlign(__ubuf__ T *dst, __gm__ T *src, uint1
     GlobalTensor<T> gmTensor;
     gmTensor.SetGlobalBuffer(src);
     if (Block32B<T>::IsAligned(lenBurst) && Block32B<T>::IsAligned(gmGap)) {
-        DataCopy(ubTensor, gmTensor, dataCopyAlignParams);
+        DataCopy(ubTensor, gmTensor, dataCopyParams);
     } else {
         DataCopyPadExtParams<T> padParams;
         DataCopyPad(ubTensor, gmTensor, dataCopyAlignParams, padParams);
@@ -293,7 +293,7 @@ FORCE_INLINE_AICORE void CopyGmToUbufAlign(__ubuf__ T *dst, __gm__ T *src, uint1
 }
 
 template <typename T>
-FORCE_INLINE_AICORE void CopyGmToUbufAlign(__ubuf__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
+FORCE_INLINE_AICORE void CopyToGmUbufAlign(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
                                             uint32_t gmGap, uint32_t ubufGap = 0)
 {
     DataCopyParams dataCopyParams(nBurst, // blockCount
@@ -301,18 +301,18 @@ FORCE_INLINE_AICORE void CopyGmToUbufAlign(__ubuf__ T *dst, __ubuf__ T *src, uin
                                     static_cast<uint16_t>(ubufGap), // srcStride
                                     static_cast<uint16_t>(Block32B<T>::Count(gmGap)) // dstStride
     );
-    DataCopyExtParams dataCopyAlignParams(nBurst, lenBurst * sizeof(T), gmGap * sizeof(T), ubufGap, 0);
+    DataCopyExtParams dataCopyAlignParams(nBurst, lenBurst * sizeof(T), ubufGap, gmGap * sizeof(T), 0);
     LocalTensor<T> ubTensor;
     TBuffAddr ubAddr;
     ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
-    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
+    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(src);
     ubTensor.SetAddr(ubAddr);
     GlobalTensor<T> gmTensor;
     gmTensor.SetGlobalBuffer(dst);
     if (Block32B<T>::IsAligned(lenBurst) && Block32B<T>::IsAligned(gmGap)) {
-        DataCopy(ubTensor, gmTensor, dataCopyAlignParams);
+        DataCopy(gmTensor, ubTensor, dataCopyParams);
     } else {
-        DataCopyPadExtParams padParams;
+        DataCopyPadParams padParams;
         DataCopyPad(gmTensor, ubTensor, dataCopyAlignParams);
     }
 }
@@ -332,7 +332,26 @@ FORCE_INLINE_AICORE void CopyGmToUbufAlignB16(__ubuf__ T *dst, __gm__ T *src, ui
     ubAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
     ubTensor.SetAddr(ubAddr);
     GlobalTensor<uint8_t> gmTensor;
-    gmTensor.SetGlobalBuffer(reinterpret_cast<__gm__ uint8_t *>(dst));
+    gmTensor.SetGlobalBuffer(reinterpret_cast<GM_ADDR>(src));
+    DataCopyPad(ubTensor, gmTensor, dataCopyParams, padParams);
+}
+
+template <typename T>
+FORCE_INLINE_AICORE void CopyToGmAlignB16(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
+                                                uint16_t srcStride, uint16_t dstStride)
+{
+    DataCopyExtParams dataCopyParams(nBurst, // blockCount
+                                    lenBurst, // blockLen
+                                    srcStride, // srcStride
+                                    dstStride, // dstStride
+                                    0);
+    LocalTensor<uint8_t> ubTensor;
+    TBuffAddr ubAddr;
+    ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
+    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(src);
+    ubTensor.SetAddr(ubAddr);
+    GlobalTensor<uint8_t> gmTensor;
+    gmTensor.SetGlobalBuffer(reinterpret_cast<GM_ADDR>(dst));
     DataCopyPad(gmTensor, ubTensor, dataCopyParams);
 }
 
@@ -340,61 +359,42 @@ template <typename T>
 FORCE_INLINE_AICORE void CopyGmToUbuf(__ubuf__ T *dst, __gm__ T *src, uint16_t nBurst, uint32_t lenBurst,
                                                 uint16_t srcStride, uint16_t dstStride)
 {
-    DataCopyExtParams dataCopyParams(nBurst,
-                                    lenBurst,
-                                    srcStride,
-                                    dstStride,
+    DataCopyParams dataCopyParams(nBurst, // blockCount
+                                    lenBurst, // blockLen
+                                    srcStride, // srcStride
+                                    dstStride // dstStride
     );
-    LocalTensor<uint8_t> ubTensor;
+    LocalTensor<T> ubTensor;
     TBuffAddr ubAddr;
     ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
     ubAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
     ubTensor.SetAddr(ubAddr);
     GlobalTensor<T> gmTensor;
     gmTensor.SetGlobalBuffer(src);
-    DataCopyPad(ubTensor, gmTensor, dataCopyParams);
+    DataCopy(ubTensor, gmTensor, dataCopyParams);
 }
 
 template <typename T>
-FORCE_INLINE_AICORE void CopyGmToUbuf(__ubuf__ T *dst, __gm__ T *src, uint16_t nBurst, uint32_t lenBurst,
+FORCE_INLINE_AICORE void CopyUbufToGm(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint16_t lenBurst,
                                                 uint16_t srcStride, uint16_t dstStride)
 {
-    DataCopyExtParams dataCopyParams(nBurst,
-                                    lenBurst,
-                                    srcStride,
-                                    dstStride,
+    DataCopyExtParams dataCopyExtParams(nBurst, // blockCount
+                                    lenBurst, // blockLen
+                                    srcStride, // srcStride
+                                    dstStride // dstStride
     );
-    LocalTensor<uint8_t> ubTensor;
+    LocalTensor<T> ubTensor;
     TBuffAddr ubAddr;
     ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
     ubAddr.bufferAddr = reinterpret_cast<uint64_t>(src);
     ubTensor.SetAddr(ubAddr);
     GlobalTensor<T> gmTensor;
     gmTensor.SetGlobalBuffer(dst);
-    DataCopyPad(gmTensor, ubTensor, dataCopyParams);
+    DataCopy(gmTensor, ubTensor, dataCopyParams);
 }
 
 template <typename T>
-FORCE_INLINE_AICORE void CopyUbufToGm(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
-                                                uint16_t srcStride, uint16_t dstStride)
-{
-    DataCopyExtParams dataCopyParams(nBurst,
-                                    lenBurst,
-                                    srcStride,
-                                    dstStride,
-    );
-    LocalTensor<uint8_t> ubTensor;
-    TBuffAddr ubAddr;
-    ubAddr.logicPos = static_cast<uint8_t>(TPosition::VECIN);
-    ubAddr.bufferAddr = reinterpret_cast<uint64_t>(src);
-    ubTensor.SetAddr(ubAddr);
-    GlobalTensor<T> gmTensor;
-    gmTensor.SetGlobalBuffer(dst);
-    DataCopyPad(gmTensor, ubTensor, dataCopyParams);
-}
-
-template <typename T>
-FORCE_INLINE_AICORE void CopyUbufToGmUnknow(bool ALIGN, __gm__ T *dst, __ubuf__ T*src, uint16_t nBurst,
+FORCE_INLINE_AICORE void CopyUbufToGmUnknown(bool ALIGN, __gm__ T *dst, __ubuf__ T*src, uint16_t nBurst,
                                             uint32_t lenBurst, uint16_t srcStride, uint16_t dstStride)
 {
     if (ALIGN) {
@@ -413,7 +413,7 @@ FORCE_INLINE_AICORE void VectorDup(__ubuf__ T *dst, const T &src, uint8_t repeat
 }
 
 template <typename T>
-struce CoCBuffAddrAndArgs {
+struct CoCBuffAddrAndArgs {
 public:
     __aicore__ inline CoCBuffAddrAndArgs(COC_ARGS_FUN(T))
     {
@@ -426,30 +426,31 @@ public:
         extraFlag = commArgsGm.GetValue(4);
         RDMA = (extraFlag & ExtraFlag::RDMA) != 0;
         TOPO_910B2C = (extraFlag & ExtraFlag::TOPO_910B2C) != 0;
-        TOOP_910_93 = (extraFlag & ExtraFlag::TOPO_910_93) != 0;
+        TOPO_910_93 = (extraFlag & ExtraFlag::TOPO_910_93) != 0;
         DETERMINISTIC = (extraFlag & ExtraFlag::DETERMINISTIC) != 0;
         QUANT_FP16 = (extraFlag & ExtraFlag::QUANT_FP16) != 0;
         QUANT_FP32 = (extraFlag & ExtraFlag::QUANT_FP32) != 0;
         GlobalTensor<__gm__ T *> peerMemsAddrGm;
-        peerMemsAddrGm.SetGlobalBuffer(&(reinterpret_cast<__gm__ CoCCommArgs *>(coc_comm_args))->peerMems[0],
+        peerMemsAddrGm.SetGlobalBuffer(&(reinterpret_cast<__gm__ CoCCommArgs<T> *>(coc_comm_args))->peerMems[0],
                                        LCAL_MAX_RANK_SIZE);
         for (int i = 0; i < rankSize; ++i) {
             buff[i] = peerMemsAddrGm.GetValue(i);
         }
     }
 
-    int rank;
+    int rank; // attr rank_id, global rank
     int localRank;
-    int rankSize;
+    int rankSize; // global rank size
     int localRankSize;
-    int extraFlag;
+    uint32_t extraFlag;
     bool RDMA;
     bool TOPO_910B2C;
-    bool TOOP_910_93;
+    bool TOPO_910_93;
     bool DETERMINISTIC;
     bool QUANT_FP16;
     bool QUANT_FP32;
-    __gm__ T *buff[LCAL_MAX_RANK_SIZE];
+    __gm__ T *buff[LCAL_MAX_RANK_SIZE]; // 共享内存地址列表
+    //int64_t sendCountMatrix[LCAL_MAX_RANK_SIZE * LCAL_MAX_RANK_SIZE];
 };
 
 FORCE_INLINE_AICORE void CommMatrixTrunc(__gm__ int32_t* global_tokens_per_expert_matrix, __gm__ int32_t* workspace, int32_t EP, int32_t local_expert_nums, int32_t maxOutputSize)
@@ -464,9 +465,10 @@ FORCE_INLINE_AICORE void CommMatrixTrunc(__gm__ int32_t* global_tokens_per_exper
                     >= maxOutputSize) {
                     workspace[j * expert_nums + expert_id] = maxOutputSize - sum_tokens;
                     sum_tokens = maxOutputSize;
-            } else {
-                workspace[j * expert_nums + expert_id] = global_tokens_per_expert_matrix[j * expert_nums + expert_id];
-                sum_tokens += global_tokens_per_expert_matrix[j * expert_nums + expert_id];
+                } else {
+                    workspace[j * expert_nums + expert_id] = global_tokens_per_expert_matrix[j * expert_nums + expert_id];
+                    sum_tokens += global_tokens_per_expert_matrix[j * expert_nums + expert_id];
+                }
             }
         }
     }
