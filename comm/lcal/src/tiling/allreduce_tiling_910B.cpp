@@ -195,7 +195,7 @@ namespace Lcal {
             cocTilingData.withSerialMode = 0;
         }
     }
-    
+
     void AllReduceGetDefaultTiling(CoCTilingData &cocTilingData)
     {
         int64_t batchSize = cocTilingData.batchSize;
@@ -218,7 +218,7 @@ namespace Lcal {
         } else {
             cocTilingData.withSerialMode = 0;
         }
-        cocTilingData.commDataSplit = COMM_DATA_DIRECT;
+        cocTilingData.commDirect = COMM_DATA_DIRECT;
         cocTilingData.commNpuSplit = cocTilingData.rankSize;
         cocTilingData.commDataSplit = COMMDATASPLIT_ONE;
         cocTilingData.lenPerLoop = cocTilingData.m0 * cocTilingData.n0 * cocTilingData.pValue * cocTilingData.blockDim;
@@ -285,6 +285,7 @@ namespace Lcal {
 
     void AllReduceEightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData)
     {
+        int dataSplit = 0;
         std::map<int*, TilingValue> tilingParamMap = {
             {&cocTilingData.m0,
              {ALLREDUCE_EIGHT_RANK_FP16_M0_DEFAULT,
@@ -295,6 +296,9 @@ namespace Lcal {
             {&cocTilingData.pValue,
              {ALLREDUCE_EIGHT_RANK_FP16_PVALUE_DEFAULT,
               g_allreduceEightRankFP16PvalueMap}},
+            {&dataSplit,
+             {ALLREDUCE_EIGHT_RANK_FP16_DATASPLIT_DEFAULT,
+              g_allreduceEightRankFP16DatasplitMap}},
             {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
             {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
             {&cocTilingData.commDirect, {COMM_DATA_DIRECT}},
@@ -303,9 +307,11 @@ namespace Lcal {
         };
         SetTilingParam(cocTilingData, tilingParamMap);
 
-        cocTilingData.lenPerLoop = ALLREDUCE_LENPERLOOP_DEFAULT / RANKSIZE_EIGHT * cocTilingData.rankSize;
+        cocTilingData.lenPerLoop = cocTilingData.m0 * cocTilingData.n0 * cocTilingData.pValue * cocTilingData.blockDim;
+        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / cocTilingData.rankSize / cocTilingData.commDataSplit
+        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / dataSplit;
         cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
-        cocTilingData.ubMoveNum = cocTilingData.lenPerLoop;
+        cocTilingData.lenPerLoop = std::min(cocTilingData.lenPerLoop, TREE_LEN_PER_LOOP);
 
         AllReduceSetWithSerialMode(cocTilingData);
         SetSecondCoreSplitTling(cocTilingData);
@@ -313,6 +319,7 @@ namespace Lcal {
 
     void AllReduceEightRankINT8GetDefaultTiling(CoCTilingData &cocTilingData)
     {
+        int dataSplit = 0;
         std::map<int*, TilingValue> tilingParamMap = {
             {&cocTilingData.m0,
              {ALLREDUCE_EIGHT_RANK_INT8_M0_DEFAULT,
@@ -323,6 +330,9 @@ namespace Lcal {
             {&cocTilingData.pValue,
              {ALLREDUCE_EIGHT_RANK_INT8_PVALUE_DEFAULT,
               g_allreduceEightRankInT8PvalueMap}},
+            {&dataSplit,
+             {ALLREDUCE_EIGHT_RANK_INT8_DATASPLIT_DEFAULT,
+              g_allreduceEightRankInT8DatasplitMap}},
             {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
             {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
             {&cocTilingData.commDirect, {COMM_DATA_DIRECT}},
@@ -331,9 +341,11 @@ namespace Lcal {
         };
         SetTilingParam(cocTilingData, tilingParamMap);
 
-        cocTilingData.lenPerLoop = ALLREDUCE_LENPERLOOP_DEFAULT / RANKSIZE_EIGHT * cocTilingData.rankSize;
+        cocTilingData.lenPerLoop = cocTilingData.m0 * cocTilingData.n0 * cocTilingData.pValue * cocTilingData.blockDim;
+        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / cocTilingData.rankSize / cocTilingData.commDataSplit
+        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / dataSplit;
         cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
-        cocTilingData.ubMoveNum = cocTilingData.lenPerLoop;
+        cocTilingData.lenPerLoop = std::min(cocTilingData.lenPerLoop, TREE_LEN_PER_LOOP);
 
         AllReduceSetWithSerialMode(cocTilingData);
         SetSecondCoreSplitTling(cocTilingData);
@@ -342,12 +354,21 @@ namespace Lcal {
     void AllReduceTwoRankFP16GetDefaultTiling(CoCTilingData &cocTilingData)
     {
         std::map<int*, TilingValue> tilingParamMap = {
-            {&cocTilingData.m0,
-             {ALLREDUCE_TWO_RANK_FP16_M0_DEFAULT,
-              g_allreduceTwoRankFP16M0Map}},
+            {&cocTilingData.commDataSplit,
+             {ALLREDUCE_TWO_RANK_FP16_COMMDATASPLIT_DEFAULT,
+              g_allreduceTwoRankFP16CommdatasplitMap}},
             {&cocTilingData.ubMoveNum,
              {ALLREDUCE_TWO_RANK_FP16_UBMOVENUM_DEFAULT,
               g_allreduceTwoRankFP16UbmovenumMap}},
+            {&cocTilingData.swizzlDirect,
+             {ALLREDUCE_TWO_RANK_FP16_SWIZZLDIRECT_DEFAULT,
+              g_allreduceTwoRankFP16SwizzldirectMap}},
+            {&cocTilingData.swizzlCount,
+             {ALLREDUCE_TWO_RANK_FP16_SWIZZLCOUNT_DEFAULT
+              g_allreduceTwoRankFP16SwizzlcountMap}},
+            {&cocTilingData.m0,
+             {ALLREDUCE_TWO_RANK_FP16_M0_DEFAULT,
+              g_allreduceTwoRankFP16M0Map}},
             {&cocTilingData.pValue,
              {ALLREDUCE_TWO_RANK_FP16_PVALUE_DEFAULT,
               g_allreduceTwoRankFP16PvalueMap}},
