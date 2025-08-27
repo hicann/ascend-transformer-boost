@@ -7,7 +7,7 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-
+#include <limits>
 #include "blockcopy_tiling.h"
 #include <mki/utils/assert/assert.h>
 #include <mki/utils/log/log.h>
@@ -42,6 +42,12 @@ bool BlockCopyTilingNd(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MKI_CHECK(headSizeV > 0, "headSizeV is invalid", return false);
     tilingDataPtr->headSizeK = headSizeK;
     tilingDataPtr->headSizeV = headSizeV;
+    uint64_t maxVal = std::numeric_limits<int64_t>::max();
+    MKI_CHECK(numHead <= maxVal / blockSize,
+          "blockSize * numHead exceeds uint64_t limit", return false);
+    uint64_t tmp = static_cast<uint64_t>(blockSize) * static_cast<uint64_t>(numHead);
+    MKI_CHECK(headSizeK <= maxVal / tmp,
+          "blockSize * numHead * headSizeK exceeds uint64_t limit", return false);
     return true;
 }
 bool BlockCopyTilingNz(const LaunchParam &launchParam, KernelInfo &kernelInfo)
@@ -66,6 +72,12 @@ bool BlockCopyTilingNz(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     tilingDataPtr->numHead = numHead;
     tilingDataPtr->headSizeK = headSizeK;
     tilingDataPtr->headSizeV = headSizeV;
+    uint64_t maxVal = std::numeric_limits<int64_t>::max();
+    MKI_CHECK(numHead <= maxVal / blockSize,
+          "blockSize * numHead exceeds uint64_t limit", return false);
+    uint64_t tmp = static_cast<uint64_t>(blockSize) * static_cast<uint64_t>(numHead);
+    MKI_CHECK(headSizeK <= maxVal / tmp,
+          "blockSize * numHead * headSizeK exceeds uint64_t limit", return false);
     return true;
 }
 
