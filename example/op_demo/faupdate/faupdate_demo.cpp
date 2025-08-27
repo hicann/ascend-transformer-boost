@@ -44,7 +44,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::S
  * @param faupdateOp 创建一个Operation指针
  * @return atb::Status 错误码
  */
-atb::Status CreateFaupdateOperation(atb::Operation **faupdateOp)
+atb::Status CreateFaUpdateOperation(atb::Operation **faupdateOp)
 {
     atb::infer::FaUpdateParam param;
     param.faUpdateType = atb::infer::FaUpdateParam::FaUpdateType::DECODE_UPDATE;
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 
     // 创建op
     atb::Operation *faupdateOp = nullptr;
-    CHECK_STATUS(CreateFaupdateOperation(&faupdateOp));
+    CHECK_STATUS(CreateFaUpdateOperation(&faupdateOp));
     // 准备输入tensor
     atb::VariantPack variantPack;
     CHECK_STATUS(PrepareInTensor(context, stream, variantPack.inTensors)); // 放入输入tensor
@@ -101,6 +101,6 @@ int main(int argc, char **argv)
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());
-    std::cout << "Faupdate demo success!" << std::endl;
+    std::cout << "faupdate demo success!" << std::endl;
     return 0;
 }

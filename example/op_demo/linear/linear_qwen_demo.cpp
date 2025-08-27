@@ -11,10 +11,10 @@
 #include "../demo_util.h"
 
 const int32_t DEVICE_ID = 0;
-const uint32_t X_DIM_0 = 2;
-const uint32_t X_DIM_1 = 3;
-const uint32_t WEIGHT_DIM_0 = 3;
-const uint32_t WEIGHT_DIM_1 = 2;
+const uint32_t X_DIM_0 = 1;
+const uint32_t X_DIM_1 = 1728;
+const uint32_t WEIGHT_DIM_0 = 1728;
+const uint32_t WEIGHT_DIM_1 = 5120;
 
 /**
  * @brief 准备atb::VariantPack
@@ -25,11 +25,11 @@ const uint32_t WEIGHT_DIM_1 = 2;
  */
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
-    // 创建shape为[2, 3]的输入x tensor
+    // 创建shape为[1, 1728]的输入x tensor
     atb::Tensor xFloat;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_BF16,
                                         aclFormat::ACL_FORMAT_ND, {X_DIM_0, X_DIM_1}, xFloat));
-    // 创建shape为[3, 2]的输入weight tensor
+    // 创建shape为[1728, 5120]的输入weight tensor
     atb::Tensor weightFloat;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_BF16,
                                         aclFormat::ACL_FORMAT_FRACTAL_NZ, {WEIGHT_DIM_0, WEIGHT_DIM_1}, weightFloat));
