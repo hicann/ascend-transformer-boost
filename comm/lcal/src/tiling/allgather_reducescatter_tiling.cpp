@@ -16,25 +16,54 @@
 #define TILING_MAP std::<map<int, std::vector<std::vector<int>>>
 namespace Lcal {
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_SWIZZLECOUNT_DEFAULT = 11;
-static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16SwizzlecountMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16SwizzlecountMap = {
+    {9,
+        {{768, 1536, -1, 2147483647, -1, 7168},
+        {1536, 3072, -1, 5120, -1, 14848},
+        {1536, 2147483647, 5120, 2147483647, -1, 10752}}},
+    {14, {{768, 1536, -1, 5120, 10752, 2147483647}, {1536, 2147483647, -1, 5120, 14848, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_UBMOVENUM_DEFAULT = 40;
-static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16UbmovenumMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16UbmovenumMap = {
+    {24,
+        {{768, 1536, -1, 2147483647, 3072, 10752},
+        {1536, 3072, -1, 7168, 3072, 2147483647},
+        {3072, 2147483647, -1, 7168, 3072, 2147483647}}},
+    {30, {{3072, 2147483647, 7168, 2147483647, 3072, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_LENPERLOOPMULT_DEFAULT = 400;
-static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16LenperloopmultMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16LenperloopmultMap = {
+    {2, {{768, 1536, -1, 5120, -1, 3072}}},
+    {4, {{3072, 2147483647, -1, 3072, -1, 2147483647}, {3072, 2147483647, 14848, 2147483647, 3072, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_COMMNPUSPLIT_DEFAULT = 8;
-static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16CommnpusplitMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16CommnpusplitMap = {
+    {1,
+        {{768, 1536, 5120, 2147483647, -1, 3072},
+        {1536, 3072, 14848, 2147483647, -1, 7168},
+        {3072, 2147483647, 14848, 2147483647, -1, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_COMMDATASPLIT_DEFAULT = 1;
-static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16CommdatasplitMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16CommdatasplitMap = {
+    {8,
+        {{768, 1536, 5120, 2147483647, -1, 3072},
+        {1536, 3072, 14848, 2147483647, -1, 7168},
+        {3072, 2147483647, 14848, 2147483647, -1, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRAUBMOVENUM_DEFAULT = 12;
-static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16ExtraubmovenumMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16ExtraubmovenumMap = {
+    {10,
+        {{-1, 768, -1, 2147483647, 5120, 10752},
+        {768, 1536, -1, 2147483647, 5120, 2147483647},
+        {1536, 2147483647, -1, 10752, 5120, 2147483647},
+        {1536, 2147483647, 10752, 14848, -1, 10752}}},
+    {20, {{1536, 2147483647, 14848, 2147483647, 10752, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRALENPERLOOPMULT_DEFAULT = 4;
-static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16ExtralenperloopmultMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16ExtralenperloopmultMap = {
+    {1, {{3072, 2147483647, -1, 3072, 10752, 2147483647}, {1536, 2147483647, 3072, 7168, -1, 2147483647}}},
+    {2, {{768, 1536, 5120, 2147483647, 5120, 2147483647}, {1536, 2147483647, 7168, 10752, -1, 2147483647}}},
+    {400, {{3072, 2147483647, 10752, 2147483647, -1, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRACOMMNPUSPLIT_DEFAULT = 1;
 
@@ -42,26 +71,42 @@ constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRACOMMDATASPLI
 
 // 821
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_SWIZZLECOUNT_DEFAULT = 5;
-static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16SwizzlecountMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16SwizzlecountMap = {
+    {9, {{192, 768, -1, 2147483647, -1, 12800}}},
+    {17, {{768, 2147483647, 7168, 2147483647, -1, 7936}}},
+    {13,
+        {{-1, 192, 5120, 2147483647, -1, 12800},
+        {-1, 192, -1, 2147483647, 15360, 2147483647},
+        {768, 2147483647, -1, 7168, -1, 9088}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_UBMOVENUM_DEFAULT = 60;
-static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16UbmovenumMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16UbmovenumMap = {
+    {30, {{384, 2147483647, -1, 5120, 3968, 2147483647}, {768, 2147483647, 7168, 2147483647, -1, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_LENPERLOOPMULT_DEFAULT = 400;
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_COMMNPUSPLIT_DEFAULT = 8;
-static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16CommnpusplitMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16CommnpusplitMap = {
+    {2, {{-1, 192, 7168, 2147483647, -1, 4608}, {192, 2147483647, 5120, 7168, -1, 4544}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_COMMDATASPLIT_DEFAULT = 1;
-static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16CommdatasplitMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16CommdatasplitMap = {
+    {4, {{-1, 192, 7168, 2147483647, -1, 4608}, {192, 2147483647, 5120, 7168, -1, 4544}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_COMMDIRECT_DEFAULT = 1;
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRAUBMOVENUM_DEFAULT = 20;
-static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16ExtraubmovenumMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16ExtraubmovenumMap = {
+    {60, {{-1, 192, -1, 5120, -1, 6912}, {-1, 192, -1, 2147483647, 10368, 2147483647}}},
+    {40,
+        {{-1, 192, 5120, 2147483647, -1, 6912},
+        {-1, 192, -1, 2147483647, 6912, 10368},
+        {192, 384, -1, 2147483647, 1600, 4608}}},
+    {30, {{192, 384, -1, 2147483647, 4608, 2147483647}, {768, 2147483647, -1, 5120, -1, 3968}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRALENPERLOOPMULT_DEFAULT = 2;
-static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16ExtralenperloopmultMap = {};
+static TILING_MAP g_allgatherEightReducescatterTwoTrueFP16ExtralenperloopmultMap = {
+    {4, {{384, 2147483647, -1, 5120, -1, 3968}, {384, 2147483647, 7168, 2147483647, -1, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRACOMMNPUSPLIT_DEFAULT = 1;
 
@@ -69,36 +114,79 @@ constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRACOMMDATASPLIT
 
 // 281
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_SWIZZLECOUNT_DEFAULT = 11;
-static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16SwizzlecountMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16SwizzlecountMap = {
+    {9,
+        {{3072, 6144, -1, 2147483647, -1, 10752},
+        {12288, 2147483647, -1, 7168, -1, 10752},
+        {12288, 2147483647, 10752, 2147483647, -1, 5120}}},
+    {14,
+        {{-1, 3072, -1, 7168, -1, 14848},
+        {-1, 3072, -1, 10752, 14848, 2147483647},
+        {12288, 2147483647, 7168, 10752, -1, 5120}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_UBMOVENUM_DEFAULT = 10;
-static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16UbmovenumMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16UbmovenumMap = {
+    {14, {{3072, 6144, 14848, 2147483647, -1, 3072}, {6144, 12288, 14848, 2147483647, 3072, 2147483647}}},
+    {24, {{12288, 2147483647, 10752, 14848, -1, 2147483647}}},
+    {32, {{-1, 6144, -1, 2147483647, 10752, 2147483647}, {12288, 2147483647, -1, 10752, -1, 2147483647}}},
+    {40, {{3072, 6144, -1, 2147483647, 10752, 2147483647}, {6144, 12288, -1, 14848, 3072, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_LENPERLOOPMULT_DEFAULT = 400;
-static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16LenperloopmultMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16LenperloopmultMap = {
+    {4,
+        {{3072, 6144, -1, 2147483647, 3072, 10752},
+        {12288, 2147483647, -1, 10752, -1, 3072},
+        {6144, 2147483647, -1, 2147483647, 3072, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_COMMNPUSPLIT_DEFAULT = 1;
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_COMMDATASPLIT_DEFAULT = 8;
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_EXTRAUBMOVENUM_DEFAULT = 20;
-static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16ExtraubmovenumMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16ExtraubmovenumMap = {
+    {8, {{6144, 2147483647, 3072, 5120, 7168, 2147483647}}},
+    {10, {{6144, 2147483647, 3072, 5120, -1, 7168}, {6144, 2147483647, 5120, 14848, -1, 2147483647}}},
+    {12, {{3072, 6144, 3072, 2147483647, 14848, 2147483647}}},
+    {15, {{-1, 3072, 3072, 2147483647, -1, 10752}, {3072, 6144, -1, 2147483647, -1, 5120}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_EXTRALENPERLOOPMULT_DEFAULT = 2;
-static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16ExtralenperloopmultMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16ExtralenperloopmultMap = {
+    {4,
+        {{-1, 3072, -1, 10752, 14848, 2147483647},
+        {12288, 2147483647, 3072, 5120, -1, 2147483647},
+        {6144, 2147483647, 5120, 7168, -1, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_EXTRACOMMNPUSPLIT_DEFAULT = 8;
-static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16ExtracommnpusplitMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16ExtracommnpusplitMap = {
+    {1, {{12288, 2147483647, 14848, 2147483647, -1, 3072}, {12288, 2147483647, 14848, 2147483647, 5120, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_EXTRACOMMDATASPLIT_DEFAULT = 2;
-static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16ExtracommdatasplitMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightTrueFP16ExtracommdatasplitMap = {
+    {8, {{12288, 2147483647, 14848, 2147483647, -1, 3072}, {12288, 2147483647, 14848, 2147483647, 5120, 2147483647}}}};
 
 // 280
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_SWIZZLECOUNT_DEFAULT = 9;
-static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16SwizzlecountMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16SwizzlecountMap = {
+    {13,
+        {{-1, 768, 1280, 2147483647, -1, 7168},
+        {1536, 3072, -1, 2147483647, -1, 7168},
+        {3072, 2147483647, 5184, 2147483647, -1, 2147483647}}},
+    {17,
+        {{-1, 768, -1, 2147483647, 7168, 2147483647},
+        {3072, 2147483647, -1, 4544, 7168, 2147483647},
+        {3072, 2147483647, 4544, 5184, -1, 2147483647}}},
+    {5,
+        {{768, 1536, -1, 2147483647, 5120, 2147483647},
+        {3072, 2147483647, -1, 4544, -1, 7168},
+        {3072, 2147483647, 7680, 2147483647, -1, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_UBMOVENUM_DEFAULT = 40;
-static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16UbmovenumMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16UbmovenumMap = {
+    {30,
+        {{-1, 768, 2176, 3840, -1, 5120}, {-1, 768, 2560, 2147483647, 5120, 7168},
+        {-1, 768, -1, 7680, 7168, 2147483647}, {1536, 3072, -1, 6400, -1, 2147483647}}},
+    {60, {{-1, 768, 7680, 2147483647, 7168, 2147483647}, {768, 1536, -1, 1280, -1, 7168}}},
+    {20, {{768, 1536, -1, 4352, 7168, 2147483647}, {3072, 2147483647, -1, 6400, -1, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_LENPERLOOPMULT_DEFAULT = 400;
 
@@ -107,19 +195,33 @@ constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_COMMNPUSPLIT_DEFA
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_COMMDATASPLIT_DEFAULT = 8;
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_COMMDIRECT_DEFAULT = 0;
-static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16CommdirectMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16CommdirectMap = {
+    {1,
+        {{-1, 768, 3456, 2147483647, -1, 5120},
+        {-1, 768, 2560, 2147483647, 5120, 7168},
+        {-1, 768, 4352, 7680, 7168, 2147483647},
+        {768, 1536, -1, 2147483647, -1, 7168},
+        {1536, 3072, 1280, 2147483647, -1, 2147483647},
+        {3072, 2147483647, -1, 7680, 5120, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_EXTRAUBMOVENUM_DEFAULT = 60;
-static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16ExtraubmovenumMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16ExtraubmovenumMap = {
+    {40, {{768, 2147483647, -1, 2176, -1, 5120}}},
+    {30,
+        {{768, 1536, 2176, 2147483647, -1, 5120},
+        {768, 1536, -1, 2147483647, 5120, 2147483647},
+        {1536, 2147483647, -1, 1792, 5120, 2147483647}}},
+    {20, {{1536, 2147483647, 2176, 2147483647, -1, 5120}, {1536, 2147483647, 1792, 2147483647, 5120, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_EXTRALENPERLOOPMULT_DEFAULT = 2;
-static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16ExtralenperloopmultMap = {};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_EXTRACOMMNPUSPLIT_DEFAULT = 8;
-static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16ExtracommnpusplitMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16ExtracommnpusplitMap = {
+    {1, {{3072, 2147483647, 2176, 2147483647, -1, 5120}, {768, 2147483647, -1, 2147483647, 5120, 2147483647}}}};
 
 constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_EXTRACOMMDATASPLIT_DEFAULT = 1;
-static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16ExtracommdatasplitMap = {};
+static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16ExtracommdatasplitMap = {
+    {8, {{3072, 2147483647, 2176, 2147483647, -1, 5120}, {768, 2147483647, -1, 2147483647, 5120, 2147483647}}}};
 
 const int PVALE_ONE = 1;
 const int M0_DEFAULT = 128;
