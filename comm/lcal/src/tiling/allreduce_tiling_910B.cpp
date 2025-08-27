@@ -31,14 +31,12 @@ namespace Lcal {
     constexpr int32_t ALLREDUCE_EIGHT_RANK_INT8_PVALUE_DEFAULT = 8;
     constexpr int32_t ALLREDUCE_EIGHT_RANK_INT8_DATASPLIT_DEFAULT = 32;
     constexpr int32_t ALLREDUCE_EIGHT_RANK_INT8_M0_DEFAULT = 128;
+    constexpr int32_t ALLREDUCE_TWO_RANK_FP16_PVALUE_DEFAULT = 8;
+    constexpr int32_t ALLREDUCE_TWO_RANK_FP16_M0_DEFAULT = 128;
     constexpr int32_t ALLREDUCE_TWO_RANK_FP16_DATASPLIT_DEFAULT = 32;
     constexpr int32_t ALLREDUCE_TWO_RANK_FP16_PVALUE_DEFAULT = 8;
     constexpr int32_t ALLREDUCE_TWO_RANK_FP16_UBMOVENUM_DEFAULT = 30;
     constexpr int32_t ALLREDUCE_TWO_RANK_FP16_M0_DEFAULT = 128;
-    constexpr int32_t ALLREDUCE_TWO_RANK_INT8_DATASPLIT_DEFAULT = 32;
-    constexpr int32_t ALLREDUCE_TWO_RANK_INT8_PVALUE_DEFAULT = 8;
-    constexpr int32_t ALLREDUCE_TWO_RANK_INT8_UBMOVENUM_DEFAULT = 30;
-    constexpr int32_t ALLREDUCE_TWO_RANK_INT8_M0_DEFAULT = 128;
 
     static std::vector<double> g_allreduceUbmovenumCoef = {
     };
