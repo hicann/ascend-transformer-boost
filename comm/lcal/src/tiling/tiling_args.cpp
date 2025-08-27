@@ -21,7 +21,7 @@ namespace Lcal {
             ", \nmLoop=" + std::to_string(mLoop) + ", kLoop=" + std::to_string(kLoop) +
             ", nLoop=" + std::to_string(nLoop) + ", coreLoop=" + std::to_string(coreLoop) +
             ", tilingKey=" + std::to_string(tilingKey) +
-            ", \nm0="  + std::to_string(m0) + ", k0=" + std::to_string(k0) + ", n0=" + std::to_string(n0) +
+            ", \nm0=" + std::to_string(m0) + ", k0=" + std::to_string(k0) + ", n0=" + std::to_string(n0) +
             ", swizzlCount=" + std::to_string(swizzlCount) + ", swizzlDirect=" + std::to_string(swizzlDirect) +
             ", pValue=" + std::to_string(pValue) + ", ubMoveNum=" + std::to_string(ubMoveNum) +
             ", commNpuSplit=" + std::to_string(commNpuSplit) + ", commDataSplit=" + std::to_string(commDataSplit) +
