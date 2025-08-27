@@ -90,7 +90,8 @@ Status SelfAttentionFusionBypassOpsRunnerBNSD910A::SetupKernelGraph(const OpsTen
                                      static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED);
     kernelGraph_.internalTensors.resize(
         (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_FRACTAL_NZ) || (!needMask)) ?
-            3 : (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 4 : 3)); // 4, 3: 设置中间tensor数
+            3 :
+            (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 4 : 3)); // 4, 3: 设置中间tensor数
 
     size_t internalTensorId = 0;
     Mki::Tensor &transdataQResultTensor = kernelGraph_.internalTensors.at(internalTensorId++);

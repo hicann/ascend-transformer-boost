@@ -94,10 +94,6 @@ template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Ope
         ATB_LOG(ERROR) << "scaleType should be in the range of its enum value";
         return ERROR_INVALID_PARAM;
     }
-    if (opParam.scaleType == infer::SelfAttentionParam::SCALE_TYPE_LOGN && needQKVQuant) {
-        ATB_LOG(ERROR) << "both scaleType and QKVQuant are enable";
-        return ERROR_INVALID_PARAM;
-    }
     if (opParam.calcType == infer::SelfAttentionParam::PA_ENCODER &&
         opParam.kvcacheCfg == atb::infer::SelfAttentionParam::K_BYPASS_V_BYPASS) {
         ATB_LOG(ERROR) << "when calcType is PA_ENCODER, kvcacheCfg should not be K_BYPASS_V_BYPASS";
@@ -1126,7 +1122,7 @@ Status SelfAttentionOperation::MaxHeadSizeCheck910B(const int64_t headSizeK, con
     }
     if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
         param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT ||
-        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT) {
+        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN) {
         maxHeadSize = 128; // 128: 压缩alibi情况headsize小于等于128
     }
     if (headSizeK > maxHeadSize) {
@@ -1172,7 +1168,7 @@ Status SelfAttentionOperation::HeadSizeDimCheck310P(const SVector<TensorDesc> &i
     }
     if (param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
         param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT ||
-        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT) {
+        param_.maskType == infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_LEFT_ALIGN) {
         if (headSizeK > 128 || headSizeV > 128) { // 128: 压缩alibi情况headsize小于等于128
             ATB_LOG(ERROR) << "headSize of key and value should be no greater than 128 with alibi compress mask";
             return ERROR_INVALID_TENSOR_DIM;
@@ -1420,16 +1416,16 @@ Status SelfAttentionOperation::InferShapeDimNumCheck(const SVector<TensorDesc> &
 Status SelfAttentionOperation::InferShapePADimNumCheckBNSD(const SVector<TensorDesc> &inTensorDescs) const
 {
     if (inTensorDescs.at(0).shape.dimNum != 4) { // 4: [batch, head_num, seq_len, head_size]
-        ATB_LOG(ERROR) << "dimNum of query should be 4";
+        ATB_LOG(ERROR) << "dimNum of query should be 4, bot got: " << inTensorDescs.at(0).shape.dimNum;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     if (inTensorDescs.at(kcacheId_).shape.dimNum != 4) { // 4: [batch, head_num, seq_len, head_size]
-        ATB_LOG(ERROR) << "dimNum of key should be 4";
+        ATB_LOG(ERROR) << "dimNum of key should be 4, bot got: " << inTensorDescs.at(kcacheId_).shape.dimNum;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
-    if (inTensorDescs.at(tokenOffsetId_).shape.dimNum != 1 &&
-        inTensorDescs.at(tokenOffsetId_).shape.dimNum != 2) { // 2: seqlen: [2, batch]
-        ATB_LOG(ERROR) << "dimNum of seqlen should be 1 or 2";
+    uint64_t seqLenDimNum = inTensorDescs.at(tokenOffsetId_).shape.dimNum;
+    if (seqLenDimNum != 1 && seqLenDimNum != 2) { // 2: seqlen: [2, batch]
+        ATB_LOG(ERROR) << "dimNum of seqlen should be 1 or 2, bot got: " << seqLenDimNum;
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
     return NO_ERROR;

@@ -41,7 +41,7 @@ void TransAttnMaskViewFuncBypass910a(const Mki::SVector<int64_t> &oldDims, Mki::
 void FlashAttentionInferShapePreFuncBypass910a(Mki::LaunchParam &launchParam)
 {
     if (launchParam.GetInTensors().size() < 4) { // 4: inTensor数量不少于4
-        ATB_LOG(ERROR) << "inTensor num should be at least 5";
+        ATB_LOG(ERROR) << "inTensor num should be at least 4";
         return;
     }
     launchParam.GetInTensor(3).desc.dtype = Mki::TENSOR_DTYPE_UINT32; // 3: 设置第四个输入张量的dtype
