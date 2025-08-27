@@ -161,6 +161,10 @@ HcclComm Comm::CreateHcclComm(int32_t rank, int32_t rankRoot, int32_t rankSize, 
 HcclComm Comm::CreateHcclCommByRankTableFile(int32_t rank, int32_t rankSize, const char *rankTableFile,
                                              char *commName)
 {
+    if (rankTableFile == nullptr) {
+        ATB_LOG(ERROR) << "rankTableFile is nullptr, please check the file path";
+        return nullptr;
+    }
     ATB_LOG(INFO) << "HCCL Runner multi server init ";
     HcclComm newHcclComm = nullptr;
     std::string rankTableFileStr(rankTableFile);
