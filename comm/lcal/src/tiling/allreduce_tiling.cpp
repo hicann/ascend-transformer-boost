@@ -14,8 +14,8 @@
 #include "tiling_func.h"
 
 namespace Lcal {
-const int ALLREDUCE_M_EDGE = 3172;
-const int ALLREDUCE_N_EDGE = 3172;
+const int ALLREDUCE_M_EDGE = 3072;
+const int ALLREDUCE_N_EDGE = 3072;
 
 void CoCMatmulAllReduceTilingFunc::GetDefaultTiling(const TaskParam &taskParam)
 {
@@ -50,18 +50,14 @@ void CoCMatmulAllReduceDeterTilingFunc::GetDefaultTiling(const TaskParam &taskPa
     if (cocTilingData.rankSize == RANKSIZE_FOUR) {
         if (taskParam.cocParamDesc.mmInfo.isInt8) {
             AllReduceFourRankInt8GetDefaultTiling(cocTilingData);
-            return;
         } else {
             AllReduceFourRankFP16GetDefaultTiling(cocTilingData);
-            return;
         }
     } else {
         if (taskParam.cocParamDesc.mmInfo.isInt8) {
             AllReduceEightRankINT8GetDefaultTiling(cocTilingData);
-            return;
         } else {
             AllReduceEightRankFP16GetDefaultTiling(cocTilingData);
-            return;
         }
     }
     if (cocTilingData.m * cocTilingData.n >= ALLREDUCE_M_EDGE * ALLREDUCE_N_EDGE) {
@@ -86,9 +82,9 @@ bool CheckCMatrix(const TaskParam &taskParam, const CoCTilingData &data)
         data.batchSize * data.m * data.n >= (taskParam.bufferSize * BUFFER_UNIT * BUFFER_UNIT)
         / INPUT_DTYPE / MAX_BLOCK_COUNT) {
         std::string str = "The matrix c is too large to support serial. "
-                          "withSerialMode: " + std::to_string(data.withSerialMode) + " "
-                          ", batchSize: " + std::to_string(data.batchSize) + " "
-                          ", m: " + std::to_string(data.m) + " "
+                          "withSerialMode: " + std::to_string(data.withSerialMode) + "."
+                          ", batchSize: " + std::to_string(data.batchSize) + "."
+                          ", m: " + std::to_string(data.m) + "."
                           ", n: " + std::to_string(data.n);
         PrintErrorLog(taskParam.lcalType, str);
         return false;
@@ -98,7 +94,7 @@ bool CheckCMatrix(const TaskParam &taskParam, const CoCTilingData &data)
 
 bool CoCMatmulAllReduceTilingFunc::CheckTiling(const TaskParam &taskParam)
 {
-    if (CoCTilingFunc::CheckTiling(taskParam)) {
+    if (!CoCTilingFunc::CheckTiling(taskParam)) {
         return false;
     }
     if (!CheckCMatrix(taskParam, cocTilingData)) {
@@ -112,7 +108,7 @@ bool CoCMatmulAllReduceTilingFunc::CheckTiling(const TaskParam &taskParam)
     int32_t useCoreCount = commNpuSplit * commDataSplit;
 
     std::vector<std::tuple<std::string, int, int, int>> paramCheckList = {
-        {"commNpuSplit * commNpuSplit", useCoreCount, rankSize, coreNum},
+        {"commNpuSplit * commDataSplit", useCoreCount, rankSize, coreNum},
         {"commNpuSplit", commNpuSplit, PARAM_CHECK_MIN_VALUE_ONE, rankSize}
     };
     return CheckParamScopeList(paramCheckList);
@@ -126,7 +122,7 @@ bool CoCMatmulAllReduceDeterTilingFunc::CheckTiling(const TaskParam &taskParam)
 
     auto commNpuSplit = cocTilingData.commNpuSplit;
     if (commNpuSplit != 1) {
-        std::string str = "The prodect of commNpuSplit mult equal 1. commNpuSplit: " + std::to_string(commNpuSplit);
+        std::string str = "The product of commNpuSplit must equal 1. commNpuSplit: " + std::to_string(commNpuSplit);
         PrintErrorLog(taskParam.lcalType, str);
         return false;
     }
