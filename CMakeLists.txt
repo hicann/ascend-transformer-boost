@@ -88,7 +88,6 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
-    $ENV{ASCEND_HOME_PATH}/include
     $ENV{ASCEND_HOME_PATH}/include/aclnn
     $ENV{PYTHON_INCLUDE_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/include
@@ -102,7 +101,8 @@ link_directories(
     $ENV{ASCEND_HOME_PATH}/lib64
     $ENV{PYTHON_LIB_PATH}
     $ENV{PYTORCH_INSTALL_PATH}/lib
-    $ENV{PYTORCH_NPU_INSTALL_PATH}/lib)
+    $ENV{PYTORCH_NPU_INSTALL_PATH}/lib
+    $ENV{ATB_HOME_PATH}/lib)
 
 if(BUILD_TEST_FRAMEWORK OR USE_UNIT_TEST OR USE_PYTHON_TEST OR USE_FUZZ_TEST OR USE_CSV_OPS_TEST OR USE_INFRA_TEST OR USE_ALL_TEST)
     if(USE_FUZZ_TEST OR USE_ALL_TEST)
