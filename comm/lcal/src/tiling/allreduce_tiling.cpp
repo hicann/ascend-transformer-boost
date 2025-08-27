@@ -82,9 +82,9 @@ bool CheckCMatrix(const TaskParam &taskParam, const CoCTilingData &data)
         data.batchSize * data.m * data.n >= (taskParam.bufferSize * BUFFER_UNIT * BUFFER_UNIT)
         / INPUT_DTYPE / MAX_BLOCK_COUNT) {
         std::string str = "The matrix c is too large to support serial. "
-                          "withSerialMode: " + std::to_string(data.withSerialMode) + "."
-                          ", batchSize: " + std::to_string(data.batchSize) + "."
-                          ", m: " + std::to_string(data.m) + "."
+                          "withSerialMode: " + std::to_string(data.withSerialMode) +
+                          ", batchSize: " + std::to_string(data.batchSize) +
+                          ", m: " + std::to_string(data.m) +
                           ", n: " + std::to_string(data.n);
         PrintErrorLog(taskParam.lcalType, str);
         return false;
