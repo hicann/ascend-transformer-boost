@@ -83,7 +83,7 @@ Status ToppsampleRandTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     uint64_t bf16TilingKey = launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16 ? 2 : 0;    // 二进制：10 or 00
     if (inTensor1.dims[0] == 1) {
         kernelInfo.SetTilingId(bf16TilingKey + static_cast<uint64_t>(1));
-    } else if (inTensor1.dims[0] == inTensor0.dims[0]) {
+    } else {
         kernelInfo.SetTilingId(bf16TilingKey + static_cast<uint64_t>(0));
     }
     MKI_LOG(INFO) << " realLastDim " << tilingDataPtr->realLastDim
