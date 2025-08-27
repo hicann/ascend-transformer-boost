@@ -8,12 +8,13 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <cmath>
-#include "tiling_91093.h"
+#include "tiling_910B.h"
 #include "tiling_func.h"
+#include "lcal_types.h"
 
 namespace Lcal {
     const int32_t ALLREDUCE_SERIAL_MODE_K_SIZE = 8192;
-    const int32_t ALLREDUCE_SERIAL_MODE_MN_SIZE = 256 * 256 *12;
+    const int64_t ALLREDUCE_SERIAL_MODE_MN_SIZE = 256 * 256 *12;
 
     constexpr int32_t ALLREDUCE_FOUR_RANK_FP16_DATASPLIT_DEFAULT = 32;
     constexpr int32_t ALLREDUCE_FOUR_RANK_FP16_PVALUE_DEFAULT = 8;
