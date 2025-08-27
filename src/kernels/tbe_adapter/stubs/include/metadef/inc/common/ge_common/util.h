@@ -26,6 +26,6 @@ namespace ge {
         if (_chk_status != ge::SUCCESS) {       \
             return _chk_status;                 \
         }                                       \
-    } while(false)
+    } while (false)
 
 #endif // ASCEND_OPS_STUB_FRAMEWORK_COMMON_UTIL_H

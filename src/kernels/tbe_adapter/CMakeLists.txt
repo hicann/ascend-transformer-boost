@@ -18,10 +18,10 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${METADEF_DIR}/base/type/ascend_string_impl.cc
         ${METADEF_DIR}/base/utils/aligned_ptr.cc
         ${METADEF_DIR}/base/utils/type_utils_impl.cc
-        ${METADEF_DIR}/exe_graph/runtime/compute_node_info.cc
-        ${METADEF_DIR}/exe_graph/runtime/runtime_attrs.cc
-        ${METADEF_DIR}/exe_graph/runtime/tiling_data.cc
-        ${METADEF_DIR}/register/op_impl_registry.cc
+        ${METADEF_DIR}/base/runtime/compute_node_info.cc
+        ${METADEF_DIR}/base/runtime/runtime_attrs.cc
+        ${METADEF_DIR}/base/runtime/tiling_data.cc
+        ${METADEF_DIR}/base/registry/op_impl_registry.cc
         ${METADEF_DIR}/exe_graph/lowering/getcdim.cc
         ${METADEF_DIR}/exe_graph/lowering/shape_utils.cc
         ${METADEF_DIR}/graph/attr/ge_attr_define.cc
