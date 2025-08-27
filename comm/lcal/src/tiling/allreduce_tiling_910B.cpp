@@ -178,4 +178,192 @@ namespace Lcal {
 
         return std::min(std::max(static_cast<int32_t>(pValueDouble), 1), MAX_P_VALUE);
     }
+
+    void AllReduceSetWithSerialMode(CoCTilingData &cocTilingData)
+    {
+        int32_t m = cocTilingData.m;
+        int32_t k = cocTilingData.k;
+        int32_t n = cocTilingData.n;
+
+        int64_t batchSize = cocTilingData.batchSize;
+        int64_t commSize = static_cast<int64_t>(batchSize) * m * n;
+        if (commSize <= ALLREDUCE_SERIAL_MODE_MN_SIZE && k <= ALLREDUCE_SERIAL_MODE_K_SIZE) {
+            cocTilingData.withSerialMode = 1;
+            cocTilingData.ubMoveNum = MAX_UB_NUM;
+            cocTilingData.lenPerLoop = cocTilingData.ubMoveNum;
+        } else {
+            cocTilingData.withSerialMode = 0;
+        }
+    }
+    
+    void AllReduceGetDefaultTiling(CoCTilingData &cocTilingData)
+    {
+        int64_t batchSize = cocTilingData.batchSize;
+        int32_t m = cocTilingData.m;
+        int32_t k = cocTilingData.k;
+        int32_t n = cocTilingData.n;
+
+        cocTilingData.swizzlDirect = SWIZZLE_DIRECT_ONE;
+        cocTilingData.ubMoveNum = AllReduceUbMoveNum(m, k, n);
+        cocTilingData.pValue = AllReducePValue(m, k, n);
+
+        int64_t cubeSize = static_cast<int64_t>(batchSize) * m * k * n;
+        int64_t commSize = static_cast<int64_t>(batchSize) * m * n;
+        constexpr int32_t bufferUnit = 1024;
+        if ((cubeSize <= MATMUL_BASE_100US &&
+            commSize < (cocTilingData.bufferSize * bufferUnit * bufferUnit) / INPUT_DTYPE / MAX_BLOCK_COUNT) ||
+            commSize <= ALLREDUCE_BASE_100US) {
+            cocTilingData.withSerialMode = 1;
+            cocTilingData.ubMoveNum = MAX_UB_NUM;
+        } else {
+            cocTilingData.withSerialMode = 0;
+        }
+        cocTilingData.commDataSplit = COMM_DATA_DIRECT;
+        cocTilingData.commNpuSplit = cocTilingData.rankSize;
+        cocTilingData.commDataSplit = COMMDATASPLIT_ONE;
+        cocTilingData.lenPerLoop = cocTilingData.m0 * cocTilingData.n0 * cocTilingData.pValue * cocTilingData.blockDim;
+        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / cocTilingData.rankSize;
+        cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
+        SetSecondCoreSplitTling(cocTilingData);
+    }
+
+    void AllReduceFourRankInt8GetDefaultTiling(CoCTilingData &cocTilingData)
+    {
+        std::map<int*, TilingValue> tilingParamMap = {
+            {&cocTilingData.m0,
+             {ALLREDUCE_FOUR_RANK_INT8_M0_DEFAULT,
+              g_allreduceFourRankInT8M0Map}},
+            {&cocTilingData.ubMoveNum,
+             {ALLREDUCE_FOUR_RANK_INT8_UBMOVENUM_DEFAULT,
+              g_allreduceFourRankInT8UbmovenumMap}},
+            {&cocTilingData.pValue,
+             {ALLREDUCE_FOUR_RANK_INT8_PVALUE_DEFAULT,
+              g_allreduceFourRankInT8PvalueMap}},
+            {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
+            {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
+            {&cocTilingData.commDirect, {COMM_DATA_DIRECT}},
+            {&cocTilingData.commNpuSplit, {COMMNPUSPLIT_ONE}},
+            {&cocTilingData.commDataSplit, {COMMDATASPLIT_SIXTEEN}}
+        };
+        SetTilingParam(cocTilingData, tilingParamMap);
+
+        cocTilingData.lenPerLoop = ALLREDUCE_LENPERLOOP_DEFAULT / RANKSIZE_EIGHT * cocTilingData.rankSize;
+        cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
+        cocTilingData.ubMoveNum = cocTilingData.lenPerLoop;
+
+        AllReduceSetWithSerialMode(cocTilingData);
+        SetSecondCoreSplitTling(cocTilingData);
+    }
+
+    void AllReduceFourRankFP16GetDefaultTiling(CoCTilingData &cocTilingData)
+    {
+        std::map<int*, TilingValue> tilingParamMap = {
+            {&cocTilingData.m0,
+             {ALLREDUCE_FOUR_RANK_FP16_M0_DEFAULT,
+              g_allreduceFourRankFP16M0Map}},
+            {&cocTilingData.ubMoveNum,
+             {ALLREDUCE_FOUR_RANK_FP16_UBMOVENUM_DEFAULT,
+              g_allreduceFourRankFP16UbmovenumMap}},
+            {&cocTilingData.pValue,
+             {ALLREDUCE_FOUR_RANK_FP16_PVALUE_DEFAULT,
+              g_allreduceFourRankFP16PvalueMap}},
+            {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
+            {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
+            {&cocTilingData.commDirect, {COMM_DATA_DIRECT}},
+            {&cocTilingData.commNpuSplit, {COMMNPUSPLIT_ONE}},
+            {&cocTilingData.commDataSplit, {COMMDATASPLIT_SIXTEEN}}
+        };
+        SetTilingParam(cocTilingData, tilingParamMap);
+
+        cocTilingData.lenPerLoop = ALLREDUCE_LENPERLOOP_DEFAULT / RANKSIZE_EIGHT * cocTilingData.rankSize;
+        cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
+        cocTilingData.ubMoveNum = cocTilingData.lenPerLoop;
+
+        AllReduceSetWithSerialMode(cocTilingData);
+        SetSecondCoreSplitTling(cocTilingData);
+    }
+
+    void AllReduceEightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData)
+    {
+        std::map<int*, TilingValue> tilingParamMap = {
+            {&cocTilingData.m0,
+             {ALLREDUCE_EIGHT_RANK_FP16_M0_DEFAULT,
+              g_allreduceEightRankFP16M0Map}},
+            {&cocTilingData.ubMoveNum,
+             {ALLREDUCE_EIGHT_RANK_FP16_UBMOVENUM_DEFAULT,
+              g_allreduceEightRankFP16UbmovenumMap}},
+            {&cocTilingData.pValue,
+             {ALLREDUCE_EIGHT_RANK_FP16_PVALUE_DEFAULT,
+              g_allreduceEightRankFP16PvalueMap}},
+            {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
+            {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
+            {&cocTilingData.commDirect, {COMM_DATA_DIRECT}},
+            {&cocTilingData.commNpuSplit, {COMMNPUSPLIT_ONE}},
+            {&cocTilingData.commDataSplit, {COMMDATASPLIT_SIXTEEN}}
+        };
+        SetTilingParam(cocTilingData, tilingParamMap);
+
+        cocTilingData.lenPerLoop = ALLREDUCE_LENPERLOOP_DEFAULT / RANKSIZE_EIGHT * cocTilingData.rankSize;
+        cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
+        cocTilingData.ubMoveNum = cocTilingData.lenPerLoop;
+
+        AllReduceSetWithSerialMode(cocTilingData);
+        SetSecondCoreSplitTling(cocTilingData);
+    }
+
+    void AllReduceEightRankINT8GetDefaultTiling(CoCTilingData &cocTilingData)
+    {
+        std::map<int*, TilingValue> tilingParamMap = {
+            {&cocTilingData.m0,
+             {ALLREDUCE_EIGHT_RANK_INT8_M0_DEFAULT,
+              g_allreduceEightRankInT8M0Map}},
+            {&cocTilingData.ubMoveNum,
+             {ALLREDUCE_EIGHT_RANK_INT8_UBMOVENUM_DEFAULT,
+              g_allreduceEightRankInT8UbmovenumMap}},
+            {&cocTilingData.pValue,
+             {ALLREDUCE_EIGHT_RANK_INT8_PVALUE_DEFAULT,
+              g_allreduceEightRankInT8PvalueMap}},
+            {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
+            {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
+            {&cocTilingData.commDirect, {COMM_DATA_DIRECT}},
+            {&cocTilingData.commNpuSplit, {COMMNPUSPLIT_ONE}},
+            {&cocTilingData.commDataSplit, {COMMDATASPLIT_SIXTEEN}}
+        };
+        SetTilingParam(cocTilingData, tilingParamMap);
+
+        cocTilingData.lenPerLoop = ALLREDUCE_LENPERLOOP_DEFAULT / RANKSIZE_EIGHT * cocTilingData.rankSize;
+        cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
+        cocTilingData.ubMoveNum = cocTilingData.lenPerLoop;
+
+        AllReduceSetWithSerialMode(cocTilingData);
+        SetSecondCoreSplitTling(cocTilingData);
+    }
+
+    void AllReduceTwoRankFP16GetDefaultTiling(CoCTilingData &cocTilingData)
+    {
+        std::map<int*, TilingValue> tilingParamMap = {
+            {&cocTilingData.m0,
+             {ALLREDUCE_TWO_RANK_FP16_M0_DEFAULT,
+              g_allreduceTwoRankFP16M0Map}},
+            {&cocTilingData.ubMoveNum,
+             {ALLREDUCE_TWO_RANK_FP16_UBMOVENUM_DEFAULT,
+              g_allreduceTwoRankFP16UbmovenumMap}},
+            {&cocTilingData.pValue,
+             {ALLREDUCE_TWO_RANK_FP16_PVALUE_DEFAULT,
+              g_allreduceTwoRankFP16PvalueMap}},
+            {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
+            {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
+            {&cocTilingData.commDirect, {COMM_DATA_DIRECT}},
+            {&cocTilingData.commNpuSplit, {COMMNPUSPLIT_ONE}},
+            {&cocTilingData.commDataSplit, {COMMDATASPLIT_SIXTEEN}}
+        };
+        SetTilingParam(cocTilingData, tilingParamMap);
+
+        cocTilingData.lenPerLoop = ALLREDUCE_LENPERLOOP_DEFAULT / RANKSIZE_EIGHT * cocTilingData.rankSize;
+        cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
+        cocTilingData.ubMoveNum = cocTilingData.lenPerLoop;
+
+        AllReduceSetWithSerialMode(cocTilingData);
+        SetSecondCoreSplitTling(cocTilingData);
+    }
 }
