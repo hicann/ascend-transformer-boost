@@ -40,6 +40,7 @@ namespace Lcal {
     constexpr int32_t ALLREDUCE_TWO_RANK_FP16_COMMDATASPLIT_DEFAULT = 16;
 
     static std::vector<double> g_allreduceUbmovenumCoef = {
+        
     };
 
     static std::vector<double> g_allreducePvalueCoef = {
