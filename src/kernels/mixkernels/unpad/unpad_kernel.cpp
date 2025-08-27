@@ -44,6 +44,7 @@ public:
                 "in tensor3 dims[0] or dims[1] is invalid", return false);
 
         uint32_t maxSeqlen = static_cast<uint32_t>(inTensor0.desc.dims[1]);
+        MKI_CHECK(batch <= UINT32_MAX / maxSeqlen, "batch * maxSeqlen exceeds uint32_t maximum (overflow)", return false);
         uint32_t totalLen = batch * maxSeqlen;
         auto outTensor0 = launchParam.GetOutTensor(0); // x_remove_padding
         auto outTensor1 = launchParam.GetOutTensor(1); // cum_offsets_out
