@@ -12,14 +12,14 @@
 #include "tiling_func.h"
 
 namespace Lcal {
-    constexpr int32_t ALLREDUCE_91093_EIGHT_RANK_FP16_UBMOVENUM_DEFALUT = 160;
-    constexpr int32_t ALLREDUCE_91093_EIGHT_RANK_FP16_M0_DEFALUT = 128;
-    constexpr int32_t ALLREDUCE_91093_EIGHT_RANK_FP16_PVALUE_DEFALUT = 14;
-    constexpr int32_t ALLREDUCE_91093_EIGHT_RANK_FP16_COMMDATASPLIT_DEFALUT = 16;
-    constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_PVALUE_DEFALUT = 14;
-    constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_UBMOVENUM_DEFALUT = 160;
-    constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_M0_DEFALUT = 128;
-    constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_COMMDATASPLIT_DEFALUT = 16;
+    constexpr int32_t ALLREDUCE_91093_EIGHT_RANK_FP16_UBMOVENUM_DEFAULT = 160;
+    constexpr int32_t ALLREDUCE_91093_EIGHT_RANK_FP16_M0_DEFAULT = 128;
+    constexpr int32_t ALLREDUCE_91093_EIGHT_RANK_FP16_PVALUE_DEFAULT = 14;
+    constexpr int32_t ALLREDUCE_91093_EIGHT_RANK_FP16_COMMDATASPLIT_DEFAULT = 16;
+    constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_PVALUE_DEFAULT = 14;
+    constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_UBMOVENUM_DEFAULT = 160;
+    constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_M0_DEFAULT = 128;
+    constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_COMMDATASPLIT_DEFAULT = 16;
     
     static std::map<int, std::vector<std::vector<int>>> g_allreduce91093EightRankFP16CommdatasplitMap = {
     };
@@ -47,24 +47,24 @@ namespace Lcal {
 
     void AllReduceNPU91093EightRankFP16Tiling(CoCTilingData &cocTilingData)
     {
-        std::map<int*, TillingValue> tillingParamMap = {
+        std::map<int*, TilingValue> tilingParamMap = {
             {&cocTilingData.commDataSplit,
-             {ALLREDUCE_91093_EIGHT_RANK_FP16_COMMDATASPLIT_DEFALUT,
+             {ALLREDUCE_91093_EIGHT_RANK_FP16_COMMDATASPLIT_DEFAULT,
              g_allreduce91093EightRankFP16CommdatasplitMap}},
             {&cocTilingData.pValue,
-             {ALLREDUCE_91093_EIGHT_RANK_FP16_PVALUE_DEFALUT,
+             {ALLREDUCE_91093_EIGHT_RANK_FP16_PVALUE_DEFAULT,
              g_allreduce91093EightRankFP16PvalueMap}},
             {&cocTilingData.m0,
-             {ALLREDUCE_91093_EIGHT_RANK_FP16_M0_DEFALUT,
+             {ALLREDUCE_91093_EIGHT_RANK_FP16_M0_DEFAULT,
              g_allreduce91093EightRankFP16M0Map}},
             {&cocTilingData.ubMoveNum,
-             {ALLREDUCE_91093_EIGHT_RANK_FP16_UBMOVENUM_DEFALUT,
+             {ALLREDUCE_91093_EIGHT_RANK_FP16_UBMOVENUM_DEFAULT,
              g_allreduce91093EightRankFP16UbmovenumMap}},
             {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
             {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
             {&cocTilingData.commDirect, {COMM_DATA_DIRECT}}
         };
-        SetTillingParam(cocTilingData, tillingParamMap);
+        SettilingParam(cocTilingData, tilingParamMap);
 
         cocTilingData.lenPerLoop = cocTilingData.ubMoveNum;
         cocTilingData.commNpuSplit =
@@ -74,24 +74,24 @@ namespace Lcal {
 
     void AllReduceNPU91093SixteenRankFP16Tiling(CoCTilingData &cocTilingData)
     {
-        std::map<int*, TillingValue> tillingParamMap = {
+        std::map<int*, TilingValue> tilingParamMap = {
             {&cocTilingData.commDataSplit,
-             {ALLREDUCE_91093_SIXTEEN_RANK_FP16_COMMDATASPLIT_DEFALUT,
+             {ALLREDUCE_91093_SIXTEEN_RANK_FP16_COMMDATASPLIT_DEFAULT,
              g_allreduce91093SixteenRankFP16CommdatasplitMap}},
             {&cocTilingData.pValue,
-             {ALLREDUCE_91093_SIXTEEN_RANK_FP16_PVALUE_DEFALUT,
+             {ALLREDUCE_91093_SIXTEEN_RANK_FP16_PVALUE_DEFAULT,
              g_allreduce91093SixteenRankFP16PvalueMap}},
             {&cocTilingData.m0,
-             {ALLREDUCE_91093_SIXTEEN_RANK_FP16_M0_DEFALUT,
+             {ALLREDUCE_91093_SIXTEEN_RANK_FP16_M0_DEFAULT,
              g_allreduce91093SixteenRankFP16M0Map}},
             {&cocTilingData.ubMoveNum,
-             {ALLREDUCE_91093_SIXTEEN_RANK_FP16_UBMOVENUM_DEFALUT,
+             {ALLREDUCE_91093_SIXTEEN_RANK_FP16_UBMOVENUM_DEFAULT,
              g_allreduce91093SixteenRankFP16UbmovenumMap}},
             {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
             {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
             {&cocTilingData.commDirect, {COMM_DATA_DIRECT}}
         };
-        SetTillingParam(cocTilingData, tillingParamMap);
+        SettilingParam(cocTilingData, tilingParamMap);
 
         cocTilingData.lenPerLoop = cocTilingData.ubMoveNum;
         cocTilingData.commNpuSplit =
