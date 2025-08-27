@@ -14,7 +14,7 @@
 namespace Lcal {
 CoCTilingData CoCTilingFunc::GenerateTiling(const TaskParam &taskParam, const CoCTiling &tiling)
 {
-    SetTilingInputParam(taskParam, tiling);
+    SetTilingInputParam(taskParam, cocTilingData);
 
     cocTilingData.SetDefaultValue();
 
@@ -33,7 +33,7 @@ bool CoCTilingFunc::CheckTiling(const TaskParam &taskParam)
 void CoCTilingFunc::GetDefaultTiling(const TaskParam &taskParam)
 {
     cocTilingData.ubMoveNum = VALID_UB_MOVE_NUM;
-    cocTilingData.commNpuSplit = cocTilingData.ranksize;
+    cocTilingData.commNpuSplit = cocTilingData.rankSize;
     cocTilingData.commDataSplit = COMMDATASPLIT_ONE;
     cocTilingData.commDirect = COMM_DATA_DIRECT;
     cocTilingData.lenPerLoop = LENPERLOOP_DEFAULT;
