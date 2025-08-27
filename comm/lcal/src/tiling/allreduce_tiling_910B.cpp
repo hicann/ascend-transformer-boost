@@ -308,7 +308,7 @@ namespace Lcal {
         SetTilingParam(cocTilingData, tilingParamMap);
 
         cocTilingData.lenPerLoop = cocTilingData.m0 * cocTilingData.n0 * cocTilingData.pValue * cocTilingData.blockDim;
-        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / cocTilingData.rankSize / cocTilingData.commDataSplit
+        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / cocTilingData.rankSize / cocTilingData.commDataSplit;
         cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / dataSplit;
         cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
         cocTilingData.lenPerLoop = std::min(cocTilingData.lenPerLoop, TREE_LEN_PER_LOOP);
@@ -342,7 +342,7 @@ namespace Lcal {
         SetTilingParam(cocTilingData, tilingParamMap);
 
         cocTilingData.lenPerLoop = cocTilingData.m0 * cocTilingData.n0 * cocTilingData.pValue * cocTilingData.blockDim;
-        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / cocTilingData.rankSize / cocTilingData.commDataSplit
+        cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / cocTilingData.rankSize / cocTilingData.commDataSplit;
         cocTilingData.lenPerLoop = cocTilingData.lenPerLoop / dataSplit;
         cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
         cocTilingData.lenPerLoop = std::min(cocTilingData.lenPerLoop, TREE_LEN_PER_LOOP);
@@ -351,7 +351,7 @@ namespace Lcal {
         SetSecondCoreSplitTling(cocTilingData);
     }
 
-    void AllReduceTwoRankFP16GetDefaultTiling(CoCTilingData &cocTilingData)
+    void AllReduceTwoRankFP16Tiling(CoCTilingData &cocTilingData)
     {
         std::map<int*, TilingValue> tilingParamMap = {
             {&cocTilingData.commDataSplit,
@@ -364,7 +364,7 @@ namespace Lcal {
              {ALLREDUCE_TWO_RANK_FP16_SWIZZLDIRECT_DEFAULT,
               g_allreduceTwoRankFP16SwizzldirectMap}},
             {&cocTilingData.swizzlCount,
-             {ALLREDUCE_TWO_RANK_FP16_SWIZZLCOUNT_DEFAULT
+             {ALLREDUCE_TWO_RANK_FP16_SWIZZLCOUNT_DEFAULT,
               g_allreduceTwoRankFP16SwizzlcountMap}},
             {&cocTilingData.m0,
              {ALLREDUCE_TWO_RANK_FP16_M0_DEFAULT,
@@ -372,19 +372,13 @@ namespace Lcal {
             {&cocTilingData.pValue,
              {ALLREDUCE_TWO_RANK_FP16_PVALUE_DEFAULT,
               g_allreduceTwoRankFP16PvalueMap}},
-            {&cocTilingData.swizzlDirect, {SWIZZLE_DIRECT_ONE}},
-            {&cocTilingData.swizzlCount, {DEFAULT_SWIZZLE_COUNT}},
             {&cocTilingData.commDirect, {COMM_DATA_DIRECT}},
-            {&cocTilingData.commNpuSplit, {COMMNPUSPLIT_ONE}},
-            {&cocTilingData.commDataSplit, {COMMDATASPLIT_SIXTEEN}}
+            {&cocTilingData.commNpuSplit, {COMMNPUSPLIT_ONE}}
         };
         SetTilingParam(cocTilingData, tilingParamMap);
 
-        cocTilingData.lenPerLoop = ALLREDUCE_LENPERLOOP_DEFAULT / RANKSIZE_EIGHT * cocTilingData.rankSize;
-        cocTilingData.lenPerLoop = RoundNum(cocTilingData.lenPerLoop, HALF_KBYTE);
-        cocTilingData.ubMoveNum = cocTilingData.lenPerLoop;
+        cocTilingData.lenPerLoop = cocTilingData.ubMoveNum;
 
         AllReduceSetWithSerialMode(cocTilingData);
-        SetSecondCoreSplitTling(cocTilingData);
     }
 }
