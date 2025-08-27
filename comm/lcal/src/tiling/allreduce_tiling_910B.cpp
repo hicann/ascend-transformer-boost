@@ -137,7 +137,7 @@ namespace Lcal {
         double c14 = 1.0 * k * k * sqrt(1.0 * m * n);
         double ubMoveNumDouble = 0;
         std::vector<double> featsUpdate = { c0, c1, c2, c3, c4, c5, c6, c7, 1.0 / c0, 1.0 / c1, 1.0 / c2, 1.0 / c3,
-                                             1.0 / c4, c8, c9, c10, c11, c12, c13, 1.0 / c13, c14, 1 };
+                                            1.0 / c4, c8, c9, c10, c11, c12, c13, 1.0 / c13, c14, 1 };
         for (uint32_t i = 0; i < featsUpdate.size(); i++) {
             ubMoveNumDouble += featsUpdate[i] * g_allreduceUbmovenumCoef[i];
         }
@@ -171,7 +171,7 @@ namespace Lcal {
         double c14 = 1.0 * k * k * sqrt(1.0 * m * n);
         double pValueDouble = 0;
         std::vector<double> featsUpdate = { c0, c1, c2, c3, c4, c5, c6, c7, 1.0 / c0, 1.0 / c1, 1.0 / c2, 1.0 / c3,
-                                             1.0 / c4, c8, c9, c10, c11, c12, c13, 1.0 / c13, c14, 1 };
+                                            1.0 / c4, c8, c9, c10, c11, c12, c13, 1.0 / c13, c14, 1 };
         for (uint32_t i = 0; i < featsUpdate.size(); i++) {
             pValueDouble += featsUpdate[i] * g_allreducePvalueCoef[i];
         }
