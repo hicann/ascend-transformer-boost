@@ -50,8 +50,8 @@ Status GetTilingSliceInfo(LayerNormStrideTilingData &tilingData, uint32_t maxUbS
     uint32_t singleRowSizePerElem =
         kernelBufferInfo.fp32BufNum * sizeof(uint32_t) + kernelBufferInfo.fp16BufNum * sizeof(uint16_t);
     uint32_t multiRowSizePerElem = kernelBufferInfo.fp16BufNumForMulRow * sizeof(uint16_t);
-    uint64_t singleRowBufferSize = singleRowSizePerElem * numCol;
-    uint64_t multiRowBufferSize = multiRowSizePerElem * numCol;
+    uint64_t singleRowBufferSize = static_cast<uint64_t>(singleRowSizePerElem) * numCol;
+    uint64_t multiRowBufferSize = static_cast<uint64_t>(multiRowSizePerElem) * numCol;
 
     if ((maxUbSize - MEAN_AND_VAR_SIZE) < (singleRowBufferSize + multiRowBufferSize)) {
         uint32_t oneRepeatElemCount = 256U / sizeof(uint16_t);

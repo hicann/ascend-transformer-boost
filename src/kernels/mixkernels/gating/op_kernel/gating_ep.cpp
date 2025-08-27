@@ -636,9 +636,6 @@ __aicore__ inline void CopyGm2Gm(GlobalTensor<float> &srcLocal, GlobalTensor<int
         Cast(sortLocal, topkLocalInt, RoundMode::CAST_FLOOR, processNum + paddingNum);
         PipeBarrier<PIPE_ALL>();
 
-        DataCopy(sortLocal, sortLocal, processNum + paddingNum);
-        PipeBarrier<PIPE_ALL>();
-
         // 把sortLocal进行填充，长度达到TILE_NUM
         Duplicate<float>(sortLocal[processNum + paddingNum], paddingValueFloat, TILE_NUM - (processNum + paddingNum));
         Duplicate<uint32_t>(idxArrLocal[processNum + paddingNum], paddingValueUint,

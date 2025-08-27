@@ -36,6 +36,8 @@ Status RopeGradTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     tilingDataPtr->headSize = headSize;
     MKI_CHECK(tilingDataPtr->headSize > 0 && tilingDataPtr->headSize < MAX_PROCESS_NUM, "headSize invalid",
                  return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(hiddenSize % headSize == 0, "hiddenSize should be an integer multiple of headSize",
+                 return Status::FailStatus(ERROR_INVALID_VALUE));
     tilingDataPtr->sumSeqLen = sumSeqLen;
     auto param = AnyCast<OpParam::RopeGrad>(launchParam.GetParam());
     tilingDataPtr->batch = static_cast<int64_t>(param.qSeqLen.size());
