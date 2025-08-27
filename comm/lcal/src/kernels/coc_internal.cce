@@ -293,7 +293,7 @@ FORCE_INLINE_AICORE void CopyGmToUbufAlign(__ubuf__ T *dst, __gm__ T *src, uint1
 }
 
 template <typename T>
-FORCE_INLINE_AICORE void CopyToGmUbufAlign(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
+FORCE_INLINE_AICORE void CopyUbufToGmAlign(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
                                             uint32_t gmGap, uint32_t ubufGap = 0)
 {
     DataCopyParams dataCopyParams(nBurst, // blockCount
@@ -333,11 +333,12 @@ FORCE_INLINE_AICORE void CopyGmToUbufAlignB16(__ubuf__ T *dst, __gm__ T *src, ui
     ubTensor.SetAddr(ubAddr);
     GlobalTensor<uint8_t> gmTensor;
     gmTensor.SetGlobalBuffer(reinterpret_cast<GM_ADDR>(src));
+    DataCopyExtParams<uint8_t> padParams;
     DataCopyPad(ubTensor, gmTensor, dataCopyParams, padParams);
 }
 
 template <typename T>
-FORCE_INLINE_AICORE void CopyToGmAlignB16(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
+FORCE_INLINE_AICORE void CopyUbufToGmAlignB16(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint32_t lenBurst,
                                                 uint16_t srcStride, uint16_t dstStride)
 {
     DataCopyExtParams dataCopyParams(nBurst, // blockCount
@@ -378,7 +379,7 @@ template <typename T>
 FORCE_INLINE_AICORE void CopyUbufToGm(__gm__ T *dst, __ubuf__ T *src, uint16_t nBurst, uint16_t lenBurst,
                                                 uint16_t srcStride, uint16_t dstStride)
 {
-    DataCopyExtParams dataCopyExtParams(nBurst, // blockCount
+    DataCopyParams dataCopyParams(nBurst, // blockCount
                                     lenBurst, // blockLen
                                     srcStride, // srcStride
                                     dstStride // dstStride
