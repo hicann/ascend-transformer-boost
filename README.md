@@ -62,6 +62,11 @@ ATB加速库采用了一系列优化策略，包括算法优化、硬件优化�
 2.  提交代码
 3.  新建 merge Request
 
+## 样例安全声明
+`example`目录下的样例旨在提供快速上手、开发和调试ATB特性的最小化实现，其核心目标是使用最精简的代码展示ATB核心功能，**而非提供生产级的安全保障**。与成熟的生产级使用方法相比，此样例中的安全功能（如输入校验、边界校验）相对有限。
+
+ATB不推荐用户直接将样例作为业务代码，也不保证此种做法的安全性。若用户将`example`中的示例代码应用在自身的真是业务场景中且发生了安全问题，则由用户自行承担。
+
 ## 参考文档
 **[CANN商用版文档](https://www.hiascend.com/document/detail/zh/canncommercial/80RC2/quickstart/quickstart/quickstart_18_0001.html)**
 **[ATB商用版文档](https://www.hiascend.com/document/detail/zh/canncommercial/80RC2/developmentguide/acce/ascendtb/ascendtb_0001.html)**
