@@ -16,7 +16,7 @@ const uint32_t LES_DIM_1 = 512;
 const uint32_t LOCALOUT_DIM_0 = 8;
 const uint32_t LOCALOUT_DIM_1 = 512;
 const uint32_t LOCALOUT_DIM_2 = 8;
-
+const uint32_t SP_PARA_DEGREE = 8;
 /**
  * @brief 准备atb::VariantPack
  * @param contextPtr context指针
@@ -48,7 +48,7 @@ atb::Status CreateFaUpdateOperation(atb::Operation **faupdateOp)
 {
     atb::infer::FaUpdateParam param;
     param.faUpdateType = atb::infer::FaUpdateParam::FaUpdateType::DECODE_UPDATE;
-    param.sp = 8;
+    param.sp = SP_PARA_DEGREE;
     CHECK_STATUS(atb::CreateOperation(param, faupdateOp));
     return atb::ErrorType::NO_ERROR;
 }
