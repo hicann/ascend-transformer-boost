@@ -277,7 +277,7 @@ Status CheckQSeqlenValid(const std::vector<int32_t>& qSeqlen)
     int64_t numTokens = 0;
     for (size_t idx = 0; idx < qSeqlen.size(); ++idx) {
         int64_t curQSeqlen = static_cast<int64_t>(qSeqlen.at(idx));
-        MKI_CHECK(curQSeqlen <= INT32_MAX && curQSeqlen > 0, "seqlen is invalid",
+        MKI_CHECK(curQSeqlen > 0, "seqlen is invalid",
                  return Status::FailStatus(ERROR_INVALID_VALUE));
         numTokens += curQSeqlen;
         MKI_CHECK(numTokens <= INT32_MAX, "seqlen is invalid",
@@ -427,7 +427,7 @@ Status PagedAttentionTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     uint64_t basicWorkSpaceFloat = blockDim * WORKSPACE_BLOCK_SIZE_DB * dataLenFloat;
     if (param.type == OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND) {
         oCoreTempSize = blockDim * SPLITKV_RATION * static_cast<uint32_t>(mmInfo.numHeads) *
-            blockDim *  static_cast<uint32_t>(mmInfo.embeddingSize * sizeof(float));
+            blockDim * static_cast<uint32_t>(mmInfo.embeddingSize * sizeof(float));
         // (num_tokens, num_heads, kvsplit)
         lCoreTempSize = blockDim * SPLITKV_RATION * static_cast<uint32_t>(mmInfo.numHeads) *
             blockDim * sizeof(float);
