@@ -18,15 +18,15 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${METADEF_DIR}/base/type/ascend_string_impl.cc
         ${METADEF_DIR}/base/utils/aligned_ptr.cc
         ${METADEF_DIR}/base/utils/type_utils_impl.cc
-        ${METADEF_DIR}/exe_graph/lowering/getcdim.cc
-        ${METADEF_DIR}/exe_graph/lowering/shape_utils.cc
         ${METADEF_DIR}/exe_graph/runtime/compute_node_info.cc
         ${METADEF_DIR}/exe_graph/runtime/runtime_attrs.cc
         ${METADEF_DIR}/exe_graph/runtime/tiling_data.cc
+        ${METADEF_DIR}/register/op_impl_registry.cc
+        ${METADEF_DIR}/exe_graph/lowering/getcdim.cc
+        ${METADEF_DIR}/exe_graph/lowering/shape_utils.cc
         ${METADEF_DIR}/graph/attr/ge_attr_define.cc
         ${METADEF_DIR}/graph/normal_graph/tensor.cc
         ${METADEF_DIR}/graph/type/types.cc
-        ${METADEF_DIR}/register/op_impl_registry.cc
         ${METADEF_DIR}/register/op_tiling/op_tiling_attr_utils.cc
         ${METADEF_DIR}/register/op_tiling/op_tiling_info.cc
         ${METADEF_DIR}/register/op_binary_resource_manager.cc
@@ -120,8 +120,8 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${TBE_TILING_DIR}/runtime/layer_norm_v3.cc
         ${TBE_TILING_DIR}/runtime/layer_norm_v3/layer_norm_v3_tiling.cc
         ${TBE_TILING_DIR}/runtime/layer_norm_v3/layer_norm_v3_tiling_base.cc
-        ${TBE_TILING_DIR}/runtime/layer_norm_v4/layer_norm_v4_tiling.cc
-        ${TBE_TILING_DIR}/runtime/layer_norm_v4/layer_norm_v4_tiling_base.cc
+        ${OPS_THIRD_PARTY_DIR}/canndev/ops/norm/layer_norm_v4/op_host/layer_norm_v4_tiling.cpp
+        ${OPS_THIRD_PARTY_DIR}/canndev/ops/norm/layer_norm_v4/op_host/layer_norm_v4_tiling_base.cpp
         ${TBE_TILING_DIR}/runtime/one_hot/one_hot.cc
         ${TBE_TILING_DIR}/runtime/one_hot/one_hot_tiling.cc
         ${TBE_TILING_DIR}/runtime/pack_tiling.cc
@@ -402,6 +402,7 @@ if("${PACKAGE_COMPILE}" STREQUAL "ON" AND NOT "${LOCAL_RELEASE_COMPILE}" STREQUA
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops
         ${PROJECT_SOURCE_DIR}/3rdparty/canndev/ops/conversion/fill/op_kernel
         ${METADEF_DIR}
+        ${METADEF_DIR}/base/runtime
         ${METADEF_DIR}/exe_graph/lowering
         ${METADEF_DIR}/exe_graph/runtime
         ${METADEF_DIR}/graph

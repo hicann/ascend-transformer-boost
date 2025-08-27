@@ -11,6 +11,10 @@
 #ifndef PLATFORM_INFO_H
 #define PLATFORM_INFO_H
 
+#include <cstdint>
+#include <map>
+#include <string>
+
 using namespace std;
 #define UNUSED_VALUE(x) (void)(x)
 

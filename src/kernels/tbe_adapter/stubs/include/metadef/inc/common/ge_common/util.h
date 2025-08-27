@@ -14,9 +14,18 @@
 #include <functional>
 
 #include "debug/ge_log.h"
+#include "debug/log.h"
 #include "external/ge_common/ge_api_error_codes.h"
 
 namespace ge {
 } // namespace ge
+
+#define GE_RETURN_IF_ERROR(expr)                \
+    do {                                        \
+        const ge::Status _chk_status = (expr);  \
+        if (_chk_status != ge::SUCCESS) {       \
+            return _chk_status;                 \
+        }                                       \
+    } while(false)
 
 #endif // ASCEND_OPS_STUB_FRAMEWORK_COMMON_UTIL_H
