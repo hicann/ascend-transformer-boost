@@ -187,11 +187,13 @@ public:
 
     bool CanSupport(const LaunchParam &launchParam) const override
     {
-        MKI_CHECK(launchParam.GetInTensorCount() == 4, "in tensor num invalid", return false);
+        MKI_CHECK(launchParam.GetInTensorCount() == 6, "in tensor num invalid", return false);   // 4->6,   把k v的都加进去
         MKI_CHECK(launchParam.GetOutTensorCount() == 1, "out tensor num invalid", return false);
         MKI_CHECK(launchParam.GetInTensor(0).desc.dims.size() == 3, "in tensor0 dims invalid", return false);
         MKI_CHECK(launchParam.GetInTensor(1).desc.dims.size() == 4, "in tensor1 dims invalid", return false);
         MKI_CHECK(launchParam.GetInTensor(2).desc.dims.size() == 2, "in tensor2 dims invalid", return false);
+        MKI_CHECK(launchParam.GetInTensor(4).desc.dims.size() == 3, "in tensor3 dims invalid", return false);    // ---新增rope_q
+        MKI_CHECK(launchParam.GetInTensor(5).desc.dims.size() == 4, "in tensor3 dims invalid", return false);    // ---新增rope_kv
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::PagedAttention),
             "paged attention: param type invalid", return false);
         auto param = AnyCast<OpParam::PagedAttention>(launchParam.GetParam());

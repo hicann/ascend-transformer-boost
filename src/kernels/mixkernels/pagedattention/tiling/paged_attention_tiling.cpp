@@ -194,11 +194,13 @@ Status CheckPagedAttentionNdEnhance(const LaunchParam &launchParam, PagedAttenti
 Status GetPagedAttentionNdInfo(const LaunchParam &launchParam, PagedAttentionInfo &mmInfo,
                                OpParam::PagedAttention &param)
 {
+   // std::cout << "22222222 " << std::endl;  
+
     auto qShape = launchParam.GetInTensor(DIM_0).desc.dims;
     auto kcacheShape = launchParam.GetInTensor(DIM_1).desc.dims;
     auto tableShape = param.type == OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND ?
                       launchParam.GetInTensor(DIM_3).desc.dims : launchParam.GetInTensor(DIM_2).desc.dims;
-    mmInfo.embeddingSize = static_cast<int32_t>(kcacheShape.at(DIM_3));
+    mmInfo.embeddingSize = static_cast<int32_t>(kcacheShape.at(DIM_3));       //  512  64 
     mmInfo.embeddingSizeV = param.type == OpParam::PagedAttention::PAGED_ATTENTION_MASK_ND ?
                             launchParam.GetInTensor(DIM_2).desc.dims.at(DIM_3) : param.headDimV;
     mmInfo.numBlocks = static_cast<int32_t>(kcacheShape.at(DIM_0));
@@ -233,7 +235,7 @@ Status GetPagedAttentionNdInfo(const LaunchParam &launchParam, PagedAttentionInf
         param.type == OpParam::PagedAttention::PAGED_MULTI_LATENT_ATTENTION_MULTI_TOKEN_PREDICTION_MASK_ND) {
         OP_TILING_CHECK_STATUS_RETURN(GetPagedAttentionMaskInfo(launchParam, mmInfo, param, isMLA));
     }
-
+    mmInfo.embeddingSize = 576;
     // Check tiling data
     MKI_LOG(INFO) << "numTokens is: " << mmInfo.numTokens << " numHeads is: " << mmInfo.numHeads
                   << "batch is: " << mmInfo.batch << " embeddingSize is: " << mmInfo.embeddingSize

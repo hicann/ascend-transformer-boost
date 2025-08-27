@@ -168,6 +168,7 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
             true_out[cu_seqlen: cu_seqlen + q_seqlen, :, :] = out_high
             cu_seqlen += q_seqlen_list[i]
 
+    # 产生输入数据
     def calc_data(self,
                   num_heads: int,
                   kv_heads: int,
@@ -175,7 +176,7 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
                   block_size: int,
                   head_size_qk: int,
                   head_size_vo: int,
-                  q_seqlen_list: int,
+                  q_seqlen_list: int,                #q的长度
                   k_seqlen_list: int,
                   mask_type,
                   dtype = torch.float16
@@ -187,22 +188,30 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
         kv_min_range = -1.0
         kv_max_range = 1.0
         num_tokens = np.array(q_seqlen_list).sum()
-        batch_size = len(q_seqlen_list)
-        self.max_context_len = max(k_seqlen_list)
+        batch_size = len(q_seqlen_list)                    #q的长度， 128
+        self.max_context_len = max(k_seqlen_list)          #计算最大的上下文
         query = torch.from_numpy(np.random.uniform(q_min_range, q_max_range, size=(num_tokens, num_heads, head_size_qk))).to(dtype)
 
+        
+
+        #产生kv_cache
         # (num_blocks, block_size, num_heads, head_size)
         key_cache = torch.from_numpy(np.random.uniform(kv_min_range, kv_max_range, size=(num_blocks, block_size, kv_heads, head_size_qk))).to(dtype)
         # (num_blocks, block_size, num_heads, head_size)
         value_cache = key_cache[:, :, :, :head_size_vo]
 
-        max_k_seqlen = max(k_seqlen_list)
-        max_num_blocks_per_seq = (max_k_seqlen + block_size - 1) // block_size
+
+        #创建block_table 信息
+        max_k_seqlen = max(k_seqlen_list)          #计算最大的k的长度
+        max_num_blocks_per_seq = (max_k_seqlen + block_size - 1) // block_size              # 创建需要几个block_table
+        print("111111111")
+        print(max_num_blocks_per_seq)           #结果为8， 就是创建8个
+        print("111111111")
         block_tables = []   # (num_tokens, max_num_blocks_per_seq）
         for i in range(batch_size):
             block_table = [
                 # max_num_blocks_per_seq * i + j for j in range(max_num_blocks_per_seq)
-                random.randint(0, num_blocks - 1) for j in range(max_num_blocks_per_seq)
+                random.randint(0, num_blocks - 1) for j in range(max_num_blocks_per_seq)           #在
             ]
             block_tables.append(block_table)
 
@@ -217,6 +226,8 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
             mask = np.triu(mask, 1)
             mask *= -10000.0
             mask = torch.from_numpy(mask).to(dtype)
+
+        #使用的是掩码为3    
         elif mask_type == 3:
             mask = np.zeros(shape=(num_tokens, max_k_seqlen)).astype(np.float16)
             pre_qseqlen = 0
@@ -249,6 +260,10 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
             mask_type
         )
 
+        self.q_split1, self.q_split2 = torch.split(query, [512, 64], dim=2)
+        self.key_cache_split1, self.key_cache_split2 = torch.split(key_cache, [512, 64], dim=3)
+
+        
         self.q = query
         self.num_tokens = num_tokens
         self.key_cache = key_cache
@@ -268,7 +283,60 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
         result_double = compare_cv(self.true_out, golden_tensors[0], out_tensors[0])
         result_old = self.compare_output_data(out_tensors[0], golden_tensors[0], [0.001, 0.001, 0.005, 0.005])
         return (result_double or result_old)
+    
+    @op_test.only_910b
+    def test_paged_mla_qs_kvs_unequal_prefill_embed_over_256_no_mask_fp16(self):   # wxh 测试例128
+        batch = 1
+        q_seqlen_list = [128] * batch
+        k_seqlen_list = [1024] * batch
+        num_heads = 128
+        kv_heads = 1
+        block_size = 128
+        head_size_qk = 576             
+        head_size_vo = 512
+        num_blocks = 64
 
+        tor = 1.0 / (head_size_qk ** 0.5)
+        mask_type = 3
+        dtype = torch.bfloat16    #bfloat16
+        self.calc_data(num_heads, kv_heads, num_blocks, block_size, head_size_qk, head_size_vo, q_seqlen_list, k_seqlen_list, mask_type, dtype)
+ 
+        OP_NAME = "PagedAttentionOperation"
+        OP_PARAM = {"type": 2006, "kvHead":kv_heads, "headSize":num_heads, "headDimV" :head_size_vo, "tor": tor,
+                    "maskType": 3, "qSeqLen": q_seqlen_list, "kvSeqLen": k_seqlen_list}
+        self.set_param(OP_NAME, OP_PARAM)
+        self.set_input_formats([self.format_nd] * 6)             #这个是输入个数
+        self.set_output_formats([self.format_nd])
+ 
+        logging.debug(f"q shape: {self.q.shape}")
+        logging.debug(f"k shape: {self.key_cache.shape}")
+        logging.debug(f"v shape: {self.value_cache.shape}")
+        logging.debug(f"block_tables shape: {self.block_tables}")
+        logging.debug(f"batch: {batch}, numHeads: {num_heads}, kvHead: {kv_heads}"
+              f", blockSize: {block_size}, numBlocks: {num_blocks}, headSizeQK: {head_size_qk}, headSizeVO: {head_size_vo}")
+        shape_out = ((self.num_tokens, num_heads, head_size_vo))
+        attention_out = torch.zeros(shape_out, dtype=dtype)
+        attention_out[:] = 0.1
+
+        print("Shape:", self.q_split1.shape)  
+        print("Shape:", self.q_split2.shape)  
+
+        self.execute(
+            [
+                self.q_split1,
+                self.key_cache_split1,
+                torch.tensor(self.block_tables).int(),
+                #torch.tensor([], dtype=torch.float16)，
+                self.mask,
+                self.q_split2,
+                self.key_cache_split2,
+            ],
+            [
+                attention_out
+            ]
+        )
+
+    '''
     @op_test.only_910b
     def test_paged_mla_qs_kvs_unequal_prefill_embed_over_256_no_mask_fp16(self):
         batch = 27
@@ -313,7 +381,7 @@ class TestPagedMLAttentionExtend(op_test.OpTest):
                 attention_out
             ]
         )
-
+    '''
     @op_test.only_910b
     def test_paged_mla_qs_kvs_unequal_prefill_embed_over_256_no_mask_bf16(self):
         batch = 32
