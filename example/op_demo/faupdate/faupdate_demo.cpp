@@ -26,11 +26,11 @@ const uint32_t LOCALOUT_DIM_2 = 8;
  */
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
-    // 创建shape为[2, 3]的输入grad tensor
+    // 创建shape为[8, 512]的输入grad tensor
     atb::Tensor lse;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_FLOAT,
                                         aclFormat::ACL_FORMAT_ND, {LES_DIM_0, LES_DIM_1}, lse));
-    // 创建shape为[3, 2]的输入weight tensor
+    // 创建shape为[8, 512, 8]的输入weight tensor
     atb::Tensor localout;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_FLOAT,
                                         aclFormat::ACL_FORMAT_ND, {LOCALOUT_DIM_0, LOCALOUT_DIM_1, LOCALOUT_DIM_2},

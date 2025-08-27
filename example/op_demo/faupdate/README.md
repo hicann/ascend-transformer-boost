@@ -50,4 +50,4 @@
 | :-------------- | :------- | :------- | :---------- |
 | `intensors[0]`  | float    | nd       | [8, 512]    |
 | `intensors[1]`  | float    | nd       | [8, 512, 8] |
-| `outtensors[0]` | float    | nd       | [512,8]     |
+| `outtensors[0]` | float    | nd       | [512, 8]    |
