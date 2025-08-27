@@ -333,7 +333,7 @@ FORCE_INLINE_AICORE void CopyGmToUbufAlignB16(__ubuf__ T *dst, __gm__ T *src, ui
     ubTensor.SetAddr(ubAddr);
     GlobalTensor<uint8_t> gmTensor;
     gmTensor.SetGlobalBuffer(reinterpret_cast<GM_ADDR>(src));
-    DataCopyExtPadParams<uint8_t> padParams;
+    DataCopyPadExtParams<uint8_t> padParams;
     DataCopyPad(ubTensor, gmTensor, dataCopyParams, padParams);
 }
 
