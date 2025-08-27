@@ -11,10 +11,12 @@
 #include "../demo_util.h"
 
 const int32_t DEVICE_ID = 0;
-const uint32_t XDIM_0 = 2;
-const uint32_t XDIM_1 = 3;
-const uint32_t WEIGHTDIM_0 = 2;
-const uint32_t WEIGHTDIM_1 = 3;
+const uint32_t XDIM_0 = 32;
+const uint32_t XDIM_1 = 16384;
+const uint32_t WEIGHTDIM_0 = 7168;
+const uint32_t WEIGHTDIM_1 = 16384;
+const uint32_t BIAS_DIM_0 = 7168;
+const uint32_t DEQS_DIM_0 = 7168;
 
 /**
  * @brief 准备atb::VariantPack
@@ -25,23 +27,23 @@ const uint32_t WEIGHTDIM_1 = 3;
  */
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
-    // 创建shape为[2, 3]的输入x tensor
+    // 创建shape为[32, 16384]的输入x tensor
     atb::Tensor x;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>{1, 2, 3, 4, 5, 6},
                                         aclDataType::ACL_INT8, aclFormat::ACL_FORMAT_ND, {XDIM_0, XDIM_1}, x));
-    // 创建shape为[2, 3]的输入weight tensor
+    // 创建shape为[7168, 16384]的输入weight tensor
     atb::Tensor weight;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>{1, 2, 3, 4, 5, 6},
                                         aclDataType::ACL_INT8, aclFormat::ACL_FORMAT_ND, {WEIGHTDIM_0, WEIGHTDIM_1},
                                         weight));
-    // 创建shape为[2]bias tensor
+    // 创建shape为[7168]bias tensor
     atb::Tensor bias;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int32_t>(2, 1), aclDataType::ACL_INT32,
-                                        aclFormat::ACL_FORMAT_ND, {1, 2}, bias));
-    // 创建shape为[2]的输入deqScale tensor
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int32_t>(BIAS_DIM_0, 1), aclDataType::ACL_INT32,
+                                        aclFormat::ACL_FORMAT_ND, {1, BIAS_DIM_0}, bias));
+    // 创建shape为[7168]的输入deqScale tensor
     atb::Tensor deqScale;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int64_t>(2, 1), aclDataType::ACL_INT64,
-                                        aclFormat::ACL_FORMAT_ND, {1, 2}, deqScale));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int64_t>(DEQS_DIM_0, 1), aclDataType::ACL_INT64,
+                                        aclFormat::ACL_FORMAT_ND, {1, DEQS_DIM_0}, deqScale));
     inTensors = {x, weight, bias, deqScale};
     return atb::ErrorType::NO_ERROR;
 }

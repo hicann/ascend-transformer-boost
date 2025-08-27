@@ -11,11 +11,12 @@
 #include "../demo_util.h"
 
 const int32_t DEVICE_ID = 0;
-const uint32_t X_DIM_0 = 1;
-const uint32_t X_DIM_1 = 1728;
-const uint32_t WEIGHT_DIM_0 = 1728;
-const uint32_t WEIGHT_DIM_1 = 5120;
-
+const uint32_t LES_DIM_0 = 8;
+const uint32_t LES_DIM_1 = 512;
+const uint32_t LOCALOUT_DIM_0 = 8;
+const uint32_t LOCALOUT_DIM_1 = 512;
+const uint32_t LOCALOUT_DIM_2 = 8;
+const uint32_t SP_PARA_DEGREE = 8;
 /**
  * @brief 准备atb::VariantPack
  * @param contextPtr context指针
@@ -25,34 +26,30 @@ const uint32_t WEIGHT_DIM_1 = 5120;
  */
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
-    // 创建shape为[1, 1728]的输入x tensor
-    atb::Tensor xFloat;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_BF16,
-                                        aclFormat::ACL_FORMAT_ND, {X_DIM_0, X_DIM_1}, xFloat));
-    // 创建shape为[1728, 5120]的输入weight tensor
-    atb::Tensor weightFloat;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_BF16,
-                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {WEIGHT_DIM_0, WEIGHT_DIM_1}, weightFloat));
-    inTensors = {xFloat, weightFloat};
+    // 创建shape为[8, 512]的输入grad tensor
+    atb::Tensor lse;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {LES_DIM_0, LES_DIM_1}, lse));
+    // 创建shape为[8, 512, 8]的输入weight tensor
+    atb::Tensor localout;
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>{1, 2, 3, 4, 5, 6}, ACL_FLOAT,
+                                        aclFormat::ACL_FORMAT_ND, {LOCALOUT_DIM_0, LOCALOUT_DIM_1, LOCALOUT_DIM_2},
+                                        localout));
+    inTensors = {lse, localout};
     return atb::ErrorType::NO_ERROR;
 }
 
 /**
- * @brief 创建一个linear operation
- * @param linearOp 创建一个Operation指针
+ * @brief 创建一个faupdate operation
+ * @param faupdateOp 创建一个Operation指针
  * @return atb::Status 错误码
  */
-atb::Status CreateLinearOperation(atb::Operation **linearOp)
+atb::Status CreateFaUpdateOperation(atb::Operation **faupdateOp)
 {
-    atb::infer::LinearParam param;
-    param.transposeA = false;
-    param.transposeB = false;
-    param.hasBias = false;
-    param.outDataType = aclDataType::ACL_DT_UNDEFINED;
-    param.enAccum = false;
-    param.matmulType = atb::infer::LinearParam::MatmulType::MATMUL_UNDEFINED;
-    param.quantMode = atb::infer::LinearParam::QuantMode::QUANT_UNDEFINED;
-    CHECK_STATUS(atb::CreateOperation(param, linearOp));
+    atb::infer::FaUpdateParam param;
+    param.faUpdateType = atb::infer::FaUpdateParam::FaUpdateType::DECODE_UPDATE;
+    param.sp = SP_PARA_DEGREE;
+    CHECK_STATUS(atb::CreateOperation(param, faupdateOp));
     return atb::ErrorType::NO_ERROR;
 }
 
@@ -69,25 +66,25 @@ int main(int argc, char **argv)
     context->SetExecuteStream(stream);
 
     // 创建op
-    atb::Operation *linearOp = nullptr;
-    CHECK_STATUS(CreateLinearOperation(&linearOp));
+    atb::Operation *faupdateOp = nullptr;
+    CHECK_STATUS(CreateFaUpdateOperation(&faupdateOp));
     // 准备输入tensor
     atb::VariantPack variantPack;
     CHECK_STATUS(PrepareInTensor(context, stream, variantPack.inTensors)); // 放入输入tensor
     // 准备输出tensor
     atb::Tensor output;
-    CHECK_STATUS(CreateTensor(ACL_BF16, aclFormat::ACL_FORMAT_ND, {X_DIM_0, WEIGHT_DIM_1}, output));
+    CHECK_STATUS(CreateTensor(ACL_FLOAT, aclFormat::ACL_FORMAT_ND, {LOCALOUT_DIM_1, LOCALOUT_DIM_2}, output));
     variantPack.outTensors = {output}; // 放入输出tensor
 
     uint64_t workspaceSize = 0;
     // 计算workspaceSize大小
-    CHECK_STATUS(linearOp->Setup(variantPack, workspaceSize, context));
+    CHECK_STATUS(faupdateOp->Setup(variantPack, workspaceSize, context));
     uint8_t *workspacePtr = nullptr;
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
-    // linear执行
-    CHECK_STATUS(linearOp->Execute(variantPack, workspacePtr, workspaceSize, context));
+    // faupdate执行
+    CHECK_STATUS(faupdateOp->Execute(variantPack, workspacePtr, workspaceSize, context));
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
 
     // 释放资源
@@ -100,10 +97,10 @@ int main(int argc, char **argv)
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
-    CHECK_STATUS(atb::DestroyOperation(linearOp)); // operation，对象概念，先释放
+    CHECK_STATUS(atb::DestroyOperation(faupdateOp)); // operation，对象概念，先释放
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());
-    std::cout << "Linear demo success!" << std::endl;
+    std::cout << "faupdate demo success!" << std::endl;
     return 0;
 }
