@@ -60,13 +60,13 @@ namespace Lcal {
     static std::map<int, std::vector<std::vector<int>>> g_allreduceFourRankFP16M0Map = {
     };
 
-    static std::map<int, std::vector<std::vector<int>>> g_allreduceFourRankFP16DatasplitMap = {
+    static std::map<int, std::vector<std::vector<int>>> g_allreduceFourRankFP16UbmovenumMap = {
     };
 
     static std::map<int, std::vector<std::vector<int>>> g_allreduceFourRankFP16PvalueMap = {
     };
 
-    static std::map<int, std::vector<std::vector<int>>> g_allreduceFourRankFP16UbmovenumMap = {
+    static std::map<int, std::vector<std::vector<int>>> g_allreduceFourRankFP16DatasplitMap = {
     };
 
     static std::map<int, std::vector<std::vector<int>>> g_allreduceEightRankFP16M0Map = {
@@ -75,10 +75,10 @@ namespace Lcal {
     static std::map<int, std::vector<std::vector<int>>> g_allreduceEightRankFP16DatasplitMap = {
     };
 
-    static std::map<int, std::vector<std::vector<int>>> g_allreduceEightRankFP16PvalueMap = {
+    static std::map<int, std::vector<std::vector<int>>> g_allreduceEightRankFP16UbmovenumMap = {
     };
 
-    static std::map<int, std::vector<std::vector<int>>> g_allreduceEightRankFP16UbmovenumMap = {
+    static std::map<int, std::vector<std::vector<int>>> g_allreduceEightRankFP16PvalueMap = {
     };
 
     static std::map<int, std::vector<std::vector<int>>> g_allreduceEightRankInT8M0Map = {
@@ -91,9 +91,6 @@ namespace Lcal {
     };
 
     static std::map<int, std::vector<std::vector<int>>> g_allreduceEightRankInT8UbmovenumMap = {
-    };
-
-    static std::map<int, std::vector<std::vector<int>>> g_allreduceTwoRankFP16M0Map = {
     };
 
     static std::map<int, std::vector<std::vector<int>>> g_allreduceTwoRankFP16CommdatasplitMap = {
