@@ -82,6 +82,7 @@ PYBIND11_MODULE(_C, m)
         .def_property_readonly("input_num", &TorchAtb::OperationWrapper::GetInputNum)
         .def_property_readonly("output_num", &TorchAtb::OperationWrapper::GetOutputNum)
         .def("forward", &TorchAtb::OperationWrapper::Forward)
+        .def("set_buffer_size", &TorchAtb::OperationWrapper::SetBufferSize)
         .def("__repr__", [](const TorchAtb::OperationWrapper &opWrapper) {
             std::stringstream ss;
             ss << "op name: " << opWrapper.GetName() << ", input_num: " << opWrapper.GetInputNum()
