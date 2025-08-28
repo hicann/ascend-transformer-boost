@@ -606,7 +606,7 @@ private:
                     auto dst = gm_out + it.offset();
                     auto src = gm_accum + it.offset();
                     //auto src = gm_accum;
-                    auto scale = gm_formatdequant_scale + it.col_offset();
+                    auto scale = gm_format_dequant_scale + it.col_offset;
                     loop_dequanter.Loop(dst, src, scale, it.n_rows_this_loop, it.n_cols_this_loop, n, n);
                 }
             }
@@ -634,6 +634,7 @@ public:
             int32_t max_m_per_loop = max_len / ((n0 + 127) / 128 * 128);
             LoopIter it(1, m, n);
             LoopPerTokenDequanter<T> loop_dequanter(n0);
+            loop_dequanter.SetForLoop();
             for (it.InitRowLoop(max_m_per_loop); !it.EndRowLoop(); it.NextRowLoop()) {
                 for (it.InitColLoop(n0); !it.EndColLoop(); it.NextColLoop()) {
                     __gm__ T * dst_add = gm_out + it.offset();
@@ -773,6 +774,7 @@ private:
     int32_t loop_num_per_comm;
 
     int32_t swizzl_direct;
+    int32_t swizzl_count;
     int32_t p_value;
     int32_t rank_size;
 
