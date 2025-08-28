@@ -659,7 +659,6 @@ namespace Lcal {
         SetTilingParam(cocTilingData, tilingParamMap);
 
         cocTilingData.lenPerLoop = cocTilingData.ubMoveNum;
-
         AllReduceSetWithSerialMode(cocTilingData);
     }
 }
