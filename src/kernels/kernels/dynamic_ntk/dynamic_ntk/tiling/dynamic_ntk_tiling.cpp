@@ -71,13 +71,13 @@ public:
     {
         int32_t posDtype = launchParam_.GetInTensor(0).desc.dtype;
         MKI_CHECK(posDtype == TENSOR_DTYPE_INT32 || posDtype == TENSOR_DTYPE_UINT32,
-                  "DynamicNTK positionIds dataType is not int32_t", return false);
+                  "DynamicNTK positionIds dataType is not int32_t or uint32_t", return false);
 
         int32_t freqDtype = launchParam_.GetInTensor(1).desc.dtype;
         int32_t seqLenDtype = launchParam_.GetInTensor(SEQLEN_INDEX).desc.dtype;
         MKI_CHECK(freqDtype == TENSOR_DTYPE_FLOAT, "DynamicNTK InvFreqsIn dataType is not float32", return false);
-        MKI_CHECK(seqLenDtype == TENSOR_DTYPE_INT32 || posDtype == TENSOR_DTYPE_UINT32,
-                  "DynamicNTK seqLens dataType is not int32_t", return false);
+        MKI_CHECK(seqLenDtype == TENSOR_DTYPE_INT32 || seqLenDtype == TENSOR_DTYPE_UINT32,
+                  "DynamicNTK seqLens dataType is not int32_t or uint32_t", return false);
 
         MKI_CHECK((headDim_ % HEAD_DIM_ALIGN) == 0, "DynamicNTK the shape of InvFreqsIn is not align to 32",
                      return false);
