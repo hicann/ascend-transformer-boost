@@ -52,7 +52,7 @@ public:
         MKI_CHECK(inTensor1.desc.dims[DIM_0] == inTensor2.desc.dims[DIM_0] &&
                       inTensor1.desc.dims[DIM_1] == inTensor2.desc.dims[DIM_1],
                   "Shape of cos/sin should be same", return false);
-        for (size_t i = 1; i < TENSOR_INPUT_NUM; i++) {
+        for (size_t i = 0; i < TENSOR_INPUT_NUM; i++) {
             auto inTensor = launchParam.GetInTensor(i);
             size_t dimNum = inTensor.desc.dims.size();
             for (size_t dimIndex = DIM_0; dimIndex < dimNum; dimIndex++) {
