@@ -616,8 +616,8 @@ public:
         int32_t batch_size, int32_t m, int32_t n, int32_t m0, int32_t n0, int32_t m_loop, int32_t n_loop,
         int32_t core_loop, int32_t swizzl_direct, int32_t swizzl_count, int32_t p_value, int32_t rank_size)
         {
-        BaseDequantRunner::SetArgs(gm_out, worspace_info, gm_dequant_scale, gm_dequant_offset, dequant_granularity,
-            batch_size, m, n, m0, n0);
+        BaseDequantRunner::SetArgs(gm_out, workspace_info, gm_dequant_scale, gm_dequant_offset, dequant_granularity,
+            batch_size, m, n);
         core_num = get_block_num();
         core_idx = get_block_idx();
         this-> m0 = m0;
@@ -634,16 +634,16 @@ public:
     inline __aicore__ void RunDequantAllreduce(int32_t cal_idx)
     {
         switch (dequant_granularity) {
-            case QuantAGranularity:: PER_TENSOR :
+            case QuantGanularity:: PER_TENSOR :
                 DequantAllReducePerTensor(cal_idx);
                 return;
-            case QuantAGranularity:: PER_CHANNEL :
+            case QuantGanularity:: PER_CHANNEL :
                 DequantAllReducePerChannel(cal_idx);
                 return;
-            case QuantAGranularity:: PER_TOKEN :
+            case QuantGanularity:: PER_TOKEN :
                 DequantAllReducePerChannel(cal_idx);
                 return;
-            case QuantAGranularity:: FLOAT32_SCALE_PER_CHANNEL :
+            case QuantGanularity:: FLOAT32_SCALE_PER_CHANNEL :
                 DequantAllReducePerChannel(cal_idx);
                 return;
             default:
@@ -806,17 +806,15 @@ public:
         this -> swizzl_direct = swizzlel_direct;
         this -> swizzl_count = swizzle_count;
         this -> p_value = p_value;
-        this -> rank_size = EP * TP;
+        // this -> rank_size = EP * TP;
 
         this -> rank = rank;
     }
 
 inline __aicore__ void SetArgs(__gm__ T *gm_buff, const LcalWorkspaceInfo & workspace_info,
         __gm__ float32_t *gm_dequant_scale_pertoken,
-        int32_t batch_size, int32_t m, int32_t n, int32_t m0, int32_t n0, int32_t m_loop, int32_t n_loop,
-        int32_t core_loop, int32_t rank, int32_t swizzlel_direct, int32_t swizzle_count, int32_t p_value, int32_t EP, int32_t TP,
-        int32_t local_expert_nums, int32_t is_moe_averaged, int32_t is_alltoallvc, int32_t max_output_size, int32_t buffer_size,
-        __gm__ int32_t* global_tokens_per_expert_matrix)
+        int32_t batch_size, int32_t m, int32_t k, int32_t n, int32_t m0, int32_t k0,int32_t n0, int32_t m_loop, int32_t n_loop,
+        int32_t core_loop, int32_t rank, int32_t swizzlel_direct, int32_t swizzle_count, int32_t p_value)
     {
         this -> gm_buff = gm_buff;
         this -> gm_dequant_scale_pertoken = gm_dequant_scale_pertoken;
@@ -831,9 +829,9 @@ inline __aicore__ void SetArgs(__gm__ T *gm_buff, const LcalWorkspaceInfo & work
         this -> k0 = k0;
         this -> n0 = n0;
         this -> swizzl_direct = swizzlel_direct;
-        this -> swizzl_count = swizzle_count;
+        this -> swizzl_count = swizzlel_count;
         this -> p_value = p_value;
-        this -> rank_size = EP * TP;
+        // this -> rank_size = EP * TP;
         this -> rank = rank;
         this -> buffer_size = buffer_size;
 
@@ -859,9 +857,9 @@ inline __aicore__ void SetArgs(__gm__ T *gm_buff, const LcalWorkspaceInfo & work
             int64_t offset_this_tile = flag_idx * loop_num_per_comm * m0 * n0 +
                 (loop_idx % loop_num_per_comm) * m0 * n0;
             for (tit.Init(LoopPerTokenDequanter<T>::max_len, n0); !tit.End(); tit.Next()) {
-                int64_t offset = offset_this_tile + tit.m_offset_in_tile() * n0;
-                auto buff = gm_buff + offset;
-                auto scale = gm_dequant_scale_pertoken + m_idx * m0 + tit.m_offset_in_tile();
+                int64_t offset = offset_this_tile + tit.m_offset_in_tile() * n0; // 子核当前需要处理的字节偏移
+                auto buff = gm_buff + offset; // 通信缓冲内的地址
+                auto scale = gm_dequant_scale_pertoken + m_idx * m0 + tit.m_offset_in_tile(); // 注意要加上m_offset_in_tile
                 loop_dequanter.Loop(buff, scale, tit.m_this_loop, tit.n_this_loop, n0);
             }
         }
@@ -900,14 +898,3 @@ private:
 };
 #endif
 #endif
-
-
-
-
-
-
-
-
-
-
-}
