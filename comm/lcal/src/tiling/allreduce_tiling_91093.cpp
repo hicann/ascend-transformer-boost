@@ -20,7 +20,7 @@ namespace Lcal {
     constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_UBMOVENUM_DEFAULT = 160;
     constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_M0_DEFAULT = 128;
     constexpr int32_t ALLREDUCE_91093_SIXTEEN_RANK_FP16_COMMDATASPLIT_DEFAULT = 16;
-    
+
     static std::map<int, std::vector<std::vector<int>>> g_allreduce91093EightRankFP16CommdatasplitMap = {
         {1,
          {{-1, 3072, -1, 2147483647, -1, 768}, {-1, 768, -1, 2147483647, 768, 1536},
@@ -167,7 +167,7 @@ namespace Lcal {
         {100,
          {{-1, 15412, -1, 1536, 1536, 5376}}}
     };
-    
+
     static std::map<int, std::vector<std::vector<int>>> g_allreduce91093SixteenRankFP16PvalueMap = {
         {4,
          {{-1, 3072, -1, 4608, -1, 768}, {5148, 31220, -1, 4608, -1, 768},
