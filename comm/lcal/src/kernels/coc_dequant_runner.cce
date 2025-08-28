@@ -386,7 +386,7 @@ public:
             if (offset + len > n) {
                 len = n - offset;
             }
-        }
+
         loop_scale_formater.Loop(gm_format_dequant_scale + offset, gm_dequant_scale + offset, len);
     }
     loop_scale_formater.WaitForLoop();
@@ -456,7 +456,6 @@ public:
             }
             batch_offset = static_cast<int64_t>(batch_idx) * n_rows * n_cols;
         }
-    }
 
 
     inline __aicore__ void InitRowLoop(int32_t max_rows_per_loop)
@@ -486,7 +485,7 @@ public:
     inline __aicore__ void InitColLoop(int32_t max_cols_per_loop)
     {
         n_cols_complete = 0;
-        n_cols_this_loop = (n_cols_this_core < max_cols_per_loop) ? n_cols : max_cols_per_loop;
+        n_cols_this_loop = (n_cols < max_cols_per_loop) ? n_cols : max_cols_per_loop;
         col_offset = 0;
     }
 
