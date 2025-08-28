@@ -606,7 +606,7 @@ private:
                     auto dst = gm_out + it.offset();
                     auto src = gm_accum + it.offset();
                     //auto src = gm_accum;
-                    auto scale = gm_dequant_scale_pertoken + it.offset();
+                    auto scale = gm_formatdequant_scale + it.col_offset();
                     loop_dequanter.Loop(dst, src, scale, it.n_rows_this_loop, it.n_cols_this_loop, n, n);
                 }
             }
@@ -622,7 +622,7 @@ public:
     inline __aicore__ void SetArgs(__gm__ T *gm_out,
         __gm__ float32_t *gm_dequant_scale_pertoken, int32_t m, int32_t n, int32_t m0, int32_t n0)
         {
-            this->gm_out = reinterpret_cast<__gm__ bfloat16_t *>(gm_out);
+            this->gm_out = reinterpret_cast<__gm__ t *>(gm_out);
             this->gm_dequant_scale_pertoken = reinterpret_cast<__gm__ float32_t *>(gm_dequant_scale_pertoken);
             this->m = m;
             this->n = n;
@@ -637,7 +637,7 @@ public:
             for (it.InitRowLoop(max_m_per_loop); !it.EndRowLoop(); it.NextRowLoop()) {
                 for (it.InitColLoop(n0); !it.EndColLoop(); it.NextColLoop()) {
                     __gm__ T * dst_add = gm_out + it.offset();
-                    __gm__ float32_t * scale = gm_out + it.offset();
+                    __gm__ float32_t * scale = gm_dequant_scale_pertoken + it.row_offset + it.row_offset_this_core;
                     loop_dequanter.Loop(dst_add, scale, it.n_rows_this_loop, it.n_cols_this_loop, n);
                 }
             }
@@ -663,7 +663,7 @@ public:
         {
         BaseDequantRunner::SetArgs(gm_out, workspace_info, gm_dequant_scale, gm_dequant_offset, dequant_granularity,
             batch_size, m, n);
-        //cit.SetArgs(m, n, m0, n0, m_loop, n_loop, core_loop, swizzl_direct, swizzl_count, p_value);
+        //cit.SetArgs(m, n, m0, n0, m_loop, n_loop, core_loop, swizzle_direct, swizzle_count, p_value);
         core_num = get_block_num();
         core_idx = get_block_idx();
         this-> m0 = m0;
