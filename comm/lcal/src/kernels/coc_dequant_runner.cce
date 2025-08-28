@@ -184,11 +184,11 @@ public:
 
     inline __aicore__ void WaitForLoop()
     {
-        SetFlag<HardEvent::V_MTE2>(EVENT_ID0);
-        SetFlag<HardEvent::V_MTE2>(EVENT_ID1);
-        SetFlag<HardEvent::V_MTE2>(EVENT_ID2);
-        SetFlag<HardEvent::S_MTE2>(EVENT_ID2);
-        SetFlag<HardEvent::MTE3_V>(EVENT_ID2);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID0);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
+        WaitFlag<HardEvent::S_MTE2>(EVENT_ID2);
+        WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
     }
 
     inline __aicore__ void Loop(__gm__ T *buff, __gm__ float32_t *scale,
@@ -202,7 +202,6 @@ public:
         CopyGmToUbufAlign(ub_in, buff, n_rows_this_loop, n_cols_this_loop, stride - n_cols_this_loop, ubufGap);
         SetFlag<HardEvent::MTE2_V>(event_id);
         WaitFlag<HardEvent::MTE2_V>(event_id);
-        WaitFlag<HardEvent::MTE2_V>(event_id);
         Vconv(ub_in_f32, ub_in, repeat, 1, 1, 8, 4);
         SetFlag<HardEvent::V_MTE2>(event_id);
 
@@ -210,7 +209,7 @@ public:
         WaitFlag<HardEvent::S_MTE2>(EVENT_ID2);
         if (scale_source != scale) {
             scale_source = scale;
-            CopyGmToUbufAlign(ub_scales, scale, 1, n_cols_this_loop, 0);
+            CopyGmToUbufAlign(ub_scales, scale, 1, n_rows_this_loop, 0);
         }
         SetFlag<HardEvent::MTE2_S>(EVENT_ID2);
         SetFlag<HardEvent::MTE2_V>(EVENT_ID2);
@@ -565,7 +564,7 @@ private:
         LoopIter it(batch_size, m, n);
         LoopDequanter<QuantGranularity::PER_TENSOR> loop_dequanter;
         loop_dequanter.SetForLoop();
-        for (it.InitColLoop()l !it.EndBatchLoop(); it.NextBatchLoop()) {
+        for (it.InitBatchLoop(); !it.EndBatchLoop(); it.NextBatchLoop()) {
             for (it.InitColLoop(max_n_per_loop); !it.EndColLoop(); it.NextColLoop()) {
                 for (it.InitRowLoop(max_m_per_loop); !it.EndRowLoop(); it.NextRowLoop()) {
                     auto dst = gm_out + it.offset();
@@ -577,22 +576,22 @@ private:
         loop_dequanter.WaitForLoop();
     }
 
-    inline __aicore__ void DequantPerChaneel()
+    inline __aicore__ void DequantPerChannel()
     {
         const auto max_len = LoopDequanter<QuantGranularity::PER_CHANNEL>::max_len;
-        int32_t n_round = Block32B<bfloat16_t>AlignUp(n);
-        int32_t max_m_per_loop = (n_round <= max_len) ? (max / n_round) : 1;
-        int32_t max_n_per_loop = (n <= max_len) ? n : max_len;
+        int32_t n_round = Block32B<bfloat16_t>::AlignUp(n);
+        int32_t max_m_per_loop = (n_round <= max_len) ? (max_len / n_round) : 1;
+        int32_t max_n_per_loop = (n_round <= max_len) ? n : max_len;
 
         LoopIter it(batch_size, m, n);
         LoopDequanter<QuantGranularity::PER_CHANNEL> loop_dequanter;
         loop_dequanter.SetForLoop();
-        for (it.InitColLoop()l !it.EndBatchLoop(); it.NextBatchLoop()) {
+        for (it.InitBatchLoop(); !it.EndBatchLoop(); it.NextBatchLoop()) {
             for (it.InitColLoop(max_n_per_loop); !it.EndColLoop(); it.NextColLoop()) {
                 for (it.InitRowLoop(max_m_per_loop); !it.EndRowLoop(); it.NextRowLoop()) {
                     auto dst = gm_out + it.offset();
                     auto src = gm_accum + it.offset();
-                    loop_dequanter.Loop(dst, src, 0, 0, it.n_rows_this_loop, it.n_cols_this_loop, n, n);
+                    loop_dequanter.Loop(dst, src, scale, it.n_rows_this_loop, it.n_cols_this_loop, n, n);
                 }
             }
         }
@@ -611,7 +610,7 @@ private:
 class FusedDequantRunner : public BaseDequantRunner {
 public:
     __aicore__ explicit FusedDequantRunner() = default;
-    inline __aicore__ void SetArgs(__gm__ bfloat16_t *gm_out, const LcalWorkSpaceInfo & worspace_info,
+    inline __aicore__ void SetArgs(__gm__ bfloat16_t *gm_out, const LcalWorkspaceInfo & workspace_info,
         __gm__ int64_t *gm_dequant_scale, __gm__ int32_t *gm_dequant_offset, QuantGranularity dequant_granularity,
         int32_t batch_size, int32_t m, int32_t n, int32_t m0, int32_t n0, int32_t m_loop, int32_t n_loop,
         int32_t core_loop, int32_t swizzl_direct, int32_t swizzl_count, int32_t p_value, int32_t rank_size)
@@ -634,16 +633,16 @@ public:
     inline __aicore__ void RunDequantAllreduce(int32_t cal_idx)
     {
         switch (dequant_granularity) {
-            case QuantGanularity:: PER_TENSOR :
+            case QuantGranularity:: PER_TENSOR :
                 DequantAllReducePerTensor(cal_idx);
                 return;
-            case QuantGanularity:: PER_CHANNEL :
+            case QuantGranularity:: PER_CHANNEL :
                 DequantAllReducePerChannel(cal_idx);
                 return;
-            case QuantGanularity:: PER_TOKEN :
+            case QuantGranularity:: PER_TOKEN :
                 DequantAllReducePerChannel(cal_idx);
                 return;
-            case QuantGanularity:: FLOAT32_SCALE_PER_CHANNEL :
+            case QuantGranularity:: FLOAT32_SCALE_PER_CHANNEL :
                 DequantAllReducePerChannel(cal_idx);
                 return;
             default:
@@ -705,20 +704,18 @@ public:
                 int64_t dst_offset = offset_this_tile + tit.m_offset_in_tile() * n0;
                 auto accum = gm_accum + src_offset;
                 auto out = gm_out + dst_offset;
-                loop_dequanter.Loop(out, accum, scale, tit.m_this_loop, tit.n_this_loop, n0, n0);
+                loop_dequanter.Loop(out, accum, scale, 0, tit.m_this_loop, tit.n_this_loop, n0, n0);
             }
         }
         loop_dequanter.WaitForLoop();
     }
 
-    inline __aicore__ void SetArgs(__gm__ bfloat16_t *gm_out, const LcalWorspaceInfo &workspace_info,
+    inline __aicore__ void SetArgs(__gm__ bfloat16_t *gm_out, const LcalWorkspaceInfo &workspace_info,
             __gm__ int64_t *gm_dequant_scale, __gm__ int32_t *gm_dequant_offset, QuantGranularity dequant_granularity,
             int32_t batch_size, int32_t m, int32_t n, int32_t m0, int32_t n0, int32_t m_loop, int32_t n_loop,
-            int32_t core_loop, int32_t rank, int32_t swizzle_direct, int32_t swizzle_count, int32_t p_value, int32_t EP, int32_t TP,
-            int32_t local_expert_nums, int32_t is_moe_averaged, int32_t is_alltoallvc,
-            __gm__ int32_t* num_local_tokens_per_expert, __gm__ int32_t* num_global_tokens_per_local_expert)
+            int32_t core_loop, int32_t rank, int32_t swizzle_direct, int32_t swizzle_count, int32_t p_value)
     {
-        BaseDequantRunner::SetArgs(gm_out, work, gm_dequant_scale, gm_dequant_offset, dequant_granularity,
+        BaseDequantRunner::SetArgs(gm_out, workspace_info, gm_dequant_scale, gm_dequant_offset, dequant_granularity,
             batch_size, m, n);
 
         core_num = get_block_num();
@@ -785,8 +782,7 @@ public:
     inline __aicore__ void SetArgs(__gm__ T *gm_buff, const LcalWorkspaceInfo &workspace_info,
             __gm__ float32_t *gm_dequant_scale_pertoken,
             int32_t batch_size, int32_t m, int32_t n, int32_t m0, int32_t n0, int32_t m_loop, int32_t n_loop,
-            int32_t core_loop, int32_t rank, int32_t swizzle_direct, int32_t swizzle_count, int32_t p_value, int32_t EP, int32_t TP,
-            int32_t local_expert_nums, int32_t is_moe_averaged, int32_t is_alltoallvc,
+            int32_t core_loop, int32_t rank, int32_t swizzle_direct, int32_t swizzle_count, int32_t p_value)
     {
         this -> gm_buff = gm_buff;
         this -> gm_dequant_scale_pertoken = gm_dequant_scale_pertoken;
