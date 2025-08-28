@@ -16,7 +16,7 @@ import re
 import sys
 import os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 from utils import run_perf_test
 import unittest
 import logging

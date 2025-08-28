@@ -14,7 +14,7 @@ import sys
 import os
 import re
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 from utils import check_float, run_perf_test
 import logging
 import unittest

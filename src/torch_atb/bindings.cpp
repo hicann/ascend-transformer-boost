@@ -39,7 +39,8 @@ PYBIND11_MODULE(_C, m)
 {
     m.doc() = "Python bindings for torch_atb";
 
-    m.def_static("set_buffer_size", &TorchAtb::MemoryManager::SetBufferSize);
+    m.def("set_buffer_size", static_cast<void(*)(uint64_t)>(&TorchAtb::MemoryManager::SetBufferSize),
+          py::arg("bytes"), "Set default workspace buffer size (bytes)");
 
     py::class_<TorchAtb::ProfStats>(m, "Prof")
         .def_static("get_prof_stats", &TorchAtb::ProfStats::GetProfStats, py::return_value_policy::reference)

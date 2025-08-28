@@ -9,14 +9,17 @@
 #
 
 import torch_atb
-import torch_npu
 import torch
 import acl
+import torch_npu
 import unittest
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
+import torch.multiprocessing as mp
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 from utils import ret_check
+
+rank_size = 2
 
 def create_streams():
     streams = []
@@ -26,7 +29,7 @@ def create_streams():
         streams.append(stream)
     return streams
 
-def graph_build_add_mul():
+def graph_build():
     print("----------- graph build begin ------------")
     builder = torch_atb.Builder("Graph")
     builder.set_execute_streams(create_streams())
@@ -76,10 +79,14 @@ def graph_build_add_mul():
     npu_outputs = graph_run()
     print("----------- graph forward success ------------")
 
-class TestMultiStream(unittest.TestCase):
+def worker(rank):
+    torch_npu.npu.set_device(rank)
+    graph_build()
+
+class TestMultiRankMultiStream(unittest.TestCase):
     def test(self):
-        torch_npu.npu.set_device(0)
-        graph_build_add_mul()
+        mp.spawn(worker, nprocs=rank_size, join=True)
+        print("------------all sub processes finish------------")
 
 if __name__ == "__main__":
     unittest.main()
