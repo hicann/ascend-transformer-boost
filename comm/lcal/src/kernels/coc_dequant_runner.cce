@@ -60,7 +60,12 @@ public:
 
         PipeBarrier<PIPE_V>();
         Vconv(ub_adds_f32, ub_adds, repeat, 1, 1, 8, 8);
-        SetFlag<HardEvent::V_MTE2>(event_id);
+        PipeBarrier<PIPE_V>();
+        Vmuls(ub_muls, ub_adds_f32, scale, repeat, 1, 1, 8, 8);
+        PipeBarrier<PIPE_V>();
+        Waitflag<Hardevent::MTE3_V>(event_id);
+        Vconv(ub_out, ub_muls, repeat, 1, 1, 4, 8, RoundMode::CAST_RINT);
+        SetFlag<HardEvent::V_MTE3>(event_id);
 
         WaitFlag<HardEvent::V_MTE3>(event_id);
         CopyUbufToGmAlign(dst, ub_out, n_rows_this_loop, n_cols_this_loop, dst_stride - n_cols_this_loop);
