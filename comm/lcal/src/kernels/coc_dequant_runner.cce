@@ -213,8 +213,8 @@ public:
         SetFlag<HardEvent::MTE2_S>(EVENT_ID2);
         SetFlag<HardEvent::MTE2_V>(EVENT_ID2);
         WaitFlag<HardEvent::MTE2_V>(EVENT_ID2);
-        WaitFlag<HardEvent::MTE2_S>(EVENT_ID2);
-        WaitFlag<HardEvent::MTE3_S>(EVENT_ID2);
+        WaitFlag<HardEvent::MTE2_S>(EVENT_ID2); // 注意必须是MTE2_s, 不能是MTE2_V 否则会读到0， 造成乱码
+        WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
         PipeBarrier<PIPE_V>();
         for (int32_t row = 0; row < n_rows_this_loop; ++row) {
             float32_t scale = ub_scales[row];
@@ -222,9 +222,9 @@ public:
         }
         PipeBarrier<PIPE_V>();
         Vconv(ub_out, ub_out_f32, repeat, 1, 1, 4, 8, RoundMode::CAST_RINT);
-        SetFlag<HardEvent::MTE3_V>(EVENT_ID2);
+        SetFlag<HardEvent::V_MTE3>(EVENT_ID2);
         SetFlag<HardEvent::S_MTE2>(EVENT_ID2);
-        SetFlag<HardEvnet::V_MTE2>(EVENT_ID2);
+        SetFlag<HardEvent::V_MTE2>(EVENT_ID2);
 
         WaitFlag<HardEvent::V_MTE3>(EVENT_ID2);
         CopyUbufToGmAlign(buff, ub_out, n_rows_this_loop, n_cols_this_loop, stride - n_cols_this_loop, ubufGap);
@@ -239,7 +239,7 @@ private:
     __gm__ float32_t *scale_source = nullptr;
     __ubuf__ float32_t *ub_in_f32 = nullptr;
     __ubuf__ float32_t *ub_out_f32 = nullptr;
-    int32_t n_round = 0;
+    int32_t n_round;
     bool is_ping = false;
 };
 
@@ -262,7 +262,7 @@ public:
         WaitFlag<HardEvent::V_MTE2>(EVENT_ID1);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID0);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID1);
-        set_ctrl(sbitset1(get_ctrl(), 59));
+        set_ctrl(sbitset0(get_ctrl(), 59));
     }
 
     inline __aicore__ void Loop(__gm__ float32_t *dst, __gm__ int64_t *src, int32_t len)
@@ -375,7 +375,7 @@ public:
     inline __aicore__ void FormatScale()
     {
         int32_t align_core_idx = get_block_idx() * get_subblockdim() + get_subblockid();
-        int32_t align_core_num = get_blocknumm() * get_subblockdim();
+        int32_t align_core_num = get_blocknum() * get_subblockdim();
         int32_t len = LoopScaleFormater::max_len;
         int32_t loop_num = DivCeil(n, len);
         LoopScaleFormater loop_scale_formater;
@@ -557,9 +557,9 @@ private:
     {
         float32_t scale = gm_format_dequant_scale[0];
         const auto max_len = LoopDequant<QuantGranularity::PER_TENSOR>::max_len;
-        int32_t n_round = Block32B<bfloat16_t>AlignUp(n);
-        int32_t max_m_per_loop = (n_round <= max_len) ? (max / n_round) : 1;
-        int32_t max_n_per_loop = (n <= max_len) ? n : max_len;
+        int32_t n_round = Block32B<bfloat16_t>::AlignUp(n);
+        int32_t max_m_per_loop = (n_round <= max_len) ? (max_len / n_round) : 1;
+        int32_t max_n_per_loop = (n_round <= max_len) ? n : max_len;
 
         LoopIter it(batch_size, m, n);
         LoopDequanter<QuantGranularity::PER_TENSOR> loop_dequanter;
