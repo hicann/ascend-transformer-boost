@@ -184,8 +184,7 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
         reinterpret_cast<GM_ADDR>(gm_workspace), reinterpret_cast<GM_ADDR>(gm_dequant_scale), \
         reinterpret_cast<GM_ADDR>(gm_dequant_offset), reinterpret_cast<GM_ADDR>(gm_quant_scale), \
         reinterpret_cast<GM_ADDR>(gm_quant_offset), batch_size, m, k, n, trans_a, trans_b, is_int8, \
-        dequant_granularity, dequant_group_size, quant_granularity, quant_group_size, weight_nz, is_moe, \
-        is_moe_averaged, is_alltoallvc, EP, TP, local_expert_nums, is_deterministic
+        dequant_granularity, dequant_group_size, quant_granularity, quant_group_size, weight_nz, is_deterministic
 
 #define PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN() \
     GM_ADDR gm_bias, GM_ADDR gm_out, int32_t batch_size, int32_t m, int32_t n, int32_t rank_size
