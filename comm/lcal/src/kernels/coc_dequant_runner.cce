@@ -792,7 +792,6 @@ public:
             int32_t batch_size, int32_t m, int32_t n, int32_t m0, int32_t n0, int32_t m_loop, int32_t n_loop,
             int32_t core_loop, int32_t rank, int32_t swizzlel_direct, int32_t swizzle_count, int32_t p_value, int32_t EP, int32_t TP,
             int32_t local_expert_nums, int32_t is_moe_averaged, int32_t is_alltoallvc,
-            __gm__ int32_t* num_local_tokens_per_expert, __gm__ int32_t* num_global_tokens_per_local_expert)
     {
         this -> gm_buff = gm_buff;
         this -> gm_dequant_scale_pertoken = gm_dequant_scale_pertoken;
@@ -800,12 +799,6 @@ public:
         this -> n = n;
         core_num = get_block_num();
         core_idx = get_block_idx();
-        loop_per_EP = p_value * core_num / (EP * TP);
-        out_loop_per_expert = reinterpret_cast<__gm__ int32_t *> (workspace_info.out_loop_per_expert);
-        out_loop_per_ep = reinterpret_cast<__gm__ int32_t *> (workspace_info.out_loop_per_ep);
-        sum_num_local_tokens_per_expert = reinterpret_cast<__gm__ int32_t *> (workspace_info.sum_num_local_tokens_per_expert);
-        sum_num_global_tokens_per_local_expert = reinterpret_cast<__gm__ int32_t *> (workspace_info.sum_num_global_tokens_per_local_expert);
-        in_expert_comm_count_accum = reinterpret_cast<__gm__ int32_t *> (workspace_info.in_expert_comm_count_accum);
         this -> n_loop = n_loop;
         this -> m_loop = m_loop;
         this -> m0 = m0;
@@ -816,14 +809,6 @@ public:
         this -> rank_size = EP * TP;
 
         this -> rank = rank;
-        this -> EP = EP;
-        this -> TP = TP;
-        this -> local_expert_nums = local_expert_nums;
-        this -> is_moe_averaged = is_moe_averaged;
-        this -> is_alltoallvc = is_alltoallvc;
-        this-> num_local_tokens_per_expert = reinterpret_cast<__gm__ int32_t *> (num_local_tokens_per_expert);
-        this-> num_global_tokens_per_local_expert =
-            reinterpret_cast<__gm__ int32_t *> (num_global_tokens_per_local_expert);
     }
 
 inline __aicore__ void SetArgs(__gm__ T *gm_buff, const LcalWorkspaceInfo & workspace_info,
