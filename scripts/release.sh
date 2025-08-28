@@ -19,7 +19,7 @@ function fn_build_mki()
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
         echo  "current branch for atb and mki: $branch"
-        git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/Mind-KernelInfra.git
+        git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
     else
         [[ -d "$THIRD_PARTY_DIR"/Mind-KernelInfra/build ]] && rm -rf $THIRD_PARTY_DIR/Mind-KernelInfra/build
         [[ -d "$THIRD_PARTY_DIR"/Mind-KernelInfra/output ]] && rm -rf $THIRD_PARTY_DIR/Mind-KernelInfra/output
@@ -42,18 +42,16 @@ function fn_build_mki()
 
 function fn_build_asdops()
 {
-    if [ ! -d "$THIRD_PARTY_DIR"/ascend-op-common-lib ]; then
-        [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
-        cd $THIRD_PARTY_DIR
-        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
-        echo  "current branch for atb and asdops: $branch"
-        git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
-    else
+    [[ -d "$THIRD_PARTY_DIR" ]] && cd $THIRD_PARTY_DIR
+    echo "Will not git clone the code repository"
+    if [ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib ]; then
+        cd $THIRD_PARTY_DIR/ascend-op-common-lib
         [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/build ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/build
         [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/output ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/output
+    else
+        echo "Complie asdops failed, Please manually git clone the code repository"
+        exit 1
     fi
-    cd $THIRD_PARTY_DIR/ascend-op-common-lib
     mkdir -p $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty
     [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/3rdparty/mki ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/mki
 
