@@ -49,7 +49,7 @@ public:
     uint64_t GetTilingSize(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::MLA),
-            "paged attention: param type invalid", return false);
+            "multi latent attention: param type invalid", return false);
         auto param = AnyCast<OpParam::MLA>(launchParam.GetParam());
         auto batch = param.kvSeqLen.size();
         auto maxQSeqlen = param.qSeqLen.data() != nullptr ? *std::max_element(param.qSeqLen.begin(), param.qSeqLen.end()) : 1;

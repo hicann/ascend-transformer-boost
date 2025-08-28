@@ -11,6 +11,7 @@
 #define ATB_COMMONOPPARAM_H
 #include <cstdint>
 #include <acl/acl.h>
+#include "atb/types.h"
 
 //!
 //! \file common_op_params.h
@@ -72,6 +73,33 @@ inline bool operator==(const EventParam &left, const EventParam &right)
     return left.operatorType == right.operatorType && left.event == right.event;
 }
 
+//!
+//! \struct IfCondParam
+//!
+//! \brief If Operation参数，setup阶段根据条件决定执行的路径。
+//!
+struct IfCondParam {
+    //!
+    //! \brief 传给回调的上下文指针（用户自定义数据）
+    //!
+    void *userData;
+    //!
+    //! \brief 条件判断回调，返回 true 选择 opA，返回 false 选择 opB
+    //!
+    bool (*handle)(void *userData);
+    //!
+    //! \brief 条件为 true 时执行的分支 Operation
+    //!
+    Operation *opA = nullptr;
+    //!
+    //! \brief 条件为 false 时执行的分支 Operation
+    //!
+    Operation *opB = nullptr;
+    //!
+    //! \brief 预留参数
+    //!
+    uint8_t rsv[32] = {0};
+};
 } // namespace common
 } // namespace atb
 #endif

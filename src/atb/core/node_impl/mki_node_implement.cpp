@@ -363,6 +363,7 @@ uint64_t MkiNodeImplement::GetArgsSize()
 {
     if (kernel_ == nullptr) {
         ATB_LOG(ERROR) << GetLogPrefix() << " kernel is null";
+        return 0;
     }
     return kernel_->GetKernelInfo().GetArgsSize();
 }

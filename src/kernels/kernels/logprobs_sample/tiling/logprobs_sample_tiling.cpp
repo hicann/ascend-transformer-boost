@@ -51,13 +51,13 @@ Status LogprobsSampleTiling(const LaunchParam &launchParam, KernelInfo &kernelIn
     MKI_CHECK(tilingDataPtr != nullptr, "tilingDataPtr should not be empty",
               return Status::FailStatus(ERROR_INVALID_VALUE));
     uint32_t dimSize = launchParam.GetInTensor(INPUT_SORTED_PROBS_INDEX).desc.dims.size();
-    MKI_CHECK(dimSize >= 1, "dimSize should not be 0",
+    MKI_CHECK(dimSize >= 2, "dimSize should equal or greater than 2",
               return Status::FailStatus(ERROR_INVALID_VALUE));
     FillTilingParam(launchParam, *tilingDataPtr);
 
     SetWorkspaceSize(tilingDataPtr->batchSize, kernelInfo);
 
-    bool tilingKey = launchParam.GetInTensor(0).desc.dtype == TENSOR_DTYPE_BF16;
+    bool tilingKey = launchParam.GetInTensor(INPUT_SORTED_PROBS_INDEX).desc.dtype == TENSOR_DTYPE_BF16;
     kernelInfo.SetTilingId((uint64_t)tilingKey);
 
     MKI_LOG(INFO) << " usedCore: " << kernelInfo.GetBlockDim()

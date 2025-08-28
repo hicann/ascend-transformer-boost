@@ -1,13 +1,11 @@
 /*
- * Copyright (c) 2024 Huawei Technologies Co., Ltd.
- * AscendOpCommonLib is licensed under Mulan PSL v2.
- * You can use this software according to the terms and conditions of the Mulan PSL v2.
- * You may obtain a copy of Mulan PSL v2 at:
- *          http://license.coscl.org.cn/MulanPSL2
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
- * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
- * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v2 for more details.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #include "kernels/utils/kernel/common.h"
@@ -2188,6 +2186,51 @@ public:
 
                             PIPE_BARRIER(V);
 
+                                                        // *** max_lse = vmax(lse_1, lse_2)
+                            max_v<ArchType::ASCEND_V220, float>(
+                                tv_ubuf_tensor,
+                                lse32_prev_ub_tensor,
+                                lse32_ubuf_tensor,
+                                1,         // repeat
+                                1,         // dstBlockStride
+                                1,         // src0BlockStride
+                                1,         // src1BlockStride
+                                8,         // dstRepeatStride
+                                8,         // src0RepeatStride
+                                8          // src1RepeatStride
+                            );
+
+                            PIPE_BARRIER(V);
+
+                            // lse_prev = lse_prev - max_lse
+                            sub_v<ArchType::ASCEND_V220, float>(
+                                lse32_prev_ub_tensor,
+                                lse32_prev_ub_tensor,
+                                tv_ubuf_tensor,
+                                1,         // repeat
+                                1,         // dstBlockStride
+                                1,         // src0BlockStride
+                                1,         // src1BlockStride
+                                8,         // dstRepeatStride
+                                8,         // src0RepeatStride
+                                8          // src1RepeatStride
+                            );
+
+                            PIPE_BARRIER(V);
+                            // lse_new = lse_new - max_lse
+                            sub_v<ArchType::ASCEND_V220, float>(
+                                lse32_ubuf_tensor,
+                                lse32_ubuf_tensor,
+                                tv_ubuf_tensor,
+                                1,         // repeat
+                                1,         // dstBlockStride
+                                1,         // src0BlockStride
+                                1,         // src1BlockStride
+                                8,         // dstRepeatStride
+                                8,         // src0RepeatStride
+                                8          // src1RepeatStride
+                            );
+
                             // exp(lse_prev) e的指数次结果存放到
                             PIPE_BARRIER(V);
                             exp_v<ArchType::ASCEND_V220, float>(lse32_conv_ubuf_tensor,  //float 改为了half
@@ -2232,6 +2275,20 @@ public:
                                                                8           // srcRepeatStride
                             );
                             PIPE_BARRIER(V);
+
+                            add_v<ArchType::ASCEND_V220, float>(lse32_cur_update_tensor,
+                                                               lse32_cur_update_tensor,
+                                                               tv_ubuf_tensor,
+                                                               sub_m_d64,  // repeat
+                                                               1,          // dstBlockStride
+                                                               1,          // src0BlockStride
+                                                               1,          // src1BlockStride
+                                                               8,          // dstRepeatStride
+                                                               8,          // src0RepeatStride
+                                                               8           // src1RepeatStride
+                           );
+                           PIPE_BARRIER(V);
+
                             //                                 lse的更新结果搬出   当前精度已验证
                             //*********************************************
 //                            if (k_idx == 0) {
@@ -2522,7 +2579,7 @@ private:
     AscendC::LocalTensor<float> go_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(go_ubuf_offset);
     AscendC::LocalTensor<IN_DATA_TYPE> mask16_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, IN_DATA_TYPE>(mask16_ubuf_offset);
 
-    AscendC::LocalTensor<float> lse32_prev_ub_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lse_prev_ubuf_offset); // lse_prev_ub_tensor offset设置？？？
+    AscendC::LocalTensor<float> lse32_prev_ub_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lse_prev_ubuf_offset);
     AscendC::LocalTensor<float> lse32_conv_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lse_conv_ubuf_offset); // 用于中间new_lse变量参与计算与存放
     AscendC::LocalTensor<float> lse32_cur_update_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lse_cur_update_ubuf_offset);
     AscendC::LocalTensor<float> lse32_prev_update_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lse_prev_update_ubuf_offset);
@@ -2530,9 +2587,6 @@ private:
     AscendC::LocalTensor<float> o32_prev_ub_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lo_ubuf_offset);
 
     AscendC::LocalTensor<O_DT> o_prev_ub_tensor = buf.GetBuffer<BufferType::ASCEND_UB, O_DT>(mask16_ubuf_offset);
-
-//    AscendC::LocalTensor<IN_DATA_TYPE> log_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, IN_DATA_TYPE>(log_ubuf_offset);
-//    AscendC::LocalTensor<float> log_ubuf_float_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(log_ubuf_float_offset);
 
     AscendC::GlobalTensor<IN_DATA_TYPE> mask_gm_tensor;
     AscendC::GlobalTensor<O_DT> o_gm_tensor;

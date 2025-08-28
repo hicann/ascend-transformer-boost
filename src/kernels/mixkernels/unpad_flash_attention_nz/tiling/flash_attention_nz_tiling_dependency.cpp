@@ -22,6 +22,7 @@
 namespace AtbOps {
 using namespace Mki;
 const int32_t PP_MM_NUM = 8;
+const uint32_t CORE_NUM_LIMIT = 10;
 const int32_t BIT_SHIFT = 32;
 const int32_t NZ_INDEX_0 = 0;
 const int32_t NZ_INDEX_1 = 1;
@@ -104,7 +105,7 @@ inline int32_t ConvertValueToIndexNN(int32_t val, int32_t idxBound)
 const int32_t PP_BLOCK_BUFFER_SIZE = 128 * 128;
 
 inline uint32_t GetHigh32Bit(uint64_t v) { return static_cast<uint32_t>(v >> BIT_SHIFT); }
-inline uint32_t GetLoww32Bit(uint64_t v) { return static_cast<uint32_t>(v); }
+inline uint32_t GetLow32Bit(uint64_t v) { return static_cast<uint32_t>(v); }
 
 void FillSplitBatchPtr(const UnpadFlashAttentionNzInfo &mmInfo, int32_t batchOffset, int32_t seqIdx,
                        uint32_t *tilingParam)
@@ -112,9 +113,9 @@ void FillSplitBatchPtr(const UnpadFlashAttentionNzInfo &mmInfo, int32_t batchOff
     uint64_t kCachePtr = reinterpret_cast<uint64_t>(mmInfo.kTensorList[seqIdx].data);
     uint64_t vCachePtr = reinterpret_cast<uint64_t>(mmInfo.vTensorList[seqIdx].data);
     tilingParam[batchOffset + NZ_INDEX_16] = GetHigh32Bit(kCachePtr);
-    tilingParam[batchOffset + NZ_INDEX_17] = GetLoww32Bit(kCachePtr);
+    tilingParam[batchOffset + NZ_INDEX_17] = GetLow32Bit(kCachePtr);
     tilingParam[batchOffset + NZ_INDEX_18] = GetHigh32Bit(vCachePtr);
-    tilingParam[batchOffset + NZ_INDEX_19] = GetLoww32Bit(vCachePtr);
+    tilingParam[batchOffset + NZ_INDEX_19] = GetLow32Bit(vCachePtr);
 }
 
 void GetTilingKey(UnpadFlashAttentionNzInfo mmInfo, uint32_t *tilingParam)
@@ -160,13 +161,13 @@ Status FillTilingParamRealCore(const UnpadFlashAttentionNzInfo &mmInfo, const ui
         tilingParam[batchOffset + NZ_INDEX_2] = static_cast<uint32_t>(PP_MM[mIbd]);
         tilingParam[batchOffset + NZ_INDEX_3] = static_cast<uint32_t>(PP_NN[nIbd]);
         tilingParam[batchOffset + NZ_INDEX_4] = GetHigh32Bit(addrOffsets.addrQSeqOffset);
-        tilingParam[batchOffset + NZ_INDEX_5] = GetLoww32Bit(addrOffsets.addrQSeqOffset);
+        tilingParam[batchOffset + NZ_INDEX_5] = GetLow32Bit(addrOffsets.addrQSeqOffset);
         tilingParam[batchOffset + NZ_INDEX_6] = mmInfo.batchContinuous ? GetHigh32Bit(addrOffsets.addrKSeqOffset) : 0;
-        tilingParam[batchOffset + NZ_INDEX_7] = mmInfo.batchContinuous ? GetLoww32Bit(addrOffsets.addrKSeqOffset) : 0;
+        tilingParam[batchOffset + NZ_INDEX_7] = mmInfo.batchContinuous ? GetLow32Bit(addrOffsets.addrKSeqOffset) : 0;
         tilingParam[batchOffset + NZ_INDEX_8] = mmInfo.batchContinuous ? GetHigh32Bit(addrOffsets.addrVSeqOffset) : 0;
-        tilingParam[batchOffset + NZ_INDEX_9] = mmInfo.batchContinuous ? GetLoww32Bit(addrOffsets.addrVSeqOffset) : 0;
+        tilingParam[batchOffset + NZ_INDEX_9] = mmInfo.batchContinuous ? GetLow32Bit(addrOffsets.addrVSeqOffset) : 0;
         tilingParam[batchOffset + NZ_INDEX_10] = GetHigh32Bit(addrOffsets.addrOSeqOffset);
-        tilingParam[batchOffset + NZ_INDEX_11] = GetLoww32Bit(addrOffsets.addrOSeqOffset);
+        tilingParam[batchOffset + NZ_INDEX_11] = GetLow32Bit(addrOffsets.addrOSeqOffset);
         tilingParam[batchOffset + NZ_INDEX_12] = currTotalProc;
         tilingParam[batchOffset + NZ_INDEX_13] = static_cast<uint32_t>(qSeqLen);
         tilingParam[batchOffset + NZ_INDEX_14] = static_cast<uint32_t>(kvSeqLen);
@@ -291,7 +292,10 @@ Status GetUnpadFlashAttentionTilingParam(const UnpadFlashAttentionNzInfo mmInfo,
         MKI_LOG(ERROR) << "pointer tilingParam or seq is nullptr.";
         return Status::FailStatus(ERROR_INVALID_VALUE, "pointer tilingParam or seq is nullptr");
     }
-    const uint32_t nzRealCoreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+    uint32_t nzRealCoreNum = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
+    if (nzRealCoreNum <= CORE_NUM_LIMIT) {
+        nzRealCoreNum = nzRealCoreNum <= USE_MAX_CORE_NUM ? nzRealCoreNum : USE_MAX_CORE_NUM;
+    }
     uint32_t initSize = static_cast<uint32_t>(mmInfo.batchSize * NZ_REAL_CORE_TILING_SIZE * sizeof(uint32_t) +
                                               GetNzRealCoreTilingOffset());
     auto ret = memset_s(tilingParam, tilingParamSize, 0, initSize);

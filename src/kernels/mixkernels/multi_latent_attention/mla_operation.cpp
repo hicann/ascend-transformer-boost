@@ -141,11 +141,11 @@ private:
                   return false);
         MKI_CHECK(tensorKcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorKcache.desc.dtype == TENSOR_DTYPE_BF16,
                   "Input1 dtype " << GetStrWithDType(tensorKcache.desc.dtype)
-                                  << " invalid, should be float16 or bfloat16 or int8",
+                                  << " invalid, should be float16 or bfloat16",
                   return false);
         MKI_CHECK(tensorVcache.desc.dtype == TENSOR_DTYPE_FLOAT16 || tensorVcache.desc.dtype == TENSOR_DTYPE_BF16,
                   "Input2 dtype " << GetStrWithDType(tensorVcache.desc.dtype)
-                                  << " invalid, should be float16 or bfloat16 or int8",
+                                  << " invalid, should be float16 or bfloat16",
                   return false);
         MKI_CHECK(tensorQ.desc.dtype == tensorKcache.desc.dtype && tensorKcache.desc.dtype == tensorVcache.desc.dtype,
                   "tensorQ K V must be the same dtype,here Q dtype is "

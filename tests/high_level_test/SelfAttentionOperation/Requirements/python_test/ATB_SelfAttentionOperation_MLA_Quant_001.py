@@ -622,16 +622,15 @@ class TestFlashAttentionQuant(operation_test.OperationTest):
         # unpad encoder
         for i in random.sample(range(1, 65), 3):
             batch = i
-            kv_seqLen = [50] * i
+            kv_seqLen = [i for i in random.sample(range(1, 2000), batch)]
             kv_head = 1  # kv_head num
             isdecoder = 0  # prefill or decoder
             heads = 8  # llama7b  hidden_size 4096
             embeddim = 576
             embeddimV = 512
-            max_seq = 2048
+            max_seq = max(kv_seqLen)
             tor = 1.0 / math.sqrt(1.0 * embeddim)
             dynamic_batch = False
-            # kv_seqLen = [500]
             is_clamp = 0
             clamp_min = 0
             clamp_max = 0

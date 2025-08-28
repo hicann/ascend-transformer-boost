@@ -7,7 +7,7 @@
 * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 * See LICENSE in the root of the software repository for the full text of the License.
 */
-
+#include <limits>
 #include "blockcopy_tiling.h"
 #include <mki/utils/assert/assert.h>
 #include <mki/utils/log/log.h>
@@ -42,6 +42,12 @@ bool BlockCopyTilingNd(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     MKI_CHECK(headSizeV > 0, "headSizeV is invalid", return false);
     tilingDataPtr->headSizeK = headSizeK;
     tilingDataPtr->headSizeV = headSizeV;
+    uint64_t maxVal = std::numeric_limits<int64_t>::max();
+    MKI_CHECK(numHead <= maxVal / blockSize,
+          "blockSize * numHead exceeds uint64_t limit", return false);
+    uint64_t tmp = static_cast<uint64_t>(blockSize) * static_cast<uint64_t>(numHead);
+    MKI_CHECK(headSizeK <= maxVal / tmp,
+          "blockSize * numHead * headSizeK exceeds uint64_t limit", return false);
     return true;
 }
 bool BlockCopyTilingNz(const LaunchParam &launchParam, KernelInfo &kernelInfo)
@@ -66,6 +72,12 @@ bool BlockCopyTilingNz(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     tilingDataPtr->numHead = numHead;
     tilingDataPtr->headSizeK = headSizeK;
     tilingDataPtr->headSizeV = headSizeV;
+    uint64_t maxVal = std::numeric_limits<int64_t>::max();
+    MKI_CHECK(numHead <= maxVal / blockSize,
+          "blockSize * numHead exceeds uint64_t limit", return false);
+    uint64_t tmp = static_cast<uint64_t>(blockSize) * static_cast<uint64_t>(numHead);
+    MKI_CHECK(headSizeK <= maxVal / tmp,
+          "blockSize * numHead * headSizeK exceeds uint64_t limit", return false);
     return true;
 }
 
@@ -73,15 +85,16 @@ bool BlockCopyTilingCheck310P(const LaunchParam &launchParam, KernelInfo &kernel
 {
     TensorDType inDtype = launchParam.GetInTensor(0).desc.dtype;
     uint32_t typeByte = static_cast<uint32_t>(GetTensorElementSize(inDtype));
+    MKI_CHECK(typeByte > 0, "typeByte is invalid", return false);
     BlockCopyTilingData *tilingDataPtr = reinterpret_cast<AtbOps::BlockCopyTilingData*>(kernelInfo.GetTilingHostAddr());
     MKI_CHECK(tilingDataPtr != nullptr, "tilingHost should not be empty",
               return false);
     auto headDim = tilingDataPtr->blockSize * tilingDataPtr->numHead;
     auto totalKCacheItems = tilingDataPtr->headSizeK * headDim;
     auto totalVCacheItems = tilingDataPtr->headSizeV * headDim;
-    MKI_CHECK(totalKCacheItems % typeByte == 0, "310P Platform KCache should be aligned with 32 bytes!",
+    MKI_CHECK(totalKCacheItems % (BYTES_32 / typeByte) == 0, "310P Platform KCache should be aligned with 32 bytes!",
               return false);
-    MKI_CHECK(totalVCacheItems % typeByte == 0, "310P Platform VCache should be aligned with 32 bytes!",
+    MKI_CHECK(totalVCacheItems % (BYTES_32 / typeByte) == 0, "310P Platform VCache should be aligned with 32 bytes!",
               return false);
     return true;
 }

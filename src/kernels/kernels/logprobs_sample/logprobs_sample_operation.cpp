@@ -68,6 +68,8 @@ public:
                   "inTensor3 dtype invalid, should be int32",
                   return Status::FailStatus(ERROR_INFERSHAPE_ERROR));
 
+        MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::LogprobsSample), "OpParam is invalid",
+                  return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam is invalid"));
         auto param = AnyCast<OpParam::LogprobsSample>(launchParam.GetParam());
         outTensors[DIM_0].desc.dims = { launchParam.GetInTensor(DIM_0).desc.dims[0], (int64_t)param.logprobsSize };
         outTensors[DIM_0].desc.dtype = TENSOR_DTYPE_FLOAT;

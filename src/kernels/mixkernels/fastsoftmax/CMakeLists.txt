@@ -13,3 +13,7 @@ set(fastsoftmax_srcs
 )
 
 add_operation(FastSoftMaxOperation "${fastsoftmax_srcs}")
+
+add_kernel(fastsoftmax ascend910b vector
+        op_kernel/fast_softmax.cpp
+        FastSoftMaxKernel)

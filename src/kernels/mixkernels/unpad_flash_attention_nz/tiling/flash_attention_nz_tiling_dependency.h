@@ -26,6 +26,7 @@ const int32_t LONG_SEQ_LEN = 128;
 const size_t NZ_BATCH_LIMIT = 2000;
 constexpr int32_t LONG_SEQ_ALIBI_LEN = 256;
 constexpr int32_t SWA_MASK_COMPRESS_SIZE = 512;
+constexpr uint32_t USE_MAX_CORE_NUM = 9;
 
 using UnpadFlashAttentionNzInfo = struct UnpadFlashAttentionNzTilingParams {
     OpParam::UnpadFlashAttentionNz::Type type;

@@ -90,7 +90,9 @@ private:
     __aicore__ inline void CopyOut(uint64_t progress)
     {
         LocalTensor<half> outLocal = outQueue_.DeQue<half>();
-        DataCopy(outGm[(progress - offsetUnusedBathch) * hiddenDim_], outLocal, hiddenDimAlign_);
+        uint64_t offset = (progress - offsetUnusedBathch) <= 0 ?
+            0 : (progress - offsetUnusedBathch) * hiddenDim_;
+        DataCopy(outGm[offset], outLocal, hiddenDimAlign_);
         outQueue_.FreeTensor(outLocal);
     }
 private:

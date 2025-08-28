@@ -51,10 +51,8 @@ Status GetTilingSliceInfo(LayerNormQuantTilingData &tilingData, uint32_t maxUbSi
         kernelBufferInfo.fp32BufNum * sizeof(uint32_t) + kernelBufferInfo.fp16BufNum * sizeof(uint16_t);
     uint32_t multiRowSizePerElem =
         kernelBufferInfo.fp16BufNumForMulRow * sizeof(uint16_t) + kernelBufferInfo.i8BufNumForMulRow * sizeof(uint8_t);
-    MKI_CHECK(numCol <= (UINT_MAX / (singleRowSizePerElem + multiRowSizePerElem)), "RowBufferSize invalid!",
-              return Status::FailStatus(ERROR_INVALID_VALUE, "RowBufferSize invalid!"));
-    uint32_t singleRowBufferSize = singleRowSizePerElem * numCol;
-    uint32_t multiRowBufferSize = multiRowSizePerElem * numCol;
+    uint64_t singleRowBufferSize = static_cast<uint64_t>(singleRowSizePerElem) * numCol;
+    uint64_t multiRowBufferSize = static_cast<uint64_t>(multiRowSizePerElem) * numCol;
 
     if ((maxUbSize - MEAN_AND_VAR_SIZE) < (singleRowBufferSize + multiRowBufferSize)) {
         uint32_t oneRepeatElemCount = 256U / sizeof(uint16_t);
@@ -115,8 +113,12 @@ Status LayerNormF16QuantTiling(const LaunchParam &launchParam, KernelInfo &kerne
                   "totalMemNeed is invalid!", return Status::FailStatus(ERROR_INVALID_VALUE));
         uint32_t totalMemNeed = static_cast<uint32_t>(FP16_DATA_USED) * layerNormPtrCon.nlFirstdimPerCoreNum *
                                 layerNormPtrCon.numCol;
-        MKI_CHECK(layerNormPtrCon.numCol <= (UINT_MAX / FP16_OTHER_USED),
+        MKI_CHECK(layerNormPtrCon.numCol <= ((UINT_MAX - NUM_TEMP_BUF - SCALAR_USED) / FP16_OTHER_USED),
                   "sumData is invalid!", return Status::FailStatus(ERROR_INVALID_VALUE, "sumData is invalid!"));
+        MKI_CHECK(layerNormPtrCon.maxEleFp16 > NUM_TEMP_BUF +
+                  static_cast<uint32_t>(FP16_OTHER_USED) * layerNormPtrCon.numCol +
+                  SCALAR_USED, "sumData is invalid!",
+                  return Status::FailStatus(ERROR_INVALID_VALUE, "sumData is invalid!"));
         uint32_t sumData = layerNormPtrCon.maxEleFp16 - NUM_TEMP_BUF -
                            static_cast<uint32_t>(FP16_OTHER_USED) * layerNormPtrCon.numCol - SCALAR_USED;
         ret = CheckSplit(tilingDataPtr, totalMemNeed, sumData, layerNormPtrCon);

@@ -1,13 +1,11 @@
 /*
-* Copyright (c) 2024 Huawei Technologies Co., Ltd.
-* AscendOpCommonLib is licensed under Mulan PSL v2.
-* You can use this software according to the terms and conditions of the Mulan PSL v2.
-* You may obtain a copy of Mulan PSL v2 at:
-*          http://license.coscl.org.cn/MulanPSL2
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-* EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-* MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-* See the Mulan PSL v2 for more details.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
 */
 
 #include "kernels/utils/kernel/common.h"
@@ -1935,8 +1933,8 @@ public:
                        PIPE_BARRIER(V);
 
                        if (isRing){
-                           //                          以下为更新lse的部分：lse_new = log(exp(lse_new) + exp(lse_old))
-                           //                          搬运prev_lse
+                           //以下为更新lse的部分：lse_new = log(exp(lse_new) + exp(lse_old))
+                           //搬运prev_lse
                            WAIT_FLAG(V, MTE2, EVENT_ID5);
                            gm_to_ub_align<ArchType::ASCEND_V220, float>( // 直接搬入报错error，暂时修改回原版本，待优化
                                lse32_prev_ub_tensor,
@@ -1953,6 +1951,51 @@ public:
                            WAIT_FLAG(MTE2, V, EVENT_ID5);
 
                            PIPE_BARRIER(V);
+
+                            // *** max_lse = vmax(lse_1, lse_2)
+                            max_v<ArchType::ASCEND_V220, float>(
+                                tv_ubuf_tensor,
+                                lse32_prev_ub_tensor,
+                                lse32_ubuf_tensor,
+                                1,         // repeat
+                                1,         // dstBlockStride
+                                1,         // src0BlockStride
+                                1,         // src1BlockStride
+                                8,         // dstRepeatStride
+                                8,         // src0RepeatStride
+                                8          // src1RepeatStride
+                            );
+
+                            PIPE_BARRIER(V);
+
+                            // lse_prev = lse_prev - max_lse
+                            sub_v<ArchType::ASCEND_V220, float>(
+                                lse32_prev_ub_tensor,
+                                lse32_prev_ub_tensor,
+                                tv_ubuf_tensor,
+                                1,         // repeat
+                                1,         // dstBlockStride
+                                1,         // src0BlockStride
+                                1,         // src1BlockStride
+                                8,         // dstRepeatStride
+                                8,         // src0RepeatStride
+                                8          // src1RepeatStride
+                            );
+
+                            PIPE_BARRIER(V);
+                            // lse_new = lse_new - max_lse
+                            sub_v<ArchType::ASCEND_V220, float>(
+                                lse32_ubuf_tensor,
+                                lse32_ubuf_tensor,
+                                tv_ubuf_tensor,
+                                1,         // repeat
+                                1,         // dstBlockStride
+                                1,         // src0BlockStride
+                                1,         // src1BlockStride
+                                8,         // dstRepeatStride
+                                8,         // src0RepeatStride
+                                8          // src1RepeatStride
+                            );
 
                            // exp(lse_prev) e的指数次结果存放到
                            PIPE_BARRIER(V);
@@ -1998,6 +2041,18 @@ public:
                                                               8           // srcRepeatStride
                            );
                            PIPE_BARRIER(V);
+                            add_v<ArchType::ASCEND_V220, float>(lse32_cur_update_tensor,
+                                                               lse32_cur_update_tensor,
+                                                               tv_ubuf_tensor,
+                                                               sub_m_d64,  // repeat
+                                                               1,          // dstBlockStride
+                                                               1,          // src0BlockStride
+                                                               1,          // src1BlockStride
+                                                               8,          // dstRepeatStride
+                                                               8,          // src0RepeatStride
+                                                               8           // src1RepeatStride
+                           );
+                           PIPE_BARRIER(V);
                            //                                 lse的更新结果搬出   当前精度已验证
                            //*********************************************
                            //                            if (k_idx == 0) {
@@ -2039,7 +2094,7 @@ public:
                                                                    round_sub_m / FLOAT_BLOCK_SIZE // repeat  8   round_sub_m=64   FLOAT_BLOCK_SIZE=8
                            );
                            PIPE_BARRIER(V);
-                           //                                WAIT_FLAG(MTE2, V, EVENT_ID3);
+                           //WAIT_FLAG(MTE2, V, EVENT_ID3);
                            for (uint32_t vmul_idx = 0; vmul_idx < ((qk_k + FLOAT_VECTOR_SIZE-1) / FLOAT_VECTOR_SIZE); ++vmul_idx) {
                                mul_v<ArchType::ASCEND_V220, float>(go_ubuf_tensor[vmul_idx * FLOAT_VECTOR_SIZE],  //  FLOAT_VECTOR_SIZE==64
                                                                    o32_prev_ub_tensor[vmul_idx * FLOAT_VECTOR_SIZE], // 0-64     64-?
@@ -2267,7 +2322,6 @@ private:
    const uint32_t p_scale_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE + 21 * UB_UINT8_LINE_SIZE;
    const uint32_t dm16_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE + 21 * UB_UINT8_LINE_SIZE;
    const uint32_t log_ubuf_offset = 8 * UB_UINT8_BLOCK_SIZE + 30 * UB_UINT8_LINE_SIZE;
-//   const uint32_t log_ubuf_float_offset = 8 * UB_UINT8_BLOCK_SIZE + 30 * UB_UINT8_LINE_SIZE;
    const uint32_t lo_ubuf_offset = 9 * UB_UINT8_BLOCK_SIZE;
    const uint32_t mask16_ubuf_offset = 11 * UB_UINT8_BLOCK_SIZE;
 
@@ -2289,8 +2343,6 @@ private:
    AscendC::LocalTensor<float> go_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(go_ubuf_offset);
    AscendC::LocalTensor<IN_DATA_TYPE> mask16_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, IN_DATA_TYPE>(mask16_ubuf_offset);
 
-//   AscendC::LocalTensor<IN_DATA_TYPE> log_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, IN_DATA_TYPE>(log_ubuf_offset);
-//   AscendC::LocalTensor<float> log_ubuf_float_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(log_ubuf_float_offset);
    AscendC::LocalTensor<float> lse32_prev_ub_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lse_prev_ubuf_offset); // lse_prev_ub_tensor offset设置？？？
    AscendC::LocalTensor<float> lse32_conv_ubuf_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lse_conv_ubuf_offset); // 用于中间new_lse变量参与计算与存放
    AscendC::LocalTensor<float> lse32_cur_update_tensor = buf.GetBuffer<BufferType::ASCEND_UB, float>(lse_cur_update_ubuf_offset);

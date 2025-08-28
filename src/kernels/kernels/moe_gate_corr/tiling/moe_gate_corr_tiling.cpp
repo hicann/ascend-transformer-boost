@@ -32,15 +32,24 @@ Status MoeGateCorrTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 
     const auto &inputADim = launchParam.GetInTensor(0).desc.dims;
     const auto &inputBDim = launchParam.GetInTensor(1).desc.dims;
+    MKI_CHECK(inputADim.size() == 2, "inTensor0 dims invalid.", return Status::FailStatus(ERROR_INVALID_VALUE));
+    MKI_CHECK(inputBDim.size() == 2, "inTensor1 dims invalid.", return Status::FailStatus(ERROR_INVALID_VALUE));
+
     // NT
     int64_t m = inputADim.at(0);
     int64_t n = inputBDim.at(0);
     int64_t k = inputADim.at(1);
 
     uint8_t *tiling = kernelInfo.GetTilingHostAddr();
+    MKI_CHECK(tiling, "TilingHostAddr should not be empty", return Status::FailStatus(ERROR_INVALID_VALUE));
     auto tilingDataPointer = reinterpret_cast<MoeGateCorrTilingData *>(tiling);
+    MKI_CHECK(tilingDataPointer, "TilingData should not be empty", return Status::FailStatus(ERROR_INVALID_VALUE));
+
+    MKI_CHECK(m >= 0 && m <= UINT32_MAX, "Invalid m value.", return Status::FailStatus(ERROR_INVALID_VALUE));
     tilingDataPointer->m = static_cast<uint32_t>(m);
+    MKI_CHECK(n >= 0 && n <= UINT32_MAX, "Invalid n value.", return Status::FailStatus(ERROR_INVALID_VALUE));
     tilingDataPointer->n = static_cast<uint32_t>(n);
+    MKI_CHECK(k >= 0 && k <= UINT32_MAX, "Invalid k value.", return Status::FailStatus(ERROR_INVALID_VALUE));
     tilingDataPointer->k = static_cast<uint32_t>(k);
 
     kernelInfo.SetBlockDim(coreNum);

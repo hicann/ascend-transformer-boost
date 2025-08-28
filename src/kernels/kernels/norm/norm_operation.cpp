@@ -66,6 +66,7 @@ bool checkNCT(const LaunchParam &launchParam)
     }
     const SVector<int64_t>& xShapes = launchParam.GetInTensor(0).desc.dims;
     uint32_t dimNum = xStrides.size();
+    MKI_CHECK(dimNum >= rowStrideNum, "noncontiguous tensor dimNum must lager than two", return false);
     return (xStrides[dimNum - rowStrideNum] == xShapes[dimNum - 1]) ? false : true;
 }
 

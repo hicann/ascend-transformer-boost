@@ -47,6 +47,7 @@ private:
     Status InferShapeHiddenSizeCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status InferShapeDimNumCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status HeadSizeDimCheck910B(const SVector<TensorDesc> &inTensorDescs) const;
+    Status MaxHeadSizeCheck910B(const int64_t headSizeK, const int64_t headSizeV) const;
     Status HeadSizeDimCheck310P(const SVector<TensorDesc> &inTensorDescs) const;
     Status SWAMaskDimCheck(const SVector<TensorDesc> &inTensorDescs) const;
     Status PAMaskDimCheck(const SVector<TensorDesc> &inTensorDescs) const;

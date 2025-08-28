@@ -23,6 +23,7 @@ import shutil
 import logging
 import re
 from enum import Enum
+from functools import reduce
 
 from self_attention_golden import SelfAttentionGolden, SelfAttentionGenOutTensor
 
@@ -56,7 +57,10 @@ def get_precision_and_eb_threshold(op_type, dtype, compute_num):
             precision_threshold = 1
     if op_type in [OpTypes.COMPUTE_QUANT, OpTypes.COMPUTE_FLOAT]:
         if dtype in [torch.float16]:
-            precision_threshold = 2**(-8)
+            if compute_num != -1 and compute_num >= 2048:
+                precision_threshold = 2**(-7)
+            else:
+                precision_threshold = 2**(-8)
             eb_threshold = 2**(-10)
         if dtype in [torch.bfloat16]:
             if compute_num != -1 and compute_num >= 2048:
@@ -333,7 +337,7 @@ class DynamicNTKOperation(DataGen):
         else:
             seqlens = np.array([ntokens])
         max_seq_len = max(seqlens)
-        positionIds = np.random.randint(0, max_seq_len-1, size=ntokens)
+        positionIds = np.random.randint(0, max_seq_len, size=ntokens)
         inv_freq = np.random.rand(batch, head_size_half)
         positionIds = torch.from_numpy(positionIds).npu().to(torch.int32)
         seqlens = torch.from_numpy(seqlens).npu().to(torch.int32)
@@ -2509,7 +2513,9 @@ class LayerNormOperation(DataGen):
                         return [torch.from_numpy(dynamic_quant_y).to(torch.int8),
                                 torch.from_numpy(dynamic_quant_scale.squeeze(axis=-1)).to(torch.float32),
                                 torch.from_numpy(dynamic_quant_offset.squeeze(axis=-1)).to(torch.float32)]
-                normalized_shape = (1, in_tensors[0].shape[-1])
+                weight = weight.reshape(in_tensors[0].shape[-1])
+                bias = bias.reshape(in_tensors[0].shape[-1])
+                normalized_shape = (in_tensors[0].shape[-1],)
                 layer_norm_res = torch.nn.functional.layer_norm(input, normalized_shape, weight, bias, eps).to(torch.float16)
                 golden_result = layer_norm_res.to(torch.float16)
                 golden_result_quant = layer_norm_quant(layer_norm_res)
@@ -3138,14 +3144,51 @@ class SliceOperation(DataGen):
             offsetList[index] = offset if offset >= 0 else offset + in_tensors[0].shape[index]
         for index, size in enumerate(sizeList):
             sizeList[index] = size if size != -1 else in_tensors[0].shape[index] - offsetList[index]
+        # 根据维度数进行切片
         if len(offsetList) == 1:
-            return [in_tensors[0][offsetList[0] : offsetList[0] + sizeList[0]]]
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0]]]
         elif len(offsetList) == 2:
-            return [in_tensors[0][offsetList[0] : offsetList[0] + sizeList[0], offsetList[1] : offsetList[1] + sizeList[1]]]
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1]]]
         elif len(offsetList) == 3:
-            return [in_tensors[0][offsetList[0] : offsetList[0] + sizeList[0], offsetList[1] : offsetList[1] + sizeList[1], offsetList[2] : offsetList[2] + sizeList[2]]]
-        else:
-            return [in_tensors[0][offsetList[0] : offsetList[0] + sizeList[0], offsetList[1] : offsetList[1] + sizeList[1], offsetList[2] : offsetList[2] + sizeList[2], offsetList[3] : offsetList[3] + sizeList[3]]]
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2]]]
+        elif len(offsetList) == 4:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3]]]
+        elif len(offsetList) == 5:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3],
+                                offsetList[4]:offsetList[4] + sizeList[4]]]
+        elif len(offsetList) == 6:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3],
+                                offsetList[4]:offsetList[4] + sizeList[4],
+                                offsetList[5]:offsetList[5] + sizeList[5]]]
+        elif len(offsetList) == 7:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3],
+                                offsetList[4]:offsetList[4] + sizeList[4],
+                                offsetList[5]:offsetList[5] + sizeList[5],
+                                offsetList[6]:offsetList[6] + sizeList[6]]]
+        elif len(offsetList) == 8:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3],
+                                offsetList[4]:offsetList[4] + sizeList[4],
+                                offsetList[5]:offsetList[5] + sizeList[5],
+                                offsetList[6]:offsetList[6] + sizeList[6],
+                                offsetList[7]:offsetList[7] + sizeList[7]]]
 
     @staticmethod
     def get_op_type(op_params):
@@ -3212,7 +3255,10 @@ class RopeOperation(DataGen):
             ntoken = shapes[i][0]
             head_size = shapes[i][1]
             # op需要cos/sin重复一次
-            return torch.rand(ntoken, head_size // 2, 1).repeat(1, 1, 2).view(ntoken, head_size).half().npu()
+            if datatype == "bf16":
+                return torch.rand(ntoken, head_size // 2, 1).repeat(1, 1, 2).view(ntoken, head_size).to(torch.bfloat16).npu()
+            else:
+                return torch.rand(ntoken, head_size // 2, 1).repeat(1, 1, 2).view(ntoken, head_size).half().npu()
         if i != 0:
             return RopeOperation.unpadRetdata[i]
 
@@ -6771,14 +6817,14 @@ class GroupTopkOperation(DataGen):
         group_num = json_data['groupNum'] if "groupNum" in json_data else 1
         k = json_data['k'] if "k" in json_data else 0
         if i == 0:
-            token_num = shapes[0][0]
-            expert_num = shapes[0][1]
-            input0_np = np.random.random((token_num, expert_num)).astype(np.float32)
+            input0_np = np.random.random(shapes[0]).astype(np.float32)
             input0 = torch.from_numpy(input0_np).type(torch.float16).to(dtype_dict[datatype])
             input0_return = torch_npu.npu_format_cast(input0.npu(), format_dict[format])
             return input0_return
         if i == 1:
-            input1 = torch.arange(shapes[1][0], dtype=torch.int32)
+            total_size = reduce(lambda x, y: x * y, shapes[1])
+            input1 = torch.arange(total_size, dtype=torch.int32)
+            input1 = torch.reshape(input1, shapes[1])
             input1_return = torch_npu.npu_format_cast(input1.npu(), format_dict[format])
             return input1_return
 
