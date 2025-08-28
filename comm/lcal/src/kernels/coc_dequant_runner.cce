@@ -46,7 +46,6 @@ public:
     {
         is_ping = !is_ping;
         auto ub_in = is_ping ? ub_in0 : ub_in1;
-        auto ub_out = is_ping ? ub_out0 : ub_out1;
         auto event_id = is_ping ? EVENT_ID0 : EVENT_ID1;
 
         int32_t n_blocks = Block32B<bfloat16_t>::Count(n_cols_this_loop) * (sizeof(int32_t) / sizeof(bfloat16_t));
@@ -148,7 +147,7 @@ private:
     __ubuf__ int32_t *ub_in0 = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)0);
     __ubuf__ float32_t *ub_mul = reinterpret_cast<__ubuf__ float32_t *>((uintptr_t)32768);
     __ubuf__ float32_t *ub_in_f32 = reinterpret_cast<__ubuf__ float32_t *>((uintptr_t)65536);
-    __ubuf__ float32_t *ub_scale = reinterpret_cast<__ubuf__ float32_t *>((uintptr_t)98650);
+    __ubuf__ float32_t *ub_scale = reinterpret_cast<__ubuf__ float32_t *>((uintptr_t)98560);
     __ubuf__ bfloat16_t *ub_out = reinterpret_cast<__ubuf__ bfloat16_t *>((uintptr_t)131328);
     __ubuf__ int32_t *ub_in1 = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)163840);
 
@@ -219,7 +218,7 @@ public:
         PipeBarrier<PIPE_V>();
         for (int32_t row = 0; row < n_rows_this_loop; ++row) {
             float32_t scale = ub_scales[row];
-            Vmuls(ub_out_f32 + n_round * row, un_in_f32 + n_round * row, scale, (n_cols_this_loop + 127) / 128 * 2, 1, 1, 8, 8); 1);
+            Vmuls(ub_out_f32 + n_round * row, ub_in_f32 + n_round * row, scale, (n_cols_this_loop + 127) / 128 * 2, 1, 1, 8, 8); 1);
         }
         PipeBarrier<PIPE_V>();
         Vconv(ub_out, ub_out_f32, repeat, 1, 1, 4, 8, RoundMode::CAST_RINT);
@@ -443,20 +442,21 @@ public:
             batch_offset = 0;
         }
 
-        inline __aicore__ void EndBatchLoop()
+        inline __aicore__ bool EndBatchLoop() const
         {
             return batch_idx == batch_size;
         }
 
-        intline __aicore__ void NextBatchLoop()
+        inline __aicore__ void NextBatchLoop()
         {
             ++batch_idx;
             if (EndBatchLoop()) {
                 return;
             }
-            batch_offset += static_casta<int64_t>(batch_idx) * n_rows * n_cols;
+            batch_offset = static_cast<int64_t>(batch_idx) * n_rows * n_cols;
         }
     }
+
 
     inline __aicore__ void InitRowLoop(init32_t max_rows_per_loop)
     {
