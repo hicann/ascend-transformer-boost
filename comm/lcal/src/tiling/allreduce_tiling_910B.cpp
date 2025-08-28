@@ -11,7 +11,6 @@
 #include "tiling_910B.h"
 #include "tiling_func.h"
 #include "lcal_types.h"
-
 namespace Lcal {
     const int32_t ALLREDUCE_SERIAL_MODE_K_SIZE = 8192;
     const int64_t ALLREDUCE_SERIAL_MODE_MN_SIZE = 256 * 256 * 12;
