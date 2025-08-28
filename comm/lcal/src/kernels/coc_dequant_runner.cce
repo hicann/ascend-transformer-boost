@@ -46,6 +46,7 @@ public:
     {
         is_ping = !is_ping;
         auto ub_in = is_ping ? ub_in0 : ub_in1;
+        auto ub_out = is_ping ? ub_out0 : ub_out1;
         auto event_id = is_ping ? EVENT_ID0 : EVENT_ID1;
 
         int32_t n_blocks = Block32B<bfloat16_t>::Count(n_cols_this_loop) * (sizeof(int32_t) / sizeof(bfloat16_t));
@@ -108,7 +109,7 @@ public:
     {
         is_ping = !is_ping;
         auto ub_in = is_ping ? ub_in0 : ub_in1;
-        auto ub_out = is_ping ? ub_out0 : ub_out1;
+        auto event_id = is_ping ? EVENT_ID0 : EVENT_ID1;
         int32_t n_blocks = Block32B<bfloat16_t>::Count(n_cols_this_loop) * (sizeof(int32_t) / sizeof(bfloat16_t));
         int32_t ubuf_gap = n_blocks - Block32B<int32_t>::Count(n_cols_this_loop);
 
@@ -163,7 +164,7 @@ public:
 
     inline __aicore__ LoopPerTokenDequanter(int32_t n0)
     {
-        n_round = (n0 + 127) / 128 * 128;
+        n_round = (n0 + 127) / 128 * 128; // n_this_loop + 127 / 128是需要的repeat数， 每个repeat占用8个blocks
         ub_in0 = reinterpret_cast<__ubuf__ T *>((uintptr_t)0);
         ub_in1 = reinterpret_cast<__ubuf__ T *>(ub_in0 + max_len);
         ub_out = reinterpret_cast<__ubuf__ T *>(ub_in1 + max_len);
@@ -213,12 +214,12 @@ public:
         SetFlag<HardEvent::MTE2_S>(EVENT_ID2);
         SetFlag<HardEvent::MTE2_V>(EVENT_ID2);
         WaitFlag<HardEvent::MTE2_V>(EVENT_ID2);
-        WaitFlag<HardEvent::MTE2_S>(EVENT_ID2); // 注意必须是MTE2_s, 不能是MTE2_V 否则会读到0， 造成乱码
+        WaitFlag<HardEvent::MTE2_S>(EVENT_ID2); // 注意必须是MTE2_S, 不能是MTE2_V, 否则会读到0， 造成乱码
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID2);
         PipeBarrier<PIPE_V>();
         for (int32_t row = 0; row < n_rows_this_loop; ++row) {
             float32_t scale = ub_scales[row];
-            Vmuls(ub_out_f32 + n_round * row, ub_in_f32 + n_round * row, scale, (n_cols_this_loop + 127) / 128 * 2, 1, 1, 8, 8); 1);
+            Vmuls(ub_out_f32 + n_round * row, ub_in_f32 + n_round * row, scale, (n_cols_this_loop + 127) / 128 * 2, 1, 1, 8, 8);
         }
         PipeBarrier<PIPE_V>();
         Vconv(ub_out, ub_out_f32, repeat, 1, 1, 4, 8, RoundMode::CAST_RINT);
@@ -458,7 +459,7 @@ public:
     }
 
 
-    inline __aicore__ void InitRowLoop(init32_t max_rows_per_loop)
+    inline __aicore__ void InitRowLoop(int32_t max_rows_per_loop)
     {
         n_rows_complete = 0;
         n_rows_this_loop = (n_rows_this_core < max_rows_per_loop) ? n_rows_this_core : max_rows_per_loop;
@@ -506,7 +507,7 @@ public:
         col_offset = n_cols_complete;
     }
 
-    inine __aicore__ int64_t offset() const
+    inline __aicore__ int64_t offset() const
     {
         return core_offset + row_offset * n_cols + col_offset;
     }
@@ -727,7 +728,7 @@ public:
         this-> swizzl_direct = swizzle_direct;
         this-> swizzl_count = swizzle_count;
         this-> p_value = p_value;
-        this-> rank_size = EP * TP;
+        // this-> rank_size = EP * TP;
         this-> rank = rank;
     }
 
