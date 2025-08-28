@@ -737,14 +737,6 @@ public:
         this-> p_value = p_value;
         this-> rank_size = EP * TP;
         this-> rank = rank;
-        this-> EP = EP;
-        this-> TP = TP;
-        this-> local_expert_nums = local_expert_nums;
-        this-> is_moe_averaged = is_moe_averaged;
-        this-> is_alltoallvc = is_alltoallvc;
-        this-> num_local_tokens_per_expert = reinterpret_cast<__gm__ int32_t *> (num_local_tokens_per_expert);
-        this-> num_global_tokens_per_local_expert =
-            reinterpret_cast<__gm__ int32_t *> (num_global_tokens_per_local_expert);
     }
 
 private:
@@ -756,25 +748,14 @@ private:
     int32_t n_loop;
     int32_t core_loop;
     int32_t loop_num_per_comm;
-    int32_t swizzl_count;
+
     int32_t swizzl_direct;
     int32_t p_value;
     int32_t rank_size;
-    int32_t loop_per_EP;
-    int32_t rank;
-    int32_t EP;
-    int32_t TP;
-    int32_t local_expert_nums;
-    int32_t is_moe_averaged;
-    int32_t is_alltoallvc;
 
-    __gm__ int32_t *out_loop_per_expert;
-    __gm__ int32_t *out_loop_per_ep;
-    __gm__ int32_t *sum_num_local_tokens_per_expert;
-    __gm__ int32_t *sum_num_global_tokens_per_local_expert;
-    __gm__ int32_t *in_expert_comm_count_accum;
-    __gm__ int32_t *num_local_tokens_per_expert;
-    __gm__ int32_t *num_global_tokens_per_local_expert;
+    int32_t rank;
+
+
 
     int32_t sum_loop;
 };
@@ -870,50 +851,9 @@ inline __aicore__ void SetArgs(__gm__ T *gm_buff, const LcalWorkspaceInfo & work
         this -> rank_size = EP * TP;
         this -> rank = rank;
         this -> buffer_size = buffer_size;
-        this -> EP = EP;
-        this -> TP = TP;
-        this -> local_expert_nums = local_expert_nums;
-        this -> is_moe_averaged = is_moe_averaged;
-        this -> is_alltoallvc = is_alltoallvc;
-        this -> comm_n = p_value * n0;
 
-        this -> global_tokens_per_expert_matrix = reinterpret_cast<__gm__ int32_t *> (global_tokens_per_expert_matrix);
-        this -> expert_nums = EP * local_expert_nums;
-        this -> maxOutputSize = max_output_size;
-        if (is_moe_averaged) {
-            sum_m_loop = DivCeil((m / expert_nums) * EP, m0) * local_expert_nums;
-            max_m = m;
-        } else {
-            if (maxOutputSize == -1) {
-                max_m = 0;
-                for (int32_t ep_idx = 0; ep_idx < EP; ep_idx++) {
-                    int32_t sum_m_ep = 0;
-                    for (int32_t local_expert_id = 0; local_expert_id < local_expert_nums; local_expert_id++) {
-                        int32_t expert_id = local_expert_id +ep_idx * local_expert_nums;
-                        for (int32_t i = 0; i < EP; i++) {
-                            sum_m_ep += global_tokens_per_expert_matrix[expert_nums + expert_id];
-                        }
-                    }
-                    max_m = max(max_m, sum_m_ep);
-                }
-            } else {
-                max_m = maxOutputSize;
-            }
 
-            for (int32_t i = 0; i < local_expert_nms; i++) {
-                int32_t last_sum_m = (i == 0 ? 0 : sum_m[i - 1]);
-                for (int j = 0; j < EP; j++) {
-                    sum_m[i] += global_tokens_per_expert_matrix[j * expert_nums + rank * local_expert_nums + i];
-                }
-                if (maxOutputSize > 0 && sum_m[i] + last_sum_m > maxOutputSize) {
-                    sum_m[i] = maxOutputSize - last_sum_m;
-                }
-                sum_m_loop += DivCeil(sum_m[i], m0);
-                sum_m[i] += (i == 0 ? 0 : sum_m[i - 1]);
-            }
-        }
-        sum_loop = 0;
-    }
+
 
     inline __aicore__ void RunDequantAllReduce(int32_t cal_idx)
     {
@@ -962,23 +902,8 @@ private:
     __gm__ float32_t *gm_dequant_scale_pertoken;
     int32_t loop_per_EP;
     int32_t rank;
-    int32_t EP;
-    int32_t TP;
-    int32_t local_expert_nums;
-    int32_t is_moe_averaged;
-    int32_t is_alltoallvc;
     int32_t buffer_size;
-    __gm__ int32_t *out_loop_per_expert;
-    __gm__ int32_t *out_loop_per_ep;
-    __gm__ int32_t *sum_num_local_tokens_per_expert;
-    __gm__ int32_t *sum_num_global_tokens_per_local_expert;
-    __gm__ int32_t *in_expert_comm_count_accum;
-    __gm__ int32_t *num_local_tokens_per_expert;
-    __gm__ int32_t *num_global_tokens_per_local_expert;
-    __gm__ int32_t *num_local_tokens_per_expert;
-    __gm__ int32_t *num_global_tokens_per_local_expert;
     int32_t sum_loop;
-    __gm__ int32_t* global_tokens_per_expert_matrix;
     int32_t max_m;
     int32_t sum_m[32] = {0};
     int32_t sum_m_loop = 0;
@@ -987,7 +912,6 @@ private:
     int64_t gm_a_pingpong_size;
     int64_t gm_a_pingpong_num;
     int32_t cal_count;
-    int32_t maxOutputSize;
 };
 #endif
 #endif
