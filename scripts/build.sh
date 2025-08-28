@@ -390,12 +390,12 @@ function fn_build_tbe_adapter_dependency()
     export ASCEND_KERNEL_PATH=$ASDOPS_SOURCE_DIR/opp_kernel
 
     #tbe_adapter dependency
-    SRC_FILE_LINE_NUM=$(wc -l < "$TBE_ADAPTER_DIR/stubs/include/canndev/ops/built-in/op_tiling/op_tiling.h")
-    DST_FILE_LINE_NUM=$(wc -l < "$THIRD_PARTY_DIR/canndev/ops/built-in/op_tiling/op_tiling.h")
     [[ ! -d "$CANNDEV_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/canndev $CANNDEV_DIR
     [[ ! -d "$API_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/api $API_DIR
     [[ ! -d "$CANN_OPS_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/cann-ops-adv $CANN_OPS_DIR
     #determine whether these two files are identical
+    SRC_FILE_LINE_NUM=$(wc -l < "$TBE_ADAPTER_DIR/stubs/include/canndev/ops/built-in/op_tiling/op_tiling.h")
+    DST_FILE_LINE_NUM=$(wc -l < "$THIRD_PARTY_DIR/canndev/ops/built-in/op_tiling/op_tiling.h")
     [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/canndev $THIRD_PARTY_DIR
     [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/api $THIRD_PARTY_DIR
     if [ ! -d "$METADEF_DIR" ];then
