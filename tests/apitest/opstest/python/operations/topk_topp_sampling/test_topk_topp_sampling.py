@@ -27,7 +27,7 @@ rand_seed = 0
 OP_NAME = "TopkToppSamplingOperation"
 libc = CDLL("libc.so.6")
 libc.srand(rand_seed)
-rand_list = [libc.rand() / 0x7fffffff for i in range(64)]
+rand_list = [libc.rand() / 0x7fffffff for i in range(512)]
 
 
 class TestToppOperation(operation_test.OperationTest):

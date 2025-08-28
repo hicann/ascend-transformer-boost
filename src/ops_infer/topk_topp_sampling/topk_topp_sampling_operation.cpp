@@ -142,7 +142,7 @@ Status TopkToppSamplingOperation::CheckBatchSize(const SVector<TensorDesc> &inTe
     if (inTensorDescs.at(0).shape.dims[0] > MAX_BATCH_SIZE) {
         ATB_LOG(ERROR) << "batch size of inTensor0: " << inTensorDescs.at(0).shape.dims[0]
                        << " is greater than max batch size " << MAX_BATCH_SIZE;
-        return ERROR_INVALID_TENSOR_SIZE;
+        return ERROR_INVALID_TENSOR_DIM;
     }
     return NO_ERROR;
 }
