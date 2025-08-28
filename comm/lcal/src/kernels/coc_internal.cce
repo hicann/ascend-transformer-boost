@@ -170,15 +170,14 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
         reinterpret_cast<GM_ADDR>(gm_dequant_offset), batch_size, m, k, n, m0, k0, n0, m_loop, k_loop, \
         n_loop, core_loop, swizzl_count, swizzl_direct, rank, rank_size, p_value, withSerialMode, quant_granularity, \
         dequant_granularity, ag_dim, rs_dim, inner_dim_is_Ag, weight_nz, is_91093, \
-        num_local_tokens_per_expert, num_global_tokens_per_local_expert, \
-        global_tokens_per_expert_matrix, local_expert_nums, EP, TP, maxOutputSize, is_moe, is_deterministic, buffer_size \
+        is_deterministic, buffer_size \
 
 #define PP_MATMUL_AIV_PADDING_ARGS_FUN() \
     GM_ADDR gm_a, GM_ADDR gm_b, GM_ADDR gm_workspace, GM_ADDR gm_dequant_scale, \
         GM_ADDR gm_dequant_offset, GM_ADDR gm_quant_scale, GM_ADDR gm_quant_offset, \
         int32_t batch_size, int32_t m, int32_t k, int32_t n, bool trans_a, bool trans_b, bool is_int8, \
         QuantGranularity dequant_granularity, int32_t dequant_group_size, QuantGranularity quant_granularity, \
-        int32_t quant_group_size, bool weight_nz, bool is_deterministic
+        int32_t quant_group_size, int32_t weight_nz, bool is_deterministic
 
 #define PP_MATMUL_AIV_PADDING_ARGS_CALL() \
     reinterpret_cast<GM_ADDR>(gm_a), reinterpret_cast<GM_ADDR>(gm_b), \
