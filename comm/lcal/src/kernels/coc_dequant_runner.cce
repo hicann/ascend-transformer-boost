@@ -80,7 +80,7 @@ private:
     __ubuf__ int32_t *ub_in0 = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)79104);
     __ubuf__ int32_t *ub_in1 = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)118272);
     __ubuf__ int32_t *ub_adds = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)157440);
-    __ubuf__ float32_t *ub_muls = reinterpret_cast<__ubuf__ int32_t *>((uintptr_t)157440);
+    __ubuf__ float32_t *ub_muls = reinterpret_cast<__ubuf__ float32_t *>((uintptr_t)157440);
 
     bool is_ping = false;
 };
@@ -104,7 +104,7 @@ public:
         WaitFlag<HardEvent::V_MTE2>(EVENT_ID2);
         WaitFlag<HardEvent::MTE3_V>(EVENT_ID0);
     }
-    inline __aicore__ void Loop(__gm__ bfloat16_t *dst, __gm__ int32_t *src, float32_t scale,
+    inline __aicore__ void Loop(__gm__ bfloat16_t *dst, __gm__ int32_t *src, __gm__ float32_t *scale,
             int32_t n_rows_this_loop, int32_t n_cols_this_loop, int32_t src_stride, int32_t dst_stride)
     {
         is_ping = !is_ping;
@@ -524,10 +524,10 @@ public:
         int32_t n_cols_complete;
         int32_t n_rows_this_loop;
         int32_t n_cols_this_loop;
-        int32_t core_offset;
-        int32_t batch_offset;
-        int32_t row_offset;
-        int32_t col_offset;
+        int64_t core_offset;
+        int64_t batch_offset;
+        int64_t row_offset;
+        int64_t col_offset;
     };
 
     __aicore__ explicit SerialDequantRunner() = default;
@@ -550,7 +550,7 @@ public:
             default:
                 break;
         }
-        Barrier;
+        Barrier();
     }
 
 private:
@@ -924,7 +924,7 @@ inline __aicore__ void SetArgs(__gm__ T *gm_buff, const LcalWorkspaceInfo & work
         int32_t loop_idx = cal_idx * core_num + core_idx;
         for (int32_t p = 0; p < p_value; p++) {
             int loop_idx = cal_idx * p_value * core_num + p * core_num + core_idx;
-            if (loop_idx >- core_loop)
+            if (loop_idx >= core_loop)
                 break;
             int64_t m_idx, n_idx;
             GetBlockIdx(loop_idx, m_loop, n_loop, swizzl_direct, swizzl_count, m_idx, n_idx);
