@@ -138,9 +138,7 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
     __gm__ T_INPUT1 *gm_a, __gm__ T_INPUT2 *gm_b, __gm__ T_OUTPUT *gm_bias, __gm__ T_OUTPUT *gm_gamma, \
         __gm__ T_OUTPUT *gm_out, __gm__ T_OUTPUT *gm_allgather_out, GM_ADDR gm_workspace, \
         GM_ADDR gm_dequant_scale, GM_ADDR gm_dequant_offset, GM_ADDR gm_quant_scale, \
-        GM_ADDR gm_quant_offset, GM_ADDR coc_comm_args, GM_ADDR ffts_addr, \
-        __gm__ int32_t* num_local_tokens_per_expert, __gm__ int32_t *num_global_tokens_per_local_expert, \
-        __gm__ int32_t *global_tokens_per_expert_matrix, GM_ADDR para_gm
+        GM_ADDR gm_quant_offset, GM_ADDR coc_comm_args, GM_ADDR ffts_addr, GM_ADDR_para_gm
 
 #define COC_ARGS_FUN_IO(T_INPUT, T_OUTPUT) COC_ARGS_FUN_IIO(T_INPUT, T_INPUT, T_OUTPUT)
 
@@ -454,25 +452,5 @@ public:
     //int64_t sendCountMatrix[LCAL_MAX_RANK_SIZE * LCAL_MAX_RANK_SIZE];
 };
 
-FORCE_INLINE_AICORE void CommMatrixTrunc(__gm__ int32_t* global_tokens_per_expert_matrix, __gm__ int32_t* workspace, int32_t EP, int32_t local_expert_nums, int32_t maxOutputSize)
-{
-    int32_t expert_nums = local_expert_nums * EP;
-    for (int32_t i = 0; i < EP; i++) {
-        int32_t sum_tokens = 0;
-        for (int32_t local_expert_id = 0; local_expert_id < local_expert_nums; local_expert_id++) {
-            int32_t expert_id = i * local_expert_nums + local_expert_id;
-            for (int32_t j = 0; j < EP; j++) {
-                if (sum_tokens + global_tokens_per_expert_matrix[j * expert_nums + expert_id]
-                    >= maxOutputSize) {
-                    workspace[j * expert_nums + expert_id] = maxOutputSize - sum_tokens;
-                    sum_tokens = maxOutputSize;
-                } else {
-                    workspace[j * expert_nums + expert_id] = global_tokens_per_expert_matrix[j * expert_nums + expert_id];
-                    sum_tokens += global_tokens_per_expert_matrix[j * expert_nums + expert_id];
-                }
-            }
-        }
-    }
-}
 
 #endif // LCAL_COC_INTERNAL_H
