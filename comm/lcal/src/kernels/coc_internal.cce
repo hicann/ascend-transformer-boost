@@ -138,7 +138,7 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
     __gm__ T_INPUT1 *gm_a, __gm__ T_INPUT2 *gm_b, __gm__ T_OUTPUT *gm_bias, __gm__ T_OUTPUT *gm_gamma, \
         __gm__ T_OUTPUT *gm_out, __gm__ T_OUTPUT *gm_allgather_out, GM_ADDR gm_workspace, \
         GM_ADDR gm_dequant_scale, GM_ADDR gm_dequant_offset, GM_ADDR gm_quant_scale, \
-        GM_ADDR gm_quant_offset, GM_ADDR coc_comm_args, GM_ADDR ffts_addr, GM_ADDR_para_gm
+        GM_ADDR gm_quant_offset, GM_ADDR coc_comm_args, GM_ADDR ffts_addr, GM_ADDR para_gm
 
 #define COC_ARGS_FUN_IO(T_INPUT, T_OUTPUT) COC_ARGS_FUN_IIO(T_INPUT, T_INPUT, T_OUTPUT)
 
@@ -146,17 +146,13 @@ inline __aicore__ bool IsQuant(const QuantGranularity &granularity)
 
 #define COC_ARGS_CALL() \
     gm_a, gm_b, gm_bias, gm_gamma, gm_out, gm_allgather_out, gm_workspace, gm_dequant_scale, gm_dequant_offset, \
-    gm_quant_scale, gm_quant_offset, coc_comm_args, ffts_addr, \
-    num_local_tokens_per_expert, num_global_tokens_per_local_expert, \
-    global_tokens_per_expert_matrix, para_gm
+    gm_quant_scale, gm_quant_offset, coc_comm_args, ffts_addr, para_gm
 
 #define COC_ARGS_CALL_INT8() \
     reinterpret_cast<GM_ADDR>(gm_a), reinterpret_cast<GM_ADDR>(gm_b), reinterpret_cast<GM_ADDR>(gm_bias), \
     reinterpret_cast<GM_ADDR>(gm_gamma), reinterpret_cast<GM_ADDR>(gm_out), \
     reinterpret_cast<GM_ADDR>(gm_allgather_out), gm_workspace, gm_dequant_scale, gm_dequant_offset, \
-    gm_quant_scale, gm_quant_offset, coc_comm_args, ffts_addr, \
-    num_local_tokens_per_expert, num_global_tokens_per_local_expert, \
-    global_tokens_per_expert_matrix, para_gm
+    gm_quant_scale, gm_quant_offset, coc_comm_args, ffts_addr, para_gm
 
 #define PP_MATMUL_AIC_ARGS_FUN(T_INPUT, T_OUTPUT) \
     GM_ADDR gm_a, GM_ADDR gm_b, __gm__ T_OUTPUT *gm_bias, __gm__ T_OUTPUT *gm_c, \
