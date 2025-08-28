@@ -20,7 +20,8 @@
 #include "ring_mla_ops_runner.h"
 
 namespace {
-static const uint32_t BASE_IN_TENSOR_NUM = 7;  // query1, query2, key1, key2, value, mask, seqLen, (prevOut), (prevLse)
+static const uint32_t BASE_IN_TENSOR_NUM = 7;  // query1, query2, key1, key2, value, mask, seqLen
+static const uint32_t RING_OPTIONAL_IN_TENSOR_NUM = 2; // prevOut, prevLse
 static const uint32_t BASE_OUT_TENSOR_NUM = 2; // output, softmaxLse
 // dimNum
 static const uint32_t QKV_DIM_NUM = 3; // [sum(seqlen), headNum, headSize]
@@ -154,7 +155,7 @@ RingMLAOperation::~RingMLAOperation() {}
 uint32_t RingMLAOperation::GetInputNum() const
 {
     if (isInputSoftmaxLse_) {
-        return BASE_IN_TENSOR_NUM + 2; // 2: prevLse, prevOut
+        return BASE_IN_TENSOR_NUM + RING_OPTIONAL_IN_TENSOR_NUM;
     }
     return BASE_IN_TENSOR_NUM;
 }
@@ -188,7 +189,7 @@ bool RingMLAOperation::DimNumCheck(const SVector<TensorDesc> &inTensorDescs, Ext
     }
 
     if (inTensorDescs.at(IN_SEQLEN_INDEX).shape.dimNum != 1 && // 1: [batch]
-        inTensorDescs.at(IN_SEQLEN_INDEX).shape.dimNum != 2) { // 1: [2, batch]
+        inTensorDescs.at(IN_SEQLEN_INDEX).shape.dimNum != 2) { // 2: [2, batch]
         extError.errorDesc = "dimNum of seqlen should be 1 or 2!";
         extError.errorData =
             OperationUtil::ConcatInfo(", but got seqlen dimNum: ", inTensorDescs.at(IN_SEQLEN_INDEX).shape.dimNum);
@@ -224,9 +225,9 @@ bool RingMLAOperation::QSplitDimCheck(const SVector<TensorDesc> &inTensorDescs, 
         return false;
     }
     if (inTensorDescs.at(IN_QUERY_SPLIT2_INDEX).shape.dims[QKV_HEAD_SIZE_IDX] != QK_SPLIT2_HEAD_SIZE) {
-        extError.errorDesc = OperationUtil::ConcatInfo("headSize of querySplit1 must be ", QK_SPLIT2_HEAD_SIZE);
+        extError.errorDesc = OperationUtil::ConcatInfo("headSize of querySplit2 must be ", QK_SPLIT2_HEAD_SIZE);
         extError.errorData = OperationUtil::ConcatInfo(
-            "But got querySplit1[2] headSize: ", inTensorDescs.at(IN_QUERY_SPLIT2_INDEX).shape.dims[QKV_HEAD_SIZE_IDX]);
+            "But got querySplit2[2] headSize: ", inTensorDescs.at(IN_QUERY_SPLIT2_INDEX).shape.dims[QKV_HEAD_SIZE_IDX]);
         ATB_LOG(ERROR) << GetLogPrefix() << extError;
         return false;
     }
@@ -299,7 +300,10 @@ Status RingMLAOperation::DimCheck(const SVector<TensorDesc> &inTensorDescs) cons
     // qkv shape: [q/kv nTokens, q/kv HeadNum, qk/v headSize]
     extError.errorType = ERROR_INVALID_TENSOR_DIM;
     extError.solutionDesc = "Please check the shape of querySplit1, querySplit2, keySplit1, keySplit2 and value.";
-    if (!QSplitDimCheck(inTensorDescs, extError) || !KSplitDimCheck(inTensorDescs, extError)) {
+    if (!QSplitDimCheck(inTensorDescs, extError)) {
+        return extError.errorType;
+    }
+    if (!KSplitDimCheck(inTensorDescs, extError)) {
         return extError.errorType;
     }
     int64_t kvHeadNum = inTensorDescs.at(IN_KEY_SPLIT1_INDEX).shape.dims[QKV_HEAD_NUM_IDX];
@@ -451,6 +455,8 @@ Status RingMLAOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, const 
     for (size_t i = 0; i < BASE_OUT_TENSOR_NUM; ++i) {
         if (!TensorUtil::TensorDescEqual(outTensorDescs.at(i), targetOutTensorDescs.at(i))) {
             extError.errorDesc = OperationUtil::ConcatInfo("Invalid outTensor shape at outTensors[", i, "].");
+            ss.str("");
+            ss.clear();
             ss << "Target outTensor shape: [";
             int32_t dimNum = static_cast<int32_t>(targetOutTensorDescs.at(i).shape.dimNum);
             for (int32_t j = 0; j < dimNum - 1; ++j) {
