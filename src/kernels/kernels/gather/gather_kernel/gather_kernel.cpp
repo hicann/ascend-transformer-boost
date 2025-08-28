@@ -46,9 +46,6 @@ public:
         // support unsigned type, use GetTensorElementSize wrapped
         MKI_CHECK(GetTensorElementSize(indicesDType) == GetTensorElementSize(INDICE_TYPE), "indices dtype not matched",
                   return false);
-        TensorDType yDType = launchParam.GetInTensor(IN_X).desc.dtype;
-        MKI_CHECK(xDType == yDType, "in tensor type is different from out tensor type", return false);
-
         return true;
     }
 

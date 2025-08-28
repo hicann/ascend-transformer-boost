@@ -31,7 +31,7 @@ using namespace Mki;
 3. 数据在core上能放的下
 4. 数据在core上放不下，多次循环，不同的length
 */
-void FillTilingParam(const LaunchParam &launchParam, GeluForwardTilingData *tilingDataPtr, uint32_t &coreNum)
+bool FillTilingParam(const LaunchParam &launchParam, GeluForwardTilingData *tilingDataPtr, uint32_t &coreNum)
 {
     tilingDataPtr->bufferNum = AsdOps::GELU_FORWARD_BUFF_NUM;
     // 获取可用核数
@@ -48,14 +48,14 @@ void FillTilingParam(const LaunchParam &launchParam, GeluForwardTilingData *tili
         totalBufferNum = NUM_2 * AsdOps::GELU_FORWARD_BUFF_NUM * (inputSize + NUM_4);
     } else {
         MKI_LOG(ERROR) << "type is not support";
-        return;
+        return false;
     }
     auto alignSize = NUM_32 / inputSize;
     // 单次搬运的最大数据量，32B向下对齐
     uint32_t maxPerElemBytes = (maxUbSize / totalBufferNum) / alignSize * alignSize;
     if (launchParam.GetInTensor(0).Numel() < (std::numeric_limits<uint32_t>::max() - alignSize + 1)) {
         MKI_LOG(ERROR) << "Numel is not invalid";
-        return;
+        return false;
     }
     auto alignDataLen = (static_cast<uint32_t>(launchParam.GetInTensor(0).Numel()) + alignSize  - 1) /
          alignSize * alignSize;
@@ -75,6 +75,7 @@ void FillTilingParam(const LaunchParam &launchParam, GeluForwardTilingData *tili
     } else {
         tilingDataPtr->tileLength = maxPerElemBytes;
     }
+    return true;
 }
 Status GeluForwardTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
 {
@@ -84,7 +85,8 @@ Status GeluForwardTiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
         reinterpret_cast<GeluForwardTilingData *>(kernelInfo.GetTilingHostAddr());
     MKI_CHECK(tilingDataPtr != nullptr, "tilingDataPtr should not be empty",
                  return Status::FailStatus(ERROR_INVALID_VALUE, "tilingDataPtr should not be empty"));
-    FillTilingParam(launchParam, tilingDataPtr, blockDim);
+    MKI_CHECK(FillTilingParam(launchParam, tilingDataPtr, blockDim), "FillTilingParam Failed.",
+                 return Status::FailStatus(ERROR_INVALID_VALUE, "FillTilingParam Failed."));
     kernelInfo.SetBlockDim(blockDim);
     kernelInfo.SetTilingId(dataType); // 不同的数据类型用不同的分核策略，所以暂时用数据类型的枚举来表示分核ID
     MKI_LOG(INFO) << "Tiling Data: blockLength " << tilingDataPtr->blockLength << ", tileLength "

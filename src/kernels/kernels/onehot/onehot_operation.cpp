@@ -67,6 +67,8 @@ protected:
         OpParam::Onehot param = AnyCast<OpParam::Onehot>(launchParam.GetParam());
         int64_t axis = param.axis;
         SVector<int64_t> &depth = param.depth;
+        MKI_CHECK(depth.size() >= 1, "OpParam depth is invalid",
+            return Status::FailStatus(ERROR_INFERSHAPE_ERROR, "OpParam depth is invalid"));
         int64_t maxSize = static_cast<int64_t>(dimsIn.size() + 1);
         if (axis > maxSize || axis < -1 * maxSize) {
             return Status::FailStatus(ERROR_INVALID_VALUE, "axis is out of range");

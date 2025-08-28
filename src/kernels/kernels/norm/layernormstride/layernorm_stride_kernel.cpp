@@ -18,6 +18,8 @@
 namespace {
 static const float THRESHOLD = 2e-38;
 static const uint32_t NUM_TWO = 2;
+static const uint32_t BYTES_ALIGN = 32;
+static const uint32_t ELEMENTS_ALIGN = 16;
 } // namespace
 
 namespace AsdOps {
@@ -69,8 +71,8 @@ public:
         MKI_CHECK(xStrides[inTensor0Row - NUM_TWO] >= shape[inTensor0Row - 1],
             "The penultimate element of the input0 strides \
             array must be greater than the last element of the shape array.", return false);
-        MKI_CHECK((xStrides[inTensor0Row - NUM_TWO] % 16) == 0,
-            "padded input0 is not a multiple of 32", return false);
+        MKI_CHECK((xStrides[inTensor0Row - NUM_TWO] % ELEMENTS_ALIGN) == 0,
+            "padded input0 is not a multiple of " << BYTES_ALIGN << " btyes.", return false);
         return true;
     }
 
