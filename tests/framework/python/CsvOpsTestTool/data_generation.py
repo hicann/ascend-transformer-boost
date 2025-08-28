@@ -2213,8 +2213,8 @@ class TopkToppSamplingOperation(DataGen):
             topp = in_tensors[1].cpu().to(torch.float32).numpy()
             probs_sorted = np.sort(probs, axis=-1)[..., ::-1][..., :topk]
             indices_sorted = np.argsort(-probs, kind='mergesort', axis=-1)[..., :topk]
-            # 转npu计算以提高精度
-            probs_sorted_sumed = torch.cumsum(torch.from_numpy(probs_sorted.copy()).npu().to(in_tensors[0].dtype), dim=-1).cpu().to(torch.float32).numpy()
+            # 8.3之后PTA的cumsum精度上升，改用numpy
+            probs_sorted_sumed = np.cumsum(probs_sorted, axis=-1, dtype=np.float16).astype(np.float32)
             bool_judge = (probs_sorted_sumed < topp)
             sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
             sum_val[sum_val < 0] = 0
