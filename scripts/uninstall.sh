@@ -33,7 +33,7 @@ else
     LOG_PATH="${HOME}${LOG_PATH}"
     log_file=${LOG_PATH}${LOG_NAME}
 fi
-chmod 640 ${log_file}
+chmod 640 "${log_file}"
 
 function print() {
     if [ ! -f "$log_file" ]; then
@@ -59,19 +59,19 @@ function delete_file_with_authority() {
     dir_path=$(dirname ${file_path})
     if [ ${dir_path} != "." ];then
         dir_authority=$(stat -c %a ${dir_path})
-        chmod 700 ${dir_path}
+        chmod 700 "${dir_path}"
         if [ -d ${file_path} ];then
-            rm -rf ${file_path}
+            rm -rf "${file_path}"
         else
-            rm -f ${file_path}
+            rm -f "${file_path}"
         fi
-        chmod ${dir_authority} ${dir_path}
+        chmod ${dir_authority} "${dir_path}"
     else
-        chmod 700 ${file_path}
+        chmod 700 "${file_path}"
         if [ -d ${file_path} ];then
-            rm -rf ${file_path}
+            rm -rf "${file_path}"
         else
-            rm -f ${file_path}
+            rm -f "${file_path}"
         fi
     fi
 }
@@ -80,10 +80,10 @@ function delete_installed_files() {
     install_dir=$1
     csv_path=$install_dir/scripts/filelist.csv
     is_first_line=true
-    cd $install_dir
+    cd "$install_dir"
     if [ ! -f $csv_path ];then
         print "INFO" "filelist.csv is not founded, uninstall by delete whole folder."
-        [ -n "$1" ] && rm -rf $1
+        [ -n "$1" ] && rm -rf "$1"
         return 0
     fi
     cat ${csv_path} | while read line
@@ -100,7 +100,7 @@ function delete_installed_files() {
 }
 
 function delete_latest() {
-    cd $1/..
+    cd "$1/.."
     if [ -d "latest" -a $(readlink -f $1/../latest) == $1 ];then
         rm -f latest
     fi
@@ -133,14 +133,14 @@ function uninstall_process() {
         return 0
     fi
     print "INFO" "Ascend-cann-atb uninstall $(basename $1) start!"
-    atb_dir=$(cd $1/..;pwd)
+    atb_dir=$(cd "$1/..";pwd)
     delete_latest $1
     delete_installed_files $1
     if [ -d $1 ];then
         delete_empty_recursion $1
     fi
     if [ -z "$(ls $atb_dir)" ];then
-        rm -rf $atb_dir
+        rm -rf "$atb_dir"
     fi
     print "INFO" "Ascend-cann-atb uninstall $(basename $1) success!"
 }
@@ -153,7 +153,7 @@ function uninstall_torch_atb() {
     fi
 }
 
-install_path=$(cd ${CUR_DIR}/../../${VERSION};pwd)
+install_path=$(cd "${CUR_DIR}/../../${VERSION}";pwd)
 uninstall_process ${install_path}
 uninstall_torch_atb
-chmod 440 ${log_file}
+chmod 440 "${log_file}"
