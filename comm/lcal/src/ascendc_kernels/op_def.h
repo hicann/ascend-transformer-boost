@@ -47,8 +47,8 @@ do { \
     DataCopyExtParams dataCopyParams(1, sizeof(int32_t), 0, 0, 0); \
     DataCopyPadExtParams<int32_t> padParams; \
     DataCopyPad(localSet, magicGt[rankSize - 1], dataCopyParams, padParams); \
-    AscendC::SetFlag<HardEvent::MTE2_S>(EVENT_ID0); \ 
-    AscendC::WaitFlag<HardEvent::MTE2_S>(EVENT_ID0); \ 
+    AscendC::SetFlag<HardEvent::MTE2_S>(EVENT_ID0); \
+    AscendC::WaitFlag<HardEvent::MTE2_S>(EVENT_ID0); \
     magic = static_cast<int64_t>(localSet.GetValue(0)); \
     PipeBarrier<PIPE_ALL>(); \
     constexpr int32_t aivNumPerAic = 2; \

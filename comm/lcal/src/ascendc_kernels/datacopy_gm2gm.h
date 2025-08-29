@@ -11,7 +11,7 @@
 #ifndef LCCL_DATACOPY_GM2GM_H
 #define LCCL_DATACOPY_GM2GM_H
 #include <type_traits>
-#include "comm_args.h" 
+#include "comm_args.h"
 
 using namespace AscendC;
 using namespace Lcal;
@@ -27,7 +27,7 @@ FORCE_INLINE_AICORE void SetAtomicOpType(int op)
         case ADD:
             AscendC::SetAtomicAdd<T>();
             break;
-            
+
         case MUL:
             break;
         case MAX:
@@ -73,7 +73,7 @@ FORCE_INLINE_AICORE void CopyUB2UB(__ubuf__ T *dst, __ubuf__ T *src, const uint3
 {
     LocalTensor<T> srcTensor;
     LocalTensor<T> dstTensor;
-    TBuffAddr srcAddr, dstAddr; 
+    TBuffAddr srcAddr, dstAddr;
     srcAddr.bufferAddr = reinterpret_cast<uint64_t>(src);
     dstAddr.bufferAddr = reinterpret_cast<uint64_t>(dst);
     srcTensor.SetAddr(srcAddr);
@@ -143,7 +143,7 @@ public:
                 AscendC::SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
                 AscendC::WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
             }
-            CpUB2GM((__gm__ T*)outputGm + i * OUTPUT_BLOCK_SIZE / sizeof(T), (__ubuf__ T*)outputUB, 
+            CpUB2GM((__gm__ T*)outputGm + i * OUTPUT_BLOCK_SIZE / sizeof(T), (__ubuf__ T*)outputUB,
                 OUTPUT_BLOCK_SIZE);
             AscendC::SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
@@ -162,7 +162,7 @@ public:
                 AscendC::SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
                 AscendC::WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
             }
-            CpUB2GM((__gm__ T*)outputGm + i * OUTPUT_BLOCK_SIZE / sizeof(T), (__ubuf__ T*)outputUB, 
+            CpUB2GM((__gm__ T*)outputGm + i * OUTPUT_BLOCK_SIZE / sizeof(T), (__ubuf__ T*)outputUB,
                 dataSizeRemain);
             PipeBarrier<PIPE_ALL>();
         }
@@ -223,7 +223,7 @@ private:
         if (op != -1) {
 #ifdef __DAV_C220_VEC__
             SetAtomicOpType<T>(op);
-#endif  
+#endif
         }
         PipeBarrier<PIPE_ALL>();
     }
@@ -269,7 +269,7 @@ private:
             AscendC::SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             i += 1;
-            dataSizeRemain -= outputBlockSize; 
+            dataSizeRemain -= outputBlockSize;
         }
         UnsetAtomic(op);
     }
@@ -314,7 +314,7 @@ private:
             AscendC::SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             AscendC::WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
             i += 1;
-            dataSizeRemain -= curDataNum * sizeof(T); 
+            dataSizeRemain -= curDataNum * sizeof(T);
             processedNum += curDataNum;
         }
         UnsetAtomic(op);
@@ -329,5 +329,3 @@ private:
     int op;
 };
 #endif // LCCL_DATACOPY_GM2GM_H
-
-

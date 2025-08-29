@@ -27,7 +27,7 @@ public:
         Collectives::Init(KERNELS_ARGS_CALL());
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
         if constexpr(!std::is_same_v<T, U>) {
-            BuildScaleOffset(scale, scaleCount, offset);    
+            BuildScaleOffset(scale, scaleCount, offset);
         }
 
         if (blockIdx >= rankSize) {
@@ -38,11 +38,11 @@ public:
         blockNum = rankSize;
 
         __gm__ CommArgs *localArgs = reinterpret_cast<__gm__ CommArgs *>(commArgs);
-        
+
         int localRankSize = localArgs->localRankSize <= 0 ? rankSize : localArgs->localRankSize;
         int globalRankSize = localArgs->rankSize <= 0 ? rankSize : localArgs->rankSize;
         int serverNum = globalRankSize / localRankSize;
-        int64_t ipcBuffMaxSizeAligned = IPC_BUFF_MAX_SIZE / (globalRankSize + serverNum - 1) / 
+        int64_t ipcBuffMaxSizeAligned = IPC_BUFF_MAX_SIZE / (globalRankSize + serverNum - 1) /
             QUEUE_DEPTH / sizeof(T) /scaleNum * scaleNum * QUEUE_DEPTH * sizeof(T) * globalRankSize;
         ipcDataPerParagraphSize = ipcBuffMaxSizeAligned / localRankSize;
         int64_t ipcDataPerParagraphNum = ipcDataPerParagraphSize / sizeof(T);
@@ -61,9 +61,9 @@ public:
         if (coreSegmentedIdx == corePerRank - 1) {
             dataNumPreBlock = pullRankDataNum - coreSegmentedIdx * pullBlockDataNum;
         }
-        buffOffsetNum = peerRank * perRankDataNum + coreSegmentedIdx * pullBlockDataNum + 
+        buffOffsetNum = peerRank * perRankDataNum + coreSegmentedIdx * pullBlockDataNum +
                         ipcDataPerParagraphNum * peerRank;
-        
+
         curBlockDataNum = GetDataCount(curRankDataNum, corePerRank);
         ipcDataNumPreBlock = curBlockDataNum;
         ipcbuffOffsetNum = rank * perRankDataNum + coreSegmentedIdx * curBlockDataNum + ipcDataPerParagraphNum * rank;
@@ -72,12 +72,12 @@ public:
         inputIpcGt.SetGlobalBuffer((__gm__ T*)(shareAddrs[rank] + IPC_DATA_OFFSET) + buffOffsetNum, dataNumPreBlock);
         srcIpcGt.SetGlobalBuffer((__gm__ T*)(shareAddrs[peerRank] + IPC_DATA_OFFSET) + ipcbuffOffsetNum,
                                             ipcDataNumPreBlock);
-        processIpcGt.SetGlobalBuffer((__gm__ T*)(shareAddrs[rank] + IPC_DATA_OFFSET) + ipcbuffOffsetNum, 
+        processIpcGt.SetGlobalBuffer((__gm__ T*)(shareAddrs[rank] + IPC_DATA_OFFSET) + ipcbuffOffsetNum,
                                     ipcDataNumPreBlock);
-        
-        processedIpcGt.SetGlobalBuffer((__gm__ T*)(shareAddrs[peerRank] + IPC_DATA_OFFSET) + buffOffsetNum, 
-                dataNumPreBlock); 
-        outputGt.SetGlobalBuffer((__gm__ T*)output + buffOffsetNum - ipcDataPerParagraphNum * peerRank, 
+
+        processedIpcGt.SetGlobalBuffer((__gm__ T*)(shareAddrs[peerRank] + IPC_DATA_OFFSET) + buffOffsetNum,
+                dataNumPreBlock);
+        outputGt.SetGlobalBuffer((__gm__ T*)output + buffOffsetNum - ipcDataPerParagraphNum * peerRank,
                                  dataNumPreBlock);
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
     }
@@ -95,7 +95,7 @@ public:
             if (peerRank == rank) {
                 if (!isEnableScale) {
                     Collectives::CpGM2GM(inputIpcGt, inputGt, dataNumPreBlock, COPYONLY);
-                } else if (!isVectorScale){
+                } else if (!isVectorScale) {
                     CpGM2GM(inputIpcGt, inputGt, dataNumPreBlock, COPYONLY, firstScale, offset);
                 } else {
                     CpGM2GM(inputIpcGt, inputGt, dataNumPreBlock, COPYONLY, scaleGt, scaleNum, offset);
@@ -153,8 +153,8 @@ private:
     int64_t curBlockDataNum;
     int64_t peerRank;
     int64_t pullRankDataNum;
-    int64_t dataNumPreBlock; 
-    int64_t buffOffsetNum; 
+    int64_t dataNumPreBlock;
+    int64_t buffOffsetNum;
     int64_t ipcDataNumPreBlock;
     int64_t ipcbuffOffsetNum;
 
@@ -164,7 +164,7 @@ private:
     T offset = 0;
     bool isEnableScale = false;
     bool isVectorScale = false;
-    FORCE_INLINE_AICORE void BuildScaleOffset(GM_ADDR scale, int64_t scaleCount, GM_ADDR offset) 
+    FORCE_INLINE_AICORE void BuildScaleOffset(GM_ADDR scale, int64_t scaleCount, GM_ADDR offset)
     {
         if (scale != nullptr && offset != nullptr) {
             scaleGt.SetGlobalBuffer((__gm__ T*)scale);

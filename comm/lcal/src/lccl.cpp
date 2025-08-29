@@ -307,7 +307,7 @@ int Lccl::AllReduce(void *sendBuff, void *recvBuff, int64_t count, HcclDataType 
         uint32_t blockDim = GetBlockNum(LcalType::ALL_REDUCE, rankSize_, Count2Size(count, dataType),
                                         comm_->localRankSize_, comm_->commArgs_.extraFlag);
         AscendCCLKernelArgs args = { sendBuff, recvBuff, comm_->commArgsPtr_, count, comm_->magic_, op, 0, 0, scale,
-                                    scaleCount };
+            scaleCount};
         comm_->magic_++;
         return LoadMTE(LcalType::ALL_REDUCE, args, blockDim, dataType, stream);
     }

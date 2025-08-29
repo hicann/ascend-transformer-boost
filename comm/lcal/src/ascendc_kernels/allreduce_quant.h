@@ -44,11 +44,11 @@ public:
         constexpr int32_t ubBlockSize = UB_SINGLE_PING_PONG_ADD_SIZE_MAX;
         constexpr int32_t ubAlignNum = ubBlockSize / (sizeof(T) + sizeof(U)) / ALIGN_SIZE * ALIGN_SIZE;
         constexpr int32_t inputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize : ubAlignNum * sizeof(U);
-        constexpr int32_t outputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize : ubAlignNum * sizeof(T); 
+        constexpr int32_t outputUbBlockSize = std::is_same_v<T, U> ? ubBlockSize : ubAlignNum * sizeof(T);
         __gm__ U *input = const_cast<__gm__ U *>(inputGT.GetPhyAddr());
         __gm__ T *output = const_cast<__gm__ T *>(outputGT.GetPhyAddr());
         __ubuf__ U* inputUB[2] = {(__ubuf__ U*)(UB_HEAD_OFFSET), (__ubuf__ U*)(UB_MID_OFFSET)};
-        __ubuf__ T* outputUB[2] = {(__ubuf__ T*)(inputUB[0] + inputUbBlockSize / sizeof(U)), 
+        __ubuf__ T* outputUB[2] = {(__ubuf__ T*)(inputUB[0] + inputUbBlockSize / sizeof(U)),
             (__ubuf__ T*)(inputUB[1] + inputUbBlockSize / sizeof(U))};
         __ubuf__ T* targetOutputUB = nullptr;
         int inputOffsetNum = 0;
@@ -115,9 +115,9 @@ protected:
         const int64_t batchDataNum = (scaleCount + ubAlignNum - 1) / ubAlignNum;
 
         __ubuf__ T* scaleUB[2] = {(__ubuf__ T*)(UB_HEAD_OFFSET), (__ubuf__ T*)(UB_MID_OFFSET)};
-        __ubuf__ U* inputUB[2] = {(__ubuf__ U*)(UB_HEAD_OFFSET + ubAlignNum * sizeof(T)), 
+        __ubuf__ U* inputUB[2] = {(__ubuf__ U*)(UB_HEAD_OFFSET + ubAlignNum * sizeof(T)),
             (__ubuf__ U*)(UB_MID_OFFSET + ubAlignNum * sizeof(T))};
-        __ubuf__ T* outputUB[2] = {(__ubuf__ T*)(UB_HEAD_OFFSET + ubAlignNum * (sizeof(T) + sizeof(U))), 
+        __ubuf__ T* outputUB[2] = {(__ubuf__ T*)(UB_HEAD_OFFSET + ubAlignNum * (sizeof(T) + sizeof(U))),
             (__ubuf__ T*)(UB_MID_OFFSET + ubAlignNum * (sizeof(T) + sizeof(U)))};
         __ubuf__ T* targetOutputUB = nullptr;
         int64_t i = 0;
@@ -173,7 +173,7 @@ protected:
 
         __ubuf__ T* scaleUB = (__ubuf__ T*)(UB_HEAD_OFFSET);
         __ubuf__ U* inputUB[2] = {(__ubuf__ U*)(UB_HEAD_OFFSET + ubAlignNum * sizeof(T)), (__ubuf__ U*)(ubMidOffset)};
-        __ubuf__ T* outputUB[2] = {(__ubuf__ T*)(UB_HEAD_OFFSET + ubAlignNum * (sizeof(T) + sizeof(U))), 
+        __ubuf__ T* outputUB[2] = {(__ubuf__ T*)(UB_HEAD_OFFSET + ubAlignNum * (sizeof(T) + sizeof(U))),
             (__ubuf__ T*)(ubMidOffset + ubAlignNum * sizeof(U))};
         __ubuf__ T* targetOutputUB = nullptr;
         int64_t processedNum = 0;

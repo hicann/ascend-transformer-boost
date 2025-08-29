@@ -63,7 +63,7 @@ public:
         stepThreeOriginRankPerCore = CeilDiv(halfRankSize, PER_STEP_BLOCKNUM);
         stepOneInUseBlockNum = CeilDiv(rankSize, stepOneOriginRankPerCore);
         stepTwoInUseBlockNum = CeilDiv(halfRankSize, stepTwoOriginRankPerCore);
-        stepThreeInUseBlockNum = CeilDiv(halfRankSize, stepThreeOriginRankPerCore); 
+        stepThreeInUseBlockNum = CeilDiv(halfRankSize, stepThreeOriginRankPerCore);
         if ((blockIdx / PER_STEP_BLOCKNUM) == 0) {
             if ((blockIdx % PER_STEP_BLOCKNUM) == (stepOneInUseBlockNum - 1)) {
                 stepOneRankPerCore = rankSize - (blockIdx % PER_STEP_BLOCKNUM) * stepOneOriginRankPerCore;
@@ -78,7 +78,7 @@ public:
             }
         } else if ((blockIdx / PER_STEP_BLOCKNUM) == NUM_OF_TWO || (blockIdx / PER_STEP_BLOCKNUM) == NUM_OF_THREE) {
             if (((blockIdx - PER_STEP_BLOCKNUM * NUM_OF_TWO) / NUM_OF_TWO) == (stepThreeInUseBlockNum - 1)) {
-                stepThreeRankPerCore = halfRankSize - ((blockIdx - PER_STEP_BLOCKNUM * NUM_OF_TWO) / 
+                stepThreeRankPerCore = halfRankSize - ((blockIdx - PER_STEP_BLOCKNUM * NUM_OF_TWO) /
                         NUM_OF_TWO) * stepThreeOriginRankPerCore;
             } else {
                 stepThreeRankPerCore = stepThreeOriginRankPerCore;
@@ -92,25 +92,25 @@ public:
         if ((blockIdx / PER_STEP_BLOCKNUM) == 0) {
             for (int i = 0; i < stepOneRankPerCore; i++) {
                 ipcRank = blockIdx * stepOneOriginRankPerCore + i;
-                writeIpcQue[i].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + ipcRank * 
+                writeIpcQue[i].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + ipcRank *
                     ipcNumOfBlock * sizeof(T), ipcNumOfBlock, ipcBlockNum);
             }
         } else if ((blockIdx / PER_STEP_BLOCKNUM) == 1) {
             for (int i = 0; i < stepTwoRankPerCore; i++) {
                 ipcRank = ((blockIdx % PER_STEP_BLOCKNUM) * stepTwoOriginRankPerCore + i) *
                     NUM_OF_TWO + (rank % NUM_OF_TWO);
-                readIpcQue[i].Init(&sync, magic, shareAddrs[adjPeerRank] + IPC_DATA_OFFSET + ipcRank * 
+                readIpcQue[i].Init(&sync, magic, shareAddrs[adjPeerRank] + IPC_DATA_OFFSET + ipcRank *
                     ipcNumOfBlock * sizeof(T), ipcNumOfBlock, ipcBlockNum);
-                writeIpcQue[i].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + ipcRank * 
+                writeIpcQue[i].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + ipcRank *
                     ipcNumOfBlock * sizeof(T), ipcNumOfBlock, ipcBlockNum);
             }
         } else if ((blockIdx / PER_STEP_BLOCKNUM) == NUM_OF_TWO || (blockIdx / PER_STEP_BLOCKNUM) == NUM_OF_THREE) {
             for (int i = 0; i < stepThreeRankPerCore; i++) {
                 stepThreeRank = (((blockIdx - PER_STEP_BLOCKNUM * NUM_OF_TWO) / NUM_OF_TWO) *
                     stepThreeOriginRankPerCore + i) * NUM_OF_TWO + (rank % NUM_OF_TWO);
-                writeIpcQue[i].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + rank * 
+                writeIpcQue[i].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + rank *
                     ipcNumOfBlock * sizeof(T), ipcNumOfBlock, ipcBlockNum);
-                readIpcQue[i].Init(&sync, magic, shareAddrs[stepThreeRank] + IPC_DATA_OFFSET + rank * 
+                readIpcQue[i].Init(&sync, magic, shareAddrs[stepThreeRank] + IPC_DATA_OFFSET + rank *
                     ipcNumOfBlock * sizeof(T), ipcNumOfBlock, ipcBlockNum);
             }
         } else if (blockIdx == (NUM_OF_FOUR * PER_STEP_BLOCKNUM)) {
@@ -134,7 +134,7 @@ public:
         if ((stepIndex == NUM_OF_TWO || stepIndex == NUM_OF_THREE) && ((blockIdx - PER_STEP_BLOCKNUM *
             NUM_OF_TWO) / NUM_OF_TWO * stepThreeOriginRankPerCore) >= (rankSize / NUM_OF_TWO)) {
             DumpLcclLogInfo(LogId::PROCESS, static_cast<Op>(atomOp));
-            return;        
+            return;
         }
         if (stepIndex == 0) {
             StepOneProcess();
@@ -154,15 +154,15 @@ public:
             if ((blockIdx * stepOneOriginRankPerCore + i) % NUM_OF_TWO == rank % NUM_OF_TWO) {
                 if ((blockIdx * stepOneOriginRankPerCore + i) == rank) {
                     waitWriteRankArr[i] = rank;
-                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * 4;   
+                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * 4;
                 } else {
                     waitWriteRankArr[i] = blockIdx * stepOneOriginRankPerCore + i;
-                    waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) / 
+                    waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) /
                             stepThreeOriginRankPerCore) * NUM_OF_TWO;
                 }
             } else {
                 waitWriteRankArr[i] = adjPeerRank;
-                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM + ((blockIdx * stepOneOriginRankPerCore + i) / 
+                waitWriteBlockArr[i] = PER_STEP_BLOCKNUM + ((blockIdx * stepOneOriginRankPerCore + i) /
                         NUM_OF_TWO) / stepTwoOriginRankPerCore;
             }
         }
@@ -200,7 +200,7 @@ public:
             waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_FOUR;
         }
         HccsAtomicToIpcProcess(waitReadRankArr, waitReadBlockArr, waitWriteRankArr,
-            waitWriteBlockArr, stepThreeRankPerCore);  
+            waitWriteBlockArr, stepThreeRankPerCore);
     }
 
     __aicore__ inline void StepFourProcess()
@@ -228,7 +228,7 @@ public:
         }
     }
 
-    __aicore__ inline void SioAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,int *waitWriteRank, 
+    __aicore__ inline void SioAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,int *waitWriteRank,
                                                 int *waitWriteBlock, int waitCount)
     {
         int processBlockNum = ipcBlockNum;
@@ -248,7 +248,7 @@ public:
         }
     }
 
-    __aicore__ inline void HccsAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,int *waitWriteRank, 
+    __aicore__ inline void HccsAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,int *waitWriteRank,
                                                 int *waitWriteBlock, int waitCount)
     {
         int processBlockNum = ipcBlockNum;

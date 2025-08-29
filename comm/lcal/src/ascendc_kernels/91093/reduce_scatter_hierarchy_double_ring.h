@@ -31,8 +31,8 @@ class ReduceScatterHierarchyDoubleRing : protected Collectives {
 
     constexpr static int32_t INPUT_CORE_SCALE = RING_CORE_NUM / INPUT_CORE_NUM;
     constexpr static int32_t SIO_CORE_SCALE = RING_CORE_NUM / SIO_CORE_NUM;
-    constexpr static int64_t BLOCK_NUM_ALIGN = BLOCK_SIZE / sizeof(T); 
-    constexpr static int32_t BREAK_CYCLE = 10; 
+    constexpr static int64_t BLOCK_NUM_ALIGN = BLOCK_SIZE / sizeof(T);
+    constexpr static int32_t BREAK_CYCLE = 10;
 
 public:
     FORCE_INLINE_AICORE ReduceScatterHierarchyDoubleRing(int rank, int rankSize, uint32_t extraFlag)
@@ -62,7 +62,7 @@ public:
         if (blockIdx < INPUT_CORE_NUM) {
             for (int32_t blockLoop = 0; blockLoop < INPUT_CORE_SCALE; ++blockLoop) {
                 localBlockIdx = blockIdx * INPUT_CORE_SCALE + blockLoop;
-                inputQueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + 
+                inputQueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
             }
         } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM) {
@@ -73,10 +73,10 @@ public:
             }
         } else {
             localBlockIdx = (blockIdx - (INPUT_CORE_NUM + SIO_CORE_NUM));
-            ringSrcQue.Init(&sync, magic, shareAddrs[ringPrevRankId] + IPC_DATA_OFFSET + 
+            ringSrcQue.Init(&sync, magic, shareAddrs[ringPrevRankId] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
             ringDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
-                    dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum); 
+                    dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
         }
         inputTensor.SetGlobalBuffer((__gm__ T*) input);
         outputTensor.SetGlobalBuffer((__gm__ T*) output);
@@ -173,7 +173,7 @@ private:
     FORCE_INLINE_AICORE void SioReduceByCore()
     {
         const int32_t targetSioLayerId = (sioLayerId + (ringRankSize - 1 - sioLayerLoop)) % ringRankSize;
-        const int32_t targetRankOffset = targetSioLayerId * RING_LAYER_NUM + (ringLayerId + 1) % RING_LAYER_NUM; 
+        const int32_t targetRankOffset = targetSioLayerId * RING_LAYER_NUM + (ringLayerId + 1) % RING_LAYER_NUM;
 
         curCoreDataNum = (localBlockIdx == RING_CORE_NUM - 1) ? lastCoreDataNum : coreDataNum;
         srcTensor = inputTensor[targetRankOffset * totalBlockDataNum + curLoopCnt * ipcBlockNum +

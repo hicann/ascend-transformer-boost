@@ -27,7 +27,7 @@ public:
         Collectives::Init(KERNELS_ARGS_CALL());
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
         if constexpr(!std::is_same_v<T, U>) {
-            BuildScaleOffset(scale, scaleCount, offset);    
+            BuildScaleOffset(scale, scaleCount, offset);
         }
         atomOp = op;
         blockNum = blockNum / rankSize * rankSize;
@@ -81,7 +81,7 @@ public:
             if constexpr (!std::is_same_v<T, U>) {
                 if (!isEnableScale) {
                     Collectives::CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomOp);
-                } else if (!isVectorScale){
+                } else if (!isVectorScale) {
                     CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomOp, firstScale, offset);
                 } else {
                     CpGM2GM(dstOutputGlobal, srcIPCGlobal, blockReduceNum, atomOp, scaleGt, scaleNum, offset);
@@ -99,7 +99,7 @@ public:
         if constexpr (!std::is_same_v<T, U>) {
             if (!isEnableScale) {
                 Collectives::CpGM2GM(copyOutputGlobal, srcInputGlobal, blockDataNum, COPYONLY);
-            } else if (!isVectorScale){
+            } else if (!isVectorScale) {
                 CpGM2GM(copyOutputGlobal, srcInputGlobal, blockDataNum, COPYONLY, firstScale, offset);
             } else {
                 CpGM2GM(copyOutputGlobal, srcInputGlobal, blockDataNum, COPYONLY, scaleGt, scaleNum, offset);
@@ -131,7 +131,7 @@ protected:
     bool isVectorScale = false;
 
 private:
-    FORCE_INLINE_AICORE void BuildScaleOffset(GM_ADDR scale, int64_t scaleCount, GM_ADDR offset) 
+    FORCE_INLINE_AICORE void BuildScaleOffset(GM_ADDR scale, int64_t scaleCount, GM_ADDR offset)
     {
         if (scale != nullptr && offset != nullptr) {
             this->offset =* reinterpret_cast<__gm__ T*>(offset);

@@ -45,17 +45,17 @@ public:
         inTensor[1] = tbuf.GetWithOffset<U>(BLOCK_NUM, WORK_OFFSET + SCALE_SIZE * HALF_NUM + IN_BLOCKSIZE * THREE_NUM);
         singleScaleUBTensor[0] = tbuf.GetWithOffset<T>(SCALE_NUM, IN_BLOCKSIZE);
         singleScaleUBTensor[1] = tbuf.GetWithOffset<T>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * HALF_NUM +
-                                                        IN_BLOCKSIZE * FOUR_NUM); 
+                                                        IN_BLOCKSIZE * FOUR_NUM);
         singleScaleUUBTensor[0] = tbuf.GetWithOffset<U>(SCALE_NUM, IN_BLOCKSIZE);
         singleScaleUUBTensor[1] = tbuf.GetWithOffset<U>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * HALF_NUM +
-                                                        IN_BLOCKSIZE * FOUR_NUM); 
+                                                        IN_BLOCKSIZE * FOUR_NUM);
         scaleUBTensor[0] = tbuf.GetWithOffset<T>(SCALE_NUM, IN_BLOCKSIZE + SCALE_SIZE);
         scaleUBTensor[1] = tbuf.GetWithOffset<T>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * THREE_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM);
         scaleUUBTensor[0] = tbuf.GetWithOffset<U>(SCALE_NUM, IN_BLOCKSIZE + SCALE_SIZE);
         scaleUUBTensor[1] = tbuf.GetWithOffset<U>(SCALE_NUM, WORK_OFFSET + SCALE_SIZE * THREE_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM);
-        workUBTensor[0] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, IN_BLOCKSIZE + SCALE_SIZE * HALF_NUM);        
+        workUBTensor[0] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, IN_BLOCKSIZE + SCALE_SIZE * HALF_NUM);
         workUBTensor[1] = tbuf.GetWithOffset<T>(WORK_BLOCK_NUM, WORK_OFFSET + SCALE_SIZE * FOUR_NUM +
                                                         IN_BLOCKSIZE * FOUR_NUM);
         outputUBTensor[0] = tbuf.GetWithOffset<T>(BLOCK_NUM, IN_BLOCKSIZE + SCALE_SIZE * HALF_NUM + WORK_OFFSET);
@@ -67,7 +67,7 @@ public:
         this->rankId = rankId;
     }
 
-    FORCE_INLINE_AICORE void PreProcess() 
+    FORCE_INLINE_AICORE void PreProcess()
     {
         for (int index = 0; index < rankCount; index++) {
             DataCopyWrap(scaleUUBTensor[0][index * SCALE_SIZE / sizeof(U)], inputScaleGt[index], SCALE_SIZE);
@@ -85,13 +85,12 @@ public:
         }
         Div(scaleUBTensor[1], outputUBTensor[0], scaleUBTensor[1], rankCount);
         AscendC::PipeBarrier<PIPE_ALL>();
-        ReduceMin<T>(singleScaleUBTensor[0], scaleUBTensor[0], 
+        ReduceMin<T>(singleScaleUBTensor[0], scaleUBTensor[0],
             workUBTensor[1][WORK_BLOCK_NUM / HALF_NUM], rankCount, false);
         pipe_barrier(PIPE_ALL);
         DataCopyWrap(outScaleGt, singleScaleUUBTensor[0], sizeof(T));
         AscendC::PipeBarrier<PIPE_ALL>();
     }
-
 
     FORCE_INLINE_AICORE void LoopUncastAndMul(int idx, int index, event_t eventId)
     {
@@ -104,7 +103,7 @@ public:
             PipeBarrier<PIPE_V>();
             perRankNum = perRankNumRemain >= WORK_BLOCK_NUM ? WORK_BLOCK_NUM : perRankNumRemain;
             PipeBarrier<PIPE_V>();
-            
+
             perRankNumRemain -= perRankNum;
             PipeBarrier<PIPE_V>();
             AscendC::SetFlag<AscendC::HardEvent::S_V>(eventId);
@@ -114,7 +113,7 @@ public:
                 WORK_BLOCK_NUM] : inTensor[1][j * WORK_BLOCK_NUM], RoundMode::CAST_NONE, perRankNum);
             PipeBarrier<PIPE_V>();
             if (index == 0) {
-                Muls<T>((idx & 1) ? outputUBTensor[0][j * WORK_BLOCK_NUM] : outputUBTensor[1][j * 
+                Muls<T>((idx & 1) ? outputUBTensor[0][j * WORK_BLOCK_NUM] : outputUBTensor[1][j *
                     WORK_BLOCK_NUM], (idx & 1) ? workUBTensor[0] : workUBTensor[1], scalarValue, perRankNum);
             } else {
                 Axpy<T, T>((idx & 1) ? outputUBTensor[0][j * WORK_BLOCK_NUM] : outputUBTensor[1][j *
@@ -123,8 +122,8 @@ public:
             PipeBarrier<PIPE_V>();
         }
     }
-    
-    FORCE_INLINE_AICORE void Mte3Process(int idx, int index, int calCount, event_t eventId) 
+
+    FORCE_INLINE_AICORE void Mte3Process(int idx, int index, int calCount, event_t eventId)
     {
         if (index == (rankCount - 1)) {
             if constexpr (std::is_same_v<V, T>) {
@@ -132,7 +131,7 @@ public:
                 AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(eventId);
                 AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(eventId);
                 AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(eventId);
-                DataCopyWrap(outputGt[idx * BLOCK_NUM], (idx & 1) ? 
+                DataCopyWrap(outputGt[idx * BLOCK_NUM], (idx & 1) ?
                     outputUBTensor[0] : outputUBTensor[1], calCount * sizeof(V));
             }
             if constexpr (std::is_same_v<V, U>) {
@@ -142,7 +141,7 @@ public:
                 AscendC::SetFlag<AscendC::HardEvent::S_V>(eventId);
                 AscendC::WaitFlag<AscendC::HardEvent::S_V>(eventId);
                 PipeBarrier<PIPE_V>();
-                Muls<T>((idx & 1) ? outputUBTensor[0] : outputUBTensor[1], (idx & 1) ? 
+                Muls<T>((idx & 1) ? outputUBTensor[0] : outputUBTensor[1], (idx & 1) ?
                     outputUBTensor[0] : outputUBTensor[1], scaleValue, calCount);
                 PipeBarrier<PIPE_V>();
                 Cast((idx & 1) ? inTensor[0] : inTensor[1], (idx & 1) ?
@@ -152,10 +151,10 @@ public:
                 AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(eventId);
                 AscendC::SetFlag<AscendC::HardEvent::S_MTE3>(eventId);
                 AscendC::WaitFlag<AscendC::HardEvent::S_MTE3>(eventId);
-                DataCopyWrap(outputGt[idx * BLOCK_NUM], (idx & 1) ? 
-                    inTensor[0] : inTensor[1], calCount * sizeof(V));       
+                DataCopyWrap(outputGt[idx * BLOCK_NUM], (idx & 1) ?
+                    inTensor[0] : inTensor[1], calCount * sizeof(V));
             }
-        }    
+        }
     }
 
     FORCE_INLINE_AICORE int GetSize(int idx, int numOfPiece)
@@ -207,7 +206,6 @@ public:
                 }
             }
         }
-
 
         AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID0);
         AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);

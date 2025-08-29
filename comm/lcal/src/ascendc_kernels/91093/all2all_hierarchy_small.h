@@ -29,9 +29,9 @@ class All2AllHierarchySmall : protected Collectives {
     constexpr static int64_t SIO = 2;
 
 public:
-    FORCE_INLINE_AICORE All2AllHierarchySmall(int rank, int rankSize, uint32_t extraFlag) 
+    FORCE_INLINE_AICORE All2AllHierarchySmall(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
-    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN()) 
+    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN())
     {
         Collectives::Init(KERNELS_ARGS_CALL());
         this->input = (__gm__ T *) input;
@@ -51,11 +51,11 @@ public:
         }
     }
 private:
-    FORCE_INLINE_AICORE void InitShare() 
+    FORCE_INLINE_AICORE void InitShare()
     {
         coreNumPerStage = CORE_NUM_PER_STAGE;
         singleStage = coreNumPerStage / SIO;
-        perQueElemLen = IPC_BUFF_MAX_SIZE / SIO / singleStage / QUEUE_DEPTH / sizeof(T);   
+        perQueElemLen = IPC_BUFF_MAX_SIZE / SIO / singleStage / QUEUE_DEPTH / sizeof(T);
         queLen = perQueElemLen * QUEUE_DEPTH;
         queSize = queLen * sizeof(T);
         queBlockSize = IPC_BUFF_MAX_SIZE / SIO;
@@ -64,7 +64,7 @@ private:
     FORCE_INLINE_AICORE void InitCoreGroup()
     {
         if (len < perQueElemLen) {
-            coreNumPerRank = 1; 
+            coreNumPerRank = 1;
         }
         loopCount = rankSize / SIO;
         flagNumPerStage = coreNumPerStage;
@@ -75,7 +75,7 @@ private:
             coreGroup = CONSUMER_CORE;
             groupCoreIdx = blockIdx - coreNumPerStage;
         }
-    } 
+    }
 
     FORCE_INLINE_AICORE void InitDataSlice()
     {
@@ -90,10 +90,10 @@ private:
                     srcSioQue1.Init(&sync, magic, shareAddrs[sioRank] + IPC_DATA_OFFSET + ifOffSet +
                                      (groupCoreIdx - singleStage) * queSize, queLen, perQueElemLen);
                 }
-                sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);  
+                sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);
             }
         }
-        sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);  
+        sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);
     }
 
     FORCE_INLINE_AICORE void Producer()
@@ -109,7 +109,7 @@ private:
         }
     }
 
-    FORCE_INLINE_AICORE void Input2IpcSlice(int64_t idx, int64_t sliceIdx) 
+    FORCE_INLINE_AICORE void Input2IpcSlice(int64_t idx, int64_t sliceIdx)
     {
         copyLen = ipcDataNumPreBlock - perQueElemLen * sliceIdx;
         if (copyLen > perQueElemLen) {
@@ -139,7 +139,7 @@ private:
                 sync.WaitSyncFlag(magic, sliceIdx + sliceNum * (idx - 1), flagIdx + (waitRank / SIO) * coreNumPerStage
                                 + flagNumPerStage, sioRank);
             }
-            inputGt.SetGlobalBuffer((__gm__ T*)input + sioSrcRank * curRankDataNum + 
+            inputGt.SetGlobalBuffer((__gm__ T*)input + sioSrcRank * curRankDataNum +
                                 (groupCoreIdx - singleStage) * ipcDataNumPreBlock, ipcDataNumPreBlock);
             srcSioQue.DeQue(sioRank, flagIdx + (sioSrcRank / SIO) * coreNumPerStage + flagNumPerStage);
             writeGt = srcSioQue.EnQue();
@@ -154,7 +154,7 @@ private:
         for (auto i = 0; i < loopCount; ++i) {
             destRank = (rank - i * SIO) >= 0 ? (rank - i * SIO) : rank + ((loopCount - i) * SIO);
                 if (groupCoreIdx < singleStage) {
-                    detHccsQue.Init(&sync, magic, shareAddrs[destRank] + IPC_DATA_OFFSET + 
+                    detHccsQue.Init(&sync, magic, shareAddrs[destRank] + IPC_DATA_OFFSET +
                         groupCoreIdx * queSize, queLen, perQueElemLen);
                 } else {
                     detHccsSioQue.Init(&sync, magic, shareAddrs[destRank] + IPC_DATA_OFFSET + queBlockSize +
@@ -178,7 +178,7 @@ private:
         }
         sync.WaitSyncFlag(magic, sliceIdx + sliceNum * idx, groupCoreIdx, destRank);
         if (groupCoreIdx < singleStage) {
-            readGt = detHccsQue.ReadFront();   
+            readGt = detHccsQue.ReadFront();
         } else {
             readGt = detHccsSioQue.ReadFront();
         }

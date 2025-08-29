@@ -42,9 +42,9 @@ class Collectives {
     constexpr static int32_t UB_HEAD_OFFSET = 96;
     constexpr static int32_t UB_MID_OFFSET = UB_HEAD_OFFSET + UB_SINGLE_PING_PONG_ADD_SIZE_MAX + ALIGN_SIZE;
 public:
-    FORCE_INLINE_AICORE Collectives(int rank, int rankSize, uint32_t extraFlag) : rank(rank), rankSize(rankSize), 
+    FORCE_INLINE_AICORE Collectives(int rank, int rankSize, uint32_t extraFlag) : rank(rank), rankSize(rankSize),
         extraFlag(extraFlag) {}
-    
+
     FORCE_INLINE_AICORE ~Collectives()
     {
         const int64_t notRunning = 0xdead;
@@ -58,7 +58,7 @@ public:
         peerMemsAddrGm.SetGlobalBuffer(&(reinterpret_cast<__gm__ CommArgs *>(commArgs))->peerMems[0],
                                         LCAL_MAX_RANK_SIZE);
         for (int i = 0; i < rankSize; ++i) {
-            shareAddrs[i] = peerMemsAddrGm.GetValue(i) + 
+            shareAddrs[i] = peerMemsAddrGm.GetValue(i) +
                             (magic % PING_PONG_SIZE) * (IPC_BUFF_MAX_SIZE + IPC_DATA_OFFSET);
         }
         dfx.SetGlobalBuffer((reinterpret_cast<__gm__ CommArgs *>(commArgs))->dfx,
@@ -75,7 +75,7 @@ public:
 
         blockIdx = GetBlockIdx();
         blockNum = GetBlockNum() * LCAL_BLOCK_NUM_MULTI;
-        
+
         sync.Init(rank, rankSize, shareAddrs);
         dfx.SetValue(MAGIC, magic);
         dfx.SetValue(LEN, len);
@@ -84,7 +84,7 @@ public:
     }
 
     template <typename T>
-    FORCE_INLINE_AICORE void DataCopyWrapPingPong(const GlobalTensor<T>& inputGT, const GlobalTensor<T>& outputGT, 
+    FORCE_INLINE_AICORE void DataCopyWrapPingPong(const GlobalTensor<T>& inputGT, const GlobalTensor<T>& outputGT,
         int64_t dataSizeRemain, int op, TBuf<QuePosition::VECCALC> tbuf)
     {
         if (dataSizeRemain <= 0) {
@@ -141,7 +141,7 @@ public:
 
     template <typename V, typename T, typename U = T>
     FORCE_INLINE_AICORE void CpGM2GMDelay(GlobalTensor<V>& outputGT, GlobalTensor<U> (&inputGT)[8],
-        GlobalTensor<U> (&inputScaleGT)[8], const uint32_t calCount, int rankCount, GlobalTensor<U>& outScaleGT, 
+        GlobalTensor<U> (&inputScaleGT)[8], const uint32_t calCount, int rankCount, GlobalTensor<U>& outScaleGT,
         TBuf<QuePosition::VECCALC> tbuf)
     {
         DataCopyGM2GMDelay<V, T, U> cpKernel;
@@ -152,7 +152,7 @@ public:
     template <typename T1, typename T2>
     FORCE_INLINE_AICORE T1 CeilDiv(T1 a, T2 b)
     {
-      if (b == 0) {
+        if (b == 0) {
             return 0;
         }
         return (a + b - 1) / b;
@@ -164,14 +164,14 @@ public:
         if (curDealSize > MAX_VADD_SIZE) {
             vadd(ubuf0, ubuf1, ubuf0, VADD_MAX_REPEAT, 1, 1, 1,
                 VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO);
-            vadd((__ubuf__ T*)((__ubuf__ int8_t*)ubuf0 + VADD_MAX_REPEAT * VADD_UNIT_BYTE), 
+            vadd((__ubuf__ T*)((__ubuf__ int8_t*)ubuf0 + VADD_MAX_REPEAT * VADD_UNIT_BYTE),
                 (__ubuf__ T*)((__ubuf__ int8_t*)ubuf1 + VADD_MAX_REPEAT * VADD_UNIT_BYTE),
                 (__ubuf__ T*)((__ubuf__ int8_t*)ubuf0 + VADD_MAX_REPEAT * VADD_UNIT_BYTE),
                 CeilDiv((curDealSize - MAX_VADD_SIZE), VADD_UNIT_BYTE), 1, 1, 1,
                 VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO);
         } else {
             vadd(ubuf0, ubuf1, ubuf0, CeilDiv(curDealSize, VADD_UNIT_BYTE), 1, 1, 1,
-                VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO); 
+                VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO);
         }
     }
 
@@ -188,7 +188,6 @@ public:
             }
             if (alreadyDealSize != 0) {
                 AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
-
             }
             CpGM2UB(localUB[0], srcGmMem + alreadyDealNum, curDealSize);
 
@@ -215,7 +214,7 @@ public:
                 if ((i + 1 == targetRankArrValidSize - 1) && (targetRankArr[i + 1] == rank)) {
                     continue;
                 }
-                AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);  
+                AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);
             }
             AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
             AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
@@ -241,7 +240,7 @@ public:
     }
 
     template <typename T, typename U = T>
-    FORCE_INLINE_AICORE void CpGM2GMPingPong(int64_t dataSizeRemain, const GlobalTensor<U>& inputGT, 
+    FORCE_INLINE_AICORE void CpGM2GMPingPong(int64_t dataSizeRemain, const GlobalTensor<U>& inputGT,
                                             const GlobalTensor<T>& outputGT, int op)
     {
         constexpr int32_t ubBlockSize = UB_SINGLE_PING_PONG_ADD_SIZE_MAX;
@@ -275,12 +274,12 @@ public:
             if constexpr (!std::is_same_v<T, U>) {
                 SetWaitEvent<HardEvent::MTE2_V>(eventId);
                 CastImpl((i & 1) ? outputUB[0] : outputUB[1], (i & 1) ? inputUB[0] : inputUB[1], RoundMode::CAST_NONE,
-                    size / sizeof(T)); 
-                SetWaitEvent<HardEvent::V_MTE3>(eventId);       
+                    size / sizeof(T));
+                SetWaitEvent<HardEvent::V_MTE3>(eventId);
             }
             AscendC::SetFlag<HardEvent::MTE2_MTE3>(eventId);
             AscendC::WaitFlag<HardEvent::MTE2_MTE3>(eventId);
-            CpUB2GM(output + outputOffsetNum, (i & 1) ? outputUB[0] : outputUB[1], size);          
+            CpUB2GM(output + outputOffsetNum, (i & 1) ? outputUB[0] : outputUB[1], size);
             AscendC::SetFlag<HardEvent::MTE3_MTE2>(eventId);
             dataSizeRemain -= size;
             inputOffsetNum += (size / sizeof(T));
@@ -301,7 +300,7 @@ public:
         if (curDealSize > MAX_VADD_SIZE) {
             Add<T, false>(ubuf0, ubuf1, ubuf0, MASK_PLACEHOLDER, VADD_MAX_REPEAT,
                 {1, 1, 1, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO, VADD_UNIT_TO_BLOCK_UNIT_RATIO});
-            
+
             Add<T, false>(ubuf0[MAX_VADD_SIZE / sizeof(T)], ubuf1[MAX_VADD_SIZE / sizeof(T)],
                 ubuf0[MAX_VADD_SIZE / sizeof(T)], MASK_PLACEHOLDER,
                 CeilDiv((curDealSize - MAX_VADD_SIZE), VADD_UNIT_BYTE),
@@ -325,7 +324,7 @@ public:
         localUB[1] = tbuf.GetWithOffset<T>(95 * 1024, 95 * 1024);
 
         AscendC::PipeBarrier<PIPE_ALL>();
-        LoopVaddProcess(localUB, remainNum * sizeof(T), targetRankArr, targetRankArrValidSize, 
+        LoopVaddProcess(localUB, remainNum * sizeof(T), targetRankArr, targetRankArrValidSize,
                            srcIpcOffsetNum, srcGt, dstGt, 0);
         AscendC::PipeBarrier<PIPE_ALL>();
     }
@@ -342,7 +341,6 @@ public:
             }
             if (alreadyDealSize != 0) {
                 AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(EVENT_ID0);
-
             }
             DataCopyWrap(localUB[0], srcGt[alreadyDealNum], curDealSize);
 
@@ -370,7 +368,7 @@ public:
                 if ((i + 1 == targetRankArrValidSize - 1) && (targetRankArr[i + 1] == rank)) {
                     continue;
                 }
-                AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);  
+                AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);
             }
             AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
             AscendC::WaitFlag<AscendC::HardEvent::MTE2_MTE3>(EVENT_ID0);
@@ -415,7 +413,7 @@ protected:
     GlobalTensor<int64_t> dfx;
     SyncCollectives sync;
     GM_ADDR dumpAddr_ = nullptr;
-    
+
     template <typename T>
     FORCE_INLINE_AICORE void SetAscendCAtomic(int op)
     {
@@ -436,7 +434,7 @@ protected:
                 ;
         }
     }
-    
+
     template <typename T>
     FORCE_INLINE_AICORE void SetAtomic(int op)
     {
@@ -446,7 +444,7 @@ protected:
             SetAtomicOpType<T>(op);
 #endif
         }
-        PipeBarrier<PIPE_ALL>(); 
+        PipeBarrier<PIPE_ALL>();
     }
 
     FORCE_INLINE_AICORE void UnsetAtomic(int op)

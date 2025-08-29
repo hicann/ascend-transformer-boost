@@ -16,9 +16,9 @@ template <typename T>
 class IpcQueue {
 public:
     FORCE_INLINE_AICORE IpcQueue() {}
-    
+
     FORCE_INLINE_AICORE void Init(SyncCollectives *sync, int64_t magic, GM_ADDR workSpace, uint64_t bufferNum,
-                                   uint64_t blockNum) 
+                                   uint64_t blockNum)
     {
         this->sync = sync;
         this->magic = magic;
@@ -38,7 +38,7 @@ public:
         }
         return false;
     }
-    
+
     FORCE_INLINE_AICORE GlobalTensor<T> EnQue()
     {
         uint64_t rearOld = rear;
@@ -120,4 +120,4 @@ private:
     SyncCollectives *sync;
     int blockIdx;
 };
-#endif // LCCL_IPC_QUEUE_H  
+#endif // LCCL_IPC_QUEUE_H

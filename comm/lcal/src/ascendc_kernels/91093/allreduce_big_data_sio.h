@@ -119,7 +119,7 @@ private:
     {
         int64_t atomLoopCount = CeilDiv(pullRankDataNum, curBlockNum);
         int64_t atomRemain = pullRankDataNum;
-        int64_t loopCount = CeilDiv(curRankDataNum, curBlockNum); 
+        int64_t loopCount = CeilDiv(curRankDataNum, curBlockNum);
         int64_t remain = curRankDataNum;
         int count = 0;
         int64_t maxLoopCount = (loopCount < atomLoopCount) ? loopCount : atomLoopCount;
@@ -127,7 +127,7 @@ private:
             if (peerRank != rank && rank % RANK_SIZE_TWO == peerRank % RANK_SIZE_TWO && count != atomLoopCount) {
                 sync.WaitInnerFlag(magic, count, rank, rank);
                 sync.WaitInnerFlag(magic, count, peerRank, rank);
- 
+
                 GlobalTensor<T> inputGm = srcQue.ReadFront();
                 GlobalTensor<T> outputGm = dstQue.EnQue();
 
@@ -150,7 +150,7 @@ private:
                     sync.SetInnerFlag(magic, count);
                 }
                 remain = remain - curBlockNum;
-                count = count + 1;   
+                count = count + 1;
         }
     }
     FORCE_INLINE_AICORE void Puller()
@@ -176,12 +176,12 @@ private:
     FORCE_INLINE_AICORE void ProducerInit()
     {
         inputQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum,
-                    perQueNum, curBlockNum);
+            perQueNum, curBlockNum);
         if (blockIdx % RANK_SIZE_TWO == rank % RANK_SIZE_TWO) {
             sioAtomSrcQue.Init(&sync, magic, shareAddrs[adjRank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum,
-                            perQueNum, curBlockNum);
+                perQueNum, curBlockNum);
             sioAtomDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum,
-                            perQueNum, curBlockNum);
+                perQueNum, curBlockNum);
         }
     }
     FORCE_INLINE_AICORE void ConsumerInit()
@@ -191,22 +191,21 @@ private:
         dstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + rank * perQueSize,
                     perQueNum, curBlockNum);
         if (peerRank != rank && rank % RANK_SIZE_TWO == peerRank % RANK_SIZE_TWO) {
-            pullSrcQue.Init(&sync, magic, shareAddrs[peerRank] + IPC_DATA_OFFSET + 
+            pullSrcQue.Init(&sync, magic, shareAddrs[peerRank] + IPC_DATA_OFFSET +
                             peerRank * perQueSize, perQueNum, curBlockNum);
-            pullDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + 
+            pullDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                             peerRank * perQueSize, perQueNum, curBlockNum);
         }
-        
     }
 
     FORCE_INLINE_AICORE void PullerInit()
     {
         if (rank % RANK_SIZE_TWO == peerRank % RANK_SIZE_TWO) {
-            pullQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum, 
-                        perQueNum, curBlockNum);
+            pullQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum,
+                perQueNum, curBlockNum);
         } else {
             pullQue.Init(&sync, magic, shareAddrs[adjRank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum,
-                        perQueNum, curBlockNum);
+                perQueNum, curBlockNum);
         }
     }
 private:

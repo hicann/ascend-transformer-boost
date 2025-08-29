@@ -25,8 +25,8 @@ class AllGather : public Collectives {
 public:
     FORCE_INLINE_AICORE AllGather(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
-    
-    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN()) 
+
+    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN())
     {
         Collectives::Init(KERNELS_ARGS_CALL());
         globalRank = (reinterpret_cast<__gm__ CommArgs *>(commArgs))->rank;
@@ -58,7 +58,7 @@ public:
     FORCE_INLINE_AICORE void Process()
     {
         if (extraFlag & ExtraFlag::RDMA) {
-            shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[rank % localRankSize] + baseOffsetSize) + 
+            shareGm.SetGlobalBuffer((__gm__ T*)(shareAddrs[rank % localRankSize] + baseOffsetSize) +
                 len * globalRank + offsetToShare, countToShare);
             if (countToShare > 0) {
                 CpGM2GMPingPong<T>(countToShare * sizeof(T), inputGm, shareGm, COPYONLY);
@@ -91,7 +91,7 @@ public:
                 CpGM2GM<T>(outputGm, shareGm, countToOutput, COPYONLY);
             }
         }
-    }     
+    }
 
 private:
 
@@ -110,7 +110,7 @@ private:
         if (blockDataOffset + blockDataCount > dataLen) {
             blockDataCount = dataLen - blockDataOffset;
         }
-    } 
+    }
 private:
     GlobalTensor<T> inputGm;
     GlobalTensor<T> outputGm;
@@ -125,8 +125,8 @@ private:
     int64_t blockRank;
     int64_t offsetFromShare;;
     int64_t offsetToOutput;
-    int64_t countToOutput; 
-    int globalRank; 
+    int64_t countToOutput;
+    int globalRank;
     int globalRankSize;
     int localRankSize;
 };

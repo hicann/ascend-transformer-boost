@@ -284,7 +284,6 @@ void LcalComm::CloseIpcMem()
             MKI_LOG(WARN) << "Close ipc[" << i << "] memory failed! ret: " << ret;
         }
         peerMem_[i] = nullptr;
-
     }
 }
 

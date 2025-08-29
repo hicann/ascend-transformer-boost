@@ -29,7 +29,7 @@ public:
         Collectives::Init(KERNELS_ARGS_CALL());
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
         if constexpr(!std::is_same_v<T, U>) {
-            BuildScaleOffset(scale, scaleCount, offset);    
+            BuildScaleOffset(scale, scaleCount, offset);
         }
 
         if (blockIdx >= PING_PONG_SIZE * rankSize) {
@@ -43,7 +43,7 @@ public:
         int globalRankSize = localArgs->rankSize <= 0 ? rankSize : localArgs->rankSize;
         int localRankSize = localArgs->localRankSize <= 0 ? rankSize : localArgs->localRankSize;
         int serverNum = globalRankSize / localRankSize;
-        int64_t ipcBuffMaxSizeAligned = IPC_BUFF_MAX_SIZE / (globalRankSize + serverNum - 1) / 
+        int64_t ipcBuffMaxSizeAligned = IPC_BUFF_MAX_SIZE / (globalRankSize + serverNum - 1) /
             QUEUE_DEPTH / sizeof(T) /scaleNum * scaleNum * QUEUE_DEPTH * sizeof(T) * globalRankSize;
         curBlockSize = ipcBuffMaxSizeAligned / localRankSize / QUEUE_DEPTH;
         curBlockNum = curBlockSize / sizeof(T);
@@ -65,7 +65,7 @@ public:
         }
 
         pullRankDataNum = (rank == rankSize - 1) ? (len - rank * perRankDataNum) : perRankDataNum;
-        
+
         inputBuffOffsetNum = blockIdx % rankSize * perRankDataNum;
 
         inputGt.SetGlobalBuffer((__gm__ U*)input + inputBuffOffsetNum, curRankDataNum);
@@ -78,14 +78,14 @@ public:
 
         if (blockIdx / perStepBlockNum == 0) {
             inputQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + inputIpcGtOffsetNum,
-                            perQueNum, curBlockNum);
+                perQueNum, curBlockNum);
         } else {
             srcQue.Init(&sync, magic, shareAddrs[peerRank] + IPC_DATA_OFFSET + rank * perQueSize,
-                            perQueNum, curBlockNum);
+                perQueNum, curBlockNum);
             dstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + rank * perQueSize,
-                            perQueNum, curBlockNum);
+                perQueNum, curBlockNum);
             pullQue.Init(&sync, magic, shareAddrs[peerRank] + IPC_DATA_OFFSET + peerRank * perQueSize,
-                            perQueNum, curBlockNum);
+                perQueNum, curBlockNum);
         }
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
     }
@@ -106,7 +106,7 @@ public:
                 while (count < loopCount) {
                     int64_t copyNum = (remain < curBlockNum) ? remain : curBlockNum;
                     Collectives::CpGM2GMPingPong(copyNum * sizeof(T), inputGt[count * curBlockNum],
-                                                outputGt[count * curBlockNum], COPYONLY);
+                        outputGt[count * curBlockNum], COPYONLY);
                     remain -= curBlockNum;
                     ++count;
                 }
@@ -140,7 +140,7 @@ private:
                 if (blockIdx != rank) {
                     GlobalTensor<U> outputGmTmp;
                     outputGmTmp.SetGlobalBuffer((__gm__ U*)outputGm.GetPhyAddr());
-                    Collectives::CpGM2GMPingPong(copyNum * sizeof(U), inputGt[count * curBlockNum], outputGmTmp, 
+                    Collectives::CpGM2GMPingPong(copyNum * sizeof(U), inputGt[count * curBlockNum], outputGmTmp,
                         COPYONLY);
                 } else {
                     CpGM2GMWithScale(copyNum, inputGt[count * curBlockNum], outputGm, COPYONLY);
@@ -157,14 +157,14 @@ private:
     {
         int64_t atomLoopCount = CeilDiv(pullRankDataNum, curBlockNum);
         int64_t atomRemain = pullRankDataNum;
-        int64_t loopCount = CeilDiv(curRankDataNum, curBlockNum); 
+        int64_t loopCount = CeilDiv(curRankDataNum, curBlockNum);
         int64_t remain = curRankDataNum;
         int count = 0;
         while (count < loopCount || count < atomLoopCount) {
             if (peerRank != rank && count != atomLoopCount) {
                 sync.WaitInnerFlag(magic, count, rank, rank);
                 sync.WaitInnerFlag(magic, count, peerRank, rank);
- 
+
                 GlobalTensor<T> inputGm = srcQue.ReadFront();
                 GlobalTensor<T> outputGm = dstQue.EnQue();
 
@@ -191,7 +191,7 @@ private:
 
                 sync.SetInnerFlag(magic, count);
                 remain = remain - curBlockNum;
-                count = count + 1;   
+                count = count + 1;
         }
     }
 
@@ -208,7 +208,7 @@ private:
         }
     }
 
-   FORCE_INLINE_AICORE void CpGM2GMWithScale(int64_t atomCopyNum, GlobalTensor<U> inputGm, GlobalTensor<T> outputGm, 
+   FORCE_INLINE_AICORE void CpGM2GMWithScale(int64_t atomCopyNum, GlobalTensor<U> inputGm, GlobalTensor<T> outputGm,
         int64_t atomOp)
     {
         if (!isEnableScale) {
@@ -216,10 +216,10 @@ private:
         } else if (!isVectorScale) {
             CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, firstScale, offset);
         } else {
-            CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, scaleGt, scaleNum, 
+            CpGM2GMPingPong(atomCopyNum * sizeof(T), inputGm, outputGm, atomOp, scaleGt, scaleNum,
                 offset);
         }
-    } 
+    }
 private:
     GlobalTensor<U> inputGt;
     GlobalTensor<T> outputGt;

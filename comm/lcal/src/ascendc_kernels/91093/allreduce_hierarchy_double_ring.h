@@ -35,8 +35,6 @@ class AllReduceHierarchyDoubleRing : protected Collectives {
     constexpr static int32_t SIO_GATHER_FLAG = 7 * RING_CORE_NUM;
     constexpr static int32_t SIO_GATHER_OUTPUT_FLAG = 8 * RING_CORE_NUM;
     constexpr static int32_t OUTPUT_FLAG = 9 * RING_CORE_NUM;
-
-
     constexpr static int32_t INPUT_CORE_SCALE = RING_CORE_NUM / INPUT_CORE_NUM;
     constexpr static int32_t SIO_CORE_SCALE = RING_CORE_NUM / SIO_CORE_NUM;
     constexpr static int32_t OUTPUT_CORE_SCALE = RING_CORE_NUM / OUTPUT_CORE_NUM;
@@ -95,7 +93,7 @@ public:
                 }
                 ++ipcQueIdx;
             }
-        
+
             for (sioLayerLoop = 0; sioLayerLoop < ringRankSize; ++sioLayerLoop) {
                 if (blockIdx < INPUT_CORE_NUM) {
                     ;
@@ -151,7 +149,7 @@ private:
     int64_t dmaLastLoop = 0;
     int64_t dmaLastRankLoop = 0;
     int32_t ipcQueIdx = 0;
-    int32_t gatherQueIdx = 0; 
+    int32_t gatherQueIdx = 0;
     int32_t loopCount = 0;
     int32_t curLoopCnt = 0;
     int32_t sioLayerLoop = 0;
@@ -166,13 +164,13 @@ private:
         if (blockIdx < INPUT_CORE_NUM) {
             for (int32_t blockLoop = 0; blockLoop < INPUT_CORE_SCALE; ++blockLoop) {
                 localBlockIdx = blockIdx * INPUT_CORE_SCALE + blockLoop;
-                inputQueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + 
+                inputQueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
             }
         } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM) {
             for (int32_t blockLoop = 0; blockLoop < SIO_CORE_SCALE; ++blockLoop) {
                 localBlockIdx = (blockIdx - INPUT_CORE_NUM) * SIO_CORE_SCALE + blockLoop;
-                sioQueList[blockLoop].Init(&sync, magic, shareAddrs[sioPeerRankId] + IPC_DATA_OFFSET + 
+                sioQueList[blockLoop].Init(&sync, magic, shareAddrs[sioPeerRankId] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
                 sioGatherSrc1QueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
@@ -180,21 +178,21 @@ private:
                     IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx,
                     ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
                 sioGatherDstQueList[blockLoop].Init(&sync, magic, shareAddrs[sioPeerRankId] + IPC_DATA_OFFSET +
-                    (IPC_QUE_DEPTH + RING_GATHER_QUE_DEPTH) * ipcBlockSize + dmaSizePerCore * localBlockIdx, 
+                    (IPC_QUE_DEPTH + RING_GATHER_QUE_DEPTH) * ipcBlockSize + dmaSizePerCore * localBlockIdx,
                     ipcBlockNum * SIO_GATHER_QUE_DEPTH, ipcBlockNum);
             }
         } else if (blockIdx < INPUT_CORE_NUM + SIO_CORE_NUM + RING_CORE_NUM) {
             localBlockIdx = (blockIdx - (INPUT_CORE_NUM + SIO_CORE_NUM));
-            ringSrcQue.Init(&sync, magic, shareAddrs[ringPrevRankId] + IPC_DATA_OFFSET + 
+            ringSrcQue.Init(&sync, magic, shareAddrs[ringPrevRankId] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
             ringDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
             ringGatherSrcQue.Init(&sync, magic, shareAddrs[ringPrevRankId] + IPC_DATA_OFFSET +
-                    IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx, 
-                    ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
-            ringGatherDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx,
                     ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
+            ringGatherDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
+                IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx,
+                ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
         } else {
             for (int32_t blockLoop = 0; blockLoop < OUTPUT_CORE_SCALE; ++blockLoop) {
                 localBlockIdx = (blockIdx - (INPUT_CORE_NUM + SIO_CORE_NUM + RING_CORE_NUM)) * OUTPUT_CORE_SCALE +
@@ -204,9 +202,9 @@ private:
                     ipcBlockNum * SIO_GATHER_QUE_DEPTH, ipcBlockNum);
                 outputSrc2QueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                     IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx,
-                    ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);   
+                    ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
                 outputSrc3QueList[blockLoop].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
-                    dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);   
+                    dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
             }
         }
     }
@@ -233,7 +231,7 @@ private:
         }
 
         BuildCoreDataNum(curLoopCnt, targetRankOffset);
-        srcIpcTensor = inputTensor[targetRankOffset * totalBlockDataNum + curLoopCnt * dmaPerLoop + 
+        srcIpcTensor = inputTensor[targetRankOffset * totalBlockDataNum + curLoopCnt * dmaPerLoop +
             localBlockIdx * coreDataNum];
         dstIpcTensor = (*inputQue).EnQue();
         CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcIpcTensor, dstIpcTensor, COPYONLY);
@@ -267,7 +265,7 @@ private:
 
         sync.WaitSyncFlag(magic, newQueIdx, INPUT_FLAG + localBlockIdx, rank);
         BuildCoreDataNum(newLoopCnt, targetRankOffset);
-        srcIpcTensor = inputTensor[targetRankOffset * totalBlockDataNum + newLoopCnt * dmaPerLoop + 
+        srcIpcTensor = inputTensor[targetRankOffset * totalBlockDataNum + newLoopCnt * dmaPerLoop +
             localBlockIdx * coreDataNum];
         dstIpcTensor = (*sioQue).EnQue();
         CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcIpcTensor, dstIpcTensor, atomOp);
@@ -301,7 +299,7 @@ private:
     {
         const int32_t targetSioLayerId = (sioLayerId + (ringRankSize - sioLayerLoop)) % ringRankSize;
         const int32_t targetRankOffset = targetSioLayerId * RING_LAYER_NUM + ringLayerId;
-        
+
         sync.WaitSyncFlag(magic, gatherQueIdx, RING_GATHER_FLAG + localBlockIdx, rank);
         if (gatherQueIdx >= SIO_GATHER_QUE_DEPTH) {
             sync.WaitSyncFlag(magic, gatherQueIdx - SIO_GATHER_QUE_DEPTH, SIO_GATHER_OUTPUT_FLAG + localBlockIdx, rank);
@@ -326,7 +324,7 @@ private:
         if (sioLayerLoop == 1) {
             sync.WaitSyncFlag(magic, consumedQueIdx, SIO_REDUCE_FLAG + localBlockIdx, ringPrevRankId);
         } else {
-            sync.WaitSyncFlag(magic, consumedQueIdx - 1, RING_REDUCE_FLAG + localBlockIdx, 
+            sync.WaitSyncFlag(magic, consumedQueIdx - 1, RING_REDUCE_FLAG + localBlockIdx,
                 ringPrevRankId);
         }
         const int32_t targetSioLayerId = (sioLayerId + (ringRankSize - 1 -sioLayerLoop)) % ringRankSize;
@@ -413,7 +411,7 @@ private:
         BuildCoreDataNum(curLoopCnt, targetRingRankOffset);
         sync.WaitSyncFlag(magic, gatherQueIdx, SIO_GATHER_FLAG + localBlockIdx, rank);
         srcIpcTensor = sioLayerLoop == 0 ? (*outputSrc3Que).ReadFront() : (*outputSrc2Que).ReadFront();
-        dstIpcTensor = outputTensor[targetRingRankOffset * totalBlockDataNum + 
+        dstIpcTensor = outputTensor[targetRingRankOffset * totalBlockDataNum +
             curLoopCnt * dmaPerLoop + localBlockIdx * coreDataNum];
         CpGM2GMPingPong(curCoreDataNum * sizeof(T), srcIpcTensor, dstIpcTensor, COPYONLY);
         sync.SetSyncFlag(magic, gatherQueIdx, OUTPUT_FLAG + localBlockIdx, rank);

@@ -31,9 +31,9 @@ class All2AllHierarchy : protected Collectives {
     static const int64_t DIE_CHANGE = 1;
 
 public:
-    FORCE_INLINE_AICORE All2AllHierarchy(int rank, int rankSize, uint32_t extraFlag) 
+    FORCE_INLINE_AICORE All2AllHierarchy(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
-    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN()) 
+    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN())
     {
         Collectives::Init(KERNELS_ARGS_CALL());
         this->input = (__gm__ T *) input;
@@ -54,7 +54,7 @@ public:
         }
     }
 private:
-    FORCE_INLINE_AICORE void InitShare() 
+    FORCE_INLINE_AICORE void InitShare()
     {
         int64_t queNum = blockNum / STEP_TIMES;
         if (rankSize <= CORE_NUM_PER_STAGE) {
@@ -63,7 +63,7 @@ private:
         if (len < perQueElemLen) {
             coreNumPerRank = 1;
         }
-        perQueElemLen = IPC_BUFF_MAX_SIZE / queNum / QUEUE_DEPTH / sizeof(T);   
+        perQueElemLen = IPC_BUFF_MAX_SIZE / queNum / QUEUE_DEPTH / sizeof(T);
         queLen = perQueElemLen * QUEUE_DEPTH;
         queSize = queLen * sizeof(T);
     }
@@ -72,9 +72,9 @@ private:
     {
         coreNumPerRank = 1;
         if (len < perQueElemLen) {
-            coreNumPerRank = 1; 
+            coreNumPerRank = 1;
         }
-        coreNumPerStage = coreNumPerRank * rankSize < CORE_NUM_PER_STAGE ? 
+        coreNumPerStage = coreNumPerRank * rankSize < CORE_NUM_PER_STAGE ?
         coreNumPerRank * rankSize : CORE_NUM_PER_STAGE;
         rankNumPerCore = CeilDiv(rankSize, coreNumPerStage);
         flagNumPerStage = rankSize;
@@ -92,7 +92,7 @@ private:
                 groupCoreIdx[i] = prefix + blockIdx - coreNumPerStage;
             }
         }
-    } 
+    }
 
     FORCE_INLINE_AICORE void InitDataSlice()
     {
@@ -101,10 +101,11 @@ private:
             for (auto i = 0; i < rankNumPerCore; ++i) {
                 if (groupCoreIdx[i] % SIO == rank % SIO) {
                     srcInnerQue[i].Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
-                                (groupCoreIdx[i] % coreNumPerStage) * queSize, queLen, perQueElemLen);
+                        (groupCoreIdx[i] % coreNumPerStage) * queSize, queLen, perQueElemLen);
                 } else {
                     SrcSioQue[i].Init(&sync, magic, shareAddrs[sioRank] + IPC_DATA_OFFSET +
-                                ((groupCoreIdx[i] + (rank - sioRank)) % coreNumPerStage) * queSize, queLen, perQueElemLen);
+                        ((groupCoreIdx[i] + (rank - sioRank)) % coreNumPerStage) * queSize,
+                        queLen, perQueElemLen);
                 }
                 sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);
             }
@@ -119,7 +120,7 @@ private:
 
                 pullQue[i].Init(&sync, magic, shareAddrs[pullRank] + IPC_DATA_OFFSET +
                     (rank % coreNumPerStage) * queSize + pullOffset * queSize, queLen, perQueElemLen);
-                sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);  
+                sliceNum = CeilDiv(ipcDataNumPreBlock, perQueElemLen);
             }
         }
     }
@@ -133,9 +134,9 @@ private:
         }
     }
 
-    FORCE_INLINE_AICORE void Input2IpcSlice(int64_t idx, int64_t sliceIdx) 
+    FORCE_INLINE_AICORE void Input2IpcSlice(int64_t idx, int64_t sliceIdx)
     {
-        inputGt.SetGlobalBuffer((__gm__ T*)input + groupCoreIdx[idx] * ipcDataNumPreBlock, ipcDataNumPreBlock);    
+        inputGt.SetGlobalBuffer((__gm__ T*)input + groupCoreIdx[idx] * ipcDataNumPreBlock, ipcDataNumPreBlock);
         copyLen = ipcDataNumPreBlock - perQueElemLen * sliceIdx;
         if (copyLen > perQueElemLen) {
             copyLen = perQueElemLen;
@@ -144,7 +145,8 @@ private:
         }
         if (groupCoreIdx[idx] % SIO == rank % SIO) {
             if (idx > 0) {
-                sync.WaitSyncFlag(magic, sliceIdx + sliceNum * (idx - 1), groupCoreIdx[idx - 1] + flagNumPerStage, rank);
+                sync.WaitSyncFlag(magic, sliceIdx + sliceNum * (idx - 1),
+                groupCoreIdx[idx - 1] + flagNumPerStage, rank);
             }
             srcInnerQue[idx].DeQue(rank, groupCoreIdx[idx] + flagNumPerStage);
             writeGt = srcInnerQue[idx].EnQue();
@@ -154,7 +156,7 @@ private:
             }
         } else {
             if (idx > 0) {
-                sync.WaitSyncFlag(magic, sliceIdx + sliceNum * (idx - 1), 
+                sync.WaitSyncFlag(magic, sliceIdx + sliceNum * (idx - 1),
                     groupCoreIdx[idx - 1] + flagNumPerStage + (rank - sioRank), sioRank);
             }
             SrcSioQue[idx].DeQue(sioRank, groupCoreIdx[idx] + (rank - sioRank) + flagNumPerStage);
@@ -186,7 +188,7 @@ private:
 
     FORCE_INLINE_AICORE void Ipc2Output(int64_t idx, int64_t sliceIdx)
     {
-        outputGt.SetGlobalBuffer((__gm__ T*)output + groupCoreIdx[idx] * ipcDataNumPreBlock, 
+        outputGt.SetGlobalBuffer((__gm__ T*)output + groupCoreIdx[idx] * ipcDataNumPreBlock,
                                 ipcDataNumPreBlock);
         cpOffset = rank % SIO == 0 ? rank + groupCoreIdx[idx] % SIO :
                     (rank - DIE_CHANGE) + groupCoreIdx[idx] % SIO;

@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
- #ifndef LCCL_ALLGATHER_HIERARCHY_DOUBLE_RING_H
- #define LCCL_ALLGATHER_HIERARCHY_DOUBLE_RING_H
+#ifndef LCCL_ALLGATHER_HIERARCHY_DOUBLE_RING_H
+#define LCCL_ALLGATHER_HIERARCHY_DOUBLE_RING_H
 
 #include "collectives.h"
 #include "ipc_queue.h"
@@ -66,26 +66,26 @@ public:
         blockSize = queSize / QUE_DEPTH;
 
         queHccsLocal.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + queHccsOffset, queSize, blockSize);
-        queSioLocal.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + queHccsOffset + queSize, 
+        queSioLocal.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET + queHccsOffset + queSize,
             queSize, blockSize);
         rankRingForward = (rank + RING_NUM) % rankSize;
         queHccsForward.Init(&sync, magic, shareAddrs[rankRingForward] + IPC_DATA_OFFSET + queHccsOffset,
             queSize, blockSize);
-        rankSioAdjoint = rank ^ 1; 
-        queSioAdjoint.Init(&sync, magic, 
+        rankSioAdjoint = rank ^ 1;
+        queSioAdjoint.Init(&sync, magic,
             shareAddrs[rankSioAdjoint] + IPC_DATA_OFFSET + queHccsOffset + queSize, queSize, blockSize);
-        
+
         for (int i = 0; i < STAGE_NUM; ++i) {
             stageEvents[i] = sync.CalEventIdByMulBlockNum(STAGE_EVENT, stageCoreIdx + coreNumPerStep * i);
         }
-        
+
         DumpLcclLogInfo(LogId::INIT, Op::COPYONLY);
     }
 
     FORCE_INLINE_AICORE void Process()
     {
-        DumpLcclLogInfo(LogId::PROCESS, Op::COPYONLY); 
-        int count = rankSize / RING_NUM * CeilDiv<int64_t, int64_t>(dataSizePerCore, blockSize);        
+        DumpLcclLogInfo(LogId::PROCESS, Op::COPYONLY);
+        int count = rankSize / RING_NUM * CeilDiv<int64_t, int64_t>(dataSizePerCore, blockSize);
         if (stage == STAGE::HCCS_RING) {
             ProcessHccsRing(count);
         } else if (stage == STAGE::HCCS_TO_OUT) {
@@ -104,7 +104,7 @@ private:
         int deQueWaitRanks[dependencyNum] = {(rank + rankSize - RING_NUM) % rankSize, rank, rank};
         int deQueWaitEvents[dependencyNum] = {
             sync.CalEventIdByMulBlockNum(RING_EVENT, blockIdx),
-            stageEvents[static_cast<int>(STAGE::HCCS_TO_OUT)], 
+            stageEvents[static_cast<int>(STAGE::HCCS_TO_OUT)],
             stageEvents[static_cast<int>(STAGE::HCCS_TO_SIO)]};
         int64_t remainSize = dataSizePerCore;
         int64_t dataSize = 0;
@@ -129,7 +129,7 @@ private:
                         stageEvents[static_cast<int>(STAGE::HCCS_RING)]) & EVENT_ID_MASK;
                     continue;
                 }
-                input = queHccsForward.ReadFront();   
+                input = queHccsForward.ReadFront();
             }
             queHccsLocal.DeQue(deQueWaitRanks, deQueWaitEvents, dependencyNum);
             output = queHccsLocal.EnQue();
@@ -145,9 +145,8 @@ private:
                 }
             }
             ++i;
-        } 
+        }
     }
-    
 
     FORCE_INLINE_AICORE void ProcessHccsToOut(const int count)
     {
@@ -179,7 +178,7 @@ private:
             }
             ++i;
         }
-    } 
+    }
     FORCE_INLINE_AICORE void ProcessHccsToSio(const int count)
     {
         GlobalTensor<uint8_t> input;
@@ -228,7 +227,7 @@ private:
                 dataSize = (remainSize >= blockSize) ? blockSize : remainSize;
             }
             input = queSioLocal.ReadFront();
-            output = outputGm[countRankId / RING_NUM][dataSizePerCore - remainSize]; 
+            output = outputGm[countRankId / RING_NUM][dataSizePerCore - remainSize];
             CpGM2GMPingPong(dataSize, input, output, -1);
             constexpr int32_t halfQueDepth = 2;
             if (i % (QUE_DEPTH / halfQueDepth) == 0) {

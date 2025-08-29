@@ -21,7 +21,7 @@ public:
     FORCE_INLINE_AICORE ReduceScatter(int rank, int rankSize, uint32_t extraFlag)
         : Collectives(rank, rankSize, extraFlag) {}
 
-    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN()) 
+    FORCE_INLINE_AICORE void Init(KERNELS_ARGS_FUN())
     {
         Collectives::Init(KERNELS_ARGS_CALL());
         DumpLcclLogInfo(LogId::INIT, static_cast<Op>(op));
@@ -70,7 +70,7 @@ public:
             if ((blockIdx >= rank * corePerRank) && (blockIdx < (rank * corePerRank + corePerRank))) {
                 CpGM2GM<T>(dstOutputGlobal, srcInputGlobal, blockDataNum, -1);
             }
-        }   
+        }
     }
 
 protected:
