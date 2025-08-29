@@ -78,7 +78,7 @@ atb::Status PrepareOperation(atb::Operation **paOp)
     atb::infer::PagedAttentionParam paOpParam;
     paOpParam.headNum = HEAD_NUM;
     paOpParam.kvHeadNum = KV_HEAD_NUM;
-    paOpParam.qkScale = 0.08838834764831843;
+    paOpParam.qkScale = 1 / sqrt(HEAD_SIZE);
     return atb::CreateOperation(paOpParam, paOp);
 }
 

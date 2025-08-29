@@ -5,14 +5,16 @@
 ## 使用说明
 - 首先source 对应的CANN和nnal包
     1. source [cann安装路径]/set_env.sh
-        默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
+        默认：<br>
+        source /usr/local/Ascend/ascend-toolkit/set_env.sh
     2. source [nnal安装路径]/set_env.sh
-        默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
-        1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
+        默认：<br>
+        source /usr/local/Ascend/ascend-toolkit/set_env.sh
+        1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh<br>
         e.g. source ./ascend-transformer-boost/atb/set_env.sh
 
 - 运行demo
-    - bash build.sh  
+    - bash build.sh
 - **注意**：
     - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，i.e.
         ```sh
@@ -105,7 +107,7 @@ tests/apitest/opstest/python/operations/paged_attention/
     | 成员名称    | 取值               |
     | :------------ | :----------------------- |
     | headNum  | 32 |
-    | qkScale  | 0.08838834764831843 |
+    | qkScale  | 1 / sqrt(HEAD_SIZE) |
     | kvHeadNum  | 32 |
     | batchRunStatus  | 0 |
     | quantType     | `TYPE_QUANT_UNQUANT`|
@@ -119,13 +121,13 @@ tests/apitest/opstest/python/operations/paged_attention/
 
     | tensor名字| 数据类型 | 数据格式 | 维度信息|
     | --- | --- | --- | --- |
-    | `intensors[0]` | float16| nd | [2, 32, 128]|
-    |`intensors[1]`  |float16| nd |  [16, 128, 32, 128]|
-    |`intensors[2]`  |  float16| nd  |[16, 128, 32, 128] |
-    | `intensors[3]` | int32 | nd  | [2, 8] |
-    | `intensors[4]` | int32 | nd  | [2] |
-    | `intensors[5]` | int32 | nd  | [2, 1, 1024] |
-    | `outtensors[0]` | float16| nd | [2, 32, 128] |
+    | `query` | float16| nd | [2, 32, 128]|
+    |`keyCache`  |float16| nd |  [16, 128, 32, 128]|
+    |`valueCache`  |  float16| nd  |[16, 128, 32, 128] |
+    | `blockTables` | int32 | nd  | [2, 8] |
+    | `contextLens` | int32 | nd  | [2] |
+    | `mask` | int32 | nd  | [2, 1, 1024] |
+    | `attnOut` | float16| nd | [2, 32, 128] |
 
 - paged_attention_qwen_demo.cpp  
 
@@ -134,7 +136,7 @@ tests/apitest/opstest/python/operations/paged_attention/
     | 成员名称    | 取值               |
     | :------------ | :----------------------- |
     | headNum  | 5 |
-    | qkScale  | 0.0883883461356163 |
+    | qkScale  | 1 / sqrt(HEAD_SIZE) |
     | kvHeadNum  | 1 |
     | batchRunStatus  | 0 |
     | quantType     | `TYPE_QUANT_UNDEFINED`|
@@ -150,12 +152,12 @@ tests/apitest/opstest/python/operations/paged_attention/
 
     | tensor名字| 数据类型 | 数据格式 | 维度信息|
     | --- | --- | --- | --- |
-    | `intensors[0]` | bf16| nd | [1, 5, 128]|
-    |`intensors[1]`  |bf16| nd |  [9, 128, 1, 128]|
-    |`intensors[2]`  |  bf16| nd  |[9, 128, 1, 128] |
-    | `intensors[3]` | int32 | nd  | [1, 8] |
-    | `intensors[4]` | int32 | nd  | [1] |
-    | `outtensors[0]` | bf16| nd | [1, 5, 128] |
+    | `query` | bf16| nd | [1, 5, 128]|
+    |`qkScale`  |bf16| nd |  [9, 128, 1, 128]|
+    |`valueCache`  |  bf16| nd  |[9, 128, 1, 128] |
+    | `blockTables` | int32 | nd  | [1, 8] |
+    | `contextLens` | int32 | nd  | [1] |
+    | `attnOut` | bf16| nd | [1, 5, 128] |
 
 - paged_attention_inference_demo.cpp  
 
@@ -164,7 +166,7 @@ tests/apitest/opstest/python/operations/paged_attention/
     | 成员名称    | 取值               |
     | :------------ | :----------------------- |
     | headNum  | 32 |
-    | qkScale  | 0.08838834764831843 |
+    | qkScale  | 1 / sqrt(HEAD_SIZE) |
     | kvHeadNum  | 32 |
     | batchRunStatus  | 0 |
     | quantType     | `TYPE_QUANT_UNQUANT`|
@@ -178,9 +180,9 @@ tests/apitest/opstest/python/operations/paged_attention/
 
     | tensor名字| 数据类型 | 数据格式 | 维度信息|
     | --- | --- | --- | --- |
-    | `intensors[0]` | bf16| nd | [2, 32, 128]|
-    |`intensors[1]`  |bf16| nd |  [16, 1024, 128, 16]|
-    |`intensors[2]`  |  bf16| nd  |[16, 1024, 128, 16] |
-    | `intensors[3]` | int32 | nd  | [2, 8] |
-    | `intensors[4]` | int32 | nd  | [2] |
-    | `outtensors[0]` | bf16| nd | [2, 32, 128] |
+    | `query` | bf16| nd | [2, 32, 128]|
+    |`qkScale`  |bf16| nd |  [16, 1024, 128, 16]|
+    |`valueCache`  |  bf16| nd  |[16, 1024, 128, 16] |
+    | `blockTables` | int32 | nd  | [2, 8] |
+    | `contextLens` | int32 | nd  | [2] |
+    | `attnOut` | bf16| nd | [2, 32, 128] |

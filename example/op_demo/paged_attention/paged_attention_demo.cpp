@@ -87,7 +87,7 @@ atb::Status PrepareOperation(atb::Operation **paOp)
     paOpParam.maskType = atb::infer::PagedAttentionParam::MaskType::MASK_TYPE_NORM;
     paOpParam.headNum = HEAD_NUM;
     paOpParam.kvHeadNum = KV_HEAD_NUM;
-    paOpParam.qkScale = 0.08838834764831843;
+    paOpParam.qkScale = 1 / sqrt(HEAD_SIZE);
     return atb::CreateOperation(paOpParam, paOp);
 }
 
@@ -128,7 +128,9 @@ int main(int argc, char **argv)
     paOp->Execute(paVariantPack, workspacePtr, workspaceSize, context);
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     CHECK_STATUS(aclrtFree(tensorOut.deviceData));
-    if (workspaceSize > 0) {}
+    if (workspaceSize > 0) {
+        CHECK_STATUS(aclrtFree(workspacePtr));
+    }
     CHECK_STATUS(atb::DestroyOperation(paOp)); // operation，对象概念，先释放
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
