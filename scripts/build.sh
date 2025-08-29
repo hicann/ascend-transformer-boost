@@ -166,7 +166,7 @@ function fn_build_asdops()
     cd $THIRD_PARTY_DIR
     rm -rf ascend-op-common-lib
     branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
-    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
+    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_release_cann_8.2.RC1_20251226
     echo  "current branch for atb and asdops: $branch"
     git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
     cd ascend-op-common-lib
@@ -205,7 +205,7 @@ function fn_build_mki()
     cd $THIRD_PARTY_DIR
     if [ ! -d "Mind-KernelInfra" ]; then
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
-        [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
+        [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=br_release_cann_8.2.RC1_20251226
         echo  "current branch for mki: $branch"
         git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
     fi
