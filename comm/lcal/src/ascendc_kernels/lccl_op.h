@@ -115,7 +115,7 @@ extern "C" __global__ __aicore__ void LcalAllGather_##type##suffix(KERNELS_ARGS_
 }
 
 #define LCCL_ALL_REDUCE_FUNC_AUTO_DEF(type, suffix) \
-extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_FUN()) {\
+extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_FUN()) { \
     if ASCEND_IS_AIV { \
     GET_COMM_ARGS; \
     constexpr int32_t quickOneshotRankSize = 2; \
@@ -188,7 +188,7 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
 }
 
 #define LCCL_ALL2ALL_FUNC_AUTO_DEF(type, suffix) \
-extern "C" __global__ __aicore__ void LcalAll2All_##type##suffix(KERNELS_ARGS_FUN()) {\
+extern "C" __global__ __aicore__ void LcalAll2All_##type##suffix(KERNELS_ARGS_FUN()) { \
     if ASCEND_IS_AIV { \
     GET_COMM_ARGS; \
     __gm__ type * shareAddrs[LCAL_MAX_RANK_SIZE];  \
@@ -209,7 +209,7 @@ extern "C" __global__ __aicore__ void LcalAll2All_##type##suffix(KERNELS_ARGS_FU
 }
 
 #define LCCL_REDUCE_SCATTER_FUNC_AUTO_DEF(type, suffix) \
-extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_ARGS_FUN()) {\
+extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_ARGS_FUN()) { \
     if ASCEND_IS_AIV { \
     GET_COMM_ARGS; \
     constexpr int32_t quickOneshotRankSize = 2; \
@@ -235,7 +235,7 @@ extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_A
     } else { \
         if (rankSize == quickOneshotRankSize && len * sizeof(type) < SIZE_OF_8M) { \
             LcalReduceScatterWrite<type>(ALLREDUCE_ARGS_CALL(type)); \
-        }  else if (rankSize > quickOneshotRankSize && len * sizeof(type) < cceSmallDataSize){\
+        }  else if (rankSize > quickOneshotRankSize && len * sizeof(type) < cceSmallDataSize){ \
             LcalReduceScatter<type>(ALLREDUCE_ARGS_CALL(type)); \
         } else { \
             LcalReduceScatterBigData<type>(ALLREDUCE_ARGS_CALL(type)); \
