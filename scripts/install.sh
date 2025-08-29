@@ -115,24 +115,24 @@ function log_init() {
     if [ ! -d "$LOG_PATH" ]; then
         make_dir "$LOG_PATH"
     fi
-    chmod 750 ${LOG_PATH}
+    chmod 750 "${LOG_PATH}"
     # 判断日志文件是否存在，如果不存在就创建；存在则判断是否大于50M
     if [ ! -f "$log_file" ]; then
         make_file "$log_file"
         # 安装日志权限
         chmod_recursion ${LOG_PATH} "750" "dir"
-        chmod 640 ${log_file}
+        chmod 640 "${log_file}"
     else
         local filesize=$(ls -l $log_file | awk '{ print $5}')
         local maxsize=$((1024*1024*50))
         if [ $filesize -gt $maxsize ]; then
             local log_file_move_name="ascend_atb_install_bak.log"
-            mv -f ${log_file} ${LOG_PATH}${log_file_move_name}
-            chmod 440 ${LOG_PATH}${log_file_move_name}
+            mv -f "${log_file}" "${LOG_PATH}${log_file_move_name}"
+            chmod 440 "${LOG_PATH}${log_file_move_name}"
             make_file "$log_file"
             log "INFO" "log file > 50M, move ${log_file} to ${LOG_PATH}${log_file_move_name}."
         fi
-        chmod 640 ${log_file}
+        chmod 640 "${log_file}"
     fi
     print "INFO" "Install log save in ${log_file}"
 }
@@ -142,15 +142,15 @@ function chmod_authority() {
     chmod_file ${default_install_path}
     chmod_file ${install_dir}
     chmod_file ${install_torch_atb_dir}
-    chmod 440 ${install_dir}/scripts/filelist.csv
+    chmod 440 "${install_dir}/scripts/filelist.csv"
     local file_rights=$([ "${install_for_all_flag}" == "y" ] && echo 555 || echo 550)
-    chmod ${file_rights} ${install_dir}/scripts/uninstall.sh
-    chmod ${file_rights} ${install_dir}/install.sh
+    chmod ${file_rights} "${install_dir}/scripts/uninstall.sh"
+    chmod ${file_rights} "${install_dir}/install.sh"
     chmod_dir ${default_install_path} "550"
     chmod_dir ${install_dir} "550"
     local path_rights=$([ "${install_for_all_flag}" == "y" ] && echo 755 || echo 750)
-    chmod ${path_rights} ${default_install_path}
-    chmod ${path_rights} ${install_dir}
+    chmod ${path_rights} "${default_install_path}"
+    chmod ${path_rights} "${install_dir}"
     if [ -n "$install_torch_atb_dir" ] && [ -d "$install_torch_atb_dir" ]; then
         chmod ${path_rights} "$install_torch_atb_dir"
     fi
@@ -267,19 +267,19 @@ function delete_file_with_authority() {
     dir_path=$(dirname ${file_path})
     if [ ${dir_path} != "." ];then
         dir_authority=$(stat -c %a ${dir_path})
-        chmod 700 ${dir_path}
+        chmod 700 "${dir_path}"
         if [ -d ${file_path} ];then
-            rm -rf ${file_path}
+            rm -rf "${file_path}"
         else
-            rm -f ${file_path}
+            rm -f "${file_path}"
         fi
-        chmod ${dir_authority} ${dir_path}
+        chmod ${dir_authority} "${dir_path}"
     else
-        chmod 700 ${file_path}
+        chmod 700 "${file_path}"
         if [ -d ${file_path} ];then
-            rm -rf ${file_path}
+            rm -rf "${file_path}"
         else
-            rm -f ${file_path}
+            rm -f "${file_path}"
         fi
     fi
 }
@@ -303,10 +303,10 @@ function delete_installed_files() {
     install_dir=$1
     csv_path=$install_dir/scripts/filelist.csv
     is_first_line=true
-    cd $install_dir
+    cd "$install_dir"
     if [ ! -f $csv_path ];then
         print "INFO" "filelist.csv is not founded, uninstall by delete whole folder."
-        [ -n "$1" ] && rm -rf $1
+        [ -n "$1" ] && rm -rf "$1"
         return 0
     fi
     cat ${csv_path} | while read line
@@ -338,7 +338,7 @@ function delete_installed_files() {
 }
 
 function delete_latest() {
-    cd ${default_install_path}
+    cd "${default_install_path}"
     if [ -d "latest" ];then
         rm -f latest
     fi
@@ -366,7 +366,7 @@ function uninstall_process() {
         return 0
     fi
     print "INFO" "Ascend-cann-atb $(basename $1) uninstall start!"
-    atb_dir=$(cd $1/..;pwd)
+    atb_dir=$(cd "$1/..";pwd)
     delete_latest $1
     delete_installed_files $1
     uninstall_torch_atb
@@ -374,7 +374,7 @@ function uninstall_process() {
         delete_empty_recursion $1
     fi
     if [ "$2" == "y" -a -z "$(ls $atb_dir)" ];then
-        rm -rf $atb_dir
+        rm -rf "$atb_dir"
     fi
     print "INFO" "Ascend-cann-atb $(basename $1) uninstall success!"
 }
@@ -387,22 +387,22 @@ function install_to_path() {
     uninstall_process ${install_dir}
     check_target_dir_owner ${install_dir}
     check_path
-    cd ${install_dir}
+    cd "${install_dir}"
     install_torch_atb
     copy_files
-    [ -f "${default_install_path}/set_env.sh" ] && rm -rf ${default_install_path}/set_env.sh
-    mv ${install_dir}/set_env.sh ${default_install_path}
-    cd ${default_install_path}
+    [ -f "${default_install_path}/set_env.sh" ] && rm -rf "${default_install_path}/set_env.sh"
+    mv "${install_dir}/set_env.sh" "${default_install_path}"
+    cd "${default_install_path}"
     ln -snf $VERSION latest
 }
 
 function copy_files() {
-    cp -r ${sourcedir}/atb $install_dir
-    cp -r ${sourcedir}/scripts $install_dir
-    cp -r ${sourcedir}/whl $install_dir
-    cp ${sourcedir}/install.sh $install_dir
-    cp ${sourcedir}/version.info $install_dir
-    cp ${sourcedir}/set_env.sh $install_dir
+    cp -r "${sourcedir}/atb" "$install_dir"
+    cp -r "${sourcedir}/scripts" "$install_dir"
+    cp -r "${sourcedir}/whl" "$install_dir"
+    cp "${sourcedir}/install.sh" "$install_dir"
+    cp "${sourcedir}/version.info" "$install_dir"
+    cp "${sourcedir}/set_env.sh" "$install_dir"
 }
 
 function install_process() {
@@ -473,7 +473,7 @@ function uninstall() {
 }
 
 function check_uninstall_path() {
-    [ -f "$log_file" ] && chmod 640 ${log_file}
+    [ -f "$log_file" ] && chmod 640 "${log_file}"
     local cur_owner=$(whoami)
     if [ "${install_path_flag}" == "y" ]; then
         default_install_path="${target_dir}"
@@ -525,40 +525,40 @@ function back_up_old_version() {
         exit 1
     fi
 
-    cp -rp ${version_dir} ${back_up_dir}
-    cp -p ${default_install_path}/set_env.sh ${default_install_path}/set_env_recover.sh
+    cp -rp "${version_dir}" "${back_up_dir}"
+    cp -p "${default_install_path}/set_env.sh" "${default_install_path}/set_env_recover.sh"
     print "INFO" "back up the old Ascend-cann-atb version success!"
 }
 
 function recover_old_version() {
     if [ -d "${version_dir}" ]; then
         chmod -R 700 "${version_dir}"
-        rm -rf ${version_dir}
+        rm -rf "${version_dir}"
     fi
     if [ -f "${default_install_path}/set_env.sh" ]; then
-        chmod 700 ${default_install_path}/set_env.sh
-        rm -f ${default_install_path}/set_env.sh
+        chmod 700 "${default_install_path}/set_env.sh"
+        rm -f "${default_install_path}/set_env.sh"
     fi
-    mv ${back_up_dir} ${version_dir}
-    mv ${default_install_path}/set_env_recover.sh ${default_install_path}/set_env.sh
+    mv "${back_up_dir}" "${version_dir}"
+    mv "${default_install_path}/set_env_recover.sh" "${default_install_path}/set_env.sh"
     local version=$(basename ${version_dir})
-    cd ${default_install_path}
+    cd "${default_install_path}"
     ln -snf ${version} latest
     print "INFO" "recover old Ascend-cann-atb version success!"
 }
 
 function remove_back_up_version() {
     chmod -R 700 "${back_up_dir}"
-    rm -r ${back_up_dir}
-    chmod 700 ${default_install_path}/set_env_recover.sh
-    rm -f ${default_install_path}/set_env_recover.sh
+    rm -r "${back_up_dir}"
+    chmod 700 "${default_install_path}/set_env_recover.sh"
+    rm -f "${default_install_path}/set_env_recover.sh"
     print "INFO" "finish remove back up version!"
 }
 
 function upgrade() {
     torch_atb_flag=$1
     # 先备份旧版本，再卸载旧版本，安装新版本，卸载备份版本
-    [ -f "$log_file" ] && chmod 640 ${log_file}
+    [ -f "$log_file" ] && chmod 640 "${log_file}"
     print "INFO" "Ascend-cann-atb uninstall start!"
     check_owner
     check_upgrade_path
@@ -637,7 +637,7 @@ function main() {
             print "INFO" "Torch ATB installation completed!"
         fi
     fi
-    chmod 440 ${log_file}
+    chmod 440 "${log_file}"
 }
 
 main $*
