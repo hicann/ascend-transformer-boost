@@ -59,12 +59,12 @@ template <> Status CreateOperation(const infer::AllToAllParam &opParam, Operatio
             return ERROR_INVALID_PARAM;
         }
     }
-    if (opParam.backend == "lccl" && opParam.rankSize % 2 != 0) { // 2 : Even ranksize
-        ATB_LOG(ERROR) << "AllToAll lccl only supports even ranksize";
-        return ERROR_INVALID_PARAM;
-    }
     if (OperationUtil::DistributedInitCheck<infer::AllToAllParam>(opParam) != NO_ERROR) {
         ATB_LOG(ERROR) << "AllToAllOperation DistributedInitCheck failed";
+        return ERROR_INVALID_PARAM;
+    }
+        if (opParam.backend == "lccl" && opParam.rankSize % 2 != 0) { // 2 : Even ranksize
+        ATB_LOG(ERROR) << "AllToAll lccl only supports even ranksize";
         return ERROR_INVALID_PARAM;
     }
     *operation = new (std::nothrow) AllToAllOperation(opParam);

@@ -34,7 +34,6 @@ DynamicNTKOpsRunner::DynamicNTKOpsRunner(const infer::DynamicNTKParam &param)
     Mki::Tensor &sinTensor = kernelGraph_.outTensors.at(outId++);
     Mki::Tensor &cosTensor = kernelGraph_.outTensors.at(outId++);
 
-    kernelGraph_.nodes.resize(1);
     auto &dynamicNTKNode = kernelGraph_.nodes[0];
     dynamicNTKNode.opDesc = {0, "DynamicNTKOperation", asdopsParam_};
     dynamicNTKNode.inTensors = {&positionIds, &invfreqIn, &seqlens};
