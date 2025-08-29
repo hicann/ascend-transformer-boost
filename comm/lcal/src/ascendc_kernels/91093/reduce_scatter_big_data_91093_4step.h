@@ -154,7 +154,7 @@ public:
             if ((blockIdx * stepOneOriginRankPerCore + i) % NUM_OF_TWO == rank % NUM_OF_TWO) {
                 if ((blockIdx * stepOneOriginRankPerCore + i) == rank) {
                     waitWriteRankArr[i] = rank;
-                    waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * 4;
+                    waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_FOUR;
                 } else {
                     waitWriteRankArr[i] = blockIdx * stepOneOriginRankPerCore + i;
                     waitWriteBlockArr[i] = PER_STEP_BLOCKNUM * NUM_OF_TWO + ((rank / NUM_OF_TWO) /
