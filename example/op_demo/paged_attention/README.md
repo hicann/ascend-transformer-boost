@@ -12,8 +12,8 @@
         e.g. source ./ascend-transformer-boost/atb/set_env.sh
 
 - 运行demo
-    - bash build.sh
-    **注意**：
+    - bash build.sh  
+- **注意**：
     - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，i.e.
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=0 -I ...
@@ -59,7 +59,7 @@ tests/apitest/opstest/python/operations/paged_attention/
         e.g. source ./ascend-transformer-boost/atb/set_env.sh
 
 - 运行demo
-    - bash build.sh
+    - bash build.sh  
     **注意**：
     - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，i.e.
         ```sh
@@ -93,3 +93,94 @@ tests/apitest/opstest/python/operations/paged_attention/
     - 运行时调用：
     `./paged_attention_inference_demo`
     - 该demo仅支持在Atlas推理系列产品上运行
+
+## 场景说明
+
+  所给Demo的场景说明如下：
+
+- paged_attention_demo.cpp
+  
+    **参数设置**：
+
+    | 成员名称    | 取值               |
+    | :------------ | :----------------------- |
+    | headNum  | 32 |
+    | qkScale  | 0.08838834764831843 |
+    | kvHeadNum  | 32 |
+    | batchRunStatus  | 0 |
+    | quantType     | `TYPE_QUANT_UNQUANT`|
+    | hasQuantOffset  | false|
+    | calcType | `CALC_TYPE_UNDEFINED`|
+    | compressType | `COMPRESS_TYPE_UNDEFINED`|
+    | maskType | `MASK_TYPE_NORM`|
+    | mlaVHeadSize | 0|
+    
+    **数据规格**：
+
+    | tensor名字| 数据类型 | 数据格式 | 维度信息|
+    | --- | --- | --- | --- |
+    | `intensors[0]` | float16| nd | [2, 32, 128]|
+    |`intensors[1]`  |float16| nd |  [16, 128, 32, 128]|
+    |`intensors[2]`  |  float16| nd  |[16, 128, 32, 128] |
+    | `intensors[3]` | int32 | nd  | [2, 8] |
+    | `intensors[4]` | int32 | nd  | [2] |
+    | `intensors[5]` | int32 | nd  | [2, 1, 1024] |
+    | `outtensors[0]` | float16| nd | [2, 32, 128] |
+
+- paged_attention_qwen_demo.cpp  
+
+   **参数设置**：
+
+    | 成员名称    | 取值               |
+    | :------------ | :----------------------- |
+    | headNum  | 5 |
+    | qkScale  | 0.0883883461356163 |
+    | kvHeadNum  | 1 |
+    | batchRunStatus  | 0 |
+    | quantType     | `TYPE_QUANT_UNDEFINED`|
+    | hasQuantOffset  | false|
+    | calcType | `CALC_TYPE_UNDEFINED`|
+    | compressType | `COMPRESS_TYPE_UNDEFINED`|
+    | maskType | `UNDEFINED`|
+    | mlaVHeadSize | 0|
+    
+
+
+    **数据规格**：
+
+    | tensor名字| 数据类型 | 数据格式 | 维度信息|
+    | --- | --- | --- | --- |
+    | `intensors[0]` | bf16| nd | [1, 5, 128]|
+    |`intensors[1]`  |bf16| nd |  [9, 128, 1, 128]|
+    |`intensors[2]`  |  bf16| nd  |[9, 128, 1, 128] |
+    | `intensors[3]` | int32 | nd  | [1, 8] |
+    | `intensors[4]` | int32 | nd  | [1] |
+    | `outtensors[0]` | bf16| nd | [1, 5, 128] |
+
+- paged_attention_inference_demo.cpp  
+
+   **参数设置**：
+
+    | 成员名称    | 取值               |
+    | :------------ | :----------------------- |
+    | headNum  | 32 |
+    | qkScale  | 0.08838834764831843 |
+    | kvHeadNum  | 32 |
+    | batchRunStatus  | 0 |
+    | quantType     | `TYPE_QUANT_UNQUANT`|
+    | hasQuantOffset  | false|
+    | calcType | `CALC_TYPE_UNDEFINED`|
+    | compressType | `COMPRESS_TYPE_UNDEFINED`|
+    | maskType | `UNDEFINED`|
+    | mlaVHeadSize | 0|
+
+    **数据规格**：
+
+    | tensor名字| 数据类型 | 数据格式 | 维度信息|
+    | --- | --- | --- | --- |
+    | `intensors[0]` | bf16| nd | [2, 32, 128]|
+    |`intensors[1]`  |bf16| nd |  [16, 1024, 128, 16]|
+    |`intensors[2]`  |  bf16| nd  |[16, 1024, 128, 16] |
+    | `intensors[3]` | int32 | nd  | [2, 8] |
+    | `intensors[4]` | int32 | nd  | [2] |
+    | `outtensors[0]` | bf16| nd | [2, 32, 128] |
