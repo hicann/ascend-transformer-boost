@@ -163,14 +163,14 @@ function fn_build_asdops()
         rm -f $THIRD_PARTY_DIR/asdops/lib/libmki.so 2> /dev/null
         return 0
     fi
-    cd $THIRD_PARTY_DIR
-    rm -rf ascend-op-common-lib
-    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
-    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
-    echo  "current branch for atb and asdops: $branch"
-    git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
-    cd ascend-op-common-lib
-    echo  "current commid id of ascend-op-common-lib: $(git rev-parse HEAD)"
+    [[ -d "$THIRD_PARTY_DIR" ]] && cd $THIRD_PARTY_DIR
+    echo "Will not git clone the code repository"
+    if [ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib ]; then
+        cd "$THIRD_PARTY_DIR"/ascend-op-common-lib
+    else
+        echo "Complie asdops failed, Please manually git clone the code repository"
+        exit 1
+    fi
     [[ -d "$THIRD_PARTY_DIR/Mind-KernelInfra" ]] && mkdir -p 3rdparty && [[ -d "$THIRD_PARTY_DIR/mki" ]] && cp -r $THIRD_PARTY_DIR/mki 3rdparty
     if [ ! -d "$THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost" ]; then
         mkdir -p $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost
@@ -271,7 +271,7 @@ function fn_build_secodefuzz()
     fi
     cd $CACHE_DIR
     rm -rf secodefuzz
-    git clone -b v2.4.5 --depth=1 https://szv-open.codehub.huawei.com/innersource/Fuzz/secodefuzz.git
+
     cd secodefuzz
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -570,9 +570,6 @@ function fn_build_coverage()
         fn_run_torchatbtest
         fn_run_kernel_cinterfacetest
     fi
-    if [ "$COVERAGE_TYPE" == "FUZZTEST" ];then
-        fn_run_fuzztest
-    fi
 
     cd $GCOV_DIR
     $LCOV_PATH -c --directory ./.. --output-file tmp_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
@@ -828,7 +825,6 @@ function fn_main()
             TEST_TIME=30
             python3 $CODE_ROOT/tests/apitest/fuzztest/generate_operation_fuzz_test.py $CODE_ROOT $RANDOM_SEED $TEST_TIME
             fn_build_3rdparty_for_test
-            fn_build_secodefuzz
             fn_build
             fn_build_coverage
             ;;
