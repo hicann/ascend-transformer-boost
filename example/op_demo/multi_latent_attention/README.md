@@ -26,3 +26,59 @@
 ## 额外说明
 示例中生成的数据不代表实际场景，如需数据生成参考请查看python用例目录：
 tests/apitest/opstest/python/operations/multi_latent_attention/
+
+## 场景说明
+
+  所给Demo的场景说明如下：
+
+- mlapa_demo.cpp
+  
+    **参数设置**：
+
+    | 成员名称    | 取值               |
+    | :------------ | :----------------------- |
+    | headNum  | 128 |
+    | qkScale  | 0.0416666679084301|
+    | kvHeadNum     | 1|
+    | maskType | `UNDEFINED`|
+    | calcType     | `CALC_TYPE_UNDEFINED`|
+    | cacheMode  | `INT8_NZCACHE`|
+
+    **数据规格**：
+
+    | tensor名字| 数据类型 | 数据格式 | 维度信息|
+    | --- | --- | --- | --- |
+    | `intensors[0]` | int8| nd | [4, 128, 512]|
+    |`intensors[1]`  |float16| nd |  [4, 128, 64]|
+    |`intensors[2]`  |  int8| nz  |[48, 16, 128, 32]  |
+    | `intensors[3]` | float16 | nz  | [48, 4, 128, 16] |
+    | `intensors[4]` | int32 | nd  | [4, 12] |
+    | `intensors[5]` | int32 | nd  | [4] |
+    | `intensors[6]` | float | nd  | [128] |
+    | `intensors[7]` | float | nd  | [128] |
+    | `outtensors[0]` | float16| nd | [4, 128, 512] |
+
+- mlapa_ds_demo.cpp  
+
+    **参数设置**：
+
+    | 成员名称    | 取值               |
+    | :------------ | :----------------------- |
+    | headNum  | 128 |
+    | qkScale  | 0.1352667747812271|
+    | kvHeadNum     | 1|
+    | maskType | `UNDEFINED`|
+    | calcType     | `CALC_TYPE_UNDEFINED`|
+    | cacheMode  | `KROPE_CTKV`|
+
+    **数据规格**：
+
+    | tensor名字| 数据类型 | 数据格式 | 维度信息|
+    | --- | --- | --- | --- |
+    | `intensors[0]` | float16| nd | [32, 128, 512]|
+    |`intensors[1]`  |float16| nd |  [7168, 128, 64]|
+    |`intensors[2]`  |  float16| nd  |[160, 128, 1, 512]  |
+    | `intensors[3]` | float16 | nd  | [160, 128, 1, 64] |
+    | `intensors[4]` | int32 | nd  | [32, 5] |
+    | `intensors[5]` | int32 | nd  | [32] |
+    | `outtensors[0]` | float16| nd | [32, 128, 512] |
