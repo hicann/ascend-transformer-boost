@@ -89,12 +89,9 @@ atb::Status CreateMultiLatentAttentionOperation(int headNum, atb::Operation **ml
  * @param kSeqLen key/value 的单个词元长度
  * @return atb::Status 错误码
  */
-atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int tokenNum, int headNum, int kSeqLen)
+atb::Status RunDemo(atb::Operation *mlaOp, atb::Context *context, void *stream, aclDataType dtype, int tokenNum,
+                    int headNum, int kSeqLen)
 {
-    // 创建op
-    atb::Operation *mlaOp = nullptr;
-    CreateMultiLatentAttentionOperation(headNum, &mlaOp);
-
     // 准备输入tensor
     atb::VariantPack variantPack;
     CHECK_STATUS(
@@ -135,7 +132,6 @@ atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int 
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
-    CHECK_STATUS(atb::DestroyOperation(mlaOp)); // operation，对象概念，先释放
     return atb::ErrorType::NO_ERROR;
 }
 
@@ -164,8 +160,14 @@ int main(int argc, char **argv)
     CHECK_STATUS(atb::CreateContext(&context));
     CHECK_STATUS(aclrtCreateStream(&stream));
     CHECK_STATUS(context->SetExecuteStream(stream));
+
+    // 创建op
+    atb::Operation *mlaOp = nullptr;
+    CHECK_STATUS(CreateMultiLatentAttentionOperation(headNum, &mlaOp));
+
     // 执行demo
-    CHECK_STATUS(RunDemo(context, stream, dtype, tokenNum, headNum, kSeqLen));
+    CHECK_STATUS(RunDemo(mlaOp, context, stream, dtype, tokenNum, headNum, kSeqLen));
+    CHECK_STATUS(atb::DestroyOperation(mlaOp)); // operation，对象概念，先释放
     CHECK_STATUS(aclrtDestroyStream(stream));
     CHECK_STATUS(DestroyContext(context)); // context，全局资源，后释放
     CHECK_STATUS(aclFinalize());
