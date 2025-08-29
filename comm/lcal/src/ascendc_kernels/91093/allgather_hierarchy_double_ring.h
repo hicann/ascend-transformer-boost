@@ -120,7 +120,7 @@ private:
                 remainSize -= blockSize;
             } else {
                 if (i == 1) {
-                    sync.WaitSyncFlag(magic, 0 , stageEvents[static_cast<int>(STAGE::HCCS_RING)], rankRingForward);
+                    sync.WaitSyncFlag(magic, 0, stageEvents[static_cast<int>(STAGE::HCCS_RING)], rankRingForward);
                     waitFlag = sync.GetInnerFlag(rankRingForward,
                         stageEvents[static_cast<int>(STAGE::HCCS_RING)]) & EVENT_ID_MASK;
                 }
@@ -139,7 +139,7 @@ private:
             if (countRankId != rank) {
                 if ((rank + (i + 1) * RING_NUM) % rankSize == rank) {
                     queHccsForward.ReadFront();
-                    sync.SetSyncFlag(magic, i , sync.CalEventIdByMulBlockNum(RING_EVENT, blockIdx), rank);
+                    sync.SetSyncFlag(magic, i, sync.CalEventIdByMulBlockNum(RING_EVENT, blockIdx), rank);
                 } else {
                     sync.SetSyncFlag(magic, i - 1, sync.CalEventIdByMulBlockNum(RING_EVENT, blockIdx), rank);
                 }

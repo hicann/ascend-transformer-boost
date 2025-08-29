@@ -23,7 +23,7 @@ public:
     FORCE_INLINE_AICORE void CpGM2GM(const GlobalTensor<T>& outputGT, const GlobalTensor<U>& inputGT,
         const uint32_t calCount, int op, T scale, T offset)
     {
-        DataCopyGM2GM<T,U> cpKernel;
+        DataCopyGM2GM<T, U> cpKernel;
         cpKernel.Init(outputGT, inputGT, calCount, op);
         cpKernel.Process(scale, offset);
     }
@@ -32,7 +32,7 @@ public:
     FORCE_INLINE_AICORE void CpGM2GM(const GlobalTensor<T>& outputGT, const GlobalTensor<U>& inputGT,
         const uint32_t calCount, int op, const GlobalTensor<T>& scaleGT, int64_t scaleCount, T offset)
     {
-        DataCopyGM2GM<T,U> cpKernel;
+        DataCopyGM2GM<T, U> cpKernel;
         cpKernel.Init(outputGT, inputGT, calCount, op);
         cpKernel.Process(scaleGT, scaleCount, offset);
     }

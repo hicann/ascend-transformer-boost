@@ -189,7 +189,7 @@ private:
                     dmaSizePerCore * localBlockIdx, ipcBlockNum * IPC_QUE_DEPTH, ipcBlockNum);
             ringGatherSrcQue.Init(&sync, magic, shareAddrs[ringPrevRankId] + IPC_DATA_OFFSET +
                     IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx,
-                    ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
+                ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);
             ringGatherDstQue.Init(&sync, magic, shareAddrs[rank] + IPC_DATA_OFFSET +
                 IPC_QUE_DEPTH * ipcBlockSize + dmaSizePerCore * localBlockIdx,
                 ipcBlockNum * RING_GATHER_QUE_DEPTH, ipcBlockNum);

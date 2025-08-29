@@ -228,7 +228,7 @@ public:
         }
     }
 
-    __aicore__ inline void SioAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,int *waitWriteRank,
+    __aicore__ inline void SioAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,  int *waitWriteRank,
                                                 int *waitWriteBlock, int waitCount)
     {
         int processBlockNum = ipcBlockNum;
@@ -248,7 +248,7 @@ public:
         }
     }
 
-    __aicore__ inline void HccsAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock,int *waitWriteRank,
+    __aicore__ inline void HccsAtomicToIpcProcess(int *waitReadRank, int *waitReadBlock, int *waitWriteRank,
                                                 int *waitWriteBlock, int waitCount)
     {
         int processBlockNum = ipcBlockNum;

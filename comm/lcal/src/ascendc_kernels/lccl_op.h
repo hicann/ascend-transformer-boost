@@ -78,7 +78,7 @@ extern "C" __global__ __aicore__ void LcalBroadcast##suffix(KERNELS_ARGS_FUN()) 
 }
 
 #define LCCL_ALLGATHER_FUNC_AUTO_DEF(type, suffix) \
-extern "C" __global__ __aicore__ void LcalAllGather_##type##suffix(KERNELS_ARGS_FUN()) {\
+extern "C" __global__ __aicore__ void LcalAllGather_##type##suffix(KERNELS_ARGS_FUN()) { \
     if ASCEND_IS_AIV { \
     GET_COMM_ARGS; \
     constexpr int32_t quickOneshotRankSize = 2; \
@@ -110,7 +110,7 @@ extern "C" __global__ __aicore__ void LcalAllGather_##type##suffix(KERNELS_ARGS_
         } else { \
             LcalAllGatherBigData<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } \
-    }\
+    } \
     } \
 }
 
@@ -183,7 +183,7 @@ extern "C" __global__ __aicore__ void LcalAllReduce_##type##suffix(KERNELS_ARGS_
         } else { \
             LcalAllReduceBigData<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
         } \
-    }\
+    } \
     } \
 }
 
@@ -241,6 +241,6 @@ extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_A
             LcalReduceScatterBigData<type>(ALLREDUCE_ARGS_CALL(type)); \
         } \
     } \
-    }\
+    } \
 }
 #endif

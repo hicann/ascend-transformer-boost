@@ -84,7 +84,7 @@ template<typename T>
 __aicore__ inline void DataCopyWrap(const GlobalTensor<T> &dstGlobal, const LocalTensor<T> &srcLocal,
                                     const uint32_t size)
 {
-    if(size % UB_ALIGN_SIZE == 0) {
+    if (size % UB_ALIGN_SIZE == 0) {
         DataCopy(dstGlobal, srcLocal, size / sizeof(T));
     } else {
         DataCopyExtParams copyParams{1, size, 0, 0, 0};
@@ -96,7 +96,7 @@ template<typename T>
 __aicore__ inline void DataCopyWrap(const LocalTensor<T> &dstLocal, const GlobalTensor<T> &srcGlobal,
                                     const uint32_t size)
 {
-    if(size % UB_ALIGN_SIZE == 0) {
+    if (size % UB_ALIGN_SIZE == 0) {
         DataCopy(dstLocal, srcGlobal, size / sizeof(T));
     } else {
         DataCopyExtParams copyParams{1, size, 0, 0, 0};

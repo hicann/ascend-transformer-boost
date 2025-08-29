@@ -128,7 +128,7 @@ private:
                 ipcDataNumPreBlock);
             srcLocalQue.DeQue(rank, flagIdx + (srcRank / SIO) * coreNumPerStage + flagNumPerStage);
             writeGt = srcLocalQue.EnQue();
-            if(copyLen > 0) {
+            if (copyLen > 0) {
                 CpGM2GMPingPong<T>(copyLen * sizeof(T), inputGt[sliceIdx * perQueElemLen], writeGt, Op::COPYONLY);
                 sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, flagIdx, rank);
             }
@@ -143,7 +143,7 @@ private:
                                 (groupCoreIdx - singleStage) * ipcDataNumPreBlock, ipcDataNumPreBlock);
             srcSioQue.DeQue(sioRank, flagIdx + (sioSrcRank / SIO) * coreNumPerStage + flagNumPerStage);
             writeGt = srcSioQue.EnQue();
-            if(copyLen > 0) {
+            if (copyLen > 0) {
                 CpGM2GMPingPong<T>(copyLen * sizeof(T), inputGt[sliceIdx * perQueElemLen], writeGt, Op::COPYONLY);
                 sync.SetSyncFlag(magic, sliceIdx + sliceNum * idx, flagIdx, sioRank);
             }
