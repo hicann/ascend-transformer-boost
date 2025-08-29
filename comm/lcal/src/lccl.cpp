@@ -225,6 +225,10 @@ uint32_t GetKernelBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
 uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize,
                            int localRankSize, uint32_t extraFlag) const
 {
+    if (comm_ == nullptr) {
+        MKI_LOG(ERROR) << "comm is nullptr" << __LINE__;
+        return 0;
+    }
     uint32_t blockNum = GetKernelBlockNum(cclType, rankSize, dataSize, localRankSize, extraFlag);
     if (comm_->isEnableMix_) {
         constexpr uint32_t aivNumPerAic = 2;
@@ -330,6 +334,9 @@ bool Lccl::CheckBuff(const void *sendBuff, const void *recvBuff) const
         res = false;
     } else if (recvBuff == nullptr) {
         MKI_LOG(ERROR) << "Lccl recvBuff is nullptr";
+        res = false;
+    } else if (comm_ == nullptr) {
+        MKI_LOG(ERROR) << "comm is nullptr" << __LINE__;
         res = false;
     }
     return res;

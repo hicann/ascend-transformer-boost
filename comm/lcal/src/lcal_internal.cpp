@@ -78,7 +78,7 @@ const int* FindNextOpStart(const int opStartMaigc, const int* cclBinEndPtr, cons
         MKI_LOG(ERROR) << "FindNextOpStart failed! cclBinPtr is nullptr";
         return nullptr;
     }
-    while (*cclBinPtr != opStartMaigc and cclBinPtr < cclBinEndPtr) {
+    while (cclBinPtr < cclBinEndPtr and *cclBinPtr != opStartMaigc) {
         cclBinPtr++;
     }
     if (*cclBinPtr == opStartMaigc) {

@@ -198,7 +198,8 @@ extern "C" __global__ __aicore__ void LcalAll2All_##type##suffix(KERNELS_ARGS_FU
         LcalAll2AllTranspose<type>(ALLREDUCE_ARGS_CALL_16P(type)); \
     } \
     else if ((extraFlag & ExtraFlag::TOPO_910_93) != 0) { \
-        if (rankSize <= smallRankSize && len * sizeof(type) > SMALL_DATA_SIZE) { \
+        if (rankSize <= smallRankSize && len * sizeof(type) > SMALL_DATA_SIZE && \
+            (len * sizeof(type)) % (smallRankSize * smallRankSize * rankSize) == 0) { \
             CLASS_OP_LAUNCH(All2AllHierarchySmall, type); \
     } else { \
             CLASS_OP_LAUNCH(All2AllHierarchy, type); \

@@ -97,7 +97,7 @@ ChipName GetChipName()
         MKI_LOG(WARN) << "There is no commitment to the supported chip types yet," <<
             " and it is not certain whether the functions will work properly.";
     }
-    return curChipName;    
+    return curChipName;
 }
 
 uint32_t GetCoreNum(ChipName chipName)
@@ -176,11 +176,11 @@ int LcalComm::InitDumpAddr()
     }
 
     ret = aclrtMemcpy(dumpAddr, dumpWorkspaceSize, memory, dumpWorkspaceSize, ACL_MEMCPY_HOST_TO_DEVICE);
+    std::free(memory);
     if (ret != ACL_SUCCESS) {
         MKI_LOG(ERROR) << "aclrtMemcpy err " << __LINE__ << " " << ret;
         return LCAL_ERROR_INTERNAL;
     }
-    std::free(memory);
 
     commArgs_.dumpAddr = dumpAddr;
     return LCAL_SUCCESS;
@@ -831,4 +831,4 @@ std::string LcalComm::PrintDFX()
     return ss.str();
 }
 
-}
+} // Lcal
