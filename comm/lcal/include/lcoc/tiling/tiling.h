@@ -35,12 +35,12 @@ protected:
 
 class CoCMatmulAllReduceTilingFunc : public CoCTilingFunc {
 public:
-    CoCMatmulALlReduceTilingFunc(const CoCMatmulAllReduceTilingFunc &) = delete;
+    CoCMatmulAllReduceTilingFunc(const CoCMatmulAllReduceTilingFunc &) = delete;
     CoCMatmulAllReduceTilingFunc &operator = (const CoCMatmulAllReduceTilingFunc &) = delete;
     CoCMatmulAllReduceTilingFunc() {}
     bool CheckTiling(const TaskParam &taskParam) override;
     void GetDefaultTiling(const TaskParam &taskParam) override;
-}
+};
 
 class CoCMatmulAllReduceDeterTilingFunc : public CoCMatmulAllReduceTilingFunc {
 public:
@@ -49,7 +49,7 @@ public:
     CoCMatmulAllReduceDeterTilingFunc() {}
     bool CheckTiling(const TaskParam &taskParam) override;
     void GetDefaultTiling(const TaskParam &taskParam) override;
-}
+};
 
 class CoCAllgatherMatmulReduceScatterTilingFunc : public CoCTilingFunc {
 public:

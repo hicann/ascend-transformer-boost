@@ -93,7 +93,7 @@ const std::map<LcalType, std::string> LCAL_TYPE2NAME = {
     { LcalType::ALL2ALL_V_C, "LcalAll2AllVC" },
     { LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER, "LcalAllGatherMatmulReduceScatter" },
     { LcalType::BANDWIDTH, "LcalBandwidthTest" },
-    { LcalType::LOCAL_REDUCE, "LcalLcalReduce" },
+    { LcalType::LOCAL_REDUCE, "LcalLoalReduce" },
     { LcalType::GATHER, "LcalGather" },
     { LcalType::SEND, "LcalSend" },
     { LcalType::RECV, "LcalRecv" }

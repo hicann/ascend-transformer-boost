@@ -7,7 +7,6 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
  #include "lcoc_func.h"
  #include "lcoc_args.h"
  #include "mki/utils/log/log.h"
@@ -17,8 +16,8 @@
 
     bool CheckParamScope(const std::string &name, const int &value, const int &min, const int &max)
     {
-        if (value < min || (max != PARA_CHECK_MAX_VALUE && value > max)) {
-            if (max == PARA_CHECK_MAX_VALUE) {
+        if (value < min || (max != PARM_CHECK_MAX_VALUE && value > max)) {
+            if (max == PARM_CHECK_MAX_VALUE) {
                 MKI_LOG(ERROR) << "The " << name << ":" << value << " must equal or greater than " << min << "!";
             } else {
                 MKI_LOG(ERROR) << "The " << name << ":" << value << " must be in [" << min << "," << max << "]!";
@@ -73,7 +72,7 @@
     }
 
     int64_t GetAlignedMatrixSize(const int64_t &batchSize, const int64_t &m, const int64_t &n, const bool &transpose,
-                                int nElemAlign)
+                                 int nElemAlign)
     {
         int64_t nRow = transpose ? n : m;
         int64_t nCol = transpose ? m : n;

@@ -34,10 +34,10 @@ public:
             this->other_rank_ag_idx = other_rank % ag_dim;
             this->other_rank_rs_idx = other_rank / ag_dim;
         }else {
-            this->rank_ag_idx = rank % rs_dim;
-            this->rank_rs_idx = rank / rs_dim;
-            this->other_rank_ag_idx = other_rank % rs_dim;
-            this->other_rank_rs_idx = other_rank / rs_dim;
+            this->rank_ag_idx = rank / rs_dim;
+            this->rank_rs_idx = rank % rs_dim;
+            this->other_rank_ag_idx = other_rank / rs_dim;
+            this->other_rank_rs_idx = other_rank % rs_dim;
         }
 
         twod_big_dim = ag_dim > rs_dim ? ag_dim : rs_dim;
@@ -52,7 +52,7 @@ public:
         ag_comm_npu_split = comm_npu_split;
         ag_comm_data_split = comm_data_split;
         ag_len_per_loop = len_per_loop;
-        ag_comm_direct = ag_comm_direct;
+        ag_comm_direct = comm_direct;
 
         rs_comm_npu_split = extra_comm_npu_split;
         rs_comm_data_split = extra_comm_data_split;
@@ -61,7 +61,7 @@ public:
         ag_core_count = ag_comm_npu_split * ag_comm_data_split;
         rs_core_count = rs_comm_npu_split * rs_comm_data_split;
 
-        ag_max_ub_ping_pong_size = (max_ub_ping_pong_size / 2) / n0 * n0;
+        ag_max_ub_ping_pong_size = (max_ub_single_dma_size / 2) / n0 * n0;
         rs_max_ub_ping_pong_size = (extra_ub_move_num / 2) / n0 * n0;
     }
 
@@ -70,7 +70,7 @@ public:
         auto ub1 = output_UB_T[1];
         int32_t interm_offset = 0;
         for (int32_t move_idx = 0; interm_offset < copy_size; ++move_idx) {
-            uint32_t data_size = interm_offset + max_ub_ping_pong_size < copy_size ? ag_max_ub_ping_pong_size : copy_size - interm_offset;
+            uint32_t data_size = interm_offset + ag_max_ub_ping_pong_size < copy_size ? ag_max_ub_ping_pong_size : copy_size - interm_offset;
             auto event_id = (move_idx & 1) ? EVENT_ID0 : EVENT_ID1;
             auto ub = (move_idx & 1) ? ub0 : ub1;
             WaitFlag<HardEvent::MTE3_MTE2>(event_id);
@@ -105,11 +105,11 @@ public:
                 int32_t real_rank;
                 if (inner_dim_is_Ag) {
                     real_rank = dst_rank + rank / ag_dim * ag_dim;
-                } esle {
+                } else {
                     real_rank = dst_rank * rs_dim + rank % rs_dim;
                 }
                 if (real_rank != rank && dst_rank < ag_dim) {
-                    CopyUbufToGM(buff[real_rank] + rank_offset, ub_buff_st, 1, block_len, 0, 0)
+                    CopyUbufToGm(buff[real_rank] + rank_offset, ub_buff_st, 1, block_len, 0, 0)
                 }
                 dst_rank = (dst_rank + skip_num) % ag_dim;
             }
@@ -169,7 +169,7 @@ public:
         return real_core_idx;
     }
 
-    FORCE_INLINE_AICORE void GetLenPerCore(int32_t rank_total, int32_t loop_index, int32_t &m_in_core, int32_t &rank_buff_offset)
+    FORCE_INLINE_AICORE void GetLenPerCore(int32_t rank_total, int32_t loop_index, int32_t &m_in_core, int32_t &buff_offset)
     {
         int32_t core_index = core_idx - ag_core_count;
         int32_t before_core_offset = rs_len_per_loop * rs_comm_data_split * loop_index;
@@ -199,7 +199,7 @@ public:
 
             for (int32_t rank_idx = 0; rank_idx < rank_per_core; rank_idx++) {
                 int32_t real_rank_idx_tmp = GetRealCoreIdx(rank_idx, rank_per_core);
-                int32_t real_core_idx;
+                int32_t real_rank_idx;
                 if (inner_dim_is_Ag) {
                     real_rank_idx = real_rank_idx_tmp * ag_dim + rank % ag_dim;
                 } else {
@@ -220,7 +220,7 @@ public:
         PipeBarrier<PIPE_ALL>();
     }
 
-    FORCE_INLINE_AICORE void FirstStepInOut(int32_t mat_blocks_size, __gm__ T *input, int32_t gm_ofset, int32_t offset, int32_t comm_idx, int32_t flag_idx, int64_t out_part_offset) {
+    FORCE_INLINE_AICORE void FirstStepInOut(int32_t mat_blocks_size, __gm__ T *input, int32_t gm_offset, int32_t offset, int32_t comm_idx, int32_t flag_idx, int64_t out_part_offset) {
         int32_t ping_pong_move_count = DivCeil(mat_blocks_size, rs_max_ub_ping_pong_size);
         for (int32_t move_idx = 0; move_idx < ping_pong_move_count; ++move_idx) {
             int32_t actual_move_size = rs_max_ub_ping_pong_size;
@@ -229,7 +229,7 @@ public:
             }
             auto event_id = (move_idx & 1) ? EVENT_ID0 : EVENT_ID1;
             auto ub_buff_st = (move_idx & 1) ? output_UB_T[0] : output_UB_T[1];
-            WaitFlag<HardEvent::MTE2_MTE3>(event_id);
+            WaitFlag<HardEvent::MTE3_MTE2>(event_id);
             CopyGmToUbuf(ub_buff_st, input + gm_offset + offset + move_idx * rs_max_ub_ping_pong_size, 1, actual_move_size * sizeof(T) / 32, 0, 0);
             SetFlag<HardEvent::MTE2_MTE3>(event_id);
             WaitFlag<HardEvent::MTE2_MTE3>(event_id);
@@ -362,15 +362,10 @@ public:
     using CocCommBase<T>::trans_a;
     using CocCommBase<T>::trans_b;
     using CocCommBase<T>::is_int8;
-    using CocCommBase<T>::is_91093;
     using CocCommBase<T>::p_value;
     using CocCommBase<T>::aiv_idx;
     using CocCommBase<T>::other_rank;
     using CocCommBase<T>::max_ub_single_dma_size;
-    using CocCommBase<T>::withSerialMode;
-    using CocCommBase<T>::tag;
-    using CocCommBase<T>::loop_num_per_comm;
-    using CocCommBase<T>::gm_c_pingpong_size;
     using CocCommBase<T>::dequant_granularity;
     using CocCommBase<T>::dequant_group_size;
     using CocCommBase<T>::quant_granularity;
@@ -378,6 +373,7 @@ public:
     using CocCommBase<T>::workspace_info;
     using CocCommBase<T>::ag_dim;
     using CocCommBase<T>::rs_dim;
+    using CocCommBase<T>::inner_dim_is_Ag;
     using CocCommBase<T>::comm_npu_split;
     using CocCommBase<T>::comm_data_split;
     using CocCommBase<T>::comm_direct;

@@ -17,18 +17,18 @@
 using namespace Mki;
 
 namespace Lcal {
-int CoCkernelArgs::SetFFTSAddr()
+int CoCKernelArgs::SetFFTSAddr()
 {
     uint32_t fftsLen;
-    int MkiRtGetC2cCtrlAddr(&fftsAddr, &fftsLen);
+    int error = MkiRtGetC2cCtrlAddr(&fftsAddr, &fftsLen);
     if (error != MKIRT_SUCCESS) {
-        MKT_LOG(ERROR) << "MkiRtGetC2cCtrlAddr err";
+        MKI_LOG(ERROR) << "MkiRtGetC2cCtrlAddr err";
         return LCAL_ERROR_MKIRT;
     }
     return LCAL_SUCCESS;    
 }
 
-void CoCkernelArgs::SetInputPkgArgs(CoCInputPkg &inputPkg)
+void CoCKernelArgs::SetInputPkgArgs(CoCInputPkg &inputPkg)
 {
     matrixA = inputPkg.matrixA;
     matrixB = inputPkg.matrixB;
@@ -40,43 +40,43 @@ void CoCkernelArgs::SetInputPkgArgs(CoCInputPkg &inputPkg)
     quantOffset = inputPkg.quantOffset;
 }
 
-void CoCkernelArgs::SetOutputPkgArgs(CoCOutputPkg &outputPkg)
+void CoCKernelArgs::SetOutputPkgArgs(CoCOutputPkg &outputPkg)
 {
     output = outputPkg.output;
-    minOutput = outputPkg.midOutput;
+    midOutput = outputPkg.midOutput;
 }
 
-void CoCkernelArgs::SetWorkspacePtrArg(void *workspacePtr)
+void CoCKernelArgs::SetWorkspacePtrArg(void *workspacePtr)
 {
     workspace = workspacePtr;
 }
 
-void CoCkernelArgs::SetParamDescArgs(const CoCParamDesc &paramDesc)
+void CoCKernelArgs::SetParamDescArgs(const CoCParamDesc &paramDesc)
 {
-    cockernelParm.quantInfo = paramDesc.quantInfo;
-    cockernelParm.twoDimTPInfo = paramDesc.twoDimTPInfo;
-    cockernelParm.postInfo = paramDesc.postInfo;
-    cockernelParm.weightNz = paramDesc.mmInfo.weightNz;
+    cocKernelParam.quantInfo = paramDesc.quantInfo;
+    cocKernelParam.twoDimTPInfo = paramDesc.twoDimTPInfo;
+    cocKernelParam.postInfo = paramDesc.postInfo;
+    cocKernelParam.weightNz = paramDesc.mmInfo.weightNz;
 }
 
-void CoCkernelArgs::SetCommArgs(const LcalComm &comm)
+void CoCKernelArgs::SetCommArgs(const LcalComm &comm)
 {
     commArgsPtr = comm.GetCommArgsPtr();
 }
 
-void CoCkernelArgs::SetCoCTilingDataArgs(const CoCTilingData &tilingData)
+void CoCKernelArgs::SetCoCTilingDataArgs(const CoCTilingData &tilingData)
 {
-    pCocTiling = &(cockernelParm.cocTilingData);
-    cockernelParm.cocTilingData = tilingData;
+    pCocTiling = &(cocKernelParam.cocTilingData);
+    cocKernelParam.cocTilingData = tilingData;
 }
 
-std::string CoCkernelArgs::ParamToString()
+std::string CoCKernelArgs::ParamToString()
 {
     std::string quantInfoString = "[QuantInfo]: dequantGranularity=" + 
-                                    std::to_string(cockernelParm.quantInfo.dequantGranularity) + "\n";
+                                    std::to_string(cocKernelParam.quantInfo.dequantGranularity) + "\n";
     std::string weightNzInfoString = "[weightNz]: weightNz=" + 
-                                    std::to_string(cockernelParm.weightNz) + "\n";
-    std::string tilingInfoString = cockernelParm.cocTilingData.ToString();
+                                    std::to_string(cocKernelParam.weightNz) + "\n";
+    std::string tilingInfoString = cocKernelParam.cocTilingData.ToString();
     return quantInfoString + weightNzInfoString + tilingInfoString;
 }
 }
