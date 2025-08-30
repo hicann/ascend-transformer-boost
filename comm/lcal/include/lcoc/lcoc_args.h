@@ -30,33 +30,33 @@ namespace Lcal {
 
     enum CoCDataTypeDesc : int {
         COC_DATA_TYPE_UNDEFINED = -1,
-        FP16FP16_FP32_FP16 = 0,
-        BF16BF16_FP32_BF16 = 1,
-        INT8INT8_INT32_FP16 = 2,
-        INT8INT8_INT32_BF16 = 3,
-        FP16INT8_INT32_FP16 = 4,
-        BF16INT8_INT32_BF16 = 5,
-        FP16INT8_FP32_FP16 = 6,
-        BF16INT8_FP32_BF16 = 7,
-        FP16INT4_FP32_FP16 = 8,
-        BF16INT4_FP32_BF16 = 9,
+        FP16FP16_FP32_FP16 = 0,   // 无量化，无反量化
+        BF16BF16_FP32_BF16 = 1,   // 无量化，无反量化
+        INT8INT8_INT32_FP16 = 2,  // W8A8，未融合量化，随路反量化
+        INT8INT8_INT32_BF16 = 3,  // W8A8，未融合量化，aiv反量化
+        FP16INT8_INT32_FP16 = 4,  // W8A8，融合量化，随路反量化
+        BF16INT8_INT32_BF16 = 5,  // W8A8，融合量化，aiv反量化
+        FP16INT8_FP32_FP16 = 6,   // W8A16，融合伪量化，无反量化
+        BF16INT8_FP32_BF16 = 7,   // W8A16，融合伪量化，无反量化
+        FP16INT4_FP32_FP16 = 8,   // W4A16，融合伪量化，无反量化
+        BF16INT4_FP32_BF16 = 9,   // W4A16，融合伪量化，无反量化
         COC_DATA_TYPE_DESC_MAX = 10,
     };
 
     const std::map<CoCDataTypeDesc, int32_t> COC_TYPE2ELE_SIZE = {
         { FP16FP16_FP32_FP16, FP_BF_16_ELE_SIZE }, { BF16BF16_FP32_BF16, FP_BF_16_ELE_SIZE },
-        { INT8INT8_INT32_FP16, INT8_ELE_SIZE }, { INT8INT8_INT32_BF16, INT8_ELE_SIZE },
-        { FP16INT8_INT32_FP16, INT8_ELE_SIZE }, { BF16INT8_INT32_BF16, INT8_ELE_SIZE },
+        { INT8INT8_INT32_FP16, INT8_ELE_SIZE },    { INT8INT8_INT32_BF16, INT8_ELE_SIZE },
+        { FP16INT8_INT32_FP16, INT8_ELE_SIZE },    { BF16INT8_INT32_BF16, INT8_ELE_SIZE },
         { FP16INT8_FP32_FP16, FP_BF_16_ELE_SIZE }, { BF16INT8_FP32_BF16, FP_BF_16_ELE_SIZE },
         { FP16INT4_FP32_FP16, FP_BF_16_ELE_SIZE }, { BF16INT4_FP32_BF16, FP_BF_16_ELE_SIZE }
     };
 
     const std::map<CoCDataTypeDesc, HcclDataType> COC_TYPE2HCCL_TYPE = {
-        { FP16FP16_FP32_FP16, HCCL_DATA_TYPE_FP16 }, { BF16BF16_FP32_BF16, HCCL_DATA_TYPE_BFP16 },
+        { FP16FP16_FP32_FP16, HCCL_DATA_TYPE_FP16 },  { BF16BF16_FP32_BF16, HCCL_DATA_TYPE_BFP16 },
         { INT8INT8_INT32_FP16, HCCL_DATA_TYPE_FP16 }, { INT8INT8_INT32_BF16, HCCL_DATA_TYPE_BFP16 },
         { FP16INT8_INT32_FP16, HCCL_DATA_TYPE_FP16 }, { BF16INT8_INT32_BF16, HCCL_DATA_TYPE_BFP16 },
-        { FP16INT8_FP32_FP16, HCCL_DATA_TYPE_FP16 }, { BF16INT8_FP32_BF16, HCCL_DATA_TYPE_BFP16 },
-        { FP16INT4_FP32_FP16, HCCL_DATA_TYPE_FP16 }, { BF16INT4_FP32_BF16, HCCL_DATA_TYPE_BFP16 }
+        { FP16INT8_FP32_FP16, HCCL_DATA_TYPE_FP16 },  { BF16INT8_FP32_BF16, HCCL_DATA_TYPE_BFP16 },
+        { FP16INT4_FP32_FP16, HCCL_DATA_TYPE_FP16 },  { BF16INT4_FP32_BF16, HCCL_DATA_TYPE_BFP16 }
     };
 
     struct CoCParamDesc {
@@ -64,8 +64,9 @@ namespace Lcal {
         MatMulInfo mmInfo = {};
         QuantInfo quantInfo = {};
         PostInfo postInfo = {};
-        HcclReduceOp op = HCCL_REDUCE_SUM;
+        HcclReduceOp op = HCCL_REDUCE_SUM; // 当前不支持其他值
         TwoDimTPInfo twoDimTPInfo = {};
+        MoeInfo moeInfo = {};
     };
 
     struct CoCInputPkg {
@@ -73,26 +74,33 @@ namespace Lcal {
         void *matrixB = nullptr;
         void *bias = nullptr;
         void *gamma = nullptr;
-        void *dequantScale = nullptr;
-        void *dequantOffset = nullptr;
+        void *dequantScale = nullptr; // 反量化参数，当融合了Matmul前置伪量化或后置反量化操作时需要传入
+        void *dequantOffset = nullptr; // 可选，若无offset（如对称量化场景），传入空指针即可
 
-        void *quantScale = nullptr;
-        void *quantOffset = nullptr;
+        void *quantScale = nullptr; // 量化参数，当融合了量化操作时需要传入
+        void *quantOffset = nullptr; // 可选，若无offset（如对称量化场景），传入空指针即可
+        void *num_local_tokens_per_expert = nullptr;
+        void *num_global_tokens_per_local_expert = nullptr;
+        void *global_tokens_per_expert_matrix = nullptr;
     };
 
     struct CoCOutputPkg {
         void *output = nullptr;
-        void *midOutput = nullptr;
+        void *midOutput = nullptr; // 先通信后计算情况下，通信的中间结果
     };
 
     struct TaskParam {
+        // hardware info
         int32_t rank = -1;
         int32_t rankSize = -1;
         int32_t blockDim = -1;
         int32_t bufferSize = -1;
         ChipName chipName = ChipName::CHIP_910B3;
+        // param info
         CoCParamDesc cocParamDesc = {};
+
+        // type
         LcalType lcalType = LcalType::ALL_REDUCE;
     };
 }
-#endif
+#endif  // LCAL_LCOC_ARGS_H
