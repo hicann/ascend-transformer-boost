@@ -191,6 +191,7 @@ Status MLATiling(const LaunchParam &launchParam, KernelInfo &kernelInfo)
     GetTilingKeyTypeBase(mmInfo, qTensor, qRopeTensor);
     uint32_t blockDim = PlatformInfo::Instance().GetCoreNum(CoreType::CORE_TYPE_CUBE);
     Status ret1 = GetMLAInfo(launchParam, mmInfo, param, blockDim);
+    OP_TILING_CHECK_STATUS_RETURN(ret1);
     uint32_t *tilingParam = reinterpret_cast<uint32_t *>(kernelInfo.GetTilingHostAddr());
     uint64_t tilingSize = kernelInfo.GetTilingSize();
     Status ret = GetMLATilingParam(launchParam, mmInfo, blockDim, tilingParam, tilingSize);
