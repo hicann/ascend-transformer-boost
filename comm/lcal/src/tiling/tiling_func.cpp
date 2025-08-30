@@ -222,7 +222,7 @@ namespace Lcal {
                 return false;
             }
         }
-        return true;        
+        return true;
     }
 
     bool CheckCoCTilingData(const CoCTilingData &tilingData)

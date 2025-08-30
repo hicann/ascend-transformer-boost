@@ -236,7 +236,7 @@ int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *wo
     return LaunchOperator(inputPkg, outputPkg, workspace, stream);
 }
 
-int Lcoc::AllGatherMatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, 
+int Lcoc::AllGatherMatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
                                        aclrtStream stream)
 {
     LcalType lcalType = LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER;
