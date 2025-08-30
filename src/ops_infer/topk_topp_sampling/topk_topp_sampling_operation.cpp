@@ -154,6 +154,10 @@ Status TopkToppSamplingOperation::CheckSingleTopk(const SVector<TensorDesc> &inT
                        << inTensorDescs.at(0).shape.dimNum << ")";
         return ERROR_INVALID_PARAM;
     }
+    if (inTensorDescs.at(1).shape.dims[1] != 1) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "size of topp: " << inTensorDescs.at(1).shape.dims[1] << " should be 1";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
     return CheckBatchSize(inTensorDescs);
 }
 
@@ -245,9 +249,11 @@ Status TopkToppSamplingOperation::CheckExponential(const SVector<TensorDesc> &in
 
 Status TopkToppSamplingOperation::CheckIntensorAndParam(const SVector<TensorDesc> &inTensorDescs) const
 {
-    if (!TensorCheck::IsTensorDescDimNumValid(inTensorDescs.at(0), 2)) { // 2 = [batch, voc_size]
-        ATB_LOG(ERROR) << "inTensor dim num is not support, inTensor only support 2";
-        return ERROR_INVALID_TENSOR_DIM;
+    for (size_t i = 0; i < inTensorDescs.size(); i++) {
+        if (!TensorCheck::IsTensorDescDimNumValid(inTensorDescs.at(i), 2)) { // 2 = [batch, voc_size] / [batch, 1]
+            ATB_LOG(ERROR) << GetLogPrefix() << "inTensor dim num is not support, dim num of inTensor only support 2";
+            return ERROR_INVALID_TENSOR_DIM_NUM;
+        }
     }
     switch (param_.topkToppSamplingType) {
         case atbInferTopkToppSamplingType::SINGLE_TOPK_SAMPLING:
@@ -271,24 +277,6 @@ Status TopkToppSamplingOperation::InferShapeCheckImpl(const SVector<TensorDesc> 
     return CheckIntensorAndParam(inTensorDescs);
 }
 
-Status TopkToppSamplingOperation::TopkToppLogProbsOutTensorCheck(const SVector<TensorDesc> &outTensorDescs) const
-{
-    if (outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dimNum != LOG_PROBS_OUT_TENSOR_DIM &&
-        (param_.topkToppSamplingType != atb::infer::TopkToppSamplingParam::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING &&
-         param_.topkToppSamplingType != atb::infer::TopkToppSamplingParam::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING)) {
-        ATB_LOG(ERROR) << "logProbsTensor shape dimNum: " << outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dimNum
-                       << ", which should be same as " << LOG_PROBS_OUT_TENSOR_DIM;
-        return ERROR_INVALID_TENSOR_DIM_NUM;
-    }
-    if (outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dims[LAST_DIM] != param_.logProbsSize &&
-        (param_.topkToppSamplingType != atb::infer::TopkToppSamplingParam::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING &&
-         param_.topkToppSamplingType != atb::infer::TopkToppSamplingParam::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING)) {
-        ATB_LOG(ERROR) << "logProbsTensor dim:" << LAST_DIM << ", which should be same as " << param_.logProbsSize;
-        return ERROR_INVALID_TENSOR_DIM;
-    }
-    return NO_ERROR;
-}
-
 Status TopkToppSamplingOperation::SetupCheckImpl(const SVector<Tensor> &inTensors,
                                                  const SVector<Tensor> &outTensors) const
 {
@@ -297,6 +285,18 @@ Status TopkToppSamplingOperation::SetupCheckImpl(const SVector<Tensor> &inTensor
     SVector<TensorDesc> outTensorDescs = {};
     OperationUtil::InTensorsToInTensorDescs(outTensors, outTensorDescs);
     ATB_LOG(DEBUG) << "outTensors size:" << outTensors.size();
+    for (size_t i = 0; i < outTensorDescs.size(); i++) {
+        if (!TensorCheck::IsTensorDescDimNumValid(outTensorDescs.at(i), 2)) {
+            if ((param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
+                 param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) &&
+                 param_.logProbsSize == 0 && i == outTensorDescs.size() - 1) {
+                    ATB_LOG(INFO) << GetLogPrefix() << "the dimNum of outTensor[" << i << "] allows not be 2 when logProbsSize is 0";
+            } else {
+                ATB_LOG(ERROR) << GetLogPrefix() << "the dimNum of outTensor[" << i <<"] should be 2";
+                return ERROR_INVALID_TENSOR_DIM_NUM;
+            }
+        }
+    }
     if (!(outTensorDescs.at(0).shape.dims[0] == outTensorDescs.at(1).shape.dims[0])) {
         ATB_LOG(ERROR) << "The batch size of outTensors should be same.";
         return ERROR_INVALID_TENSOR_DIM;
@@ -313,9 +313,10 @@ Status TopkToppSamplingOperation::SetupCheckImpl(const SVector<Tensor> &inTensor
     }
     if (param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_EXPONENTIAL_LOGPROBS_SAMPLING ||
         param_.topkToppSamplingType == atbInferTopkToppSamplingType::BATCH_TOPK_MULTINOMIAL_LOGPROBS_SAMPLING) {
-        Status LogProbsOutTensorCheckRes = TopkToppLogProbsOutTensorCheck(outTensorDescs);
-        if (LogProbsOutTensorCheckRes != NO_ERROR) {
-            return LogProbsOutTensorCheckRes;
+        if (param_.logProbsSize != 0 && outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dims[LAST_DIM] != param_.logProbsSize) {
+            ATB_LOG(ERROR) << "the last dim of logProbsTensor dim:" << outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dims[LAST_DIM]
+                           << ", which should be same as " << param_.logProbsSize;
+            return ERROR_INVALID_TENSOR_DIM;
         }
     }
     return CheckIntensorAndParam(inTensorDescs);
