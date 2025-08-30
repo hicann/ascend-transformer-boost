@@ -841,8 +841,8 @@ b. 如果OP支持输入为空Tensor，重写`GetEmptyInTensorPermissions`函数
 a. `ParamCheck`函数用于函数式宏`OPERATION_PARAM_FUNCS`内部；  
 b. `InferShape`校验：
 
-* 校验各个输入Tensor的维度数（dimNum），尤其注意校验Tensor维度数之间的联系；
-* 校验各个输入Tensor的维度（dims）；
+* 校验各个输入Tensor的维度数（dimNum），以及校验Tensor维度数之间的联系；
+* 校验各个输入Tensor的维度（dims），以及校验Tensor维度之间的联系；
 * 需先校验维度数，再校验维度，防止校验维度时出现数组访问越界等问题；
 
 c. `Setup`校验：
@@ -938,7 +938,7 @@ torch.npu.synchronize()
 
 ###### 完整调用示例
 
-在atb仓库的`example/op_demo`目录下，存放了多个算子即编可用的算子调用Demo示例。进入对应目录执行如下命令就可完成一个算子的调用执行。
+在atb仓库的`example/op_demo`目录下，存放了多个不依赖测试框架、即编可用的算子调用Demo示例。进入对应目录执行如下命令就可完成一个算子的调用执行。
 
 ###### 文件编译说明
 

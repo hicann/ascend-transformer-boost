@@ -35,50 +35,50 @@ tests/apitest/opstest/python/operations/multi_latent_attention/
   
     **参数设置**：
 
-    | 成员名称    | 取值               |
-    | :------------ | :----------------------- |
-    | headNum  | 128 |
-    | qkScale  | 0.0416666679084301|
-    | kvHeadNum     | 1|
-    | maskType | `UNDEFINED`|
-    | calcType     | `CALC_TYPE_UNDEFINED`|
-    | cacheMode  | `INT8_NZCACHE`|
+    | 成员名称   | 取值                  |
+    | :-------- | :-------------------- |
+    | headNum   | 128                   |
+    | qkScale   | 0.0416666679084301    |
+    | kvHeadNum | 1                     |
+    | maskType  | `UNDEFINED`           |
+    | calcType  | `CALC_TYPE_UNDEFINED` |
+    | cacheMode | `INT8_NZCACHE`        |
 
     **数据规格**：
 
-    | tensor名字| 数据类型 | 数据格式 | 维度信息|
-    | --- | --- | --- | --- |
-    | `intensors[0]` | int8| nd | [4, 128, 512]|
-    |`intensors[1]`  |float16| nd |  [4, 128, 64]|
-    |`intensors[2]`  |  int8| nz  |[48, 16, 128, 32]  |
-    | `intensors[3]` | float16 | nz  | [48, 4, 128, 16] |
-    | `intensors[4]` | int32 | nd  | [4, 12] |
-    | `intensors[5]` | int32 | nd  | [4] |
-    | `intensors[6]` | float | nd  | [128] |
-    | `intensors[7]` | float | nd  | [128] |
-    | `outtensors[0]` | float16| nd | [4, 128, 512] |
+    | tensor名字    | 数据类型  | 数据格式  | 维度信息          | cpu/npu |
+    | ------------- | -------- | -------- | ----------------- | ------- |
+    | `qNope`       | int8     | nd       | [4, 128, 512]     | npu     |
+    | `qRope`       | float16  | nd       | [4, 128, 64]      | npu     |
+    | `ctKV`        | int8     | nz       | [48, 16, 128, 32] | npu     |
+    | `kRope`       | float16  | nz       | [48, 4, 128, 16]  | npu     |
+    | `blockTables` | int32    | nd       | [4, 12]           | npu     |
+    | `contextLens` | int32    | nd       | [4]               | cpu     |
+    | `qkDescale`   | float    | nd       | [128]             | npu     |
+    | `pvDescale`   | float    | nd       | [128]             | npu     |
+    | `attenOut`    | float16  | nd       | [4, 128, 512]     | npu     |
 
 - mlapa_ds_demo.cpp  
 
     **参数设置**：
 
-    | 成员名称    | 取值               |
-    | :------------ | :----------------------- |
-    | headNum  | 128 |
-    | qkScale  | 0.1352667747812271|
-    | kvHeadNum     | 1|
-    | maskType | `UNDEFINED`|
-    | calcType     | `CALC_TYPE_UNDEFINED`|
-    | cacheMode  | `KROPE_CTKV`|
+    | 成员名称   | 取值                  |
+    | :-------- | :-------------------- |
+    | headNum   | 128                   |
+    | qkScale   | 0.1352667747812271    |
+    | kvHeadNum | 1                     |
+    | maskType  | `UNDEFINED`           |
+    | calcType  | `CALC_TYPE_UNDEFINED` |
+    | cacheMode | `KROPE_CTKV`          |
 
     **数据规格**：
 
-    | tensor名字| 数据类型 | 数据格式 | 维度信息|
-    | --- | --- | --- | --- |
-    | `intensors[0]` | float16| nd | [32, 128, 512]|
-    |`intensors[1]`  |float16| nd |  [7168, 128, 64]|
-    |`intensors[2]`  |  float16| nd  |[160, 128, 1, 512]  |
-    | `intensors[3]` | float16 | nd  | [160, 128, 1, 64] |
-    | `intensors[4]` | int32 | nd  | [32, 5] |
-    | `intensors[5]` | int32 | nd  | [32] |
-    | `outtensors[0]` | float16| nd | [32, 128, 512] |
+    | tensor名字     | 数据类型  | 数据格式  | 维度信息           | cpu/npu |
+    | ------------- | -------- | -------- | ------------------ |-------- |
+    | `qNope`       | float16  | nd       | [32, 128, 512]     | npu     |
+    | `qRope`       | float16  | nd       | [7168, 128, 64]    | npu     |
+    | `ctKV`        | float16  | nd       | [160, 128, 1, 512] | npu     |
+    | `kRope`       | float16  | nd       | [160, 128, 1, 64]  | npu     |
+    | `blockTables` | int32    | nd       | [32, 5]            | npu     |
+    | `contextLens` | int32    | nd       | [32]               | cpu     |
+    | `attenOut`    | float16  | nd       | [32, 128, 512]     | npu     |
