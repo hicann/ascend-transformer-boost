@@ -83,7 +83,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src/include
     ${PROJECT_SOURCE_DIR}/src/kernels/include
-    ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcal
+    ${PROJECT_SOURCE_DIR}/comm/lcal/include
     ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcoc
     ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcoc/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
