@@ -15,8 +15,8 @@ import json
 import datetime
 import infratest_utils
 
-os.environ['ASDOPS_LOG_LEVEL'] = 'INFO'
-os.environ['ASDOPS_LOG_TO_FILE'] = '1'
+os.environ['ASCEND_MODULE_LOG_LEVEL'] = 'ATB=1:' + os.environ.get('ASCEND_MODULE_LOG_LEVEL', '')
+
 os.environ['ATB_COMPARE_TILING_EVERY_KERNEL'] = '1'
 
 class TestCmpKernel(unittest.TestCase):
@@ -37,7 +37,17 @@ class TestCmpKernel(unittest.TestCase):
         operation.execute(tensors)
     
     def test_kernel_res(self):
-        log_path = os.path.expanduser("~/" + "atb" + "/log/")
+        dir_path = "~"
+        env_var = os.environ.get('HOME')
+        if env_var:
+            dir_path = env_var + "/ascend/log"
+        env_var = os.environ.get('ASCEND_WORK_PATH')
+        if env_var:
+            dir_path = env_var
+        env_var = os.environ.get('ASCEND_PROCESS_LOG_PATH')
+        if env_var:
+            dir_path = env_var
+        log_path = os.path.expanduser(dir_path + "/atb/")
         files = os.listdir(log_path)
         latest_time = datetime.datetime.now()
         offset = datetime.timedelta(seconds=0.5)
@@ -58,8 +68,7 @@ class TestCmpKernel(unittest.TestCase):
                 else:
                     print('True')
                     os.remove(log_path + latest_file)
-                    os.environ['ASDOPS_LOG_LEVEL'] = 'FATAL'
-                    os.environ['ASDOPS_LOG_TO_FILE'] = '0'
+                    os.environ['ASCEND_MODULE_LOG_LEVEL'] = 'ATB=4:' + os.environ.get('ASCEND_MODULE_LOG_LEVEL', '')
                     os.environ['ATB_COMPARE_TILING_EVERY_KERNEL'] = '0'
         else:
             print('No log file found.')
