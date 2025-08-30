@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 #include <lcoc.h>
 #include <chrono>
 #include <mutex>
@@ -155,7 +164,7 @@ int Lcoc::SetParam(LcalType lcalType, const CoCTiling &tiling, const CoCParamDes
     SetLcocParam(lcalType, paramDesc);
     CoCTilingFunc *pTilingFunc = CreateCoCTilingFunc(lcalType);
     if (pTilingFunc == nullptr) {
-        PrintErrorLog(lcalType, "Create CoCTilingFunc Failed!");
+        PrintErrorLog(lcalType, "Create CoCTilingFunc failed!");
         return LCAL_ERROR_INTERNAL;
     }
     CoCTilingData tilingData = pTilingFunc->GenerateTiling(taskParam_, tiling);
@@ -217,7 +226,8 @@ bool Lcoc::CheckBasic(const CoCInputPkg &inputPkg, const CoCOutputPkg &outputPkg
     return true;
 }
 
-int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
+int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, 
+                          aclrtStream stream)
 {
     LcalType lcalType = LcalType::MATMUL_ALL_REDUCE;
     if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
@@ -259,13 +269,12 @@ bool IsMatrixAligned(const int64_t &m, const int64_t &n, const bool &transpose, 
 
 int64_t Lcoc::GetWorkspaceSize()
 {
-    LcalType lcaltype = taskParam_.lcalType;
+    LcalType lcalType = taskParam_.lcalType;
     auto cocParamDesc = taskParam_.cocParamDesc;
     bool isDeterministic = (GetComm()->GetCommArgs()->extraFlag & ExtraFlag::DETERMINISTIC) != 0;
     CoCDataTypeDesc dataType = cocParamDesc.dataTypeDesc;
     const MatMulInfo &mmInfo = cocParamDesc.mmInfo;
     const QuantInfo &quantInfo = cocParamDesc.quantInfo;
-    const MoeInfo& moeInfo = cocParamDesc.moeInfo;
     bool hasQuant = quantInfo.quantGranularity != QuantGranularity::QUANT_GRANULARITY_UNDEFINED;
     bool hasDequant = quantInfo.dequantGranularity != QuantGranularity::QUANT_GRANULARITY_UNDEFINED;
     int32_t eleSize = COC_TYPE2ELE_SIZE.at(dataType);
@@ -273,7 +282,6 @@ int64_t Lcoc::GetWorkspaceSize()
     int32_t mAlign = AlignUp(mmInfo.m, nElemAlign);
     int32_t nAlign = AlignUp(mmInfo.n, nElemAlign);
     int32_t kAlign = AlignUp(mmInfo.k, nElemAlign);
-    int32_t maxOutputSize = moeInfo.maxOutputSize;
 
     bool hasAAlign = hasQuant || (!IsMatrixAligned(mmInfo.m, mmInfo.k, mmInfo.transA, nElemAlign) && mmInfo.m != 1);
 
@@ -282,20 +290,16 @@ int64_t Lcoc::GetWorkspaceSize()
     
     int32_t accumRankSize = 0;
 
-    bool hasAccum = dataType == COCDataTypeDesc::INT8INT8_INT32_BF16;
+    bool hasAccum = dataType == CoCDataTypeDesc::INT8INT8_INT32_BF16;
     bool hasDequantParam = (quantInfo.dequantGranularity == QuantGranularity::PER_TOKEN ||
                             quantInfo.dequantGranularity == QuantGranularity::PER_TENSOR);
     bool hasFormatDequantScale = (quantInfo.dequantGranularity == QuantGranularity::PER_CHANNEL);
-    bool isMoe = false;
-
-    bool isAlltoallVc = false;
 
     uint64_t dequantWorkSpaceSize = GetDequantWorkSpaceSize(lcalType, tiling_.withSerialMode, mmInfo.m, mmInfo.n,
-        tiling_.m0, tiling_.n0, tiling_.pValue, tiling_.nLoop, taskParam_.rankSize, taskParam_.blockDim, maxOutputSize);
+        tiling_.m0, tiling_.n0, tiling_.pValue, tiling_.nLoop, taskParam_.rankSize, taskParam_.blockDim);
     LcalWorkspaceInfo lcalWorkSpaceInfo = GetLcalWorkspaceInfo(0, mmInfo.batchSize, mmInfo.m, mmInfo.k,
         mmInfo.n, mAlign, kAlign, nAlign, mmInfo.transA, mmInfo.transB, eleSize, hasAAlign, hasBAlign,
-        accumRankSize, hasAccum, dequantWorkSpaceSize, hasDequantParam, hasFormatDequantScale, isDeterministic,
-        isMoe, isAlltoallVc, moeInfo.EP, moeInfo.local_expert_nums, maxOutputSize);
+        accumRankSize, hasAccum, dequantWorkSpaceSize, hasDequantParam, hasFormatDequantScale, isDeterministic);
     
     MKI_LOG(DEBUG) << "[Lcoc Workspace]: " << "m=" << mmInfo.m << ",k=" << mmInfo.k << ", n=" << mmInfo.n
         << ", mAlign=" << mAlign << ", kAlign=" << kAlign << ", nAlign=" << nAlign << ", transA=" << mmInfo.transA
@@ -303,10 +307,8 @@ int64_t Lcoc::GetWorkspaceSize()
         << ", hasBAlign=" << hasBAlign << ", accumRankSize=" << accumRankSize << ", hasAccum=" << hasAccum
         << ", dequantWorkSpaceSize=" << dequantWorkSpaceSize << ", hasDequantParam=" << hasDequantParam
         << ", hasFormatDequantScale=" << hasFormatDequantScale << ", isDeterministic=" << isDeterministic
-        << ", isMoe=" << isMoe << ", isAlltoallVc=" << isAlltoallVc << ", moeInfo.EP=" << static_cast<int>(moeInfo.EP)
-        << ", moeInfo.local_expert_nums=" << moeInfo.local_expert_nums
-        << ", maxOutputSize=" << maxOutputSize << ", workspaceSize=" << lcalWorkspaceInfo.workspaceSize;
-    return lcalWorkSpaceInfo.workspaceSize;
+
+    return lcalWorkspaceInfo.workspaceSize;
 }
 
 }

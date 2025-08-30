@@ -48,9 +48,9 @@ constexpr int32_t BLOCK_COUNT_3 = 3;
 constexpr int32_t BLOCK_COUNT_4 = 4;
 constexpr int32_t L0AB_PINGPONG_BUFFER_LEN = 16384;
 constexpr int32_t CUBE_MATRIX_SIZE = 256;
-constexpr int32_t L1_PINGPONG_BUFFER_LEN = 131072;
+constexpr int64_t L1_PINGPONG_BUFFER_LEN = 131072;
 constexpr int32_t MAX_CORE_NUM = 25;
-constexpr int32_t MAX_UB_BUFF = 196608;
+constexpr int64_t MAX_UB_BUFF = 196608;
 constexpr int32_t ADD_REPEAT_TIME = 4;
 constexpr int32_t FLAG_ZERO_IDX = 0;
 constexpr int32_t FLAG_ONE_IDX = 1;
@@ -83,7 +83,7 @@ enum QuantGranularity : int {
     PER_TOKEN = 3,
     FLOAT32_SCALE_PER_CHANNEL = 4,
     QUANT_GRANULARITY_MAX = 5,
-}
+};
 
 template <typename T, size_t SIZE>
 struct BaseBlock {
@@ -120,7 +120,7 @@ using Block256B = BaseBlock<T, 256>;
 template <typename T>
 using Block512B = BaseBlock<T, 512>;
 
-template<typename, T>
+template<typename T>
 struct CoCCommArgs {
     int rank;
     int localRank;
@@ -131,4 +131,4 @@ struct CoCCommArgs {
     int64_t sendCountMatrix[LCAL_MAX_RANK_SIZE * LCAL_MAX_RANK_SIZE];
 };
 
-#endif 
+#endif // LCAL_COC_CONST_ARGS_H

@@ -56,7 +56,7 @@ inline __aicore__ void CocPpmatmulSwitchAic(COC_ARGS_FUN(TData)) {
     set_nd_para(config);
     SetSyncBaseAddr((uint64_t)ffts_addr);
 
-    auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParm *>(para_gm);
+    auto para = reinterpret_cast<__gm__ Lcal::CoCKernelParam *>(para_gm);
     auto cocTilingData = &para->cocTilingData;
     auto quantInfo = &para->quantInfo;
     auto twoDimTPInfo = &para->twoDimTPInfo;
@@ -71,9 +71,9 @@ inline __aicore__ void CocPpmatmulSwitchAic(COC_ARGS_FUN(TData)) {
     int32_t k0 = cocTilingData->k0;
     int32_t n0 = cocTilingData->n0;
 
-    int32_t m_loop = cocTilingData->m_loop;
-    int32_t k_loop = cocTilingData->k_loop;
-    int32_t n_loop = cocTilingData->n_loop;
+    int32_t m_loop = cocTilingData->mLoop;
+    int32_t k_loop = cocTilingData->kLoop;
+    int32_t n_loop = cocTilingData->nLoop;
 
     int32_t core_loop = cocTilingData->coreLoop;
     int32_t swizzl_count = cocTilingData->swizzlCount;
@@ -89,7 +89,7 @@ inline __aicore__ void CocPpmatmulSwitchAic(COC_ARGS_FUN(TData)) {
     bool is_int8 = (tiling_key & INT8_MASK) != 0;
     QuantGranularity dequant_granularity = static_cast<QuantGranularity>(quantInfo->dequantGranularity);
     int32_t dequant_group_size = quantInfo->dequantGroupSize;
-    quantGranularity quant_granularity = static_cast<QuantGranularity>(quantInfo->quantGranularity);
+    QuantGranularity quant_granularity = static_cast<QuantGranularity>(quantInfo->quantGranularity);
     int32_t quant_group_size = quantInfo->quantGroupSize;
     __gm__ TData* gm_peer_mem = buff[rank];
     __gm__ TData* gm_c = gm_out;

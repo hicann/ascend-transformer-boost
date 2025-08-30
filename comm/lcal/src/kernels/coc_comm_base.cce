@@ -54,7 +54,7 @@ public:
 
     FORCE_INLINE_AICORE void SetFromParam(__gm__ uint8_t *para_gm)
     {
-        auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParm *>(para_gm);
+        auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParam *>(para_gm);
         auto cocTilingData = &para->cocTilingData;
         auto quantInfo = &para->quantInfo;
         auto twoDimTPInfo = &para->twoDimTPInfo;
@@ -67,9 +67,9 @@ public:
         k0 = cocTilingData->k0;
         n0 = cocTilingData->n0;
 
-        m_loop = cocTilingData->m_loop;
-        k_loop = cocTilingData->k_loop;
-        n_loop = cocTilingData->n_loop;
+        m_loop = cocTilingData->mLoop;
+        k_loop = cocTilingData->kLoop;
+        n_loop = cocTilingData->nLoop;
 
         core_loop = cocTilingData->coreLoop;
         swizzl_count = cocTilingData->swizzlCount;
@@ -95,7 +95,7 @@ public:
         core_count = comm_npu_split * comm_data_split;
         dequant_granularity = static_cast<QuantGranularity>(quantInfo->dequantGranularity);
         dequant_group_size = quantInfo->dequantGroupSize;
-        quant_granularity = static_cast<QuantGranularity>(quantInfo->quantGranularity)
+        quant_granularity = static_cast<QuantGranularity>(quantInfo->quantGranularity);
         quant_group_size = quantInfo->quantGroupSize;
         swizzl_direct = (tiling_key & SWIZZL_MASK) ? true : false;
         trans_a = (tiling_key & TRANS_A_MASK) ? true : false;
@@ -135,7 +135,7 @@ public:
         }
         workspace_info = GetLcalWorkspaceInfo(gm_workspace, batch_size, m, k, n, m_align, k_align, n_align,
                 trans_a, trans_b, is_int8 ? 1 : 2, has_a_align, has_b_align, 0, has_accum, 0, has_dequant_param,
-                hasFormatDequantScale, is_deterministic, false, false, 0, 0, 0);
+                hasFormatDequantScale, is_deterministic);
                 
     }
 
@@ -146,7 +146,7 @@ public:
 
     FORCE_INLINE_AICORE void SetAndWaitAivSync(uint64_t flag_idx, int32_t pipe_depth = 2)
     {
-        FFTSCrossCoreSync<PIPE_MTE3>(2, flag_idx + pipe_depth);
+        FFTSCrossCoreSync<PIPE_MTE3>(0, flag_idx + pipe_depth);
         WaitEvent(flag_idx + pipe_depth);
     }
 
@@ -186,7 +186,7 @@ public:
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         while (true) {
-            CopyUbufToGmAlignB16(ctrl_flags_UB, buff, 1, sizeof(int32_t), 0, 0);
+            CopyGmToUbufAlignB16(ctrl_flags_UB, buff, 1, sizeof(int32_t), 0, 0);
             SetFlag<HardEvent::MTE2_S>(EVENT_ID3);
             WaitFlag<HardEvent::MTE2_S>(EVENT_ID3);
             if (*ctrl_flags_UB == flag) {
@@ -221,7 +221,7 @@ public:
         if (aiv_idx == 0 && core_idx == rank) {
             SetBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + flag_idx, flag_data);
         } else if (aiv_idx == 0 && core_idx < rank_size) {
-            CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[core_idx]] + flag_offset + flag_idx,
+            CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[core_idx] + flag_offset + flag_idx,
                           flag_data);
         }
     }
@@ -230,9 +230,9 @@ public:
     {
         if (aiv_idx == 0 && core_idx < rank_size) {
             if (core_idx != rank) {
-                SetBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + flag_idx, flag_data);
+                SetBuffFlagByAdd(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + flag_idx, flag_data);
             }
-            CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[core_idx] + flag_offset + flag_idx, rank_size * flag_data);
+            CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[core_idx] + flag_offset + flag_idx, rank_size * flag_data * rank_size);
         }
     }
 
@@ -240,7 +240,7 @@ public:
     {
         for (int32_t idx = 0; idx < num_flags; ++idx) {
             if (core_idx == 0 && aiv_idx == 0) {
-                SetBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + idx, f0);                
+                SetBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + idx, 0);                
             }
         }
     }
@@ -271,13 +271,13 @@ public:
         }
     }
 
-    FORCE_INLINE_AICORE void CopyUbufToGmTransLayout(__ubuf__ T* ub_buff_st, int32_t actual_move_size, int64_t move_num_offset) {
+    FORCE_INLINE_AICORE void CopyUbToGmTransLayout(__ubuf__ T* ub_buff_st, int32_t actual_move_size, int64_t move_num_offset) {
         auto ub_buff = ub_buff_st;
         int32_t left_m = actual_move_size / n0;
         while (left_m > 0) {
             int32_t loop_idx = move_num_offset / (m0 * n0);
             int64_t m_idx, n_idx;
-            GetBlockIdx(loop_idx, m_loop, n_loop, swizzl_direct, swizzlCount, m_idx, n_idx);
+            GetBlockIdx(loop_idx, m_loop, n_loop, swizzl_direct, swizzl_count, m_idx, n_idx);
             int32_t actual_m = (m_idx == (m_loop - 1)) ? (m - m_idx * m0) : m0;
             int32_t actual_n = (n_idx == (n_loop - 1)) ? (n - n_idx * n0) : n0;
             int32_t m_offset = (move_num_offset % (m0 * n0)) / n0;
@@ -301,7 +301,7 @@ public:
         for (int32_t move_idx = 0; interm_offset < copy_size; ++move_idx) {
             uint32_t data_size = interm_offset + max_ub_ping_pong_size < copy_size ? max_ub_ping_pong_size : copy_size - interm_offset;
             auto event_id = (move_idx & 1) ? EVENT_ID0 : EVENT_ID1;
-            auto ub = (m_idx & 1) ? ub0 : ub1;
+            auto ub = (move_idx & 1) ? ub0 : ub1;
             WaitFlag<HardEvent::MTE3_MTE2>(event_id);
             CopyGmToUbuf(ub, gm_src + interm_offset, 1, data_size * sizeof(T) / 32, 0, 0);
             SetFlag<HardEvent::MTE2_MTE3>(event_id);
@@ -369,7 +369,7 @@ public:
         }
         if (rank_size == 8) {
             CopyGmToGm(gm_reducebuf + 1 * len_per_loop, buff[rank] + core_buff_offset, data_size_remain);
-            CopyGmToGm(gm_reducebuf + 1 * len_per_loop, gm_reducebuf, data_size_remain);
+            CopyGmToGm(gm_reducebuf + 2 * len_per_loop, gm_reducebuf, data_size_remain);
         }
         if (rank_size >= 4) {
             CopyGmToGm(gm_reducebuf, buff[rank] + core_buff_offset, data_size_remain);
@@ -392,7 +392,7 @@ public:
         WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         if (atomic_add) {
             SetFlag<HardEvent::MTE3_S>(EVENT_ID0);
-            SetFlag<HardEvent::MTE3_S>(EVENT_ID1);   
+            WaitFlag<HardEvent::MTE3_S>(EVENT_ID1);   
             SetAtomicNone();
             PipeBarrier<PIPE_ALL>();               
         }
@@ -415,7 +415,7 @@ public:
     int32_t m_loop;
     int32_t n_loop;
     int32_t k_loop;
-    int32_t coreLoop;
+    int32_t core_loop;
     int32_t core_idx;
     int32_t real_core_idx;
 
@@ -425,8 +425,8 @@ public:
     int32_t flag_offset;
 
     int32_t tiling_key;
-    int32_t swizzlCount;
-    int32_t swizzl_direct;
+    int32_t swizzl_count;
+    bool swizzl_direct;
     bool trans_a;
     bool trans_b;
     bool is_int8;

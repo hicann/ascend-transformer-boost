@@ -17,6 +17,6 @@ namespace Lcal {
     void AllReduceNPU91093SixteenRankFP16Tiling(CoCTilingData &cocTilingData);
 
     void CoCAllgatherMatmulReduceScatterAgEightRsTwoTiling(CoCTilingData &cocTilingData);
-    void CoCAllgatherMatmulReduceScatterDefaultTiling(CoCTilingData &cocTilingData);
+    void CoCAllgatherMatmulReduceScatterDefaultTiling(CoCTilingData &cocTilingData, int32_t rsDim);
 }
 #endif

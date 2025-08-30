@@ -173,7 +173,7 @@ public:
 
     FORCE_INLINE_AICORE void SetArgs(PP_MATMUL_AIV_POST_ARGS_FUN())
     {
-        auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParm *>(para_gm);
+        auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParam *>(para_gm);
         auto cocTilingData = &para-.cocTilingData;
         this->with_rms_norm = para->postInfo.withRmsNorm;
         if (this->with_rms_norm) {

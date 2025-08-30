@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 #
 include(../ascendc.cmake)
-set(OP_NAMES pure_matmul matmul_allreduce matmul_reduce_scatter allgather_matmul allgather_matmul_reduce_scatter alltoallv_allgather_matmul matmul_reduce_scatter_alltoallv)
+set(OP_NAMES matmul_allreduce allgather_matmul_reduce_scatter)
 
 file(GLOB KERNEL_FILES *.cpp)
 set_source_files_properties(${KERNEL_FILES} PROPERTIES LANGUAGE CCE)
