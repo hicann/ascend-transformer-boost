@@ -1257,8 +1257,29 @@ class GatherOperation(DataGen):
                             idx += 1
                 golden_result = golden_result.reshape(outputSize)
             elif batchDims > 0:
-                # 使用 torch.gather 进行批量维度的处理
-                golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
+                import tensorflow as tf
+                # 转换 in_tensors[0] (数据)
+                in_tensors0_np = in_tensors[0].detach().cpu().numpy()  # 转为 numpy
+                in_tensors0_tf = tf.convert_to_tensor(in_tensors0_np)
+
+                # 转换 in_tensors[1] (索引)，必须为整数类型
+                in_tensors1_np = in_tensors[1].detach().cpu().numpy()  # 转为 numpy
+                in_tensors1_tf = tf.convert_to_tensor(in_tensors1_np, dtype=tf.int32)
+
+                # 调用 tf.gather
+                golden_result_tf = tf.gather(
+                    params=in_tensors0_tf,
+                    indices=in_tensors1_tf,
+                    axis=axis,
+                    batch_dims=batchDims
+                )
+
+                # tf.Tensor → NumPy array
+                golden_result_np = golden_result_tf.numpy()
+
+                # NumPy array → torch.Tensor
+                golden_result = torch.from_numpy(golden_result_np)
+                print("golden_result.shape:", golden_result.shape)
 
         # 返回结果
         return [golden_result.cpu()]
