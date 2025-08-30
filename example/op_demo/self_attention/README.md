@@ -14,7 +14,7 @@
 - 运行demo
     - bash build.sh
     **注意**：
-    - 使用cxx_abi=0（默认）时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，i.e.
+    - 使用cxx_abi=0时，设置`D_GLIBCXX_USE_CXX11_ABI`为0，i.e.
         ```sh
         g++ -D_GLIBCXX_USE_CXX11_ABI=0 -I ...
         ```
