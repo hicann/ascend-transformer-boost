@@ -118,8 +118,7 @@ endif()
 
 set(CMAKE_INSTALL_PREFIX "{CMAKE_SOURCE_DIR}/output/atb/cxx_abi_{cxx_abi}/lcal")
 add_subdirectory(comm/lcal)
-set(CMAKE_INSTALL_PREFIX "{CMAKE_SOURCE_DIR}/output/atb/cxx_abi_
-{cxx_abi}")
+set(CMAKE_INSTALL_PREFIX "{CMAKE_SOURCE_DIR}/output/atb/cxx_abi_{cxx_abi}")
 message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./..)
