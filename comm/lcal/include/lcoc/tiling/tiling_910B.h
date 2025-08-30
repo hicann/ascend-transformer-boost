@@ -21,7 +21,7 @@ namespace Lcal {
     void AllReduceTwoRankFP16Tiling(CoCTilingData &cocTilingData);
 
     void ReduceScatterEightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData);
-    void ReduceScatterFoutRankINT8Tiling(CoCTilingData &cocTilingData);
+    void ReduceScatterFourRankINT8Tiling(CoCTilingData &cocTilingData);
 
 }
 #endif

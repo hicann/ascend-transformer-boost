@@ -43,10 +43,9 @@ public:
         }
         if (dequant_granularity == QuantGranularity::PER_TOKEN) {
             fused_pertoken_dequant_runner.SetArgs(reinterpret_cast<__gm__ T *>(buff[rank]),
-                                                  reinterpret_cast<__gm__ int64_t *>(gm_quant_scale),
-                                                  m, n, m0, n0, m_loop, n_loop, core_loop, swizzl_direct,
-                                                  swizzl_count, p_value, rank_size);
-            serial_pertokrn_dequant_runner.SetArgs(reinterpret_cast<__gm__ T *>(gm_out), reinterpret_cast<__gm__ int64_t *>(gm_quant_scale), m, n, m0, n0);
+                                                  reinterpret_cast<__gm__ float32_t *>(gm_quant_scale), m, n,
+                                                  m, n, m0, n0, m_loop, n_loop, core_loop, swizzl_direct, swizzl_count, p_value, rank_size);
+            serial_pertoken_dequant_runner.SetArgs(reinterpret_cast<__gm__ T *>(gm_out), reinterpret_cast<__gm__ float32_t *>(gm_quant_scale), m, n, m0, n0);
         }
         total_core_idx = aiv_idx * core_num + core_idx;
         cal_count = DivCeil(core_loop, loop_num_per_comm);
@@ -115,7 +114,7 @@ public:
             SetFlag<HardEvent::MTE2_MTE3>(event_id);    
             WaitFlag<HardEvent::MTE2_MTE3>(event_id);  
             int32_t move_num_offset = gm_out_offset + move_idx * max_ub_ping_pong_size;
-            CopyUbufToGmTransLayout(ub_buff_st, actual_move_size, move_num_offset);
+            CopyUbToGmTransLayout(ub_buff_st, actual_move_size, move_num_offset);
             SetFlag<HardEvent::MTE3_MTE2>(event_id);          
         }
         EndFlagsAndBias();
@@ -147,7 +146,7 @@ public:
                             actual_move_size * sizeof(T) / 32, 0, 0);
                 SetFlag<HardEvent::MTE2_MTE3>(event_id);    
                 WaitFlag<HardEvent::MTE2_MTE3>(event_id);  
-                int32_t move_num_offset = gm_out_offset + move_idx * max_ub_ping_pong_size;
+                int64_t move_num_offset = other_rank_offset + move_idx * max_ub_ping_pong_size;
                 CopyUbufToGmTransLayout(ub_buff_st, actual_move_size, move_num_offset + cal_idx * gm_c_pingpong_size);
                 SetFlag<HardEvent::MTE3_MTE2>(event_id);
             }
@@ -175,10 +174,10 @@ public:
             auto event_id = (move_idx & 1) ? EVENT_ID0 : EVENT_ID1;
             auto ub = (move_idx & 1) ? output_UB_T[0] : output_UB_T[1];
             WaitFlag<HardEvent::MTE3_MTE2>(event_id);
-            CopyGmToUbuf(ub, input + offset, max_ub_ping_pong_size * sizeof(T) / 32, 0, 0);
+            CopyGmToUbuf(ub, input + offset, 1, max_ub_ping_pong_size * sizeof(T) / 32, 0, 0);
             SetFlag<HardEvent::MTE2_MTE3>(event_id);    
             WaitFlag<HardEvent::MTE2_MTE3>(event_id);
-            CopyGmToUbuf(output + offset, ub, 1, max_ub_ping_pong_size * sizeof(T) / 32, 0, 0);
+            CopyUbufToGM(output + offset, ub, 1, max_ub_ping_pong_size * sizeof(T) / 32, 0, 0);
             SetFlag<HardEvent::MTE3_MTE2>(event_id);
             data_size_remain -= max_ub_ping_pong_size;
             offset += max_ub_ping_pong_size;
@@ -191,7 +190,7 @@ public:
             SetFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);  
             WaitFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);  
             if (ALIGN) {
-                CopyGmToUbuf(output + offset, output_UB_T[0], 1, data_size_remain * sizeof(T) / 32, 0, 0);                
+                CopyUbufToGM(output + offset, output_UB_T[0], 1, data_size_remain * sizeof(T) / 32, 0, 0);                
             } else {
                 CopyUbufToGmAlignB16(output + offset, output_UB_T[0], 1, data_size_remain * sizeof(T), 0, 0);
             }
@@ -214,9 +213,9 @@ public:
             int32_t actual_loop_num = (cal_idx == cal_count -1) ? core_loop - cal_idx * loop_num_per_comm :
                                                                     loop_num_per_comm;
             int32_t m_total = actual_loop_num * m0;
-            m_per_rank = DivCeil(m_tatal, rank_size);
+            m_per_rank = DivCeil(m_total, rank_size);
             m_in_rank = (rank * m_per_rank >= m_total) ? 0 :
-                        ((rank + 1) * m_per_rank > m_tatal ? m_total - rank * m_per_rank : m_per_rank);
+                        ((rank + 1) * m_per_rank > m_total ? m_total - rank * m_per_rank : m_per_rank);
 
             WaitEvent(flag_idx);
 
@@ -254,7 +253,7 @@ public:
                                         ((real_core_offset + len_per_loop) > loop_total ?
                                         loop_total - real_core_offset : len_per_loop);
 
-                    FirstStepDivCore(m_in_core, runk_buff_offset + before_core_offset + real_core_offset);
+                    FirstStepDivCore(m_in_core, rank_buff_offset + before_core_offset + real_core_offset);
                 }
             }
             WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
@@ -287,124 +286,6 @@ public:
 
         if (aiv_idx == 0 && core_idx < rank_size) {
             CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[other_rank] + flag_offset + FLAG_ZERO_IDX, 0);
-        }
-    }
-
-    FORCE_INLINE_AICORE void DataCopySioRs(int32_t cal_idx_sio, int32_t len_per_rank) {
-        int32_t flag_idx_sio = cal_idx_sio % BLOCK_COUNT_4;
-        int32_t len_per_core = len_per_rank / SIO_TOTAL_CORE_NUM;
-        int32_t sio_core_idx = total_core_idx - core_count;
-        int32_t core_offset = sio_core_idx * len_per_core;
-        int32_t sio_peer_rank = rank ^ 1;
-        for (int32_t src_rank = rank % 2; src_rank < rank_size; src_rank +=2) {
-            int32_t peer_offset = flag_idx_sio * gm_c_pingpong_size + src_rank * len_per_rank + core_offset;
-            FirstStepInPeerMem(len_per_core, buff[sio_peer_rank] + peer_offset, buff[rank] + peer_offset);
-        }
-    }
-
-    FORCE_INLINE_AICORE void DataCopySioAg(int32_t cal_idx_sio, int32_t len_per_rank) {
-        int32_t flag_idx_sio = cal_idx_sio % BLOCK_COUNT_4;
-        int32_t len_per_core = len_per_rank / SIO_TOTAL_CORE_NUM;
-        int32_t sio_core_idx = total_core_idx - core_count;
-        int32_t core_offset = sio_core_idx * len_per_core;
-        int32_t sio_peer_rank = rank ^ 1;
-        for (int32_t src_rank = sio_peer_rank % 2; src_rank < rank_size; src_rank +=2) {
-            int32_t peer_offset = flag_idx_sio * gm_c_pingpong_size + src_rank * len_per_rank;
-            int32_t dst_offset = cal_idx_sio * gm_c_pingpong_size + src_rank * len_per_rank + core_offset;
-            SecondStepParallel(len_per_core, buff[sio_peer_rank] + peer_offset + core_offset, dst_offset);
-        }        
-        int32_t local_offset = flag_idx_sio * gm_c_pingpong_size + rank * len_per_rank + core_offset;
-        int32_t dst_offset = cal_idx_sio * gm_c_pingpong_size + rank * len_per_rank + core_offset;
-        SecondStepParallel(len_per_core, buff[rank] + local_offset, dst_offset);
-    }
-
-    FORCE_INLINE_AICORE void ParallelSio() {
-        ResetIpcFlags(3);
-        PipeBarrier<PIPE_ALL>();
-        int32_t last_loop_num = core_loop - (cal_count -1) * loop_num_per_comm;
-        int32_t core_group = GetCoreGroup();
-        for (int32_t cal_idx = 0; cal_idx < cal_count + 2; ++cal_idx) {
-            int32_t hccs_idx = cal_idx -1;
-            int32_t sio2_idx = cal_idx -2;
-            int32_t flag_idx_sio1 = cal_idx % BLOCK_COUNT_4;
-            int32_t flag_idx_hccs = hccs_idx % BLOCK_COUNT_4;
-            int32_t flag_idx_sio2 = sio2_idx % BLOCK_COUNT_4;
-            int32_t loop_num_hccs = hccs_idx == cal_count -1 ? last_loop_num : loop_num_per_comm;
-
-            if (cal_idx < cal_count) {
-                WaitEvent(flag_idx_sio1);
-            }
-
-            if (need_dequant) {
-                fused_dequant_runner.RunDequantAllReduce(cal_idx);
-            }
-
-            SetAndWaitAivSync(flag_idx_sio1, BLOCK_COUNT_4);
-
-            CrossRankSyncV1(FLAG_ZERO_IDX, cal_idx + 1);
-
-            StartBeforeFisrtStep(flag_idx_sio1);
-
-            if (core_group == 0 && cal_idx >= 1 && cal_idx < cal_count + 1) {
-                int32_t size_per_rank = loop_num_hccs * m0 * n0 / rank_size;
-                int32_t rank_offset = rank * size_per_rank;
-                int32_t rank_buff_offset = flag_idx_hccs * gm_c_pingpong_size + rank_offset;
-                int32_t size_per_core = size_per_rank / (comm_data_split);
-
-                int32_t data_split_num = DivCeil(size_per_core, len_per_loop);
-
-                SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
-                SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-                for (int loop_index = 0; loop_index < data_split_num; loop_index++) {
-                    int32_t before_core_offset = len_per_loop * comm_data_split * loop_index;
-                    int32_t loop_total = size_per_rank -before_core_offset;
-                    int32_t real_core_offset = core_idx % comm_data_split * len_per_loop;
-
-                    int32_t m_in_core = (real_core_offset >= loop_total) ? 0 :
-                                        ((real_core_offset + len_per_loop) > loop_total ?
-                                        loop_total -real_core_offset : len_per_loop);
-
-                    FirstStepDivCore(m_in_core, rank_buff_offset + before_core_offset + real_core_offset);
-                }
-                WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
-                WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-            }
-            if (core_group == 1 && cal_idx < cal_count) {
-                int32_t loop_num_sio1 = cal_idx == cal_count -1 ? last_loop_num : loop_num_per_comm;
-                int32_t size_per_rank = loop_num_sio1 * m0 * n0 / rank_size;
-                DataCopySioRs(cal_idx, size_per_rank);
-            }
-
-            EndFirstStep(flag_idx_sio1);
-
-            CrossRankSyncV1(FLAG_ONE_IDX, cal_idx + 1);
-            SetAndWaitAivSync(flag_idx_sio1, BLOCK_COUNT_4);
-            if (core_group == 0 && cal_idx >= 1 && cal_idx < cal_count + 1) {
-                int32_t size_per_rank = loop_num_hccs * m0 * n0 / rank_size;
-                int32_t pipe_offset = flag_idx_hccs * gm_c_pingpong_size + other_rank * size_per_rank;
-                int32_t dst_offset = hccs_idx * gm_c_pingpong_size + other_rank * size_per_rank;
-                if ((other_rank % 2) == (rank % 2) && other_rank != rank) {
-                    FirstStepInPeerMemTransLayout(size_per_rank, buff[other_rank] + pipe_offset, buff[rank] + pipe_offset, dst_offset);
-                } 
-            }
-            if (core_group == 1 && cal_idx >= 2) {
-                int32_t loop_num_sio2 = sio2_idx == cal_count - 1 ? last_loop_num : loop_num_per_comm;
-                int32_t size_per_rank = loop_num_sio2 * m0 * n0 / rank_size;
-                DataCopySioAg(sio2_idx, size_per_rank);
-            }
-            SetAndWaitAivSync(flag_idx_sio1, BLOCK_COUNT_4);
-            CrossRankSyncV2(FLAG_TWO_IDX, cal_idx + 1);
-
-            SetAndWaitAivSync(flag_idx_sio1, BLOCK_COUNT_4);
-
-            if (cal_idx >= 2) {
-                SetAicSync(flag_idx_sio2);
-            }            
-        }
-        ResetIpcFlags(3);
-
-        if (aiv_idx == 0 && core_idx < rank_size) {
-            CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[other_rank] + flag_offset + FLAG_ZERO_IDX, 0);
         }        
     }
 
@@ -416,7 +297,7 @@ public:
         WaitEvent(AIV_FINISH_ALIGN_FLAG_ID);
 
         if (need_dequant) {
-            serial_dequant_runner.Run()
+            serial_dequant_runner.Run();
         }
         if (aiv_idx == 1 && core_idx < rank_size) {
             int32_t data_size = batch_size * m * n;
@@ -507,12 +388,12 @@ public:
         preprocessor.Run();
 
         if constexpr (HAVE_BIAS) {
-            add_bias_runner.Run()
+            add_bias_runner.Run();
         }
 
         if (withSerialMode) {
             if (is_deterministic) {
-                SerialWithSplit()
+                SerialWithSplit();
             } else {
                 Serial();
             }
@@ -525,7 +406,7 @@ public:
         PipeBarrier<PIPE_ALL>();
 
         if (withSerialMode && dequant_granularity == QuantGranularity::PER_TOKEN) {
-            serial_pertokrn_dequant_runner.Run();
+            serial_pertoken_dequant_runner.Run();
         }
     }
 
@@ -539,8 +420,7 @@ public:
     using CocCommBase<T>::FirstStepInPeerMem;
     using CocCommBase<T>::FirstStepInPeerMemSeq;
     using CocCommBase<T>::FirstStepInPeerMemTree;
-    using CocCommBase<T>::FirstStepInPeerMemTransLayout;
-    using CocCommBase<T>::CopyUbufToGmTransLayout;
+    using CocCommBase<T>::CopyUbToGmTransLayout;
     using CocCommBase<T>::ResetIpcFlags;
     using CocCommBase<T>::CrossRankSyncV1;
     using CocCommBase<T>::CrossRankSyncV2;
@@ -570,6 +450,7 @@ public:
     using CocCommBase<T>::swizzl_direct;
     using CocCommBase<T>::trans_a;
     using CocCommBase<T>::trans_b;
+    using CocCommBase<T>::is_int8;
     using CocCommBase<T>::is_91093;
     using CocCommBase<T>::p_value;
     using CocCommBase<T>::aiv_idx;
@@ -594,6 +475,7 @@ public:
     using CocCommBase<T>::flag_offset;
     int32_t cal_count;
     int32_t m_per_rank;
+    int32_t m_in_rank;
     int32_t total_core_idx;
     Preprocessor<T> preprocessor;
     Postprocessor<T, T> postprocessor;
@@ -601,7 +483,7 @@ public:
     SerialDequantRunner serial_dequant_runner;
     FusedDequantRunner fused_dequant_runner;
     FusedPerTokenDequantRunner<T> fused_pertoken_dequant_runner;
-    SerialPerTokenDequantRunner<T> serial_pertokrn_dequant_runner;
+    SerialPerTokenDequantRunner<T> serial_pertoken_dequant_runner;
     bool need_dequant;    
 };
 
@@ -637,22 +519,22 @@ FORCE_INLINE_AICORE void RunAllReduceAlign16(int32_t tiling_key, COC_ARGS_FUN(T)
 
 template<typename T>
 FORCE_INLINE_AICORE void RunAllReduceUnAlign16(int32_t tiling_key, COC_ARGS_FUN(T)) {
-    AllReduce<false, false, false, T> allreduce_align_16_without_bias;
-    AllReduce<false, false, true, T> allreduce_align_16_with_bias;
+    AllReduce<false, false, false, T> allreduce_unalign_16_without_bias;
+    AllReduce<false, false, true, T> allreduce_unalign_16_with_bias;
     switch (tiling_key) {
         case 0b000000 : case 0b100000 : case 0b010000 : case 0b110000 :
         case 0b001000 : case 0b101000 : case 0b011000 : case 0b111000 :
         case 0b000100 : case 0b100100 : case 0b010100 : case 0b110100 :
         case 0b001100 : case 0b101100 : case 0b011100 : case 0b111100 :
-            allreduce_align_16_without_bias.SetArgs(COC_ARGS_CALL());
-            allreduce_align_16_without_bias.Run();
+            allreduce_unalign_16_without_bias.SetArgs(COC_ARGS_CALL());
+            allreduce_unalign_16_without_bias.Run();
             break;
         case 0b000010 : case 0b100010 : case 0b010010 : case 0b110010 :
         case 0b001010 : case 0b101010 : case 0b011010 : case 0b111010 :
         case 0b000110 : case 0b100110 : case 0b010110 : case 0b110110 : 
         case 0b001110 : case 0b101110 : case 0b011110 : case 0b111110 :
-            allreduce_align_16_with_bias.SetArgs(COC_ARGS_CALL());
-            allreduce_align_16_with_bias.Run();
+            allreduce_unalign_16_with_bias.SetArgs(COC_ARGS_CALL());
+            allreduce_unalign_16_with_bias.Run();
             break;
         default :
             break;
@@ -660,19 +542,19 @@ FORCE_INLINE_AICORE void RunAllReduceUnAlign16(int32_t tiling_key, COC_ARGS_FUN(
 }
 
 template<typename T>
-inline __aicore__ void CocMatmullReduceAiv(COC_ARGS_FUN(T))
+inline __aicore__ void CocMatmulAllReduceAiv(COC_ARGS_FUN(T))
 {
     AllReduce<true, false, false, T> allreduce_align_16_without_bias;
     AllReduce<true, false, true, T> allreduce_align_16_with_bias;
-    AllReduce<false, false, false, T> allreduce_align_16_without_bias;
-    AllReduce<false, false, true, T> allreduce_align_16_with_bias;
+    AllReduce<false, false, false, T> allreduce_unalign_16_without_bias;
+    AllReduce<false, false, true, T> allreduce_unalign_16_with_bias;
 
     SetAtomicNone();
     SetMaskNormImpl();
     SetSyncBaseAddr((uint64_t)ffts_addr);
     SetVectorMask<int32_t>((uint64_t)-1, (uint64_t)-1);
 
-    auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParm *>(para_gm);
+    auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParam *>(para_gm);
     auto cocTilingData = &para->cocTilingData;
     int64_t batch_size = cocTilingData->batchSize;
     int32_t m = cocTilingData->m;

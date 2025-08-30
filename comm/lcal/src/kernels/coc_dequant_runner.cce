@@ -63,7 +63,7 @@ public:
         PipeBarrier<PIPE_V>();
         Vmuls(ub_muls, ub_adds_f32, scale, repeat, 1, 1, 8, 8);
         PipeBarrier<PIPE_V>();
-        Waitflag<Hardevent::MTE3_V>(event_id);
+        WaitFlag<HardEvent::MTE3_V>(event_id);
         Vconv(ub_out, ub_muls, repeat, 1, 1, 4, 8, RoundMode::CAST_RINT);
         SetFlag<HardEvent::V_MTE3>(event_id);
 
@@ -622,7 +622,7 @@ public:
     inline __aicore__ void SetArgs(__gm__ T *gm_out,
         __gm__ float32_t *gm_dequant_scale_pertoken, int32_t m, int32_t n, int32_t m0, int32_t n0)
         {
-            this->gm_out = reinterpret_cast<__gm__ t *>(gm_out);
+            this->gm_out = reinterpret_cast<__gm__ T *>(gm_out);
             this->gm_dequant_scale_pertoken = reinterpret_cast<__gm__ float32_t *>(gm_dequant_scale_pertoken);
             this->m = m;
             this->n = n;
@@ -679,7 +679,7 @@ public:
         this-> rank_size = rank_size;
     }
 
-    inline __aicore__ void RunDequantAllreduce(int32_t cal_idx)
+    inline __aicore__ void RunDequantAllReduce(int32_t cal_idx)
     {
         switch (dequant_granularity) {
             case QuantGranularity:: PER_TENSOR :

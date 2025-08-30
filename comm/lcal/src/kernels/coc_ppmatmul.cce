@@ -49,7 +49,7 @@ inline __aicore__ void CopyGmToCbuf(__cbuf__ T *dst, __gm__ T *src, uint8_t sid,
 {
     DataCopyParams intriParams(nBurst, lenBurst, srcStride, dstStride);
     GlobalTensor<T> srcTensor;
-    srcTensor.SetGloalBuffer(src);
+    srcTensor.SetGlobalBuffer(src);
     uint32_t dst_buffer_offset = reinterpret_cast<uint64_t>(dst);
     uint8_t logicpos = static_cast<uint8_t>(TPosition::C1);
     LocalTensor<T> dstTensor;
@@ -159,7 +159,7 @@ inline __aicore__ void LoadCbufToCb(__cb__ T *dst, __cbuf__ T *src, uint16_t bas
 template<typename T>
 struct IntrinsicCopyGmToL1Nd2Nz {
     static inline __aicore__ void move(
-        __cbuf__ T *dst, __gm__ T *src
+        __cbuf__ T *dst, __gm__ T *src,
         uint8_t sid, uint16_t ndNum, uint16_t nValue, uint16_t dValue,
         uint16_t srcNdMatrixStride, uint16_t srcDValue, uint16_t dstNzC0Stride,
         uint16_t dstNzNStride, uint16_t dstNzMatrixStride){
@@ -173,7 +173,7 @@ struct IntrinsicCopyGmToL1Nd2Nz {
         LocalTensor<T> dstTensor;
         dstTensor = CreateLocalTensor<T>(dst_buffer_offset, dst_logicpos);
         GlobalTensor<T> srcTensor;
-        srcTensor.SetGloalBuffer(src);
+        srcTensor.SetGlobalBuffer(src);
         DataCopy(dstTensor, srcTensor, nd2nzParams);
     }
 };
@@ -182,7 +182,7 @@ template <typename T>
 struct CopyGmToL1Nd2zN {
     static inline __aicore__ void move(
         __cbuf__ T *dst, __gm__ T *src,
-        uint16_t nValue, uint16_t dValue, uint16_t srcDValue, uint16_t dstNzC0Stride) {
+        uint16_t nValue, uint16_t dValue, uint32_t srcDValue, uint16_t dstNzC0Stride) {
         constexpr int BLOCK_LEN = 32 / sizeof(T);
         if (srcDValue < ND2NZ_STRIDE_LIMIT) {
             IntrinsicCopyGmToL1Nd2Nz<T>::move(
@@ -268,7 +268,7 @@ public:
 
         workspace_info = GetLcalWorkspaceInfo(gm_workspace, batch_size, m, k, n, m_align, k_align, n_align,
                 TA, TB, sizeof(MmadDtype), has_a_align, has_b_align, accum_rank_size, has_accum, 0, has_dequant_param,
-                hasFormatDequantScale, is_deterministic, false, false, 0, 0, 0);
+                hasFormatDequantScale, is_deterministic);
             
         gm_a_src = reinterpret_cast<__gm__ MmadDtype *>(has_a_align ? workspace_info.gm_a_align : gm_a);
         gm_b_src = reinterpret_cast<__gm__ MmadDtype *>(has_b_align ? workspace_info.gm_b_align : gm_b);
@@ -280,7 +280,7 @@ public:
 
         L1_PINGPONG_BUFFER_LEN = ((m0 * k0 + cube_matrix_size - 1) / cube_matrix_size * cube_matrix_size +
                         (n0 * k0 + cube_matrix_size - 1) / cube_matrix_size * cube_matrix_size * (IS_INT8 ? 2 : 1));
-        L0AB_PINGPONG_BUFFER_LEN = L0AB_PINGPONG_BUFFER_LEN / sizeof(MmadDtype);
+        L0AB_PINGPONG_BUFFER_LEN = L0AB_PINGPONG_BUFFER_SIZE / sizeof(MmadDtype);
 
         int32_t a_l1_size = m0 * k0 * sizeof(MmadDtype);
         int32_t a_l1_size_round = DivCeil(a_l1_size, 512) * 512;
@@ -330,9 +330,9 @@ public:
                 m_round = DivCeil(m_actual, BLOCK_SIZE_16) * BLOCK_SIZE_16;
             }
             if (TB) {
-                n_round = DivCeil(n_actual, BLOCK_SIZE_32) * BLOCK_SIZE_32;
-            } else {
                 n_round = DivCeil(n_actual, BLOCK_SIZE_16) * BLOCK_SIZE_16;
+            } else {
+                n_round = DivCeil(n_actual, BLOCK_SIZE_32) * BLOCK_SIZE_32;
             }
         } else {
             m_round = DivCeil(m_actual, BLOCK_SIZE_16) * BLOCK_SIZE_16;
@@ -500,12 +500,12 @@ public:
                         if (weight_nz) {
                             offset_b_next = batch_idx * n * k + (k_idx + 1) * k0 * n_align16 + n_idx * n0 * block_size;
                         } else {
-                            offset_b_next = batch_idx * n * k + (k_idx + 1) * k0 + n_idx * n0;
+                            offset_b_next = batch_idx * n * k + n_idx * n0  * k + (k_idx + 1) * k0;
                         }
                     }
                 } else {
                     if (aligned_b == 1) {
-                        offset_b_next = batch_idx * k * n_align + n_idx * n0 + (k_idx + 1) * k0 * n_align;
+                        offset_b_next = batch_idx * k * n_align + n_idx * n0 + (k_idx + 1) * k0 * n_align + n_idx * n0;
                     } else {
                         if (weight_nz) {
                             offset_b_next = batch_idx * k * n + (k_idx + 1) * k0 * block_size + n_idx * n0 * k_align16;
@@ -525,7 +525,7 @@ public:
                 auto gm_src_a = gm_a_src_tmp + offset_a_next;
                 auto gm_src_b = gm_b_src + offset_b_next;
 
-                WaitFlag<HardEvent:MTE1_MTE2>(event_id_next);
+                WaitFlag<HardEvent::MTE1_MTE2>(event_id_next);
                 if (m == 1 || m_actual == 1 && !TA) {
                     CopyGmToCbuf(
                         l1_buf_a_next,
@@ -632,7 +632,7 @@ public:
                                     l1_buf_a + k_part_idx * k_part_len * BLOCK_SIZE_16 +
                                         i * k_round * BLOCK_SIZE_16,
                                     0,
-                                    k0_round,
+                                    k0_round /BLOCK_SIZE_16,
                                     1,
                                     0,
                                     0,
@@ -642,7 +642,7 @@ public:
                             }
                         }                        
                     } else {
-                        for (int i = 0; i < m_round / BLOCK_SIZE_16; i++) {                            
+                        for (int32_t i = 0; i < k0_round / BLOCK_SIZE_16; i++) {                            
                             LoadCbufToCa(
                                 l0a_buf + i * cube_matrix_size,
                                 l1_buf_a + k_part_idx * k_part_len * m_round +
@@ -684,8 +684,8 @@ public:
                                 l0b_buf + i * ((n_actual + 15) / 16 * 16) * BLOCK_SIZE_32,
                                 l1_buf_b + (k_part_idx * k_part_len + i * BLOCK_SIZE_32) * BLOCK_SIZE_32,
                                 0,
-                                n_round,
-                                k_round,
+                                n_round / BLOCK_SIZE_32,
+                                k_round / BLOCK_SIZE_32,
                                 1,
                                 0,
                                 0,
@@ -697,8 +697,8 @@ public:
                                 l0b_buf + i * n_round * BLOCK_SIZE_16,
                                 l1_buf_b + (k_part_idx * k_part_len + i * BLOCK_SIZE_16) * BLOCK_SIZE_16,
                                 0,
-                                n_round,
-                                k_round,
+                                n_round / BLOCK_SIZE_16,
+                                k_round / BLOCK_SIZE_16,
                                 0,
                                 0,
                                 true,
@@ -818,7 +818,7 @@ public:
     }
 
     inline __aicore__ void MoveL0CToGM(__gm__ OutDtype *gm_dst, int64_t offset_c, int32_t m_actual, int32_t n_actual, int32_t src_stride, int32_t dst_stride) {
-        #if (__CCE__AICORE__ == 220)
+        #if (__CCE_AICORE__ == 220)
         FixpipeParamsV220 FixpipeParams(
             n_actual,
             m_actual,
@@ -827,11 +827,11 @@ public:
             false
         );
         #elif (defined(__DAV_C310__))
-        FixpipeParamsV310 FixpipeParams(
+        FixpipeParamsC310 FixpipeParams(
             n_actual,
             m_actual,
             src_stride,
-            dst_stride,
+            dst_stride
         );
         #endif
         uint64_t src_addr = reinterpret_cast<uint64_t>(l0c_buf);
@@ -846,7 +846,7 @@ public:
                     FixpipeParams.quantPre = VDEQF16;
                     Fixpipe<OutDtype, T_ACCUM, CFG_ROW_MAJOR>(dstTensor, srcTensor, FixpipeParams);
                     SetFlag<HardEvent::FIX_MTE2>(EVENT_ID0);
-                } else if (QuantGranularity::PER_TENSOR) {
+                } else if (dequant_granularity == QuantGranularity::PER_TENSOR) {
                     FixpipeParams.quantPre = DEQF16;
                     FixpipeParams.deqScalar = gm_dequant_scale[0];
                     Fixpipe<OutDtype, T_ACCUM, CFG_ROW_MAJOR>(dstTensor, srcTensor, FixpipeParams);
@@ -975,7 +975,7 @@ public:
         int64_t gm_c_pingpong_size = p_value * twod_big_dim * n_loop * m0 * n0;
         int32_t m_loop_per_bigdim = DivCeil(m_loop * ag_dim, twod_big_dim);
         int64_t m_per_bigdim = m * ag_dim / twod_big_dim;
-        int32_t comm_count = DivCeil(batch_size, * m_loop_per_bigdim, p_value);
+        int32_t comm_count = DivCeil(batch_size * m_loop_per_bigdim, p_value);
         int32_t loop_num_per_cal = p_value * n_loop * twod_big_dim;
         int32_t ag_part_dim = twod_big_dim / ag_dim;
         int32_t rs_part_dim = twod_big_dim / rs_dim;
@@ -1004,18 +1004,18 @@ public:
                 int64_t m_idx_in_c = comm_idx * p_value + m_idx_in_rank;
                 int32_t m_actual = (m_idx_in_c == (m_loop_per_bigdim - 1)) ? (m_per_bigdim - m_idx_in_c * m0) : m0;
                 int32_t n_actual = (n_idx == (n_loop - 1)) ? (n - n_idx * n0) : n0;
-                int64_t bigdim_dix = m_idx / actual_p_value;
+                int64_t bigdim_idx = m_idx / actual_p_value;
 
-                int32_t ag_src_idx = bigdim_dix / ag_part_dim;
-                int32_t ag_part_idx = bigdim_dix % ag_part_dim;
-                int32_t rs_dst_idx = bigdim_dix / rs_part_dim;
-                int32_t rs_part_idx = bigdim_dix % rs_part_dim;
+                int32_t ag_src_idx = bigdim_idx / ag_part_dim;
+                int32_t ag_part_idx = bigdim_idx % ag_part_dim;
+                int32_t rs_dst_idx = bigdim_idx / rs_part_dim;
+                int32_t rs_part_idx = bigdim_idx % rs_part_dim;
 
                 __gm__ MmadDtype *gm_mem_st;
                 if (ag_src_idx != ag_rank_idx) {
                     gm_mem_st = reinterpret_cast<__gm__ MmadDtype *>(gm_peer_mem)
                         + (comm_idx % MAX_BLOCK_COUNT) * gm_a_pingpong_size
-                        + bigdim_dix * p_value * m0 * k_align;
+                        + bigdim_idx * p_value * m0 * k_align;
                 } else {
                     gm_mem_st = gm_a_src + (comm_idx * p_value) * m0 * k_align + ag_part_idx * m_per_bigdim * k_align;
                 }
@@ -1025,7 +1025,7 @@ public:
                 WaitFlag<HardEvent::M_FIX>(EVENT_ID0);
 
                 int64_t offset_c;
-                int32_t n_stride;
+                int64_t dst_stride;
                 __gm__ OutDtype *gm_dst = nullptr;
 
                 if (rs_dst_idx != rs_rank_idx) {
@@ -1068,7 +1068,7 @@ protected:
     __gm__ MmadDtype *gm_b_src{nullptr};
 
     __gm__ OutDtype *gm_c{nullptr};
-    __gm__ OutDtype *gm_peer_mem(nullptr);
+    __gm__ OutDtype *gm_peer_mem{nullptr};
     __gm__ int64_t *gm_dequant_scale{nullptr};
     __gm__ int32_t *gm_format_dequant_offset{nullptr};
     __gm__ int32_t *gm_accum{nullptr};
@@ -1096,7 +1096,7 @@ protected:
     int32_t k;
     int32_t n;
     int32_t m_align;
-    int32_t k_align;
+    int64_t k_align;
     int32_t n_align;
     int32_t k_align16;
     int32_t n_align16;
@@ -1140,4 +1140,12 @@ protected:
     QuantGranularity dequant_granularity;
 };
 
+#elif __DAV_C220_VEC__
+
+#include "coc_preprocessor.cce"
+#include "coc_add_bias_runner.cce"
+#include "coc_dequant_runner.cce"
+#include "tiling_args.h"
+
+#endif
 #endif

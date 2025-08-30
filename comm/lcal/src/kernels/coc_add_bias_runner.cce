@@ -20,7 +20,7 @@ enum class BiasMode { ADD = 0, MOVE, ATOMIC_ADD };
 template <typename OutputDtype, BiasMode MODE = BiasMode::ADD>
 class BaseSerialBiasAdder {
 public:
-    __aicore__ explict BaseSerialBiasAdder() = default;
+    __aicore__ explicit BaseSerialBiasAdder() = default;
 
     inline __aicore__ void SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN())
     {
@@ -32,12 +32,12 @@ public:
         this->n = n;
 
         int32_t align_core_num = get_block_num() * get_subblockdim();
-        int32_t align_core_dix = get_block_dix() * get_subblockdim() + get_subblockid();
+        int32_t align_core_idx = get_block_idx() * get_subblockdim() + get_subblockid();
 
         if constexpr (MODE == BiasMode::MOVE || MODE == BiasMode::ATOMIC_ADD) {
             max_len = Block32B<OutputDtype>::AlignDown(MAX_UB_BUFF / sizeof(OutputDtype));
         } else if constexpr (MODE == BiasMode::ADD) {
-            max_len = Block32B<OutputDtype>::AlignDown(MAX_UB_BUFF / sizeof(OutputDtype) * 3);
+            max_len = Block32B<OutputDtype>::AlignDown(MAX_UB_BUFF / (sizeof(OutputDtype) * 3));
         }
 
         int32_t n_round = Block32B<OutputDtype>::AlignUp(n);
@@ -46,10 +46,10 @@ public:
 
         int32_t m_per_core_base = m / align_core_num;
         int32_t m_remainder = m % align_core_num;
-        int32_t m_offset_base = align_core_dix * m_per_core_base;
-        if (align_core_dix < m_remainder) {
+        int32_t m_offset_base = align_core_idx * m_per_core_base;
+        if (align_core_idx < m_remainder) {
             m_this_core = m_per_core_base + 1;
-            m_offset_this_core = m_offset_base + align_core_dix;
+            m_offset_this_core = m_offset_base + align_core_idx;
         } else {
             m_this_core = m_per_core_base;
             m_offset_this_core = m_offset_base + m_remainder;
@@ -60,6 +60,8 @@ public:
     {
         if constexpr (MODE == BiasMode::ADD) {
             AddBias();
+        } else if constexpr (MODE == BiasMode::MOVE) {
+            MoveBias();
         } else if constexpr (MODE == BiasMode::ATOMIC_ADD) {
             SetAtomicAdd<OutputDtype>();
             PipeBarrier<PIPE_ALL>();
@@ -78,20 +80,20 @@ public:
 private:
     inline __aicore__ void AddBias()
     {
-        if constexpr (MODE != BiasMode:ADD) {
+        if constexpr (MODE != BiasMode::ADD) {
             return;
         }
 
         auto ub_bias = reinterpret_cast<__ubuf__ OutputDtype *>((uintptr_t)0);
-        auto ub_out1 = reinterpret_cast<_ubuf__ OutputDtype *>((uintptr_t)(max_len * sizeof(OutputDtype)));
-        auto ub_out2 = reinterpret_cast<_ubuf__ OutputDtype *>((uintptr_t)(max_len * sizeof(OutputDtype) * 2));
+        auto ub_out1 = reinterpret_cast<__ubuf__ OutputDtype *>((uintptr_t)(max_len * sizeof(OutputDtype)));
+        auto ub_out2 = reinterpret_cast<__ubuf__ OutputDtype *>((uintptr_t)(max_len * sizeof(OutputDtype) * 2));
         bool ping = true;
 
         for (int32_t batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
             for (int32_t n_complete = 0, n_this_loop = n_per_loop; n_complete < n; n_complete += n_this_loop) {
                 n_this_loop = (n_complete + n_this_loop > n) ? (n - n_complete) : n_this_loop;
 
-                // MTE2 ub_bias <- gm_bias
+                // MTE2: ub_bias <- gm_bias
                 CopyGmToUbufAlign(ub_bias, gm_bias + n_complete, 1, n_this_loop, 0);
 
                 SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
@@ -102,7 +104,7 @@ private:
                 PipeBarrier<PIPE_V>();
 
                 SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-                WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID2);
+                SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID2);
 
                 ProcessMLoop(n_complete, n_this_loop, ub_out1, ub_out2, ping, ub_bias);
 
@@ -191,7 +193,7 @@ private:
                 n_this_loop = n - n_complete;
             }
 
-            // MTEs: ub_base <- gm_bias
+            // MTE2: ub_base <- gm_bias
             CopyGmToUbufAlign(ub_base, gm_bias + n_complete, 1, n_this_loop, 0);
 
             SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
@@ -257,7 +259,7 @@ public:
 
     inline void __aicore__ SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN())
     {
-        base_adder.SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN());
+        base_adder.SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_CALL());
     }
 
     inline void __aicore__ Run()
@@ -277,7 +279,7 @@ public:
 
     inline void __aicore__ SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN())
     {
-        base_adder.SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN());
+        base_adder.SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_CALL());
     }
 
     inline void __aicore__ Run()
@@ -287,5 +289,31 @@ public:
     }
 
 private:
-    BaseSerialBiasAdder<OutputDtype, BiasMode::MODE> base_adder;
+    BaseSerialBiasAdder<OutputDtype, BiasMode::MOVE> base_adder;
 };
+
+template <typename OutputDtype>
+class AllGatherMatmulBiasAdder {
+    static constexpr auto MODE = std::is_same<OutputDtype, half>::value ? BiasMode::ADD : BiasMode::ATOMIC_ADD;
+
+public:
+    __aicore__ explicit AllGatherMatmulBiasAdder() = default;
+
+    inline void __aicore__ SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN())
+    {
+        m = m * rank_size;
+        base_adder.SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_CALL);
+    }
+
+    inline void __aicore__ Run()
+    {
+        base_adder.Run();
+        base_adder.Barrier();
+    }
+
+private:
+    BaseSerialBiasAdder<OutputDtype, MODE> base_adder;
+};
+
+#endif
+#endif

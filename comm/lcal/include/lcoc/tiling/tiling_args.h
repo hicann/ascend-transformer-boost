@@ -121,7 +121,7 @@ namespace Lcal {
         int64_t n = -1;
         int64_t batchSize = -1;
 
-        int32_t blockDim = -1
+        int32_t blockDim = -1;
         int32_t rank = -1;
         int32_t rankSize = -1;
         int32_t tag = -1;
@@ -136,7 +136,7 @@ namespace Lcal {
         void SetDefaultValue();        
     };
 
-    struct CoCkernelParm {
+    struct CoCKernelParam {
         CoCTilingData cocTilingData = {};
         QuantInfo quantInfo = {};
         TwoDimTPInfo twoDimTPInfo = {};

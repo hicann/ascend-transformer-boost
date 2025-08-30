@@ -10,7 +10,7 @@
 #ifndef LCAL_LCOC_WORKSPACE_H
 #define LCAL_LCOC_WORKSPACE_H
 
-#if !defined(__DAV_C220_VEC__) && !defined(__DAV_M200_VEC__) && !defined(__DAV_C220_CUBE__) && !defined(__DAV_C310__)
+#if !defined(__DAV_C220_VEC__) && !defined(__DAV_M200_VEC__) && !defined(__DAV_C220_CUBE__) && !defined(__DAV__C310__)
 #define __aicore__
 #define GM_ADDR int64_t
 #endif
@@ -18,7 +18,7 @@
 struct LcalWorkspaceInfo {
     GM_ADDR gm_reducebuf{ 0 };
     GM_ADDR gm_a_align{ 0 };
-    GM_ADDR gm_b_algn{ 0 };
+    GM_ADDR gm_b_align{ 0 };
     GM_ADDR gm_accum{ 0 };
     GM_ADDR gm_formate_dequant_scale{ 0 };
     GM_ADDR gm_dequant_param{ 0 };
@@ -31,7 +31,7 @@ inline __aicore__ int32_t AlignUp(int32_t len, int32_t size)
     return (len + size -1) & ~(size - 1);
 }
 
-#if !defined(__DAV_C220_VEC__) && !defined(__DAV_M200_VEC__) && !defined(__DAV_C220_CUBE__) && !defined(__DAV_C310__)
+#if !defined(__DAV_C220_VEC__) && !defined(__DAV_M200_VEC__) && !defined(__DAV_C220_CUBE__) && !defined(__DAV__C310__)
 inline uint64_t GetDequantWorkSpaceSize(Lcal::LcalType lcalType, int32_t withSerialMode, int32_t m, int32_t n,
     int32_t m0, int32_t n0, int32_t pValue, int32_t nLoop, int32_t rankSize, int32_t blockDim,
     int32_t maxOutputSize = -1)
@@ -51,7 +51,7 @@ inline uint64_t GetDequantWorkSpaceSize(Lcal::LcalType lcalType, int32_t withSer
 }
 #endif
 
-inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpcae, int32_t batchSize, int32_t m,
+inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, int32_t batchSize, int32_t m,
     int32_t k, int32_t n, int32_t mAlign, int32_t kAlign, int32_t nAlign, bool transa, bool transb,
     int32_t mmadSize, bool hasAAlign, bool hasBAlign, int32_t accumRankSize, bool hasAccum = false,
     uint64_t dequantWorkSpaceSize = 0, bool hasDequantParam = false, bool hasFormatDequantScale = false,
@@ -64,29 +64,29 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpcae, in
     }
     constexpr int32_t ALIGN8 = 8;
     LcalWorkspaceInfo lcalWorkspaceInfo;
-    lcalWorkspaceInfo.gm_reducebuf = gmWorkSpcae;
-    GM_ADDR workspaceOffset = gmWorkSpcae;
+    lcalWorkspaceInfo.gm_reducebuf = gmWorkSpace;
+    GM_ADDR workspaceOffset = gmWorkSpace;
     if (isDeterministic) {
         workspaceOffset += WORKSPACE_REDUCE_SIZE;
     }
 
     if (hasAAlign) {
         lcalWorkspaceInfo.gm_a_align = workspaceOffset;
-        workspaceOffset += static_cast<uint64_t>(batchSize) * (transa ? k * mAlign : m : kAlign) * mmadSize;
+        workspaceOffset += static_cast<uint64_t>(batchSize) * (transa ? k * mAlign : m * kAlign) * mmadSize;
     }
 
     if (hasBAlign) {
-        lcalWorkspaceInfo.gm_b_algn = workspaceOffset;
+        lcalWorkspaceInfo.gm_b_align = workspaceOffset;
         workspaceOffset += static_cast<uint64_t>(batchSize) * (transb ? n * kAlign : k * nAlign) * mmadSize *
             (expertPerRank <= 0 ? 1 : expertPerRank);            
     }
 
-    if (hasDequantParam) {
+    if (!isMoe && hasDequantParam) {
         lcalWorkspaceInfo.gm_dequant_param = workspaceOffset;
         workspaceOffset += sizeof(int32_t) * AlignUp(n, ALIGN8);
     }
 
-    if (hasFormatdequantscale) {
+    if (hasFormatDequantScale) {
         lcalWorkspaceInfo.gm_formate_dequant_scale = workspaceOffset;
         workspaceOffset += sizeof(float) * AlignUp(n, ALIGN8);
     }

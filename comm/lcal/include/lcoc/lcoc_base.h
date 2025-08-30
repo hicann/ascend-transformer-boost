@@ -45,7 +45,7 @@ struct TwoDimTPInfo {
 
 struct QuantInfo {
     QuantGranularity dequantGranularity = QuantGranularity::QUANT_GRANULARITY_UNDEFINED;
-    int32_t dequantGroupSize = -1
+    int32_t dequantGroupSize = -1;
 
     QuantGranularity quantGranularity = QuantGranularity::QUANT_GRANULARITY_UNDEFINED;
     int32_t quantGroupSize = -1;
