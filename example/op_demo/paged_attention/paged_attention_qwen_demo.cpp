@@ -11,13 +11,13 @@
 #include <random>
 #include "../demo_util.h"
 
-const uint32_t NTOKENS = 2;                            // token数量
+const uint32_t NTOKENS = 1;                            // token数量
 const uint32_t BATCH_SIZE = NTOKENS;                   // batch数量
 const uint32_t MAX_SEQ_LEN = 1024;                     // 最大序列长度
-const uint32_t HEAD_NUM = 32;                          // 头数
-const uint32_t KV_HEAD_NUM = 32;                       // kv头数
+const uint32_t HEAD_NUM = 5;                           // 头数
+const uint32_t KV_HEAD_NUM = 1;                        // kv头数
 const uint32_t HEAD_SIZE = 128;                        // 头大小
-const uint32_t BLOCK_NUM = 16;                         // 块数量
+const uint32_t BLOCK_NUM = 9;                          // 块数量
 const uint32_t BLOCK_SIZE = 128;                       // 块大小
 const uint32_t MAX_CONTEXT_LEN = 1024;                 // 上下文最大长度
 std::vector<int32_t> contextLensData(BATCH_SIZE, 256); // contextLens的host侧数据
@@ -32,20 +32,18 @@ std::vector<int32_t> contextLensData(BATCH_SIZE, 256); // contextLens的host侧�
 atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::SVector<atb::Tensor> &inTensors)
 {
     // 创建query tensor
-    std::vector<unsigned int16_t> queryData(NTOKENS * HEAD_NUM * HEAD_SIZE, 0x3C00); // 0x3C00: float16的1
+    std::vector<float> queryData(NTOKENS * HEAD_NUM * HEAD_SIZE, 1.0);
     atb::Tensor query;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, queryData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
-                                        {NTOKENS, HEAD_NUM, HEAD_SIZE}, query, ACL_FLOAT16));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, queryData, ACL_BF16, aclFormat::ACL_FORMAT_ND,
+                                        {NTOKENS, HEAD_NUM, HEAD_SIZE}, query));
     // 创建key，value tensor
-    std::vector<unsigned int16_t> kvCacheData(BLOCK_NUM * BLOCK_SIZE * KV_HEAD_NUM * HEAD_SIZE, 0x3C00);
+    std::vector<float> kvCacheData(BLOCK_NUM * BLOCK_SIZE * KV_HEAD_NUM * HEAD_SIZE, 1.0);
     atb::Tensor kCache;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
-                                        {BLOCK_NUM, HEAD_SIZE * KV_HEAD_NUM / 16, BLOCK_SIZE, 16}, kCache,
-                                        ACL_FLOAT16));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_BF16, aclFormat::ACL_FORMAT_ND,
+                                        {BLOCK_NUM, BLOCK_SIZE, KV_HEAD_NUM, HEAD_SIZE}, kCache));
     atb::Tensor vCache;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
-                                        {BLOCK_NUM, HEAD_SIZE * KV_HEAD_NUM / 16, BLOCK_SIZE, 16}, vCache,
-                                        ACL_FLOAT16));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_BF16, aclFormat::ACL_FORMAT_ND,
+                                        {BLOCK_NUM, BLOCK_SIZE, KV_HEAD_NUM, HEAD_SIZE}, vCache));
     // 创建blockTables
     uint32_t maxNumBlocksPerQuery = (MAX_CONTEXT_LEN + BLOCK_SIZE - 1) / BLOCK_SIZE;
     std::vector<int32_t> blockTablesData(NTOKENS * maxNumBlocksPerQuery, 0);
@@ -76,36 +74,38 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, atb::S
 atb::Status PrepareOperation(atb::Operation **paOp)
 {
     atb::infer::PagedAttentionParam paOpParam;
+    paOpParam.maskType = atb::infer::PagedAttentionParam::MaskType::UNDEFINED;
     paOpParam.headNum = HEAD_NUM;
     paOpParam.kvHeadNum = KV_HEAD_NUM;
     paOpParam.qkScale = 1 / sqrt(HEAD_SIZE);
+    paOpParam.quantType = atb::infer::PagedAttentionParam::QuantType::TYPE_QUANT_UNDEFINED;
     return atb::CreateOperation(paOpParam, paOp);
 }
 
 int main(int argc, char **argv)
 {
-    if (!Is310P()) {
-        std::cout << "This paged attention demo only supports Atlas inference products" << std::endl;
-        return 0;
-    }
     // 设置卡号、创建context、设置stream
     CHECK_STATUS(aclInit(nullptr));
+    if (!Is910B()) {
+        std::cout << "This paged attention demo only supports Atlas A2/A3 products" << std::endl;
+        return 0;
+    }
     int32_t deviceId = 0;
     CHECK_STATUS(aclrtSetDevice(deviceId));
     atb::Context *context = nullptr;
     CHECK_STATUS(atb::CreateContext(&context));
     void *stream = nullptr;
     CHECK_STATUS(aclrtCreateStream(&stream));
-    context->SetExecuteStream(stream);
+    CHECK_STATUS(context->SetExecuteStream(stream));
 
     // PA示例
-    atb::Operation *paOp = nullptr;
-    CHECK_STATUS(PrepareOperation(&paOp));
+    atb::Operation *paOp;
+    PrepareOperation(&paOp);
     // 准备输入张量
     atb::VariantPack paVariantPack;
     CHECK_STATUS(PrepareInTensor(context, stream, paVariantPack.inTensors)); // 放入输入tensor
     atb::Tensor tensorOut;
-    CHECK_STATUS(CreateTensor(ACL_FLOAT16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_NUM, HEAD_SIZE}, tensorOut));
+    CreateTensor(ACL_BF16, aclFormat::ACL_FORMAT_ND, {NTOKENS, HEAD_NUM, HEAD_SIZE}, tensorOut);
     paVariantPack.outTensors.push_back(tensorOut); // 放入输出tensor
 
     uint64_t workspaceSize = 0;
@@ -116,12 +116,9 @@ int main(int argc, char **argv)
         CHECK_STATUS(aclrtMalloc((void **)(&workspacePtr), workspaceSize, ACL_MEM_MALLOC_HUGE_FIRST));
     }
     // PA执行
-    CHECK_STATUS(paOp->Execute(paVariantPack, workspacePtr, workspaceSize, context));
+    paOp->Execute(paVariantPack, workspacePtr, workspaceSize, context);
     CHECK_STATUS(aclrtSynchronizeStream(stream)); // 流同步，等待device侧任务计算完成
     CHECK_STATUS(aclrtFree(tensorOut.deviceData));
-    for (atb::Tensor &inTensor : paVariantPack.inTensors) {
-        CHECK_STATUS(aclrtFree(inTensor.deviceData));
-    }
     if (workspaceSize > 0) {
         CHECK_STATUS(aclrtFree(workspacePtr));
     }
