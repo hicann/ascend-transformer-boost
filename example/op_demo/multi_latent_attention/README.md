@@ -48,15 +48,15 @@ tests/apitest/opstest/python/operations/multi_latent_attention/
 
     | tensor名字| 数据类型 | 数据格式 | 维度信息|
     | --- | --- | --- | --- |
-    | `intensors[0]` | int8| nd | [4, 128, 512]|
-    |`intensors[1]`  |float16| nd |  [4, 128, 64]|
-    |`intensors[2]`  |  int8| nz  |[48, 16, 128, 32]  |
-    | `intensors[3]` | float16 | nz  | [48, 4, 128, 16] |
-    | `intensors[4]` | int32 | nd  | [4, 12] |
-    | `intensors[5]` | int32 | nd  | [4] |
-    | `intensors[6]` | float | nd  | [128] |
-    | `intensors[7]` | float | nd  | [128] |
-    | `outtensors[0]` | float16| nd | [4, 128, 512] |
+    | `qNope` | int8| nd | [4, 128, 512]|
+    |`qRope`  |float16| nd |  [4, 128, 64]|
+    |`ctKV`  |  int8| nz  |[48, 16, 128, 32]  |
+    | `kRope` | float16 | nz  | [48, 4, 128, 16] |
+    | `blockTables` | int32 | nd  | [4, 12] |
+    | `contextLens` | int32 | nd  | [4] |
+    | `qkDescale` | float | nd  | [128] |
+    | `pvDescale` | float | nd  | [128] |
+    | `attenOut` | float16| nd | [4, 128, 512] |
 
 - mlapa_ds_demo.cpp  
 
@@ -75,10 +75,10 @@ tests/apitest/opstest/python/operations/multi_latent_attention/
 
     | tensor名字| 数据类型 | 数据格式 | 维度信息|
     | --- | --- | --- | --- |
-    | `intensors[0]` | float16| nd | [32, 128, 512]|
-    |`intensors[1]`  |float16| nd |  [7168, 128, 64]|
-    |`intensors[2]`  |  float16| nd  |[160, 128, 1, 512]  |
-    | `intensors[3]` | float16 | nd  | [160, 128, 1, 64] |
-    | `intensors[4]` | int32 | nd  | [32, 5] |
-    | `intensors[5]` | int32 | nd  | [32] |
-    | `outtensors[0]` | float16| nd | [32, 128, 512] |
+    | `qNope` | float16| nd | [32, 128, 512]|
+    |`qRope`  |float16| nd |  [7168, 128, 64]|
+    |`ctKV`  |  float16| nd  |[160, 128, 1, 512]  |
+    | `kRope` | float16 | nd  | [160, 128, 1, 64] |
+    | `blockTables` | int32 | nd  | [32, 5] |
+    | `contextLens` | int32 | nd  | [32] |
+    | `attenOut` | float16| nd | [32, 128, 512] |

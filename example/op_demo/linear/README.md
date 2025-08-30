@@ -64,10 +64,10 @@
 
         | tensor名字| 数据类型 | 数据格式 | 维度信息|
         | :--- | :--- | :--- | :--- |
-        | `intensors[0]` | float16| nd | [2, 3]|
-        | `intensors[1]`  |float16| nd |  [3, 2]|
-        | `intensors[2]`  |float16| nd |  [1, 2]|
-        | `outtensors[0]` | float16| nd | [2, 2] |
+        | `x` | float16| nd | [2, 3]|
+        | `weight`  |float16| nd |  [3, 2]|
+        | `bias`  |float16| nd |  [1, 2]|
+        | `output` | float16| nd | [2, 2] |
 
     - linear_ds_demo.cpp
 
@@ -86,9 +86,9 @@
 
         | tensor名字| 数据类型 | 数据格式 | 维度信息|
         | --- | --- | --- | --- |
-        | `intensors[0]` | float| nd| [512, 7168]|
-        |`intensors[1]`  |float| nd|  [256, 7168]|
-        | `outtensors[0]` | bf16| nd| [512, 256] |
+        | `x` | float| nd| [512, 7168]|
+        |`weight`  |float| nd|  [256, 7168]|
+        | `output` | bf16| nd| [512, 256] |
 
     - linear_qwen_demo.cpp
 
@@ -107,9 +107,9 @@
 
         | tensor名字| 数据类型 | 数据格式 | 维度信息|
         | --- | --- | --- | --- |
-        | `intensors[0]` | bf16| nd| [1, 1728]|
-        |`intensors[1]`  |bf16| nz|  [1728, 5120]|
-        | `outtensors[0]` | bf16| nd| [1, 5120] |
+        | `x` | bf16| nd| [1, 1728]|
+        |`weight`  |bf16| nz|  [1728, 5120]|
+        | `output` | bf16| nd| [1, 5120] |
     - linear_qwen_bias_demo.cpp
 
         **参数设置**：
@@ -127,10 +127,10 @@
 
         | tensor名字| 数据类型 | 数据格式 | 维度信息|
         | --- | --- | --- | --- |
-        | `intensors[0]` | bf16| nd| [1024, 5120]|
-        |`intensors[1]`  |bf16| nz|  [5120, 896]|
-        |`intensors[2]`  |bf16| nd|  [1, 896]|
-        | `outtensors[0]` | bf16| nd| [1024, 896] |
+        | `x` | bf16| nd| [1024, 5120]|
+        |`weight`  |bf16| nz|  [5120, 896]|
+        |`bias`  |bf16| nd|  [1, 896]|
+        | `output` | bf16| nd| [1024, 896] |
 
 2. 爱因斯坦乘场景：
     linear_einsum_demo.cpp
@@ -138,6 +138,26 @@
     `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" linear_einsum_demo.cpp demo_util.h -l atb -l ascendcl -o linear_einsum_demo`
     - 运行时调用：
     `./linear_einsum_demo`
+    - linear_einsum_demo.cpp
+
+        **参数设置**：
+
+        | 成员名称    | 取值               |
+        | :------------ | :----------------------- |
+        | transposeA  | false        |
+        | transposeB  | false|
+        | hasBias     | false|
+        | outDataType | `ACL_DT_UNDEFINED`|
+        | enAccum     | false|
+        | matmulType  | `MATMUL_EIN_SUM`|
+
+        **数据规格**：  
+
+        | tensor名字| 数据类型 | 数据格式 | 维度信息|
+        | --- | --- | --- | --- |
+        | `x` | float16| nd | [2, 1, 3]|
+        |`weight`  |float16| nd |  [1, 3, 2]|
+        | `output` | float16| nd | [2, 1, 2] |
 3. 量化场景
 
     - linear_dequant_demo.cpp
@@ -157,11 +177,11 @@
 
         | tensor名字| 数据类型 | 数据格式 | 维度信息|
         | --- | --- | --- | --- |
-        | `intensors[0]` | int8| nd | [2, 3]|
-        |`intensors[1]`  |int8| nd |  [3, 2]|
-        |`intensors[2]`  |  int32| nd  |[1, 2]  |
-        | `intensors[3]` | float | nd  | [1, 2] |
-        | `outtensors[0]` | bf16| nd | [2, 2] |
+        | `x` | int8| nd | [2, 3]|
+        |`weight`  |int8| nd |  [3, 2]|
+        |`bias`  |  int32| nd  |[1, 2]  |
+        | `deqScale` | float | nd  | [1, 2] |
+        | `output` | bf16| nd | [2, 2] |
 
 
     - linear_dequant_ds_demo.cpp  
@@ -181,8 +201,8 @@
 
         | tensor名字| 数据类型 | 数据格式 | 维度信息|
         | --- | --- | --- | --- |
-        | `intensors[0]` | int8| nd | [32, 16384]|
-        |`intensors[1]`  |int8| nd |  [7168, 16384]|
-        |`intensors[2]`  |  int32| nd  |[1, 7168]  |
-        | `intensors[3]` | float | nd  | [1, 7168] |
-        | `outtensors[0]` | bf16| nd | [32, 7168] |
+        | `x` | int8| nd | [32, 16384]|
+        |`weight`  |int8| nd |  [7168, 16384]|
+        |`bias`  |  int32| nd  |[1, 7168]  |
+        | `deqScale` | float | nd  | [1, 7168] |
+        | `output` | bf16| nd | [32, 7168] |

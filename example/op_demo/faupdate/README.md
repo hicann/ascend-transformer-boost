@@ -47,6 +47,6 @@
 
 | tensor名字      | 数据类型 | 数据格式 | 维度信息    |
 | :-------------- | :------- | :------- | :---------- |
-| `intensors[0]`  | float    | nd       | [8, 512]    |
-| `intensors[1]`  | float    | nd       | [8, 512, 8] |
-| `outtensors[0]` | float    | nd       | [512, 8]    |
+| `lse`  | float    | nd       | [8, 512]    |
+| `localout`  | float    | nd       | [8, 512, 8] |
+| `output` | float    | nd       | [512, 8]    |
