@@ -14,7 +14,7 @@ namespace TorchAtb {
 std::mutex MemoryManager::mutex_;
 
 uint64_t MemoryManager::bufferRing_ = 1;                          // 设置默认值为1
-uint64_t MemoryManager::bufferSize_ = 50ULL * 1024ULL * 1024ULL; // 设置默认值为50MB
+uint64_t MemoryManager::bufferSize_ = 100ULL * 1024ULL * 1024ULL; // 设置默认值为100MB
 
 MemoryManager::MemoryManager()
 {
