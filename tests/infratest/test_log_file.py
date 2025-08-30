@@ -42,16 +42,27 @@ def check_not_available_space(dir_path):
 
 class TestLog(unittest.TestCase):
     def _init(self):
-        os.environ['ASDOPS_LOG_TO_FILE'] = '1'
-        os.environ['ASDOPS_LOG_LEVEL'] = 'INFO'
-        self._log_prefix = os.environ.get("ASDOPS_LOG_TO_BOOST_TYPE")
-        self._dir_path = os.path.expanduser("~/" + self._log_prefix + "/log/")
+        os.environ['ASCEND_MODULE_LOG_LEVEL'] = 'ATB=1:' + os.environ.get('ASCEND_MODULE_LOG_LEVEL', '')
+
+        self._log_prefix = 'atb'
+
+        dir_path = "~"
+        env_var = os.environ.get('HOME') + "/ascend/log"
+        if env_var:
+            dir_path = env_var
+        env_var = os.environ.get('ASCEND_WORK_PATH')
+        if env_var:
+            dir_path = env_var
+        env_var = os.environ.get('ASCEND_PROCESS_LOG_PATH')
+        if env_var:
+            dir_path = env_var
+
+        self._dir_path = os.path.expanduser(dir_path + "/" + self._log_prefix + "/")
         self._max_file_num = 50
 
     def _reset(self):
-        os.environ['ASDOPS_LOG_TO_FILE'] = '0'
-        os.environ['ASDOPS_LOG_LEVEL'] = 'FATAL'
-
+        os.environ['ASCEND_MODULE_LOG_LEVEL'] = 'ATB=4:' + os.environ.get('ASCEND_MODULE_LOG_LEVEL', '')
+        
     def _get_current_log_num(self):
         return get_file_name_by_path(self._dir_path)
 
