@@ -13,6 +13,13 @@
 
 #include "tiling_args.h"
 namespace Lcal {
+    void AllGatherGetDefaultTiling(CoCTilingData &cocTilingData);
+    void AllGatherEightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData);
+    void AllGatherFourRankINT8Tiling(CoCTilingData &cocTilingData);
+
+    void AllGatherV2EightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData);
+    void AllGatherV2EightRankFP16Core16GetDefaultTiling(CoCTilingData &cocTilingData);
+
     void AllReduceGetDefaultTiling(CoCTilingData &cocTilingData);
     void AllReduceFourRankInt8GetDefaultTiling(CoCTilingData &cocTilingData);
     void AllReduceFourRankFP16GetDefaultTiling(CoCTilingData &cocTilingData);
@@ -22,6 +29,5 @@ namespace Lcal {
 
     void ReduceScatterEightRankFP16GetDefaultTiling(CoCTilingData &cocTilingData);
     void ReduceScatterFourRankINT8Tiling(CoCTilingData &cocTilingData);
-
 }
-#endif
+#endif // LCAL_TILING_910B_H

@@ -51,6 +51,33 @@ public:
     void GetDefaultTiling(const TaskParam &taskParam) override;
 };
 
+class CoCMatmulReduceScatterTilingFunc : public CoCMatmulAllReduceTilingFunc {
+public:
+    CoCMatmulReduceScatterTilingFunc(const CoCMatmulReduceScatterTilingFunc &) = delete;
+    CoCMatmulReduceScatterTilingFunc &operator = (const CoCMatmulReduceScatterTilingFunc &) = delete;
+    CoCMatmulReduceScatterTilingFunc() {}
+    bool CheckTiling(const TaskParam &taskParam) override;
+    void GetDefaultTiling(const TaskParam &taskParam) override;
+};
+
+class CoCAllGatherMatmulTilingFunc : public CoCTilingFunc {
+public:
+    CoCAllGatherMatmulTilingFunc(const CoCAllGatherMatmulTilingFunc &) = delete;
+    CoCAllGatherMatmulTilingFunc &operator = (const CoCAllGatherMatmulTilingFunc &) = delete;
+    CoCAllGatherMatmulTilingFunc() {}
+    bool CheckTiling(const TaskParam &taskParam) override;
+    void GetDefaultTiling(const TaskParam &taskParam) override;
+};
+
+class CoCAllGatherMatmulV2TilingFunc : public CoCTilingFunc {
+public:
+    CoCAllGatherMatmulV2TilingFunc(const CoCAllGatherMatmulV2TilingFunc &) = delete;
+    CoCAllGatherMatmulV2TilingFunc &operator = (const CoCAllGatherMatmulV2TilingFunc &) = delete;
+    CoCAllGatherMatmulV2TilingFunc() {}
+    bool CheckTiling(const TaskParam &taskParam) override;
+    void GetDefaultTiling(const TaskParam &taskParam) override;
+};
+
 class CoCAllgatherMatmulReduceScatterTilingFunc : public CoCTilingFunc {
 public:
     CoCAllgatherMatmulReduceScatterTilingFunc(const CoCAllgatherMatmulReduceScatterTilingFunc &) = delete;
@@ -59,6 +86,33 @@ public:
     bool CheckTiling(const TaskParam &taskParam) override;
     void GetDefaultTiling(const TaskParam &taskParam) override;
 };
-}
+class CoCAllToAllAllGatherMatmulTilingFunc : public CoCAllGatherMatmulTilingFunc {
+public:
+    CoCAllToAllAllGatherMatmulTilingFunc(const CoCAllToAllAllGatherMatmulTilingFunc &) = delete;
+    CoCAllToAllAllGatherMatmulTilingFunc &operator = (const CoCAllToAllAllGatherMatmulTilingFunc &) = delete;
+    CoCAllToAllAllGatherMatmulTilingFunc() {}
+    bool CheckTiling(const TaskParam &tilingInfo) override;
+    void GetDefaultTiling(const TaskParam &tilingInfo) override;
+};
+class CoCAllToAllAllGatherMatmulHiddenTilingFunc : public CoCAllGatherMatmulTilingFunc {
+public:
+    CoCAllToAllAllGatherMatmulHiddenTilingFunc(const CoCAllToAllAllGatherMatmulHiddenTilingFunc &) = delete;
+    CoCAllToAllAllGatherMatmulHiddenTilingFunc &operator = (
+        const CoCAllToAllAllGatherMatmulHiddenTilingFunc &) = delete;
+    CoCAllToAllAllGatherMatmulHiddenTilingFunc() {}
+    bool CheckTiling(const TaskParam &tilingInfo) override;
+    void GetDefaultTiling(const TaskParam &tilingInfo) override;
+};
 
+class CoCMatmulReduceScatterAllToAllHiddenTilingFunc : public CoCMatmulReduceScatterTilingFunc {
+public:
+    CoCMatmulReduceScatterAllToAllHiddenTilingFunc(const CoCMatmulReduceScatterAllToAllHiddenTilingFunc &) = delete;
+    CoCMatmulReduceScatterAllToAllHiddenTilingFunc &operator = (
+        const CoCMatmulReduceScatterAllToAllHiddenTilingFunc &) = delete;
+    CoCMatmulReduceScatterAllToAllHiddenTilingFunc() {}
+    bool CheckTiling(const TaskParam &tilingInfo) override;
+    void GetDefaultTiling(const TaskParam &tilingInfo) override;
+};
+
+}
 #endif // LCAL_TILING_H

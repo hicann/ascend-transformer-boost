@@ -45,7 +45,6 @@ namespace Lcal {
     void CalTilingParam(const MatMulInfo &mmInfo, CoCTilingData &tilingData);
     void SetTilingInputParam(const TaskParam &taskParam, CoCTilingData &tilingData);
     void SetTilingData(const TaskParam &taskParam, const CoCTiling &tiling, CoCTilingData &tilingData);
-
 }
 
-#endif
+#endif // LCAL_TILING_FUNC_H

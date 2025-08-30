@@ -23,9 +23,20 @@ public:
     explicit Lcoc(LcalComm *comm);
     ~Lcoc();
     int SetParam(LcalType lcalType, const CoCTiling &tiling, const CoCParamDesc &paramDesc);
+    int AllGatherMatmul(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream = nullptr);
+    int AllGatherMatmulV2(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream = nullptr);
+    int MatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+                            aclrtStream stream = nullptr);
     int MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream = nullptr);
+    int PureMatmul(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream = nullptr);
     int AllGatherMatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg,
-                                        void *workspace, aclrtStream stream = nullptr);
+                                     void *workspace, aclrtStream stream = nullptr);
+    int AllToAllVAllGatherMatmul(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+        aclrtStream stream = nullptr);
+    int AllToAllVAllGatherMatmulHidden(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+        aclrtStream stream = nullptr);
+    int MatmulReduceScatterAllToAllVHidden(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+        aclrtStream stream = nullptr);
     int64_t GetWorkspaceSize();
     LcalComm *GetComm();
     MatMulInfo &GetMatMulInfo();
@@ -45,4 +56,4 @@ private:
     bool tilingSuccess_ = false;
 };
 }
-#endif // LCAL_LCOC_H
+#endif  // LCAL_LCOC_H

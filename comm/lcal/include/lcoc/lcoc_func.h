@@ -19,6 +19,7 @@
 
 #pragma once
 namespace Lcal {
+    // 校验参数取值范围在[min, max]内,当max=-1时，表示参数取值范围在[min, +∞)
     bool CheckParamScope(const std::string &name, const int &value, const int &min, const int &max);
     bool CheckParamScopeList(std::vector<std::tuple<std::string, int, int, int>> paramCheckList);
     bool CheckParamAlign(const std::string &name, const int &value, const int &align);
@@ -26,4 +27,4 @@ namespace Lcal {
     bool CheckParamPowerOfTwo(const std::string &name, int value);
 }
 
-#endif
+#endif // LCAL_LCOC_FUNC_H

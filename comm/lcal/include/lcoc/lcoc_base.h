@@ -37,22 +37,31 @@ struct MatMulInfo {
     bool weightNz = false;
 };
 
-struct TwoDimTPInfo {
-    int32_t agDim = -1;
-    int32_t rsDim = -1;
-    bool innerDimIsAg = true;
+struct TwoDimTPInfo {          // 2D-TP，含x轴的通信和y轴通信
+    int32_t agDim = -1;        // 表示ag轴卡数，规定x轴方向是非连续卡号
+    int32_t rsDim = -1;        // 表示rs轴卡数，规定y轴方向是连续卡号
+    bool innerDimIsAg = true;  // 是否沿着内轴进行allgather通信
 };
 
 struct QuantInfo {
+    // 反量化（包括Matmul前置伪量化和后置反量化）粒度
     QuantGranularity dequantGranularity = QuantGranularity::QUANT_GRANULARITY_UNDEFINED;
     int32_t dequantGroupSize = -1;
 
-    QuantGranularity quantGranularity = QuantGranularity::QUANT_GRANULARITY_UNDEFINED;
+    QuantGranularity quantGranularity = QuantGranularity::QUANT_GRANULARITY_UNDEFINED;  // 量化粒度
     int32_t quantGroupSize = -1;
 };
 
 struct PostInfo {
     int32_t withRmsNorm = 0;
 };
+
+struct MoeInfo {
+    int16_t local_expert_nums = 0;
+    int8_t EP = 0;
+    int8_t TP = 0;
+    int32_t maxOutputSize = -1;
+    int8_t isMoe = 0;
+};
 }
-#endif
+#endif  // LCAL_LCOC_BASE_H
