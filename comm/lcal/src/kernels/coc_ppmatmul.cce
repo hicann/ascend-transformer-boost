@@ -618,11 +618,11 @@ public:
                                     l1_buf_a + k_part_idx * k_part_len * BLOCK_SIZE_32 +
                                         i * k_round * BLOCK_SIZE_32,
                                     0,
-                                    k0_round,
+                                    k0_round / BLOCK_SIZE_32,
                                     1,
                                     0,
                                     0,
-                                    k0_round
+                                    k0_round / BLOCK_SIZE_32 - 1
                                 );
                             }
                         } else {
