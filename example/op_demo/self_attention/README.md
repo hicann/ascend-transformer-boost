@@ -33,25 +33,221 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 
 ### 场景说明
 提供demo分别对应不同产品/场景，具体场景区别可以参见官网，编译运行时需要对应更改build脚本：
-1. SelfAttention Encoder A2/A3：
-    + 基础场景，分开传入key，CacheK，value和CacheV
-    + 对应文件：self_attention_encoder_demo.cpp
-    + 默认编译脚本可编译运行
-    + 该demo仅支持在Atlas A2/A3系列上运行
-2. SelfAttention Encoder Atlas推理系列实现：
-   + 更改编译脚本为：
-    `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" 对应文件：self_attention_encoder_inference_demo.cpp demo_util.h -l atb -l ascendcl -o 对应文件：self_attention_encoder_inference_demo`
-    - 运行时调用：
-    `./self_attention_encoder_inference_demo`
-    + 对应文件：self_attention_encoder_inference_demo.cpp
-    + 该demo仅支持在Atlas推理系列上运行
 
-3. SelfAttention PaEncoder：
-    + 只需传入key，value
-    + 对应文件：self_attention_encoder_inference_demo.cpp
-    + 该demo仅支持在Atlas A2/A3系列上运行
+#### self_attention_encoder_demo.cpp
++ 场景：FA Encoder基础场景，分开传入key，CacheK，value和CacheV
++ 默认编译脚本可编译运行
++ 该demo仅支持在Atlas A2/A3上运行
++ demo中使用全量的上三角mask演示
 
-4. SelfAttention PrefixEncoder：
-    + 传入依据blockTables存放的key，value
-    + 对应文件：self_attention_prefix_encoder_demo.cpp
-    + 该demo仅支持在Atlas A2/A3系列上运行
+**参数设置**：
+| 成员名称             | 取值                   |
+| :------------------- | :--------------------- |
+| quantType            | `TYPE_QUANT_UNQUANT`   |
+| outDataType          | `ACL_DT_UNDEFINED`     |
+| headNum              | 32                     |
+| kvHeadNum            | 32                     |
+| qScale               | 1                      |
+| qkScale              | 1/sqrt(128)            |
+| batchRunStatusEnable | `false`                |
+| isTriuMask           | 0                      |
+| calcType             | `ENCODER`              |
+| kernelType           | `KERNELTYPE_DEFAULT`   |
+| clampType            | `CLAMP_TYPE_UNDEFINED` |
+| clampMin             | 0                      |
+| clampMax             | 0                      |
+| maskType             | `MASK_TYPE_NORM`       |
+| kvcacheCfg           | `K_CACHE_V_CACHE`      |
+| scaleType            | `SCALE_TYPE_TOR`       |
+| inputLayout          | `TYPE_BSND`            |
+| mlaVHeadSize         | 0                      |
+| cacheType            | `CACHE_TYPE_NORM`      |
+| windowSize           | 0                      |
+
+**数据规格**：
+| tensor名字      | 数据类型 | 数据格式 | 维度信息            | cpu/npu |
+| --------------- | -------- | -------- | ------------------- | ------- |
+| `query`         | float16  | nd       | [160,2048]          | npu     |
+| `key`           | float16  | nd       | [160,2048]          | npu     |
+| `value`         | float16  | nd       | [160,2048]          | npu     |
+| `cacheK`        | float16  | nd       | [1, 10, 1024, 2048] | npu     |
+| `cacheV`        | float16  | nd       | [1, 10, 1024, 2048] | npu     |
+| `attentionMask` | float16  | nd       | [10, 1024, 1024]    | npu     |
+| `tokenOffset`   | int32    | nd       | [10]                | cpu     |
+| `seqLen`        | int32    | nd       | [10]                | cpu     |
+| `layerId`       | int32    | nd       | [1]                 | npu     |
+| **Output**      |
+| `output`        | float16  | nd       | [1]                 | npu     |
+
+#### self_attention_encoder_inference_demo.cpp
++ 场景：fa encoder基础场景在Atlas推理系列上的实现，分开传入key，CacheK，value和CacheV
++ 更改编译脚本为：
+ `g++ -D_GLIBCXX_USE_CXX11_ABI=$cxx_abi -I "${ATB_HOME_PATH}/include" -I "${ASCEND_HOME_PATH}/include" -L "${ATB_HOME_PATH}/lib" -L "${ASCEND_HOME_PATH}/lib64" self_attention_encoder_inference_demo.cpp demo_util.h -l atb -l ascendcl -o self_attention_encoder_inference_demo`
+- 运行时调用：
+`./self_attention_encoder_inference_demo`
++ 该demo仅支持在Atlas推理系列上运行
+
+**参数设置**：
+| 成员名称             | 取值                   |
+| :------------------- | :--------------------- |
+| quantType            | `TYPE_QUANT_UNQUANT`   |
+| outDataType          | `ACL_DT_UNDEFINED`     |
+| headNum              | 16                     |
+| kvHeadNum            | 16                     |
+| qScale               | 1                      |
+| qkScale              | 1/sqrt(128)            |
+| batchRunStatusEnable | `false`                |
+| isTriuMask           | 0                      |
+| calcType             | `ENCODER`              |
+| kernelType           | `KERNELTYPE_DEFAULT`   |
+| clampType            | `CLAMP_TYPE_UNDEFINED` |
+| clampMin             | 0                      |
+| clampMax             | 0                      |
+| maskType             | `MASK_TYPE_UNDEFINED`  |
+| kvcacheCfg           | `K_CACHE_V_CACHE`      |
+| scaleType            | `SCALE_TYPE_TOR`       |
+| inputLayout          | `TYPE_BSND`            |
+| mlaVHeadSize         | 0                      |
+| cacheType            | `CACHE_TYPE_NORM`      |
+| windowSize           | 0                      |
+
+**数据规格**：
+| tensor名字    | 数据类型 | 数据格式 | 维度信息            | cpu/npu |
+| ------------- | -------- | -------- | ------------------- | ------- |
+| `query`       | float16  | nd       | [16, 256]           | npu     |
+| `key`         | float16  | nd       | [16, 256]           | npu     |
+| `value`       | float16  | nd       | [16, 256]           | npu     |
+| `cacheK`      | float16  | nd       | [1, 1, 16, 256, 16] | npu     |
+| `cacheV`      | float16  | nd       | [1, 1, 16, 256, 16] | npu     |
+| `tokenOffset` | int32    | nd       | [1]                 | cpu     |
+| `seqLen`      | int32    | nd       | [1]                 | cpu     |
+| `layerId`     | int32    | nd       | [1]                 | npu     |
+| **Output**    |
+| `output`      | float16  | nd       | [16, 256]           | npu     |
+
+#### self_attention_pa_encoder_demo.cpp
++ 场景：FA使用PA Encoder的场景，使用FA输入，只需传入key，value
+  + 传入不同的headNum，kvHeadNum且headNum可以被kvHeadNum时开启GQA（Grouped Query Attention）。
++ 该demo仅支持在Atlas A2/A3系列上运行
++ demo中使用全量的上三角mask演示
+
+**参数设置**：
+| 成员名称             | 取值                   |
+| :------------------- | :--------------------- |
+| quantType            | `TYPE_QUANT_UNQUANT`   |
+| outDataType          | `ACL_DT_UNDEFINED`     |
+| headNum              | 32                     |
+| kvHeadNum            | 16                     |
+| qScale               | 1                      |
+| qkScale              | 1/sqrt(128)            |
+| batchRunStatusEnable | `false`                |
+| isTriuMask           | 0                      |
+| calcType             | `PA_ENCODER`           |
+| kernelType           | `KERNELTYPE_DEFAULT`   |
+| clampType            | `CLAMP_TYPE_UNDEFINED` |
+| clampMin             | 0                      |
+| clampMax             | 0                      |
+| maskType             | `MASK_TYPE_NORM`       |
+| kvcacheCfg           | `K_CACHE_V_CACHE`      |
+| scaleType            | `SCALE_TYPE_TOR`       |
+| inputLayout          | `TYPE_BSND`            |
+| mlaVHeadSize         | 0                      |
+| cacheType            | `CACHE_TYPE_NORM`      |
+| windowSize           | 0                      |
+
+**数据规格**：
+| tensor名字      | 数据类型 | 数据格式 | 维度信息        | cpu/npu |
+| --------------- | -------- | -------- | --------------- | ------- |
+| `query`         | float16  | nd       | [3072, 32, 128] | npu     |
+| `key`           | float16  | nd       | [3072, 16, 128] | npu     |
+| `value`         | float16  | nd       | [3072, 16, 128] | npu     |
+| `attentionMask` | float16  | nd       | [4, 1024, 1024] | npu     |
+| `seqLen`        | int32    | nd       | [4]             | cpu     |
+| **Output**      |
+| `output`        | float16  | nd       | [3072, 32, 128] | npu     |
+
+####  self_attention_pa_encoder_qwen_demo.cpp
++ 场景：FA使用PA Encoder的场景，使用FA输入，只需传入key，value
+  + 传入不同的headNum，kvHeadNum且headNum可以被kvHeadNum时开启GQA（Grouped Query Attention）。
++ 该demo仅支持在Atlas A2/A3系列上运行
++ demo中为了应对长序列的情况，使用压缩上三角mask演示
+
+**参数设置**：
+| 成员名称             | 取值                      |
+| :------------------- | :------------------------ |
+| quantType            | `TYPE_QUANT_UNQUANT`      |
+| outDataType          | `ACL_DT_UNDEFINED`        |
+| headNum              | 5                         |
+| kvHeadNum            | 1                         |
+| qScale               | 1                         |
+| qkScale              | 1/sqrt(128)               |
+| batchRunStatusEnable | `false`                   |
+| isTriuMask           | 1                         |
+| calcType             | `PA_ENCODER`              |
+| kernelType           | `KERNELTYPE_DEFAULT`      |
+| clampType            | `CLAMP_TYPE_UNDEFINED`    |
+| clampMin             | 0                         |
+| clampMax             | 0                         |
+| maskType             | `MASK_TYPE_NORM_COMPRESS` |
+| kvcacheCfg           | `K_CACHE_V_CACHE`         |
+| scaleType            | `SCALE_TYPE_TOR`          |
+| inputLayout          | `TYPE_BSND`               |
+| mlaVHeadSize         | 0                         |
+| cacheType            | `CACHE_TYPE_NORM`         |
+| windowSize           | 0                         |
+
+**数据规格**：
+| tensor名字      | 数据类型 | 数据格式 | 维度信息       | cpu/npu |
+| --------------- | -------- | -------- | -------------- | ------- |
+| `query`         | float16  | nd       | [1024, 5, 128] | npu     |
+| `key`           | float16  | nd       | [1024, 1, 128] | npu     |
+| `value`         | float16  | nd       | [1024, 1, 128] | npu     |
+| `attentionMask` | float16  | nd       | [128, 128]     | npu     |
+| `seqLen`        | int32    | nd       | [1]            | cpu     |
+| **Output**      |
+| `output`        | float16  | nd       | [1024, 5, 128] | npu     |
+
+#### self_attention_prefix_encoder_demo.cpp
++ 场景：FA使用Prefix Encoder的场景，传入PA的依据blockTables存放的key，value
+  + 此场景支持q和kv不等长，但是要求：
+    $$\forall i \lt len(seqLen)，kvSeqLen[i] - seqLen[i] = 0 (mod 128) $$
++ 该demo仅支持在Atlas A2/A3系列上运行
++ demo中使用Alibi上三角mask叠加bias slopes演示
+
+**参数设置**：
+| 成员名称             | 取值                        |
+| :------------------- | :-------------------------- |
+| quantType            | `TYPE_QUANT_UNQUANT`        |
+| outDataType          | `ACL_DT_UNDEFINED`          |
+| headNum              | 32                          |
+| kvHeadNum            | 8                           |
+| qScale               | 1                           |
+| qkScale              | 1/sqrt(128)                 |
+| batchRunStatusEnable | `false`                     |
+| isTriuMask           | 0                           |
+| calcType             | `PREFIX_ENCODER`            |
+| kernelType           | `KERNELTYPE_HIGH_PRECISION` |
+| clampType            | `CLAMP_TYPE_UNDEFINED`      |
+| clampMin             | 0                           |
+| clampMax             | 0                           |
+| maskType             | `MASK_TYPE_ALIBI_COMPRESS`  |
+| kvcacheCfg           | `K_CACHE_V_CACHE`           |
+| scaleType            | `SCALE_TYPE_TOR`            |
+| inputLayout          | `TYPE_BSND`                 |
+| mlaVHeadSize         | 0                           |
+| cacheType            | `CACHE_TYPE_NORM`           |
+| windowSize           | 0                           |
+
+**数据规格**：
+| tensor名字    | 数据类型 | 数据格式 | 维度信息           | cpu/npu |
+| ------------- | -------- | -------- | ------------------ | ------- |
+| `query`       | float16  | nd       | [96, 32, 128]      | npu     |
+| `key`         | float16  | nd       | [480, 128, 8, 128] | npu     |
+| `value`       | float16  | nd       | [480, 128, 8, 128] | npu     |
+| `blockTables` | float16  | nd       | [4, 4]             | npu     |
+| `mask`        | float16  | nd       | [32, 96, 128]      | npu     |
+| `seqLen`      | int32    | nd       | [4]                | cpu     |
+| `kvSeqLen`    | int32    | nd       | [4]                | cpu     |
+| `slopes`      | float32  | nd       | [128]              | npu     |
+| **Output**    |
+| `output`      | float16  | nd       | [96, 32, 128]      | npu     |

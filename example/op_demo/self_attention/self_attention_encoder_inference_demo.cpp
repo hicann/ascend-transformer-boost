@@ -9,6 +9,7 @@
  */
 
 #include "../demo_util.h"
+#include <cmath>
 
 const uint32_t BATCH_SIZE = 1;                   // 批处理大小
 std::vector<int32_t> seqLenHost(BATCH_SIZE, 16); // host侧tensor值，用于存储每个批处理中的序列长度
@@ -20,6 +21,7 @@ const uint32_t HEAD_NUM = 16;                                                 //
 const uint32_t KV_HEAD_NUM = 16;                                              // kv头数
 const uint32_t HEAD_SIZE = 16;                                                // 头大小
 const uint32_t LAYER_NUM = 1;                                                 // 层大小
+const uint32_t NZ_ALIGN_FACTOR = 16;                                          // nz格式16对齐
 
 /**
  * @brief 准备atb::VariantPack中的所有输入tensor
@@ -52,8 +54,9 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     atb::Tensor tensorV;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvData, ACL_FLOAT16, aclFormat::ACL_FORMAT_ND,
                                         {NTOKENS, qHiddenSize}, tensorV));
-    std::vector<unsigned int16_t> kvCacheData(LAYER_NUM * BATCH_SIZE * MAX_SEQ_LEN * kvHiddenSize, 0x3C00);
-    std::vector<int64_t> kvCacheShape = {LAYER_NUM, BATCH_SIZE, kvHiddenSize / 16, MAX_SEQ_LEN, 16};
+    std::vector<unsigned int16_t> kvCacheData(LAYER_NUM * BATCH_SIZE * MAX_SEQ_LEN * kvHiddenSize, 1);
+    std::vector<int64_t> kvCacheShape = {LAYER_NUM, BATCH_SIZE, kvHiddenSize / NZ_ALIGN_FACTOR, MAX_SEQ_LEN,
+                                         NZ_ALIGN_FACTOR};
     atb::Tensor tensorCacheK;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, kvCacheData, ACL_FLOAT16, aclFormat::ACL_FORMAT_FRACTAL_NZ,
                                         kvCacheShape, tensorCacheK, ACL_FLOAT16));
@@ -86,9 +89,27 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
 atb::Status PrepareOperation(atb::Operation **encoderOp)
 {
     atb::infer::SelfAttentionParam opParam;
-    opParam.headNum = HEAD_NUM;
-    opParam.kvHeadNum = KV_HEAD_NUM;
-    opParam.calcType = atb::infer::SelfAttentionParam::CalcType::ENCODER;
+    opParam.quantType = atb::infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT; // 非量化场景
+    opParam.outDataType = ACL_DT_UNDEFINED; // 非量化场景，不设置输出类型
+    opParam.headNum = HEAD_NUM;             // query 头数
+    opParam.kvHeadNum = KV_HEAD_NUM;        // key, value 头数
+    opParam.qScale = 1;                     // query缩放系数，不缩放置1
+    opParam.qkScale = 1 / sqrt(HEAD_SIZE);  // tor值，Q*K^T后的缩放系数，不缩放置1
+    opParam.batchRunStatusEnable = false;   // 不开启动态batch
+    opParam.isTriuMask = 0;                 // 不开启mask倒三角优化
+    opParam.calcType = atb::infer::SelfAttentionParam::CalcType::ENCODER; // 计算类型/场景分类，使用FA Encoder
+    // Atlas推理系列仅支持高性能，softmax使用float16
+    opParam.kernelType = atb::infer::SelfAttentionParam::KernelType::KERNELTYPE_DEFAULT;
+    opParam.clampType = atb::infer::SelfAttentionParam::ClampType::CLAMP_TYPE_UNDEFINED; // 不开启最大最小值截断
+    opParam.clampMin = 0;                                                                // 不开启截断时置0
+    opParam.clampMax = 0;                                                                // 不开启截断时置0
+    opParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED;    // 普通全量mask
+    opParam.kvcacheCfg = atb::infer::SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE;    // 会进行kvCache处理
+    opParam.scaleType = atb::infer::SelfAttentionParam::ScaleType::SCALE_TYPE_TOR; // 缩放类型，使用qkScale缩放
+    opParam.inputLayout = atb::infer::InputLayout::TYPE_BSND;                      // 数据排布格式，BNSD
+    opParam.mlaVHeadSize = 0;                                                      // 不开启MLA合并kvCache，置0
+    opParam.cacheType = atb::infer::SelfAttentionParam::CacheType::CACHE_TYPE_NORM; // 不开启SWA mask
+    opParam.windowSize = 0;                                                         // 不开启SWA mask，置0
     return atb::CreateOperation(opParam, encoderOp);
 }
 
