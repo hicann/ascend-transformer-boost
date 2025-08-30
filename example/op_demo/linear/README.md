@@ -47,90 +47,90 @@
 提供demo分别对应，编译运行时需要对应更改build脚本：
 
 1. 基础场景：
-    - linear_demo.cpp
-    默认编译脚本可编译运行
+    - linear_demo.cpp<br>
+    默认编译脚本可编译运行  
         **参数设置**：
 
-        | 成员名称    | 取值  |
-        | :------------ | :------------------|
-        | transposeA  | false |
-        | transposeB  | false|
-        | hasBias     | true|
-        | outDataType | `ACL_DT_UNDEFINED`|
-        | enAccum     | false|
-        | matmulType  | `MATMUL_UNDEFINED`|
+        |  成员名称    | 取值               |
+        | :---------- | :----------------- |
+        | transposeA  | false              |
+        | transposeB  | false              |
+        | hasBias     | true               |
+        | outDataType | `ACL_DT_UNDEFINED` |
+        | enAccum     | false              |
+        | matmulType  | `MATMUL_UNDEFINED` |
 
         **数据规格**:
 
-        | tensor名字| 数据类型 | 数据格式 | 维度信息|
-        | :--- | :--- | :--- | :--- |
-        | `x` | float16| nd | [2, 3]|
-        | `weight`  |float16| nd |  [3, 2]|
-        | `bias`  |float16| nd |  [1, 2]|
-        | `output` | float16| nd | [2, 2] |
+        | tensor名字 | 数据类型 | 数据格式  | 维度信息  | cpu/npu |
+        | :--------- | :------- | :------- | :------- | :------ |
+        | `x`        | float16  | nd       | [2, 3]   | npu     |
+        | `weight`   | float16  | nd       | [3, 2]   | npu     |
+        | `bias`     | float16  | nd       | [1, 2]   | npu     |
+        | `output`   | float16  | nd       | [2, 2]   | npu     |
 
     - linear_ds_demo.cpp
 
         **参数设置**：
 
-        | 成员名称    | 取值               |
-        | :------------ | :----------------------- |
-        | transposeA  | false |
-        | transposeB  | true |
-        | hasBias     | false |
+        | 成员名称     | 取值               |
+        | :---------- | :----------------- |
+        | transposeA  | false              |
+        | transposeB  | true               |
+        | hasBias     | false              |
         | outDataType | `ACL_DT_UNDEFINED` |
-        | enAccum     | false |
+        | enAccum     | false              |
         | matmulType  | `MATMUL_UNDEFINED` |
 
         **数据规格**：  
 
-        | tensor名字| 数据类型 | 数据格式 | 维度信息|
-        | --- | --- | --- | --- |
-        | `x` | float| nd| [512, 7168]|
-        |`weight`  |float| nd|  [256, 7168]|
-        | `output` | bf16| nd| [512, 256] |
+        | tensor名字 | 数据类型 | 数据格式  | 维度信息     | cpu/npu |
+        | ---------- | -------- | -------- | ----------- | :------ |
+        | `x`        | float    | nd       | [512, 7168] | npu     |
+        | `weight`   | float    | nd       | [256, 7168] | npu     |
+        | `output`   | bf16     | nd       | [512, 256]  | npu     |
 
     - linear_qwen_demo.cpp
 
         **参数设置**：
 
-        | 成员名称    | 取值               |
-        | :------------ | :----------------------- |
-        | transposeA  | false |
-        | transposeB  | false |
-        | hasBias     | false |
+        |  成员名称    | 取值               |
+        | :---------- | :----------------- |
+        | transposeA  | false              |
+        | transposeB  | false              |
+        | hasBias     | false              |
         | outDataType | `ACL_DT_UNDEFINED` |
-        | enAccum     | false |
+        | enAccum     | false              |
         | matmulType  | `MATMUL_UNDEFINED` |
 
         **数据规格**：  
 
-        | tensor名字| 数据类型 | 数据格式 | 维度信息|
-        | --- | --- | --- | --- |
-        | `x` | bf16| nd| [1, 1728]|
-        |`weight`  |bf16| nz|  [1728, 5120]|
-        | `output` | bf16| nd| [1, 5120] |
+        | tensor名字 | 数据类型  | 数据格式  | 维度信息      | cpu/npu |
+        | ---------- | -------- | -------- | ------------ | :------ |
+        | `x`        | bf16     | nd       | [1, 1728]    | npu     |
+        | `weight`   | bf16     | nz       | [1728, 5120] | npu     |
+        | `output`   | bf16     | nd       | [1, 5120]    | npu     |
     - linear_qwen_bias_demo.cpp
 
         **参数设置**：
 
-        | 成员名称    | 取值               |
-        | :------------ | :----------------------- |
-        | transposeA  | false |
-        | transposeB  | false |
-        | hasBias     | true |
+        | 成员名称     | 取值               |
+        | :---------- | :----------------- |
+        | transposeA  | false              |
+        | transposeB  | false              |
+        | hasBias     | true               |
         | outDataType | `ACL_DT_UNDEFINED` |
-        | enAccum     | false |
+        | enAccum     | false              |
         | matmulType  | `MATMUL_UNDEFINED` |
 
         **数据规格**：  
 
-        | tensor名字| 数据类型 | 数据格式 | 维度信息|
-        | --- | --- | --- | --- |
-        | `x` | bf16| nd| [1024, 5120]|
-        |`weight`  |bf16| nz|  [5120, 896]|
-        |`bias`  |bf16| nd|  [1, 896]|
-        | `output` | bf16| nd| [1024, 896] |
+        | tensor名字 | 数据类型 | 数据格式 | 维度信息       | cpu/npu |
+        | ---------- | -------- | -------- | ------------ |  ------ |
+        | `x`        | bf16     | nd       | [1024, 5120] | npu     |
+        | `weight`   | bf16     | nz       | [5120, 896]  | npu     |
+        | `bias`     | bf16     | nd       | [1, 896]     | npu     |
+        | `output`   | bf16     | nd       | [1024, 896]  | npu     |
 
 2. 爱因斯坦乘场景：
     linear_einsum_demo.cpp
@@ -142,67 +142,67 @@
 
         **参数设置**：
 
-        | 成员名称    | 取值               |
-        | :------------ | :----------------------- |
-        | transposeA  | false        |
-        | transposeB  | false|
-        | hasBias     | false|
-        | outDataType | `ACL_DT_UNDEFINED`|
-        | enAccum     | false|
-        | matmulType  | `MATMUL_EIN_SUM`|
+        | 成员名称     | 取值               |
+        | :---------- | :----------------- |
+        | transposeA  | false              |
+        | transposeB  | false              |
+        | hasBias     | false              |
+        | outDataType | `ACL_DT_UNDEFINED` |
+        | enAccum     | false              |
+        | matmulType  | `MATMUL_EIN_SUM`   |
 
         **数据规格**：  
 
-        | tensor名字| 数据类型 | 数据格式 | 维度信息|
-        | --- | --- | --- | --- |
-        | `x` | float16| nd | [2, 1, 3]|
-        |`weight`  |float16| nd |  [1, 3, 2]|
-        | `output` | float16| nd | [2, 1, 2] |
+        | tensor名字 | 数据类型  | 数据格式  | 维度信息  | cpu/npu |
+        | ---------- | -------- | -------- | --------- | ------- |
+        | `x`        | float16  | nd       | [2, 1, 3] | npu     |
+        | `weight`   | float16  | nd       | [1, 3, 2] | npu     |
+        | `output`   | float16  | nd       | [2, 1, 2] | npu     |
 3. 量化场景
 
     - linear_dequant_demo.cpp
 
         **参数设置**：
 
-        | 成员名称    | 取值               |
-        | :------------ | :----------------------- |
-        | transposeA  | false        |
-        | transposeB  | false|
-        | hasBias     | true|
-        | outDataType | `ACL_BF16`|
-        | enAccum     | false|
-        | matmulType  | `MATMUL_UNDEFINED`|
+        | 成员名称     | 取值               |
+        | :---------- | :----------------- |
+        | transposeA  | false              |
+        | transposeB  | false              |
+        | hasBias     | true               |
+        | outDataType | `ACL_BF16`         |
+        | enAccum     | false              |
+        | matmulType  | `MATMUL_UNDEFINED` |
 
         **数据规格**：  
 
-        | tensor名字| 数据类型 | 数据格式 | 维度信息|
-        | --- | --- | --- | --- |
-        | `x` | int8| nd | [2, 3]|
-        |`weight`  |int8| nd |  [3, 2]|
-        |`bias`  |  int32| nd  |[1, 2]  |
-        | `deqScale` | float | nd  | [1, 2] |
-        | `output` | bf16| nd | [2, 2] |
+        | tensor名字 | 数据类型  | 数据格式  | 维度信息 | cpu/npu |
+        | ---------- | -------- | -------- | -------- |-------- |
+        | `x`        | int8     | nd       | [2, 3]   | npu     |
+        | `weight`   | int8     | nd       | [3, 2]   | npu     |
+        | `bias`     | int32    | nd       | [1, 2]   | npu     |
+        | `deqScale` | float    | nd       | [1, 2]   | npu     |
+        | `output`   | bf16     | nd       | [2, 2]   | npu     |
 
 
     - linear_dequant_ds_demo.cpp  
 
         **参数设置**：
 
-        | 成员名称    | 取值               |
-        | :------------ | :----------------------- |
-        | transposeA  | false |
-        | transposeB  | true|
-        | hasBias     | true|
-        | outDataType | `ACL_FLOAT16`|
-        | enAccum     | false|
-        | matmulType  | `MATMUL_UNDEFINED`|
+        | 成员名称     | 取值               |
+        | :---------- | :----------------- |
+        | transposeA  | false              |
+        | transposeB  | true               |
+        | hasBias     | true               |
+        | outDataType | `ACL_FLOAT16`      |
+        | enAccum     | false              |
+        | matmulType  | `MATMUL_UNDEFINED` |
 
         **数据规格**：
 
-        | tensor名字| 数据类型 | 数据格式 | 维度信息|
-        | --- | --- | --- | --- |
-        | `x` | int8| nd | [32, 16384]|
-        |`weight`  |int8| nd |  [7168, 16384]|
-        |`bias`  |  int32| nd  |[1, 7168]  |
-        | `deqScale` | float | nd  | [1, 7168] |
-        | `output` | bf16| nd | [32, 7168] |
+        | tensor名字 | 数据类型  | 数据格式  | 维度信息      | cpu/npu |
+        | ---------- | -------- | -------- | ------------- |-------- |
+        | `x`        | int8     | nd       | [32, 16384]   | npu     |
+        | `weight`   | int8     | nd       | [7168, 16384] | npu     |
+        | `bias`     | int32    | nd       | [1, 7168]     | npu     |
+        | `deqScale` | float    | nd       | [1, 7168]     | npu     |
+        | `output`   | bf16     | nd       | [32, 7168]    | npu     |

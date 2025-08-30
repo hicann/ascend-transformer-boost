@@ -42,11 +42,10 @@
 | `faUpdateType` | DECODE_UPDATE |
 | sp             | 8             |
 
-
 ### 数据规格
 
-| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
-| :-------------- | :------- | :------- | :---------- |
-| `lse`  | float    | nd       | [8, 512]    |
-| `localout`  | float    | nd       | [8, 512, 8] |
-| `output` | float    | nd       | [512, 8]    |
+| tensor名字 | 数据类型 | 数据格式  | 维度信息     | cpu/npu |
+| :--------- | :------- | :------- | :---------- | ------- |
+| `lse`      | float    | nd       | [8, 512]    | npu     |
+| `localout` | float    | nd       | [8, 512, 8] | npu     |
+| `output`   | float    | nd       | [512, 8]    | npu     |
