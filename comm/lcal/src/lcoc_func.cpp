@@ -15,11 +15,11 @@ using namespace std;
 namespace Lcal {
     bool CheckParamScope(const std::string &name, const int &value, const int &min, const int &max)
     {
-        if (value < min || (max != PARM_CHECK_MAX_VALUE && value > max)) {
-            if (max == PARM_CHECK_MAX_VALUE) {
+        if (value < min || (max != PARAM_CHECK_MAX_VALUE && value > max)) {
+            if (max == PARAM_CHECK_MAX_VALUE) {
                 MKI_LOG(ERROR) << "The " << name << ":" << value << " must equal or greater than " << min << "!";
             } else {
-                MKI_LOG(ERROR) << "The " << name << ":" << value << " must be in [" << min << "," << max << "]!";
+                MKI_LOG(ERROR) << "The " << name << ":" << value << " must be in [" << min << ", " << max << "]!";
             }
             return false;
         }

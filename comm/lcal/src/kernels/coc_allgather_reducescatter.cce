@@ -65,7 +65,7 @@ public:
         rs_max_ub_ping_pong_size = (extra_ub_move_num / 2) / n0 * n0;
     }
 
-    FORCE_INLINE_AICORE void CopyGmToGm(__gm__ T* gm_src, __gm__ T* gm_dst, int32_t copy_size) {
+    FORCE_INLINE_AICORE void CopyGMToGM(__gm__ T* gm_src, __gm__ T* gm_dst, int32_t copy_size) {
         auto ub0 = output_UB_T[0];
         auto ub1 = output_UB_T[1];
         int32_t interm_offset = 0;
@@ -109,7 +109,7 @@ public:
                     real_rank = dst_rank * rs_dim + rank % rs_dim;
                 }
                 if (real_rank != rank && dst_rank < ag_dim) {
-                    CopyUbufToGm(buff[real_rank] + rank_offset, ub_buff_st, 1, block_len, 0, 0)
+                    CopyUbufToGm(buff[real_rank] + rank_offset, ub_buff_st, 1, block_len, 0, 0);
                 }
                 dst_rank = (dst_rank + skip_num) % ag_dim;
             }
@@ -150,7 +150,7 @@ public:
                     real_rank = dst_rank * rs_dim + rank % rs_dim;
                 }
                 if (real_rank != rank && dst_rank < ag_dim) {
-                    CopyGmToGm(gm_src + data_src, buff[real_rank] + rank_offset + data_src, data_len);
+                    CopyGMToGM(gm_src + data_src, buff[real_rank] + rank_offset + data_src, data_len);
                 }
                 dst_rank = (dst_rank + ag_comm_npu_split) % ag_dim;
             }
@@ -353,7 +353,6 @@ public:
     using CocCommBase<T>::k_loop;
     using CocCommBase<T>::core_loop;
     using CocCommBase<T>::core_idx;
-    using CocCommBase<T>::core_num;
     using CocCommBase<T>::rank;
     using CocCommBase<T>::rank_size;
     using CocCommBase<T>::tiling_key;
@@ -436,7 +435,7 @@ inline __aicore__ void CocAllGatherMatmulReduceScatterAiv(COC_ARGS_FUN(T)) {
     SetMaskNormImpl();
     SetSyncBaseAddr((uint64_t)ffts_addr);
     SetVectorMask<int32_t>((uint64_t)-1, (uint64_t)-1);
-    auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParam *>(para_gm);
+    auto para = reinterpret_cast<__gm__ Lcal::CoCKernelParam *>(para_gm);
     auto cocTilingData = &para->cocTilingData;
     int32_t tiling_key = cocTilingData->tilingKey;
     switch (tiling_key) {

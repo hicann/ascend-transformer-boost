@@ -554,7 +554,7 @@ inline __aicore__ void CocMatmulAllReduceAiv(COC_ARGS_FUN(T))
     SetSyncBaseAddr((uint64_t)ffts_addr);
     SetVectorMask<int32_t>((uint64_t)-1, (uint64_t)-1);
 
-    auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParam *>(para_gm);
+    auto para = reinterpret_cast<__gm__ Lcal::CoCKernelParam *>(para_gm);
     auto cocTilingData = &para->cocTilingData;
     int64_t batch_size = cocTilingData->batchSize;
     int32_t m = cocTilingData->m;
