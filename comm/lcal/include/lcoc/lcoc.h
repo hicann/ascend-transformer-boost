@@ -45,4 +45,4 @@ private:
     bool tilingSuccess_ = false;
 };
 }
-#endif
+#endif // LCAL_LCOC_H

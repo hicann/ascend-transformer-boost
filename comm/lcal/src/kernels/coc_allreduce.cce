@@ -44,7 +44,7 @@ public:
         if (dequant_granularity == QuantGranularity::PER_TOKEN) {
             fused_pertoken_dequant_runner.SetArgs(reinterpret_cast<__gm__ T *>(buff[rank]),
                                                   reinterpret_cast<__gm__ float32_t *>(gm_quant_scale), m, n,
-                                                  m, n, m0, n0, m_loop, n_loop, core_loop, swizzl_direct, swizzl_count, p_value, rank_size);
+                                                  m0, n0, m_loop, n_loop, core_loop, swizzl_direct, swizzl_count, p_value, rank_size);
             serial_pertoken_dequant_runner.SetArgs(reinterpret_cast<__gm__ T *>(gm_out), reinterpret_cast<__gm__ float32_t *>(gm_quant_scale), m, n, m0, n0);
         }
         total_core_idx = aiv_idx * core_num + core_idx;
@@ -147,7 +147,7 @@ public:
                 SetFlag<HardEvent::MTE2_MTE3>(event_id);    
                 WaitFlag<HardEvent::MTE2_MTE3>(event_id);  
                 int64_t move_num_offset = other_rank_offset + move_idx * max_ub_ping_pong_size;
-                CopyUbufToGmTransLayout(ub_buff_st, actual_move_size, move_num_offset + cal_idx * gm_c_pingpong_size);
+                CopyUbToGmTransLayout(ub_buff_st, actual_move_size, move_num_offset + cal_idx * gm_c_pingpong_size);
                 SetFlag<HardEvent::MTE3_MTE2>(event_id);
             }
         }
@@ -177,7 +177,7 @@ public:
             CopyGmToUbuf(ub, input + offset, 1, max_ub_ping_pong_size * sizeof(T) / 32, 0, 0);
             SetFlag<HardEvent::MTE2_MTE3>(event_id);    
             WaitFlag<HardEvent::MTE2_MTE3>(event_id);
-            CopyUbufToGM(output + offset, ub, 1, max_ub_ping_pong_size * sizeof(T) / 32, 0, 0);
+            CopyUbufToGm(output + offset, ub, 1, max_ub_ping_pong_size * sizeof(T) / 32, 0, 0);
             SetFlag<HardEvent::MTE3_MTE2>(event_id);
             data_size_remain -= max_ub_ping_pong_size;
             offset += max_ub_ping_pong_size;
@@ -190,7 +190,7 @@ public:
             SetFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);  
             WaitFlag<HardEvent::MTE2_MTE3>(EVENT_ID0);  
             if (ALIGN) {
-                CopyUbufToGM(output + offset, output_UB_T[0], 1, data_size_remain * sizeof(T) / 32, 0, 0);                
+                CopyUbufToGm(output + offset, output_UB_T[0], 1, data_size_remain * sizeof(T) / 32, 0, 0);                
             } else {
                 CopyUbufToGmAlignB16(output + offset, output_UB_T[0], 1, data_size_remain * sizeof(T), 0, 0);
             }

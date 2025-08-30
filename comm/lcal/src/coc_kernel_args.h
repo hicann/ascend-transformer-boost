@@ -17,7 +17,7 @@
 #include "lcoc_args.h"
 
 namespace Lcal {
-    struct CoCkernelArgs {
+    struct CoCKernelArgs {
         void *matrixA = nullptr;
         void *matrixB = nullptr;
         void *bias = nullptr;
@@ -33,7 +33,7 @@ namespace Lcal {
         uint64_t fftsAddr = 0;
 
         CoCTilingData *pCocTiling = nullptr;
-        CoCkernelParm cockernelParm = {};
+        CoCKernelParam cocKernelParam = {};
         int SetFFTSAddr();
         void SetInputPkgArgs(CoCInputPkg &inputPkg);
         void SetOutputPkgArgs(CoCOutputPkg &outputPkg);
@@ -42,7 +42,7 @@ namespace Lcal {
         void SetCommArgs(const LcalComm &comm);
         void SetCoCTilingDataArgs(const CoCTilingData &tilingData);
         std::string ParamToString();
-    }
+    };
 }
 
-#endif
+#endif // LCAL_COC_KERNEL_ARGS_H

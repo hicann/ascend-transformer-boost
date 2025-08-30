@@ -54,7 +54,7 @@ public:
 
     FORCE_INLINE_AICORE void SetFromParam(__gm__ uint8_t *para_gm)
     {
-        auto para = reinterpret_cast<__gm__ Lcal::CoCkernelParam *>(para_gm);
+        auto para = reinterpret_cast<__gm__ Lcal::CoCKernelParam *>(para_gm);
         auto cocTilingData = &para->cocTilingData;
         auto quantInfo = &para->quantInfo;
         auto twoDimTPInfo = &para->twoDimTPInfo;
@@ -232,7 +232,7 @@ public:
             if (core_idx != rank) {
                 SetBuffFlagByAdd(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + flag_idx, flag_data);
             }
-            CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[core_idx] + flag_offset + flag_idx, rank_size * flag_data * rank_size);
+            CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[core_idx] + flag_offset + flag_idx, flag_data * rank_size);
         }
     }
 
@@ -294,7 +294,7 @@ public:
         }
     }
 
-    FORCE_INLINE_AICORE void CopyGmToGm(__gm__ T* gm_src, __gm__ T* gm_dst, int32_t copy_size) {
+    FORCE_INLINE_AICORE void CopyGMToGM(__gm__ T* gm_src, __gm__ T* gm_dst, int32_t copy_size) {
         auto ub0 = output_UB_T[0];
         auto ub1 = output_UB_T[1];
         int32_t interm_offset = 0;
@@ -330,7 +330,7 @@ public:
             if (is_91093 && (m_rank_idx % 2) != (rank % 2)) {
                 continue;
             }
-            CopyGmToGm(buff[m_rank_idx] + core_buff_offset, buff[rank] + core_buff_offset, data_size_remain);
+            CopyGMToGM(buff[m_rank_idx] + core_buff_offset, buff[rank] + core_buff_offset, data_size_remain);
         }
     }
 
@@ -364,15 +364,15 @@ public:
                 gm_interm = buff[rank] + core_buff_offset;
             }
             auto gm_peer = buff[rank_idx_rot] + core_buff_offset;
-            CopyGmToGm(gm_peer, gm_interm, data_size_remain);
+            CopyGMToGM(gm_peer, gm_interm, data_size_remain);
             rank_idx++;
         }
         if (rank_size == 8) {
-            CopyGmToGm(gm_reducebuf + 1 * len_per_loop, buff[rank] + core_buff_offset, data_size_remain);
-            CopyGmToGm(gm_reducebuf + 2 * len_per_loop, gm_reducebuf, data_size_remain);
+            CopyGMToGM(gm_reducebuf + 1 * len_per_loop, buff[rank] + core_buff_offset, data_size_remain);
+            CopyGMToGM(gm_reducebuf + 2 * len_per_loop, gm_reducebuf, data_size_remain);
         }
         if (rank_size >= 4) {
-            CopyGmToGm(gm_reducebuf, buff[rank] + core_buff_offset, data_size_remain);
+            CopyGMToGM(gm_reducebuf, buff[rank] + core_buff_offset, data_size_remain);
         }
     }
 
@@ -387,12 +387,12 @@ public:
         int32_t offset = 0;
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
-        CopyGmToGm(input, output, data_size_remain);
+        CopyGMToGM(input, output, data_size_remain);
         WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
         WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         if (atomic_add) {
             SetFlag<HardEvent::MTE3_S>(EVENT_ID0);
-            WaitFlag<HardEvent::MTE3_S>(EVENT_ID1);   
+            WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);   
             SetAtomicNone();
             PipeBarrier<PIPE_ALL>();               
         }

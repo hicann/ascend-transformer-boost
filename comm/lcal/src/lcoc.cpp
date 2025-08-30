@@ -307,6 +307,7 @@ int64_t Lcoc::GetWorkspaceSize()
         << ", hasBAlign=" << hasBAlign << ", accumRankSize=" << accumRankSize << ", hasAccum=" << hasAccum
         << ", dequantWorkSpaceSize=" << dequantWorkSpaceSize << ", hasDequantParam=" << hasDequantParam
         << ", hasFormatDequantScale=" << hasFormatDequantScale << ", isDeterministic=" << isDeterministic
+        << ", workspaceSize=" << lcalWorkSpaceInfo.workspaceSize;
 
     return lcalWorkspaceInfo.workspaceSize;
 }

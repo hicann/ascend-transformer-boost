@@ -302,7 +302,7 @@ public:
     inline void __aicore__ SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_FUN())
     {
         m = m * rank_size;
-        base_adder.SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_CALL);
+        base_adder.SetArgs(PP_MATMUL_AIV_ADD_BIAS_ARGS_CALL());
     }
 
     inline void __aicore__ Run()

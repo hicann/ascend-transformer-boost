@@ -317,7 +317,7 @@ private:
 };
 
 
-template<>
+template <>
 class Padder<int8_t> : public BasePadder<int8_t, int8_t, int8_t> {
 public:
     __aicore__ explicit Padder() = default;
@@ -541,7 +541,7 @@ private:
     bool has_offset{ false };
 };
 
-template<>
+template <>
 class DequantPadder<bfloat16_t, QuantGranularity::PER_TENSOR> : public BasePadder<bfloat16_t, int8_t, bfloat16_t> {
 public:
     __aicore__ explicit DequantPadder() = default;
@@ -700,7 +700,7 @@ private:
 };
 
 
-template<>
+template <>
 class DequantPadder<half, QuantGranularity::PER_CHANNEL> : public BasePadder<half, int8_t, half> {
 public:
     __aicore__ explicit DequantPadder() = default;
@@ -2599,7 +2599,7 @@ public:
             aligned_b = 0;
             has_b_align = false;
         }
-        LcalWorkspaceInfo workspace_info = GetLcalWorkSpaceInfo(gm_workspace, batch_size, m, k, n, m_align, k_align, n_align,
+        LcalWorkspaceInfo workspace_info = GetLcalWorkspaceInfo(gm_workspace, batch_size, m, k, n, m_align, k_align, n_align,
                 trans_a, trans_b, is_int8 ? 1 : 2, has_a_align, has_b_align, 0, has_accum, 0, has_dequant_param,
                 hasFormatDequantScale,is_deterministic);
         
