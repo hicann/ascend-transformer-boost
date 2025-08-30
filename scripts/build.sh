@@ -718,8 +718,8 @@ function fn_run_torchatbtest()
     for testdir in $(ls -d *_test); do
         echo "Running tests in $testdir"
         for testfile in $(find "$testdir" -name "*_test.py"); do
-            echo "Running $testfile"
-            python3 -m unittest "$testfile"
+            file_only="${testfile##*/}"
+            python3 -m unittest discover -s $CODE_ROOT/tests/apitest -p "$file_only" -v
         done
     done
 }
@@ -761,7 +761,7 @@ function fn_run_infratest()
 
 function fn_install_torch_atb()
 {
-    py_version=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    py_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
     py_major_version=${py_version%%.*}
     py_minor_version=${py_version##*.}
 
@@ -778,9 +778,9 @@ function fn_install_torch_atb()
         exit 1
     fi
 
-    if pip show torch_atb > /dev/null 2>&1; then
+    if pip3 show torch_atb > /dev/null 2>&1; then
         echo "INFO: torch_atb is already installed, force-reinstalling..."
-        if pip install --force-reinstall "$wheel_path" > /dev/null 2>&1; then
+        if pip3 install --force-reinstall "$wheel_path" > /dev/null 2>&1; then
             echo "INFO: torch_atb reinstallation succeeded!"
         else
             echo "ERROR: torch_atb reinstallation failed!"
@@ -788,7 +788,7 @@ function fn_install_torch_atb()
         fi
     else
         echo "INFO: torch_atb not found, installing..."
-        if pip install "$wheel_path" > /dev/null 2>&1; then
+        if pip3 install "$wheel_path" > /dev/null 2>&1; then
             echo "INFO: torch_atb installation succeeded!"
         else
             echo "ERROR: torch_atb installation failed!"
