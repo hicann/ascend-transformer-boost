@@ -7,7 +7,7 @@
     1. source [cann安装路径]/set_env.sh
         默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
     2. source [nnal安装路径]/set_env.sh
-        默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
+        默认：source /usr/local/Ascend/nnal/atb/set_env.sh
         1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
         e.g. source ./ascend-transformer-boost/atb/set_env.sh
 
@@ -49,3 +49,57 @@ tests/apitest/opstest/python/operations/reshape_and_cache/
     - 运行时调用：
     `./reshape_and_cache_inference_demo`
     - 该demo仅支持在Atlas 推理系列产品上运行
+
+所给Demo的场景说明如下：
+### 参数设置
+
+| 成员名称       | 取值          |
+| :------------- | :------------ |
+| compressType | COMPRESS_TYPE_UNDEFINED |
+| kvCacheCfg   | K_CACHE_V_CACHE         |
+
+### 数据规格
+
+reshape_and_cache_demo.cpp
+| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
+| :-------------- | :------- | :------- | :---------- |
+| `key`  | float16    | nd       | [2, 32, 128]    |
+| `value`  | float16    | nd       | [2, 32, 128] |
+| `keyCache`  | float16    | nd       | [512, 128, 32, 128] |
+| `valueCache`  | float16    | nd       | [512, 128, 32, 128] |
+| `slotMapping`  | int32    | nd       | [2] |
+| `keyCacheOut` | float16    | nd       | [512, 128, 32, 128]    |
+| `valueCacheOut` | float16    | nd       | [512, 128, 32, 128]    |
+
+reshape_and_cache_demo_ds1.cpp
+| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
+| :-------------- | :------- | :------- | :---------- |
+| `key`  | bf16    | nd       | [5, 1, 128]    |
+| `value`  | bf16    | nd       | [5, 1, 128] |
+| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `slotMapping`  | int32    | nd       | [5] |
+| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
+| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
+
+reshape_and_cache_demo_ds2.cpp
+| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
+| :-------------- | :------- | :------- | :---------- |
+| `key`  | bf16    | nd       | [1024, 1, 128]    |
+| `value`  | bf16    | nd       | [1024, 1, 128] |
+| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `slotMapping`  | int32    | nd       | [1024] |
+| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
+| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
+
+reshape_and_cache_demo_ds3.cpp
+| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
+| :-------------- | :------- | :------- | :---------- |
+| `key`  | bf16    | nd       | [1, 1, 128]    |
+| `value`  | bf16    | nd       | [1, 1, 128] |
+| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `slotMapping`  | int32    | nd       | [1] |
+| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
+| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
