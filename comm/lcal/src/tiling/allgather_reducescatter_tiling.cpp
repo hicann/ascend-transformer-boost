@@ -279,7 +279,7 @@ void AG8RS2TrueFP16Tiling(CoCTilingData &cocTilingData)
              g_allgatherEightReducescatterTwoTrueFP16CommdatasplitMap}},
         {&cocTilingData.commDirect, {ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_COMMDIRECT_DEFAULT}},
         {&cocTilingData.extraUbMoveNum,
-            {ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRAUBMOVENUM_DEFAULT.
+            {ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRAUBMOVENUM_DEFAULT,
              g_allgatherEightReducescatterTwoTrueFP16ExtraubmovenumMap}},
         {&cocTilingData.extraLenPerLoop,
             {ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRALENPERLOOPMULT_DEFAULT,
