@@ -48,7 +48,7 @@ bool CheckLcalType(LcalType lcalType)
 {
     if (lcalType < LcalType::PURE_MATMUL || lcalType >= LcalType::LCAL_TYPE_MAX) {
         MKI_LOG(ERROR) << "The lcalType:" << int(lcalType)
-        << "must be in [" << int(LcalType::PURE_MATMUL) << ", " << int(LcalType::LCAL_TYPE_MAX) << ")!";
+        << " must be in [" << int(LcalType::PURE_MATMUL) << ", " << int(LcalType::LCAL_TYPE_MAX) << ")!";
         return false;
     }
     return true;
@@ -66,7 +66,7 @@ bool CheckCoCParamDesc(LcalType lcalType, const CoCParamDesc &paramDesc)
         return false;
     }
     if (paramDesc.op != HCCL_REDUCE_SUM) {
-        MKI_LOG(ERROR) << "The ReduceOp:" << paramDesc.op << "is not support yet!";
+        MKI_LOG(ERROR) << "The ReduceOp:" << paramDesc.op << " is not support yet!";
         return false;
     }
 
@@ -226,8 +226,7 @@ bool Lcoc::CheckBasic(const CoCInputPkg &inputPkg, const CoCOutputPkg &outputPkg
     return true;
 }
 
-int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, 
-                          aclrtStream stream)
+int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
 {
     LcalType lcalType = LcalType::MATMUL_ALL_REDUCE;
     if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
@@ -237,7 +236,8 @@ int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *wo
     return LaunchOperator(inputPkg, outputPkg, workspace, stream);
 }
 
-int Lcoc::AllGatherMatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
+int Lcoc::AllGatherMatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, 
+                                       aclrtStream stream)
 {
     LcalType lcalType = LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER;
     if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
@@ -297,17 +297,17 @@ int64_t Lcoc::GetWorkspaceSize()
 
     uint64_t dequantWorkSpaceSize = GetDequantWorkSpaceSize(lcalType, tiling_.withSerialMode, mmInfo.m, mmInfo.n,
         tiling_.m0, tiling_.n0, tiling_.pValue, tiling_.nLoop, taskParam_.rankSize, taskParam_.blockDim);
-    LcalWorkspaceInfo lcalWorkSpaceInfo = GetLcalWorkspaceInfo(0, mmInfo.batchSize, mmInfo.m, mmInfo.k,
+    LcalWorkspaceInfo lcalWorkspaceInfo = GetLcalWorkspaceInfo(0, mmInfo.batchSize, mmInfo.m, mmInfo.k,
         mmInfo.n, mAlign, kAlign, nAlign, mmInfo.transA, mmInfo.transB, eleSize, hasAAlign, hasBAlign,
         accumRankSize, hasAccum, dequantWorkSpaceSize, hasDequantParam, hasFormatDequantScale, isDeterministic);
     
-    MKI_LOG(DEBUG) << "[Lcoc Workspace]: " << "m=" << mmInfo.m << ",k=" << mmInfo.k << ", n=" << mmInfo.n
+    MKI_LOG(DEBUG) << "[Lcoc Workspace]: " << "m=" << mmInfo.m << ", k=" << mmInfo.k << ", n=" << mmInfo.n
         << ", mAlign=" << mAlign << ", kAlign=" << kAlign << ", nAlign=" << nAlign << ", transA=" << mmInfo.transA
         << ", transB=" << mmInfo.transB << ", eleSize=" << eleSize << ", hasAAlign=" << hasAAlign
         << ", hasBAlign=" << hasBAlign << ", accumRankSize=" << accumRankSize << ", hasAccum=" << hasAccum
         << ", dequantWorkSpaceSize=" << dequantWorkSpaceSize << ", hasDequantParam=" << hasDequantParam
         << ", hasFormatDequantScale=" << hasFormatDequantScale << ", isDeterministic=" << isDeterministic
-        << ", workspaceSize=" << lcalWorkSpaceInfo.workspaceSize;
+        << ", workspaceSize=" << lcalWorkspaceInfo.workspaceSize;
 
     return lcalWorkspaceInfo.workspaceSize;
 }

@@ -50,7 +50,7 @@ namespace Lcal {
     constexpr int32_t AXES_ALIGN_SIZE = 512;
     constexpr int32_t BASE_BLOCK_STEP = 2;
     constexpr int32_t INPUT_DTYPE = 2;
-    constexpr int32_t MAX_BLOCK_COUNT =2;
+    constexpr int32_t MAX_BLOCK_COUNT = 2;
     constexpr int32_t BLOCK_COUNT_3 = 3;
     constexpr int32_t FP16_SIZE = 2;
     constexpr int32_t FP32_SIZE = 4;
@@ -133,7 +133,7 @@ namespace Lcal {
         uint32_t tilingKey = -1;
 
         const char* ToString() const;
-        void SetDefaultValue();        
+        void SetDefaultValue();
     };
 
     struct CoCKernelParam {

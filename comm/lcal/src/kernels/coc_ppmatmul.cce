@@ -642,7 +642,7 @@ public:
                             }
                         }                        
                     } else {
-                        for (int32_t i = 0; i < k0_round / BLOCK_SIZE_16; i++) {                            
+                        for (int32_t i = 0; i < k0_round / block_size; i++) {                            
                             LoadCbufToCa(
                                 l0a_buf + i * cube_matrix_size,
                                 l1_buf_a + k_part_idx * k_part_len * m_round +

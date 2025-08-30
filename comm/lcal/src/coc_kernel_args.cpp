@@ -25,7 +25,7 @@ int CoCKernelArgs::SetFFTSAddr()
         MKI_LOG(ERROR) << "MkiRtGetC2cCtrlAddr err";
         return LCAL_ERROR_MKIRT;
     }
-    return LCAL_SUCCESS;    
+    return LCAL_SUCCESS;
 }
 
 void CoCKernelArgs::SetInputPkgArgs(CoCInputPkg &inputPkg)
