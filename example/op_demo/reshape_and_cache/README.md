@@ -63,43 +63,43 @@ tests/apitest/opstest/python/operations/reshape_and_cache/
 reshape_and_cache_demo.cpp
 | tensor名字      | 数据类型 | 数据格式 | 维度信息    |
 | :-------------- | :------- | :------- | :---------- |
-| `intensors[0]`  | float16    | nd       | [2, 32, 128]    |
-| `intensors[1]`  | float16    | nd       | [2, 32, 128] |
-| `intensors[2]`  | float16    | nd       | [512, 128, 32, 128] |
-| `intensors[3]`  | float16    | nd       | [512, 128, 32, 128] |
-| `intensors[4]`  | int32    | nd       | [2] |
-| `outtensors[0]` | float16    | nd       | [512, 128, 32, 128]    |
-| `outtensors[1]` | float16    | nd       | [512, 128, 32, 128]    |
+| `key`  | float16    | nd       | [2, 32, 128]    |
+| `value`  | float16    | nd       | [2, 32, 128] |
+| `keyCache`  | float16    | nd       | [512, 128, 32, 128] |
+| `valueCache`  | float16    | nd       | [512, 128, 32, 128] |
+| `slotMapping`  | int32    | nd       | [2] |
+| `keyCacheOut` | float16    | nd       | [512, 128, 32, 128]    |
+| `valueCacheOut` | float16    | nd       | [512, 128, 32, 128]    |
 
 reshape_and_cache_demo_ds1.cpp
 | tensor名字      | 数据类型 | 数据格式 | 维度信息    |
 | :-------------- | :------- | :------- | :---------- |
-| `intensors[0]`  | bf16    | nd       | [5, 1, 128]    |
-| `intensors[1]`  | bf16    | nd       | [5, 1, 128] |
-| `intensors[2]`  | bf16    | nd       | [9, 128, 1, 128] |
-| `intensors[3]`  | bf16    | nd       | [9, 128, 1, 128] |
-| `intensors[4]`  | int32    | nd       | [5] |
-| `outtensors[0]` | bf16    | nd       | [9, 128, 1, 128]    |
-| `outtensors[1]` | bf16    | nd       | [9, 128, 1, 128]    |
+| `key`  | bf16    | nd       | [5, 1, 128]    |
+| `value`  | bf16    | nd       | [5, 1, 128] |
+| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `slotMapping`  | int32    | nd       | [5] |
+| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
+| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
 
 reshape_and_cache_demo_ds2.cpp
 | tensor名字      | 数据类型 | 数据格式 | 维度信息    |
 | :-------------- | :------- | :------- | :---------- |
-| `intensors[0]`  | bf16    | nd       | [1024, 1, 128]    |
-| `intensors[1]`  | bf16    | nd       | [1024, 1, 128] |
-| `intensors[2]`  | bf16    | nd       | [9, 128, 1, 128] |
-| `intensors[3]`  | bf16    | nd       | [9, 128, 1, 128] |
-| `intensors[4]`  | int32    | nd       | [1024] |
-| `outtensors[0]` | bf16    | nd       | [9, 128, 1, 128]    |
-| `outtensors[1]` | bf16    | nd       | [9, 128, 1, 128]    |
+| `key`  | bf16    | nd       | [1024, 1, 128]    |
+| `value`  | bf16    | nd       | [1024, 1, 128] |
+| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `slotMapping`  | int32    | nd       | [1024] |
+| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
+| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
 
 reshape_and_cache_demo_ds3.cpp
 | tensor名字      | 数据类型 | 数据格式 | 维度信息    |
 | :-------------- | :------- | :------- | :---------- |
-| `intensors[0]`  | bf16    | nd       | [1, 1, 128]    |
-| `intensors[1]`  | bf16    | nd       | [1, 1, 128] |
-| `intensors[2]`  | bf16    | nd       | [9, 128, 1, 128] |
-| `intensors[3]`  | bf16    | nd       | [9, 128, 1, 128] |
-| `intensors[4]`  | int32    | nd       | [1] |
-| `outtensors[0]` | bf16    | nd       | [9, 128, 1, 128]    |
-| `outtensors[1]` | bf16    | nd       | [9, 128, 1, 128]    |
+| `key`  | bf16    | nd       | [1, 1, 128]    |
+| `value`  | bf16    | nd       | [1, 1, 128] |
+| `keyCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `valueCache`  | bf16    | nd       | [9, 128, 1, 128] |
+| `slotMapping`  | int32    | nd       | [1] |
+| `keyCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
+| `valueCacheOut` | bf16    | nd       | [9, 128, 1, 128]    |
