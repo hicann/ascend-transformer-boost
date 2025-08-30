@@ -13,7 +13,7 @@
 #include "tiling_func.h"
 #include "lcoc_func.h"
 
-#define TILING_MAP std::<map<int, std::vector<std::vector<int>>>
+#define TILING_MAP std::map<int, std::vector<std::vector<int>>>
 namespace Lcal {
 constexpr int32_t ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_SWIZZLECOUNT_DEFAULT = 11;
 static TILING_MAP g_allgatherEightReducescatterTwoFalseFP16SwizzlecountMap = {
@@ -223,7 +223,7 @@ constexpr int32_t ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_EXTRACOMMDATASPLI
 static TILING_MAP g_allgatherTwoReducescatterEightFalseFP16ExtracommdatasplitMap = {
     {8, {{3072, 2147483647, 2176, 2147483647, -1, 5120}, {768, 2147483647, -1, 2147483647, 5120, 2147483647}}}};
 
-const int PVALE_ONE = 1;
+const int PVALUE_ONE = 1;
 const int M0_DEFAULT = 128;
 const int K0_DEFAULT = 256;
 const int N0_DEFAULT = 256;
@@ -231,7 +231,7 @@ const int SWIZZLEDIRECT_ONE = 1;
 
 void AG8RS2FalseFP16Tiling(CoCTilingData &cocTilingData)
 {
-    std::map<int * TilingValue> tilingParamMap = {
+    std::map<int *, TilingValue> tilingParamMap = {
         {&cocTilingData.swizzlCount,
             {ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_SWIZZLECOUNT_DEFAULT,
             g_allgatherEightReducescatterTwoFalseFP16SwizzlecountMap}},
@@ -248,11 +248,11 @@ void AG8RS2FalseFP16Tiling(CoCTilingData &cocTilingData)
             {ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_COMMDATASPLIT_DEFAULT,
             g_allgatherEightReducescatterTwoFalseFP16CommdatasplitMap}},
         {&cocTilingData.extraUbMoveNum,
-            {ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRAUBMOVENUM_DEFAULT.
+            {ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRAUBMOVENUM_DEFAULT,
             g_allgatherEightReducescatterTwoFalseFP16ExtraubmovenumMap}},
         {&cocTilingData.extraLenPerLoop,
             {ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRALENPERLOOPMULT_DEFAULT,
-            g_allgatherEightReducescatterTwoFalseFP16ExtralenperloopmultMap}}
+            g_allgatherEightReducescatterTwoFalseFP16ExtralenperloopmultMap}},
         {&cocTilingData.extraCommNpuSplit, {ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRACOMMNPUSPLIT_DEFAULT}},
         {&cocTilingData.extraCommDataSplit,
             {ALLGATHER_EIGHT_REDUCESCATTER_TWO_FALSE_FP16_EXTRACOMMDATASPLIT_DEFAULT}}};
@@ -262,7 +262,7 @@ void AG8RS2FalseFP16Tiling(CoCTilingData &cocTilingData)
 
 void AG8RS2TrueFP16Tiling(CoCTilingData &cocTilingData)
 {
-    std::map<int * TilingValue> tilingParamMap = {
+    std::map<int *, TilingValue> tilingParamMap = {
         {&cocTilingData.swizzlCount,
             {ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_SWIZZLECOUNT_DEFAULT,
             g_allgatherEightReducescatterTwoTrueFP16SwizzlecountMap}},
@@ -283,7 +283,7 @@ void AG8RS2TrueFP16Tiling(CoCTilingData &cocTilingData)
             g_allgatherEightReducescatterTwoTrueFP16ExtraubmovenumMap}},
         {&cocTilingData.extraLenPerLoop,
             {ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRALENPERLOOPMULT_DEFAULT,
-            g_allgatherEightReducescatterTwoTrueFP16ExtralenperloopmultMap}}
+            g_allgatherEightReducescatterTwoTrueFP16ExtralenperloopmultMap}},
         {&cocTilingData.extraCommNpuSplit, {ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRACOMMNPUSPLIT_DEFAULT}},
         {&cocTilingData.extraCommDataSplit,
             {ALLGATHER_EIGHT_REDUCESCATTER_TWO_TRUE_FP16_EXTRACOMMDATASPLIT_DEFAULT}}};
@@ -293,7 +293,7 @@ void AG8RS2TrueFP16Tiling(CoCTilingData &cocTilingData)
 
 void AG2RS8TrueFP16Tiling(CoCTilingData &cocTilingData)
 {
-    std::map<int * TilingValue> tilingParamMap = {
+    std::map<int *, TilingValue> tilingParamMap = {
         {&cocTilingData.swizzlCount,
             {ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_SWIZZLECOUNT_DEFAULT,
             g_allgatherTwoReducescatterEightTrueFP16SwizzlecountMap}},
@@ -307,9 +307,8 @@ void AG2RS8TrueFP16Tiling(CoCTilingData &cocTilingData)
             {ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_COMMNPUSPLIT_DEFAULT}},
         {&cocTilingData.commDataSplit,
             {ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_COMMDATASPLIT_DEFAULT}},
-        {&cocTilingData.commDirect, {ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_COMMDIRECT_DEFAULT}},
         {&cocTilingData.extraUbMoveNum,
-            {ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_EXTRAUBMOVENUM_DEFAULT.
+            {ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_EXTRAUBMOVENUM_DEFAULT,
             g_allgatherTwoReducescatterEightTrueFP16ExtraubmovenumMap}},
         {&cocTilingData.extraLenPerLoop,
             {ALLGATHER_TWO_REDUCESCATTER_EIGHT_TRUE_FP16_EXTRALENPERLOOPMULT_DEFAULT,
@@ -325,7 +324,7 @@ void AG2RS8TrueFP16Tiling(CoCTilingData &cocTilingData)
 
 void AG2RS8FalseFP16Tiling(CoCTilingData &cocTilingData)
 {
-    std::map<int * TilingValue> tilingParamMap = {
+    std::map<int *, TilingValue> tilingParamMap = {
         {&cocTilingData.swizzlCount,
             {ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_SWIZZLECOUNT_DEFAULT,
             g_allgatherTwoReducescatterEightFalseFP16SwizzlecountMap}},
@@ -339,7 +338,7 @@ void AG2RS8FalseFP16Tiling(CoCTilingData &cocTilingData)
             {ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_COMMDIRECT_DEFAULT,
             g_allgatherTwoReducescatterEightFalseFP16CommdirectMap}},
         {&cocTilingData.extraUbMoveNum,
-            {ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_EXTRAUBMOVENUM_DEFAULT.
+            {ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_EXTRAUBMOVENUM_DEFAULT,
             g_allgatherTwoReducescatterEightFalseFP16ExtraubmovenumMap}},
         {&cocTilingData.extraLenPerLoop, {ALLGATHER_TWO_REDUCESCATTER_EIGHT_FALSE_FP16_EXTRALENPERLOOPMULT_DEFAULT}},
         {&cocTilingData.extraCommNpuSplit, 
@@ -356,7 +355,7 @@ void CoCAllgatherMatmulReduceScatterTilingFunc::GetDefaultTiling(const TaskParam
 {
     CoCTilingFunc::GetDefaultTiling(taskParam);
 
-    cocTilingData.swizzleDirect = SWIZZLEDIRECT_ONE;
+    cocTilingData.swizzlDirect = SWIZZLEDIRECT_ONE;
 
     cocTilingData.m0 = M0_DEFAULT;
     cocTilingData.k0 = K0_DEFAULT;
@@ -364,7 +363,7 @@ void CoCAllgatherMatmulReduceScatterTilingFunc::GetDefaultTiling(const TaskParam
 
     cocTilingData.withSerialMode = 0;
     cocTilingData.is91093 = 0;
-    cocTilingData.pValue = PVALE_ONE;
+    cocTilingData.pValue = PVALUE_ONE;
     cocTilingData.commDirect = 0;
 
     auto rsDim = taskParam.cocParamDesc.twoDimTPInfo.rsDim;

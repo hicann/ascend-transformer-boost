@@ -78,7 +78,7 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, in
     if (hasBAlign) {
         lcalWorkspaceInfo.gm_b_align = workspaceOffset;
         workspaceOffset += static_cast<uint64_t>(batchSize) * (transb ? n * kAlign : k * nAlign) * mmadSize *
-            (expertPerRank <= 0 ? 1 : expertPerRank);            
+                           (expertPerRank <= 0 ? 1 : expertPerRank);            
     }
 
     if (!isMoe && hasDequantParam) {

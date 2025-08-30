@@ -7,13 +7,12 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- #include "lcoc_func.h"
- #include "lcoc_args.h"
- #include "mki/utils/log/log.h"
+#include "lcoc_func.h"
+#include "lcoc_args.h"
+#include "mki/utils/log/log.h"
 
- using namespace std;
- namespace Lcal {
-
+using namespace std;
+namespace Lcal {
     bool CheckParamScope(const std::string &name, const int &value, const int &min, const int &max)
     {
         if (value < min || (max != PARM_CHECK_MAX_VALUE && value > max)) {
@@ -72,11 +71,11 @@
     }
 
     int64_t GetAlignedMatrixSize(const int64_t &batchSize, const int64_t &m, const int64_t &n, const bool &transpose,
-                                 int nElemAlign)
+                                    int nElemAlign)
     {
         int64_t nRow = transpose ? n : m;
         int64_t nCol = transpose ? m : n;
         int64_t nColAlign = (nCol + nElemAlign - 1) / nElemAlign * nElemAlign;
         return batchSize * nRow * nColAlign;
     }
- }
+}
