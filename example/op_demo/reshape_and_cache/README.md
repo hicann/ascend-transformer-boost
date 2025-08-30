@@ -49,3 +49,57 @@ tests/apitest/opstest/python/operations/reshape_and_cache/
     - 运行时调用：
     `./reshape_and_cache_inference_demo`
     - 该demo仅支持在Atlas 推理系列产品上运行
+
+所给Demo的场景说明如下：
+### 参数设置
+
+| 成员名称       | 取值          |
+| :------------- | :------------ |
+| compressType | COMPRESS_TYPE_UNDEFINED |
+| kvCacheCfg   | K_CACHE_V_CACHE         |
+
+### 数据规格
+
+reshape_and_cache_demo.cpp
+| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
+| :-------------- | :------- | :------- | :---------- |
+| `intensors[0]`  | float16    | nd       | [2, 32, 128]    |
+| `intensors[1]`  | float16    | nd       | [2, 32, 128] |
+| `intensors[2]`  | float16    | nd       | [512, 128, 32, 128] |
+| `intensors[3]`  | float16    | nd       | [512, 128, 32, 128] |
+| `intensors[4]`  | int32    | nd       | [2] |
+| `outtensors[0]` | float16    | nd       | [512, 128, 32, 128]    |
+| `outtensors[1]` | float16    | nd       | [512, 128, 32, 128]    |
+
+reshape_and_cache_demo_ds1.cpp
+| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
+| :-------------- | :------- | :------- | :---------- |
+| `intensors[0]`  | bf16    | nd       | [5, 1, 128]    |
+| `intensors[1]`  | bf16    | nd       | [5, 1, 128] |
+| `intensors[2]`  | bf16    | nd       | [9, 128, 1, 128] |
+| `intensors[3]`  | bf16    | nd       | [9, 128, 1, 128] |
+| `intensors[4]`  | int32    | nd       | [5] |
+| `outtensors[0]` | bf16    | nd       | [9, 128, 1, 128]    |
+| `outtensors[1]` | bf16    | nd       | [9, 128, 1, 128]    |
+
+reshape_and_cache_demo_ds2.cpp
+| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
+| :-------------- | :------- | :------- | :---------- |
+| `intensors[0]`  | bf16    | nd       | [1024, 1, 128]    |
+| `intensors[1]`  | bf16    | nd       | [1024, 1, 128] |
+| `intensors[2]`  | bf16    | nd       | [9, 128, 1, 128] |
+| `intensors[3]`  | bf16    | nd       | [9, 128, 1, 128] |
+| `intensors[4]`  | int32    | nd       | [1024] |
+| `outtensors[0]` | bf16    | nd       | [9, 128, 1, 128]    |
+| `outtensors[1]` | bf16    | nd       | [9, 128, 1, 128]    |
+
+reshape_and_cache_demo_ds3.cpp
+| tensor名字      | 数据类型 | 数据格式 | 维度信息    |
+| :-------------- | :------- | :------- | :---------- |
+| `intensors[0]`  | bf16    | nd       | [1, 1, 128]    |
+| `intensors[1]`  | bf16    | nd       | [1, 1, 128] |
+| `intensors[2]`  | bf16    | nd       | [9, 128, 1, 128] |
+| `intensors[3]`  | bf16    | nd       | [9, 128, 1, 128] |
+| `intensors[4]`  | int32    | nd       | [1] |
+| `outtensors[0]` | bf16    | nd       | [9, 128, 1, 128]    |
+| `outtensors[1]` | bf16    | nd       | [9, 128, 1, 128]    |
