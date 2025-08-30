@@ -421,7 +421,7 @@ public:
                 gm_src_a,
                 0,
                 1,
-                k_round,
+                k_round / block_size,
                 0,
                 0,
                 PAD_NONE
