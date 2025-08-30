@@ -8,12 +8,12 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
- #include "lcoc_func.h"
- #include "lcoc_args.h"
- #include "tiling_args.h"
- #include "tiling_func.h"
+#include "lcoc_func.h"
+#include "lcoc_args.h"
+#include "tiling_args.h"
+#include "tiling_func.h"
 
- namespace Lcal {
+namespace Lcal {
     int32_t CeilDev(int32_t num, int32_t div)
     {
         if (div == 0) {
@@ -51,8 +51,8 @@
             for (auto &condition : iter->second) {
                 bool inRange =
                         m > condition[CONDITION_M_ST] && m <= condition[CONDITION_M_END] &&
-                        k > condition[CONDITION_K_ST] && m <= condition[CONDITION_K_END] &&
-                        n > condition[CONDITION_N_ST] && m <= condition[CONDITION_N_END];
+                        k > condition[CONDITION_K_ST] && k <= condition[CONDITION_K_END] &&
+                        n > condition[CONDITION_N_ST] && n <= condition[CONDITION_N_END];
                 if (inRange) {
                     return iter->first;
                 }
@@ -78,7 +78,7 @@
         tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.transB);
         tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.isInt8);
         tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.withBias);
-        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(tilingData.splitk);
+        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(tilingData.splitK);
         return tilingKey;
     }
 
@@ -166,30 +166,30 @@
             {"ubMoveNum", HALF_KBYTE},
             {"lenPerLoop", HALF_KBYTE},
             {"extraUbMoveNum", HALF_KBYTE},
-            {"extraLenPerLoop", HALF_KBYTE},
+            {"extraLenPerLoop", HALF_KBYTE}
         };
         return alignParamMap;
     }
 
-    std::vector<std::tuple<std::string, int, int, int>> GetCoCTingparamCheckList(const CoCTiling &tiling)
+    std::vector<std::tuple<std::string, int, int, int>> GetCoCTilingParamCheckList(const CoCTiling &tiling)
     {
         std::vector<std::tuple<std::string, int, int, int>> paramCheckList = {
             {"m0", tiling.m0, BLOCK_SIZE, CUBE_BLOCK_SIZE},
             {"n0", tiling.n0, BLOCK_SIZE, CUBE_BLOCK_SIZE},
             {"k0", tiling.k0, CUBE_BLOCK_SIZE, AXES_ALIGN_SIZE},
-            {"swizzlCount", tiling.swizzlCount, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
-            {"swizzleDirect", tiling.swizzlDirect, SWIZZLE_DIRECT_ZERO, SWIZZLE_DIRECT_ONE},
+            {"swizzlCount", tiling.swizzlCount, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
+            {"swizzlDirect", tiling.swizzlDirect, SWIZZLE_DIRECT_ZERO, SWIZZLE_DIRECT_ONE},
             {"ubMoveNum", tiling.ubMoveNum, HALF_KBYTE, MAX_UB_NUM},
-            {"commNpuSplit", tiling.commNpuSplit, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
-            {"commDataSplit", tiling.commDataSplit, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
+            {"commNpuSplit", tiling.commNpuSplit, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
+            {"commDataSplit", tiling.commDataSplit, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
             {"commDirect", tiling.commDirect, COMM_DATA_DIRECT, COMM_NPU_DIRECT},
-            {"lenPerLoop", tiling.lenPerLoop, HALF_KBYTE, PARA_CHECK_MAX_VALUE},
+            {"lenPerLoop", tiling.lenPerLoop, HALF_KBYTE, PARAM_CHECK_MAX_VALUE},
             {"extraUbMoveNum", tiling.extraUbMoveNum, HALF_KBYTE, MAX_UB_NUM},
-            {"extraCommNpuSplit", tiling.extraCommNpuSplit, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
-            {"extraCommDataSplit", tiling.extraCommDataSplit, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
+            {"extraCommNpuSplit", tiling.extraCommNpuSplit, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
+            {"extraCommDataSplit", tiling.extraCommDataSplit, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
             {"extraCommDirect", tiling.extraCommDirect, COMM_DATA_DIRECT, COMM_NPU_DIRECT},
-            {"extraLenPerLoop", tiling.extraLenPerLoop, HALF_KBYTE, PARA_CHECK_MAX_VALUE},
-            {"splitK", tiling.splitK, PARAM_CHECK_MIN_VALUE_ZERO, PARA_CHECK_MAX_VALUE},
+            {"extraLenPerLoop", tiling.extraLenPerLoop, HALF_KBYTE, PARAM_CHECK_MAX_VALUE},
+            {"splitK", tiling.splitK, PARAM_CHECK_MIN_VALUE_ZERO, PARAM_CHECK_MAX_VALUE},
             {"write2OtherRank", tiling.write2OtherRank, PARAM_CHECK_MIN_VALUE_ZERO, PARAM_CHECK_MIN_VALUE_ONE},
             {"withSerialMode", tiling.withSerialMode, PARAM_CHECK_MIN_VALUE_ZERO, PARAM_CHECK_MIN_VALUE_ONE},
             {"is91093", tiling.is91093, PARAM_CHECK_MIN_VALUE_ZERO, PARAM_CHECK_MIN_VALUE_ONE}
@@ -201,7 +201,7 @@
     {
         auto powerOfTwoParamMap = GetCoCTilingPowerOfTwoParamMap();
         auto alignParamMap = GetCoCTilingAlignParamMap();
-        auto paramCheckList = GetCoCTingparamCheckList(tiling);
+        auto paramCheckList = GetCoCTilingParamCheckList(tiling);
         for (auto &param : paramCheckList) {
             auto name = std::get<0>(param);
             auto value = std::get<1>(param);
@@ -231,11 +231,11 @@
             return false;
         }
         std::vector<std::tuple<std::string, int, int, int>> paramCheckList = {
-            {"mLoop", tiling.mLoop, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
-            {"kLoop", tiling.kLoop, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
-            {"nLoop", tiling.nLoop, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
-            {"coreLoop", tiling.coreLoop, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
-            {"tilingKey", tiling.tilingKey, PARAM_CHECK_MIN_VALUE_ONE, PARA_CHECK_MAX_VALUE},
+            {"mLoop", tilingData.mLoop, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
+            {"kLoop", tilingData.kLoop, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
+            {"nLoop", tilingData.nLoop, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
+            {"coreLoop", tilingData.coreLoop, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE},
+            {"tilingKey", tilingData.tilingKey, PARAM_CHECK_MIN_VALUE_ZERO, PARAM_CHECK_MAX_VALUE},
         };
         return CheckParamScopeList(paramCheckList);
     }
@@ -281,4 +281,4 @@
         TransformCoCTiling(tiling, tilingData);
         CalTilingParam(taskParam.cocParamDesc.mmInfo, tilingData);
     }
- }
+}

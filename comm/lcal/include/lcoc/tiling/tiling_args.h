@@ -112,7 +112,7 @@ namespace Lcal {
         int32_t withSerialMode = -1;
 
         int32_t is91093 = -1;
-         int32_t bufferSize = -1;
+        int32_t bufferSize = -1;
     };
 
     struct CoCTilingData : CoCTiling {
