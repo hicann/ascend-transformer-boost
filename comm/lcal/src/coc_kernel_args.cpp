@@ -72,9 +72,9 @@ void CoCKernelArgs::SetCoCTilingDataArgs(const CoCTilingData &tilingData)
 
 std::string CoCKernelArgs::ParamToString()
 {
-    std::string quantInfoString = "[QuantInfo]: dequantGranularity=" + 
+    std::string quantInfoString = "[QuantInfo]: dequantGranularity=" +
                                     std::to_string(cocKernelParam.quantInfo.dequantGranularity) + "\n";
-    std::string weightNzInfoString = "[weightNz]: weightNz=" + 
+    std::string weightNzInfoString = "[weightNz]: weightNz=" +
                                     std::to_string(cocKernelParam.weightNz) + "\n";
     std::string tilingInfoString = cocKernelParam.cocTilingData.ToString();
     return quantInfoString + weightNzInfoString + tilingInfoString;

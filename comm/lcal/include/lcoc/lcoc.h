@@ -16,7 +16,7 @@
 #include "tiling_args.h"
 
 namespace Lcal {
-    class Lcoc {
+class Lcoc {
 public:
     Lcoc() = delete;
     explicit Lcoc(LcalComm &comm);
