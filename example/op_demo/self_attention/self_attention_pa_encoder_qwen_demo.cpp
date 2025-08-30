@@ -96,27 +96,14 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
 atb::Status PrepareOperation(atb::Operation **paEncoderOp)
 {
     atb::infer::SelfAttentionParam faPaOpParam;
-    faPaOpParam.quantType = atb::infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT; // 非量化场景
-    faPaOpParam.outDataType = ACL_DT_UNDEFINED; // 非量化场景，不设置输出类型
     faPaOpParam.headNum = HEAD_NUM;             // query 头数
     faPaOpParam.kvHeadNum = KV_HEAD_NUM;        // key, value 头数
-    faPaOpParam.qScale = 1;                     // query缩放系数，不缩放置1
-    faPaOpParam.qkScale = 1 / sqrt(HEAD_SIZE);  // tor值，Q*K^T后的缩放系数，不缩放置1
-    faPaOpParam.batchRunStatusEnable = false;   // 不开启动态batch
+    faPaOpParam.qkScale = 1 / sqrt(HEAD_SIZE);  // tor值，Q*K^T后的缩放系数，根据HEAD_SIZE做归一化
     faPaOpParam.isTriuMask = 1; // 是否开启mask倒三角优化，这里开启，和压缩mask一起使用
     faPaOpParam.calcType = atb::infer::SelfAttentionParam::CalcType::PA_ENCODER; // 计算类型/场景分类，使用PA Encoder
     // 高性能，softmax使用float16
     faPaOpParam.kernelType = atb::infer::SelfAttentionParam::KernelType::KERNELTYPE_DEFAULT;
-    faPaOpParam.clampType = atb::infer::SelfAttentionParam::ClampType::CLAMP_TYPE_UNDEFINED; // 不开启最大最小值截断
-    faPaOpParam.clampMin = 0;                                                                // 不开启截断时置0
-    faPaOpParam.clampMax = 0;                                                                // 不开启截断时置0
     faPaOpParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM_COMPRESS; // 使用128x128的上三角
-    faPaOpParam.kvcacheCfg = atb::infer::SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE;     // 会进行kvCache处理
-    faPaOpParam.scaleType = atb::infer::SelfAttentionParam::ScaleType::SCALE_TYPE_TOR; // 缩放类型，使用qkScale缩放
-    faPaOpParam.inputLayout = atb::infer::InputLayout::TYPE_BSND;                      // 数据排布格式，BNSD
-    faPaOpParam.mlaVHeadSize = 0; // 不开启MLA合并kvCache，置0
-    faPaOpParam.cacheType = atb::infer::SelfAttentionParam::CacheType::CACHE_TYPE_NORM; // 不开启SWA mask
-    faPaOpParam.windowSize = 0;                                                         // 不开启SWA mask，置0
     return atb::CreateOperation(faPaOpParam, paEncoderOp);
 }
 

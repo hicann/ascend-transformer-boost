@@ -89,27 +89,13 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
 atb::Status PrepareOperation(atb::Operation **encoderOp)
 {
     atb::infer::SelfAttentionParam opParam;
-    opParam.quantType = atb::infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT; // 非量化场景
-    opParam.outDataType = ACL_DT_UNDEFINED; // 非量化场景，不设置输出类型
-    opParam.headNum = HEAD_NUM;             // query 头数
-    opParam.kvHeadNum = KV_HEAD_NUM;        // key, value 头数
-    opParam.qScale = 1;                     // query缩放系数，不缩放置1
-    opParam.qkScale = 1 / sqrt(HEAD_SIZE);  // tor值，Q*K^T后的缩放系数，不缩放置1
-    opParam.batchRunStatusEnable = false;   // 不开启动态batch
-    opParam.isTriuMask = 0;                 // 不开启mask倒三角优化
+    opParam.headNum = HEAD_NUM;            // query 头数
+    opParam.kvHeadNum = KV_HEAD_NUM;       // key, value 头数
+    opParam.qkScale = 1 / sqrt(HEAD_SIZE); // tor值，Q*K^T后的缩放系数，根据HEAD_SIZE做归一化
     opParam.calcType = atb::infer::SelfAttentionParam::CalcType::ENCODER; // 计算类型/场景分类，使用FA Encoder
     // Atlas推理系列仅支持高性能，softmax使用float16
     opParam.kernelType = atb::infer::SelfAttentionParam::KernelType::KERNELTYPE_DEFAULT;
-    opParam.clampType = atb::infer::SelfAttentionParam::ClampType::CLAMP_TYPE_UNDEFINED; // 不开启最大最小值截断
-    opParam.clampMin = 0;                                                                // 不开启截断时置0
-    opParam.clampMax = 0;                                                                // 不开启截断时置0
-    opParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED;    // 普通全量mask
-    opParam.kvcacheCfg = atb::infer::SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE;    // 会进行kvCache处理
-    opParam.scaleType = atb::infer::SelfAttentionParam::ScaleType::SCALE_TYPE_TOR; // 缩放类型，使用qkScale缩放
-    opParam.inputLayout = atb::infer::InputLayout::TYPE_BSND;                      // 数据排布格式，BNSD
-    opParam.mlaVHeadSize = 0;                                                      // 不开启MLA合并kvCache，置0
-    opParam.cacheType = atb::infer::SelfAttentionParam::CacheType::CACHE_TYPE_NORM; // 不开启SWA mask
-    opParam.windowSize = 0;                                                         // 不开启SWA mask，置0
+    opParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_UNDEFINED; // 不传入mask
     return atb::CreateOperation(opParam, encoderOp);
 }
 

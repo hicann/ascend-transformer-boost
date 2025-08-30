@@ -41,28 +41,14 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 + demo中使用全量的上三角mask演示
 
 **参数设置**：
-| 成员名称             | 取值                   |
-| :------------------- | :--------------------- |
-| quantType            | `TYPE_QUANT_UNQUANT`   |
-| outDataType          | `ACL_DT_UNDEFINED`     |
-| headNum              | 32                     |
-| kvHeadNum            | 32                     |
-| qScale               | 1                      |
-| qkScale              | 1/sqrt(128)            |
-| batchRunStatusEnable | `false`                |
-| isTriuMask           | 0                      |
-| calcType             | `ENCODER`              |
-| kernelType           | `KERNELTYPE_DEFAULT`   |
-| clampType            | `CLAMP_TYPE_UNDEFINED` |
-| clampMin             | 0                      |
-| clampMax             | 0                      |
-| maskType             | `MASK_TYPE_NORM`       |
-| kvcacheCfg           | `K_CACHE_V_CACHE`      |
-| scaleType            | `SCALE_TYPE_TOR`       |
-| inputLayout          | `TYPE_BSND`            |
-| mlaVHeadSize         | 0                      |
-| cacheType            | `CACHE_TYPE_NORM`      |
-| windowSize           | 0                      |
+| 成员名称   | 取值                 |
+| :--------- | :------------------- |
+| headNum    | 32                   |
+| kvHeadNum  | 32                   |
+| qkScale    | 1/sqrt(128)          |
+| calcType   | `ENCODER`            |
+| kernelType | `KERNELTYPE_DEFAULT` |
+| maskType   | `MASK_TYPE_NORM`     |
 
 **数据规格**：
 | tensor名字      | 数据类型 | 数据格式 | 维度信息            | cpu/npu |
@@ -78,6 +64,8 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 | `layerId`       | int32    | nd       | [1]                 | npu     |
 | **Output**      |
 | `output`        | float16  | nd       | [1]                 | npu     |
++ q，k，v第一维度为总词元长度，即`sum(seqlen)`
++ q，k，v第二维度headNum，headSize合轴，实际为headHum(32) $\times$ headSize(128)
 
 #### self_attention_encoder_inference_demo.cpp
 + 场景：fa encoder基础场景在Atlas推理系列上的实现，分开传入key，CacheK，value和CacheV
@@ -88,28 +76,14 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 + 该demo仅支持在Atlas推理系列上运行
 
 **参数设置**：
-| 成员名称             | 取值                   |
-| :------------------- | :--------------------- |
-| quantType            | `TYPE_QUANT_UNQUANT`   |
-| outDataType          | `ACL_DT_UNDEFINED`     |
-| headNum              | 16                     |
-| kvHeadNum            | 16                     |
-| qScale               | 1                      |
-| qkScale              | 1/sqrt(128)            |
-| batchRunStatusEnable | `false`                |
-| isTriuMask           | 0                      |
-| calcType             | `ENCODER`              |
-| kernelType           | `KERNELTYPE_DEFAULT`   |
-| clampType            | `CLAMP_TYPE_UNDEFINED` |
-| clampMin             | 0                      |
-| clampMax             | 0                      |
-| maskType             | `MASK_TYPE_UNDEFINED`  |
-| kvcacheCfg           | `K_CACHE_V_CACHE`      |
-| scaleType            | `SCALE_TYPE_TOR`       |
-| inputLayout          | `TYPE_BSND`            |
-| mlaVHeadSize         | 0                      |
-| cacheType            | `CACHE_TYPE_NORM`      |
-| windowSize           | 0                      |
+| 成员名称   | 取值                  |
+| :--------- | :-------------------- |
+| headNum    | 16                    |
+| kvHeadNum  | 16                    |
+| qkScale    | 1/sqrt(128)           |
+| calcType   | `ENCODER`             |
+| kernelType | `KERNELTYPE_DEFAULT`  |
+| maskType   | `MASK_TYPE_UNDEFINED` |
 
 **数据规格**：
 | tensor名字    | 数据类型 | 数据格式 | 维度信息            | cpu/npu |
@@ -132,28 +106,14 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 + demo中使用全量的上三角mask演示
 
 **参数设置**：
-| 成员名称             | 取值                   |
-| :------------------- | :--------------------- |
-| quantType            | `TYPE_QUANT_UNQUANT`   |
-| outDataType          | `ACL_DT_UNDEFINED`     |
-| headNum              | 32                     |
-| kvHeadNum            | 16                     |
-| qScale               | 1                      |
-| qkScale              | 1/sqrt(128)            |
-| batchRunStatusEnable | `false`                |
-| isTriuMask           | 0                      |
-| calcType             | `PA_ENCODER`           |
-| kernelType           | `KERNELTYPE_DEFAULT`   |
-| clampType            | `CLAMP_TYPE_UNDEFINED` |
-| clampMin             | 0                      |
-| clampMax             | 0                      |
-| maskType             | `MASK_TYPE_NORM`       |
-| kvcacheCfg           | `K_CACHE_V_CACHE`      |
-| scaleType            | `SCALE_TYPE_TOR`       |
-| inputLayout          | `TYPE_BSND`            |
-| mlaVHeadSize         | 0                      |
-| cacheType            | `CACHE_TYPE_NORM`      |
-| windowSize           | 0                      |
+| 成员名称   | 取值                 |
+| :--------- | :------------------- |
+| headNum    | 32                   |
+| kvHeadNum  | 16                   |
+| qkScale    | 1/sqrt(128)          |
+| calcType   | `PA_ENCODER`         |
+| kernelType | `KERNELTYPE_DEFAULT` |
+| maskType   | `MASK_TYPE_NORM`     |
 
 **数据规格**：
 | tensor名字      | 数据类型 | 数据格式 | 维度信息        | cpu/npu |
@@ -173,28 +133,15 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 + demo中为了应对长序列的情况，使用压缩上三角mask演示
 
 **参数设置**：
-| 成员名称             | 取值                      |
-| :------------------- | :------------------------ |
-| quantType            | `TYPE_QUANT_UNQUANT`      |
-| outDataType          | `ACL_DT_UNDEFINED`        |
-| headNum              | 5                         |
-| kvHeadNum            | 1                         |
-| qScale               | 1                         |
-| qkScale              | 1/sqrt(128)               |
-| batchRunStatusEnable | `false`                   |
-| isTriuMask           | 1                         |
-| calcType             | `PA_ENCODER`              |
-| kernelType           | `KERNELTYPE_DEFAULT`      |
-| clampType            | `CLAMP_TYPE_UNDEFINED`    |
-| clampMin             | 0                         |
-| clampMax             | 0                         |
-| maskType             | `MASK_TYPE_NORM_COMPRESS` |
-| kvcacheCfg           | `K_CACHE_V_CACHE`         |
-| scaleType            | `SCALE_TYPE_TOR`          |
-| inputLayout          | `TYPE_BSND`               |
-| mlaVHeadSize         | 0                         |
-| cacheType            | `CACHE_TYPE_NORM`         |
-| windowSize           | 0                         |
+| 成员名称   | 取值                      |
+| :--------- | :------------------------ |
+| headNum    | 5                         |
+| kvHeadNum  | 1                         |
+| qkScale    | 1/sqrt(128)               |
+| isTriuMask | 1                         |
+| calcType   | `PA_ENCODER`              |
+| kernelType | `KERNELTYPE_DEFAULT`      |
+| maskType   | `MASK_TYPE_NORM_COMPRESS` |
 
 **数据规格**：
 | tensor名字      | 数据类型 | 数据格式 | 维度信息       | cpu/npu |
@@ -215,28 +162,16 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 + demo中使用Alibi上三角mask叠加bias slopes演示
 
 **参数设置**：
-| 成员名称             | 取值                        |
-| :------------------- | :-------------------------- |
-| quantType            | `TYPE_QUANT_UNQUANT`        |
-| outDataType          | `ACL_DT_UNDEFINED`          |
-| headNum              | 32                          |
-| kvHeadNum            | 8                           |
-| qScale               | 1                           |
-| qkScale              | 1/sqrt(128)                 |
-| batchRunStatusEnable | `false`                     |
-| isTriuMask           | 0                           |
-| calcType             | `PREFIX_ENCODER`            |
-| kernelType           | `KERNELTYPE_HIGH_PRECISION` |
-| clampType            | `CLAMP_TYPE_UNDEFINED`      |
-| clampMin             | 0                           |
-| clampMax             | 0                           |
-| maskType             | `MASK_TYPE_ALIBI_COMPRESS`  |
-| kvcacheCfg           | `K_CACHE_V_CACHE`           |
-| scaleType            | `SCALE_TYPE_TOR`            |
-| inputLayout          | `TYPE_BSND`                 |
-| mlaVHeadSize         | 0                           |
-| cacheType            | `CACHE_TYPE_NORM`           |
-| windowSize           | 0                           |
+| 成员名称   | 取值                        |
+| :--------- | :-------------------------- |
+| headNum    | 32                          |
+| kvHeadNum  | 8                           |
+| qkScale    | 1/sqrt(128)                 |
+| isTriuMask | 1                           |
+| calcType   | `PREFIX_ENCODER`            |
+| kernelType | `KERNELTYPE_HIGH_PRECISION` |
+| maskType   | `MASK_TYPE_ALIBI_COMPRESS`  |
+
 
 **数据规格**：
 | tensor名字    | 数据类型 | 数据格式 | 维度信息           | cpu/npu |

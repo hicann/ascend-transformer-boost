@@ -74,27 +74,12 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
 atb::Status PrepareOperation(atb::Operation **paEncoderOp)
 {
     atb::infer::SelfAttentionParam paOpParam;
-    paOpParam.quantType = atb::infer::SelfAttentionParam::QuantType::TYPE_QUANT_UNQUANT; // 非量化场景
-    paOpParam.outDataType = ACL_DT_UNDEFINED; // 非量化场景，不设置输出类型
-    paOpParam.headNum = HEAD_NUM;             // query 头数
-    paOpParam.kvHeadNum = KV_HEAD_NUM;        // key, value 头数
+    paOpParam.headNum = HEAD_NUM;            // query 头数
+    paOpParam.kvHeadNum = KV_HEAD_NUM;       // key, value 头数
     paOpParam.qScale = 1;                    // query缩放系数，不缩放置1
-    paOpParam.qkScale = 1 / sqrt(HEAD_SIZE); // tor值，Q*K^T后的缩放系数，不缩放置1
-    paOpParam.batchRunStatusEnable = false;  // 不开启动态batch
-    paOpParam.isTriuMask = 0;                // 不开启mask倒三角优化
+    paOpParam.qkScale = 1 / sqrt(HEAD_SIZE); // tor值，Q*K^T后的缩放系数，根据HEAD_SIZE做归一化
     paOpParam.calcType = atb::infer::SelfAttentionParam::CalcType::PA_ENCODER; // 计算类型/场景分类，使用FA Encoder
-    // 高性能，softmax使用float16
-    paOpParam.kernelType = atb::infer::SelfAttentionParam::KernelType::KERNELTYPE_DEFAULT;
-    paOpParam.clampType = atb::infer::SelfAttentionParam::ClampType::CLAMP_TYPE_UNDEFINED; // 不开启最大最小值截断
-    paOpParam.clampMin = 0;                                                                // 不开启截断时置0
-    paOpParam.clampMax = 0;                                                                // 不开启截断时置0
-    paOpParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM;         // 普通全量mask
-    paOpParam.kvcacheCfg = atb::infer::SelfAttentionParam::KvCacheCfg::K_CACHE_V_CACHE;    // 会进行kvCache处理
-    paOpParam.scaleType = atb::infer::SelfAttentionParam::ScaleType::SCALE_TYPE_TOR; // 缩放类型，使用qkScale缩放
-    paOpParam.inputLayout = atb::infer::InputLayout::TYPE_BSND;                      // 数据排布格式，BNSD
-    paOpParam.mlaVHeadSize = 0;                                                      // 不开启MLA合并kvCache，置0
-    paOpParam.cacheType = atb::infer::SelfAttentionParam::CacheType::CACHE_TYPE_NORM; // 不开启SWA mask
-    paOpParam.windowSize = 0;                                                         // 不开启SWA mask，置0
+    paOpParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM; // 普通全量mask
     return atb::CreateOperation(paOpParam, paEncoderOp);
 }
 
