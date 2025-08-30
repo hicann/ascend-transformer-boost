@@ -22,6 +22,7 @@ import sys
 import shutil
 import logging
 import re
+import importlib
 from enum import Enum
 from functools import reduce
 
@@ -1181,6 +1182,39 @@ class MatmulCommon:
         MatmulCommon.pertoken_scale_golden = None
 
 class GatherOperation(DataGen):
+    
+    @staticmethod
+    def import_or_install(package_name, import_name=None):
+        """
+        尝试导入包，如果失败则使用 pip 安装
+        :param package_name: pip 安装时的包名（如 'tensorflow'）
+        :param import_name: import 时的模块名（如 'tensorflow'），默认与 package_name 相同
+        """
+        if import_name is None:
+            import_name = package_name
+
+        try:
+            importlib.import_module(import_name)
+            print(f"{package_name} 已安装，正在导入...")
+        except ImportError:
+            print(f"未找到 {package_name}，正在安装...")
+            try:
+                subprocess.check_call([
+                    sys.executable, "-m", "pip", "install", package_name
+                ])
+                print(f"{package_name} 安装成功！")
+            except Exception as e:
+                print(f"安装 {package_name} 失败: {e}")
+                sys.exit(1)
+
+            # 安装后再次尝试导入
+            try:
+                importlib.import_module(import_name)
+                print(f"{package_name} 导入成功！")
+            except ImportError:
+                print(f"安装成功但无法导入 {import_name}，请检查环境。")
+                sys.exit(1)
+
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
         # 获取 x_shape 和 indexs_shape
@@ -1257,6 +1291,7 @@ class GatherOperation(DataGen):
                             idx += 1
                 golden_result = golden_result.reshape(outputSize)
             elif batchDims > 0:
+                GatherOperation.import_or_install("tensorflow", "tensorflow")
                 import tensorflow as tf
                 # 转换 in_tensors[0] (数据)
                 in_tensors0_np = in_tensors[0].detach().cpu().numpy()  # 转为 numpy

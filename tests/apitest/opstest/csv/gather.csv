@@ -52,4 +52,3 @@ CaseNum|CaseName                |OpName         |OpParam     |InNum|InDType     
 51     |gather_batchdims_>0_7    |GatherOperation|{"axis": 2, "batchDims":2} |2    |float16;int64|nd;nd    |2,3,4;2,3    |1     |float16 |nd       |2,3    |random;random|-100,100;0,4 |            |             |Function|         |         |Ascend910B,Ascend310P,Ascend310B|NO_ERROR                        
 52     |gather_batchdims_>0_8    |GatherOperation|{"axis": 1, "batchDims":1} |2    |int64;int32|nd;nd    |28,7,1;28,154    |1     |int64 |nd       |28,154,1    |random;random|-100,100;0,7 |            |             |Function|         |         |Ascend910B,Ascend310P,Ascend310B|NO_ERROR                        
 
-
