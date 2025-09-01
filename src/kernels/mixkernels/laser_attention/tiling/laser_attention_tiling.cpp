@@ -153,9 +153,12 @@ void SetWorkspace(KernelInfo &kernelInfo, const int32_t colSize, const int32_t c
 {
     int32_t rowSumSize = tilingData.batchSize * tilingData.headNum * tilingData.qSeqLength * FLOAT_SIZE;
 
-    int32_t qSize = tilingData.batchSize * tilingData.headNum * tilingData.qSeqLength * DIM_192 * 2;
-    uint32_t kSize = tilingData.batchSize * tilingData.headNum * tilingData.kSeqLength * DIM_256 * 2;
-    uint32_t vSize = tilingData.batchSize * tilingData.headNum * tilingData.kSeqLength * 128 * 2;
+    uint64_t qSize = static_cast<uint64_t>(static_cast<int64_t>(tilingData.batchSize) * static_cast<int64_t>(tilingData.headNum) *
+                                           static_cast<int64_t>(tilingData.qSeqLength) * DIM_192 * 2);
+    uint64_t kSize = static_cast<uint64_t>(static_cast<int64_t>(tilingData.batchSize) * static_cast<int64_t>(tilingData.headNum) *
+                                           static_cast<int64_t>(tilingData.kSeqLength) * DIM_256 * 2);
+    uint64_t vSize = static_cast<uint64_t>(static_cast<int64_t>(tilingData.batchSize) * static_cast<int64_t>(tilingData.headNum) *
+                                           static_cast<int64_t>(tilingData.kSeqLength) * 128 * 2);
 
     auto cube2WorkspaceSize = tilingData.batchSize * tilingData.headNum * tilingData.qSeqLength * 128 * FLOAT_SIZE;
 
