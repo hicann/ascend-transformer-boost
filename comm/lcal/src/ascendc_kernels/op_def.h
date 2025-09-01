@@ -7,6 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#ifndef LCCL_OP_DEF_H
+#define LCCL_OP_DEF_H
 #define GET_COMM_ARGS \
     GlobalTensor<int> commArgsGm; \
     commArgsGm.SetGlobalBuffer(reinterpret_cast<__gm__ int *>(commArgs), 5); \
@@ -113,3 +115,5 @@ do { \
 
 #define LCCL_QUANT_LOW_TYPE_FUNC(fun) \
     fun(int8_t)
+
+#endif
