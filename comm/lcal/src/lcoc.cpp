@@ -264,6 +264,9 @@ void Lcoc::GetTiling(CoCTiling &tiling)
 
 bool IsMatrixAligned(const int64_t &m, const int64_t &n, const bool &transpose, int nElemAlign)
 {
+    if (nElemAlign == 0) {
+        return false;
+    }
     return (transpose ? m : n) % nElemAlign == 0;
 }
 
