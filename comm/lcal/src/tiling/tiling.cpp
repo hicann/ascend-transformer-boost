@@ -27,11 +27,13 @@ CoCTilingData CoCTilingFunc::GenerateTiling(const TaskParam &taskParam, const Co
 
 bool CoCTilingFunc::CheckTiling(const TaskParam &taskParam)
 {
+    (void) taskParam;
     return CheckCoCTilingData(cocTilingData);
 }
 
 void CoCTilingFunc::GetDefaultTiling(const TaskParam &taskParam)
 {
+    (void) taskParam;
     cocTilingData.ubMoveNum = VALID_UB_MOVE_NUM;
     cocTilingData.commNpuSplit = cocTilingData.rankSize;
     cocTilingData.commDataSplit = COMMDATASPLIT_ONE;
