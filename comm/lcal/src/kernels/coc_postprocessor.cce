@@ -18,8 +18,8 @@
 #include "tiling_args.h"
 using namespace AscendC;
 
-constexpr int32_t BUFFER_NUM = 1;
-constexpr int32_t NUM_PER_REP_FP32 = 64;
+constexpr int32_t BUFFER_NUM = 1;         // tensor num for each queue
+constexpr int32_t NUM_PER_REP_FP32 = 64;  // ONE_REPEAT_BYTE_SIZE / sizeof(float);
 constexpr int32_t NUM_PER_BLK_FP32 = 8;
 constexpr float MINUS_HALF = -0.5;
 constexpr float ZERO = 0;
@@ -30,7 +30,7 @@ class RMSNormprocessor {
 public:
     __aicore__ explicit RMSNormprocessor() = default;
     FORCE_INLINE_AICORE void SetArgs(__gm__ uint8_t *gm_in, __gm__ uint8_t *gm_out, __gm__ uint8_t *gm_gamma,
-                                    uint32_t m, uint32_t n)
+                                     uint32_t m, uint32_t n)
     {
         this->rmsnorm_in = reinterpret_cast<__gm__ T_in *>(gm_out);
         this->rmsnorm_gamma = reinterpret_cast<__gm__ T_out *>(gm_gamma);
@@ -40,6 +40,7 @@ public:
         this->core_used = core_used;
     }
 
+    // 暂时只支持float16
     struct UBufConfig {
         int64_t global_subblock_idx;
         int64_t total_subblock;
@@ -49,8 +50,8 @@ public:
         __ubuf__ float *sqx0;
         __ubuf__ float *sum_tmp0;
         __ubuf__ float *sum0;
-        __ubuf__ float *fp32_1;
         __ubuf__ half *fp16_1;
+        __ubuf__ float *fp32_1;
         __ubuf__ float *sqx1;
         __ubuf__ float *sum_tmp1;
         __ubuf__ float *sum1;
@@ -107,29 +108,35 @@ public:
             SetFlag<HardEvent::MTE2_V>(event_id);
             WaitFlag<HardEvent::MTE2_V>(event_id);
 
+            // fp16 -> fp32
             SetVectorMask<T_in, MaskMode::COUNTER>(0x0, n);
             Vconv(((__ubuf__ float *)fp32), ((__ubuf__ half *)fp16), 1, 1, 1, 8, 4);
             PipeBarrier<PIPE_V>();
 
+            // x^2
             Vmul(((__ubuf__ float *)sqx), ((__ubuf__ float *)fp32), ((__ubuf__ float *)fp32), 1, 1, 1, 1, 8, 8, 8);
             PipeBarrier<PIPE_V>();
-            float average_val = 1.f /n;
+
+            // x^2 / n
+            float average_val = 1.f / n;
             Vmuls(((__ubuf__ float *)sqx), ((__ubuf__ float *)sqx), average_val, 1, 1, 1, 8, 8);
             PipeBarrier<PIPE_V>();
 
+            // sum(x^2 / n)
             SetVectorMask<T_in, MaskMode::COUNTER>(0x0, 64);
             VectorDup(((__ubuf__ float *)sum_tmp), 0.f, 1, 1, 8);
             PipeBarrier<PIPE_V>();
 
             SetVectorMask<T_in, MaskMode::COUNTER>(0x0, n);
             Vadd(((__ubuf__ float *)sum_tmp), ((__ubuf__ float *)sqx), ((__ubuf__ float *)sum_tmp), 1, 1, 1, 1, 0, 8,
-                0);
+                 0);
             PipeBarrier<PIPE_V>();
 
             SetVectorMask<T_in, MaskMode::COUNTER>(0x0, 64);
             vcadd(((__ubuf__ float *)sum), ((__ubuf__ float *)sum_tmp), 1, 0, 1, 0, 0);
             PipeBarrier<PIPE_V>();
 
+            // x * 1 / sqrt(sum(x^2 / n) + eps)
             SetVectorMask<T_in, MaskMode::COUNTER>(0x0, n);
             SetFlag<HardEvent::V_S>(event_id);
             WaitFlag<HardEvent::V_S>(event_id);
@@ -140,11 +147,13 @@ public:
             Vmuls(((__ubuf__ float *)fp32), ((__ubuf__ float *)fp32), mul_val, 1, 1, 1, 8, 8);
             PipeBarrier<PIPE_V>();
 
+            // fp32 -> fp16
             Vconv(((__ubuf__ half *)fp16), ((__ubuf__ float *)fp32), 1, 1, 1, 4, 8);
             PipeBarrier<PIPE_V>();
 
+            // x * 1 / sqrt(sum(x^2 / n) + eps) * g
             Vmul(((__ubuf__ half *)fp16), ((__ubuf__ half *)fp16), ((__ubuf__ half *)ubufConfig.gamma), 1, 1, 1, 1, 8,
-                     8, 8);
+                 8, 8);
             PipeBarrier<PIPE_V>();
             SetFlag<HardEvent::V_MTE3>(event_id);
             WaitFlag<HardEvent::V_MTE3>(event_id);
@@ -185,6 +194,7 @@ public:
 
     FORCE_INLINE_AICORE void Run()
     {
+        //                         mode, flag_id
         FFTSCrossCoreSync<PIPE_MTE3>(0, 0);
         WaitEvent(0);
         if (this->with_rms_norm) {

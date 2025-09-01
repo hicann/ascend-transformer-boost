@@ -39,6 +39,7 @@ namespace Lcal {
 
     double GetMTETime(double mknGB, int32_t m0, int32_t n0, double aBindWidth, double bBindWidth)
     {
+        // 预估Matmul计算的MTE2搬运时间
         return DOUBLE * mknGB * (SECOND_TO_MS / ONE_K) * (1.0 / (n0 * aBindWidth) + 1.0 / (m0 * bBindWidth));
     }
 
@@ -73,12 +74,12 @@ namespace Lcal {
 
     uint32_t GetTilingKey(const MatMulInfo &mmInfo, CoCTilingData &tilingData)
     {
-        uint32_t tilingKey = static_cast<uint32_t>(tilingData.swizzlDirect);
-        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.transA);
-        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.transB);
-        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.isInt8);
-        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.withBias);
-        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(tilingData.splitK);
+        uint32_t tilingKey = static_cast<uint32_t>(tilingData.swizzlDirect);  // 32
+        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.transA);   // 16
+        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.transB);   // 8
+        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.isInt8);   // 4
+        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(mmInfo.withBias); // 2
+        tilingKey = (static_cast<uint32_t>(tilingKey) << 1) + static_cast<uint32_t>(tilingData.splitK);    // 1
         return tilingKey;
     }
 
@@ -90,7 +91,7 @@ namespace Lcal {
         int maxPValue = maxPeerMemPerRank / cocTilingData.m0 / cocTilingData.k0 / cocTilingData.kLoop;
         cocTilingData.pValue = ClampValue(cocTilingData.pValue, MIN_P_VALUE, maxPValue);
 
-        if (cocTilingData.m0 == DEFAULT_COL
+        if (cocTilingData.m0  == DEFAULT_COL
         && cocTilingData.pValue * cocTilingData.m0 * cocTilingData.k0 * cocTilingData.kLoop >= maxPeerMemPerRank) {
             cocTilingData.m0 = DEFAULT_ROW;
             cocTilingData.n0 = DEFAULT_COL;
@@ -252,12 +253,13 @@ namespace Lcal {
 
     void CalTilingParam(const MatMulInfo &mmInfo, CoCTilingData &tilingData)
     {
+        // 计算
         tilingData.mLoop = CeilDev(tilingData.m, tilingData.m0);
         tilingData.kLoop = CeilDev(tilingData.k, tilingData.k0);
         tilingData.nLoop = CeilDev(tilingData.n, tilingData.n0);
         tilingData.coreLoop = tilingData.batchSize * tilingData.mLoop * tilingData.nLoop;
         tilingData.tilingKey = GetTilingKey(mmInfo, tilingData);
-
+        // 对齐
         tilingData.ubMoveNum = RoundNum(tilingData.ubMoveNum, HALF_KBYTE);
         tilingData.lenPerLoop = RoundNum(tilingData.lenPerLoop, HALF_KBYTE);
         tilingData.extraUbMoveNum = RoundNum(tilingData.extraUbMoveNum, HALF_KBYTE);
@@ -278,7 +280,9 @@ namespace Lcal {
 
     void SetTilingData(const TaskParam &taskParam, const CoCTiling &tiling, CoCTilingData &tilingData)
     {
+        // 输入Tiling赋值给Tiling策略的参数
         TransformCoCTiling(tiling, tilingData);
+        // 根据最终的Tiling策略参数，计算mLoop等参数
         CalTilingParam(taskParam.cocParamDesc.mmInfo, tilingData);
     }
 }

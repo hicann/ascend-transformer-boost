@@ -10,7 +10,6 @@
 #include "tiling_func.h"
 #include "mki/utils/log/log.h"
 #include "tiling.h"
-
 namespace Lcal {
 CoCTilingData CoCTilingFunc::GenerateTiling(const TaskParam &taskParam, const CoCTiling &tiling)
 {
@@ -20,6 +19,7 @@ CoCTilingData CoCTilingFunc::GenerateTiling(const TaskParam &taskParam, const Co
 
     this->GetDefaultTiling(taskParam);
 
+    // 设置Tiling策略参数
     SetTilingData(taskParam, tiling, cocTilingData);
 
     return cocTilingData;
@@ -32,6 +32,7 @@ bool CoCTilingFunc::CheckTiling(const TaskParam &taskParam)
 
 void CoCTilingFunc::GetDefaultTiling(const TaskParam &taskParam)
 {
+    // 暂时没有使用场景
     cocTilingData.ubMoveNum = VALID_UB_MOVE_NUM;
     cocTilingData.commNpuSplit = cocTilingData.rankSize;
     cocTilingData.commDataSplit = COMMDATASPLIT_ONE;

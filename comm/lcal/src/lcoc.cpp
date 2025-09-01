@@ -59,6 +59,12 @@ bool Check2DTPType(LcalType lcalType)
     return lcalType == LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER;
 }
 
+bool CheckMOEType(LcalType lcalType)
+{
+    return (lcalType >= LcalType::ALLTOALLV_ALLGATHER_MATMUL) &&
+           (lcalType <= LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN);
+}
+
 bool CheckCoCParamDesc(LcalType lcalType, const CoCParamDesc &paramDesc)
 {
     if (COC_TYPE2ELE_SIZE.find(paramDesc.dataTypeDesc) == COC_TYPE2ELE_SIZE.end()) {
@@ -86,7 +92,15 @@ bool CheckCoCParamDesc(LcalType lcalType, const CoCParamDesc &paramDesc)
         paramCheckList.emplace_back("agDim", agDim, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE);
         paramCheckList.emplace_back("rsDim", rsDim, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE);
     }
-
+    if (CheckMOEType(lcalType)) {
+        auto ep = paramDesc.moeInfo.EP;
+        auto tp = paramDesc.moeInfo.TP;
+        auto localExpertNums = paramDesc.moeInfo.local_expert_nums;
+        paramCheckList.emplace_back("ep", ep, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE);
+        paramCheckList.emplace_back("tp", tp, PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE);
+        paramCheckList.emplace_back("localExpertNums", localExpertNums,
+                                    PARAM_CHECK_MIN_VALUE_ONE, PARAM_CHECK_MAX_VALUE);
+    }
     return CheckParamScopeList(paramCheckList);
 }
 
@@ -134,6 +148,15 @@ CoCTilingFunc *CreateCoCTilingFunc(LcalType lcalType)
     }
     CoCTilingFunc *pTilingFunc = nullptr;
     switch (lcalType) {
+        case LcalType::ALL_GATHER_MATMUL:
+            pTilingFunc = new (std::nothrow) CoCAllGatherMatmulTilingFunc();
+            break;
+        case LcalType::ALL_GATHER_MATMUL_V2:
+            pTilingFunc = new (std::nothrow) CoCAllGatherMatmulV2TilingFunc();
+            break;
+        case LcalType::MATMUL_REDUCE_SCATTER:
+            pTilingFunc = new (std::nothrow) CoCMatmulReduceScatterTilingFunc();
+            break;
         case LcalType::MATMUL_ALL_REDUCE:
             if (isDeterministic) {
                 pTilingFunc = new (std::nothrow) CoCMatmulAllReduceDeterTilingFunc();
@@ -143,6 +166,15 @@ CoCTilingFunc *CreateCoCTilingFunc(LcalType lcalType)
             break;
         case LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER:
             pTilingFunc = new (std::nothrow) CoCAllgatherMatmulReduceScatterTilingFunc();
+            break;
+        case LcalType::ALLTOALLV_ALLGATHER_MATMUL:
+            pTilingFunc = new (std::nothrow) CoCAllToAllAllGatherMatmulTilingFunc();
+            break;
+        case LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN:
+            pTilingFunc = new (std::nothrow) CoCAllToAllAllGatherMatmulHiddenTilingFunc();
+            break;
+        case LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN:
+            pTilingFunc = new (std::nothrow) CoCMatmulReduceScatterAllToAllHiddenTilingFunc();
             break;
         default:
             pTilingFunc = new (std::nothrow) CoCTilingFunc();
@@ -158,25 +190,34 @@ Lcoc::Lcoc(LcalComm &comm) : comm_(&comm) {}
 
 int Lcoc::SetParam(LcalType lcalType, const CoCTiling &tiling, const CoCParamDesc &paramDesc)
 {
+    // 参数检查
     if (!CheckInputParam(lcalType, tiling, paramDesc)) {
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
+    // 设置LCOC初始化参数
     SetLcocParam(lcalType, paramDesc);
+    // 创建Tiling函数
     CoCTilingFunc *pTilingFunc = CreateCoCTilingFunc(lcalType);
     if (pTilingFunc == nullptr) {
         PrintErrorLog(lcalType, "Create CoCTilingFunc failed!");
         return LCAL_ERROR_INTERNAL;
     }
+    // 生成Tiling策略参数
     CoCTilingData tilingData = pTilingFunc->GenerateTiling(taskParam_, tiling);
+    // 检查Tiling策略参数是否合法
     bool tilingCheckRes = pTilingFunc->CheckTiling(taskParam_);
     if (!tilingCheckRes) {
         PrintErrorLog(lcalType, "Tiling check failed!");
+        // 释放TilingFunc
         delete pTilingFunc;
         pTilingFunc = nullptr;
         return LCAL_ERROR_INTERNAL;
     }
+    // 赋值Tiling参数
     tiling_ = tilingData;
+    // 设置成功标志
     tilingSuccess_ = true;
+    // 释放TilingFunc
     delete pTilingFunc;
     pTilingFunc = nullptr;
     return LCAL_SUCCESS;
@@ -226,6 +267,42 @@ bool Lcoc::CheckBasic(const CoCInputPkg &inputPkg, const CoCOutputPkg &outputPkg
     return true;
 }
 
+int Lcoc::AllGatherMatmul(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
+{
+    LcalType lcalType = LcalType::ALL_GATHER_MATMUL;
+    if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    ReportTiming report("LcocAllGatherMatmul", true);
+    return LaunchOperator(inputPkg, outputPkg, workspace, stream);
+}
+
+int Lcoc::AllGatherMatmulV2(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
+{
+    LcalType lcalType = LcalType::ALL_GATHER_MATMUL_V2;
+    if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    ReportTiming report("LcocAllGatherMatmulV2", true);
+    return LaunchOperator(inputPkg, outputPkg, workspace, stream);
+}
+
+int Lcoc::MatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
+{
+    LcalType lcalType = LcalType::MATMUL_REDUCE_SCATTER;
+    if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    if (taskParam_.cocParamDesc.mmInfo.m % taskParam_.rankSize != 0) {
+        if (taskParam_.rank == 0) {
+            MKI_LOG(ERROR) << "MatmulReduceScatter: input tensor must be the same size as output size times world size";
+        }
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    ReportTiming report("LcocMatmulReduceScatter", true);
+    return LaunchOperator(inputPkg, outputPkg, workspace, stream);
+}
+
 int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
 {
     LcalType lcalType = LcalType::MATMUL_ALL_REDUCE;
@@ -233,6 +310,16 @@ int Lcoc::MatmulAllReduce(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *wo
         return LCAL_ERROR_PARA_CHECK_FAIL;
     }
     ReportTiming report("LcocMatmulAllReduce", true);
+    return LaunchOperator(inputPkg, outputPkg, workspace, stream);
+}
+
+int Lcoc::PureMatmul(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace, aclrtStream stream)
+{
+    LcalType lcalType = LcalType::PURE_MATMUL;
+    if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    ReportTiming report("LcocPureMatmul", true);
     return LaunchOperator(inputPkg, outputPkg, workspace, stream);
 }
 
@@ -247,6 +334,35 @@ int Lcoc::AllGatherMatmulReduceScatter(CoCInputPkg inputPkg, CoCOutputPkg output
     return LaunchOperator(inputPkg, outputPkg, workspace, stream);
 }
 
+int Lcoc::AllToAllVAllGatherMatmul(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+    aclrtStream stream)
+{
+    LcalType lcalType = LcalType::ALLTOALLV_ALLGATHER_MATMUL;
+    if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    return LaunchOperator(inputPkg, outputPkg, workspace, stream);
+}
+
+int Lcoc::MatmulReduceScatterAllToAllVHidden(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+    aclrtStream stream)
+{
+    LcalType lcalType = LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN;
+    if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    return LaunchOperator(inputPkg, outputPkg, workspace, stream);
+}
+ 
+int Lcoc::AllToAllVAllGatherMatmulHidden(CoCInputPkg inputPkg, CoCOutputPkg outputPkg, void *workspace,
+    aclrtStream stream)
+{
+    LcalType lcalType = LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN;
+    if (!CheckBasic(inputPkg, outputPkg, lcalType)) {
+        return LCAL_ERROR_PARA_CHECK_FAIL;
+    }
+    return LaunchOperator(inputPkg, outputPkg, workspace, stream);
+}
 LcalComm *Lcoc::GetComm()
 {
     return comm_;
@@ -262,11 +378,9 @@ void Lcoc::GetTiling(CoCTiling &tiling)
     tiling = tiling_;
 }
 
+
 bool IsMatrixAligned(const int64_t &m, const int64_t &n, const bool &transpose, int nElemAlign)
 {
-    if (nElemAlign == 0) {
-        return false;
-    }
     return (transpose ? m : n) % nElemAlign == 0;
 }
 
@@ -278,6 +392,7 @@ int64_t Lcoc::GetWorkspaceSize()
     CoCDataTypeDesc dataType = cocParamDesc.dataTypeDesc;
     const MatMulInfo &mmInfo = cocParamDesc.mmInfo;
     const QuantInfo &quantInfo = cocParamDesc.quantInfo;
+    const MoeInfo& moeInfo = cocParamDesc.moeInfo;
     bool hasQuant = quantInfo.quantGranularity != QuantGranularity::QUANT_GRANULARITY_UNDEFINED;
     bool hasDequant = quantInfo.dequantGranularity != QuantGranularity::QUANT_GRANULARITY_UNDEFINED;
     int32_t eleSize = COC_TYPE2ELE_SIZE.at(dataType);
@@ -285,35 +400,45 @@ int64_t Lcoc::GetWorkspaceSize()
     int32_t mAlign = AlignUp(mmInfo.m, nElemAlign);
     int32_t nAlign = AlignUp(mmInfo.n, nElemAlign);
     int32_t kAlign = AlignUp(mmInfo.k, nElemAlign);
+    int32_t maxOutputSize = moeInfo.maxOutputSize;
 
     bool hasAAlign = hasQuant || (!IsMatrixAligned(mmInfo.m, mmInfo.k, mmInfo.transA, nElemAlign) && mmInfo.m != 1);
 
     bool hasBAlign = (!mmInfo.weightNz) && ((hasDequant && !mmInfo.isInt8)
                      || (!IsMatrixAligned(mmInfo.k, mmInfo.n, mmInfo.transB, nElemAlign)));
-    
-    int32_t accumRankSize = 0;
+
+    int32_t accumRankSize = taskParam_.lcalType == LcalType::ALL_GATHER_MATMUL ? taskParam_.rankSize : 0;
 
     bool hasAccum = dataType == CoCDataTypeDesc::INT8INT8_INT32_BF16;
     bool hasDequantParam = (quantInfo.dequantGranularity == QuantGranularity::PER_TOKEN ||
                             quantInfo.dequantGranularity == QuantGranularity::PER_TENSOR);
     bool hasFormatDequantScale = (quantInfo.dequantGranularity == QuantGranularity::PER_CHANNEL);
+    bool isMoe = false;
+    if (lcalType == LcalType::ALLTOALLV_ALLGATHER_MATMUL ||
+        lcalType == LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN ||
+        lcalType == LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN) {
+            isMoe = true;
+    }
+    bool isAlltoallVc =
+        lcalType == LcalType::ALLTOALLV_ALLGATHER_MATMUL || lcalType == LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN ||
+        lcalType == LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN;
 
     uint64_t dequantWorkSpaceSize = GetDequantWorkSpaceSize(lcalType, tiling_.withSerialMode, mmInfo.m, mmInfo.n,
-        tiling_.m0, tiling_.n0, tiling_.pValue, tiling_.nLoop, taskParam_.rankSize, taskParam_.blockDim);
+        tiling_.m0, tiling_.n0, tiling_.pValue, tiling_.nLoop, taskParam_.rankSize, taskParam_.blockDim, maxOutputSize);
     LcalWorkspaceInfo lcalWorkspaceInfo = GetLcalWorkspaceInfo(0, mmInfo.batchSize, mmInfo.m, mmInfo.k,
         mmInfo.n, mAlign, kAlign, nAlign, mmInfo.transA, mmInfo.transB, eleSize, hasAAlign, hasBAlign,
-        accumRankSize, hasAccum, dequantWorkSpaceSize, hasDequantParam, hasFormatDequantScale, isDeterministic);
-    
+        accumRankSize, hasAccum, dequantWorkSpaceSize, hasDequantParam, hasFormatDequantScale, isDeterministic,
+        isMoe, isAlltoallVc, moeInfo.EP, moeInfo.local_expert_nums, maxOutputSize);
+
     MKI_LOG(DEBUG) << "[Lcoc Workspace]: " << "m=" << mmInfo.m << ", k=" << mmInfo.k << ", n=" << mmInfo.n
         << ", mAlign=" << mAlign << ", kAlign=" << kAlign << ", nAlign=" << nAlign << ", transA=" << mmInfo.transA
         << ", transB=" << mmInfo.transB << ", eleSize=" << eleSize << ", hasAAlign=" << hasAAlign
         << ", hasBAlign=" << hasBAlign << ", accumRankSize=" << accumRankSize << ", hasAccum=" << hasAccum
         << ", dequantWorkSpaceSize=" << dequantWorkSpaceSize << ", hasDequantParam=" << hasDequantParam
         << ", hasFormatDequantScale=" << hasFormatDequantScale << ", isDeterministic=" << isDeterministic
-        << ", workspaceSize=" << lcalWorkspaceInfo.workspaceSize;
-
+        << ", isMoe=" << isMoe << ", isAlltoallVc=" << isAlltoallVc << ", moeInfo.EP=" << static_cast<int>(moeInfo.EP)
+        << ", moeInfo.local_expert_nums=" << moeInfo.local_expert_nums
+        << ", maxOutputSize=" << maxOutputSize << ", workspaceSize=" << lcalWorkspaceInfo.workspaceSize;
     return lcalWorkspaceInfo.workspaceSize;
 }
-
 }
-

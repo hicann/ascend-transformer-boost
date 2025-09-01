@@ -7,12 +7,14 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+
 #include "lcoc_func.h"
 #include "lcoc_args.h"
 #include "mki/utils/log/log.h"
 
 using namespace std;
 namespace Lcal {
+    // 校验参数取值范围在[min, max]内,当max=-1时，表示参数取值范围在[min, +∞)
     bool CheckParamScope(const std::string &name, const int &value, const int &min, const int &max)
     {
         if (value < min || (max != PARAM_CHECK_MAX_VALUE && value > max)) {
@@ -45,9 +47,6 @@ namespace Lcal {
 
     bool CheckParamAlign(const std::string &name, const int &value, const int &align)
     {
-        if (align == 0) {
-            return false;
-        }
         if (value % align != 0) {
             MKI_LOG(ERROR) << "The " << name << ":" << value << " must be aligned by " << align << "!";
             return false;
@@ -76,12 +75,10 @@ namespace Lcal {
     int64_t GetAlignedMatrixSize(const int64_t &batchSize, const int64_t &m, const int64_t &n, const bool &transpose,
                                  int nElemAlign)
     {
-        if (nElemAlign == 0) {
-            return false;
-        }
         int64_t nRow = transpose ? n : m;
         int64_t nCol = transpose ? m : n;
         int64_t nColAlign = (nCol + nElemAlign - 1) / nElemAlign * nElemAlign;
         return batchSize * nRow * nColAlign;
     }
+
 }

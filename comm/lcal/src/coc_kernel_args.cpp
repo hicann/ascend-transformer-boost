@@ -33,11 +33,14 @@ void CoCKernelArgs::SetInputPkgArgs(CoCInputPkg &inputPkg)
     matrixA = inputPkg.matrixA;
     matrixB = inputPkg.matrixB;
     bias = inputPkg.bias;
-    gamma= inputPkg.gamma;
+    gamma = inputPkg.gamma;
     dequantScale = inputPkg.dequantScale;
     dequantOffset = inputPkg.dequantOffset;
     quantScale = inputPkg.quantScale;
     quantOffset = inputPkg.quantOffset;
+    numLocalTokensPerExpertPtr = inputPkg.num_local_tokens_per_expert;
+    numGlobalTokensPerLocalExpertPtr = inputPkg.num_global_tokens_per_local_expert;
+    globalTokensPerLocalExpertMatrixPtr = inputPkg.global_tokens_per_expert_matrix;
 }
 
 void CoCKernelArgs::SetOutputPkgArgs(CoCOutputPkg &outputPkg)
@@ -57,6 +60,7 @@ void CoCKernelArgs::SetParamDescArgs(const CoCParamDesc &paramDesc)
     cocKernelParam.twoDimTPInfo = paramDesc.twoDimTPInfo;
     cocKernelParam.postInfo = paramDesc.postInfo;
     cocKernelParam.weightNz = paramDesc.mmInfo.weightNz;
+    cocKernelParam.moeInfo = paramDesc.moeInfo;
 }
 
 void CoCKernelArgs::SetCommArgs(const LcalComm &comm)
@@ -73,10 +77,17 @@ void CoCKernelArgs::SetCoCTilingDataArgs(const CoCTilingData &tilingData)
 std::string CoCKernelArgs::ParamToString()
 {
     std::string quantInfoString = "[QuantInfo]: dequantGranularity=" +
-                                    std::to_string(cocKernelParam.quantInfo.dequantGranularity) + "\n";
+                                  std::to_string(cocKernelParam.quantInfo.dequantGranularity) + "\n";
+    auto moeInfo = cocKernelParam.moeInfo;
+    std::string moeInfoString =
+           std::string("[MoeInfo]: local_expert_nums=") + std::to_string(moeInfo.local_expert_nums) +
+           ", EP=" + std::to_string(static_cast<int>(moeInfo.EP)) +
+           ", TP=" + std::to_string(static_cast<int>(moeInfo.TP))  +
+           ", maxOutputSize=" + std::to_string(moeInfo.maxOutputSize) +
+           ", isMoe=" + std::to_string(static_cast<int>(moeInfo.isMoe)) + "\n";
     std::string weightNzInfoString = "[weightNz]: weightNz=" +
-                                    std::to_string(cocKernelParam.weightNz) + "\n";
+                                      std::to_string(cocKernelParam.weightNz) + "\n";
     std::string tilingInfoString = cocKernelParam.cocTilingData.ToString();
-    return quantInfoString + weightNzInfoString + tilingInfoString;
+    return quantInfoString + moeInfoString + weightNzInfoString + tilingInfoString;
 }
 }
