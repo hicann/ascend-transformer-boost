@@ -339,9 +339,10 @@ function fn_copy_tbe_adapter()
     fi
 
     if [ "${ATB_BUILD_DEPENDENCY_PATH}" != "${LOCAL_TBE_ADAPTER_PATH}" ]; then
-        if [ -d $LOCAL_TBE_ADAPTER_PATH ]; then
-            cp ${ATB_BUILD_DEPENDENCY_PATH}/lib/libtbe_adapter.so $LOCAL_TBE_ADAPTER_PATH/lib
+        if [ ! -d "${LOCAL_TBE_ADAPTER_PATH/lib}" ];then
+            mkdir -p $LOCAL_TBE_ADAPTER_PATH/lib
         fi
+        cp ${ATB_BUILD_DEPENDENCY_PATH}/lib/libtbe_adapter.so $LOCAL_TBE_ADAPTER_PATH/lib
     fi
 }
 
