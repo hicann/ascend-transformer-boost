@@ -44,5 +44,5 @@ tests/apitest/opstest/python/operations/paged_cache_load/
     **输出**
     | TensorName | DataType | DataFormat |   Shape    |
     | :--------: | :------: | :--------: | :--------: |
-    |    key     |   bf16   |     nd     | [384, 128] |
-    |   value    |   bf16   |     nd     | [384, 128] |
+    |    key     |   int8   |     nd     | [384, 128] |
+    |   value    |   int8   |     nd     | [384, 128] |
