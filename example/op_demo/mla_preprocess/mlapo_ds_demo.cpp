@@ -12,7 +12,7 @@
 
 const int32_t DEVICE_ID = 2;
 const uint32_t blockSize = 128;
-const uint32_t blockNum = 64;
+const uint32_t blockNum = 161;
 
 /**
  * @brief 准备atb::VariantPack中的输入tensor
@@ -24,7 +24,7 @@ const uint32_t blockNum = 64;
 atb::Status PrepareInTensor1(atb::Context *contextPtr, aclrtStream stream, aclDataType dtype, int tokenNum,
                              atb::SVector<atb::Tensor> *inTensors)
 {
-    // 创建shape为[tokenNum, 7168]的输入input tensor
+    // 创建shape为[32, 7168]的输入input tensor
     atb::Tensor input;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * 7168, 0), dtype,
                                         aclFormat::ACL_FORMAT_ND, {tokenNum, 7168}, input, dtype));
@@ -44,10 +44,10 @@ atb::Status PrepareInTensor1(atb::Context *contextPtr, aclrtStream stream, aclDa
     atb::Tensor quantOffset0;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(1, 1), ACL_INT8,
                                         aclFormat::ACL_FORMAT_ND, {1}, quantOffset0));
-    // 创建shape为[1,224,2112,32]的输入wdqkv tensor
+    // 创建shape为[2112, 7168]的输入wdqkv tensor
     atb::Tensor wdqkv;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(224 * 2112 * 32, 1), ACL_INT8,
-                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {1, 224, 2112, 32}, wdqkv));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(2112 * 7168), ACL_INT8,
+                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {2112, 7168}, wdqkv, ACL_INT8));
     // 创建shape为[2112]的输入deScale0 tensor
     atb::Tensor deScale0;
     if (dtype == ACL_BF16) {
@@ -92,11 +92,11 @@ atb::Status PrepareInTensor1(atb::Context *contextPtr, aclrtStream stream, aclDa
 atb::Status PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDataType dtype, int tokenNum, int headNum,
                              atb::SVector<atb::Tensor> *inTensors)
 {
-    // 创建shape为[1,48,headNum*192,32]的输入wuq tensor
+    // 创建shape为[headNum * 192, 48 * 32]的输入wuq tensor
     atb::Tensor wuq;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(48 * headNum * 192 * 32, 1), ACL_INT8,
-                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {1, 48, headNum * 192, 32}, wuq));
-    // 创建shape为[headNum*192]的输入deScale1 tensor
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<int8_t>(headNum * 192 * 48 * 32), ACL_INT8,
+                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {headNum * 192, 48 * 32}, wuq));
+    // 创建shape为[headNum * 192]的输入deScale1 tensor
     atb::Tensor deScale1;
     if (dtype == ACL_BF16) {
         CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<float>(headNum * 192, 1), ACL_FLOAT,
@@ -121,24 +121,24 @@ atb::Status PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDa
     atb::Tensor sin;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(tokenNum * 64, 0.5), dtype,
                                         aclFormat::ACL_FORMAT_ND, {tokenNum, 64}, sin, dtype));
-    // 创建shape为[headNum,32,128,16]的输入wuk tensor
+    // 创建shape为[headNum,128,512]的输入wuk tensor
     atb::Tensor wuk;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(headNum * 32 * 128 * 16, 0), dtype,
-                                        aclFormat::ACL_FORMAT_FRACTAL_NZ, {headNum, 32, 128, 16}, wuk, dtype));
-    // 创建shape为[blockNum, headNum*512/32,block_size, 32]的输入kvCache tensor
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(headNum * 128 * 512), dtype,
+                                        aclFormat::ACL_FORMAT_ND, {headNum, 128, 512}, wuk, dtype));
+    // 创建shape为[blockNum, block_size, 1, 512]的输入kvCache tensor
     atb::Tensor kvCache;
-    CHECK_STATUS(CreateTensorFromVector(
-        contextPtr, stream, std::vector<int8_t>(blockNum * headNum * 512 * blockSize, 1), ACL_INT8,
-        aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, headNum * 512 / 32, blockSize, 32}, kvCache));
-    // 创建shape为[blockNum, headNum*64/16 ,block_size, 16]的输入kvCacheRope tensor
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(blockNum * 512 * blockSize * 1), dtype,
+                                        aclFormat::ACL_FORMAT_ND, {blockNum, blockSize, 1, 512}, kvCache, dtype));
+    // 创建shape为[blockNum, blockSize, 1, 64]的输入kvCacheRope tensor
     atb::Tensor kvCacheRope;
-    CHECK_STATUS(CreateTensorFromVector(
-        contextPtr, stream, std::vector<__fp16>(blockNum * headNum * 64 / 16 * blockSize * 16, 0), dtype,
-        aclFormat::ACL_FORMAT_FRACTAL_NZ, {blockNum, headNum * 64 / 16, blockSize, 16}, kvCacheRope, dtype));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(blockNum * blockSize * 64, 0), dtype,
+                                        aclFormat::ACL_FORMAT_ND, {blockNum, blockSize, 1, 64}, kvCacheRope, dtype));
+
+
     auto slotmappingHost = std::vector<int32_t>(1, tokenNum);
     for (size_t i = 0; i < slotmappingHost.size(); i++)
         slotmappingHost[i] = static_cast<int32_t>(i);
-    // 创建shape为[tokenNum]的输入slotmapping tensor
+    // 创建shape为[headNum]的输入slotmapping tensor
     atb::Tensor slotmapping;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, slotmappingHost, ACL_INT32, aclFormat::ACL_FORMAT_ND,
                                         {tokenNum}, slotmapping));
@@ -148,8 +148,8 @@ atb::Status PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDa
                                         {1}, ctkvScale, dtype));
     // 创建shape为[headNum]的输入qNopeScale tensor
     atb::Tensor qNopeScale;
-    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(headNum, 0), dtype,
-                                        aclFormat::ACL_FORMAT_ND, {headNum}, qNopeScale, dtype));
+    CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(1, 0), dtype, aclFormat::ACL_FORMAT_ND,
+                                        {1}, qNopeScale, dtype));
     atb::SVector<atb::Tensor> tempTensors = {wuq, deScale1, bias1,       gamma2,      cos,       sin,
                                              wuk, kvCache,  kvCacheRope, slotmapping, ctkvScale, qNopeScale};
     for (auto &tensor : tempTensors) {
@@ -165,7 +165,18 @@ atb::Status PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDa
 atb::Status CreateMlaPreprocessOperation(atb::Operation **mlaPreprocessOp)
 {
     atb::infer::MlaPreprocessParam param;
-    param.cacheMode = atb::infer::MlaPreprocessParam::CacheMode::INT8_NZCACHE;
+    param.wdqDim = 1536;  // 经过matMul后拆分的dim大小
+    param.qRopeDim = 64;  // q传入rope的dim大小
+    param.kRopeDim = 64;  // k传入rope的dim大小
+    param.epsilon = 1e-5; // rmsNorm公式中加在分母上防止除零的值
+    param.qRotaryCoeff = 2; // query和key分别取一半，对半旋转，对应rotaryCoeff=2
+    param.kRotaryCoeff = 2; // 对半旋转，对应rotaryCoeff=2
+    param.transposeWdq = true; // 转置wdq，用于matMul加速
+    param.transposeWuq = true; // 转置wuq
+    param.transposeWuk = true; // 转置wuk
+    // cache类型，输入的q拆分为qNope和qRope，输入的kvCache拆分为ctKV和kRope
+    param.cacheMode = atb::infer::MlaPreprocessParam::CacheMode::KROPE_CTKV;
+    param.quantMode = atb::infer::MlaPreprocessParam::QuantMode::PER_TENSOR_QUANT_ASYMM;
     return atb::CreateOperation(param, mlaPreprocessOp);
 }
 
@@ -191,7 +202,7 @@ atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int 
     CHECK_STATUS(PrepareInTensor2(context, stream, dtype, tokenNum, headNum, &variantPack.inTensors));
     // 准备输出tensor
     atb::Tensor qOut0;
-    CreateTensor(ACL_INT8, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512}, qOut0);
+    CreateTensor(dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 512}, qOut0);
     atb::Tensor &kvCacheOut0 = variantPack.inTensors.at(19);
     atb::Tensor qOut1;
     CreateTensor(dtype, aclFormat::ACL_FORMAT_ND, {tokenNum, headNum, 64}, qOut1);
@@ -235,9 +246,9 @@ atb::Status RunDemo(atb::Context *context, void *stream, aclDataType dtype, int 
 int main(int argc, char **argv)
 {
     std::string dtypeStr;
-    int tokenNum = 4;
+    int tokenNum = 32;
     int headNum = 128;
-    aclDataType dtype = ACL_FLOAT16;
+    aclDataType dtype = ACL_BF16;
     if (argc == 4) {
         dtypeStr = argv[1];
         tokenNum = std::stoi(argv[2]);
