@@ -1294,9 +1294,15 @@ class GatherOperation(DataGen):
             elif batchDims > 0:
                 GatherOperation.import_or_install("tensorflow", "tensorflow")
                 import tensorflow as tf
+                import ml_dtypes
                 # 转换 in_tensors[0] (数据)
-                in_tensors0_np = in_tensors[0].detach().cpu().numpy()  # 转为 numpy
-                in_tensors0_tf = tf.convert_to_tensor(in_tensors0_np)
+                if in_tensors[0].dtype != torch.bfloat16:
+                    in_tensors0_np = in_tensors[0].detach().cpu().numpy()  # 转为 numpy
+                    in_tensors0_tf = tf.convert_to_tensor(in_tensors0_np)
+                else:
+                    in_tensors0_fl = in_tensors[0].cpu().float()
+                    in_tensors0_np = in_tensors0_fl.numpy()
+                    in_tensors0_tf = tf.convert_to_tensor(in_tensors0_np, dtype=tf.bfloat16)
 
                 # 转换 in_tensors[1] (索引)，必须为整数类型
                 in_tensors1_np = in_tensors[1].detach().cpu().numpy()  # 转为 numpy
@@ -1314,8 +1320,10 @@ class GatherOperation(DataGen):
                 golden_result_np = golden_result_tf.numpy()
 
                 # NumPy array → torch.Tensor
-                golden_result = torch.from_numpy(golden_result_np)
-                print("golden_result.shape:", golden_result.shape)
+                if golden_result_np.dtype != ml_dtypes.bfloat16:
+                    golden_result = torch.from_numpy(golden_result_np)
+                else:
+                    golden_result = torch.from_numpy(golden_result_np.astype(np.float32)).to(torch.bfloat16)
 
         # 返回结果
         return [golden_result.cpu()]

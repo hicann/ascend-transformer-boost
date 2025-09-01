@@ -127,7 +127,7 @@ Status GatherOperation::ParamCheck(const TensorDesc &xTensorDesc, const TensorDe
         ATB_LOG(ERROR) << GetLogPrefix() << "param_.batchDims should  <= inTensorDescs(1) dimNum";
         return ERROR_INVALID_PARAM;
     }
-    if (xTensorDesc.shape.dimNum + indicesTensorDesc.shape.dimNum - 1 - param_.batchDims > 9) {
+    if (xTensorDesc.shape.dimNum + indicesTensorDesc.shape.dimNum - 1 - param_.batchDims > 8) {
         ATB_LOG(ERROR) << GetLogPrefix() << "x dim + indices dim should - 1 - batchDims <= 8";
         return ERROR_INVALID_TENSOR_DIM_NUM;
     }
