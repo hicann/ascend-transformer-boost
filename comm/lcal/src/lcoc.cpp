@@ -202,6 +202,7 @@ int Lcoc::LaunchOperator(CoCInputPkg &inputPkg, CoCOutputPkg &outputPkg, void *w
 
 bool Lcoc::CheckBasic(const CoCInputPkg &inputPkg, const CoCOutputPkg &outputPkg, LcalType lcalType) const
 {
+    (void) outputPkg;
     if (!tilingSuccess_) {
         std::string str = "Tiling error. Please check whether the 'Lcoc::SetParam' method has been called, "
                           "or verify if the tiling parameter is valid.";
