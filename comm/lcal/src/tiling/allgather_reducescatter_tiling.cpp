@@ -403,7 +403,7 @@ bool CoCAllgatherMatmulReduceScatterTilingFunc::CheckTiling(const TaskParam &tas
         {"k", cocTilingData.k, PARAM_CHECK_MIN_VALUE_ONE, maxKValue},
         {"n", cocTilingData.n, PARAM_CHECK_MIN_VALUE_ONE, maxNValue},
         {"commNpuSplit * commDataSplit + extraCommNpuSplit * extraCommDataSplit",
-        useCoreCount, PARAM_CHECK_MIN_VALUE_ONE, coreNum},
+         useCoreCount, PARAM_CHECK_MIN_VALUE_ONE, coreNum},
     };
     return CheckParamScopeList(paramCheckList);
 }
