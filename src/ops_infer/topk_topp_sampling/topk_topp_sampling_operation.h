@@ -40,7 +40,6 @@ protected:
 private:
     infer::TopkToppSamplingParam param_;
     Status CheckLogProbsSize(const SVector<TensorDesc> &inTensorDescs) const;
-    Status TopkToppLogProbsOutTensorCheck(const SVector<TensorDesc> &outTensorDescs) const;
 };
 } // namespace atb
 #endif

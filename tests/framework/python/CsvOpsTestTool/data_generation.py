@@ -2208,7 +2208,7 @@ class TopkToppSamplingOperation(DataGen):
             topk = json_data["topk"]
             rand_seed = json_data["randSeed"]
             libc.srand(rand_seed)
-            rand_list = [libc.rand() / 0x7fffffff for i in range(64)]
+            rand_list = [libc.rand() / 0x7fffffff for i in range(512)]
             probs = in_tensors[0].cpu().to(torch.float32).numpy()
             topp = in_tensors[1].cpu().to(torch.float32).numpy()
             probs_sorted = np.sort(probs, axis=-1)[..., ::-1][..., :topk]
