@@ -45,6 +45,9 @@ namespace Lcal {
 
     bool CheckParamAlign(const std::string &name, const int &value, const int &align)
     {
+        if (align == 0) {
+            return false;
+        }
         if (value % align != 0) {
             MKI_LOG(ERROR) << "The " << name << ":" << value << " must be aligned by " << align << "!";
             return false;
@@ -73,6 +76,9 @@ namespace Lcal {
     int64_t GetAlignedMatrixSize(const int64_t &batchSize, const int64_t &m, const int64_t &n, const bool &transpose,
                                  int nElemAlign)
     {
+        if (nElemAlign == 0) {
+            return false;
+        }
         int64_t nRow = transpose ? n : m;
         int64_t nCol = transpose ? m : n;
         int64_t nColAlign = (nCol + nElemAlign - 1) / nElemAlign * nElemAlign;
