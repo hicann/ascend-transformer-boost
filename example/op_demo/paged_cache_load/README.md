@@ -20,24 +20,29 @@ tests/apitest/opstest/python/operations/paged_cache_load/
 
 ### 场景说明
 提供demo分别对应，编译运行时需要对应更改build脚本：
-    - paged_cache_load_demo.cpp   
-    默认编译脚本可编译运行
-        **参数设置**
-        |        Param        |                        value                        |
-        |-------------------- |-----------------------------------------------------|
-        |      kvCacheCfg     | atb::infer::PagedCacheLoadParam::K_CACHE_V_CACHE_NZ |
-        |     hasSeqStarts    |                        false                        |
-        | isSeqLensCumsumMode |                        false                        |
-        **输入**
-        |  TensorName | DataType | DataFormat |     Shape     |
-        | ----------- | -------- | ---------- | ------------- |
-        |  keyCache   |   int8   | fractal_nz |[4, 4, 128, 32]|
-        | valueCache  |   int8   | fractal_nz |[4, 4, 128, 32]|
-        | blocktable  |   int32  |     nd     |     [3, 1]    |
-        | contextlens |   int32  |     nd     |       [3]     |
-        |     key     |   int8   |     nd     |   [384, 128]  |
-        |    value    |   int8   |     nd     |   [384, 128]  |
-        **输出**
-        |  TensorName | DataType | DataFormat |     Shape     |
-        |     key     |   bf16   |     nd     |   [384, 128]  |
-        |    value    |   bf16   |     nd     |   [384, 128]  |
+- **paged_cache_load_demo.cpp**
+
+    【注】：默认编译脚本可编译运行
+
+    **参数设置**
+    |        Param        |                        value                        |
+    | :-----------------: | :-------------------------------------------------: |
+    |     kvCacheCfg      | atb::infer::PagedCacheLoadParam::K_CACHE_V_CACHE_NZ |
+    |    hasSeqStarts     |                        false                        |
+    | isSeqLensCumsumMode |                        false                        |
+
+    **输入**
+    | TensorName  | DataType | DataFormat |      Shape      |
+    | :---------: | :------: | :--------: | :-------------: |
+    |  keyCache   |   int8   | fractal_nz | [4, 4, 128, 32] |
+    | valueCache  |   int8   | fractal_nz | [4, 4, 128, 32] |
+    | blocktable  |  int32   |     nd     |     [3, 1]      |
+    | contextlens |  int32   |     nd     |       [3]       |
+    |     key     |   int8   |     nd     |   [384, 128]    |
+    |    value    |   int8   |     nd     |   [384, 128]    |
+
+    **输出**
+    | TensorName | DataType | DataFormat |   Shape    |
+    | :--------: | :------: | :--------: | :--------: |
+    |    key     |   bf16   |     nd     | [384, 128] |
+    |   value    |   bf16   |     nd     | [384, 128] |
