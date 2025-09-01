@@ -20,110 +20,144 @@ tests/apitest/opstest/python/operations/rms_norm/
 
 ### 场景说明
 提供demo分别对应，编译运行时需要对应更改build脚本：
-    - rms_norm_demo.cpp   
-    默认编译脚本可编译运行
-        **参数设置**
-        |        Param        |                        value                         |
-        | ------------------- | ---------------------------------------------------- |
-        |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
-        | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
-        |       epsilon       |                         1e-5                         |
-        **输入**
-        | TensorName | DataType | DataFormat |     Shape     |
-        | ---------- | -------- | ---------- | ------------- |
-        |      x     |  float16 |     nd     |[4, 1024, 5120]|
-        |    gamma   |  float16 |     nd     |    [5120]     |
-        **输出**
-        | TensorName | DataType | DataFormat |     Shape     |
-        | ---------- | -------- | ---------- | ------------- |
-        |   output   |  float16 |     nd     |[4, 1024, 5120]|
-    -----------------------------------------------------------------------------------
-    - rms_norm_qwen_demo_0.cpp
-    编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_qwen_demo_0.cpp 可编译运行
-        **参数设置**
-        |        Param        |                        value                         |
-        | ------------------- | ---------------------------------------------------- |
-        |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
-        | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
-        |       epsilon       |                         1e-6                         |
-        **输入**
-        | TensorName | DataType | DataFormat |    Shape   |
-        | ---------- | -------- | ---------- | ---------- |
-        |      x     |   bf16   |     nd     |[1024, 5120]|
-        |    gamma   |   bf16   |     nd     |   [5120]   |
-        **输出**
-        | TensorName | DataType | DataFormat |    Shape   |
-        | ---------- | -------- | ---------- | ---------- |
-        |   output   |   bf16   |     nd     |[1024, 5120]|
-    -----------------------------------------------------------------------------------
-    - rms_norm_qwen_demo_1.cpp
-    编译脚本内替换 rms_norm_demo.cpp 为 rope_qwen_demo_2.cpp 可编译运行
-        **参数设置**
-        |        Param        |                        value                         |
-        | ------------------- | ---------------------------------------------------- |
-        |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
-        | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
-        |       epsilon       |                         1e-6                         |
-        **输入**
-        | TensorName | DataType | DataFormat |  Shape  |
-        | ---------- | -------- | ---------- | ------- |
-        |      x     |   bf16   |     nd     |[1, 5120]|
-        |    gamma   |   bf16   |     nd     | [5120]  |
-        **输出**
-        | TensorName | DataType | DataFormat |  Shape  |
-        | ---------- | -------- | ---------- | ------- |
-        |   output   |   bf16   |     nd     |[1, 5120]|
-    -----------------------------------------------------------------------------------
-    - rms_norm_qwen_demo_2.cpp
-    编译脚本内替换 rms_norm_demo.cpp 为 rope_qwen_demo_0.cpp 可编译运行
-        **参数设置**
-        |        Param        |                        value                         |
-        | ------------------- | ---------------------------------------------------- |
-        |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
-        | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
-        |       epsilon       |                         1e-6                         |
-        **输入**
-        | TensorName | DataType | DataFormat |  Shape  |
-        | ---------- | -------- | ---------- | ------- |
-        |      x     |   bf16   |     nd     |[5, 5120]|
-        |    gamma   |   bf16   |     nd     | [5120]  |
-        **输出**
-        | TensorName | DataType | DataFormat |  Shape  |
-        | ---------- | -------- | ---------- | ------- |
-        |   output   |   bf16   |     nd     |[5, 5120]|
-    -----------------------------------------------------------------------------------
-    - rms_norm_deepseek_demo_0.cpp
-    编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_deepseek_demo_0.cpp 可编译运行
-        **参数设置**
-        |        Param        |                        value                         |
-        | ------------------- | ---------------------------------------------------- |
-        |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
-        | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
-        |       epsilon       |                         1e-6                         |
-        **输入**
-        | TensorName | DataType | DataFormat |   Shape   |
-        | ---------- | -------- | ---------- | --------- |
-        |      x     | float16  |     nd     |[512, 7168]|
-        |    gamma   | float16  |     nd     |  [7168]   |
-        **输出**
-        | TensorName | DataType | DataFormat |   Shape   |
-        | ---------- | -------- | ---------- | --------- |
-        |   output   | float16  |     nd     |[512, 7168]|
-    -----------------------------------------------------------------------------------
-    - rms_norm_deepseek_demo_1.cpp
-    编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_deepseek_demo_1.cpp 可编译运行
-        **参数设置**
-        |        Param        |                        value                         |
-        | ------------------- | ---------------------------------------------------- |
-        |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
-        | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
-        |       epsilon       |                         1e-6                         |
-        **输入**
-        | TensorName | DataType | DataFormat |  Shape   |
-        | ---------- | -------- | ---------- | -------- |
-        |      x     | float16  |     nd     |[32, 7168]|
-        |    gamma   | float16  |     nd     |  [7168]  |
-        **输出**
-        | TensorName | DataType | DataFormat |  Shape   |
-        | ---------- | -------- | ---------- | -------- |
-        |   output   | float16  |     nd     |[32, 7168]|
+- **rms_norm_demo.cpp**
+
+    【注】：默认编译脚本可编译运行
+
+    **参数设置**
+    |        Param        |                        value                         |
+    | :-----------------: | :--------------------------------------------------: |
+    |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
+    | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
+    |       epsilon       |                         1e-5                         |
+
+    **输入**
+    | TensorName | DataType | DataFormat |      Shape      |
+    | :--------: | :------: | :--------: | :-------------: |
+    |     x      | float16  |     nd     | [4, 1024, 5120] |
+    |   gamma    | float16  |     nd     |     [5120]      |
+
+    **输出**
+    | TensorName | DataType | DataFormat |      Shape      |
+    | :--------: | :------: | :--------: | :-------------: |
+    |   output   | float16  |     nd     | [4, 1024, 5120] |
+
+    ---
+
+- **rms_norm_qwen_demo_0.cpp**
+
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_qwen_demo_0.cpp 可编译运行
+
+    **参数设置**
+    |        Param        |                        value                         |
+    | :-----------------: | :--------------------------------------------------: |
+    |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
+    | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
+    |       epsilon       |                         1e-6                         |
+
+    **输入**
+    | TensorName | DataType | DataFormat |    Shape     |
+    | :--------: | :------: | :--------: | :----------: |
+    |     x      |   bf16   |     nd     | [1024, 5120] |
+    |   gamma    |   bf16   |     nd     |    [5120]    |
+
+    **输出**
+    | TensorName | DataType | DataFormat |    Shape     |
+    | :--------: | :------: | :--------: | :----------: |
+    |   output   |   bf16   |     nd     | [1024, 5120] |
+
+    ---
+
+- **rms_norm_qwen_demo_1.cpp**
+
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rope_qwen_demo_2.cpp 可编译运行
+
+    **参数设置**
+    |        Param        |                        value                         |
+    | :-----------------: | :--------------------------------------------------: |
+    |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
+    | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
+    |       epsilon       |                         1e-6                         |
+
+    **输入**
+    | TensorName | DataType | DataFormat |   Shape   |
+    | :--------: | :------: | :--------: | :-------: |
+    |     x      |   bf16   |     nd     | [1, 5120] |
+    |   gamma    |   bf16   |     nd     |  [5120]   |
+
+    **输出**
+    | TensorName | DataType | DataFormat |   Shape   |
+    | :--------: | :------: | :--------: | :-------: |
+    |   output   |   bf16   |     nd     | [1, 5120] |
+
+    ---
+
+- **rms_norm_qwen_demo_2.cpp**
+
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rope_qwen_demo_0.cpp 可编译运行
+
+    **参数设置**
+    |        Param        |                        value                         |
+    | :-----------------: | :--------------------------------------------------: |
+    |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
+    | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
+    |       epsilon       |                         1e-6                         |
+
+    **输入**
+    | TensorName | DataType | DataFormat |   Shape   |
+    | :--------: | :------: | :--------: | :-------: |
+    |     x      |   bf16   |     nd     | [5, 5120] |
+    |   gamma    |   bf16   |     nd     |  [5120]   |
+
+    **输出**
+    | TensorName | DataType | DataFormat |   Shape   |
+    | :--------: | :------: | :--------: | :-------: |
+    |   output   |   bf16   |     nd     | [5, 5120] |
+
+    ---
+
+- **rms_norm_deepseek_demo_0.cpp**
+
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_deepseek_demo_0.cpp 可编译运行
+
+    **参数设置**
+    |        Param        |                        value                         |
+    | :-----------------: | :--------------------------------------------------: |
+    |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
+    | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
+    |       epsilon       |                         1e-6                         |
+
+    **输入**
+    | TensorName | DataType | DataFormat |    Shape    |
+    | :--------: | :------: | :--------: | :---------: |
+    |     x      | float16  |     nd     | [512, 7168] |
+    |   gamma    | float16  |     nd     |   [7168]    |
+
+    **输出**
+    | TensorName | DataType | DataFormat |    Shape    |
+    | :--------: | :------: | :--------: | :---------: |
+    |   output   | float16  |     nd     | [512, 7168] |
+
+    ---
+
+- **rms_norm_deepseek_demo_1.cpp**
+
+    【注】：编译脚本内替换 rms_norm_demo.cpp 为 rms_norm_deepseek_demo_1.cpp 可编译运行
+
+    **参数设置**
+    |        Param        |                        value                         |
+    | :-----------------: | :--------------------------------------------------: |
+    |      layerType      | atb::infer::RmsNormParam::RmsNormType::RMS_NORM_NORM |
+    | normParam.quantType |         atb::infer::QuantType::QUANT_UNQUANT         |
+    |       epsilon       |                         1e-6                         |
+
+    **输入**
+    | TensorName | DataType | DataFormat |   Shape    |
+    | :--------: | :------: | :--------: | :--------: |
+    |     x      | float16  |     nd     | [32, 7168] |
+    |   gamma    | float16  |     nd     |   [7168]   |
+
+    **输出**
+    | TensorName | DataType | DataFormat |   Shape    |
+    | :--------: | :------: | :--------: | :--------: |
+    |   output   | float16  |     nd     | [32, 7168] |
