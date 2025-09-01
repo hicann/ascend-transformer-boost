@@ -51,8 +51,8 @@ set_source_files_properties(
         PROPERTIES
         OBJECT_DEPENDS ${LCAL_CCE_PATH}
 )
-install(TARGETS lcal LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/lcal)
-install(TARGETS lcal_static DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/lcal)
+install(TARGETS lcal LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+install(TARGETS lcal_static DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 
 
