@@ -87,7 +87,7 @@ uint32_t GetAicNum(const uint32_t coreNum)
 
 int32_t GetBlockNumPerCore(const int32_t seqSize)
 {
-    return seqSize <= ROW_SIZE_8K ? BLOCK_BUM_PER_CORE_16 : BLOCK_BUM_PER_CORE_32;
+    return BLOCK_BUM_PER_CORE_16;
 }
 
 int32_t GetAttenTypeGrad(const LaunchParam &launchParam, const TensorDesc queryShape, const TensorDesc keyShape)
@@ -149,10 +149,15 @@ void SetWorkspace(KernelInfo &kernelInfo, const uint32_t aicNum, const int32_t b
 
     auto outputHead = (tilingData.headNum + tilingData.headGroupSize - 1) /
                       tilingData.headGroupSize; // gqa时output_head=head/group_size,其他情景下output_head=head
-    int32_t qSize = tilingData.batchSize * tilingData.headNum * tilingData.qSeqLength * HEAD_DIM_192 * 2;
-    uint32_t kSize = tilingData.batchSize * outputHead * tilingData.kSeqLength * HEAD_DIM_256 * 2;
-    uint32_t vSize = tilingData.batchSize * outputHead * tilingData.kSeqLength * 128 * 2;
-    uint32_t atentionScoreSize = tilingData.batchSize * tilingData.headNum * tilingData.qSeqLength * 128 * 2;
+    uint64_t qSize = static_cast<uint64_t>(static_cast<int64_t>(tilingData.batchSize) * static_cast<int64_t>(tilingData.headNum) *
+                                           static_cast<int64_t>(tilingData.qSeqLength) * HEAD_DIM_192 * 2);
+    uint64_t kSize = static_cast<uint64_t>(static_cast<int64_t>(tilingData.batchSize) * static_cast<int64_t>(outputHead) *
+                                           static_cast<int64_t>(tilingData.kSeqLength) * HEAD_DIM_256 * 2);
+    uint64_t vSize = static_cast<uint64_t>(static_cast<int64_t>(tilingData.batchSize) * static_cast<int64_t>(outputHead) *
+                                           static_cast<int64_t>(tilingData.kSeqLength) * 128 * 2);
+    uint64_t atentionScoreSize = static_cast<uint64_t>(static_cast<int64_t>(tilingData.batchSize) *
+                                                       static_cast<int64_t>(tilingData.headNum) *
+                                                       static_cast<int64_t>(tilingData.qSeqLength) * 128 * 2);
 
     if (headDim == HEAD_DIM_128) {
         querySize = GM_BYTE_SIZE * batchSize * headNum * qSeqLength * headDim;
