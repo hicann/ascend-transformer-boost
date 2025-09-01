@@ -14,8 +14,7 @@ import acl
 import unittest
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
-from utils import ret_check, check_float
+from torch_atb_test.utils import ret_check, check_float
 
 def run_test():
     print("----------- graph test begin ------------")

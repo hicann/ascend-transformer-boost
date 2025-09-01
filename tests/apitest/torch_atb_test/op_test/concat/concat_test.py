@@ -12,9 +12,7 @@ import torch
 import torch_atb
 import sys
 import os
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-from utils import run_perf_test, check_float
+from torch_atb_test.utils import run_perf_test, check_float
 import unittest
 import logging
 
