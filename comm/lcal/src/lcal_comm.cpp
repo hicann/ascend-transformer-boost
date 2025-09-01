@@ -132,7 +132,7 @@ bool SkipUnusedChannel910B2C(int curRank, int peerRank, ChipName chipName)
     if (chipName == ChipName::CHIP_910B2C) {
         constexpr int rankSizePerNode = 8;
         if ((curRank / rankSizePerNode != peerRank / rankSizePerNode)
-            && (std::abs(curRank - peerRank) != rankSizePerNode)) {
+             && (std::abs(curRank - peerRank) != rankSizePerNode)) {
             return true;
         }
     }
