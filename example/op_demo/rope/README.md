@@ -33,17 +33,17 @@ tests/apitest/opstest/python/operations/rope/
     **输入**
     | TensorName | DataType | DataFormat |  Shape  |
     | :--------: | :------: | :--------: | :-----: |
-    |   query    |   bf16   |     nd     | [4, 16] |
-    |    key     |   bf16   |     nd     | [4, 16] |
-    |    cos     |   bf16   |     nd     | [4,  8] |
-    |    sin     |   bf16   |     nd     | [4,  8] |
-    |   seqlen   |   bf16   |     nd     |   [1]   |
+    |   query    | float16  |     nd     | [4, 16] |
+    |    key     | float16  |     nd     | [4, 16] |
+    |    cos     | float16  |     nd     | [4,  8] |
+    |    sin     | float16  |     nd     | [4,  8] |
+    |   seqlen   | float16  |     nd     |   [1]   |
     
     **输出**
     | TensorName | DataType | DataFormat |  Shape  |
     | :--------: | :------: | :--------: | :-----: |
-    |   ropeQ    |   bf16   |     nd     | [4, 16] |
-    |   ropeK    |   bf16   |     nd     | [4, 16] |
+    |   ropeQ    | float16  |     nd     | [4, 16] |
+    |   ropeK    | float16  |     nd     | [4, 16] |
 
     ---
 
