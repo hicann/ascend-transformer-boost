@@ -280,10 +280,14 @@ Status TopkToppSamplingOperation::InferShapeCheckImpl(const SVector<TensorDesc> 
 
 Status TopkToppSamplingOperation::TopkToppLogProbsOutTensorCheck(const SVector<TensorDesc> &outTensorDescs) const
 {
-    if (param_.logProbsSize == 0 && outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dimNum != 0) {
-        ATB_LOG(ERROR) << "outTensor[2] should be empty when logProbsSize=0, dimNum expected to be 0, but got: "
-                       << outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dimNum;
-        return ERROR_INVALID_TENSOR_DIM_NUM;
+    if (param_.logProbsSize == 0) {
+        if (outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dimNum != 0) {
+            ATB_LOG(ERROR) << "outTensor[2] should be empty when logProbsSize=0, dimNum expected to be 0, but got: "
+                           << outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dimNum;
+            return ERROR_INVALID_TENSOR_DIM_NUM;
+        } else {
+            return NO_ERROR;
+        }
     }
     if (outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dimNum != LOG_PROBS_OUT_TENSOR_DIM) {
         ATB_LOG(ERROR) << "logProbsTensor shape dimNum: " << outTensorDescs.at(LOG_PROBS_OUT_TENSOR_INDEX).shape.dimNum
