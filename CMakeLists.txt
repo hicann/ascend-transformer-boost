@@ -116,9 +116,8 @@ if (BUILD_CUSTOMIZE_OPS)
     add_subdirectory(ops_customize)
 endif()
 
-set(CMAKE_INSTALL_PREFIX "{CMAKE_SOURCE_DIR}/output/atb/cxx_abi_{cxx_abi}/lcal")
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/atb/cxx_abi_${cxx_abi}")
 add_subdirectory(comm/lcal)
-set(CMAKE_INSTALL_PREFIX "{CMAKE_SOURCE_DIR}/output/atb/cxx_abi_{cxx_abi}")
 message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./..)
