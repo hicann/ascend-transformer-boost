@@ -29,35 +29,35 @@ LinearParallelLcocRunner::LinearParallelLcocRunner(const infer::LinearParallelPa
             isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
                        param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
             break;
-        case infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER:
-            lcalType_ = Lcal::LcalType::MATMUL_REDUCE_SCATTER;
-            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
-                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
-            break;
-        case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR:
-            lcalType_ =
-                param_.keepIntermediate ? Lcal::LcalType::ALL_GATHER_MATMUL_V2 : Lcal::LcalType::ALL_GATHER_MATMUL;
-            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
-                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
-            break;
+        // case infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER:
+        //     lcalType_ = Lcal::LcalType::MATMUL_REDUCE_SCATTER;
+        //     isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+        //                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+        //     break;
+        // case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR:
+        //     lcalType_ =
+        //         param_.keepIntermediate ? Lcal::LcalType::ALL_GATHER_MATMUL_V2 : Lcal::LcalType::ALL_GATHER_MATMUL;
+        //     isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+        //                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+        //     break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             lcalType_ = Lcal::LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER;
             break;
-        case infer::LinearParallelParam::ParallelType::PURE_LINEAR:
-            lcalType_ = Lcal::LcalType::PURE_MATMUL;
-            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
-                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
-            break;
-        case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
-            lcalType_ = Lcal::LcalType::ALLTOALLV_ALLGATHER_MATMUL;
-            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
-                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
-            break;
-        case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
-            lcalType_ = Lcal::LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN;
-            isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
-                       param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
-            break;
+        // case infer::LinearParallelParam::ParallelType::PURE_LINEAR:
+        //     lcalType_ = Lcal::LcalType::PURE_MATMUL;
+        //     isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNQUANT &&
+        //                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+        //     break;
+        // case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
+        //     lcalType_ = Lcal::LcalType::ALLTOALLV_ALLGATHER_MATMUL;
+        //     isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
+        //                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+        //     break;
+        // case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
+        //     lcalType_ = Lcal::LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN;
+        //     isQuant_ = param_.quantType > infer::LinearParallelParam::QuantType::QUANT_TYPE_UNDEFINED &&
+        //                param_.quantType < infer::LinearParallelParam::QuantType::QUANT_TYPE_MAX;
+        //     break;
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "UnSupported type: " << param_.type;
     }
