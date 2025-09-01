@@ -137,21 +137,21 @@ Status LinearParallelLcocRunner::SetupImpl(RunnerVariantPack &runnerVariantPack)
             }
         }
     }
-    if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
-        param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
-        Lcal::MoeInfo moeInfo{.local_expert_nums = param_.moeInfo.localExpertNums,
-                              .EP = param_.moeInfo.epSize,
-                              .TP = param_.moeInfo.tpSize,
-                              .maxOutputSize = -1,
-                              .isMoe = 1};
-        coCParamDesc.moeInfo = moeInfo;
-        if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM) {
-            coCParamDesc.moeInfo.maxOutputSize =
-            runnerVariantPack.inTensors.at(runnerVariantPack.inTensors.size() - 1).desc.shape.dims[0];
-        } else if (param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
-            coCParamDesc.moeInfo.maxOutputSize = runnerVariantPack.inTensors.at(0).desc.shape.dims[0];
-        }
-    }
+    // if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+    //     param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+    //     Lcal::MoeInfo moeInfo{.local_expert_nums = param_.moeInfo.localExpertNums,
+    //                           .EP = param_.moeInfo.epSize,
+    //                           .TP = param_.moeInfo.tpSize,
+    //                           .maxOutputSize = -1,
+    //                           .isMoe = 1};
+    //     coCParamDesc.moeInfo = moeInfo;
+    //     if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM) {
+    //         coCParamDesc.moeInfo.maxOutputSize =
+    //         runnerVariantPack.inTensors.at(runnerVariantPack.inTensors.size() - 1).desc.shape.dims[0];
+    //     } else if (param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+    //         coCParamDesc.moeInfo.maxOutputSize = runnerVariantPack.inTensors.at(0).desc.shape.dims[0];
+    //     }
+    // }
     int ret = lcoc_->SetParam(lcalType_, {}, coCParamDesc);
     if (ret != 0) {
         ATB_LOG(ERROR) << GetLogPrefix() << "SetParam failed, ret : " << ret;
@@ -181,35 +181,35 @@ Status LinearParallelLcocRunner::LaunchKernel(Lcal::CoCInputPkg inputPkg, Lcal::
             ret = lcoc_->MatmulAllReduce(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
                                          GetExecuteStream(runnerVariantPack.context));
             break;
-        case infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER:
-            ret = lcoc_->MatmulReduceScatter(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
-                                             GetExecuteStream(runnerVariantPack.context));
-            break;
-        case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR:
-            if (param_.keepIntermediate) {
-                ret = lcoc_->AllGatherMatmulV2(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
-                                               GetExecuteStream(runnerVariantPack.context));
-                break;
-            }
-            ret = lcoc_->AllGatherMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
-                                         GetExecuteStream(runnerVariantPack.context));
-            break;
+        // case infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER:
+        //     ret = lcoc_->MatmulReduceScatter(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+        //                                      GetExecuteStream(runnerVariantPack.context));
+        //     break;
+        // case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR:
+        //     if (param_.keepIntermediate) {
+        //         ret = lcoc_->AllGatherMatmulV2(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+        //                                        GetExecuteStream(runnerVariantPack.context));
+        //         break;
+        //     }
+        //     ret = lcoc_->AllGatherMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+        //                                  GetExecuteStream(runnerVariantPack.context));
+        //     break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             ret = lcoc_->AllGatherMatmulReduceScatter(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
                                                       GetExecuteStream(runnerVariantPack.context));
             break;
-        case infer::LinearParallelParam::ParallelType::PURE_LINEAR:
-            ret = lcoc_->PureMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
-                                    GetExecuteStream(runnerVariantPack.context));
-            break;
-        case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
-            ret = lcoc_->AllToAllVAllGatherMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
-                                                  runnerVariantPack.context->GetExecuteStream());
-            break;
-        case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
-            ret = lcoc_->MatmulReduceScatterAllToAllVHidden(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
-                                                            runnerVariantPack.context->GetExecuteStream());
-            break;
+        // case infer::LinearParallelParam::ParallelType::PURE_LINEAR:
+        //     ret = lcoc_->PureMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+        //                             GetExecuteStream(runnerVariantPack.context));
+        //     break;
+        // case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
+        //     ret = lcoc_->AllToAllVAllGatherMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+        //                                           runnerVariantPack.context->GetExecuteStream());
+        //     break;
+        // case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
+        //     ret = lcoc_->MatmulReduceScatterAllToAllVHidden(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+        //                                                     runnerVariantPack.context->GetExecuteStream());
+        //     break;
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "UnSupported type: " << param_.type;
             return ERROR_INVALID_PARAM;
@@ -228,10 +228,10 @@ Status LinearParallelLcocRunner::ExecuteImpl(RunnerVariantPack &runnerVariantPac
         return ERROR_COMM_EMPTY;
     }
     bool isMoe = false;
-    if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
-        param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
-        isMoe = true;
-    }
+    // if (param_.type == infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM ||
+    //     param_.type == infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC) {
+    //     isMoe = true;
+    // }
     size_t inTensorId = 0;
     const SVector<Tensor> &inTensors = runnerVariantPack.inTensors;
     Lcal::CoCInputPkg inputPkg;
