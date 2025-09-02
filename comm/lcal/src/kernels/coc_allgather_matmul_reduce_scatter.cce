@@ -24,13 +24,14 @@ extern "C" __global__ __aicore__ void LcalAllGatherMatmulReduceScatter_##type##_
 }
 
 #elif __DAV_C220_VEC__
+// Vector in AllGatherMatmulReduceScatter
 #define COC_ALL_GATHER_MATMUL_REDUCESCATTER_FUNC_AUTO_DEF(type) \
 extern "C" __global__ __aicore__ void LcalAllGatherMatmulReduceScatter_##type##_mix_aiv(COC_ARGS_FUN(type)) { \
     return CocAllGatherMatmulReduceScatterAiv<type>(COC_ARGS_CALL()); \
 }
 #endif
 
-#if defined(__DAV_C220_CUBE__) || defined(__DAV_C220_VEC__)
+#if defined(__DAV_C220_CUBE__) || defined(__DAV_C220_VEC__) // 910B support bf16
 #define COC_TYPE_FUNC(fun) fun(float16_t);fun(bfloat16_t)
 
 COC_TYPE_FUNC(COC_ALL_GATHER_MATMUL_REDUCESCATTER_FUNC_AUTO_DEF);
