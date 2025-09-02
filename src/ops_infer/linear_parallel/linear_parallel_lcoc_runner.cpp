@@ -181,9 +181,34 @@ Status LinearParallelLcocRunner::LaunchKernel(Lcal::CoCInputPkg inputPkg, Lcal::
             ret = lcoc_->MatmulAllReduce(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
                                          GetExecuteStream(runnerVariantPack.context));
             break;
+        case infer::LinearParallelParam::ParallelType::LINEAR_REDUCE_SCATTER:
+            ret = lcoc_->MatmulReduceScatter(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                             GetExecuteStream(runnerVariantPack.context));
+            break;
+        case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR:
+            if (param_.keepIntermediate) {
+                ret = lcoc_->AllGatherMatmulV2(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                               GetExecuteStream(runnerVariantPack.context));
+                break;
+            }
+            ret = lcoc_->AllGatherMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                         GetExecuteStream(runnerVariantPack.context));
+            break;
         case infer::LinearParallelParam::ParallelType::ALL_GATHER_LINEAR_REDUCE_SCATTER:
             ret = lcoc_->AllGatherMatmulReduceScatter(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
                                                       GetExecuteStream(runnerVariantPack.context));
+            break;
+        case infer::LinearParallelParam::ParallelType::PURE_LINEAR:
+            ret = lcoc_->PureMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                    GetExecuteStream(runnerVariantPack.context));
+            break;
+        case infer::LinearParallelParam::ParallelType::ALLTOALLVC_ALL_GATHER_GMM:
+            ret = lcoc_->AllToAllVAllGatherMatmul(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                                  runnerVariantPack.context->GetExecuteStream());
+            break;
+        case infer::LinearParallelParam::ParallelType::GMM_REDUCE_SCATTER_ALLTOALLVC:
+            ret = lcoc_->MatmulReduceScatterAllToAllVHidden(inputPkg, outputPkg, runnerVariantPack.workspaceBuffer,
+                                                            runnerVariantPack.context->GetExecuteStream());
             break;
         default:
             ATB_LOG(ERROR) << GetLogPrefix() << "UnSupported type: " << param_.type;
