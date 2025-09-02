@@ -49,7 +49,8 @@ inline __aicore__ int32_t AlignUp(int32_t len, int32_t size)
 inline uint64_t GetDequantWorkSpaceSize(Lcal::LcalType lcalType, int32_t withSerialMode, int32_t m, int32_t n,
     int32_t m0, int32_t n0, int32_t pValue, int32_t nLoop, int32_t rankSize, int32_t blockDim,
     int32_t maxOutputSize = -1)
-    {
+{
+    (void) nLoop;
     constexpr int32_t TWO = 2;
     uint64_t dequantWorkSpaceSize = 0;
     if (withSerialMode > 0) {
@@ -75,6 +76,8 @@ inline __aicore__ void GetLcalMoeWorkspaceInfo(LcalWorkspaceInfo& lcalWorkspaceI
     int32_t m, bool hasDequantParam = false, int32_t is_alltoallvc = false,
     int32_t EP = 1, int32_t expertPerRank = 1, int32_t outputSize = -1)
 {
+    (void) is_alltoallvc;
+    (void) outputSize;
     constexpr int32_t ALIGN8 = 8;
     if (hasDequantParam) {
         lcalWorkspaceInfo.gm_dequant_param = workspaceOffset;
@@ -93,6 +96,7 @@ inline __aicore__ LcalWorkspaceInfo GetLcalWorkspaceInfo(GM_ADDR gmWorkSpace, in
     int32_t EP = 1, int32_t expertPerRank = 1, int32_t outputSize = -1
 )
 {
+    (void) accumRankSize;
     if (outputSize == -1) {
         outputSize = m;
     }

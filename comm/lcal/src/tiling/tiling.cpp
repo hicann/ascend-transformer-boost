@@ -27,6 +27,7 @@ CoCTilingData CoCTilingFunc::GenerateTiling(const TaskParam &taskParam, const Co
 
 bool CoCTilingFunc::CheckTiling(const TaskParam &taskParam)
 {
+    (void) taskParam;
     return CheckCoCTilingData(cocTilingData);
 }
 

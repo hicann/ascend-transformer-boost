@@ -7,6 +7,9 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#ifndef LCCL_OP_H
+#define LCCL_OP_H
+
 #if defined(__DAV_C220_VEC__) || defined(__DAV_C220_CUBE__)
 
 #include "op_def.h"
@@ -243,4 +246,5 @@ extern "C" __global__ __aicore__ void LcalReduceScatter_##type##suffix(KERNELS_A
     } \
     } \
 }
+#endif
 #endif
