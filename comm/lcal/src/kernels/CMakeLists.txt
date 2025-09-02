@@ -8,8 +8,8 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 #
 include(../ascendc.cmake)
-set(OP_NAMES matmul_allreduce allgather_matmul_reduce_scatter)
-
+set(OP_NAMES pure_matmul matmul_allreduce matmul_reduce_scatter allgather_matmul allgather_matmul_reduce_scatter alltoallv_allgather_matmul matmul_reduce_scatter_alltoallv)
+ 
 file(GLOB KERNEL_FILES *.cpp)
 set_source_files_properties(${KERNEL_FILES} PROPERTIES LANGUAGE CCE)
 file(GLOB KERNEL_FILES2 *.cce)
@@ -48,5 +48,3 @@ foreach(OP_NAME IN LISTS OP_NAMES)
     add_dependencies(${OP_NAME}_o lcoc_${OP_NAME}_aic_obj lcoc_${OP_NAME}_aiv_obj)
     add_dependencies(lcoc_op ${OP_NAME}_o)
 endforeach()
-
-
