@@ -9,8 +9,9 @@
  */
 
 #include "../demo_util.h"
+#include <cmath>
 
-const uint32_t BATCH_SIZE = 100;                 // 批处理大小
+const uint32_t BATCH_SIZE = 10;                  // 批处理大小
 std::vector<int32_t> seqLenHost(BATCH_SIZE, 16); // host侧tensor值，用于存储每个批处理中的序列长度
 std::vector<int32_t> tokenOffsetHost(BATCH_SIZE, 16);                         // host侧tensor值，token偏移
 std::vector<int32_t> layerId(1, 0);                                           // device侧，kvCache中取哪个计算
@@ -64,7 +65,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
     }
     // 创建tokenOffset，host侧tensor
     atb::Tensor tensorTokenOffset;
-    atb::Tensor tensorSeqLen
+    atb::Tensor tensorSeqLen;
     atb::Tensor tensorLayerId;
     CHECK_STATUS(CreateTensor(ACL_INT32, aclFormat::ACL_FORMAT_ND, {BATCH_SIZE}, tensorTokenOffset));
     tensorTokenOffset.hostData = tokenOffsetHost.data(); // host侧tensor，拷贝值
@@ -93,6 +94,7 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
                                                 {BATCH_SIZE, MAX_SEQ_LEN, MAX_SEQ_LEN}, inTensors[i]));
         }
     }
+    return atb::ErrorType::NO_ERROR;
 }
 
 /**
@@ -103,10 +105,11 @@ atb::Status PrepareInTensor(atb::Context *contextPtr, aclrtStream stream, std::v
 atb::Status PrepareOperation(atb::Operation **encoderOp)
 {
     atb::infer::SelfAttentionParam opParam;
-    opParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM;
-    opParam.headNum = HEAD_NUM;
-    opParam.kvHeadNum = KV_HEAD_NUM;
-    opParam.calcType = atb::infer::SelfAttentionParam::CalcType::ENCODER;
+    opParam.headNum = HEAD_NUM;            // query 头数
+    opParam.kvHeadNum = KV_HEAD_NUM;       // key, value 头数
+    opParam.qkScale = 1 / sqrt(HEAD_SIZE); // tor值，Q*K^T后的缩放系数，根据HEAD_SIZE做归一化
+    opParam.calcType = atb::infer::SelfAttentionParam::CalcType::ENCODER; // 计算类型/场景分类，使用FA Encoder
+    opParam.maskType = atb::infer::SelfAttentionParam::MaskType::MASK_TYPE_NORM; // 普通全量mask
     return atb::CreateOperation(opParam, encoderOp);
 }
 
