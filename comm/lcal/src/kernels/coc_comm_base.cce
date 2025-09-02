@@ -26,7 +26,7 @@ public:
     FORCE_INLINE_AICORE void SetArgs(COC_ARGS_FUN(T))
     {
         CoCBuffAddrAndArgs coc_buff_and_args(COC_ARGS_CALL());
-        for (int i=0; i<coc_buff_and_args.rankSize; ++i) {
+        for (int i=0; i<coc_buff_and_args.rankSize; ++i){
             buff[i] = coc_buff_and_args.buff[i];
         }
 
@@ -40,6 +40,18 @@ public:
         aiv_idx = get_subblockid();
         real_core_idx = core_idx * 2 + aiv_idx;
         other_rank = (core_idx < rank_size) ? core_idx : -1;
+        if (is_moe) {
+            if(global_tokens_per_expert_matrix != nullptr) {
+                is_alltoallvc = true;
+                is_moe_averaged = false;
+            } else if(num_local_tokens_per_expert != nullptr || num_global_tokens_per_local_expert != nullptr) {
+                is_alltoallvc = false;
+                is_moe_averaged = false;
+            } else {
+                is_alltoallvc = false;
+                is_moe_averaged = true;
+            }
+        }
         SetWorkspace(gm_workspace);
     }
 
@@ -58,11 +70,12 @@ public:
         auto cocTilingData = &para->cocTilingData;
         auto quantInfo = &para->quantInfo;
         auto twoDimTPInfo = &para->twoDimTPInfo;
+        auto moeInfo = &para->moeInfo;
         batch_size = cocTilingData->batchSize;
         m = cocTilingData->m;
         k = cocTilingData->k;
         n = cocTilingData->n;
-        
+
         m0 = cocTilingData->m0;
         k0 = cocTilingData->k0;
         n0 = cocTilingData->n0;
@@ -77,7 +90,7 @@ public:
         rank = cocTilingData->rank;
         rank_size = cocTilingData->rankSize;
         buffer_size = cocTilingData->bufferSize;
-        flag_offset = buffer_size * 1024 * 1024 / sizeof(int32_t);
+        flag_offset = buffer_size * 1024 * 1024 / sizeof(int32_t);;
         p_value = cocTilingData->pValue;
         max_ub_single_dma_size = cocTilingData->ubMoveNum;
         withSerialMode = cocTilingData->withSerialMode;
@@ -106,6 +119,12 @@ public:
         rs_dim = twoDimTPInfo->rsDim;
         inner_dim_is_Ag = twoDimTPInfo->innerDimIsAg;
         weight_nz = para->weightNz;
+
+        local_expert_nums = moeInfo->local_expert_nums;
+        TP = moeInfo->TP;
+        EP = moeInfo->EP;
+        maxOutputSize = moeInfo->maxOutputSize;
+        is_moe = moeInfo->isMoe;
     }
 
     FORCE_INLINE_AICORE void SetWorkspace(__gm__ uint8_t *gm_workspace)
@@ -135,8 +154,8 @@ public:
         }
         workspace_info = GetLcalWorkspaceInfo(gm_workspace, batch_size, m, k, n, m_align, k_align, n_align,
                 trans_a, trans_b, is_int8 ? 1 : 2, has_a_align, has_b_align, 0, has_accum, 0, has_dequant_param,
-                hasFormatDequantScale, is_deterministic);
-                
+                hasFormatDequantScale, is_deterministic, is_moe, is_alltoallvc, EP, local_expert_nums, maxOutputSize);
+
     }
 
     FORCE_INLINE_AICORE void SetAicSync(uint64_t flag_idx)
@@ -150,8 +169,10 @@ public:
         WaitEvent(flag_idx + pipe_depth);
     }
 
+
+
     FORCE_INLINE_AICORE void SetBuffFlag(__ubuf__ int32_t *ctrl_flags_UB, \
-                                        __gm__ int32_t *buff, int32_t flag)
+                                                                      __gm__ int32_t *buff, int32_t flag)
     {
         *ctrl_flags_UB = flag;
         SetFlag<HardEvent::S_MTE3>(EVENT_ID2);
@@ -160,7 +181,7 @@ public:
     }
 
     FORCE_INLINE_AICORE void SetBuffFlagByAdd(__ubuf__ int32_t *ctrl_flags_UB, \
-                                        __gm__ int32_t *buff, int32_t flag)
+                                                                           __gm__ int32_t *buff, int32_t flag)
     {
         PipeBarrier<PIPE_ALL>();
         *ctrl_flags_UB = flag;
@@ -181,14 +202,14 @@ public:
     }
 
     FORCE_INLINE_AICORE void CheckBuffFlag(__ubuf__ int32_t *ctrl_flags_UB, \
-                                        __gm__ int32_t *buff, int32_t flag)
+                                                                        __gm__ int32_t *buff, int32_t flag)
     {
         SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
         while (true) {
             CopyGmToUbufAlignB16(ctrl_flags_UB, buff, 1, sizeof(int32_t), 0, 0);
             SetFlag<HardEvent::MTE2_S>(EVENT_ID3);
-            WaitFlag<HardEvent::MTE2_S>(EVENT_ID3);
+            WaitFlag<HardEvent::MTE2_S>(EVENT_ID3); // Scalar等MTE2
             if (*ctrl_flags_UB == flag) {
                 break;
             }
@@ -198,21 +219,21 @@ public:
     FORCE_INLINE_AICORE void CrossRankSyncV1(int32_t flag_idx, int32_t flag_data)
     {
         if (aiv_idx == 0 && core_idx == rank) {
-            SetBuffFlagByAdd(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + flag_idx, FLAG_VALUE);            
+            SetBuffFlagByAdd(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + flag_idx, FLAG_VALUE);
         } else if (aiv_idx == 0 && core_idx < rank_size) {
             CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[core_idx] + flag_offset + flag_idx,
-                            FLAG_VALUE * flag_data);
+                          FLAG_VALUE * flag_data);
         }
     }
 
     FORCE_INLINE_AICORE void CrossRankSyncV2(int32_t flag_idx, int32_t flag_data)
-    {        
+    {
         if (aiv_idx == 0 && core_idx < rank_size) {
             SetBuffFlagByAdd(ctrl_flags_UB, (__gm__ int32_t *)buff[core_idx] + flag_offset + flag_idx, FLAG_VALUE);
         }
         if (aiv_idx == 0 && core_idx == rank) {
             CheckBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + flag_idx,
-                            FLAG_VALUE * rank_size * flag_data);
+                          FLAG_VALUE * rank_size * flag_data);
         }
     }
 
@@ -228,7 +249,7 @@ public:
 
     FORCE_INLINE_AICORE void CrossRankSyncV4(int32_t flag_idx, int32_t flag_data)
     {
-        if (aiv_idx == 0 && core_idx < rank_size) {
+        if (aiv_idx == 0 && core_idx < rank_size){
             if (core_idx != rank) {
                 SetBuffFlagByAdd(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + flag_idx, flag_data);
             }
@@ -236,24 +257,25 @@ public:
         }
     }
 
+
     FORCE_INLINE_AICORE void ResetIpcFlags(int32_t num_flags)
     {
         for (int32_t idx = 0; idx < num_flags; ++idx) {
-            if (core_idx == 0 && aiv_idx == 0) {
-                SetBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + idx, 0);                
+            if (core_idx == 0 && aiv_idx == 0){
+                SetBuffFlag(ctrl_flags_UB, (__gm__ int32_t *)buff[rank] + flag_offset + idx, 0);
             }
         }
     }
 
     FORCE_INLINE_AICORE void FillZero(int32_t data_size_remain, __gm__ T *output, \
-                                        int32_t total_aiv, int32_t aiv_idx_in_clean)
-    {
+                                                                   int32_t total_aiv, int32_t aiv_idx_in_clean){
         int32_t repeat_time = 128;
         int32_t num_per_call = repeat_time * 128;
-        
+        // 检查T是否为float16_t
         if constexpr (std::is_same<T, float16_t>::value) {
             VectorDup(output_UB_T[0], static_cast<float16_t>(0), repeat_time, 1, 8);
         }
+        // 检查T是否为bfloat16_t
         else if constexpr (std::is_same<T, bfloat16_t>::value) {
             VectorDup(output_UB_T[0], static_cast<bfloat16_t>(0), repeat_time, 1, 8);
         }
@@ -263,7 +285,7 @@ public:
         data_size_remain = DivCeil(data_size_remain, total_aiv);
         data_size_remain = (data_size_remain + 15) / 16 * 16;
         int32_t offset = aiv_idx_in_clean * data_size_remain;
-        while (data_size_remain > 0) {
+        while (data_size_remain > 0){
             int32_t data_size = data_size_remain < num_per_call ? data_size_remain : num_per_call;
             CopyUbufToGm(output + offset, output_UB_T[0], 1, data_size * sizeof(T) / 32, 0, 0);
             data_size_remain -= data_size;
@@ -274,7 +296,7 @@ public:
     FORCE_INLINE_AICORE void CopyUbToGmTransLayout(__ubuf__ T* ub_buff_st, int32_t actual_move_size, int64_t move_num_offset) {
         auto ub_buff = ub_buff_st;
         int32_t left_m = actual_move_size / n0;
-        while (left_m > 0) {
+        while (left_m > 0){
             int32_t loop_idx = move_num_offset / (m0 * n0);
             int64_t m_idx, n_idx;
             GetBlockIdx(loop_idx, m_loop, n_loop, swizzl_direct, swizzl_count, m_idx, n_idx);
@@ -294,11 +316,12 @@ public:
         }
     }
 
+
     FORCE_INLINE_AICORE void CopyGMToGM(__gm__ T* gm_src, __gm__ T* gm_dst, int32_t copy_size) {
         auto ub0 = output_UB_T[0];
         auto ub1 = output_UB_T[1];
         int32_t interm_offset = 0;
-        for (int32_t move_idx = 0; interm_offset < copy_size; ++move_idx) {
+        for (int32_t move_idx = 0; interm_offset < copy_size; ++move_idx){
             uint32_t data_size = interm_offset + max_ub_ping_pong_size < copy_size ? max_ub_ping_pong_size : copy_size - interm_offset;
             auto event_id = (move_idx & 1) ? EVENT_ID0 : EVENT_ID1;
             auto ub = (move_idx & 1) ? ub0 : ub1;
@@ -312,6 +335,7 @@ public:
         }
     }
 
+    // 分核线性策略：支持任意划分方案；
     FORCE_INLINE_AICORE void FirstStepInPeerMemSeq(int32_t data_size_remain, int32_t core_buff_offset) {
         if (data_size_remain <= 0) {
             return;
@@ -319,7 +343,7 @@ public:
         auto ub0 = output_UB_T[0];
         auto ub1 = output_UB_T[1];
         int32_t rank_per_core = (rank_size) / comm_npu_split;
-        int32_t core_rank_offset = (core_idx / comm_data_split) * rank_per_core;
+        int32_t core_rank_offset = (core_idx / comm_data_split) * rank_per_core; // 每个core搬运不同的卡
 
         for (int32_t rank_idx = 0; rank_idx < rank_per_core; ++rank_idx){
             int32_t rank_idx_rot = (rank_idx + core_idx) % rank_per_core;
@@ -327,55 +351,62 @@ public:
             if (m_rank_idx == rank) {
                 continue;
             }
-            if (is_91093 && (m_rank_idx % 2) != (rank % 2)) {
+            if (is_91093 && (m_rank_idx % 2) != (rank % 2)) {    // 91093只搬奇偶相同的卡
                 continue;
             }
             CopyGMToGM(buff[m_rank_idx] + core_buff_offset, buff[rank] + core_buff_offset, data_size_remain);
         }
     }
 
+    // 分核树形策略，仅支持comm_npu_split=1，当前仅支持4或8卡
     FORCE_INLINE_AICORE void FirstStepInPeerMemTree(int32_t data_size_remain, int32_t core_buff_offset) {
         if (data_size_remain <= 0) {
             return;
         }
         int32_t rank_per_core = (rank_size) / comm_npu_split;
-        int32_t core_rank_offset = (core_idx / comm_data_split) * rank_per_core;
+        int32_t core_rank_offset = (core_idx / comm_data_split) * rank_per_core; // 每个core搬运不同的卡
+        // 额外buffer: core_num * len_per_loop[20480] * (ranksize/2) * sizeof(fp16) = 3932160 (4MB)
+        __gm__ T* gm_reducebuf = reinterpret_cast<__gm__ T *>(workspace_info.gm_reducebuf) + core_idx * len_per_loop * rank_size / 2;   // 每个core使用：rank_size / 2 * len_per_loop长度
 
-        __gm__ T* gm_reducebuf = reinterpret_cast<__gm__ T *>(workspace_info.gm_reducebuf) + core_idx * len_per_loop * rank_size / 2;
-
+        // 共搬运7次，前3次搬运先用普通move，不atomic加
         SetAtomicNone();
-        int32_t rank_idx = 0;
-        int32_t turn_atomic_step = rank_size / 2 - 1;
-        for (int32_t visited = 0; visited < rank_size - 1; visited++) {
-            if (visited == turn_atomic_step) {
-                SetAtomicAdd<T>();                
+        int32_t rank_idx = 0;    // 初始化的NPU ID
+        int32_t turn_atomic_step = rank_size / 2 - 1;   // rank_size==8, step=3; rank_size==4, step=1;
+        for (int32_t visited = 0; visited < rank_size - 1; visited++){   // rank 8
+            if (visited == turn_atomic_step) {    // 前(rank/2-1)次搬完后，开始atomic加
+                SetAtomicAdd<T>();
             }
-            int32_t rank_idx_rot = (rank_idx + core_idx) % rank_per_core;
+            int32_t rank_idx_rot = (rank_idx + core_idx) % rank_per_core;  // 实际NPU ID
             if (rank_idx_rot == rank) {
                 rank_idx++;
                 rank_idx_rot = (rank_idx + core_idx) % rank_per_core;
             }
-            if (is_91093 && (rank_idx_rot % 2) != (rank % 2)) {
+            if (is_91093 && (rank_idx_rot % 2) != (rank % 2)) {    // 91093只搬奇偶相同的卡
                 continue;
             }
-
+            // 搬运地址：0 1 2,3 4 5分别搬到同样的地方，后3次atomicadd
             auto gm_interm = gm_reducebuf + (visited % turn_atomic_step) * len_per_loop;
-            if (visited == rank_size - 2) {
+            if (visited == rank_size - 2) { // last, atomic add to self peermem
                 gm_interm = buff[rank] + core_buff_offset;
             }
             auto gm_peer = buff[rank_idx_rot] + core_buff_offset;
             CopyGMToGM(gm_peer, gm_interm, data_size_remain);
             rank_idx++;
         }
-        if (rank_size == 8) {
+        if (rank_size == 8) {   // rank8树形累加
+            // interm[1] -> self peermem
             CopyGMToGM(gm_reducebuf + 1 * len_per_loop, buff[rank] + core_buff_offset, data_size_remain);
+            // interm[2] -> interm[0]
             CopyGMToGM(gm_reducebuf + 2 * len_per_loop, gm_reducebuf, data_size_remain);
         }
         if (rank_size >= 4) {
+            // interm[0] -> self peermem
             CopyGMToGM(gm_reducebuf, buff[rank] + core_buff_offset, data_size_remain);
         }
+
     }
 
+    // 原始策略：每个core负责一个NPU的搬运
     FORCE_INLINE_AICORE void FirstStepInPeerMem(int32_t data_size_remain, __gm__ T *input, __gm__ T *output, bool atomic_add = false) {
         if (data_size_remain <= 0) {
             return;
@@ -385,16 +416,52 @@ public:
             PipeBarrier<PIPE_ALL>();
         }
         int32_t offset = 0;
-        SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
-        SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+        SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0); // MTE2等MTE3
+        SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1); // MTE2等MTE3
         CopyGMToGM(input, output, data_size_remain);
-        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
-        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0); // MTE2等MTE3
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1); // MTE2等MTE3
         if (atomic_add) {
-            SetFlag<HardEvent::MTE3_S>(EVENT_ID0);
-            WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);   
+            SetFlag<HardEvent::MTE3_S>(EVENT_ID0); // Scalar等MTE3
+            WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);
             SetAtomicNone();
-            PipeBarrier<PIPE_ALL>();               
+            PipeBarrier<PIPE_ALL>();
+        }
+    }
+
+    // Firststepinpeermem+转格式输出
+    FORCE_INLINE_AICORE void FirstStepInPeerMemTransLayout(int32_t data_size_remain, __gm__ T *input, __gm__ T *output, int32_t out_offset = -1, bool atomic_add = false) {
+        if (data_size_remain <= 0) {
+            return;
+        }
+        if (atomic_add) {
+            SetAtomicAdd<T>();
+            PipeBarrier<PIPE_ALL>();
+        }
+        int32_t offset = 0;
+        SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0); // MTE2等MTE3
+        SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID1); // MTE2等MTE3
+        for (int32_t move_idx = 0; data_size_remain > 0; ++move_idx){
+            uint32_t data_size = data_size_remain > max_ub_ping_pong_size ? max_ub_ping_pong_size : data_size_remain;
+            auto event_id = (move_idx & 1) ? EVENT_ID0 : EVENT_ID1;
+            auto ub = (move_idx & 1) ? output_UB_T[0] : output_UB_T[1];
+            WaitFlag<HardEvent::MTE3_MTE2>(event_id);
+            CopyGmToUbuf(ub, input + offset, 1, data_size * sizeof(T) / 32, 0, 0);
+            SetFlag<HardEvent::MTE2_MTE3>(event_id); // MTE3等MTE2
+            WaitFlag<HardEvent::MTE2_MTE3>(event_id);
+            CopyUbufToGm(output + offset, ub, 1, data_size * sizeof(T) / 32, 0, 0);
+            CopyUbToGmTransLayout(ub, data_size, out_offset + offset);
+            SetFlag<HardEvent::MTE3_MTE2>(event_id); // MTE2等MTE3
+            data_size_remain -= data_size;
+            offset += data_size;
+        }
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0); // MTE2等MTE3
+        WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1); // MTE2等MTE3
+        if (atomic_add) {
+            SetFlag<HardEvent::MTE3_S>(EVENT_ID0); // Scalar等MTE3
+            WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);
+            SetAtomicNone();
+            PipeBarrier<PIPE_ALL>();
         }
     }
 
@@ -404,6 +471,12 @@ public:
     __ubuf__ int32_t *ctrl_flags_UB = (__ubuf__ int32_t *)(0);
     __ubuf__ T *output_UB_T[2] = {(__ubuf__ T *)(32), (__ubuf__ T *)(97440)};
 
+    __gm__ int32_t *num_local_tokens_per_expert;
+    __gm__ int32_t *num_global_tokens_per_local_expert;
+    __gm__ int32_t *global_tokens_per_expert_matrix;
+    int32_t expert_nums,local_expert_nums, TP, EP, maxOutputSize;
+    int32_t is_moe, is_moe_averaged, is_alltoallvc;
+    
     int32_t batch_size;
     int32_t m;
     int32_t k;
@@ -449,10 +522,10 @@ public:
     int32_t core_count;
 
     int32_t extra_ub_move_num;
-    int32_t extra_comm_npu_split;
-    int32_t extra_comm_data_split;
-    int32_t extra_comm_direct;
-    int32_t extra_len_per_loop;
+    int32_t extra_comm_npu_split;  // 2dtp allReduce使用
+    int32_t extra_comm_data_split;  // 2dtp allreduce使用
+    int32_t extra_comm_direct;  // 2dtp allreduce使用
+    int32_t extra_len_per_loop;  // 2dtp allreduce使用
     bool is_deterministic;
 
     QuantGranularity dequant_granularity;

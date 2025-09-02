@@ -33,7 +33,7 @@ constexpr int32_t AIV_FINISH_DEQUANT_FLAG_ID = 11;
 constexpr int32_t AIC_WAIT_AIV_FINISH_ALIGN_FLAG_ID = 12;
 constexpr int32_t AIV_WAIT_AIC_FINISH_MATMUL_FLAG_ID = 13;
 
-constexpr int32_t A3_DIE_NUM = 2;
+constexpr int32_t A3_DIE_NUM = 2; // 一张卡有两个die
 constexpr int32_t BLOCK_SIZE_16 = 16;
 constexpr int32_t BLOCK_SIZE_32 = 32;
 constexpr int32_t SWIZZL_MASK = 0b100000;
@@ -46,11 +46,11 @@ constexpr int32_t QUANT_SHIFT = 16;
 constexpr int32_t MAX_BLOCK_COUNT = 2;
 constexpr int32_t BLOCK_COUNT_3 = 3;
 constexpr int32_t BLOCK_COUNT_4 = 4;
-constexpr int32_t L0AB_PINGPONG_BUFFER_LEN = 16384;
-constexpr int32_t CUBE_MATRIX_SIZE = 256;
-constexpr int64_t L1_PINGPONG_BUFFER_LEN = 131072;
+constexpr int32_t L0AB_PINGPONG_BUFFER_LEN = 16384; // 32 KB
+constexpr int32_t CUBE_MATRIX_SIZE = 256;          // 16 * 16
+constexpr int64_t L1_PINGPONG_BUFFER_LEN = 131072; // 256 KB
 constexpr int32_t MAX_CORE_NUM = 25;
-constexpr int64_t MAX_UB_BUFF = 196608;
+constexpr int64_t MAX_UB_BUFF = 196608; // 192 * 1024 个 Byte;
 constexpr int32_t ADD_REPEAT_TIME = 4;
 constexpr int32_t FLAG_ZERO_IDX = 0;
 constexpr int32_t FLAG_ONE_IDX = 1;
@@ -63,17 +63,25 @@ constexpr int32_t VEC_BLOCK_PER_REPEAT = 8;
 constexpr uint8_t REPEAT_PER_LOOP = 255;
 constexpr uint32_t PPMATMUL_RUN_PURE_MATMUL = 1;
 constexpr uint32_t PPMATMUL_RUN_MATMUL_ALLREDUCE = 2;
+constexpr uint32_t PPMATMUL_RUN_MATMUL_REDUCE_SCATTER = 3;
+constexpr uint32_t PPMATMUL_RUN_ALL_GATHER_MATMUL = 4;
+constexpr uint32_t PPMATMUL_RUN_ALL_GATHER_MATMUL_V2 = 5;
 constexpr int32_t LCAL_2DTP_C_OFFSET = 100 * 1024 * 1024 / sizeof(half);
 constexpr uint32_t PPMATMUL_RUN_ALL_GATHER_MATMUL_REDUCE_SCATTER = 6;
+constexpr uint32_t PPMATMUL_RUN_ALL_GATHER_MATMUL_SIO = 7;
 constexpr int32_t HCCS_TOTAL_CORE_NUM = 8;
 constexpr int32_t SIO_TOTAL_CORE_NUM = 8;
 constexpr uint64_t WORKSPACE_REDUCE_SIZE = 4000000;
 constexpr int32_t TWOD_DATA_SPLIT_DEFAULT = 2;
 constexpr int32_t TWOD_LEN_PER_LOOP_DEFAULT = 5120;
 
+
+constexpr uint32_t PPMATMUL_RUN_ALL_TO_ALL_ALL_GATHER_MATMUL = 13;
+constexpr uint32_t PPMATMUL_RUN_ALL_TO_ALL_ALL_GATHER_MATMUL_HIDDEN = 15;
+constexpr uint32_t PPMATMUL_RUN_MATMUL_REDUCE_SCATTER_ALL_TO_ALL_HIDDEN = 16;
 constexpr int LCAL_BUFF_BYTES = 204 * 1024 * 1024;
-constexpr int32_t FLAG_BUFF_BYTES = 5 * 512 * 1024;
-constexpr int32_t FLAG_OFFSET = (LCAL_BUFF_BYTES - FLAG_BUFF_BYTES) / sizeof(int32_t);
+constexpr int32_t FLAG_BUFF_BYTES = 5 * 512 * 1024;  // 2.5MB
+constexpr int32_t FLAG_OFFSET = (LCAL_BUFF_BYTES - FLAG_BUFF_BYTES) / sizeof(int32_t); // 201.5 * 1024 * 1024
 
 enum QuantGranularity : int {
     QUANT_GRANULARITY_UNDEFINED = -1,
@@ -84,6 +92,7 @@ enum QuantGranularity : int {
     FLOAT32_SCALE_PER_CHANNEL = 4,
     QUANT_GRANULARITY_MAX = 5,
 };
+
 
 template <typename T, size_t SIZE>
 struct BaseBlock {
@@ -122,13 +131,17 @@ using Block512B = BaseBlock<T, 512>;
 
 template<typename T>
 struct CoCCommArgs {
-    int rank;
+    int rank;           // attr rank_id, global rank
     int localRank;
-    int rankSize;
+    int rankSize; // global rank size
     int localRankSize;
     uint32_t extraFlag;
     __gm__ T *peerMems[LCAL_MAX_RANK_SIZE];
     int64_t sendCountMatrix[LCAL_MAX_RANK_SIZE * LCAL_MAX_RANK_SIZE];
 };
+
+
+
+
 
 #endif // LCAL_COC_CONST_ARGS_H

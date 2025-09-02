@@ -17,32 +17,36 @@
 #include "lcoc_args.h"
 
 namespace Lcal {
-    struct CoCKernelArgs {
-        void *matrixA = nullptr;
-        void *matrixB = nullptr;
-        void *bias = nullptr;
-        void *gamma = nullptr;
-        void *output = nullptr;
-        void *midOutput = nullptr;
-        void *workspace = nullptr;
-        void *dequantScale = nullptr;
-        void *dequantOffset = nullptr;
-        void *quantScale = nullptr;
-        void *quantOffset = nullptr;
-        void *commArgsPtr = nullptr;
-        uint64_t fftsAddr = 0;
+struct CoCKernelArgs {
+    void *matrixA = nullptr;
+    void *matrixB = nullptr;
+    void *bias = nullptr;
+    void *gamma = nullptr;
+    void *output = nullptr;
+    void *midOutput = nullptr;
+    void *workspace = nullptr;
+    void *dequantScale = nullptr;
+    void *dequantOffset = nullptr;
+    void *quantScale = nullptr;
+    void *quantOffset = nullptr;
+    void *commArgsPtr = nullptr;
+    uint64_t fftsAddr = 0;
 
-        CoCTilingData *pCocTiling = nullptr;
-        CoCKernelParam cocKernelParam = {};
-        int SetFFTSAddr();
-        void SetInputPkgArgs(CoCInputPkg &inputPkg);
-        void SetOutputPkgArgs(CoCOutputPkg &outputPkg);
-        void SetWorkspacePtrArg(void *workspacePtr);
-        void SetParamDescArgs(const CoCParamDesc &paramDesc);
-        void SetCommArgs(const LcalComm &comm);
-        void SetCoCTilingDataArgs(const CoCTilingData &tilingData);
-        std::string ParamToString();
-    };
+    void *numLocalTokensPerExpertPtr = nullptr;
+    void *numGlobalTokensPerLocalExpertPtr = nullptr;
+    void *globalTokensPerLocalExpertMatrixPtr = nullptr;
+    CoCTilingData *pCocTiling = nullptr;
+    CoCKernelParam cocKernelParam = {};
+    int SetFFTSAddr();
+    void SetInputPkgArgs(CoCInputPkg &inputPkg);
+    void SetOutputPkgArgs(CoCOutputPkg &outputPkg);
+    void SetWorkspacePtrArg(void *workspacePtr);
+    void SetParamDescArgs(const CoCParamDesc &paramDesc);
+    void SetCommArgs(const LcalComm &comm);
+    void SetCoCTilingDataArgs(const CoCTilingData &tilingData);
+    std::string ParamToString();
+};
+
 }
 
 #endif // LCAL_COC_KERNEL_ARGS_H
