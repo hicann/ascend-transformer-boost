@@ -7,7 +7,7 @@
     1. source [cann安装路径]/set_env.sh
         默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
     2. source [nnal安装路径]/set_env.sh
-        默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
+        默认：source /usr/local/Ascend/nnal/atb/set_env.sh
         1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
         e.g. source ./ascend-transformer-boost/atb/set_env.sh
 
@@ -157,7 +157,7 @@ SelfAttention在Atlas A2/A3系列仅支持部分场景，且Encoder场景在Atla
 #### self_attention_prefix_encoder_demo.cpp
 + 场景：FA使用Prefix Encoder的场景，传入PA的依据blockTables存放的key，value
   + 此场景支持q和kv不等长，但是要求：
-    $$\forall i \lt len(seqLen)，kvSeqLen[i] - seqLen[i] = 0 (mod 128) $$
+    $$\forall i \lt len(seqLen)，kvSeqLen[i] - seqLen[i] = 0 \ (mod \ 128) $$
 + 该demo仅支持在Atlas A2/A3系列上运行
 + demo中使用Alibi上三角mask叠加bias slopes演示
 

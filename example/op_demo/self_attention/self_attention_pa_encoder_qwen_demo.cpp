@@ -23,13 +23,15 @@ const uint32_t MASK_SEQ_LEN = 128;                                            //
 
 /**
  * @brief 随机填充inData数值
- * @param contextPtr context指针
+ * @param inData 需要随机填充的vector
+ * @param low 最小值
+ * @param high 最大值
  */
-void AssignRandomValue(std::vector<float> &inData, int low = -5, int high = -5)
+void AssignRandomValue(std::vector<float> &inData, int low = -5, int high = 5)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(low, high); // 生成[-5,5)正态分布数据
+    std::uniform_real_distribution<> dis(low, high); // 生成[-5,5)正态分布数据
     for (size_t i = 0; i < inData.size(); ++i) {
         inData[i] = dis(gen);
     }

@@ -9,6 +9,7 @@
  */
 
 #include "../demo_util.h"
+#include <cmath>
 
 const int32_t DEVICE_ID = 1;
 const uint32_t blockSize = 128;
@@ -81,7 +82,7 @@ atb::Status CreateMultiLatentAttentionOperation(int headNum, atb::Operation **ml
 {
     atb::infer::MultiLatentAttentionParam param;
     param.headNum = headNum;
-    param.qkScale = 0.0416666679084301;
+    param.qkScale = 1 / sqrt(512 + 64);
     param.kvHeadNum = 1;
     param.cacheMode = atb::infer::MultiLatentAttentionParam::CacheMode::INT8_NZCACHE;
     return atb::CreateOperation(param, mlaOp);
