@@ -582,6 +582,13 @@ function fn_make_run_package()
 
 function fn_build()
 {
+    temporary_ascend_global_log_level="$ASCEND_GLOBAL_LOG_LEVEL"
+    temporary_ascend_module_log_level="$ASCEND_MODULE_LOG_LEVEL"
+    temporary_ascend_slog_print_to_stdout="$ASCEND_SLOG_PRINT_TO_STDOUT"
+    export ASCEND_GLOBAL_LOG_LEVEL=
+    export ASCEND_MODULE_LOG_LEVEL=
+    export ASCEND_SLOG_PRINT_TO_STDOUT=
+
     if [ "${ASCEND_HOME_PATH}" == "" ]; then
         echo "error: build failed because ASCEND_HOME_PATH is null, please source cann set_env.sh first."
         exit 1
@@ -612,6 +619,10 @@ function fn_build()
     if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
         fn_gen_atb_whl
     fi
+
+    export ASCEND_GLOBAL_LOG_LEVEL="$temporary_ascend_global_log_level"
+    export ASCEND_MODULE_LOG_LEVEL="$temporary_ascend_module_log_level"
+    export ASCEND_SLOG_PRINT_TO_STDOUT="$temporary_ascend_slog_print_to_stdout"
 }
 
 function pack_testframework()
