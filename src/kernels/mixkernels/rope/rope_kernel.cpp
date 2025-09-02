@@ -89,10 +89,15 @@ public:
         return RopeDtypeCheck(launchParam, TENSOR_DTYPE_FLOAT16) || RopeDtypeCheck(launchParam, TENSOR_DTYPE_BF16);
     }
 
+    uint64_t GetTilingSize(const LaunchParam &launchParam) const override
+    {
+        (void)launchParam;
+        return sizeof(RopeTilingData);
+    }
+
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return optiling::CallGeTiling("RotaryPosEmbInfer", *GetBinHandle(), launchParam,
-                                      AsdOps::GetMkiSpecificAttr<OpParam::Rope>, kernelInfo_);
+        return RopeTiling(launchParam, kernelInfo_);
     }
 };
 

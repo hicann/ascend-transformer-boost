@@ -14,6 +14,7 @@ import logging
 import op_test
 
 
+
 def process_deq_scale(deq_scale) -> np.ndarray:
     new_deq_scale = np.frombuffer(deq_scale.tobytes(), dtype=np.uint32)
     return new_deq_scale.astype(np.int64)
@@ -72,7 +73,7 @@ class TestPpMatmulI8(op_test.OpTest):
         self.bat_bias = torch.stack(bat_bias)
         pertoken_descale = torch.empty(msize)
         bat_pertoken_descale.append(pertoken_descale)
-        self.bat_pertoken_descale = torch.Tensor()
+        self.bat_pertoken_descale = torch.stack(bat_pertoken_descale)
         return
 
     def golden_calc(self, in_tensors):
@@ -198,7 +199,7 @@ class TestPpMatmulI8(op_test.OpTest):
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
             self.execute(
-                [self.bat_A, self.bat_B, torch.Tensor(), self.bat_scale, self.bat_pertoken_descale],
+                [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
                 [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
             )
 
@@ -223,7 +224,7 @@ class TestPpMatmulI8(op_test.OpTest):
             self.set_output_formats([self.format_nd])
             self.__gen_test_data((bsize, msize, ksize, nsize))
             self.execute(
-                [self.bat_A, self.bat_B, torch.Tensor(), self.bat_scale, self.bat_pertoken_descale],
+                [self.bat_A, self.bat_B, self.bat_bias, self.bat_scale, self.bat_pertoken_descale],
                 [torch.zeros(self.bat_C.shape, dtype=torch.bfloat16)],
             )
 

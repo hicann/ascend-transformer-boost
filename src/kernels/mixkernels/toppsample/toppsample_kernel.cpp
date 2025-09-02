@@ -15,10 +15,9 @@
 #include "mixkernels/utils/common.h"
 #include "tiling/toppsample_tiling.h"
 #include "tiling/tiling_data.h"
-#include "sink_common.h"
 
 static constexpr uint32_t TENSOR_INPUT_NUM = 2;
-static constexpr uint32_t TENSOR_OUTPUT_NUM = 1;
+static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
 
 namespace AtbOps {
 using namespace Mki;
@@ -53,8 +52,7 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        auto geTiling = optiling::CallGeTiling("TopPSample", *GetBinHandle(), launchParam,
-                                               AsdOps::GetMkiSpecificAttr<OpParam::Toppsample>, kernelInfo_);
+        auto geTiling = ToppsampleTiling(launchParam, kernelInfo_)
         kernelInfo_.SetMemsetInfo(TENSOR_INPUT_NUM + TENSOR_OUTPUT_NUM, kernelInfo_.GetScratchSizes()[0]);
         return geTiling;
     }

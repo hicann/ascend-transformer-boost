@@ -14,8 +14,6 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/platform/platform_info.h>
 #include "kernels/elewise/simple_broadcast/tiling/simple_broadcast_tiling.h"
-#include "asdops/params/params.h"
-#include "sink_common.h"
 
 namespace AsdOps {
 using namespace Mki;
@@ -77,14 +75,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        Mki::PlatformType platform = Mki::PlatformInfo::Instance().GetPlatformType();
-        if (platform == Mki::PlatformType::ASCEND_910A || platform == Mki::PlatformType::ASCEND_310B) {
-            BroadcastInfo broadcastInfo;
-            FillBroadCastInfoImpl(launchParam, broadcastInfo);
-            return QuantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
-        }
-        return optiling::CallGeTiling("QuantPerChannel", *GetBinHandle(), launchParam,
-                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>, kernelInfo_);
+        BroadcastInfo broadcastInfo;
+        FillBroadCastInfoImpl(launchParam, broadcastInfo);
+        return QuantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
     }
 
 protected:
@@ -137,8 +130,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return optiling::CallGeTiling("DequantPerChannel", *GetBinHandle(), launchParam,
-                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>, kernelInfo_);
+        BroadcastInfo broadcastInfo;
+        FillBroadCastInfoImpl(launchParam, broadcastInfo);
+        return DequantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
     }
 
 protected:

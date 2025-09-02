@@ -15,7 +15,6 @@
 #include <mki/utils/checktensor/check_tensor.h>
 #include <mki/utils/log/log.h>
 #include "atbops/params/params.h"
-#include "sink_common.h"
 
 namespace AtbOps {
 using namespace Mki;
