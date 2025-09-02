@@ -7,7 +7,7 @@
     1. source [cann安装路径]/set_env.sh
         默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
     2. source [nnal安装路径]/set_env.sh
-        默认：source /usr/local/Ascend/ascend-toolkit/set_env.sh
+        默认：source /usr/local/Ascend/nnal/atb/set_env.sh
         1. 如果使用加速库源码编译，source [加速库源码路径]/output/atb/set_env.sh
         e.g. source ./ascend-transformer-boost/atb/set_env.sh
 
@@ -34,18 +34,18 @@ tests/apitest/opstest/python/operations/multi_latent_attention/
 - mlapa_demo.cpp
   
     **参数设置**：
-
     | 成员名称   | 取值                  |
     | :-------- | :-------------------- |
     | headNum   | 128                   |
-    | qkScale   | 0.0416666679084301    |
+    | qkScale   | 1/sqrt(576)*          |
     | kvHeadNum | 1                     |
     | maskType  | `UNDEFINED`           |
     | calcType  | `CALC_TYPE_UNDEFINED` |
     | cacheMode | `INT8_NZCACHE`        |
 
-    **数据规格**：
+    > **注意**：qkScale设置值为MLA做rope投影前的headSize，即`512(原始) + 64(投影) = 576`
 
+    **数据规格**：
     | tensor名字    | 数据类型  | 数据格式  | 维度信息          | cpu/npu |
     | ------------- | -------- | -------- | ----------------- | ------- |
     | `qNope`       | int8     | nd       | [4, 128, 512]     | npu     |
@@ -61,7 +61,6 @@ tests/apitest/opstest/python/operations/multi_latent_attention/
 - mlapa_ds_demo.cpp  
 
     **参数设置**：
-
     | 成员名称   | 取值                  |
     | :-------- | :-------------------- |
     | headNum   | 128                   |
@@ -72,7 +71,6 @@ tests/apitest/opstest/python/operations/multi_latent_attention/
     | cacheMode | `KROPE_CTKV`          |
 
     **数据规格**：
-
     | tensor名字     | 数据类型  | 数据格式  | 维度信息           | cpu/npu |
     | ------------- | -------- | -------- | ------------------ |-------- |
     | `qNope`       | float16  | nd       | [32, 128, 512]     | npu     |
