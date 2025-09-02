@@ -133,8 +133,6 @@ atb::Status PrepareInTensor2(atb::Context *contextPtr, aclrtStream stream, aclDa
     atb::Tensor kvCacheRope;
     CHECK_STATUS(CreateTensorFromVector(contextPtr, stream, std::vector<__fp16>(blockNum * blockSize * 64, 0), dtype,
                                         aclFormat::ACL_FORMAT_ND, {blockNum, blockSize, 1, 64}, kvCacheRope, dtype));
-
-
     auto slotmappingHost = std::vector<int32_t>(1, tokenNum);
     for (size_t i = 0; i < slotmappingHost.size(); i++)
         slotmappingHost[i] = static_cast<int32_t>(i);
