@@ -78,7 +78,7 @@ const int* FindNextOpStart(const int opStartMaigc, const int* cclBinEndPtr, cons
         MKI_LOG(ERROR) << "FindNextOpStart failed! cclBinPtr is nullptr";
         return nullptr;
     }
-    while (cclBinPtr < cclBinEndPtr and *cclBinPtr != opStartMaigc) {
+    while (cclBinPtr < cclBinEndPtr && *cclBinPtr != opStartMaigc) {
         cclBinPtr++;
     }
     if (*cclBinPtr == opStartMaigc) {
@@ -92,7 +92,7 @@ int RegistCCLOp2Kernel(const int* cclBinPtr, const int* nextPtr)
     vector<HcclDataType> registerTypes = { HCCL_DATA_TYPE_INT32, HCCL_DATA_TYPE_INT16, HCCL_DATA_TYPE_INT8,
                                            HCCL_DATA_TYPE_FP32, HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16,
                                            HCCL_DATA_TYPE_INT64 };
-    std::vector<LcalType> registerCCLTypesOp2 = {
+    std::vector<LcalType> registerCCLTypesOp2 = { // 完成算子实现后在这里添加算子注册
         LcalType::ALL_GATHER, LcalType::REDUCE_SCATTER, LcalType::ALL2ALL,
     };
     int res = LCAL_SUCCESS;
@@ -115,7 +115,7 @@ int RegistCCLOp1Kernel(const int* cclBinPtr, const int* nextPtr)
     vector<HcclDataType> registerTypes = { HCCL_DATA_TYPE_INT32, HCCL_DATA_TYPE_INT16, HCCL_DATA_TYPE_INT8,
                                            HCCL_DATA_TYPE_FP32, HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16,
                                            HCCL_DATA_TYPE_INT64 };
-    std::vector<LcalType> registerCCLTypesOp1 = {
+    std::vector<LcalType> registerCCLTypesOp1 = { // 完成算子实现后在这里添加算子注册
         LcalType::ALL_REDUCE,
     };
     int res = LCAL_SUCCESS;
@@ -140,7 +140,6 @@ int RegistCCLKernel(const int32_t opGroup)
     }
 
     constexpr int32_t smallGroupNum = 2;
-
     for (int32_t opGroupIdx = 0; opGroupIdx < opGroup; ++opGroupIdx) {
         for (int32_t opIdx = 0; opIdx < smallGroupNum; ++opIdx) {
             cclBinPtr = nextPtr;
@@ -157,12 +156,14 @@ int RegistCCLKernel(const int32_t opGroup)
         return LCAL_ERROR_INTERNAL;
     }
 
+    // 切换到大组内第二个小组是
     cclBinPtr = nextPtr;
     nextPtr = FindNextOpStart(opStartMaigc, cclBinEndPtr, nextPtr);
     if (cclBinPtr == nullptr || cclBinPtr == cclBinEndPtr || nextPtr == nullptr) {
         return LCAL_ERROR_INTERNAL;
     }
 
+    // 大组内第二个小组是 reducescatter, allgather 等
     ret = RegistCCLOp2Kernel(cclBinPtr, nextPtr);
     if (ret != LCAL_SUCCESS) {
         return LCAL_ERROR_INTERNAL;
@@ -174,8 +175,13 @@ void RegistCoCKernel()
 {
     vector<HcclDataType> registerTypes = { HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_BFP16 };
     vector<vector<LcalType>> registerCOCTypes = {
+        { LcalType::PURE_MATMUL},
         { LcalType::MATMUL_ALL_REDUCE },
+        { LcalType::MATMUL_REDUCE_SCATTER },
+        { LcalType::ALL_GATHER_MATMUL, LcalType::ALL_GATHER_MATMUL_V2 },
         { LcalType::ALL_GATHER_MATMUL_REDUCE_SCATTER},
+        { LcalType::ALLTOALLV_ALLGATHER_MATMUL, LcalType::ALLTOALLVC_ALLGATHER_MATMUL_HIDDEN},
+        { LcalType::MATMUL_REDUCESCATTER_ALLTOALLVC_HIDDEN},
     };
 
     auto cocCceBinStr = LCAL_CCE_BIN_STR + LCAL_1OP_BIN_SIZE / sizeof(int);
