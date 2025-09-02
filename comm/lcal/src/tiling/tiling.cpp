@@ -33,7 +33,7 @@ bool CoCTilingFunc::CheckTiling(const TaskParam &taskParam)
 
 void CoCTilingFunc::GetDefaultTiling(const TaskParam &taskParam)
 {
-    // 暂时没有使用场景
+    (void) taskParam;
     cocTilingData.ubMoveNum = VALID_UB_MOVE_NUM;
     cocTilingData.commNpuSplit = cocTilingData.rankSize;
     cocTilingData.commDataSplit = COMMDATASPLIT_ONE;
