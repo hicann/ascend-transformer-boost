@@ -820,7 +820,14 @@ function fn_install_torch_atb()
 }
 
 function fn_main()
-{
+{    
+    temporary_ascend_global_log_level="$ASCEND_GLOBAL_LOG_LEVEL"
+    temporary_ascend_module_log_level="$ASCEND_MODULE_LOG_LEVEL"
+    temporary_ascend_slog_print_to_stdout="$ASCEND_SLOG_PRINT_TO_STDOUT"
+    export ASCEND_GLOBAL_LOG_LEVEL=""
+    export ASCEND_MODULE_LOG_LEVEL=""
+    export ASCEND_SLOG_PRINT_TO_STDOUT=""
+
     if [[ "$BUILD_OPTION_LIST" =~ "$1" ]]; then
         if [[ -z "$1" ]]; then
             arg1="default"
@@ -1021,6 +1028,10 @@ function fn_main()
             echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops| --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--ascendc_dump|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
             ;;
     esac
+
+    export ASCEND_GLOBAL_LOG_LEVEL="$temporary_ascend_global_log_level"
+    export ASCEND_MODULE_LOG_LEVEL="$temporary_ascend_module_log_level"
+    export ASCEND_SLOG_PRINT_TO_STDOUT="$temporary_ascend_slog_print_to_stdout"
 }
 
 fn_main "$@"
