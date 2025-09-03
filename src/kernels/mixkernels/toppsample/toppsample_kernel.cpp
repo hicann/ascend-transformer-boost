@@ -52,7 +52,7 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        auto geTiling = ToppsampleTiling(launchParam, kernelInfo_)
+        auto geTiling = ToppsampleTiling(launchParam, kernelInfo_);
         kernelInfo_.SetMemsetInfo(TENSOR_INPUT_NUM + TENSOR_OUTPUT_NUM, kernelInfo_.GetScratchSizes()[0]);
         return geTiling;
     }

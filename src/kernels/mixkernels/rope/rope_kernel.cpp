@@ -15,7 +15,6 @@
 #include "atbops/params/params.h"
 #include "tiling/rope_tiling.h"
 #include "tiling/tiling_data.h"
-#include "sink_common.h"
 
 static constexpr uint32_t TENSOR_INPUT_NUM = 5;
 static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
