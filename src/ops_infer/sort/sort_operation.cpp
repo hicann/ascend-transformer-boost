@@ -19,10 +19,6 @@
 namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 2;
-static const int64_t LIMITED_NUM = 582546117;
-static const int64_t ZERO = 1;
-static const int64_t ONE = 1;
-static const int64_t SIXTEEN = 1;
 bool ParamCheck(const atb::infer::SortParam &opParam)
 {
     (void)opParam;
@@ -95,16 +91,6 @@ Status SortOperation::ParamCheckImpl(const TensorDesc &xTensorDesc) const
     if (param_.num.at(0) <= 0 || xTensorDesc.shape.dims[xTensorDesc.shape.dimNum - 1] < param_.num.at(0)) {
         ATB_LOG(ERROR) << "ParamCheckImpl:param.num should >0 && <= lastdim";
         return ERROR_INVALID_PARAM;
-    }
-    int64_t numSize = param_.num.size();
-    if (GetSingleton<Config>().Is310P() && numSize == ONE && param_.num[ZERO] < SIXTEEN) {
-        for (auto dim: xTensorDesc.shape.dims){
-            if (dim > LIMITED_NUM) {
-                ATB_LOG(ERROR) << "ParamCheckImpl: dim should be less than" << LIMITED_NUM
-                            << " in Atlas 300I Duo inference products.";
-                return ERROR_INVALID_TENSOR_DIM;
-            }
-        }
     }
     return NO_ERROR;
 }
