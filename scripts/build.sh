@@ -38,6 +38,9 @@ MKI_BUILD_MODE=Test
 VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
+TEMPORARY_ASCEND_GLOBAL_LOG_LEVEL=""
+TEMPORARY_ASCEND_MODULE_LOG_LEVEL=""
+TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT=""
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
@@ -808,14 +811,26 @@ function fn_install_torch_atb()
     fi
 }
 
-function fn_main()
+function fn_disable_log_env()
 {
-    temporary_ascend_global_log_level="$ASCEND_GLOBAL_LOG_LEVEL"
-    temporary_ascend_module_log_level="$ASCEND_MODULE_LOG_LEVEL"
-    temporary_ascend_slog_print_to_stdout="$ASCEND_SLOG_PRINT_TO_STDOUT"
+    TEMPORARY_ASCEND_GLOBAL_LOG_LEVEL="$ASCEND_GLOBAL_LOG_LEVEL"
+    TEMPORARY_ASCEND_MODULE_LOG_LEVEL="$ASCEND_MODULE_LOG_LEVEL"
+    TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT="$ASCEND_SLOG_PRINT_TO_STDOUT"
     export ASCEND_GLOBAL_LOG_LEVEL=""
     export ASCEND_MODULE_LOG_LEVEL=""
     export ASCEND_SLOG_PRINT_TO_STDOUT=""
+}
+
+function fn_restore_log_env()
+{
+    export ASCEND_GLOBAL_LOG_LEVEL="$TEMPORARY_ASCEND_GLOBAL_LOG_LEVEL"
+    export ASCEND_MODULE_LOG_LEVEL="$TEMPORARY_ASCEND_MODULE_LOG_LEVEL"
+    export ASCEND_SLOG_PRINT_TO_STDOUT="$TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT"
+}
+
+function fn_main()
+{
+    fn_disable_log_env
 
     if [[ "$BUILD_OPTION_LIST" =~ "$1" ]]; then
         if [[ -z "$1" ]]; then
@@ -1018,9 +1033,7 @@ function fn_main()
             ;;
     esac
 
-    export ASCEND_GLOBAL_LOG_LEVEL="$temporary_ascend_global_log_level"
-    export ASCEND_MODULE_LOG_LEVEL="$temporary_ascend_module_log_level"
-    export ASCEND_SLOG_PRINT_TO_STDOUT="$temporary_ascend_slog_print_to_stdout"
+    fn_restore_log_env
 }
 
 fn_main "$@"
