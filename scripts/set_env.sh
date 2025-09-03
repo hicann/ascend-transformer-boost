@@ -67,7 +67,6 @@ if [[ -f "$set_env_path" ]] && [[ "$set_env_path" =~ 'set_env.sh' ]];then
     export ATB_MATMUL_SHUFFLE_K_ENABLE=1 #Shuffle-K使能，默认开
 
     #算子库环境变量
-    export ASCEND_MODULE_LOG_LEVEL=ATB=3:$ASCEND_MODULE_LOG_LEVEL
     export LCCL_DETERMINISTIC=0 #LCCL确定性AllReduce(保序加)是否开启，0关闭，1开启。
     export LCCL_PARALLEL=0 #LCCL多通信域并行，0关闭，1开启。
     
