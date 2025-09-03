@@ -1291,39 +1291,303 @@ class GatherOperation(DataGen):
                             golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
                             idx += 1
                 golden_result = golden_result.reshape(outputSize)
-            elif batchDims > 0:
-                GatherOperation.import_or_install("tensorflow", "tensorflow")
-                import tensorflow as tf
-                import ml_dtypes
-                # 转换 in_tensors[0] (数据)
-                if in_tensors[0].dtype != torch.bfloat16:
-                    in_tensors0_np = in_tensors[0].detach().cpu().numpy()  # 转为 numpy
-                    in_tensors0_tf = tf.convert_to_tensor(in_tensors0_np)
-                else:
-                    in_tensors0_fl = in_tensors[0].cpu().float()
-                    in_tensors0_np = in_tensors0_fl.numpy()
-                    in_tensors0_tf = tf.convert_to_tensor(in_tensors0_np, dtype=tf.bfloat16)
-
-                # 转换 in_tensors[1] (索引)，必须为整数类型
-                in_tensors1_np = in_tensors[1].detach().cpu().numpy()  # 转为 numpy
-                in_tensors1_tf = tf.convert_to_tensor(in_tensors1_np, dtype=tf.int32)
-
-                # 调用 tf.gather
-                golden_result_tf = tf.gather(
-                    params=in_tensors0_tf,
-                    indices=in_tensors1_tf,
-                    axis=axis,
-                    batch_dims=batchDims
-                )
-
-                # tf.Tensor → NumPy array
-                golden_result_np = golden_result_tf.numpy()
-
-                # NumPy array → torch.Tensor
-                if golden_result_np.dtype != ml_dtypes.bfloat16:
-                    golden_result = torch.from_numpy(golden_result_np)
-                else:
-                    golden_result = torch.from_numpy(golden_result_np.astype(np.float32)).to(torch.bfloat16)
+            elif batchDims == 1:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                B = params.shape[0]
+                slice_axis = axis - 1
+                results = []
+                for i in range(B):
+                    # 获取第 i 个批量的切片
+                    param_slice = params[i]  # Shape: (D0, D1, ...)
+                    
+                    # 获取第 i 个批量的索引
+                    index_slice = indices[i]  # Shape: (I1, I2, ..., Ik)
+                    
+                    # 展平 index_slice 以满足 torch.index_select 的要求 (必须是 1D)
+                    flat_indices = index_slice.reshape(-1)
+                     # 在 param_slice 的 slice_axis 维度上进行选择
+                    selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                    selection_shape = index_slice.shape
+                    post_axis_shape = selected.shape[axis:]
+                    pre_axis_shape = selected.shape[:axis-1]
+                    new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                    try:
+                        selected = selected.view(new_shape)
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to view selected tensor. "
+                                        f"Current shape: {selected.shape}, "
+                                        f"Target shape: {new_shape}, "
+                                        f"Total elements: {selected.numel()}") from e
+                    results.append(selected)
+                golden_result = torch.stack(results, dim=0)
+            elif batchDims == 2:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                B = params.shape[0]
+                C = params.shape[1]
+                slice_axis = axis - 2
+                batch_results = []
+                for i in range(B):
+                    channel_results = []
+                    for j in range(C):
+                        param_slice = params[i][j]
+                        index_slice = indices[i][j]
+                        
+                        # 展平 index_slice 以满足 torch.index_select 的要求 (必须是 1D)
+                        flat_indices = index_slice.reshape(-1)
+                        # 在 param_slice 的 slice_axis 维度上进行选择
+                        selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                        selection_shape = index_slice.shape
+                        post_axis_shape = selected.shape[axis-1:]
+                        pre_axis_shape = selected.shape[:axis-2]
+                        new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                        try:
+                            selected = selected.view(new_shape)
+                        except Exception as e:
+                            raise RuntimeError(f"Failed to view selected tensor. "
+                                            f"Current shape: {selected.shape}, "
+                                            f"Target shape: {new_shape}, "
+                                            f"Total elements: {selected.numel()}") from e
+                        channel_results.append(selected)
+                    golden_result1 = torch.stack(channel_results, dim=0)
+                    batch_results.append(golden_result1)
+                golden_result = torch.stack(batch_results, dim=0)
+            elif batchDims == 3:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                B = params.shape[0]
+                C = params.shape[1]
+                D = params.shape[2]
+                slice_axis = axis - 3
+                batch_results = []
+                for i in range(B):
+                    channel_results = []
+                    for j in range(C):
+                        results3 = []
+                        for k in range(D):
+                            param_slice = params[i][j][k]
+                            index_slice = indices[i][j][k]
+                            
+                            # 展平 index_slice 以满足 torch.index_select 的要求 (必须是 1D)
+                            flat_indices = index_slice.reshape(-1)
+                            # 在 param_slice 的 slice_axis 维度上进行选择
+                            selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                            selection_shape = index_slice.shape
+                            post_axis_shape = selected.shape[axis-2:]
+                            pre_axis_shape = selected.shape[:axis-3]
+                            new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                            try:
+                                selected = selected.view(new_shape)
+                            except Exception as e:
+                                raise RuntimeError(f"Failed to view selected tensor. "
+                                                f"Current shape: {selected.shape}, "
+                                                f"Target shape: {new_shape}, "
+                                                f"Total elements: {selected.numel()}") from e
+                            results3.append(selected)
+                        golden_result1 = torch.stack(results3, dim=0)
+                        channel_results.append(golden_result1)
+                    golden_result2 = torch.stack(channel_results, dim=0)
+                    batch_results.append(golden_result2)
+                golden_result = torch.stack(batch_results, dim=0)
+            elif batchDims == 4:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                B = params.shape[0]
+                C = params.shape[1]
+                D = params.shape[2]
+                E = params.shape[3]
+                slice_axis = axis - 4
+                batch_results = []
+                for i in range(B):
+                    channel_results = []
+                    for j in range(C):
+                        results3 = []
+                        for k in range(D):
+                            results4 = []
+                            for l in range(E):
+                                param_slice = params[i][j][k][l]
+                                index_slice = indices[i][j][k][l]
+                                
+                                # 展平 index_slice 以满足 torch.index_select 的要求 (必须是 1D)
+                                flat_indices = index_slice.reshape(-1)
+                                # 在 param_slice 的 slice_axis 维度上进行选择
+                                selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                                selection_shape = index_slice.shape
+                                post_axis_shape = selected.shape[axis-3:]
+                                pre_axis_shape = selected.shape[:axis-4]
+                                new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                                try:
+                                    selected = selected.view(new_shape)
+                                except Exception as e:
+                                    raise RuntimeError(f"Failed to view selected tensor. "
+                                                    f"Current shape: {selected.shape}, "
+                                                    f"Target shape: {new_shape}, "
+                                                    f"Total elements: {selected.numel()}") from e
+                                results4.append(selected)
+                            golden_result1 = torch.stack(results4, dim=0)
+                            results3.append(golden_result1)
+                        golden_result2 = torch.stack(results3, dim=0)
+                        channel_results.append(golden_result2)
+                    golden_result3 = torch.stack(channel_results, dim=0)
+                    batch_results.append(golden_result3)
+                golden_result = torch.stack(batch_results, dim=0)
+            elif batchDims == 5:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                B = params.shape[0]
+                C = params.shape[1]
+                D = params.shape[2]
+                E = params.shape[3]
+                F = params.shape[4]
+                slice_axis = axis - 5
+                batch_results = []
+                for i in range(B):
+                    channel_results = []
+                    for j in range(C):
+                        results3 = []
+                        for k in range(D):
+                            results4 = []
+                            for l in range(E):
+                                result5 = []
+                                for m in range(F):
+                                    param_slice = params[i][j][k][l][m]
+                                    index_slice = indices[i][j][k][l][m]
+                                    
+                                    # 展平 index_slice 以满足 torch.index_select 的要求 (必须是 1D)
+                                    flat_indices = index_slice.reshape(-1)
+                                    # 在 param_slice 的 slice_axis 维度上进行选择
+                                    selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                                    selection_shape = index_slice.shape
+                                    post_axis_shape = selected.shape[axis-4:]
+                                    pre_axis_shape = selected.shape[:axis-5]
+                                    new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                                    try:
+                                        selected = selected.view(new_shape)
+                                    except Exception as e:
+                                        raise RuntimeError(f"Failed to view selected tensor. "
+                                                        f"Current shape: {selected.shape}, "
+                                                        f"Target shape: {new_shape}, "
+                                                        f"Total elements: {selected.numel()}") from e
+                                    result5.append(selected)
+                                golden_result1 = torch.stack(result5, dim=0)
+                                results4.append(golden_result1)
+                            golden_result2 = torch.stack(results4, dim=0)
+                            results3.append(golden_result2)
+                        golden_result3 = torch.stack(results3, dim=0)
+                        channel_results.append(golden_result3)
+                    golden_result4 = torch.stack(channel_results, dim=0)
+                    batch_results.append(golden_result4)
+                golden_result = torch.stack(batch_results, dim=0)
+            elif batchDims == 6:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                B = params.shape[0]
+                C = params.shape[1]
+                D = params.shape[2]
+                E = params.shape[3]
+                F = params.shape[4]
+                G = params.shape[5]
+                slice_axis = axis - 6
+                batch_results = []
+                for i in range(B):
+                    channel_results = []
+                    for j in range(C):
+                        results3 = []
+                        for k in range(D):
+                            results4 = []
+                            for l in range(E):
+                                result5 = []
+                                for m in range(F):
+                                    result6 = []
+                                    for n in range(G):
+                                        param_slice = params[i][j][k][l][m][n]
+                                        index_slice = indices[i][j][k][l][m][n]
+                                        
+                                        # 展平 index_slice 以满足 torch.index_select 的要求 (必须是 1D)
+                                        flat_indices = index_slice.reshape(-1)
+                                        # 在 param_slice 的 slice_axis 维度上进行选择
+                                        selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                                        selection_shape = index_slice.shape
+                                        post_axis_shape = selected.shape[axis-5:]
+                                        pre_axis_shape = selected.shape[:axis-6]
+                                        new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                                        try:
+                                            selected = selected.view(new_shape)
+                                        except Exception as e:
+                                            raise RuntimeError(f"Failed to view selected tensor. "
+                                                            f"Current shape: {selected.shape}, "
+                                                            f"Target shape: {new_shape}, "
+                                                            f"Total elements: {selected.numel()}") from e
+                                        result6.append(selected)
+                                    golden_result1 = torch.stack(result6, dim=0)
+                                    result5.append(golden_result1)
+                                golden_result2 = torch.stack(result5, dim=0)
+                                results4.append(golden_result2)
+                            golden_result3 = torch.stack(results4, dim=0)
+                            results3.append(golden_result3)
+                        golden_result4 = torch.stack(results3, dim=0)
+                        channel_results.append(golden_result4)
+                    golden_result5 = torch.stack(channel_results, dim=0)
+                    batch_results.append(golden_result5)
+                golden_result = torch.stack(batch_results, dim=0)
+            elif batchDims == 7:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                B = params.shape[0]
+                C = params.shape[1]
+                D = params.shape[2]
+                E = params.shape[3]
+                F = params.shape[4]
+                G = params.shape[5]
+                H = params.shape[6]
+                slice_axis = axis - 7
+                batch_results = []
+                for i in range(B):
+                    channel_results = []
+                    for j in range(C):
+                        results3 = []
+                        for k in range(D):
+                            results4 = []
+                            for l in range(E):
+                                result5 = []
+                                for m in range(F):
+                                    result6 = []
+                                    for n in range(G):
+                                        result7 = []
+                                        for o in range(H):
+                                            param_slice = params[i][j][k][l][m][n][o]
+                                            index_slice = indices[i][j][k][l][m][n][o]
+                                            
+                                            # 展平 index_slice 以满足 torch.index_select 的要求 (必须是 1D)
+                                            flat_indices = index_slice.reshape(-1)
+                                            # 在 param_slice 的 slice_axis 维度上进行选择
+                                            selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                                            selection_shape = index_slice.shape
+                                            post_axis_shape = selected.shape[axis-6:]
+                                            pre_axis_shape = selected.shape[:axis-7]
+                                            new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                                            try:
+                                                selected = selected.view(new_shape)
+                                            except Exception as e:
+                                                raise RuntimeError(f"Failed to view selected tensor. "
+                                                                f"Current shape: {selected.shape}, "
+                                                                f"Target shape: {new_shape}, "
+                                                                f"Total elements: {selected.numel()}") from e
+                                            result7.append(selected)
+                                        golden_result1 = torch.stack(result7, dim=0)
+                                        result6.append(golden_result1)
+                                    golden_result2 = torch.stack(result6, dim=0)
+                                    result5.append(golden_result2)
+                                golden_result3 = torch.stack(result5, dim=0)
+                                results4.append(golden_result3)
+                            golden_result4 = torch.stack(results4, dim=0)
+                            results3.append(golden_result4)
+                        golden_result5 = torch.stack(results3, dim=0)
+                        channel_results.append(golden_result5)
+                    golden_result6 = torch.stack(channel_results, dim=0)
+                    batch_results.append(golden_result6)
+                golden_result = torch.stack(batch_results, dim=0)
 
         # 返回结果
         return [golden_result.cpu()]
