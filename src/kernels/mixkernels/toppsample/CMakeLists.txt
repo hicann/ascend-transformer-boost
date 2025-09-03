@@ -11,3 +11,11 @@ ${CMAKE_CURRENT_LIST_DIR}/toppsample_operation.cpp
 )
 
 add_operation(ToppsampleOperation "${toppsample_srcs}")
+
+add_kernel(toppsample ascend910b vector
+    op_kernel/toppsample.cpp
+    ToppsampleKernel)
+
+add_kernel(toppsample ascend310p vector
+    op_kernel/toppsample.cpp
+    ToppsampleKernel)
