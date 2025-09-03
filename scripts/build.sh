@@ -809,7 +809,7 @@ function fn_install_torch_atb()
 }
 
 function fn_main()
-{    
+{
     temporary_ascend_global_log_level="$ASCEND_GLOBAL_LOG_LEVEL"
     temporary_ascend_module_log_level="$ASCEND_MODULE_LOG_LEVEL"
     temporary_ascend_slog_print_to_stdout="$ASCEND_SLOG_PRINT_TO_STDOUT"
