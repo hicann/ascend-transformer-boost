@@ -533,7 +533,7 @@ Status TopkToppSamplingOpsRunner::SetupSingleTopKSampling()
     auto &indicesSampledI32Tensor = kernelGraph_.outTensors.at(outTensorNum++); // [batch, 1]
     auto &probsSampledTensor = kernelGraph_.outTensors.at(outTensorNum++);      // [batch, 1]
 
-    kernelGraph_.internalTensors.resize(MULTINOMIAL_INTERNAL_TENSOR_COUNT); // topp has 4 internel tensors
+    kernelGraph_.internalTensors.resize(INTERNAL_TENSOR_COUNT); // topp has 4 internel tensors
     int64_t internalTensorNum = 0;
     auto &probsSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &indicesSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
