@@ -52,7 +52,7 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return geTiling = ToppsampleTiling(launchParam, kernelInfo_);
+        return ToppsampleTiling(launchParam, kernelInfo_);
     }
 };
 REG_KERNEL_BASE(ToppsampleKernel);
