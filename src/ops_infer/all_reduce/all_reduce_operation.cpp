@@ -13,6 +13,7 @@
 #include "all_reduce_hccl_runner.h"
 #include "all_reduce_lccl_runner.h"
 #include "atb/utils/tensor_check.h"
+#include "atb/utils/tensor_util.h"
 #include "atb/utils/operation_util.h"
 #include "atb/utils/log.h"
 #include "atb/utils/param_to_json.h"
@@ -153,6 +154,16 @@ Status AllReduceOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
         return ERROR_INVALID_TENSOR_DTYPE;
     }
     ATB_LOG(DEBUG) << "outTensors size:" << outTensors.size();
+    if (!TensorUtil::TensorShapeEqual(inTensors.at(0).desc.shape, outTensors.at(0).desc.shape)) {
+        ATB_LOG(ERROR) << GetLogPrefix() << "intensor's shape and outtensor's shape should be same";
+        return ERROR_INVALID_TENSOR_DIM;
+    }
+    int n = inTensors.at(0).desc.shape.dims[inTensors.at(0).desc.shape.dimNum - 1];
+    if (inTensors.size() > 1) {
+        const int32_t offsetPosition = 1; // 1: offsetPos
+        const int32_t scalePosition = 2;  // 2: scalePos
+        return QuantShapeCheck(inTensors.at(offsetPosition).desc, inTensors.at(scalePosition).desc, n);
+    }
     return NO_ERROR;
 }
 
@@ -214,6 +225,10 @@ Status AllReduceOperation::QuantShapeCheck(const TensorDesc &scale, const Tensor
         }
     }
     if (param_.quantType == atb::infer::AllReduceParam::QUANT_TYPE_PER_CHANNEL) {
+        if (n > 4194304) { // 4194304: 限制通道数最大值
+            ATB_LOG(ERROR) << GetLogPrefix() << "quant channel num: " << n << " should be no more than 4194304(2^22)";
+            return ERROR_INVALID_TENSOR_DIM;
+        }
         // scale形状为[1,n]
         const int32_t scaleShapeNum = 2;
         if (scale.shape.dimNum == scaleShapeNum &&

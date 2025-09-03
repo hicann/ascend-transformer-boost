@@ -1319,7 +1319,7 @@ class AllReduceOperation(DataGen):
         random_seed = int(os.environ["random_seed"])
         json_data = json.loads(op_params)
         torch.manual_seed(random_seed)
-        if "quantType" in json_data:
+        if "quantType" in json_data and json_data["quantType"] != 0:
             if i == 0:
                 return AllReduceOperation.gen_input(shapes[i], datatype, format, data_gen_ranges, op_params)
             if i == 1:
@@ -1348,7 +1348,7 @@ class AllReduceOperation(DataGen):
 
     def sum_cal(inTensors, op_params):
         json_data = json.loads(op_params)
-        if "quantType" in json_data or inTensors[0].dtype == torch.bfloat16:
+        if ("quantType" in json_data and json_data["quantType"] != 0) or inTensors[0].dtype == torch.bfloat16:
             result = inTensors[0].clone().to(torch.float)
         else:
             result = inTensors[0].clone()
@@ -1418,7 +1418,7 @@ class AllReduceOperation(DataGen):
     @staticmethod
     def get_op_type(op_params):
         json_data = json.loads(op_params)
-        if "quantType" in json_data:
+        if "quantType" in json_data and json_data["quantType"] != 0:
             return OpTypes.COMPUTE_QUANT
         return OpTypes.COMPUTE_FLOAT
 
