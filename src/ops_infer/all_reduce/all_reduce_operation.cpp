@@ -153,11 +153,17 @@ Status AllReduceOperation::SetupCheckImpl(const SVector<Tensor> &inTensors, cons
     if (DtypeCheck(inTensors.at(0).desc) != NO_ERROR) {
         return ERROR_INVALID_TENSOR_DTYPE;
     }
+    ATB_LOG(DEBUG) << "outTensors size:" << outTensors.size();
     if (!TensorUtil::TensorShapeEqual(inTensors.at(0).desc.shape, outTensors.at(0).desc.shape)) {
-        ATB_LOG(ERROR) << "intensor's shape and outtensor's shape should be same";
+        ATB_LOG(ERROR) << GetLogPrefix() << "intensor's shape and outtensor's shape should be same";
         return ERROR_INVALID_TENSOR_DIM;
     }
-    ATB_LOG(DEBUG) << "outTensors size:" << outTensors.size();
+    int n = inTensors.at(0).desc.shape.dims[inTensors.at(0).desc.shape.dimNum - 1];
+    if (inTensors.size() > 1) {
+        const int32_t offsetPosition = 1; // 1: offsetPos
+        const int32_t scalePosition = 2;  // 2: scalePos
+        return QuantShapeCheck(inTensors.at(offsetPosition).desc, inTensors.at(scalePosition).desc, n);
+    }
     return NO_ERROR;
 }
 
@@ -219,8 +225,9 @@ Status AllReduceOperation::QuantShapeCheck(const TensorDesc &scale, const Tensor
         }
     }
     if (param_.quantType == atb::infer::AllReduceParam::QUANT_TYPE_PER_CHANNEL) {
-        if (n > 4194304) { // 4194304: 限制通道数最大值
-            ATB_LOG(ERROR) << "quant channel should be no more than 4194304(2^22)";
+        if (n * param_.rankSize > 12 * 1024 * 1024) { // 12, 1024: 限制通道数最大值12m
+            ATB_LOG(ERROR) << GetLogPrefix() << "quant channel num times rankSize: " << n * param_.rankSize
+                           << " should be no more than 12m";
             return ERROR_INVALID_TENSOR_DIM;
         }
         // scale形状为[1,n]
