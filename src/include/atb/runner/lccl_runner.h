@@ -10,7 +10,7 @@
 #ifndef ATB_LCCL_RUNNER_H
 #define ATB_LCCL_RUNNER_H
 
-#include <lcal/lcal_api.h>
+#include <lcal_api.h>
 #include <memory>
 #include "atb/runner/runner.h"
 #include "atb/runner/lcal_runner.h"
