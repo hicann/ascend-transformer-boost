@@ -7366,11 +7366,16 @@ class FaUpdateOperation(DataGen):
     def get_op_type(op_params) -> OpTypes:
         return OpTypes.COMPUTE_FLOAT
 
+class MlaPreprocessOperation(DataGen):
+    @staticmethod
+    def get_op_type(op_params) -> OpTypes:
+        return OpTypes.COMPUTE_FLOAT
 
 class MultiLatentAttentionOperation(DataGen):
     @staticmethod
     def get_op_type(op_params) -> OpTypes:
         return OpTypes.COMPUTE_FLOAT
+
 class PagedCacheLoadOperation(DataGen):
     @staticmethod
     def customize(shapes, i, datatype, format, data_gen_ranges, op_params):
