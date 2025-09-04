@@ -122,7 +122,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int()], torch.zeros(shape1).int())
+                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a        
@@ -136,7 +136,7 @@ class TestToppSample(op_test.OpTest):
         topp = torch.empty(shape1, dtype=torch.half).uniform_(0, 1)
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int()], torch.zeros(shape1).int())
+                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a        
@@ -152,7 +152,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int()], torch.zeros(shape1).int())
+                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a
@@ -168,7 +168,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int()], torch.zeros(shape1).int())
+                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a
@@ -184,7 +184,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int()], torch.zeros(shape1).int())
+                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a
@@ -200,7 +200,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int()], torch.zeros(shape1).int())
+                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a                     
@@ -216,7 +216,7 @@ class TestToppSample(op_test.OpTest):
 
         self.set_param(OP_NAME, OP_PARAM0)
         self.execute([torch.from_numpy(cumsumed), topp], 
-                     [torch.zeros(shape1).int()], torch.zeros(shape1).int())
+                     [torch.zeros(shape1).int(), torch.zeros(shape1).int()])
 
     @op_test.skip_310b
     @op_test.skip_910a
