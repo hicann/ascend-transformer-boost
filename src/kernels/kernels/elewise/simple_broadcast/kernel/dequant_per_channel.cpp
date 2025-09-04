@@ -10,9 +10,9 @@
 #include "simple_broadcast_base.h"
 
 template <bool HAS_OFFSET, bool CUT_N>
-class DequantPerChannelKernel : public SimpleBroadcastBase {
+class AtbDequantPerChannelKernel : public SimpleBroadcastBase {
 public:
-    __aicore__ inline DequantPerChannelKernel() {}
+    __aicore__ inline AtbDequantPerChannelKernel() {}
 
     __aicore__ inline void Process(GM_ADDR y, GM_ADDR scale, GM_ADDR offset, GM_ADDR x)
     {
@@ -173,13 +173,13 @@ extern "C" __global__ __aicore__ void dequant_per_channel(
     }
     if (TILING_KEY_IS(2100000000)) {
         // per channel, no offset, cut n
-        DequantPerChannelKernel<false, true> op;
+        AtbDequantPerChannelKernel<false, true> op;
         op.Init(&tilingData);
         op.Process(y, scale, offset, x);
     }
     if (TILING_KEY_IS(2200000000)) {
         // per channel, no offset, cut b
-        DequantPerChannelKernel<false, false> op;
+        AtbDequantPerChannelKernel<false, false> op;
         op.Init(&tilingData);
         op.Process(y, scale, offset, x);
     }
@@ -191,13 +191,13 @@ extern "C" __global__ __aicore__ void dequant_per_channel(
     }
     if (TILING_KEY_IS(2100000001)) {
         // per channel, has offset, cut n
-        DequantPerChannelKernel<true, true> op;
+        AtbDequantPerChannelKernel<true, true> op;
         op.Init(&tilingData);
         op.Process(y, scale, offset, x);
     }
     if (TILING_KEY_IS(2200000001)) {
         // per channel, has offset, cut b
-        DequantPerChannelKernel<true, false> op;
+        AtbDequantPerChannelKernel<true, false> op;
         op.Init(&tilingData);
         op.Process(y, scale, offset, x);
     }

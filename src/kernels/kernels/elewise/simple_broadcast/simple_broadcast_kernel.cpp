@@ -14,8 +14,6 @@
 #include <mki/utils/log/log.h>
 #include <mki/utils/platform/platform_info.h>
 #include "kernels/elewise/simple_broadcast/tiling/simple_broadcast_tiling.h"
-#include "asdops/params/params.h"
-#include "sink_common.h"
 
 namespace AsdOps {
 using namespace Mki;
@@ -50,9 +48,9 @@ protected:
     virtual void FillBroadCastInfoImpl(const LaunchParam &launchParam, BroadcastInfo &broadcastInfo) const = 0;
 };
 
-class QuantPerChannelKernel : public BroadcastKernel {
+class AtbQuantPerChannelKernel : public BroadcastKernel {
 public:
-    explicit QuantPerChannelKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit AtbQuantPerChannelKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : BroadcastKernel(kernelName, handle)
     {
     }
@@ -77,14 +75,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        Mki::PlatformType platform = Mki::PlatformInfo::Instance().GetPlatformType();
-        if (platform == Mki::PlatformType::ASCEND_910A || platform == Mki::PlatformType::ASCEND_310B) {
-            BroadcastInfo broadcastInfo;
-            FillBroadCastInfoImpl(launchParam, broadcastInfo);
-            return QuantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
-        }
-        return optiling::CallGeTiling("QuantPerChannel", *GetBinHandle(), launchParam,
-                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>, kernelInfo_);
+        BroadcastInfo broadcastInfo;
+        FillBroadCastInfoImpl(launchParam, broadcastInfo);
+        return QuantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
     }
 
 protected:
@@ -109,11 +102,11 @@ protected:
         }
     }
 };
-REG_KERNEL_BASE(QuantPerChannelKernel);
+REG_KERNEL_BASE(AtbQuantPerChannelKernel);
 
-class DequantPerChannelKernel : public BroadcastKernel {
+class AtbDequantPerChannelKernel : public BroadcastKernel {
 public:
-    explicit DequantPerChannelKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit AtbDequantPerChannelKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : BroadcastKernel(kernelName, handle)
     {
     }
@@ -137,8 +130,9 @@ public:
 
     Status InitImpl(const LaunchParam &launchParam) override
     {
-        return optiling::CallGeTiling("DequantPerChannel", *GetBinHandle(), launchParam,
-                                      AsdOps::GetMkiSpecificAttr<OpParam::Elewise>, kernelInfo_);
+        BroadcastInfo broadcastInfo;
+        FillBroadCastInfoImpl(launchParam, broadcastInfo);
+        return DequantPerChannelTiling(broadcastInfo, launchParam, kernelInfo_);
     }
 
 protected:
@@ -157,5 +151,5 @@ protected:
                                            2 * sizeof(TENSOR_DTYPE_FLOAT16); // 2：两个中间缓存buffer
     }
 };
-REG_KERNEL_BASE(DequantPerChannelKernel);
+REG_KERNEL_BASE(AtbDequantPerChannelKernel);
 } // namespace AsdOps

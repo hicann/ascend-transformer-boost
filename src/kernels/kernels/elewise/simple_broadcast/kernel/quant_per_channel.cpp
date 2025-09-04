@@ -14,9 +14,9 @@
 using AscendC::HardEvent;
 
 template <typename T, bool HAS_OFFSET, bool CUT_N, bool QUANT_MIN_NEG_127>
-class QuantPerChannelKernel : public SimpleBroadcastBase {
+class AtbQuantPerChannelKernel : public SimpleBroadcastBase {
 public:
-    __aicore__ inline QuantPerChannelKernel() {}
+    __aicore__ inline AtbQuantPerChannelKernel() {}
 
     __aicore__ inline void Process(GM_ADDR x, GM_ADDR scale, GM_ADDR offset, GM_ADDR y)
     {
@@ -291,12 +291,12 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2100000000)) {
         // per channel, no offset, cut n, -128, fp16
-        QuantPerChannelKernel<half, false, true, false> op;
+        AtbQuantPerChannelKernel<half, false, true, false> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2200000000)) {
         // per channel, no offset, cut b, -128, fp16
-        QuantPerChannelKernel<half, false, false, false> op;
+        AtbQuantPerChannelKernel<half, false, false, false> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2000000001)) {
@@ -306,12 +306,12 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2100000001)) {
         // per channel, has offset, cut n, -128, fp16
-        QuantPerChannelKernel<half, true, true, false> op;
+        AtbQuantPerChannelKernel<half, true, true, false> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2200000001)) {
         // per channel, has offset, cut b, -128, fp16
-        QuantPerChannelKernel<half, true, false, false> op;
+        AtbQuantPerChannelKernel<half, true, false, false> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2000000010)) {
@@ -321,12 +321,12 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2100000010)) {
         // per channel, no offset, cut n, -127, fp16
-        QuantPerChannelKernel<half, false, true, true> op;
+        AtbQuantPerChannelKernel<half, false, true, true> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2200000010)) {
         // per channel, no offset, cut b, -127, fp16
-        QuantPerChannelKernel<half, false, false, true> op;
+        AtbQuantPerChannelKernel<half, false, false, true> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2000000011)) {
@@ -336,12 +336,12 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2100000011)) {
         // per channel, has offset, cut n, -127, fp16
-        QuantPerChannelKernel<half, true, true, true> op;
+        AtbQuantPerChannelKernel<half, true, true, true> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2200000011)) {
         // per channel, has offset, cut b, -127, fp16
-        QuantPerChannelKernel<half, true, false, true> op;
+        AtbQuantPerChannelKernel<half, true, false, true> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     }
@@ -353,12 +353,12 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2110000000)) {
         // per channel, no offset, cut n, -128, bf16
-        QuantPerChannelKernel<bfloat16_t, false, true, false> op;
+        AtbQuantPerChannelKernel<bfloat16_t, false, true, false> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2210000000)) {
         // per channel, no offset, cut b, -128, bf16
-        QuantPerChannelKernel<bfloat16_t, false, false, false> op;
+        AtbQuantPerChannelKernel<bfloat16_t, false, false, false> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2010000001)) {
@@ -368,12 +368,12 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2110000001)) {
         // per channel, has offset, cut n, -128, bf16
-        QuantPerChannelKernel<bfloat16_t, true, true, false> op;
+        AtbQuantPerChannelKernel<bfloat16_t, true, true, false> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2210000001)) {
         // per channel, has offset, cut b, -128, bf16
-        QuantPerChannelKernel<bfloat16_t, true, false, false> op;
+        AtbQuantPerChannelKernel<bfloat16_t, true, false, false> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2010000010)) {
@@ -383,12 +383,12 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2110000010)) {
         // per channel, no offset, cut n, -127, bf16
-        QuantPerChannelKernel<bfloat16_t, false, true, true> op;
+        AtbQuantPerChannelKernel<bfloat16_t, false, true, true> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2210000010)) {
         // per channel, no offset, cut b, -127, bf16
-        QuantPerChannelKernel<bfloat16_t, false, false, true> op;
+        AtbQuantPerChannelKernel<bfloat16_t, false, false, true> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2010000011)) {
@@ -398,12 +398,12 @@ extern "C" __global__ __aicore__ void quant_per_channel(
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2110000011)) {
         // per channel, has offset, cut n, -127, bf16
-        QuantPerChannelKernel<bfloat16_t, true, true, true> op;
+        AtbQuantPerChannelKernel<bfloat16_t, true, true, true> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     } else if (TILING_KEY_IS(2210000011)) {
         // per channel, has offset, cut b, -127, bf16
-        QuantPerChannelKernel<bfloat16_t, true, false, true> op;
+        AtbQuantPerChannelKernel<bfloat16_t, true, false, true> op;
         op.Init(&tilingData);
         op.Process(x, scale, offset, y);
     }
