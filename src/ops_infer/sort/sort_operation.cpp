@@ -20,7 +20,7 @@ namespace {
 static const uint32_t IN_TENSOR_NUM = 1;
 static const uint32_t OUT_TENSOR_NUM = 2;
 static const int64_t LIMITED_NUM = 580000000;
-static const int64_t ZERO = 1;
+static const int64_t ZERO = 0;
 static const int64_t ONE = 1;
 static const int64_t SIXTEEN = 16;
 bool ParamCheck(const atb::infer::SortParam &opParam)
