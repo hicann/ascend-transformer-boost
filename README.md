@@ -72,6 +72,11 @@ ATB加速库采用了一系列优化策略，包括算法优化、硬件优化�
     bash scripts/build.sh csvopstest
     ```
 
+## 日志
+- 加速库日志现在已经部分适配CANN日志 请参考
+    - **[CANN商用版文档/环境变量参考/辅助功能/日志/场景说明](https://www.hiascend.com/document/detail/zh/canncommercial/80RC22/apiref/envvar/envref_07_0109.html)**
+- 由于CANN日志暂时没有ATB模块，ASCEND_MODULE_LOG_LEVEL请勿设置ATB
+
 ## 参与贡献
  
 1.  新建 br_personal/[employee_id]/[branch_name] 分支
