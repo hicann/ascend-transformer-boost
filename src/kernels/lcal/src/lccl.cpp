@@ -229,6 +229,8 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
         MKI_LOG(ERROR) << "comm is nullptr" << __LINE__;
         return 0;
     }
+    uint32_t limitVal = 0;
+    aclrtDevResLimitType limitType = aclrtDevResLimitType::ACL_RT_DEV_RES_VECTOR_CORE;
     uint32_t blockNum = GetKernelBlockNum(cclType, rankSize, dataSize, localRankSize, extraFlag);
     if (comm_->isEnableMix_) {
         constexpr uint32_t aivNumPerAic = 2;
@@ -236,10 +238,16 @@ uint32_t Lccl::GetBlockNum(LcalType cclType, uint32_t rankSize, int64_t dataSize
             MKI_LOG(ERROR) << "Lccl not support odd block number at msprof op enabled!";
             return 0;
         }
-        return blockNum / aivNumPerAic;
-    } else {
-        return blockNum;
+        blockNum = blockNum / aivNumPerAic;
+        limitType = aclrtDevResLimitType::ACL_RT_DEV_RES_CUBE_CORE;
     }
+    aclrtGetResInCurrentThread(limitType, &limitVal);
+    if (blockNum > limitVal) {
+        MKI_LOG(ERROR) << "Insufficient blockDim: Required blockNum(" << blockNum <<
+            ") exceeds limit (limitVal=" << limitVal << ", limitType=" << static_cast<int>(limitType) << ")";
+        return 0;
+    }
+    return blockNum;
 }
 
 int Lccl::LoopBack(const void *sendBuff, void *recvBuff, int64_t count, HcclDataType dataType, aclrtStream stream) const
