@@ -38,9 +38,6 @@ MKI_BUILD_MODE=Test
 VERSION="8.0.0"
 LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
-TEMPORARY_ASCEND_GLOBAL_LOG_LEVEL=""
-TEMPORARY_ASCEND_MODULE_LOG_LEVEL=""
-TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT=""
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
@@ -520,6 +517,9 @@ function fn_init_env()
     export PYTORCH_INSTALL_PATH="$(python3 -c 'import torch, os; print(os.path.dirname(os.path.abspath(torch.__file__)))')"
     export PYTORCH_NPU_INSTALL_PATH="$(python3 -c 'import torch, torch_npu, os; print(os.path.dirname(os.path.abspath(torch_npu.__file__)))')"
     export LD_LIBRARY_PATH=$PYTORCH_INSTALL_PATH/../torch.libs:$LD_LIBRARY_PATH
+    export ASCEND_GLOBAL_LOG_LEVEL=""
+    export ASCEND_MODULE_LOG_LEVEL=""
+    export ASCEND_SLOG_PRINT_TO_STDOUT=""
 
     echo "PYTHON_INCLUDE_PATH=$PYTHON_INCLUDE_PATH"
     echo "PYTHON_LIB_PATH=$PYTHON_LIB_PATH"
@@ -811,27 +811,8 @@ function fn_install_torch_atb()
     fi
 }
 
-function fn_disable_log_env()
-{
-    TEMPORARY_ASCEND_GLOBAL_LOG_LEVEL="$ASCEND_GLOBAL_LOG_LEVEL"
-    TEMPORARY_ASCEND_MODULE_LOG_LEVEL="$ASCEND_MODULE_LOG_LEVEL"
-    TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT="$ASCEND_SLOG_PRINT_TO_STDOUT"
-    export ASCEND_GLOBAL_LOG_LEVEL=""
-    export ASCEND_MODULE_LOG_LEVEL=""
-    export ASCEND_SLOG_PRINT_TO_STDOUT=""
-}
-
-function fn_restore_log_env()
-{
-    export ASCEND_GLOBAL_LOG_LEVEL="$TEMPORARY_ASCEND_GLOBAL_LOG_LEVEL"
-    export ASCEND_MODULE_LOG_LEVEL="$TEMPORARY_ASCEND_MODULE_LOG_LEVEL"
-    export ASCEND_SLOG_PRINT_TO_STDOUT="$TEMPORARY_ASCEND_SLOG_PRINT_TO_STDOUT"
-}
-
 function fn_main()
 {
-    fn_disable_log_env
-
     if [[ "$BUILD_OPTION_LIST" =~ "$1" ]]; then
         if [[ -z "$1" ]]; then
             arg1="default"
@@ -1032,8 +1013,6 @@ function fn_main()
             echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops| --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--ascendc_dump|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
             ;;
     esac
-
-    fn_restore_log_env
 }
 
 fn_main "$@"
