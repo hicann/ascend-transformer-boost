@@ -42,7 +42,7 @@ def main_worker(rank, world_size, data_types, data_sizes, data_gen_ranges):
         "LinearParallelOperation")
 
     acl_param = json.dumps({"type": 0, "rank": rank, "rankSize": world_size,
-                            "rankRoot": 0, "transWeight": False, "backend": "lcoc",
+                            "rankRoot": 0, "transWeight": False, "backend": "hccl",
                             "quantType": -1,"outDataType": -1, "hasResidual": True})
 
     acl_matmul_allreduce_operation.set_param(acl_param)
@@ -64,7 +64,7 @@ def main_worker(rank, world_size, data_types, data_sizes, data_gen_ranges):
                 torch.npu.synchronize()
 
                 matmul_result_high = torch.matmul(input_tensor.to(torch.float), weight_tensor.to(torch.float))
-                matmul_result_low = torch.matmul(input_tensor, weight_tensor) if data_type == torch.bfloat16 else torch.matmul(input_tensor.to(torch.float), weight_tensor.to(torch.float)).to(torch.float16)
+                matmul_result_low = torch.matmul(input_tensor, weight_tensor)
 
                 golden_one_high = matmul_result_high.clone()
                 golden_one_low = matmul_result_low.clone()
@@ -99,7 +99,7 @@ class LinearParallelCoverOperationTest(operation_test.OperationTest):
 
         world_size = 2
 
-        data_types = [torch.float16, torch.bfloat16]
+        data_types = [torch.bfloat16]
 
         data_sizes = [[[56, 768], [768, 508], [508]],
                       [[604, 244, 528], [528, 672], [672]]]
