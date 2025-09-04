@@ -37,23 +37,23 @@ add_kernel(dynamic_quant ascend310p vector
 
 add_kernel(quant_per_channel ascend910b vector
     simple_broadcast/kernel/quant_per_channel.cpp
-    QuantPerChannelKernel)
+    AtbQuantPerChannelKernel)
 
 add_kernel(dequant_per_channel ascend910b vector
     simple_broadcast/kernel/dequant_per_channel.cpp
-    DequantPerChannelKernel)
+    AtbDequantPerChannelKernel)
 
 add_kernel(quant_per_channel ascend310p vector
     simple_broadcast/kernel/quant_per_channel.cpp
-    QuantPerChannelKernel)
+    AtbQuantPerChannelKernel)
 
 add_kernel(quant_per_channel ascend910 vector
     simple_broadcast/kernel/quant_per_channel.cpp
-    QuantPerChannelKernel)
+    AtbQuantPerChannelKernel)
 
 add_kernel(quant_per_channel ascend310b vector
     simple_broadcast/kernel/quant_per_channel.cpp
-    QuantPerChannelKernel)
+    AtbQuantPerChannelKernel)
 
 add_kernel(quant ascend910b vector
         quant/op_kernel/quant.cpp

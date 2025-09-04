@@ -24,7 +24,7 @@ public:
 
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
     {
-        return GetKernelByName("ToppsampleKernel");
+        return GetKernelByName("AtbToppsampleKernel");
     }
 
     int64_t GetInputNum(const Any &specificParam) const override

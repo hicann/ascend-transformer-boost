@@ -15,8 +15,8 @@ add_operation(ToppsampleOperation "${toppsample_srcs}")
 
 add_kernel(toppsample ascend910b vector
     op_kernel/toppsample.cpp
-    ToppsampleKernel)
+    AtbToppsampleKernel)
 
 add_kernel(toppsample ascend310p vector
     op_kernel/toppsample.cpp
-    ToppsampleKernel)
+    AtbToppsampleKernel)

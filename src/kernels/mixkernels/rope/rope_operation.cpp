@@ -63,7 +63,7 @@ public:
     Kernel *GetBestKernel(const LaunchParam &launchParam) const override
     {
         MKI_CHECK(launchParam.GetParam().Type() == typeid(OpParam::Rope), "OpParam is invalid", return nullptr);
-        return GetKernelByName("RopeKernel");
+        return GetKernelByName("AtbRopeKernel");
     }
 };
 

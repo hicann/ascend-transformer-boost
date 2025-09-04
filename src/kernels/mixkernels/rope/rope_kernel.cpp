@@ -21,9 +21,9 @@ static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
 
 namespace AtbOps {
 using namespace Mki;
-class RopeKernel : public KernelBase {
+class AtbRopeKernel : public KernelBase {
 public:
-    explicit RopeKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit AtbRopeKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : KernelBase(kernelName, handle)
     {
     }
@@ -100,5 +100,5 @@ public:
     }
 };
 
-REG_KERNEL_BASE(RopeKernel);
+REG_KERNEL_BASE(AtbRopeKernel);
 } // namespace AtbOps

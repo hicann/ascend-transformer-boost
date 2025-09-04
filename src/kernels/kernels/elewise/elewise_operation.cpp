@@ -236,13 +236,13 @@ public:
                 MKI_LOG(ERROR) << "No kernel for ELEWISE_EQUAL inDtype " << GetStrWithDType(inDtype);
                 return nullptr;
             case OpParam::Elewise::ELEWISE_QUANT_PER_CHANNEL:
-                return GetKernelByName("QuantPerChannelKernel");
+                return GetKernelByName("AtbQuantPerChannelKernel");
             case OpParam::Elewise::ELEWISE_DEQUANT_PER_CHANNEL:
                 if (Mki::PlatformInfo::Instance().GetPlatformType() == Mki::PlatformType::ASCEND_310P) {
                     MKI_LOG(ERROR) << "No kernel for dequantperchannel";
                     return nullptr;
                 }
-                return GetKernelByName("DequantPerChannelKernel");
+                return GetKernelByName("AtbDequantPerChannelKernel");
             default:
                 return nullptr;
         }

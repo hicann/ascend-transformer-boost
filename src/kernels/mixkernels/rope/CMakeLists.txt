@@ -15,16 +15,16 @@ add_operation(RopeOperation "${rope_srcs}")
 
 add_kernel(rotary_pos_emb ascend910b vector
     op_kernel/rotary_pos_emb.cpp
-    RopeKernel)
+    AtbRopeKernel)
 
 add_kernel(rotary_pos_emb ascend310p vector
     op_kernel/rotary_pos_emb.cpp
-    RopeKernel)
+    AtbRopeKernel)
 
 add_kernel(rotary_pos_emb ascend910 vector
     op_kernel/rotary_pos_emb.cpp
-    RopeKernel)
+    AtbRopeKernel)
 
 add_kernel(rotary_pos_emb ascend310b vector
     op_kernel/rotary_pos_emb.cpp
-    RopeKernel)
+    AtbRopeKernel)

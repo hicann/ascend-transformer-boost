@@ -48,9 +48,9 @@ protected:
     virtual void FillBroadCastInfoImpl(const LaunchParam &launchParam, BroadcastInfo &broadcastInfo) const = 0;
 };
 
-class QuantPerChannelKernel : public BroadcastKernel {
+class AtbQuantPerChannelKernel : public BroadcastKernel {
 public:
-    explicit QuantPerChannelKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit AtbQuantPerChannelKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : BroadcastKernel(kernelName, handle)
     {
     }
@@ -102,11 +102,11 @@ protected:
         }
     }
 };
-REG_KERNEL_BASE(QuantPerChannelKernel);
+REG_KERNEL_BASE(AtbQuantPerChannelKernel);
 
-class DequantPerChannelKernel : public BroadcastKernel {
+class AtbDequantPerChannelKernel : public BroadcastKernel {
 public:
-    explicit DequantPerChannelKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit AtbDequantPerChannelKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : BroadcastKernel(kernelName, handle)
     {
     }
@@ -151,5 +151,5 @@ protected:
                                            2 * sizeof(TENSOR_DTYPE_FLOAT16); // 2：两个中间缓存buffer
     }
 };
-REG_KERNEL_BASE(DequantPerChannelKernel);
+REG_KERNEL_BASE(AtbDequantPerChannelKernel);
 } // namespace AsdOps

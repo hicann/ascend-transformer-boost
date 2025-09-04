@@ -21,9 +21,9 @@ static constexpr uint32_t TENSOR_OUTPUT_NUM = 2;
 
 namespace AtbOps {
 using namespace Mki;
-class ToppsampleKernel : public KernelBase {
+class AtbToppsampleKernel : public KernelBase {
 public:
-    explicit ToppsampleKernel(const std::string &kernelName, const BinHandle *handle) noexcept
+    explicit AtbToppsampleKernel(const std::string &kernelName, const BinHandle *handle) noexcept
         : KernelBase(kernelName, handle)
     {
     }
@@ -55,5 +55,5 @@ public:
         return ToppsampleTiling(launchParam, kernelInfo_);
     }
 };
-REG_KERNEL_BASE(ToppsampleKernel);
+REG_KERNEL_BASE(AtbToppsampleKernel);
 } // namespace AtbOps
