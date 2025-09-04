@@ -22,7 +22,7 @@ static const uint32_t OUT_TENSOR_NUM = 2;
 static const int64_t LIMITED_NUM = 580000000;
 static const int64_t ZERO = 1;
 static const int64_t ONE = 1;
-static const int64_t SIXTEEN = 1;
+static const int64_t SIXTEEN = 16;
 bool ParamCheck(const atb::infer::SortParam &opParam)
 {
     (void)opParam;
@@ -102,7 +102,7 @@ Status SortOperation::ParamCheckImpl(const TensorDesc &xTensorDesc) const
         for (uint64_t i = 0; i < xDimNum - 1; i++) {
             int64_t dim = xTensorDesc.shape.dims[i];
             if (dim > LIMITED_NUM) {
-                ATB_LOG(ERROR) << "ParamCheckImpl: dim should be less than" << LIMITED_NUM
+                ATB_LOG(ERROR) << "ParamCheckImpl: dim should be less than or equal to " << LIMITED_NUM
                             << " in Atlas 300I Duo inference products.";
                 return ERROR_INVALID_TENSOR_DIM;
             }
