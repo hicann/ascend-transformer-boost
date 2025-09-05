@@ -3132,14 +3132,51 @@ class SliceOperation(DataGen):
             offsetList[index] = offset if offset >= 0 else offset + in_tensors[0].shape[index]
         for index, size in enumerate(sizeList):
             sizeList[index] = size if size != -1 else in_tensors[0].shape[index] - offsetList[index]
+        # 根据维度数进行切片
         if len(offsetList) == 1:
-            return [in_tensors[0][offsetList[0] : offsetList[0] + sizeList[0]]]
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0]]]
         elif len(offsetList) == 2:
-            return [in_tensors[0][offsetList[0] : offsetList[0] + sizeList[0], offsetList[1] : offsetList[1] + sizeList[1]]]
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1]]]
         elif len(offsetList) == 3:
-            return [in_tensors[0][offsetList[0] : offsetList[0] + sizeList[0], offsetList[1] : offsetList[1] + sizeList[1], offsetList[2] : offsetList[2] + sizeList[2]]]
-        else:
-            return [in_tensors[0][offsetList[0] : offsetList[0] + sizeList[0], offsetList[1] : offsetList[1] + sizeList[1], offsetList[2] : offsetList[2] + sizeList[2], offsetList[3] : offsetList[3] + sizeList[3]]]
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2]]]
+        elif len(offsetList) == 4:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3]]]
+        elif len(offsetList) == 5:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3],
+                                offsetList[4]:offsetList[4] + sizeList[4]]]
+        elif len(offsetList) == 6:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3],
+                                offsetList[4]:offsetList[4] + sizeList[4],
+                                offsetList[5]:offsetList[5] + sizeList[5]]]
+        elif len(offsetList) == 7:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3],
+                                offsetList[4]:offsetList[4] + sizeList[4],
+                                offsetList[5]:offsetList[5] + sizeList[5],
+                                offsetList[6]:offsetList[6] + sizeList[6]]]
+        elif len(offsetList) == 8:
+            return [in_tensors[0][offsetList[0]:offsetList[0] + sizeList[0],
+                                offsetList[1]:offsetList[1] + sizeList[1],
+                                offsetList[2]:offsetList[2] + sizeList[2],
+                                offsetList[3]:offsetList[3] + sizeList[3],
+                                offsetList[4]:offsetList[4] + sizeList[4],
+                                offsetList[5]:offsetList[5] + sizeList[5],
+                                offsetList[6]:offsetList[6] + sizeList[6],
+                                offsetList[7]:offsetList[7] + sizeList[7]]]
 
     @staticmethod
     def get_op_type(op_params):
