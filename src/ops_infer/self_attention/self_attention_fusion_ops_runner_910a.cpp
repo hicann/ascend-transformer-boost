@@ -20,6 +20,8 @@ namespace atb {
 void TransKVViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
     if (oldDims.size() < 2) { // 2: 最小维度
+        ATB_LOG(ERROR) << "intensor key/value's dimNum shoule be at least 2";
+        newDims.clear();
         return;
     }
     if (oldDims.size() != 4) {                       // 4: 维度长度
@@ -32,6 +34,8 @@ void TransKVViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int6
 void TransQViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
     if (oldDims.size() < 2) { // 2: 最小维度
+        ATB_LOG(ERROR) << "intensor query's dimNum shoule be at least 2";
+        newDims.clear();
         return;
     }
     if (oldDims.size() != 4) {                       // 4: 维度长度
@@ -45,6 +49,7 @@ void TransAttnMaskViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVecto
 {
     if (oldDims.size() != 4) { // 4: 维度长度
         ATB_LOG(ERROR) << "attnMask intensor support alibi, shape should exceed four dim";
+        newDims.clear();
         return;
     }
     newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2), oldDims.at(3)}; // 2, 3: remains the same
@@ -111,7 +116,8 @@ Status SelfAttentionFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &o
         needMask_ ? opsTensorPack.inTensors.at(5).desc.format : static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED);
     kernelGraph_.internalTensors.resize(
         (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_FRACTAL_NZ) || (!needMask_)) ?
-            7 : (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 8 : 7)); // 7, 8: 设置总节点数
+            7 :
+            (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 8 : 7)); // 7, 8: 设置总节点数
 
     size_t internalTensorId = 0;
     Mki::Tensor &transdataKResultTensor = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -129,7 +135,8 @@ Status SelfAttentionFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &o
     Mki::Tensor &contextTranspose = kernelGraph_.internalTensors.at(internalTensorId++);
 
     kernelGraph_.nodes.resize((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND) && needMask_) ?
-                                  11 : 10); // 10, 11: 设置总节点数
+                                  11 :
+                                  10); // 10, 11: 设置总节点数
     size_t nodeId = 0;
 
     auto &transdataKNode = kernelGraph_.nodes.at(nodeId++);
@@ -202,6 +209,7 @@ Status SelfAttentionFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &o
             newDims = {1, oldDims.at(0), oldDims.at(1) * oldDims.at(2), oldDims.at(3)};
         } else {
             ATB_LOG(ERROR) << "oldDim should be at least 4";
+            newDims.clear();
         }
     };
     mulsQNode.outTensors = {&divOut};
@@ -246,6 +254,7 @@ Status SelfAttentionFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &o
             newDims = {oldDims.at(1), batch_, oldDims.at(2) / batch_, oldDims.at(3)};
         } else {
             ATB_LOG(ERROR) << "oldDim should be at least 4";
+            newDims.clear();
         }
     };
     permuteContextNode.outTensors = {&contextTranspose};
