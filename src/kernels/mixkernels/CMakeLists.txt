@@ -80,7 +80,7 @@ add_dependencies(atb_mixops_static MIX_BINARY_SRC_TARGET)
 target_link_libraries(atb_mixops_static PRIVATE ${ops_objects} mki tbe_adapter tiling_api register)
 
 add_executable(atbops_sym_check sym_check.cpp)
-target_link_libraries(atbops_sym_check PRIVATE atb_mixops mki)
+target_link_libraries(atbops_sym_check PRIVATE atb_mixops tbe_adapter mki)
 
 install(TARGETS atb_mixops DESTINATION lib)
 install(TARGETS atb_mixops_static DESTINATION lib)
