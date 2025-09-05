@@ -117,7 +117,7 @@ void PlatFormInfos::SetCoreNumByCoreType(const std::string &core_type)
         } else {
             coreTypeStr = "ai_core_cnt";
         }
-        std::lock_guardstd::mutex lockGuard(g_asdopsFePlatMutex);
+        std::lock_guard<std::mutex> lockGuard(g_asdopsFePlatMutex);
         (void)GetPlatformRes("SoCInfo", coreTypeStr, coreNumStr);
         MKI_LOG(DEBUG) << "Set PlatFormInfos::core_num_ to " << coreTypeStr << ": " << coreNumStr;
         if (coreNumStr.empty()) {
@@ -143,7 +143,7 @@ uint32_t PlatFormInfos::GetCoreNumByType(const std::string &core_type)
     } else {
         std::string coreNumStr;
         std::string coreTypeStr = core_type == "VectorCore" ? "vector_core_cnt" : "ai_core_cnt";
-        std::lock_guardstd::mutex lockGuard(g_asdopsFePlatMutex);
+        std::lock_guard<std::mutex> lockGuard(g_asdopsFePlatMutex);
         (void)GetPlatformRes("SoCInfo", coreTypeStr, coreNumStr);
         MKI_LOG(DEBUG) << "Get PlatFormInfos::core_num_ to " << coreTypeStr << ": " << coreNumStr;
         if (coreNumStr.empty()) {
