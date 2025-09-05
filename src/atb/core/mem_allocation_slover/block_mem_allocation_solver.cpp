@@ -60,7 +60,7 @@ void BlockMemAllocationSolver::Free(void *blockAddress)
             return;
         }
     }
-    ATB_LOG(ERROR) << "can't find block: " << blockAddress << ", free fail";
+    ATB_LOG(WARN) << "can't find block: " << blockAddress << ", free fail";
 }
 
 void BlockMemAllocationSolver::RemoveUselessBlock()

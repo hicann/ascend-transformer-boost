@@ -14,15 +14,14 @@
 #include "atb/utils/log.h"
 
 namespace atb {
-static const uint64_t INTERNAL_TENSOR_COUNT = 4;
+static const uint64_t INTERNAL_TENSOR_COUNT = 5;
 static const uint64_t NODE_COUNT = 5;
 static const uint64_t EXPONENTIAL_INTERNAL_TENSOR_COUNT = 11;
 static const uint64_t EXPONENTIAL_NODE_COUNT = 11;
 static const uint64_t LOGPROBS_EXPONENTIAL_INTERNAL_TENSOR_COUNT = 16;
 static const uint64_t LOGPROBS_EXPONENTIAL_OUT_TENSOR_COUNT = 3;
 static const uint64_t LOGPROBS_EXPONENTIAL_NODE_COUNT = 17;
-static const uint64_t MULTINOMIAL_INTERNAL_TENSOR_COUNT = 7;
-static const uint64_t LOGPROBS_MULTINOMIAL_INTERNAL_TENSOR_COUNT = 8;
+static const uint64_t MULTINOMIAL_INTERNAL_TENSOR_COUNT = 8;
 static const uint64_t MULTINOMIAL_NODE_COUNT = 8;
 static const uint64_t LOGPROBS_MULTINOMIAL_OUT_TENSOR_COUNT = 3;
 static const uint64_t LOGPROBS_MULTINOMIAL_NODE_COUNT = 9;
@@ -186,6 +185,7 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKMultinomialSampling()
     auto &topKProbsFilledSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &cumsumedProbsTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &indicesTopPSampledTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
+    auto &selectRangeTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     kernelGraph_.nodes.resize(MULTINOMIAL_NODE_COUNT); // exponential sampling has 8 nodes
     int64_t nodeNum = 0;
@@ -234,12 +234,10 @@ Status TopkToppSamplingOpsRunner::SetupBatchTopKMultinomialSampling()
     };
 
     AtbOps::OpParam::Toppsample toppParam;
-    toppParam.randSeed.resize(param_.randSeeds.size());
-    std::transform(param_.randSeeds.begin(), param_.randSeeds.end(), toppParam.randSeed.begin(),
-                   [](uint32_t value) { return static_cast<uint64_t>(value); });
+    toppParam.randSeed = param_.randSeeds;
     mixTopPNode.opDesc = {0, "ToppsampleOperation", toppParam};
     mixTopPNode.inTensors = {&cumsumedProbsTensor, &topPTensor};
-    mixTopPNode.outTensors = {&indicesTopPSampledTensor};
+    mixTopPNode.outTensors = {&indicesTopPSampledTensor, &selectRangeTensor};
 
     indexTopPGatherNode.opDesc = {0, "GatherOperation", AsdOps::OpParam::Gather()};
     indexTopPGatherNode.inTensors = {&indicesSortedTensor, &indicesTopPSampledTensor};
@@ -438,7 +436,7 @@ Status TopkToppSamplingOpsRunner::SetupLogProbsBatchTopKMultinomialSampling()
     auto &probsSampledTensor = kernelGraph_.outTensors.at(outTensorNum++);      // [batch, 1]
     auto &logProbsTensor = kernelGraph_.outTensors.at(outTensorNum++); // [batch, logprobsSize]
 
-    kernelGraph_.internalTensors.resize(LOGPROBS_MULTINOMIAL_INTERNAL_TENSOR_COUNT);
+    kernelGraph_.internalTensors.resize(MULTINOMIAL_INTERNAL_TENSOR_COUNT);
     int64_t internalTensorNum = 0;
     auto &probsSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &indicesSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
@@ -541,6 +539,7 @@ Status TopkToppSamplingOpsRunner::SetupSingleTopKSampling()
     auto &indicesSortedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &probsSumedTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
     auto &indicesSortedSampledTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
+    auto &selectRangeTensor = kernelGraph_.internalTensors.at(internalTensorNum++);
 
     kernelGraph_.nodes.resize(NODE_COUNT); // topp has 5 nodes
     int64_t nodeNum = 0;
@@ -573,12 +572,10 @@ Status TopkToppSamplingOpsRunner::SetupSingleTopKSampling()
 
     AtbOps::OpParam::Toppsample toppParam;
     std::vector<uint32_t> randSeeds = {param_.randSeed};
-    toppParam.randSeed.resize(randSeeds.size());
-    std::transform(randSeeds.begin(), randSeeds.end(), toppParam.randSeed.begin(),
-                   [](uint32_t value) { return static_cast<uint64_t>(value); });
+    toppParam.randSeed = randSeeds;
     toppSamplingNode.opDesc = {0, "ToppsampleOperation", toppParam};
     toppSamplingNode.inTensors = {&probsSumedTensor, &pTensor};
-    toppSamplingNode.outTensors = {&indicesSortedSampledTensor};
+    toppSamplingNode.outTensors = {&indicesSortedSampledTensor, &selectRangeTensor};
 
     gatherIndicesNode.opDesc = {0, "GatherOperation", AsdOps::OpParam::Gather()};
     gatherIndicesNode.inTensors = {&indicesSortedTensor, &indicesSortedSampledTensor};

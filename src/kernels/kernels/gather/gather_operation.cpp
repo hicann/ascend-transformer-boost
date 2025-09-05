@@ -91,8 +91,6 @@ protected:
                   "param.axis should  < inTensorDescs(0) dimNum", return Status::FailStatus(ERROR_INVALID_VALUE));
         MKI_CHECK(static_cast<uint64_t>(param.batchDims) <= indicesDims.size(),
                   "param.batchDims should  <= inTensorDescs(1) dimNum", return Status::FailStatus(ERROR_INVALID_VALUE));
-        MKI_CHECK(tensorDims.size() + indicesDims.size() <= 9, "x dim + indices dim should <= 9",
-                  return Status::FailStatus(ERROR_INVALID_VALUE));
 
         for (size_t i = 0; i < axis && i < tensorDims.size(); i++) {
             outTensorDims.push_back(tensorDims[i]);

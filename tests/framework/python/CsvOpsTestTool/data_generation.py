@@ -1256,10 +1256,61 @@ class GatherOperation(DataGen):
                             golden_result[idx] = in_tensors[0].flatten()[inputIdx + indice * dim2 + k]
                             idx += 1
                 golden_result = golden_result.reshape(outputSize)
-            elif batchDims > 0:
-                # 使用 torch.gather 进行批量维度的处理
-                golden_result = torch.gather(in_tensors[0], axis, in_tensors[1].to(torch.int64))
+            else:
+                params = in_tensors[0]
+                indices = in_tensors[1]
+                
+                # 计算实际要索引的维度
+                slice_axis = axis - batchDims
+                
+                # 获取 batch 维度的大小
+                batch_shape = params.shape[:batchDims]
+                
+                # 使用 torch 的高级索引展开所有 batch 维度
+                # 将前 batchDims 维度展平为一个维度，方便迭代
+                flat_batch_size = 1
+                for dim in batch_shape:
+                    flat_batch_size *= dim
 
+                # 展平 batch 维度，得到 [N, ...] 的形式，N 是总 batch 数
+                # 注意：view(-1, ...) 不能直接用，因为每个 batch 的处理是独立的，在这使用 reshape + 迭代
+                params_flat = params.reshape((flat_batch_size,) + params.shape[batchDims:])
+                indices_flat = indices.reshape((flat_batch_size,) + indices.shape[batchDims:])
+                
+                results = []
+                for i in range(flat_batch_size):
+                    param_slice = params_flat[i]  # 形状: (D0, D1, ...)
+                    index_slice = indices_flat[i]  # 形状: (I1, I2, ..., Ik)
+                    
+                    # 展平索引为 1D
+                    flat_indices = index_slice.reshape(-1)
+                    
+                    # 在 slice_axis 上选择
+                    selected = torch.index_select(param_slice, dim=slice_axis, index=flat_indices)
+                    
+                    # 计算目标形状
+                    selection_shape = index_slice.shape  # 原始 indices 的形状
+                    pre_axis_shape = selected.shape[:slice_axis]  # slice_axis 前的形状
+                    post_axis_shape = selected.shape[slice_axis + 1:]  # slice_axis 后的形状（注意 index_select 会替换该维度）
+                    
+                    # 新形状 = pre_axis + selection_shape + post_axis
+                    new_shape = list(pre_axis_shape) + list(selection_shape) + list(post_axis_shape)
+                    
+                    try:
+                        selected = selected.view(new_shape)
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to view selected tensor. "
+                                        f"Current shape: {selected.shape}, "
+                                        f"Target shape: {new_shape}, "
+                                        f"Total elements: {selected.numel()}") from e
+                    
+                    results.append(selected)
+                
+                # 将结果堆叠回原始 batch 结构
+                golden_result = torch.stack(results, dim=0)
+                # 重新 reshape 到原始 batch shape + 输出空间形状
+                output_shape = batch_shape + golden_result.shape[1:]
+                golden_result = golden_result.reshape(output_shape)
         # 返回结果
         return [golden_result.cpu()]
 
@@ -1319,7 +1370,7 @@ class AllReduceOperation(DataGen):
         random_seed = int(os.environ["random_seed"])
         json_data = json.loads(op_params)
         torch.manual_seed(random_seed)
-        if "quantType" in json_data:
+        if "quantType" in json_data and json_data["quantType"] != 0:
             if i == 0:
                 return AllReduceOperation.gen_input(shapes[i], datatype, format, data_gen_ranges, op_params)
             if i == 1:
@@ -1348,7 +1399,7 @@ class AllReduceOperation(DataGen):
 
     def sum_cal(inTensors, op_params):
         json_data = json.loads(op_params)
-        if "quantType" in json_data or inTensors[0].dtype == torch.bfloat16:
+        if ("quantType" in json_data and json_data["quantType"] != 0) or inTensors[0].dtype == torch.bfloat16:
             result = inTensors[0].clone().to(torch.float)
         else:
             result = inTensors[0].clone()
@@ -1418,7 +1469,7 @@ class AllReduceOperation(DataGen):
     @staticmethod
     def get_op_type(op_params):
         json_data = json.loads(op_params)
-        if "quantType" in json_data:
+        if "quantType" in json_data and json_data["quantType"] != 0:
             return OpTypes.COMPUTE_QUANT
         return OpTypes.COMPUTE_FLOAT
 

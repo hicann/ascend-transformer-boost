@@ -83,9 +83,9 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src/include
     ${PROJECT_SOURCE_DIR}/src/kernels/include
-    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal
-    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal/lcoc
-    ${PROJECT_SOURCE_DIR}/src/kernels/include/lcal/tiling
+    ${PROJECT_SOURCE_DIR}/comm/lcal/include
+    ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcoc
+    ${PROJECT_SOURCE_DIR}/comm/lcal/include/lcoc/tiling
     ${PROJECT_SOURCE_DIR}/3rdparty/mki/include
     ${PROJECT_SOURCE_DIR}/3rdparty/nlohmannJson/include
     $ENV{ASCEND_HOME_PATH}/include/aclnn
@@ -117,15 +117,11 @@ if (BUILD_CUSTOMIZE_OPS)
 endif()
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/output/atb/cxx_abi_${cxx_abi}")
-
+add_subdirectory(comm/lcal)
 message(STATUS "CMAKE_INSTALL_PREFIX:${CMAKE_INSTALL_PREFIX}")
 
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/set_env.sh DESTINATION ./..)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ops_configs DESTINATION ./configs)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/mki/lib/libmki.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/liblcal.so DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/liblcal_static.a DESTINATION lib)
 install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libasdops_aicpu_kernels.so DESTINATION lib OPTIONAL)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libtbe_adapter.so DESTINATION lib OPTIONAL)
-install(FILES ${PROJECT_SOURCE_DIR}/3rdparty/asdops/lib/libcann_ops_adapter.so DESTINATION lib OPTIONAL)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/atb DESTINATION include)

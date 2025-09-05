@@ -49,10 +49,10 @@ TEST(ropeNd, RopeKernelCanSupport)
     std::unique_ptr<Kernel> kernel{nullptr};
     auto &kernelCreators = AtbOps::KernelRegister::GetKernelCreators();
     for (const auto &iter : kernelCreators) {
-        if (iter.kernelName == "RopeKernel") {
+        if (iter.kernelName == "AtbRopeKernel") {
             const std::string &opName = iter.opName;
             Operation *op = AutoGen::GetOpByName(opName);
-            kernel.reset(op->GetKernelByName("RopeKernel"));
+            kernel.reset(op->GetKernelByName("AtbRopeKernel"));
             break;
         }
     }

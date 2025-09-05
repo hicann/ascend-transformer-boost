@@ -453,10 +453,8 @@ function fn_build_3rdparty_for_doc()
 
 function export_atb_env()
 {
-    cd $OUTPUT_DIR/atb
-    sed -i '/ASCEND_MODULE_LOG_LEVEL/d' set_env.sh
     export LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver:${LD_LIBRARY_PATH}
-    source set_env.sh
+    source $OUTPUT_DIR/atb/set_env.sh
 }
 
 function export_atb_hitest_env()
