@@ -28,9 +28,9 @@ template <typename T> bool ParamCompareFuncImpl(const Mki::Any &any1, const Mki:
                       << " can not be compared";
         return false;
     }
-        const auto &content1 = Mki::AnyCast<T>(any1);
-        const auto &content2 = Mki::AnyCast<T>(any2);
-        return content1 == content2;
+    const auto &content1 = Mki::AnyCast<T>(any1);
+    const auto &content2 = Mki::AnyCast<T>(any2);
+    return content1 == content2;
 }
 
 static const std::map<std::size_t, ParamCompareFunc> ASDOPS_PARAM_COMPARE_MAP = {
