@@ -2260,13 +2260,14 @@ class TopkToppSamplingOperation(DataGen):
             rand_seed = json_data["randSeed"]
             libc.srand(rand_seed)
             rand_list = [libc.rand() / 0x7fffffff for i in range(512)]
-            probs = in_tensors[0].cpu().to(torch.float32).numpy()
-            topp = in_tensors[1].cpu().to(torch.float32).numpy()
-            probs_sorted = np.sort(probs, axis=-1)[..., ::-1][..., :topk]
-            indices_sorted = np.argsort(-probs, kind='mergesort', axis=-1)[..., :topk]
+            probs = in_tensors[0].npu()
+            topp = in_tensors[1].npu()
+            probs_sorted, indices_sorted = torch.topk(probs, k=topk, dim=-1, sorted=True)
+            probs_cumsumed = torch.cumsum(probs_sorted, dim=-1)
             # 转npu计算以提高精度
-            probs_sorted_sumed = torch.cumsum(torch.from_numpy(probs_sorted.copy()).npu().to(in_tensors[0].dtype), dim=-1).cpu().to(torch.float32).numpy()
-            bool_judge = (probs_sorted_sumed < topp)
+            probs_sorted_sumed = probs_cumsumed.cpu().to(torch.float32).numpy()
+            topp_cpu = topp.cpu().to(torch.float32).numpy()
+            bool_judge = (probs_sorted_sumed < topp_cpu)
             sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
             sum_val[sum_val < 0] = 0
             topp_v = np.take_along_axis(probs_sorted_sumed, sum_val, axis=-1)
@@ -2274,27 +2275,21 @@ class TopkToppSamplingOperation(DataGen):
             bool_judge_one = probs_sorted_sumed <= topp_v
             res = np.sum(bool_judge_one, axis=-1, keepdims=True)
             res[res < 0] = 0
-            indices_sampled = np.take_along_axis(indices_sorted, res, axis=-1)
-            probs_sampled = np.take_along_axis(probs_sorted, res, axis=-1)
-            return [torch.from_numpy(indices_sampled.astype(np.int32)),
-                    torch.from_numpy(probs_sampled).to(in_tensors[0].dtype)]
+            res_torch = torch.from_numpy(res).npu()
+            indices_sampled = torch.gather(indices_sorted, dim=-1, index=res_torch.long())
+            probs_sampled = torch.gather(probs_sorted, dim=-1, index=res_torch.long())
+            return [indices_sampled.cpu(), probs_sampled.cpu()]
         else:
-            probs = in_tensors[0].cpu().to(torch.float32)
-            topk = in_tensors[1].cpu().to(torch.int64)
-            topp = in_tensors[2].cpu().to(torch.float32)
+            probs = in_tensors[0].npu()
+            topk = in_tensors[1].npu()
+            topp = in_tensors[2].npu()
             probs_sorted, idx_sorted = torch.sort(probs, descending=True, stable=True)
             gather_topk = torch.gather(probs_sorted, dim=1, index=topk)
             topk_mask = torch.lt(probs_sorted, gather_topk).to(torch.bool)
             probs_masked_topk = probs_sorted.masked_fill(topk_mask, 0)
-            probs_masked_topk = probs_masked_topk.numpy()
-            if in_tensors[0].dtype == torch.float16:
-                probs_cumsumed = np.cumsum(probs_masked_topk, axis=-1, dtype=np.float16).astype(np.float32)
-            elif in_tensors[0].dtype == torch.bfloat16:
-                probs_cumsumed = torch.cumsum(torch.from_numpy(probs_masked_topk.copy()).bfloat16(), dim=-1).to(torch.float32).numpy()
-            probs_cumsumed = torch.from_numpy(probs_cumsumed)
-            probs_masked_topk = torch.from_numpy(probs_masked_topk)
+            probs_cumsumed = torch.cumsum(probs_masked_topk, dim=-1)
             if topktopp_sampling_type == 2 or topktopp_sampling_type == 4:
-                exp = in_tensors[3].cpu()
+                exp = in_tensors[3].npu()
                 topp_mask = torch.gt(probs_cumsumed, topp).to(torch.bool)
                 probs_masked_topp = probs_masked_topk.masked_fill(topp_mask, 0)
                 divided_probs = torch.div(probs_masked_topp.to(exp.dtype), exp)
@@ -2305,21 +2300,21 @@ class TopkToppSamplingOperation(DataGen):
                 outtensor_idx = torch.gather(idx_sorted, dim=1, index=argmax_idx)
                 if topktopp_sampling_type == 4:
                     logProbsSize = json_data["logProbsSize"]
-                    mask_tensor = torch.logical_or(topp_mask, topk_mask)
+                    mask_tensor = torch.logical_or(topp_mask, topk_mask).cpu()
                     mask_tensor[:, 0] = 0
                     sum_val = np.sum(~mask_tensor.numpy(), axis=-1, keepdims=True) - 1
                     sum_val[sum_val < 0] = 0
-                    topp_v = np.take_along_axis(probs_cumsumed.numpy().astype(np.float32), sum_val, axis=-1)
-                    logprobs_output = probs_sorted[:, :logProbsSize]
+                    topp_v = np.take_along_axis(probs_cumsumed.to(torch.float32).cpu().numpy(), sum_val, axis=-1)
+                    logprobs_output = probs_sorted[:, :logProbsSize].cpu()
                     logprobs_output = logprobs_output.div(torch.from_numpy(topp_v)).log()
                     logprobs_output = logprobs_output.masked_fill(mask=mask_tensor[:, :logProbsSize], value=-9999.0)
-                    return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16),
-                            logprobs_output.to(torch.float32)]
+                    return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu(),
+                            logprobs_output.to(torch.float32).cpu()]
 
-                return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16)]
+                return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu()]
             if topktopp_sampling_type == 1 or topktopp_sampling_type == 3:
-                topp = topp.numpy().astype(np.float32)
-                probs_cumsumed = probs_cumsumed.numpy().astype(np.float32)
+                topp = topp.to(torch.float32).cpu().numpy()
+                probs_cumsumed = probs_cumsumed.to(torch.float32).cpu().numpy()
                 bool_judge = (probs_cumsumed < topp)
                 sum_val = np.sum(bool_judge, axis=-1, keepdims=True) - 1
                 sum_val[sum_val < 0] = 0
@@ -2339,21 +2334,21 @@ class TopkToppSamplingOperation(DataGen):
                 bool_judge_one = (probs_cumsumed < topp_v_new)
                 res = np.sum(bool_judge_one, axis=-1, keepdims=True)
                 res[res < 0] = 0
-                res_idx = torch.from_numpy(res).to(torch.int64)
+                res_idx = torch.from_numpy(res).to(torch.int64).npu()
                 outtensor_probs = torch.gather(probs_sorted, dim=1, index=res_idx)
                 outtensor_idx = torch.gather(idx_sorted, dim=1, index=res_idx)
                 if topktopp_sampling_type == 3:
                     bool_judge[:, 0] = 1
                     logProbsSize = json_data["logProbsSize"]
-                    logprobs_output = probs_sorted[:, :logProbsSize]
+                    logprobs_output = probs_sorted[:, :logProbsSize].to(torch.float32).cpu()
                     logprobs_output = logprobs_output.div(torch.from_numpy(topp_v)).log()
 
                     logprobs_output = logprobs_output.masked_fill(mask=~torch.from_numpy(bool_judge[:, :logProbsSize]),
                                                                   value=-9999.0)
-                    return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16),
-                            logprobs_output.to(torch.float32)]
+                    return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu(),
+                            logprobs_output.to(torch.float32).cpu()]
                 else:
-                    return [outtensor_idx.to(torch.int32), outtensor_probs.to(torch.float16)]
+                    return [outtensor_idx.to(torch.int32).cpu(), outtensor_probs.to(torch.float16).cpu()]
 
     @staticmethod
     def get_op_type(op_params):

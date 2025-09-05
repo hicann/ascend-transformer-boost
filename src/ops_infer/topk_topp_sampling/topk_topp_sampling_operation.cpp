@@ -84,6 +84,7 @@ TopkToppSamplingOperation::TopkToppSamplingOperation(const infer::TopkToppSampli
         ATB_LOG(ERROR) << "GetOperationIrForTopkToppSampling failed.";
     }
 }
+
 TopkToppSamplingOperation::~TopkToppSamplingOperation() {}
 
 uint32_t TopkToppSamplingOperation::GetInputNum() const
