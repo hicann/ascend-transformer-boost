@@ -20,6 +20,7 @@ namespace atb {
 void TransKVViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
     if (oldDims.size() < 2) { // 2: 最小维度
+        ATB_LOG(ERROR) << "intensor key/value's dimNum shoule be at least 2";
         return;
     }
     if (oldDims.size() != 4) {                       // 4: 维度长度
@@ -32,6 +33,7 @@ void TransKVViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int6
 void TransQViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
     if (oldDims.size() < 2) { // 2: 最小维度
+        ATB_LOG(ERROR) << "intensor query's dimNum shoule be at least 2";
         return;
     }
     if (oldDims.size() != 4) {                       // 4: 维度长度
@@ -111,7 +113,8 @@ Status SelfAttentionFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &o
         needMask_ ? opsTensorPack.inTensors.at(5).desc.format : static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED);
     kernelGraph_.internalTensors.resize(
         (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_FRACTAL_NZ) || (!needMask_)) ?
-            7 : (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 8 : 7)); // 7, 8: 设置总节点数
+            7 :
+            (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 8 : 7)); // 7, 8: 设置总节点数
 
     size_t internalTensorId = 0;
     Mki::Tensor &transdataKResultTensor = kernelGraph_.internalTensors.at(internalTensorId++);
@@ -129,7 +132,8 @@ Status SelfAttentionFusionOpsRunner910A::SetupKernelGraph(const OpsTensorPack &o
     Mki::Tensor &contextTranspose = kernelGraph_.internalTensors.at(internalTensorId++);
 
     kernelGraph_.nodes.resize((attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_ND) && needMask_) ?
-                                  11 : 10); // 10, 11: 设置总节点数
+                                  11 :
+                                  10); // 10, 11: 设置总节点数
     size_t nodeId = 0;
 
     auto &transdataKNode = kernelGraph_.nodes.at(nodeId++);

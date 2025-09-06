@@ -110,9 +110,8 @@ Status SelfAttentionFusionBypassOpsRunnerBNSD::ModifyKernelGraph(const OpsTensor
         return ERROR_INVALID_PARAM;
     }
 
-    ATB_LOG(INFO) << "kernelGraph_.nodes.size" << kernelGraph_.nodes.size();
     auto &flashAttentionNode = kernelGraph_.nodes.at(1); // 1: flashAttention节点位置
-    ATB_LOG(INFO) << "kernelGraph_.nodes.size";
+    ATB_LOG(INFO) << "kernelGraph_.nodes.size: " << kernelGraph_.nodes.size();
     AtbOps::OpParam::UnpadFlashAttention flashAttentionQParam;
     SetFAParam(flashAttentionQParam);
     ATB_LOG(INFO) << "SetFAParam";

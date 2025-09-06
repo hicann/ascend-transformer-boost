@@ -20,7 +20,7 @@ namespace atb {
 void TransQKVEncoderViewFunc910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
     if (oldDims.size() != 3) { // 3: q, k, v 必须三维
-        ATB_LOG(ERROR) << "q, k, v should all be three dims";
+        ATB_LOG(ERROR) << "The dimNum of q, k, v should all be 3";
         return;
     }
     newDims = {1, oldDims.at(0), oldDims.at(1) * oldDims.at(2)};
@@ -86,6 +86,11 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
     qTransdataNode.inTensors = {&query};
     qTransdataNode.outTensors = {&queryNz};
     qTransdataNode.inferShapePreFunc = [&](Mki::LaunchParam &launchParam) {
+        if (launchParam.GetInTensor(0).desc.dims.size() < 3) {
+            ATB_LOG(ERROR) << "expect intensor dimNum to be at least 3, but got: "
+                           << launchParam.GetInTensor(0).desc.dims.size();
+            return;
+        }
         ntokens_ = launchParam.GetInTensor(0).desc.dims.at(1);
         hiddenSize_ = launchParam.GetInTensor(0).desc.dims.at(2); // 2: 第三维
     };
@@ -149,14 +154,14 @@ Status SelfAttentionEncoderFusionOpsRunner910A::SetupKernelGraph(const OpsTensor
 bool SelfAttentionEncoderFusionOpsRunner910A::NeedModifySlopes(const OpsTensorPack &opsTensorPack)
 {
     bool isMaskCompress = param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS ||
-                           param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT;
+                          param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI_COMPRESS_SQRT;
     if (!isMaskCompress) {
         return false;
     } else {
         return opsTensorPack.inTensors.at(3).desc.dims.size() == 4 && // 3: maskId, 4: 非 [1,256//16,256,16] 的情况
-               (opsTensorPack.inTensors.at(3).desc.dims[0] != 1 || // 3: maskId
-                opsTensorPack.inTensors.at(3).desc.dims[1] != 16 || // 3: maskId, 16: mask shape
-                opsTensorPack.inTensors.at(3).desc.dims[2] != 256); // 3: maskId, 256: mask shape
+               (opsTensorPack.inTensors.at(3).desc.dims[0] != 1 ||    // 3: maskId
+                opsTensorPack.inTensors.at(3).desc.dims[1] != 16 ||   // 3: maskId, 16: mask shape
+                opsTensorPack.inTensors.at(3).desc.dims[2] != 256);   // 3: maskId, 256: mask shape
     }
 }
 
