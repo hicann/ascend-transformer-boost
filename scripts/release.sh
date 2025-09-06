@@ -19,7 +19,7 @@ function fn_build_mki()
         branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
         [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
         echo  "current branch for atb and mki: $branch"
-        git clone --branch $branch --depth 1 https://gitee.com/ascend/Mind-KernelInfra.git
+        git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/Mind-KernelInfra.git
     else
         [[ -d "$THIRD_PARTY_DIR"/Mind-KernelInfra/build ]] && rm -rf $THIRD_PARTY_DIR/Mind-KernelInfra/build
         [[ -d "$THIRD_PARTY_DIR"/Mind-KernelInfra/output ]] && rm -rf $THIRD_PARTY_DIR/Mind-KernelInfra/output
@@ -42,16 +42,18 @@ function fn_build_mki()
 
 function fn_build_asdops()
 {
-    [[ -d "$THIRD_PARTY_DIR" ]] && cd $THIRD_PARTY_DIR
-    echo "Will not git clone the code repository"
-    if [ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib ]; then
-        cd $THIRD_PARTY_DIR/ascend-op-common-lib
+    if [ ! -d "$THIRD_PARTY_DIR"/ascend-op-common-lib ]; then
+        [[ ! -d "$THIRD_PARTY_DIR" ]] && mkdir $THIRD_PARTY_DIR
+        cd $THIRD_PARTY_DIR
+        branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id") 
+        [[ "$branch" == *br_personal* || "$branch" == "commit_id" ]] && branch=master
+        echo  "current branch for atb and asdops: $branch"
+        git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
+    else
         [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/build ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/build
         [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/output ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/output
-    else
-        echo "Complie asdops failed, Please manually git clone the code repository"
-        exit 1
     fi
+    cd $THIRD_PARTY_DIR/ascend-op-common-lib
     mkdir -p $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty
     [[ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib/3rdparty/mki ]] && rm -rf $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/mki
 
@@ -115,6 +117,17 @@ function fn_build_pybind11()
     git clone --branch v2.10.3 --depth 1 https://github.com/pybind/pybind11.git 
 }
  
+function fn_build_catlass()
+{
+    if [ -d "$THIRD_PARTY_DIR/catlass" ]; then
+        return $?
+    fi
+    cd $THIRD_PARTY_DIR
+    branch=catlass-v1-stable
+    echo "current branch for catlass: $branch"
+    git clone --branch $branch --depth 1 https://gitee.com/ascend/catlass.git
+}
+
 function fn_init_env()
 {
     res=$(python3 -c "import torch" &> /dev/null || echo "torch_not_exist")
@@ -182,17 +195,15 @@ function fn_build()
 
 function config_atb_version()
 {
-    if [ ! -f "$ATB_DIR"/../CI/config/version.ini ]; then
-        echo "version.ini is not existed!"
+    if [ -z "$VERSION" ]; then
+        echo "PackageName is not set, use default setting!"
         VERSION='1.0.RC1'
-        echo "VERSION: $VERSION"
+        echo "PackageName: $VERSION"
+    fi
+    if [ -z "$VERSION_B" ]; then
+        echo "CANNVersion is not set, use default setting!"
         VERSION_B='1.0.RC1'
-        echo "VERSION_B: $VERSION_B"
-    else
-        VERSION=$(cat $VERSION_INFO_FILE | grep "PackageName" | cut -d "=" -f 2)
-        echo "VERSION: $VERSION"
-        VERSION_B=$(cat $VERSION_INFO_FILE | grep "CANNVersion" | cut -d " " -f 2)
-        echo "VERSION_B: $VERSION_B"
+        echo "CANNVersion: $VERSION_B"
     fi
     if [[ "${VERSION}" =~ ^[1-9]\.[0-9]\. ]]; then
         sed -i "s/ATBVERSION/${VERSION_B}/" $ATB_DIR/src/atb/utils/utils.cpp
@@ -250,6 +261,37 @@ EOF
     echo "Ascend-cann-atb_${VERSION}_linux-${ARCH}.run is successfully generated in $OUTPUT_DIR"
 }
 
+function fn_build_tbe_dependency()
+{
+    CANNDEV_DIR=$THIRD_PARTY_DIR/canndev
+    METADEF_DIR=$THIRD_PARTY_DIR/metadef
+    API_DIR=$THIRD_PARTY_DIR/api
+    CANN_OPS_DIR=$THIRD_PARTY_DIR/cann-ops-adv
+    export ASCEND_KERNEL_PATH=$ASCEND_HOME_PATH/opp/built-in/op_impl/ai_core/tbe/kernel
+    COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=ON"
+
+    # release
+    if [ ! -d "$CANNDEV_DIR" ];then
+        echo "Failed to find canndev"
+        exit 1
+    fi
+    if [ ! -d "$API_DIR" ];then
+        echo "Failed to find api"
+        exit 1
+    fi
+    if [ ! -d "$CANN_OPS_DIR" ];then
+        echo "Failed to find cann-ops-adv"
+        exit 1
+    fi
+    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/canndev $THIRD_PARTY_DIR
+    cp -r $CODE_ROOT/src/kernels/tbe_adapter/stubs/include/api $THIRD_PARTY_DIR
+    if [ ! -d "$METADEF_DIR" ];then
+        echo "Failed to find metadef"
+        exit 1
+    fi
+    return
+}
+
 function fn_main()
 {
     if [[ "$1" == "pack" ]]; then
@@ -263,11 +305,13 @@ function fn_main()
     until [[ -z "$1" ]]
     do {
         case "$1" in
-        "--ini=version")
-            VERSION_INFO_FILE=$ATB_DIR/../CI/config/version.ini
+        "--PackageName="*)
+            VERSION="${1#*=}"
+            echo "PackageName set to: $VERSION"
             ;;
-        "--ini=version_item")
-            VERSION_INFO_FILE=$ATB_DIR/../CI/config/version_item.ini
+        "--CANNVersion="*)
+            VERSION_B="${1#*=}"
+            echo "CANNVersion set to: $VERSION_B"
             ;;
         "--use_cxx11_abi=1")
             USE_CXX11_ABI=ON
@@ -275,6 +319,11 @@ function fn_main()
         "--use_cxx11_abi=0")
             USE_CXX11_ABI=OFF
             ;;
+        "--build_customize_ops")
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
+            ;;
+        "--local_release_compile")
+            LOCAL_RELEASE_COMPILE=ON
         esac
         shift
     }
@@ -291,10 +340,13 @@ function fn_main()
             [[ -d "$THIRD_PARTY_DIR"/mki ]] && rm -rf $THIRD_PARTY_DIR/mki
             fn_build_mki
             fn_build_asdops
+            fn_build_catlass
             fn_build_cann_dependency
-            [[ "$USE_CXX11_ABI" == "ON" ]] && COMPILE_OPTIONS="-DUSE_CXX11_ABI=ON"
-            [[ "$USE_CXX11_ABI" == "OFF" ]] && COMPILE_OPTIONS="-DUSE_CXX11_ABI=OFF"
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Release"
+            fn_build_tbe_dependency
+            [[ "$USE_CXX11_ABI" == "ON" ]] && COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=ON"
+            [[ "$USE_CXX11_ABI" == "OFF" ]] && COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_CXX11_ABI=OFF"
+            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=Release \
+            -DLOCAL_RELEASE_COMPILE=$LOCAL_RELEASE_COMPILE -DPACKAGE_COMPILE=ON"
             config_atb_version
             fn_build_nlohmann_json
             fn_build_pybind11
@@ -308,7 +360,7 @@ fn_init_env
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 cd $SCRIPT_DIR
 cd ..
-CODE_ROOT=$(pwd)
+export CODE_ROOT=$(pwd)
 export CACHE_DIR=$CODE_ROOT/build
 OUTPUT_DIR=$CODE_ROOT/output
 THIRD_PARTY_DIR=$CODE_ROOT/3rdparty
@@ -316,6 +368,7 @@ LOG_PATH="/var/log/cann_atb_log/"
 LOG_NAME="cann_atb_install.log"
 ATB_DIR=$CODE_ROOT
 RELEASE_DIR=$CODE_ROOT/ci/release
+LOCAL_RELEASE_COMPILE=OFF
 
 cann_default_install_path="/usr/local/Ascend/ascend-toolkit"
 
