@@ -130,7 +130,7 @@ ATB属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
 
 3. 代码下载与贡献流程
 
-   ![代码贡献流程](https://gitee.com/ascend/cann-ops/blob/master/docs/images/contrib-flow.jpg)
+   ![代码贡献流程]()
 
    1. 进行代码开发前，请先将需要ATB仓库fork到个人仓，然后将个人仓下载到本地。并在本地分支进行代码修改。
    2. 参考[开发指南]()文档，进行ATB算子开发、本地构建与验证。
