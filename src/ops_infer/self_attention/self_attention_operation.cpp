@@ -57,7 +57,7 @@ template <> Status CreateOperation(const infer::SelfAttentionParam &opParam, Ope
                   << ", clampType:" << opParam.clampType << ", kvcacheCfg:" << opParam.kvcacheCfg
                   << ", scaleType:" << opParam.scaleType << ", inputLayout:" << opParam.inputLayout
                   << ", mlaVHeadSize:" << opParam.mlaVHeadSize << ", windowSize:" << opParam.windowSize
-                  << ", cacheType: " << opParam.cacheType;
+                  << ", cacheType: " << opParam.cacheType << ", kernelType:" << opParam.kernelType;
     if (opParam.headNum <= 0) {
         ATB_LOG(ERROR) << "headNum should be greater than zero!";
         return ERROR_INVALID_PARAM;
