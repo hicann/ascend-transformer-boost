@@ -25,6 +25,7 @@ void SelfAttentionFusionViewBypassFunc(const Mki::SVector<int64_t> &oldDims, Mki
         newDims = {oldDims.at(0) * oldDims.at(1), oldDims.at(2) * oldDims.at(3)}; // 2, 3: 设置新张量形状
     } else {
         ATB_LOG(ERROR) << "SelfAttention intensor qLayer | kLayer | vLayer dimNum need 2 or 4";
+        newDims.clear();
     }
 }
 

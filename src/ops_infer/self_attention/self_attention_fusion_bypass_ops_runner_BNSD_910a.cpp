@@ -20,6 +20,8 @@ namespace atb {
 void TransQViewFuncBypassBNSD910a(const Mki::SVector<int64_t> &oldDims, Mki::SVector<int64_t> &newDims)
 {
     if (oldDims.size() < 2) { // 2: 最小维度
+        ATB_LOG(ERROR) << "qunery intensor expects dimNum to be at least 2";
+        newDims.clear();
         return;
     }
     if (oldDims.size() != 4) {                       // 4: 维度长度
@@ -90,7 +92,8 @@ Status SelfAttentionFusionBypassOpsRunnerBNSD910A::SetupKernelGraph(const OpsTen
                                      static_cast<Mki::TensorFormat>(ACL_FORMAT_UNDEFINED);
     kernelGraph_.internalTensors.resize(
         (attnMaskFormat == static_cast<Mki::TensorFormat>(ACL_FORMAT_FRACTAL_NZ) || (!needMask)) ?
-            3 : (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 4 : 3)); // 4, 3: 设置中间tensor数
+            3 :
+            (param_.maskType == atb::infer::SelfAttentionParam::MASK_TYPE_ALIBI ? 4 : 3)); // 4, 3: 设置中间tensor数
 
     size_t internalTensorId = 0;
     Mki::Tensor &transdataQResultTensor = kernelGraph_.internalTensors.at(internalTensorId++);
