@@ -19,7 +19,7 @@ static constexpr uint32_t OFFSET_SUM = 2;        // the offset of sum is 2
 static constexpr uint32_t OFFSET_WORKSPACE = 3;  // the offset of workspace is 3
 static constexpr uint32_t DIM_2 = 2;
 static constexpr uint32_t REPEAT_TIME_256 = 256; // 256 default stride
-static constexpr uint32_t REPEAT_TIME_16 = 16; // 128 default stride
+static constexpr uint32_t REPEAT_TIME_16 = 16; // 16 default stride
 static constexpr uint32_t REPEAT_TIME_64 = 64;   // 64 default stride
 
 template <typename T, bool WITH_BETA, bool FastComputeMode = false>
