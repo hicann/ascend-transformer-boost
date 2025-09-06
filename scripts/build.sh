@@ -12,8 +12,8 @@
 set -e
 SCRIPT_DIR=$(cd $(dirname $0); pwd)
 cd $SCRIPT_DIR/..
-export CODE_ROOT=$(pwd)
-export CACHE_DIR=$CODE_ROOT/build
+CODE_ROOT=$(pwd)
+CACHE_DIR=$CODE_ROOT/build
 OUTPUT_DIR=$CODE_ROOT/output
 THIRD_PARTY_DIR=$CODE_ROOT/3rdparty
 
@@ -25,12 +25,7 @@ USE_CXX11_ABI=""
 USE_ASAN=OFF
 USE_MSSANITIZER=OFF
 USE_MSDEBUG=OFF
-USE_ASCENDC_DUMP=OFF
 SKIP_BUILD=OFF
-BUILD_TBE_ADAPTER=OFF
-DEPENDENCY_DIR=2025-06-18
-ASDOPS_SOURCE_DIR=/tmp/asdops_dependency/$DEPENDENCY_DIR
-CMC_URL=https://cmc-szver-artifactory.cmc.tools.huawei.com/artifactory/cmc-software-release/Baize%20C/AscendTransformerBoost/1.0.0/asdops_dependency/$DEPENDENCY_DIR
 CSVOPSTEST_OPTIONS=""
 BUILD_PYBIND=ON
 SRC_ONLY=OFF
@@ -41,8 +36,8 @@ LOG_NAME="cann_atb_install.log"
 
 BUILD_OPTION_LIST="help default testframework unittest kernelunittest pythontest torchatbtest kernelpythontest csvopstest fuzztest infratest hitest alltest clean gendoc customizeops"
 BUILD_CONFIGURE_LIST=("--verbose" "--use_cxx11_abi=0" "--use_cxx11_abi=1"
-    "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--ascendc_dump" "--mssanitizer" "--no-pybind"
-    "--src-only" "--customizeops_tests")
+    "--asan" "--skip_build" "--csvopstest_options=.*" "--debug" "--clean-first" "--msdebug" "--mssanitizer" "--no-pybind"
+    "--src-only")
 
 function fn_build_googletest()
 {
@@ -166,17 +161,16 @@ function fn_build_asdops()
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_mixops.so 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libatb_mixops_static.a 2> /dev/null
         rm -f $THIRD_PARTY_DIR/asdops/lib/libmki.so 2> /dev/null
-        rm -f $THIRD_PARTY_DIR/asdops/lib/libtbe_adapter.so 2> /dev/null
         return 0
     fi
-    cd $THIRD_PARTY_DIR
-    rm -rf ascend-op-common-lib
-    branch=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match 2> /dev/null || echo "commit_id")
-    [[ "$branch" == *br_personal* || "$branch" == "commit_id" || "$branch" == *revert-mr* ]] && branch=master
-    echo  "current branch for atb and asdops: $branch"
-    git clone --branch $branch --depth 1 https://szv-open.codehub.huawei.com/OpenBaize/Ascend/ascend-op-common-lib.git
-    cd ascend-op-common-lib
-    echo  "current commid id of ascend-op-common-lib: $(git rev-parse HEAD)"
+    [[ -d "$THIRD_PARTY_DIR" ]] && cd $THIRD_PARTY_DIR
+    echo "Will not git clone the code repository"
+    if [ -d "$THIRD_PARTY_DIR"/ascend-op-common-lib ]; then
+        cd "$THIRD_PARTY_DIR"/ascend-op-common-lib
+    else
+        echo "Complie asdops failed, Please manually git clone the code repository"
+        exit 1
+    fi
     [[ -d "$THIRD_PARTY_DIR/Mind-KernelInfra" ]] && mkdir -p 3rdparty && [[ -d "$THIRD_PARTY_DIR/mki" ]] && cp -r $THIRD_PARTY_DIR/mki 3rdparty
     if [ ! -d "$THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost" ]; then
         mkdir -p $THIRD_PARTY_DIR/ascend-op-common-lib/3rdparty/ascend-transformer-boost
@@ -237,22 +231,17 @@ function fn_build_mki()
     if [ "$USE_MSDEBUG" == "ON" ]; then
         build_options="$build_options --msdebug"
     fi
-    if [ "$USE_ASCENDC_DUMP" == "ON" ]; then
-        build_options="$build_options --ascendc_dump"
-    fi
     build_options="$build_options --output=$THIRD_PARTY_DIR $COMPILE_VERBOSE"
     bash scripts/build.sh $build_type $build_options
 }
 
-function fn_build_catlass()
+function fn_build_act()
 {
     if [ -d "$THIRD_PARTY_DIR/catlass" ]; then
         return 0
     fi
     cd $THIRD_PARTY_DIR
-    branch=catlass-v1-stable
-    echo  "current branch for catlass: $branch"
-    git clone --branch $branch --depth 1 https://gitee.com/ascend/catlass.git
+    git clone https://gitee.com/ascend/catlass.git
 }
 
 function fn_build_nlohmann_json()
@@ -282,7 +271,7 @@ function fn_build_secodefuzz()
     fi
     cd $CACHE_DIR
     rm -rf secodefuzz
-    git clone -b v2.4.5 --depth=1 https://szv-open.codehub.huawei.com/innersource/Fuzz/secodefuzz.git
+
     cd secodefuzz
     mkdir build && cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -313,132 +302,16 @@ function fn_build_3rdparty_for_test()
     fn_build_stub
 }
 
-function fn_get_cxx_abi_string()
-{
-    if [ "${USE_CXX11_ABI}" == "ON" ]; then
-        echo "cxx_abi_1"
-    else
-        echo "cxx_abi_0"
-    fi
-}
-
-function fn_copy_tbe_adapter()
-{
-    if [ ! -f $ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so ]; then
-        echo "error:$ATB_BUILD_DEPENDENCY_PATH/lib/libtbe_adapter.so dose not exist, please source set_env.sh."
-        return 0
-    fi
-
-    LOCAL_ABI=$(fn_get_cxx_abi_string)
-
-    LOCAL_TBE_ADAPTER_PATH=$CODE_ROOT/output/atb/$LOCAL_ABI
-    TARGET_ABI=$(basename "$ATB_BUILD_DEPENDENCY_PATH")
-    if [ "${TARGET_ABI}" != "${LOCAL_ABI}" ];then
-        echo "$ATB_BUILD_DEPENDENCY_PATH use $TARGET_ABI, but $LOCAL_TBE_ADAPTER_PATH use $LOCAL_ABI, abi error."
-        return 0
-    fi
-
-    if [ "${ATB_BUILD_DEPENDENCY_PATH}" != "${LOCAL_TBE_ADAPTER_PATH}" ]; then
-        if [ ! -d "${LOCAL_TBE_ADAPTER_PATH/lib}" ];then
-            mkdir -p $LOCAL_TBE_ADAPTER_PATH/lib
-        fi
-        cp ${ATB_BUILD_DEPENDENCY_PATH}/lib/libtbe_adapter.so $LOCAL_TBE_ADAPTER_PATH/lib
-    fi
-}
-
-function fn_check_dependency_cache()
-{
-    [[ ! -d "$ASDOPS_SOURCE_DIR" ]] && mkdir -p $ASDOPS_SOURCE_DIR
-    cd $ASDOPS_SOURCE_DIR
-    if [ ! -d "$ASDOPS_SOURCE_DIR/opp_kernel" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/asdops_opp_kernel.tar.gz" ]] && wget --no-check-certificate $CMC_URL/asdops_opp_kernel.tar.gz
-        tar xf asdops_opp_kernel.tar.gz
-        rm asdops_opp_kernel.tar.gz
-    fi
-    echo "$ASDOPS_SOURCE_DIR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    if [ ! -d "$ASDOPS_SOURCE_DIR/canndev" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/canndev.tar.gz" ]] && wget --no-check-certificate $CMC_URL/canndev.tar.gz
-        tar xf canndev.tar.gz
-        rm canndev.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/metadef" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/metadef.tar.gz" ]] && wget --no-check-certificate $CMC_URL/metadef.tar.gz
-        tar xf metadef.tar.gz
-        rm metadef.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/cann-ops-adv" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/cann-ops-adv.tar.gz" ]] && wget --no-check-certificate $CMC_URL/cann-ops-adv.tar.gz
-        tar xf cann-ops-adv.tar.gz
-        rm cann-ops-adv.tar.gz
-    fi
-    if [ ! -d "$ASDOPS_SOURCE_DIR/api" ]; then
-        [[ ! -f "$ASDOPS_SOURCE_DIR/api.tar.gz" ]] && wget --no-check-certificate $CMC_URL/api.tar.gz
-        tar xf api.tar.gz
-        rm api.tar.gz
-    fi
-    echo "dependency_cache is ready"
-}
-
-function fn_build_tbe_adapter_dependency()
-{
-    CCEC_COMPILER_DIR=$THIRD_PARTY_DIR/compiler/ccec_compiler
-    TIKCPP_DIR=$THIRD_PARTY_DIR/compiler/tikcpp
-
-    CANNDEV_DIR=$THIRD_PARTY_DIR/canndev
-    METADEF_DIR=$THIRD_PARTY_DIR/metadef
-    API_DIR=$THIRD_PARTY_DIR/api
-    CANN_OPS_DIR=$THIRD_PARTY_DIR/cann-ops-adv
-    TBE_ADAPTER_DIR=$CODE_ROOT/src/kernels/tbe_adapter
-
-    # dev
-    fn_check_dependency_cache
-    export ASCEND_KERNEL_PATH=$ASDOPS_SOURCE_DIR/opp_kernel
-
-    #tbe_adapter dependency
-    [[ ! -d "$CANNDEV_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/canndev $CANNDEV_DIR
-    [[ ! -d "$API_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/api $API_DIR
-    [[ ! -d "$CANN_OPS_DIR" ]] && cp -r $ASDOPS_SOURCE_DIR/cann-ops-adv $CANN_OPS_DIR
-    #determine whether these two files are identical
-    SRC_FILE_LINE_NUM=$(wc -l < "$TBE_ADAPTER_DIR/stubs/include/canndev/ops/built-in/op_tiling/op_tiling.h")
-    DST_FILE_LINE_NUM=$(wc -l < "$THIRD_PARTY_DIR/canndev/ops/built-in/op_tiling/op_tiling.h")
-    [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/canndev $THIRD_PARTY_DIR
-    [[ "$SRC_FILE_LINE_NUM" != "$DST_FILE_LINE_NUM" ]] && cp -r $TBE_ADAPTER_DIR/stubs/include/api $THIRD_PARTY_DIR
-    if [ ! -d "$METADEF_DIR" ];then
-        cp -r $ASDOPS_SOURCE_DIR/metadef $METADEF_DIR
-    fi
-}
-
-function fn_build_tbe_dependency()
-{
-    LOCAL_ABI=$(fn_get_cxx_abi_string)
-    if [ -f $OUTPUT_DIR/atb/$LOCAL_ABI/lib/libtbe_adapter.so ];then
-        echo "libtbe_adapter.so is already exist, skip build process."
-        BUILD_TBE_ADAPTER=OFF
-        return 0
-    fi
-
-    if [ -n "$ATB_BUILD_DEPENDENCY_PATH" ];then
-    #copy from nnal
-        fn_copy_tbe_adapter
-    else
-    #build by source code
-        BUILD_TBE_ADAPTER=ON
-        fn_build_tbe_adapter_dependency
-    fi
-}
-
 function fn_build_3rdparty_for_compile()
 {
     fn_build_nlohmann_json
     fn_build_mki
-    fn_build_catlass
+    fn_build_act
     fn_build_asdops
     fn_build_cann_dependency
-    fn_build_tbe_dependency
     if [ "$BUILD_PYBIND" == "ON" -a "$USE_CXX11_ABI" != "ON" ]; then
         fn_build_pybind11
     fi
-    COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_TBE_ADAPTER=$BUILD_TBE_ADAPTER"
 }
 
 function fn_build_3rdparty_for_doc()
@@ -453,8 +326,13 @@ function fn_build_3rdparty_for_doc()
 
 function export_atb_env()
 {
+    cd $OUTPUT_DIR/atb
+    sed -i '/ASDOPS_LOG_LEVEL/d' set_env.sh
+    sed -i '/ASDOPS_LOG_TO_STDOUT/d' set_env.sh
+    sed -i '/ASDOPS_LOG_TO_FILE/d' set_env.sh
+    sed -i '/ASDOPS_LOG_TO_FILE_FLUSH/d' set_env.sh
     export LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver:${LD_LIBRARY_PATH}
-    source $OUTPUT_DIR/atb/set_env.sh
+    source set_env.sh
 }
 
 function export_atb_hitest_env()
@@ -588,19 +466,10 @@ function fn_build()
         echo "info: skip atb build because SKIP_BUILD is on."
         return 0
     fi
-    if [ "${USE_ASCENDC_DUMP}" == "OFF" ] && [[ -f "$THIRD_PARTY_DIR/mki/lib/libmki.so" ]]; then
-        if readelf -d $THIRD_PARTY_DIR/mki/lib/libmki.so | grep -q "libascend_dump.so"; then
-            rm -rf $THIRD_PARTY_DIR/mki
-            [[ -d "$CACHE_DIR" ]] && rm -rf $CACHE_DIR && mkdir $CACHE_DIR
-        fi
-    fi
     fn_build_3rdparty_for_compile
     cd $CACHE_DIR
-    if [ "$CMAKE_CXX_COMPILER_LAUNCHER" == "" -a command -v ccache &> /dev/null ]; then
+    if [ "$CMAKE_CXX_COMPILER_LAUNCHER" == "" ] && [ command -v ccache &> /dev/null ] ; then
         COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
-    fi
-    if [ "${USE_ASCENDC_DUMP}" == "ON" ]; then
-        COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_ASCENDC_DUMP=ON"
     fi
     echo "COMPILE_OPTIONS:$COMPILE_OPTIONS"
     cmake $CODE_ROOT $COMPILE_OPTIONS
@@ -701,9 +570,6 @@ function fn_build_coverage()
         fn_run_torchatbtest
         fn_run_kernel_cinterfacetest
     fi
-    if [ "$COVERAGE_TYPE" == "FUZZTEST" ];then
-        fn_run_fuzztest
-    fi
 
     cd $GCOV_DIR
     $LCOV_PATH -c --directory ./.. --output-file tmp_coverage.info --rc lcov_branch_coverage=1 >> $GCOV_DIR/log.txt
@@ -727,8 +593,8 @@ function fn_run_torchatbtest()
     for testdir in $(ls -d *_test); do
         echo "Running tests in $testdir"
         for testfile in $(find "$testdir" -name "*_test.py"); do
-            file_only="${testfile##*/}"
-            python3 -m unittest discover -s $CODE_ROOT/tests/apitest -p "$file_only" -v
+            echo "Running $testfile"
+            python3 -m unittest "$testfile"
         done
     done
 }
@@ -770,7 +636,7 @@ function fn_run_infratest()
 
 function fn_install_torch_atb()
 {
-    py_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    py_version=$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
     py_major_version=${py_version%%.*}
     py_minor_version=${py_version##*.}
 
@@ -787,9 +653,9 @@ function fn_install_torch_atb()
         exit 1
     fi
 
-    if pip3 show torch_atb > /dev/null 2>&1; then
+    if pip show torch_atb > /dev/null 2>&1; then
         echo "INFO: torch_atb is already installed, force-reinstalling..."
-        if pip3 install --force-reinstall "$wheel_path" > /dev/null 2>&1; then
+        if pip install --force-reinstall "$wheel_path" > /dev/null 2>&1; then
             echo "INFO: torch_atb reinstallation succeeded!"
         else
             echo "ERROR: torch_atb reinstallation failed!"
@@ -797,7 +663,7 @@ function fn_install_torch_atb()
         fi
     else
         echo "INFO: torch_atb not found, installing..."
-        if pip3 install "$wheel_path" > /dev/null 2>&1; then
+        if pip install "$wheel_path" > /dev/null 2>&1; then
             echo "INFO: torch_atb installation succeeded!"
         else
             echo "ERROR: torch_atb installation failed!"
@@ -865,14 +731,6 @@ function fn_main()
             CHIP_TYPE=$(npu-smi info -m | grep -oE 'Ascend\s*\S+' | head -n 1 | tr -d ' ' | tr '[:upper:]' '[:lower:]')
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DUSE_MSDEBUG=ON -DCHIP_TYPE=${CHIP_TYPE}"
             ;;
-        "--ascendc_dump")
-            if [[ -f "$THIRD_PARTY_DIR/mki/lib/libmki.so" ]]; then
-                if ! readelf -d $THIRD_PARTY_DIR/mki/lib/libmki.so | grep -q "libascend_dump.so"; then
-                    rm -rf $THIRD_PARTY_DIR/mki
-                fi
-            fi
-            USE_ASCENDC_DUMP=ON
-            ;;
         "--mssanitizer")
             USE_MSSANITIZER=ON
             ;;
@@ -887,10 +745,6 @@ function fn_main()
         "--src-only")
             SRC_ONLY=ON
             ;;
-        "--customizeops_tests")
-            fn_build_googletest
-            COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS_TEST=ON"
-            ;;
         esac
         shift
     }
@@ -902,8 +756,7 @@ function fn_main()
     fn_init_env
 
     COMPILE_OPTIONS="${COMPILE_OPTIONS} -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_MSSANITIZER=$USE_MSSANITIZER \
-    -DPACKAGE_COMPILE=OFF"
+    -DUSE_CXX11_ABI=$USE_CXX11_ABI -DUSE_ASAN=$USE_ASAN -DBUILD_PYBIND=$BUILD_PYBIND -DUSE_MSSANITIZER=$USE_MSSANITIZER"
     case "${arg1}" in
         "default")
             MKI_BUILD_MODE=Dev
@@ -972,7 +825,6 @@ function fn_main()
             TEST_TIME=30
             python3 $CODE_ROOT/tests/apitest/fuzztest/generate_operation_fuzz_test.py $CODE_ROOT $RANDOM_SEED $TEST_TIME
             fn_build_3rdparty_for_test
-            fn_build_secodefuzz
             fn_build
             fn_build_coverage
             ;;
@@ -997,15 +849,14 @@ function fn_main()
             fn_gen_doc
             ;;
         "customizeops")
-            MKI_BUILD_MODE=Dev
             COMPILE_OPTIONS="${COMPILE_OPTIONS} -DBUILD_CUSTOMIZE_OPS=ON"
+            fn_build_googletest
             fn_build
             generate_atb_version_info
-            fn_make_run_package
             ;;
         *)
             echo "Usage: "
-            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops| --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--ascendc_dump|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
+            echo "run build.sh help|default|testframework|unittest|kernelunittest|pythontest|kernelpythontest|torchatbtest|csvopstest|infratest|fuzztest|alltest|clean|gendoc|customizeops --debug|--verbose|--use_cxx11_abi=0|--use_cxx11_abi=1|--skip_build|--msdebug|--mssanitizer|--csvopstest_options=<options>|--clean-first|--no-pybind"
             ;;
     esac
 }
