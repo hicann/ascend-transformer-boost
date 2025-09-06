@@ -3,7 +3,7 @@ ATB属于CANN开放项目，在参与贡献前，请了解[CANN开放项目行�
 
 ## 签署CLA
 
-在参与项目贡献前，您需要签署ATB开放项目贡献者许可协议（CLA）。
+在参与项目贡献前，您需要签署CANN开放项目贡献者许可协议（CLA）。
 
 请根据您的参与身份，选择签署法人CLA、法人贡献者CLA、个人CLA 或企业管理员CLA，请点击[这里](https://clasign.osinfra.cn/sign/gitee_ascend-1611222220829317930)签署。
 
